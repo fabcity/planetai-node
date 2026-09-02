@@ -4,9 +4,12 @@ Turn a computer you already own into a PLANETAI node: it reads the sensors at yo
 with the public sensors around you, and tells the people there what to do — in one message, on their phone.
 
     git clone <repo> planetai-node && cd planetai-node
+    chmod +x install.sh backup.sh
     ./install.sh --name bayu-2 --sc 19880 --lat -8.8271 --lon 115.15709
 
-Two containers (Postgres, one Python service). Runs on a Mac mini, an old laptop, a NUC, a Raspberry Pi 4/5.
+Two containers (Postgres, one Python service). Runs on a Mac (Apple Silicon or Intel), any Linux box, a Raspberry Pi 4/5,
+or Windows via WSL2 — see `docs/PLATFORMS.md`. Reads **Smart Citizen** (cloud API), **AirGradient** and **PurpleAir**
+(both directly over your WiFi, no cloud), alone or mixed; adding another kind is one function (`docs/sensors.md`).
 First reading lands within five minutes. First alert lands when the air earns one.
 
 This is Stage 0 of a larger building — three layers (Sense → Observe → Act) closing on the Fab City Index, the same
@@ -40,7 +43,7 @@ Bahasa Indonesia; `ALERT_LOCALE` picks.
 install.sh          the product. platform detect → docker → .env → up → doctor → nightly backup cron
 docker-compose.yml  db (postgres:16) + app
 app/main.py         poll sources → postgres · rules (SQL) → telegram · hourly push to parent · http
-app/sources.py      adapters: smartcitizen, baliairdispatch (+ EPA correction helper for Plantower sensors)
+app/sources.py      adapters: smartcitizen (cloud) · airgradient (LAN) · purpleair (LAN) · baliairdispatch (reference) + EPA 2021 correction
 app/index.py        Index brick: fci-cells-v0 cells this node can honestly compute, and ρ from the actions ledger
 config/rules.yml           the alerts. SQL in, message out. edit without touching code.
 init.sql            sensors, readings, alerts; two views (readings_1h, stats)
@@ -50,6 +53,10 @@ backup.sh           nightly pg_dump, 14-day retention, point BACKUP_DIR at the N
 ARCHITECTURE.md     the building: layers, scales, contracts, compute elasticity, stages
 SPEC.md             this brick's contracts, and what comes back when it's earned
 PRODUCT.md          who this is for and what they pay for
+CHANGELOG.md        what changed and why, per release
+docs/START_HERE.md  the non-technical walkthrough for node #1
+docs/MAC_MINI.md    making a Mac mini an always-on node (power, auto-login, remote access, NAS backups)
+docs/PLATFORMS.md   Linux · Raspberry Pi · Windows (WSL2) · Intel Mac — only what differs from the Mac walkthrough
 docs/sensors.md     adding sensors and sources: SC, AirGradient, PurpleAir, MQTT; the data-honesty rules we inherit
 ```
 
@@ -60,6 +67,8 @@ for what was cut and the condition under which each piece comes back.
 
 It walks node #1 end to end — requirements, four pre-flight checks, install, Telegram, a forced test alert,
 closing the loop, and what to do when something breaks — for someone who has never opened Terminal.
+Putting it on a Mac mini to leave in a cupboard? `docs/MAC_MINI.md` first: the settings that bring it back after a
+power cut, and the pull-the-plug test to prove it.
 
 ## Day one
 

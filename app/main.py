@@ -31,10 +31,12 @@ logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(
 DB = os.environ["DATABASE_URL"]
 NODE = os.getenv("NODE_NAME", "node")
 POLL = int(os.getenv("POLL_SECONDS", "300"))
-TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TG_CHATS = [c for c in os.getenv("TELEGRAM_CHAT_IDS", "").replace(" ", "").split(",") if c]
 LOCALE = os.getenv("ALERT_LOCALE", "en")
-PARENT = os.getenv("PARENT_API_URL", "")
+PARENT = os.getenv("PARENT_API_URL", "").strip()
+if PARENT and not PARENT.startswith(("http://", "https://")):
+    log.warning("PARENT_API_URL %r has no http(s):// — ignoring", PARENT); PARENT = ""
 RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
@@ -46,12 +48,13 @@ def db():
 
 # ---------------------------------------------------------------- ingest
 def poll_once(hc: httpx.Client) -> None:
+    errors: list[str] = []
     with db() as con:
         for name, fn in sources.enabled(hc):
             try:
                 sensors, readings = fn()
             except Exception as e:  # noqa: BLE001
-                state["last_error"] = f"{name}: {e}"
+                errors.append(f"{name}: {str(e).splitlines()[0]}")
                 log.warning("source %s failed: %s", name, e)
                 continue
             with con.cursor() as cur:
@@ -72,6 +75,7 @@ def poll_once(hc: httpx.Client) -> None:
             log.info("%s: %d sensors, %d readings", name, len(sensors), len(readings))
     state["polls"] += 1
     state["last_poll"] = datetime.now(timezone.utc).isoformat()
+    state["last_error"] = " | ".join(errors) if errors else None   # clears when every source succeeds
 
 
 # ---------------------------------------------------------------- rules → alerts

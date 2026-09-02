@@ -21,7 +21,7 @@ twice is harmless. Set `local=True` only for hardware physically at this node. S
 Metric names: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc`.
 Units fixed: µg/m³, °C, %, kPa.
 
-## 2. Sources that ship
+## 2. Sources that ship (pick your sensor in `.env` or with installer flags)
 
 ### Smart Citizen (`SC_DEVICES=19880,...`)
 
@@ -49,6 +49,9 @@ Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen and Airly. We
 - carry `suspected_indoor` into `sensors.indoor`
 - record the originating network in `meta.network`
 
+Bali-only. Set `BAD_ENABLED=0` (`--no-bad`) anywhere else. For other cities the equivalent reference layer is
+OpenAQ (planned adapter) or the city's own portal (Sentilo in Barcelona).
+
 **Attribution is required and non-negotiable:** credit *Bali Air Dispatch, baliairdispatch.com* and the network in
 `meta.network` in anything published from these rows. They kept the record; the networks did the measuring.
 
@@ -59,22 +62,27 @@ one device slightly. Acceptable at v0.1; de-duplicate on coordinates if it ever 
 If we deploy an outdoor sensor of our own, it should also publish to a network BAD reads (AirGradient → OpenAQ,
 PurpleAir, or SC). Then it's on the public map and we're a contributor, not only a consumer.
 
-## 3. Sources to add next, in order of usefulness
-
-### AirGradient (LAN, no cloud)
+### AirGradient (`AIRGRADIENT_HOSTS=airgradient_84fce6.local,…` / `--airgradient`)
 
 BAD's recommended hardware for Bali: ONE kit $125, Pro $225, ships from Chiang Mai in 5–8 days, open hardware,
-PM1/2.5/10 + CO2 + TVOC + NOx + temp/humidity. Every unit exposes a **local HTTP endpoint on your WiFi** —
-`http://airgradient_<serial>.local/measures/current` — returning JSON. Poll it every 60 s. No account, no cloud,
-no third party. This is the outdoor sensor for node kits.
+PM1/2.5/10 + CO2 + TVOC + NOx + temp/humidity. Read **directly over your WiFi** at
+`http://<host>/measures/current` — no account, no cloud, no third party. This is the outdoor sensor for node kits.
 
-Apply `epa_2021_correct(pm02, rhum)` and store both: `pm25` (corrected) and `pm25_raw`. AirGradient units are
-Plantower-based and their open feed publishes raw; BAD corrects them, so should we.
+We store the device's raw `pm02` as `pm25_raw` and `epa_2021_correct(pm02, rhum)` as `pm25`; also `pm1 pm10 co2 temp
+humidity tvoc_index nox_index`. `sensor_id` is `ag-<serial>`. Set `SENSOR_INDOOR=1` (`--indoor`) if it's inside —
+the device doesn't know. Field names are from firmware 3.x; if a newer firmware renames them the adapter logs
+`0 readings` and the fix is one dict in `sources.py`.
 
-### PurpleAir (LAN)
+### PurpleAir (`PURPLEAIR_HOSTS=192.168.1.60` / `--purpleair`)
 
-Also exposes local JSON at `http://<device-ip>/json`. Same treatment: correct, store both. $269–299 from the US
-with import duty; longest-running units in Bali (Jimbaran, Klungkung). Second choice after AirGradient on price.
+Read directly at `http://<ip>/json?live=true`. Use the IP; PurpleAir's `.local` name is unreliable. We average the two
+laser channels' `pm2_5_cf_1` (that is what EPA 2021 was fitted on), store the average as `pm25_raw` and the corrected
+value as `pm25`; also `pm10 humidity pressure` and `temp` (converted from °F — PurpleAir's temperature reads high and
+we convert, not correct). If channels A and B disagree badly we record `channel_disagreement` — one laser is dying,
+and that's a rule for later. Tested against BAD's published Klungkung row: raw 47.8 → 36.6 on their side, 47.3 → 36.0
+on ours from the A/B mean. `sensor_id` is `pa-<mac>`.
+
+## 3. Sources to add next, in order of usefulness
 
 ### DIY: PMS5003 + BME280 on an ESP32 → MQTT
 

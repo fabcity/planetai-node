@@ -2,7 +2,8 @@
 
 Written for someone who is comfortable with a computer but has never run a server. The example throughout is
 the real first node: Tomas's Mac in Bali, Smart Citizen Kit 19880 ("Bayu 2 – Indoor"), alerts to Telegram.
-If that's you, follow it literally. If it isn't, swap the four values in step 4.
+If that's you, follow it literally. If it isn't, swap the values in step 4 — and if you're on Linux, a Raspberry Pi,
+or Windows, read `PLATFORMS.md` first; it's short and lists only what differs.
 
 Time: about 45 minutes the first time, most of it waiting. Nothing here is dangerous to your computer; the
 worst case is that it doesn't start and you send someone the log.
@@ -13,6 +14,7 @@ worst case is that it doesn't start and you send someone the log.
 
 ```bash
 cd ~/Downloads && tar xzf planetai-node-v0.1.tar.gz && cd planetai-node
+chmod +x install.sh backup.sh
 ./install.sh --name bayu-2 --sc 19880 --lat -8.8271 --lon 115.15709
 make health && make stats
 ```
@@ -38,11 +40,14 @@ the program. They don't touch anything else on the machine. Deleting the folder 
 ## 2. What you need
 
 **Hardware**
-- A Mac. Apple Silicon (M1–M4) or Intel, macOS 13 or newer. It must stay on and connected — a Mac mini in a cupboard is ideal; a laptop that sleeps is not. (System Settings → Battery/Energy → "Prevent automatic sleeping when the display is off": on.)
+- A Mac. Apple Silicon (M1–M4) or Intel, macOS 13 or newer. It must stay on and connected — a Mac mini in a cupboard is ideal; a laptop that sleeps is not. **If it's a mini, read `MAC_MINI.md` first** (an hour, once): auto-login, OrbStack at login, restart after power failure, remote access, backups to the NAS. Those settings are what make it survive a brownout without you.
 - About 2 GB of free disk. The database grows by roughly 50 MB a year at this sensor count.
 
-**Sensor**
-- A Smart Citizen Kit that is online and reporting. For node #1 that's kit **19880**. You'll check it's alive in step 3.
+**Sensor — one of these, or several**
+- A **Smart Citizen Kit** that is online and reporting (node #1: kit **19880**). Read through its cloud API by kit number.
+- An **AirGradient** ONE or Open Air on the same WiFi as the computer. Read directly over the LAN — no cloud, no account.
+- A **PurpleAir** on the same WiFi. Also read directly over the LAN.
+You'll check yours is alive in step 3. Mixed kinds on one node are fine. Details and what to buy: `sensors.md` and `PLATFORMS.md`.
 
 **Accounts**
 - Telegram on your phone (free). Needed for alerts, not for install — you can add it later.
@@ -59,8 +64,8 @@ the program. They don't touch anything else on the machine. Deleting the folder 
 
 Do these in order. Each one either passes or tells you exactly what to fix before you touch the installer.
 
-**Check 1 — Is the kit alive?**
-Open <https://smartcitizen.me/kits/19880> in a browser. The page should show readings with a "last reading" time in
+**Check 1 — Is the sensor alive?**
+*Smart Citizen:* open <https://smartcitizen.me/kits/19880> in a browser. The page should show readings with a "last reading" time in
 the last hour. If it says the kit is offline or the last reading is days old, fix the kit first (power, WiFi) — the
 node will install fine but have nothing to say.
 
@@ -70,7 +75,13 @@ curl -s https://api.smartcitizen.me/v0/devices/19880 | python3 -c "import sys,js
 ```
 You want a timestamp from today.
 
-**Check 2 — Is Bali Air Dispatch answering?**
+*AirGradient:* in a browser on the same WiFi, open `http://airgradient_<serial>.local/measures/current` (the serial is on
+the device's sticker / in its display). You should see a block of JSON with `pm02`, `rhum`, `atmp`. If the `.local` name
+doesn't resolve, find the device's IP in your router and use that instead.
+
+*PurpleAir:* open `http://<its IP>/json?live=true`. JSON with `pm2_5_cf_1` and `current_humidity` means it's alive.
+
+**Check 2 — Is Bali Air Dispatch answering?** (Bali only — skip elsewhere and add `--no-bad` in step 4.)
 ```bash
 curl -s "https://baliairdispatch.com/api/v1/latest" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['count'], 'stations, generated', d['generated_at'])"
 ```
@@ -103,13 +114,27 @@ Put the folder somewhere permanent — not Downloads. `~/planetai` is good.
 mkdir -p ~/planetai && cd ~/planetai
 tar xzf ~/Downloads/planetai-node-v0.1.tar.gz
 cd planetai-node
+chmod +x install.sh backup.sh
 ./install.sh --name bayu-2 --sc 19880 --lat -8.8271 --lon 115.15709
 ```
 
-The four values, and what to change if you aren't Tomas:
+That's the Smart Citizen form. The same command with a different sensor:
+
+```bash
+./install.sh --name warung-3 --airgradient airgradient_84fce6.local --lat -8.65 --lon 115.22          # outdoor AirGradient, Bali
+./install.sh --name clinic-1 --purpleair 192.168.1.60 --indoor --lat -8.79 --lon 115.16                # indoor PurpleAir
+./install.sh --name bcn-lab  --sc 15423 --airgradient ag-roof.local --lat 41.39 --lon 2.19 --no-bad     # Barcelona: two sensors, no Bali reference
+```
+
+(`chmod +x` marks the two scripts as runnable. Archives sometimes drop that flag; if you skip this line you get
+`zsh: permission denied: ./install.sh`.)
+
+The values, and what to change if you aren't Tomas:
 - `--name` — a short name for this node, lowercase, dashes. It appears in every alert. Pick something a household would recognise.
-- `--sc` — your kit number, the digits at the end of its smartcitizen.me URL.
+- `--sc` / `--airgradient` / `--purpleair` — your sensor(s). Kit number for Smart Citizen; hostname or IP for the LAN sensors. Comma-separate several of the same kind; combine kinds freely.
+- `--indoor` — say so if your AirGradient/PurpleAir is inside. Smart Citizen kits carry this themselves.
 - `--lat --lon` — where the node physically is. Google Maps → right-click the spot → the two numbers. Used to decide which public sensors count as "nearby".
+- `--no-bad` — outside Bali. Turns off the Bali Air Dispatch reference layer.
 
 What you'll see: a few lines about your platform, then `building and starting` — this is the slow part, one to
 three minutes the first time as it downloads Postgres and builds the program. Then a `doctor:` block with three ticks
@@ -133,7 +158,7 @@ that failed (kit offline, BAD unreachable).
 make stats
 ```
 This is what the rules see. One row per sensor per metric. Look for:
-- a row with `"sensor_id": "sc-19880"`, `"metric": "pm25"`, `"local": true`, `"indoor": true` — your kit, correctly flagged indoor.
+- a row for your sensor with `"metric": "pm25"` and `"local": true` — `sc-19880`, `ag-84fce612a5b4`, or `pa-…` — with `indoor` set the way you'd expect. For AirGradient and PurpleAir you'll also see `pm25_raw`: the uncorrected number, kept beside the humidity-corrected `pm25`.
 - rows starting `bad-…` with `"local": false` — public reference stations within 15 km.
 
 If there are **no `bad-` rows**, the radius is too tight for where you are. Open `.env`, change `BAD_RADIUS_KM=15`
@@ -240,11 +265,17 @@ cd ~/planetai/planetai-node && git pull && docker compose up -d --build
 
 ## 11. Troubleshooting
 
+**`zsh: permission denied: ./install.sh`** — the script lost its "runnable" flag in the download. `chmod +x install.sh backup.sh`, then run it again.
+
+**`WARN Docker Compose requires buildx plugin`** — harmless. Docker falls back to its older builder, which works. (OrbStack ships buildx; this appears with some Docker Desktop or Homebrew installs.)
+
 **`doctor: ✗ db healthy`** — Usually the first start needs longer than the 8-second wait. Run `docker compose ps`; if `db` says "starting", wait 30 s and run `./install.sh …` again (it's safe to re-run). If it says "exited", `docker compose logs db` — the common cause is a port clash (something else on 5432). Fix: in `docker-compose.yml` change `"127.0.0.1:5432:5432"` to `"127.0.0.1:5433:5432"`.
 
-**`doctor: ✗ app answering`** — `docker compose logs app`. Read the last ten lines. If it mentions `.env` or a missing variable, compare your `.env` with `.env.example`. If port 8080 is taken (another app on your Mac), change `"8080:8080"` to `"8081:8080"` in `docker-compose.yml` and use `localhost:8081` everywhere in this guide.
+**`Bind for 0.0.0.0:8080 failed: port is already allocated`** (or the installer stops with "port 8080 is already in use") — something else on this Mac, usually another Docker project, has 8080. Either stop it, or open `.env`, set `APP_PORT=8081`, and run `./install.sh …` again. All `make` commands follow `APP_PORT`; if you type `curl` by hand, use the new number.
 
-**`make health` shows `last_error` mentioning smartcitizen** — the kit is offline or the API is slow. Check <https://smartcitizen.me/kits/19880>. The node keeps polling; it recovers on its own when the kit does.
+**`doctor: ✗ app answering`** — `docker compose logs app`. Read the last ten lines. If it mentions `.env` or a missing variable, compare your `.env` with `.env.example`.
+
+**`make health` shows `last_error` mentioning a source** — that source failed on the *last* poll; it clears by itself when the next poll succeeds. `smartcitizen`: the kit or their API is down, check the kit page. `airgradient`/`purpleair`: the device is off, on a different WiFi, or its `.local` name stopped resolving — try its IP in `.env`. `baliairdispatch`: their server; nothing to do. Several sources are separated by `|`. The node keeps running on whatever is answering.
 
 **No `bad-` rows in `make stats`** — widen `BAD_RADIUS_KM` (step 5). If BAD's API is down, `last_error` says so; wait.
 

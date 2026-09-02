@@ -55,10 +55,10 @@
   sql: |
     SELECT 'node' AS sensor_id, count(DISTINCT sensor_id) FILTER (WHERE local) AS ours,
            count(DISTINCT sensor_id) FILTER (WHERE NOT local AND silent_minutes < 120) AS refs,
-           round(avg(mean_24h) FILTER (WHERE local AND indoor AND metric='pm25')) AS inside_24h,
-           round(avg(mean_24h) FILTER (WHERE NOT local AND NOT indoor AND metric='pm25')) AS outside_24h
+           round(avg(mean_24h) FILTER (WHERE local AND indoor AND metric='pm25'))::int AS inside_24h,
+           coalesce(round(avg(mean_24h) FILTER (WHERE NOT local AND NOT indoor AND metric='pm25'))::int::text, 'no public sensors in range') AS outside_24h
     FROM stats
     HAVING count(*) > 0
   message:
-    en: "Node up. {ours} local sensor(s), {refs} public reference sensors in range. Last 24h PM2.5: {inside_24h} indoors, ~{outside_24h} ambient."
-    id: "Node aktif. {ours} sensor lokal, {refs} sensor publik dalam jangkauan. PM2.5 24 jam: {inside_24h} dalam, sekitar {outside_24h} luar."
+    en: "Node up. {ours} local sensor(s), {refs} public reference sensors in range. Last 24h PM2.5: {inside_24h} indoors; ambient: {outside_24h}."
+    id: "Node aktif. {ours} sensor lokal, {refs} sensor publik dalam jangkauan. PM2.5 24 jam: {inside_24h} dalam; luar: {outside_24h}."
