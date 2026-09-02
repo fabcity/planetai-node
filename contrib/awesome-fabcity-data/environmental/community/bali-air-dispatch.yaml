@@ -1,0 +1,24 @@
+# Proposed entry for github.com/fabcity/awesome-fabcity-data → data/environmental/community/bali-air-dispatch.yaml
+# The FCI Observations "Data Sources" registry in Airtable is synced one-way from that repo. Add it there, not by hand.
+# Check the repo's schema before the PR; keys below mirror the Airtable columns.
+slug: environmental/community/bali-air-dispatch
+name: Bali Air Dispatch
+url: https://baliairdispatch.com/
+api: https://baliairdispatch.com/api/v1
+pillar: environmental
+scale: community
+status: live
+license: "Public-interest archive; free to use and redistribute with attribution to Bali Air Dispatch and the originating network in each row's `source`. Upstream readings remain under their networks' terms."
+pilots: [bali]
+tags: [air-quality, pm25, aggregator, peer-observatory, humidity-corrected]
+upstream_listed_in: []
+added: 2026-09-02
+description: >
+  Island-wide PM2.5 archive for Bali aggregating eight networks (Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient,
+  Smart Citizen, Airly). Key-free read-only API: /stations, /latest, /measurements (raw/hourly/daily, JSON or CSV).
+  Applies US EPA 2021 humidity correction to Plantower-based networks and stores raw alongside corrected; flags
+  suspected-indoor stations and stale readings. Collaborators include Fab Lab Bali, CAST Foundation, Meaningful Design Group.
+notes: >
+  Peer observatory, not a sensor network: credit both the archive and the row's network. Read as context (local=false)
+  at PLANETAI nodes in Bali; PLANETAI nodes with outdoor hardware should also publish to a network BAD reads so the map densifies.
+wired: true

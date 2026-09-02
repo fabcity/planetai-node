@@ -1,0 +1,64 @@
+# Rules are SQL. Each query returns zero or more rows; every row becomes one alert (subject to cooldown).
+# Columns you SELECT are available in the message as {name}. Always SELECT sensor_id.
+# The `stats` view gives you: sensor_id, metric, indoor, local, name, last, silent_minutes, mean_15m, mean_1h, mean_24h.
+# Thresholds follow US EPA / WHO 2021 as used by Bali Air Dispatch: 15 (WHO 24h) · 35.5 (USG) · 55.5 (Unhealthy).
+
+- id: indoor_pm25_high
+  level: act
+  cooldown_minutes: 120
+  sql: |
+    SELECT sensor_id, name, mean_15m FROM stats
+    WHERE local AND indoor AND metric = 'pm25' AND mean_15m > 35.5
+  message:
+    en: "Indoor PM2.5 at {name} is {mean_15m:.0f} µg/m³ (unhealthy for sensitive groups). Run the purifier if you have one; check whether outside is better before opening windows."
+    id: "PM2.5 dalam ruangan di {name} {mean_15m:.0f} µg/m³ (tidak sehat untuk kelompok sensitif). Nyalakan pembersih udara jika ada; cek udara luar sebelum membuka jendela."
+
+- id: outside_worse_keep_shut
+  level: act
+  cooldown_minutes: 180
+  sql: |
+    WITH inside AS (SELECT sensor_id, name, mean_1h FROM stats WHERE local AND indoor AND metric='pm25' AND mean_1h IS NOT NULL),
+         outside AS (SELECT avg(mean_1h) AS ambient, count(*) AS n FROM stats WHERE NOT local AND NOT indoor AND metric='pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120)
+    SELECT i.sensor_id, i.name, i.mean_1h AS inside, o.ambient, o.n
+    FROM inside i, outside o
+    WHERE o.n >= 2 AND o.ambient > 35.5 AND o.ambient > 1.5 * i.mean_1h
+  message:
+    en: "Outside is worse than inside at {name}: ambient ~{ambient:.0f} µg/m³ (from {n} nearby public sensors) vs {inside:.0f} indoors. Keep windows shut."
+    id: "Udara luar lebih buruk dari dalam di {name}: sekitar {ambient:.0f} µg/m³ (dari {n} sensor publik terdekat) vs {inside:.0f} di dalam. Tutup jendela."
+
+- id: inside_worse_ventilate
+  level: act
+  cooldown_minutes: 180
+  sql: |
+    WITH inside AS (SELECT sensor_id, name, mean_1h FROM stats WHERE local AND indoor AND metric='pm25' AND mean_1h IS NOT NULL),
+         outside AS (SELECT avg(mean_1h) AS ambient, count(*) AS n FROM stats WHERE NOT local AND NOT indoor AND metric='pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120)
+    SELECT i.sensor_id, i.name, i.mean_1h AS inside, o.ambient, o.n
+    FROM inside i, outside o
+    WHERE o.n >= 2 AND i.mean_1h > 15 AND i.mean_1h > 1.5 * o.ambient
+  message:
+    en: "Inside is worse than outside at {name}: {inside:.0f} µg/m³ indoors vs ~{ambient:.0f} ambient. Something is burning or cooking indoors — ventilate."
+    id: "Udara dalam lebih buruk dari luar di {name}: {inside:.0f} µg/m³ di dalam vs sekitar {ambient:.0f} di luar. Ada yang terbakar atau memasak di dalam — buka ventilasi."
+
+- id: sensor_silent
+  level: warn
+  cooldown_minutes: 720
+  sql: |
+    SELECT DISTINCT ON (sensor_id) sensor_id, name, silent_minutes FROM stats
+    WHERE local AND silent_minutes > 90
+  message:
+    en: "{name} has not reported for {silent_minutes:.0f} minutes. Power? WiFi?"
+    id: "{name} tidak melapor selama {silent_minutes:.0f} menit. Listrik? WiFi?"
+
+- id: daily_pulse
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    SELECT 'node' AS sensor_id, count(DISTINCT sensor_id) FILTER (WHERE local) AS ours,
+           count(DISTINCT sensor_id) FILTER (WHERE NOT local AND silent_minutes < 120) AS refs,
+           round(avg(mean_24h) FILTER (WHERE local AND indoor AND metric='pm25')) AS inside_24h,
+           round(avg(mean_24h) FILTER (WHERE NOT local AND NOT indoor AND metric='pm25')) AS outside_24h
+    FROM stats
+    HAVING count(*) > 0
+  message:
+    en: "Node up. {ours} local sensor(s), {refs} public reference sensors in range. Last 24h PM2.5: {inside_24h} indoors, ~{outside_24h} ambient."
+    id: "Node aktif. {ours} sensor lokal, {refs} sensor publik dalam jangkauan. PM2.5 24 jam: {inside_24h} dalam, sekitar {outside_24h} luar."

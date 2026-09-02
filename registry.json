@@ -1,0 +1,17 @@
+{
+  "_": "PLANETAI node directory. Adding a node = a pull request. This file is the registry until there are too many nodes for a file.",
+  "nodes": [
+    {
+      "name": "bayu-2",
+      "scale": "community",
+      "operator": "Meaningful Design Group",
+      "place": "Kuta Selatan, Badung, Bali, ID",
+      "lat": -8.8271,
+      "lon": 115.15709,
+      "sources": ["smartcitizen:19880", "baliairdispatch"],
+      "parent": null,
+      "since": "2026-09",
+      "contact": "tomas@meaningful-design.org"
+    }
+  ]
+}
