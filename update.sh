@@ -29,8 +29,10 @@ done
 # 3. get the new code
 if [[ $PULL -eq 1 ]] && [[ -d .git ]]; then
   say "pulling"
-  git stash list >/dev/null 2>&1
-  if ! git pull --ff-only; then
+  # name the remote and branch explicitly: a clone repaired by hand may have no upstream set
+  branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+  git branch --set-upstream-to="origin/$branch" "$branch" >/dev/null 2>&1 || true
+  if ! git pull --ff-only origin "$branch"; then
     warn "git pull failed (local changes?). Commit or stash them, or re-run with --no-pull after unpacking manually."
     exit 1
   fi
