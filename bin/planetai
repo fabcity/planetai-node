@@ -212,16 +212,16 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 cmd_status() {
   local h; h="$(api /health)" || { warn "the node isn't answering on port $(port). Try: planetai doctor"; exit 1; }
   echo "$h" | json '
-print(f"  node      {d[\"node\"]}   v{d.get(\"version\",\"?\")}   schema {d.get(\"schema\",\"?\")}")
-print(f"  up        {d[\"uptime_s\"]//3600}h {d[\"uptime_s\"]%3600//60}m   polls {d[\"polls\"]}   readings {d[\"ingested\"]}")
-print(f"  last poll {d.get(\"last_poll\") or \"not yet\"}")
-print(f"  errors    {d.get(\"last_error\") or \"none\"}")'
+print("  node      %s   v%s   schema %s" % (d["node"], d.get("version","?"), d.get("schema","?")))
+print("  up        %dh %dm   polls %s   readings %s" % (d["uptime_s"]//3600, d["uptime_s"]%3600//60, d["polls"], d["ingested"]))
+print("  last poll %s" % (d.get("last_poll") or "not yet"))
+print("  errors    %s" % (d.get("last_error") or "none"))'
   api /sensors | json '
 own=[s for s in d if s["local"]]; ref=[s for s in d if not s["local"]]
-print(f"  sensors   {len(own)} of yours: "+", ".join(s["sensor_id"] for s in own) if own else "  sensors   none of yours yet (models only)")
-print(f"  reference {len(ref)}: "+", ".join(s["sensor_id"] for s in ref[:4])+(" …" if len(ref)>4 else ""))' 2>/dev/null || true
-  api /alerts | json 'print(f"  alerts    {len(d)} so far"); [print("            "+a["ts"][:16].replace("T"," ")+"  "+a["text"][:80]) for a in d[:3]]' 2>/dev/null || true
-  api /rho | json 'print(f"  rho       {d[\"rho\"] if d[\"rho\"] is not None else \"not yet measured\"}  ({d[\"acted\"]}/{d[\"alerts_act\"]} act-level alerts answered, 30d)")' 2>/dev/null || true
+print(("  sensors   %d of yours: " % len(own)) + ", ".join(s["sensor_id"] for s in own) if own else "  sensors   none of yours yet (models only)")
+print(("  reference %d: " % len(ref)) + ", ".join(s["sensor_id"] for s in ref[:4]) + (" ..." if len(ref)>4 else ""))' 2>/dev/null || true
+  api /alerts | json 'print("  alerts    %d so far" % len(d)); [print("            "+a["ts"][:16].replace("T"," ")+"  "+a["text"][:80]) for a in d[:3]]' 2>/dev/null || true
+  api /rho | json 'print("  rho       %s  (%s/%s act-level alerts answered, 30d)" % (d["rho"] if d["rho"] is not None else "not yet measured", d["acted"], d["alerts_act"]))' 2>/dev/null || true
 }
 
 cmd_doctor() {
@@ -309,7 +309,7 @@ cmd_act() {
   local note="${2:-acted}"
   curl -sf -X POST "localhost:$(port)/actions" -H 'content-type: application/json' \
     -d "{\"alert_id\": $id, \"stage\": \"acted\", \"actor\": \"$(whoami)\", \"note\": \"$note\"}" >/dev/null && say "recorded: you acted on #$id"
-  api /rho | json 'print(f"  rho is now {d[\"rho\"]}  ({d[\"acted\"]}/{d[\"alerts_act\"]} alerts answered, median {d[\"median_minutes\"]} min)")'
+  api /rho | json 'print("  rho is now %s  (%s/%s alerts answered, median %s min)" % (d["rho"], d["acted"], d["alerts_act"], d["median_minutes"]))'
 }
 
 # ---------------------------------------------------------------- the rest
@@ -320,8 +320,8 @@ cmd_start()   { docker compose up -d && say "started"; }
 cmd_stop()    { docker compose down && say "stopped (data kept)"; }
 cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
 cmd_sensors() { api /sensors | json '
-for s in d: print(f"  {s[\"sensor_id\"]:22} {s[\"kind\"]:7} {\"yours\" if s[\"local\"] else \"reference\":9} {\"indoor\" if s[\"indoor\"] else \"outdoor\":7}  {s[\"name\"]}")'; }
-cmd_cells()   { api /cells | json 'for c in d: print(f"  {c[\"cell\"]:26} {c[\"value\"]:>8}  {c[\"state\"]:8} {c[\"unit\"]}")'; }
+for s in d: print("  %-22s %-7s %-9s %-7s  %s" % (s["sensor_id"], s["kind"], "yours" if s["local"] else "reference", "indoor" if s["indoor"] else "outdoor", s["name"]))'; }
+cmd_cells()   { api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
 cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
