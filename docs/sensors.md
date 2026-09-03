@@ -38,7 +38,7 @@ The HM-3301 is not a Plantower and the EPA correction wasn't derived for it.
 For historical backfill, `GET /v0/devices/<id>/readings?sensor_id=<n>&rollup=1h&from=YYYY-MM-DD&to=YYYY-MM-DD`
 returns `[ts, value]` pairs. Not implemented — the node starts recording the day it starts.
 
-### Bali Air Dispatch (`BAD_ENABLED=1`)
+### Bali Air Dispatch (`BAD_ENABLED=1`) — Bali only
 
 Polls `https://baliairdispatch.com/api/v1/latest`. Public, key-free, GET-only, edge-cached 5–60 min. Aggregates
 Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen and Airly. We:
@@ -49,8 +49,13 @@ Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen and Airly. We
 - carry `suspected_indoor` into `sensors.indoor`
 - record the originating network in `meta.network`
 
-Bali-only. Set `BAD_ENABLED=0` (`--no-bad`) anywhere else. For other cities the equivalent reference layer is
-OpenAQ (planned adapter) or the city's own portal (Sentilo in Barcelona).
+Bali only. Set `BAD_ENABLED=0` (`--no-bad`) everywhere else, which the presets already do.
+
+What replaces it elsewhere: the Copernicus CAMS model point sample, which ships on by default and works at any
+coordinates on earth. It is a model rather than a measurement, so it is coarser than a station down the road, but it
+needs no key and never leaves you without a reference. OpenAQ carries measured regulatory and low-cost stations
+worldwide and would be the better source in Delhi, Santiago or Barcelona; it now requires a free API key, so it is
+an opt-in adapter rather than a default. See `PREFILL.md`.
 
 **Attribution is required and non-negotiable:** credit *Bali Air Dispatch, baliairdispatch.com* and the network in
 `meta.network` in anything published from these rows. They kept the record; the networks did the measuring.

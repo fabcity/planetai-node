@@ -1,6 +1,12 @@
-# Air quality — the first domain pack. Thresholds are US EPA / WHO 2021, the scale Bali Air Dispatch publishes.
-# Fork this folder for your own city: the numbers that matter in Kerobokan are not the numbers that matter in Poblenou.
-# Rule ids are namespaced automatically -> air-quality/<id>.
+# Air quality. Thresholds are US EPA / WHO 2021 and apply anywhere; the wording assumes a household.
+# Fork this folder for your own city: the numbers that matter in Kerobokan are not the numbers that
+# matter in Poblenou or Mayur Vihar, and the sentence that gets someone to act differs by language,
+# building and season. Rule ids are namespaced automatically -> air-quality/<id>.
+#
+# AMBIENT REFERENCE. The comparison rules need a number for "outside". They take it from, in order:
+#   1. nearby public outdoor sensors, if this node reads a network that has any in range;
+#   2. the Copernicus CAMS model point sample, which ships everywhere on earth and needs no key.
+# The message says which one it used, because a model at 11 km is not a measurement down the road.
 
 - id: indoor_pm25_high
   level: act
@@ -16,24 +22,54 @@
   level: act
   cooldown_minutes: 180
   sql: |
-    WITH inside AS (SELECT sensor_id, name, mean_1h FROM stats WHERE local AND indoor AND metric='pm25' AND mean_1h IS NOT NULL),
-         outside AS (SELECT avg(mean_1h) AS ambient, count(*) AS n FROM stats WHERE NOT local AND NOT indoor AND metric='pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120)
-    SELECT i.sensor_id, i.name, i.mean_1h AS inside, o.ambient, o.n
-    FROM inside i, outside o
-    WHERE o.n >= 2 AND o.ambient > 35.5 AND o.ambient > 1.5 * i.mean_1h
+    WITH inside AS (
+      SELECT sensor_id, name, mean_1h FROM stats
+      WHERE local AND indoor AND metric = 'pm25' AND mean_1h IS NOT NULL),
+    ambient AS (
+      SELECT 1 AS rank, avg(mean_1h) AS v, count(*)::text || ' nearby public sensors' AS src
+        FROM stats WHERE NOT local AND NOT indoor AND metric = 'pm25'
+         AND mean_1h IS NOT NULL AND silent_minutes < 120
+       HAVING count(*) >= 2
+      UNION ALL
+      SELECT 2, value, 'the CAMS model for your area'
+        FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'),
+    best AS (SELECT v, src FROM ambient ORDER BY rank LIMIT 1)
+    SELECT i.sensor_id, i.name, i.mean_1h AS inside, b.v AS outside, b.src
+    FROM inside i, best b
+    WHERE b.v > 35.5 AND b.v > 1.5 * i.mean_1h
   message:
-    en: "Outside is worse than inside at {name}: ambient ~{ambient:.0f} µg/m³ (from {n} nearby public sensors) vs {inside:.0f} indoors. Keep windows shut."
-    id: "Udara luar lebih buruk dari dalam di {name}: sekitar {ambient:.0f} µg/m³ (dari {n} sensor publik terdekat) vs {inside:.0f} di dalam. Tutup jendela."
+    en: "Outside is worse than inside at {name}: about {outside:.0f} µg/m³ against {inside:.0f} indoors, from {src}. Keep the windows shut."
+    id: "Udara luar lebih buruk dari dalam di {name}: sekitar {outside:.0f} µg/m³ vs {inside:.0f} di dalam, menurut {src}. Tutup jendela."
 
 - id: inside_worse_ventilate
   level: act
   cooldown_minutes: 180
   sql: |
-    WITH inside AS (SELECT sensor_id, name, mean_1h FROM stats WHERE local AND indoor AND metric='pm25' AND mean_1h IS NOT NULL),
-         outside AS (SELECT avg(mean_1h) AS ambient, count(*) AS n FROM stats WHERE NOT local AND NOT indoor AND metric='pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120)
-    SELECT i.sensor_id, i.name, i.mean_1h AS inside, o.ambient, o.n
-    FROM inside i, outside o
-    WHERE o.n >= 2 AND i.mean_1h > 15 AND i.mean_1h > 1.5 * o.ambient
+    WITH inside AS (
+      SELECT sensor_id, name, mean_1h FROM stats
+      WHERE local AND indoor AND metric = 'pm25' AND mean_1h IS NOT NULL),
+    ambient AS (
+      SELECT 1 AS rank, avg(mean_1h) AS v, count(*)::text || ' nearby public sensors' AS src
+        FROM stats WHERE NOT local AND NOT indoor AND metric = 'pm25'
+         AND mean_1h IS NOT NULL AND silent_minutes < 120
+       HAVING count(*) >= 2
+      UNION ALL
+      SELECT 2, value, 'the CAMS model for your area'
+        FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'),
+    best AS (SELECT v, src FROM ambient ORDER BY rank LIMIT 1)
+    SELECT i.sensor_id, i.name, i.mean_1h AS inside, b.v AS outside, b.src
+    FROM inside i, best b
+    WHERE i.mean_1h > 15 AND i.mean_1h > 1.5 * b.v
   message:
-    en: "Inside is worse than outside at {name}: {inside:.0f} µg/m³ indoors vs ~{ambient:.0f} ambient. Something is burning or cooking indoors — ventilate."
-    id: "Udara dalam lebih buruk dari luar di {name}: {inside:.0f} µg/m³ di dalam vs sekitar {ambient:.0f} di luar. Ada yang terbakar atau memasak di dalam — buka ventilasi."
+    en: "Inside is worse than outside at {name}: {inside:.0f} µg/m³ indoors against about {outside:.0f} outside, from {src}. Something is burning or cooking indoors. Open a window."
+    id: "Udara dalam lebih buruk dari luar di {name}: {inside:.0f} µg/m³ di dalam vs sekitar {outside:.0f} di luar, menurut {src}. Ada yang terbakar atau memasak di dalam. Buka jendela."
+
+- id: outdoor_pm25_high
+  level: act
+  cooldown_minutes: 180
+  sql: |
+    SELECT sensor_id, name, mean_1h FROM stats
+    WHERE local AND NOT indoor AND metric = 'pm25' AND mean_1h > 55.5
+  message:
+    en: "Outdoor PM2.5 at {name} is {mean_1h:.0f} µg/m³, which is unhealthy for everyone. Close up, delay outdoor work and exercise, and keep children and anyone with asthma inside."
+    id: "PM2.5 luar ruangan di {name} {mean_1h:.0f} µg/m³, tidak sehat untuk semua orang. Tutup rumah, tunda kerja dan olahraga di luar, jaga anak-anak dan penderita asma tetap di dalam."

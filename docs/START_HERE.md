@@ -1,149 +1,216 @@
-# Start here — setting up node #1
+# Start here
 
-Written for someone who is comfortable with a computer but has never run a server. The example throughout is
-the real first node: Tomas's Mac in Bali, Smart Citizen Kit 19880 ("Bayu 2 – Indoor"), alerts to Telegram.
-If that's you, follow it literally. If it isn't, swap the values in step 4 — and if you're on Linux, a Raspberry Pi,
-or Windows, read `PLATFORMS.md` first; it's short and lists only what differs.
+Setting up a node, for someone who is comfortable with a computer but has never run a server.
 
-Time: about 45 minutes the first time, most of it waiting. Nothing here is dangerous to your computer; the
-worst case is that it doesn't start and you send someone the log.
+A node works anywhere. It needs coordinates, a computer that stays on, and about forty-five minutes,
+most of it waiting. A sensor is optional on day one. Nothing here can damage your machine; the worst
+case is that it does not start and you send someone the log.
 
----
+Wherever you see **Bali** below it is a worked example, not a requirement. Node #1 happens to run in
+Kuta Selatan on a Smart Citizen kit, so its real values make the commands concrete. Yours will differ,
+and section 2 is how you find yours.
 
-## The ten-minute version (if you've done this kind of thing before)
-
-```bash
-cd ~/Downloads && tar xzf planetai-node-v0.1.tar.gz && cd planetai-node
-chmod +x install.sh backup.sh
-./install.sh --name bayu-2 --sc 19880 --lat -8.8271 --lon 115.15709
-make health && make stats
-```
-
-Then step 7 (Telegram) and step 8 (test an alert). Everyone else, read on.
+On Linux, a Raspberry Pi, or Windows, read [`PLATFORMS.md`](PLATFORMS.md) first. It is short and lists
+only what differs.
 
 ---
 
-## 1. What you're about to set up
+## 1. What you are about to set up
 
-A small program that runs quietly on your Mac. Every five minutes it asks your Smart Citizen kit what it's reading,
-asks Bali Air Dispatch what the public sensors around you are reading, saves both, and checks a short list of rules.
-When a rule is true — the room is getting bad, outside is worse than inside, the sensor has gone quiet — it sends one
-message to a Telegram group. Once a day it sends a pulse so you know it's alive.
+A small program that runs quietly on a computer you own. Every five minutes it reads whatever sensors you
+have given it, reads a global air-quality model at your coordinates, saves both, and checks a short list
+of rules. When a rule is true it sends one message to Telegram. Once a day it sends a pulse so you know
+it is alive.
 
-It also does two things that matter for the bigger project: it publishes what it knows in the Fab City Index format,
-and it records whether anyone acted on an alert (that's the ρ measurement). You don't need to think about either on
-day one; they happen on their own.
+It also publishes what it knows in the Fab City Index format and records whether anyone acted on an
+alert, which is the ρ measurement. Both happen on their own; you do not need to think about them on day one.
 
-It runs inside two "containers" — think of them as two sealed boxes on your Mac: one holds the database, one holds
-the program. They don't touch anything else on the machine. Deleting the folder removes everything.
+Everything runs in two containers: one holds the database, one holds the program. They touch nothing else
+on the machine. Deleting the folder removes it all.
 
-## 2. What you need
+## 2. Your five inputs
 
-**Hardware**
-- A Mac. Apple Silicon (M1–M4) or Intel, macOS 13 or newer. It must stay on and connected — a Mac mini in a cupboard is ideal; a laptop that sleeps is not. **If it's a mini, read `MAC_MINI.md` first** (an hour, once): auto-login, OrbStack at login, restart after power failure, remote access, backups to the NAS. Those settings are what make it survive a brownout without you.
-- About 2 GB of free disk. The database grows by roughly 50 MB a year at this sensor count.
+Before installing, write these down. They are the only things about your place the node needs to know.
 
-**Sensor — one of these, or several**
-- A **Smart Citizen Kit** that is online and reporting (node #1: kit **19880**). Read through its cloud API by kit number.
-- An **AirGradient** ONE or Open Air on the same WiFi as the computer. Read directly over the LAN — no cloud, no account.
-- A **PurpleAir** on the same WiFi. Also read directly over the LAN.
-You'll check yours is alive in step 3. Mixed kinds on one node are fine. Details and what to buy: `sensors.md` and `PLATFORMS.md`.
+### a. Coordinates
 
-**Accounts**
-- Telegram on your phone (free). Needed for alerts, not for install — you can add it later.
-- Nothing else. No cloud account, no API keys, no payment.
+Open Google Maps or OpenStreetMap, right-click the spot where the node will physically sit, copy the two
+numbers. Decimal degrees, south and west negative. Four decimal places is plenty.
 
-**Software you'll install**
-- **OrbStack** (free for personal use) — this is what runs the two containers. Docker Desktop also works; OrbStack is lighter and quieter on a Mac.
-- **Xcode Command Line Tools** — gives your Mac `git`, `make`, `python3`. You may already have them.
+    Kuta Selatan, Bali   -8.8271, 115.15709
+    Santiago             -33.4489, -70.6693
+    Delhi                 28.6139, 77.2090
 
-**Skills**
-- Opening Terminal, pasting a line, pressing Enter. That's the whole skill. Terminal is in Applications → Utilities, or press ⌘-Space and type "Terminal".
+Coordinates decide which public sensors count as nearby and where the global models are sampled. Get them
+roughly right rather than exactly; a few hundred metres does not matter.
 
-## 3. Before you start — four checks (5 minutes)
+### b. Time zone
 
-Do these in order. Each one either passes or tells you exactly what to fix before you touch the installer.
+An IANA name, not an offset: `Asia/Makassar`, `America/Santiago`, `Asia/Kolkata`, `Europe/Madrid`. If you
+are unsure, `timedatectl` on Linux or `sudo systemsetup -gettimezone` on macOS prints the one your machine
+is using. Daily buckets and the daily pulse use this. An offset like UTC+7 will not work.
 
-**Check 1 — Is the sensor alive?**
-*Smart Citizen:* open <https://smartcitizen.me/kits/19880> in a browser. The page should show readings with a "last reading" time in
-the last hour. If it says the kit is offline or the last reading is days old, fix the kit first (power, WiFi) — the
-node will install fine but have nothing to say.
+### c. A city key
 
-Equivalent in Terminal, if you prefer:
+One lowercase word, used to label the Index cells this node publishes: `NODE_CITY`. If you are at one of
+the four Fab City Index pilots, use its key so your cells join the existing rows:
+
+    bali · barcelona · boston · santiago
+
+Anywhere else, invent one that reads as a place: `delhi`, `medellin`, `taipei`. It is a label, not a
+registration, and nothing breaks if the Index has never heard of it. When you want the site on the map,
+open a pull request against `registry.json`.
+
+### d. Sensors, or none
+
+Pick whichever you have. You can mix them, and you can start with none.
+
+| you have | flag | how it is read |
+|---|---|---|
+| a Smart Citizen kit | `--sc 19880` | its cloud API, by the number in the kit's URL |
+| an AirGradient | `--airgradient ag-roof.local` | directly over your WiFi, no cloud, no account |
+| a PurpleAir | `--purpleair 192.168.1.60` | directly over your WiFi, use the IP |
+| nothing yet | omit all three | the node still runs, on models alone |
+
+Add `--indoor` if the AirGradient or PurpleAir sits inside. Smart Citizen kits carry that setting themselves.
+
+**With no sensor**, the node pulls three months of Copernicus CAMS history and forty years of NASA POWER
+normals for your coordinates on first start, and sends you a daily line about your own location. That is
+the cheapest way to see whether this is worth putting hardware behind.
+[`PREFILL.md`](PREFILL.md) covers what arrives and where it comes from.
+
+### e. A reference for "outside"
+
+The useful rules compare the air where you are against the air around you. That reference comes from one of
+three places, and the node picks the best one available:
+
+1. **Public sensors near you**, if this node reads a network that has any in range. Today that means Bali, through the Bali Air Dispatch adapter. Elsewhere the equivalent is OpenAQ, which now needs a free API key and is therefore not switched on by default.
+2. **Copernicus CAMS**, a global model sampled at your coordinates. Free, no key, on by default, works in Delhi and Santiago exactly as it does in Bali. Roughly 11 km resolution, so it knows your district rather than your street.
+3. **Your own outdoor sensor**, if you have one, which is better than either.
+
+You do not configure this. The node uses public sensors when it has them and CAMS when it does not, and
+every alert says which. Outside Bali, add `--no-bad` so it does not poll an island archive that cannot
+help you.
+
+### Optional: your city's open-data portal
+
+If your city runs a CKAN portal, the node can watch how well it is maintained and publish that as a
+`Governance|City` cell. Test any candidate URL in a browser:
+
+    https://<portal-domain>/api/3/action/package_search?rows=0
+
+JSON with a `count` means it is CKAN and the node can read it. A 404 means it is something else, likely
+Socrata or ArcGIS, for which adapters are not written yet. Known-good ones:
+
+    barcelona  https://opendata-ajuntament.barcelona.cat/data
+    boston     https://data.boston.gov
+    santiago   https://datos.gob.cl
+    bali       https://balisatudata.baliprov.go.id
+
+## 3. Before you start, four checks
+
+Each one either passes or tells you exactly what to fix.
+
+**Check 1. Is your sensor alive?** Skip if you have none.
+
+*Smart Citizen:* open `https://smartcitizen.me/kits/<your kit number>` in a browser. You want readings with a
+timestamp from the last hour. In Terminal, replacing the number with yours:
+
 ```bash
 curl -s https://api.smartcitizen.me/v0/devices/19880 | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['name'], '| last reading:', d['last_reading_at'])"
 ```
-You want a timestamp from today.
 
-*AirGradient:* in a browser on the same WiFi, open `http://airgradient_<serial>.local/measures/current` (the serial is on
-the device's sticker / in its display). You should see a block of JSON with `pm02`, `rhum`, `atmp`. If the `.local` name
-doesn't resolve, find the device's IP in your router and use that instead.
+*AirGradient:* on the same WiFi, open `http://airgradient_<serial>.local/measures/current`. You want JSON with
+`pm02`, `rhum`, `atmp`. If the `.local` name does not resolve, find the device's IP in your router and use that.
 
-*PurpleAir:* open `http://<its IP>/json?live=true`. JSON with `pm2_5_cf_1` and `current_humidity` means it's alive.
+*PurpleAir:* open `http://<its IP>/json?live=true`. JSON with `pm2_5_cf_1` means it is alive.
 
-**Check 2 — Is Bali Air Dispatch answering?** (Bali only — skip elsewhere and add `--no-bad` in step 4.)
+**Check 2. Can you reach the global sources?** These work everywhere and need no account.
+
+```bash
+curl -s "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=28.6139&longitude=77.2090&current=pm2_5" | head -c 200
+```
+
+Use your own coordinates. A JSON block with a `pm2_5` number means the node will have something to say from
+its first minute, sensor or not. *In Bali only,* also check the island archive:
+
 ```bash
 curl -s "https://baliairdispatch.com/api/v1/latest" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['count'], 'stations, generated', d['generated_at'])"
 ```
-You want a number above 10 and a timestamp from today. If this fails, the node still works — it just won't have the
-outdoor comparison until BAD is back.
 
-**Check 3 — Command Line Tools.**
+**Check 3. Command line tools** (macOS).
+
 ```bash
 xcode-select -p
 ```
-If it prints a path (like `/Library/Developer/CommandLineTools`), you're fine. If it complains, run
-`xcode-select --install`, accept the dialog, wait for it to finish (a few minutes), then re-run the check.
 
-**Check 4 — OrbStack.**
-Download from <https://orbstack.dev>, open the .dmg, drag to Applications, open it once. It asks for permission to
-install a helper; say yes. Then in Terminal:
+A path means you are fine. An error means run `xcode-select --install`, accept the dialog, wait, re-check.
+
+**Check 4. Docker.** Install [OrbStack](https://orbstack.dev) (free for personal use; Docker Desktop also works),
+open it once, then:
+
 ```bash
 docker info >/dev/null && echo "docker ok"
 ```
-You want `docker ok`. If you see "Cannot connect to the Docker daemon", OrbStack isn't running — open it from
-Applications and try again.
+
+"Cannot connect to the Docker daemon" means OrbStack is not running.
 
 Four passes? Continue.
 
-## 4. Install (10 minutes, mostly waiting)
+## 4. Install
 
-Put the folder somewhere permanent — not Downloads. `~/planetai` is good.
+Put the folder somewhere permanent, not Downloads.
 
 ```bash
 mkdir -p ~/planetai && cd ~/planetai
-tar xzf ~/Downloads/planetai-node-v0.1.tar.gz
-cd planetai-node
-chmod +x install.sh backup.sh
-./install.sh --name bayu-2 --sc 19880 --lat -8.8271 --lon 115.15709
+git clone https://github.com/fabcity/planetai-node && cd planetai-node
+chmod +x install.sh backup.sh update.sh
 ```
 
-That's the Smart Citizen form. The same command with a different sensor:
+Then one command, built from your five inputs. Four sites ship as presets, which fill in coordinates,
+time zone, language and the city's portal:
 
 ```bash
-./install.sh --name warung-3 --airgradient airgradient_84fce6.local --lat -8.65 --lon 115.22          # outdoor AirGradient, Bali
-./install.sh --name clinic-1 --purpleair 192.168.1.60 --indoor --lat -8.79 --lon 115.16                # indoor PurpleAir
-./install.sh --name bcn-lab  --sc 15423 --airgradient ag-roof.local --lat 41.39 --lon 2.19 --no-bad     # Barcelona: two sensors, no Bali reference
+./install.sh --preset bali      --name bayu-2   --sc 19880
+./install.sh --preset santiago  --name lab-roof --airgradient ag-roof.local
+./install.sh --preset barcelona --name poblenou --purpleair 192.168.1.60 --indoor
+./install.sh --preset boston    --name cba-lab
 ```
 
-(`chmod +x` marks the two scripts as runnable. Archives sometimes drop that flag; if you skip this line you get
-`zsh: permission denied: ./install.sh`.)
+Nowhere on that list? Pass your own values. This is the Delhi form, with no sensor yet:
 
-The values, and what to change if you aren't Tomas:
-- `--name` — a short name for this node, lowercase, dashes. It appears in every alert. Pick something a household would recognise.
-- `--sc` / `--airgradient` / `--purpleair` — your sensor(s). Kit number for Smart Citizen; hostname or IP for the LAN sensors. Comma-separate several of the same kind; combine kinds freely.
-- `--indoor` — say so if your AirGradient/PurpleAir is inside. Smart Citizen kits carry this themselves.
-- `--lat --lon` — where the node physically is. Google Maps → right-click the spot → the two numbers. Used to decide which public sensors count as "nearby".
-- `--no-bad` — outside Bali. Turns off the Bali Air Dispatch reference layer.
+```bash
+./install.sh --name mayur-vihar --lat 28.6139 --lon 77.2090 --no-bad
+```
 
-What you'll see: a few lines about your platform, then `building and starting` — this is the slow part, one to
-three minutes the first time as it downloads Postgres and builds the program. Then a `doctor:` block with three ticks
-or crosses, and a `done.` line.
+and with one:
 
-If `doctor` shows **✗ telegram set** and the other two are ✓ — that's expected on day one. Alerts go to the log until
-step 7.
+```bash
+./install.sh --name mayur-vihar --lat 28.6139 --lon 77.2090 --no-bad --airgradient ag-balcony.local --indoor
+```
 
-If `doctor` shows **✗ db healthy** or **✗ app answering** — go to Troubleshooting, don't continue.
+Then open `.env` and set the two things a flag does not cover:
+
+```
+NODE_CITY=delhi
+NODE_TZ=Asia/Kolkata
+```
+
+Run `make restart` after editing. Adding your city as a preset is one small file in `presets/` and a pull
+request, which spares the next person this step.
+
+**What the flags mean**
+
+- `--name` a short lowercase name for this node. It appears in every alert; pick something the household recognises.
+- `--preset` a shipped site: coordinates, time zone, language, portal. Anything it sets can be overridden.
+- `--lat --lon` required if you are not using a preset.
+- `--sc` / `--airgradient` / `--purpleair` your sensors. Comma-separate several of a kind, and mix kinds freely.
+- `--indoor` the LAN sensor is inside.
+- `--no-bad` you are not in Bali. Turns off the island archive.
+
+**What you will see:** a line about your platform, then a slow first build of one to three minutes, then a
+`doctor:` block, then `done.` A cross next to *telegram set* is expected; that is step 7. A cross next to
+*db healthy* or *app answering* means stop and go to troubleshooting.
 
 ## 5. Watch the first five minutes
 
@@ -158,12 +225,13 @@ that failed (kit offline, BAD unreachable).
 make stats
 ```
 This is what the rules see. One row per sensor per metric. Look for:
-- a row for your sensor with `"metric": "pm25"` and `"local": true` — `sc-19880`, `ag-84fce612a5b4`, or `pa-…` — with `indoor` set the way you'd expect. For AirGradient and PurpleAir you'll also see `pm25_raw`: the uncorrected number, kept beside the humidity-corrected `pm25`.
-- rows starting `bad-…` with `"local": false` — public reference stations within 15 km.
+- a row for each of your own sensors, with `"local": true` and `indoor` set the way you expect. Ids look like `sc-19880`, `ag-84fce612a5b4`, `pa-84f3eb…`. AirGradient and PurpleAir also produce `pm25_raw`, the uncorrected number kept beside the humidity-corrected `pm25`.
+- a row `cam-point` or `cams-point` with `"kind": "model"`. That is the global model at your coordinates, and it appears everywhere on earth.
+- in Bali only, rows starting `bad-`, which are public reference stations within `BAD_RADIUS_KM`.
 
-If there are **no `bad-` rows**, the radius is too tight for where you are. Open `.env`, change `BAD_RADIUS_KM=15`
-to `25`, run `make restart`, wait five minutes, check again. Kuta Selatan's nearest public outdoor sensors are
-in Jimbaran and south Denpasar.
+Outside Bali there will be no `bad-` rows and that is correct. Your reference for "outside" is the CAMS model
+row, and the comparison rules use it automatically. In Bali, no `bad-` rows means the radius is too tight:
+open `.env`, change `BAD_RADIUS_KM=15` to `25`, `make restart`, wait five minutes, check again.
 
 ```bash
 make logs
@@ -189,7 +257,7 @@ curl -s localhost:8080/rho | python3 -m json.tool
 
 ## 7. Turn on Telegram (10 minutes)
 
-1. In Telegram, message **@BotFather**. Send `/newbot`. Give it a name (e.g. "Bayu 2 air") and a username ending in `bot`. It replies with a **token** — a long string like `7123456789:AAF…`. Copy it. Treat it like a password.
+1. In Telegram, message **@BotFather**. Send `/newbot`. Give it a name (whatever you like, for example "Mayur Vihar air") and a username ending in `bot`. It replies with a **token** — a long string like `7123456789:AAF…`. Copy it. Treat it like a password.
 2. Create a Telegram **group** for the alerts (you, and later the household). Add your new bot to the group. Make the bot an **admin** of the group (group → members → tap the bot → promote) — otherwise it can't see messages and the next step won't work.
 3. Send any message in the group, e.g. "hello". Then open this in a browser, with your token pasted in:
    `https://api.telegram.org/bot<YOUR TOKEN>/getUpdates`
@@ -275,9 +343,9 @@ cd ~/planetai/planetai-node && git pull && docker compose up -d --build
 
 **`doctor: ✗ app answering`** — `docker compose logs app`. Read the last ten lines. If it mentions `.env` or a missing variable, compare your `.env` with `.env.example`.
 
-**`make health` shows `last_error` mentioning a source** — that source failed on the *last* poll; it clears by itself when the next poll succeeds. `smartcitizen`: the kit or their API is down, check the kit page. `airgradient`/`purpleair`: the device is off, on a different WiFi, or its `.local` name stopped resolving — try its IP in `.env`. `baliairdispatch`: their server; nothing to do. Several sources are separated by `|`. The node keeps running on whatever is answering.
+**`make health` shows `last_error` mentioning a source** — that source failed on the *last* poll; it clears by itself when the next poll succeeds. `smartcitizen`: the kit or their API is down, check the kit page. `airgradient`/`purpleair`: the device is off, on a different WiFi, or its `.local` name stopped resolving — try its IP in `.env`. `open-meteo`: their server or your connection; it clears itself. `baliairdispatch`: only relevant in Bali, and only their server can fix it. Several sources are separated by `|`. The node keeps running on whatever is answering.
 
-**No `bad-` rows in `make stats`** — widen `BAD_RADIUS_KM` (step 5). If BAD's API is down, `last_error` says so; wait.
+**No `bad-` rows in `make stats`** — expected everywhere except Bali; the CAMS model row is your reference instead. In Bali, widen `BAD_RADIUS_KM` (step 5), or wait if `last_error` says their API is down.
 
 **Telegram silent** — Is the bot an admin of the group? Is the chat id negative and complete? Is there a stray space in `.env`? After any change to `.env`: `make restart`. Then force a test alert (step 8).
 
@@ -306,10 +374,18 @@ Paste all of it. Not your `.env`, and scan the log for `api.telegram.org/bot…`
 
 ## What "working" looks like after a week
 
-- The daily pulse arrives every morning with `ours: 1`, `refs` of at least 3, and two PM2.5 numbers.
-- `make alerts` shows a handful of alerts, not dozens. If it's dozens, the thresholds are too low for an indoor kit; raise them.
-- You changed something — a window, a purifier, a habit — because of at least one message, and you told the node with `POST /actions`.
-- `/cells` shows `Environmental|Community` as `live`.
-- There's a fresh file in `backups/` from last night.
+- The daily pulse arrives every morning. `ours` matches the number of sensors you installed, which may be zero. `refs` counts public reference sensors in range, which will be zero outside Bali and is fine.
+- `make alerts` shows a handful of alerts, not dozens. Dozens means the thresholds are wrong for your place. Copy `packs/air-quality/` to `packs/air-<yourplace>/`, change the numbers there, and updates will never overwrite them.
+- You changed something, a window or a purifier or a habit, because of a message, and you told the node with `POST /actions`.
+- `make cells` shows `Environmental|Community` as `live`, labelled with your `NODE_CITY`.
+- There is a fresh file in `backups/` from last night.
 
-That's node #1 done. Node #2 is someone else's Mac and someone else's kit, following this same page without you in the room. When that works, we've got a product.
+## When you are not the first
+
+Node #1 is in Bali because that is where the first sensor happened to be. Nothing in this page is about Bali,
+and the parts that are say so. If you are setting up in Santiago or Delhi or anywhere else, the sequence is
+the same: five inputs, four checks, one command.
+
+Two things are worth sending back when you are done. Add your node to `registry.json` with a pull request so
+the site knows where it is. And if you had to work anything out that this page did not tell you, say so in an
+issue. The page was written against one install; it gets accurate by surviving others.

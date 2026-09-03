@@ -16,13 +16,13 @@ Don't buy anything for this; if there's a mini already in the house or the lab, 
 ## 1. Physical
 
 - **Ethernet, not WiFi.** The mini has a port; use it. WiFi drops are the #1 cause of "silent sensor" alerts that are actually a silent node. If it must be WiFi, 2.4 GHz is more stable through walls than 5 GHz.
-- **Power.** Bali kills nodes with brownouts, not floods. Put the mini *and the router* on a small UPS (a 600 VA unit, the kind sold for a home PC, runs both for 20+ minutes and, more importantly, smooths the flicker). This is the single most important line in this document.
+- **Power.** Where the grid flickers, that is what kills nodes, not dramatic outages. Put the mini *and the router* on a small UPS; a 600 VA unit of the kind sold for a home PC runs both for twenty minutes and, more usefully, smooths the dips. In Bali this is the single most important line in this document. In a city with a steady supply you can skip it, and you will know which you have.
 - **Placement.** Indoors, off the floor, not in direct sun, some air around it. It doesn't need AC. Away from the kitchen — not for the mini's sake, for the sensor's: the kit is what tells you about smoke, and if it's above the wok it will tell you about dinner.
 - **Monitor.** Only for setup. Afterwards you can unplug it. (If Screen Sharing later shows a black or tiny screen with no monitor attached, a $10 "HDMI dummy plug" fixes it. Not needed for the node itself.)
 
 ## 2. macOS settings (System Settings, with the monitor attached)
 
-**General → About → Name:** `bayu-2`. This makes the mini reachable as `bayu-2.local` from any device on the same network, which is how you'll talk to it from now on.
+**General → About → Name:** your node's name, for example `bayu-2` or `mayur-vihar`. Whatever you choose, the mini becomes reachable as `<that-name>.local` from any device on the same network, which is how you will talk to it from now on. The examples below use `bayu-2`; substitute yours.
 
 **General → Date & Time:** time zone Asia/Makassar (WITA), "Set time and date automatically" on. Daily buckets and alert times depend on this.
 
@@ -67,7 +67,7 @@ laptop on the same network:
 ssh <your-user>@bayu-2.local 'cd ~/planetai/planetai-node && make health'
 ```
 
-If `polls` is counting again, the node survives Bali. If you're at a login screen, revisit auto-login and FileVault.
+If `polls` is counting again, the node survives a power cut unattended. If you are at a login screen, revisit auto-login and FileVault.
 If OrbStack didn't start, revisit "Start at login." Do this test *now*, not after the first real outage.
 
 ## 5. Working from your laptop
@@ -113,7 +113,7 @@ that the newest file in that folder is recent.
 
 - **A macOS update you didn't install** eventually nags into a forced restart. With auto-login and OrbStack at login it comes back; without them it doesn't. That's why sections 2–3 matter more than anything in the code.
 - **The router's DHCP lease changes** the mini's IP. `bayu-2.local` still works on the LAN. `PARENT_API_URL` on a future child node should use the `.local` name or, better, the Tailscale name — never a bare IP. Or reserve the IP in the router.
-- **The ISP goes down.** The node keeps reading the kit (same LAN? no — the kit publishes to Smart Citizen's cloud, so with no internet the kit's data is unreachable too). Alerts queue nowhere; they're just not evaluated for the duration. When the line returns, polling resumes and readings backfill only from that moment — the gap is real and stays in the record. This is the argument for a LAN-local sensor (AirGradient, `docs/sensors.md`) as the second piece of hardware: it keeps reporting to the mini when the internet doesn't.
+- **The ISP goes down.** A Smart Citizen kit publishes to its cloud, so with no internet its data is unreachable; the same is true of the global models. An AirGradient or PurpleAir on your LAN keeps reporting throughout. Alerts queue nowhere; they're just not evaluated for the duration. When the line returns, polling resumes and readings backfill only from that moment — the gap is real and stays in the record. This is the argument for a LAN-local sensor (AirGradient, `docs/sensors.md`) as the second piece of hardware: it keeps reporting to the mini when the internet doesn't.
 - **Someone unplugs it to charge a phone.** Label the cable. Seriously.
 
 ## 8. Moving from the laptop to the mini

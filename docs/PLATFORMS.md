@@ -43,8 +43,8 @@ idle under 300 MB). A few Pi-specific things:
 - **Ethernet** over WiFi, same reason as the Mac mini.
 - **Headless setup:** enable SSH in Raspberry Pi Imager when you flash the card, then everything in START_HERE happens over `ssh pi@<name>.local` from your laptop.
 
-A Pi with an AirGradient or PurpleAir on the same WiFi is the cheapest complete node: ~€80 of computer, and the sensor
-never touches a cloud.
+A Pi with an AirGradient or PurpleAir on the same WiFi is the cheapest complete node: about €80 of computer, and the
+sensor never touches a cloud. This is the same anywhere; nothing about it is specific to one country.
 
 ## Windows 10 / 11 (via WSL2)
 
@@ -77,8 +77,8 @@ The node reads three kinds of sensor out of the box; pick at least one when you 
 | **AirGradient** ONE / Open Air | **directly on your WiFi**, no cloud | `--airgradient airgradient_84fce6.local` | new deployments; €120–220; the outdoor unit BAD recommends for Bali |
 | **PurpleAir** | **directly on your WiFi**, no cloud | `--purpleair 192.168.1.60` | if you already own one; use its IP |
 
-Add `--indoor` if your AirGradient or PurpleAir is inside (Smart Citizen doesn't need it). Add `--no-bad` if you're
-not in Bali — the Bali Air Dispatch reference layer only makes sense there. Several sensors of mixed kinds on one node
-is fine: `--sc 19880 --airgradient ag1.local,ag2.local`.
+Add `--indoor` if your AirGradient or PurpleAir is inside; Smart Citizen kits carry that themselves. Add `--no-bad`
+anywhere outside Bali, since that reference layer is one island's archive. Mixed kinds on one node are fine:
+`--sc 19880 --airgradient ag1.local,ag2.local`. With no sensor at all the node still runs on global models.
 
 Details, siting, and what the humidity correction does to each: `docs/sensors.md`.

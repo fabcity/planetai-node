@@ -2,6 +2,11 @@
 
 Working draft, 2 September 2026. Not a grant. Someone pays or it dies.
 
+This document argues the case in one market, Bali, because that is where the first node runs and where the numbers
+are real. The shape of the argument is portable: find a place with a measurement gap, an acute local decision, and a
+fab lab within driving distance of the hardware. The numbers are not portable, and anyone reusing this for Santiago
+or Delhi should replace them rather than translate them.
+
 ## The problem, stated by the people already measuring it
 
 Bali Air Dispatch, run out of the same circle as this project (MDG is a listed collaborator), has been publishing

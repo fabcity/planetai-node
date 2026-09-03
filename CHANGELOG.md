@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.5 — 2026-09-03
+
+**Location independence.** Read the docs as someone setting up in Delhi or Santiago and most of it did not work.
+
+- **Functional, not editorial:** the indoor/outdoor comparison, the flagship service, only fired in Bali. It looked for nearby public reference *sensors*, which exist in the node's data only where a network adapter supplies them. CAMS ships globally but lives in `observations`, so the rule could never fire elsewhere. The two comparison rules now resolve "outside" in order of preference (nearby public sensors, then the CAMS model point sample) and the message names which one it used. Added `outdoor_pm25_high` for nodes whose own sensor is outside.
+- `docs/START_HERE.md` rebuilt around **your five inputs**: coordinates, time zone, city key, sensors or none, and what "outside" means where you are. Includes how to find each, how to test whether your city runs a CKAN portal, and what to expect when there are no `bad-` rows (everywhere except Bali). Bali is now a labelled worked example rather than the spine.
+- `presets/delhi.env` — a non-pilot site, so the docs' own counter-example is real.
+- Bali-specific claims corrected across README, `sensors.md`, `PREFILL.md`, `PLATFORMS.md`, `MAC_MINI.md` (the UPS advice now says where it applies), `ARCHITECTURE.md` (the cell table is labelled an example) and `PRODUCT.md` (states that its numbers are one market's and not portable).
+
 ## v0.4.3 — 2026-09-03
 
 - **Security fix:** httpx logs every request URL at INFO, and Telegram carries the bot token in the URL path — so a live credential was written into the container logs, and therefore into any log someone pasted for support. Found when exactly that happened during node #1's update. httpx/httpcore loggers are now set to WARNING, the notifier logs `telegram -> <chat> ok` instead, and exception text is never interpolated (it contains the URL too).

@@ -48,17 +48,18 @@ Not shipped enabled, because "sign up for an account" is exactly the friction th
 | **Google Flood Hub** | riverine flood forecasts, listed in the Index registry for Bali, Barcelona and Santiago | Google Cloud project |
 | **Google Air Quality API** | gridded AQ at higher resolution | paid tier |
 | **Copernicus Data Space (Sentinel)** | actual satellite imagery — NDVI, land surface temperature, built-up area | free registration, and raster handling the node doesn't have |
-| **Bali Air Dispatch** | island-wide aggregated ambient picture for Bali | none — key-free, but only meaningful in Bali |
+| **Bali Air Dispatch** | island-wide aggregated ambient picture, Bali only | none, key-free, but meaningless anywhere else |
 
 ## Site presets
 
 Four pilot sites ship as one-line presets: coordinates, timezone, language, and the city's open-data portal.
 
 ```bash
-./install.sh --preset bali        # Kuta Selatan region · id · Bali Satu Data · BAD reference on
-./install.sh --preset barcelona   # · Open Data BCN
-./install.sh --preset boston      # · Analyze Boston
-./install.sh --preset santiago    # · datos.gob.cl
+./install.sh --preset bali        # Bali Satu Data, and the island air archive as reference
+./install.sh --preset barcelona   # Open Data BCN
+./install.sh --preset boston      # Analyze Boston
+./install.sh --preset santiago    # datos.gob.cl
+./install.sh --preset delhi       # no portal adapter yet, CAMS as the reference
 ```
 
 Anywhere else works identically with `--lat --lon`; the bootstrap sources are global. Adding your city is a pull

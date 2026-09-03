@@ -28,7 +28,8 @@ fork ([`DOMAINS.md`](docs/DOMAINS.md)), and the next scale is an adapter ([`COVE
 ```bash
 git clone https://github.com/fabcity/planetai-node && cd planetai-node
 chmod +x install.sh backup.sh
-./install.sh --preset barcelona --name lab-roof          # no sensor needed to start
+./install.sh --preset barcelona --name lab-roof          # a preset site, no sensor needed to start
+./install.sh --name mayur-vihar --lat 28.6139 --lon 77.2090 --no-bad   # anywhere else
 ```
 
 **A node needs coordinates, not hardware.** On first start it pulls 92 days of Copernicus CAMS air-quality history
@@ -38,15 +39,21 @@ something true to say from the first minute. Add a sensor when you have one; the
 ([`docs/PREFILL.md`](docs/PREFILL.md))
 
 ```bash
-./install.sh --preset bali --name bayu-2 --sc 19880      # with a sensor
+./install.sh --preset bali --name bayu-2 --sc 19880      # with a sensor (this is node #1)
 ```
 
 Two containers — Postgres and one Python service, about 700 lines. Runs on a Mac (Apple Silicon or Intel), any Linux
 box, a Raspberry Pi 4/5, or Windows via WSL2. Reads **Smart Citizen** (cloud API), **AirGradient** and **PurpleAir**
 (both directly over your WiFi, no cloud), alone or mixed. First reading in five minutes. First alert when the air earns one.
 
-> **Node #1** — *"Bayu 2 – Indoor"*, Smart Citizen Kit 19880, Kuta Selatan, Bali. Live since 2 September 2026 on a Mac
-> already in the room, reading a kit already on the wall. Nothing was bought. → [planetai.fab.city/node0](https://planetai.fab.city/node0/)
+A node works anywhere: it needs coordinates, a computer that stays on, and optionally a sensor. Four sites ship as
+presets (`bali`, `barcelona`, `boston`, `santiago`, plus `delhi` as a non-pilot example); anywhere else takes
+`--lat --lon`. What "outside" means is resolved per site: nearby public sensors where a network has them, and the
+global CAMS model everywhere else.
+
+> **Node #1** is *"Bayu 2, Indoor"*, Smart Citizen Kit 19880, Kuta Selatan, Bali, live since 2 September 2026 on a Mac
+> already in the room. It is the worked example throughout the docs, not a requirement.
+> → [planetai.fab.city/node0](https://planetai.fab.city/node0/)
 
 ---
 

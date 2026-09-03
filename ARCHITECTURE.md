@@ -124,7 +124,10 @@ one generic adapter reads it. This is how the network grows without owning every
 The Index has three ways data enters (index.fab.city methodology): observe, maintain data (adapters or operators),
 run a campaign. The node is an **adapter that lives at the address**. Concretely:
 
-| cell (Bali pilot) | source at the node | state today |
+The table below uses the Bali pilot because it is the one running. The same mapping applies at any site: swap the
+named sources for whatever your place has, and where it has none, the global model still fills the reference row.
+
+| cell (Bali pilot, as an example) | source at the node | state today |
 |---|---|---|
 | `Environmental\|Community` | local sensors: PM2.5 24h mean; days over WHO 24h in last 30d; sensor count | **live** as soon as node #1 runs 24h |
 | `Governance\|Community` | ρ from the actions table; is a council/operator acknowledging alerts | **partial** until someone acts |
