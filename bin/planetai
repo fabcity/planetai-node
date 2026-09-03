@@ -13,7 +13,9 @@
 #   planetai stop | start | restart
 set -euo pipefail
 
-HOME_DIR="${PLANETAI_HOME:-$HOME/planetai}"
+# The node is wherever this script really lives (it is symlinked into ~/.local/bin). PLANETAI_HOME overrides.
+resolve() { local t="$1"; while [[ -L "$t" ]]; do local d; d="$(cd "$(dirname "$t")" && pwd)"; t="$(readlink "$t")"; [[ "$t" != /* ]] && t="$d/$t"; done; echo "$t"; }
+HOME_DIR="${PLANETAI_HOME:-$(cd "$(dirname "$(resolve "$0")")/.." && pwd)}"
 LOG="$HOME_DIR/.planetai-setup.log"
 cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL planetai.fab.city/install | bash"; exit 1; }
 
@@ -101,6 +103,19 @@ for x in json.load(sys.stdin)[:3]:
 cmd_setup() {
   : > "$LOG"
   exec 3>>"$LOG"
+  if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
+    step "This machine already runs a node: $(envget NODE_NAME) ($(envget NODE_CITY), $(envget NODE_LAT), $(envget NODE_LON))"
+    local what
+    choose what "What would you like to do?" \
+      "Update it to the latest version (keeps everything)" \
+      "Reconfigure it (asks the questions again; your data stays)" \
+      "Nothing, just make sure it is running"
+    case "$what" in
+      Update*)      cmd_update; return;;
+      Reconfigure*) ;;
+      *)            docker compose up -d >>"$LOG" 2>&1; cmd_doctor; return;;
+    esac
+  fi
   step "Let's set up a node."
   echo "  Three questions. Everything else is detected or defaulted, and you can change it later in .env."
   echo

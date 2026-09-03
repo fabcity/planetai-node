@@ -44,13 +44,29 @@ case "$(uname -s)" in
   *) die "unsupported OS: $(uname -s). Linux, macOS, or Windows via WSL2." ;;
 esac
 
+# Where is the node? Three cases, in order:
+#   ~/planetai is a checkout                    -> update it
+#   ~/planetai/planetai-node is a checkout      -> the layout nodes installed before v0.6 use; keep it, don't move a running node
+#   ~/planetai exists but is neither            -> stop and say so, rather than clone into someone's folder
+if [[ -d "$DIR/.git" ]]; then
+  :
+elif [[ -d "$DIR/planetai-node/.git" ]]; then
+  DIR="$DIR/planetai-node"
+  say "found an existing node at $DIR"
+elif [[ -e "$DIR" ]] && [[ -n "$(ls -A "$DIR" 2>/dev/null)" ]]; then
+  die "$DIR already exists and is not a node. Move it, or install elsewhere:  PLANETAI_HOME=~/somewhere bash -c \"\$(curl -fsSL planetai.fab.city/install)\""
+fi
+
 if [[ -d "$DIR/.git" ]]; then
   say "updating $DIR"
-  git -C "$DIR" fetch -q origin "$REF" && git -C "$DIR" checkout -q "$REF" && git -C "$DIR" pull -q --ff-only origin "$REF" \
-    || die "could not update $DIR. If you edited files there, commit or move them, then run this again."
+  out="$(git -C "$DIR" pull -q --ff-only origin "$REF" 2>&1)" \
+    || die "could not update $DIR:
+   $out
+   If you edited files there, commit or move them, then run this again."
 else
   say "getting the code → $DIR"
-  git clone -q --branch "$REF" "$REPO" "$DIR" || die "clone failed. Check your connection and that $REPO is reachable."
+  out="$(git clone -q --branch "$REF" "$REPO" "$DIR" 2>&1)" || die "git clone failed:
+   $out"
 fi
 
 chmod +x "$DIR/bin/planetai" "$DIR"/*.sh 2>/dev/null || true
