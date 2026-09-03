@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Installed by `make dev-setup`. Blocks the three things that have actually gone wrong on this project.
+# Every check must FAIL LOUDLY if it cannot run — a security check that errors silently is worse than none.
+set -euo pipefail
+fail(){ printf '\033[1;31mpre-commit: %s\033[0m\n' "$*" >&2; exit 1; }
+
+staged="$(git diff --cached --name-only --diff-filter=ACM || true)"
+[[ -z "$staged" ]] && exit 0
+
+# 1. files that must never be committed
+grep -qx '.env'                  <<<"$staged" && fail ".env holds your bot token and db password"
+grep -q  '^\.git/'               <<<"$staged" && fail ".git contents staged"
+grep -qE '^backups/|\.before-update$' <<<"$staged" && fail "backups or *.before-update staged"
+
+# 2. a live credential inside a diff. Telegram puts the token in the URL path, so a pasted log leaks it.
+diff="$(git diff --cached)"
+for pat in 'api\.telegram\.org/bot[0-9]{6,}:' '^\+[A-Z_]*TOKEN=[^[:space:]]{12,}' '^\+[A-Z_]*API_KEY=[^[:space:]]{12,}'; do
+  if hits="$(grep -nE "$pat" <<<"$diff")"; then
+    printf '%s\n' "$hits" | head -3
+    fail "a credential appears in this diff"
+  fi
+done
+# password, allowing the placeholder and the throwaway CI one
+if hits="$(grep -nE '^\+.*POSTGRES_PASSWORD=' <<<"$diff" | grep -vE 'change-me|POSTGRES_PASSWORD=x ')"; then
+  printf '%s\n' "$hits" | head -3
+  fail "a database password appears in this diff"
+fi
+
+# 3. the offline gates. Each one corresponds to an outage we already had.
+make lint >/dev/null || fail "make lint failed — run 'make lint' to see why"
+exit 0
