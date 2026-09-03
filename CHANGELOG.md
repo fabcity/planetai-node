@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7 — 2026-09-03
+
+- **`planetai mesh`**: joins the node to a Tailscale tailnet with its own name and Tailscale SSH on, so `ssh bayu-2` and `planetai update` work from anywhere with no ports opened and no keys managed. Uses the Homebrew daemon on macOS so a headless mini stays reachable with nobody logged in. `TS_AUTHKEY` for unattended joins. `MESH_NAME` recorded in `.env`.
+- **`docs/NETWORKING.md`**: the three-layer evaluation. Tailscale for reachability (shipped, Headscale as the recorded exit). Meshtastic for sensors and alert delivery off-grid (next; it is the missing pipe in the FAB26 six-month program, and the gateway must point at the node's own broker, not the public default). Reticulum parked with a precise trigger.
+- SPEC §6: the Tailscale and MQTT triggers are marked fired; Reticulum added with its trigger.
+
 ## v0.6 — 2026-09-03
 
 **One command to a running node.** Applied the Omarchy install pattern: a URL that does everything, a form that

@@ -73,9 +73,10 @@ Each was built, audited, and cut on 2 September 2026. None is lost; each returns
 
 | piece | returns when | what it looks like |
 |---|---|---|
-| **Mesh (Tailscale)** | node #2 exists on a different network | plain Tailscale free tier; `PARENT_API_URL` becomes a Tailscale hostname |
+| **Mesh (Tailscale)** | ~~node #2 exists on a different network~~ **fired, v0.7** | `planetai mesh`; `PARENT_API_URL` becomes a tailnet hostname. See `docs/NETWORKING.md` |
 | **Headscale** (self-hosted control plane) | a partner's governance requires no third-party coordinator, or the free tier is exceeded | swap the login server; nothing else changes |
-| **MQTT broker** | the first sensor that *publishes* (DIY PMS5003 on an ESP32, LoRa gateway) instead of being polled | `eclipse-mosquitto` container + a 30-line `mqtt` adapter |
+| **MQTT broker** | ~~the first sensor that publishes~~ **fired: the Meshtastic gateway** | `eclipse-mosquitto` profile + a `meshtastic` adapter; next |
+| **Reticulum** (encrypted off-grid node-to-node transport) | a district and a community node with no internet between them needing data transport, not just telemetry | RNode radios, LXMF; see `docs/NETWORKING.md §3` |
 | **Node registry service + signed handshake** | `registry.json` PRs stop scaling — roughly 30 nodes or a second operator org | FastAPI + SQLite, Ed25519 identity, human approval |
 | **Federated learning (Flower)** | a model exists whose parameters can't be averaged by the hourly push, *and* the sovereignty claim is being examined by someone outside the team | self-hosted SuperLink at the district, SuperNodes at hubs; FedAvg first, FedProx when climates diverge |
 | **Local LLM (Ollama)** | someone asks the node a question the alert doesn't answer | a `/brief` endpoint that turns 24h stats into a paragraph in the local language |

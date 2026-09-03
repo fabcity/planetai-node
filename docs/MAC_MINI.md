@@ -92,9 +92,9 @@ nano config/rules.yml
 The node's own web endpoints are reachable from the laptop too, no SSH needed, while you're on the same network:
 `curl -s bayu-2.local:8080/stats | python3 -m json.tool`. Bookmark `http://bayu-2.local:8080/health` in a browser.
 
-Off the home network — from Ubud, from Barcelona — you can't reach `bayu-2.local`. That's Stage 1's Tailscale
-(`ARCHITECTURE.md` §6): one install on the mini, one on the laptop, and `bayu-2` becomes reachable from anywhere,
-with no ports opened on the router. Not needed for node #1. Needed the day you want to check on it from a plane.
+Off the home network, `bayu-2.local` is unreachable. Run `planetai mesh` on the mini once, install Tailscale on your
+laptop, and the node is reachable from anywhere as `bayu-2` with no ports opened on the router and no SSH keys to
+manage (`ssh bayu-2` just works via Tailscale SSH). Details and the trade-off: `NETWORKING.md`.
 
 ## 6. Backups to the NAS
 
