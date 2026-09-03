@@ -54,6 +54,8 @@ done < .env.example
 [[ $NEW -eq 0 ]] && echo "   nothing new" || warn "${NEW} new setting(s) added with defaults — review .env"
 
 # 6. rebuild and restart
+# stamp the version the node is about to run, from git, so /health and planetai status report it
+if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)|" .env && rm -f .env.bak; else echo "NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)" >> .env; fi
 say "rebuilding"
 docker compose up -d --build
 
