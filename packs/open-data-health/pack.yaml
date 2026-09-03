@@ -1,0 +1,12 @@
+id: open-data-health
+name: Open data health
+description: >-
+  Turns a CKAN portal's maintenance state into a Governance|City cell: how much of a city's open data
+  was touched in the last 90 days. A portal nobody updates is an archive, not open data.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.3.0" }
+kind: data
+domain: governance
+scales: [city, region]
+sources: [governance/city/open-data-bcn, governance/city/analyze-boston, governance/city/datos-gob-cl, governance/city/bali-satu-data]

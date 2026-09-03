@@ -1,0 +1,9 @@
+- id: portal_gone_stale
+  level: warn
+  cooldown_minutes: 10080          # weekly at most
+  sql: |
+    SELECT sensor_id, name, round(value)::int AS pct FROM observations
+    WHERE kind = 'portal' AND metric = 'datasets_fresh_pct' AND value < 10
+  message:
+    en: "{name}: only {pct}% of published datasets were updated in the last 90 days. The portal is drifting toward an archive — worth raising with whoever owns it."
+    id: "{name}: hanya {pct}% dataset yang diperbarui dalam 90 hari terakhir. Portal ini mulai menjadi arsip — perlu diangkat ke pengelolanya."

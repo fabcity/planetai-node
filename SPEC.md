@@ -13,7 +13,9 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 
 **Indoor.** `sensors.indoor` is carried on every sensor and honoured by every rule. Indoor sensors never enter an ambient average. Inherited from Bali Air Dispatch's `suspected_indoor`.
 
-**Metric names.** `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc`. Lowercase, no units in the name. Units are fixed: µg/m³, °C, %, kPa. `pm25` is the *published* value; if a correction was applied, the uncorrected figure sits next to it as `pm25_raw`. Never overwrite raw.
+**Domain neutrality.** The core evaluates rules and cells; it does not know what a metric means. Thresholds, messages and pillar mappings live in packs; `app/main.py`, `app/index.py` and `app/packs.py` must name no domain metric. Adapters in `app/sources.py` do name metrics — they translate a device's fields into the schema, which is a driver's job, not a domain's.
+
+**Metric names.** Lowercase, no units in the name. Air today: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc co2 tvoc_index nox_index`. Other domains propose their own in `docs/DOMAINS.md` — first pack to ship a metric names it. Units are fixed: µg/m³, °C, %, kPa. `pm25` is the *published* value; if a correction was applied, the uncorrected figure sits next to it as `pm25_raw`. Never overwrite raw.
 
 **Time.** Readings are UTC instants. Daily anything is a `NODE_TZ` calendar day (WITA in Bali), because the burn pattern has a 9am peak and an after-dark climb and a UTC day cuts the evening in half. Say which basis you're on.
 
@@ -53,7 +55,17 @@ Nothing listens on the network except `app:8080` (LAN). Postgres is localhost-on
 
 ## 5. Update and rollback
 
-`git pull && docker compose up -d --build`. Releases are git tags. Rollback is `git checkout <tag>` and the same command. Postgres schema changes go in `init.sql` only additively (`IF NOT EXISTS`, `CREATE OR REPLACE VIEW`), so an update never needs a migration until it does — and that day is a release note, not a surprise.
+`./update.sh`: backup → pull → apply schema to the live database → rebuild → verify. See [`docs/UPDATING.md`](docs/UPDATING.md).
+
+The non-obvious part, and the one that bit us: Postgres runs `init.sql` **only when the data volume is first created**.
+A running node never sees new columns or views unless something applies them. So `init.sql` is the whole schema, written
+idempotently (`CREATE TABLE IF NOT EXISTS`, `ALTER TABLE ADD COLUMN IF NOT EXISTS`, `DROP VIEW` then `CREATE VIEW` —
+because `CREATE OR REPLACE VIEW` cannot reorder columns), and both fresh installs and updates apply the same file.
+`schema_version` records where a node is; `/health` reports it.
+
+Schema changes are **additive only**. No dropped columns, no renames, no destructive migrations — which is what makes
+rollback `git checkout <tag> && docker compose up -d --build` rather than a restore. Breaking that needs a major version
+and a written migration.
 
 ## 6. Staged upgrades — retired pieces and their triggers
 

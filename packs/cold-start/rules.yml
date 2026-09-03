@@ -1,0 +1,38 @@
+# Every rule here works with zero sensors. They read `observations` (slow sources), not `stats` (sensors, 24h).
+
+- id: modelled_air_today
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    SELECT 'cams-point' AS sensor_id, round(value)::int AS pm
+    FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'
+  message:
+    en: "Modelled PM2.5 for your location today: {pm} µg/m³ (Copernicus CAMS, ~11 km grid). This is a model, not a measurement — a sensor at your address will differ, sometimes a lot. That difference is the reason to put one up."
+    id: "Perkiraan PM2.5 untuk lokasi Anda hari ini: {pm} µg/m³ (Copernicus CAMS, grid ~11 km). Ini model, bukan pengukuran — sensor di lokasi Anda akan berbeda, kadang jauh. Perbedaan itulah alasan memasangnya."
+
+- id: hotter_than_normal
+  level: info
+  cooldown_minutes: 4320          # every three days at most
+  sql: |
+    WITH now_t AS (SELECT value AS t FROM observations WHERE sensor_id='om-point' AND metric='temp_model'),
+         norm AS (SELECT value AS t FROM readings WHERE sensor_id='power-point' AND metric='temp_norm'
+                  AND extract(month FROM ts) = extract(month FROM now()) LIMIT 1)
+    SELECT 'power-point' AS sensor_id, round(now_t.t::numeric,1) AS today, round(norm.t::numeric,1) AS normal,
+           round((now_t.t - norm.t)::numeric,1) AS delta
+    FROM now_t, norm WHERE abs(now_t.t - norm.t) > 3
+  message:
+    en: "It is {delta} °C away from normal for this month here ({today} vs a {normal} °C long-term average, NASA POWER 1981–present). Worth noting if you run anything temperature-sensitive."
+    id: "Suhu saat ini {delta} °C dari rata-rata bulan ini ({today} vs {normal} °C, NASA POWER 1981–sekarang). Perlu diperhatikan jika Anda punya sesuatu yang sensitif terhadap suhu."
+
+- id: sensor_vs_model
+  level: info
+  cooldown_minutes: 10080         # weekly — this is a calibration signal, not an alert
+  sql: |
+    WITH mine AS (SELECT avg(mean_24h) AS v FROM stats WHERE local AND NOT indoor AND metric='pm25'),
+         model AS (SELECT value AS v FROM observations WHERE sensor_id='cams-point' AND metric='pm25_model')
+    SELECT 'cams-point' AS sensor_id, round(mine.v::numeric) AS mine, round(model.v::numeric) AS modelled,
+           round((mine.v - model.v)::numeric) AS delta
+    FROM mine, model WHERE mine.v IS NOT NULL AND abs(mine.v - model.v) > 15
+  message:
+    en: "Your outdoor sensor reads {mine} µg/m³ against a modelled {modelled} — {delta} apart. A gap this size usually means the model is missing something local (burning, traffic, a kitchen). That gap is exactly what a hyperlocal node exists to find."
+    id: "Sensor luar Anda membaca {mine} µg/m³ dibanding model {modelled} — selisih {delta}. Selisih sebesar ini biasanya berarti model melewatkan sesuatu yang lokal (pembakaran, lalu lintas, dapur). Justru selisih itulah alasan node hyperlokal ada."

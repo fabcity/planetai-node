@@ -1,0 +1,8 @@
+planetai-node
+Copyright 2026 Fab City Foundation and contributors
+
+Reads public data from Smart Citizen (Fab Lab Barcelona) and Bali Air Dispatch and its upstream networks
+(Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Airly). Those readings remain under their providers' terms;
+anything published from them must credit the archive and the originating network.
+
+The EPA 2021 humidity correction implements Barkjohn et al. (2021) as extended by US EPA (2022).

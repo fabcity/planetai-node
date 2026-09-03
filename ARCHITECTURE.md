@@ -44,6 +44,21 @@ loop closing on itself.
 
 ## 2. One shape at every scale
 
+Three ingestion classes, not one. A node at a house polls devices; a node at a lab also watches its city's portal;
+a node anywhere on earth can sample a global model at its coordinates. Same core, same contracts, different `kind`:
+
+| `sensors.kind` | what it is | cadence | scales it serves | shipped |
+|---|---|---|---|---|
+| `sensor` | a device on your LAN or a nearby public one | minutes | Community, City | Smart Citizen, AirGradient, PurpleAir |
+| `portal` | an open-data or statistical API | days–months | City, Region, Bioregion | `ckan` (any CKAN portal) |
+| `model` | a global model sampled at a point | hours | Planet, Bioregion | `openmeteo` |
+| `survey` | people answering | campaign | Community, City | **not built** — the four empty Social cells |
+| `child` | a node below this one | hourly | the scale below | the aggregate push |
+
+Slow sources land in the `observations` view (latest per source per metric); sensors land in `stats` (15m/1h/24h).
+Full matrix and gaps: [`docs/COVERAGE.md`](docs/COVERAGE.md).
+
+
 The same three layers exist at every scale of the Full Stack Metrics Framework. A node at a house and an
 aggregator for a province run the same code with different sources, different rules, and a different parent.
 

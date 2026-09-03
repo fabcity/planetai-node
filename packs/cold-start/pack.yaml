@@ -1,0 +1,13 @@
+id: cold-start
+name: Cold start
+description: >-
+  Makes a node useful on day one with no hardware: a modelled air-quality line, a "how does today compare
+  with normal" reading against 40 years of satellite climatology, and — once a sensor arrives — how far it
+  sits from the model. Enabled by default; delete the folder when your own sensors carry the story.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.3.0" }
+kind: data
+domain: cross-domain
+scales: [community, planet]
+sources: [environmental/planet/open-meteo, environmental/planet/nasa-power]

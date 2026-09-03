@@ -1,6 +1,10 @@
 """Sources. Each adapter is a function that returns (sensors, readings).
 
-    sensors : list of dicts  {sensor_id, source, name, lat, lon, indoor, local, meta}
+    sensors : list of dicts  {sensor_id, source, name, lat, lon, indoor, local, meta,
+                              kind:  sensor | portal | model | survey   (how the number was produced)
+                              scale: community | city | region | bioregion | planet (what it describes)
+                              cadence: ISO-8601 duration, optional}
+              kind and scale default to sensor/community — set them on anything that isn't a device at the address.
     readings: list of tuples (ts: datetime UTC, sensor_id, metric, value)
 
 That's the whole contract. Add a source = add a function here + register it in SOURCES.
@@ -189,7 +193,8 @@ def purpleair(hc: httpx.Client, hosts: list[str], lat: float | None, lon: float 
 
 # ---------------------------------------------------------------- registry
 def enabled(hc: httpx.Client):
-    """Yield (name, sensors, readings) for every configured source. Failures are per-source, never fatal."""
+    """Yield (name, fetch) for every configured source. Failures are per-source, never fatal.
+    Core adapters first, then any from community packs (docs/PACKS.md)."""
     out = []
     ids = [int(x) for x in os.getenv("SC_DEVICES", "").replace(" ", "").split(",") if x]
     if ids:
@@ -205,4 +210,99 @@ def enabled(hc: httpx.Client):
         out.append(("purpleair", lambda: purpleair(hc, pa, lat, lon, indoor)))
     if os.getenv("BAD_ENABLED", "0") == "1":
         out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(os.getenv("BAD_RADIUS_KM", "15")))))
+    if os.getenv("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
+        _lat, _lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
+        out.append(("open-meteo", lambda: openmeteo(hc, _lat, _lon)))
+        out.append(("open-meteo-cams", lambda: openmeteo_air(hc, _lat, _lon)))
+    portals = dict(p.split("=", 1) for p in os.getenv("CKAN_PORTALS", "").split(",") if "=" in p)
+    if portals:
+        out.append(("ckan", lambda: ckan(hc, portals, os.getenv("CKAN_SCALE", "city"))))
+    try:
+        import packs
+        out += packs.adapters(hc)
+    except Exception as e:  # noqa: BLE001  — a broken pack must never stop the core sources
+        import logging; logging.getLogger("planetai").warning("packs: %s", e)
     return out
+
+
+# ---------------------------------------------------------------- Open-Meteo (planet/bioregion context, anywhere)
+# Free, key-free, global. A point sample of a global model — boundary conditions, not a measurement of your place.
+# Per ARCHITECTURE §2, bioregion and planet publish context *downward*; they are never rolled up into an index cell.
+# Set OPENMETEO_ENABLED=1. Works at any coordinates on earth, which is the point: this is the one adapter that
+# needs nothing local at all, so a node in a city with no sensors still has something true to say.
+OM_CURRENT = "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,surface_pressure"
+OM_MAP = {"temperature_2m": "temp_model", "relative_humidity_2m": "humidity_model", "precipitation": "precipitation",
+          "wind_speed_10m": "wind_speed", "wind_direction_10m": "wind_direction", "surface_pressure": "pressure_model"}
+
+
+def openmeteo(hc: httpx.Client, lat: float, lon: float):
+    r = hc.get("https://api.open-meteo.com/v1/forecast",
+               params={"latitude": lat, "longitude": lon, "current": OM_CURRENT, "timezone": "UTC"})
+    r.raise_for_status()
+    d = r.json()
+    cur = d.get("current") or {}
+    ts = _iso(cur.get("time") + "Z" if cur.get("time") and not str(cur.get("time")).endswith("Z") else cur.get("time")) or datetime.now(timezone.utc)
+    sid = "om-point"
+    sensors = [{"sensor_id": sid, "source": "open-meteo", "name": "Open-Meteo (model point sample)",
+                "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "model", "scale": "planet",
+                "cadence": "PT1H", "meta": {"model": "ECMWF/GFS blend via open-meteo.com", "licence": "CC-BY 4.0",
+                                            "note": "boundary condition; never aggregated upward into a cell"}}]
+    readings = [(ts, sid, m, float(cur[k])) for k, m in OM_MAP.items() if cur.get(k) is not None]
+    return sensors, readings
+
+
+# ---------------------------------------------------------------- CKAN open-data portal (city/region governance)
+# Four of the Index's governance|city sources are CKAN: Open Data BCN, Analyze Boston, datos.gob.cl, Bali Satu Data.
+# One adapter reads all of them, and asks the question the Index actually needs answered about a portal:
+# is it alive? Datasets published, and how many were updated in the last 90 days. That is a DIDO signal —
+# a portal nobody maintains is not open data, it is an archive.
+# Set CKAN_PORTALS=open-data-bcn=https://opendata-ajuntament.barcelona.cat/data,analyze-boston=https://data.boston.gov
+def ckan(hc: httpx.Client, portals: dict[str, str], scale: str = "city"):
+    from datetime import timedelta
+    sensors, readings = [], []
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=90)).strftime("%Y-%m-%dT%H:%M:%S")
+    for slug, base in portals.items():
+        base = base.rstrip("/")
+        total = hc.get(f"{base}/api/3/action/package_search", params={"rows": 0}).json()["result"]["count"]
+        fresh = hc.get(f"{base}/api/3/action/package_search",
+                       params={"fq": f"metadata_modified:[{cutoff}Z TO NOW]", "rows": 0}).json()["result"]["count"]
+        sid = f"ckan-{slug}"
+        sensors.append({"sensor_id": sid, "source": "ckan", "name": f"{slug} (CKAN portal)", "lat": None, "lon": None,
+                        "indoor": False, "local": False, "kind": "portal", "scale": scale, "cadence": "P1D",
+                        "meta": {"portal": base, "registry_slug": f"governance/{scale}/{slug}"}})
+        readings += [(now, sid, "datasets_total", float(total)),
+                     (now, sid, "datasets_fresh_90d", float(fresh)),
+                     (now, sid, "datasets_fresh_pct", 100.0 * fresh / total if total else 0.0)]
+    return sensors, readings
+
+
+# ---------------------------------------------------------------- Open-Meteo Air Quality (CAMS) — zero-config
+# Free, key-free, global. Copernicus Atmosphere Monitoring Service: satellite + model reanalysis, ~11 km grid.
+# This is the adapter that makes a node useful before any hardware exists: modelled PM2.5 at your coordinates,
+# anywhere on earth, from the first minute. It is a MODEL, not a measurement — kind='model', never 'live' in a cell,
+# and it is the thing your sensor gets compared against, not the thing that replaces it.
+# Attribution required: CAMS ENSEMBLE data provider and Open-Meteo. Carried in sensors.meta.
+OM_AIR = "pm2_5,pm10,dust,aerosol_optical_depth,carbon_monoxide,nitrogen_dioxide,ozone,uv_index"
+OM_AIR_MAP = {"pm2_5": "pm25_model", "pm10": "pm10_model", "dust": "dust", "aerosol_optical_depth": "aod",
+              "carbon_monoxide": "co", "nitrogen_dioxide": "no2", "ozone": "o3", "uv_index": "uv_index"}
+OM_AIR_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+
+
+def _om_air_sensor(lat, lon):
+    return {"sensor_id": "cams-point", "source": "open-meteo-cams", "name": "CAMS air quality (model point sample)",
+            "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "model", "scale": "planet",
+            "cadence": "PT1H",
+            "meta": {"model": "Copernicus CAMS global/European ensemble via open-meteo.com",
+                     "attribution": "CAMS ENSEMBLE data provider and Open-Meteo",
+                     "note": "modelled, not measured — the baseline a local sensor is compared against"}}
+
+
+def openmeteo_air(hc: httpx.Client, lat: float, lon: float):
+    r = hc.get(OM_AIR_URL, params={"latitude": lat, "longitude": lon, "current": OM_AIR, "timezone": "UTC"})
+    r.raise_for_status()
+    cur = (r.json().get("current") or {})
+    t = cur.get("time")
+    ts = _iso(t if not t or str(t).endswith("Z") else f"{t}Z") or datetime.now(timezone.utc)
+    readings = [(ts, "cams-point", m, float(cur[k])) for k, m in OM_AIR_MAP.items() if cur.get(k) is not None]
+    return [_om_air_sensor(lat, lon)], readings

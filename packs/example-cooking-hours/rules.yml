@@ -1,0 +1,15 @@
+# A worked example of a data pack. Copy this folder to start your own.
+# Rule ids are namespaced automatically: this becomes `example-cooking-hours/post_cooking_summary`.
+- id: post_cooking_summary
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    SELECT sensor_id, name, round(max(mean_15m))::int AS peak
+    FROM stats
+    WHERE local AND indoor AND metric = 'pm25'
+      AND extract(hour FROM now() AT TIME ZONE current_setting('TimeZone')) BETWEEN 20 AND 23
+    GROUP BY sensor_id, name
+    HAVING max(mean_15m) > 35.5
+  message:
+    en: "Today's indoor peak at {name} was {peak} µg/m³, mostly around cooking. Opening a window while you cook clears it faster than a purifier afterwards."
+    id: "Puncak PM2.5 dalam ruangan di {name} hari ini {peak} µg/m³, sebagian besar saat memasak. Membuka jendela saat memasak lebih cepat membersihkan daripada pembersih udara setelahnya."

@@ -1,0 +1,39 @@
+# Air quality — the first domain pack. Thresholds are US EPA / WHO 2021, the scale Bali Air Dispatch publishes.
+# Fork this folder for your own city: the numbers that matter in Kerobokan are not the numbers that matter in Poblenou.
+# Rule ids are namespaced automatically -> air-quality/<id>.
+
+- id: indoor_pm25_high
+  level: act
+  cooldown_minutes: 120
+  sql: |
+    SELECT sensor_id, name, mean_15m FROM stats
+    WHERE local AND indoor AND metric = 'pm25' AND mean_15m > 35.5
+  message:
+    en: "Indoor PM2.5 at {name} is {mean_15m:.0f} µg/m³ (unhealthy for sensitive groups). Run the purifier if you have one; check whether outside is better before opening windows."
+    id: "PM2.5 dalam ruangan di {name} {mean_15m:.0f} µg/m³ (tidak sehat untuk kelompok sensitif). Nyalakan pembersih udara jika ada; cek udara luar sebelum membuka jendela."
+
+- id: outside_worse_keep_shut
+  level: act
+  cooldown_minutes: 180
+  sql: |
+    WITH inside AS (SELECT sensor_id, name, mean_1h FROM stats WHERE local AND indoor AND metric='pm25' AND mean_1h IS NOT NULL),
+         outside AS (SELECT avg(mean_1h) AS ambient, count(*) AS n FROM stats WHERE NOT local AND NOT indoor AND metric='pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120)
+    SELECT i.sensor_id, i.name, i.mean_1h AS inside, o.ambient, o.n
+    FROM inside i, outside o
+    WHERE o.n >= 2 AND o.ambient > 35.5 AND o.ambient > 1.5 * i.mean_1h
+  message:
+    en: "Outside is worse than inside at {name}: ambient ~{ambient:.0f} µg/m³ (from {n} nearby public sensors) vs {inside:.0f} indoors. Keep windows shut."
+    id: "Udara luar lebih buruk dari dalam di {name}: sekitar {ambient:.0f} µg/m³ (dari {n} sensor publik terdekat) vs {inside:.0f} di dalam. Tutup jendela."
+
+- id: inside_worse_ventilate
+  level: act
+  cooldown_minutes: 180
+  sql: |
+    WITH inside AS (SELECT sensor_id, name, mean_1h FROM stats WHERE local AND indoor AND metric='pm25' AND mean_1h IS NOT NULL),
+         outside AS (SELECT avg(mean_1h) AS ambient, count(*) AS n FROM stats WHERE NOT local AND NOT indoor AND metric='pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120)
+    SELECT i.sensor_id, i.name, i.mean_1h AS inside, o.ambient, o.n
+    FROM inside i, outside o
+    WHERE o.n >= 2 AND i.mean_1h > 15 AND i.mean_1h > 1.5 * o.ambient
+  message:
+    en: "Inside is worse than outside at {name}: {inside:.0f} µg/m³ indoors vs ~{ambient:.0f} ambient. Something is burning or cooking indoors — ventilate."
+    id: "Udara dalam lebih buruk dari luar di {name}: {inside:.0f} µg/m³ di dalam vs sekitar {ambient:.0f} di luar. Ada yang terbakar atau memasak di dalam — buka ventilasi."

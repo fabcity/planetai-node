@@ -22,11 +22,17 @@ from fastapi import FastAPI, Query
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+import bootstrap
 import index
+import packs
 import sources
 
 log = logging.getLogger("planetai")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(message)s")
+# httpx logs every request URL at INFO. Telegram carries the bot token IN THE URL, so that would put a live
+# credential in the logs, in `docker compose logs`, and in every screenshot anyone pastes for support. Off.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 DB = os.environ["DATABASE_URL"]
 NODE = os.getenv("NODE_NAME", "node")
@@ -60,11 +66,14 @@ def poll_once(hc: httpx.Client) -> None:
             with con.cursor() as cur:
                 for s in sensors:
                     cur.execute(
-                        """INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, meta)
-                           VALUES (%(sensor_id)s, %(source)s, %(name)s, %(lat)s, %(lon)s, %(indoor)s, %(local)s, %(meta)s)
+                        """INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta)
+                           VALUES (%(sensor_id)s, %(source)s, %(name)s, %(lat)s, %(lon)s, %(indoor)s, %(local)s,
+                                   %(kind)s, %(scale)s, %(cadence)s, %(meta)s)
                            ON CONFLICT (sensor_id) DO UPDATE SET name=EXCLUDED.name, lat=EXCLUDED.lat, lon=EXCLUDED.lon,
-                             indoor=EXCLUDED.indoor, meta=EXCLUDED.meta""",
-                        {**s, "meta": Jsonb(s.get("meta") or {})},
+                             indoor=EXCLUDED.indoor, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
+                             cadence=EXCLUDED.cadence, meta=EXCLUDED.meta""",
+                        {"kind": "sensor", "scale": os.getenv("NODE_SCALE", "community"), "cadence": None,
+                         **s, "meta": Jsonb(s.get("meta") or {})},
                     )
                 if readings:
                     cur.executemany(
@@ -81,9 +90,10 @@ def poll_once(hc: httpx.Client) -> None:
 # ---------------------------------------------------------------- rules → alerts
 def load_rules() -> list[dict]:
     try:
-        return yaml.safe_load(RULES.read_text()) or []
+        core = yaml.safe_load(RULES.read_text()) or []
     except FileNotFoundError:
-        return []
+        core = []
+    return core + packs.rules()
 
 
 def run_rules() -> None:
@@ -125,8 +135,10 @@ def notify(level: str, text: str) -> None:
         try:
             httpx.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage",
                        json={"chat_id": chat, "text": f"{icon} {text}".strip()}, timeout=15).raise_for_status()
+            log.info("telegram -> %s ok", chat)
         except Exception as e:  # noqa: BLE001
-            log.warning("telegram %s: %s", chat, e)
+            # never interpolate the exception's URL: httpx puts the token in it
+            log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
 
 
 # ---------------------------------------------------------------- hourly push (child → parent)
@@ -157,7 +169,24 @@ def loop(fn, every: int, delay: int = 0):
     threading.Thread(target=run, daemon=True, name=fn.__name__).start()
 
 
-hc = httpx.Client(timeout=30, headers={"User-Agent": f"planetai-node/{NODE}"})
+hc = httpx.Client(timeout=60, headers={"User-Agent": f"planetai-node/{NODE}"})
+
+
+def bootstrap_once() -> None:
+    """Fill the database from free global sources the first time this node starts. See app/bootstrap.py."""
+    if os.getenv("BOOTSTRAP", "1") != "1" or not os.getenv("NODE_LAT"):
+        return
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT count(*) AS n FROM readings")
+        if (cur.fetchone() or {}).get("n"):
+            return
+        log.info("first start: bootstrapping from global open data (no sensor needed)")
+        state["bootstrap"] = bootstrap.run(con, hc, float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"]))
+try:
+    bootstrap_once()
+except Exception as e:  # noqa: BLE001  — never block startup on it
+    log.warning("bootstrap failed: %s", e)
+
 loop(lambda: poll_once(hc), POLL, delay=2)
 loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
@@ -174,7 +203,15 @@ def q(sql: str, *args):
 
 @app.get("/health")
 def health():
-    return {"ok": state["last_poll"] is not None, "node": NODE, "uptime_s": int(time.time() - STARTED), **state}
+    schema = None
+    try:
+        with db() as con, con.cursor() as cur:
+            cur.execute("SELECT max(version) AS v FROM schema_version")
+            schema = (cur.fetchone() or {}).get("v")
+    except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
+        schema = "pre-0.4 (run ./update.sh)"
+    return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
+            "schema": schema, "uptime_s": int(time.time() - STARTED), **state}
 
 
 @app.get("/sensors")
@@ -190,7 +227,14 @@ def readings(sensor_id: str | None = None, metric: str | None = None, limit: int
 
 @app.get("/stats")
 def stats():
+    """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations."""
     return q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+
+
+@app.get("/observations")
+def observations():
+    """Latest value per slow-moving source: city statistics, model point samples, survey results."""
+    return q("SELECT * FROM observations ORDER BY scale, sensor_id, metric")
 
 
 @app.get("/alerts")
@@ -204,6 +248,12 @@ def cells():
     """Index cells this node can honestly compute. Same row shape as the FCI Observations base."""
     with db() as con, con.cursor() as cur:
         return index.cells(cur)
+
+
+@app.get("/packs")
+def packs_():
+    """What this node has loaded beyond the core. data packs are rules/cells only; code packs run Python."""
+    return packs.manifests()
 
 
 @app.get("/rho")
@@ -226,7 +276,7 @@ def action(body: dict):
 def post_readings(body: dict):
     """Downstream contributors (a phone, a DIY pod on the LAN) post raw readings.
     {"sensor": {"sensor_id": "phone-abc", "source": "mobile", "name": "...", "lat":..,"lon":.., "indoor": false},
-     "readings": [{"ts": "...", "metric": "pm25", "value": 12.3}, ...]}   The sensor is local by definition."""
+     "readings": [{"ts": "...", "metric": "<name>", "value": 12.3}, ...]}   The sensor is local by definition."""
     s = body["sensor"]
     with db() as con, con.cursor() as cur:
         cur.execute("""INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, meta)

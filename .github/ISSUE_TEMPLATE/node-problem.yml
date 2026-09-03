@@ -1,0 +1,37 @@
+name: Node problem
+description: Something on your node isn't working. This asks for exactly what we need to help.
+title: "[node] "
+labels: [support]
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: Machine
+      description: e.g. Mac mini M2 / macOS 15, Ubuntu 24.04 on a NUC, Raspberry Pi 5 / Pi OS 64-bit, Windows 11 + WSL2
+    validations: { required: true }
+  - type: input
+    id: sensors
+    attributes:
+      label: Sensor(s)
+      description: e.g. Smart Citizen 19880 · AirGradient ONE (indoor) · PurpleAir
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What you expected and what happened
+    validations: { required: true }
+  - type: textarea
+    id: diag
+    attributes:
+      label: Paste the output of this — not your .env
+      description: "Run in the repo folder: `make health; docker compose ps; docker compose logs app | tail -50`"
+      render: shell
+    validations: { required: true }
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Already tried
+      options:
+        - label: Re-ran `./install.sh …` (it's safe to re-run)
+        - label: `make restart` after editing `.env`
+        - label: Checked the sensor is alive on its own page / local URL

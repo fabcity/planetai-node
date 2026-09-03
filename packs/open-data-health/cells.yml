@@ -1,0 +1,15 @@
+# Reads the `observations` view (slow sources), not `stats` (24h rolling, sensors only).
+- cell: "Governance|City"
+  unit: "% of published datasets updated in the last 90 days"
+  state: partial
+  notes: "CKAN portal maintenance — a DIDO signal about whether a city's data is alive"
+  sql: |
+    SELECT avg(value) AS value FROM observations
+    WHERE kind = 'portal' AND metric = 'datasets_fresh_pct' AND ts > now() - interval '7 days'
+
+- cell: "Governance|City"
+  unit: "open datasets published"
+  state: partial
+  sql: |
+    SELECT sum(value) AS value FROM observations
+    WHERE kind = 'portal' AND metric = 'datasets_total' AND ts > now() - interval '7 days'

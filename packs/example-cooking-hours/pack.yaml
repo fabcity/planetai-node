@@ -1,0 +1,8 @@
+id: example-cooking-hours
+name: Cooking hours
+description: Don't shout about indoor PM2.5 during normal cooking hours — say it once, after.
+author: planetai-node core (example)
+version: 0.1.0
+requires: { node: ">=0.1.1" }
+kind: data          # data = rules/cells only, no code. code = ships adapter.py.
+scales: [community]

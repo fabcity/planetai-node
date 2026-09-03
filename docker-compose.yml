@@ -24,6 +24,7 @@ services:
       DATABASE_URL: postgresql://planetai:${POSTGRES_PASSWORD}@db:5432/planetai
     volumes:
       - ./config:/app/config:ro      # a directory, not a file: editors that save-by-replace would break a single-file mount
+      - ./packs:/app/packs:ro        # community packs — see docs/PACKS.md      # a directory, not a file: editors that save-by-replace would break a single-file mount
     ports: ["${APP_PORT:-8080}:8080"]     # host port; change APP_PORT in .env if 8080 is taken
     depends_on:
       db: { condition: service_healthy }

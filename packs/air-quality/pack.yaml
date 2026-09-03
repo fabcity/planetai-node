@@ -1,0 +1,13 @@
+id: air-quality
+name: Air quality
+description: >-
+  PM2.5 rules and Index cells: the indoor/outdoor decision, WHO exceedance days, and the
+  daily air line. The first domain pack, and the template for the next one.
+author: PLANETAI core (official)
+version: 0.2.0
+requires: { node: ">=0.2.0" }
+kind: data
+domain: air
+metrics: [pm25, pm10, pm1, humidity]
+scales: [community, city]
+thresholds: US EPA / WHO 2021 — see docs/sensors.md §7

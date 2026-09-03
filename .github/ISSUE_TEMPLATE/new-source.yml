@@ -1,0 +1,25 @@
+name: New sensor or data source
+description: Propose a sensor or public data source the node should read.
+title: "[source] "
+labels: [source]
+body:
+  - type: input
+    id: name
+    attributes: { label: Sensor / source name }
+    validations: { required: true }
+  - type: dropdown
+    id: how
+    attributes:
+      label: How is it read?
+      options: [Local HTTP on the LAN (no cloud), Public API (key-free), Public API (needs a key), MQTT, Other]
+    validations: { required: true }
+  - type: textarea
+    id: payload
+    attributes:
+      label: A real sample payload
+      description: Paste the JSON one reading looks like. Redact anything personal.
+      render: json
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything about units, correction, indoor/outdoor, or terms of use

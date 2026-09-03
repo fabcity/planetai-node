@@ -287,13 +287,20 @@ cd ~/planetai/planetai-node && git pull && docker compose up -d --build
 
 **Everything is confusing and you want to start over** — `docker compose down -v` (this *does* delete the data — only do it if you mean to), delete the folder, unpack again, go to step 4.
 
+## 11b. A word about the bot token
+
+The token from @BotFather is a password for your bot. Keep it in `.env`, which is never committed. Before pasting a
+log anywhere — an issue, a chat, a screenshot — check it for `api.telegram.org/bot…`. Nodes from v0.4.3 on don't log
+it; older ones did. If it ever escapes, revoke it in @BotFather with `/revoke`, put the new one in `.env`, and
+`make restart`. Nothing else is lost.
+
 ## 12. When you ask for help, send this
 
 ```bash
 cd ~/planetai/planetai-node
 make health; docker compose ps; docker compose logs app | tail -50
 ```
-Paste all of it. Not your `.env`.
+Paste all of it. Not your `.env`, and scan the log for `api.telegram.org/bot…` before you send it.
 
 ---
 

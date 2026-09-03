@@ -1,0 +1,32 @@
+# Index cells this pack can compute. Each SQL returns one row with a `value` column.
+# The core knows nothing about PM2.5; it just publishes what a pack can honestly compute.
+- cell: "Environmental|Community"
+  unit: "µg/m³ PM2.5 (24h mean, local sensors)"
+  state: partial          # -> live once the node has 12+ hourly buckets; the core checks that
+  min_buckets: 12
+  notes: "local sensors only; indoor and outdoor kept separate by the rules"
+  sql: |
+    SELECT avg(r.mean) AS value
+    FROM readings_1h r JOIN sensors s USING (sensor_id)
+    WHERE s.local AND s.kind = 'sensor' AND r.metric = 'pm25' AND r.bucket > now() - interval '24 hours'
+
+- cell: "Environmental|Community"
+  unit: "% of days over the WHO 24h PM2.5 guideline (30d, local outdoor)"
+  state: partial
+  min_buckets: 20
+  sql: |
+    WITH d AS (
+      SELECT (r.bucket AT TIME ZONE current_setting('TimeZone'))::date AS day, avg(r.mean) AS pm
+      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      WHERE s.local AND NOT s.indoor AND s.kind = 'sensor' AND r.metric = 'pm25' AND r.bucket > now() - interval '30 days'
+      GROUP BY 1 HAVING count(*) >= 12)
+    SELECT 100.0 * count(*) FILTER (WHERE pm > 15) / nullif(count(*),0) AS value FROM d
+
+- cell: "Environmental|City"
+  unit: "µg/m³ PM2.5 (24h mean, public reference stations)"
+  state: partial          # never 'live': it isn't our measurement
+  notes: "peer observatory / public networks, credited in sensors.meta"
+  sql: |
+    SELECT avg(r.mean) AS value
+    FROM readings_1h r JOIN sensors s USING (sensor_id)
+    WHERE NOT s.local AND NOT s.indoor AND s.kind = 'sensor' AND r.metric = 'pm25' AND r.bucket > now() - interval '24 hours'
