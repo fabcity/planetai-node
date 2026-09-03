@@ -72,5 +72,13 @@ fi
 chmod +x "$DIR/bin/planetai" "$DIR"/*.sh 2>/dev/null || true
 mkdir -p "$HOME/.local/bin"
 ln -sf "$DIR/bin/planetai" "$HOME/.local/bin/planetai"
+# make sure `planetai` resolves in new shells. Silent no-op if the PATH line is already there.
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *)
+  for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+    [[ -f "$rc" ]] && ! grep -q '\.local/bin' "$rc" && printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
+  done
+  export PATH="$HOME/.local/bin:$PATH"
+  say "added ~/.local/bin to your PATH (takes effect in new terminals)";;
+esac
 
 exec "$DIR/bin/planetai" setup "$@"

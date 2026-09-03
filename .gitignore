@@ -1,3 +1,6 @@
 .env
 backups/
 __pycache__/
+# litter from early bugs, in case a node still has them
+{app,docs}/
+backups */
