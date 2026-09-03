@@ -22,6 +22,15 @@ column in the same PR. A rule should end in something a person does.
 - Raw readings leaving the node. Hourly means, cells, model updates — yes. Raw — never.
 - Rules that fire on indoor sensors as if they were ambient. `NOT s.indoor` is not decoration.
 
+## Before your first commit
+
+```bash
+make dev-setup
+```
+
+Installs the pre-commit hook: blocks `.env`, credentials and `.git` contents, and runs `make lint`. See
+[`docs/DEVELOPING.md`](docs/DEVELOPING.md).
+
 ## Conventions
 
 - `make lint` must pass. That's `bash -n`, `py_compile`, and YAML parsing — deliberately cheap.

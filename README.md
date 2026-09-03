@@ -153,6 +153,12 @@ reviewed the same way but optional at install · **community packs** in your own
 repo, verified or unverified and honest about which. Full model, and how to write one:
 [`docs/PACKS.md`](docs/PACKS.md). A worked example ships at [`packs/example-cooking-hours/`](packs/example-cooking-hours).
 
+## Developing
+
+One machine develops, nodes only consume. `make dev-setup` installs a pre-commit hook that blocks secrets and runs
+the offline gates; `make release V=x.y.z` lints, tests, tags, pushes and builds a clean tarball. Setting up a dev
+machine, running a throwaway test node, and why nodes get `--push no-push`: [`docs/DEVELOPING.md`](docs/DEVELOPING.md).
+
 ## Contributing
 
 Run a node, tell us what broke, send the fix. [`CONTRIBUTING.md`](CONTRIBUTING.md). Issues have two templates:
