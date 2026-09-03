@@ -10,6 +10,7 @@
 #   planetai logs           follow the node's log
 #   planetai config         open .env in an editor
 #   planetai act <id>       record that you acted on alert <id>  (this is how rho is measured)
+#   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -312,6 +313,56 @@ cmd_act() {
   api /rho | json 'print("  rho is now %s  (%s/%s alerts answered, median %s min)" % (d["rho"], d["acted"], d["alerts_act"], d["median_minutes"]))'
 }
 
+
+# ---------------------------------------------------------------- mesh: reach this node from anywhere, no open ports
+# Tailscale (WireGuard overlay). One command per machine. The control plane is Tailscale's; the exit is Headscale,
+# which uses the same client and is parked in SPEC §6 with its trigger. On a headless Mac use the Homebrew daemon,
+# not the App Store app: the daemon runs without anyone logged in, which is what a cupboard node needs.
+cmd_mesh() {
+  local sub="${1:-up}"
+  case "$sub" in
+    status)
+      command -v tailscale >/dev/null || { warn "tailscale is not installed. Run: planetai mesh"; return 1; }
+      tailscale status 2>/dev/null | head -12; return;;
+    down) sudo tailscale down && say "left the mesh (node keeps running on the LAN)"; return;;
+    up) ;;
+    *) echo "usage: planetai mesh [up|status|down]"; return 1;;
+  esac
+  step "Join the mesh"
+  echo "  After this, the node is reachable by name from any of your devices, wherever they are, with no ports"
+  echo "  opened on any router. You may be asked to log in to Tailscale in a browser, once."
+  echo
+  local name; name="$(envget NODE_NAME)"; name="${name:-planetai}"
+  if ! command -v tailscale >/dev/null; then
+    say "installing tailscale"
+    case "$(uname -s)" in
+      Darwin)
+        command -v brew >/dev/null || fail "Homebrew is needed to install the Tailscale daemon on macOS: https://brew.sh"
+        brew install tailscale >>"$LOG" 2>&1 || fail "brew install tailscale failed; see $LOG"
+        sudo brew services start tailscale >>"$LOG" 2>&1 || true ;;
+      Linux)
+        curl -fsSL https://tailscale.com/install.sh | sh >>"$LOG" 2>&1 || fail "tailscale install failed; see $LOG" ;;
+    esac
+  fi
+  say "logging in. If a URL appears below, open it in a browser and approve this machine."
+  # --ssh: `ssh <name>` from any device on the tailnet, no keys to manage. --hostname: mesh name = node name.
+  sudo tailscale up --ssh --hostname "$name" --accept-dns=true ${TS_AUTHKEY:+--authkey "$TS_AUTHKEY"} </dev/tty 2>&1 | tee -a "$LOG"
+  local ip dns
+  ip="$(tailscale ip -4 2>/dev/null | head -1)"
+  dns="$(tailscale status --json 2>/dev/null | json 'print(d["Self"]["DNSName"].rstrip("."))' 2>/dev/null || echo "$name")"
+  [[ -n "$ip" ]] || fail "tailscale did not come up. Try: planetai mesh status"
+  envset MESH_NAME "$dns"
+  say "on the mesh as ${B}${dns}${N} (${ip})"
+  echo
+  echo "  From any other device on your tailnet:"
+  printf '    ssh %s                        %s# a shell on the node, no keys needed%s\n' "$name" "$D" "$N"
+  printf '    curl %s:%s/health     %s# its API%s\n' "$dns" "$(port)" "$D" "$N"
+  printf '    ssh %s planetai status        %s# run any planetai command remotely%s\n' "$name" "$D" "$N"
+  echo
+  echo "  A child node reports to this one with:  PARENT_API_URL=http://${dns}:$(port)"
+  echo "  Unattended joins for future nodes:      TS_AUTHKEY=tskey-auth-… planetai mesh"
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -329,7 +380,8 @@ case "${1:-help}" in
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   update) cmd_update;;  backup) cmd_backup;;  config) cmd_config;;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) cmd_sensors;;  cells) cmd_cells;;
+  mesh) shift; cmd_mesh "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
-  *) sed -n '3,15p' "$0" | sed 's/^#//';;
+  *) sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;
 esac
