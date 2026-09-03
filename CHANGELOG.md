@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.6 — 2026-09-03
+
+**One command to a running node.** Applied the Omarchy install pattern: a URL that does everything, a form that
+asks only what it cannot detect, phased steps logged to a file, a plain error screen, and one CLI so operators never
+touch a Makefile, a flag list or a YAML file.
+
+- `install`: `curl -fsSL planetai.fab.city/install | bash`. Gets git if missing, clones or updates `~/planetai`, hands off to `planetai setup`. Re-runnable.
+- `bin/planetai setup`: three questions. Name. **A place name** (Open-Meteo geocoding, with OpenStreetMap as fallback for neighbourhoods and sub-districts) → coordinates, time zone, country, and whether the location falls inside one of the four pilot bounding boxes, which sets the city key and turns the Bali archive on or off. Sensor, or none. Then a summary, a confirm, and the install with a log.
+- `planetai telegram`: validates the token with `getMe`, waits for your message, reads the chat id from `getUpdates` itself, writes `.env`, sends a hello, restarts. No JSON to read.
+- `planetai test-alert`: a temporary pack with a rule that always fires; waits, removes itself, hands you the alert id. Your rules are untouched.
+- `planetai act <id> [note]`: records the action and prints ρ.
+- `planetai status | doctor | sensors | cells | logs | update | backup | config | start | stop | restart`. Doctor names the fix next to each failing check.
+- `planetai geocode <place>` to try the lookup without installing.
+- README and START_HERE now lead with the one-liner; the flag and by-hand routes remain below it.
+
 ## v0.5 — 2026-09-03
 
 **Location independence.** Read the docs as someone setting up in Delhi or Santiago and most of it did not work.

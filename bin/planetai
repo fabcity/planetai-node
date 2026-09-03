@@ -1,0 +1,320 @@
+#!/usr/bin/env bash
+# planetai — the one command an operator needs. Installed to ~/.local/bin by the bootstrap.
+#
+#   planetai setup          ask three things, install, start
+#   planetai status         is it alive, what has it read
+#   planetai doctor         checks, with the fix named for each failure
+#   planetai telegram       connect a bot: guided, finds your chat id for you
+#   planetai test-alert     make a real alert fire now, so you see the whole path
+#   planetai update         back up, pull, migrate, rebuild, verify
+#   planetai logs           follow the node's log
+#   planetai config         open .env in an editor
+#   planetai act <id>       record that you acted on alert <id>  (this is how rho is measured)
+#   planetai stop | start | restart
+set -euo pipefail
+
+HOME_DIR="${PLANETAI_HOME:-$HOME/planetai}"
+LOG="$HOME_DIR/.planetai-setup.log"
+cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL planetai.fab.city/install | bash"; exit 1; }
+
+# ---------------------------------------------------------------- tiny ui, no dependencies
+B=$'\033[1m'; D=$'\033[2m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; BL=$'\033[34m'; N=$'\033[0m'
+say()  { printf '%s●%s %s\n' "$G" "$N" "$*"; }
+warn() { printf '%s●%s %s\n' "$Y" "$N" "$*"; }
+step() { printf '\n%s%s%s\n' "$B" "$*" "$N"; }
+fail() {
+  printf '\n%s┌──────────────────────────────────────────────────────────────┐%s\n' "$R" "$N"
+  printf '%s│%s  Something went wrong.                                       %s│%s\n' "$R" "$N" "$R" "$N"
+  printf '%s└──────────────────────────────────────────────────────────────┘%s\n' "$R" "$N"
+  printf '  %s\n\n' "$*"
+  printf '  Full log:  %s\n' "$LOG"
+  printf '  Nothing you had is lost. Fix the line above, then run:  %splanetai setup%s\n' "$B" "$N"
+  printf '  Stuck? Open an issue and paste the log:  https://github.com/fabcity/planetai-node/issues\n\n'
+  exit 1
+}
+ask() { # ask VAR "prompt" "default"
+  local v="$1" p="$2" d="${3:-}" a
+  if [[ -n "$d" ]]; then printf '%s%s%s %s[%s]%s ' "$B" "$p" "$N" "$D" "$d" "$N"; else printf '%s%s%s ' "$B" "$p" "$N"; fi
+  read -r a </dev/tty || true
+  printf -v "$v" '%s' "${a:-$d}"
+}
+confirm() { local a; printf '%s%s%s %s[Y/n]%s ' "$B" "$1" "$N" "$D" "$N"; read -r a </dev/tty || true; [[ -z "$a" || "$a" =~ ^[Yy] ]]; }
+choose() { # choose VAR "prompt" opt1 opt2 ...
+  local v="$1" p="$2"; shift 2; local i=1 a
+  printf '%s%s%s\n' "$B" "$p" "$N"
+  for o in "$@"; do printf '  %s%d%s  %s\n' "$D" "$i" "$N" "$o"; i=$((i+1)); done
+  printf '  %s>%s ' "$B" "$N"; read -r a </dev/tty || true
+  a="${a:-1}"; [[ "$a" =~ ^[0-9]+$ ]] && [[ "$a" -ge 1 && "$a" -le $# ]] || a=1
+  eval "printf -v $v '%s' \"\${$a}\""
+}
+envget() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '"'"'"' '; }
+envset() { # idempotent upsert
+  local k="$1" v="$2"
+  [[ -f .env ]] || cp .env.example .env
+  if grep -q "^${k}=" .env; then
+    if [[ "$(uname -s)" == Darwin ]]; then sed -i '' "s|^${k}=.*|${k}=${v}|" .env; else sed -i "s|^${k}=.*|${k}=${v}|" .env; fi
+  else echo "${k}=${v}" >> .env; fi
+}
+port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
+api() { curl -sf "localhost:$(port)$1" 2>/dev/null; }
+json() { python3 -c "import sys,json; d=json.load(sys.stdin); $1"; }
+
+# ---------------------------------------------------------------- geocode: a place name in, coordinates + timezone out
+# Open-Meteo first (free, no key, returns the time zone). It knows cities and towns. For neighbourhoods and
+# sub-districts it draws a blank, so fall back to OpenStreetMap Nominatim and fetch the time zone separately.
+# Nominatim's policy: one request per second and a real User-Agent. We make one, at setup.
+urlenc() { python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$1"; }
+tz_for() { curl -sf "https://api.open-meteo.com/v1/forecast?latitude=$1&longitude=$2&timezone=auto&current=temperature_2m" | json 'print(d.get("timezone","UTC"))' 2>/dev/null || echo UTC; }
+geocode() { # prints lines: lat|lon|name|admin|country_code|timezone
+  local raw="$1" q
+  # "Providencia, Santiago": try the specific part first, the geocoders handle single names best
+  if [[ "$raw" == *,* ]]; then
+    local first; first="$(geocode "${raw%%,*}" | head -5)"
+    if [[ -n "$first" ]]; then
+      # keep only hits whose admin/country mention the part after the comma, if any do
+      local hint; hint="$(echo "${raw#*,}" | sed 's/^ *//' | tr '[:upper:]' '[:lower:]')"
+      local filt; filt="$(echo "$first" | tr '[:upper:]' '[:lower:]' | grep -n "$hint" | cut -d: -f1 | head -3)"
+      if [[ -n "$filt" ]]; then for n in $filt; do echo "$first" | sed -n "${n}p"; done; return; fi
+      echo "$first"; return
+    fi
+  fi
+  q="$(urlenc "$raw")"
+  local om; om="$(curl -sf "https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=en&format=json" | python3 -c '
+import sys, json
+for x in (json.load(sys.stdin).get("results") or [])[:5]:
+    print("|".join(str(x.get(k, "")) for k in ("latitude","longitude","name","admin1","country_code","timezone")) + "|" + str(x.get("name","")))' 2>/dev/null || true)"
+  if [[ -n "$om" ]]; then echo "$om"; return; fi
+  local nm; nm="$(curl -sf -A "planetai-node setup (+https://planetai.fab.city)"       "https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3&addressdetails=1" | python3 -c '
+import sys, json
+for x in json.load(sys.stdin)[:3]:
+    a = x.get("address", {})
+    name = a.get("suburb") or a.get("village") or a.get("town") or a.get("city_district") or a.get("city") or x.get("name","")
+    city = a.get("city") or a.get("town") or a.get("municipality") or a.get("county") or a.get("state") or name
+    admin = a.get("state") or a.get("county") or ""
+    print("|".join([x["lat"], x["lon"], name, admin, (a.get("country_code") or "").upper(), "", city]))' 2>/dev/null || true)"
+  [[ -z "$nm" ]] && return 0
+  nm="$(echo "$nm" | awk -F'|' '{k=sprintf("%.3f|%.3f",$1,$2); if(!seen[k]++) print}')"
+  while IFS='|' read -r la lo n ad c _ ci; do echo "$la|$lo|$n|$ad|$c|$(tz_for "$la" "$lo")|$ci"; done <<<"$nm"
+}
+
+# ---------------------------------------------------------------- setup
+cmd_setup() {
+  : > "$LOG"
+  exec 3>>"$LOG"
+  step "Let's set up a node."
+  echo "  Three questions. Everything else is detected or defaulted, and you can change it later in .env."
+  echo
+
+  # 1. name
+  local name; ask name "1. A short name for this node (lowercase, dashes)" "$(hostname -s | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-\n' '-')"
+  name="$(echo "$name" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-\n' '-')"
+
+  # 2. place → coordinates, timezone, city key, and whether Bali's archive applies
+  step "2. Where is it?"
+  echo "  Type a place: a neighbourhood, town or city. I'll find the coordinates and time zone."
+  local lat lon tz city cc place hits pick
+  while :; do
+    ask place "   Place" ""
+    [[ -z "$place" ]] && continue
+    hits="$(geocode "$place" 2>>"$LOG" || true)"
+    if [[ -z "$hits" ]]; then warn "nothing found for '$place'. Try a nearby town, or a bigger place, or paste 'lat,lon'."
+      if [[ "$place" =~ ^-?[0-9.]+,\ ?-?[0-9.]+$ ]]; then lat="${place%%,*}"; lon="$(echo "${place##*,}" | tr -d ' ')"; tz="UTC"; city="node"; cc=""; break; fi
+      continue; fi
+    local n; n=$(echo "$hits" | wc -l | tr -d ' ')
+    if [[ "$n" -gt 1 ]]; then
+      local opts=(); while IFS='|' read -r la lo nm ad c t ci; do opts+=("$nm, $ad, $c  ($t)"); done <<<"$hits"
+      choose pick "   Which one?" "${opts[@]}"
+      local idx=1; for o in "${opts[@]}"; do [[ "$o" == "$pick" ]] && break; idx=$((idx+1)); done
+      hits="$(echo "$hits" | sed -n "${idx}p")"
+    fi
+    local ci; IFS='|' read -r lat lon nm ad cc tz ci <<<"$hits"
+    city="$(echo "${ci:-$nm}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/-*$//')"
+    say "$nm, $ad, $cc  →  $lat, $lon  ·  $tz"
+    break
+  done
+  # pilot keys join existing Index rows; anything else stays as its own place
+  # the four Index pilots, by bounding box: a neighbourhood inside one files under the pilot's key
+  local pilot; pilot="$(python3 -c '
+import sys; lat, lon = float(sys.argv[1]), float(sys.argv[2])
+boxes = {"bali": (-9.2, -8.0, 114.4, 115.8), "barcelona": (41.25, 41.55, 1.9, 2.35),
+         "boston": (42.2, 42.5, -71.3, -70.9), "santiago": (-33.75, -33.2, -70.95, -70.4)}
+print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < d), ""))' "$lat" "$lon")"
+  [[ -n "$pilot" ]] && city="$pilot"
+  local bad=0; [[ "$pilot" == bali ]] && bad=1
+  [[ $bad -eq 1 ]] && say "that's Bali: the island air archive (Bali Air Dispatch) will be used as your outdoor reference." \
+                    || say "outdoor reference: the global CAMS model at your coordinates (no key, works everywhere)."
+
+  # 3. sensor
+  step "3. Do you have a sensor?"
+  local kind sc ag pa indoor=0
+  choose kind "   Pick one. You can add more later." \
+    "None yet. Start with the global models and add hardware when I have it." \
+    "Smart Citizen kit (I have the number from its smartcitizen.me URL)" \
+    "AirGradient on my WiFi" \
+    "PurpleAir on my WiFi"
+  case "$kind" in
+    Smart*) ask sc "   Kit number" ""; [[ "$sc" =~ ^[0-9]+$ ]] || fail "a Smart Citizen kit number is digits only, e.g. 19880" ;;
+    AirGradient*) ask ag "   Its hostname or IP (on the device's sticker, or in your router)" "airgradient_XXXXXX.local"
+                  confirm "   Is it indoors?" && indoor=1 ;;
+    PurpleAir*)   ask pa "   Its IP address (from your router; the .local name is unreliable)" ""
+                  confirm "   Is it indoors?" && indoor=1 ;;
+  esac
+
+  # summary
+  step "Here's the plan"
+  printf '   name        %s\n   place       %s (%s, %s)\n   time zone   %s\n   city key    %s\n   sensor      %s\n   outside     %s\n' \
+    "$name" "${nm:-$place}" "$lat" "$lon" "$tz" "$city" "${sc:+Smart Citizen $sc}${ag:+AirGradient $ag}${pa:+PurpleAir $pa}${sc:-${ag:-${pa:-none, models only}}}" \
+    "$([[ $bad -eq 1 ]] && echo 'Bali Air Dispatch + CAMS' || echo 'CAMS model')"
+  echo
+  confirm "Install with these?" || { echo "ok, nothing changed."; exit 0; }
+
+  # install
+  step "Installing"
+  echo "  This takes one to three minutes the first time. Log: $LOG"
+  local flags=(--name "$name" --lat "$lat" --lon "$lon")
+  [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
+  [[ $indoor -eq 1 ]] && flags+=(--indoor); [[ $bad -eq 0 ]] && flags+=(--no-bad)
+  chmod +x install.sh backup.sh update.sh 2>/dev/null || true
+  if ! ./install.sh "${flags[@]}" >>"$LOG" 2>&1; then
+    fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+  fi
+  envset NODE_TZ "$tz"; envset NODE_CITY "$city"
+  docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "the app container did not restart with your settings"
+  sleep 4
+  cmd_doctor quiet || fail "install finished but a check failed; see doctor output above"
+
+  printf '\n%s● Done!%s The node is running.\n\n' "$G" "$N"
+  echo "  In five minutes it will have its first readings. In a minute, its first line about your location."
+  echo
+  echo "  Next, two minutes each:"
+  printf '    %splanetai telegram%s     get alerts on your phone\n' "$B" "$N"
+  printf '    %splanetai test-alert%s   see the whole path fire, right now\n' "$B" "$N"
+  echo
+  printf '  Any time:  %splanetai status%s · %splanetai doctor%s · %splanetai update%s\n\n' "$B" "$N" "$B" "$N" "$B" "$N"
+}
+
+# ---------------------------------------------------------------- status / doctor / logs
+cmd_status() {
+  local h; h="$(api /health)" || { warn "the node isn't answering on port $(port). Try: planetai doctor"; exit 1; }
+  echo "$h" | json '
+print(f"  node      {d[\"node\"]}   v{d.get(\"version\",\"?\")}   schema {d.get(\"schema\",\"?\")}")
+print(f"  up        {d[\"uptime_s\"]//3600}h {d[\"uptime_s\"]%3600//60}m   polls {d[\"polls\"]}   readings {d[\"ingested\"]}")
+print(f"  last poll {d.get(\"last_poll\") or \"not yet\"}")
+print(f"  errors    {d.get(\"last_error\") or \"none\"}")'
+  api /sensors | json '
+own=[s for s in d if s["local"]]; ref=[s for s in d if not s["local"]]
+print(f"  sensors   {len(own)} of yours: "+", ".join(s["sensor_id"] for s in own) if own else "  sensors   none of yours yet (models only)")
+print(f"  reference {len(ref)}: "+", ".join(s["sensor_id"] for s in ref[:4])+(" …" if len(ref)>4 else ""))' 2>/dev/null || true
+  api /alerts | json 'print(f"  alerts    {len(d)} so far"); [print("            "+a["ts"][:16].replace("T"," ")+"  "+a["text"][:80]) for a in d[:3]]' 2>/dev/null || true
+  api /rho | json 'print(f"  rho       {d[\"rho\"] if d[\"rho\"] is not None else \"not yet measured\"}  ({d[\"acted\"]}/{d[\"alerts_act\"]} act-level alerts answered, 30d)")' 2>/dev/null || true
+}
+
+cmd_doctor() {
+  local quiet="${1:-}" ok=1 p; p="$(port)"
+  chk() { if eval "$2" >/dev/null 2>&1; then printf '  %s✓%s %s\n' "$G" "$N" "$1"; else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; ok=0; fi; }
+  [[ -z "$quiet" ]] && step "Doctor"
+  chk "docker is running"        "docker info"                                          "start OrbStack / Docker Desktop, or on Linux: sudo systemctl start docker"
+  chk "containers are up"        "[ \$(docker compose ps -q | wc -l) -ge 2 ]"           "planetai start"
+  chk "database answers"         "docker compose exec -T db pg_isready -U planetai"     "planetai logs db"
+  chk "node answers on :$p"      "curl -sf localhost:$p/health"                         "planetai logs   (if the port is taken: set APP_PORT in .env, then planetai restart)"
+  chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
+  chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
+  chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (a nightly one is scheduled)"
+  [[ $ok -eq 1 ]] && { [[ -z "$quiet" ]] && say "all good"; return 0; }
+  [[ -z "$quiet" ]] && warn "fix the marked lines, then run planetai doctor again"
+  return 1
+}
+
+cmd_logs() { docker compose logs -f --tail=80 "${1:-app}"; }
+
+# ---------------------------------------------------------------- telegram, guided
+cmd_telegram() {
+  step "Connect Telegram"
+  echo "  1. In Telegram, message @BotFather and send:  /newbot"
+  echo "     Give it any name, and a username ending in 'bot'. It replies with a token like  7123456789:AAF…"
+  echo
+  local tok; ask tok "  2. Paste the token here" ""
+  [[ "$tok" =~ ^[0-9]+:[A-Za-z0-9_-]{30,}$ ]] || fail "that doesn't look like a bot token (digits, a colon, then a long string)"
+  local me; me="$(curl -sf "https://api.telegram.org/bot${tok}/getMe" | json 'print(d["result"]["username"])' 2>/dev/null)" || fail "Telegram rejected that token. Copy it again from @BotFather."
+  say "token works. Your bot is @${me}"
+  echo
+  echo "  3. Open a chat with @${me} (or add it to a group and make it an admin), and send it any message."
+  printf '     Waiting for your message'
+  local chat=""; for i in $(seq 1 60); do
+    chat="$(curl -sf "https://api.telegram.org/bot${tok}/getUpdates" | json '
+import sys
+u=d.get("result",[])
+print(u[-1]["message"]["chat"]["id"] if u and "message" in u[-1] else "")' 2>/dev/null || true)"
+    [[ -n "$chat" ]] && break; printf '.'; sleep 2
+  done; echo
+  [[ -n "$chat" ]] || fail "no message arrived in two minutes. Send one to @${me}, then run planetai telegram again."
+  say "found your chat: $chat"
+  envset TELEGRAM_BOT_TOKEN "$tok"; envset TELEGRAM_CHAT_IDS "$chat"
+  curl -sf "https://api.telegram.org/bot${tok}/sendMessage" -d chat_id="$chat" -d text="$(envget NODE_NAME) is connected. Alerts will arrive here." >/dev/null && say "sent you a hello"
+  docker compose up -d --force-recreate app >/dev/null 2>&1
+  say "the node is restarting with Telegram on. Try:  planetai test-alert"
+}
+
+# ---------------------------------------------------------------- test alert: a temporary pack, not an edit to your rules
+cmd_test_alert() {
+  step "Test alert"
+  mkdir -p packs/_test
+  cat > packs/_test/pack.yaml <<'Y'
+id: _test
+name: Test alert
+description: Temporary. Created by `planetai test-alert`, removed when it fires.
+kind: data
+Y
+  cat > packs/_test/rules.yml <<'Y'
+- id: hello
+  level: act
+  cooldown_minutes: 99999
+  sql: SELECT 'node' AS sensor_id, now()::text AS at
+  message:
+    en: "Test alert from your node. If you can read this, the whole path works: rule → message → you. Reply with `planetai act <id>` to record that you saw it."
+    id: "Alert uji dari node Anda. Jika Anda membaca ini, seluruh jalur berfungsi. Catat dengan `planetai act <id>`."
+Y
+  echo "  A rule that always fires has been added. The node checks rules every minute."
+  printf '  Waiting'
+  local before after id=""; before="$(api /alerts | json 'print(len(d))')"
+  for i in $(seq 1 45); do
+    after="$(api /alerts | json 'print(len(d))' 2>/dev/null || echo "$before")"
+    if [[ "$after" -gt "$before" ]]; then id="$(api /alerts | json 'print(d[0].get("id","?"))' 2>/dev/null || echo "?")"; break; fi
+    printf '.'; sleep 2
+  done; echo
+  rm -rf packs/_test
+  [[ -n "$id" ]] || fail "no alert fired in 90 seconds. Is the node up? planetai doctor"
+  say "it fired. Alert #$id is in the log$( grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && echo ' and on your phone')."
+  echo
+  printf '  Now close the loop, which is the part the Index measures:\n    %splanetai act %s%s\n' "$B" "$id" "$N"
+}
+
+cmd_act() {
+  local id="${1:-}"; [[ "$id" =~ ^[0-9]+$ ]] || { echo "usage: planetai act <alert id> [note]"; exit 1; }
+  local note="${2:-acted}"
+  curl -sf -X POST "localhost:$(port)/actions" -H 'content-type: application/json' \
+    -d "{\"alert_id\": $id, \"stage\": \"acted\", \"actor\": \"$(whoami)\", \"note\": \"$note\"}" >/dev/null && say "recorded: you acted on #$id"
+  api /rho | json 'print(f"  rho is now {d[\"rho\"]}  ({d[\"acted\"]}/{d[\"alerts_act\"]} alerts answered, median {d[\"median_minutes\"]} min)")'
+}
+
+# ---------------------------------------------------------------- the rest
+cmd_update()  { chmod +x update.sh; ./update.sh; }
+cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
+cmd_config()  { "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
+cmd_start()   { docker compose up -d && say "started"; }
+cmd_stop()    { docker compose down && say "stopped (data kept)"; }
+cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
+cmd_sensors() { api /sensors | json '
+for s in d: print(f"  {s[\"sensor_id\"]:22} {s[\"kind\"]:7} {\"yours\" if s[\"local\"] else \"reference\":9} {\"indoor\" if s[\"indoor\"] else \"outdoor\":7}  {s[\"name\"]}")'; }
+cmd_cells()   { api /cells | json 'for c in d: print(f"  {c[\"cell\"]:26} {c[\"value\"]:>8}  {c[\"state\"]:8} {c[\"unit\"]}")'; }
+cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
+
+case "${1:-help}" in
+  setup) shift; cmd_setup "$@";;      status) cmd_status;;     doctor) cmd_doctor;;
+  telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
+  update) cmd_update;;  backup) cmd_backup;;  config) cmd_config;;  logs) shift; cmd_logs "$@";;
+  start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) cmd_sensors;;  cells) cmd_cells;;
+  version|-v|--version) cmd_version;;
+  geocode) shift; geocode "$*";;   # try a place name without installing anything
+  *) sed -n '3,15p' "$0" | sed 's/^#//';;
+esac

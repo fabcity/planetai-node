@@ -15,6 +15,20 @@ only what differs.
 
 ---
 
+## The short version
+
+```bash
+curl -fsSL planetai.fab.city/install | bash
+```
+
+It asks a name, a place and whether you have a sensor, and installs. Then `planetai telegram` connects your
+phone and `planetai test-alert` fires one so you see it work. If that went fine, you can stop reading.
+
+The rest of this page is for when you want to understand what it did, when something goes wrong, or when you
+would rather do it by hand.
+
+---
+
 ## 1. What you are about to set up
 
 A small program that runs quietly on a computer you own. Every five minutes it reads whatever sensors you
@@ -159,12 +173,14 @@ Four passes? Continue.
 
 ## 4. Install
 
-Put the folder somewhere permanent, not Downloads.
+The one-liner at the top does everything in this section, including asking you the inputs from section 2 in a
+form and looking up coordinates and time zone from a place name. What follows is the manual route, useful if you
+want flags you can script or you are installing several nodes.
 
 ```bash
 mkdir -p ~/planetai && cd ~/planetai
 git clone https://github.com/fabcity/planetai-node && cd planetai-node
-chmod +x install.sh backup.sh update.sh
+chmod +x install.sh backup.sh update.sh bin/planetai
 ```
 
 Then one command, built from your five inputs. Four sites ship as presets, which fill in coordinates,
@@ -255,7 +271,13 @@ curl -s localhost:8080/rho | python3 -m json.tool
 ```
 `alerts_act: 0` and `rho: null` is correct until an alert has fired and someone has acted on it (step 9).
 
-## 7. Turn on Telegram (10 minutes)
+## 7. Turn on Telegram
+
+The guided way, two minutes: `planetai telegram`. It checks the token with Telegram, waits for you to send the bot a
+message, finds your chat id itself, writes both to `.env`, sends you a hello and restarts the node. The manual
+steps below are what it does, for when you want to see them.
+
+### 7b. By hand (10 minutes)
 
 1. In Telegram, message **@BotFather**. Send `/newbot`. Give it a name (whatever you like, for example "Mayur Vihar air") and a username ending in `bot`. It replies with a **token** — a long string like `7123456789:AAF…`. Copy it. Treat it like a password.
 2. Create a Telegram **group** for the alerts (you, and later the household). Add your new bot to the group. Make the bot an **admin** of the group (group → members → tap the bot → promote) — otherwise it can't see messages and the next step won't work.
@@ -274,7 +296,10 @@ curl -s localhost:8080/rho | python3 -m json.tool
    ```
 The next alert — and tomorrow's daily pulse — arrives in the group.
 
-## 8. Test an alert without waiting for bad air (3 minutes)
+## 8. Test an alert without waiting for bad air
+
+`planetai test-alert` adds a temporary rule that fires once, waits for it, removes itself, and tells you the alert
+id to close the loop with `planetai act <id>`. Your own rules are never touched. Or by hand:
 
 Rules live in `config/rules.yml` and reload by themselves within a minute. So:
 

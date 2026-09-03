@@ -26,10 +26,17 @@ Planet boundary conditions. Node #1 measures air because a sensor was on the wal
 fork ([`DOMAINS.md`](docs/DOMAINS.md)), and the next scale is an adapter ([`COVERAGE.md`](docs/COVERAGE.md)).
 
 ```bash
-git clone https://github.com/fabcity/planetai-node && cd planetai-node
-chmod +x install.sh backup.sh
-./install.sh --preset barcelona --name lab-roof          # a preset site, no sensor needed to start
-./install.sh --name mayur-vihar --lat 28.6139 --lon 77.2090 --no-bad   # anywhere else
+curl -fsSL planetai.fab.city/install | bash
+```
+
+That is the whole install. It fetches the code, then asks three things: a name for the node, where it is (type a
+place; it finds the coordinates and time zone), and whether you have a sensor. Everything else is detected or
+defaulted. One to three minutes later the node is running, and one command each connects your phone and fires a
+test alert so you see the whole path:
+
+```bash
+planetai telegram
+planetai test-alert
 ```
 
 **A node needs coordinates, not hardware.** On first start it pulls 92 days of Copernicus CAMS air-quality history
@@ -38,8 +45,11 @@ something true to say from the first minute. Add a sensor when you have one; the
 *gap* between your reading and the global model, which is the local signal a 11 km grid cell cannot see.
 ([`docs/PREFILL.md`](docs/PREFILL.md))
 
+Prefer flags to a form? The installer underneath takes them directly:
+
 ```bash
-./install.sh --preset bali --name bayu-2 --sc 19880      # with a sensor (this is node #1)
+./install.sh --preset bali --name bayu-2 --sc 19880                      # node #1
+./install.sh --name mayur-vihar --lat 28.6139 --lon 77.2090 --no-bad     # anywhere, no sensor
 ```
 
 Two containers — Postgres and one Python service, about 700 lines. Runs on a Mac (Apple Silicon or Intel), any Linux
@@ -93,24 +103,27 @@ that's what `update.sh` does, from the same idempotent file. Schema changes are 
 ## Day one
 
 ```bash
-make health      # polls, last error, ingested count
-make stats       # rolling 15m / 1h / 24h per sensor — what the rules read
-make alerts      # what fired
-make cells       # what this node reports to the Index
-make rho         # action latency: alerts → human actions
+planetai status        # alive? what has it read, what fired, what is rho
+planetai doctor        # every check, with the fix named next to any failure
+planetai sensors       # yours vs reference, indoor vs outdoor
+planetai cells         # what this node reports to the Index
+planetai logs
 ```
 
-Close the loop on an alert (an app or a Telegram reply handler does exactly the same call):
+The `make` targets remain for developers; operators never need them.
+
+Close the loop on an alert, which is how ρ gets measured:
 
 ```bash
-curl -X POST localhost:8080/actions -H 'content-type: application/json' \
-  -d '{"alert_id": 3, "stage": "acted", "actor": "ibu wayan", "note": "closed windows"}'
+planetai act 3 "closed windows"
 ```
 
 ## Repository
 
 ```
-install.sh          the product. platform detect → docker → .env → up → doctor → nightly backup cron
+install             the front door: curl | bash. gets git, gets the code, runs planetai setup
+bin/planetai        the operator's one command: setup · status · doctor · telegram · test-alert · act · update
+install.sh          the engine underneath: platform detect → docker → .env → up → doctor → nightly backup cron
 docker-compose.yml  db (postgres:16) + app
 app/main.py         poll sources → postgres · rules (SQL) → telegram · hourly push · http
 app/sources.py      smartcitizen · airgradient · purpleair · baliairdispatch · epa_2021_correct()
