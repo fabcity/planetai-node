@@ -2,6 +2,9 @@
 
 Three kinds of radio, three jobs. Which board you hold decides the job, not the other way round.
 
+This page is the *why*. For *what to press*, in the app, one screen at a time, including the two things that stop most
+first attempts (a power switch and a six-digit code): [`MESHTASTIC_APP.md`](MESHTASTIC_APP.md).
+
 | board | chip | WiFi | GPS | job |
 |---|---|---|---|---|
 | **XIAO ESP32-S3 + Wio-SX1262** | ESP32-S3 | yes | no | **the gateway**: uplinks the mesh to the node over WiFi. One per node. |
