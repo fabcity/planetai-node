@@ -32,5 +32,19 @@ for line in dockerfile.splitlines():
     if line.startswith("COPY") and line.endswith(("./", "/app/")) and ".py" in line and "*.py" not in line:
         errs.append(f"app/Dockerfile enumerates modules — use COPY *.py ./ : {line.strip()}")
 
-print("\n".join(f"  x {e}" for e in errs) or "  init.sql + Dockerfile ok")
+# every bind mount in docker-compose.yml must point at something the repo ships. Docker creates a missing
+# source as an EMPTY directory without complaint, so a forgotten config file becomes a container running
+# with no config at all (this happened with mosquitto in v0.8).
+import subprocess
+compose = open("docker-compose.yml").read()
+tracked = set(subprocess.run(["git", "ls-files"], capture_output=True, text=True).stdout.split())
+runtime_created = {"config/mosquitto/passwd", "config/reticulum/config"}
+for m in re.finditer(r"^\s*-\s*\./([^:\s]+):", compose, re.M):
+    src = m.group(1).rstrip("/")
+    if src in runtime_created or src.startswith(("backups", "packs")):
+        continue
+    if not any(f == src or f.startswith(src + "/") for f in tracked):
+        errs.append(f"docker-compose.yml mounts ./{src} but the repo ships nothing there (Docker would mount an empty dir)")
+
+print("\n".join(f"  x {e}" for e in errs) or "  init.sql + Dockerfile + compose mounts ok")
 sys.exit(1 if errs else 0)

@@ -4,3 +4,8 @@ __pycache__/
 # litter from early bugs, in case a node still has them
 {app,docs}/
 backups */
+
+# broker credentials, created by planetai meshtastic
+config/mosquitto/passwd
+# rendered from config.tpl by planetai reticulum
+config/reticulum/config

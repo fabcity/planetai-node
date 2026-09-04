@@ -391,7 +391,7 @@ cmd_meshtastic() {
   # mosquitto_passwd runs in a throwaway container as root, writing straight into the host's config dir.
   # (Running it inside the compose service fails: that service mounts the config read-only, on purpose.)
   docker run --rm --user 0 -v "$PWD/config/mosquitto:/m" eclipse-mosquitto:2 \
-    sh -c "mosquitto_passwd -b -c /m/passwd '$user' '$pass' && chmod 644 /m/passwd" >>"$LOG" 2>&1 \
+    sh -c "rm -f /m/passwd && mosquitto_passwd -b -c /m/passwd '$user' '$pass' && chmod 644 /m/passwd" >>"$LOG" 2>&1 \
     || fail "could not write the broker password file; see $LOG"
   [[ -s config/mosquitto/passwd ]] || fail "password file is empty after mosquitto_passwd; see $LOG"
   say "starting the broker and restarting the node with MQTT on"
