@@ -10,6 +10,40 @@ USB-C **data** cable (many are charge-only and the flasher will not see the boar
 
 ---
 
+## Part 0 — the fast way, if you have a computer and a USB cable
+
+Everything in Parts A–D can be done from a terminal instead of the phone app, one command per radio, no Bluetooth
+pairing and no PIN. This is how to do eight radios in twenty minutes, and it is how the FAB26 fleet should be done.
+
+```bash
+pip3 install --user meshtastic adafruit-nrfutil
+```
+
+**Flash** (only if needed; the Trackers ship pre-flashed). On macOS 26 the drag-to-drive method fails with
+"error -36" or "Input/output error" because of how the new FSKit layer writes to the drive — not the board's fault.
+Use serial DFU instead, which never touches the drive. Get the stable release's nRF52 bundle from GitHub
+(`gh release download <tag> -R meshtastic/firmware -p 'firmware-nrf52840-*.zip'`), unzip, then with the board in
+DFU (double-click RST):
+
+```bash
+adafruit-nrfutil dfu serial --package firmware-seeed_wio_tracker_L1-<version>-ota.zip -p /dev/cu.usbmodem1101 -b 115200 --singlebank
+```
+
+**Provision** each radio with one command. The first run creates the fleet's private channel and saves its URL;
+every later run joins it:
+
+```bash
+tools/mesh-provision.sh /dev/cu.usbmodem1101 "Subak edge"   SBK SENSOR SG_923 ~/planetai-mesh.url
+tools/mesh-provision.sh /dev/cu.usbmodem1101 "Temple spring" TMP SENSOR SG_923 ~/planetai-mesh.url
+tools/mesh-provision.sh /dev/cu.usbmodem1101 "kitchen shelf" SHF CLIENT SG_923 ~/planetai-mesh.url
+```
+
+Plug one radio in at a time; `ls /dev/cu.usbmodem*` shows its port. Region, preset, name, role, telemetry and
+position intervals, and the shared channel are all set. The gateway takes the same channel this way; its WiFi and
+MQTT settings are the extra steps in D1, and are best done in its web client once WiFi is on.
+
+If you would rather use the phone, or need to check something the script set, the rest of this page is the app route.
+
 ## Part A — get one radio alive
 
 ### A1. Power. Two things before you think anything is broken.
