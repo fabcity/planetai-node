@@ -12,7 +12,10 @@ jobs:
       - name: schema applies to a real postgres (twice — idempotency)
         run: |
           docker run -d --name pg -e POSTGRES_PASSWORD=x -e POSTGRES_USER=planetai -e POSTGRES_DB=planetai -p 5432:5432 postgres:16-alpine
-          for i in $(seq 30); do docker exec pg pg_isready -U planetai && break; sleep 2; done
+          # pg_isready answers during the entrypoint's temporary init server too, which then shuts down.
+          # Wait for a real query to succeed against the final server instead.
+          for i in $(seq 40); do docker exec pg psql -U planetai -d planetai -tAc 'select 1' >/dev/null 2>&1 && break; sleep 2; done
+          docker exec pg psql -U planetai -d planetai -tAc 'select 1' >/dev/null || { docker logs pg | tail -20; exit 1; }
           docker exec -i pg psql -v ON_ERROR_STOP=1 -U planetai planetai < init.sql
           docker exec -i pg psql -v ON_ERROR_STOP=1 -U planetai planetai < init.sql   # must be safe twice
           docker exec -i pg psql -U planetai planetai -c "SELECT * FROM stats LIMIT 0" -c "SELECT * FROM observations LIMIT 0" -c "SELECT max(version) FROM schema_version"
