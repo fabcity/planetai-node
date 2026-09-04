@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.8.1 — 2026-09-04
+
+**First radios provisioned; the failures documented.**
+
+- `tools/mesh-provision.sh`: one command per radio over USB (region, preset, names, role, telemetry and position intervals, fleet channel; first radio creates the channel and saves its URL, the rest import it). No pairing, no PIN.
+- `docs/MESHTASTIC_FLEET.md`: the laptop procedure, naming and roles, the channel file as a key, the CLI's enum values, and field notes: region `0` explained last week's silence; UF2 drag fails on macOS 26 (FSKit) regardless of bootloader version and serial DFU is the working path; the flasher offered a non-release 2.8.1, the fleet is on stable 2.7.26; Seeed's verified Grove list excludes the BME680.
+- `docs/MESHTASTIC_APP.md`: Part 0 fast path; the -36 paragraph corrected (the earlier "update the bootloader" explanation was wrong for this case); a sensor on the gateway; two symptom rows.
+- First Tracker L1 flashed to 2.7.26 over serial DFU and provisioned as `SENSOR` on channel `planetai`, `SG_923`.
+
 ## v0.8 — 2026-09-04
 
 **Meshtastic and Reticulum ready.** Both behind compose profiles, off by default; node #1 stays two containers until

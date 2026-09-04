@@ -71,14 +71,12 @@ every radio on the same firmware version, which you do.
    If no port appears: unplug, **hold the BOOT button while plugging back in**, release, try again.
 4. Wait for the progress bar to finish and the board to reboot. Do not unplug midway.
 
-**"Error code -36" or "Input/output error" when copying the `.uf2` (macOS).** Two very different causes, same message.
-Usually the copy *succeeded*: the bootloader flashed the file and rebooted, which unmounted the drive mid-copy, and
-Finder is complaining about a disk that vanished on purpose. Check: drive gone, board rebooted, app finds it. Done.
-If instead the board stays dead and the error repeats every time, it is macOS Sonoma-or-later writing to a drive whose
-bootloader predates the fix. Update the bootloader once: Seeed's L1 page, *FAQ → Device bricked & Bootloader
-installation*, download the bootloader file; double-click RST, copy the bootloader onto the `TRACKER L1` drive (it is
-small and copies fine); double-click RST again and copy the firmware. Never use the Nordic OTA app on these boards —
-Seeed warns it can brick them. Last resort: flash from a Windows or Linux machine, where the drag just works.
+**"Error code -36" or "Input/output error" when copying the `.uf2` (macOS).** Two causes, one message. If the drive
+vanished and the board rebooted, the copy *succeeded*: the bootloader flashed it and unmounted the drive mid-copy. If
+the drive is still there with a partial `firmware.uf2` and nothing rebooted, it failed, and on macOS 26 it fails every
+time: FAT drives mount through FSKit and the UF2 bootloader stops accepting its writes part way, whatever the bootloader
+version (confirmed on 0.9.2). **Use serial DFU** (`MESHTASTIC_FLEET.md §2`), which never touches the drive, or flash from
+Linux or Windows. Never use the phone OTA app on these boards; Seeed warns it can brick them.
 
 Flash all radios you own to the **same version** while you are at it. Mixed versions across a mesh is the third most
 common reason two radios never see each other.
@@ -173,6 +171,11 @@ Do these **in this order**, because after step 3 the phone can no longer talk to
 Its node number, for alerts out to the mesh: the web client shows it as `!a1b2c3d4`. In a terminal,
 `printf '%d\n' 0xa1b2c3d4` gives the decimal. `.env`: `MESH_GATEWAY_NODE_NUM=<that>`, `MESH_ALERTS=1`, then `planetai restart`.
 
+**A sensor on the gateway too?** Yes. An I²C sensor on the XIAO's SDA/SCL (plus 3V3, GND) is detected at boot and its
+telemetry reaches the node with zero hops. Keep the role `CLIENT` (the `SENSOR` role sleeps; a gateway must stay awake
+for WiFi), set the same telemetry interval as the field units, and mark it indoor in the node's `.env`
+(`MESH_INDOOR_NODES=!<its id>`) because it lives next to the router, not on the street.
+
 ### D2. A field sensor (Wio Tracker L1 / L1 Lite / L1 e-ink)
 
 Plug the Grove sensor into the Grove port **before** switching on; Meshtastic detects I²C sensors at boot.
@@ -208,6 +211,8 @@ If the sensor is indoors, tell the node: `.env` → `MESH_INDOOR_NODES=!<its id>
 | Radios see each other, no readings reach the node | Gateway: JSON output on; MQTT address is the node computer's IP on the *same* WiFi; channel uplink on. `planetai logs mosquitto` shows connections; `planetai logs` shows packets. |
 | Readings arrive, no sensor values | Grove sensor plugged in before power-on; Telemetry → Environment enabled; wait one interval. The app's node page shows what the radio itself sees. |
 | Alerts do not go out on the mesh | Downlink enabled on the channel; `MESH_GATEWAY_NODE_NUM` set (decimal); `MESH_ALERTS=1`; `planetai restart`. |
+| Copy to the `TRACKER L1` drive fails every time (macOS 26) | FSKit. Serial DFU instead: `MESHTASTIC_FLEET.md §2`. |
+| `meshtastic --get lora.region` prints `0` | Region unset; the radio has never transmitted. `tools/mesh-provision.sh` sets it. |
 | Flasher shows no serial port | Chrome or Edge only. A data cable, not a charge cable. XIAO: hold BOOT while plugging in. Tracker: double-click RST for the UF2 drive. |
 | Everything worked, then a radio went silent | Battery. Then the power switch got knocked. Then someone moved the antenna. |
 
