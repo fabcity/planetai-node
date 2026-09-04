@@ -33,7 +33,7 @@ fail() {
   printf '%s└──────────────────────────────────────────────────────────────┘%s\n' "$R" "$N"
   printf '  %s\n\n' "$*"
   printf '  Full log:  %s\n' "$LOG"
-  printf '  Nothing you had is lost. Fix the line above, then run:  %splanetai setup%s\n' "$B" "$N"
+  printf '  Nothing you had is lost. Fix the line above, then run the same command again.\n'
   printf '  Stuck? Open an issue and paste the log:  https://github.com/fabcity/planetai-node/issues\n\n'
   exit 1
 }
@@ -388,8 +388,12 @@ cmd_meshtastic() {
   fi
   profiles_add mqtt
   say "creating the broker user"
-  docker compose run --rm --no-deps --entrypoint mosquitto_passwd mosquitto -b -c /mosquitto/config/passwd "$user" "$pass" >>"$LOG" 2>&1 \
-    || { docker compose --profile mqtt pull mosquitto >>"$LOG" 2>&1; docker run --rm -v "$PWD/config/mosquitto:/m" eclipse-mosquitto:2 mosquitto_passwd -b -c /m/passwd "$user" "$pass" >>"$LOG" 2>&1 || fail "could not write the broker password file; see $LOG"; }
+  # mosquitto_passwd runs in a throwaway container as root, writing straight into the host's config dir.
+  # (Running it inside the compose service fails: that service mounts the config read-only, on purpose.)
+  docker run --rm --user 0 -v "$PWD/config/mosquitto:/m" eclipse-mosquitto:2 \
+    sh -c "mosquitto_passwd -b -c /m/passwd '$user' '$pass' && chmod 644 /m/passwd" >>"$LOG" 2>&1 \
+    || fail "could not write the broker password file; see $LOG"
+  [[ -s config/mosquitto/passwd ]] || fail "password file is empty after mosquitto_passwd; see $LOG"
   say "starting the broker and restarting the node with MQTT on"
   docker compose up -d >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
   local ip; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
