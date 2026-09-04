@@ -71,9 +71,10 @@ that must have both good WiFi and good LoRa reach.
 **Firmware.** Pre-flashed. To update: hold the reset button pattern from Seeed's wiki to get a USB drive named
 `WIO_L1…`, drag the `.uf2` from https://flasher.meshtastic.org onto it.
 
-**Sensor.** Plug a Grove I²C sensor into the Grove port before powering on. Meshtastic detects I²C sensors at boot:
-BME680 (temperature, humidity, pressure, gas) is supported and appears in the app under *Environment*; SEN5x
-(PM + VOC + NOx) likewise. The HM3301 needs its driver present in the firmware you flash; check the release notes, and
+**Sensor.** Plug a Grove I²C sensor into the Grove port before powering on. Meshtastic detects I²C sensors at boot.
+Seeed's verified list for this board is BME280, SHT31/SHTC3/SHT4x, AHT10, BMP085, MCP9808, PCT2075. The BME680 is
+supported by Meshtastic's telemetry module in general but is *not* on Seeed's verified list for the L1; test one before
+trusting a batch of twenty-five. SEN5x (PM + VOC + NOx) is supported by the module; likewise unverified on this board. The HM3301 needs its driver present in the firmware you flash; check the release notes, and
 if it is not there yet the BME680 alone is still a useful outdoor unit.
 
 **Configuration, over Bluetooth:** region, channel (§0), then

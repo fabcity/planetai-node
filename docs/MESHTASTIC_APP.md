@@ -37,6 +37,15 @@ every radio on the same firmware version, which you do.
    If no port appears: unplug, **hold the BOOT button while plugging back in**, release, try again.
 4. Wait for the progress bar to finish and the board to reboot. Do not unplug midway.
 
+**"Error code -36" or "Input/output error" when copying the `.uf2` (macOS).** Two very different causes, same message.
+Usually the copy *succeeded*: the bootloader flashed the file and rebooted, which unmounted the drive mid-copy, and
+Finder is complaining about a disk that vanished on purpose. Check: drive gone, board rebooted, app finds it. Done.
+If instead the board stays dead and the error repeats every time, it is macOS Sonoma-or-later writing to a drive whose
+bootloader predates the fix. Update the bootloader once: Seeed's L1 page, *FAQ → Device bricked & Bootloader
+installation*, download the bootloader file; double-click RST, copy the bootloader onto the `TRACKER L1` drive (it is
+small and copies fine); double-click RST again and copy the firmware. Never use the Nordic OTA app on these boards —
+Seeed warns it can brick them. Last resort: flash from a Windows or Linux machine, where the drag just works.
+
 Flash all radios you own to the **same version** while you are at it. Mixed versions across a mesh is the third most
 common reason two radios never see each other.
 
@@ -132,8 +141,10 @@ Its node number, for alerts out to the mesh: the web client shows it as `!a1b2c3
 
 ### D2. A field sensor (Wio Tracker L1 / L1 Lite / L1 e-ink)
 
-Plug the Grove sensor (BME680, or a PM sensor) into the Grove port **before** switching on; Meshtastic detects I²C
-sensors at boot. Then, over Bluetooth:
+Plug the Grove sensor into the Grove port **before** switching on; Meshtastic detects I²C sensors at boot.
+Seeed's *verified* list for the L1's Grove port is BME280, SHT31/SHTC3/SHT4x, AHT10, BMP085, MCP9808, PCT2075. The
+**BME680 is not on it**, although Meshtastic's telemetry module supports the chip in general, so test one before
+relying on a batch. A BME280 is the safe choice for temperature, humidity and pressure. Then, over Bluetooth:
 
 1. Region, private channel joined (A4, C). Long name = the place: `Temple spring`. Short name three or four letters.
 2. *Radio configuration → Device → Role*: **`SENSOR`**. Broadcasts readings and position, sleeps between, does not relay other people's traffic. *Send*.
