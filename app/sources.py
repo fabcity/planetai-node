@@ -306,3 +306,97 @@ def openmeteo_air(hc: httpx.Client, lat: float, lon: float):
     ts = _iso(t if not t or str(t).endswith("Z") else f"{t}Z") or datetime.now(timezone.utc)
     readings = [(ts, "cams-point", m, float(cur[k])) for k, m in OM_AIR_MAP.items() if cur.get(k) is not None]
     return [_om_air_sensor(lat, lon)], readings
+
+
+# ---------------------------------------------------------------- Meshtastic (LoRa mesh, via the gateway's MQTT uplink)
+# The gateway radio (an ESP32 with WiFi) uplinks the mesh to the node's Mosquitto. With "JSON output" enabled on the
+# gateway, each packet arrives on   msh/<REGION>/2/json/<channel>/!<gateway>   as a JSON object with "type" and
+# "payload". This is a pure function: one MQTT message in, sensors and readings out, so it is tested offline.
+#   telemetry  -> readings (environment_metrics / air_quality_metrics / power fields flattened into payload)
+#   position   -> the sensor's lat/lon (Tracker L1 boards carry GPS)
+#   nodeinfo   -> the sensor's name
+# Metric names follow the rest of the node; field names follow Meshtastic firmware 2.x. If a future firmware renames
+# them the adapter logs the unknown keys once rather than silently dropping them.
+MESH_METRICS = {
+    # environment_metrics
+    "temperature": "temp", "relative_humidity": "humidity", "barometric_pressure": "pressure_hpa",
+    "gas_resistance": "gas_resistance", "iaq": "iaq", "lux": "light", "uv_lux": "uv_lux",
+    "wind_speed": "wind_speed", "wind_direction": "wind_direction", "rainfall_1h": "rainfall_1h",
+    "soil_moisture": "soil_moisture", "soil_temperature": "soil_temp",
+    # air_quality_metrics (Plantower / SEN5x / HM3301 family)
+    "pm10_standard": "pm1", "pm25_standard": "pm25", "pm100_standard": "pm10",
+    "pm10_environmental": "pm1_env", "pm25_environmental": "pm25_env", "pm100_environmental": "pm10_env",
+    "co2": "co2", "voc_idx": "tvoc_index", "nox_idx": "nox_index",
+    # device health, useful for the dead-sensor rule and for battery planning
+    "battery_level": "battery_pct", "voltage": "battery_v", "air_util_tx": "lora_util_pct", "channel_utilization": "lora_channel_pct",
+}
+_MESH_UNKNOWN: set = set()
+
+
+def meshtastic_message(topic: str, payload: bytes, indoor_ids: set | None = None):
+    """Parse one uplinked packet. Returns (sensors, readings, info) where info carries what the node needs to reply:
+    the root topic and the gateway id, so alerts can go back down the same channel."""
+    import json as _json
+    import logging as _logging
+    log = _logging.getLogger("planetai.meshtastic")
+    parts = topic.split("/")
+    if "json" not in parts:
+        return [], [], {}            # protobuf topics: the gateway has JSON output off. planetai meshtastic says how to turn it on.
+    j = parts.index("json")
+    # msh/<REGION>/2/json/<channel>/!<gateway> : the "2" is the protocol version, not part of the root topic
+    root = "/".join(parts[:j - 1]) if j >= 1 and parts[j - 1] == "2" else "/".join(parts[:j])
+    channel, gateway = (parts[j + 1] if len(parts) > j + 1 else ""), (parts[j + 2] if len(parts) > j + 2 else "")
+    try:
+        m = _json.loads(payload)
+    except Exception:  # noqa: BLE001
+        return [], [], {}
+    kind, p = m.get("type"), m.get("payload") or {}
+    node = m.get("sender") or (f"!{m['from']:08x}" if isinstance(m.get("from"), int) else None)
+    if not node:
+        return [], [], {}
+    sid = f"msh-{node.lstrip('!')}"
+    ts = datetime.fromtimestamp(m["timestamp"], tz=timezone.utc) if isinstance(m.get("timestamp"), (int, float)) and m["timestamp"] > 1_600_000_000 else datetime.now(timezone.utc)
+    indoor = bool(indoor_ids and (node in indoor_ids or sid in indoor_ids))
+    sensor = {"sensor_id": sid, "source": "meshtastic", "name": None, "lat": None, "lon": None, "indoor": indoor, "local": True,
+              "kind": "sensor", "scale": "community", "cadence": "PT15M",
+              "meta": {"mesh_node": node, "gateway": gateway, "channel": channel, "root_topic": root}}
+    readings = []
+    if kind == "telemetry" and isinstance(p, dict):
+        for k, v in p.items():
+            if not isinstance(v, (int, float)):
+                continue
+            metric = MESH_METRICS.get(k)
+            if metric:
+                if metric == "pressure_hpa":
+                    readings.append((ts, sid, "pressure", float(v) / 10.0))   # hPa -> kPa, same unit as the rest of the node
+                else:
+                    readings.append((ts, sid, metric, float(v)))
+            elif k not in _MESH_UNKNOWN:
+                _MESH_UNKNOWN.add(k); log.info("meshtastic: unknown telemetry field %r (value %r) — add it to MESH_METRICS if it matters", k, v)
+    elif kind == "position" and isinstance(p, dict):
+        lat = p.get("latitude_i"); lon = p.get("longitude_i")
+        if isinstance(lat, int) and isinstance(lon, int) and lat and lon:
+            sensor["lat"], sensor["lon"] = lat / 1e7, lon / 1e7
+        if p.get("altitude") is not None:
+            readings.append((ts, sid, "altitude_m", float(p["altitude"])))
+    elif kind == "nodeinfo" and isinstance(p, dict):
+        sensor["name"] = p.get("longname") or p.get("shortname")
+        sensor["meta"]["hardware"] = p.get("hardware")
+    elif kind == "text":
+        sensor["meta"]["last_text"] = str(p.get("text", ""))[:200] if isinstance(p, dict) else str(p)[:200]
+    else:
+        return [], [], {"root_topic": root, "gateway": gateway}
+    # a sensor row is only worth writing if it carries something new (name, position) or has readings
+    if not readings and sensor["name"] is None and sensor["lat"] is None and kind != "text":
+        return [], [], {"root_topic": root, "gateway": gateway}
+    if sensor["name"] is None:
+        sensor["name"] = f"mesh {node}"
+    return [sensor], readings, {"root_topic": root, "gateway": gateway, "channel": channel, "kind": kind, "node": node}
+
+
+def meshtastic_downlink(root_topic: str, gateway_node_num: int, text: str, channel: int = 0) -> tuple[str, bytes]:
+    """The (topic, payload) to publish so the gateway transmits `text` on the mesh. Requires JSON output and
+    downlink enabled on the gateway's channel. LoRa frames are small: ~200 bytes of text is the practical ceiling."""
+    import json as _json
+    text = text if len(text.encode()) <= 200 else text.encode()[:197].decode("utf-8", "ignore") + "..."
+    return f"{root_topic}/2/json/mqtt/", _json.dumps({"from": gateway_node_num, "type": "sendtext", "payload": text, "channel": channel}).encode()

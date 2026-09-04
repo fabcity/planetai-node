@@ -11,6 +11,8 @@
 #   planetai config         open .env in an editor
 #   planetai act <id>       record that you acted on alert <id>  (this is how rho is measured)
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
+#   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
+#   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -59,6 +61,7 @@ envset() { # idempotent upsert
   else echo "${k}=${v}" >> .env; fi
 }
 port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
+mesh_packets() { api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null || echo 0; }
 api() { curl -sf "localhost:$(port)$1" 2>/dev/null; }
 json() { python3 -c "import sys,json; d=json.load(sys.stdin); $1"; }
 
@@ -236,6 +239,11 @@ cmd_doctor() {
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (a nightly one is scheduled)"
+  case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
+    chk "broker up :1883"        "nc -z localhost 1883"                                 "planetai logs mosquitto"
+    chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
+  case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
+    chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
   [[ $ok -eq 1 ]] && { [[ -z "$quiet" ]] && say "all good"; return 0; }
   [[ -z "$quiet" ]] && warn "fix the marked lines, then run planetai doctor again"
   return 1
@@ -363,6 +371,90 @@ cmd_mesh() {
   echo "  Unattended joins for future nodes:      TS_AUTHKEY=tskey-auth-… planetai mesh"
 }
 
+
+# ---------------------------------------------------------------- meshtastic: LoRa sensors and alerts, via the gateway's MQTT
+lan_ip() { case "$(uname -s)" in Darwin) ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null;; *) hostname -I 2>/dev/null | awk '{print $1}';; esac; }
+profiles_add() { local cur; cur="$(envget COMPOSE_PROFILES)"; case ",$cur," in *",$1,"*) ;; *) envset COMPOSE_PROFILES "${cur:+$cur,}$1";; esac; }
+cmd_meshtastic() {
+  step "Meshtastic"
+  echo "  A LoRa mesh reaches sensors and phones where there is no WiFi. One radio with WiFi is the gateway: it"
+  echo "  uplinks the mesh to a broker on this node, and can send alerts back out. This sets the node side up and"
+  echo "  tells you exactly what to type into the gateway."
+  echo
+  local user="planetai" pass; pass="$(envget MQTT_PASS)"
+  if [[ -z "$pass" ]]; then
+    pass="$(openssl rand -hex 12 2>/dev/null || head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    envset MQTT_HOST mosquitto; envset MQTT_USER "$user"; envset MQTT_PASS "$pass"
+  fi
+  profiles_add mqtt
+  say "creating the broker user"
+  docker compose run --rm --no-deps --entrypoint mosquitto_passwd mosquitto -b -c /mosquitto/config/passwd "$user" "$pass" >>"$LOG" 2>&1 \
+    || { docker compose --profile mqtt pull mosquitto >>"$LOG" 2>&1; docker run --rm -v "$PWD/config/mosquitto:/m" eclipse-mosquitto:2 mosquitto_passwd -b -c /m/passwd "$user" "$pass" >>"$LOG" 2>&1 || fail "could not write the broker password file; see $LOG"; }
+  say "starting the broker and restarting the node with MQTT on"
+  docker compose up -d >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
+  local ip; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
+  local region="EU_868"; case "$(envget NODE_CITY)" in bali) region="SG_923 (AS923, the band Indonesia allocates)";; boston) region="US";; santiago) region="LORA_24 or check local allocation";; esac
+  step "Now the gateway radio (the ESP32 one), in the Meshtastic app"
+  cat <<T
+   Radio configuration
+     LoRa      → Region:                ${region}
+   Module configuration
+     MQTT      → Enabled:               on
+                 Address:               ${ip}:1883
+                 Username:              ${user}
+                 Password:              ${pass}
+                 Encryption enabled:    off       (the broker is yours; encrypted uplink hides readings from the node)
+                 JSON output enabled:   ON        (without this the node cannot read the packets)
+                 Root topic:            msh
+   Channels  → your channel → Uplink enabled: on   Downlink enabled: on (needed for alerts back to the mesh)
+   Position  → on radios with GPS, broadcast on, so sensors report where they are
+   Telemetry → Environment metrics: on, and the update interval you want (15 min is a sane default)
+
+   The field radios (Tracker L1 with a BME680/HM3301 on the Grove port) need only: same channel, telemetry on.
+T
+  echo
+  printf '  Waiting for the first packet from the mesh (up to 3 minutes)'
+  local got=""; for i in $(seq 1 90); do
+    got="$(api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null || echo 0)"
+    [[ "${got:-0}" -gt 0 ]] && break; printf '.'; sleep 2
+  done; echo
+  if [[ "${got:-0}" -gt 0 ]]; then
+    say "packets arriving. Sensors seen so far:"; cmd_sensors | grep -i mesh || echo "   (nodeinfo/position only so far; telemetry follows at the radio's interval)"
+    echo
+    echo "  To send act-level alerts back over the mesh: set MESH_ALERTS=1 and MESH_GATEWAY_NODE_NUM=<gateway node number,"
+    echo "  decimal — in the app under the gateway's node details> in .env, then planetai restart."
+    echo "  Indoor mesh sensors: MESH_INDOOR_NODES=!abcd1234,... in .env."
+  else
+    warn "nothing yet. The usual reasons: JSON output off on the gateway; wrong address (this Mac is ${ip}); gateway not on"
+    warn "this WiFi; a firewall blocking 1883. Watch with:  planetai logs mosquitto    and    planetai logs"
+  fi
+}
+
+# ---------------------------------------------------------------- reticulum: an LXMF address for the node
+cmd_reticulum() {
+  step "Reticulum"
+  echo "  Gives this node an address on a Reticulum network: encrypted, works over TCP (LAN or tailnet) today and over"
+  echo "  a LoRa RNode when one is plugged in. People message it from Sideband; 'act <id>' closes an alert's loop;"
+  echo "  alerts go out to the addresses you list."
+  echo
+  [[ -f config/reticulum/config ]] || cp config/reticulum/config.tpl config/reticulum/config
+  envset RETICULUM_URL http://reticulum:4243
+  profiles_add reticulum
+  say "building and starting the bridge (first time: a minute)"
+  docker compose up -d --build reticulum >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
+  local addr=""; for i in $(seq 1 30); do addr="$(curl -sf localhost:4243/health 2>/dev/null | json 'print(d["address"])' 2>/dev/null || true)"; [[ -n "$addr" ]] && break; sleep 2; done
+  [[ -n "$addr" ]] || fail "the bridge did not come up:  planetai logs reticulum"
+  say "this node's LXMF address:  ${B}${addr}${N}"
+  echo
+  echo "  In Sideband (phone or desktop):"
+  echo "    Connectivity → add a TCP Client interface → host $(lan_ip) (or $(envget MESH_NAME)) port 4242"
+  echo "    Conversations → new → paste the address above. Send:  act 3   to record you acted on alert #3."
+  echo
+  echo "  To receive alerts in Sideband: copy your own LXMF address from Sideband's settings into .env as"
+  echo "    RETICULUM_ALERT_DESTINATIONS=<hash>[,<hash>]   then planetai restart."
+  echo "  For LoRa: plug in an RNode, uncomment its block in config/reticulum/config, pass the device in compose (Linux)."
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -381,6 +473,7 @@ case "${1:-help}" in
   update) cmd_update;;  backup) cmd_backup;;  config) cmd_config;;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) cmd_sensors;;  cells) cmd_cells;;
   mesh) shift; cmd_mesh "$@";;
+  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
   *) sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;

@@ -6,8 +6,8 @@ confused with each other, or with the tree of nodes described in `ARCHITECTURE.m
 | problem | layer | status |
 |---|---|---|
 | reaching a node behind someone's router, from anywhere | **Tailscale** (WireGuard overlay) | shipped: `planetai mesh` |
-| sensors and alert delivery where there is no WiFi, no power, or no internet | **Meshtastic** (LoRa mesh) | next: Mosquitto + adapter |
-| encrypted node-to-node data transport with no internet in between | **Reticulum** | parked with a trigger |
+| sensors and alert delivery where there is no WiFi, no power, or no internet | **Meshtastic** (LoRa mesh) | shipped: `planetai meshtastic` |
+| encrypted messaging that works over TCP today and LoRa when a radio is plugged in | **Reticulum** (LXMF) | shipped as a bridge: `planetai reticulum` |
 
 ## 1. Tailscale — reachability
 
@@ -43,16 +43,21 @@ and SEN5x today, HM3301 when its driver lands. The HM3301 is the same Seeed part
 kit, so its readings need no humidity correction.
 
 **How it reaches the node.** One radio is the *gateway*: a WiFi-capable board (an ESP32 such as the Wio-SX1262) whose
-MQTT module uplinks the mesh to a broker. That broker is Mosquitto running on the node. A `meshtastic` adapter subscribes
-to `msh/#`, maps `environment_metrics` and `air_quality_metrics` to readings (`kind='sensor'`, `local=true`), and takes
-position from the radios' GPS. Mosquitto is a retired piece in `SPEC.md §6` whose trigger was *the first sensor that
-publishes instead of being polled*; it has fired.
+MQTT module uplinks the mesh to a broker. That broker is Mosquitto on the node, behind the `mqtt` compose profile with a
+password. `planetai meshtastic` creates the credentials, starts the broker, and prints every setting to type into the
+gateway, then waits for the first packet. The adapter subscribes to `msh/#`, reads the JSON form of each packet
+(`telemetry` → readings, `position` → the sensor's coordinates from the radio's GPS, `nodeinfo` → its name), and files
+mesh sensors as `kind='sensor'`, `local=true`, outdoor unless listed in `MESH_INDOOR_NODES`. Unknown telemetry fields
+are logged once rather than dropped, so a firmware rename shows up in the log instead of as silence.
+
+**Outbound.** With `MESH_ALERTS=1` and the gateway's node number set, act-level alerts are published to the mesh
+downlink topic and the gateway transmits them. Only the first line goes; a LoRa frame carries about 200 bytes.
+
+**The same broker also takes DIY pods**: anything publishing `planetai/sensors/<id>/<metric>` with
+`{"value": 12.3}` lands as `pod-<id>`. An ESP32 with a PMS5003 and ten lines of firmware is a sensor.
 
 The nRF52 boards (Wio Tracker L1) have no WiFi and cannot be the gateway alone. They are the field sensors, or a
 gateway by USB serial to the node's host with a small bridge.
-
-**Outbound.** The node publishes alert text to a Meshtastic channel through MQTT downlink. A radio on a shelf relays
-it to a phone over Bluetooth via the Meshtastic app. That is an alert path that works during an internet outage.
 
 **Three things not to get wrong.**
 - **Region.** Bali is **AS923**; Barcelona EU868; Boston US915. The SX1262 is wideband, so the board works anywhere, but firmware region and antenna must match local law.
@@ -64,7 +69,7 @@ it to a phone over Bluetooth via the Meshtastic app. That is an alert path that 
 adapter is that pipe, and it removes the need for a shared central broker: each lab's gateway talks to that lab's own
 node, and nodes push cells up. The shared broker survives only as a fallback for a lab with a radio and no computer.
 
-## 3. Reticulum — parked, with a trigger
+## 3. Reticulum — the bridge is in, the radio is a config block
 
 **What it is.** A networking stack that runs over anything (LoRa via RNode, serial, TCP, I2P) with encryption,
 authentication and source anonymity built in, and store-and-forward through propagation nodes. Architecturally it
@@ -75,8 +80,17 @@ flash yourself; no sensor-telemetry conventions to inherit; a Python stack that 
 program needs product-grade. Tailscale and Meshtastic cover every current need more simply, and someone else
 maintains both.
 
-**Trigger.** A district node and a community node with no internet between them that need encrypted data transport,
-not just telemetry. When that deployment exists, Reticulum over RNode is the right tool. Recorded in `SPEC.md §6`.
+**What ships.** `planetai reticulum` starts a small bridge container (`app/reticulum_bridge.py`, behind the `reticulum`
+profile) that gives the node an LXMF address, announces it, and does two things. Inbox: a message reading `act <id> [note]`
+from Sideband or NomadNet becomes a recorded action on that alert — the loop closes over a medium that needs no
+internet. Outbox: act-level alerts are delivered to every LXMF address in `RETICULUM_ALERT_DESTINATIONS`. The
+transport is whatever `config/reticulum/config` enables: a TCP server on 4242 always (reachable over the LAN or the
+tailnet, so Sideband on a phone connects to it today); an RNode LoRa radio when its block is uncommented and the
+device is passed into the container, which is Linux-only because macOS Docker cannot see USB serial.
+
+**Still parked.** Node-to-node *data* transport over Reticulum (a district pulling means from a child with no internet
+between them). That is a Transport-enabled node plus a store-and-forward design, and the trigger stands: build it when
+that deployment exists.
 
 ## What connects to what
 

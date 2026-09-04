@@ -22,6 +22,9 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://planetai:${POSTGRES_PASSWORD}@db:5432/planetai
+      # empty unless the profile is on; the app starts its MQTT thread / reticulum fan-out only when set
+      MQTT_HOST: ${MQTT_HOST:-}
+      RETICULUM_URL: ${RETICULUM_URL:-}
     volumes:
       - ./config:/app/config:ro      # a directory, not a file: editors that save-by-replace would break a single-file mount
       - ./packs:/app/packs:ro        # community packs — see docs/PACKS.md      # a directory, not a file: editors that save-by-replace would break a single-file mount
@@ -30,5 +33,34 @@ services:
       db: { condition: service_healthy }
     logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
 
+  # ---- optional layers. Off unless listed in COMPOSE_PROFILES in .env (planetai meshtastic / planetai reticulum set it)
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    profiles: [mqtt]
+    restart: unless-stopped
+    ports: ["1883:1883"]                 # LAN-reachable on purpose: the Meshtastic gateway radio publishes here
+    volumes:
+      - ./config/mosquitto:/mosquitto/config:ro
+      - mosquitto:/mosquitto/data
+    logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
+
+  reticulum:
+    build: { context: ./app, dockerfile: Dockerfile.reticulum }
+    profiles: [reticulum]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_API_URL: http://app:8080
+      RETICULUM_CONFIGDIR: /etc/reticulum
+    ports: ["4242:4242"]                 # TCPServerInterface: Sideband/NomadNet/other nodes connect here (LAN or tailnet)
+    volumes:
+      - ./config/reticulum:/etc/reticulum:ro
+      - reticulum:/data                  # identity + LXMF storage. Deleting it gives the node a new address.
+    # For an RNode LoRa radio on Linux, add:   devices: ["/dev/ttyACM0:/dev/ttyACM0"]   and uncomment its block in config
+    logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
+
 volumes:
   db: {}
+  mosquitto: {}
+  reticulum: {}

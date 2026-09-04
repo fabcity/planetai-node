@@ -41,6 +41,13 @@ TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TG_CHATS = [c for c in os.getenv("TELEGRAM_CHAT_IDS", "").replace(" ", "").split(",") if c]
 LOCALE = os.getenv("ALERT_LOCALE", "en")
 PARENT = os.getenv("PARENT_API_URL", "").strip()
+MQTT_HOST = os.getenv("MQTT_HOST", "").strip()                 # set by `planetai meshtastic`; empty = no MQTT thread
+MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
+MESH_INDOOR = {x.strip() for x in os.getenv("MESH_INDOOR_NODES", "").split(",") if x.strip()}
+MESH_ALERTS = os.getenv("MESH_ALERTS", "0") == "1"           # send act-level alerts back over the mesh
+MESH_GATEWAY_NUM = int(os.getenv("MESH_GATEWAY_NODE_NUM", "0") or 0)
+RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
+mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 if PARENT and not PARENT.startswith(("http://", "https://")):
     log.warning("PARENT_API_URL %r has no http(s):// — ignoring", PARENT); PARENT = ""
 RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
@@ -87,6 +94,77 @@ def poll_once(hc: httpx.Client) -> None:
     state["last_error"] = " | ".join(errors) if errors else None   # clears when every source succeeds
 
 
+# ---------------------------------------------------------------- MQTT ingest (Meshtastic gateway, DIY pods)
+def _store(sensors, readings) -> None:
+    with db() as con, con.cursor() as cur:
+        for s in sensors:
+            cur.execute("""INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta)
+                           VALUES (%(sensor_id)s,%(source)s,%(name)s,%(lat)s,%(lon)s,%(indoor)s,%(local)s,%(kind)s,%(scale)s,%(cadence)s,%(meta)s)
+                           ON CONFLICT (sensor_id) DO UPDATE SET
+                             name = COALESCE(EXCLUDED.name, sensors.name),
+                             lat = COALESCE(EXCLUDED.lat, sensors.lat), lon = COALESCE(EXCLUDED.lon, sensors.lon),
+                             indoor = EXCLUDED.indoor, meta = sensors.meta || EXCLUDED.meta""",
+                        {**s, "meta": Jsonb(s.get("meta") or {})})
+        if readings:
+            cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
+            state["ingested"] += len(readings)
+
+
+def mqtt_thread() -> None:
+    """Subscribe to everything under msh/ (Meshtastic) and planetai/ (DIY pods) and store what parses."""
+    import paho.mqtt.client as mqtt
+
+    def on_connect(c, u, flags, rc, props=None):
+        c.subscribe([("msh/#", 0), ("planetai/sensors/#", 0)])
+        log.info("mqtt: connected to %s, subscribed msh/# and planetai/sensors/#", MQTT_HOST)
+
+    def on_message(c, u, msg):
+        try:
+            if msg.topic.startswith("msh/"):
+                sensors, readings, info = sources.meshtastic_message(msg.topic, msg.payload, MESH_INDOOR)
+                if info.get("root_topic"):
+                    mesh_state.update({"root_topic": info["root_topic"], "gateway": info.get("gateway"),
+                                       "packets": mesh_state["packets"] + 1, "last": datetime.now(timezone.utc).isoformat()})
+                if sensors or readings:
+                    _store(sensors, readings)
+            elif msg.topic.startswith("planetai/sensors/"):
+                # planetai/sensors/<id>/<metric>  {"value": 12.3, "ts": "...", "indoor": false}
+                _, _, sid, metric = msg.topic.split("/", 3)
+                body = json.loads(msg.payload)
+                ts = datetime.fromisoformat(str(body["ts"]).replace("Z", "+00:00")) if body.get("ts") else datetime.now(timezone.utc)
+                _store([{"sensor_id": f"pod-{sid}", "source": "mqtt", "name": f"pod {sid}", "lat": None, "lon": None,
+                         "indoor": bool(body.get("indoor", False)), "local": True, "kind": "sensor", "scale": "community",
+                         "cadence": None, "meta": {"topic": msg.topic}}],
+                       [(ts, f"pod-{sid}", metric, float(body["value"]))])
+        except Exception as e:  # noqa: BLE001
+            log.debug("mqtt message on %s ignored: %s", msg.topic, e)
+
+    while True:
+        try:
+            c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"planetai-{NODE}")
+            if MQTT_USER:
+                c.username_pw_set(MQTT_USER, MQTT_PASS)
+            c.on_connect, c.on_message = on_connect, on_message
+            c.connect(MQTT_HOST, 1883, keepalive=60)
+            c.loop_forever(retry_first_connection=True)
+        except Exception as e:  # noqa: BLE001
+            log.warning("mqtt: %s — retrying in 15s", e)
+            time.sleep(15)
+
+
+def mesh_send(text: str) -> None:
+    """Send `text` over the LoRa mesh via the gateway's MQTT downlink. Needs a root topic learned from an uplink."""
+    if not (MQTT_HOST and MESH_ALERTS and mesh_state["root_topic"]):
+        return
+    try:
+        import paho.mqtt.publish as publish
+        topic, payload = sources.meshtastic_downlink(mesh_state["root_topic"], MESH_GATEWAY_NUM, text)
+        publish.single(topic, payload, hostname=MQTT_HOST, auth={"username": MQTT_USER, "password": MQTT_PASS} if MQTT_USER else None)
+        log.info("mesh -> sent %d bytes on %s", len(payload), topic)
+    except Exception as e:  # noqa: BLE001
+        log.warning("mesh send failed: %s", type(e).__name__)
+
+
 # ---------------------------------------------------------------- rules → alerts
 def load_rules() -> list[dict]:
     try:
@@ -129,6 +207,13 @@ def run_rules() -> None:
 def notify(level: str, text: str) -> None:
     icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
+    if level == "act":
+        mesh_send(text.split("\n")[0])            # the mesh gets the first line only: LoRa frames are small
+        if RETICULUM_URL:
+            try:
+                httpx.post(f"{RETICULUM_URL}/send", json={"text": text}, timeout=10)
+            except Exception as e:  # noqa: BLE001
+                log.warning("reticulum send failed: %s", type(e).__name__)
     if not TG_TOKEN or not TG_CHATS:
         return
     for chat in TG_CHATS:
@@ -187,6 +272,9 @@ try:
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("bootstrap failed: %s", e)
 
+if MQTT_HOST:
+    threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
+
 loop(lambda: poll_once(hc), POLL, delay=2)
 loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
@@ -211,7 +299,8 @@ def health():
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
-            "schema": schema, "uptime_s": int(time.time() - STARTED), **state}
+            "schema": schema, "uptime_s": int(time.time() - STARTED), **state,
+            **({"mesh": mesh_state} if MQTT_HOST else {})}
 
 
 @app.get("/sensors")

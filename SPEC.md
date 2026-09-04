@@ -75,8 +75,9 @@ Each was built, audited, and cut on 2 September 2026. None is lost; each returns
 |---|---|---|
 | **Mesh (Tailscale)** | ~~node #2 exists on a different network~~ **fired, v0.7** | `planetai mesh`; `PARENT_API_URL` becomes a tailnet hostname. See `docs/NETWORKING.md` |
 | **Headscale** (self-hosted control plane) | a partner's governance requires no third-party coordinator, or the free tier is exceeded | swap the login server; nothing else changes |
-| **MQTT broker** | ~~the first sensor that publishes~~ **fired: the Meshtastic gateway** | `eclipse-mosquitto` profile + a `meshtastic` adapter; next |
-| **Reticulum** (encrypted off-grid node-to-node transport) | a district and a community node with no internet between them needing data transport, not just telemetry | RNode radios, LXMF; see `docs/NETWORKING.md §3` |
+| **MQTT broker** | ~~the first sensor that publishes~~ **fired, shipped v0.8** | `mqtt` profile; `planetai meshtastic`; `msh/#` and `planetai/sensors/#` |
+| **Reticulum** bridge (LXMF inbox/outbox) | ~~—~~ **shipped v0.8**: `planetai reticulum`, TCP today, RNode a config block | `reticulum` profile |
+| **Reticulum** node-to-node data transport | a district and a community node with no internet between them | Transport-enabled node + store-and-forward; see `docs/NETWORKING.md §3` |
 | **Node registry service + signed handshake** | `registry.json` PRs stop scaling — roughly 30 nodes or a second operator org | FastAPI + SQLite, Ed25519 identity, human approval |
 | **Federated learning (Flower)** | a model exists whose parameters can't be averaged by the hourly push, *and* the sovereignty claim is being examined by someone outside the team | self-hosted SuperLink at the district, SuperNodes at hubs; FedAvg first, FedProx when climates diverge |
 | **Local LLM (Ollama)** | someone asks the node a question the alert doesn't answer | a `/brief` endpoint that turns 24h stats into a paragraph in the local language |

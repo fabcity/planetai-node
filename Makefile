@@ -13,4 +13,4 @@ cells:   ; curl -s localhost:$(PORT)/cells  | python3 -m json.tool
 rho:     ; curl -s localhost:$(PORT)/rho    | python3 -m json.tool
 backup:  ; ./backup.sh
 lint:    ; bash -n install install.sh backup.sh update.sh bin/planetai && python3 tools/check_sql.py && python3 tools/check_cli_python.py && python3 -m py_compile app/*.py && python3 -c "import yaml;yaml.safe_load(open('config/rules.yml'));yaml.safe_load(open('docker-compose.yml'))" && echo ok
-test:    ; mkdir -p /tmp/stub && echo "class Client: pass" > /tmp/stub/httpx.py && PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
+test:    ; mkdir -p /tmp/stub && echo "class Client: pass" > /tmp/stub/httpx.py && PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py && PYTHONPATH=/tmp/stub:app python3 tests/test_meshtastic.py

@@ -87,6 +87,22 @@ we convert, not correct). If channels A and B disagree badly we record `channel_
 and that's a rule for later. Tested against BAD's published Klungkung row: raw 47.8 → 36.6 on their side, 47.3 → 36.0
 on ours from the A/B mean. `sensor_id` is `pa-<mac>`.
 
+### Meshtastic mesh sensors (`planetai meshtastic`)
+
+Any Meshtastic radio with a sensor on it — a Wio Tracker L1 with a BME680 or HM3301 on the Grove port — reports over
+LoRa to the gateway radio, which uplinks to the node's own broker. Readings land as `msh-<nodeid>` with the radio's GPS
+position and its long name. `environment_metrics` (temperature, humidity, pressure, gas, IAQ, lux, wind, rainfall,
+soil) and `air_quality_metrics` (PM1/2.5/10 standard and environmental, CO₂, VOC and NOx indices) are mapped; battery
+level and LoRa channel utilisation come along for the dead-sensor rule and battery planning. Field names follow
+Meshtastic 2.x; an unknown one is logged once. HM3301 needs no humidity correction (Seeed, not Plantower); a Plantower
+PMSA003I on a mesh radio would, and that case is not handled yet.
+
+### DIY pods over MQTT
+
+With the broker up, anything that can publish `planetai/sensors/<id>/<metric>` with `{"value": 12.3, "indoor": false}`
+is a sensor. An ESP32 with a PMS5003 and a BME280 on your WiFi is the cheapest outdoor unit there is; correct its
+PM with `epa_2021_correct` in firmware or in a small pack.
+
 ## 3. Sources to add next, in order of usefulness
 
 ### DIY: PMS5003 + BME280 on an ESP32 → MQTT

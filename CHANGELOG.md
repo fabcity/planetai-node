@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.8 — 2026-09-04
+
+**Meshtastic and Reticulum ready.** Both behind compose profiles, off by default; node #1 stays two containers until
+you turn one on.
+
+- **`planetai meshtastic`**: creates broker credentials, starts Mosquitto (`mqtt` profile, password required, LAN-reachable on 1883), restarts the node with its MQTT thread on, prints the exact gateway settings (region for your city, address, credentials, JSON output on, uplink/downlink on), waits for the first packet, lists the sensors it saw.
+- **Meshtastic adapter** (`sources.meshtastic_message`): pure function, tested offline against 2.x payload shapes. `telemetry` → readings (environment + air quality + battery/LoRa health), `position` → sensor coordinates from GPS, `nodeinfo` → name. Protobuf topics ignored; unknown fields logged once. Pressure converted hPa → kPa to match the rest of the node.
+- **Alerts over the mesh**: `MESH_ALERTS=1` + the gateway's node number; act-level alerts go out on the downlink topic, first line only, capped at ~200 bytes.
+- **DIY pods**: the same broker takes `planetai/sensors/<id>/<metric>` from anything on the WiFi.
+- **`planetai reticulum`**: a bridge container with an LXMF address. Inbox: `act <id> [note]` from Sideband records the action (closing the loop with no internet). Outbox: act-level alerts to `RETICULUM_ALERT_DESTINATIONS`. TCP server on 4242 now; RNode LoRa is a commented block in `config/reticulum/config` plus a device mapping (Linux).
+- `/health` gains `mesh` (root topic, gateway, packet count) when MQTT is on; doctor checks the broker, packets and bridge when their profiles are on.
+- Found by the new tests: the root topic parse included the protocol version segment, which would have doubled `/2/` in every downlink. Fixed before it shipped.
+- `docs/NETWORKING.md` and `docs/sensors.md` updated; SPEC §6 marks the MQTT trigger fired and splits Reticulum into shipped (bridge) and parked (node-to-node transport).
+
 ## v0.7 — 2026-09-03
 
 - **`planetai mesh`**: joins the node to a Tailscale tailnet with its own name and Tailscale SSH on, so `ssh bayu-2` and `planetai update` work from anywhere with no ports opened and no keys managed. Uses the Homebrew daemon on macOS so a headless mini stays reachable with nobody logged in. `TS_AUTHKEY` for unattended joins. `MESH_NAME` recorded in `.env`.
