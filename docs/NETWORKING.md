@@ -64,6 +64,8 @@ gateway by USB serial to the node's host with a small bridge.
 - **Broker.** The firmware's default MQTT server is `mqtt.meshtastic.org`, a public broker. Point the gateway at the node's own Mosquitto or every reading leaves the building.
 - **What LoRa is not.** It is not node-to-node transport. A district cannot pull a household's hourly means over LoRa; the bandwidth is two orders of magnitude short. The FAB26 plan says this correctly: "LoRa is local; the pipe that makes it a global dataset is MQTT."
 
+Setting up each radio, by board and by job: [`MESHTASTIC.md`](MESHTASTIC.md).
+
 **Relation to FAB26.** The six-month program hands 35 radios to lab reps. The plan's critical-path item was that the
 "MQTT broker → ingest → FCI Observations pipe does not exist yet." planetai-node with Mosquitto and the `meshtastic`
 adapter is that pipe, and it removes the need for a shared central broker: each lab's gateway talks to that lab's own
