@@ -462,6 +462,34 @@ def series(metric: str = "pm25", hours: int = Query(24, le=168)):
             "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
 
 
+@app.get("/export")
+def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
+    """One day of this node as open data: hourly means per sensor and metric, the Index cells, the alerts, rho.
+    What a parent node, the Index, a researcher or IPFS should receive. Never raw readings, never secrets.
+    Your own sensors are named by role (indoor-1, outdoor-1), not by their device id."""
+    hourly = q("""SELECT r.bucket, r.sensor_id, s.local, s.indoor, s.kind, s.scale, r.metric, r.mean, r.min, r.max, r.n
+                  FROM readings_1h r JOIN sensors s USING (sensor_id)
+                  WHERE r.bucket >= %s::date AND r.bucket < %s::date + 1 ORDER BY r.bucket, r.sensor_id, r.metric""", day, day)
+    alias, counts = {}, {"indoor": 0, "outdoor": 0}
+    def name(row):
+        if not row["local"]:
+            return row["sensor_id"]                      # public references and models are public already
+        if row["sensor_id"] not in alias:
+            k = "indoor" if row["indoor"] else "outdoor"; counts[k] += 1; alias[row["sensor_id"]] = f"{k}-{counts[k]}"
+        return alias[row["sensor_id"]]
+    rows = [{"t": r["bucket"].isoformat(), "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
+             "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]} for r in hourly]
+    alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
+    with db() as con, con.cursor() as cur:
+        cells_ = index.cells(cur); rho_ = index.rho(cur)
+    return {"node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
+            "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3),
+            "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
+            "licence": "CC BY 4.0", "hourly": rows,
+            "alerts": [{"t": a["ts"].isoformat(), "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
+            "cells": cells_, "rho": rho_}
+
+
 @app.get("/sparks")
 def sparks(metric: str = "pm25", hours: int = Query(24, le=168)):
     """Per-sensor hourly means, aligned to the same buckets, for small traces inside the dashboard's sensor tiles."""

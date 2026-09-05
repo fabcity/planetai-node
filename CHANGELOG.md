@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.17 — 2026-09-05 — storage
+
+**Where the data lives, where copies go, and what the node gives away.** `docs/STORAGE.md`, `planetai storage`.
+
+- **The live database stays on a local disk**, and the doc says why: Postgres over SMB/NFS corrupts on a power cut. `DATA_DIR` moves it to another internal disk or partition; a NAS is what backups are for.
+- **`backup.sh` rewritten**: refuses if `BACKUP_DIR` is on an unmounted `/Volumes`, `/mnt` or `/media` path instead of creating a local folder with the drive's name (the same trap that bit Mosquitto); verifies the dump is a valid gzip containing a readings table before keeping it; `BACKUP_KEEP` days; `LAST_OK`. **Fixed a silent killer found while testing**: `env_get` on a key missing from `.env` made `grep` fail and `set -e` end the script with no output — the first new key would have stopped every nightly backup. The same helper pattern hardened in `update.sh` and the CLI.
+- **`BACKUP_REMOTE`**: an rclone destination — S3, B2, R2, Drive, SFTP, WebDAV, Nextcloud — copied after each backup. One binary, no code of ours.
+- **`/export?day=`**: one day as open data — hourly means/min/max per sensor and metric, cells, alerts, ρ. Your sensors named by role, not device id; node coordinates to three decimals; no raw, no secrets; CC BY 4.0 stated in the file. Written nightly to `exports/<node>/`. This is data in, data out, made literal.
+- **IPFS** as the commons layer: an `ipfs` compose profile (Kubo), `planetai ipfs`, each export added and its CID recorded in `CIDS.txt`. Only exports go — everything on IPFS is public and nothing persists unpinned, which is exactly the right shape for aggregates and exactly the wrong one for backups.
+- `planetai storage` (one screen: database size, backup destination and mount state, last run, remote, exports, IPFS; `set backups|remote|keep`), `planetai backup`, `planetai restore <dump>` (safety backup first, typed confirmation).
+- `planetai doctor` checks the backup destination is mounted and a backup ran in the last two days.
+
 ## v0.16.1 — 2026-09-05 — after the first look
 
 Seven things from seeing it rendered, in the order they mattered.

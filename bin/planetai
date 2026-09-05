@@ -16,6 +16,10 @@
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; install code-pack Python dependencies into the image
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
+#   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
+#   planetai backup         dump + export + copy now, instead of waiting for 03:10
+#   planetai restore <f>    replace the live database with a dump (takes a safety backup first)
+#   planetai ipfs           publish each day's export to IPFS
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
 #   planetai stop | start | restart
 set -euo pipefail
@@ -56,7 +60,7 @@ choose() { # choose VAR "prompt" opt1 opt2 ...
   a="${a:-1}"; [[ "$a" =~ ^[0-9]+$ ]] && [[ "$a" -ge 1 && "$a" -le $# ]] || a=1
   eval "printf -v $v '%s' \"\${$a}\""
 }
-envget() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '"'"'"' '; }
+envget() { { grep -E "^$1=" .env 2>/dev/null || true; } | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '"'"'"' '; }
 envset() { # idempotent upsert
   local k="$1" v="$2"
   [[ -f .env ]] || cp .env.example .env
@@ -259,6 +263,8 @@ cmd_doctor() {
   chk "node answers on :$p"      "curl -sf localhost:$p/health"                         "planetai logs   (if the port is taken: set APP_PORT in .env, then planetai restart)"
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
   chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]#]' .env"  "a space after = makes the shell run the value: grep -nE '^[A-Z_]+= +[^ #]' .env"
+  chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
+  chk "a backup in the last 2 days" "find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null | grep -q ."   "planetai backup — and check cron: crontab -l | grep backup"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (a nightly one is scheduled)"
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
@@ -629,6 +635,89 @@ cmd_ui() {
   echo "  Anyone with the token can change what the node reads and where it sends alerts. Treat it like a password."
 }
 
+
+# ---------------------------------------------------------------- storage: where the data is, and where copies go
+mounted() { case "$1" in /Volumes/*|/mnt/*|/media/*) mount | grep -q " on $(echo "$1" | cut -d/ -f1-3) ";; *) return 0;; esac; }
+cmd_storage() {
+  local sub="${1:-}"
+  if [[ "$sub" == "set" ]]; then
+    local what="${2:-}" val="${3:-}"
+    case "$what" in
+      backups)  [[ -n "$val" ]] || fail "usage: planetai storage set backups <dir>"
+                mounted "$val" || fail "$val is on a drive that is not mounted right now. Mount it first, so I can check it is real."
+                mkdir -p "$val" 2>/dev/null && [[ -w "$val" ]] || fail "$val is not writable"
+                envset BACKUP_DIR "$val"; say "backups will go to $val from tonight. Run  planetai backup  to try it now.";;
+      remote)   envset BACKUP_REMOTE "$val"; command -v rclone >/dev/null || warn "rclone is not installed: brew install rclone (macOS) or apt install rclone. Then: rclone config"
+                say "off-machine copies to '$val' after each backup${val:+ (rclone remote:path)}";;
+      keep)     envset BACKUP_KEEP "$val"; say "keeping $val days of dumps";;
+      data)     fail "the live database stays on a local disk. Set DATA_DIR in .env to a path on another INTERNAL disk or partition,
+   then: planetai backup && planetai stop && edit .env && planetai start && planetai restore <latest dump>.
+   Never a NAS or a USB drive over the network: Postgres needs fsync and locking those filesystems do not honour.";;
+      *)        fail "usage: planetai storage set backups|remote|keep <value>";;
+    esac; return
+  fi
+  step "Storage"
+  local dbsize; dbsize="$(docker compose exec -T db psql -U planetai -tAc "select pg_size_pretty(pg_database_size('planetai'))" 2>/dev/null || echo '?')"
+  local rows; rows="$(docker compose exec -T db psql -U planetai -tAc "select count(*) from readings" 2>/dev/null || echo '?')"
+  local where; where="$(envget DATA_DIR)"; where="${where:-Docker volume planetai_pgdata (this machine)}"
+  local bdir; bdir="$(envget BACKUP_DIR)"; bdir="${bdir:-./backups}"
+  echo "  Live database      $where"
+  echo "                     $dbsize, $rows readings. Local disk by design; a NAS would corrupt it."
+  echo
+  printf '  Backups            %s' "$bdir"
+  if ! mounted "$bdir"; then printf '   %s✗ NOT MOUNTED — tonight'"'"'s backup will refuse to run%s\n' "$R" "$N";
+  elif [[ -d "$bdir" ]]; then local last n; last="$(ls -t "$bdir"/*.sql.gz 2>/dev/null | head -1)"; n="$(ls "$bdir"/*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
+    printf '   %s dumps, keep %s days\n' "$n" "$(envget BACKUP_KEEP || true)"; [[ -n "$last" ]] && echo "                     last: $(basename "$last") ($(du -h "$last" | cut -f1))" || printf '                     %sno backup yet%s\n' "$Y" "$N"
+    [[ -f "$bdir/LAST_OK" ]] && echo "                     last run OK at $(cat "$bdir/LAST_OK")"
+  else printf '   %s(does not exist yet)%s\n' "$Y" "$N"; fi
+  echo "                     nightly at 03:10 by cron; on demand:  planetai backup"
+  echo
+  local rem; rem="$(envget BACKUP_REMOTE)"
+  if [[ -n "$rem" ]]; then echo "  Off-machine copy   $rem  (rclone, after each backup)$(command -v rclone >/dev/null || printf '  %s✗ rclone not installed%s' "$R" "$N")"
+  else echo "  Off-machine copy   none.  planetai storage set remote b2:bucket/node   (any rclone backend: S3, B2, R2, Drive, SFTP, WebDAV…)"; fi
+  echo
+  local ex="exports/$(envget NODE_NAME)"; local nex; nex="$(ls "$ex"/*.json 2>/dev/null | wc -l | tr -d ' ')"
+  echo "  Open-data exports  $ex   $nex day(s). Hourly means, cells, alerts, rho. Never raw. CC BY 4.0."
+  if [[ "$(envget IPFS_PUBLISH)" == "1" ]]; then echo "  IPFS               publishing. $(wc -l < "$ex/CIDS.txt" 2>/dev/null || echo 0) CID(s) in $ex/CIDS.txt"
+  else echo "  IPFS               off.  planetai ipfs   to publish each day's export to the commons"; fi
+  echo
+  echo "  Change:  planetai storage set backups /Volumes/NAS/planetai    set remote r2:planetai/$(envget NODE_NAME)    set keep 60"
+}
+
+cmd_backup() { step "Backup"; ./backup.sh || fail "see above"; }
+
+cmd_restore() {
+  local f="${1:-}"; [[ -n "$f" ]] || { echo "usage: planetai restore <dump.sql.gz>"; echo; ls -t "$(envget BACKUP_DIR || echo ./backups)"/*.sql.gz 2>/dev/null | head -5 | sed 's/^/  /'; return 1; }
+  [[ -f "$f" ]] || fail "$f does not exist"
+  step "Restore"
+  echo "  This replaces the live database with $(basename "$f"). Everything since that dump is lost."
+  read -r -p "  Type the node name to confirm: " ans </dev/tty; [[ "$ans" == "$(envget NODE_NAME)" ]] || fail "cancelled"
+  ./backup.sh >/dev/null 2>&1 && say "safety backup taken first" || warn "safety backup failed; continuing because you asked"
+  docker compose stop app >>"$LOG" 2>&1
+  docker compose exec -T db psql -U planetai -d postgres -c "DROP DATABASE planetai" -c "CREATE DATABASE planetai" >>"$LOG" 2>&1 || fail "could not recreate the database; see $LOG"
+  gunzip -c "$f" | docker compose exec -T db psql -U planetai -d planetai >>"$LOG" 2>&1 || fail "restore failed; see $LOG"
+  docker compose exec -T db psql -U planetai -d planetai -v ON_ERROR_STOP=0 -f - < init.sql >>"$LOG" 2>&1 || true
+  docker compose start app >>"$LOG" 2>&1
+  say "restored. $(docker compose exec -T db psql -U planetai -tAc 'select count(*) from readings') readings."
+}
+
+cmd_ipfs() {
+  step "IPFS"
+  echo "  Publishes each day's export — hourly means, cells, alerts, rho; never raw readings — to IPFS, where anyone can"
+  echo "  fetch it by its content hash. This is the commons layer. The database and its backups never go here."
+  echo
+  profiles_add ipfs; envset IPFS_PUBLISH 1; envset EXPORT_ENABLED 1
+  docker compose up -d ipfs >>"$LOG" 2>&1 || fail "could not start the ipfs container; see $LOG"
+  sleep 4
+  local pid; pid="$(docker compose exec -T ipfs ipfs id -f '<id>' 2>/dev/null || true)"
+  [[ -n "$pid" ]] && say "node id $pid" || warn "ipfs is starting; check again in a minute with: docker compose logs ipfs"
+  echo
+  echo "  Tonight's backup adds yesterday's export and records the CID in exports/$(envget NODE_NAME)/CIDS.txt."
+  echo "  Persistence: a CID lives while some node pins it. This node pins its own; for durability beyond this machine,"
+  echo "  set a pinning service (Pinata, web3.storage, Filebase) in rclone as a remote, or ask a partner node to pin yours."
+  echo "  Publish now instead of waiting:  planetai backup"
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -651,6 +740,10 @@ case "${1:-help}" in
   homeassistant|ha) cmd_homeassistant;;
   packs) cmd_packs;;
   ui|dashboard) cmd_ui;;
+  storage) shift; cmd_storage "$@";;
+  backup) cmd_backup;;
+  restore) shift; cmd_restore "$@";;
+  ipfs) cmd_ipfs;;
   run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything

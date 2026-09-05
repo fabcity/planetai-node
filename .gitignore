@@ -18,3 +18,7 @@ config/ee-key.json
 # pack artifacts (images, charts, briefs)
 out/*
 !out/.gitkeep
+
+# daily exports (published, not tracked here)
+exports/*
+!exports/.gitkeep

@@ -145,7 +145,7 @@ update.sh           in-place update: backup → pull → migrate → rebuild →
 backup.sh           nightly pg_dump, 14-day retention, point BACKUP_DIR at a NAS
 tests/              offline adapter tests against saved payloads
 packs/              community extensions — drop a folder here (docs/PACKS.md)
-docs/               getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATING
+docs/               getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATING · STORAGE
                     what it can tell you    USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL
                     extending it            PACKS · PACK_IDEAS · DEVELOPING · GUI
                     radios and reachability NETWORKING · MESHTASTIC · MESHTASTIC_APP · MESHTASTIC_FLEET
