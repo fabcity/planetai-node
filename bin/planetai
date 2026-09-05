@@ -609,7 +609,7 @@ cmd_run() {
 # ---------------------------------------------------------------- the GUI
 cmd_ui() {
   step "Dashboard"
-  if ! grep -qE "^ADMIN_TOKEN=.+" .env; then
+  if [[ -z "$(envget ADMIN_TOKEN)" ]]; then
     local tok; tok="$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
     [[ -n "$tok" ]] || fail "could not generate a token"
     envset ADMIN_TOKEN "$tok"; docker compose up -d --force-recreate app >>"$LOG" 2>&1; say "created an admin token"

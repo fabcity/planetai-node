@@ -38,8 +38,9 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 DB = os.environ["DATABASE_URL"]
 NODE = os.getenv("NODE_NAME", "node")
 POLL = int(os.getenv("POLL_SECONDS", "300"))
-TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-TG_CHATS = [c for c in os.getenv("TELEGRAM_CHAT_IDS", "").replace(" ", "").split(",") if c]
+def TG():
+    """Token and chat ids, read at send time so the GUI can change them without a restart."""
+    return settings.get("TELEGRAM_BOT_TOKEN", "").strip(), [c for c in settings.get("TELEGRAM_CHAT_IDS", "").replace(" ", "").split(",") if c]
 def LOCALE():
     return settings.get("ALERT_LOCALE", "en")
 def PARENT():
@@ -61,8 +62,6 @@ def HA_DISCOVERY():
 _ha_announced: set = set()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
-if PARENT and not PARENT.startswith(("http://", "https://")):
-    log.warning("PARENT_API_URL %r has no http(s):// — ignoring", PARENT); PARENT = ""
 RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}

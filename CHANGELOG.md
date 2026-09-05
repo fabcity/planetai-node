@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.14.2 — 2026-09-05
+
+- **Fixed: the app did not start after v0.14.** Turning `PARENT` into a settings-backed function left a module-level `PARENT.startswith(...)` check, which raised `AttributeError` at import and stopped uvicorn before it listened. Passed syntax checks and pyflakes because the name was defined. `TG()` was likewise called but never defined (the definition edit did not match), which would have broken every notification.
+- **Fixed: the admin token was never generated.** `.env.example`'s line carried an inline comment, the merge copied it verbatim, and the "is there a value" check saw the comment as a value. The check now reads the value with comments stripped, and the comment moved above the line — the rule set yesterday after the same class of bug.
+- **New gate:** import the app with its real dependencies, as uvicorn does, and count routes. In CI always; in `make lint` when the deps are installed.
+
 ## v0.14.1 — 2026-09-05
 
 - **Fixed a latent hazard in every update since v0.4:** `update.sh` pulls new code while bash is still reading the file it is executing. Bash reads scripts incrementally, so after the pull it continues from a byte offset in a *different* file — steps skipped, garbage executed, whichever line happens to sit at that offset. Reproduced in a controlled test: the old script ran the new file's final step instead of its own. `update.sh` now copies itself to a temp file on entry and runs from the copy, which the pull cannot touch. This is the likely cause of the v0.14 update leaving the schema at 0.4 and the admin token empty.

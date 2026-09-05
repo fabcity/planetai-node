@@ -32,7 +32,9 @@ fi
 set -a; . ./.env; set +a
 # nodes installed before v0.14 have no admin token; the GUI needs one to change settings
 rand_hex() { openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
-if ! grep -qE "^ADMIN_TOKEN=.+" .env; then
+# judge the VALUE, not the line: a line like `ADMIN_TOKEN=   # comment` has text after = and no value
+envval() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '" '; }
+if [[ -z "$(envval ADMIN_TOKEN)" ]]; then
   tok="$(rand_hex)"; [[ -n "$tok" ]] || die "could not generate a random token (no openssl, no /dev/urandom?)"
   if grep -q "^ADMIN_TOKEN=" .env; then sed -i.bak "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${tok}|" .env && rm -f .env.bak; else echo "ADMIN_TOKEN=${tok}" >> .env; fi
   echo "   + ADMIN_TOKEN (for the GUI; planetai ui shows it)"
