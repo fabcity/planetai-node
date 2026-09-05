@@ -405,6 +405,10 @@ def meshtastic_message(topic: str, payload: bytes, indoor_ids: set | None = None
               "meta": {"mesh_node": node, "gateway": gateway, "channel": channel, "root_topic": root}}
     readings = []
     if kind == "telemetry" and isinstance(p, dict):
+        # battery_level 101 is Meshtastic's sentinel for "on external power, no battery"; the voltage that comes
+        # with it is noise. A mains-powered gateway reports this every time. Drop both rather than store them.
+        if isinstance(p.get("battery_level"), (int, float)) and p["battery_level"] > 100:
+            p = {k: v for k, v in p.items() if k not in ("battery_level", "voltage")}
         for k, v in p.items():
             if not isinstance(v, (int, float)):
                 continue

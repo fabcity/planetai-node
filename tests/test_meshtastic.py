@@ -20,6 +20,10 @@ s, r, _ = sources.meshtastic_message(T, pkt("telemetry", {"pm10_standard": 4, "p
 m = {k: v for _, _, k, v in r}
 assert m["pm1"] == 4 and m["pm25"] == 9 and m["pm10"] == 11 and m["battery_pct"] == 87
 
+# a USB-powered radio reports battery_level 101: a sentinel, not a percentage. Neither it nor its voltage is stored.
+s, r, _ = sources.meshtastic_message(T, pkt("telemetry", {"battery_level": 101, "voltage": -0.001, "air_util_tx": 0.05}))
+assert {k for _, _, k, _ in r} == {"lora_util_pct"}, "sentinel battery values must be dropped"
+
 # position: GPS on the Tracker L1 places the sensor
 s, r, _ = sources.meshtastic_message(T, pkt("position", {"latitude_i": -88004527, "longitude_i": 1151766378, "altitude": 42}))
 assert abs(s[0]["lat"] - (-8.8004527)) < 1e-6 and abs(s[0]["lon"] - 115.1766378) < 1e-6
