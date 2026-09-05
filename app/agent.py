@@ -86,15 +86,52 @@ def health_check() -> dict:
 
 @mcp.tool()
 def sensors() -> list:
-    """Every sensor the node knows: yours (local) and public references, indoor or outdoor, with the latest PM2.5, temperature and
-    humidity and how long since each spoke."""
+    """Every sensor the node knows: yours (local) and public references, indoor or outdoor, with the latest 15-minute mean of
+    every metric it reports (pm25, temp, humidity, pressure, noise, light, eco2...) and how long since each spoke.
+    For the sea, weather, satellites and land, use `context` instead."""
     stats = _get("/stats"); by = {}
     for r in stats:
         by.setdefault(r["sensor_id"], {"sensor_id": r["sensor_id"], "name": r["name"], "local": r["local"], "indoor": r["indoor"], "kind": r["kind"]})
-        if r["metric"] in ("pm25", "temp", "humidity"):
-            by[r["sensor_id"]][r["metric"]] = r["mean_15m"]
-            by[r["sensor_id"]]["silent_minutes"] = round(r["silent_minutes"])
+        by[r["sensor_id"]][r["metric"]] = r["mean_15m"]
+        by[r["sensor_id"]]["silent_minutes"] = round(r["silent_minutes"])
     return sorted(by.values(), key=lambda s: (not s["local"], s["sensor_id"]))
+
+
+LABELS = {
+    "marine-point": ("sea", {"wave_height_m": "wave height, m", "swell_height_m": "swell height, m", "wave_period_s": "wave period, s",
+                             "swell_period_s": "swell period, s", "wave_direction": "waves coming from, degrees (0 north, 90 east, 180 south, 270 west)",
+                             "sea_surface_temp": "sea surface temperature, °C"}),
+    "om-point": ("weather", {"temp_model": "air temperature, °C", "humidity_model": "humidity, %", "pressure_model": "pressure, hPa",
+                             "wind_speed": "wind speed, km/h", "wind_direction": "wind coming from, degrees", "precipitation": "rain this hour, mm"}),
+    "cams-point": ("satellite_air", {"pm25_model": "PM2.5 the model estimates for the district, µg/m³", "pm10_model": "PM10, µg/m³", "o3": "ozone, µg/m³",
+                                     "no2": "nitrogen dioxide, µg/m³", "co": "carbon monoxide, µg/m³", "dust": "dust, µg/m³", "uv_index": "UV index", "aod": "aerosol optical depth"}),
+    "ee-point": ("land", {"built_frac": "share of the surrounding km that is built-up (0-1)", "tree_frac": "share that is trees (0-1)", "crop_frac": "share that is crops (0-1)",
+                          "water_frac": "share that is water (0-1)", "ndvi_median": "greenness index (NDVI, -1..1)", "night_lights": "night-time light radiance", "land_change_score": "how much the land changed since the year before (0 = none)"}),
+}
+
+
+@mcp.tool()
+def context() -> dict:
+    """What the node knows about the place from models and satellites, right now: the sea (waves, swell, period, direction,
+    temperature), the weather (temperature, humidity, wind, rain), the satellite air-quality model for the district, and the
+    land within a kilometre (built, trees, greenness, change). Use this for any question about the sea, swell, surf, wind,
+    rain, UV, or the land. Values carry a plain label and a timestamp."""
+    out: dict = {}
+    for o in _get("/observations"):
+        group, labels = LABELS.get(o["sensor_id"], (o["sensor_id"], {}))
+        out.setdefault(group, {})[o["metric"]] = {"value": o["value"], "means": labels.get(o["metric"], o["metric"]), "at": o["ts"]}
+    return out or {"note": "no model or satellite data yet; the first poll fills this"}
+
+
+@mcp.tool()
+def readings(sensor_id: str, metric: str, hours: int = 24) -> dict:
+    """Hourly means of one metric from one sensor over the last N hours, for a specific question ('what did the kitchen do
+    overnight'). Sensor ids come from `sensors`; metrics include pm25, pm10, pm1, temp, humidity, pressure, noise, light, eco2, tvoc."""
+    rows = _get(f"/sparks?metric={metric}&hours={min(hours, 168)}")
+    vals = rows.get(sensor_id)
+    if vals is None:
+        return {"error": f"no {metric} from {sensor_id} in that window", "sensors_with_it": sorted(rows)}
+    return {"sensor_id": sensor_id, "metric": metric, "hours": hours, "hourly_means_oldest_first": vals}
 
 
 @mcp.tool()

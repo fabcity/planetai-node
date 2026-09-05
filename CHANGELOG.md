@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.23.2 — 2026-09-05
+
+- **The bot can now see the sea, the weather, the satellites and the land.** Asked for the swell, it said it had no such
+  sensor: true, because no tool reached `/observations`. New tool `context` returns those, grouped and labelled in plain
+  words (what the number means, its unit, when it was read); `readings` returns one sensor's hourly history; `sensors` now
+  carries every metric a kit reports, not three. Fifteen tools. Tested on node #1's live data: "🌊 The swell is about 1.7 m
+  right now, with a period around 11 s and coming from the southwest…"
+
 ## v0.23.1 — 2026-09-05 — a leak, closed
 
 - **The agent loop logged a Telegram exception's text, which contains the bot token in its URL.** The token of node #1

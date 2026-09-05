@@ -14,9 +14,9 @@ acting, and do not undo what the person's local model did without asking.
 ## Two ways in
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
-`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Thirteen tools:
-`status`, `health_check`, `sensors`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,
-`export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
+`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Fifteen tools:
+`status`, `health_check`, `sensors`, `context` (sea, weather, satellite air, land), `readings`, `alerts`, `act`,
+`settings_get`, `settings_set`, `packs`, `cells`, `series`, `export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
 
 **A shell on the node**, for what needs Docker or git:
 

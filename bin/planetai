@@ -776,7 +776,7 @@ cmd_agent() {
   step "Agents"
   local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
   echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
-  echo "  with an MCP client) gets thirteen tools: status, health_check, sensors, alerts, act, settings_get, settings_set,"
+  echo "  with an MCP client) gets fifteen tools: status, health_check, sensors, alerts, act, settings_get, settings_set,"
   echo "  packs, cells, series, export_day, run_pack_script, maintenance. Writes record the agent's name (X-Agent)."
   echo
   echo "  Local (this machine):    http://localhost:${p}/mcp"
