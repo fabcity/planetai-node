@@ -515,15 +515,29 @@ cmd_homeassistant() {
 
 
 # ---------------------------------------------------------------- packs: what is loaded, and code-pack dependencies
-pack_pips() { python3 -c '
-import glob, yaml
-pk=set()
-for f in glob.glob("packs/*/pack.yaml"):
-    for p in (yaml.safe_load(open(f)) or {}).get("pip") or []: pk.add(str(p))
-print("\n".join(sorted(pk)))'; }
+# `pip:` lines from pack.yaml, with grep and sed. The node's Python is Apple's, with no PyYAML, and nothing else
+# in this CLI needs a third-party library — a tool that reports what is installed must not itself need installing.
+# Handles `pip: [a, b]` and a block list of `- a` lines.
+pack_pips() {
+  awk '
+    /^pip:[[:space:]]*\[/ { s=$0; sub(/^pip:[[:space:]]*\[/,"",s); sub(/\].*$/,"",s); n=split(s,a,","); for(i=1;i<=n;i++){ gsub(/[[:space:]"'"'"']/,"",a[i]); if(a[i]!="") print a[i] } ; next }
+    /^pip:[[:space:]]*$/ { inpip=1; next }
+    inpip && /^[[:space:]]*-[[:space:]]*/ { s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); gsub(/[[:space:]"'"'"']/,"",s); if(s!="") print s; next }
+    inpip { inpip=0 }
+  ' packs/*/pack.yaml 2>/dev/null | sort -u
+}
+
 cmd_packs() {
   step "Packs"
-  echo "  loaded now:"; api /packs | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], p.get("description","")[:70].replace(chr(10)," ")))' 2>/dev/null || echo "    (node not answering)"
+  local loaded; loaded="$(api /packs || true)"
+  if [[ -z "$loaded" ]]; then
+    warn "the node is not answering on port $(port) — the list below is what is on disk, not what is running."
+    warn "check with: planetai doctor"
+    ls -d packs/*/ 2>/dev/null | sed 's|packs/||;s|/||' | sed 's/^/    /'
+  else
+    echo "  loaded now:"
+    printf '%s' "$loaded" | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10)," ")[:70]))'
+  fi
   echo
   # pip: lists from every pack folder present. A rebuild installs for all of them, enabled or not; cheap and simple.
   local reqs; reqs="$(pack_pips)"

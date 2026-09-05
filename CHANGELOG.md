@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.1 — 2026-09-05
+
+- **Fixed:** `planetai packs` read `pack.yaml` with PyYAML, which a node's Apple Python does not have, so the command crashed on node #1. It now parses the one line it needs with awk. Nothing else in the CLI needed a third-party library and nothing should: `tools/check_cli_python.py` now fails the build if a CLI snippet imports one.
+- **Fixed:** when the API did not answer, the command printed "(node not answering)" and carried on. It now says so as a warning, points at `planetai doctor`, and lists what is on disk while making clear that is not what is running.
+
 ## v0.11 — 2026-09-05
 
 **Ten pack ideas, three built.** `docs/PACK_IDEAS.md` lists ten packs someone could write this month, each with its

@@ -16,5 +16,16 @@ for m in pat.finditer(src):
         bad += 1
         line = src[:m.start()].count("\n") + 1
         print(f"  x bin/planetai:{line}: {e.msg} -> {e.text.strip()[:80] if e.text else code[:80]}")
+# the CLI runs on the node, whose Python is Apple's stdlib-only 3.9. A command that imports a third-party
+# library works on the developer's machine and fails on every node (planetai packs did, with PyYAML).
+THIRD_PARTY = ("yaml", "httpx", "requests", "psycopg", "numpy", "pandas", "sqlglot")
+for m in pat.finditer(src):
+    code = m.group(1).replace("'\"'\"'", "'")
+    for lib in THIRD_PARTY:
+        if f"import {lib}" in code:
+            line = src[:m.start()].count("\n") + 1
+            print(f"  x bin/planetai:{line}: imports {lib}, which a node's Python does not have")
+            bad += 1
+
 print(f"  {n} snippets checked, {bad} would fail on Python 3.9")
 sys.exit(1 if bad else 0)
