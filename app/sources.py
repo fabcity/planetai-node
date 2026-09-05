@@ -19,6 +19,8 @@ from datetime import datetime, timedelta, timezone
 
 import httpx
 
+import settings
+
 # ---------------------------------------------------------------- helpers
 
 def _km(lat1, lon1, lat2, lon2) -> float:
@@ -228,38 +230,38 @@ def enabled(hc: httpx.Client):
     """Yield (name, fetch) for every configured source. Failures are per-source, never fatal.
     Core adapters first, then any from community packs (docs/PACKS.md)."""
     out = []
-    explicit = {int(x) for x in os.getenv("SC_DEVICES", "").replace(" ", "").split(",") if x}
+    explicit = {int(x) for x in settings.get("SC_DEVICES", "").replace(" ", "").split(",") if x}
     ids = set(explicit)
     node = (float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])) if os.getenv("NODE_LAT") else None
-    if os.getenv("SC_USER", "").strip():
+    if settings.get("SC_USER", "").strip():
         try:
-            ids |= set(smartcitizen_account(hc, os.environ["SC_USER"].strip()))
+            ids |= set(smartcitizen_account(hc, settings.get("SC_USER").strip()))
         except Exception as e:  # noqa: BLE001
             import logging; logging.getLogger("planetai").warning("smartcitizen account discovery failed: %s", e)
     ids = sorted(ids)
-    local_km = float(os.getenv("SC_LOCAL_KM", "0.5"))
+    local_km = float(settings.get("SC_LOCAL_KM", "0.5"))
     if ids:
         out.append(("smartcitizen", lambda: smartcitizen(hc, ids, explicit, node, local_km)))
     lat = float(os.environ["NODE_LAT"]) if os.getenv("NODE_LAT") else None
     lon = float(os.environ["NODE_LON"]) if os.getenv("NODE_LON") else None
-    indoor = os.getenv("SENSOR_INDOOR", "0") == "1"
-    ag = [h for h in os.getenv("AIRGRADIENT_HOSTS", "").replace(" ", "").split(",") if h]
+    indoor = settings.get("SENSOR_INDOOR", "0") == "1"
+    ag = [h for h in settings.get("AIRGRADIENT_HOSTS", "").replace(" ", "").split(",") if h]
     if ag:
         out.append(("airgradient", lambda: airgradient(hc, ag, lat, lon, indoor)))
-    pa = [h for h in os.getenv("PURPLEAIR_HOSTS", "").replace(" ", "").split(",") if h]
+    pa = [h for h in settings.get("PURPLEAIR_HOSTS", "").replace(" ", "").split(",") if h]
     if pa:
         out.append(("purpleair", lambda: purpleair(hc, pa, lat, lon, indoor)))
-    if os.getenv("BAD_ENABLED", "0") == "1":
+    if settings.get("BAD_ENABLED", "0") == "1":
         # BAD republishes Smart Citizen kits as station id `sc-<kit>`; skip the ones this node reads directly
         skip = {f"sc-{i}" for i in ids}
-        out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(os.getenv("BAD_RADIUS_KM", "15")), skip)))
-    if os.getenv("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
+        out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(settings.get("BAD_RADIUS_KM", "15")), skip)))
+    if settings.get("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
         _lat, _lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
         out.append(("open-meteo", lambda: openmeteo(hc, _lat, _lon)))
         out.append(("open-meteo-cams", lambda: openmeteo_air(hc, _lat, _lon)))
-    portals = dict(p.split("=", 1) for p in os.getenv("CKAN_PORTALS", "").split(",") if "=" in p)
+    portals = dict(p.split("=", 1) for p in settings.get("CKAN_PORTALS", "").split(",") if "=" in p)
     if portals:
-        out.append(("ckan", lambda: ckan(hc, portals, os.getenv("CKAN_SCALE", "city"))))
+        out.append(("ckan", lambda: ckan(hc, portals, settings.get("CKAN_SCALE", "city"))))
     try:
         import packs
         out += packs.adapters(hc)

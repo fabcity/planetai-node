@@ -15,6 +15,7 @@
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; install code-pack Python dependencies into the image
+#   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
 #   planetai stop | start | restart
 set -euo pipefail
@@ -225,6 +226,7 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   echo
   echo "  Next, two minutes each:"
   printf '    %splanetai telegram%s     get alerts on your phone\n' "$B" "$N"
+  printf '    %splanetai ui%s           the dashboard, in any browser on your network\n' "$B" "$N"
   printf '    %splanetai test-alert%s   see the whole path fire, right now\n' "$B" "$N"
   [[ "$kind" != district ]] && printf '    %splanetai homeassistant%s  your sensors and alerts as Home Assistant entities\n' "$B" "$N"
   echo
@@ -603,6 +605,25 @@ cmd_run() {
   docker compose exec -T -e PACK_OUT=/app/out app python "/app/packs/$pack/$script.py" "$@"
 }
 
+
+# ---------------------------------------------------------------- the GUI
+cmd_ui() {
+  step "Dashboard"
+  grep -qE "^ADMIN_TOKEN=.+" .env || { envset ADMIN_TOKEN "$(openssl rand -hex 16)"; docker compose up -d --force-recreate app >>"$LOG" 2>&1; say "created an admin token"; }
+  local ip; ip="$(lan_ip)"; local p; p="$(port)"
+  echo "  On this machine:      http://localhost:${p}/"
+  [[ -n "$ip" ]] && echo "  On your network:      http://${ip}:${p}/"
+  [[ -n "$(envget MESH_NAME)" ]] && echo "  On the tailnet:       http://$(envget MESH_NAME):${p}/"
+  echo "  On a small display:   add  ?kiosk=1  — big numbers only, refreshes every 30 s"
+  echo
+  echo "  The Display and Sensors pages are open to anyone who can reach the node, like the API."
+  echo "  Set up (sources, alerts, packs, keys) asks for this token once per browser:"
+  echo
+  printf '     %s%s%s\n' "$B" "$(envget ADMIN_TOKEN)" "$N"
+  echo
+  echo "  Anyone with the token can change what the node reads and where it sends alerts. Treat it like a password."
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -624,6 +645,7 @@ case "${1:-help}" in
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   homeassistant|ha) cmd_homeassistant;;
   packs) cmd_packs;;
+  ui|dashboard) cmd_ui;;
   run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything

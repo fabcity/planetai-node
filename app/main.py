@@ -25,6 +25,7 @@ from psycopg.types.json import Jsonb
 import bootstrap
 import index
 import packs
+import settings
 import sources
 
 log = logging.getLogger("planetai")
@@ -39,16 +40,24 @@ NODE = os.getenv("NODE_NAME", "node")
 POLL = int(os.getenv("POLL_SECONDS", "300"))
 TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TG_CHATS = [c for c in os.getenv("TELEGRAM_CHAT_IDS", "").replace(" ", "").split(",") if c]
-LOCALE = os.getenv("ALERT_LOCALE", "en")
-PARENT = os.getenv("PARENT_API_URL", "").strip()
+def LOCALE():
+    return settings.get("ALERT_LOCALE", "en")
+def PARENT():
+    return settings.get("PARENT_API_URL", "").strip()
 MQTT_HOST = os.getenv("MQTT_HOST", "").strip()                 # set by `planetai meshtastic`; empty = no MQTT thread
 MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
-MESH_INDOOR = {x.strip() for x in os.getenv("MESH_INDOOR_NODES", "").split(",") if x.strip()}
-MESH_ALERTS = os.getenv("MESH_ALERTS", "0") == "1"           # send act-level alerts back over the mesh
-MESH_GATEWAY_NUM = int(os.getenv("MESH_GATEWAY_NODE_NUM", "0") or 0)
-AGG_TOKEN = os.getenv("AGGREGATE_TOKEN", "").strip()        # children must present this to POST /aggregates
-PARENT_TOKEN = os.getenv("PARENT_TOKEN", "").strip()        # what this node presents to its own parent
-HA_DISCOVERY = os.getenv("HA_DISCOVERY", "0") == "1" and bool(os.getenv("MQTT_HOST", "").strip())
+def MESH_INDOOR():
+    return {x.strip() for x in settings.get("MESH_INDOOR_NODES", "").split(",") if x.strip()}
+def MESH_ALERTS():
+    return settings.get("MESH_ALERTS", "0") == "1"
+def MESH_GATEWAY_NUM():
+    return int(settings.get("MESH_GATEWAY_NODE_NUM", "0") or 0)
+def AGG_TOKEN():
+    return settings.get("AGGREGATE_TOKEN", "").strip()
+def PARENT_TOKEN():
+    return settings.get("PARENT_TOKEN", "").strip()
+def HA_DISCOVERY():
+    return settings.get("HA_DISCOVERY", "0") == "1" and bool(os.getenv("MQTT_HOST", "").strip())
 _ha_announced: set = set()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
@@ -133,7 +142,7 @@ def mqtt_thread() -> None:
     def on_message(c, u, msg):
         try:
             if msg.topic.startswith("msh/"):
-                sensors, readings, info = sources.meshtastic_message(msg.topic, msg.payload, MESH_INDOOR)
+                sensors, readings, info = sources.meshtastic_message(msg.topic, msg.payload, MESH_INDOOR())
                 if info.get("root_topic"):
                     mesh_state.update({"root_topic": info["root_topic"], "gateway": info.get("gateway"),
                                        "packets": mesh_state["packets"] + 1, "last": datetime.now(timezone.utc).isoformat()})
@@ -166,11 +175,11 @@ def mqtt_thread() -> None:
 
 def mesh_send(text: str) -> None:
     """Send `text` over the LoRa mesh via the gateway's MQTT downlink. Needs a root topic learned from an uplink."""
-    if not (MQTT_HOST and MESH_ALERTS and mesh_state["root_topic"]):
+    if not (MQTT_HOST and MESH_ALERTS() and mesh_state["root_topic"]):
         return
     try:
         import paho.mqtt.publish as publish
-        topic, payload = sources.meshtastic_downlink(mesh_state["root_topic"], MESH_GATEWAY_NUM, text)
+        topic, payload = sources.meshtastic_downlink(mesh_state["root_topic"], MESH_GATEWAY_NUM(), text)
         publish.single(topic, payload, hostname=MQTT_HOST, auth={"username": MQTT_USER, "password": MQTT_PASS} if MQTT_USER else None)
         log.info("mesh -> sent %d bytes on %s", len(payload), topic)
     except Exception as e:  # noqa: BLE001
@@ -189,7 +198,7 @@ HA_UNITS = {"pm25": ("µg/m³", "pm25"), "pm10": ("µg/m³", "pm10"), "pm1": ("�
 
 
 def ha_publish(sensors: list[dict], readings: list[tuple]) -> None:
-    if not HA_DISCOVERY or not readings:
+    if not HA_DISCOVERY() or not readings:
         return
     try:
         import paho.mqtt.publish as publish
@@ -226,7 +235,7 @@ def ha_publish(sensors: list[dict], readings: list[tuple]) -> None:
 
 def ha_alert(level: str, text: str, alert_id: int | None) -> None:
     """One text sensor per node carrying the latest alert, with level and id as attributes."""
-    if not HA_DISCOVERY:
+    if not HA_DISCOVERY():
         return
     try:
         import paho.mqtt.publish as publish
@@ -275,7 +284,7 @@ def run_rules() -> None:
                 if cur.fetchone():
                     continue
                 msg = rule["message"]
-                tmpl = msg.get(LOCALE) or msg.get("en") if isinstance(msg, dict) else str(msg)
+                tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
                 try:
                     text = tmpl.format(**{k: ("—" if v is None else v) for k, v in row.items()})
                 except (KeyError, ValueError, TypeError):
@@ -297,11 +306,12 @@ def notify(level: str, text: str) -> None:
                 httpx.post(f"{RETICULUM_URL}/send", json={"text": text}, timeout=10)
             except Exception as e:  # noqa: BLE001
                 log.warning("reticulum send failed: %s", type(e).__name__)
-    if not TG_TOKEN or not TG_CHATS:
+    tok, chats = TG()
+    if not tok or not chats:
         return
-    for chat in TG_CHATS:
+    for chat in chats:
         try:
-            httpx.post(f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage",
+            httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
                        json={"chat_id": chat, "text": f"{icon} {text}".strip()}, timeout=15).raise_for_status()
             log.info("telegram -> %s ok", chat)
         except Exception as e:  # noqa: BLE001
@@ -317,8 +327,8 @@ def push_aggregates() -> None:
         cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
-        httpx.post(f"{PARENT}/aggregates", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
-                   headers={"Authorization": f"Bearer {PARENT_TOKEN}"} if PARENT_TOKEN else {},
+        httpx.post(f"{PARENT()}/aggregates", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+                   headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d hourly rows to parent", len(rows))
     except Exception as e:  # noqa: BLE001
@@ -424,7 +434,65 @@ def observations():
 
 @app.get("/alerts")
 def alerts(limit: int = Query(50, le=1000)):
-    return q("SELECT ts, rule_id, sensor_id, level, text FROM alerts ORDER BY ts DESC LIMIT %s", limit)
+    """Alerts newest first, each with its id (what `planetai act <id>` and the GUI's Act button need) and whether
+    anyone has already acted on it."""
+    return q("""SELECT a.id, a.ts, a.rule_id, a.sensor_id, a.level, a.text,
+                       (SELECT min(x.ts) FROM actions x WHERE x.alert_id = a.id AND x.stage IN ('acknowledged','acted')) AS acted_at
+                FROM alerts a ORDER BY a.ts DESC LIMIT %s""", limit)
+
+
+# ---------------------------------------------------------------- the GUI and its settings
+STATIC = Path(__file__).parent / "static"
+
+
+@app.get("/", include_in_schema=False)
+@app.get("/ui", include_in_schema=False)
+def ui():
+    """The dashboard: one HTML file, no build step, reads the same API everything else does."""
+    from fastapi.responses import HTMLResponse
+    f = STATIC / "index.html"
+    return HTMLResponse(f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>")
+
+
+def _admin(authorization: str) -> None:
+    tok = os.getenv("ADMIN_TOKEN", "").strip()
+    if not tok:
+        raise HTTPException(403, "ADMIN_TOKEN is not set in .env; run `planetai ui` to create one")
+    if authorization != f"Bearer {tok}":
+        raise HTTPException(401, "bad or missing admin token")
+
+
+@app.get("/settings")
+def get_settings():
+    """Every runtime setting with its group, help and current value (secrets masked), plus bootstrap keys read-only."""
+    return settings.describe()
+
+
+@app.put("/settings")
+def put_settings(body: dict, authorization: str = Header("")):
+    """Change runtime settings. {"KEY": "value", ...}. Blank returns a key to its .env value. Effective within ~20 s."""
+    _admin(authorization)
+    changed = []
+    for k, v in body.items():
+        if k not in settings.RUNTIME:
+            raise HTTPException(400, f"{k} is not a runtime setting")
+        settings.set(k, str(v).strip())
+        changed.append(k)
+    log.info("settings changed via GUI: %s", ", ".join(changed))
+    return {"changed": changed, "effective_within_s": settings.TTL}
+
+
+@app.post("/test-alert")
+def test_alert(authorization: str = Header("")):
+    """Fire one act-level alert now, through every configured channel. Same as `planetai test-alert`."""
+    _admin(authorization)
+    text = "Test alert from your node. If you can read this, the whole path works: rule to message to you."
+    with db() as con, con.cursor() as cur:
+        cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
+        alert_id = cur.fetchone()["id"]
+    notify("act", f"{text}\n\n#{alert_id}")
+    ha_alert("act", text, alert_id)
+    return {"ok": True, "alert_id": alert_id}
 
 
 # ---- Index contract (fci-cells-v0) and ρ ------------------------------------------------------
@@ -482,9 +550,9 @@ def aggregates(hours: int = Query(24, le=24 * 90)):
 def receive_aggregates(body: dict, authorization: str = Header("")):
     """Parent side. Children push hourly means; stored as readings under metric '<metric>_1h' with the child's sensor ids.
     Raw readings never travel this path."""
-    if not AGG_TOKEN:
+    if not AGG_TOKEN():
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
-    if authorization != f"Bearer {AGG_TOKEN}":
+    if authorization != f"Bearer {AGG_TOKEN()}":
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
     rows = body.get("rows", [])
     child = body.get("node", "?")

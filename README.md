@@ -147,7 +147,7 @@ tests/              offline adapter tests against saved payloads
 packs/              community extensions — drop a folder here (docs/PACKS.md)
 docs/               getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATING
                     what it can tell you    USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL
-                    extending it            PACKS · PACK_IDEAS · DEVELOPING
+                    extending it            PACKS · PACK_IDEAS · DEVELOPING · GUI
                     radios and reachability NETWORKING · MESHTASTIC · MESHTASTIC_APP · MESHTASTIC_FLEET
 ARCHITECTURE.md     the building
 SPEC.md             this brick: contracts, and the retired pieces with their triggers

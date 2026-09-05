@@ -22,13 +22,18 @@ import yaml
 
 log = logging.getLogger("planetai.packs")
 PACKS_DIR = Path(os.getenv("PACKS_DIR", "/app/packs"))
-ALLOW_CODE = os.getenv("PACKS_ALLOW_CODE", "0") == "1"
+
+
+def _allow_code() -> bool:
+    import settings
+    return settings.get("PACKS_ALLOW_CODE", "0") == "1"
 
 
 def _enabled() -> list[Path]:
     if not PACKS_DIR.is_dir():
         return []
-    only = {p for p in os.getenv("PACKS_ENABLED", "").replace(" ", "").split(",") if p}
+    import settings
+    only = {p for p in settings.get("PACKS_ENABLED", "").replace(" ", "").split(",") if p}
     out = []
     for d in sorted(PACKS_DIR.iterdir()):
         if not (d / "pack.yaml").is_file():
@@ -93,7 +98,7 @@ def adapters(hc):
         f = d / "adapter.py"
         if not f.is_file():
             continue
-        if not ALLOW_CODE:
+        if not _allow_code():
             log.warning("pack %s ships code; set PACKS_ALLOW_CODE=1 to run it (read %s first)", d.name, f)
             continue
         try:

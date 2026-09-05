@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.14 — 2026-09-05
+
+**A dashboard.** One HTML file the node serves at `/`, on the Fab City design system, no build step.
+
+- **Display**: six tiles that end in a sentence — inside and outside PM2.5, apparent temperature, the CAMS model with the gap to your street, ρ, and a 24-hour trend — plus the alert feed with an **I acted** button on unanswered act-level alerts (that button is how ρ is measured), the node's Index cells as a honeycomb, and vitals. `?kiosk=1` for a small display: big numbers only, 30-second refresh.
+- **Sensors**: everything the node knows, yours first, and the slow sources.
+- **Set up**, behind an admin token: sources, alerts and Telegram, packs (tick to enable; code packs behind one explicit switch), integrations, keys, the node's place in the tree, bootstrap read-only. A test-alert button. Live within ~20 s, no restart.
+- **The settings layer that makes it possible**: a `settings` table overlays `.env`; runtime keys are read through `settings.get()` at use time, so the GUI's changes take effect on the next poll. Bootstrap keys stay in `.env` by design. `GET /settings` (secrets masked), `PUT /settings` (token), `POST /test-alert` (token). `/alerts` now returns each alert's id and whether it was acted on.
+- `ADMIN_TOKEN` minted by the installer and added by `update.sh` to older nodes; `planetai ui` shows it and the URLs.
+- `tools/check_ui.py`: the script parses, every element id the script touches exists, every API path it calls exists, every field it reads is a real column. Verified by breaking an id and watching it fail.
+- Schema 0.14.
+
 ## v0.13 — 2026-09-05
 
 **A node can be installed without access to this repository**, so beta testers need no GitHub account.

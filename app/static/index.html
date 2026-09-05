@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PLANETAI node</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Funnel+Sans:wght@300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Fab City design system: warm paper + ink, three master hues, hexagon module, Funnel Sans display, Figtree body.
+   Sharp corners, hairline rules, no shadows. One file, no build. */
+:root{
+  --paper:#F7F5F1;--paper2:#EFEBE4;--ink:#1E1E1E;--ink2:#3A3A35;--muted:#6B6660;--rule:#D8D3C4;--rule2:#E6E2D8;
+  --red:#E62038;--blue:#20388D;--green:#00A057;--amber:#C98A00;
+  --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media(prefers-color-scheme:dark){:root{--paper:#1E1E1E;--paper2:#262622;--ink:#F7F5F1;--ink2:#D8D3C4;--muted:#8B857A;--rule:#3A3A35;--rule2:#2C2C28}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--fb);-webkit-font-smoothing:antialiased}
+a{color:var(--blue)}button{font:inherit;cursor:pointer}
+.mono{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+h1,h2,h3{font-family:var(--fd);font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.05}
+
+/* header */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;border-bottom:1px solid var(--rule);position:sticky;top:0;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);z-index:5}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+.hex{width:26px;height:30px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--ink);flex:none}
+.brand b{font-family:var(--fd);font-weight:800;letter-spacing:-.02em;font-size:15px;display:block;line-height:1}
+.brand small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+nav{display:flex;gap:4px}
+nav button{background:none;border:1px solid transparent;padding:7px 12px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+nav button.on{color:var(--ink);border-color:var(--rule)}
+.pulse{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}.dot.bad{background:var(--red)}.dot.warn{background:var(--amber)}
+
+main{max-width:1180px;margin:0 auto;padding:24px}
+section{display:none}section.on{display:block}
+
+/* display: the big numbers */
+.tiles{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:18px}
+@media(min-width:720px){.tiles{grid-template-columns:repeat(3,1fr)}}
+.tile{background:var(--paper);padding:22px 22px 18px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
+.tile .n{font-family:var(--fd);font-weight:800;letter-spacing:-.04em;font-size:clamp(3rem,6vw,4.6rem);line-height:.95}
+.tile .u{font-size:13px;color:var(--muted);margin-top:4px}
+.tile .n.good{color:var(--green)}.tile .n.mid{color:var(--amber)}.tile .n.bad{color:var(--red)}.tile .n.blue{color:var(--blue)}
+.tile .sub{font-size:13px;color:var(--ink2);margin-top:12px}
+.row2{display:grid;gap:24px;margin-top:24px}@media(min-width:900px){.row2{grid-template-columns:1.1fr .9fr}}
+.box{border:1px solid var(--rule);background:var(--paper)}
+.box h3{font-size:1.05rem;padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:baseline}
+.box h3 span{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:12px 18px;border-bottom:1px solid var(--rule2);display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start}
+.list li:last-child{border-bottom:0}
+.lvl{width:8px;height:8px;border-radius:50%;margin-top:7px;flex:none}.lvl.act{background:var(--red)}.lvl.warn{background:var(--amber)}.lvl.info{background:var(--blue)}
+.list .t{font-size:14px;line-height:1.45}.list .when{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.04em}
+.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);padding:7px 12px;font-weight:600;font-size:13px;border-radius:0}
+.btn.ghost{background:transparent;color:var(--ink)}.btn.small{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:default}
+.acted{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--green);white-space:nowrap;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:10px 18px;border-bottom:1px solid var(--rule2);text-align:left;vertical-align:top}
+th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:0}
+.tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border:1px solid var(--rule)}
+.tag.in{border-color:var(--blue);color:var(--blue)}.tag.out{border-color:var(--green);color:var(--green)}.tag.ref{color:var(--muted)}
+.spark{display:inline-block;height:22px;width:100%;vertical-align:middle}
+.honey{display:flex;gap:4px;flex-wrap:wrap;padding:14px 18px}
+.cell{width:54px;height:62px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;font-family:var(--mono);font-size:9px;text-align:center;line-height:1.2;color:var(--paper);padding:4px}
+.cell.live{background:var(--green)}.cell.partial{background:var(--blue)}.cell.mock{background:var(--muted)}.cell.none{background:var(--paper2);color:var(--muted)}
+
+/* setup */
+.setup{display:grid;gap:24px;margin-top:18px}@media(min-width:900px){.setup{grid-template-columns:200px 1fr}}
+.tabs{display:flex;flex-direction:column;gap:2px}
+.tabs button{text-align:left;background:none;border:0;border-left:2px solid transparent;padding:9px 12px;font-size:14px;color:var(--muted)}
+.tabs button.on{color:var(--ink);border-left-color:var(--red)}
+.form{display:grid;gap:18px}
+.field{display:grid;gap:6px}
+.field label{font-weight:600;font-size:14px;display:flex;justify-content:space-between;gap:12px}
+.field label .src{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.field input,.field select{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:0;width:100%}
+.field input:focus{outline:none;border-color:var(--blue)}
+.field .help{font-size:13px;color:var(--muted)}
+.toggle{display:flex;align-items:center;gap:12px}
+.toggle input{width:auto}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--rule);margin-top:6px;position:sticky;bottom:0;background:var(--paper)}
+.note{font-size:13px;color:var(--muted)}
+.token{border:1px solid var(--rule);padding:18px;background:var(--paper2);max-width:520px}
+.token input{width:100%;font:inherit;font-family:var(--mono);padding:9px 12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);margin-top:10px}
+.packs{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+.pack{background:var(--paper);padding:16px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start}
+.pack b{font-family:var(--fd);font-size:15px}.pack p{margin:4px 0 0;font-size:13px;color:var(--muted)}
+.ok{color:var(--green)}.err{color:var(--red)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+.toast.on{opacity:1}
+
+/* kiosk: a small screen on a shelf. ?kiosk=1 */
+body.kiosk header,body.kiosk .row2,body.kiosk .honeybox{display:none}
+body.kiosk main{padding:16px;max-width:none}
+body.kiosk .tiles{margin-top:0;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+body.kiosk .tile .n{font-size:clamp(4rem,12vw,9rem)}
+body.kiosk .tile{min-height:32vh}
+body.kiosk .kioskfoot{display:flex}
+.kioskfoot{display:none;justify-content:space-between;padding:12px 4px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="/"><span class="hex"></span><span><b id="nodename">PLANETAI node</b><small id="nodeplace">loading…</small></span></a>
+  <nav><button class="on" data-view="display">Display</button><button data-view="sensors">Sensors</button><button data-view="setup">Set up</button></nav>
+  <span class="pulse"><span class="dot" id="dot"></span><span id="pulsetxt">…</span></span>
+</header>
+
+<main>
+<!-- ================================================================ display -->
+<section id="display" class="on">
+  <div class="tiles">
+    <div class="tile"><div><span class="mono">inside · PM2.5</span><div class="n" id="t-in">–</div><div class="u">µg/m³ · <span id="t-in-n">–</span></div></div><div class="sub" id="t-in-sub"></div></div>
+    <div class="tile"><div><span class="mono">outside · PM2.5</span><div class="n" id="t-out">–</div><div class="u">µg/m³ · <span id="t-out-n">–</span></div></div><div class="sub" id="t-out-sub"></div></div>
+    <div class="tile"><div><span class="mono">feels like</span><div class="n" id="t-heat">–</div><div class="u">°C apparent · <span id="t-heat-n">–</span></div></div><div class="sub" id="t-heat-sub"></div></div>
+    <div class="tile"><div><span class="mono">model · CAMS</span><div class="n blue" id="t-model">–</div><div class="u">µg/m³ · 11 km grid</div></div><div class="sub" id="t-model-sub"></div></div>
+    <div class="tile"><div><span class="mono">ρ · action latency</span><div class="n" id="t-rho">–</div><div class="u" id="t-rho-u">alerts answered, 30 days</div></div><div class="sub" id="t-rho-sub"></div></div>
+    <div class="tile"><div><span class="mono">last 24 h · indoor</span><svg class="spark" id="spark" viewBox="0 0 240 44" preserveAspectRatio="none"></svg><div class="u" id="t-day"></div></div><div class="sub" id="t-day-sub"></div></div>
+  </div>
+  <div class="kioskfoot"><span id="k-name"></span><span id="k-time"></span></div>
+
+  <div class="row2">
+    <div class="box"><h3>Alerts <span id="alerts-n"></span></h3><ul class="list" id="alerts"></ul></div>
+    <div>
+      <div class="box honeybox"><h3>Index cells <span>this node</span></h3><div class="honey" id="honey"></div></div>
+      <div class="box" style="margin-top:24px"><h3>Node <span id="version"></span></h3><table id="nodeinfo"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ sensors -->
+<section id="sensors">
+  <div class="box" style="margin-top:18px"><h3>Sensors <span id="sensors-n"></span></h3>
+    <table><thead><tr><th>sensor</th><th>where</th><th>PM2.5</th><th>temp</th><th>humidity</th><th>last</th></tr></thead><tbody id="sensortable"></tbody></table>
+  </div>
+  <div class="box" style="margin-top:24px"><h3>Slow sources <span>portals, models</span></h3>
+    <table><thead><tr><th>source</th><th>metric</th><th>value</th><th>when</th></tr></thead><tbody id="obstable"></tbody></table>
+  </div>
+</section>
+
+<!-- ================================================================ setup -->
+<section id="setup">
+  <div id="tokenbox" class="token" style="margin-top:18px">
+    <b>Changing settings needs the admin token.</b>
+    <p class="note" style="margin:8px 0 0">On the node, <code>planetai ui</code> prints it. It stays in this browser only.</p>
+    <input id="token" type="password" placeholder="paste the token" autocomplete="off">
+    <div style="margin-top:12px"><button class="btn" onclick="saveToken()">Unlock</button></div>
+  </div>
+  <div class="setup" id="setupui" style="display:none">
+    <div class="tabs" id="tabs"></div>
+    <div>
+      <div id="paneinfo" class="note" style="margin-bottom:14px"></div>
+      <div class="form" id="form"></div>
+      <div class="bar" id="bar"><button class="btn" onclick="save()">Save</button><span class="note">Changes take effect within about 20 seconds; no restart. Blank returns a setting to its <code>.env</code> value.</span></div>
+    </div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), api=p=>fetch(p).then(r=>r.ok?r.json():Promise.reject(r.status));
+const kiosk=new URLSearchParams(location.search).get('kiosk')==='1'; if(kiosk)document.body.classList.add('kiosk');
+let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[];
+
+// ---------------------------------------------------------------- views
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
+function show(v){document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));if(v==='setup')loadSetup();}
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2600);}
+const fmt=(v,d=0)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
+const ago=ts=>{if(!ts)return'';const s=(Date.now()-new Date(ts))/1000;return s<90?'just now':s<5400?Math.round(s/60)+' min ago':s<172800?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago';};
+const pmClass=v=>v==null?'':v<=12?'good':v<=35.5?'mid':'bad';
+const heatClass=v=>v==null?'':v<27?'good':v<32?'mid':'bad';
+function apparent(t,rh){if(t==null||rh==null)return null;const e=rh/100*6.105*Math.exp(17.27*t/(237.7+t));return t+0.33*e-4;}
+
+// ---------------------------------------------------------------- display
+async function refresh(){
+  try{
+    const [h,stats,alerts,rho,cells,obs,sensors]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=12'),api('/rho'),api('/cells'),api('/observations'),api('/sensors')]);
+    $('#nodename').textContent=h.node; $('#k-name').textContent=h.node; $('#version').textContent=(h.version||'')+' · schema '+(h.schema||'');
+    const errs=Object.keys(h.errors||{}).length; $('#dot').className='dot'+(h.last_error||errs?' warn':''); $('#pulsetxt').textContent=(h.last_poll?'polled '+ago(h.last_poll):'starting')+(h.last_error?' · '+h.last_error.slice(0,40):'');
+    const byS=m=>stats.filter(r=>r.metric===m);
+    const mean=rows=>rows.length?rows.reduce((a,r)=>a+r,0)/rows.length:null;
+    const inPM=byS('pm25').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), outPM=byS('pm25').filter(r=>!r.indoor&&r.mean_15m!=null&&r.silent_minutes<120);
+    const iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m));
+    $('#t-in').textContent=fmt(iv); $('#t-in').className='n '+pmClass(iv); $('#t-in-n').textContent=inPM.length+' sensor'+(inPM.length===1?'':'s');
+    $('#t-out').textContent=fmt(ov); $('#t-out').className='n '+pmClass(ov); $('#t-out-n').textContent=outPM.length+' reference'+(outPM.length===1?'':'s');
+    $('#t-in-sub').textContent=iv==null?'no indoor sensor reporting':iv<=12?'clean':iv<=35.5?'moderate — sensitive people take care':'unhealthy — purifier on, windows shut';
+    $('#t-out-sub').textContent=iv!=null&&ov!=null?(ov>1.5*iv&&ov>35.5?'worse than inside: keep the windows shut':iv>1.5*ov&&iv>15?'inside is worse: something is burning or cooking — open a window':'inside and outside agree'):'';
+    const model=obs.find(o=>o.sensor_id==='cams-point'&&o.metric==='pm25_model'); $('#t-model').textContent=fmt(model&&model.value); $('#t-model-sub').textContent=model?(ov!=null?`street reads ${fmt(ov-model.value,0)>0?'+':''}${fmt(ov-model.value)} vs the model — the gap is the local signal`:'the atmosphere over the district, not your street'):'no model yet';
+    const inT=byS('temp').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), inH=byS('humidity').filter(r=>r.local&&r.indoor&&r.mean_15m!=null);
+    const at=apparent(mean(inT.map(r=>r.mean_15m)),mean(inH.map(r=>r.mean_15m)));
+    $('#t-heat').textContent=fmt(at,1); $('#t-heat').className='n '+heatClass(at); $('#t-heat-n').textContent=inT.length?fmt(mean(inT.map(r=>r.mean_15m)),1)+' °C · '+fmt(mean(inH.map(r=>r.mean_15m)))+'% RH':'no indoor temp/humidity';
+    $('#t-heat-sub').textContent=at==null?'':at>=40?'danger: heatstroke territory':at>=32?'heat stress — water, moving air, no hard work':at>=27?'warm':'comfortable';
+    $('#t-rho').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#t-rho').className='n '+(rho.rho==null?'':rho.rho>=.5?'good':rho.rho>0?'mid':'bad');
+    $('#t-rho-u').textContent=`${rho.acted}/${rho.alerts_act} alerts answered · 30 d`; $('#t-rho-sub').textContent=rho.median_minutes!=null?`median ${rho.median_minutes} min from alert to action`:'no act-level alert has been answered yet';
+    // sparkline: 24h indoor mean from stats (mean_1h per sensor is a point; use /readings? keep it to what we have)
+    const day=inPM.map(r=>r.mean_24h).filter(x=>x!=null); $('#t-day').textContent=day.length?`24 h mean ${fmt(mean(day))} · peak ${fmt(Math.max(...inPM.map(r=>r.mean_24h||0)))}`:'';
+    drawSpark(inPM);
+    // alerts
+    $('#alerts-n').textContent=alerts.length+' recent';
+    $('#alerts').innerHTML=alerts.length?alerts.map(a=>`<li><span class="lvl ${a.level}"></span><div><div class="t">${esc(a.text.split('\n')[0])}</div><div class="when">#${a.id} · ${a.rule_id} · ${ago(a.ts)}</div></div>${a.level==='act'?(a.acted_at?`<span class="acted">acted ${ago(a.acted_at)}</span>`:`<button class="btn small" onclick="act(${a.id})">I acted</button>`):''}</li>`).join(''):'<li><div class="t" style="color:var(--muted)">No alerts yet. The node only speaks when something should change.</div></li>';
+    // honeycomb of cells
+    const grid=['Environmental','Economic','Social','Governance'].map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));return c?`<div class="cell ${c.state}" title="${esc(c.cell)}: ${fmt(c.value,1)} ${esc(c.unit)}">${p.slice(0,3)}<br>${fmt(c.value,c.value<10?1:0)}</div>`:`<div class="cell none" title="${p}: no source">${p.slice(0,3)}<br>–</div>`;}).join('');
+    $('#honey').innerHTML=grid+`<div class="note" style="margin-left:8px;align-self:center">green live · blue partial · grey none. ${cells.length} cell${cells.length===1?'':'s'} this node can compute.</div>`;
+    $('#nodeinfo').innerHTML=[['readings',h.ingested],['polls',h.polls],['up',Math.floor(h.uptime_s/3600)+' h '+Math.floor(h.uptime_s%3600/60)+' m'],['sensors',sensors.filter(s=>s.local).length+' yours · '+sensors.filter(s=>!s.local).length+' reference'],['mesh',h.mesh?`${h.mesh.packets} packets via ${h.mesh.gateway||'—'}`:'off'],['errors',errs?Object.entries(h.errors).map(([k,v])=>k+': '+v).join('; '):'none']].map(([k,v])=>`<tr><th>${k}</th><td>${esc(String(v))}</td></tr>`).join('');
+    $('#nodeplace').textContent=(h.node||'')+' · '+(DESC?DESC.bootstrap.find(b=>b.key==='NODE_CITY')?.value||'':'')+' '+(h.last_poll?'':'starting');
+    renderSensors(stats,sensors,obs);
+    $('#k-time').textContent=new Date().toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
+  }catch(e){$('#dot').className='dot bad';$('#pulsetxt').textContent='node not answering';}
+}
+function drawSpark(inPM){ // 15m / 1h / 24h means are all we have without a readings fetch; draw them as a tiny trend
+  const s=$('#spark'); if(!inPM.length){s.innerHTML='';return;}
+  const m=k=>inPM.map(r=>r[k]).filter(x=>x!=null).reduce((a,b,_,arr)=>a+b/arr.length,0);
+  const pts=[m('mean_24h'),m('mean_1h'),m('mean_15m')], max=Math.max(...pts,1);
+  const xy=pts.map((v,i)=>[20+i*100,40-(v/max)*34]);
+  s.innerHTML=`<polyline fill="none" stroke="var(--ink)" stroke-width="2" points="${xy.map(p=>p.join(',')).join(' ')}"/>`+xy.map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="3" fill="${i===2?'var(--red)':'var(--ink)'}"/>`).join('')+`<text x="16" y="12" font-size="9" fill="var(--muted)" font-family="var(--mono)">24h → 1h → now</text>`;
+}
+function renderSensors(stats,sensors,obs){
+  const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
+  $('#sensors-n').textContent=sensors.length;
+  $('#sensortable').innerHTML=sensors.filter(s=>s.kind==='sensor').sort((a,b)=>(b.local-a.local)||a.sensor_id.localeCompare(b.sensor_id)).map(s=>{const m=by[s.sensor_id]||{};const last=Object.values(m)[0];return`<tr><td><b>${esc(s.name||s.sensor_id)}</b><div class="mono" style="text-transform:none">${s.sensor_id}</div></td><td><span class="tag ${s.local?(s.indoor?'in':'out'):'ref'}">${s.local?(s.indoor?'indoor':'outdoor'):'reference'}</span></td><td>${m.pm25?fmt(m.pm25.mean_15m):'–'}</td><td>${m.temp?fmt(m.temp.mean_15m,1):'–'}</td><td>${m.humidity?fmt(m.humidity.mean_15m):'–'}</td><td class="note">${last?ago(last.last_ts):'no data'}</td></tr>`;}).join('');
+  $('#obstable').innerHTML=obs.map(o=>`<tr><td>${esc(o.name||o.sensor_id)}</td><td class="mono" style="text-transform:none">${o.metric}</td><td>${fmt(o.value,2)}</td><td class="note">${ago(o.ts)}</td></tr>`).join('')||'<tr><td colspan=4 class="note">none yet</td></tr>';
+}
+async function act(id){
+  const note=prompt('What did you do? (optional)','')||'acted';
+  const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});
+  toast(r.ok?`Recorded: you acted on #${id}. That is ρ.`:'Could not record',!r.ok); refresh();
+}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---------------------------------------------------------------- setup
+const GROUPS={sources:['Sources','What the node reads: your sensors, your account, public references.'],alerts:['Alerts & Telegram','Where messages go and in which language.'],packs:['Packs','Which packs load. Code packs stay off until you allow them.'],integrations:['Integrations','Home Assistant, Reticulum.'],keys:['Keys','Credentials packs need. Secrets are never shown once saved.'],node:['Node & upstream','This node in the tree: who it reports to, who may report to it.'],bootstrap:['Bootstrap (.env only)','Read once at start. Edit .env on the node and run planetai restart.']};
+let GROUP='sources';
+function saveToken(){TOKEN=$('#token').value.trim();localStorage.setItem('planetai_admin',TOKEN);loadSetup();}
+async function loadSetup(){
+  DESC=await api('/settings'); PACKS=await api('/packs').catch(()=>[]);
+  const unlocked=!!TOKEN; $('#tokenbox').style.display=unlocked?'none':'block'; $('#setupui').style.display=unlocked?'grid':'none';
+  if(!unlocked)return;
+  $('#tabs').innerHTML=Object.entries(GROUPS).map(([g,[l]])=>`<button class="${g===GROUP?'on':''}" onclick="GROUP='${g}';loadSetup()">${l}</button>`).join('')+`<button onclick="testAlert()" style="margin-top:14px;color:var(--red)">Send a test alert</button><button onclick="localStorage.removeItem('planetai_admin');TOKEN='';loadSetup()">Lock</button>`;
+  $('#paneinfo').innerHTML=`<b style="color:var(--ink)">${GROUPS[GROUP][0]}</b> — ${GROUPS[GROUP][1]}`;
+  $('#bar').style.display=GROUP==='bootstrap'?'none':'flex';
+  if(GROUP==='bootstrap'){$('#form').innerHTML=`<table>${DESC.bootstrap.map(b=>`<tr><th>${b.label}<div class="mono" style="text-transform:none">${b.key}</div></th><td>${esc(b.value)||'<span class=note>not set</span>'}</td></tr>`).join('')}</table>`;return;}
+  if(GROUP==='packs'){
+    const enabled=(DESC.runtime.find(r=>r.key==='PACKS_ENABLED')||{}).value||''; const only=enabled?enabled.split(',').map(x=>x.trim()):null;
+    const allow=(DESC.runtime.find(r=>r.key==='PACKS_ALLOW_CODE')||{}).value==='1';
+    $('#form').innerHTML=`<div class="packs">${PACKS.map(p=>`<div class="pack"><input type="checkbox" data-pack="${p.id}" ${!only||only.includes(p.id)?'checked':''}><div><b>${esc(p.name||p.id)}</b> <span class="tag">${p.kind}</span> ${p.kind==='code'&&!allow?'<span class="tag" style="border-color:var(--red);color:var(--red)">needs allow code</span>':''}<p>${esc((p.description||'').replace(/\s+/g,' '))}</p></div><span class="mono">${p.id}</span></div>`).join('')}</div>
+      <div class="field"><label class="toggle"><input type="checkbox" id="allowcode" ${allow?'checked':''}> Allow code packs (adapter.py runs with the node's privileges — read it first)</label></div>
+      <p class="note">Unticking a pack stops its rules and cells within a minute. To add a pack, drop its folder into <code>packs/</code> on the node; it appears here on the next load.</p>`;
+    return;
+  }
+  const rows=DESC.runtime.filter(r=>r.group===GROUP);
+  $('#form').innerHTML=rows.map(r=>{
+    const isBool=/^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY)$/.test(r.key);
+    const src=`<span class="src">${r.source==='gui'?'set here':r.source==='env'?'from .env':'default'}</span>`;
+    if(isBool)return`<div class="field"><label class="toggle"><input type="checkbox" data-key="${r.key}" ${r.value==='1'?'checked':''}> ${esc(r.label)} ${src}</label><div class="help">${esc(r.help)}</div></div>`;
+    if(r.key==='ALERT_LOCALE')return`<div class="field"><label>${esc(r.label)} ${src}</label><select data-key="${r.key}"><option value="en" ${r.value==='en'?'selected':''}>English</option><option value="id" ${r.value==='id'?'selected':''}>Bahasa Indonesia</option></select></div>`;
+    if(r.key==='NODE_KIND')return`<div class="field"><label>${esc(r.label)} ${src}</label><select data-key="${r.key}">${['home','business','community','district'].map(k=>`<option ${r.value===k?'selected':''}>${k}</option>`).join('')}</select><div class="help">${esc(r.help)}</div></div>`;
+    return`<div class="field"><label>${esc(r.label)} ${src}</label><input data-key="${r.key}" ${r.secret?'type="password" placeholder="'+(r.set?'set — type to replace':'not set')+'"':'type="text" value="'+esc(r.value)+'"'} autocomplete="off"><div class="help">${esc(r.help)}</div></div>`;
+  }).join('');
+}
+async function save(){
+  const body={};
+  if(GROUP==='packs'){
+    const all=[...document.querySelectorAll('[data-pack]')], on=all.filter(c=>c.checked).map(c=>c.dataset.pack);
+    body.PACKS_ENABLED=on.length===all.length?'':on.join(','); body.PACKS_ALLOW_CODE=$('#allowcode').checked?'1':'0';
+  }else document.querySelectorAll('[data-key]').forEach(el=>{const k=el.dataset.key;if(el.type==='checkbox')body[k]=el.checked?'1':'0';else if(el.type==='password'){if(el.value)body[k]=el.value;}else body[k]=el.value;});
+  const r=await fetch('/settings',{method:'PUT',headers:{'content-type':'application/json',authorization:'Bearer '+TOKEN},body:JSON.stringify(body)});
+  if(r.status===401){toast('Wrong token',true);localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();return;}
+  if(r.status===403){toast('ADMIN_TOKEN is not set on the node — run planetai ui',true);return;}
+  toast(r.ok?'Saved. Live within ~20 s.':'Save failed: '+r.status,!r.ok); if(r.ok)loadSetup();
+}
+async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel`:'Could not send',!r.ok);refresh();}
+
+refresh(); setInterval(refresh,kiosk?30000:60000);
+if(location.hash==='#setup')show('setup');
+</script>
+</body>
+</html>

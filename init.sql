@@ -87,3 +87,12 @@ ORDER BY r.sensor_id, r.metric, r.ts DESC;
 -- Where this node's schema is. Read by update.sh and reported at /health.
 CREATE TABLE IF NOT EXISTS schema_version (version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());
 INSERT INTO schema_version (version) VALUES ('0.4') ON CONFLICT DO NOTHING;
+INSERT INTO schema_version (version) VALUES ('0.14') ON CONFLICT DO NOTHING;
+
+-- Settings the GUI can change while the node runs. Overlays .env: a key here wins over the environment.
+-- Bootstrap-only keys (ports, database, compose profiles) stay in .env; the app lists which is which.
+CREATE TABLE IF NOT EXISTS settings (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

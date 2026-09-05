@@ -85,6 +85,7 @@ fi
 [[ -n "$LON"  ]] && setenv NODE_LON "$LON"
 setenv NODE_VERSION "$(git describe --tags --always 2>/dev/null || echo dev)"
 grep -q '^POSTGRES_PASSWORD=change-me' .env && setenv POSTGRES_PASSWORD "$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  grep -qE "^ADMIN_TOKEN=.+" .env || setenv ADMIN_TOKEN "$(openssl rand -hex 16)"     # unlocks the GUI's settings pages
 
 # ---- port clash check
 PORT="$(grep '^APP_PORT=' .env | cut -d= -f2)"; PORT="${PORT:-8080}"

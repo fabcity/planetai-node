@@ -20,6 +20,8 @@ if [[ -n "$bad" ]]; then
   exit 1
 fi
 set -a; . ./.env; set +a
+# nodes installed before v0.14 have no admin token; the GUI needs one to change settings
+grep -qE "^ADMIN_TOKEN=.+" .env || { echo "ADMIN_TOKEN=$(openssl rand -hex 16)" >> .env; echo "   + ADMIN_TOKEN (for the GUI; planetai ui shows it)"; }
 PORT="${APP_PORT:-8080}"
 PULL=1; [[ "${1:-}" == "--no-pull" ]] && PULL=0
 
