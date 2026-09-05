@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.22 — 2026-09-05 — a ladder of models
+
+The Telegram bot uses the strongest model it can reach and falls back down: **online** (Anthropic or OpenAI, with a key;
+the only rung that leaves your network), **remote** (a bigger local model on your tailnet: a laptop's Ollama, an exo
+cluster; no key), **local** (Ollama on the node, always). `AGENT_PREFER=private` never uses online. A failing rung is
+skipped for five minutes. `/model` in Telegram shows the ladder and pins one. Every write records `<agent>/<rung>`.
+One protocol, OpenAI-compatible chat with tools, which all three serve. Tested: `qwen3:8b` on the remote rung read
+three real failures off `health_check` and ordered them; with that rung broken, the loop fell to `qwen3:4b` in seconds.
+This is where an AI credential belongs in `.env`, now with code that uses it: `AGENT_ONLINE_KEY`, a secret in the GUI's
+Model page. `claude-sonnet-4-6` is the default online model; untested here, no key on this machine.
+
 ## v0.21 — 2026-09-05 — a local model runs the node
 
 `planetai agent local`: Ollama on the node's own machine, `qwen3:4b` (or `qwen3:8b` on 16 GB), and `app/agent_loop.py`

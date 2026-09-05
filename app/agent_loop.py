@@ -1,16 +1,17 @@
-"""A local model runs the node.
+"""A model runs the node, over Telegram. Which model: the strongest one reachable, from a ladder you configure.
 
-Ollama on the same machine, a small tool-calling model (qwen3:4b), the node's own MCP tools, and the Telegram bot the
-node already has as the way to talk to it. No cloud, no API key, no model on any server but this one.
+  online   Anthropic or OpenAI, with a key. The most capable. The only rung that sends anything off your network.
+  remote   a bigger local model elsewhere on your tailnet: a laptop's Ollama, an exo cluster. Private, no key.
+  local    Ollama on this machine, qwen3:4b. Always there.
 
-  a person messages the bot     -> the model reads the node with tools and answers in one or two sentences
-  every morning at BRIEF_HOUR   -> the model runs health_check and status and sends a brief
-  an alert fires                -> unchanged: the node sends it; the model does not stand between a rule and a phone
+AGENT_PREFER=strongest tries online, remote, local in that order; AGENT_PREFER=private never uses online. A rung that
+is unreachable, unauthorised or erroring is skipped for five minutes. `/model` in Telegram shows the ladder and which
+rung answered; `/model local` pins one for the conversation.
 
-Only chat ids in TELEGRAM_CHAT_IDS are answered. Everything the model does through tools is recorded with
-X-Agent=<AGENT_NAME>, so `planetai actions` shows what the model did and for whom.
+All three speak the OpenAI-compatible chat protocol with tools, which Ollama, exo, OpenAI and Anthropic all serve.
+The node's own MCP tools are the model's hands; every write records X-Agent=<AGENT_NAME>/<rung>.
 
-  OLLAMA_URL   http://host.docker.internal:11434   MODEL  qwen3:4b   AGENT_NAME  local-model   BRIEF_HOUR  7
+Alerts do not pass through the model. The node sends them; the model answers questions about them.
 """
 from __future__ import annotations
 
@@ -27,9 +28,9 @@ from mcp.client.streamable_http import streamable_http_client
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("agent")
+for noisy in ("httpx", "mcp"):
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 
-OLLAMA = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434").rstrip("/")
-MODEL = os.getenv("MODEL", "qwen3:4b")
 MCP_URL = os.getenv("MCP_URL", "http://app:8080/mcp")
 TOKEN = os.getenv("ADMIN_TOKEN", "")
 NAME = os.getenv("AGENT_NAME", "local-model")
@@ -38,68 +39,115 @@ TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CHATS = {c.strip() for c in os.getenv("TELEGRAM_CHAT_IDS", "").split(",") if c.strip()}
 BRIEF_HOUR = int(os.getenv("BRIEF_HOUR", "7"))
 LOCALE = os.getenv("ALERT_LOCALE", "en")
-MAX_ROUNDS = 6
+MAX_ROUNDS = 8
+SKIP_FOR = 300
+
+
+class Rung:
+    def __init__(self, name, url, model, key="", small=False):
+        self.name, self.url, self.model, self.key, self.small = name, url.rstrip("/"), model, key, small
+        self.skip_until = 0.0
+
+    def headers(self):
+        h = {"content-type": "application/json"}
+        if self.key:
+            h["Authorization"] = f"Bearer {self.key}"
+            if "anthropic.com" in self.url:
+                h["x-api-key"] = self.key
+        return h
+
+
+def ladder() -> list[Rung]:
+    rungs = []
+    if os.getenv("AGENT_ONLINE_URL") and os.getenv("AGENT_ONLINE_KEY"):
+        rungs.append(Rung("online", os.environ["AGENT_ONLINE_URL"], os.getenv("AGENT_ONLINE_MODEL", "claude-sonnet-4-6"), os.environ["AGENT_ONLINE_KEY"]))
+    if os.getenv("AGENT_REMOTE_URL"):
+        rungs.append(Rung("remote", os.environ["AGENT_REMOTE_URL"], os.getenv("AGENT_REMOTE_MODEL", "qwen3:8b"), os.getenv("AGENT_REMOTE_KEY", "")))
+    rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
+    if os.getenv("AGENT_PREFER", "strongest") == "private":
+        rungs = [r for r in rungs if r.name != "online"]
+    return rungs
+
+
+RUNGS = ladder()
 
 SYSTEM = f"""You run PLANETAI node '{NODE}', a small computer that reads environmental sensors at one place and tells
-the people there what to do. You have tools that read the node and act on it. Rules:
-- Use tools to answer; do not guess numbers. Call health_check first when asked how things are.
-- Answer in {'Bahasa Indonesia' if LOCALE == 'id' else 'English'}, in one to three plain sentences. No lists unless asked.
-- When a person says they did something about an alert, record it with `act`, using their words as the note.
-- Never reveal tokens or settings values that look like secrets.
-- If a task needs the node's shell (update, backup, restart), say the exact command from `maintenance` and that it must be run on the node.
-- If you do not know, say so.
-- Reply with the answer only. Never describe what the person asked or what you did; do not think aloud."""
-
+the people there what to do. You have tools that read the node and act on it.
+- Use tools to answer; never guess numbers. For "how is it" questions call health_check and status.
+- Answer in {'Bahasa Indonesia' if LOCALE == 'id' else 'English'}, plainly. One to three sentences unless the person asks for more.
+- When a person says they did something about an alert, record it with `act`, their words as the note.
+- Never reveal tokens or values that look like secrets.
+- Tasks that need the node's shell (update, backup, restart): give the exact command from `maintenance` and say it runs on the node.
+- If you do not know, say so. Reply with the answer only; do not narrate what you did."""
 
 
 def clean(text: str) -> str:
-    """Strip thinking blocks; small models sometimes emit them as content anyway."""
     import re
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.S).strip()
+    return re.sub(r"<think>.*?</think>", "", text or "", flags=re.S).strip()
 
 
-def to_ollama_tools(tools) -> list[dict]:
+def to_openai_tools(tools) -> list[dict]:
     return [{"type": "function", "function": {"name": t.name, "description": t.description or "",
                                               "parameters": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None) or {"type": "object", "properties": {}}}} for t in tools]
 
 
-async def ask(session: ClientSession, tools: list[dict], user: str, history: list[dict] | None = None) -> str:
-    messages = [{"role": "system", "content": SYSTEM}, *(history or []), {"role": "user", "content": user}]
-    async with httpx.AsyncClient(timeout=180) as hc:
-        for _ in range(MAX_ROUNDS):
-            r = await hc.post(f"{OLLAMA}/api/chat", json={"model": MODEL, "messages": messages, "tools": tools, "stream": False,
-                                                            "think": False, "options": {"temperature": 0.2}})
-            r.raise_for_status()
-            msg = r.json()["message"]
-            messages.append(msg)
-            calls = msg.get("tool_calls") or []
-            if not calls:
-                # Final answer as constrained JSON: a small model narrates its reasoning as prose even with thinking
-                # off, and no instruction fixes that reliably. A schema does.
-                messages.append({"role": "user", "content": "Give the final answer for the person now: one to three plain sentences, no narration."})
-                r2 = await hc.post(f"{OLLAMA}/api/chat", json={"model": MODEL, "messages": messages, "stream": False, "think": False,
-                                                                 "format": {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]},
-                                                                 "options": {"temperature": 0.1}})
-                r2.raise_for_status()
-                try:
-                    return clean(json.loads(r2.json()["message"]["content"])["answer"]) or "(no answer)"
-                except Exception:  # noqa: BLE001
-                    return clean(msg.get("content") or "") or "(no answer)"
-            for c in calls:
-                fn = c["function"]["name"]; args = c["function"].get("arguments") or {}
-                if isinstance(args, str):
-                    try: args = json.loads(args)
-                    except Exception: args = {}
-                if "agent" in (next((t for t in tools if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})):
-                    args.setdefault("agent", NAME)
-                log.info("tool %s %s", fn, json.dumps(args)[:200])
-                try:
-                    res = await session.call_tool(fn, args)
-                    text = "\n".join(getattr(x, "text", "") for x in res.content)[:8000]
-                except Exception as e:  # noqa: BLE001
-                    text = f"tool error: {type(e).__name__}: {e}"
-                messages.append({"role": "tool", "content": text, "tool_name": fn})
-        return "I ran out of steps before finishing. Ask me something narrower."
+async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | None, final: bool = False) -> dict:
+    body = {"model": rung.model, "messages": messages, "temperature": 0.2}
+    if tools and not final:
+        body["tools"] = tools
+    if final and rung.small:            # a small model narrates its reasoning as prose; a schema stops that
+        body["response_format"] = {"type": "json_schema", "json_schema": {"name": "answer", "schema": {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}}}
+    if rung.small:
+        messages[0] = {"role": "system", "content": SYSTEM + "\n/no_think"}
+    r = await hc.post(f"{rung.url}/chat/completions", json=body, headers=rung.headers())
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]
+
+
+async def ask(session: ClientSession, tools: list[dict], user: str, history: list[dict] | None = None, pin: str | None = None) -> tuple[str, str]:
+    """Returns (answer, rung name). Walks the ladder; a rung that fails is skipped for five minutes."""
+    now = time.time()
+    order = [r for r in RUNGS if (pin is None or r.name == pin) and r.skip_until < now] or [r for r in RUNGS if pin is None or r.name == pin]
+    last_err = None
+    async with httpx.AsyncClient(timeout=240) as hc:
+        for rung in order:
+            messages = [{"role": "system", "content": SYSTEM}, *(history or []), {"role": "user", "content": user}]
+            try:
+                for _ in range(MAX_ROUNDS):
+                    msg = await chat(hc, rung, messages, tools)
+                    messages.append(msg)
+                    calls = msg.get("tool_calls") or []
+                    if not calls:
+                        if rung.small:
+                            messages.append({"role": "user", "content": "Give the final answer for the person now. One to three plain sentences."})
+                            fin = await chat(hc, rung, messages, None, final=True)
+                            try:
+                                return clean(json.loads(fin.get("content") or "{}").get("answer", "")) or clean(msg.get("content")), rung.name
+                            except Exception:  # noqa: BLE001
+                                return clean(msg.get("content")) or "(no answer)", rung.name
+                        return clean(msg.get("content")) or "(no answer)", rung.name
+                    for c in calls:
+                        fn = c["function"]["name"]
+                        args = c["function"].get("arguments") or {}
+                        if isinstance(args, str):
+                            try: args = json.loads(args)
+                            except Exception: args = {}
+                        spec = next((t for t in tools if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})
+                        if "agent" in spec:
+                            args.setdefault("agent", f"{NAME}/{rung.name}")
+                        log.info("[%s] tool %s %s", rung.name, fn, json.dumps(args)[:160])
+                        try:
+                            res = await session.call_tool(fn, args)
+                            text = "\n".join(getattr(x, "text", "") for x in res.content)[:8000]
+                        except Exception as e:  # noqa: BLE001
+                            text = f"tool error: {type(e).__name__}: {e}"
+                        messages.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
+                return "I ran out of steps. Ask something narrower.", rung.name
+            except (httpx.HTTPError, KeyError, ValueError) as e:
+                last_err = e
+                rung.skip_until = time.time() + SKIP_FOR
+                log.warning("[%s] unavailable (%s: %s); trying the next rung", rung.name, type(e).__name__, str(e)[:100])
+    return f"No model answered ({type(last_err).__name__ if last_err else 'none configured'}). On the node: `ollama list`, and check AGENT_* in .env.", "none"
 
 
 async def telegram(method: str, **params):
@@ -109,28 +157,34 @@ async def telegram(method: str, **params):
         return r.json()
 
 
+def ladder_text(pins: dict, chat: str) -> str:
+    now = time.time()
+    lines = [f"{'→' if pins.get(chat) == r.name else ' '} {r.name:7} {r.model} @ {r.url.replace('http://','').replace('https://','')[:40]}" + ("  (skipped, retry soon)" if r.skip_until > now else "") for r in RUNGS]
+    return "Model ladder, strongest first:\n" + "\n".join(lines) + f"\nPrefer: {os.getenv('AGENT_PREFER','strongest')}. Pin one: /model local | remote | online. Unpin: /model auto"
+
+
 async def main():
     if not TOKEN:
-        raise SystemExit("ADMIN_TOKEN is required (the agent writes through the node's MCP surface)")
+        raise SystemExit("ADMIN_TOKEN is required")
+    log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {TOKEN}", "X-Agent": NAME}, timeout=120)
     async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
         async with ClientSession(r, w) as session:
             await session.initialize()
-            tools = to_ollama_tools((await session.list_tools()).tools)
-            log.info("%s: %d tools, model %s at %s", NODE, len(tools), MODEL, OLLAMA)
-            offset, last_brief_day, history = 0, None, {}
+            tools = to_openai_tools((await session.list_tools()).tools)
+            log.info("%d tools", len(tools))
+            offset, last_brief_day, history, pins = 0, None, {}, {}
             while True:
-                # the morning brief
                 now = datetime.now()
                 if TG_TOKEN and CHATS and now.hour == BRIEF_HOUR and last_brief_day != now.date():
                     last_brief_day = now.date()
                     try:
-                        brief = await ask(session, tools, "Run health_check and status. Then tell me, in three sentences at most, how the node is this morning and whether anything needs doing.")
+                        brief, rung = await ask(session, tools, "Run health_check and status. In three sentences at most: how is the node this morning, and does anything need doing?")
                         for chat in CHATS:
                             await telegram("sendMessage", chat_id=chat, text=brief)
+                        log.info("brief sent via %s", rung)
                     except Exception as e:  # noqa: BLE001
                         log.warning("brief failed: %s", e)
-                # the conversation
                 if not TG_TOKEN:
                     await asyncio.sleep(30); continue
                 try:
@@ -143,19 +197,22 @@ async def main():
                     chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
                     if not text or chat not in CHATS:
                         continue
-                    if text.startswith("/act"):        # "/act 23 closed the windows" stays fast and deterministic
+                    if text.startswith("/act"):
                         parts = text.split(maxsplit=2)
                         if len(parts) >= 2 and parts[1].isdigit():
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2] if len(parts) > 2 else "acted", "agent": f"{NAME}/telegram"})
                             await telegram("sendMessage", chat_id=chat, text=f"Recorded: you acted on #{parts[1]}.")
                             continue
+                    if text.startswith("/model"):
+                        arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
+                        if arg in {r.name for r in RUNGS}: pins[chat] = arg
+                        elif arg == "auto": pins.pop(chat, None)
+                        await telegram("sendMessage", chat_id=chat, text=ladder_text(pins, chat))
+                        continue
                     t0 = time.time()
-                    try:
-                        answer = await ask(session, tools, text, history.get(chat, [])[-6:])
-                    except Exception as e:  # noqa: BLE001
-                        answer = f"I could not answer that ({type(e).__name__}). Is the model running? `ollama list` on the node."
+                    answer, rung = await ask(session, tools, text, history.get(chat, [])[-6:], pins.get(chat))
                     history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
-                    log.info("chat %s: %.1fs", chat, time.time() - t0)
+                    log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
                     await telegram("sendMessage", chat_id=chat, text=answer[:4000])
 
 
