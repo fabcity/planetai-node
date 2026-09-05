@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.9 — 2026-09-05 — audit
+
+Six defects found by auditing rather than by hitting them in the field. Each has a gate now.
+
+**Wrong, silently**
+- `POST /aggregates` stored a child's hourly means as `kind='sensor'`, so they entered the `stats` view and could be averaged into "nearby public sensors" as ambient reference. Children are `kind='child'` and belong in `observations`. Found before the district node made it matter.
+- `NODE_TZ` was written by setup and **read by nothing**, while `.env` claimed daily buckets used it. Postgres defaulted to UTC, so `current_setting('TimeZone')` put local midnight and local hours eight hours out in Bali: the WHO exceedance-day cell split days at 08:00 WITA, and the cooking-hours rule fired at dawn. The database session timezone now comes from `NODE_TZ`.
+- `packs/air-quality` declared its 24h-mean cell `partial` with a comment saying the core would promote it. The core only ever demotes. The cell could never be `live` while `COVERAGE.md` and `START_HERE.md` both promised it would be. It now declares `live` and is demoted until 12 hourly buckets exist.
+- Any loop's exception overwrote `state["last_error"]`, which `poll_once` clears when its sources succeed — a permanently broken rules thread looked healthy. Each loop keeps its own key.
+- The poll loop was an anonymous lambda, so its thread and every error it logged were named `<lambda>`.
+- MQTT ingest counted every reading as new, including duplicates dropped by `ON CONFLICT`.
+
+**Closed while it is free**
+- `POST /aggregates` accepted anything that could reach the port. It now requires `Authorization: Bearer <AGGREGATE_TOKEN>` and refuses outright when no token is set. No child exists yet, so nothing breaks.
+
+**Removed**
+- `UPSTREAM_MODEL_URL` and `UPSTREAM_COMPUTE_URL` from `.env.example`: no code reads them. The contract stays described in `ARCHITECTURE.md`; the setting comes back with the code that uses it.
+
+**New gates**
+- `tools/check_rules.py`: parses `init.sql` for every table and view, then checks each rule and cell — unknown columns, message placeholders the SQL never returns, cells with no `value` column, and cooldowns over a fortnight. The last of those is exactly the bug that made `test-alert` report a dead node for 69 days. Verified against four deliberately broken rules.
+- `tests/test_logic.py`: cell provenance (demote a `live` claim below `min_buckets`, never promote `partial`, show the shortfall in the note) and per-loop error isolation.
+- Both run in `make lint` / `make test` and in CI.
+
 ## v0.8.2 — 2026-09-05
 
 **First real packet from the gateway reached node #1**, and the day-long silence had one cause: the fleet channel was

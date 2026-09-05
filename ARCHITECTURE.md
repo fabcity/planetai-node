@@ -119,6 +119,10 @@ An observatory instance that isn't ours (Bali Air Dispatch today; a city's own p
 Its readings enter through an adapter, flagged `local=false`, credited. If it exposes something like our read API,
 one generic adapter reads it. This is how the network grows without owning everyone's data.
 
+> These two names are the contract, not settings yet: no code reads them, so they were removed from `.env.example`
+> rather than sit there pretending to do something. The first thing that needs upstream compute adds them back
+> along with the code that reads them.
+
 ## 5. Where the Fab City Index plugs in
 
 The Index has three ways data enters (index.fab.city methodology): observe, maintain data (adapters or operators),

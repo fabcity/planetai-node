@@ -47,7 +47,7 @@ nobody has written.
 
 | cell | how | pack | state |
 |---|---|---|---|
-| `Environmental\|Community` | your own sensors — PM2.5 24h mean, WHO exceedance days | `air-quality` | **live** at node #1 after 12 hourly buckets |
+| `Environmental\|Community` | your own sensors: PM2.5 24h mean, WHO exceedance days | `air-quality` | the 24h mean reaches **live** after 12 hourly buckets; the exceedance-day cell stays `partial` (it needs 30 days) |
 | `Environmental\|City` | nearby public sensors, read as reference | `air-quality` | `partial` — never `live`, it isn't our measurement |
 | `Governance\|City` | CKAN portal maintenance: share of datasets touched in 90 days | `open-data-health` | `partial` |
 | `Governance\|Community` | **ρ** — share of act-level alerts a human answered within 24 h | core, every node | `partial` → `live` at 5 acted alerts |

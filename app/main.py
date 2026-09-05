@@ -2,8 +2,8 @@
   poll sources → postgres   (every POLL_SECONDS)
   run rules.yml (SQL) → telegram/log   (every 60s, cooldown enforced in SQL against the alerts table)
   push hourly aggregates to PARENT_API_URL if set   (every hour)
-  answer HTTP: /health /sensors /readings /stats /alerts /aggregates /cells /rho
-              POST /aggregates (parent side) · POST /actions (ρ) · POST /readings (downstream contributors)
+  answer HTTP: /health /sensors /readings /stats /observations /alerts /aggregates /cells /rho /packs
+              POST /aggregates (parent side, token) · POST /actions (ρ) · POST /readings (downstream contributors)
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from pathlib import Path
 import httpx
 import psycopg
 import yaml
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Header, HTTPException, Query
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -46,6 +46,8 @@ MQTT_USER, MQTT_PASS = os.getenv("MQTT_USER", ""), os.getenv("MQTT_PASS", "")
 MESH_INDOOR = {x.strip() for x in os.getenv("MESH_INDOOR_NODES", "").split(",") if x.strip()}
 MESH_ALERTS = os.getenv("MESH_ALERTS", "0") == "1"           # send act-level alerts back over the mesh
 MESH_GATEWAY_NUM = int(os.getenv("MESH_GATEWAY_NODE_NUM", "0") or 0)
+AGG_TOKEN = os.getenv("AGGREGATE_TOKEN", "").strip()        # children must present this to POST /aggregates
+PARENT_TOKEN = os.getenv("PARENT_TOKEN", "").strip()        # what this node presents to its own parent
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 if PARENT and not PARENT.startswith(("http://", "https://")):
@@ -55,8 +57,14 @@ STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
 
 
+NODE_TZ = os.getenv("NODE_TZ", "").strip() or "UTC"
+
+
 def db():
-    return psycopg.connect(DB, row_factory=dict_row, autocommit=True)
+    # Rules and cells use `current_setting('TimeZone')` to find local midnight and local hours. Postgres defaults
+    # to UTC, which put day boundaries and "evening" eight hours out in Bali. Set the session timezone from
+    # NODE_TZ, in the connection options so it costs no extra round trip.
+    return psycopg.connect(DB, row_factory=dict_row, autocommit=True, options=f"-c timezone={NODE_TZ}")
 
 
 # ---------------------------------------------------------------- ingest
@@ -107,7 +115,7 @@ def _store(sensors, readings) -> None:
                         {**s, "meta": Jsonb(s.get("meta") or {})})
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
-            state["ingested"] += len(readings)
+            state["ingested"] += max(cur.rowcount or 0, 0)      # rowcount, not len: duplicates are dropped
 
 
 def mqtt_thread() -> None:
@@ -234,7 +242,9 @@ def push_aggregates() -> None:
         cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
-        httpx.post(f"{PARENT}/aggregates", json={"node": NODE, "rows": rows}, timeout=30).raise_for_status()
+        httpx.post(f"{PARENT}/aggregates", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+                   headers={"Authorization": f"Bearer {PARENT_TOKEN}"} if PARENT_TOKEN else {},
+                   timeout=30).raise_for_status()
         log.info("pushed %d hourly rows to parent", len(rows))
     except Exception as e:  # noqa: BLE001
         log.warning("push to parent failed: %s", e)
@@ -242,16 +252,23 @@ def push_aggregates() -> None:
 
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
+    """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
+    when every source succeeds, so sharing that key would let a permanently broken rules thread look healthy."""
+    name = getattr(fn, "__name__", "loop")
+    state.setdefault("errors", {})
+
     def run():
         time.sleep(delay)
         while True:
             try:
                 fn()
+                state["errors"].pop(name, None)
             except Exception as e:  # noqa: BLE001
-                state["last_error"] = str(e)
-                log.exception("%s: %s", fn.__name__, e)
+                state["errors"][name] = str(e).splitlines()[0]
+                log.exception("%s failed: %s", name, e)
             time.sleep(every)
-    threading.Thread(target=run, daemon=True, name=fn.__name__).start()
+
+    threading.Thread(target=run, daemon=True, name=name).start()
 
 
 hc = httpx.Client(timeout=60, headers={"User-Agent": f"planetai-node/{NODE}"})
@@ -275,7 +292,11 @@ except Exception as e:  # noqa: BLE001  — never block startup on it
 if MQTT_HOST:
     threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
 
-loop(lambda: poll_once(hc), POLL, delay=2)
+def poll_sources() -> None:
+    poll_once(hc)
+
+
+loop(poll_sources, POLL, delay=2)
 loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
 
@@ -383,15 +404,22 @@ def aggregates(hours: int = Query(24, le=24 * 90)):
 
 
 @app.post("/aggregates")
-def receive_aggregates(body: dict):
+def receive_aggregates(body: dict, authorization: str = Header("")):
     """Parent side. Children push hourly means; stored as readings under metric '<metric>_1h' with the child's sensor ids.
     Raw readings never travel this path."""
+    if not AGG_TOKEN:
+        raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
+    if authorization != f"Bearer {AGG_TOKEN}":
+        raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
     rows = body.get("rows", [])
     child = body.get("node", "?")
     with db() as con, con.cursor() as cur:
         for r in rows:
             sid = f"{child}/{r['sensor_id']}"
-            cur.execute("INSERT INTO sensors (sensor_id, source, name, local) VALUES (%s,'child',%s,FALSE) ON CONFLICT DO NOTHING", (sid, sid))
+            cur.execute("""INSERT INTO sensors (sensor_id, source, name, local, kind, scale, cadence)
+                           VALUES (%s,'child',%s,FALSE,'child',%s,'PT1H')
+                           ON CONFLICT (sensor_id) DO UPDATE SET kind='child', scale=EXCLUDED.scale""",
+                        (sid, sid, body.get("scale", "community")))
             cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING",
                         (r["bucket"], sid, f"{r['metric']}_1h", float(r["mean"])))
     return {"accepted": len(rows)}

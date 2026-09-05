@@ -2,7 +2,7 @@
 # The core knows nothing about PM2.5; it just publishes what a pack can honestly compute.
 - cell: "Environmental|Community"
   unit: "µg/m³ PM2.5 (24h mean, local sensors)"
-  state: partial          # -> live once the node has 12+ hourly buckets; the core checks that
+  state: live             # the core demotes this to `partial` until min_buckets is met
   min_buckets: 12
   notes: "local sensors only; indoor and outdoor kept separate by the rules"
   sql: |
