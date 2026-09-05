@@ -8,7 +8,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: planetai
     volumes:
-      - db:/var/lib/postgresql/data
+      # DATA_DIR: a path on a LOCAL disk (another partition, an internal SSD). Default: a Docker volume. Never a NAS or
+      # USB drive over a network filesystem: Postgres needs fsync and locking that SMB/NFS do not honour, and a bind
+      # mount to an unmounted path becomes an empty local folder. Backups are how data reaches a NAS.
+      - ${DATA_DIR:-db}:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports: ["127.0.0.1:5432:5432"]
     healthcheck:
@@ -48,6 +51,37 @@ services:
       - mosquitto:/mosquitto/data
     logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
 
+  # A local model runs the node: Ollama on the host, this loop in a container, Telegram as the way to talk to it.
+  # profile: agent   (planetai agent local sets it up)
+  agent:
+    build: ./app
+    image: planetai-app
+    profiles: ["agent"]
+    restart: unless-stopped
+    command: ["python", "agent_loop.py"]
+    env_file: .env
+    environment:
+      MCP_URL: http://app:8080/mcp
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      MODEL: ${AGENT_MODEL:-qwen3:4b}
+      AGENT_NAME: ${AGENT_NAME:-local-model}
+      BRIEF_HOUR: ${BRIEF_HOUR:-7}
+      TZ: ${NODE_TZ:-UTC}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    depends_on: [app]
+
+  # IPFS: publishes the daily export (aggregates, never raw) to the content-addressed commons. profile: ipfs
+  ipfs:
+    image: ipfs/kubo:latest
+    profiles: ["ipfs"]
+    restart: unless-stopped
+    ports: ["4001:4001", "127.0.0.1:5001:5001", "127.0.0.1:8085:8080"]
+    volumes:
+      - ipfsdata:/data/ipfs
+      - ./exports:/export:ro
+    environment:
+      IPFS_PROFILE: lowpower
+
   reticulum:
     build: { context: ./app, dockerfile: Dockerfile.reticulum }
     profiles: [reticulum]
@@ -67,3 +101,4 @@ volumes:
   db: {}
   mosquitto: {}
   reticulum: {}
+  ipfsdata: {}

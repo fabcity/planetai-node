@@ -57,19 +57,42 @@ class Rung:
         return h
 
 
-def ladder() -> list[Rung]:
+RUNGS: list[Rung] = []
+_SKIPS: dict[str, float] = {}
+
+
+def ladder(cfg: dict) -> list[Rung]:
+    """Build the ladder from settings (the dashboard's Model page) with the environment as fallback."""
+    g = lambda k, d="": (cfg.get(k) or os.getenv(k) or d)  # noqa: E731
     rungs = []
-    if os.getenv("AGENT_ONLINE_URL") and os.getenv("AGENT_ONLINE_KEY"):
-        rungs.append(Rung("online", os.environ["AGENT_ONLINE_URL"], os.getenv("AGENT_ONLINE_MODEL", "claude-sonnet-4-6"), os.environ["AGENT_ONLINE_KEY"]))
-    if os.getenv("AGENT_REMOTE_URL"):
-        rungs.append(Rung("remote", os.environ["AGENT_REMOTE_URL"], os.getenv("AGENT_REMOTE_MODEL", "qwen3:8b"), os.getenv("AGENT_REMOTE_KEY", "")))
+    if g("AGENT_ONLINE_URL") and g("AGENT_ONLINE_KEY"):
+        rungs.append(Rung("online", g("AGENT_ONLINE_URL"), g("AGENT_ONLINE_MODEL", "claude-sonnet-4-6"), g("AGENT_ONLINE_KEY")))
+    if g("AGENT_REMOTE_URL"):
+        rungs.append(Rung("remote", g("AGENT_REMOTE_URL"), g("AGENT_REMOTE_MODEL", "gpt-oss-120b"), g("AGENT_REMOTE_KEY")))
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
-    if os.getenv("AGENT_PREFER", "strongest") == "private":
+    if g("AGENT_PREFER", "strongest") == "private":
         rungs = [r for r in rungs if r.name != "online"]
+    for r in rungs:                        # keep the skip clocks across rebuilds
+        r.skip_until = _SKIPS.get(r.name, 0.0)
     return rungs
 
 
-RUNGS = ladder()
+async def refresh_ladder(hc: httpx.AsyncClient) -> None:
+    """Every minute: re-read the runtime settings so a change in the dashboard reaches the bot without a restart."""
+    global RUNGS
+    while True:
+        try:
+            r = await hc.get(MCP_URL.replace("/mcp", "/settings/raw"))
+            cfg = r.json() if r.status_code == 200 else {}
+        except Exception:  # noqa: BLE001
+            cfg = {}
+        for r_ in RUNGS:
+            _SKIPS[r_.name] = r_.skip_until
+        new = ladder(cfg)
+        if [(x.name, x.model, x.url) for x in new] != [(x.name, x.model, x.url) for x in RUNGS]:
+            log.info("ladder: %s", [f"{x.name}:{x.model}" for x in new])
+        RUNGS = new
+        await asyncio.sleep(60)
 
 SYSTEM = f"""You run PLANETAI node '{NODE}', a small computer that reads environmental sensors at one place and tells
 the people there what to do. You have tools that read the node and act on it.
@@ -160,14 +183,16 @@ async def telegram(method: str, **params):
 def ladder_text(pins: dict, chat: str) -> str:
     now = time.time()
     lines = [f"{'→' if pins.get(chat) == r.name else ' '} {r.name:7} {r.model} @ {r.url.replace('http://','').replace('https://','')[:40]}" + ("  (skipped, retry soon)" if r.skip_until > now else "") for r in RUNGS]
-    return "Model ladder, strongest first:\n" + "\n".join(lines) + f"\nPrefer: {os.getenv('AGENT_PREFER','strongest')}. Pin one: /model local | remote | online. Unpin: /model auto"
+    return "Model ladder, strongest first:\n" + "\n".join(lines) + f"\nPrefer: {'private' if not any(r.name=='online' for r in RUNGS) and os.getenv('AGENT_PREFER')=='private' else 'strongest'}. Pin one: /model local | remote | online. Unpin: /model auto"
 
 
 async def main():
     if not TOKEN:
         raise SystemExit("ADMIN_TOKEN is required")
-    log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {TOKEN}", "X-Agent": NAME}, timeout=120)
+    asyncio.create_task(refresh_ladder(hc))
+    await asyncio.sleep(2)
+    log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
     async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
         async with ClientSession(r, w) as session:
             await session.initialize()

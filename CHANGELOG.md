@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.22.3 — 2026-09-05 — what v0.17 and v0.21–22 claimed, actually shipped
+
+Two edit blocks failed silently on a mismatched anchor and the tool showed no error, so v0.17 shipped without the
+compose changes (`DATA_DIR`, the `ipfs` service; `planetai ipfs` would have failed) and v0.21–22 shipped only
+`agent_loop.py`: no `agent` service, no `AGENT_*` settings, no Model tab, no `planetai agent local`, no `.env` keys.
+Lint passed because nothing inconsistent was present. All of it is in now, verified by count, and:
+
+- **The model ladder is a runtime setting.** `/settings/raw` (admin token) serves unmasked runtime settings to the
+  node's own processes; the loop re-reads its ladder from there every minute. The dashboard's **Model** page changes
+  which model answers the bot, live, no restart.
+- `tests/test_shipped.py` asserts every artifact each version promised, in `make test`.
+
 ## v0.22.2 — 2026-09-05
 
 - **Fixed: the image failed to build on the node.** `uvicorn==0.30.*` and `fastapi==0.115.*` were pinned before `mcp` existed; `mcp` needs uvicorn ≥ 0.31.1. Both loosened to `>=x,<1`; the set resolves on Python 3.12 to FastAPI 0.141 and mcp 2.1.1, and the app imports and the MCP round trip pass under exactly that set. `tools/check_requirements.sh` now resolves `requirements.txt` under 3.12 in `make lint`, so a bad pin fails on the dev machine, not in `planetai update`.

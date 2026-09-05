@@ -21,6 +21,7 @@
 #   planetai restore <f>    replace the live database with a dump (takes a safety backup first)
 #   planetai ipfs           publish each day's export to IPFS
 #   planetai agent          connect an AI agent: the MCP endpoint, the token, config snippets
+#   planetai agent local    a model on this machine (Ollama) that runs the node and answers on Telegram; `agent stop` stops it
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
 #   planetai stop | start | restart
 set -euo pipefail
@@ -794,6 +795,38 @@ JSON
   echo "  and  planetai setup --answers node.json  to install without a terminal. Read AGENTS.md first; it is written for them."
 }
 
+
+# ---------------------------------------------------------------- a model on this machine that runs the node
+cmd_agent_local() {
+  step "A model on this machine"
+  echo "  Ollama here, a small tool-calling model, the node's tools, and your Telegram bot to talk to it. No cloud, no key."
+  echo "  A stronger model is used whenever one is reachable: set it on the dashboard's Model page (or in .env)."
+  echo
+  if ! command -v ollama >/dev/null; then
+    say "installing Ollama"
+    case "$(uname -s)" in
+      Darwin) if command -v brew >/dev/null; then brew install --quiet ollama >>"$LOG" 2>&1 || fail "brew install ollama failed; see $LOG"
+              else fail "install Ollama from https://ollama.com/download, open it once, then run this again"; fi;;
+      Linux)  curl -fsSL https://ollama.com/install.sh | sh >>"$LOG" 2>&1 || fail "ollama install failed; see $LOG";;
+      *) fail "install Ollama from https://ollama.com/download first";;
+    esac
+  fi
+  pgrep -x ollama >/dev/null || { (nohup ollama serve >>"$LOG" 2>&1 &) ; sleep 3; }
+  curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434. Open the Ollama app, or: ollama serve"
+  local mem model; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
+  model="$(envget AGENT_MODEL)"; [[ -n "$model" ]] || { model="qwen3:4b"; [[ $mem -ge 16 ]] && model="qwen3:8b"; envset AGENT_MODEL "$model"; }
+  say "machine has ${mem} GB; local model $model"
+  if ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then say "pulling $model (a few minutes, once)"; ollama pull "$model" >>"$LOG" 2>&1 || fail "ollama pull $model failed; see $LOG"; fi
+  [[ "$(uname -s)" == Linux ]] && { envset OLLAMA_URL "http://172.17.0.1:11434"; warn "Linux: the ollama service must listen on 0.0.0.0 (systemctl edit ollama, Environment=OLLAMA_HOST=0.0.0.0) so the container reaches it"; }
+  [[ -n "$(envget TELEGRAM_BOT_TOKEN)" && -n "$(envget TELEGRAM_CHAT_IDS)" ]] || warn "no Telegram yet: run planetai telegram, or the model has nobody to talk to"
+  profiles_add agent
+  docker compose build agent >>"$LOG" 2>&1 && docker compose up -d agent >>"$LOG" 2>&1 || fail "could not start the agent container; see $LOG"
+  sleep 5; docker compose logs --tail 3 agent 2>/dev/null | sed 's/^/     /'
+  echo
+  say "running. Message your bot:  is the node healthy?   /act 23 closed the windows   /model"
+  echo "  Its actions show in the audit trail as '$(envget AGENT_NAME || echo local-model)/<rung>'. Stop: planetai agent stop.  Logs: planetai logs agent"
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -820,7 +853,12 @@ case "${1:-help}" in
   backup) cmd_backup;;
   restore) shift; cmd_restore "$@";;
   ipfs) cmd_ipfs;;
-  agent|agents|mcp) cmd_agent;;
+  agent|agents|mcp)
+    case "${2:-}" in
+      local) cmd_agent_local;;
+      stop)  docker compose stop agent >>"$LOG" 2>&1; say "local model stopped";;
+      *)     cmd_agent;;
+    esac;;
   run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
