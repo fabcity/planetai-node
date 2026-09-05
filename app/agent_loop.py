@@ -35,8 +35,11 @@ MCP_URL = os.getenv("MCP_URL", "http://app:8080/mcp")
 TOKEN = os.getenv("ADMIN_TOKEN", "")
 NAME = os.getenv("AGENT_NAME", "local-model")
 NODE = os.getenv("NODE_NAME", "node")
-TG_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-CHATS = {c.strip() for c in os.getenv("TELEGRAM_CHAT_IDS", "").split(",") if c.strip()}
+# Telegram and locale come from the node's settings (the dashboard may hold them, not .env); env is the fallback.
+CFG: dict = {}
+def cfg(k, d=""): return (CFG.get(k) or os.getenv(k) or d)
+def TG_TOKEN(): return cfg("TELEGRAM_BOT_TOKEN")
+def CHATS(): return {c.strip() for c in cfg("TELEGRAM_CHAT_IDS").replace(" ", "").split(",") if c.strip()}
 BRIEF_HOUR = int(os.getenv("BRIEF_HOUR", "7"))
 LOCALE = os.getenv("ALERT_LOCALE", "en")
 MAX_ROUNDS = 8
@@ -84,11 +87,15 @@ async def refresh_ladder(hc: httpx.AsyncClient) -> None:
         try:
             r = await hc.get(MCP_URL.replace("/mcp", "/settings/raw"))
             cfg = r.json() if r.status_code == 200 else {}
-        except Exception:  # noqa: BLE001
+            if r.status_code != 200:
+                log.warning("settings/raw -> %s (is ADMIN_TOKEN the same as the app's?)", r.status_code)
+        except Exception as e:  # noqa: BLE001
+            log.warning("settings/raw unreachable at %s: %s", MCP_URL, type(e).__name__)
             cfg = {}
+        CFG.clear(); CFG.update(cfg)
         for r_ in RUNGS:
             _SKIPS[r_.name] = r_.skip_until
-        new = ladder(cfg)
+        new = ladder(CFG)
         if [(x.name, x.model, x.url) for x in new] != [(x.name, x.model, x.url) for x in RUNGS]:
             log.info("ladder: %s", [f"{x.name}:{x.model}" for x in new])
         RUNGS = new
@@ -185,7 +192,7 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
 
 async def telegram(method: str, **params):
     async with httpx.AsyncClient(timeout=40) as hc:
-        r = await hc.post(f"https://api.telegram.org/bot{TG_TOKEN}/{method}", json=params)
+        r = await hc.post(f"https://api.telegram.org/bot{TG_TOKEN()}/{method}", json=params)
         r.raise_for_status()
         return r.json()
 
@@ -203,6 +210,7 @@ async def main():
     asyncio.create_task(refresh_ladder(hc))
     await asyncio.sleep(2)
     log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
+    log.info("telegram: %s", f"bot set, answering {len(CHATS())} chat(s): {sorted(CHATS())}" if TG_TOKEN() and CHATS() else "NOT configured (no TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone")
     async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
         async with ClientSession(r, w) as session:
             await session.initialize()
@@ -211,16 +219,16 @@ async def main():
             offset, last_brief_day, history, pins = 0, None, {}, {}
             while True:
                 now = datetime.now()
-                if TG_TOKEN and CHATS and now.hour == BRIEF_HOUR and last_brief_day != now.date():
+                if TG_TOKEN() and CHATS() and now.hour == BRIEF_HOUR and last_brief_day != now.date():
                     last_brief_day = now.date()
                     try:
                         brief, rung = await ask(session, tools, "Run health_check and status. Write the morning note for the household: 🌅 how the air and the node are this morning, in plain words, and whether anything needs doing today. No statistics. Warm, short.")
-                        for chat in CHATS:
+                        for chat in CHATS():
                             await telegram("sendMessage", chat_id=chat, text=brief)
                         log.info("brief sent via %s", rung)
                     except Exception as e:  # noqa: BLE001
                         log.warning("brief failed: %s", e)
-                if not TG_TOKEN:
+                if not TG_TOKEN():
                     await asyncio.sleep(30); continue
                 try:
                     upd = await telegram("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
@@ -230,7 +238,10 @@ async def main():
                     offset = u["update_id"] + 1
                     m = u.get("message") or {}
                     chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
-                    if not text or chat not in CHATS:
+                    if not text:
+                        continue
+                    if chat not in CHATS():
+                        log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
                         continue
                     if text.startswith("/act"):
                         parts = text.split(maxsplit=2)
