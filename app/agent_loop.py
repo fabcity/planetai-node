@@ -95,18 +95,28 @@ async def refresh_ladder(hc: httpx.AsyncClient) -> None:
         await asyncio.sleep(60)
 
 SYSTEM = f"""You run PLANETAI node '{NODE}', a small computer that reads environmental sensors at one place and tells
-the people there what to do. You have tools that read the node and act on it.
+the people there what to do. You have tools that read the node and act on it. You are talking to the people who live
+or work here, on Telegram.
 - Use tools to answer; never guess numbers. For "how is it" questions call health_check and status.
-- Answer in {'Bahasa Indonesia' if LOCALE == 'id' else 'English'}, plainly. One to three sentences unless the person asks for more.
-- When a person says they did something about an alert, record it with `act`, their words as the note.
+- Answer in {'Bahasa Indonesia' if LOCALE == 'id' else 'English'}. Explain, do not just report: say what is happening, what it means for them, and what to do.
+- Start with an emoji that fits (🏠 inside, 🌳 outside, 🛰️ satellites, 🌊 sea, 🥵 heat, 📡 a sensor, ✅ fine, ⚠️ watch, 🚨 act). Use a few more where they help the eye. Short paragraphs, not lists.
+- Avoid statistics. No means, peaks, correlations, percentages or counts unless the person asks for numbers. One number is fine when it drives the advice (a PM2.5 level, a temperature).
+- When a person says they did something about an alert, record it with `act`, their words as the note, and thank them.
 - Never reveal tokens or values that look like secrets.
 - Tasks that need the node's shell (update, backup, restart): give the exact command from `maintenance` and say it runs on the node.
+- Plain text only: Telegram shows it raw. No asterisks, no backticks, no headings. Line breaks and emojis are your formatting.
+- Under 100 words unless the person asks for detail. One message, not a report.
 - If you do not know, say so. Reply with the answer only; do not narrate what you did."""
 
 
 def clean(text: str) -> str:
+    """Strip thinking blocks and Markdown: Telegram gets plain text, and a model reaches for ** and ``` anyway."""
     import re
-    return re.sub(r"<think>.*?</think>", "", text or "", flags=re.S).strip()
+    t = re.sub(r"<think>.*?</think>", "", text or "", flags=re.S)
+    t = re.sub(r"```[a-z]*\n?", "", t)
+    t = re.sub(r"(\*\*|__|`)", "", t)
+    t = re.sub(r"^#{1,6}\s*", "", t, flags=re.M)
+    return re.sub(r"\n{3,}", "\n\n", t).strip()
 
 
 def to_openai_tools(tools) -> list[dict]:
@@ -142,7 +152,7 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                     calls = msg.get("tool_calls") or []
                     if not calls:
                         if rung.small:
-                            messages.append({"role": "user", "content": "Give the final answer for the person now. One to three plain sentences."})
+                            messages.append({"role": "user", "content": "Give the final answer for the person now: a short explanation with an emoji or two, what it means, what to do. No statistics unless they asked."})
                             fin = await chat(hc, rung, messages, None, final=True)
                             try:
                                 return clean(json.loads(fin.get("content") or "{}").get("answer", "")) or clean(msg.get("content")), rung.name
@@ -204,7 +214,7 @@ async def main():
                 if TG_TOKEN and CHATS and now.hour == BRIEF_HOUR and last_brief_day != now.date():
                     last_brief_day = now.date()
                     try:
-                        brief, rung = await ask(session, tools, "Run health_check and status. In three sentences at most: how is the node this morning, and does anything need doing?")
+                        brief, rung = await ask(session, tools, "Run health_check and status. Write the morning note for the household: 🌅 how the air and the node are this morning, in plain words, and whether anything needs doing today. No statistics. Warm, short.")
                         for chat in CHATS:
                             await telegram("sendMessage", chat_id=chat, text=brief)
                         log.info("brief sent via %s", rung)

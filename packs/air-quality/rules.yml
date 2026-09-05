@@ -15,8 +15,8 @@
     SELECT sensor_id, name, mean_15m FROM stats
     WHERE local AND indoor AND metric = 'pm25' AND mean_15m > 35.5
   message:
-    en: "Indoor PM2.5 at {name} is {mean_15m:.0f} µg/m³ (unhealthy for sensitive groups). Run the purifier if you have one; check whether outside is better before opening windows."
-    id: "PM2.5 dalam ruangan di {name} {mean_15m:.0f} µg/m³ (tidak sehat untuk kelompok sensitif). Nyalakan pembersih udara jika ada; cek udara luar sebelum membuka jendela."
+    en: "🏠😷 The air inside at {name} is unhealthy right now.\n\nFine particles are high enough to bother people with asthma, children and older people, and to tire anyone over a few hours.\n\n👉 Run the purifier if you have one. Before opening a window, check whether outside is any better; often it is not."
+    id: "🏠😷 Udara di dalam {name} sedang tidak sehat.\n\nPartikel halusnya cukup tinggi untuk mengganggu penderita asma, anak-anak dan orang tua, dan membuat siapa pun lelah dalam beberapa jam.\n\n👉 Nyalakan pembersih udara kalau ada. Sebelum membuka jendela, cek dulu apakah di luar lebih baik; sering kali tidak."
 
 - id: outside_worse_keep_shut
   level: act
@@ -49,8 +49,8 @@
     FROM inside i, best b
     WHERE b.v > 35.5 AND b.v > 1.5 * i.mean_1h
   message:
-    en: "Outside is worse than inside at {name}: about {outside:.0f} µg/m³ against {inside:.0f} indoors, from {src}. Keep the windows shut."
-    id: "Udara luar lebih buruk dari dalam di {name}: sekitar {outside:.0f} µg/m³ vs {inside:.0f} di dalam, menurut {src}. Tutup jendela."
+    en: "🌫️🚪 Outside is worse than inside at {name}.\n\nThe street air is carrying more smoke or dust than your rooms right now, and your building is holding it out. Opening up would let it in.\n\n👉 Keep windows and doors shut for now. I will tell you when outside clears."
+    id: "🌫️🚪 Di luar lebih buruk daripada di dalam di {name}.\n\nUdara jalan membawa lebih banyak asap atau debu daripada ruangan Anda, dan bangunan Anda menahannya. Membuka jendela akan memasukkannya.\n\n👉 Tutup jendela dan pintu dulu. Saya kabari kalau di luar sudah bersih."
 
 - id: inside_worse_ventilate
   level: act
@@ -83,8 +83,8 @@
     FROM inside i, best b
     WHERE i.mean_1h > 15 AND i.mean_1h > 1.5 * b.v
   message:
-    en: "Inside is worse than outside at {name}: {inside:.0f} µg/m³ indoors against about {outside:.0f} outside, from {src}. Something is burning or cooking indoors. Open a window."
-    id: "Udara dalam lebih buruk dari luar di {name}: {inside:.0f} µg/m³ di dalam vs sekitar {outside:.0f} di luar, menurut {src}. Ada yang terbakar atau memasak di dalam. Buka jendela."
+    en: "🔥🪟 Inside is worse than outside at {name}.\n\nSomething in the house is making smoke or fine dust: cooking, incense, a candle, a mosquito coil. The air outside is cleaner than what you are breathing.\n\n👉 Open a window or two and let it through. It clears faster than a purifier can catch it."
+    id: "🔥🪟 Di dalam lebih buruk daripada di luar di {name}.\n\nAda yang membuat asap atau debu halus di rumah: memasak, dupa, lilin, obat nyamuk bakar. Udara di luar lebih bersih daripada yang Anda hirup.\n\n👉 Buka satu dua jendela dan biarkan mengalir. Lebih cepat bersih daripada menunggu pembersih udara."
 
 - id: outdoor_pm25_high
   level: act
@@ -93,8 +93,8 @@
     SELECT sensor_id, name, mean_1h FROM stats
     WHERE local AND NOT indoor AND metric = 'pm25' AND mean_1h > 55.5
   message:
-    en: "Outdoor PM2.5 at {name} is {mean_1h:.0f} µg/m³, which is unhealthy for everyone. Close up, delay outdoor work and exercise, and keep children and anyone with asthma inside."
-    id: "PM2.5 luar ruangan di {name} {mean_1h:.0f} µg/m³, tidak sehat untuk semua orang. Tutup rumah, tunda kerja dan olahraga di luar, jaga anak-anak dan penderita asma tetap di dalam."
+    en: "🌫️🚨 The air outside at {name} is unhealthy for everyone.\n\nThis is the level where healthy adults feel it too: a scratchy throat, tired eyes, a heavier chest with exertion. Burning season, most likely.\n\n👉 Close up. Put off outdoor work and exercise. Keep children and anyone with asthma or a heart condition indoors."
+    id: "🌫️🚨 Udara di luar di {name} tidak sehat untuk semua orang.\n\nDi tingkat ini orang dewasa sehat pun merasakannya: tenggorokan perih, mata lelah, dada berat saat bergerak. Kemungkinan musim bakar.\n\n👉 Tutup rumah. Tunda kerja dan olahraga di luar. Anak-anak dan penderita asma atau jantung tetap di dalam."
 
 # ---------------------------------------------------------------- something changed, even if nothing is unhealthy yet
 - id: indoor_spike
@@ -107,8 +107,8 @@
       AND mean_15m IS NOT NULL AND mean_24h IS NOT NULL
       AND mean_15m >= 12 AND mean_15m >= 2.5 * greatest(mean_24h, 2)
   message:
-    en: "PM2.5 at {name} jumped to {now} µg/m³ — about {usual} is normal today. Not unhealthy yet, but something started: cooking, incense, a candle, smoke from outside? Worth a look."
-    id: "PM2.5 di {name} melonjak ke {now} µg/m³ — hari ini biasanya sekitar {usual}. Belum berbahaya, tapi ada yang mulai: masak, dupa, lilin, asap dari luar? Layak dicek."
+    en: "📈🏠 Something just changed the air at {name}.\n\nFine particles indoors rose quickly in the last few minutes. It is not unhealthy yet, but a jump like this usually has a cause you can see: a pan on the fire, incense, a candle, smoke drifting in from outside.\n\n👉 Worth a look. If it keeps climbing I will say so."
+    id: "📈🏠 Ada yang mengubah udara di {name}.\n\nPartikel halus di dalam naik cepat beberapa menit terakhir. Belum tidak sehat, tapi lonjakan seperti ini biasanya ada sebabnya: wajan di api, dupa, lilin, asap masuk dari luar.\n\n👉 Coba lihat. Kalau terus naik, saya kabari."
 
 - id: outdoor_spike
   level: warn
@@ -122,5 +122,5 @@
       AND mean_15m IS NOT NULL AND mean_24h IS NOT NULL
       AND mean_15m >= 15 AND mean_15m >= 2.5 * greatest(mean_24h, 2)
   message:
-    en: "Outside air at {name} jumped to {now} µg/m³ — about {usual} is normal today. Burning nearby, most likely. If it keeps rising, shut the windows before it comes in."
-    id: "Udara luar di {name} melonjak ke {now} µg/m³ — hari ini biasanya sekitar {usual}. Kemungkinan pembakaran di dekat sini. Kalau terus naik, tutup jendela sebelum masuk."
+    en: "📈🌫️ The outside air at {name} just got worse.\n\nA sudden rise like this is almost always burning nearby: leaves, rubbish, a field. It may pass in an hour or it may settle in for the evening.\n\n👉 If it keeps rising, shut the windows before it comes indoors."
+    id: "📈🌫️ Udara luar di {name} baru saja memburuk.\n\nKenaikan mendadak seperti ini hampir selalu karena pembakaran di dekat sini: daun, sampah, ladang. Bisa lewat dalam sejam, bisa juga menetap sampai malam.\n\n👉 Kalau terus naik, tutup jendela sebelum masuk ke dalam."

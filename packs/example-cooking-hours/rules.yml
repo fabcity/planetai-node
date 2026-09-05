@@ -11,5 +11,5 @@
     GROUP BY sensor_id, name
     HAVING max(mean_15m) > 35.5
   message:
-    en: "Today's indoor peak at {name} was {peak} µg/m³, mostly around cooking. Opening a window while you cook clears it faster than a purifier afterwards."
-    id: "Puncak PM2.5 dalam ruangan di {name} hari ini {peak} µg/m³, sebagian besar saat memasak. Membuka jendela saat memasak lebih cepat membersihkan daripada pembersih udara setelahnya."
+    en: "🍳 Today's indoor air was worst around cooking time at {name}.\n\nThat is normal in any kitchen. The fix is timing, not equipment: a window open while the pan is on clears it faster than a purifier running afterwards."
+    id: "🍳 Udara dalam terburuk hari ini sekitar waktu memasak di {name}.\n\nItu normal di dapur mana pun. Solusinya soal waktu, bukan alat: jendela terbuka saat wajan di api lebih cepat membersihkan daripada pembersih udara sesudahnya."

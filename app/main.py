@@ -642,7 +642,7 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
 def test_alert(authorization: str = Header("")):
     """Fire one act-level alert now, through every configured channel. Same as `planetai test-alert`."""
     _admin(authorization)
-    text = "Test alert from your node. If you can read this, the whole path works: rule to message to you."
+    text = "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do.\n\n👉 Reply /act with the number below to show me how you close the loop."
     with db() as con, con.cursor() as cur:
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]

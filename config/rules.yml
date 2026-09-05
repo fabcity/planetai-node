@@ -9,8 +9,8 @@
     SELECT DISTINCT ON (sensor_id) sensor_id, name, silent_minutes FROM stats
     WHERE local AND silent_minutes > 90
   message:
-    en: "{name} has not reported for {silent_minutes:.0f} minutes. Power? Network?"
-    id: "{name} tidak melapor selama {silent_minutes:.0f} menit. Listrik? Jaringan?"
+    en: "📡 {name} has gone quiet.\n\nIt has not sent a reading for a while. Most often that is power or WiFi: a cable knocked loose, a router that rebooted, a battery that ran down.\n\n👉 Check that its light is on and that it is on the network."
+    id: "📡 {name} tidak terdengar.\n\nSudah cukup lama tidak mengirim data. Biasanya soal listrik atau WiFi: kabel lepas, router restart, baterai habis.\n\n👉 Cek lampunya menyala dan tersambung ke jaringan."
 
 - id: daily_pulse
   level: info
@@ -22,5 +22,5 @@
            count(DISTINCT metric) FILTER (WHERE local) AS metrics
     FROM stats HAVING count(*) > 0
   message:
-    en: "Node up. {ours} local sensor(s) reporting {metrics} metric(s), {refs} public reference sensors in range."
-    id: "Node aktif. {ours} sensor lokal melaporkan {metrics} metrik, {refs} sensor publik dalam jangkauan."
+    en: "🌅 Good morning from your node.\n\nIt kept watch through the night and is still listening to your sensors. If something matters today, you will hear about it here.\n\nAsk me anything about the air, the heat or the sea, whenever you like."
+    id: "🌅 Selamat pagi dari node Anda.\n\nSemalam tetap berjaga dan masih mendengarkan sensor Anda. Kalau ada yang penting hari ini, Anda akan tahu dari sini.\n\nTanya apa saja tentang udara, panas, atau laut, kapan pun."

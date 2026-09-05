@@ -10,5 +10,5 @@
            round((b.built*100)::numeric) AS built, round((t.trees*100)::numeric) AS trees
     FROM cur, b, t WHERE cur.score >= 0.05
   message:
-    en: "The satellites say the land within a kilometre of here changed noticeably in {year} (embedding shift {pct}%). Today it reads as {built}% built and {trees}% trees. The node cannot say what changed; someone who walks here can."
-    id: "Menurut satelit, lahan dalam radius satu kilometer berubah cukup nyata pada {year} (pergeseran embedding {pct}%). Saat ini terbaca {built}% terbangun dan {trees}% pohon. Node tidak bisa bilang apa yang berubah; yang berjalan di sini bisa."
+    en: "🛰️🌳 The land around here changed in {year}.\n\nComparing satellite images year over year, the kilometre around this node looks noticeably different from the year before. The satellites cannot say what changed; someone who walks here can.\n\n👉 If you know what it was, a building, a road, cleared trees, tell me and I will note it."
+    id: "🛰️🌳 Lahan di sekitar sini berubah pada {year}.\n\nMembandingkan citra satelit tahun ke tahun, satu kilometer di sekitar node ini terlihat jelas berbeda dari tahun sebelumnya. Satelit tidak bisa bilang apa yang berubah; yang berjalan di sini bisa.\n\n👉 Kalau Anda tahu, bangunan, jalan, pohon ditebang, beri tahu saya dan saya catat."

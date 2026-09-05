@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.23 — 2026-09-05 — how the node talks
+
+**Every message rewritten**, both languages, to one shape: an emoji headline (the line the LoRa mesh carries), what is
+happening, what it means for the people there, what to do. No means, peaks, correlations, percentages or counts; one
+number where it drives the advice. The weekly `agreement` note says the house held back most of the street's air
+instead of quoting r; the `digest` reads 🏠 🌳 🛰️ in three lines; the test alert explains itself. "Ask me for the numbers
+if you want them" replaces the numbers. The bot's model speaks the same way: explain, emoji, plain text (Telegram shows
+Markdown raw, so it is scrubbed too), under 100 words unless asked; the morning brief is a note to the household, not a
+status report.
+
 ## v0.22.3 — 2026-09-05 — what v0.17 and v0.21–22 claimed, actually shipped
 
 Two edit blocks failed silently on a mismatched anchor and the tool showed no error, so v0.17 shipped without the

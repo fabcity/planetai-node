@@ -7,8 +7,8 @@
     SELECT 'cams-point' AS sensor_id, round(value)::int AS pm
     FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'
   message:
-    en: "Modelled PM2.5 for your location today: {pm} µg/m³ (Copernicus CAMS, ~11 km grid). This is a model, not a measurement — a sensor at your address will differ, sometimes a lot. That difference is the reason to put one up."
-    id: "Perkiraan PM2.5 untuk lokasi Anda hari ini: {pm} µg/m³ (Copernicus CAMS, grid ~11 km). Ini model, bukan pengukuran — sensor di lokasi Anda akan berbeda, kadang jauh. Perbedaan itulah alasan memasangnya."
+    en: "🛰️ What the satellites think your air is like today.\n\nThis comes from a European atmosphere model, not from a sensor at your address, and it sees your whole district as one square. A sensor at your window will disagree with it, sometimes a lot.\n\nThat disagreement is exactly the reason to put one up."
+    id: "🛰️ Perkiraan satelit tentang udara Anda hari ini.\n\nIni dari model atmosfer Eropa, bukan sensor di alamat Anda, dan model melihat seluruh kecamatan sebagai satu kotak. Sensor di jendela Anda akan berbeda, kadang jauh.\n\nPerbedaan itulah alasan memasang sensor."
 
 - id: hotter_than_normal
   level: info
@@ -21,8 +21,8 @@
            round((now_t.t - norm.t)::numeric,1) AS delta
     FROM now_t, norm WHERE abs(now_t.t - norm.t) > 3
   message:
-    en: "It is {delta} °C away from normal for this month here ({today} vs a {normal} °C long-term average, NASA POWER 1981–present). Worth noting if you run anything temperature-sensitive."
-    id: "Suhu saat ini {delta} °C dari rata-rata bulan ini ({today} vs {normal} °C, NASA POWER 1981–sekarang). Perlu diperhatikan jika Anda punya sesuatu yang sensitif terhadap suhu."
+    en: "🌡️📅 This month is running away from normal here.\n\nCompared with forty years of records for this place, the temperature is well off its usual for the season. That matters for anything that minds heat: people, plants, a fridge, a server.\n\nAsk me for the numbers if you want them."
+    id: "🌡️📅 Bulan ini menyimpang dari normal di sini.\n\nDibanding catatan empat puluh tahun untuk tempat ini, suhunya jauh dari biasanya untuk musim ini. Penting untuk apa pun yang peka panas: orang, tanaman, kulkas, server.\n\nTanya angkanya kalau mau."
 
 - id: sensor_vs_model
   level: info
@@ -34,5 +34,5 @@
            round((mine.v - model.v)::numeric) AS delta
     FROM mine, model WHERE mine.v IS NOT NULL AND abs(mine.v - model.v) > 15
   message:
-    en: "Your outdoor sensor reads {mine} µg/m³ against a modelled {modelled} — {delta} apart. A gap this size usually means the model is missing something local (burning, traffic, a kitchen). That gap is exactly what a hyperlocal node exists to find."
-    id: "Sensor luar Anda membaca {mine} µg/m³ dibanding model {modelled} — selisih {delta}. Selisih sebesar ini biasanya berarti model melewatkan sesuatu yang lokal (pembakaran, lalu lintas, dapur). Justru selisih itulah alasan node hyperlokal ada."
+    en: "📏 Your sensor and the satellites disagree about your air.\n\nThe model sees a whole district; your sensor sees your street. When they differ by this much, the model is missing something local: burning, traffic, a kitchen.\n\nThat gap is what a sensor at your address is for."
+    id: "📏 Sensor Anda dan satelit tidak sepakat soal udara Anda.\n\nModel melihat satu kecamatan; sensor Anda melihat jalan Anda. Kalau bedanya sebesar ini, model melewatkan sesuatu yang lokal: pembakaran, lalu lintas, dapur.\n\nSelisih itulah gunanya sensor di alamat Anda."

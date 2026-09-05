@@ -5,5 +5,5 @@
     SELECT sensor_id, name, round(value)::int AS pct FROM observations
     WHERE kind = 'portal' AND metric = 'datasets_fresh_pct' AND value < 10
   message:
-    en: "{name}: only {pct}% of published datasets were updated in the last 90 days. The portal is drifting toward an archive — worth raising with whoever owns it."
-    id: "{name}: hanya {pct}% dataset yang diperbarui dalam 90 hari terakhir. Portal ini mulai menjadi arsip — perlu diangkat ke pengelolanya."
+    en: "🗄️ The city's open-data portal is going quiet.\n\nMost of what {name} publishes has not been updated in months. A portal that stops updating slowly becomes an archive, and the city loses a way to be checked.\n\n👉 Worth raising with whoever runs it."
+    id: "🗄️ Portal data terbuka kota mulai sepi.\n\nSebagian besar yang diterbitkan {name} belum diperbarui berbulan-bulan. Portal yang berhenti diperbarui perlahan jadi arsip, dan kota kehilangan satu cara untuk diperiksa.\n\n👉 Layak disampaikan ke pengelolanya."

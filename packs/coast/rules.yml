@@ -11,8 +11,8 @@
          (SELECT value FROM m WHERE metric = 'wave_direction') dir
     WHERE h.value >= 2.5 AND p.value >= 12
   message:
-    en: "Big long-period swell arriving: {height} m at {period} s from {dir}°. Strong currents and shore break on exposed beaches; small boats stay in; experienced surfers only."
-    id: "Swell besar berperiode panjang datang: {height} m, {period} detik, dari {dir}°. Arus kuat dan hempasan di pantai terbuka; perahu kecil jangan melaut; hanya peselancar berpengalaman."
+    en: "🌊⚠️ A big, long-period swell is arriving.\n\nWaves like this travel from far away and carry a lot of energy. On exposed beaches that means strong currents and a heavy shore break, and small boats have a hard time.\n\n👉 Swim at protected beaches only. Small boats stay in. Experienced surfers only."
+    id: "🌊⚠️ Ombak besar berperiode panjang sedang datang.\n\nOmbak seperti ini datang dari jauh dan membawa energi besar. Di pantai terbuka artinya arus kuat dan hempasan keras, dan perahu kecil kesulitan.\n\n👉 Berenang hanya di pantai terlindung. Perahu kecil jangan melaut. Peselancar berpengalaman saja."
 
 - id: sea_warm_anomaly
   level: info
@@ -25,5 +25,5 @@
            round((now_t.t - base.t)::numeric, 1) AS delta
     FROM now_t, base WHERE base.t IS NOT NULL AND now_t.t - base.t >= 1.0
   message:
-    en: "The sea is {delta} °C warmer than its recent average ({today} vs {usual} °C). Sustained warm anomalies stress reef and fish; worth noting for anyone who watches the reef."
-    id: "Laut {delta} °C lebih hangat dari rata-rata terkini ({today} vs {usual} °C). Anomali hangat berkelanjutan menekan terumbu dan ikan; perlu dicatat bagi yang mengamati terumbu."
+    en: "🌡️🐠 The sea is warmer than usual for this time of year.\n\nWhen warm water lingers for days, coral gets stressed and fish move. It matters to anyone who watches the reef, fishes, or runs a dive boat.\n\nNothing to do at home; worth knowing if the sea is part of your life."
+    id: "🌡️🐠 Laut lebih hangat dari biasanya untuk musim ini.\n\nKalau air hangat bertahan beberapa hari, karang tertekan dan ikan berpindah. Penting bagi yang mengamati karang, memancing, atau menjalankan kapal selam.\n\nTidak ada yang perlu dilakukan di rumah; baik diketahui kalau laut bagian dari hidup Anda."
