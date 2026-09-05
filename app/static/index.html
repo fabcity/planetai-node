@@ -272,7 +272,12 @@ async function refresh(){
     const errs=Object.keys(h.errors||{}).length; $('#dot').className='dot'+(h.last_error||errs?' warn':'');
     $('#pulsetxt').textContent=h.last_poll?'polled '+ago(h.last_poll):'starting';
     const S=m=>stats.filter(r=>r.metric===m);
-    const inPM=S('pm25').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), outPM=S('pm25').filter(r=>!r.indoor&&r.mean_15m!=null&&r.silent_minutes<120);
+    const inPM=S('pm25').filter(r=>r.local&&r.indoor&&r.mean_15m!=null);
+    // outside, resolved like the rules do: your own outdoor sensors first; otherwise the three nearest public references
+    const mine=S('pm25').filter(r=>r.local&&!r.indoor&&r.mean_15m!=null&&r.silent_minutes<120);
+    const dist=r=>Math.hypot((r.lat||0)-h.lat,((r.lon||0)-h.lon)*Math.cos(h.lat*Math.PI/180));
+    const near=S('pm25').filter(r=>!r.local&&!r.indoor&&r.kind==='sensor'&&r.mean_15m!=null&&r.silent_minutes<120&&r.lat!=null).sort((a,b)=>dist(a)-dist(b)).slice(0,3);
+    const outPM=mine.length?mine:near, outSrc=mine.length?`${mine.length} outdoor sensor${mine.length===1?'':'s'} of yours`:`${near.length} nearest public sensor${near.length===1?'':'s'}`;
     const iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m));
     const model=obs.find(o=>o.sensor_id==='cams-point'&&o.metric==='pm25_model'), mv=model?model.value:null;
     // the instrument
@@ -283,14 +288,14 @@ async function refresh(){
     // the verdict: one sentence, then why
     let v='',p='';
     if(iv==null&&ov==null){v='No sensor yet.';p='The node is reading the model for your coordinates. Add a sensor under Set up → Sources and this hexagon fills in.';}
-    else if(iv==null){v=ov<=12?'Clean outside.':ov<=35.5?'Moderate outside.':'Unhealthy outside.';p=`${outPM.length} outdoor reference${outPM.length===1?'':'s'} within reach. No indoor sensor yet — the inside of the hexagon is waiting for one.`;}
+    else if(iv==null){v=ov<=12?'Clean outside.':ov<=35.5?'Moderate outside.':'Unhealthy outside.';p=`Outside from ${outSrc}. No indoor sensor yet — the inside of the hexagon is waiting for one.`;}
     else if(ov!=null&&iv>1.5*ov&&iv>15){v='Inside is worse than outside.';p=`${fmt(iv)} in the house against ${fmt(ov)} on the street. Something is burning or cooking indoors — open a window.`;}
     else if(ov!=null&&ov>1.5*iv&&ov>35.5){v='Keep the windows shut.';p=`The street is at ${fmt(ov)}; the house is holding it to ${fmt(iv)}. The building is doing its job.`;}
     else if(iv<=12){v='The air is clean.';p=ov!=null?`Inside ${fmt(iv)}, outside ${fmt(ov)}. Nothing to do.`:'Nothing to do.';}
     else if(iv<=35.5){v='Moderate.';p='Fine for most people; anyone with asthma or a heart condition should take it easy.';}
     else{v='Unhealthy inside.';p='Purifier on, windows shut, and check who is in the room.';}
     $('#verdict').textContent=v; $('#verdict-p').textContent=p;
-    $('#verdict-u').textContent=`${inPM.length} indoor sensor${inPM.length===1?'':'s'} · ${outPM.length} outdoor reference${outPM.length===1?'':'s'} · 15-minute means`;
+    $('#verdict-u').textContent=`${inPM.length} indoor sensor${inPM.length===1?'':'s'} · outside from ${outSrc} · 15-minute means`;
     // stats
     const inT=S('temp').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), inH=S('humidity').filter(r=>r.local&&r.indoor&&r.mean_15m!=null);
     const at=apparent(mean(inT.map(r=>r.mean_15m)),mean(inH.map(r=>r.mean_15m)));

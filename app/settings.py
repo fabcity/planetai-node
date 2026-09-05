@@ -24,7 +24,7 @@ RUNTIME = {
     # sources
     "SC_USER":            ("sources", "Smart Citizen username", False, False, "Every kit on the account is read; kits within SC_LOCAL_KM of the node count as yours."),
     "SC_DEVICES":         ("sources", "Smart Citizen kit ids", False, False, "Comma-separated. Always treated as yours, at this address."),
-    "SC_LOCAL_KM":        ("sources", "Local radius, km", False, False, "Account kits within this distance are local; further ones are references you own."),
+    "SC_LOCAL_KM":        ("sources", "Local radius, km", False, False, "Account kits within this distance are yours (default 2: a neighbourhood). Further ones count as public references."),
     "AIRGRADIENT_HOSTS":  ("sources", "AirGradient hosts", False, False, "Hostnames or IPs on your WiFi, comma-separated. Read directly, no cloud."),
     "PURPLEAIR_HOSTS":    ("sources", "PurpleAir hosts", False, False, "IP addresses on your WiFi."),
     "SENSOR_INDOOR":      ("sources", "LAN sensors are indoors", False, False, "1 if the AirGradient/PurpleAir units are inside."),

@@ -74,7 +74,10 @@ def db():
     # Rules and cells use `current_setting('TimeZone')` to find local midnight and local hours. Postgres defaults
     # to UTC, which put day boundaries and "evening" eight hours out in Bali. Set the session timezone from
     # NODE_TZ, in the connection options so it costs no extra round trip.
-    return psycopg.connect(DB, row_factory=dict_row, autocommit=True, options=f"-c timezone={NODE_TZ}")
+    # also hand the node's coordinates to SQL as custom settings, so rules can rank references by distance
+    lat, lon = os.getenv("NODE_LAT", "0") or "0", os.getenv("NODE_LON", "0") or "0"
+    return psycopg.connect(DB, row_factory=dict_row, autocommit=True,
+                           options=f"-c timezone={NODE_TZ} -c planetai.lat={lat} -c planetai.lon={lon}")
 
 
 # ---------------------------------------------------------------- ingest
@@ -404,7 +407,7 @@ def health():
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
-            "schema": schema, "uptime_s": int(time.time() - STARTED), **state,
+            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0), **state,
             **({"mesh": mesh_state} if MQTT_HOST else {})}
 
 

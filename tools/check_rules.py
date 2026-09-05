@@ -62,10 +62,13 @@ def check_sql(where: str, query: str) -> set[str]:
 
     known = set().union(*(S[t] for t in used)) if used else set()
     # a CTE body can be a UNION, whose own .expressions is not the select list — walk to the first SELECT
+    # every SELECT inside a CTE contributes aliases (UNION branches, nested subqueries included)
     cte_cols = set()
     for c in tree.find_all(exp.CTE):
-        sel = c.this if isinstance(c.this, exp.Select) else c.this.find(exp.Select)
-        cte_cols |= {a.alias_or_name for a in getattr(sel, "expressions", [])}
+        for sel in c.this.find_all(exp.Select):
+            cte_cols |= {a.alias_or_name for a in sel.expressions}
+        if isinstance(c.this, exp.Select):
+            cte_cols |= {a.alias_or_name for a in c.this.expressions}
     for col in tree.find_all(exp.Column):
         if col.table and col.table in alias_of:
             if col.name not in S[alias_of[col.table]]:

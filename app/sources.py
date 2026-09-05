@@ -86,7 +86,7 @@ def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3) -> 
 
 
 def smartcitizen(hc: httpx.Client, device_ids: list[int], explicit_local: set[int] | None = None,
-                 node: tuple[float, float] | None = None, local_km: float = 0.5):
+                 node: tuple[float, float] | None = None, local_km: float = 2.0):
     """explicit_local: ids from SC_DEVICES, always local. Others (from account discovery) are local only if the
     device's own coordinates fall within local_km of the node; an outdoor kit a kilometre away is a reference."""
     sensors, readings = [], []
@@ -239,7 +239,7 @@ def enabled(hc: httpx.Client):
         except Exception as e:  # noqa: BLE001
             import logging; logging.getLogger("planetai").warning("smartcitizen account discovery failed: %s", e)
     ids = sorted(ids)
-    local_km = float(settings.get("SC_LOCAL_KM", "0.5"))
+    local_km = float(settings.get("SC_LOCAL_KM", "2"))
     if ids:
         out.append(("smartcitizen", lambda: smartcitizen(hc, ids, explicit, node, local_km)))
     lat = float(os.environ["NODE_LAT"]) if os.getenv("NODE_LAT") else None
@@ -254,7 +254,7 @@ def enabled(hc: httpx.Client):
     if settings.get("BAD_ENABLED", "0") == "1":
         # BAD republishes Smart Citizen kits as station id `sc-<kit>`; skip the ones this node reads directly
         skip = {f"sc-{i}" for i in ids}
-        out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(settings.get("BAD_RADIUS_KM", "15")), skip)))
+        out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(settings.get("BAD_RADIUS_KM", "8")), skip)))
     if settings.get("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
         _lat, _lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
         out.append(("open-meteo", lambda: openmeteo(hc, _lat, _lon)))

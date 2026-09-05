@@ -40,3 +40,32 @@ state["errors"].pop("poll_sources", None)
 assert state["errors"] == {"run_rules": "boom"}, "a healthy loop must not clear another loop's error"
 
 print("all logic tests pass")
+
+# ---------------------------------------------------------------- "outside" resolves: yours, else nearest three, else model
+# The same order in the air-quality rules, the insight digest and the dashboard. Pinned here because averaging
+# every station within 15 km put an Uluwatu reading of 3 alongside the street's 15 (5 Sep).
+def resolve_outside(rows, lat, lon):
+    mine = [r for r in rows if r["local"] and not r["indoor"] and r["v"] is not None]
+    if mine:
+        return sum(r["v"] for r in mine) / len(mine), "yours"
+    near = sorted([r for r in rows if not r["local"] and not r["indoor"] and r["v"] is not None],
+                  key=lambda r: (r["lat"] - lat) ** 2 + ((r["lon"] - lon) * 0.99) ** 2)[:3]
+    if near:
+        return sum(r["v"] for r in near) / len(near), "nearest"
+    return None, "model"
+
+N = (-8.8271, 115.15709)
+far = [{"local": False, "indoor": False, "v": 3.0, "lat": -8.83, "lon": 115.09},     # Uluwatu, 7 km
+       {"local": False, "indoor": False, "v": 4.0, "lat": -8.79, "lon": 115.17},     # 4 km
+       {"local": False, "indoor": False, "v": 19.0, "lat": -8.82, "lon": 115.16},    # Fab Lab kit, 1 km
+       {"local": False, "indoor": False, "v": 13.9, "lat": -8.822, "lon": 115.161},  # Kios Utak, 1 km
+       {"local": False, "indoor": False, "v": 7.0, "lat": -8.80, "lon": 115.18}]     # 3 km
+mine = [{"local": True, "indoor": False, "v": 14.0, "lat": -8.820, "lon": 115.1667}]
+v, src = resolve_outside(far + mine, *N)
+assert src == "yours" and v == 14.0, "your own outdoor sensor wins outright"
+v, src = resolve_outside(far, *N)
+assert src == "nearest" and abs(v - (19.0 + 13.9 + 7.0) / 3) < 1e-9, f"nearest three, not all five: {v}"
+assert v > 10, "the Uluwatu 3.0 must not drag the street average down"
+v, src = resolve_outside([], *N)
+assert src == "model"
+print("outside resolution order pinned")

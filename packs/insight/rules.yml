@@ -10,9 +10,20 @@
     WITH now_in AS (
       SELECT round(avg(mean_1h)::numeric) AS v, count(*) AS n FROM stats
       WHERE local AND indoor AND metric = 'pm25' AND mean_1h IS NOT NULL),
+    local_out AS (
+      SELECT avg(mean_1h) AS v, count(*) AS n FROM stats
+      WHERE local AND NOT indoor AND metric = 'pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120),
+    near_out AS (
+      SELECT avg(v) AS v, count(*) AS n FROM (
+        SELECT mean_1h AS v FROM stats
+        WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120 AND lat IS NOT NULL
+        ORDER BY power(lat - current_setting('planetai.lat')::float, 2)
+               + power((lon - current_setting('planetai.lon')::float) * cos(radians(current_setting('planetai.lat')::float)), 2)
+        LIMIT 3) x),
+    -- your own outdoor sensors if you have any; otherwise the three nearest public references
     now_out AS (
-      SELECT round(avg(mean_1h)::numeric) AS v, count(*) AS n FROM stats
-      WHERE NOT indoor AND metric = 'pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120),
+      SELECT round(coalesce(lo.v, nr.v)::numeric) AS v, CASE WHEN lo.n > 0 THEN lo.n ELSE nr.n END AS n
+      FROM local_out lo, near_out nr),
     model AS (
       SELECT round(value::numeric) AS v FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'),
     day_in AS (

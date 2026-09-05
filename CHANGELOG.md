@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.15.1 — 2026-09-05
+
+Three things node #1 showed on a Saturday evening.
+
+- **"Outside" now means your own outdoor sensors first**, then the three *nearest* public references, then the model — the same order in the air-quality rules, the insight digest and the dashboard, pinned by a test. Before, every station within 15 km was averaged equally, so an Uluwatu AirGradient reading 3 sat alongside the street's 15 and the dashboard said 6. The node's coordinates are handed to SQL as `planetai.lat`/`planetai.lon` so rules can rank by distance.
+- **Account kits within 2 km are yours** (`SC_LOCAL_KM` default 0.5 → 2): a neighbourhood, not a doorstep. The outdoor kit 1.1 km up the road was being classed as someone else's. `BAD_RADIUS_KM` default 15 → 8.
+- **Two spike rules**: `indoor_spike` and `outdoor_spike` fire when PM2.5 is 2.5× today's mean and above 12 (indoor) or 15 (outdoor) — *something changed*, before anything is unhealthy. Inside tripled from 5 to 15 at 18:00Z and only the inside-worse-than-outside rule spoke; a household wants to hear the jump.
+- Mesh confirmed working: the gateway carries a BME680 and reports temperature, humidity, pressure, gas and IAQ every 15 minutes. The "silent 90 minutes" alert was the app outage.
+
 ## v0.15 — 2026-09-05
 
 **The dashboard, designed.** The grid of six tiles is gone. In its place the Fab City module — a hexagon with its

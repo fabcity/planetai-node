@@ -26,12 +26,23 @@
       SELECT sensor_id, name, mean_1h FROM stats
       WHERE local AND indoor AND metric = 'pm25' AND mean_1h IS NOT NULL),
     ambient AS (
-      SELECT 1 AS rank, avg(mean_1h) AS v, count(*)::text || ' nearby public sensors' AS src
-        FROM stats WHERE NOT local AND NOT indoor AND metric = 'pm25'
+      -- outside, in order: your own outdoor sensors; else the three nearest public references; else the model.
+      -- Averaging every station within 15 km put an Uluwatu reading of 3 alongside your street's 15 (5 Sep).
+      SELECT 1 AS rank, avg(mean_1h) AS v, count(*)::text || ' outdoor sensor(s) of yours' AS src
+        FROM stats WHERE local AND NOT indoor AND metric = 'pm25'
          AND mean_1h IS NOT NULL AND silent_minutes < 120
-       HAVING count(*) >= 2
+       HAVING count(*) >= 1
       UNION ALL
-      SELECT 2, value, 'the CAMS model for your area'
+      SELECT 2, avg(v), count(*)::text || ' nearest public sensors' FROM (
+        SELECT mean_1h AS v FROM stats
+         WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
+           AND mean_1h IS NOT NULL AND silent_minutes < 120 AND lat IS NOT NULL
+         ORDER BY power(lat - current_setting('planetai.lat')::float, 2)
+                + power((lon - current_setting('planetai.lon')::float) * cos(radians(current_setting('planetai.lat')::float)), 2)
+         LIMIT 3) n
+       HAVING count(*) >= 1
+      UNION ALL
+      SELECT 3, value, 'the CAMS model for your area'
         FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'),
     best AS (SELECT v, src FROM ambient ORDER BY rank LIMIT 1)
     SELECT i.sensor_id, i.name, i.mean_1h AS inside, b.v AS outside, b.src
@@ -49,12 +60,23 @@
       SELECT sensor_id, name, mean_1h FROM stats
       WHERE local AND indoor AND metric = 'pm25' AND mean_1h IS NOT NULL),
     ambient AS (
-      SELECT 1 AS rank, avg(mean_1h) AS v, count(*)::text || ' nearby public sensors' AS src
-        FROM stats WHERE NOT local AND NOT indoor AND metric = 'pm25'
+      -- outside, in order: your own outdoor sensors; else the three nearest public references; else the model.
+      -- Averaging every station within 15 km put an Uluwatu reading of 3 alongside your street's 15 (5 Sep).
+      SELECT 1 AS rank, avg(mean_1h) AS v, count(*)::text || ' outdoor sensor(s) of yours' AS src
+        FROM stats WHERE local AND NOT indoor AND metric = 'pm25'
          AND mean_1h IS NOT NULL AND silent_minutes < 120
-       HAVING count(*) >= 2
+       HAVING count(*) >= 1
       UNION ALL
-      SELECT 2, value, 'the CAMS model for your area'
+      SELECT 2, avg(v), count(*)::text || ' nearest public sensors' FROM (
+        SELECT mean_1h AS v FROM stats
+         WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
+           AND mean_1h IS NOT NULL AND silent_minutes < 120 AND lat IS NOT NULL
+         ORDER BY power(lat - current_setting('planetai.lat')::float, 2)
+                + power((lon - current_setting('planetai.lon')::float) * cos(radians(current_setting('planetai.lat')::float)), 2)
+         LIMIT 3) n
+       HAVING count(*) >= 1
+      UNION ALL
+      SELECT 3, value, 'the CAMS model for your area'
         FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'),
     best AS (SELECT v, src FROM ambient ORDER BY rank LIMIT 1)
     SELECT i.sensor_id, i.name, i.mean_1h AS inside, b.v AS outside, b.src
@@ -73,3 +95,32 @@
   message:
     en: "Outdoor PM2.5 at {name} is {mean_1h:.0f} µg/m³, which is unhealthy for everyone. Close up, delay outdoor work and exercise, and keep children and anyone with asthma inside."
     id: "PM2.5 luar ruangan di {name} {mean_1h:.0f} µg/m³, tidak sehat untuk semua orang. Tutup rumah, tunda kerja dan olahraga di luar, jaga anak-anak dan penderita asma tetap di dalam."
+
+# ---------------------------------------------------------------- something changed, even if nothing is unhealthy yet
+- id: indoor_spike
+  level: warn
+  cooldown_minutes: 90
+  sql: |
+    SELECT sensor_id, name, round(mean_15m::numeric) AS now, round(mean_24h::numeric) AS usual
+    FROM stats
+    WHERE local AND indoor AND metric = 'pm25'
+      AND mean_15m IS NOT NULL AND mean_24h IS NOT NULL
+      AND mean_15m >= 12 AND mean_15m >= 2.5 * greatest(mean_24h, 2)
+  message:
+    en: "PM2.5 at {name} jumped to {now} µg/m³ — about {usual} is normal today. Not unhealthy yet, but something started: cooking, incense, a candle, smoke from outside? Worth a look."
+    id: "PM2.5 di {name} melonjak ke {now} µg/m³ — hari ini biasanya sekitar {usual}. Belum berbahaya, tapi ada yang mulai: masak, dupa, lilin, asap dari luar? Layak dicek."
+
+- id: outdoor_spike
+  level: warn
+  cooldown_minutes: 90
+  sql: |
+    SELECT sensor_id, name, round(mean_15m::numeric) AS now, round(mean_24h::numeric) AS usual
+    FROM stats
+    WHERE NOT indoor AND kind = 'sensor' AND metric = 'pm25' AND silent_minutes < 60
+      AND (local OR sqrt(power(lat - current_setting('planetai.lat')::float, 2)
+                       + power((lon - current_setting('planetai.lon')::float) * cos(radians(current_setting('planetai.lat')::float)), 2)) < 0.03)
+      AND mean_15m IS NOT NULL AND mean_24h IS NOT NULL
+      AND mean_15m >= 15 AND mean_15m >= 2.5 * greatest(mean_24h, 2)
+  message:
+    en: "Outside air at {name} jumped to {now} µg/m³ — about {usual} is normal today. Burning nearby, most likely. If it keeps rising, shut the windows before it comes in."
+    id: "Udara luar di {name} melonjak ke {now} µg/m³ — hari ini biasanya sekitar {usual}. Kemungkinan pembakaran di dekat sini. Kalau terus naik, tutup jendela sebelum masuk."
