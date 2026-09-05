@@ -12,5 +12,6 @@ metrics: [wave_height_m, wave_direction, wave_period_s, swell_height_m, swell_pe
 scales: [bioregion]
 sources: [environmental/bioregion/open-meteo-marine]
 env:
-  - "COAST_MAX_KM=30                      # refuse if the nearest ocean cell is further than this"
+  - "# coast: refuse to report if the nearest ocean cell is further away than this, in km"
+  - "COAST_MAX_KM=30"
 attribution: "Open-Meteo Marine API (CC BY 4.0), model data from Copernicus Marine / MeteoFrance MFWAM"

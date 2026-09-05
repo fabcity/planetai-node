@@ -13,9 +13,13 @@ metrics: [tree_frac, built_frac, crop_frac, water_frac, ndvi_median, night_light
 scales: [bioregion]
 pip: [earthengine-api]
 env:
-  - "EE_PROJECT=                          # your Earth Engine project id"
-  - "EE_SERVICE_ACCOUNT=                  # planetai-node@<project>.iam.gserviceaccount.com"
-  - "EE_KEY_FILE=/app/config/ee-key.json  # copy the JSON key to config/ee-key.json on the node"
+  # No padding after `=`: a value pasted after spaces makes the line `VAR= value`, which shell reads as a command.
+  - "# earth-engine: your Earth Engine project id"
+  - "EE_PROJECT="
+  - "# earth-engine: planetai-node@<project>.iam.gserviceaccount.com"
+  - "EE_SERVICE_ACCOUNT="
+  - "# earth-engine: copy the JSON key to config/ee-key.json on the node"
+  - "EE_KEY_FILE=/app/config/ee-key.json"
 needs: >-
   A Google Earth Engine project (free for research and non-commercial use) and a service-account key:
   EE_PROJECT, EE_SERVICE_ACCOUNT, EE_KEY_FILE in .env, with the key mounted read-only into the app container.

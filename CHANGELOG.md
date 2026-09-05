@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.4 — 2026-09-05
+
+- **Fixed:** pack `env:` declarations padded the value column for alignment, so a value pasted after the padding produced `VAR=   value`. The shell reads that as "run `value` with VAR empty", and `update.sh` sources `.env` — so filling in the Earth Engine service account made `planetai update` try to execute an email address. Declarations now put the explanation on its own comment line and leave nothing after `=`.
+- **Added:** `update.sh` checks `.env` for a space after `=` before sourcing it and names the offending line; `planetai doctor` checks the same thing. A file this central should not fail with "command not found".
+
 ## v0.11.3 — 2026-09-05
 
 - **Fixed:** a pack's settings had no route into `.env`. The earth-engine pack documented `EE_PROJECT`, `EE_SERVICE_ACCOUNT` and `EE_KEY_FILE` in its README only, so they appeared in no config file and could not be found. Packs now declare `env:` in `pack.yaml` alongside `pip:`, and `planetai packs` appends the missing ones under a dated marker without overwriting anything. Also added to `.env.example` so a plain `planetai update` picks them up.

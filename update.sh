@@ -10,6 +10,15 @@ warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
 [[ -f .env ]] || die "no .env here — is this a node folder?"
+# `.env` is sourced below, so a stray space after `=` makes the shell try to run the value as a command.
+# Catch it here and name the line, rather than failing with "command not found".
+bad="$(grep -nE '^[A-Z_]+=[[:space:]]+[^[:space:]#]' .env || true)"
+if [[ -n "$bad" ]]; then
+  printf '\033[1;31mxx .env has a space after `=`, which the shell reads as a command:\033[0m\n' >&2
+  printf '   %s\n' "$bad" >&2
+  printf '   Remove the spaces so it reads NAME=value, then run this again.\n' >&2
+  exit 1
+fi
 set -a; . ./.env; set +a
 PORT="${APP_PORT:-8080}"
 PULL=1; [[ "${1:-}" == "--no-pull" ]] && PULL=0

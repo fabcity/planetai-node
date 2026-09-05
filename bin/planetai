@@ -255,6 +255,7 @@ cmd_doctor() {
   chk "database answers"         "docker compose exec -T db pg_isready -U planetai"     "planetai logs db"
   chk "node answers on :$p"      "curl -sf localhost:$p/health"                         "planetai logs   (if the port is taken: set APP_PORT in .env, then planetai restart)"
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
+  chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]#]' .env"  "a space after = makes the shell run the value: grep -nE '^[A-Z_]+= +[^ #]' .env"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (a nightly one is scheduled)"
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
