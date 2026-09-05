@@ -8,25 +8,28 @@ machine's light or dark setting.
 planetai ui        # where it is, and the token that unlocks its settings pages
 ```
 
-## Three pages
+## Two pages
 
-**Now.** One instrument, not a grid of tiles. The Fab City module — a hexagon with its outline offset behind it — is
-inside and outside made literal: the inside reading fills the hexagon and colours it (green, orange or red, one hue at
-a time, flat), the outside reading sits where the outline peeks out, and the model is a faint dashed third hexagon
-with its number in blue. Beside it, one sentence in Funnel Sans that says what to do — *Inside is worse than outside.*
-*Keep the windows shut.* *The air is clean.* — and one line saying why, in plain numbers. Then three quiet stats,
-hairline-separated, each ending in a sentence: how it feels, street versus model, ρ.
+**Now.** The page is a zoom: the room, the street, the world — the Index's scale axis made physical. Three
+hexagons of the same size, each offset behind the one in front. The front one is the room: it fills with the inside
+reading and takes its colour, green, orange or red, one flat hue. The middle one is the street: the outside reading
+runs along its exposed edge at 30°, like an inscription. The back one is the world: the isometric mesh clipped inside
+it, the way the system uses that texture, with the satellite model along its edge in blue. Beside it, one sentence in
+Funnel Sans that says what to do, one line of why, one line of provenance.
 
-Below: the last 24 hours as it actually happened — hourly bars for inside, a line for the street, a dashed line for
-the model, from a new `/series` endpoint over `readings_1h` — with the WHO guideline drawn in and a one-line summary.
-Then what the node said (the alert feed, with an **I acted** button on every unanswered act-level alert; that button
-is how ρ is measured), the Index cells as a small honeycomb, and the node's vitals.
+Then three bands, descending by distance. **Room**: each indoor sensor of yours as a tile with its reading and a
+24-hour trace inside it, plus how it feels. **Street**: your outdoor sensors, then the nearest public ones with their
+distance, then the wind as an arrow that points where it blows; under them the 24-hour strip — inside as bars, outside
+as a line, the model dashed, the WHO guideline drawn in. **World**: the sea (height, direction as an arrow, period,
+temperature, and a line about what the swell means), the satellite model with its gap to your street, the land within
+a kilometre as a built/green bar with last year's change, and the weather. Then what the node said, with **I acted**
+on every unanswered act-level alert; the Index cells as a honeycomb; the node's vitals.
 
-The one motion is on load: the outline hexagon draws itself and the inside number counts in. After that only the pulse
-dot breathes. `prefers-reduced-motion` turns both off.
+The one motion is on load: the three hexagons arrive back to front. After that only the pulse dot breathes.
+`prefers-reduced-motion` turns both off. Dark mode follows the OS.
 
-**Sensors.** Every sensor the node knows, yours first, with what it reads now and when it last spoke. Then the slow
-sources: portals, models, the sea, the satellites.
+The outdoor sensors on your own account are yours, whatever their distance — that is what an account means — and are
+listed under Street as such. Public references sit next to them, labelled with how far away they are.
 
 **Set up.** Behind the admin token, once per browser. Grouped by what you are trying to do: sources, alerts and
 Telegram, packs (tick to enable, with code packs gated behind one explicit switch), integrations, keys, the node's

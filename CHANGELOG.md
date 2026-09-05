@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.16 — 2026-09-05
+
+**The dashboard is a zoom: room, street, world.** Three hexagons of the same size offset behind one another: the
+room fills and takes its colour; the outside reading runs along the street hexagon's exposed edge at 30°; the world
+hexagon carries the isometric mesh inside it and the satellite model along its edge. Then three bands by distance —
+each indoor sensor as a tile with a 24-hour trace (`/sparks`), your outdoor sensors and the nearest public ones with
+their distance and the wind as an arrow, and the world: the sea with its swell arrow and a sentence about what it
+means, the model and its gap to your street, the land as a built/green bar, the weather. The ocean, the land and the
+weather were in a table on a second page called "slow sources"; now they have a place.
+
+**Your account's outdoor kits are yours**, whatever their distance. `SC_LOCAL_KM` is gone; `SC_EXCLUDE` leaves out a
+kit that belongs to another site. Public references are a separate class and are labelled with how far away they are.
+
+Layout proven headlessly at 1280, 1024 (kiosk) and 390 px: fonts load, the inside texts sit within the room polygon,
+the rotated outside and world readings sit inside their own hexagon's band and intrude on nothing (true rotated-glyph
+corners, point-in-polygon), no overflow, 24 bars, every band populated. pyflakes joins `make lint`.
+
 ## v0.15.1 — 2026-09-05
 
 Three things node #1 showed on a Saturday evening.

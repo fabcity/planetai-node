@@ -23,13 +23,6 @@ import settings
 
 # ---------------------------------------------------------------- helpers
 
-def _km(lat1, lon1, lat2, lon2) -> float:
-    from math import asin, cos, radians, sin, sqrt
-    p1, p2, dl = radians(lat1), radians(lat2), radians(lon2 - lon1)
-    a = sin((p2 - p1) / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
-    return 6371 * 2 * asin(sqrt(a))
-
-
 def _iso(s: str | None) -> datetime | None:
     if not s:
         return None
@@ -74,21 +67,21 @@ SC_METRICS = {
 }
 
 
-def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3) -> list[int]:
-    """The kits in a Smart Citizen account that have published recently. The account listing carries no location,
-    so whether a kit is local is decided in smartcitizen() from the device record it fetches anyway.
-    Plain usernames work (`tomasdiez`); a numeric user id also works."""
+def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3, exclude: set[int] | None = None) -> list[int]:
+    """The kits in a Smart Citizen account that have published recently. They are yours: every one is local, indoor
+    or outdoor from the API's `exposure` field. Distance never decides ownership — an outdoor kit up the road is your
+    outdoor sensor, not a public reference. SC_EXCLUDE drops kits that belong to another site."""
     r = hc.get(f"https://api.smartcitizen.me/v0/users/{user}")
     r.raise_for_status()
     cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
     return [int(d["id"]) for d in r.json().get("devices") or []
-            if d.get("state") == "has_published" and (_iso(d.get("last_reading_at")) or cutoff) > cutoff]
+            if d.get("state") == "has_published" and (_iso(d.get("last_reading_at")) or cutoff) > cutoff
+            and int(d["id"]) not in (exclude or set())]
 
 
-def smartcitizen(hc: httpx.Client, device_ids: list[int], explicit_local: set[int] | None = None,
-                 node: tuple[float, float] | None = None, local_km: float = 2.0):
-    """explicit_local: ids from SC_DEVICES, always local. Others (from account discovery) are local only if the
-    device's own coordinates fall within local_km of the node; an outdoor kit a kilometre away is a reference."""
+def smartcitizen(hc: httpx.Client, device_ids: list[int]):
+    """Every kit here is yours (listed by id or discovered from your account), so every one is local. Indoor or
+    outdoor comes from the kit's own `exposure` field, which is what the rules use to tell the house from the street."""
     sensors, readings = [], []
     for did in device_ids:
         r = hc.get(f"https://api.smartcitizen.me/v0/devices/{did}")
@@ -102,10 +95,7 @@ def smartcitizen(hc: httpx.Client, device_ids: list[int], explicit_local: set[in
             "sensor_id": sid, "source": "smartcitizen", "name": d.get("name") or sid,
             "lat": loc.get("latitude"), "lon": loc.get("longitude"),
             "indoor": (loc.get("exposure") == "indoor"),
-            # explicit_local=None means every id was named by hand, so all are yours. With discovery, only the
-            # named ones and the ones within local_km of the node are local; the rest are references you own.
-            "local": (explicit_local is None or did in explicit_local) or bool(
-                node and loc.get("latitude") is not None and _km(node[0], node[1], loc["latitude"], loc["longitude"]) <= local_km),
+            "local": True,
             "meta": {"hardware": (d.get("hardware") or {}).get("name"), "state": d.get("state"),
                      "url": f"https://smartcitizen.me/kits/{did}"},
         })
@@ -230,29 +220,19 @@ def enabled(hc: httpx.Client):
     """Yield (name, fetch) for every configured source. Failures are per-source, never fatal.
     Core adapters first, then any from community packs (docs/PACKS.md)."""
     out = []
-    explicit = {int(x) for x in settings.get("SC_DEVICES", "").replace(" ", "").split(",") if x}
-    ids = set(explicit)
-    node = (float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])) if os.getenv("NODE_LAT") else None
+    ids = {int(x) for x in settings.get("SC_DEVICES", "").replace(" ", "").split(",") if x}
     if settings.get("SC_USER", "").strip():
         try:
-            ids |= set(smartcitizen_account(hc, settings.get("SC_USER").strip()))
+            exclude = {int(x) for x in settings.get("SC_EXCLUDE", "").replace(" ", "").split(",") if x}
+            ids |= set(smartcitizen_account(hc, settings.get("SC_USER").strip(), exclude=exclude))
         except Exception as e:  # noqa: BLE001
             import logging; logging.getLogger("planetai").warning("smartcitizen account discovery failed: %s", e)
     ids = sorted(ids)
-    local_km = float(settings.get("SC_LOCAL_KM", "2"))
     if ids:
-        out.append(("smartcitizen", lambda: smartcitizen(hc, ids, explicit, node, local_km)))
-    lat = float(os.environ["NODE_LAT"]) if os.getenv("NODE_LAT") else None
-    lon = float(os.environ["NODE_LON"]) if os.getenv("NODE_LON") else None
-    indoor = settings.get("SENSOR_INDOOR", "0") == "1"
-    ag = [h for h in settings.get("AIRGRADIENT_HOSTS", "").replace(" ", "").split(",") if h]
-    if ag:
-        out.append(("airgradient", lambda: airgradient(hc, ag, lat, lon, indoor)))
-    pa = [h for h in settings.get("PURPLEAIR_HOSTS", "").replace(" ", "").split(",") if h]
-    if pa:
-        out.append(("purpleair", lambda: purpleair(hc, pa, lat, lon, indoor)))
-    if settings.get("BAD_ENABLED", "0") == "1":
+        out.append(("smartcitizen", lambda: smartcitizen(hc, ids)))
+    if settings.get("BAD_ENABLED", "0") == "1" and os.getenv("NODE_LAT"):
         # BAD republishes Smart Citizen kits as station id `sc-<kit>`; skip the ones this node reads directly
+        lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
         skip = {f"sc-{i}" for i in ids}
         out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(settings.get("BAD_RADIUS_KM", "8")), skip)))
     if settings.get("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):

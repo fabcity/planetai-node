@@ -462,6 +462,21 @@ def series(metric: str = "pm25", hours: int = Query(24, le=168)):
             "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
 
 
+@app.get("/sparks")
+def sparks(metric: str = "pm25", hours: int = Query(24, le=168)):
+    """Per-sensor hourly means, aligned to the same buckets, for small traces inside the dashboard's sensor tiles."""
+    rows = q("""
+        WITH h AS (SELECT generate_series(date_trunc('hour', now()) - make_interval(hours => %s - 1), date_trunc('hour', now()), interval '1 hour') AS bucket),
+        ids AS (SELECT DISTINCT sensor_id FROM readings_1h WHERE metric = %s AND bucket > now() - make_interval(hours => %s))
+        SELECT ids.sensor_id, h.bucket, r.mean
+        FROM ids CROSS JOIN h LEFT JOIN readings_1h r ON r.sensor_id = ids.sensor_id AND r.bucket = h.bucket AND r.metric = %s
+        ORDER BY ids.sensor_id, h.bucket""", hours, metric, hours, metric)
+    out: dict = {}
+    for x in rows:
+        out.setdefault(x["sensor_id"], []).append(x["mean"])
+    return out
+
+
 # ---------------------------------------------------------------- the GUI and its settings
 STATIC = Path(__file__).parent / "static"
 
