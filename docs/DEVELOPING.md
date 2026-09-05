@@ -50,7 +50,10 @@ cd ../planetai && make deploy
 `/mcp`, the `--json` commands, the invariants, the gates. `planetai agent` prints the endpoint, the token and a config
 snippet. The MCP server is `app/agent.py`, thirteen tools over the existing API; host operations are handed back as
 commands because the container has no Docker or git. `app/agent_loop.py` is a local model (Ollama, `qwen3:4b`) using
-those tools, talking to the household over Telegram; `planetai agent local` sets it up. The final answer is requested
+those tools, talking to the household over Telegram; `planetai agent local` sets it up. A bigger model on a laptop or workstation becomes the `remote` rung with
+`tools/remote-model.sh gptoss` (llama.cpp, `--jinja` for tool calls, an API key, the tailnet address printed for the
+node's `.env`). Tested: gpt-oss-120b answers in about two seconds with correct tool use; the node falls back to its
+local model when the laptop is away. The final answer is requested
 as constrained JSON because a 4B model narrates its reasoning as prose otherwise.
 
 ## Layout

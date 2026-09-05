@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.22.1 — 2026-09-05
+
+- `tools/remote-model.sh gptoss | qwen122b`: serve a big local model from a laptop as the node's `remote` rung. llama.cpp with `--jinja` (tool calls), an API key (the model is on the tailnet), the `.env` lines printed for the node. gpt-oss-120b tested through the node's tools: two-second answers, correct tool choice on every question, failures read off `health_check` and ordered.
+
 ## v0.22 — 2026-09-05 — a ladder of models
 
 The Telegram bot uses the strongest model it can reach and falls back down: **online** (Anthropic or OpenAI, with a key;
