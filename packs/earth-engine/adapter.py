@@ -32,9 +32,20 @@ DW_CLASSES = {0: "water_frac", 1: "tree_frac", 4: "crop_frac", 6: "built_frac"}
 
 
 def _init(ee):
-    proj, sa, key = os.getenv("EE_PROJECT"), os.getenv("EE_SERVICE_ACCOUNT"), os.getenv("EE_KEY_FILE")
-    if not (proj and sa and key and os.path.exists(key)):
-        raise RuntimeError("EE_PROJECT, EE_SERVICE_ACCOUNT and a readable EE_KEY_FILE are required")
+    """The service-account key file names its own project and service account, so EE_PROJECT and EE_SERVICE_ACCOUNT
+    are optional: the key is the source of truth. Setting EE_PROJECT to the service account's 21-digit unique id
+    instead of the project id is an easy mistake and Earth Engine reports it as `project not found`."""
+    key = os.getenv("EE_KEY_FILE")
+    if not (key and os.path.exists(key)):
+        raise RuntimeError("EE_KEY_FILE must point at a readable service-account key (config/ee-key.json)")
+    import json
+    kj = json.load(open(key))
+    proj = os.getenv("EE_PROJECT") or ""
+    if not proj or proj.isdigit():
+        proj = kj.get("project_id") or proj
+    sa = os.getenv("EE_SERVICE_ACCOUNT") or kj.get("client_email")
+    if not (proj and sa):
+        raise RuntimeError("the key file has no project_id/client_email; set EE_PROJECT and EE_SERVICE_ACCOUNT")
     ee.Initialize(ee.ServiceAccountCredentials(sa, key), project=proj)
 
 

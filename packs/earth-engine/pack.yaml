@@ -14,9 +14,9 @@ scales: [bioregion]
 pip: [earthengine-api]
 env:
   # No padding after `=`: a value pasted after spaces makes the line `VAR= value`, which shell reads as a command.
-  - "# earth-engine: your Earth Engine project id"
+  - "# earth-engine: project id, e.g. planetai-node-472103 (NOT the service account number). Blank = read from the key file."
   - "EE_PROJECT="
-  - "# earth-engine: planetai-node@<project>.iam.gserviceaccount.com"
+  - "# earth-engine: blank is fine, the key file names it"
   - "EE_SERVICE_ACCOUNT="
   - "# earth-engine: copy the JSON key to config/ee-key.json on the node"
   - "EE_KEY_FILE=/app/config/ee-key.json"

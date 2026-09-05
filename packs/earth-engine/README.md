@@ -31,8 +31,10 @@ is not done. Step 5 prints the ground elevation at the node, which is a harmless
    Copy it to `config/ee-key.json` on the node (that directory is mounted read-only into the app; the file is
    gitignored). Over the tailnet:
    `scp key.json <user>@<node>.ts.net:~/planetai/planetai-node/config/ee-key.json`
-3. In `.env`: `EE_PROJECT=<project id>`, `EE_SERVICE_ACCOUNT=<email>`, `EE_KEY_FILE=/app/config/ee-key.json`,
-   and `PACKS_ALLOW_CODE=1`.
+3. In `.env`: `EE_KEY_FILE=/app/config/ee-key.json` and `PACKS_ALLOW_CODE=1`. `EE_PROJECT` and
+   `EE_SERVICE_ACCOUNT` may be left blank — the key file names both, and the pack reads them from it.
+   If you do set `EE_PROJECT`, it must be the **project id** (`planetai-node-472103`), not the service account's
+   21-digit unique id; Earth Engine reports that mistake as `Project not found or deleted`.
 4. `planetai packs` — installs the pack's Python dependency into the image and rebuilds.
 
 Until all of that exists the pack logs one line and stays idle. It cannot take the node down.

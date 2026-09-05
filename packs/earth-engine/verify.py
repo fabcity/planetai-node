@@ -26,7 +26,22 @@ print("3. key file     ", end="")
 key = os.environ["EE_KEY_FILE"]
 if not os.path.exists(key):
     print(f"NOT FOUND at {key} — copy it to config/ee-key.json on the host"); sys.exit(1)
-print(f"ok  {key}")
+import json
+try:
+    kj = json.load(open(key))
+except Exception as e:
+    print(f"NOT VALID JSON ({e})"); sys.exit(1)
+print(f"ok  {key}  (service account {kj.get('client_email','?')})")
+
+# The key file states its own project. EE_PROJECT is often filled in with the service account's 21-digit unique id
+# or its numeric client id, which Earth Engine rejects with "project not found" — a confusing error for a wrong field.
+key_project = kj.get("project_id")
+if key_project and os.environ["EE_PROJECT"] != key_project:
+    print(f"   ! EE_PROJECT is '{os.environ['EE_PROJECT']}' but the key belongs to project '{key_project}'.")
+    if os.environ["EE_PROJECT"].isdigit():
+        print("     That looks like the service account's unique id, not a project id.")
+    print(f"     Using '{key_project}' for this check. Set EE_PROJECT={key_project} in .env to make it permanent.")
+    os.environ["EE_PROJECT"] = key_project
 
 print("4. credentials  ", end="")
 try:
