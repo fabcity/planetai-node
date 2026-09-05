@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.22.2 — 2026-09-05
+
+- **Fixed: the image failed to build on the node.** `uvicorn==0.30.*` and `fastapi==0.115.*` were pinned before `mcp` existed; `mcp` needs uvicorn ≥ 0.31.1. Both loosened to `>=x,<1`; the set resolves on Python 3.12 to FastAPI 0.141 and mcp 2.1.1, and the app imports and the MCP round trip pass under exactly that set. `tools/check_requirements.sh` now resolves `requirements.txt` under 3.12 in `make lint`, so a bad pin fails on the dev machine, not in `planetai update`.
+
 ## v0.22.1 — 2026-09-05
 
 - `tools/remote-model.sh gptoss | qwen122b`: serve a big local model from a laptop as the node's `remote` rung. llama.cpp with `--jinja` (tool calls), an API key (the model is on the tailnet), the `.env` lines printed for the node. gpt-oss-120b tested through the node's tools: two-second answers, correct tool choice on every question, failures read off `health_check` and ordered.
