@@ -282,6 +282,9 @@ print(u[-1]["message"]["chat"]["id"] if u and "message" in u[-1] else "")' 2>/de
 # ---------------------------------------------------------------- test alert: a temporary pack, not an edit to your rules
 cmd_test_alert() {
   step "Test alert"
+  # a unique rule id per run: the cooldown check matches on rule_id, so a fixed id would suppress every test
+  # after the first one for the length of its cooldown (this bit us: a 69-day cooldown from an earlier run).
+  local rid="hello-$(date +%s)"
   mkdir -p packs/_test
   cat > packs/_test/pack.yaml <<'Y'
 id: _test
@@ -289,14 +292,14 @@ name: Test alert
 description: Temporary. Created by `planetai test-alert`, removed when it fires.
 kind: data
 Y
-  cat > packs/_test/rules.yml <<'Y'
-- id: hello
+  cat > packs/_test/rules.yml <<Y
+- id: ${rid}
   level: act
-  cooldown_minutes: 99999
+  cooldown_minutes: 1
   sql: SELECT 'node' AS sensor_id, now()::text AS at
   message:
-    en: "Test alert from your node. If you can read this, the whole path works: rule → message → you. Reply with `planetai act <id>` to record that you saw it."
-    id: "Alert uji dari node Anda. Jika Anda membaca ini, seluruh jalur berfungsi. Catat dengan `planetai act <id>`."
+    en: "Test alert from your node. If you can read this, the whole path works: rule to message to you. Record it with \`planetai act <id>\`."
+    id: "Alert uji dari node Anda. Jika Anda membaca ini, seluruh jalur berfungsi. Catat dengan \`planetai act <id>\`."
 Y
   echo "  A rule that always fires has been added. The node checks rules every minute."
   printf '  Waiting'
