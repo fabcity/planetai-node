@@ -216,7 +216,7 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 cmd_status() {
   local h; h="$(api /health)" || { warn "the node isn't answering on port $(port). Try: planetai doctor"; exit 1; }
   echo "$h" | json '
-print("  node      %s   v%s   schema %s" % (d["node"], d.get("version","?"), d.get("schema","?")))
+print("  node      %s   %s   schema %s" % (d["node"], d.get("version","?"), d.get("schema","?")))
 print("  up        %dh %dm   polls %s   readings %s" % (d["uptime_s"]//3600, d["uptime_s"]%3600//60, d["polls"], d["ingested"]))
 print("  last poll %s" % (d.get("last_poll") or "not yet"))
 print("  errors    %s" % (d.get("last_error") or "none"))'
