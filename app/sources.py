@@ -15,11 +15,18 @@ from __future__ import annotations
 
 import math
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
 # ---------------------------------------------------------------- helpers
+
+def _km(lat1, lon1, lat2, lon2) -> float:
+    from math import asin, cos, radians, sin, sqrt
+    p1, p2, dl = radians(lat1), radians(lat2), radians(lon2 - lon1)
+    a = sin((p2 - p1) / 2) ** 2 + cos(p1) * cos(p2) * sin(dl / 2) ** 2
+    return 6371 * 2 * asin(sqrt(a))
+
 
 def _iso(s: str | None) -> datetime | None:
     if not s:
@@ -65,7 +72,21 @@ SC_METRICS = {
 }
 
 
-def smartcitizen(hc: httpx.Client, device_ids: list[int]):
+def smartcitizen_account(hc: httpx.Client, user: str, max_age_days: int = 3) -> list[int]:
+    """The kits in a Smart Citizen account that have published recently. The account listing carries no location,
+    so whether a kit is local is decided in smartcitizen() from the device record it fetches anyway.
+    Plain usernames work (`tomasdiez`); a numeric user id also works."""
+    r = hc.get(f"https://api.smartcitizen.me/v0/users/{user}")
+    r.raise_for_status()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    return [int(d["id"]) for d in r.json().get("devices") or []
+            if d.get("state") == "has_published" and (_iso(d.get("last_reading_at")) or cutoff) > cutoff]
+
+
+def smartcitizen(hc: httpx.Client, device_ids: list[int], explicit_local: set[int] | None = None,
+                 node: tuple[float, float] | None = None, local_km: float = 0.5):
+    """explicit_local: ids from SC_DEVICES, always local. Others (from account discovery) are local only if the
+    device's own coordinates fall within local_km of the node; an outdoor kit a kilometre away is a reference."""
     sensors, readings = [], []
     for did in device_ids:
         r = hc.get(f"https://api.smartcitizen.me/v0/devices/{did}")
@@ -78,7 +99,11 @@ def smartcitizen(hc: httpx.Client, device_ids: list[int]):
         sensors.append({
             "sensor_id": sid, "source": "smartcitizen", "name": d.get("name") or sid,
             "lat": loc.get("latitude"), "lon": loc.get("longitude"),
-            "indoor": (loc.get("exposure") == "indoor"), "local": True,
+            "indoor": (loc.get("exposure") == "indoor"),
+            # explicit_local=None means every id was named by hand, so all are yours. With discovery, only the
+            # named ones and the ones within local_km of the node are local; the rest are references you own.
+            "local": (explicit_local is None or did in explicit_local) or bool(
+                node and loc.get("latitude") is not None and _km(node[0], node[1], loc["latitude"], loc["longitude"]) <= local_km),
             "meta": {"hardware": (d.get("hardware") or {}).get("name"), "state": d.get("state"),
                      "url": f"https://smartcitizen.me/kits/{did}"},
         })
@@ -196,9 +221,18 @@ def enabled(hc: httpx.Client):
     """Yield (name, fetch) for every configured source. Failures are per-source, never fatal.
     Core adapters first, then any from community packs (docs/PACKS.md)."""
     out = []
-    ids = [int(x) for x in os.getenv("SC_DEVICES", "").replace(" ", "").split(",") if x]
+    explicit = {int(x) for x in os.getenv("SC_DEVICES", "").replace(" ", "").split(",") if x}
+    ids = set(explicit)
+    node = (float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])) if os.getenv("NODE_LAT") else None
+    if os.getenv("SC_USER", "").strip():
+        try:
+            ids |= set(smartcitizen_account(hc, os.environ["SC_USER"].strip()))
+        except Exception as e:  # noqa: BLE001
+            import logging; logging.getLogger("planetai").warning("smartcitizen account discovery failed: %s", e)
+    ids = sorted(ids)
+    local_km = float(os.getenv("SC_LOCAL_KM", "0.5"))
     if ids:
-        out.append(("smartcitizen", lambda: smartcitizen(hc, ids)))
+        out.append(("smartcitizen", lambda: smartcitizen(hc, ids, explicit, node, local_km)))
     lat = float(os.environ["NODE_LAT"]) if os.getenv("NODE_LAT") else None
     lon = float(os.environ["NODE_LON"]) if os.getenv("NODE_LON") else None
     indoor = os.getenv("SENSOR_INDOOR", "0") == "1"

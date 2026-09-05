@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # planetai — the one command an operator needs. Installed to ~/.local/bin by the bootstrap.
 #
-#   planetai setup          ask three things, install, start
+#   planetai setup          ask four things, install, start
 #   planetai status         is it alive, what has it read
 #   planetai doctor         checks, with the fix named for each failure
 #   planetai telegram       connect a bot: guided, finds your chat id for you
@@ -13,6 +13,7 @@
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
+#   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -121,7 +122,7 @@ cmd_setup() {
     esac
   fi
   step "Let's set up a node."
-  echo "  Three questions. Everything else is detected or defaulted, and you can change it later in .env."
+  echo "  Four questions. Everything else is detected or defaulted, and you can change it later in .env."
   echo
 
   # 1. name
@@ -163,8 +164,18 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   [[ $bad -eq 1 ]] && say "that's Bali: the island air archive (Bali Air Dispatch) will be used as your outdoor reference." \
                     || say "outdoor reference: the global CAMS model at your coordinates (no key, works everywhere)."
 
-  # 3. sensor
-  step "3. Do you have a sensor?"
+  # 3. what kind of node — decides defaults, not the Index scale (a house is still a Community-scale observation)
+  step "3. What is this node for?"
+  local kind_label kind
+  choose kind_label "   Pick the closest." \
+    "A home: my household, my sensors, alerts to us. Home Assistant if we use it." \
+    "A business: a shop, hotel, school or clinic. Alerts to staff, a monthly summary." \
+    "A community or lab node: shared by a neighbourhood or a fab lab; other nodes may report to it." \
+    "A district or region node: it aggregates other nodes (advanced)."
+  case "$kind_label" in A\ home*) kind=home;; A\ business*) kind=business;; A\ community*) kind=community;; *) kind=district;; esac
+
+  # 4. sensor
+  step "4. Do you have a sensor?"
   local kind sc ag pa indoor=0
   choose kind "   Pick one. You can add more later." \
     "None yet. Start with the global models and add hardware when I have it." \
@@ -197,7 +208,8 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   if ! ./install.sh "${flags[@]}" >>"$LOG" 2>&1; then
     fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
   fi
-  envset NODE_TZ "$tz"; envset NODE_CITY "$city"
+  envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
+  [[ "$kind" == district ]] && envset NODE_SCALE city
   docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "the app container did not restart with your settings"
   sleep 4
   cmd_doctor quiet || fail "install finished but a check failed; see doctor output above"
@@ -208,6 +220,7 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   echo "  Next, two minutes each:"
   printf '    %splanetai telegram%s     get alerts on your phone\n' "$B" "$N"
   printf '    %splanetai test-alert%s   see the whole path fire, right now\n' "$B" "$N"
+  [[ "$kind" != district ]] && printf '    %splanetai homeassistant%s  your sensors and alerts as Home Assistant entities\n' "$B" "$N"
   echo
   printf '  Any time:  %splanetai status%s · %splanetai doctor%s · %splanetai update%s\n\n' "$B" "$N" "$B" "$N" "$B" "$N"
 }
@@ -469,6 +482,36 @@ cmd_reticulum() {
   echo "  For LoRa: plug in an RNode, uncomment its block in config/reticulum/config, pass the device in compose (Linux)."
 }
 
+
+# ---------------------------------------------------------------- home assistant: the node's sensors and alerts as HA entities
+cmd_homeassistant() {
+  step "Home Assistant"
+  echo "  The node publishes every local sensor and its alerts over MQTT in Home Assistant's discovery format."
+  echo "  HA creates the entities itself; you build automations there (purifier on when indoor PM2.5 > 35, and so on)."
+  echo "  We publish, HA acts. The node never addresses a device."
+  echo
+  case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*) ;; *)
+    say "no broker yet: setting one up (this is the same broker the Meshtastic gateway uses)"
+    local user="planetai" pass; pass="$(openssl rand -hex 12)"
+    envset MQTT_HOST mosquitto; envset MQTT_USER "$user"; envset MQTT_PASS "$pass"; profiles_add mqtt
+    docker run --rm --user 0 -v "$PWD/config/mosquitto:/m" eclipse-mosquitto:2 \
+      sh -c "rm -f /m/passwd && mosquitto_passwd -b -c /m/passwd '$user' '$pass' && chmod 644 /m/passwd" >>"$LOG" 2>&1 \
+      || fail "could not create the broker user; see $LOG";;
+  esac
+  envset HA_DISCOVERY 1
+  docker compose up -d >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
+  local ip; ip="$(lan_ip)"
+  say "publishing. Entities appear in HA within one poll (5 min)."
+  echo
+  echo "  In Home Assistant: Settings → Devices & services → Add integration → MQTT"
+  printf '     Broker    %s\n     Port      1883\n     Username  %s\n     Password  %s\n' "${ip:-<this machine LAN IP>}" "$(envget MQTT_USER)" "$(envget MQTT_PASS)"
+  echo "  Discovery is on by default in HA's MQTT integration. Devices appear as 'PLANETAI node' with one device per"
+  echo "  sensor and a 'latest alert' text sensor on the node itself (attributes: level, alert_id)."
+  echo
+  echo "  If HA already runs its own broker, point this node at it instead: MQTT_HOST=<ha-broker-ip> MQTT_USER/MQTT_PASS in .env,"
+  echo "  planetai restart. Then the Meshtastic gateway should uplink to that broker too."
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -488,6 +531,7 @@ case "${1:-help}" in
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) cmd_sensors;;  cells) cmd_cells;;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
+  homeassistant|ha) cmd_homeassistant;;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
   *) sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;

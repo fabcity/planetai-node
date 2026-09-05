@@ -1,0 +1,12 @@
+id: insight
+name: Insight
+description: >-
+  What your sensors say about each other, the street, and the model. A richer digest every few hours,
+  and a daily note on how well the satellite model, the nearby outdoor sensors and your own indoor air agree.
+  All of it is SQL over what the node already holds; nothing leaves the machine.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.9.0" }
+kind: data
+domain: cross-domain
+scales: [community]

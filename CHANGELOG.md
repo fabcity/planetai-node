@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.10 — 2026-09-05
+
+**The node reads your whole account, tells you more, and hands automations to Home Assistant.**
+
+- **Smart Citizen account discovery** (`SC_USER`): every kit that has published recently, indoor from the API's `exposure` field, local if within `SC_LOCAL_KM` of the node, otherwise a reference station you own. Node #1's account turned out to hold six live kits; it was reading one.
+- **`insight` pack**: `digest` every three hours (inside / outside / model / 24h mean / peak / trend); `agreement` daily (Pearson r between indoor, outdoor and CAMS, how much the house filters, the model's bias); `rhythm` daily (the street's worst and cleanest hours, when to open the windows). Pure SQL; Postgres has `corr()`.
+- **Home Assistant** via MQTT discovery: local sensors and the latest alert appear as HA entities with no configuration on the HA side. `planetai homeassistant` sets it up. HA does automations; the node never addresses a device.
+- **`NODE_KIND`** (`home | business | community | district`): a fourth setup question that sets defaults. Not an Index scale — a house is a Community-scale observation.
+- **`docs/USE_CASES.md`**: three things node #1 can say today, with the real numbers from seven days of data: indoor tracks the street at r = 0.55 and the house filters ~30%; the CAMS model tracks the street at r = 0.51 and reads high; it tracks indoor air at r = −0.18. Also: one kit in the account has a dead PM sensor.
+
 ## v0.9 — 2026-09-05 — audit
 
 Six defects found by auditing rather than by hitting them in the field. Each has a gate now.

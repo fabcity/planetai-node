@@ -1,0 +1,90 @@
+# Digest and insight rules. They read readings_1h (hourly means, kept for the whole history) rather than stats
+# (24h rolling), because agreement is a question about days, not minutes. Copy this folder to change cadence:
+# the digest's cooldown is its interval.
+
+# ---------------------------------------------------------------- every 3 hours: the state of the air, three ways
+- id: digest
+  level: info
+  cooldown_minutes: 180
+  sql: |
+    WITH now_in AS (
+      SELECT round(avg(mean_1h)::numeric) AS v, count(*) AS n FROM stats
+      WHERE local AND indoor AND metric = 'pm25' AND mean_1h IS NOT NULL),
+    now_out AS (
+      SELECT round(avg(mean_1h)::numeric) AS v, count(*) AS n FROM stats
+      WHERE NOT indoor AND metric = 'pm25' AND mean_1h IS NOT NULL AND silent_minutes < 120),
+    model AS (
+      SELECT round(value::numeric) AS v FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'),
+    day_in AS (
+      SELECT round(avg(mean_24h)::numeric) AS v, round(max(mean_24h)::numeric) AS peak FROM stats
+      WHERE local AND indoor AND metric = 'pm25'),
+    trend AS (
+      SELECT CASE WHEN a.v > b.v + 3 THEN 'rising' WHEN a.v < b.v - 3 THEN 'falling' ELSE 'steady' END AS t
+      FROM (SELECT avg(mean) AS v FROM readings_1h r JOIN sensors s USING (sensor_id)
+            WHERE s.local AND s.indoor AND r.metric = 'pm25' AND r.bucket > now() - interval '3 hours') a,
+           (SELECT avg(mean) AS v FROM readings_1h r JOIN sensors s USING (sensor_id)
+            WHERE s.local AND s.indoor AND r.metric = 'pm25' AND r.bucket BETWEEN now() - interval '6 hours' AND now() - interval '3 hours') b)
+    SELECT 'node' AS sensor_id,
+           now_in.v AS inside, now_in.n AS n_in, now_out.v AS outside, now_out.n AS n_out, model.v AS modelled,
+           day_in.v AS day_mean, day_in.peak AS day_peak, trend.t AS trend
+    FROM now_in, now_out, model, day_in, trend
+    WHERE now_in.v IS NOT NULL
+  message:
+    en: "Air now — inside {inside} µg/m³ ({n_in} sensors, {trend}) · outside {outside} ({n_out} sensors) · model says {modelled}. Indoor 24h mean {day_mean}, peak {day_peak}."
+    id: "Udara sekarang — dalam {inside} µg/m³ ({n_in} sensor, {trend}) · luar {outside} ({n_out} sensor) · model {modelled}. Rata-rata 24 jam dalam {day_mean}, puncak {day_peak}."
+
+# ---------------------------------------------------------------- daily: how well do the three layers agree?
+- id: agreement
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    WITH h AS (
+      SELECT r.bucket,
+             avg(r.mean) FILTER (WHERE s.local AND s.indoor)          AS indoor,
+             avg(r.mean) FILTER (WHERE NOT s.indoor AND s.kind='sensor') AS outdoor
+      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      WHERE r.metric = 'pm25' AND r.bucket > now() - interval '7 days'
+      GROUP BY r.bucket),
+    m AS (
+      SELECT date_trunc('hour', ts) AS bucket, avg(value) AS model
+      FROM readings WHERE sensor_id = 'cams-point' AND metric = 'pm25_model' AND ts > now() - interval '7 days'
+      GROUP BY 1),
+    j AS (SELECT h.*, m.model FROM h LEFT JOIN m USING (bucket))
+    SELECT 'node' AS sensor_id,
+           count(indoor) AS hours,
+           round(corr(indoor, outdoor)::numeric, 2)  AS r_in_out,
+           round(corr(outdoor, model)::numeric, 2)   AS r_out_model,
+           round(corr(indoor, model)::numeric, 2)    AS r_in_model,
+           round(avg(outdoor - indoor)::numeric, 1)  AS shield,
+           round(avg(model - outdoor)::numeric, 1)   AS model_bias,
+           round((100 * (1 - avg(indoor) / nullif(avg(outdoor), 0)))::numeric) AS filtered_pct
+    FROM j
+    HAVING count(indoor) >= 48 AND count(outdoor) >= 48
+  message:
+    en: "This week, from {hours} hourly readings: your indoor air tracks the street at r={r_in_out} and the house holds back about {filtered_pct}% of it (outside is {shield} µg/m³ higher on average). The satellite model tracks the street at r={r_out_model} and reads {model_bias} high; it tracks your indoor air at r={r_in_model} — which is to say, not at all. The gap between the model and your sensors is the reason the sensors exist."
+    id: "Minggu ini, dari {hours} pembacaan per jam: udara dalam rumah mengikuti jalan pada r={r_in_out} dan rumah menahan sekitar {filtered_pct}% (luar {shield} µg/m³ lebih tinggi rata-rata). Model satelit mengikuti jalan pada r={r_out_model} dan membaca {model_bias} lebih tinggi; terhadap udara dalam rumah r={r_in_model}, artinya hampir tidak berhubungan."
+
+# ---------------------------------------------------------------- daily: when is the street worst, and is the house following it?
+- id: rhythm
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    WITH by_hour AS (
+      SELECT extract(hour FROM r.bucket AT TIME ZONE current_setting('TimeZone'))::int AS hr,
+             avg(r.mean) FILTER (WHERE NOT s.indoor AND s.kind='sensor') AS outdoor,
+             avg(r.mean) FILTER (WHERE s.local AND s.indoor) AS indoor
+      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      WHERE r.metric = 'pm25' AND r.bucket > now() - interval '7 days'
+      GROUP BY 1 HAVING count(*) FILTER (WHERE NOT s.indoor) >= 5),
+    worst AS (SELECT hr, outdoor FROM by_hour ORDER BY outdoor DESC NULLS LAST LIMIT 1),
+    best  AS (SELECT hr, outdoor FROM by_hour ORDER BY outdoor ASC  NULLS LAST LIMIT 1),
+    worst_in AS (SELECT hr, indoor FROM by_hour ORDER BY indoor DESC NULLS LAST LIMIT 1)
+    SELECT 'node' AS sensor_id,
+           lpad(worst.hr::text, 2, '0') AS worst_hr, round(worst.outdoor::numeric) AS worst_v,
+           lpad(best.hr::text, 2, '0')  AS best_hr,  round(best.outdoor::numeric)  AS best_v,
+           lpad(worst_in.hr::text, 2, '0') AS worst_in_hr, round(worst_in.indoor::numeric) AS worst_in_v
+    FROM worst, best, worst_in
+    WHERE worst.outdoor IS NOT NULL AND best.outdoor IS NOT NULL
+  message:
+    en: "Street rhythm this week: worst around {worst_hr}:00 ({worst_v} µg/m³), cleanest around {best_hr}:00 ({best_v}). Indoors peaks around {worst_in_hr}:00 ({worst_in_v}). If you air the house, {best_hr}:00 is the hour."
+    id: "Ritme jalan minggu ini: terburuk sekitar {worst_hr}:00 ({worst_v} µg/m³), terbersih sekitar {best_hr}:00 ({best_v}). Dalam rumah puncak sekitar {worst_in_hr}:00 ({worst_in_v}). Kalau mau membuka rumah, jam {best_hr}:00 waktunya."

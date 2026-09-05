@@ -48,6 +48,8 @@ MESH_ALERTS = os.getenv("MESH_ALERTS", "0") == "1"           # send act-level al
 MESH_GATEWAY_NUM = int(os.getenv("MESH_GATEWAY_NODE_NUM", "0") or 0)
 AGG_TOKEN = os.getenv("AGGREGATE_TOKEN", "").strip()        # children must present this to POST /aggregates
 PARENT_TOKEN = os.getenv("PARENT_TOKEN", "").strip()        # what this node presents to its own parent
+HA_DISCOVERY = os.getenv("HA_DISCOVERY", "0") == "1" and bool(os.getenv("MQTT_HOST", "").strip())
+_ha_announced: set = set()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 if PARENT and not PARENT.startswith(("http://", "https://")):
@@ -97,6 +99,7 @@ def poll_once(hc: httpx.Client) -> None:
                     )
                     state["ingested"] += cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
             log.info("%s: %d sensors, %d readings", name, len(sensors), len(readings))
+            ha_publish(sensors, readings)
     state["polls"] += 1
     state["last_poll"] = datetime.now(timezone.utc).isoformat()
     state["last_error"] = " | ".join(errors) if errors else None   # clears when every source succeeds
@@ -116,6 +119,7 @@ def _store(sensors, readings) -> None:
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
             state["ingested"] += max(cur.rowcount or 0, 0)      # rowcount, not len: duplicates are dropped
+    ha_publish(sensors, readings)
 
 
 def mqtt_thread() -> None:
@@ -173,6 +177,76 @@ def mesh_send(text: str) -> None:
         log.warning("mesh send failed: %s", type(e).__name__)
 
 
+# ---------------------------------------------------------------- Home Assistant (MQTT discovery)
+# HA's MQTT integration watches homeassistant/<component>/<id>/config. Publish one config per sensor metric and
+# HA creates the entity, grouped under a device per physical sensor. Then publish states. Retained, so HA sees
+# them on restart. We publish; HA automates. The node never addresses a device.
+HA_UNITS = {"pm25": ("µg/m³", "pm25"), "pm10": ("µg/m³", "pm10"), "pm1": ("µg/m³", "pm1"), "pm25_model": ("µg/m³", "pm25"),
+            "temp": ("°C", "temperature"), "temp_model": ("°C", "temperature"), "humidity": ("%", "humidity"),
+            "humidity_model": ("%", "humidity"), "pressure": ("kPa", "atmospheric_pressure"), "co2": ("ppm", "carbon_dioxide"),
+            "battery_pct": ("%", "battery"), "battery_v": ("V", "voltage"), "aqi": (None, "aqi"),
+            "wind_speed": ("km/h", "wind_speed"), "precipitation": ("mm", "precipitation"), "uv_index": (None, None)}
+
+
+def ha_publish(sensors: list[dict], readings: list[tuple]) -> None:
+    if not HA_DISCOVERY or not readings:
+        return
+    try:
+        import paho.mqtt.publish as publish
+        auth = {"username": MQTT_USER, "password": MQTT_PASS} if MQTT_USER else None
+        by_id = {s["sensor_id"]: s for s in sensors}
+        latest: dict[tuple, tuple] = {}
+        for ts, sid, metric, value in readings:
+            if (sid, metric) not in latest or ts > latest[(sid, metric)][0]:
+                latest[(sid, metric)] = (ts, value)
+        msgs = []
+        for (sid, metric), (ts, value) in latest.items():
+            s = by_id.get(sid, {})
+            if not s.get("local", False) and s.get("kind", "sensor") == "sensor":
+                continue                                # reference stations are not this house's entities
+            uid = f"planetai_{NODE}_{sid}_{metric}".replace("-", "_").replace("/", "_")
+            state_topic = f"planetai/{NODE}/{sid}/{metric}"
+            if uid not in _ha_announced:
+                unit, dclass = HA_UNITS.get(metric, (None, None))
+                cfg = {"name": metric.replace("_", " "), "unique_id": uid, "state_topic": state_topic,
+                       "state_class": "measurement", "expire_after": 3600,
+                       "device": {"identifiers": [f"planetai_{NODE}_{sid}"], "name": s.get("name") or sid,
+                                  "manufacturer": "PLANETAI node", "model": s.get("source", "sensor"),
+                                  "suggested_area": "Indoor" if s.get("indoor") else "Outdoor"}}
+                if unit: cfg["unit_of_measurement"] = unit
+                if dclass: cfg["device_class"] = dclass
+                msgs.append({"topic": f"homeassistant/sensor/{uid}/config", "payload": json.dumps(cfg), "retain": True})
+                _ha_announced.add(uid)
+            msgs.append({"topic": state_topic, "payload": f"{value:g}", "retain": True})
+        if msgs:
+            publish.multiple(msgs, hostname=MQTT_HOST, auth=auth)
+    except Exception as e:  # noqa: BLE001
+        log.warning("home assistant publish failed: %s", type(e).__name__)
+
+
+def ha_alert(level: str, text: str, alert_id: int | None) -> None:
+    """One text sensor per node carrying the latest alert, with level and id as attributes."""
+    if not HA_DISCOVERY:
+        return
+    try:
+        import paho.mqtt.publish as publish
+        auth = {"username": MQTT_USER, "password": MQTT_PASS} if MQTT_USER else None
+        uid = f"planetai_{NODE}_alert".replace("-", "_")
+        msgs = []
+        if uid not in _ha_announced:
+            msgs.append({"topic": f"homeassistant/sensor/{uid}/config", "retain": True, "payload": json.dumps({
+                "name": "latest alert", "unique_id": uid, "state_topic": f"planetai/{NODE}/alert",
+                "json_attributes_topic": f"planetai/{NODE}/alert/attributes", "icon": "mdi:bell-alert",
+                "device": {"identifiers": [f"planetai_{NODE}"], "name": f"PLANETAI {NODE}", "manufacturer": "PLANETAI node"}})})
+            _ha_announced.add(uid)
+        msgs.append({"topic": f"planetai/{NODE}/alert", "payload": text.split("\n")[0][:255], "retain": True})
+        msgs.append({"topic": f"planetai/{NODE}/alert/attributes", "retain": True,
+                     "payload": json.dumps({"level": level, "alert_id": alert_id, "ts": datetime.now(timezone.utc).isoformat()})})
+        publish.multiple(msgs, hostname=MQTT_HOST, auth=auth)
+    except Exception as e:  # noqa: BLE001
+        log.warning("home assistant alert publish failed: %s", type(e).__name__)
+
+
 # ---------------------------------------------------------------- rules → alerts
 def load_rules() -> list[dict]:
     try:
@@ -210,6 +284,7 @@ def run_rules() -> None:
                 cur.execute("INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,%s,%s,%s) RETURNING id", (rule["id"], sid, level, text))
                 alert_id = cur.fetchone()["id"]
                 notify(level, f"{text}\n\n#{alert_id}")   # the id is how a reply becomes an action
+                ha_alert(level, text, alert_id)
 
 
 def notify(level: str, text: str) -> None:
