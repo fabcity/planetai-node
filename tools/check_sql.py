@@ -64,6 +64,13 @@ for f in ("backup.sh", "update.sh", "install.sh", "bin/planetai"):
             if re.search(r"\|\s*grep\s+-[a-zA-Z]*q", line) and "<<<" not in line:
                 errs.append(f"{f}:{i}: `| grep -q` under pipefail races on large output; use grep -q ... <<< \"$(producer)\"")
 
+# a logged exception from a Telegram call prints the bot token (httpx puts it in the URL). Log its type, never its text.
+for f in ("app/main.py", "app/agent_loop.py"):
+    s = open(f).read()
+    for i, line in enumerate(s.splitlines(), 1):
+        if "log.warning" in line and "telegram" in line.lower() and re.search(r'%s", *e\)|\{e\}', line):
+            errs.append(f"{f}:{i}: logs a telegram exception's text; use type(e).__name__ (the URL holds the bot token)")
+
 # nothing tracked may be OS litter or a cache: .DS_Store committed once and blocked planetai update on the node
 tracked = subprocess.run(["git", "ls-files"], capture_output=True, text=True).stdout.split()
 for f in tracked:

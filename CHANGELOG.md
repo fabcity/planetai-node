@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.23.1 — 2026-09-05 — a leak, closed
+
+- **The agent loop logged a Telegram exception's text, which contains the bot token in its URL.** The token of node #1
+  was exposed and has been revoked. Telegram calls now raise a `TelegramError` carrying a status code and advice
+  (401: run `planetai telegram`; 409: something else is polling this bot), never the response or URL. `make lint` refuses
+  any log call that interpolates a Telegram exception. The app's own `notify()` already followed this rule; the loop did not.
+- The loop waits for the node to answer before reading settings, so it does not fall back to a stale `.env` token while
+  the app is still starting.
+
 ## v0.23 — 2026-09-05 — how the node talks
 
 **Every message rewritten**, both languages, to one shape: an emoji headline (the line the LoRa mesh carries), what is

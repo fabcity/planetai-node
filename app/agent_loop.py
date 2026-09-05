@@ -190,10 +190,22 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
     return f"No model answered ({type(last_err).__name__ if last_err else 'none configured'}). On the node: `ollama list`, and check AGENT_* in .env.", "none"
 
 
+class TelegramError(Exception):
+    """Carries the status code only. Never the response, never the URL: both contain the bot token."""
+
+
 async def telegram(method: str, **params):
     async with httpx.AsyncClient(timeout=40) as hc:
-        r = await hc.post(f"https://api.telegram.org/bot{TG_TOKEN()}/{method}", json=params)
-        r.raise_for_status()
+        try:
+            r = await hc.post(f"https://api.telegram.org/bot{TG_TOKEN()}/{method}", json=params)
+        except httpx.HTTPError as e:
+            raise TelegramError(f"{type(e).__name__}") from None
+        if r.status_code == 401:
+            raise TelegramError("401: Telegram rejects this bot token. Run `planetai telegram` on the node to set the current one.")
+        if r.status_code == 409:
+            raise TelegramError("409: something else is polling this bot (a second agent, or a webhook). Only one may.")
+        if r.status_code >= 400:
+            raise TelegramError(f"{r.status_code}")
         return r.json()
 
 
@@ -207,6 +219,14 @@ async def main():
     if not TOKEN:
         raise SystemExit("ADMIN_TOKEN is required")
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {TOKEN}", "X-Agent": NAME}, timeout=120)
+    for i in range(30):                    # the app may still be starting; its settings are the source of truth, not .env
+        try:
+            if (await hc.get(MCP_URL.replace("/mcp", "/health"), timeout=5)).status_code == 200:
+                break
+        except Exception:  # noqa: BLE001
+            pass
+        if i == 0: log.info("waiting for the node at %s", MCP_URL)
+        await asyncio.sleep(2)
     asyncio.create_task(refresh_ladder(hc))
     await asyncio.sleep(2)
     log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
@@ -227,13 +247,16 @@ async def main():
                             await telegram("sendMessage", chat_id=chat, text=brief)
                         log.info("brief sent via %s", rung)
                     except Exception as e:  # noqa: BLE001
-                        log.warning("brief failed: %s", e)
+                        log.warning("brief failed: %s", type(e).__name__)
                 if not TG_TOKEN():
                     await asyncio.sleep(30); continue
                 try:
                     upd = await telegram("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
+                except TelegramError as e:
+                    msg = e.args[0] if e.args else "error"      # TelegramError carries a status code and advice, never the URL
+                    log.warning("telegram: %s", msg); await asyncio.sleep(30 if msg[:3] in ("401", "409") else 10); continue
                 except Exception as e:  # noqa: BLE001
-                    log.warning("telegram: %s", e); await asyncio.sleep(10); continue
+                    log.warning("telegram: %s", type(e).__name__); await asyncio.sleep(10); continue
                 for u in upd.get("result", []):
                     offset = u["update_id"] + 1
                     m = u.get("message") or {}
