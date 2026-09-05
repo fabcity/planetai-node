@@ -3,16 +3,17 @@
 #   ./update.sh              update to whatever is in this folder / on this branch
 #   ./update.sh --no-pull    skip git pull (use when you unpacked a tarball over the folder)
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
 
 # Bash reads a script as it runs. This script pulls new code, which rewrites the file bash is reading, and
 # from that point it executes from a byte offset in a different file: steps skipped, steps garbled. So on first
 # entry, copy to a temp file and run from there; the copy is immune to the pull.
 if [[ -z "${PLANETAI_UPDATE_COPY:-}" ]]; then
+  NODE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"          # the node folder, resolved BEFORE we leave it
   tmp="$(mktemp -t planetai-update.XXXXXX)"; cp "${BASH_SOURCE[0]}" "$tmp"
-  PLANETAI_UPDATE_COPY=1 exec bash "$tmp" "$@"
+  PLANETAI_UPDATE_COPY="$NODE_DIR" exec bash "$tmp" "$@"
 fi
 trap 'rm -f "${BASH_SOURCE[0]}"' EXIT      # the temp copy
+cd "$PLANETAI_UPDATE_COPY"                 # back into the node folder; the copy lives in /tmp
 
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
