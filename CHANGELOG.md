@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.5 — 2026-09-05
+
+- **Fixed:** `planetai packs` treated a pack's `env:` comment lines as settings, so it appended four bare comments to `.env` and reported them as four added settings (the real settings were already present and correctly skipped). A comment now travels only with the setting it explains, and only when that setting is actually added.
+- Verified by running the real function from `bin/planetai` against a temporary `.env`, not a retyped copy — retyping it the first time introduced an escaping bug that made the test lie.
+
 ## v0.11.4 — 2026-09-05
 
 - **Fixed:** pack `env:` declarations padded the value column for alignment, so a value pasted after the padding produced `VAR=   value`. The shell reads that as "run `value` with VAR empty", and `update.sh` sources `.env` — so filling in the Earth Engine service account made `planetai update` try to execute an email address. Declarations now put the explanation on its own comment line and leave nothing after `=`.

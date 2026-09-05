@@ -529,7 +529,7 @@ pack_envs() {
     /^env:[[:space:]]*$/ { inenv=1; next }
     inenv && /^[[:space:]]*-[[:space:]]*/ { s=$0; sub(/^[[:space:]]*-[[:space:]]*/,"",s); gsub(/^"|"$/,"",s); if(s!="") print s; next }
     inenv && /^[^[:space:]-]/ { inenv=0 }
-  ' packs/*/pack.yaml 2>/dev/null | sort -u
+  ' packs/*/pack.yaml 2>/dev/null
 }
 
 pack_pips() {
@@ -553,14 +553,17 @@ cmd_packs() {
     printf '%s' "$loaded" | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10)," ")[:70]))'
   fi
   echo
-  # settings a pack needs, declared as `env:` in its pack.yaml. Appended to .env if absent, never overwritten.
-  local added=0
+  # settings a pack needs, declared as `env:` in its pack.yaml. A `#` line explains the setting under it and
+  # travels only if that setting is actually added — otherwise the file collects orphan comments.
+  local added=0 pending=""
   while IFS= read -r line; do
     [[ -z "$line" ]] && continue
+    if [[ "$line" == \#* ]]; then pending="$line"; continue; fi
     local k="${line%%=*}"
-    grep -q "^${k}=" .env 2>/dev/null && continue
+    if grep -q "^${k}=" .env 2>/dev/null; then pending=""; continue; fi
     [[ $added -eq 0 ]] && printf '\n# ---- pack settings, added by `planetai packs` on %s ----\n' "$(date +%F)" >> .env
-    echo "$line" >> .env; echo "    + ${k}"; added=$((added+1))
+    [[ -n "$pending" ]] && echo "$pending" >> .env
+    echo "$line" >> .env; echo "    + ${k}"; pending=""; added=$((added+1))
   done < <(pack_envs)
   [[ $added -gt 0 ]] && warn "${added} pack setting(s) added to .env — fill them in, then planetai restart" || true
 
