@@ -666,7 +666,7 @@ cmd_storage() {
   echo
   printf '  Backups            %s' "$bdir"
   if ! mounted "$bdir"; then printf '   %s✗ NOT MOUNTED — tonight'"'"'s backup will refuse to run%s\n' "$R" "$N";
-  elif [[ -d "$bdir" ]]; then local last n; last="$(ls -t "$bdir"/*.sql.gz 2>/dev/null | head -1)"; n="$(ls "$bdir"/*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
+  elif [[ -d "$bdir" ]]; then local last n; last="$(ls -t "$bdir"/*.sql.gz 2>/dev/null | head -1 || true)"; shopt -s nullglob; local dumps=("$bdir"/*.sql.gz); n=${#dumps[@]}; shopt -u nullglob
     printf '   %s dumps, keep %s days\n' "$n" "$(envget BACKUP_KEEP || true)"; [[ -n "$last" ]] && echo "                     last: $(basename "$last") ($(du -h "$last" | cut -f1))" || printf '                     %sno backup yet%s\n' "$Y" "$N"
     [[ -f "$bdir/LAST_OK" ]] && echo "                     last run OK at $(cat "$bdir/LAST_OK")"
   else printf '   %s(does not exist yet)%s\n' "$Y" "$N"; fi
@@ -676,9 +676,10 @@ cmd_storage() {
   if [[ -n "$rem" ]]; then echo "  Off-machine copy   $rem  (rclone, after each backup)$(command -v rclone >/dev/null || printf '  %s✗ rclone not installed%s' "$R" "$N")"
   else echo "  Off-machine copy   none.  planetai storage set remote b2:bucket/node   (any rclone backend: S3, B2, R2, Drive, SFTP, WebDAV…)"; fi
   echo
-  local ex="exports/$(envget NODE_NAME)"; local nex; nex="$(ls "$ex"/*.json 2>/dev/null | wc -l | tr -d ' ')"
+  # count with a glob, not `ls | wc`: with no exports yet ls fails, pipefail fails the assignment, set -e ends the function
+  local ex="exports/$(envget NODE_NAME)"; local nex=0; shopt -s nullglob; local exfiles=("$ex"/*.json); nex=${#exfiles[@]}; shopt -u nullglob
   echo "  Open-data exports  $ex   $nex day(s). Hourly means, cells, alerts, rho. Never raw. CC BY 4.0."
-  if [[ "$(envget IPFS_PUBLISH)" == "1" ]]; then echo "  IPFS               publishing. $(wc -l < "$ex/CIDS.txt" 2>/dev/null || echo 0) CID(s) in $ex/CIDS.txt"
+  if [[ "$(envget IPFS_PUBLISH)" == "1" ]]; then local ncid=0; [[ -f "$ex/CIDS.txt" ]] && ncid="$(wc -l < "$ex/CIDS.txt" | tr -d ' ')"; echo "  IPFS               publishing. $ncid CID(s) in $ex/CIDS.txt"
   else echo "  IPFS               off.  planetai ipfs   to publish each day's export to the commons"; fi
   echo
   echo "  Pulled by a NAS    GET /backups and /backups/<file> with this read-only token:"

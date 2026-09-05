@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.18.2 — 2026-09-05
+
+- **Fixed: `planetai storage` stopped halfway** — before the exports, IPFS and the NAS token — on a node with no exports yet. `nex="$(ls exports/x/*.json | wc -l)"`: `ls` fails, `pipefail` fails the assignment, `set -e` ends the function silently. Counts use a `nullglob` array now. Verified by running the real function against a folder with no exports.
+
 ## v0.18.1 — 2026-09-05
 
 - **Fixed: the backup check rejected good dumps.** `gunzip | grep -q` under `pipefail`: `grep -q` exits on the first match, `gunzip` gets a broken pipe, the pipeline reports failure, and a valid dump read as "no readings table" — which made `planetai update` refuse to run, correctly, for the wrong reason. Counting matches instead lets the pipeline finish. The same race was in the **mount check**, where it could have refused a real NAS mount, and in five other places across `update.sh`, `install.sh` and the CLI; all now capture the producer's output first and grep the string. `make lint` refuses `| grep -q` under `pipefail` from here on.
