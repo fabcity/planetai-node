@@ -5,157 +5,240 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PLANETAI node</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@300..900&family=Funnel+Sans:wght@300..800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Funnel+Sans:wght@500;700;800&display=swap">
 <style>
-/* Fab City design system: warm paper + ink, three master hues, hexagon module, Funnel Sans display, Figtree body.
-   Sharp corners, hairline rules, no shadows. One file, no build. */
+/* Fab City design system. Paper and ink; three flat hues, each used alone; the hexagon as the only geometry;
+   Funnel Sans for the few big words and numbers, Figtree for everything else. One motion moment, on load. */
 :root{
-  --paper:#F7F5F1;--paper2:#EFEBE4;--ink:#1E1E1E;--ink2:#3A3A35;--muted:#6B6660;--rule:#D8D3C4;--rule2:#E6E2D8;
-  --red:#E62038;--blue:#20388D;--green:#00A057;--amber:#C98A00;
-  --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --paper:#F9F5F2;--paper2:#EFEAE4;--ink:#171717;--ink2:#232323;--n600:#6B6660;--n400:#B4AEA6;--n300:#D3CEC7;--line:#E4E2DD;
+  --red:#E62038;--blue:#20388D;--green:#00A057;--orange:#FF931E;
+  --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;
+  --ease:cubic-bezier(.2,.6,.2,1);
 }
-@media(prefers-color-scheme:dark){:root{--paper:#1E1E1E;--paper2:#262622;--ink:#F7F5F1;--ink2:#D8D3C4;--muted:#8B857A;--rule:#3A3A35;--rule2:#2C2C28}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}
-body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--fb);-webkit-font-smoothing:antialiased}
-a{color:var(--blue)}button{font:inherit;cursor:pointer}
-.mono{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-h1,h2,h3{font-family:var(--fd);font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.05}
+@media(prefers-color-scheme:dark){:root{--paper:#171717;--paper2:#232323;--ink:#F9F5F2;--ink2:#EFEAE4;--n600:#B4AEA6;--n400:#6B6660;--n300:#4A4641;--line:#2E2B27}}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--fb);-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:var(--blue)}button{font:inherit;cursor:pointer;color:inherit}
+h1,h2,h3,.num{font-family:var(--fd);letter-spacing:-.02em;margin:0;line-height:1}
+.eyebrow{font:500 11px/1 var(--fb);letter-spacing:.14em;text-transform:uppercase;color:var(--n600)}
+.muted{color:var(--n600)}
+:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(32,56,141,.35);border-radius:8px}
 
-/* header */
-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px;border-bottom:1px solid var(--rule);position:sticky;top:0;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);z-index:5}
-.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
-.hex{width:26px;height:30px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--ink);flex:none}
-.brand b{font-family:var(--fd);font-weight:800;letter-spacing:-.02em;font-size:15px;display:block;line-height:1}
-.brand small{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:3px}
-nav{display:flex;gap:4px}
-nav button{background:none;border:1px solid transparent;padding:7px 12px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-nav button.on{color:var(--ink);border-color:var(--rule)}
-.pulse{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--green)}.dot.bad{background:var(--red)}.dot.warn{background:var(--amber)}
+/* ---------- header ---------- */
+header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:20px 32px;max-width:1280px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit}
+.mark{width:28px;height:32px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--ink);flex:none}
+.brand b{font:800 17px/1 var(--fd);letter-spacing:-.02em;display:block}
+.brand span{display:block;font-size:13px;color:var(--n600);margin-top:4px}
+nav{display:flex;gap:2px;border:1px solid var(--line);border-radius:8px;padding:2px}
+nav button{background:none;border:0;padding:7px 14px;font-size:14px;font-weight:500;color:var(--n600);border-radius:6px;transition:background 120ms var(--ease),color 120ms var(--ease)}
+nav button.on{background:var(--ink);color:var(--paper)}
+.pulse{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--n600)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);position:relative}
+.dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--green);opacity:0;animation:ring 3s var(--ease) infinite}
+.dot.bad{background:var(--red)}.dot.bad::after{border-color:var(--red)}.dot.warn{background:var(--orange)}.dot.warn::after{display:none}
+@keyframes ring{0%{transform:scale(.6);opacity:.8}70%,100%{transform:scale(1.6);opacity:0}}
 
-main{max-width:1180px;margin:0 auto;padding:24px}
+main{max-width:1280px;margin:0 auto;padding:8px 32px 64px}
 section{display:none}section.on{display:block}
 
-/* display: the big numbers */
-.tiles{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:18px}
-@media(min-width:720px){.tiles{grid-template-columns:repeat(3,1fr)}}
-.tile{background:var(--paper);padding:22px 22px 18px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between}
-.tile .n{font-family:var(--fd);font-weight:800;letter-spacing:-.04em;font-size:clamp(3rem,6vw,4.6rem);line-height:.95}
-.tile .u{font-size:13px;color:var(--muted);margin-top:4px}
-.tile .n.good{color:var(--green)}.tile .n.mid{color:var(--amber)}.tile .n.bad{color:var(--red)}.tile .n.blue{color:var(--blue)}
-.tile .sub{font-size:13px;color:var(--ink2);margin-top:12px}
-.row2{display:grid;gap:24px;margin-top:24px}@media(min-width:900px){.row2{grid-template-columns:1.1fr .9fr}}
-.box{border:1px solid var(--rule);background:var(--paper)}
-.box h3{font-size:1.05rem;padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:baseline}
-.box h3 span{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
-.list{list-style:none;margin:0;padding:0}
-.list li{padding:12px 18px;border-bottom:1px solid var(--rule2);display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start}
-.list li:last-child{border-bottom:0}
-.lvl{width:8px;height:8px;border-radius:50%;margin-top:7px;flex:none}.lvl.act{background:var(--red)}.lvl.warn{background:var(--amber)}.lvl.info{background:var(--blue)}
-.list .t{font-size:14px;line-height:1.45}.list .when{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.04em}
-.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);padding:7px 12px;font-weight:600;font-size:13px;border-radius:0}
-.btn.ghost{background:transparent;color:var(--ink)}.btn.small{padding:5px 10px;font-size:12px}
+/* ---------- the instrument ---------- */
+.instrument{display:grid;gap:40px;align-items:center;padding:24px 0 8px}
+@media(min-width:960px){.instrument{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}}
+.hexwrap{position:relative;max-width:520px;margin:0 auto;width:100%}
+.hexwrap svg{width:100%;height:auto;display:block;overflow:visible}
+.hex-fill{fill:var(--paper2);transition:fill 600ms var(--ease)}
+.hex-fill.good{fill:var(--green)}.hex-fill.mid{fill:var(--orange)}.hex-fill.bad{fill:var(--red)}
+.hex-outline{fill:none;stroke:var(--ink);stroke-width:2;stroke-dasharray:1000;stroke-dashoffset:1000;animation:draw 1.1s var(--ease) .1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.hex-model{fill:none;stroke:var(--blue);stroke-width:1.5;stroke-dasharray:4 6;opacity:.7}
+.inside-num{font:800 92px/1 var(--fd);letter-spacing:-.05em;fill:var(--paper);text-anchor:middle}
+.inside-num.plain{fill:var(--ink)}
+.inside-lbl{font:500 12px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--paper);opacity:.85;text-anchor:middle}
+.inside-lbl.plain{fill:var(--n600)}
+.outside-num{font:800 34px/1 var(--fd);letter-spacing:-.03em;fill:var(--ink);text-anchor:middle}
+.outside-lbl{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--n600);text-anchor:middle}
+.model-lbl{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--blue);text-anchor:end}
+.model-num{font:700 20px var(--fd);fill:var(--blue);text-anchor:end}
+.verdict h2{font-size:clamp(1.6rem,2.6vw,2.2rem);font-weight:800;line-height:1.1;letter-spacing:-.025em;max-width:22ch}
+.verdict p{margin:14px 0 0;color:var(--n600);max-width:44ch}
+.verdict .unit{font-size:13px;color:var(--n600);margin-top:22px}
+
+/* three stats, hairline-separated, each ending in a sentence */
+.stats{display:grid;border-top:1px solid var(--line)}
+.stat{padding:22px 0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:120px 1fr;gap:20px;align-items:baseline}
+.stat .num{font-size:44px;font-weight:800;letter-spacing:-.04em}
+.stat .num small{font:500 13px var(--fb);letter-spacing:0;color:var(--n600);margin-left:4px}
+.stat .num.good{color:var(--green)}.stat .num.mid{color:var(--orange)}.stat .num.bad{color:var(--red)}.stat .num.blue{color:var(--blue)}
+.stat b{font-weight:600;display:block}.stat p{margin:3px 0 0;color:var(--n600);font-size:14px}
+
+/* ---------- the strip: 24 hours, real hourly means ---------- */
+.strip{margin-top:48px;border-top:1px solid var(--line);padding-top:20px}
+.strip .head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.strip h3{font-size:1rem;font-weight:700}
+.legend{display:flex;gap:18px;font-size:13px;color:var(--n600)}
+.legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.strip svg{width:100%;height:140px;display:block;margin-top:12px}
+
+/* ---------- lower grid ---------- */
+.lower{display:grid;gap:48px;margin-top:56px}
+@media(min-width:960px){.lower{grid-template-columns:1.2fr .8fr}}
+.panel h3{font-size:1.15rem;font-weight:700;display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.panel h3 span{font:400 13px var(--fb);color:var(--n600)}
+.alerts{list-style:none;margin:0;padding:0}
+.alerts li{display:grid;grid-template-columns:14px 1fr auto;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);align-items:start}
+.alerts li:last-child{border-bottom:0}
+.lvl{width:10px;height:11px;margin-top:5px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.lvl.act{background:var(--red)}.lvl.warn{background:var(--orange)}.lvl.info{background:var(--blue)}
+.alerts .t{font-size:15px;line-height:1.45}.alerts .w{font-size:13px;color:var(--n600);margin-top:4px}
+.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 14px;font-weight:600;font-size:14px;border-radius:8px;transition:background 120ms var(--ease),border-color 120ms var(--ease)}
+.btn:hover{background:var(--ink2)}.btn.ghost{background:transparent;color:var(--ink)}.btn.ghost:hover{background:var(--paper2)}
+.btn.small{padding:6px 11px;font-size:13px}.btn.red{background:var(--red);border-color:var(--red)}
 .btn:disabled{opacity:.4;cursor:default}
-.acted{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--green);white-space:nowrap;margin-top:6px}
+.done{font-size:13px;color:var(--green);font-weight:500;white-space:nowrap;margin-top:6px}
+.empty{padding:28px 0;color:var(--n600);font-size:15px}
+.empty a{font-weight:500}
+
+/* honeycomb of cells */
+.honey{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:16px 0}
+.cell{width:62px;height:71px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;text-align:center;line-height:1.15;padding:6px;color:var(--paper)}
+.cell b{font:800 17px var(--fd);letter-spacing:-.03em;display:block}.cell small{font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
+.cell.live{background:var(--green)}.cell.partial{background:var(--blue)}.cell.mock{background:var(--n400)}
+.cell.none{background:transparent;color:var(--n400);box-shadow:inset 0 0 0 2px var(--line)}
+.honey .k{font-size:13px;color:var(--n600);margin-left:10px;line-height:1.45}
 table{width:100%;border-collapse:collapse;font-size:14px}
-td,th{padding:10px 18px;border-bottom:1px solid var(--rule2);text-align:left;vertical-align:top}
-th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td,th{padding:11px 0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:500;color:var(--n600);font-size:13px}
+td+td,th+th{padding-left:16px}
 tr:last-child td{border-bottom:0}
-.tag{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border:1px solid var(--rule)}
-.tag.in{border-color:var(--blue);color:var(--blue)}.tag.out{border-color:var(--green);color:var(--green)}.tag.ref{color:var(--muted)}
-.spark{display:inline-block;height:22px;width:100%;vertical-align:middle}
-.honey{display:flex;gap:4px;flex-wrap:wrap;padding:14px 18px}
-.cell{width:54px;height:62px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;font-family:var(--mono);font-size:9px;text-align:center;line-height:1.2;color:var(--paper);padding:4px}
-.cell.live{background:var(--green)}.cell.partial{background:var(--blue)}.cell.mock{background:var(--muted)}.cell.none{background:var(--paper2);color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:var(--paper2);color:var(--n600)}
+.tag.in{background:var(--blue);color:#fff}.tag.out{background:var(--green);color:#fff}
 
-/* setup */
-.setup{display:grid;gap:24px;margin-top:18px}@media(min-width:900px){.setup{grid-template-columns:200px 1fr}}
+/* ---------- setup ---------- */
+.setup{display:grid;gap:40px;margin-top:24px}@media(min-width:900px){.setup{grid-template-columns:220px 1fr}}
 .tabs{display:flex;flex-direction:column;gap:2px}
-.tabs button{text-align:left;background:none;border:0;border-left:2px solid transparent;padding:9px 12px;font-size:14px;color:var(--muted)}
-.tabs button.on{color:var(--ink);border-left-color:var(--red)}
-.form{display:grid;gap:18px}
-.field{display:grid;gap:6px}
-.field label{font-weight:600;font-size:14px;display:flex;justify-content:space-between;gap:12px}
-.field label .src{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
-.field input,.field select{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);border-radius:0;width:100%}
-.field input:focus{outline:none;border-color:var(--blue)}
-.field .help{font-size:13px;color:var(--muted)}
-.toggle{display:flex;align-items:center;gap:12px}
-.toggle input{width:auto}
-.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--rule);margin-top:6px;position:sticky;bottom:0;background:var(--paper)}
-.note{font-size:13px;color:var(--muted)}
-.token{border:1px solid var(--rule);padding:18px;background:var(--paper2);max-width:520px}
-.token input{width:100%;font:inherit;font-family:var(--mono);padding:9px 12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);margin-top:10px}
-.packs{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
-.pack{background:var(--paper);padding:16px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start}
-.pack b{font-family:var(--fd);font-size:15px}.pack p{margin:4px 0 0;font-size:13px;color:var(--muted)}
-.ok{color:var(--green)}.err{color:var(--red)}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
-.toast.on{opacity:1}
+.tabs button{text-align:left;background:none;border:0;padding:10px 14px;font-size:15px;color:var(--n600);border-radius:8px;transition:background 120ms var(--ease)}
+.tabs button:hover{background:var(--paper2)}.tabs button.on{color:var(--ink);background:var(--paper2);font-weight:600}
+.tabs hr{border:0;border-top:1px solid var(--line);margin:10px 0}
+.paneinfo{margin:6px 0 26px;font-size:15px;color:var(--n600);max-width:52ch}.paneinfo b{color:var(--ink);font-weight:600;display:block;font:800 1.35rem var(--fd);letter-spacing:-.02em;margin-bottom:6px}
+.form{display:grid;gap:22px;max-width:640px}
+.field label{display:block;font-weight:600;font-size:15px}
+.field .src{font-size:12px;font-weight:500;color:var(--n600);margin-left:8px}
+.field input[type=text],.field input[type=password],.field select{display:block;width:100%;margin-top:7px;font:inherit;font-size:15px;padding:10px 13px;border:1px solid var(--n300);border-radius:8px;background:var(--paper);color:var(--ink);transition:border-color 120ms}
+.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(32,56,141,.2);outline:none}
+.field .help{font-size:13px;color:var(--n600);margin-top:6px}
+.switch{display:flex;align-items:center;gap:14px;cursor:pointer}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .tr{width:40px;height:24px;border-radius:999px;background:var(--n300);position:relative;transition:background 160ms var(--ease);flex:none}
+.switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--paper);transition:transform 160ms var(--ease)}
+.switch input:checked+.tr{background:var(--green)}.switch input:checked+.tr::after{transform:translateX(16px)}
+.switch input:focus-visible+.tr{box-shadow:0 0 0 3px rgba(32,56,141,.35)}
+.bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:16px 0;border-top:1px solid var(--line);margin-top:8px;position:sticky;bottom:0;background:var(--paper)}
+.note{font-size:13px;color:var(--n600)}
+.gate{margin-top:32px;max-width:520px;padding:28px;border:1px solid var(--line);border-radius:14px;position:relative}
+.gate::before{content:"";position:absolute;right:-14px;top:-14px;width:72px;height:82px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--paper2);z-index:-1}
+.gate h3{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
+.gate p{color:var(--n600);margin:8px 0 16px;font-size:15px}
+.gate input{width:100%;font:inherit;font-size:15px;padding:10px 13px;border:1px solid var(--n300);border-radius:8px;background:var(--paper);color:var(--ink)}
+.packs{display:grid;gap:10px}
+.pack{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;align-items:start}
+.pack b{font:700 16px var(--fd);letter-spacing:-.01em}.pack p{margin:4px 0 0;font-size:14px;color:var(--n600)}
+.pack .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tag.code{background:var(--paper2);color:var(--ink)}.tag.warn{background:var(--red);color:#fff}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,8px);background:var(--ink);color:var(--paper);padding:11px 18px;font-size:14px;border-radius:8px;opacity:0;transition:opacity 200ms var(--ease),transform 200ms var(--ease);pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translate(-50%,0)}
 
-/* kiosk: a small screen on a shelf. ?kiosk=1 */
-body.kiosk header,body.kiosk .row2,body.kiosk .honeybox{display:none}
-body.kiosk main{padding:16px;max-width:none}
-body.kiosk .tiles{margin-top:0;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
-body.kiosk .tile .n{font-size:clamp(4rem,12vw,9rem)}
-body.kiosk .tile{min-height:32vh}
-body.kiosk .kioskfoot{display:flex}
-.kioskfoot{display:none;justify-content:space-between;padding:12px 4px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+/* ---------- kiosk: a screen on a shelf ---------- */
+body.kiosk header,body.kiosk .strip,body.kiosk .lower{display:none}
+body.kiosk main{padding:24px;max-width:none;min-height:100vh;display:grid;align-content:center}
+body.kiosk .instrument{gap:32px}
+body.kiosk .hexwrap{max-width:min(70vh,560px)}
+body.kiosk .verdict h2{font-size:clamp(2rem,4.5vw,3.4rem)}
+body.kiosk .stat .num{font-size:56px}
+.kfoot{display:none;justify-content:space-between;font-size:13px;color:var(--n600);padding-top:16px}
+body.kiosk .kfoot{display:flex}
+@media(prefers-reduced-motion:reduce){.hex-outline{animation:none;stroke-dashoffset:0}.dot::after{display:none}*{transition:none!important}}
 </style>
 </head>
 <body>
 <header>
-  <a class="brand" href="/"><span class="hex"></span><span><b id="nodename">PLANETAI node</b><small id="nodeplace">loading…</small></span></a>
-  <nav><button class="on" data-view="display">Display</button><button data-view="sensors">Sensors</button><button data-view="setup">Set up</button></nav>
-  <span class="pulse"><span class="dot" id="dot"></span><span id="pulsetxt">…</span></span>
+  <a class="brand" href="/"><span class="mark"></span><span><b id="nodename">PLANETAI node</b><span id="nodeplace">starting…</span></span></a>
+  <nav><button class="on" data-view="display">Now</button><button data-view="sensors">Sensors</button><button data-view="setup">Set up</button></nav>
+  <span class="pulse"><span class="dot" id="dot"></span><span id="pulsetxt"></span></span>
 </header>
 
 <main>
-<!-- ================================================================ display -->
+<!-- ================================================================ now -->
 <section id="display" class="on">
-  <div class="tiles">
-    <div class="tile"><div><span class="mono">inside · PM2.5</span><div class="n" id="t-in">–</div><div class="u">µg/m³ · <span id="t-in-n">–</span></div></div><div class="sub" id="t-in-sub"></div></div>
-    <div class="tile"><div><span class="mono">outside · PM2.5</span><div class="n" id="t-out">–</div><div class="u">µg/m³ · <span id="t-out-n">–</span></div></div><div class="sub" id="t-out-sub"></div></div>
-    <div class="tile"><div><span class="mono">feels like</span><div class="n" id="t-heat">–</div><div class="u">°C apparent · <span id="t-heat-n">–</span></div></div><div class="sub" id="t-heat-sub"></div></div>
-    <div class="tile"><div><span class="mono">model · CAMS</span><div class="n blue" id="t-model">–</div><div class="u">µg/m³ · 11 km grid</div></div><div class="sub" id="t-model-sub"></div></div>
-    <div class="tile"><div><span class="mono">ρ · action latency</span><div class="n" id="t-rho">–</div><div class="u" id="t-rho-u">alerts answered, 30 days</div></div><div class="sub" id="t-rho-sub"></div></div>
-    <div class="tile"><div><span class="mono">last 24 h · indoor</span><svg class="spark" id="spark" viewBox="0 0 240 44" preserveAspectRatio="none"></svg><div class="u" id="t-day"></div></div><div class="sub" id="t-day-sub"></div></div>
+  <div class="instrument">
+    <div class="hexwrap">
+      <!-- pointy-top hexagon, width 200: height 231. The offset outline behind is the Fab City module; here it is the outside. -->
+      <svg viewBox="-20 -20 268 300" aria-labelledby="hexlabel" role="img"><title id="hexlabel">Inside and outside PM2.5</title>
+        <polygon class="hex-outline" points="128,28 228,85.7 228,201.2 128,258.9 28,201.2 28,85.7"/>
+        <polygon class="hex-model" points="140,40 240,97.7 240,213.2 140,270.9 40,213.2 40,97.7"/>
+        <polygon class="hex-fill" id="hexfill" points="100,0 200,57.7 200,173.2 100,230.9 0,173.2 0,57.7"/>
+        <text class="inside-lbl" id="inlbl" x="100" y="78">inside</text>
+        <text class="inside-num" id="innum" x="100" y="150">–</text>
+        <text class="inside-lbl" id="inunit" x="100" y="182">µg/m³ · PM2.5</text>
+        <text class="outside-lbl" x="196" y="236">outside</text>
+        <text class="outside-num" id="outnum" x="196" y="270">–</text>
+        <text class="model-lbl" x="246" y="70">model</text>
+        <text class="model-num" id="modelnum" x="246" y="92">–</text>
+      </svg>
+    </div>
+    <div class="verdict">
+      <h2 id="verdict">Reading the room.</h2>
+      <p id="verdict-p">Waiting for the first poll.</p>
+      <div class="unit" id="verdict-u"></div>
+      <div class="stats" style="margin-top:28px">
+        <div class="stat"><div class="num" id="s-heat">–<small>°C</small></div><div><b>Feels like</b><p id="s-heat-p">Needs indoor temperature and humidity.</p></div></div>
+        <div class="stat"><div class="num blue" id="s-gap">–</div><div><b>Street vs model</b><p id="s-gap-p">The gap between the satellite model and your sensors is the local signal.</p></div></div>
+        <div class="stat"><div class="num" id="s-rho">–</div><div><b>ρ</b><p id="s-rho-p">Alerts that led to an action, last 30 days.</p></div></div>
+      </div>
+    </div>
   </div>
-  <div class="kioskfoot"><span id="k-name"></span><span id="k-time"></span></div>
+  <div class="kfoot"><span id="k-name"></span><span id="k-time"></span></div>
 
-  <div class="row2">
-    <div class="box"><h3>Alerts <span id="alerts-n"></span></h3><ul class="list" id="alerts"></ul></div>
+  <div class="strip">
+    <div class="head"><h3 id="strip-title">The last 24 hours</h3><div class="legend"><span><i style="background:var(--ink)"></i>inside</span><span><i style="background:var(--green)"></i>outside</span><span><i style="background:var(--blue)"></i>model</span></div></div>
+    <svg id="strip" viewBox="0 0 960 140" preserveAspectRatio="none" aria-label="hourly PM2.5, inside, outside and model"></svg>
+    <div class="note" id="strip-note"></div>
+  </div>
+
+  <div class="lower">
+    <div class="panel"><h3>What the node said <span id="alerts-n"></span></h3><ul class="alerts" id="alerts"></ul></div>
     <div>
-      <div class="box honeybox"><h3>Index cells <span>this node</span></h3><div class="honey" id="honey"></div></div>
-      <div class="box" style="margin-top:24px"><h3>Node <span id="version"></span></h3><table id="nodeinfo"></table></div>
+      <div class="panel"><h3>Index cells <span>this node computes</span></h3><div class="honey" id="honey"></div></div>
+      <div class="panel" style="margin-top:36px"><h3>The node <span id="version"></span></h3><table id="nodeinfo"></table></div>
     </div>
   </div>
 </section>
 
 <!-- ================================================================ sensors -->
 <section id="sensors">
-  <div class="box" style="margin-top:18px"><h3>Sensors <span id="sensors-n"></span></h3>
-    <table><thead><tr><th>sensor</th><th>where</th><th>PM2.5</th><th>temp</th><th>humidity</th><th>last</th></tr></thead><tbody id="sensortable"></tbody></table>
+  <div class="panel" style="margin-top:24px"><h3>Sensors <span id="sensors-n"></span></h3>
+    <table><thead><tr><th>sensor</th><th>where</th><th>PM2.5</th><th>temp</th><th>humidity</th><th>last heard</th></tr></thead><tbody id="sensortable"></tbody></table>
   </div>
-  <div class="box" style="margin-top:24px"><h3>Slow sources <span>portals, models</span></h3>
+  <div class="panel" style="margin-top:40px"><h3>Slow sources <span>portals, models, the sea, the satellites</span></h3>
     <table><thead><tr><th>source</th><th>metric</th><th>value</th><th>when</th></tr></thead><tbody id="obstable"></tbody></table>
   </div>
 </section>
 
 <!-- ================================================================ setup -->
 <section id="setup">
-  <div id="tokenbox" class="token" style="margin-top:18px">
-    <b>Changing settings needs the admin token.</b>
-    <p class="note" style="margin:8px 0 0">On the node, <code>planetai ui</code> prints it. It stays in this browser only.</p>
-    <input id="token" type="password" placeholder="paste the token" autocomplete="off">
-    <div style="margin-top:12px"><button class="btn" onclick="saveToken()">Unlock</button></div>
+  <div id="tokenbox" class="gate">
+    <h3>Unlock settings</h3>
+    <p>Changing what the node reads and where it sends alerts needs the admin token. On the node, <code>planetai ui</code> prints it. It stays in this browser.</p>
+    <input id="token" type="password" placeholder="Admin token" autocomplete="off" onkeydown="if(event.key==='Enter')saveToken()">
+    <div style="margin-top:14px"><button class="btn" onclick="saveToken()">Unlock</button></div>
   </div>
   <div class="setup" id="setupui" style="display:none">
     <div class="tabs" id="tabs"></div>
     <div>
-      <div id="paneinfo" class="note" style="margin-bottom:14px"></div>
+      <div class="paneinfo" id="paneinfo"></div>
       <div class="form" id="form"></div>
-      <div class="bar" id="bar"><button class="btn" onclick="save()">Save</button><span class="note">Changes take effect within about 20 seconds; no restart. Blank returns a setting to its <code>.env</code> value.</span></div>
+      <div class="bar" id="bar"><button class="btn" onclick="save()">Save changes</button><span class="note">Live within about 20 seconds. Leave a field blank to return it to the value in <code>.env</code>.</span></div>
     </div>
   </div>
 </section>
@@ -165,116 +248,141 @@ body.kiosk .kioskfoot{display:flex}
 <script>
 const $=s=>document.querySelector(s), api=p=>fetch(p).then(r=>r.ok?r.json():Promise.reject(r.status));
 const kiosk=new URLSearchParams(location.search).get('kiosk')==='1'; if(kiosk)document.body.classList.add('kiosk');
-let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[];
-
-// ---------------------------------------------------------------- views
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
-function show(v){document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));if(v==='setup')loadSetup();}
-function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2600);}
+let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], PLACE='';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=(v,d=0)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
 const ago=ts=>{if(!ts)return'';const s=(Date.now()-new Date(ts))/1000;return s<90?'just now':s<5400?Math.round(s/60)+' min ago':s<172800?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago';};
+const mean=a=>{a=a.filter(x=>x!=null);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;};
 const pmClass=v=>v==null?'':v<=12?'good':v<=35.5?'mid':'bad';
 const heatClass=v=>v==null?'':v<27?'good':v<32?'mid':'bad';
-function apparent(t,rh){if(t==null||rh==null)return null;const e=rh/100*6.105*Math.exp(17.27*t/(237.7+t));return t+0.33*e-4;}
+const apparent=(t,rh)=>t==null||rh==null?null:t+0.33*(rh/100*6.105*Math.exp(17.27*t/(237.7+t)))-4;
+function tween(el,to,d=0){ // count a number in, once, on the first real value; afterwards just set it
+  const from=parseFloat(el.textContent); if(isNaN(from)||el.dataset.done){el.textContent=fmt(to,d);el.dataset.done=1;return;}
+  const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/700),e=1-Math.pow(1-k,3);el.textContent=fmt(from+(to-from)*e,d);if(k<1)requestAnimationFrame(f);else el.dataset.done=1;})(t0);
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
+function show(v){document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));if(v==='setup')loadSetup();}
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);}
 
-// ---------------------------------------------------------------- display
+// ---------------------------------------------------------------- now
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=12'),api('/rho'),api('/cells'),api('/observations'),api('/sensors')]);
-    $('#nodename').textContent=h.node; $('#k-name').textContent=h.node; $('#version').textContent=(h.version||'')+' · schema '+(h.schema||'');
-    const errs=Object.keys(h.errors||{}).length; $('#dot').className='dot'+(h.last_error||errs?' warn':''); $('#pulsetxt').textContent=(h.last_poll?'polled '+ago(h.last_poll):'starting')+(h.last_error?' · '+h.last_error.slice(0,40):'');
-    const byS=m=>stats.filter(r=>r.metric===m);
-    const mean=rows=>rows.length?rows.reduce((a,r)=>a+r,0)/rows.length:null;
-    const inPM=byS('pm25').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), outPM=byS('pm25').filter(r=>!r.indoor&&r.mean_15m!=null&&r.silent_minutes<120);
+    const [h,stats,alerts,rho,cells,obs,sensors,ser]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=10'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/series?metric=pm25&hours=24').catch(()=>null)]);
+    $('#nodename').textContent=h.node; $('#k-name').textContent=h.node; $('#version').textContent=h.version||'';
+    const errs=Object.keys(h.errors||{}).length; $('#dot').className='dot'+(h.last_error||errs?' warn':'');
+    $('#pulsetxt').textContent=h.last_poll?'polled '+ago(h.last_poll):'starting';
+    const S=m=>stats.filter(r=>r.metric===m);
+    const inPM=S('pm25').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), outPM=S('pm25').filter(r=>!r.indoor&&r.mean_15m!=null&&r.silent_minutes<120);
     const iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m));
-    $('#t-in').textContent=fmt(iv); $('#t-in').className='n '+pmClass(iv); $('#t-in-n').textContent=inPM.length+' sensor'+(inPM.length===1?'':'s');
-    $('#t-out').textContent=fmt(ov); $('#t-out').className='n '+pmClass(ov); $('#t-out-n').textContent=outPM.length+' reference'+(outPM.length===1?'':'s');
-    $('#t-in-sub').textContent=iv==null?'no indoor sensor reporting':iv<=12?'clean':iv<=35.5?'moderate — sensitive people take care':'unhealthy — purifier on, windows shut';
-    $('#t-out-sub').textContent=iv!=null&&ov!=null?(ov>1.5*iv&&ov>35.5?'worse than inside: keep the windows shut':iv>1.5*ov&&iv>15?'inside is worse: something is burning or cooking — open a window':'inside and outside agree'):'';
-    const model=obs.find(o=>o.sensor_id==='cams-point'&&o.metric==='pm25_model'); $('#t-model').textContent=fmt(model&&model.value); $('#t-model-sub').textContent=model?(ov!=null?`street reads ${fmt(ov-model.value,0)>0?'+':''}${fmt(ov-model.value)} vs the model — the gap is the local signal`:'the atmosphere over the district, not your street'):'no model yet';
-    const inT=byS('temp').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), inH=byS('humidity').filter(r=>r.local&&r.indoor&&r.mean_15m!=null);
+    const model=obs.find(o=>o.sensor_id==='cams-point'&&o.metric==='pm25_model'), mv=model?model.value:null;
+    // the instrument
+    const fill=$('#hexfill'); fill.setAttribute('class','hex-fill '+pmClass(iv));
+    const plain=iv==null; ['#innum','#inlbl','#inunit'].forEach(s=>$(s).classList.toggle('plain',plain));
+    if(iv!=null)tween($('#innum'),iv); else $('#innum').textContent='–';
+    $('#outnum').textContent=fmt(ov); $('#modelnum').textContent=fmt(mv);
+    // the verdict: one sentence, then why
+    let v='',p='';
+    if(iv==null&&ov==null){v='No sensor yet.';p='The node is reading the model for your coordinates. Add a sensor under Set up → Sources and this hexagon fills in.';}
+    else if(iv==null){v=ov<=12?'Clean outside.':ov<=35.5?'Moderate outside.':'Unhealthy outside.';p=`${outPM.length} outdoor reference${outPM.length===1?'':'s'} within reach. No indoor sensor yet — the inside of the hexagon is waiting for one.`;}
+    else if(ov!=null&&iv>1.5*ov&&iv>15){v='Inside is worse than outside.';p=`${fmt(iv)} in the house against ${fmt(ov)} on the street. Something is burning or cooking indoors — open a window.`;}
+    else if(ov!=null&&ov>1.5*iv&&ov>35.5){v='Keep the windows shut.';p=`The street is at ${fmt(ov)}; the house is holding it to ${fmt(iv)}. The building is doing its job.`;}
+    else if(iv<=12){v='The air is clean.';p=ov!=null?`Inside ${fmt(iv)}, outside ${fmt(ov)}. Nothing to do.`:'Nothing to do.';}
+    else if(iv<=35.5){v='Moderate.';p='Fine for most people; anyone with asthma or a heart condition should take it easy.';}
+    else{v='Unhealthy inside.';p='Purifier on, windows shut, and check who is in the room.';}
+    $('#verdict').textContent=v; $('#verdict-p').textContent=p;
+    $('#verdict-u').textContent=`${inPM.length} indoor sensor${inPM.length===1?'':'s'} · ${outPM.length} outdoor reference${outPM.length===1?'':'s'} · 15-minute means`;
+    // stats
+    const inT=S('temp').filter(r=>r.local&&r.indoor&&r.mean_15m!=null), inH=S('humidity').filter(r=>r.local&&r.indoor&&r.mean_15m!=null);
     const at=apparent(mean(inT.map(r=>r.mean_15m)),mean(inH.map(r=>r.mean_15m)));
-    $('#t-heat').textContent=fmt(at,1); $('#t-heat').className='n '+heatClass(at); $('#t-heat-n').textContent=inT.length?fmt(mean(inT.map(r=>r.mean_15m)),1)+' °C · '+fmt(mean(inH.map(r=>r.mean_15m)))+'% RH':'no indoor temp/humidity';
-    $('#t-heat-sub').textContent=at==null?'':at>=40?'danger: heatstroke territory':at>=32?'heat stress — water, moving air, no hard work':at>=27?'warm':'comfortable';
-    $('#t-rho').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#t-rho').className='n '+(rho.rho==null?'':rho.rho>=.5?'good':rho.rho>0?'mid':'bad');
-    $('#t-rho-u').textContent=`${rho.acted}/${rho.alerts_act} alerts answered · 30 d`; $('#t-rho-sub').textContent=rho.median_minutes!=null?`median ${rho.median_minutes} min from alert to action`:'no act-level alert has been answered yet';
-    // sparkline: 24h indoor mean from stats (mean_1h per sensor is a point; use /readings? keep it to what we have)
-    const day=inPM.map(r=>r.mean_24h).filter(x=>x!=null); $('#t-day').textContent=day.length?`24 h mean ${fmt(mean(day))} · peak ${fmt(Math.max(...inPM.map(r=>r.mean_24h||0)))}`:'';
-    drawSpark(inPM);
+    $('#s-heat').innerHTML=(at==null?'–':fmt(at,1))+'<small>°C</small>'; $('#s-heat').className='num '+heatClass(at);
+    $('#s-heat-p').textContent=at==null?'Needs an indoor sensor with temperature and humidity.':at>=40?'Heatstroke territory. Cool the room or leave it.':at>=32?'Heat stress: water, moving air, no hard work.':at>=27?`Warm — ${fmt(mean(inT.map(r=>r.mean_15m)),1)} °C at ${fmt(mean(inH.map(r=>r.mean_15m)))}% humidity.`:`Comfortable — ${fmt(mean(inT.map(r=>r.mean_15m)),1)} °C at ${fmt(mean(inH.map(r=>r.mean_15m)))}% humidity.`;
+    const gap=ov!=null&&mv!=null?ov-mv:null; $('#s-gap').textContent=gap==null?'–':(gap>0?'+':'')+fmt(gap);
+    $('#s-gap-p').textContent=gap==null?'The gap between the satellite model and your sensors is the local signal.':Math.abs(gap)<3?'The model and the street agree today.':gap>0?`Your street reads ${fmt(gap)} above the 11 km model cell. Local sources the satellite cannot see.`:`The model overstates your street by ${fmt(-gap)} today.`;
+    $('#s-rho').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#s-rho').className='num '+(rho.rho==null?'':rho.rho>=.5?'good':rho.rho>0?'mid':'bad');
+    $('#s-rho-p').textContent=rho.alerts_act?`${rho.acted} of ${rho.alerts_act} alerts led to an action${rho.median_minutes!=null?`, median ${rho.median_minutes} minutes`:''}.`:'No act-level alert in the last 30 days.';
+    drawStrip(ser);
     // alerts
-    $('#alerts-n').textContent=alerts.length+' recent';
-    $('#alerts').innerHTML=alerts.length?alerts.map(a=>`<li><span class="lvl ${a.level}"></span><div><div class="t">${esc(a.text.split('\n')[0])}</div><div class="when">#${a.id} · ${a.rule_id} · ${ago(a.ts)}</div></div>${a.level==='act'?(a.acted_at?`<span class="acted">acted ${ago(a.acted_at)}</span>`:`<button class="btn small" onclick="act(${a.id})">I acted</button>`):''}</li>`).join(''):'<li><div class="t" style="color:var(--muted)">No alerts yet. The node only speaks when something should change.</div></li>';
-    // honeycomb of cells
-    const grid=['Environmental','Economic','Social','Governance'].map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));return c?`<div class="cell ${c.state}" title="${esc(c.cell)}: ${fmt(c.value,1)} ${esc(c.unit)}">${p.slice(0,3)}<br>${fmt(c.value,c.value<10?1:0)}</div>`:`<div class="cell none" title="${p}: no source">${p.slice(0,3)}<br>–</div>`;}).join('');
-    $('#honey').innerHTML=grid+`<div class="note" style="margin-left:8px;align-self:center">green live · blue partial · grey none. ${cells.length} cell${cells.length===1?'':'s'} this node can compute.</div>`;
-    $('#nodeinfo').innerHTML=[['readings',h.ingested],['polls',h.polls],['up',Math.floor(h.uptime_s/3600)+' h '+Math.floor(h.uptime_s%3600/60)+' m'],['sensors',sensors.filter(s=>s.local).length+' yours · '+sensors.filter(s=>!s.local).length+' reference'],['mesh',h.mesh?`${h.mesh.packets} packets via ${h.mesh.gateway||'—'}`:'off'],['errors',errs?Object.entries(h.errors).map(([k,v])=>k+': '+v).join('; '):'none']].map(([k,v])=>`<tr><th>${k}</th><td>${esc(String(v))}</td></tr>`).join('');
-    $('#nodeplace').textContent=(h.node||'')+' · '+(DESC?DESC.bootstrap.find(b=>b.key==='NODE_CITY')?.value||'':'')+' '+(h.last_poll?'':'starting');
+    $('#alerts-n').textContent=alerts.length?`${alerts.length} recent`:'';
+    $('#alerts').innerHTML=alerts.length?alerts.map(a=>`<li><span class="lvl ${a.level}"></span><div><div class="t">${esc(a.text.split('\n')[0])}</div><div class="w">${a.rule_id.replace('/',' · ')} · ${ago(a.ts)} · #${a.id}</div></div>${a.level==='act'?(a.acted_at?`<span class="done">acted ${ago(a.acted_at)}</span>`:`<button class="btn small ghost" onclick="act(${a.id})">I acted</button>`):''}</li>`).join(''):'<li class="empty">Nothing yet. The node speaks only when something should change — <a href="#" onclick="show(\'setup\');return false">send a test alert</a> to see the path work.</li>';
+    // cells
+    const P=['Environmental','Economic','Social','Governance'];
+    $('#honey').innerHTML=P.map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));return c?`<div class="cell ${c.state}" title="${esc(c.cell)} — ${fmt(c.value,1)} ${esc(c.unit)}"><span><b>${fmt(c.value,c.value<10?1:0)}</b><small>${p.slice(0,3)}</small></span></div>`:`<div class="cell none" title="${p}: no source yet"><span><b>–</b><small>${p.slice(0,3)}</small></span></div>`;}).join('')+`<div class="k">${cells.length} of 20 cells in the Fab City Index have a source here.<br>Green is measured, blue is partial, empty has no source yet.</div>`;
+    $('#nodeinfo').innerHTML=[['readings stored',h.ingested],['polls',h.polls],['up',Math.floor(h.uptime_s/3600)+' h '+Math.floor(h.uptime_s%3600/60)+' min'],['sensors',`${sensors.filter(s=>s.local).length} yours, ${sensors.filter(s=>!s.local).length} reference`],['mesh',h.mesh&&h.mesh.packets?`${h.mesh.packets} packets via ${h.mesh.gateway}`:'no radio yet'],['errors',errs?Object.entries(h.errors).map(([k,v])=>k+': '+v).join('; '):'none']].map(([k,v])=>`<tr><th>${k}</th><td>${esc(String(v))}</td></tr>`).join('');
+    $('#nodeplace').textContent=PLACE||(h.node+' · '+(h.last_poll?'live':'starting'));
     renderSensors(stats,sensors,obs);
-    $('#k-time').textContent=new Date().toLocaleString(undefined,{weekday:'short',hour:'2-digit',minute:'2-digit'});
+    $('#k-time').textContent=new Date().toLocaleString(undefined,{weekday:'long',hour:'2-digit',minute:'2-digit'});
   }catch(e){$('#dot').className='dot bad';$('#pulsetxt').textContent='node not answering';}
 }
-function drawSpark(inPM){ // 15m / 1h / 24h means are all we have without a readings fetch; draw them as a tiny trend
-  const s=$('#spark'); if(!inPM.length){s.innerHTML='';return;}
-  const m=k=>inPM.map(r=>r[k]).filter(x=>x!=null).reduce((a,b,_,arr)=>a+b/arr.length,0);
-  const pts=[m('mean_24h'),m('mean_1h'),m('mean_15m')], max=Math.max(...pts,1);
-  const xy=pts.map((v,i)=>[20+i*100,40-(v/max)*34]);
-  s.innerHTML=`<polyline fill="none" stroke="var(--ink)" stroke-width="2" points="${xy.map(p=>p.join(',')).join(' ')}"/>`+xy.map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="3" fill="${i===2?'var(--red)':'var(--ink)'}"/>`).join('')+`<text x="16" y="12" font-size="9" fill="var(--muted)" font-family="var(--mono)">24h → 1h → now</text>`;
+function drawStrip(ser){
+  const svg=$('#strip'); if(!ser||!ser.buckets.length){svg.innerHTML='';$('#strip-note').textContent='';return;}
+  const W=960,H=140,pad=8,n=ser.buckets.length,bw=(W-pad*2)/n;
+  const all=[...ser.indoor,...ser.outdoor,...ser.model].filter(x=>x!=null); const max=Math.max(12,...all)*1.1;
+  const y=v=>H-8-(v/max)*(H-28);
+  let out=`<line x1="0" x2="${W}" y1="${y(12)}" y2="${y(12)}" stroke="var(--line)" stroke-dasharray="3 5"/><text x="${W-4}" y="${y(12)-4}" text-anchor="end" font-size="11" fill="var(--n600)">WHO 24h guideline 15 · 12 clean</text>`;
+  // outside as a light band, inside as bars, model as a line
+  const pathOf=arr=>arr.map((v,i)=>v==null?null:[pad+i*bw+bw/2,y(v)]).filter(Boolean);
+  const o=pathOf(ser.outdoor); if(o.length>1)out+=`<polyline fill="none" stroke="var(--green)" stroke-width="2" stroke-linejoin="round" points="${o.map(p=>p.join(',')).join(' ')}"/>`;
+  const m=pathOf(ser.model); if(m.length>1)out+=`<polyline fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="4 5" points="${m.map(p=>p.join(',')).join(' ')}"/>`;
+  ser.indoor.forEach((v,i)=>{if(v==null)return;out+=`<rect x="${pad+i*bw+bw*0.25}" y="${y(v)}" width="${bw*0.5}" height="${H-8-y(v)}" fill="var(--ink)" opacity=".85"><title>${new Date(ser.buckets[i]).toLocaleTimeString([],{hour:'2-digit'})} inside ${fmt(v)}</title></rect>`;});
+  [0,Math.floor(n/2),n-1].forEach(i=>{out+=`<text x="${pad+i*bw+bw/2}" y="${H-0}" text-anchor="middle" font-size="11" fill="var(--n600)">${new Date(ser.buckets[i]).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</text>`;});
+  svg.innerHTML=out;
+  const inA=ser.indoor.filter(x=>x!=null),outA=ser.outdoor.filter(x=>x!=null);
+  const pk=inA.length?ser.buckets[ser.indoor.indexOf(Math.max(...inA))]:null;
+  $('#strip-note').textContent=inA.length?`Inside averaged ${fmt(mean(inA))} over the day${pk?`, peaking at ${new Date(pk).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} (${fmt(Math.max(...inA))})`:''}${outA.length?`; the street averaged ${fmt(mean(outA))}`:''}.`:'The bars appear once an indoor sensor has an hour of readings.';
 }
 function renderSensors(stats,sensors,obs){
   const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
   $('#sensors-n').textContent=sensors.length;
-  $('#sensortable').innerHTML=sensors.filter(s=>s.kind==='sensor').sort((a,b)=>(b.local-a.local)||a.sensor_id.localeCompare(b.sensor_id)).map(s=>{const m=by[s.sensor_id]||{};const last=Object.values(m)[0];return`<tr><td><b>${esc(s.name||s.sensor_id)}</b><div class="mono" style="text-transform:none">${s.sensor_id}</div></td><td><span class="tag ${s.local?(s.indoor?'in':'out'):'ref'}">${s.local?(s.indoor?'indoor':'outdoor'):'reference'}</span></td><td>${m.pm25?fmt(m.pm25.mean_15m):'–'}</td><td>${m.temp?fmt(m.temp.mean_15m,1):'–'}</td><td>${m.humidity?fmt(m.humidity.mean_15m):'–'}</td><td class="note">${last?ago(last.last_ts):'no data'}</td></tr>`;}).join('');
-  $('#obstable').innerHTML=obs.map(o=>`<tr><td>${esc(o.name||o.sensor_id)}</td><td class="mono" style="text-transform:none">${o.metric}</td><td>${fmt(o.value,2)}</td><td class="note">${ago(o.ts)}</td></tr>`).join('')||'<tr><td colspan=4 class="note">none yet</td></tr>';
+  $('#sensortable').innerHTML=sensors.filter(s=>s.kind==='sensor').sort((a,b)=>(b.local-a.local)||a.sensor_id.localeCompare(b.sensor_id)).map(s=>{const m=by[s.sensor_id]||{};const last=Object.values(m)[0];return`<tr><td><b>${esc(s.name||s.sensor_id)}</b><div class="note">${s.sensor_id}</div></td><td><span class="tag ${s.local?(s.indoor?'in':'out'):''}">${s.local?(s.indoor?'indoor':'outdoor'):'reference'}</span></td><td>${m.pm25?fmt(m.pm25.mean_15m):'–'}</td><td>${m.temp?fmt(m.temp.mean_15m,1):'–'}</td><td>${m.humidity?fmt(m.humidity.mean_15m):'–'}</td><td class="note">${last?ago(last.last_ts):'nothing yet'}</td></tr>`;}).join('')||'<tr><td colspan=6 class="empty">No sensors yet. Add one under Set up → Sources.</td></tr>';
+  $('#obstable').innerHTML=obs.map(o=>`<tr><td>${esc(o.name||o.sensor_id)}</td><td class="note">${o.metric.replace(/_/g,' ')}</td><td>${fmt(o.value,o.value<10?2:1)}</td><td class="note">${ago(o.ts)}</td></tr>`).join('')||'<tr><td colspan=4 class="empty">Nothing yet.</td></tr>';
 }
 async function act(id){
-  const note=prompt('What did you do? (optional)','')||'acted';
+  const note=prompt('What did you do? A few words is enough.','')||'acted';
   const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});
-  toast(r.ok?`Recorded: you acted on #${id}. That is ρ.`:'Could not record',!r.ok); refresh();
+  toast(r.ok?`Recorded. Alert #${id} led to an action.`:'Could not record that.',!r.ok); refresh();
 }
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-// ---------------------------------------------------------------- setup
-const GROUPS={sources:['Sources','What the node reads: your sensors, your account, public references.'],alerts:['Alerts & Telegram','Where messages go and in which language.'],packs:['Packs','Which packs load. Code packs stay off until you allow them.'],integrations:['Integrations','Home Assistant, Reticulum.'],keys:['Keys','Credentials packs need. Secrets are never shown once saved.'],node:['Node & upstream','This node in the tree: who it reports to, who may report to it.'],bootstrap:['Bootstrap (.env only)','Read once at start. Edit .env on the node and run planetai restart.']};
+// ---------------------------------------------------------------- set up
+const GROUPS={sources:['Sources','What the node reads: your sensors, your account, the public references around you.'],alerts:['Alerts','Where messages go, in which language, and over which channels.'],packs:['Packs','Which packs load. Code packs stay off until you allow them, and you should read one before you do.'],integrations:['Integrations','Home Assistant and Reticulum.'],keys:['Keys','What packs need to reach outside services. Secrets are never shown again once saved.'],node:['This node in the tree','Who it reports to, and who may report to it.'],bootstrap:['Bootstrap','Read once at start. Edit .env on the node and run planetai restart.']};
 let GROUP='sources';
 function saveToken(){TOKEN=$('#token').value.trim();localStorage.setItem('planetai_admin',TOKEN);loadSetup();}
 async function loadSetup(){
   DESC=await api('/settings'); PACKS=await api('/packs').catch(()=>[]);
+  PLACE=(DESC.bootstrap.find(b=>b.key==='NODE_CITY')||{}).value||'';
   const unlocked=!!TOKEN; $('#tokenbox').style.display=unlocked?'none':'block'; $('#setupui').style.display=unlocked?'grid':'none';
   if(!unlocked)return;
-  $('#tabs').innerHTML=Object.entries(GROUPS).map(([g,[l]])=>`<button class="${g===GROUP?'on':''}" onclick="GROUP='${g}';loadSetup()">${l}</button>`).join('')+`<button onclick="testAlert()" style="margin-top:14px;color:var(--red)">Send a test alert</button><button onclick="localStorage.removeItem('planetai_admin');TOKEN='';loadSetup()">Lock</button>`;
-  $('#paneinfo').innerHTML=`<b style="color:var(--ink)">${GROUPS[GROUP][0]}</b> — ${GROUPS[GROUP][1]}`;
+  $('#tabs').innerHTML=Object.entries(GROUPS).map(([g,[l]])=>`<button class="${g===GROUP?'on':''}" onclick="GROUP='${g}';loadSetup()">${l}</button>`).join('')+`<hr><button onclick="testAlert()">Send a test alert</button><button onclick="localStorage.removeItem('planetai_admin');TOKEN='';loadSetup()">Lock</button>`;
+  $('#paneinfo').innerHTML=`<b>${GROUPS[GROUP][0]}</b>${GROUPS[GROUP][1]}`;
   $('#bar').style.display=GROUP==='bootstrap'?'none':'flex';
-  if(GROUP==='bootstrap'){$('#form').innerHTML=`<table>${DESC.bootstrap.map(b=>`<tr><th>${b.label}<div class="mono" style="text-transform:none">${b.key}</div></th><td>${esc(b.value)||'<span class=note>not set</span>'}</td></tr>`).join('')}</table>`;return;}
+  if(GROUP==='bootstrap'){$('#form').innerHTML=`<table>${DESC.bootstrap.map(b=>`<tr><th>${b.label}<div class="note">${b.key}</div></th><td>${esc(b.value)||'<span class=note>not set</span>'}</td></tr>`).join('')}</table>`;return;}
   if(GROUP==='packs'){
     const enabled=(DESC.runtime.find(r=>r.key==='PACKS_ENABLED')||{}).value||''; const only=enabled?enabled.split(',').map(x=>x.trim()):null;
     const allow=(DESC.runtime.find(r=>r.key==='PACKS_ALLOW_CODE')||{}).value==='1';
-    $('#form').innerHTML=`<div class="packs">${PACKS.map(p=>`<div class="pack"><input type="checkbox" data-pack="${p.id}" ${!only||only.includes(p.id)?'checked':''}><div><b>${esc(p.name||p.id)}</b> <span class="tag">${p.kind}</span> ${p.kind==='code'&&!allow?'<span class="tag" style="border-color:var(--red);color:var(--red)">needs allow code</span>':''}<p>${esc((p.description||'').replace(/\s+/g,' '))}</p></div><span class="mono">${p.id}</span></div>`).join('')}</div>
-      <div class="field"><label class="toggle"><input type="checkbox" id="allowcode" ${allow?'checked':''}> Allow code packs (adapter.py runs with the node's privileges — read it first)</label></div>
-      <p class="note">Unticking a pack stops its rules and cells within a minute. To add a pack, drop its folder into <code>packs/</code> on the node; it appears here on the next load.</p>`;
+    $('#form').innerHTML=`<div class="field"><label class="switch"><input type="checkbox" id="allowcode" ${allow?'checked':''}><span class="tr"></span><span>Allow code packs<div class="help">A pack with adapter.py runs with the node's privileges. Read it first.</div></span></label></div>
+      <div class="packs">${PACKS.map(p=>`<label class="pack"><span class="switch" style="margin-top:2px"><input type="checkbox" data-pack="${p.id}" ${!only||only.includes(p.id)?'checked':''}><span class="tr"></span></span><span><span class="row"><b>${esc(p.name||p.id)}</b><span class="tag ${p.kind==='code'?'code':''}">${p.kind}</span>${p.kind==='code'&&!allow?'<span class="tag warn">off until code is allowed</span>':''}</span><p>${esc((p.description||'').replace(/\s+/g,' '))}</p></span></label>`).join('')}</div>
+      <p class="note">Switching a pack off stops its rules and cells within a minute. To add one, drop its folder into <code>packs/</code> on the node; it appears here on the next load.</p>`;
     return;
   }
   const rows=DESC.runtime.filter(r=>r.group===GROUP);
   $('#form').innerHTML=rows.map(r=>{
     const isBool=/^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY)$/.test(r.key);
     const src=`<span class="src">${r.source==='gui'?'set here':r.source==='env'?'from .env':'default'}</span>`;
-    if(isBool)return`<div class="field"><label class="toggle"><input type="checkbox" data-key="${r.key}" ${r.value==='1'?'checked':''}> ${esc(r.label)} ${src}</label><div class="help">${esc(r.help)}</div></div>`;
-    if(r.key==='ALERT_LOCALE')return`<div class="field"><label>${esc(r.label)} ${src}</label><select data-key="${r.key}"><option value="en" ${r.value==='en'?'selected':''}>English</option><option value="id" ${r.value==='id'?'selected':''}>Bahasa Indonesia</option></select></div>`;
-    if(r.key==='NODE_KIND')return`<div class="field"><label>${esc(r.label)} ${src}</label><select data-key="${r.key}">${['home','business','community','district'].map(k=>`<option ${r.value===k?'selected':''}>${k}</option>`).join('')}</select><div class="help">${esc(r.help)}</div></div>`;
-    return`<div class="field"><label>${esc(r.label)} ${src}</label><input data-key="${r.key}" ${r.secret?'type="password" placeholder="'+(r.set?'set — type to replace':'not set')+'"':'type="text" value="'+esc(r.value)+'"'} autocomplete="off"><div class="help">${esc(r.help)}</div></div>`;
+    if(isBool)return`<div class="field"><label class="switch"><input type="checkbox" data-key="${r.key}" ${r.value==='1'?'checked':''}><span class="tr"></span><span>${esc(r.label)}${src}<div class="help">${esc(r.help)}</div></span></label></div>`;
+    if(r.key==='ALERT_LOCALE')return`<div class="field"><label>${esc(r.label)}${src}<select data-key="${r.key}"><option value="en" ${r.value==='en'?'selected':''}>English</option><option value="id" ${r.value==='id'?'selected':''}>Bahasa Indonesia</option></select></label></div>`;
+    if(r.key==='NODE_KIND')return`<div class="field"><label>${esc(r.label)}${src}<select data-key="${r.key}">${['home','business','community','district'].map(k=>`<option ${r.value===k?'selected':''}>${k}</option>`).join('')}</select></label><div class="help">${esc(r.help)}</div></div>`;
+    return`<div class="field"><label>${esc(r.label)}${src}<input data-key="${r.key}" ${r.secret?'type="password" placeholder="'+(r.set?'Set — type to replace':'Not set')+'"':'type="text" value="'+esc(r.value)+'"'} autocomplete="off"></label><div class="help">${esc(r.help)}</div></div>`;
   }).join('');
 }
 async function save(){
   const body={};
-  if(GROUP==='packs'){
-    const all=[...document.querySelectorAll('[data-pack]')], on=all.filter(c=>c.checked).map(c=>c.dataset.pack);
-    body.PACKS_ENABLED=on.length===all.length?'':on.join(','); body.PACKS_ALLOW_CODE=$('#allowcode').checked?'1':'0';
-  }else document.querySelectorAll('[data-key]').forEach(el=>{const k=el.dataset.key;if(el.type==='checkbox')body[k]=el.checked?'1':'0';else if(el.type==='password'){if(el.value)body[k]=el.value;}else body[k]=el.value;});
+  if(GROUP==='packs'){const all=[...document.querySelectorAll('[data-pack]')],on=all.filter(c=>c.checked).map(c=>c.dataset.pack);body.PACKS_ENABLED=on.length===all.length?'':on.join(',');body.PACKS_ALLOW_CODE=$('#allowcode').checked?'1':'0';}
+  else document.querySelectorAll('[data-key]').forEach(el=>{const k=el.dataset.key;if(el.type==='checkbox')body[k]=el.checked?'1':'0';else if(el.type==='password'){if(el.value)body[k]=el.value;}else body[k]=el.value;});
   const r=await fetch('/settings',{method:'PUT',headers:{'content-type':'application/json',authorization:'Bearer '+TOKEN},body:JSON.stringify(body)});
-  if(r.status===401){toast('Wrong token',true);localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();return;}
-  if(r.status===403){toast('ADMIN_TOKEN is not set on the node — run planetai ui',true);return;}
-  toast(r.ok?'Saved. Live within ~20 s.':'Save failed: '+r.status,!r.ok); if(r.ok)loadSetup();
+  if(r.status===401){toast('That token is not right.',true);localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();return;}
+  if(r.status===403){toast('The node has no admin token yet — run planetai ui.',true);return;}
+  toast(r.ok?'Saved. Live within about 20 seconds.':'Could not save ('+r.status+').',!r.ok); if(r.ok)loadSetup();
 }
-async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel`:'Could not send',!r.ok);refresh();}
+async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel.`:'Could not send.',!r.ok);refresh();}
 
 refresh(); setInterval(refresh,kiosk?30000:60000);
 if(location.hash==='#setup')show('setup');

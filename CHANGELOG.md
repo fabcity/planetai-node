@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.15 — 2026-09-05
+
+**The dashboard, designed.** The grid of six tiles is gone. In its place the Fab City module — a hexagon with its
+outline offset behind — made literal: inside fills the hexagon and colours it, outside sits where the outline peeks
+out, the model is a faint dashed third hexagon. One verdict sentence in Funnel Sans, one line of why, three quiet
+stats that each end in a sentence. A real 24-hour strip from a new `/series` endpoint (hourly indoor bars, outdoor
+line, model dashed, the WHO guideline drawn in). Alerts as plain sentences with a hexagon dot for level. Cells as a
+honeycomb with the numbers inside. Set up restyled on the system: 8 px controls, switches, blue focus ring, the
+token gate with a hexagon behind it. One motion moment on load; reduced-motion respected. Dark mode follows the OS.
+Verified headlessly at 1280, 1024 (kiosk) and 390 px: fonts load, every hexagon text stays inside the hexagon,
+nothing overflows, 24 bars render.
+
 ## v0.14.2 — 2026-09-05
 
 - **Fixed: the app did not start after v0.14.** Turning `PARENT` into a settings-backed function left a module-level `PARENT.startswith(...)` check, which raised `AttributeError` at import and stopped uvicorn before it listened. Passed syntax checks and pyflakes because the name was defined. `TG()` was likewise called but never defined (the definition edit did not match), which would have broken every notification.

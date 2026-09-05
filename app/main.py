@@ -440,6 +440,25 @@ def alerts(limit: int = Query(50, le=1000)):
                 FROM alerts a ORDER BY a.ts DESC LIMIT %s""", limit)
 
 
+@app.get("/series")
+def series(metric: str = "pm25", hours: int = Query(24, le=168)):
+    """Hourly means for the dashboard's strip: local indoor, everything outdoor (yours and references), and the
+    model, as three aligned arrays. What readings_1h already knows, shaped for a chart."""
+    rows = q("""
+        WITH h AS (SELECT generate_series(date_trunc('hour', now()) - make_interval(hours => %s - 1), date_trunc('hour', now()), interval '1 hour') AS bucket),
+        r AS (SELECT r.bucket,
+                     avg(r.mean) FILTER (WHERE s.local AND s.indoor) AS indoor,
+                     avg(r.mean) FILTER (WHERE NOT s.indoor AND s.kind = 'sensor') AS outdoor
+              FROM readings_1h r JOIN sensors s USING (sensor_id)
+              WHERE r.metric = %s AND r.bucket > now() - make_interval(hours => %s) GROUP BY r.bucket),
+        m AS (SELECT date_trunc('hour', ts) AS bucket, avg(value) AS model FROM readings
+              WHERE sensor_id = 'cams-point' AND metric = %s || '_model' AND ts > now() - make_interval(hours => %s) GROUP BY 1)
+        SELECT h.bucket, r.indoor, r.outdoor, m.model FROM h LEFT JOIN r USING (bucket) LEFT JOIN m USING (bucket) ORDER BY h.bucket""",
+        hours, metric, hours, metric, hours)
+    return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
+            "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+
+
 # ---------------------------------------------------------------- the GUI and its settings
 STATIC = Path(__file__).parent / "static"
 

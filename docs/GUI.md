@@ -10,11 +10,20 @@ planetai ui        # where it is, and the token that unlocks its settings pages
 
 ## Three pages
 
-**Display.** Six tiles: inside PM2.5, outside PM2.5, how it feels (apparent temperature from indoor temp and
-humidity), the CAMS model with the gap to your street, ρ, and a 24-hour trend. Each tile ends in a sentence a
-household can act on — *worse than inside: keep the windows shut* — not a colour scale someone has to learn. Below:
-the alert feed, with an **I acted** button on every act-level alert that has not been answered (that button is how ρ
-is measured), the node's Index cells drawn as a honeycomb, and the node's vitals.
+**Now.** One instrument, not a grid of tiles. The Fab City module — a hexagon with its outline offset behind it — is
+inside and outside made literal: the inside reading fills the hexagon and colours it (green, orange or red, one hue at
+a time, flat), the outside reading sits where the outline peeks out, and the model is a faint dashed third hexagon
+with its number in blue. Beside it, one sentence in Funnel Sans that says what to do — *Inside is worse than outside.*
+*Keep the windows shut.* *The air is clean.* — and one line saying why, in plain numbers. Then three quiet stats,
+hairline-separated, each ending in a sentence: how it feels, street versus model, ρ.
+
+Below: the last 24 hours as it actually happened — hourly bars for inside, a line for the street, a dashed line for
+the model, from a new `/series` endpoint over `readings_1h` — with the WHO guideline drawn in and a one-line summary.
+Then what the node said (the alert feed, with an **I acted** button on every unanswered act-level alert; that button
+is how ρ is measured), the Index cells as a small honeycomb, and the node's vitals.
+
+The one motion is on load: the outline hexagon draws itself and the inside number counts in. After that only the pulse
+dot breathes. `prefers-reduced-motion` turns both off.
 
 **Sensors.** Every sensor the node knows, yours first, with what it reads now and when it last spoke. Then the slow
 sources: portals, models, the sea, the satellites.
@@ -31,8 +40,8 @@ a blank field returns a setting to its `.env` value.
 http://<node>:8080/?kiosk=1
 ```
 
-Big numbers only, no navigation, refreshes every thirty seconds. Six tiles fit a 7-inch screen; three fit a phone
-propped on a shelf. Any browser in kiosk mode, a Raspberry Pi with a display, an old tablet on the wall.
+The instrument, the verdict and the three stats, centred, no navigation, refreshing every thirty seconds. On a
+7-inch screen the hexagon is about the size of a hand. Any browser in kiosk mode, a Raspberry Pi with a display, an old tablet on the wall.
 
 ## How settings work, and why it matters
 
@@ -50,6 +59,6 @@ secret to *set* or *not set*; the token itself never leaves the node.
 
 ## What it is not
 
-Not a charting tool: the trend is three points, deliberately. Not a map. Not a place to write rules — those are
+Not a charting tool: one strip of 24 hourly means, deliberately. Not a map. Not a place to write rules — those are
 YAML in a pack, and the GUI shows which packs are on. Not remote administration: it changes runtime settings and
 records actions, nothing on the host.
