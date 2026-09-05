@@ -15,11 +15,13 @@ die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1; }
 
 NAME=""; SC=""; AG=""; PA=""; LAT=""; LON=""; INDOOR=""; NOBAD=""; PRESET=""; NOBOOT=""
+SCUSER=""; KIND=""; TZ_=""; YES=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name) NAME="$2"; shift 2;; --sc) SC="$2"; shift 2;; --airgradient) AG="$2"; shift 2;; --purpleair) PA="$2"; shift 2;;
     --lat) LAT="$2"; shift 2;; --lon) LON="$2"; shift 2;; --indoor) INDOOR=1; shift;; --no-bad) NOBAD=1; shift;;
     --preset) PRESET="$2"; shift 2;; --no-bootstrap) NOBOOT=1; shift;;
+    --sc-user) SCUSER="$2"; shift 2;; --kind) KIND="$2"; shift 2;; --tz) TZ_="$2"; shift 2;; --yes) YES=1; shift;;
     -h|--help) sed -n '2,6p' "$0"; exit 0;; *) die "unknown flag $1";;
   esac
 done
@@ -71,12 +73,15 @@ fi
 [[ -n "$NOBOOT" ]] && setenv BOOTSTRAP 0
 [[ -n "$NAME" ]] && setenv NODE_NAME "$NAME"
 [[ -n "$SC"   ]] && setenv SC_DEVICES "$SC"
+[[ -n "${SCUSER:-}" ]] && setenv SC_USER "$SCUSER"
+[[ -n "${KIND:-}" ]] && setenv NODE_KIND "$KIND"
+[[ -n "${TZ_:-}" ]] && setenv NODE_TZ "$TZ_"
 [[ -n "$AG"   ]] && setenv AIRGRADIENT_HOSTS "$AG"
 [[ -n "$PA"   ]] && setenv PURPLEAIR_HOSTS "$PA"
 [[ -n "$INDOOR" ]] && setenv SENSOR_INDOOR 1
 [[ -n "$NOBAD"  ]] && setenv BAD_ENABLED 0
 grep -qE '^NODE_LAT=-?[0-9]' .env || die "this node needs coordinates: pass --lat and --lon, or --preset <site>"
-if ! grep -qE '^(SC_DEVICES|AIRGRADIENT_HOSTS|PURPLEAIR_HOSTS)=.+' .env; then
+if ! grep -qE '^(SC_DEVICES|SC_USER|AIRGRADIENT_HOSTS|PURPLEAIR_HOSTS)=.+' .env; then
   warn "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
   warn "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
   warn "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."

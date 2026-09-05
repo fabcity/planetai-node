@@ -96,3 +96,9 @@ CREATE TABLE IF NOT EXISTS settings (
   value      TEXT NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- 'settings' rows record who changed what (actor = an agent's name or "gui"); alert_id is NULL for them and
+-- rho ignores them. Idempotent: drop and re-add the check.
+ALTER TABLE actions DROP CONSTRAINT IF EXISTS actions_stage_check;
+ALTER TABLE actions ADD CONSTRAINT actions_stage_check CHECK (stage IN ('acknowledged','acted','measured','settings'));
+INSERT INTO schema_version (version) VALUES ('0.20') ON CONFLICT DO NOTHING;

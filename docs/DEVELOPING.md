@@ -44,6 +44,13 @@ tools/bundle.sh            # the tarball the website serves to testers without r
 cd ../planetai && make deploy
 ```
 
+## Agents
+
+`AGENTS.md` at the root is the operating manual for an AI agent (Claude, Codex, a local model): the MCP surface at
+`/mcp`, the `--json` commands, the invariants, the gates. `planetai agent` prints the endpoint, the token and a config
+snippet. The MCP server is `app/agent.py`, thirteen tools over the existing API; host operations are handed back as
+commands because the container has no Docker or git.
+
 ## Layout
 
 ```

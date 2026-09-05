@@ -16,7 +16,16 @@ for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
     if head.startswith("CREATE TABLE") and "IF NOT EXISTS" not in up:
         errs.append(f"not idempotent: {head}")
     if head.startswith(("ALTER TABLE", "CREATE INDEX")) and "IF NOT EXISTS" not in up:
-        errs.append(f"not idempotent: {head}")
+        # ADD CONSTRAINT has no IF NOT EXISTS in Postgres; it is idempotent when the same constraint is dropped
+        # with IF EXISTS just before. DROP ... IF EXISTS is idempotent on its own.
+        if "DROP CONSTRAINT IF EXISTS" in up:
+            pass
+        elif "ADD CONSTRAINT" in up:
+            name = re.search(r"ADD CONSTRAINT\s+(\w+)", up)
+            if not (name and re.search(rf"DROP CONSTRAINT IF EXISTS\s+{name.group(1)}", sql.upper())):
+                errs.append(f"not idempotent: {head} (ADD CONSTRAINT needs a matching DROP CONSTRAINT IF EXISTS first)")
+        else:
+            errs.append(f"not idempotent: {head}")
     if head.startswith("CREATE VIEW"):
         name = code.split()[2]
         if f"DROP VIEW IF EXISTS {name}" not in sql:

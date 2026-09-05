@@ -23,6 +23,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 import bootstrap
+import agent
 import index
 import packs
 import settings
@@ -388,7 +389,34 @@ loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
 
 # ---------------------------------------------------------------- http
-app = FastAPI(title="planetai-node")
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def _lifespan(app):
+    # the MCP session manager must run for the life of the process
+    async with agent.mcp.session_manager.run():
+        yield
+
+
+app = FastAPI(title="planetai-node", lifespan=_lifespan)
+
+
+@app.middleware("http")
+async def _mcp_auth(request, call_next):
+    """/mcp is the agent surface. Reads through it are the same data the open API serves, but the tools can also write,
+    so the whole surface needs the admin token. X-Agent names the caller for the audit trail."""
+    if request.url.path.startswith("/mcp"):
+        tok = os.getenv("ADMIN_TOKEN", "").strip()
+        auth = request.headers.get("authorization", "")
+        if not tok or auth != f"Bearer {tok}":
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}, status_code=401)
+    return await call_next(request)
+
+
+for _r in agent.http_routes():        # MCP at exactly /mcp, no trailing-slash redirect
+    app.router.routes.append(_r)
 
 
 def q(sql: str, *args):
@@ -586,7 +614,7 @@ def get_settings():
 
 
 @app.put("/settings")
-def put_settings(body: dict, authorization: str = Header("")):
+def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Header("")):
     """Change runtime settings. {"KEY": "value", ...}. Blank returns a key to its .env value. Effective within ~20 s."""
     _admin(authorization)
     changed = []
@@ -595,8 +623,11 @@ def put_settings(body: dict, authorization: str = Header("")):
             raise HTTPException(400, f"{k} is not a runtime setting")
         settings.set(k, str(v).strip())
         changed.append(k)
-    log.info("settings changed via GUI: %s", ", ".join(changed))
-    return {"changed": changed, "effective_within_s": settings.TTL}
+    who = x_agent or "gui"
+    log.info("settings changed by %s: %s", who, ", ".join(changed))
+    with db() as con, con.cursor() as cur:
+        cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (NULL, 'settings', %s, %s)", (who, ", ".join(changed)))
+    return {"changed": changed, "by": who, "effective_within_s": settings.TTL}
 
 
 @app.post("/test-alert")

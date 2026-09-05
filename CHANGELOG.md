@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.20 — 2026-09-05 — agents
+
+**The node as tools for an AI agent.** `app/agent.py`: an MCP server mounted at `/mcp`, behind the admin token, with
+thirteen tools over the existing API: status, health_check (each failure names its fix), sensors, alerts, act,
+settings_get/set, packs, cells, series, export_day, run_pack_script, maintenance. A remote Claude reaches it over
+Tailscale; a local model on the mini reaches it on localhost. Writes record the agent's name (`X-Agent`) in the
+actions table; settings changes are audited there too (new stage `settings`). Host operations (update, backup,
+restart) are returned as the exact command, since the container has no Docker or git.
+
+- `--json` on `status`, `doctor`, `sensors`, `cells`. Doctor as JSON keeps the fix text and the exit code.
+- `planetai setup --answers node.json`: install without a terminal. `install.sh` gained `--sc-user`, `--kind`, `--tz`.
+- `planetai agent`: the endpoint, the token, a Claude Desktop/Code config snippet.
+- `AGENTS.md` at the root (with `CLAUDE.md` pointing to it): the operating manual for an agent, with the invariants.
+- No model on the node, no AI credentials in `.env`: the agent runs where the person already has one and holds the
+  admin token. `UPSTREAM_MODEL_URL` returns the day a rule needs a model, with the code that uses it.
+- Schema 0.20. `mcp>=2.0` in the image.
+
 ## v0.19 — 2026-09-05 — documentation cut by two thirds
 
 29 documents, 28,900 words to 9,900. Plain sentences, no padding, no hedging. Same facts.

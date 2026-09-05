@@ -20,6 +20,7 @@
 #   planetai backup         dump + export + copy now, instead of waiting for 03:10
 #   planetai restore <f>    replace the live database with a dump (takes a safety backup first)
 #   planetai ipfs           publish each day's export to IPFS
+#   planetai agent          connect an AI agent: the MCP endpoint, the token, config snippets
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
 #   planetai stop | start | restart
 set -euo pipefail
@@ -119,6 +120,37 @@ for x in json.load(sys.stdin)[:3]:
 cmd_setup() {
   : > "$LOG"
   exec 3>>"$LOG"
+  # An agent, or a script, installs without a terminal: planetai setup --answers node.json
+  # {"name":"bayu-2","place":"Kuta Selatan" | "lat":-8.83,"lon":115.16, "kind":"home","sensor":{"sc_user":"x"} | {"sc":"19880"} | {"airgradient":"host"} | {"purpleair":"ip"}}
+  if [[ "${1:-}" == "--answers" ]]; then
+    local f="${2:?usage: planetai setup --answers file.json}"; [[ -f "$f" ]] || fail "$f does not exist"
+    local flags; flags="$(python3 - "$f" <<'PY'
+import json, sys, urllib.request, urllib.parse
+a = json.load(open(sys.argv[1]))
+out = ["--name", a["name"], "--kind", a.get("kind", "home")]
+if "lat" in a and "lon" in a:
+    out += ["--lat", str(a["lat"]), "--lon", str(a["lon"])]
+else:
+    q = urllib.parse.quote(a["place"])
+    r = json.load(urllib.request.urlopen("https://geocoding-api.open-meteo.com/v1/search?name=%s&count=1" % q, timeout=20))
+    hit = (r.get("results") or [None])[0]
+    if not hit: sys.exit("could not geocode %r" % a["place"])
+    out += ["--lat", str(hit["latitude"]), "--lon", str(hit["longitude"]), "--tz", hit.get("timezone", "UTC")]
+s = a.get("sensor") or {}
+if "sc_user" in s: out += ["--sc-user", s["sc_user"]]
+if "sc" in s: out += ["--sc", str(s["sc"])]
+if "airgradient" in s: out += ["--airgradient", s["airgradient"]]
+if "purpleair" in s: out += ["--purpleair", s["purpleair"]]
+print("\0".join(out))
+PY
+)" || fail "could not read the answers file"
+    local -a arr=(); while IFS= read -r -d '' x; do arr+=("$x"); done < <(printf '%s' "$flags")
+    step "Installing from $f: ${arr[*]}"
+    chmod +x install.sh backup.sh update.sh 2>/dev/null || true
+    ./install.sh --yes "${arr[@]}" >>"$LOG" 2>&1 || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+    say "installed. planetai status --json for the state; planetai ui for the token."
+    return
+  fi
   if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
     step "This machine already runs a node: $(envget NODE_NAME) ($(envget NODE_CITY), $(envget NODE_LAT), $(envget NODE_LON))"
     local what
@@ -239,6 +271,12 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 
 # ---------------------------------------------------------------- status / doctor / logs
 cmd_status() {
+  if [[ "${1:-}" == "--json" ]]; then
+    python3 -c "import json,urllib.request
+p='$(port)'
+h=json.load(urllib.request.urlopen('http://localhost:'+p+'/health',timeout=10)); h['rho']=json.load(urllib.request.urlopen('http://localhost:'+p+'/rho',timeout=10)); print(json.dumps(h))"
+    return
+  fi
   local h; h="$(api /health)" || { warn "the node isn't answering on port $(port). Try: planetai doctor"; exit 1; }
   echo "$h" | json '
 print("  node      %s   %s   schema %s" % (d["node"], d.get("version","?"), d.get("schema","?")))
@@ -254,9 +292,17 @@ print(("  reference %d: " % len(ref)) + ", ".join(s["sensor_id"] for s in ref[:4
 }
 
 cmd_doctor() {
-  local quiet="${1:-}" ok=1 p; p="$(port)"
-  chk() { if eval "$2" >/dev/null 2>&1; then printf '  %s✓%s %s\n' "$G" "$N" "$1"; else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; ok=0; fi; }
-  [[ -z "$quiet" ]] && step "Doctor"
+  local quiet="${1:-}" ok=1 p; p="$(port)"; local JSON=0; [[ "$quiet" == "--json" ]] && { JSON=1; quiet=""; }
+  local rows=""
+  chk() {
+    local pass=1; eval "$2" >/dev/null 2>&1 || pass=0
+    if [[ $JSON -eq 1 ]]; then
+      local fix="null"; [[ $pass -eq 1 ]] || fix="\"$(sed 's/"/\\"/g' <<< "$3")\""
+      rows+="$(printf '{"check":"%s","ok":%s,"fix":%s}' "$1" "$([[ $pass -eq 1 ]] && echo true || echo false)" "$fix"),"
+    elif [[ $pass -eq 1 ]]; then printf '  %s✓%s %s\n' "$G" "$N" "$1"; else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; fi
+    [[ $pass -eq 1 ]] || ok=0
+  }
+  [[ -z "$quiet" && $JSON -eq 0 ]] && step "Doctor"
   chk "docker is running"        "docker info"                                          "start OrbStack / Docker Desktop, or on Linux: sudo systemctl start docker"
   chk "containers are up"        "[ \$(docker compose ps -q | wc -l) -ge 2 ]"           "planetai start"
   chk "database answers"         "docker compose exec -T db pg_isready -U planetai"     "planetai logs db"
@@ -272,6 +318,7 @@ cmd_doctor() {
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
   case ",$(envget COMPOSE_PROFILES)," in *,reticulum,*)
     chk "reticulum bridge up"    "curl -sf localhost:4243/health"                       "planetai logs reticulum";; esac
+  if [[ $JSON -eq 1 ]]; then printf '{"ok":%s,"checks":[%s]}\n' "$([[ $ok -eq 1 ]] && echo true || echo false)" "${rows%,}"; return $(( 1 - ok )); fi
   [[ $ok -eq 1 ]] && { [[ -z "$quiet" ]] && say "all good"; return 0; }
   [[ -z "$quiet" ]] && warn "fix the marked lines, then run planetai doctor again"
   return 1
@@ -722,6 +769,31 @@ cmd_ipfs() {
   echo "  Publish now instead of waiting:  planetai backup"
 }
 
+
+# ---------------------------------------------------------------- agents: the node as tools over MCP
+cmd_agent() {
+  step "Agents"
+  local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
+  echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
+  echo "  with an MCP client) gets thirteen tools: status, health_check, sensors, alerts, act, settings_get, settings_set,"
+  echo "  packs, cells, series, export_day, run_pack_script, maintenance. Writes record the agent's name (X-Agent)."
+  echo
+  echo "  Local (this machine):    http://localhost:${p}/mcp"
+  [[ -n "$dns" ]] && echo "  From the tailnet:        http://${dns}:${p}/mcp"
+  echo "  Header on every call:    Authorization: Bearer ${tok:-<ADMIN_TOKEN>}"
+  echo
+  echo "  Claude Desktop / Claude Code (mcp.json or claude_desktop_config.json):"
+  cat <<JSON
+    {"mcpServers": {"planetai-$(envget NODE_NAME)": {"type": "http",
+      "url": "http://${dns:-<node>}:${p}/mcp",
+      "headers": {"Authorization": "Bearer ${tok:-<ADMIN_TOKEN>}", "X-Agent": "tomas-claude"}}}}
+JSON
+  echo
+  echo "  A local model on this machine (Ollama with an MCP client, e.g. mcphost or oterm): same URL with localhost."
+  echo "  An agent with a shell here also has:  planetai status --json · doctor --json · sensors --json · cells --json"
+  echo "  and  planetai setup --answers node.json  to install without a terminal. Read AGENTS.md first; it is written for them."
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -729,16 +801,16 @@ cmd_config()  { "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" &
 cmd_start()   { docker compose up -d && say "started"; }
 cmd_stop()    { docker compose down && say "stopped (data kept)"; }
 cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
-cmd_sensors() { api /sensors | json '
+cmd_sensors() { [[ "${1:-}" == "--json" ]] && { api /sensors; echo; return; }; api /sensors | json '
 for s in d: print("  %-22s %-7s %-9s %-7s  %s" % (s["sensor_id"], s["kind"], "yours" if s["local"] else "reference", "indoor" if s["indoor"] else "outdoor", s["name"]))'; }
-cmd_cells()   { api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
+cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
 cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
-  setup) shift; cmd_setup "$@";;      status) cmd_status;;     doctor) cmd_doctor;;
+  setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   update) cmd_update;;  backup) cmd_backup;;  config) cmd_config;;  logs) shift; cmd_logs "$@";;
-  start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) cmd_sensors;;  cells) cmd_cells;;
+  start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   homeassistant|ha) cmd_homeassistant;;
@@ -748,6 +820,7 @@ case "${1:-help}" in
   backup) cmd_backup;;
   restore) shift; cmd_restore "$@";;
   ipfs) cmd_ipfs;;
+  agent|agents|mcp) cmd_agent;;
   run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything

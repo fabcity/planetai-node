@@ -37,13 +37,13 @@ the interesting number is then the gap between your reading and the model.
 
 ## What it is
 
-Two containers, Postgres and one Python service, about 1,400 lines. Domain-blind: the core knows readings, rules and
+Two containers, Postgres and one Python service, about 1,900 lines. Domain-blind: the core knows readings, rules and
 cells, not air. Eight packs know air, heat, the coast, the land. Scale-blind: sensors at an address, open-data portals
 at a city, Earth models at the planet, one schema. Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
 
 It reads Smart Citizen (your whole account), AirGradient and PurpleAir (over your WiFi, no cloud), Meshtastic radios
-over LoRa, Bali's public stations, and free global models. It speaks Telegram, the LoRa mesh, Reticulum and Home
-Assistant. It runs on a Mac, Linux, a Raspberry Pi, or Windows with WSL2.
+over LoRa, Bali's public stations, and free global models. It speaks Telegram, the LoRa mesh, Reticulum, Home
+Assistant, and MCP, so your own AI agent can run it. It runs on a Mac, Linux, a Raspberry Pi, or Windows with WSL2.
 
 ## Read next
 
@@ -53,6 +53,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATI
           extending it             PACKS · PACK_IDEAS · DEVELOPING · GUI
           radios and reachability  NETWORKING · MESHTASTIC
 ARCHITECTURE.md   the building; SPEC.md   what was cut and when it returns; PRODUCT.md   who pays for what
+AGENTS.md         for an AI agent operating the node: MCP at /mcp, --json commands, invariants
 ```
 
 ## Layout
