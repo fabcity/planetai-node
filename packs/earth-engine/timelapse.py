@@ -68,6 +68,24 @@ def sentinel_rgb(year, aoi):
     return col.median(), cid, col.size()
 
 
+def _nearest_with_imagery(year, aoi, source, span=3):
+    """Landsat 5's coverage over parts of Asia is sparse and this coast is cloudy, so a requested year can be
+    genuinely empty. Look outward a year at a time rather than leaving a gap in the series."""
+    for d in range(1, span + 1):
+        for y in (year - d, year + d):
+            if y > datetime.now(timezone.utc).year:
+                continue
+            try:
+                _, _, size = (sentinel_rgb if source == "sentinel" else landsat_rgb)(y, aoi)
+                if size.getInfo():
+                    return y
+            except SystemExit:
+                continue
+            except Exception:  # noqa: BLE001
+                continue
+    return None
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--years", help="comma-separated, e.g. 2010,2015,2020,2025")
@@ -106,8 +124,23 @@ def main():
         except Exception as e:  # noqa: BLE001
             print(f"  {y}  FAILED to query {cid}: {str(e)[:80]}"); continue
         if not n:
-            print(f"  {y}  no clear imagery in {cid}"); continue
-        url = img.visualize(**vis).getThumbURL({"region": aoi, "dimensions": a.px, "format": "png"})
+            alt = _nearest_with_imagery(y, aoi, a.source)
+            if alt:
+                print(f"  {y}  no clear imagery in {cid} — using {alt} instead (the archive is thin here)")
+                y = alt
+                img, cid, size = (sentinel_rgb if a.source == "sentinel" else landsat_rgb)(y, aoi)
+                n = size.getInfo()
+            else:
+                print(f"  {y}  no clear imagery within 3 years in {cid}"); continue
+        try:
+            url = img.visualize(**vis).getThumbURL({"region": aoi, "dimensions": a.px, "format": "png"})
+        except Exception as e:  # noqa: BLE001
+            if "thumbnails.create" in str(e) or "permission" in str(e).lower():
+                sys.exit("\nEarth Engine refused to render an image: the service account can read but not draw.\n"
+                         "  Cloud Console -> IAM & Admin -> IAM -> " + (os.getenv("EE_SERVICE_ACCOUNT") or "your service account") + "\n"
+                         "  add the role  Earth Engine Resource Writer  (keep Resource Viewer), then run this again.\n"
+                         "  Reading numbers needs Viewer; making pictures needs Writer.")
+            raise
         path = os.path.join(OUT, f"{node}-{y}-{a.source}-{a.km:g}km.png")
         urllib.request.urlretrieve(url, path)
         kb = os.path.getsize(path) // 1024

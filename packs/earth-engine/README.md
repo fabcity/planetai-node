@@ -52,6 +52,9 @@ planetai run earth-engine timelapse --n 6 --gap 3 --source sentinel   # 2016 onw
 planetai run earth-engine timelapse --years 2000,2012,2025 --km 4
 ```
 
+If a year has no clear imagery — Landsat 5's coverage over parts of Asia is sparse and a cloudy coast makes it
+worse — the script says so and uses the nearest year within three that does, rather than leaving a hole.
+
 Each frame is the **annual median of clear pixels**, so clouds and any one day's haze are gone; what you see is the
 year. Landsat by default because it is the only archive reaching back far enough for a fifteen-year comparison with
 one instrument family — a like-for-like series matters more than resolution when the question is what changed.
