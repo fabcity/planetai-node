@@ -811,8 +811,15 @@ cmd_agent_local() {
       *) fail "install Ollama from https://ollama.com/download first";;
     esac
   fi
-  pgrep -x ollama >/dev/null || { (nohup ollama serve >>"$LOG" 2>&1 &) ; sleep 3; }
-  curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434. Open the Ollama app, or: ollama serve"
+  # run it as a service so it comes back after a reboot, like everything else on the node
+  if ! curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null; then
+    if [[ "$(uname -s)" == Darwin ]] && command -v brew >/dev/null && brew list ollama >/dev/null 2>&1; then
+      brew services start ollama >>"$LOG" 2>&1 || (nohup ollama serve >>"$LOG" 2>&1 &)
+    elif command -v systemctl >/dev/null; then sudo systemctl enable --now ollama >>"$LOG" 2>&1 || (nohup ollama serve >>"$LOG" 2>&1 &)
+    else (nohup ollama serve >>"$LOG" 2>&1 &); fi
+    for i in $(seq 1 15); do curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
+  fi
+  curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434 after 30 s. Try: brew services start ollama  (or open the Ollama app), then run this again"
   local mem model; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
   model="$(envget AGENT_MODEL)"; [[ -n "$model" ]] || { model="qwen3:4b"; [[ $mem -ge 16 ]] && model="qwen3:8b"; envset AGENT_MODEL "$model"; }
   say "machine has ${mem} GB; local model $model"
