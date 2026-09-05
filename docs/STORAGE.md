@@ -42,6 +42,17 @@ planetai restore backups/bayu-2-2026-09-05.sql.gz             # replace the live
 
 For node #1: the Mac mini keeps its database; `BACKUP_DIR` points at the Fab Lab NAS. That is the setup to have.
 
+## A NAS that pulls (the setup node #1 uses)
+
+Better than mounting the NAS on the node: the NAS fetches the dumps from the node over HTTP. The node serves
+`/backups` (a list) and `/backups/<file>` behind a read-only `BACKUP_TOKEN`, separate from the admin token, and
+`/exports` openly. A 60-line stdlib script in one small container on the NAS asks every hour and fetches what it lacks,
+opening each dump to check it is a database before keeping it. The schedule and the copies live on the machine meant
+to survive; the node never holds NAS credentials or a mount; nothing can silently turn out to be local.
+
+`tools/nas/` has the script and its compose file. On the NAS: put them in a folder, write the node's token into
+`.env`, `docker compose -p planetai-backup up -d`. `planetai storage` on the node prints the token.
+
 ## Off the machine
 
 `BACKUP_REMOTE` is an [rclone](https://rclone.org) destination — one binary, forty-plus backends: S3, Backblaze B2,
@@ -92,9 +103,8 @@ you would not print on the wall of the lab.
 
 ## What to do this week, for node #1
 
-1. Mount the Fab Lab NAS on the mini so it survives a reboot (Finder → Go → Connect to Server, then System Settings →
-   Login Items so it mounts at login).
-2. `planetai storage set backups /Volumes/<NAS>/planetai/bayu-2` — it checks the mount is real.
-3. `planetai backup` and look at the file on the NAS.
+1. `planetai update` (brings `/backups`, the token, and the endpoints), then `planetai storage` to read the token.
+2. On TX-NAS-BALI the puller is already in place (`planetai-backup` project); write the token into its `.env` and start it.
+3. Within an hour `backups/planetai/bayu-2/` on the NAS holds every dump the node has, and keeps collecting nightly.
 4. Later, when there is a second node or a partner who wants the data: `planetai ipfs`. Not before; a commons with one
    contributor is a folder.

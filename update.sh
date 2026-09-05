@@ -34,6 +34,9 @@ set -a; . ./.env; set +a
 rand_hex() { openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 # judge the VALUE, not the line: a line like `ADMIN_TOKEN=   # comment` has text after = and no value
 envval() { { grep -E "^$1=" .env || true; } | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '" '; }
+if [[ -z "$(envval BACKUP_TOKEN)" ]]; then
+  tok="$(rand_hex)"; [[ -n "$tok" ]] && { grep -q "^BACKUP_TOKEN=" .env && sed -i.bak "s|^BACKUP_TOKEN=.*|BACKUP_TOKEN=${tok}|" .env && rm -f .env.bak || echo "BACKUP_TOKEN=${tok}" >> .env; echo "   + BACKUP_TOKEN (read-only, for a NAS that collects backups)"; }
+fi
 if [[ -z "$(envval ADMIN_TOKEN)" ]]; then
   tok="$(rand_hex)"; [[ -n "$tok" ]] || die "could not generate a random token (no openssl, no /dev/urandom?)"
   if grep -q "^ADMIN_TOKEN=" .env; then sed -i.bak "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${tok}|" .env && rm -f .env.bak; else echo "ADMIN_TOKEN=${tok}" >> .env; fi

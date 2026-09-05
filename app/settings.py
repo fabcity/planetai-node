@@ -49,6 +49,7 @@ RUNTIME = {
     "EE_KEY_FILE":        ("keys", "Earth Engine key file", False, False, "Path inside the container; the file goes in config/."),
     "COAST_MAX_KM":       ("keys", "Coast: max distance to sea, km", False, False, ""),
     "AGGREGATE_TOKEN":    ("node", "Token children must present", True, False, "Set this before pointing another node at this one."),
+    "BACKUP_TOKEN":       ("node", "Token for collecting backups", True, False, "Read-only: lets a NAS fetch /backups. Separate from the admin token."),
     "PARENT_API_URL":     ("node", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
     "PARENT_TOKEN":       ("node", "Token for the parent", True, False, ""),
     "NODE_KIND":          ("node", "Kind", False, False, "home | business | community | district."),

@@ -28,7 +28,9 @@ services:
     volumes:
       - ./config:/app/config:ro      # a directory, not a file: editors that save-by-replace would break a single-file mount
       - ./packs:/app/packs:ro        # community packs — see docs/PACKS.md
-      - ./out:/app/out               # the one writable path: artifacts a pack makes for you (images, charts, briefs)      # a directory, not a file: editors that save-by-replace would break a single-file mount
+      - ./out:/app/out               # the one writable path: artifacts a pack makes for you (images, charts, briefs)
+      - ./backups:/app/backups:ro    # served at /backups (token) so a NAS can pull dumps without mounting anything
+      - ./exports:/app/exports:ro    # served at /exports (public, CC BY 4.0)      # a directory, not a file: editors that save-by-replace would break a single-file mount
     ports: ["${APP_PORT:-8080}:8080"]     # host port; change APP_PORT in .env if 8080 is taken
     depends_on:
       db: { condition: service_healthy }

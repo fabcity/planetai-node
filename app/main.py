@@ -506,6 +506,58 @@ def sparks(metric: str = "pm25", hours: int = Query(24, le=168)):
     return out
 
 
+# ---------------------------------------------------------------- backups and exports, for a machine that pulls them
+BACKUPS = Path("/app/backups")
+EXPORTS = Path("/app/exports")
+
+
+def _pull_ok(authorization: str) -> None:
+    """A read-only token for whoever collects backups (a NAS), separate from the admin token. Either works."""
+    tokens = {t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip()) if t}
+    if not tokens:
+        raise HTTPException(403, "no BACKUP_TOKEN or ADMIN_TOKEN set on this node")
+    if authorization.replace("Bearer ", "", 1) not in tokens:
+        raise HTTPException(401, "bad or missing token")
+
+
+@app.get("/backups")
+def list_backups(authorization: str = Header("")):
+    """Dumps this node has made, newest first, so a NAS can fetch the ones it lacks. Token required."""
+    _pull_ok(authorization)
+    if not BACKUPS.exists():
+        return []
+    files = sorted(BACKUPS.glob("*.sql.gz"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return [{"name": p.name, "bytes": p.stat().st_size, "mtime": datetime.fromtimestamp(p.stat().st_mtime, timezone.utc).isoformat()} for p in files]
+
+
+@app.get("/backups/{name}")
+def get_backup(name: str, authorization: str = Header("")):
+    _pull_ok(authorization)
+    from fastapi.responses import FileResponse
+    p = BACKUPS / Path(name).name           # no path components, ever
+    if not (p.exists() and p.suffix == ".gz" and p.name.endswith(".sql.gz")):
+        raise HTTPException(404, "no such backup")
+    return FileResponse(p, media_type="application/gzip", filename=p.name)
+
+
+@app.get("/exports")
+def list_exports():
+    """The daily open-data exports. Public: they are CC BY 4.0 and contain nothing raw or secret."""
+    if not EXPORTS.exists():
+        return []
+    return [{"node": p.parent.name, "name": p.name, "bytes": p.stat().st_size}
+            for p in sorted(EXPORTS.glob("*/*.json"), key=lambda p: p.name, reverse=True)]
+
+
+@app.get("/exports/{node}/{name}")
+def get_export(node: str, name: str):
+    from fastapi.responses import FileResponse
+    p = EXPORTS / Path(node).name / Path(name).name
+    if not (p.exists() and p.suffix == ".json"):
+        raise HTTPException(404, "no such export")
+    return FileResponse(p, media_type="application/json", filename=p.name)
+
+
 # ---------------------------------------------------------------- the GUI and its settings
 STATIC = Path(__file__).parent / "static"
 

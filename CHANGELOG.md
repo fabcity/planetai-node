@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.18 — 2026-09-05
+
+**A NAS that pulls.** The node serves `/backups` and `/backups/<file>` behind a new read-only `BACKUP_TOKEN` (minted
+by install and update, shown by `planetai storage`), and `/exports` openly. `tools/nas/pull.py` — 60 lines, stdlib,
+one 128 MB container — runs on the NAS, asks hourly, fetches what it lacks, and opens every dump to confirm it is a
+database before keeping it; nothing is ever deleted there. Pull rather than push: the schedule and the copies live on
+the machine meant to survive, the node never holds NAS credentials or a mount, and no folder can silently turn out
+to be local. Installed on TX-NAS-BALI for node #1.
+
 ## v0.17.1 — 2026-09-05
 
 - **Fixed:** two `.DS_Store` files were committed with `git add -A`; the node had its own untracked copies and `git pull` refused to overwrite them, so `planetai update` failed. Removed from the repo, gitignored, blocked by the pre-commit hook and by `make lint`; `update.sh` sweeps Finder litter before pulling.

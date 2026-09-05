@@ -681,6 +681,9 @@ cmd_storage() {
   if [[ "$(envget IPFS_PUBLISH)" == "1" ]]; then echo "  IPFS               publishing. $(wc -l < "$ex/CIDS.txt" 2>/dev/null || echo 0) CID(s) in $ex/CIDS.txt"
   else echo "  IPFS               off.  planetai ipfs   to publish each day's export to the commons"; fi
   echo
+  echo "  Pulled by a NAS    GET /backups and /backups/<file> with this read-only token:"
+  printf '                     %s%s%s\n' "$B" "$(envget BACKUP_TOKEN)" "$N"
+  echo
   echo "  Change:  planetai storage set backups /Volumes/NAS/planetai    set remote r2:planetai/$(envget NODE_NAME)    set keep 60"
 }
 
