@@ -16,8 +16,10 @@ A household node needs to push hourly means to a district node in another buildi
 opening ports on a router (do not) or an overlay network.
 
 **What it does.** One command per machine. Each gets a stable name and address on a private WireGuard network,
-regardless of NAT, with no ports opened anywhere. `planetai mesh` installs the client, joins with the node's name,
-and turns on Tailscale SSH so `ssh bayu-2` works from any of your devices with no keys to manage. Free for 100
+regardless of NAT, with no ports opened anywhere. `planetai mesh` installs the client and joins with the node's name. On **Linux** nodes it also turns on Tailscale SSH,
+so `ssh <node>` works from any of your devices with no keys to manage. Tailscale SSH has **no macOS server**: on a Mac
+node, reaching a shell means enabling Remote Login in System Settings and using ordinary `ssh user@<name>.ts.net`,
+which still travels over the tailnet with no open ports. Free for 100
 devices.
 
 **The trade-off.** Tailscale's coordination server is a third party, which sits against the principle that nothing

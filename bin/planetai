@@ -353,8 +353,10 @@ cmd_mesh() {
     esac
   fi
   say "logging in. If a URL appears below, open it in a browser and approve this machine."
-  # --ssh: `ssh <name>` from any device on the tailnet, no keys to manage. --hostname: mesh name = node name.
-  sudo tailscale up --ssh --hostname "$name" --accept-dns=true ${TS_AUTHKEY:+--authkey "$TS_AUTHKEY"} </dev/tty 2>&1 | tee -a "$LOG"
+  # --ssh (Tailscale SSH, no keys to manage) is a Linux-only server feature; on macOS it is silently ignored and
+  # plain sshd answers instead, so only ask for it where it works.
+  SSH_FLAG=""; [[ "$(uname -s)" == Linux ]] && SSH_FLAG="--ssh"
+  sudo tailscale up $SSH_FLAG --hostname "$name" --accept-dns=true ${TS_AUTHKEY:+--authkey "$TS_AUTHKEY"} </dev/tty 2>&1 | tee -a "$LOG"
   local ip dns
   ip="$(tailscale ip -4 2>/dev/null | head -1)"
   dns="$(tailscale status --json 2>/dev/null | json 'print(d["Self"]["DNSName"].rstrip("."))' 2>/dev/null || echo "$name")"
@@ -363,7 +365,12 @@ cmd_mesh() {
   say "on the mesh as ${B}${dns}${N} (${ip})"
   echo
   echo "  From any other device on your tailnet:"
-  printf '    ssh %s                        %s# a shell on the node, no keys needed%s\n' "$name" "$D" "$N"
+  if [[ "$(uname -s)" == Linux ]]; then
+    printf '    ssh %s                        %s# a shell on the node, no keys needed (Tailscale SSH)%s\n' "$name" "$D" "$N"
+  else
+    printf '    ssh <user>@%s   %s# macOS: turn on System Settings > General > Sharing > Remote Login first;%s\n' "$dns" "$D" "$N"
+    printf '                                  %s# Tailscale SSH has no macOS server, so this is ordinary sshd over the tailnet%s\n' "$D" "$N"
+  fi
   printf '    curl %s:%s/health     %s# its API%s\n' "$dns" "$(port)" "$D" "$N"
   printf '    ssh %s planetai status        %s# run any planetai command remotely%s\n' "$name" "$D" "$N"
   echo
