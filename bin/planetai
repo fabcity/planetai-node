@@ -37,6 +37,31 @@ B=$'\033[1m'; D=$'\033[2m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; BL=$'\0
 say()  { printf '%s●%s %s\n' "$G" "$N" "$*"; }
 warn() { printf '%s●%s %s\n' "$Y" "$N" "$*"; }
 step() { printf '\n%s%s%s\n' "$B" "$*" "$N"; }
+# spin "label" cmd args...   runs cmd with its output in the log, a spinner and the elapsed time on one line,
+#                            then ✓ label (Ns) or ✗ label with the last log lines. Any wait over a few seconds goes through this.
+spin() {
+  local label="$1"; shift; local t0=$SECONDS rc=0
+  if [[ ! -t 1 ]]; then "$@" >>"$LOG" 2>&1 || rc=$?; [[ $rc -eq 0 ]] && printf '  ✓ %s (%ds)\n' "$label" $((SECONDS-t0)) || printf '  ✗ %s\n' "$label"; return $rc; fi
+  "$@" >>"$LOG" 2>&1 & local pid=$! i=0; local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  tput civis 2>/dev/null || true
+  while kill -0 "$pid" 2>/dev/null; do
+    printf '\r  %s%s%s %s %s%ds%s\033[K' "$BL" "${frames:$((i%10)):1}" "$N" "$label" "$D" $((SECONDS-t0)) "$N"; i=$((i+1)); sleep 0.1
+  done
+  wait "$pid" || rc=$?; tput cnorm 2>/dev/null || true
+  if [[ $rc -eq 0 ]]; then printf '\r  %s✓%s %s %s%ds%s\033[K\n' "$G" "$N" "$label" "$D" $((SECONDS-t0)) "$N"
+  else printf '\r  %s✗%s %s\033[K\n' "$R" "$N" "$label"; tail -6 "$LOG" | sed 's/^/      /'; fi
+  return $rc
+}
+logo() { printf '%s' "$BL"; cat <<'LOGO'
+
+  ██████╗ ██╗      █████╗ ███╗   ██╗███████╗████████╗ █████╗ ██╗
+  ██╔══██╗██║     ██╔══██╗████╗  ██║██╔════╝╚══██╔══╝██╔══██╗██║
+  ██████╔╝██║     ███████║██╔██╗ ██║█████╗     ██║   ███████║██║
+  ██╔═══╝ ██║     ██╔══██║██║╚██╗██║██╔══╝     ██║   ██╔══██║██║
+  ██║     ███████╗██║  ██║██║ ╚████║███████╗   ██║   ██║  ██║██║
+  ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝
+LOGO
+printf '%s  %snode · %s%s\n\n' "$N" "$D" "${1:-observe here, decide here, act here}" "$N"; }
 fail() {
   printf '\n%s┌──────────────────────────────────────────────────────────────┐%s\n' "$R" "$N"
   printf '%s│%s  Something went wrong.                                       %s│%s\n' "$R" "$N" "$R" "$N"
@@ -244,30 +269,45 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 
   # install
   step "Installing"
-  echo "  This takes one to three minutes the first time. Log: $LOG"
+  echo "  One to three minutes the first time. Log: $LOG"
   local flags=(--name "$name" --lat "$lat" --lon "$lon")
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
   [[ $indoor -eq 1 ]] && flags+=(--indoor); [[ $bad -eq 0 ]] && flags+=(--no-bad)
   chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-  if ! ./install.sh "${flags[@]}" >>"$LOG" 2>&1; then
-    fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
-  fi
+  spin "writing settings, pulling images, building the node" ./install.sh "${flags[@]}" || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ "$kind" == district ]] && envset NODE_SCALE city
-  docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "the app container did not restart with your settings"
-  sleep 4
+  spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
+  spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   cmd_doctor quiet || fail "install finished but a check failed; see doctor output above"
 
-  printf '\n%s● Done!%s The node is running.\n\n' "$G" "$N"
-  echo "  In five minutes it will have its first readings. In a minute, its first line about your location."
-  echo
-  echo "  Next, two minutes each:"
-  printf '    %splanetai telegram%s     get alerts on your phone\n' "$B" "$N"
-  printf '    %splanetai ui%s           the dashboard, in any browser on your network\n' "$B" "$N"
-  printf '    %splanetai test-alert%s   see the whole path fire, right now\n' "$B" "$N"
-  [[ "$kind" != district ]] && printf '    %splanetai homeassistant%s  your sensors and alerts as Home Assistant entities\n' "$B" "$N"
-  echo
-  printf '  Any time:  %splanetai status%s · %splanetai doctor%s · %splanetai update%s\n\n' "$B" "$N" "$B" "$N" "$B" "$N"
+  what_next
+}
+
+# the screen after an install: one obvious door to the dashboard, one to Telegram, one to stay here
+what_next() {
+  local p; p="$(port)"; local ip; ip="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')"
+  local host; host="$(hostname -s 2>/dev/null || hostname).local"; local tok; tok="$(envget ADMIN_TOKEN)"
+  printf '\n%s┌──────────────────────────────────────────────────────────────────────┐%s\n' "$G" "$N"
+  printf '%s│%s  %s● Your node is running.%s                                             %s│%s\n' "$G" "$N" "$B" "$N" "$G" "$N"
+  printf '%s└──────────────────────────────────────────────────────────────────────┘%s\n\n' "$G" "$N"
+  printf '  %sThe dashboard%s\n' "$B" "$N"
+  printf '    on this machine     %shttp://localhost:%s%s\n' "$BL" "$p" "$N"
+  [[ -n "$ip" ]] && printf '    from your phone     %shttp://%s:%s%s   (same WiFi)\n' "$BL" "$ip" "$p" "$N"
+  printf '    settings token      %s%s%s   (planetai ui shows it again)\n\n' "$D" "${tok:-not set yet}" "$N"
+  printf '  %sIn the terminal%s\n' "$B" "$N"
+  printf '    %splanetai%s             every command, one line each\n' "$BL" "$N"
+  printf '    %splanetai telegram%s    alerts on your phone, two minutes\n' "$BL" "$N"
+  printf '    %splanetai status%s      what it has read so far\n\n' "$BL" "$N"
+  if [[ -t 0 && -t 1 ]]; then
+    printf '  What now?  %s[o]%s open the dashboard   %s[t]%s connect Telegram   %s[Enter]%s stay in the terminal\n  ' "$B" "$N" "$B" "$N" "$B" "$N"
+    local k; IFS= read -r -n1 k </dev/tty || k=""; echo
+    case "$k" in
+      o|O) (open "http://localhost:$p" 2>/dev/null || xdg-open "http://localhost:$p" 2>/dev/null || echo "  open http://localhost:$p in a browser") ; echo "  Opened. Settings are behind the token above.";;
+      t|T) cmd_telegram;;
+      *)   echo; "$0" help | head -30;;
+    esac
+  fi
 }
 
 # ---------------------------------------------------------------- status / doctor / logs
@@ -826,11 +866,12 @@ cmd_agent_local() {
   local mem model; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
   model="$(envget AGENT_MODEL)"; [[ -n "$model" ]] || { model="qwen3:4b"; [[ $mem -ge 16 ]] && model="qwen3:8b"; envset AGENT_MODEL "$model"; }
   say "machine has ${mem} GB; local model $model"
-  if ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then say "pulling $model (a few minutes, once)"; ollama pull "$model" >>"$LOG" 2>&1 || fail "ollama pull $model failed; see $LOG"; fi
+  if ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then spin "pulling $model (a few minutes, once)" ollama pull "$model" || fail "ollama pull $model failed; see $LOG"; fi
   [[ "$(uname -s)" == Linux ]] && { envset OLLAMA_URL "http://172.17.0.1:11434"; warn "Linux: the ollama service must listen on 0.0.0.0 (systemctl edit ollama, Environment=OLLAMA_HOST=0.0.0.0) so the container reaches it"; }
   [[ -n "$(envget TELEGRAM_BOT_TOKEN)" && -n "$(envget TELEGRAM_CHAT_IDS)" ]] || warn "no Telegram yet: run planetai telegram, or the model has nobody to talk to"
   profiles_add agent
-  docker compose build agent >>"$LOG" 2>&1 && docker compose up -d agent >>"$LOG" 2>&1 || fail "could not start the agent container; see $LOG"
+  spin "building the agent" docker compose build agent || fail "could not build the agent container; see $LOG"
+  spin "starting it" docker compose up -d agent || fail "could not start the agent container; see $LOG"
   sleep 5; docker compose logs --tail 3 agent 2>/dev/null | sed 's/^/     /'
   echo
   say "running. Message your bot:  is the node healthy?   /act 23 closed the windows   /model"
@@ -846,7 +887,7 @@ runtime_set() {
 }
 
 # ---------------------------------------------------------------- the rest
-cmd_update()  { chmod +x update.sh; ./update.sh; }
+cmd_update()  { chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
 cmd_config()  { "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
 cmd_start()   { docker compose up -d && say "started"; }

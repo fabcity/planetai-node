@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.25 — 2026-09-05
+
+- **The terminal shows its work.** A spinner with the elapsed time on every long step: the install, the image build,
+  pulling a model, starting containers, waiting for the node's first answer. ✓ with the seconds when it finishes, ✗ with
+  the last log lines when it does not. `planetai update` opens with the logo. Before this, "Installing" went silent for
+  two minutes.
+- **After the install, a screen.** The dashboard's address on this machine and from your phone, the settings token, the
+  three terminal commands that matter, and one key: [o] opens the dashboard, [t] connects Telegram, Enter shows the
+  command list.
+- **Fixed: the Wall view.** It never laid out as designed (a `display:block` rule beat its flex layout), and reaching it
+  from the button hid the header, leaving no way back. The button keeps the header; only `?kiosk=1` hides it, and then a
+  small "exit wall" link remains.
+
 ## v0.24.1 — 2026-09-05 — the words, again
 
 `README.md` and `docs/START_HERE.md` rewritten as product copy: what you get first (alerts you can act on, a dashboard

@@ -50,7 +50,7 @@ nav.views button.on{background:var(--ink);color:var(--bg);font-weight:600}nav.vi
 .link i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--webblue);animation:v5halo 3s ease-out infinite}
 .link i.bad{background:var(--red)}.link i.bad::after{border-color:var(--red)}
 main{position:relative;z-index:1}main .wrap{padding-bottom:clamp(50px,6vw,90px)}
-section.view{display:none}section.view.on{display:block}
+section.view{display:none}section.view.on{display:block}section.view.wall.on{display:flex}
 /* cards */
 .card{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:clamp(20px,2.4vw,30px);min-width:0;transition:transform .35s cubic-bezier(.2,.6,.2,1),border-color .35s}
 .card.lift:hover{transform:translateY(-3px);border-color:var(--line2)}
@@ -141,7 +141,7 @@ h3.g{font:800 1.45rem var(--fd);letter-spacing:-.02em}
 .tag.warn{background:var(--red);color:var(--ink)}
 /* wall */
 .wall{min-height:calc(100vh - 130px);display:flex;flex-direction:column;justify-content:center;position:relative;padding:40px 0}
-.wall .halo{position:absolute;left:clamp(40px,12vw,220px);top:22%;width:min(46vw,520px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 18%,transparent);pointer-events:none;z-index:0}
+.wall .halo{position:absolute;left:clamp(40px,12vw,220px);top:14%;width:min(46vw,520px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 18%,transparent);pointer-events:none;z-index:0}
 .wall .halo2{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(244,236,226,.22);transform:translate(9%,9%)}
 .wall > *{position:relative;z-index:1}
 .wall .eye{font:600 11px var(--fb);letter-spacing:.26em;text-transform:uppercase;color:var(--mute)}
@@ -152,6 +152,8 @@ h3.g{font:800 1.45rem var(--fd);letter-spacing:-.02em}
 .wall .stats .eyebrow{letter-spacing:.22em}.wall .stats .num{font-size:clamp(34px,4vw,52px);margin-top:8px}
 .wall .foot{margin-left:auto;align-self:flex-end;font-size:13px;color:var(--dim)}
 body.kiosk header,body.kiosk footer{display:none}
+.wall .exit{position:absolute;right:0;top:0;font:600 12px var(--fb);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-decoration:none;padding:10px 14px;border:1px solid var(--line);border-radius:999px;display:none;z-index:2}
+body.kiosk .wall .exit{display:inline-block}.wall .exit:hover{color:var(--ink);border-color:var(--line2)}
 footer{position:relative;z-index:1}footer .wrap{padding:0 clamp(18px,3.5vw,48px) 34px}
 footer .row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
 footer .fc{display:flex;align-items:center;gap:12px;color:var(--ink)}footer .fc b{font:800 15px var(--fd);letter-spacing:-.01em}
@@ -251,6 +253,7 @@ footer .fc .hex{width:8px;height:9px}
 
 <!-- ============================================================ WALL -->
 <section class="view wall" id="wall">
+  <a class="exit" href="/">exit wall</a>
   <div class="halo" aria-hidden="true"></div><div class="halo halo2" aria-hidden="true"></div>
   <div class="eye">Inside · µg/m³ · PM2.5</div>
   <p class="big" id="wall-line">The room is holding at <b>–</b> right now.</p>
@@ -285,7 +288,7 @@ const spark=(vals,color,h=36)=>{const v=(vals||[]).filter(x=>x!=null);if(v.lengt
 let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], GROUP='sources', LAST=null;
 const kiosk=new URLSearchParams(location.search).get('kiosk')==='1';
 document.querySelectorAll('nav.views button').forEach(b=>b.onclick=()=>show(b.dataset.view));
-function show(v){document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav.views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));document.body.classList.toggle('kiosk',v==='wall');if(v==='setup')loadSetup();if(v==='network'&&LAST)drawNetwork(LAST);}
+function show(v){document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav.views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));document.body.classList.toggle('kiosk',v==='wall'&&kiosk);if(v==='setup')loadSetup();if(v==='network'&&LAST)drawNetwork(LAST);}
 function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.style.color=bad?'var(--ink)':'var(--bg)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);}
 const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 

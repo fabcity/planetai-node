@@ -18,6 +18,18 @@ cd "$PLANETAI_UPDATE_COPY"                 # back into the node folder; the copy
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
+ULOG="${ULOG:-$PWD/.planetai-update.log}"; : > "$ULOG"
+# spin "label" cmd...  the long steps, with a spinner and elapsed time; output in $ULOG. Same shape as the CLI's.
+spin() {
+  local label="$1"; shift; local t0=$SECONDS rc=0
+  if [[ ! -t 1 ]]; then "$@" >>"$ULOG" 2>&1 || rc=$?; [[ $rc -eq 0 ]] && printf '   ✓ %s (%ds)\n' "$label" $((SECONDS-t0)) || { printf '   ✗ %s\n' "$label"; tail -8 "$ULOG" | sed 's/^/      /'; }; return $rc; fi
+  "$@" >>"$ULOG" 2>&1 & local pid=$! i=0 frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  tput civis 2>/dev/null || true
+  while kill -0 "$pid" 2>/dev/null; do printf '\r   \033[34m%s\033[0m %s \033[2m%ds\033[0m\033[K' "${frames:$((i%10)):1}" "$label" $((SECONDS-t0)); i=$((i+1)); sleep 0.1; done
+  wait "$pid" || rc=$?; tput cnorm 2>/dev/null || true
+  if [[ $rc -eq 0 ]]; then printf '\r   \033[32m✓\033[0m %s \033[2m%ds\033[0m\033[K\n' "$label" $((SECONDS-t0)); else printf '\r   \033[31m✗\033[0m %s\033[K\n' "$label"; tail -8 "$ULOG" | sed 's/^/      /'; fi
+  return $rc
+}
 
 [[ -f .env ]] || die "no .env here — is this a node folder?"
 # `.env` is sourced below, so a stray space after `=` makes the shell try to run the value as a command.
@@ -76,7 +88,7 @@ elif [[ $PULL -eq 1 ]] && [[ -d .git ]]; then
   git branch --set-upstream-to="origin/$branch" "$branch" >/dev/null 2>&1 || true
   git fetch -q --tags origin 2>/dev/null || true      # pulling a named branch skips tags; version stamps need them
   find . -name .DS_Store -not -path './.git/*' -delete 2>/dev/null || true    # Finder litter blocks a pull if the repo ever had it
-  if ! git pull --ff-only origin "$branch"; then
+  if ! spin "fetching the current version" git pull --ff-only origin "$branch"; then
     warn "git pull failed (local changes?). Commit or stash them, or re-run with --no-pull after unpacking manually."
     exit 1
   fi
@@ -105,7 +117,8 @@ done < .env.example
 # stamp the version the node is about to run, from git, so /health and planetai status report it
 if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)|" .env && rm -f .env.bak; else echo "NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)" >> .env; fi
 say "rebuilding"
-docker compose up -d --build
+spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; see $ULOG"
+spin "restarting the containers" docker compose up -d || die "the containers did not start; see $ULOG"
 
 # 7. verify
 sleep 8
