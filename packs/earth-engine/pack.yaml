@@ -12,6 +12,10 @@ domain: land
 metrics: [tree_frac, built_frac, crop_frac, water_frac, ndvi_median, night_lights, land_change_score]
 scales: [bioregion]
 pip: [earthengine-api]
+env:
+  - "EE_PROJECT=                          # your Earth Engine project id"
+  - "EE_SERVICE_ACCOUNT=                  # planetai-node@<project>.iam.gserviceaccount.com"
+  - "EE_KEY_FILE=/app/config/ee-key.json  # copy the JSON key to config/ee-key.json on the node"
 needs: >-
   A Google Earth Engine project (free for research and non-commercial use) and a service-account key:
   EE_PROJECT, EE_SERVICE_ACCOUNT, EE_KEY_FILE in .env, with the key mounted read-only into the app container.

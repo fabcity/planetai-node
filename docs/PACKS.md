@@ -87,6 +87,20 @@ image once. Nothing is installed at runtime, nothing is pulled on every start, a
 runs pip at all. A code pack whose library is missing must log one line and return nothing, not raise: the
 `earth-engine` pack is the worked example.
 
+## 4b-ii. Packs that need a setting
+
+Declare it in `pack.yaml`, with the comment that explains it:
+
+```yaml
+env:
+  - "EE_PROJECT=                          # your Earth Engine project id"
+  - "COAST_MAX_KM=30                      # refuse if the nearest ocean cell is further than this"
+```
+
+`planetai packs` appends any that `.env` does not already have, under a dated marker, and never overwrites a value
+you set. Without this a pack's settings exist only in its README, which is how the earth-engine pack shipped with
+three settings nobody could find (5 Sep 2026).
+
 ## 4c. Code packs that need a credential
 
 Read it from `.env` (the app container gets the whole file), and put any key *file* in `config/`, which is already

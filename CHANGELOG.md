@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.3 — 2026-09-05
+
+- **Fixed:** a pack's settings had no route into `.env`. The earth-engine pack documented `EE_PROJECT`, `EE_SERVICE_ACCOUNT` and `EE_KEY_FILE` in its README only, so they appeared in no config file and could not be found. Packs now declare `env:` in `pack.yaml` alongside `pip:`, and `planetai packs` appends the missing ones under a dated marker without overwriting anything. Also added to `.env.example` so a plain `planetai update` picks them up.
+- `packs/earth-engine/verify.py`: checks library, settings, key file, credentials and a real query, and names the step that failed.
+
 ## v0.11.2 — 2026-09-05
 
 - **Fixed:** `planetai packs` printed a `SyntaxError` instead of the pack list. The `json` helper wrapped snippets after a semicolon, where a `for` loop is a syntax error. The snippet now goes on its own line, so any statement works.
