@@ -5,6 +5,15 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+# Bash reads a script as it runs. This script pulls new code, which rewrites the file bash is reading, and
+# from that point it executes from a byte offset in a different file: steps skipped, steps garbled. So on first
+# entry, copy to a temp file and run from there; the copy is immune to the pull.
+if [[ -z "${PLANETAI_UPDATE_COPY:-}" ]]; then
+  tmp="$(mktemp -t planetai-update.XXXXXX)"; cp "${BASH_SOURCE[0]}" "$tmp"
+  PLANETAI_UPDATE_COPY=1 exec bash "$tmp" "$@"
+fi
+trap 'rm -f "${BASH_SOURCE[0]}"' EXIT      # the temp copy
+
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
@@ -21,7 +30,12 @@ if [[ -n "$bad" ]]; then
 fi
 set -a; . ./.env; set +a
 # nodes installed before v0.14 have no admin token; the GUI needs one to change settings
-grep -qE "^ADMIN_TOKEN=.+" .env || { echo "ADMIN_TOKEN=$(openssl rand -hex 16)" >> .env; echo "   + ADMIN_TOKEN (for the GUI; planetai ui shows it)"; }
+rand_hex() { openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+if ! grep -qE "^ADMIN_TOKEN=.+" .env; then
+  tok="$(rand_hex)"; [[ -n "$tok" ]] || die "could not generate a random token (no openssl, no /dev/urandom?)"
+  if grep -q "^ADMIN_TOKEN=" .env; then sed -i.bak "s|^ADMIN_TOKEN=.*|ADMIN_TOKEN=${tok}|" .env && rm -f .env.bak; else echo "ADMIN_TOKEN=${tok}" >> .env; fi
+  echo "   + ADMIN_TOKEN (for the GUI; planetai ui shows it)"
+fi
 PORT="${APP_PORT:-8080}"
 PULL=1; [[ "${1:-}" == "--no-pull" ]] && PULL=0
 

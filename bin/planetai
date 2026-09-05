@@ -609,7 +609,12 @@ cmd_run() {
 # ---------------------------------------------------------------- the GUI
 cmd_ui() {
   step "Dashboard"
-  grep -qE "^ADMIN_TOKEN=.+" .env || { envset ADMIN_TOKEN "$(openssl rand -hex 16)"; docker compose up -d --force-recreate app >>"$LOG" 2>&1; say "created an admin token"; }
+  if ! grep -qE "^ADMIN_TOKEN=.+" .env; then
+    local tok; tok="$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    [[ -n "$tok" ]] || fail "could not generate a token"
+    envset ADMIN_TOKEN "$tok"; docker compose up -d --force-recreate app >>"$LOG" 2>&1; say "created an admin token"
+  fi
+  [[ -n "$(envget ADMIN_TOKEN)" ]] || fail "ADMIN_TOKEN is empty in .env even after trying to set it — check that .env is writable"
   local ip; ip="$(lan_ip)"; local p; p="$(port)"
   echo "  On this machine:      http://localhost:${p}/"
   [[ -n "$ip" ]] && echo "  On your network:      http://${ip}:${p}/"

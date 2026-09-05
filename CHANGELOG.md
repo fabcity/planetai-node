@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.14.1 — 2026-09-05
+
+- **Fixed a latent hazard in every update since v0.4:** `update.sh` pulls new code while bash is still reading the file it is executing. Bash reads scripts incrementally, so after the pull it continues from a byte offset in a *different* file — steps skipped, garbage executed, whichever line happens to sit at that offset. Reproduced in a controlled test: the old script ran the new file's final step instead of its own. `update.sh` now copies itself to a temp file on entry and runs from the copy, which the pull cannot touch. This is the likely cause of the v0.14 update leaving the schema at 0.4 and the admin token empty.
+- Token generation falls back to `/dev/urandom` if `openssl` is absent, and both `update.sh` and `planetai ui` refuse to continue with an empty token rather than printing a blank.
+
 ## v0.14 — 2026-09-05
 
 **A dashboard.** One HTML file the node serves at `/`, on the Fab City design system, no build step.
