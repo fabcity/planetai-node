@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.24 — 2026-09-05 — the dashboard, redesigned
+
+The design is Tomas's PLANETAI_Node_v5 on the Fab City design system: a warm dark field, Figtree and Funnel Sans, the
+brand hues as accents, grain and two slow glows, hexagon marks. Four views: **Now**, **Network**, **Set up**, **Wall**.
+Every sentence the designer hand-wrote for one evening's data is now computed from the API: the room's number as a
+sentence with its clauses judged against the street, the model and the WHO line; the verb from the last three hours;
+a story under every sensor generated from its readings; the day chart annotated from the data ("someone cooked" when
+the room beat the street); the sea, the land, the weather and the gap in prose; the Network view drawing flows only
+along links that exist. Settings keep their logic (token gate, groups, secrets, packs, the Model page) in the new
+markup. Verified headlessly at 1280 and 390: no overflow, no empty region, no `undefined`, fonts loaded.
+
 ## v0.23.3 — 2026-09-05
 
 - **The terminal and the dashboard now write Telegram to the same place.** A value saved in the dashboard overrides

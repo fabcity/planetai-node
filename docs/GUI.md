@@ -8,21 +8,28 @@ planetai ui        # the URLs, and the token that unlocks the settings pages
 
 ## Now
 
-The page is a zoom: room, street, world. Three hexagons offset behind one another. The front one is the room: it fills
-with the inside reading and takes its colour, green under 15, orange to 35, red above (WHO). The middle one is the
-street, with the outside reading at its exposed corner. The back one is the world, with the satellite model. Beside
-them, one sentence saying what to do, and one line of why.
+The design is PLANETAI_Node_v5 on the Fab City design system: a warm dark field, Figtree for words, Funnel Sans for
+numbers and headings, the three brand hues as accents, the hexagon as the only mark. Every sentence on the page is
+computed from the API; nothing is typed in.
 
-Then three bands by distance. **Room**: each indoor sensor of yours with its reading and a 24-hour trace; how it feels.
-**Street**: your outdoor sensors, the nearest public ones with their distance, the wind as an arrow; the day's strip,
-inside as bars, outside as a line, the model dashed, the WHO line drawn in. **World**: the sea and what the swell means,
-the model and its gap to your street, the land within a kilometre as a built/green bar, the weather.
+The room's number is a sentence: "Falling to 9 micrograms — under the street, under the model, under the line", each
+clause computed against the outside reading, the satellite model and the WHO guideline, with the verb from the last
+three hours. Beside it, why, and what to do. Four headline tiles with a day's sparkline: the street (your kit outside,
+or the nearest public sensors), the model and its gap to your street, how it feels indoors, the wind. Then the day: an
+annotated 24-hour chart with the WHO line, the indoor peak named ("someone cooked" if the room beat the street), the
+street's peak, and now. Then every sensor with a story generated from its readings. Then what the node said, with the
+ρ ring and **I did this** on every unanswered act-level alert. Then the world: the sea, the land, the weather, the gap.
 
-Below: what the node said, with **I acted** on every unanswered act-level alert (that button is how ρ is measured), the
-Index cells as a honeycomb, and the node's vitals.
+## Network
 
-"Outside" is your own outdoor sensors if you have any, else the three nearest public references. The same order the rules
-use.
+The house as one node of a larger instrument: this room, the neighbourhood, the planetary models, the parent (or "not
+linked yet"), the Index cells as rings, the agent's model ladder. Flows animate along real links only. Below, what
+leaves the house and the machine in the corner.
+
+## Wall
+
+`?kiosk=1`, or the Wall button: the sentence and the three numbers, for a shelf or a tablet, refreshing every thirty
+seconds.
 
 ## Set up
 
@@ -33,11 +40,6 @@ same key in `.env`, and the page says so next to it; `planetai telegram` writes 
 
 Settings live in a `settings` table that overlays `.env`; the code reads them at the moment of use. Ports, the database
 and the extra containers stay in `.env` because they are read once at start.
-
-## On a shelf
-
-`http://<node>:8080/?kiosk=1`: the hexagons and the sentence, nothing else, refreshing every thirty seconds. A 7-inch
-screen or an old tablet.
 
 ## Access
 

@@ -5,405 +5,496 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PLANETAI node</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&family=Funnel+Sans:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;1,500&family=Funnel+Sans:wght@500;700;800&display=swap">
 <style>
-/* Fab City design system. Paper and ink; three flat hues used one at a time; the hexagon as the only geometry;
-   Funnel Sans for the few big words and every number, Figtree for the rest.
-   The page is a zoom: room, street, world — three offset hexagons, then three bands descending by distance. */
+/* PLANETAI node dashboard, v0.24. Design: PLANETAI_Node_v5 on the Fab City design system (warm dark field, Figtree body,
+   Funnel Sans numerals and headings, the three brand hues as accents, the hexagon as the only mark). Every sentence on this
+   page is computed from the node's API; nothing is typed in. One file, no build step. */
 :root{
-  --paper:#F9F5F2;--paper2:#EFEAE4;--ink:#171717;--ink2:#232323;--n600:#6B6660;--n500:#8F8983;--n400:#B4AEA6;--n300:#D3CEC7;--line:#E4E2DD;
-  --red:#E62038;--blue:#20388D;--green:#00A057;--orange:#FF931E;
-  --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;--ease:cubic-bezier(.2,.6,.2,1);
+  --bg:#16150F;--ink:#F4ECE2;--ink2:#C7BFB2;--mute:#A39B8D;--dim:#8A8378;
+  --card:rgba(244,236,226,.05);--card2:rgba(244,236,226,.08);--line:rgba(244,236,226,.09);--line2:rgba(244,236,226,.22);
+  --red:#E62038;--blue:#20388D;--green:#00A057;--webgreen:#7AC943;--webblue:#3FA9F5;--orange:#E8873A;
+  --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;
+  --hue:#7AC943;
 }
-@media(prefers-color-scheme:dark){:root{--paper:#171717;--paper2:#222220;--ink:#F9F5F2;--ink2:#EFEAE4;--n600:#B4AEA6;--n500:#8F8983;--n400:#6B6660;--n300:#4A4641;--line:#2E2B27}}
-*{box-sizing:border-box}html{background:var(--paper)}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--fb);-webkit-font-smoothing:antialiased}
-a{color:var(--blue)}button{font:inherit;cursor:pointer;color:inherit}
-h1,h2,h3,.num{font-family:var(--fd);letter-spacing:-.02em;margin:0;line-height:1}
-.muted{color:var(--n600)}
-:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(32,56,141,.35);border-radius:8px}
-.wrap{max-width:1280px;margin:0 auto;padding:0 32px}
-@media(max-width:600px){.wrap{padding:0 18px}}
-
-/* ---------- header: quiet ---------- */
-header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px 0}
-.brand{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit}
-.mark{width:26px;height:30px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--ink);flex:none}
-.brand b{font:800 17px/1 var(--fd);letter-spacing:-.02em;display:block}
-.brand span{display:block;font-size:13px;color:var(--n600);margin-top:4px}
-nav{display:flex;gap:2px;border:1px solid var(--line);border-radius:8px;padding:2px}
-nav button{background:none;border:0;padding:7px 14px;font-size:14px;font-weight:500;color:var(--n600);border-radius:6px;transition:background 120ms var(--ease),color 120ms var(--ease)}
-nav button.on{background:var(--ink);color:var(--paper)}
-.pulse{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--n600)}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--green);position:relative}
-.dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1.5px solid var(--green);opacity:0;animation:ring 3s var(--ease) infinite}
-.dot.bad{background:var(--red)}.dot.bad::after{border-color:var(--red)}.dot.warn{background:var(--orange)}.dot.warn::after{display:none}
-@keyframes ring{0%{transform:scale(.6);opacity:.8}70%,100%{transform:scale(1.6);opacity:0}}
-section{display:none}section.on{display:block}
-
-/* ---------- the zoom: three hexagons, room → street → world ---------- */
-.zoom{display:grid;gap:32px;align-items:center;padding:16px 0 24px}
-@media(min-width:980px){.zoom{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px}}
-.stack{position:relative;width:100%;max-width:560px;margin:0 auto}
-.stack svg{width:100%;height:auto;display:block;overflow:hidden}
-.hx{transform-origin:center;opacity:0;animation:arrive 700ms var(--ease) forwards}
-.hx.world{animation-delay:0ms}.hx.street{animation-delay:160ms}.hx.room{animation-delay:320ms}
-@keyframes arrive{from{opacity:0;transform:translate(10px,10px)}to{opacity:1;transform:none}}
-.room-fill{fill:var(--paper2);transition:fill 600ms var(--ease)}.room-fill.good{fill:var(--green)}.room-fill.mid{fill:var(--orange)}.room-fill.bad{fill:var(--red)}
-.street-line{fill:var(--paper);stroke:var(--ink);stroke-width:2}
-.world-line{fill:url(#iso);stroke:var(--n500);stroke-width:1.5}
-.big{font:800 96px/1 var(--fd);letter-spacing:-.05em;fill:var(--paper);text-anchor:middle}.big.plain{fill:var(--ink)}
-.lbl{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;text-anchor:middle;fill:var(--paper);opacity:.85}.lbl.plain{fill:var(--n600)}
-.unit{font:500 12px var(--fb);letter-spacing:.06em;text-anchor:middle;fill:var(--paper);opacity:.85}.unit.plain{fill:var(--n600)}
-.mid-n{font:800 36px/1 var(--fd);letter-spacing:-.04em;fill:var(--ink);text-anchor:end}
-.mid-l{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--n600);text-anchor:end;transform:translateX(-50px)}
-.far-n{font:800 24px/1 var(--fd);letter-spacing:-.03em;fill:var(--blue);text-anchor:end}
-.far-l{font:500 10px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--blue);text-anchor:end;opacity:.9;transform:translateX(-36px)}
-.verdict h1{font-size:clamp(2.1rem,3.6vw,3.4rem);font-weight:800;line-height:1.02;letter-spacing:-.03em;max-width:18ch}
-.verdict p{margin:18px 0 0;font-size:17px;line-height:1.5;color:var(--ink2);max-width:42ch}
-.verdict .fine{margin-top:22px;font-size:13px;color:var(--n600)}
-.verdict .fine b{color:var(--ink);font-weight:600}
-
-/* ---------- bands: room, street, world ---------- */
-.band{display:grid;gap:22px;padding:40px 0;border-top:1px solid var(--line)}
-@media(min-width:900px){.band{grid-template-columns:200px 1fr;gap:40px}}
-.band > h2{font-size:1.5rem;font-weight:800;letter-spacing:-.025em}
-.band > h2 small{display:block;font:400 14px/1.45 var(--fb);color:var(--n600);letter-spacing:0;margin-top:8px;max-width:22ch}
-.chips{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.chip{position:relative;padding:14px 14px 12px;border:1px solid var(--line);border-radius:12px;background:var(--paper);min-height:132px;display:flex;flex-direction:column;justify-content:space-between}
-.chip .hexlet{position:absolute;right:10px;top:10px;width:14px;height:16px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
-.chip .hexlet.in{background:var(--blue)}.chip .hexlet.out{background:var(--green)}.chip .hexlet.ref{background:var(--n300)}.chip .hexlet.model{background:transparent;box-shadow:inset 0 0 0 2px var(--blue)}
-.chip .name{font-size:13px;font-weight:600;line-height:1.3;padding-right:20px}
-.chip .sub{font-size:12px;color:var(--n600);margin-top:2px}
-.chip .num{font-size:34px;font-weight:800;letter-spacing:-.04em;margin-top:8px}
-.chip .num small{font:500 12px var(--fb);letter-spacing:0;color:var(--n600);margin-left:3px}
-.chip .num.good{color:var(--green)}.chip .num.mid{color:var(--orange)}.chip .num.bad{color:var(--red)}
-.chip svg.tr{display:block;width:100%;height:26px;margin-top:6px}
-.chip.wide{grid-column:span 2}
-.chip .row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.arrow{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:6px;transition:transform 600ms var(--ease)}
-.bar2{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-top:12px;background:var(--paper2)}
-.bar2 i{display:block;height:100%}
-.chip .k{font-size:12px;color:var(--n600);margin-top:6px}
-.strip{margin-top:4px}
-.strip .head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--n600)}
-.legend{display:flex;gap:16px}.legend i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
-.strip svg{width:100%;height:120px;display:block;margin-top:10px}
-.strip .note{font-size:13px;color:var(--n600);margin-top:8px}
-.empty{padding:20px;border:1px dashed var(--n300);border-radius:12px;color:var(--n600);font-size:14px}
-.empty a{font-weight:500}
-
-/* ---------- said / index / node ---------- */
-.lower{display:grid;gap:48px;padding:40px 0 64px;border-top:1px solid var(--line)}
-@media(min-width:960px){.lower{grid-template-columns:1.2fr .8fr}}
-.panel h3{font-size:1.25rem;font-weight:800;letter-spacing:-.02em;display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1px solid var(--line)}
-.panel h3 span{font:400 13px var(--fb);color:var(--n600)}
-.alerts{list-style:none;margin:0;padding:0}
-.alerts li{display:grid;grid-template-columns:14px 1fr auto;gap:16px;padding:16px 0;border-bottom:1px solid var(--line);align-items:start}
-.alerts li:last-child{border-bottom:0}
-.lvl{width:10px;height:11px;margin-top:5px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
-.lvl.act{background:var(--red)}.lvl.warn{background:var(--orange)}.lvl.info{background:var(--blue)}
-.alerts .t{font-size:15px;line-height:1.45}.alerts .w{font-size:13px;color:var(--n600);margin-top:4px}
-.btn{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);padding:8px 14px;font-weight:600;font-size:14px;border-radius:8px;transition:background 120ms var(--ease)}
-.btn:hover{background:var(--ink2)}.btn.ghost{background:transparent;color:var(--ink)}.btn.ghost:hover{background:var(--paper2)}.btn.small{padding:6px 11px;font-size:13px}
-.done{font-size:13px;color:var(--green);font-weight:500;white-space:nowrap;margin-top:6px}
-.honey{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:16px 0}
-.cell{width:62px;height:71px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);display:grid;place-items:center;text-align:center;line-height:1.15;padding:6px;color:var(--paper)}
-.cell b{font:800 17px var(--fd);letter-spacing:-.03em;display:block}.cell small{font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.9}
-.cell.live{background:var(--green)}.cell.partial{background:var(--blue)}.cell.mock{background:var(--n400)}
-.cell.none{background:transparent;color:var(--n400);box-shadow:inset 0 0 0 2px var(--line)}
-.honey .k{font-size:13px;color:var(--n600);margin-left:10px;line-height:1.45}
-table{width:100%;border-collapse:collapse;font-size:14px}
-td,th{padding:11px 0;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{font-weight:500;color:var(--n600);font-size:13px}td+td,th+th{padding-left:16px}tr:last-child td{border-bottom:0}
-.tag{display:inline-block;font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:var(--paper2);color:var(--n600)}
-.tag.in{background:var(--blue);color:#fff}.tag.out{background:var(--green);color:#fff}
-.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,8px);background:var(--ink);color:var(--paper);padding:11px 18px;font-size:14px;border-radius:8px;opacity:0;transition:opacity 200ms var(--ease),transform 200ms var(--ease);pointer-events:none;z-index:9}
+*{box-sizing:border-box}html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--fb);-webkit-font-smoothing:antialiased;min-height:100vh;position:relative;overflow-x:hidden}
+a{color:var(--webgreen);text-decoration:none}a:hover{color:var(--orange)}
+h1,h2,h3,h4,p{margin:0}button{font:inherit;color:inherit;cursor:pointer}
+.eyebrow{font:600 10.5px var(--fb);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
+.num{font-family:var(--fd);font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
+.hex{display:inline-block;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+@keyframes v5in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes v5drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(3%,-2%) scale(1.06)}100%{transform:translate(0,0) scale(1)}}
+@keyframes v5halo{0%{transform:scale(.6);opacity:.5}100%{transform:scale(1.9);opacity:0}}
+@keyframes v5flow{to{stroke-dashoffset:-240}}
+.in{animation:v5in .7s cubic-bezier(.2,.6,.2,1) both}
+/* atmosphere: grain and two slow glows, behind everything */
+.grain{position:fixed;inset:0;pointer-events:none;z-index:4;mix-blend-mode:overlay;opacity:.5}
+.glow{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px);animation:v5drift 30s ease-in-out infinite}
+.glow.a{left:-16%;top:-24%;width:70vw;height:70vw;max-width:900px;max-height:900px;background:radial-gradient(circle,rgba(32,56,141,.35),transparent 60%)}
+.glow.b{right:-18%;bottom:-26%;width:60vw;height:60vw;max-width:760px;max-height:760px;background:radial-gradient(circle,color-mix(in srgb,var(--hue) 40%,transparent),transparent 60%);animation-duration:38s;animation-direction:reverse}
+.wrap{max-width:1280px;margin:0 auto;padding:0 clamp(18px,3.5vw,48px)}
+/* header */
+header{position:relative;z-index:2}
+header .wrap{padding-top:20px;padding-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{position:relative;width:22px;height:25px;flex:none}
+.mark .o{position:absolute;inset:0;background:var(--ink)}.mark .i{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--hue)}
+.brand b{font:800 17px var(--fd);letter-spacing:-.02em}.brand span.s{font-size:13px;color:var(--mute);white-space:nowrap}
+nav.views{display:flex;gap:5px;background:rgba(244,236,226,.07);border-radius:999px;padding:4px}
+nav.views button{background:transparent;border:0;border-radius:999px;padding:8px 18px;font:500 14px var(--fb);color:var(--mute);transition:background .2s,color .2s}
+nav.views button.on{background:var(--ink);color:var(--bg);font-weight:600}nav.views button:hover:not(.on){opacity:.75}
+.link{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mute)}
+.link i{width:7px;height:7px;border-radius:50%;background:var(--webblue);display:block;position:relative}
+.link i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--webblue);animation:v5halo 3s ease-out infinite}
+.link i.bad{background:var(--red)}.link i.bad::after{border-color:var(--red)}
+main{position:relative;z-index:1}main .wrap{padding-bottom:clamp(50px,6vw,90px)}
+section.view{display:none}section.view.on{display:block}
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:clamp(20px,2.4vw,30px);min-width:0;transition:transform .35s cubic-bezier(.2,.6,.2,1),border-color .35s}
+.card.lift:hover{transform:translateY(-3px);border-color:var(--line2)}
+.r1{border-radius:30px}.r2{border-radius:30px 30px 30px 12px}.r3{border-radius:30px 12px 30px 30px}.r4{border-radius:12px 30px 30px 30px}
+.grid{display:grid;gap:clamp(12px,1.6vw,20px)}
+.g250{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.g260{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.g300{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.mt{margin-top:clamp(14px,2vw,22px)}
+h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-height:1.1}
+.sub{font-size:13.5px;color:var(--mute);max-width:44ch;line-height:1.6}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;flex-wrap:wrap;margin-bottom:18px}
+/* hero */
+.hero{grid-column:span 2;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:28px;min-height:340px}
+@media(max-width:620px){.hero{grid-column:span 1}}
+.hero .iso{position:absolute;inset:0;pointer-events:none;opacity:.5;-webkit-mask-image:radial-gradient(circle at 80% 30%,#000,transparent 70%);mask-image:radial-gradient(circle at 80% 30%,#000,transparent 70%);background-image:linear-gradient(60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(-60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(0deg,rgba(244,236,226,.06) 1px,transparent 1px);background-size:22px 38px}
+.hero .bighex{position:absolute;right:-8%;top:-30%;width:min(60%,420px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 22%,transparent);pointer-events:none;transition:background .8s}
+.hero .bighex2{position:absolute;right:6%;top:-14%;width:min(42%,300px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);border:0;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(244,236,226,.25);pointer-events:none}
+.hero .tri{position:absolute;left:0;right:0;bottom:0;height:3px;display:flex}.hero .tri span{flex:1;display:block}
+.hero .body{position:relative}
+.hero p.big{font:500 clamp(1.35rem,2.5vw,2.1rem)/1.32 var(--fd);letter-spacing:-.02em;margin-top:14px;max-width:26ch}
+.hero p.big b{font-weight:800;font-size:clamp(3.2rem,7.5vw,6rem);line-height:.72;letter-spacing:-.05em;color:var(--hue);vertical-align:-.06em;margin:0 .06em;transition:color .8s}
+.hero p.why{margin-top:20px;font-size:15.5px;line-height:1.65;color:var(--ink2);max-width:52ch}
+.chips{display:flex;gap:9px;flex-wrap:wrap;position:relative}
+.chip{background:var(--card2);border-radius:999px;padding:7px 14px;font:500 12.5px var(--fb);color:var(--ink2)}
+/* headline tiles */
+.tile{display:flex;flex-direction:column;justify-content:space-between;gap:18px}
+.tile .v{margin-top:14px}.tile .v .num{font-size:clamp(30px,3.4vw,42px)}.tile .v small{font-size:12.5px;color:var(--mute);margin-left:6px}
+.tile svg{width:100%;height:36px;display:block;margin-bottom:10px}
+.tile .note{font-size:12.5px;color:var(--mute);line-height:1.5}
+/* the day */
+.day svg{width:100%;height:auto;display:block}
+/* sensors */
+.sensor{display:flex;gap:14px;align-items:flex-start;padding:clamp(16px,2vw,22px)}
+.sensor .hex{width:10px;height:11.5px;margin-top:6px;flex:none}
+.sensor .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.sensor .row .n{font:600 14.5px var(--fb)}.sensor .row .num{font-size:26px}.sensor .row small{font-size:11.5px;color:var(--mute);margin-left:4px}
+.sensor .story{font-size:12.5px;color:var(--mute);line-height:1.55;margin-top:6px}
+.sensor svg{width:100%;height:26px;display:block;margin-top:10px}
+/* alerts + rho */
+.rho{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.rho svg{width:96px;height:96px;flex:none}
+.rho .num{font-size:clamp(2.2rem,3.6vw,3rem);line-height:.9}
+.rho .k{font-size:13px;color:var(--mute);line-height:1.5;max-width:24ch;margin-top:8px}
+.alert{display:grid;grid-template-columns:12px 58px 1fr;gap:14px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
+.alert .hex{width:10px;height:11.5px;margin-top:5px}
+.alert .stamp{font:600 12.5px var(--fb);color:var(--mute);padding-top:2px;font-variant-numeric:tabular-nums}
+.alert .t{font-size:14.5px;line-height:1.55}.alert .meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--dim)}
+.btn{background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:6px 14px;font:600 12.5px var(--fb);transition:background .2s}
+.btn:hover{background:var(--hue)}.btn.big{padding:11px 20px;font-size:14px}.btn.ghost{background:none;border:1px solid rgba(244,236,226,.28);color:var(--ink)}.btn.ghost:hover{border-color:var(--ink);background:none}
+.btn.hue{background:var(--hue);color:var(--bg)}.btn.hue:hover{background:var(--ink)}
+.done{font:italic 600 12.5px var(--fb);color:var(--hue)}
+/* world */
+.world .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.world .row .num{font-size:clamp(24px,2.6vw,32px)}.world .row small{font-size:12px;color:var(--mute);margin-left:5px}
+.world .story{font-size:13.5px;line-height:1.6;color:var(--ink2);margin-top:9px}
+/* network */
+.net svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--mute)}.legend span{display:flex;align-items:center;gap:9px}.legend i{width:24px;height:0;border-top:2px dashed;display:block}
+.cellrow{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0}
+.cell{text-align:center}.cell .ring{position:relative;width:70px;height:70px}.cell .ring span{position:absolute;inset:0;display:grid;place-items:center;font:800 17px var(--fd);letter-spacing:-.03em}
+.cell .l{font:600 10px var(--fb);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-top:8px}
+.vit{display:grid;grid-template-columns:minmax(100px,.55fr) 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}
+.vit span:first-child{color:var(--dim)}.vit span:last-child{font-variant-numeric:tabular-nums;color:var(--ink2)}
+/* setup */
+.setup{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:clamp(20px,3vw,44px);margin-top:26px}
+@media(max-width:760px){.setup{grid-template-columns:1fr}}
+.tabs{display:flex;flex-direction:column;gap:4px;position:sticky;top:20px;align-self:start}
+.tabs button{text-align:left;background:transparent;border:0;border-radius:12px;padding:10px 14px;font:500 14.5px var(--fb);color:var(--mute);transition:background .2s}
+.tabs button:hover{background:rgba(244,236,226,.08)}.tabs button.on{background:rgba(244,236,226,.12);color:var(--ink);font-weight:600}
+.tabs .acts{display:flex;flex-direction:column;gap:10px;margin-top:20px;padding-top:20px;border-top:1px solid var(--line)}
+h3.g{font:800 1.45rem var(--fd);letter-spacing:-.02em}
+.field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:18px;align-items:start;padding:18px 0;border-top:1px solid var(--line)}
+@media(max-width:620px){.field{grid-template-columns:1fr}}
+.field label{font:600 15px var(--fb)}.field .src{font:600 9.5px var(--fb);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-left:10px}.field .src.gui{color:var(--webgreen)}
+.field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:48ch;line-height:1.55}
+.field input,.field select{width:100%;background:rgba(244,236,226,.07);border:1px solid rgba(244,236,226,.14);border-radius:12px;padding:11px 14px;color:var(--ink);font:500 14.5px var(--fb)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--webgreen)}.field input[readonly]{opacity:.7}
+.switch{display:flex;align-items:center;gap:12px;background:none;border:0;padding:6px 0}
+.switch .tr{width:44px;height:26px;border-radius:999px;position:relative;background:rgba(244,236,226,.2);transition:background .2s;flex:none}
+.switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink);transition:transform .2s}
+.switch.on .tr{background:var(--webgreen)}.switch.on .tr::after{transform:translateX(18px)}
+.switch .st{font:600 13px var(--fb);color:var(--mute)}.switch.on .st{color:var(--webgreen)}
+.savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:22px;position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.gate{max-width:520px;margin-top:26px}.gate p{color:var(--mute);margin:8px 0 16px;font-size:15px}
+.gate input{width:100%;background:rgba(244,236,226,.07);border:1px solid rgba(244,236,226,.14);border-radius:12px;padding:11px 14px;color:var(--ink);font:500 14.5px var(--fb)}
+.pack{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:16px 0;border-top:1px solid var(--line);align-items:start}
+.pack b{font:700 15px var(--fb)}.pack p{font-size:13px;color:var(--mute);margin-top:3px}
+.tag{display:inline-block;font:600 10px var(--fb);letter-spacing:.12em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--card2);color:var(--mute);margin-left:8px}
+.tag.warn{background:var(--red);color:var(--ink)}
+/* wall */
+.wall{min-height:calc(100vh - 130px);display:flex;flex-direction:column;justify-content:center;position:relative;padding:40px 0}
+.wall .halo{position:absolute;left:clamp(40px,12vw,220px);top:22%;width:min(46vw,520px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 18%,transparent);pointer-events:none;z-index:0}
+.wall .halo2{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(244,236,226,.22);transform:translate(9%,9%)}
+.wall > *{position:relative;z-index:1}
+.wall .eye{font:600 11px var(--fb);letter-spacing:.26em;text-transform:uppercase;color:var(--mute)}
+.wall p.big{font:500 clamp(1.6rem,3.4vw,3rem)/1.28 var(--fd);letter-spacing:-.02em;margin-top:18px;max-width:22ch}
+.wall p.big b{font-weight:800;font-size:clamp(5rem,15vw,13rem);line-height:.8;letter-spacing:-.06em;color:var(--hue);vertical-align:-.1em;margin:0 .05em}
+.wall p.why{margin-top:clamp(18px,3vw,30px);font-size:clamp(17px,1.8vw,22px);line-height:1.55;color:var(--ink2);max-width:52ch}
+.wall .stats{display:flex;gap:clamp(24px,5vw,64px);flex-wrap:wrap;margin-top:clamp(28px,4vw,48px);align-items:flex-end}
+.wall .stats .eyebrow{letter-spacing:.22em}.wall .stats .num{font-size:clamp(34px,4vw,52px);margin-top:8px}
+.wall .foot{margin-left:auto;align-self:flex-end;font-size:13px;color:var(--dim)}
+body.kiosk header,body.kiosk footer{display:none}
+footer{position:relative;z-index:1}footer .wrap{padding:0 clamp(18px,3.5vw,48px) 34px}
+footer .row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+footer .fc{display:flex;align-items:center;gap:12px;color:var(--ink)}footer .fc b{font:800 15px var(--fd);letter-spacing:-.01em}
+footer .fc .hex{width:8px;height:9px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,8px);background:var(--ink);color:var(--bg);padding:11px 18px;font:500 14px var(--fb);border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
 .toast.on{opacity:1;transform:translate(-50%,0)}
-/* ---------- setup: unchanged system ---------- */
-.setup{display:grid;gap:40px;margin-top:24px}@media(min-width:900px){.setup{grid-template-columns:220px 1fr}}
-.tabs{display:flex;flex-direction:column;gap:2px}
-.tabs button{text-align:left;background:none;border:0;padding:10px 14px;font-size:15px;color:var(--n600);border-radius:8px;transition:background 120ms var(--ease)}
-.tabs button:hover{background:var(--paper2)}.tabs button.on{color:var(--ink);background:var(--paper2);font-weight:600}
-.tabs hr{border:0;border-top:1px solid var(--line);margin:10px 0}
-.paneinfo{margin:6px 0 26px;font-size:15px;color:var(--n600);max-width:52ch}.paneinfo b{color:var(--ink);display:block;font:800 1.35rem var(--fd);letter-spacing:-.02em;margin-bottom:6px}
-.form{display:grid;gap:22px;max-width:640px}
-.field label{display:block;font-weight:600;font-size:15px}
-.field .src{font-size:12px;font-weight:500;color:var(--n600);margin-left:8px}
-.field input[type=text],.field input[type=password],.field select{display:block;width:100%;margin-top:7px;font:inherit;font-size:15px;padding:10px 13px;border:1px solid var(--n300);border-radius:8px;background:var(--paper);color:var(--ink);transition:border-color 120ms}
-.field input:focus,.field select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(32,56,141,.2);outline:none}
-.field .help{font-size:13px;color:var(--n600);margin-top:6px}
-.switch{display:flex;align-items:center;gap:14px;cursor:pointer}
-.switch input{position:absolute;opacity:0;width:0;height:0}
-.switch .tr{width:40px;height:24px;border-radius:999px;background:var(--n300);position:relative;transition:background 160ms var(--ease);flex:none}
-.switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--paper);transition:transform 160ms var(--ease)}
-.switch input:checked+.tr{background:var(--green)}.switch input:checked+.tr::after{transform:translateX(16px)}
-.switch input:focus-visible+.tr{box-shadow:0 0 0 3px rgba(32,56,141,.35)}
-.bar{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:16px 0;border-top:1px solid var(--line);margin-top:8px;position:sticky;bottom:0;background:var(--paper)}
-.note{font-size:13px;color:var(--n600)}
-.gate{margin-top:32px;max-width:520px;padding:28px;border:1px solid var(--line);border-radius:14px;position:relative}
-.gate::before{content:"";position:absolute;right:-14px;top:-14px;width:72px;height:82px;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:var(--paper2);z-index:-1}
-.gate h3{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
-.gate p{color:var(--n600);margin:8px 0 16px;font-size:15px}
-.gate input{width:100%;font:inherit;font-size:15px;padding:10px 13px;border:1px solid var(--n300);border-radius:8px;background:var(--paper);color:var(--ink)}
-.packs{display:grid;gap:10px}
-.pack{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:16px 18px;border:1px solid var(--line);border-radius:12px;align-items:start}
-.pack b{font:700 16px var(--fd);letter-spacing:-.01em}.pack p{margin:4px 0 0;font-size:14px;color:var(--n600)}
-.pack .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.tag.code{background:var(--paper2);color:var(--ink)}.tag.warn{background:var(--red);color:#fff}
-
-/* ---------- kiosk ---------- */
-body.kiosk header,body.kiosk .band,body.kiosk .lower{display:none}
-body.kiosk .wrap{max-width:none;padding:24px}
-body.kiosk .zoom{min-height:100vh;align-content:center;gap:40px}
-body.kiosk .stack{max-width:min(72vh,620px)}
-body.kiosk .verdict h1{font-size:clamp(2.4rem,5vw,4rem)}
-.kfoot{display:none;justify-content:space-between;font-size:13px;color:var(--n600);padding-top:16px}
-body.kiosk .kfoot{display:flex}
-@media(prefers-reduced-motion:reduce){.hx{animation:none;opacity:1}.dot::after{display:none}*{transition:none!important}}
+.empty{font-size:13.5px;color:var(--mute);padding:8px 0}
+:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(122,201,67,.45);border-radius:8px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
-<div class="wrap">
-<header>
-  <a class="brand" href="/"><span class="mark"></span><span><b id="nodename">PLANETAI node</b><span id="nodeplace">starting…</span></span></a>
-  <nav><button class="on" data-view="display">Now</button><button data-view="setup">Set up</button></nav>
-  <span class="pulse"><span class="dot" id="dot"></span><span id="pulsetxt"></span></span>
-</header>
+<div class="grain" aria-hidden="true"><svg width="100%" height="100%" preserveAspectRatio="none"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#grain)" opacity=".2"/></svg></div>
+<div class="glow a" aria-hidden="true"></div><div class="glow b" aria-hidden="true"></div>
 
-<main>
-<!-- ================================================================ now: the zoom -->
-<section id="display" class="on">
-  <div class="zoom">
-    <div class="stack">
-      <svg viewBox="-24 -24 344 376" role="img" aria-labelledby="zl"><title id="zl">Inside, outside and the world: PM2.5 at three distances</title>
-        <defs>
-          <!-- the isometric mesh, as the system uses it: a texture clipped inside one hexagon, never a wallpaper -->
-          <pattern id="iso" width="14" height="24.25" patternUnits="userSpaceOnUse">
-            <path d="M7 0 L7 24.25 M0 6.06 L7 12.12 L14 6.06 M0 18.19 L7 12.12 L14 18.19" fill="none" stroke="var(--n400)" stroke-width=".6" opacity=".7" shape-rendering="crispEdges"/>
-          </pattern>
-        </defs>
-        <!-- three pointy-top hexagons of the same size, each offset (48,48) behind the one in front. The exposed band
-             between two of them is widest at the bottom vertices, so the readings sit there, right-aligned, horizontal. -->
-        <g class="hx world"><polygon class="world-line" points="196,96 296,153.7 296,269.2 196,326.9 96,269.2 96,153.7"/>
-          <text class="far-l" x="248" y="290">model</text><text class="far-n" id="farnum" x="248" y="290">–</text></g>
-        <g class="hx street"><polygon class="street-line" points="148,48 248,105.7 248,221.2 148,278.9 48,221.2 48,105.7"/>
-          <text class="mid-l" x="198" y="237">outside</text><text class="mid-n" id="midnum" x="198" y="237">–</text></g>
-        <g class="hx room"><polygon class="room-fill" id="roomfill" points="100,0 200,57.7 200,173.2 100,230.9 0,173.2 0,57.7"/>
-          <text class="lbl" id="inlbl" x="100" y="78">inside</text><text class="big" id="innum" x="100" y="152">–</text><text class="unit" id="inunit" x="100" y="184">µg/m³ · PM2.5</text></g>
-      </svg>
-    </div>
-    <div class="verdict">
-      <h1 id="verdict">Reading the room.</h1>
-      <p id="verdict-p">Waiting for the first poll.</p>
-      <div class="fine" id="verdict-u"></div>
-    </div>
-  </div>
-  <div class="kfoot"><span id="k-name"></span><span id="k-time"></span></div>
+<header><div class="wrap">
+  <div class="brand"><span class="mark"><span class="hex o"></span><span class="i"></span></span><b id="nodename">node</b><span class="s" id="nodeplace">starting…</span></div>
+  <nav class="views" id="views"><button class="on" data-view="now">Now</button><button data-view="network">Network</button><button data-view="setup">Set up</button><button data-view="wall">Wall</button></nav>
+  <div class="link"><i id="dot"></i><span id="pulsetxt">starting</span></div>
+</div></header>
 
-  <!-- room -->
-  <div class="band" id="band-room">
-    <h2>Room<small id="room-sub">Your indoor sensors.</small></h2>
-    <div class="chips" id="room"></div>
+<main><div class="wrap">
+
+<!-- ============================================================ NOW -->
+<section class="view on" id="now">
+  <div class="grid g250" style="padding-top:clamp(14px,2vw,26px)">
+    <div class="card hero r1 in">
+      <div class="iso" aria-hidden="true"></div><div class="bighex" aria-hidden="true"></div><div class="bighex2" aria-hidden="true"></div>
+      <div class="tri" aria-hidden="true"><span style="background:var(--red)"></span><span style="background:var(--blue)"></span><span style="background:var(--green)"></span></div>
+      <div class="body">
+        <div class="eyebrow" id="hero-eye">The room, right now</div>
+        <p class="big" id="hero-line">Reading the room<b>–</b></p>
+        <p class="why" id="hero-why">Waiting for the first poll.</p>
+      </div>
+      <div class="chips" id="hero-chips"></div>
+    </div>
+    <div id="tiles" style="display:contents"></div>
   </div>
-  <!-- street -->
-  <div class="band" id="band-street">
-    <h2>Street<small id="street-sub">Your outdoor sensors, the nearest public ones, and the wind.</small></h2>
-    <div>
-      <div class="chips" id="street"></div>
-      <div class="strip" style="margin-top:22px">
-        <div class="head"><span id="strip-title">The last 24 hours</span><div class="legend"><span><i style="background:var(--ink)"></i>inside</span><span><i style="background:var(--green)"></i>outside</span><span><i style="background:var(--blue)"></i>model</span></div></div>
-        <svg id="strip" viewBox="0 0 960 120" preserveAspectRatio="none" aria-label="hourly PM2.5, inside, outside and model"></svg>
-        <div class="note" id="strip-note"></div>
+
+  <section class="card day r1 mt in" style="animation-delay:.2s">
+    <div class="head"><h2 class="t">The day it just had.</h2><div class="sub" id="day-sub">Twenty-four hours of hourly means, with what happened when the line moved.</div></div>
+    <svg id="day" viewBox="0 0 1200 420" role="img" aria-label="PM2.5 inside and outside over 24 hours, annotated"></svg>
+  </section>
+
+  <section class="grid g260 mt">
+    <div class="head" style="grid-column:1/-1;margin-bottom:0"><h2 class="t">Everything this house is listening to.</h2><div class="sub" id="sens-sub"></div></div>
+    <div id="sensors" style="display:contents"></div>
+  </section>
+
+  <section class="grid g300 mt">
+    <div class="card r2 in" style="animation-delay:.1s">
+      <div class="eyebrow">What the node said, and what you did</div>
+      <div class="rho" style="margin-top:18px">
+        <svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--webblue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg>
+        <div><div class="num" id="rho-num">–</div><div class="k" id="rho-k">ρ — the only number here that comes from a person.</div></div>
+      </div>
+      <div id="alerts" style="margin-top:20px"></div>
+    </div>
+    <div class="grid" style="align-content:start" id="world"></div>
+  </section>
+</section>
+
+<!-- ============================================================ NETWORK -->
+<section class="view" id="network">
+  <div class="card net r1 mt" style="position:relative;overflow:hidden">
+    <div class="iso" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:.45;-webkit-mask-image:radial-gradient(circle at 50% 50%,#000,transparent 75%);mask-image:radial-gradient(circle at 50% 50%,#000,transparent 75%);background-image:linear-gradient(60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(-60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(0deg,rgba(244,236,226,.06) 1px,transparent 1px);background-size:22px 38px"></div>
+    <div class="head" style="position:relative"><h2 class="t" style="font-size:clamp(1.5rem,2.5vw,2.2rem);max-width:22ch">This house is one node of a much larger instrument.</h2><div class="sub" style="max-width:46ch">Readings stay here. What travels up is hourly means, Index cells and ρ. What comes back down is forecast, model and rules — and, when a question is worth it, help from something far bigger.</div></div>
+    <svg id="netsvg" viewBox="0 0 1200 470" role="img" aria-label="This node's place in the wider network" style="position:relative"></svg>
+    <div class="legend"><span><i style="border-color:var(--webgreen)"></i>what this node measures</span><span><i style="border-color:var(--webblue)"></i>what comes down from the models</span><span><i style="border-color:var(--orange)"></i>what travels upward</span></div>
+  </div>
+  <div class="grid g300 mt">
+    <div class="card r2"><div class="eyebrow">What leaves this house</div><div class="cellrow" id="cells"></div><div class="sub" id="cells-k" style="max-width:38ch"></div></div>
+    <div class="card r3"><div class="eyebrow" style="margin-bottom:10px">The machine in the corner</div><div id="vitals"></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ SETUP -->
+<section class="view" id="setup">
+  <div style="padding-top:clamp(20px,3vw,40px)">
+    <h2 class="t" style="font-size:clamp(1.8rem,3vw,2.5rem)">How this node was told to behave.</h2>
+    <p class="sub" style="font-size:15.5px;margin-top:12px;max-width:56ch">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code style="font-family:ui-monospace,monospace;font-size:13.5px">.env</code>. A value set here overrides the same key in <code style="font-family:ui-monospace,monospace;font-size:13.5px">.env</code>.</p>
+    <div class="gate card r2" id="gate">
+      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:ui-monospace,monospace">planetai ui</code> on the node prints it. Reading is open to anyone on your network; writing is not.</p>
+      <input type="password" id="tok" placeholder="admin token" autocomplete="off">
+      <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap"><button class="btn big" onclick="unlock()">Unlock</button><button class="btn big ghost" onclick="show('now')">Back</button></div>
+    </div>
+    <div class="setup" id="setup-body" style="display:none">
+      <nav class="tabs" id="tabs"></nav>
+      <div>
+        <h3 class="g" id="ptitle"></h3><p class="sub" id="pblurb" style="font-size:15px;margin:8px 0 6px;max-width:56ch"></p>
+        <div id="pane" style="max-width:780px"></div>
+        <div class="savebar" id="savebar"><button class="btn big hue" onclick="save()">Save changes</button><span class="sub" id="savenote">Live within about twenty seconds.</span></div>
       </div>
     </div>
   </div>
-  <!-- world -->
-  <div class="band" id="band-world">
-    <h2>World<small id="world-sub">What satellites and models say about this place.</small></h2>
-    <div class="chips" id="world"></div>
-  </div>
-
-  <div class="lower">
-    <div class="panel"><h3>What the node said <span id="alerts-n"></span></h3><ul class="alerts" id="alerts"></ul></div>
-    <div>
-      <div class="panel"><h3>Index cells <span>this node computes</span></h3><div class="honey" id="honey"></div></div>
-      <div class="panel" style="margin-top:36px"><h3>The node <span id="version"></span></h3><table id="nodeinfo"></table></div>
-    </div>
-  </div>
 </section>
 
-<!-- ================================================================ setup -->
-<section id="setup">
-  <div id="tokenbox" class="gate">
-    <h3>Unlock settings</h3>
-    <p>Changing what the node reads and where it sends alerts needs the admin token. On the node, <code>planetai ui</code> prints it. It stays in this browser.</p>
-    <input id="token" type="password" placeholder="Admin token" autocomplete="off" onkeydown="if(event.key==='Enter')saveToken()">
-    <div style="margin-top:14px"><button class="btn" onclick="saveToken()">Unlock</button></div>
-  </div>
-  <div class="setup" id="setupui" style="display:none">
-    <div class="tabs" id="tabs"></div>
-    <div>
-      <div class="paneinfo" id="paneinfo"></div>
-      <div class="form" id="form"></div>
-      <div class="bar" id="bar"><button class="btn" onclick="save()">Save changes</button><span class="note">Live within about 20 seconds. Leave a field blank to return it to the value in <code>.env</code>.</span></div>
-    </div>
-  </div>
+<!-- ============================================================ WALL -->
+<section class="view wall" id="wall">
+  <div class="halo" aria-hidden="true"></div><div class="halo halo2" aria-hidden="true"></div>
+  <div class="eye">Inside · µg/m³ · PM2.5</div>
+  <p class="big" id="wall-line">The room is holding at <b>–</b> right now.</p>
+  <p class="why" id="wall-why"></p>
+  <div class="stats" id="wall-stats"></div>
 </section>
-</main>
-</div>
+
+</div></main>
+
+<footer><div class="wrap"><div class="row">
+  <div class="fc"><span style="display:flex;gap:3px"><span class="hex" style="background:var(--red)"></span><span class="hex" style="background:var(--blue)"></span><span class="hex" style="background:var(--green)"></span></span><b>FAB.CITY</b></div>
+  <span id="foot-mid">A node of a distributed computer for places · redesigning the relationship between production and place</span>
+  <a href="https://planetai.fab.city/node0/">planetai.fab.city/node0</a>
+</div></div></footer>
 <div class="toast" id="toast"></div>
 <script>
+// ------------------------------------------------------------------ helpers
 const $=s=>document.querySelector(s), api=p=>fetch(p).then(r=>r.ok?r.json():Promise.reject(r.status));
-const kiosk=new URLSearchParams(location.search).get('kiosk')==='1'; if(kiosk)document.body.classList.add('kiosk');
-let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], PLACE='';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=(v,d=0)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
+const mean=a=>{a=(a||[]).filter(x=>x!=null);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;};
 const ago=ts=>{if(!ts)return'';const s=(Date.now()-new Date(ts))/1000;return s<90?'just now':s<5400?Math.round(s/60)+' min ago':s<172800?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago';};
-const mean=a=>{a=a.filter(x=>x!=null);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;};
-const pmClass=v=>v==null?'':v<=15?'good':v<=35?'mid':'bad';   // WHO 2021 24 h guideline 15; 35 is the first interim target
-const heatClass=v=>v==null?'':v<27?'good':v<32?'mid':'bad';
-const apparent=(t,rh)=>t==null||rh==null?null:t+0.33*(rh/100*6.105*Math.exp(17.27*t/(237.7+t)))-4;
+const hhmm=ts=>new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 const compass=d=>d==null?'':['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
-const arrow=(deg,color)=>`<svg class="arrow" viewBox="0 0 12 12" style="transform:rotate(${(deg||0)+180}deg)"><path d="M6 1 L10 9 L6 7 L2 9 Z" fill="${color||'var(--ink)'}"/></svg>`;
-function trace(arr,color){ // a small hourly trace inside a chip
-  const v=arr.filter(x=>x!=null); if(v.length<2)return'';
-  const max=Math.max(...v,1),n=arr.length,W=100,H=26; const pts=arr.map((x,i)=>x==null?null:[i/(n-1)*W,H-2-(x/max)*(H-6)]).filter(Boolean);
-  return`<svg class="tr" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" points="${pts.map(p=>p.join(',')).join(' ')}"/><circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="2.5" fill="${color}"/></svg>`;
-}
-function tween(el,to,d=0){const from=parseFloat(el.textContent);if(isNaN(from)||el.dataset.done){el.textContent=fmt(to,d);el.dataset.done=1;return;}const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/700),e=1-Math.pow(1-k,3);el.textContent=fmt(from+(to-from)*e,d);if(k<1)requestAnimationFrame(f);else el.dataset.done=1;})(t0);}
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
-function show(v){document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));if(v==='setup')loadSetup();}
-function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);}
+const apparent=(t,rh)=>t==null||rh==null?null:t+0.33*(rh/100*6.105*Math.exp(17.27*t/(237.7+t)))-4;
+const HUES={clean:'#7AC943',moderate:'#E8873A',unhealthy:'#E62038'};
+const grade=v=>v==null?null:v<=15?'clean':v<=35?'moderate':'unhealthy';     // WHO 2021: 15 daily guideline, 35 interim target 1
+const RADII=['r1','r2','r3','r4'];
+// smooth path through points (Catmull-Rom → cubic), from the design
+function smooth(pts){if(pts.length<2)return'';let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6],c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6];d+=` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;}return d;}
+const spark=(vals,color,h=36)=>{const v=(vals||[]).filter(x=>x!=null);if(v.length<2)return`<svg viewBox="0 0 240 ${h}" preserveAspectRatio="none"></svg>`;const max=Math.max(...v)*1.05||1,min=Math.min(...v,0);const arr=vals.map(x=>x==null?null:x);let last=null;const pts=arr.map((x,i)=>{if(x!=null)last=x;const y=last==null?h-3:h-3-((last-min)/(max-min||1))*(h-7);return[i/(arr.length-1)*240,y];});const p=smooth(pts);return`<svg viewBox="0 0 240 ${h}" preserveAspectRatio="none"><path d="${p} L240,${h} L0,${h} Z" fill="${color}" opacity=".13"/><path d="${p}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity=".9"/></svg>`;};
+let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], GROUP='sources', LAST=null;
+const kiosk=new URLSearchParams(location.search).get('kiosk')==='1';
+document.querySelectorAll('nav.views button').forEach(b=>b.onclick=()=>show(b.dataset.view));
+function show(v){document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav.views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));document.body.classList.toggle('kiosk',v==='wall');if(v==='setup')loadSetup();if(v==='network'&&LAST)drawNetwork(LAST);}
+function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.style.color=bad?'var(--ink)':'var(--bg)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);}
+const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
+// ------------------------------------------------------------------ the page
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors,ser,sparks]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=10'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({}))]);
-    $('#nodename').textContent=h.node; $('#k-name').textContent=h.node; $('#version').textContent=h.version||'';
-    const errs=Object.keys(h.errors||{}).length; $('#dot').className='dot'+(h.last_error||errs?' warn':''); $('#pulsetxt').textContent=h.last_poll?'polled '+ago(h.last_poll):'starting';
-    const S=m=>stats.filter(r=>r.metric===m), O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
+    const [h,stats,alerts,rho,cells,obs,sensors,ser,sparks,sparkT,sparkH]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({}))]);
+    const O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
+    const S=m=>stats.filter(r=>r.metric===m), fresh=r=>r.silent_minutes<120;
     const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
-    const fresh=r=>r.silent_minutes<120;
-    // ---- the three distances
+    const dist=r=>Math.hypot((r.lat||0)-h.lat,((r.lon||0)-h.lon)*Math.cos(h.lat*Math.PI/180))*111;
+    // the three distances
     const inPM=S('pm25').filter(r=>r.local&&r.indoor&&r.mean_15m!=null&&fresh(r));
     const mine=S('pm25').filter(r=>r.local&&!r.indoor&&r.mean_15m!=null&&fresh(r));
-    const dist=r=>Math.hypot((r.lat||0)-h.lat,((r.lon||0)-h.lon)*Math.cos(h.lat*Math.PI/180));
     const near=S('pm25').filter(r=>!r.local&&!r.indoor&&r.kind==='sensor'&&r.mean_15m!=null&&fresh(r)&&r.lat!=null).sort((a,b)=>dist(a)-dist(b)).slice(0,3);
-    const outPM=mine.length?mine:near, outSrc=mine.length?`${mine.length} outdoor sensor${mine.length===1?'':'s'} of yours`:`the ${near.length} nearest public sensor${near.length===1?'':'s'}`;
-    const iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m)), mv=O('cams-point','pm25_model');
-    $('#roomfill').setAttribute('class','room-fill '+pmClass(iv)); ['#innum','#inlbl','#inunit'].forEach(s=>$(s).classList.toggle('plain',iv==null));
-    if(iv!=null)tween($('#innum'),iv); else $('#innum').textContent='–';
-    $('#midnum').textContent=fmt(ov); $('#farnum').textContent=fmt(mv);
-    let v='',p='';
-    if(iv==null&&ov==null){v='No sensor yet.';p='The node reads the model for your coordinates. Add a sensor under Set up → Sources and the hexagon fills in.';}
-    else if(iv==null){v=ov<=15?'Clean outside.':ov<=35?'Moderate outside.':'Unhealthy outside.';p=`Outside from ${outSrc}. No indoor sensor yet — the inner hexagon is waiting for one.`;}
-    else if(ov!=null&&iv>1.5*ov&&iv>15){v='Inside is worse than outside.';p=`${fmt(iv)} in the house against ${fmt(ov)} on the street. Something is burning or cooking indoors — open a window.`;}
-    else if(ov!=null&&ov>1.5*iv&&ov>35){v='Keep the windows shut.';p=`The street is at ${fmt(ov)}; the house is holding it to ${fmt(iv)}. The building is doing its job.`;}
-    else if(iv<=15){v='The air is clean.';p=ov!=null?`Inside ${fmt(iv)}, outside ${fmt(ov)}. Nothing to do.`:'Nothing to do.';}
-    else if(iv<=35){v='Moderate.';p='Fine for most people; anyone with asthma or a heart condition should take it easy.';}
-    else{v='Unhealthy inside.';p='Purifier on, windows shut, and check who is in the room.';}
-    $('#verdict').textContent=v; $('#verdict-p').textContent=p;
-    const gap=ov!=null&&mv!=null?ov-mv:null;
-    $('#verdict-u').innerHTML=`<b>${inPM.length}</b> indoor sensor${inPM.length===1?'':'s'} · outside from <b>${outSrc}</b>`+(gap!=null?` · the model is <b>${Math.abs(gap)<3?'in line with':gap>0?fmt(-gap)+' under':fmt(gap)+' over'}</b> your street`:'')+` · 15-minute means`;
-    // ---- room band: every indoor sensor of yours, a chip each
-    const roomIds=[...new Set(stats.filter(r=>r.local&&r.indoor).map(r=>r.sensor_id))];
-    const inT=S('temp').filter(r=>r.local&&r.indoor&&r.mean_15m!=null&&fresh(r)), inH=S('humidity').filter(r=>r.local&&r.indoor&&r.mean_15m!=null&&fresh(r));
-    const at=apparent(mean(inT.map(r=>r.mean_15m)),mean(inH.map(r=>r.mean_15m)));
-    $('#room').innerHTML=(roomIds.length?roomIds.map(id=>{const m=by[id],s=sensors.find(x=>x.sensor_id===id)||{},pm=m.pm25,any=Object.values(m)[0];
-        const main=pm?`<div class="num ${pmClass(pm.mean_15m)}">${fmt(pm.mean_15m)}<small>µg/m³</small></div>${trace(sparks[id]||[],'var(--ink)')}`:m.temp?`<div class="num">${fmt(m.temp.mean_15m,1)}<small>°C</small></div><div class="k">${m.humidity?fmt(m.humidity.mean_15m)+'% humidity':''}${m.iaq?' · IAQ '+fmt(m.iaq.last):''}</div>`:m.battery_pct||m.battery_v?`<div class="num">${fmt(m.battery_pct?m.battery_pct.last:null)}<small>% battery</small></div><div class="k">no sensor on its Grove port yet</div>`:`<div class="k" style="margin-top:14px">waiting for its first reading</div>`;
-        return`<div class="chip"><span class="hexlet in"></span><div><div class="name">${esc(s.name||id)}</div><div class="sub">${pm&&m.temp?fmt(m.temp.mean_15m,1)+' °C · '+fmt(m.humidity?m.humidity.mean_15m:null)+'%':id.startsWith('msh')?'over the mesh':''}${any&&any.silent_minutes>60?' · quiet '+Math.round(any.silent_minutes/60)+' h':''}</div></div>${main}</div>`;}).join(''):`<div class="empty">No indoor sensor yet. <a href="#" onclick="show('setup');return false">Add one</a> — a Smart Citizen kit, an AirGradient on the WiFi, or a BME680 on a mesh radio.</div>`)
-      +(at!=null?`<div class="chip"><span class="hexlet in"></span><div><div class="name">Feels like</div><div class="sub">apparent temperature, indoors</div></div><div class="num ${heatClass(at)}">${fmt(at,1)}<small>°C</small></div><div class="k">${at>=40?'heatstroke territory':at>=32?'heat stress: water, air, rest':at>=27?'warm':'comfortable'}</div></div>`:'');
-    $('#room-sub').textContent=roomIds.length?`${roomIds.length} indoor sensor${roomIds.length===1?'':'s'} of yours, 15-minute means.`:'Your indoor sensors.';
-    // ---- street band: your outdoor kits, then the 3 nearest public, then wind
+    const outPM=mine.length?mine:near, iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m)), mv=O('cams-point','pm25_model');
+    const g=grade(iv??ov), hue=HUES[g]||HUES.clean; document.documentElement.style.setProperty('--hue',hue);
+    LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,hue,by};
+    // header
+    $('#nodename').textContent=h.node; $('#nodeplace').textContent=`${h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':''}${clock()} · ${(h.kind||'home')} node`;
+    const errs=Object.keys(h.errors||{}).length; $('#dot').className=h.last_error||errs?'bad':''; $('#pulsetxt').textContent=h.last_poll?`polled ${ago(h.last_poll)}`+(h.parent?` · linked to ${h.parent}`:''):'starting';
+    // hero sentence: computed, not typed
+    const rel=(a,b)=>a==null||b==null?null:a<b-0.5?'under':a>b+0.5?'over':'level with';
+    const parts=[];{const r1=rel(iv,ov);if(r1)parts.push(`${r1} the street`);const r2=rel(iv,mv);if(r2)parts.push(`${r2} the model`);if(iv!=null)parts.push(iv<=15?'under the line':'over the line');}
+    const verb=iv==null?'':(ser&&ser.indoor?trendWord(ser.indoor):'Holding at');
+    $('#hero-eye').textContent=iv!=null?'The room, right now':ov!=null?'The street, right now':'No sensor yet';
+    $('#hero-line').innerHTML=iv!=null?`${verb} <b>${fmt(iv)}</b> micrograms — ${parts.join(', ')}.`:ov!=null?`The street is at <b>${fmt(ov)}</b> micrograms; no indoor sensor yet.`:`The model says <b>${fmt(mv)}</b> for this square of the map.`;
+    $('#hero-line').classList.toggle('in',true);
+    $('#hero-why').textContent=why(iv,ov,mv,g);
+    $('#hero-chips').innerHTML=[inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the room`:null,mine.length?`${mine.length} on the wall outside`:near.length?`${near.length} public sensor${near.length===1?'':'s'} nearby`:null,`${new Set(obs.map(o=>o.sensor_id)).size} models overhead`].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
+    // headline tiles
+    const inT=mean(S('temp').filter(r=>r.local&&r.indoor&&fresh(r)).map(r=>r.mean_15m)), inH=mean(S('humidity').filter(r=>r.local&&r.indoor&&fresh(r)).map(r=>r.mean_15m)), at=apparent(inT,inH);
+    const hourlyMean=(sp,ids)=>{const rows=ids.map(i=>sp[i]).filter(Boolean);if(!rows.length)return null;return rows[0].map((_,i)=>mean(rows.map(r=>r[i])));};
+    const inIds=[...new Set(inPM.map(r=>r.sensor_id))];
+    const tT=hourlyMean(sparkT,inIds), tH=hourlyMean(sparkH,inIds), atSeries=tT&&tH?tT.map((t,i)=>apparent(t,tH[i])):null;
     const wind=O('om-point','wind_speed'), wdir=O('om-point','wind_direction');
-    const chip=(r,kind)=>{const s=sensors.find(x=>x.sensor_id===r.sensor_id)||{};return`<div class="chip"><span class="hexlet ${kind}"></span><div><div class="name">${esc(s.name||r.sensor_id)}</div><div class="sub">${kind==='out'?'your outdoor sensor':`public · ${(dist(r)*111).toFixed(1)} km`}</div></div><div class="num ${pmClass(r.mean_15m)}">${fmt(r.mean_15m)}<small>µg/m³</small></div>${trace(sparks[r.sensor_id]||[],kind==='out'?'var(--green)':'var(--n400)')}</div>`;};
-    $('#street').innerHTML=mine.map(r=>chip(r,'out')).join('')+near.map(r=>chip(r,'ref')).join('')
-      +(wind!=null?`<div class="chip"><span class="hexlet model"></span><div><div class="name">Wind</div><div class="sub">Open-Meteo, this hour</div></div><div class="num">${arrow(wdir,'var(--ink)')}${fmt(wind)}<small>km/h from the ${compass(wdir)}</small></div><div class="k">${wind<5?'still — whatever burns nearby stays nearby':wind<15?'light':wind<30?'breezy — smoke travels':'strong'}</div></div>`:'')
-      +(!mine.length&&!near.length?`<div class="empty">No outdoor sensor within reach. The model stands in for the street.</div>`:'');
-    $('#street-sub').textContent=mine.length?`${mine.length} outdoor sensor${mine.length===1?'':'s'} of yours${near.length?`, the ${near.length} nearest public ones`:''}, and the wind.`:near.length?`The ${near.length} nearest public sensors, and the wind.`:'Your outdoor sensors, the nearest public ones, and the wind.';
-    drawStrip(ser);
-    // ---- world band: the sea, the land, the model, the weather
-    const wave=O('marine-point','wave_height_m'),wdirs=O('marine-point','wave_direction'),per=O('marine-point','wave_period_s'),sst=O('marine-point','sea_surface_temp'),swell=O('marine-point','swell_height_m');
-    const built=O('ee-point','built_frac'),trees=O('ee-point','tree_frac'),change=O('ee-point','land_change_score'),lights=O('ee-point','night_lights');
-    const tmod=O('om-point','temp_model'),rain=O('om-point','precipitation'),uv=O('cams-point','uv_index'),o3=O('cams-point','o3'),no2=O('cams-point','no2');
-    let W='';
-    if(wave!=null)W+=`<div class="chip wide"><span class="hexlet model"></span><div><div class="name">The sea</div><div class="sub">nearest ocean cell, Open-Meteo Marine</div></div><div class="row"><div class="num">${arrow(wdirs,'var(--blue)')}${fmt(wave,1)}<small>m from the ${compass(wdirs)}</small></div><div class="num">${fmt(per)}<small>s period</small></div><div class="num">${fmt(sst,1)}<small>°C</small></div></div><div class="k">${per>=12&&(swell||wave)>=2.5?'long-period swell — strong currents on exposed beaches':per>=11?'long period: clean, powerful lines':'short period: wind swell'}${sst!=null?`; the sea is ${sst>=29?'warm for the season':'normal'}`:''}</div></div>`;
-    if(mv!=null)W+=`<div class="chip"><span class="hexlet model"></span><div><div class="name">Satellite model</div><div class="sub">Copernicus CAMS, 11 km cell</div></div><div class="num" style="color:var(--blue)">${fmt(mv)}<small>µg/m³ PM2.5</small></div><div class="k">${gap==null?'':Math.abs(gap)<3?'agrees with your street today':gap>0?`your street reads ${fmt(gap)} higher — local sources it cannot see`:`overstates your street by ${fmt(-gap)}`}</div></div>`;
-    if(built!=null)W+=`<div class="chip"><span class="hexlet model"></span><div><div class="name">The land, 1 km around</div><div class="sub">Earth Engine, last complete year</div></div><div class="num">${fmt(built*100)}<small>% built</small></div><div class="bar2"><i style="width:${built*100}%;background:var(--ink)"></i><i style="width:${(trees||0)*100}%;background:var(--green)"></i></div><div class="k">${fmt((trees||0)*100)}% trees${change!=null?` · changed ${fmt(change*100,1)}% since the year before`:''}</div></div>`;
-    if(tmod!=null)W+=`<div class="chip"><span class="hexlet model"></span><div><div class="name">Weather</div><div class="sub">Open-Meteo, this hour</div></div><div class="num">${fmt(tmod,1)}<small>°C</small></div><div class="k">${rain?fmt(rain,1)+' mm rain':'dry'}${uv!=null?` · UV ${fmt(uv)}`:''}${o3!=null?` · ozone ${fmt(o3)}`:''}</div></div>`;
-    $('#world').innerHTML=W||`<div class="empty">Models arrive on the first poll.</div>`;
-    // ---- said, cells, node
-    $('#alerts-n').textContent=alerts.length?`${alerts.length} recent`:'';
-    $('#alerts').innerHTML=alerts.length?alerts.map(a=>`<li><span class="lvl ${a.level}"></span><div><div class="t">${esc(a.text.split('\n')[0])}</div><div class="w">${a.rule_id.replace('/',' · ')} · ${ago(a.ts)} · #${a.id}</div></div>${a.level==='act'?(a.acted_at?`<span class="done">acted ${ago(a.acted_at)}</span>`:`<button class="btn small ghost" onclick="act(${a.id})">I acted</button>`):''}</li>`).join(''):'<li class="empty" style="border:0;padding:20px 0">Nothing yet. The node speaks only when something should change.</li>';
-    const P=['Environmental','Economic','Social','Governance'];
-    $('#honey').innerHTML=P.map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));return c?`<div class="cell ${c.state}" title="${esc(c.cell)} — ${fmt(c.value,1)} ${esc(c.unit)}"><span><b>${fmt(c.value,c.value<10?1:0)}</b><small>${p.slice(0,3)}</small></span></div>`:`<div class="cell none" title="${p}: no source yet"><span><b>–</b><small>${p.slice(0,3)}</small></span></div>`;}).join('')+`<div class="k">${cells.length} of 20 cells in the Fab City Index have a source here.<br>Green is measured, blue is partial, empty has no source yet.</div>`;
-    $('#nodeinfo').innerHTML=[['readings stored',h.ingested],['polls',h.polls],['up',Math.floor(h.uptime_s/3600)+' h '+Math.floor(h.uptime_s%3600/60)+' min'],['sensors',`${sensors.filter(s=>s.local).length} yours, ${sensors.filter(s=>!s.local&&s.kind==='sensor').length} public, ${sensors.filter(s=>s.kind==='model').length} models`],['mesh',h.mesh&&h.mesh.packets?`${h.mesh.packets} packets via ${h.mesh.gateway}`:'no radio yet'],['ρ',rho.rho==null?'–':`${fmt(rho.rho,2)} — ${rho.acted} of ${rho.alerts_act} alerts led to an action`],['errors',errs?Object.entries(h.errors).map(([k,v])=>k+': '+v).join('; '):'none']].map(([k,v])=>`<tr><th>${k}</th><td>${esc(String(v))}</td></tr>`).join('');
-    $('#nodeplace').textContent=(h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':'')+(h.last_poll?'live':'starting');
-    $('#k-time').textContent=new Date().toLocaleString(undefined,{weekday:'long',hour:'2-digit',minute:'2-digit'});
-  }catch(e){$('#dot').className='dot bad';$('#pulsetxt').textContent='node not answering';}
+    const tiles=[
+      ov!=null&&{label:mine.length?'The street':'The neighbourhood',value:fmt(ov),unit:'µg/m³',color:'#F4ECE2',spark:ser?ser.outdoor:null,note:mine.length?`Your kit outside${mine[0].name?`, ${mine[0].name}`:''}. ${trendNote(ser&&ser.outdoor)}`:`The ${near.length} nearest public sensor${near.length===1?'':'s'}, ${fmt(dist(near[0]),1)} km away. ${trendNote(ser&&ser.outdoor)}`},
+      mv!=null&&{label:'The model',value:fmt(mv),unit:'µg/m³',color:'#3FA9F5',spark:ser?ser.model:null,note:`CAMS, an 11 km square. ${ov==null?'No street to compare it with yet.':Math.abs(ov-mv)<1.5?'It agrees with your street.':ov>mv?`Your street reads ${fmt(ov-mv)} higher — the local signal it cannot see.`:`It overstates your street by ${fmt(mv-ov)}.`}`},
+      at!=null&&{label:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':at>=27?'#E8873A':'#7AC943',spark:atSeries,note:`${fmt(inT,1)} °C at ${fmt(inH)}% humidity indoors. ${at>=40?'Heatstroke territory.':at>=32?'Heat stress: water, air, rest.':at>=27?'Warm; fine for most.':'Comfortable.'}`},
+      wind!=null&&{label:'Wind',value:fmt(wind),unit:`km/h ${compass(wdir)}`,color:'#7AC943',spark:null,note:wind<5?'Still. Whatever burns nearby stays nearby.':wind<15?'Light. Smoke drifts, slowly.':wind<30?'Breezy. Smoke travels; so does clean air.':'Strong.'},
+    ].filter(Boolean);
+    $('#tiles').innerHTML=tiles.map((t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`).join('');
+    drawDay(ser,hue,iv);
+    // every sensor, with a story
+    const local=sensors.filter(s=>s.local), pub=sensors.filter(s=>!s.local&&s.kind==='sensor');
+    const rows=[];
+    for(const s of local){const m=by[s.sensor_id]||{},pm=m.pm25,any=Object.values(m)[0];const silent=any?any.silent_minutes:null;
+      let value='–',unit='',color=hue,sp=sparks[s.sensor_id];
+      if(pm){value=fmt(pm.mean_15m);unit='µg/m³';color=s.indoor?hue:'#7AC943';}
+      else if(m.temp){value=fmt(m.temp.mean_15m,1);unit='°C';color='#F4ECE2';sp=sparkT[s.sensor_id];}
+      else if(m.battery_pct){value=fmt(m.battery_pct.last);unit='% battery';color='#8A8378';sp=null;}
+      rows.push({name:s.name||s.sensor_id,value,unit,color,sp,story:sensorStory(s,m,silent,by,inPM)});}
+    if(at!=null)rows.push({name:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':'#F4ECE2',sp:atSeries,story:'Not measured — worked out from temperature and humidity. The number bodies notice.'});
+    for(const s of near.map(r=>sensors.find(x=>x.sensor_id===r.sensor_id)||r)){const m=by[s.sensor_id]||{};rows.push({name:s.name||s.sensor_id,value:fmt(m.pm25?m.pm25.mean_15m:null),unit:'µg/m³',color:'#8A8378',sp:sparks[s.sensor_id],story:`Somebody else's, ${fmt(dist(s),1)} km down the road. ${ov!=null&&m.pm25&&Math.abs(m.pm25.mean_15m-ov)<2?'It agrees with yours, which is worth knowing.':'A second opinion on the street.'}`});}
+    if(mv!=null)rows.push({name:'CAMS point',value:fmt(mv),unit:'µg/m³',color:'#3FA9F5',sp:ser?ser.model:null,story:'A satellite model sampled at your coordinates, every hour, free, anywhere on earth.'});
+    $('#sensors').innerHTML=rows.map((r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`).join('')||`<div class="empty">No sensor yet. Add one under Set up → Sources.</div>`;
+    $('#sens-sub').textContent=`${local.length} instrument${local.length===1?'':'s'} of yours${pub.length?`, ${near.length} beyond the wall`:''}${mv!=null?', one model overhead':''}`;
+    // alerts + rho
+    const arc=rho.rho==null?0:Math.round(264*rho.rho); $('#rho-arc').setAttribute('stroke-dasharray',`${arc} 264`); $('#rho-arc').setAttribute('stroke',hue);
+    $('#rho-num').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#rho-num').style.color=hue;
+    $('#rho-k').textContent=rho.rho==null?'ρ — no act-level alert yet. When one comes, the button beside it is how this number is made.':`ρ — ${rho.alerts_act} ask${rho.alerts_act===1?'':'s'} in thirty days, ${rho.acted} answered. The only number here that comes from a person.`;
+    $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'?'var(--red)':a.level==='warn'?'var(--orange)':'var(--webblue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
+    // the world
+    const wave=O('marine-point','wave_height_m'),wd=O('marine-point','wave_direction'),per=O('marine-point','wave_period_s'),sst=O('marine-point','sea_surface_temp');
+    const built=O('ee-point','built_frac'),trees=O('ee-point','tree_frac'),chg=O('ee-point','land_change_score');
+    const tmod=O('om-point','temp_model'),rain=O('om-point','precipitation'),uv=O('cams-point','uv_index'),o3=O('cams-point','o3');
+    const W=[
+      wave!=null&&{title:'The sea',value:fmt(wave,1),unit:`m swell, ${compass(wd)}`,color:'#3FA9F5',story:`${per>=12?'A long period: clean, powerful lines and strong currents on the exposed beaches.':per>=10?'A solid period: proper waves on the reefs, currents to respect.':'A short period: wind swell, messy on exposed beaches.'}${sst!=null?` The water is ${fmt(sst,1)} °C${sst>=29?', warm for the season.':', normal for the season.'}`:''}`},
+      built!=null&&{title:'The land, 1 km around',value:fmt(built*100),unit:'% built',color:'#F4ECE2',story:`${fmt((trees||0)*100)} per cent trees${chg!=null?`, and ${fmt(chg*100,1)}% of it changed since last year`:''}. Earth Engine, last complete year.`},
+      tmod!=null&&{title:'The weather',value:fmt(tmod,1),unit:'°C outside',color:'#F4ECE2',story:`${rain?fmt(rain,1)+' mm of rain this hour':'Dry'}${uv!=null?`, ${uv<1?'no UV left in the day':uv<6?'moderate UV':'strong UV'}`:''}${o3!=null?`, ozone at ${fmt(o3)}`:''}. ${wind!=null&&wind<5&&(ov||0)>15?'Still air is keeping the smoke where it is.':'Nothing in the sky is working against you.'}`},
+      ov!=null&&mv!=null&&{title:'The gap',value:(ov-mv>=0?'+':'')+fmt(ov-mv),unit:'µg/m³ over the model',color:'#E8873A',story:'The difference between your street and the satellite square it sits in — the local signal an 11 km cell cannot see.'},
+    ].filter(Boolean);
+    $('#world').innerHTML=W.map((w,i)=>`<div class="card world lift ${RADII[(i+1)%4]} in" style="animation-delay:${i*70+80}ms"><div class="row"><span class="eyebrow" style="letter-spacing:.2em">${w.title}</span><span style="white-space:nowrap"><span class="num" style="color:${w.color}">${w.value}</span><small>${w.unit}</small></span></div><div class="story">${esc(w.story)}</div></div>`).join('');
+    // wall
+    $('#wall-line').innerHTML=iv!=null?`The room is ${verb.toLowerCase().replace('holding at','holding at')} <b>${fmt(iv)}</b> ${new Date().getHours()>=18||new Date().getHours()<5?'tonight':'right now'}.`:`No indoor sensor <b>–</b> yet.`;
+    $('#wall-why').textContent=why(iv,ov,mv,g);
+    $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
+    $('#foot-mid').textContent=`Node ${h.node} of a distributed computer for places · redesigning the relationship between production and place`;
+    if($('#network').classList.contains('on'))drawNetwork(LAST);
+  }catch(e){$('#dot').className='bad';$('#pulsetxt').textContent='node not answering';}
 }
-function drawStrip(ser){
-  const svg=$('#strip'); if(!ser||!ser.buckets.length){svg.innerHTML='';$('#strip-note').textContent='';return;}
-  const W=960,H=120,pad=8,n=ser.buckets.length,bw=(W-pad*2)/n;
-  const all=[...ser.indoor,...ser.outdoor,...ser.model].filter(x=>x!=null); const max=Math.max(15,...all)*1.1;
-  const y=v=>H-8-(v/max)*(H-28);
-  let out=`<line x1="0" x2="${W}" y1="${y(15)}" y2="${y(15)}" stroke="var(--line)" stroke-dasharray="3 5"/><text x="${W-4}" y="${y(15)-4}" text-anchor="end" font-size="11" fill="var(--n600)">WHO 24 h guideline · 15</text>`;
-  const pathOf=arr=>arr.map((v,i)=>v==null?null:[pad+i*bw+bw/2,y(v)]).filter(Boolean);
-  const o=pathOf(ser.outdoor); if(o.length>1)out+=`<polyline fill="none" stroke="var(--green)" stroke-width="2" stroke-linejoin="round" points="${o.map(p=>p.join(',')).join(' ')}"/>`;
-  const m=pathOf(ser.model); if(m.length>1)out+=`<polyline fill="none" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="4 5" points="${m.map(p=>p.join(',')).join(' ')}"/>`;
-  ser.indoor.forEach((v,i)=>{if(v==null)return;out+=`<rect x="${pad+i*bw+bw*0.25}" y="${y(v)}" width="${bw*0.5}" height="${H-8-y(v)}" fill="var(--ink)" opacity=".85"><title>${new Date(ser.buckets[i]).toLocaleTimeString([],{hour:'2-digit'})} inside ${fmt(v)}</title></rect>`;});
-  [0,Math.floor(n/2),n-1].forEach(i=>{out+=`<text x="${pad+i*bw+bw/2}" y="${H}" text-anchor="middle" font-size="11" fill="var(--n600)">${new Date(ser.buckets[i]).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</text>`;});
-  svg.innerHTML=out;
-  const inA=ser.indoor.filter(x=>x!=null),outA=ser.outdoor.filter(x=>x!=null);
-  const pk=inA.length?ser.buckets[ser.indoor.indexOf(Math.max(...inA))]:null;
-  $('#strip-note').textContent=inA.length?`Inside averaged ${fmt(mean(inA))} over the day${pk?`, peaking at ${new Date(pk).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})} (${fmt(Math.max(...inA))})`:''}${outA.length?`; the street averaged ${fmt(mean(outA))}`:''}.`:'The bars appear once an indoor sensor has an hour of readings.';
+function trendWord(arr){const v=(arr||[]).filter(x=>x!=null);if(v.length<4)return'Holding at';const a=mean(v.slice(-3)),b=mean(v.slice(-6,-3));if(b==null)return'Holding at';return a>b*1.25&&a-b>2?'Climbing to':a<b*0.8&&b-a>2?'Falling to':'Holding at';}
+function trendNote(arr){const v=(arr||[]).filter(x=>x!=null);if(v.length<4)return'';const a=mean(v.slice(-3)),b=mean(v.slice(-6,-3));return a>b*1.25?'Rising this evening.':a<b*0.8?'Falling since the wind picked up.':'Steady.';}
+function why(iv,ov,mv,g){
+  if(iv==null&&ov==null)return'The node reads the model for your coordinates. Add a sensor under Set up and the room fills in.';
+  if(iv==null)return ov<=15?'The street is clean. No indoor sensor yet to say how the house is doing with it.':ov<=35?'Moderate outside. Anyone with asthma should take it easy; a sensor indoors would say whether the house is holding it out.':'Unhealthy outside. Keep the windows shut; an indoor sensor would tell you whether that is working.';
+  if(ov!=null&&iv>1.5*ov&&iv>15)return'Whatever is burning is in here with you. Open a window on the quiet side, turn the purifier up, and check who is in the room.';
+  if(ov!=null&&ov>1.5*iv&&ov>35)return'The street is bad and the house is keeping it out. Windows shut, doors shut; the node will say when outside clears.';
+  if(g==='clean')return'Nothing needs doing. The house is keeping the road out, the air is moving, and the node will speak the moment that stops being true.';
+  if(g==='moderate')return'Fine for most people. If anyone here has asthma or a heart condition, this is a time to take it easy and leave the purifier on.';
+  return'Unhealthy in here. Purifier up, windows shut, and check who is in the room.';
 }
-async function act(id){const note=prompt('What did you do? A few words is enough.','')||'acted';const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});toast(r.ok?`Recorded. Alert #${id} led to an action.`:'Could not record that.',!r.ok);refresh();}
+function sensorStory(s,m,silent,by,inPM){
+  if(silent!=null&&silent>180)return`Quiet ${silent>1440?Math.round(silent/1440)+' days':Math.round(silent/60)+' hours'}. ${s.sensor_id.startsWith('msh')?'On the mesh radio; power, or out of range.':'Power or WiFi, most likely.'}`;
+  if(!m.pm25&&m.battery_pct)return'On the mesh radio, waiting for a sensor on its Grove port.';
+  if(!m.pm25&&m.temp)return`Temperature and humidity over the ${s.sensor_id.startsWith('msh')?'mesh radio':'network'}. No particle sensor on it.`;
+  if(!s.indoor)return`Your own kit outside. ${m.pm25&&m.pm25.mean_15m<=15?'Clean on the wall.':'What the street is really doing.'}`;
+  const others=inPM.filter(r=>r.sensor_id!==s.sensor_id).map(r=>r.mean_15m);const me=m.pm25?m.pm25.mean_15m:null;
+  if(me!=null&&others.length&&me>mean(others)*1.4&&me>10)return'Highest in the house right now — nearest whatever is cooking or burning.';
+  if(me!=null&&others.length&&me<mean(others)*0.7)return'The cleanest room in the house at the moment.';
+  return`${s.sensor_id.startsWith('msh')?'Over the mesh radio':s.sensor_id.startsWith('ag')?'An AirGradient on the WiFi, nothing in the cloud':'A Smart Citizen kit'}. ${m.pm25&&m.pm25.mean_15m<=m.pm25.mean_24h*1.1?'Steady.':'Moving.'}`;
+}
 
-// ---------------------------------------------------------------- set up
-const GROUPS={sources:['Sources','What the node reads: your sensors, your account, the public references around you.'],alerts:['Alerts','Where messages go, in which language, and over which channels.'],packs:['Packs','Which packs load. Code packs stay off until you allow them, and you should read one before you do.'],integrations:['Integrations','Home Assistant and Reticulum.'],keys:['Keys','What packs need to reach outside services. Secrets are never shown again once saved.'],agent:['Model','Which model answers the Telegram bot: the node\'s own Ollama, a bigger one on your tailnet, or an online one with a key. The strongest reachable is used; the bot falls back to the local one.'],node:['This node in the tree','Who it reports to, and who may report to it.'],bootstrap:['Bootstrap','Read once at start. Edit .env on the node and run planetai restart.']};
-let GROUP='sources';
-function saveToken(){TOKEN=$('#token').value.trim();localStorage.setItem('planetai_admin',TOKEN);loadSetup();}
+// ------------------------------------------------------------------ the day: 24 hours, annotated from the data
+function drawDay(ser,hue,iv){
+  const svg=$('#day'); if(!ser||!ser.buckets||!ser.buckets.length){svg.innerHTML=`<text x="60" y="200" style="font:500 14px var(--fb);fill:#8A8378">The chart appears once there is an hour of readings.</text>`;return;}
+  const X0=60,X1=1140,n=ser.buckets.length,STEP=(X1-X0)/Math.max(n-1,1),BASE=300;
+  const all=[...ser.indoor,...ser.outdoor,...ser.model].filter(x=>x!=null),max=Math.max(20,...all)*1.1,SC=(BASE-60)/max;
+  const P=arr=>{let last=null;return arr.map((v,i)=>{if(v!=null)last=v;return last==null?null:[X0+i*STEP,BASE-last*SC];}).filter(Boolean);};
+  const pi=P(ser.indoor),po=P(ser.outdoor),pm=P(ser.model);
+  const who=BASE-15*SC;
+  let out=`<defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${hue}" stop-opacity=".42"/><stop offset="1" stop-color="${hue}" stop-opacity="0"/></linearGradient><filter id="glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="7"/></filter></defs>`;
+  out+=`<path d="M${X0} ${who} H${X1}" stroke="#E8873A" stroke-width="1.2" stroke-dasharray="3 9" fill="none" opacity=".9"/><text x="${X0}" y="${who-10}" style="font:500 12.5px var(--fb);fill:#E8873A">what the WHO calls too much · 15</text>`;
+  if(pi.length>1){const d=smooth(pi);out+=`<path d="${d} L${pi[pi.length-1][0]},${BASE} L${pi[0][0]},${BASE} Z" fill="url(#area)"/><path d="${d}" fill="none" stroke="${hue}" stroke-width="12" stroke-linecap="round" opacity=".28" filter="url(#glow)"/><path d="${d}" fill="none" stroke="${hue}" stroke-width="2.6" stroke-linecap="round"/>`;}
+  if(po.length>1)out+=`<path d="${smooth(po)}" fill="none" stroke="#F4ECE2" stroke-width="1.6" stroke-dasharray="1 7" stroke-linecap="round" opacity=".7"/>`;
+  if(pm.length>1)out+=`<path d="${smooth(pm)}" fill="none" stroke="#3FA9F5" stroke-width="1.6" opacity=".8"/>`;
+  // annotations, computed: the indoor peak; the hours inside beat outside; now
+  const inV=ser.indoor.map((v,i)=>[v,i]).filter(([v])=>v!=null);
+  if(inV.length>3){const [pk,pki]=inV.reduce((a,b)=>b[0]>a[0]?b:a);const worse=ser.indoor.filter((v,i)=>v!=null&&ser.outdoor[i]!=null&&v>ser.outdoor[i]).length;
+    const px=X0+pki*STEP,py=BASE-pk*SC,left=px>700;
+    if(pk>=8){out+=`<circle cx="${px}" cy="${py}" r="7" fill="#E8873A"/><path d="M${px} ${py} C ${px} ${py-46}, ${left?px-28:px+28} ${py-62}, ${left?px-62:px+62} ${py-62}" fill="none" stroke="#E8873A" stroke-width="1.2"/>`;
+      out+=`<text x="${left?px-72:px+72}" y="${py-78}" text-anchor="${left?'end':'start'}" style="font:800 18px var(--fd);letter-spacing:-.02em;fill:#E8873A">${worse?'someone cooked':'the room peaked'}</text>`;
+      out+=`<text x="${left?px-72:px+72}" y="${py-56}" text-anchor="${left?'end':'start'}" style="font:italic 500 14px var(--fb);fill:#C7BFB2">${hhmm(ser.buckets[pki])} — the room climbed to ${fmt(pk)}${worse?`,`:'.'}</text>`;
+      if(worse)out+=`<text x="${left?px-72:px+72}" y="${py-36}" text-anchor="${left?'end':'start'}" style="font:italic 500 14px var(--fb);fill:#C7BFB2">${worse===1?'the only hour':worse+' hours'} it was worse than the street</text>`;}
+    const outFirst=ser.outdoor.map((v,i)=>[v,i]).filter(([v])=>v!=null);
+    if(outFirst.length>6){const [ok,oki]=outFirst.slice(3).reduce((a,b)=>b[0]>a[0]?b:a);const ox=X0+oki*STEP,oy=BASE-ok*SC;if(Math.abs(oki-pki)>3)out+=`<circle cx="${ox}" cy="${oy}" r="4.5" fill="#F4ECE2"/><path d="M${ox} ${oy} C ${ox} ${oy-34}, ${ox+30} ${oy-44}, ${ox+60} ${oy-44}" fill="none" stroke="#F4ECE2" stroke-width="1" opacity=".6"/><text x="${ox+70}" y="${oy-40}" style="font:italic 500 14px var(--fb);fill:#C7BFB2">the street peaked, ${hhmm(ser.buckets[oki])}</text>`;}
+  }
+  if(pi.length){const [nx,ny]=pi[pi.length-1];out+=`<circle cx="${nx}" cy="${ny}" r="5.5" fill="none" stroke="${hue}" stroke-width="1.5"><animate attributeName="r" values="6;20;6" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0;.8" dur="3s" repeatCount="indefinite"/></circle><circle cx="${nx}" cy="${ny}" r="5.5" fill="${hue}"/><text x="${nx+16}" y="${ny+5}" style="font:600 13.5px var(--fb);fill:${hue}">now</text>`;}
+  [0,Math.floor(n*.25),Math.floor(n*.5),Math.floor(n*.75),n-1].forEach((i,k)=>{out+=`<text x="${X0+i*STEP}" y="332" text-anchor="${k===4?'end':k===0?'start':'middle'}" style="font:500 12.5px var(--fb);fill:#8A8378">${hhmm(ser.buckets[i])}</text>`;});
+  out+=`<rect x="60" y="372" width="30" height="9" rx="4.5" fill="${hue}"/><text x="100" y="381" style="font:500 13px var(--fb);fill:#C7BFB2">in here</text><path d="M182 377 H212" stroke="#F4ECE2" stroke-width="1.6" stroke-dasharray="1 7" stroke-linecap="round" opacity=".7"/><text x="222" y="381" style="font:500 13px var(--fb);fill:#C7BFB2">out there</text><path d="M318 377 H348" stroke="#3FA9F5" stroke-width="1.6"/><text x="358" y="381" style="font:500 13px var(--fb);fill:#C7BFB2">what the satellite model guessed for this square of the map</text>`;
+  svg.innerHTML=out;
+  const inA=ser.indoor.filter(x=>x!=null);$('#day-sub').textContent=inA.length?`Twenty-four hours of hourly means. Inside averaged ${fmt(mean(inA))}${ser.outdoor.some(x=>x!=null)?`, the street ${fmt(mean(ser.outdoor))}`:''}.`:'Twenty-four hours of hourly means, once there are some.';
+}
+
+// ------------------------------------------------------------------ the network: this node in the wider instrument
+function drawNetwork(L){
+  const {h,iv,ov,mv,cells,sensors,near,mine,hue}=L; const svg=$('#netsvg');
+  const T=(x,y,t,st,anchor='middle')=>`<text x="${x}" y="${y}" text-anchor="${anchor}" style="${st}">${esc(t)}</text>`;
+  const lbl="font:600 13px var(--fb);fill:#F4ECE2", dim="font:500 12px var(--fb);fill:#8A8378", eye="font:600 10px var(--fb);letter-spacing:.12em;fill:#A39B8D", big="font:800 24px var(--fd);letter-spacing:-.03em;fill:#F4ECE2";
+  const flow=(d,c,dur)=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 8" opacity=".8" style="animation:v5flow ${dur}s linear infinite"/><circle r="3.5" fill="${c}"><animateMotion dur="${dur*0.7}s" repeatCount="indefinite" path="${d}"/></circle>`;
+  const local=sensors.filter(s=>s.local).length, parent=h.parent||null, ncells=cells.length;
+  let o='';
+  o+=flow('M232 236 C 330 236, 360 150, 452 150','#7AC943',8)+flow('M232 236 C 330 236, 360 322, 452 322','#7AC943',11)+flow('M568 150 C 660 150, 690 236, 786 236','#7AC943',9)+flow('M786 236 C 690 236, 660 322, 568 322','#3FA9F5',12);
+  if(parent)o+=flow('M896 236 C 980 236, 1000 150, 1080 150','#E8873A',10)+flow('M896 236 C 980 236, 1000 330, 1080 330','#E8873A',14);
+  o+=`<circle cx="150" cy="236" r="82" fill="none" stroke="${hue}" stroke-width="1"><animate attributeName="r" values="60;110;60" dur="5s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0;.5" dur="5s" repeatCount="indefinite"/></circle><circle cx="150" cy="236" r="82" fill="rgba(244,236,226,.06)" stroke="rgba(244,236,226,.2)"/><circle cx="150" cy="236" r="54" fill="${hue}" opacity=".9"/>`;
+  o+=`<text x="150" y="228" text-anchor="middle" style="font:800 34px var(--fd);letter-spacing:-.04em;fill:#16150F">${fmt(iv)}</text>`+T(150,252,'THIS ROOM',"font:600 10px var(--fb);letter-spacing:.14em;fill:#16150F")+T(150,352,`${h.node} · ${h.kind||'home'}`,lbl)+T(150,372,`${local} sensor${local===1?'':'s'} · ${(h.ingested||0).toLocaleString()} readings, all local`,dim);
+  o+=`<circle cx="510" cy="150" r="56" fill="rgba(122,201,67,.16)" stroke="#7AC943" stroke-width="1.2"/>`+T(510,146,fmt(ov),big)+T(510,166,'THE STREET',eye)+T(510,70,'the neighbourhood',lbl)+T(510,90,mine.length?`your outdoor kit${near.length?` + ${near.length} public sensor${near.length===1?'':'s'}`:''}`:near.length?`${near.length} public sensor${near.length===1?'':'s'} nearby`:'no outdoor sensor yet',dim);
+  o+=`<circle cx="510" cy="322" r="56" fill="rgba(63,169,245,.14)" stroke="#3FA9F5" stroke-width="1.2"/>`+T(510,318,fmt(mv),big)+T(510,338,'THE MODELS',eye)+T(510,410,'planetary models',lbl)+T(510,430,'CAMS air · Open-Meteo weather & marine · Earth Engine land',dim);
+  o+=`<circle cx="842" cy="236" r="58" fill="rgba(244,236,226,.08)" stroke="rgba(244,236,226,.3)" stroke-width="1.2" ${parent?'':'stroke-dasharray="4 6"'}/>`+T(842,230,parent?'↑':'—',"font:800 22px var(--fd);fill:#F4ECE2")+T(842,250,parent?'PARENT':'NO PARENT',eye)+T(842,330,parent||'not linked yet',lbl)+T(842,350,parent?'hourly means, never raw readings':'planetai settings → The tree',dim);
+  o+=`<circle cx="1112" cy="150" r="46" fill="rgba(232,135,58,.16)" stroke="#E8873A" stroke-width="1.2"/>`+T(1112,146,`${ncells}/20`,"font:800 20px var(--fd);letter-spacing:-.03em;fill:#F4ECE2")+T(1112,164,'CELLS',"font:600 9.5px var(--fb);letter-spacing:.1em;fill:#A39B8D")+T(1112,76,'Fab City Index',lbl)+T(1180,96,'what this place can report',dim,'end');
+  o+=`<circle cx="1112" cy="330" r="46" fill="rgba(232,135,58,.1)" stroke="#E8873A" stroke-width="1.2" stroke-dasharray="4 6"/>`+T(1112,336,'MODEL',"font:600 11px var(--fb);letter-spacing:.08em;fill:#E8873A")+T(1112,404,'the agent’s ladder',lbl)+T(1180,424,'asked only when a question earns it',dim,'end');
+  svg.innerHTML=o;
+  const P=['Environmental','Economic','Social','Governance'],C={Environmental:'#00A057',Economic:'#E62038',Social:'#7AC943',Governance:'#20388D'};
+  $('#cells').innerHTML=P.map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));const v=c?c.value:null;const dash=c?(c.state==='live'?198:87):0;return`<div class="cell" title="${p}${c?` — ${esc(c.cell.split('|')[1])}, ${c.state}`:' — no source yet'}"><div class="ring"><span>${v==null?'–':fmt(v,v<10?1:0)}</span><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="${C[p]}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/></svg></div><div class="l">${p}</div></div>`;}).join('');
+  $('#cells-k').textContent=`${ncells} of the twenty Fab City Index cells have a source at this node. Governance is filled by ρ, which only exists because somebody here answered.`;
+  const v=[['readings kept',`${(h.ingested||0).toLocaleString()} — none of them leave`],['polls',(h.polls||0).toLocaleString()],['awake for',`${Math.floor((h.uptime_s||0)/3600)} h ${Math.floor(((h.uptime_s||0)%3600)/60)} min`],['listening to',`${local} of yours, ${sensors.filter(s=>!s.local&&s.kind==='sensor').length} public, ${sensors.filter(s=>s.kind==='model').length} models`],['over the radio',h.mesh&&h.mesh.packets?`${h.mesh.packets} packets via ${h.mesh.gateway}`:'no radio yet'],['errors',Object.keys(h.errors||{}).length?Object.entries(h.errors).map(([k,x])=>k+': '+x).join('; '):'none'],['version',`${h.version||''} · Apache-2.0`]];
+  $('#vitals').innerHTML=v.map(([k,x])=>`<div class="vit"><span>${k}</span><span>${esc(x)}</span></div>`).join('');
+}
+
+// ------------------------------------------------------------------ actions
+async function act(id){const note=prompt('What did you do? A few words is enough.','')||'acted';const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});toast(r.ok?`Recorded. Alert #${id} led to an action.`:'Could not record that.',!r.ok);refresh();}
+async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel.`:'Could not send.',!r.ok);refresh();}
+function unlock(){TOKEN=$('#tok').value.trim();localStorage.setItem('planetai_admin',TOKEN);loadSetup();}
+function lock(){localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();}
+
+// ------------------------------------------------------------------ set up
+const GROUPS={sources:['Sources','What the node reads: your sensors, your account, and the public references around you.'],alerts:['Alerts','Where messages go, in which language, and over which channels.'],packs:['Packs','Which packs load. Code packs stay off until you allow them; read one before you do.'],integrations:['Integrations','Home Assistant over MQTT, and the Reticulum bridge.'],keys:['Keys','What packs need to reach outside services. Secrets are never shown again once saved.'],agent:['Model','Which model answers the Telegram bot: the node\'s own, a bigger one on your tailnet, or an online one with a key. The strongest reachable is used; the bot falls back to the local one.'],node:['The tree','Who this node reports to, and who may report to it.'],bootstrap:['Bootstrap','Read once at start. Edit .env on the node and run planetai restart.']};
 async function loadSetup(){
   DESC=await api('/settings'); PACKS=await api('/packs').catch(()=>[]);
-  PLACE=(DESC.bootstrap.find(b=>b.key==='NODE_CITY')||{}).value||'';
-  const unlocked=!!TOKEN; $('#tokenbox').style.display=unlocked?'none':'block'; $('#setupui').style.display=unlocked?'grid':'none';
+  const unlocked=!!TOKEN; $('#gate').style.display=unlocked?'none':'block'; $('#setup-body').style.display=unlocked?'grid':'none';
   if(!unlocked)return;
-  $('#tabs').innerHTML=Object.entries(GROUPS).map(([g,[l]])=>`<button class="${g===GROUP?'on':''}" onclick="GROUP='${g}';loadSetup()">${l}</button>`).join('')+`<hr><button onclick="testAlert()">Send a test alert</button><button onclick="localStorage.removeItem('planetai_admin');TOKEN='';loadSetup()">Lock</button>`;
-  $('#paneinfo').innerHTML=`<b>${GROUPS[GROUP][0]}</b>${GROUPS[GROUP][1]}`;
-  $('#bar').style.display=GROUP==='bootstrap'?'none':'flex';
-  if(GROUP==='bootstrap'){$('#form').innerHTML=`<table>${DESC.bootstrap.map(b=>`<tr><th>${b.label}<div class="note">${b.key}</div></th><td>${esc(b.value)||'<span class=note>not set</span>'}</td></tr>`).join('')}</table>`;return;}
+  $('#tabs').innerHTML=Object.entries(GROUPS).map(([g,[l]])=>`<button class="${g===GROUP?'on':''}" onclick="GROUP='${g}';loadSetup()">${l}</button>`).join('')+`<div class="acts"><button class="btn big" onclick="testAlert()">Send a test alert</button><button class="btn big ghost" onclick="lock()">Lock</button></div>`;
+  $('#ptitle').textContent=GROUPS[GROUP][0]; $('#pblurb').textContent=GROUPS[GROUP][1];
+  $('#savebar').style.display=GROUP==='bootstrap'?'none':'flex';
+  const srcOf=r=>`<span class="src ${r.source==='gui'?'gui':''}">${r.source==='gui'?'set here · overrides .env':r.source==='env'?'from .env':'default'}</span>`;
+  if(GROUP==='bootstrap'){$('#pane').innerHTML=DESC.bootstrap.map(b=>`<div class="field"><div><label>${esc(b.label)}</label><div class="help">${esc(b.key)}</div></div><div><input type="text" readonly value="${esc(b.value)||''}" placeholder="not set"></div></div>`).join('');return;}
   if(GROUP==='packs'){
     const enabled=(DESC.runtime.find(r=>r.key==='PACKS_ENABLED')||{}).value||''; const only=enabled?enabled.split(',').map(x=>x.trim()):null;
     const allow=(DESC.runtime.find(r=>r.key==='PACKS_ALLOW_CODE')||{}).value==='1';
-    $('#form').innerHTML=`<div class="field"><label class="switch"><input type="checkbox" id="allowcode" ${allow?'checked':''}><span class="tr"></span><span>Allow code packs<div class="help">A pack with adapter.py runs with the node's privileges. Read it first.</div></span></label></div>
-      <div class="packs">${PACKS.map(p=>`<label class="pack"><span class="switch" style="margin-top:2px"><input type="checkbox" data-pack="${p.id}" ${!only||only.includes(p.id)?'checked':''}><span class="tr"></span></span><span><span class="row"><b>${esc(p.name||p.id)}</b><span class="tag ${p.kind==='code'?'code':''}">${p.kind}</span>${p.kind==='code'&&!allow?'<span class="tag warn">off until code is allowed</span>':''}</span><p>${esc((p.description||'').replace(/\s+/g,' '))}</p></span></label>`).join('')}</div>
-      <p class="note">Switching a pack off stops its rules and cells within a minute. To add one, drop its folder into <code>packs/</code> on the node; it appears here on the next load.</p>`;
+    $('#pane').innerHTML=`<div class="field"><div><label>Allow code packs</label><div class="help">A pack with adapter.py runs with the node's privileges. Read it first.</div></div><div><button type="button" class="switch ${allow?'on':''}" id="allowcode" onclick="this.classList.toggle('on')"><span class="tr"></span><span class="st">${allow?'On':'Off'}</span></button></div></div>`
+      +PACKS.map(p=>`<div class="pack"><button type="button" class="switch ${!only||only.includes(p.id)?'on':''}" data-pack="${p.id}" onclick="this.classList.toggle('on')"><span class="tr"></span></button><div><b>${esc(p.name||p.id)}</b><span class="tag">${p.kind}</span>${p.kind==='code'&&!allow?'<span class="tag warn">off until code packs are allowed</span>':''}<p>${esc(p.description||'')}</p></div></div>`).join('')
+      +`<p class="help" style="margin-top:14px">Switching a pack off stops its rules and cells within a minute. To add one, drop its folder into packs/ on the node; it appears here on the next load.</p>`;
     return;
   }
   const rows=DESC.runtime.filter(r=>r.group===GROUP);
-  $('#form').innerHTML=rows.map(r=>{
-    const isBool=/^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY)$/.test(r.key);
-    const src=`<span class="src">${r.source==='gui'?'set here · overrides .env':r.source==='env'?'from .env':'default'}</span>`;
-    if(isBool)return`<div class="field"><label class="switch"><input type="checkbox" data-key="${r.key}" ${r.value==='1'?'checked':''}><span class="tr"></span><span>${esc(r.label)}${src}<div class="help">${esc(r.help)}</div></span></label></div>`;
-    if(r.key==='ALERT_LOCALE')return`<div class="field"><label>${esc(r.label)}${src}<select data-key="${r.key}"><option value="en" ${r.value==='en'?'selected':''}>English</option><option value="id" ${r.value==='id'?'selected':''}>Bahasa Indonesia</option></select></label></div>`;
-    if(r.key==='NODE_KIND')return`<div class="field"><label>${esc(r.label)}${src}<select data-key="${r.key}">${['home','business','community','district'].map(k=>`<option ${r.value===k?'selected':''}>${k}</option>`).join('')}</select></label><div class="help">${esc(r.help)}</div></div>`;
-    return`<div class="field"><label>${esc(r.label)}${src}<input data-key="${r.key}" ${r.secret?'type="password" placeholder="'+(r.set?'Set — type to replace':'Not set')+'"':'type="text" value="'+esc(r.value)+'"'} autocomplete="off"></label><div class="help">${esc(r.help)}</div></div>`;
-  }).join('');
+  $('#pane').innerHTML=rows.map(r=>{
+    const isBool=/^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH)$/.test(r.key);
+    const left=`<div><label>${esc(r.label)}${srcOf(r)}</label><div class="help">${esc(r.help)}</div></div>`;
+    if(isBool)return`<div class="field">${left}<div><button type="button" class="switch ${r.value==='1'?'on':''}" data-key="${r.key}" data-bool="1" onclick="this.classList.toggle('on');this.querySelector('.st').textContent=this.classList.contains('on')?'On':'Off'"><span class="tr"></span><span class="st">${r.value==='1'?'On':'Off'}</span></button></div></div>`;
+    if(r.key==='ALERT_LOCALE')return`<div class="field">${left}<div><select data-key="${r.key}"><option value="en" ${r.value==='en'?'selected':''}>English</option><option value="id" ${r.value==='id'?'selected':''}>Bahasa Indonesia</option></select></div></div>`;
+    if(r.key==='NODE_KIND')return`<div class="field">${left}<div><select data-key="${r.key}">${['home','business','community','district'].map(k=>`<option ${r.value===k?'selected':''}>${k}</option>`).join('')}</select></div></div>`;
+    if(r.key==='AGENT_PREFER')return`<div class="field">${left}<div><select data-key="${r.key}"><option value="strongest" ${r.value!=='private'?'selected':''}>strongest reachable</option><option value="private" ${r.value==='private'?'selected':''}>private: never online</option></select></div></div>`;
+    return`<div class="field">${left}<div><input data-key="${r.key}" ${r.secret?'type="password" placeholder="'+(r.set?'Set — type to replace':'Not set')+'"':'type="text" value="'+esc(r.value)+'"'} autocomplete="off"></div></div>`;
+  }).join('')||`<div class="empty">Nothing to set in this group.</div>`;
 }
 async function save(){
   const body={};
-  if(GROUP==='packs'){const all=[...document.querySelectorAll('[data-pack]')],on=all.filter(c=>c.checked).map(c=>c.dataset.pack);body.PACKS_ENABLED=on.length===all.length?'':on.join(',');body.PACKS_ALLOW_CODE=$('#allowcode').checked?'1':'0';}
-  else document.querySelectorAll('[data-key]').forEach(el=>{const k=el.dataset.key;if(el.type==='checkbox')body[k]=el.checked?'1':'0';else if(el.type==='password'){if(el.value)body[k]=el.value;}else body[k]=el.value;});
-  const r=await fetch('/settings',{method:'PUT',headers:{'content-type':'application/json',authorization:'Bearer '+TOKEN},body:JSON.stringify(body)});
-  if(r.status===401){toast('That token is not right.',true);localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();return;}
+  if(GROUP==='packs'){const all=[...document.querySelectorAll('[data-pack]')],on=all.filter(c=>c.classList.contains('on')).map(c=>c.dataset.pack);body.PACKS_ENABLED=on.length===all.length?'':on.join(',');body.PACKS_ALLOW_CODE=$('#allowcode').classList.contains('on')?'1':'0';}
+  else document.querySelectorAll('[data-key]').forEach(el=>{const k=el.dataset.key;if(el.dataset.bool)body[k]=el.classList.contains('on')?'1':'0';else if(el.type==='password'){if(el.value)body[k]=el.value;}else body[k]=el.value;});
+  const r=await fetch('/settings',{method:'PUT',headers:{'content-type':'application/json',authorization:'Bearer '+TOKEN,'X-Agent':'dashboard'},body:JSON.stringify(body)});
+  if(r.status===401){toast('That token is not right.',true);lock();return;}
   if(r.status===403){toast('The node has no admin token yet — run planetai ui.',true);return;}
   toast(r.ok?'Saved. Live within about 20 seconds.':'Could not save ('+r.status+').',!r.ok); if(r.ok)loadSetup();
 }
-async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel.`:'Could not send.',!r.ok);refresh();}
 
-refresh(); setInterval(refresh,kiosk?30000:60000);
-if(location.hash==="#setup")show("setup");
+// ------------------------------------------------------------------ boot
+if(kiosk)show('wall'); if(['#setup','#network','#wall'].includes(location.hash))show(location.hash.slice(1));
+refresh(); setInterval(refresh,kiosk?30000:60000); setInterval(()=>{if(LAST)$('#nodeplace').textContent=$('#nodeplace').textContent.replace(/\d{1,2}:\d{2}(\s?[AP]M)?/,clock());},30000);
 </script>
 </body>
 </html>
