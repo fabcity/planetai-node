@@ -1,0 +1,51 @@
+# Apparent temperature in SQL. Steadman's no-wind form as used by the Australian BoM:
+#   e  = rh/100 · 6.105 · exp(17.27·t / (237.7 + t))      vapour pressure, hPa
+#   AT = t + 0.33·e − 4.0
+# Indoors there is no wind term to subtract, which makes this the right form for a house.
+
+- id: heat_stress_now
+  level: act
+  cooldown_minutes: 180
+  sql: |
+    WITH x AS (
+      SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
+      FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
+      WHERE t.local AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
+    SELECT sensor_id, name, round(t::numeric, 1) AS t, round(rh::numeric) AS rh,
+           round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
+    FROM x
+    WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 32
+  message:
+    en: "Heat stress at {name}: it feels like {at} °C ({t} °C at {rh}% humidity). Drink water, move air, stop hard work, and check on anyone old, young or unwell."
+    id: "Stres panas di {name}: terasa seperti {at} °C ({t} °C, kelembapan {rh}%). Minum air, gerakkan udara, hentikan kerja berat, cek orang tua, anak, dan yang sakit."
+
+- id: heat_danger
+  level: act
+  cooldown_minutes: 120
+  sql: |
+    WITH x AS (
+      SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
+      FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
+      WHERE t.local AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
+    SELECT sensor_id, name,
+           round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
+    FROM x
+    WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 40
+  message:
+    en: "DANGER: it feels like {at} °C at {name}. This is heatstroke territory. Cool the room or leave it; wet skin, fan, shade, water. Do not leave anyone alone in it."
+    id: "BAHAYA: terasa seperti {at} °C di {name}. Ini wilayah sengatan panas. Dinginkan ruangan atau tinggalkan; basahi kulit, kipas, bayangan, air. Jangan tinggalkan siapa pun sendirian di dalamnya."
+
+- id: night_no_relief
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    SELECT r.sensor_id, s.name, round(min(r.min)::numeric, 1) AS night_min
+    FROM readings_1h r JOIN sensors s USING (sensor_id)
+    WHERE s.local AND s.indoor AND r.metric = 'temp'
+      AND r.bucket > now() - interval '12 hours'
+      AND extract(hour FROM r.bucket AT TIME ZONE current_setting('TimeZone')) NOT BETWEEN 7 AND 21
+    GROUP BY r.sensor_id, s.name
+    HAVING min(r.min) > 28 AND count(*) >= 5
+  message:
+    en: "Last night never cooled below {night_min} °C at {name}. Above 28 °C the body does not recover in sleep. Open up at the coolest hour, and if this is every night, the room needs shade or airflow, not a heavier fan."
+    id: "Semalam tidak pernah turun di bawah {night_min} °C di {name}. Di atas 28 °C tubuh tidak pulih saat tidur. Buka rumah pada jam terdingin, dan kalau ini setiap malam, ruangan butuh naungan atau aliran udara, bukan kipas lebih besar."

@@ -1,0 +1,16 @@
+id: heat
+name: Heat & comfort
+description: >-
+  Apparent temperature from temperature and humidity, heat-stress hours, and nights that never cool.
+  Works with any sensor the node already reads that reports both. Pure SQL.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.10.0" }
+kind: data
+domain: heat
+metrics: [temp, humidity]
+scales: [community]
+thresholds: >-
+  Apparent temperature (Steadman / Australian BoM, no-wind form): AT = T + 0.33·e − 4.0, with e the vapour
+  pressure in hPa from T and RH. 32 °C AT is the BoM "caution" threshold; 40 °C "danger". 28 °C overnight indoor
+  minimum is the WHO comfort ceiling for sleep. Tune in a fork for your place.

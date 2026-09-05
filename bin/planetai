@@ -14,6 +14,7 @@
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
+#   planetai packs          what is loaded; install code-pack Python dependencies into the image
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -512,6 +513,31 @@ cmd_homeassistant() {
   echo "  planetai restart. Then the Meshtastic gateway should uplink to that broker too."
 }
 
+
+# ---------------------------------------------------------------- packs: what is loaded, and code-pack dependencies
+pack_pips() { python3 -c '
+import glob, yaml
+pk=set()
+for f in glob.glob("packs/*/pack.yaml"):
+    for p in (yaml.safe_load(open(f)) or {}).get("pip") or []: pk.add(str(p))
+print("\n".join(sorted(pk)))'; }
+cmd_packs() {
+  step "Packs"
+  echo "  loaded now:"; api /packs | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], p.get("description","")[:70].replace(chr(10)," ")))' 2>/dev/null || echo "    (node not answering)"
+  echo
+  # pip: lists from every pack folder present. A rebuild installs for all of them, enabled or not; cheap and simple.
+  local reqs; reqs="$(pack_pips)"
+  if [[ -z "$reqs" ]]; then say "no code pack declares Python dependencies; nothing to install"; return; fi
+  if [[ "$(cat app/requirements-packs.txt 2>/dev/null)" == "$reqs" ]]; then
+    say "code-pack dependencies already recorded: $(echo "$reqs" | paste -sd' ' -). If the image predates them: planetai restart"
+    return
+  fi
+  echo "$reqs" > app/requirements-packs.txt
+  say "installing into the image: $(echo "$reqs" | paste -sd' ' -)  (rebuild, a minute or two)"
+  docker compose build app >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "rebuild failed; see $LOG"
+  say "done. Code packs also need PACKS_ALLOW_CODE=1 in .env to run. Read their adapter.py first."
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -532,6 +558,7 @@ case "${1:-help}" in
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   homeassistant|ha) cmd_homeassistant;;
+  packs) cmd_packs;;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
   *) sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;

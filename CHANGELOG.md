@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.11 — 2026-09-05
+
+**Ten pack ideas, three built.** `docs/PACK_IDEAS.md` lists ten packs someone could write this month, each with its
+Index cell, what it needs, its size and a natural author. Three ship as prototypes:
+
+- **`heat`** (data): Steadman apparent temperature in SQL from any local temp + humidity; heat-stress and danger
+  alerts; nights that never cool below 28 °C; a `Social|Community` cell of heat-exposure hours — one honest number for
+  the Index's emptiest column.
+- **`coast`** (code, key-free): waves, swell and sea temperature from Open-Meteo Marine at the nearest ocean cell,
+  refusing to run if that cell is more than 30 km away. Tested live: 1.7 m at 11.8 s off the Bukit, sea 27.4 °C.
+- **`earth-engine`** (code, needs a Google Earth Engine project): tree, built, crop and water fractions from Dynamic
+  World, Sentinel-2 NDVI, VIIRS night lights, and a land-change score from consecutive AlphaEarth annual embeddings,
+  all computed server-side over a 1 km buffer. The worked example of a pack with a dependency and a credential: it
+  logs once and idles until configured, and cannot take the node down. Logic tested with a fake `ee`; not yet run
+  against a live account.
+
+**Mechanics that came with them**
+- `pip:` in `pack.yaml` + `planetai packs`: code-pack Python dependencies are installed into the image once, on
+  demand, never at runtime.
+- `long_cooldown_ok: true` lets a rule declare a deliberately long cooldown to the rule checker, which otherwise
+  flags anything over a fortnight (the test-alert bug).
+- `tests/test_packs.py` covers both code packs offline.
+
 ## v0.10.1 — 2026-09-05
 
 - **Fixed:** a Smart Citizen kit the node polls directly also arrived through Bali Air Dispatch as `bad-sc-<kit>`, so it was counted twice in the ambient average — and BAD's indoor/outdoor metadata disagreed with Smart Citizen's own on two of your kits. Kits read directly are now skipped from BAD. Seen on node #1 once account discovery was on.

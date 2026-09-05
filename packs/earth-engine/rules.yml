@@ -1,0 +1,14 @@
+- id: land_changed
+  level: info
+  cooldown_minutes: 43200        # once a month at most; the input changes once a year
+  long_cooldown_ok: true         # tells tools/check_rules.py this is deliberate, not the test-alert bug
+  sql: |
+    WITH cur AS (SELECT value AS score, ts FROM readings WHERE sensor_id='ee-point' AND metric='land_change_score' ORDER BY ts DESC LIMIT 1),
+         b AS (SELECT value AS built FROM readings WHERE sensor_id='ee-point' AND metric='built_frac' ORDER BY ts DESC LIMIT 1),
+         t AS (SELECT value AS trees FROM readings WHERE sensor_id='ee-point' AND metric='tree_frac' ORDER BY ts DESC LIMIT 1)
+    SELECT 'ee-point' AS sensor_id, round((cur.score*100)::numeric, 1) AS pct, extract(year FROM cur.ts)::int AS year,
+           round((b.built*100)::numeric) AS built, round((t.trees*100)::numeric) AS trees
+    FROM cur, b, t WHERE cur.score >= 0.05
+  message:
+    en: "The satellites say the land within a kilometre of here changed noticeably in {year} (embedding shift {pct}%). Today it reads as {built}% built and {trees}% trees. The node cannot say what changed; someone who walks here can."
+    id: "Menurut satelit, lahan dalam radius satu kilometer berubah cukup nyata pada {year} (pergeseran embedding {pct}%). Saat ini terbaca {built}% terbangun dan {trees}% pohon. Node tidak bisa bilang apa yang berubah; yang berjalan di sini bisa."

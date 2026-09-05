@@ -83,8 +83,8 @@ for f in sorted(glob.glob("config/rules.yml") + glob.glob("packs/*/rules.yml")):
         where = f"{f}:{r.get('id')}"
         outs = check_sql(where, r["sql"])
         cd = r.get("cooldown_minutes", 60)
-        if cd > 20160:      # a fortnight
-            errs.append(f"{where}: cooldown {cd} min is over a fortnight — it can fire about once. Deliberate?")
+        if cd > 20160 and not r.get("long_cooldown_ok"):      # a fortnight
+            errs.append(f"{where}: cooldown {cd} min is over a fortnight — it can fire about once. If deliberate, add `long_cooldown_ok: true`")
         msg = r.get("message")
         for lang, tmpl in (msg.items() if isinstance(msg, dict) else [("", msg)]):
             for ph in re.findall(r"\{(\w+)", str(tmpl)):

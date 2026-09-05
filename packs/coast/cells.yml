@@ -1,0 +1,7 @@
+- cell: "Environmental|Bioregion"
+  unit: "sea surface temperature, 7d mean, °C (nearest ocean cell)"
+  state: partial      # a model, not a measurement — never live
+  notes: "Open-Meteo Marine point sample; boundary condition for a coastal node"
+  sql: |
+    SELECT avg(value) AS value FROM readings
+    WHERE sensor_id = 'marine-point' AND metric = 'sea_surface_temp' AND ts > now() - interval '7 days'

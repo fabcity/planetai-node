@@ -1,0 +1,13 @@
+# Bioregion-scale land context. Computed by a node that is asked to describe its surroundings, never rolled up from below.
+- cell: "Environmental|Bioregion"
+  unit: "tree-cover fraction within 1 km (Dynamic World, last complete year)"
+  state: partial
+  notes: "Earth Engine derived; a model classification, not a survey"
+  sql: |
+    SELECT value FROM readings WHERE sensor_id = 'ee-point' AND metric = 'tree_frac' ORDER BY ts DESC LIMIT 1
+- cell: "Environmental|Bioregion"
+  unit: "land-change score within 1 km: 1 − cosine similarity of consecutive annual AlphaEarth embeddings (0 = unchanged)"
+  state: partial
+  notes: "what changed around the node this year — cleared, built, flooded, replanted — without saying which"
+  sql: |
+    SELECT value FROM readings WHERE sensor_id = 'ee-point' AND metric = 'land_change_score' ORDER BY ts DESC LIMIT 1

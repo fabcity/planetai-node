@@ -133,6 +133,9 @@ packs/air-quality/      domain pack: PM2.5 rules + cells (Environmental|Communit
 packs/open-data-health/ scale pack: CKAN portal maintenance → Governance|City
 packs/cold-start/       day-one value with zero hardware: modelled air, normals, sensor-vs-model gap
 packs/insight/          a digest every 3h; daily: how indoor, street and satellite agree, and the street's worst hour
+packs/heat/             apparent temperature, heat-stress hours, nights that never cool → Social|Community
+packs/coast/            waves, swell, sea temperature at the nearest ocean cell (code pack, key-free)
+packs/earth-engine/     tree cover, built-up, NDVI, night lights, AlphaEarth change score around the node (code pack, needs a GEE account)
 presets/                bali · barcelona · boston · santiago — coordinates, timezone, portal, language
 app/bootstrap.py        first-run fill from CAMS + NASA POWER + a place name
 init.sql            sensors · readings · alerts · actions; views readings_1h · stats
@@ -141,7 +144,7 @@ update.sh           in-place update: backup → pull → migrate → rebuild →
 backup.sh           nightly pg_dump, 14-day retention, point BACKUP_DIR at a NAS
 tests/              offline adapter tests against saved payloads
 packs/              community extensions — drop a folder here (docs/PACKS.md)
-docs/               START_HERE · USE_CASES · UPDATING · PLATFORMS · MAC_MINI · NETWORKING · MESHTASTIC · MESHTASTIC_APP · MESHTASTIC_FLEET · sensors · PACKS · DOMAINS · COVERAGE · PREFILL
+docs/               START_HERE · USE_CASES · PACK_IDEAS · UPDATING · PLATFORMS · MAC_MINI · NETWORKING · MESHTASTIC · MESHTASTIC_APP · MESHTASTIC_FLEET · sensors · PACKS · DOMAINS · COVERAGE · PREFILL
 ARCHITECTURE.md     the building
 SPEC.md             this brick: contracts, and the retired pieces with their triggers
 PRODUCT.md          who this is for and what they pay for

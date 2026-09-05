@@ -1,0 +1,14 @@
+id: coast
+name: Coast
+description: >-
+  Waves, swell and sea-surface temperature at the nearest ocean grid cell, from Open-Meteo Marine.
+  Free, key-free, global. Context for coastal nodes: fishers, surf schools, a warung on the beach.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.10.0" }
+kind: code
+domain: coast
+metrics: [wave_height_m, wave_direction, wave_period_s, swell_height_m, swell_period_s, sea_surface_temp]
+scales: [bioregion]
+sources: [environmental/bioregion/open-meteo-marine]
+attribution: "Open-Meteo Marine API (CC BY 4.0), model data from Copernicus Marine / MeteoFrance MFWAM"

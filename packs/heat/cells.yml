@@ -1,0 +1,16 @@
+# Heat exposure as a Social cell: how many hours in the last 30 days did local indoor air feel hotter than 32 °C.
+- cell: "Social|Community"
+  unit: "hours in 30d with indoor apparent temperature ≥ 32 °C"
+  state: live
+  min_buckets: 12
+  notes: "Steadman apparent temperature from local indoor temp+humidity; a heat-exposure count, not a comfort score"
+  sql: |
+    WITH h AS (
+      SELECT t.bucket, t.sensor_id, t.mean AS t, hm.mean AS rh
+      FROM readings_1h t
+      JOIN readings_1h hm ON hm.sensor_id = t.sensor_id AND hm.bucket = t.bucket AND hm.metric = 'humidity'
+      JOIN sensors s ON s.sensor_id = t.sensor_id
+      WHERE s.local AND s.indoor AND t.metric = 'temp' AND t.bucket > now() - interval '30 days')
+    SELECT count(*) FILTER (WHERE t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0 >= 32)::float
+           / greatest(count(DISTINCT sensor_id), 1) AS value
+    FROM h

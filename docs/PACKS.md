@@ -74,6 +74,28 @@ south side, that's where the smoke comes from at this hour" is.
 **Declare what you assume.** A pack tuned to a tropical monsoon shouldn't fire in Barcelona. Say so in the README and,
 where you can, put it in the SQL — check `indoor`, check `local`, check the sensor exists before you threshold it.
 
+## 4b. Code packs that need a library
+
+Declare it in `pack.yaml`:
+
+```yaml
+pip: [earthengine-api]
+```
+
+`planetai packs` collects every pack's `pip:` list into `app/requirements-packs.txt` (gitignored) and rebuilds the
+image once. Nothing is installed at runtime, nothing is pulled on every start, and a node with no code packs never
+runs pip at all. A code pack whose library is missing must log one line and return nothing, not raise: the
+`earth-engine` pack is the worked example.
+
+## 4c. Code packs that need a credential
+
+Read it from `.env` (the app container gets the whole file), and put any key *file* in `config/`, which is already
+mounted read-only into the container and where the gitignore expects it (`config/ee-key.json`). Never bake a key into
+the image or the repo. When the credential is absent, log once and idle: the node must keep running with a pack that
+is not yet configured.
+
+Ten pack ideas, three of them shipped as prototypes: [`PACK_IDEAS.md`](PACK_IDEAS.md).
+
 ## 5. Where packs live — and why not here
 
 **Packs are not in this repository.** The core repo carries the runtime, the official adapters, and one example pack.

@@ -1,0 +1,17 @@
+id: earth-engine
+name: Earth Engine context
+description: >-
+  What the land within a kilometre of the node did this year, from Google Earth Engine's public catalog: tree
+  cover and built-up fraction (Dynamic World), vegetation (Sentinel-2 NDVI), night lights (VIIRS), and a
+  year-over-year land-change score from the AlphaEarth satellite embeddings. Bioregion context, yearly cadence.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.10.0" }
+kind: code
+domain: land
+metrics: [tree_frac, built_frac, crop_frac, water_frac, ndvi_median, night_lights, land_change_score]
+scales: [bioregion]
+pip: [earthengine-api]
+needs: >-
+  A Google Earth Engine project (free for research and non-commercial use) and a service-account key:
+  EE_PROJECT, EE_SERVICE_ACCOUNT, EE_KEY_FILE in .env, with the key mounted read-only into the app container.
