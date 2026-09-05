@@ -73,8 +73,14 @@ def health_check() -> dict:
     fresh = dumps and (datetime.now(timezone.utc) - datetime.fromtimestamp(dumps[-1].stat().st_mtime, timezone.utc)) < timedelta(days=2)
     chk("a backup in the last 2 days", fresh, "run `planetai backup` on the node and check `crontab -l | grep backup`")
     if os.getenv("MQTT_HOST"):
-        m = h.get("mesh") or {}
-        chk("mesh gateway heard recently", bool(m.get("last")), "the gateway radio has not published: WiFi, MQTT settings, or the broker (`planetai logs mosquitto`)")
+        # judge the radios by their readings, not by in-memory packet counters that reset on every restart
+        mesh = [r for r in _get("/stats") if r["sensor_id"].startswith("msh-")]
+        quiet = sorted({r["sensor_id"] for r in mesh if r["silent_minutes"] > 60})
+        heard = sorted({r["sensor_id"] for r in mesh if r["silent_minutes"] <= 60})
+        chk("LoRa radios heard in the last hour", bool(heard) or not mesh,
+            f"radio(s) {', '.join(quiet)} have been silent for hours. What this means: readings and alerts that travel over LoRa have "
+            f"stopped; everything else (the WiFi sensors, Telegram, the dashboard) is unaffected. Most often the gateway radio (the XIAO) "
+            f"lost WiFi or its MQTT session: check its power light, open its web page at its IP, or power-cycle it. `planetai logs mosquitto` shows whether the broker hears it.")
     return {"ok": all(c["ok"] for c in checks), "checks": checks}
 
 
