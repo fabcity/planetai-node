@@ -43,7 +43,7 @@ at a city, Earth models at the planet, one schema. Node #1 has run in Kuta Selat
 
 It reads Smart Citizen (your whole account), AirGradient and PurpleAir (over your WiFi, no cloud), Meshtastic radios
 over LoRa, Bali's public stations, and free global models. It speaks Telegram, the LoRa mesh, Reticulum, Home
-Assistant, and MCP, so your own AI agent can run it. It runs on a Mac, Linux, a Raspberry Pi, or Windows with WSL2.
+Assistant, and MCP, so your own AI agent can run it. `planetai agent local` puts a small model on the node itself. It runs on a Mac, Linux, a Raspberry Pi, or Windows with WSL2.
 
 ## Read next
 

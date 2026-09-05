@@ -49,7 +49,9 @@ cd ../planetai && make deploy
 `AGENTS.md` at the root is the operating manual for an AI agent (Claude, Codex, a local model): the MCP surface at
 `/mcp`, the `--json` commands, the invariants, the gates. `planetai agent` prints the endpoint, the token and a config
 snippet. The MCP server is `app/agent.py`, thirteen tools over the existing API; host operations are handed back as
-commands because the container has no Docker or git.
+commands because the container has no Docker or git. `app/agent_loop.py` is a local model (Ollama, `qwen3:4b`) using
+those tools, talking to the household over Telegram; `planetai agent local` sets it up. The final answer is requested
+as constrained JSON because a 4B model narrates its reasoning as prose otherwise.
 
 ## Layout
 

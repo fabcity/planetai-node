@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.21 — 2026-09-05 — a local model runs the node
+
+`planetai agent local`: Ollama on the node's own machine, `qwen3:4b` (or `qwen3:8b` on 16 GB), and `app/agent_loop.py`
+in the `agent` compose profile. The model uses the node's thirteen MCP tools, answers the household on the Telegram bot
+the node already has, records `/act 23 closed the windows` deterministically without the model, and sends a brief at
+`BRIEF_HOUR`. No cloud, no key, no model anywhere but here. Its actions appear in the audit trail as `local-model`.
+Tested on this laptop's Ollama against the node's tools: three questions, three correct tool choices, plain answers in
+4–11 s. The final answer is requested as constrained JSON, because a 4B model narrates its reasoning as prose even with
+thinking off and no instruction fixes that; a schema does. Gemma 3 does not do tool calls in Ollama; 1.7B is too weak
+for multi-step tool use.
+
 ## v0.20 — 2026-09-05 — agents
 
 **The node as tools for an AI agent.** `app/agent.py`: an MCP server mounted at `/mcp`, behind the admin token, with

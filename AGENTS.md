@@ -4,6 +4,13 @@ You are working on a PLANETAI node: a small computer that reads environmental se
 and tells the people there what to do. Raw readings never leave it. Its own measurement is ρ, the share of alerts that
 led to an action. Your job is to keep it healthy, useful and truthful. This file is for you; the human docs are in `docs/`.
 
+## A local model may already be running here
+
+`planetai agent local` puts Ollama on the node with `qwen3:4b` (or `qwen3:8b` on 16 GB) and a loop (`app/agent_loop.py`)
+that answers the household on Telegram using these same tools and sends a brief each morning. It appears in the audit
+trail as `local-model`. If you are a remote agent, you are not alone on this node; read `alerts` and the actions before
+acting, and do not undo what the person's local model did without asking.
+
 ## Two ways in
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
