@@ -45,11 +45,15 @@ docker compose exec -T db psql -v ON_ERROR_STOP=1 -U planetai planetai < init.sq
 
 # 5. new settings keys, without overwriting anything you set
 say "checking .env for new settings"
-NEW=0
+NEW=0; HDR=0
 while IFS= read -r line; do
   k="${line%%=*}"
   [[ "$k" =~ ^[A-Z_]+$ ]] || continue
-  grep -q "^${k}=" .env || { echo "$line" >> .env; echo "   + ${k}"; NEW=$((NEW+1)); }
+  if ! grep -q "^${k}=" .env; then
+    # new keys go under their own dated marker, not silently under whatever heading happens to be last
+    [[ $HDR -eq 0 ]] && { printf '\n# ---- added by update on %s (see .env.example for what each does) ----\n' "$(date +%F)" >> .env; HDR=1; }
+    echo "$line" >> .env; echo "   + ${k}"; NEW=$((NEW+1))
+  fi
 done < .env.example
 [[ $NEW -eq 0 ]] && echo "   nothing new" || warn "${NEW} new setting(s) added with defaults — review .env"
 
