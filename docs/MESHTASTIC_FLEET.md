@@ -52,8 +52,9 @@ tools/mesh-provision.sh /dev/cu.usbmodem1101 "kitchen shelf"  SHF CLIENT SG_923 
 ```
 
 It sets region and the `LONG_FAST` preset, long and short name, role, and for `SENSOR` environment telemetry every
-15 minutes and position every 30 with GPS on. The **first** radio you run it on creates a private channel named
-`planetai` with a random key and saves the channel URL to the file; every later radio imports it. The script ends by
+15 minutes and position every 30 with GPS on. The **first** radio you run it on turns its **primary** channel into a
+private channel named `planetai` with a random key and saves the channel URL to the file; every later radio imports it
+with `--seturl`, which replaces all its channels. Primary, not secondary: see the field notes. The script ends by
 printing what it set, so you read the result before unplugging.
 
 **Label the radio** with its long name. Eight identical boards on a bench are indistinguishable, and the label is the
@@ -130,6 +131,19 @@ BME680 is not on the list, though Meshtastic's telemetry module supports the chi
 normal charger, not a fast one.
 
 **Screenless boards pair with PIN `123456`** (L1 Lite, XIAO). The app asks and shows nothing.
+
+**Telemetry travels on the primary channel.** The first fleet channel was created as a *secondary* (`--ch-add`), with
+uplink enabled on it, and the gateway sat connected to the broker for a day publishing nothing. Radios send telemetry,
+position and node info on channel 0, the primary, where uplink was off. Proven by forcing a text on channel 0, which hit
+the broker within a second. Fix: the fleet channel *is* the primary. `mesh-provision.sh` now renames channel 0 rather
+than adding a channel; on radios already provisioned the old way, `--seturl` with the new fleet URL replaces the set.
+
+**The XIAO's serial console is off by default** (`device.serial_enabled: false`), and newer firmware also gates the debug
+log behind `security.debug_log_api_enabled`. With both on, the radio's own log streams over USB and answers questions
+the app cannot: `stty -f /dev/cu.usbmodemXXXX 115200 raw -echo; cat /dev/cu.usbmodemXXXX`.
+
+**Mosquitto was crash-looping for a day** because its config file was never committed and Docker mounted an empty
+directory in its place. `make lint` now refuses a compose bind mount the repo does not ship.
 
 ## 7. The test that closes it
 

@@ -12,8 +12,9 @@
 #   GATEWAY=1 MQTT_ADDR=192.168.4.190:1883 MQTT_PASS=<printed> WIFI_SSID=<ssid> WIFI_PSK=<password> \
 #     tools/mesh-provision.sh /dev/cu.usbmodem1101 "bayu-2 gateway" GW CLIENT SG_923 ~/planetai-mesh.url
 #
-# The first radio creates the private channel and writes its URL to the file; every later radio imports it, so
-# the whole fleet shares one encrypted channel without anyone scanning QR codes. The gateway (ESP32) takes the
+# The first radio turns its PRIMARY channel (index 0) into the fleet channel with a random key and writes the URL to
+# the file; every later radio imports it. Primary matters: Meshtastic sends telemetry and position on the primary
+# channel, so a private channel added as secondary never carries sensor data (found the hard way, 5 Sep 2026). The gateway (ESP32) takes the
 # same channel this way too; its WiFi and MQTT settings are separate (see docs/MESHTASTIC_APP.md D1).
 set -euo pipefail
 export PATH="$HOME/.local/bin:$PATH"
@@ -44,16 +45,15 @@ if [[ -s "$CHFILE" ]]; then
   meshtastic --port "$PORT" --info 2>/dev/null | grep -q "\"name\": \"$CHNAME\"" || die "channel '$CHNAME' is not on the radio after import — check $CHFILE"
   say "channel '$CHNAME' confirmed on the radio"
 else
-  say "first radio: creating channel '$CHNAME' with a random key, saving its URL to $CHFILE"
-  m --ch-add "$CHNAME"; sleep 3; ready
-  m --ch-set psk random --ch-index 1; sleep 3; ready
-  m --qr-all 2>/dev/null | grep -oE 'https://meshtastic.org/e/#[A-Za-z0-9_=-]+' | head -1 > "$CHFILE"
+  say "first radio: channel 0 becomes '$CHNAME' with a random key (PRIMARY — telemetry and position travel on the primary channel)"
+  m --ch-index 0 --ch-set name "$CHNAME" --ch-set psk random; sleep 3; ready
+  m --qr 2>/dev/null | grep -oE 'https://meshtastic.org/e/#[A-Za-z0-9_=-]+' | head -1 > "$CHFILE"
   [[ -s "$CHFILE" ]] && say "saved. Run this script for the other radios with the same file to share it." || echo "!! could not capture the channel URL; run: meshtastic --port $PORT --qr-all"
 fi
 if [[ "${GATEWAY:-0}" == "1" ]]; then
   : "${MQTT_ADDR:?MQTT_ADDR=host:1883 (planetai meshtastic prints it)}"; : "${MQTT_PASS:?MQTT_PASS (planetai meshtastic prints it)}"
-  say "gateway: uplink + downlink on channel '$CHNAME'"
-  m --ch-index 1 --ch-set uplink_enabled true --ch-set downlink_enabled true; sleep 3; ready
+  say "gateway: uplink + downlink on the primary channel '$CHNAME'"
+  m --ch-index 0 --ch-set uplink_enabled true --ch-set downlink_enabled true; sleep 3; ready
   say "gateway: MQTT → $MQTT_ADDR, JSON on, encryption off"
   m --set mqtt.enabled true --set mqtt.address "$MQTT_ADDR" --set mqtt.username "${MQTT_USER:-planetai}" --set mqtt.password "$MQTT_PASS" \
     --set mqtt.encryption_enabled false --set mqtt.json_enabled true --set mqtt.root msh; sleep 3; ready

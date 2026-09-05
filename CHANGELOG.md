@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.8.2 — 2026-09-05
+
+**First real packet from the gateway reached node #1**, and the day-long silence had one cause: the fleet channel was
+a secondary, and radios send telemetry on the primary. `mesh-provision.sh` now makes the fleet channel the primary.
+Also documented: enabling the XIAO's serial console and debug log to read the radio's own output over USB; the
+Mosquitto config that was missing for a day; connection logging on the broker.
+
 ## v0.8.1 — 2026-09-04
 
 **First radios provisioned; the failures documented.**

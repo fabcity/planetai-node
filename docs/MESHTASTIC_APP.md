@@ -136,9 +136,9 @@ If radio 2 never appears:
 
 The default `LongFast` is public: anyone nearby running Meshtastic shares it. Your sensors want their own.
 
-1. On radio 1: *Radio configuration → Channels* → tap the **+** (or *Add channel*). Name: your node's name, e.g. `bayu-2`. Tap the key/PSK field → *Generate 256-bit*. Role: *Secondary*. *Send*.
+1. On radio 1: *Radio configuration → Channels* → tap the **primary** channel (`LongFast`, index 0) and edit it, don't add a new one: name it after your node, e.g. `planetai`, tap the key/PSK field → *Generate 256-bit*. *Send*. It must be the primary: telemetry and position only travel on the primary channel, so a private channel added as secondary never carries sensor data.
 2. Tap the channel → **Share / QR code**. On the phone connected to radio 2, *Channels → Scan QR* (or paste the URL). *Send*. Repeat for every radio.
-3. Keep `LongFast` as the primary. Your channel is secondary; the gateway will uplink it specifically.
+3. There is no `LongFast` any more on your radios, and that is intended: your mesh is private. Public Meshtastic traffic nearby is invisible to you and yours to them.
 
 ---
 
@@ -165,7 +165,7 @@ Do these **in this order**, because after step 3 the phone can no longer talk to
         TLS enabled           off
 
    *Save*.
-6. Still in the web client: *Config → Radio → Channels* → your private channel → **Uplink enabled ON**, **Downlink enabled ON**. *Save*. (Uplink: mesh → node. Downlink: node → mesh, for alerts.)
+6. Still in the web client: *Config → Radio → Channels* → the primary channel (`planetai`) → **Uplink enabled ON**, **Downlink enabled ON**. *Save*. (Uplink: mesh → node. Downlink: node → mesh, for alerts.)
 7. Back on the node, `planetai meshtastic` is waiting for the first packet. Within a couple of minutes it lists what arrived.
 
 Its node number, for alerts out to the mesh: the web client shows it as `!a1b2c3d4`. In a terminal,
