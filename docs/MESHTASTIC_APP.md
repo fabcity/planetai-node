@@ -179,6 +179,7 @@ for WiFi), set the same telemetry interval as the field units, and mark it indoo
 ### D2. A field sensor (Wio Tracker L1 / L1 Lite / L1 e-ink)
 
 Plug the Grove sensor into the Grove port **before** switching on; Meshtastic detects I²C sensors at boot.
+The Grove port is **3.3 V**: a SEN54/SEN55 or any fan-driven PM sensor needs 5 V and will not appear at all.
 Seeed's *verified* list for the L1's Grove port is BME280, SHT31/SHTC3/SHT4x, AHT10, BMP085, MCP9808, PCT2075. The
 **BME680 is not on it**, although Meshtastic's telemetry module supports the chip in general, so test one before
 relying on a batch. A BME280 is the safe choice for temperature, humidity and pressure. Then, over Bluetooth:

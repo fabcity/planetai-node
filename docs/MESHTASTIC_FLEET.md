@@ -127,6 +127,11 @@ cable is a different mechanism and is fine.
 **Seeed's verified Grove sensors for the L1** are BME280, SHT31/SHTC3/SHT4x, AHT10, BMP085, MCP9808, PCT2075. The
 BME680 is not on the list, though Meshtastic's telemetry module supports the chip. Test one before trusting a batch.
 
+**The Grove port on the Tracker is 3.3 V.** A Grove SEN54 plugged into it drew nothing, answered nothing, and the
+firmware's boot scan found no sensor, while the same board found its GPS and reported its battery fine. Sensirion
+specifies 4.5–5.5 V for the SEN5x and Seeed's Grove board passes the host voltage through. Use BME280/BME680 on
+Trackers; the SEN5x belongs on a mains-powered kit (it is already on Smart Citizen kit 19849 in the same house).
+
 **The Tracker has a physical power switch.** Lift it. A Tracker showing nothing is usually off or flat; charge from a
 normal charger, not a fast one.
 

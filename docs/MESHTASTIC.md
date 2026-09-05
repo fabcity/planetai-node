@@ -72,6 +72,10 @@ that must have both good WiFi and good LoRa reach.
 `WIO_L1…`, drag the `.uf2` from https://flasher.meshtastic.org onto it.
 
 **Sensor.** Plug a Grove I²C sensor into the Grove port before powering on. Meshtastic detects I²C sensors at boot.
+**The Tracker's Grove port is 3.3 V.** A sensor that needs 5 V — the Sensirion SEN54/SEN55 all-in-one, most PM sensors
+with a fan — never powers up on it, so it is simply absent from the I²C scan and nothing tells you why (5 Sep 2026,
+an afternoon). BME280/BME680, SHT4x and AHT10 are 3.3 V and the right field sensors here. PM on a mesh radio needs
+5 V injected on VCC and a mains supply; at that point a Smart Citizen or AirGradient is the simpler instrument.
 Seeed's verified list for this board is BME280, SHT31/SHTC3/SHT4x, AHT10, BMP085, MCP9808, PCT2075. The BME680 is
 supported by Meshtastic's telemetry module in general but is *not* on Seeed's verified list for the L1; test one before
 trusting a batch of twenty-five. SEN5x (PM + VOC + NOx) is supported by the module; likewise unverified on this board. The HM3301 needs its driver present in the firmware you flash; check the release notes, and
