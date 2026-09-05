@@ -36,7 +36,18 @@ for f in config/rules.yml .env; do
 done
 
 # 3. get the new code
-if [[ $PULL -eq 1 ]] && [[ -d .git ]]; then
+if [[ $PULL -eq 1 ]] && [[ ! -d .git ]] && [[ -f VERSION ]]; then
+  # installed from the tarball (no repository access): fetch the current one and unpack over this folder
+  say "updating from ${PLANETAI_SITE:-https://planetai.fab.city/node0}"
+  tmp="$(mktemp -d)"
+  if curl -fsSL "${PLANETAI_SITE:-https://planetai.fab.city/node0}/get/planetai-node.tar.gz" -o "$tmp/n.tar.gz"; then
+    tar xzf "$tmp/n.tar.gz" -C "$tmp" && ( cd "$tmp/planetai-node" && tar cf - . ) | tar xf - --exclude=.env
+    say "now $(cat VERSION 2>/dev/null || echo '?')"
+  else
+    warn "could not reach the site; keeping the version you have"
+  fi
+  rm -rf "$tmp"
+elif [[ $PULL -eq 1 ]] && [[ -d .git ]]; then
   say "pulling"
   # name the remote and branch explicitly: a clone repaired by hand may have no upstream set
   branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"

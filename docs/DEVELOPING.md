@@ -66,6 +66,18 @@ curl -s localhost:8082/health | python3 -m json.tool
 No sensor needed — it bootstraps from CAMS and NASA POWER for the preset's coordinates. Throw the folder away
 afterwards; `docker compose down -v` removes its data volume.
 
+## Publishing for beta testers
+
+The repository is private, so testers install from a tarball the website serves:
+
+```bash
+tools/bundle.sh                 # writes ../planetai/node0/get/{planetai-node.tar.gz,VERSION,SHA256}
+cd ../planetai && make deploy   # publishes the site, and with it the bundle
+```
+
+Run it after every release you want testers to have. `install` and `update.sh` prefer git when the repo is
+reachable and fall back to the tarball when it is not, so the same commands work for both audiences.
+
 ## Cutting a release
 
 ```bash

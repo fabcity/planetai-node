@@ -26,7 +26,7 @@ Planet boundary conditions. Node #1 measures air because a sensor was on the wal
 fork ([`DOMAINS.md`](docs/DOMAINS.md)), and the next scale is an adapter ([`COVERAGE.md`](docs/COVERAGE.md)).
 
 ```bash
-curl -fsSL planetai.fab.city/install | bash
+curl -fsSL planetai.fab.city/node0/install | bash
 ```
 
 That is the whole install. It fetches the code, then asks three things: a name for the node, where it is (type a

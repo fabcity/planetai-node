@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.13 — 2026-09-05
+
+**A node can be installed without access to this repository**, so beta testers need no GitHub account.
+
+- `tools/bundle.sh` builds the tarball the website serves: everything git tracks minus CI, dev tooling and tests, plus a `VERSION` file. It refuses to emit a bundle containing `.git` or `.env`, and publishes a SHA-256 alongside.
+- `install` now has two paths. With repository access it clones as before; without, it downloads the tarball from `planetai.fab.city/node0`, verifies the checksum, and unpacks it while keeping the operator's `.env`, backups and packs.
+- `update.sh` does the same: a node with a `.git` pulls, a node with a `VERSION` re-fetches the published tarball.
+- The public setup guide lives at `planetai.fab.city/node0/setup/` — what you need, the four questions, connecting alerts, the five everyday commands, and a troubleshooting table where every row is something that actually happened to a real node.
+
 ## v0.12.1 — 2026-09-05 — documentation audit
 
 - **`tools/check_docs.py`**: checks every claim in the docs that a machine can check — files, `planetai` commands, environment variables, relative links, HTTP endpoints, pack names, size claims, and whether README's index matches `docs/`. Runs in `make lint` and CI. Verified by removing an entry from the index and watching it fail.
