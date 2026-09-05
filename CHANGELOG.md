@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.11.2 — 2026-09-05
+
+- **Fixed:** `planetai packs` printed a `SyntaxError` instead of the pack list. The `json` helper wrapped snippets after a semicolon, where a `for` loop is a syntax error. The snippet now goes on its own line, so any statement works.
+- **Fixed the gate that missed it:** `check_cli_python.py` compiled each snippet standalone, where `for p in d: print(...)` is perfectly valid. It now compiles them as the helper actually wraps them. Verified by injecting a broken snippet and watching the gate fail.
+
 ## v0.11.1 — 2026-09-05
 
 - **Fixed:** `planetai packs` read `pack.yaml` with PyYAML, which a node's Apple Python does not have, so the command crashed on node #1. It now parses the one line it needs with awk. Nothing else in the CLI needed a third-party library and nothing should: `tools/check_cli_python.py` now fails the build if a CLI snippet imports one.

@@ -65,7 +65,11 @@ envset() { # idempotent upsert
 port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
 mesh_packets() { api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null || echo 0; }
 api() { curl -sf "localhost:$(port)$1" 2>/dev/null; }
-json() { python3 -c "import sys,json; d=json.load(sys.stdin); $1"; }
+# `d` is the parsed stdin. The snippet goes on its own line, so loops and ifs work, not only expressions
+# (a `for` after a semicolon is a SyntaxError, and it shipped once).
+json() { python3 -c "import sys,json
+d=json.load(sys.stdin)
+$1"; }
 
 # ---------------------------------------------------------------- geocode: a place name in, coordinates + timezone out
 # Open-Meteo first (free, no key, returns the time zone). It knows cities and towns. For neighbourhoods and

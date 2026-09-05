@@ -10,12 +10,15 @@ for m in pat.finditer(src):
     code = m.group(1).replace("'\"'\"'", "'")
     # the json helper wraps the snippet: it has `d` in scope. Give it a stub so name errors don't matter; we only parse.
     n += 1
+    # compile it as the helper actually wraps it: `d = json.load(...)` then the snippet on its own line.
+    # Compiling the snippet alone hid a `for` loop that is fine standalone but a SyntaxError after a semicolon.
+    wrapped = "import sys, json\nd = json.load(sys.stdin)\n" + code
     try:
-        ast.parse(code, feature_version=(3, 9))
+        ast.parse(wrapped, feature_version=(3, 9))
     except SyntaxError as e:
         bad += 1
         line = src[:m.start()].count("\n") + 1
-        print(f"  x bin/planetai:{line}: {e.msg} -> {e.text.strip()[:80] if e.text else code[:80]}")
+        print(f"  x bin/planetai:{line}: {e.msg} -> {(e.text or code).strip()[:90]}")
 # the CLI runs on the node, whose Python is Apple's stdlib-only 3.9. A command that imports a third-party
 # library works on the developer's machine and fails on every node (planetai packs did, with PyYAML).
 THIRD_PARTY = ("yaml", "httpx", "requests", "psycopg", "numpy", "pandas", "sqlglot")
