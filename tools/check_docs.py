@@ -67,7 +67,7 @@ for doc in DOCS:
                "app/requirements-packs.txt", "out/", "packs/_test"}
     for path in set(re.findall(r"`((?:docs|packs|app|config|tools|tests|presets|out)/[A-Za-z0-9_./-]+)`", text)):
         p = path.rstrip("/.")
-        if p in RUNTIME or path in RUNTIME:
+        if p in RUNTIME or path in RUNTIME or doc == "CHANGELOG.md":     # the changelog is a record; files move
             continue
         if not os.path.exists(p) and not glob.glob(p):
             errs.append(f"{doc}: names `{path}`, which does not exist")

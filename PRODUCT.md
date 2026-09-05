@@ -1,4 +1,4 @@
-# PLANETAI Node — Product
+# PLANETAI Node. Product
 
 Working draft, 2 September 2026. Not a grant. Someone pays or it dies.
 
@@ -12,7 +12,7 @@ or Delhi should replace them rather than translate them.
 Bali Air Dispatch, run out of the same circle as this project (MDG is a listed collaborator), has been publishing
 the island's PM2.5 record since April 2026. Their numbers: fifteen public sensors for 4.4 million residents and
 5,780 km². At the one sensor with a two-year record, 100% of days since June exceeded the WHO 24-hour guideline.
-The pattern is household waste burning — a 9am spike and a second climb after dark, island-wide. Every AirGradient
+The pattern is household waste burning: a 9am spike and a second climb after dark, island-wide. Every AirGradient
 unit deployed in Bali in 2025 went silent within the year.
 
 Two things follow. The island has a data-*visibility* problem that BAD is already solving. And it has a
@@ -23,7 +23,7 @@ That second problem is the product.
 
 ## What it is
 
-A node is a small computer at a place — a home, a school, a clinic, a banjar office, a hotel — that reads the
+A node is a small computer at a place: a home, a school, a clinic, a banjar office, a hotel: that reads the
 sensors there, reads the public sensors around it, and sends the people at that address one plain message when
 something should change: shut the windows, run the purifier, ventilate, the sensor's dead, here's your week.
 
@@ -42,7 +42,7 @@ it is to keep the sensor alive and the alerts correct.**
 
 Not a target yet: Barcelona, Boston, Santiago. They come when a Bali node has stayed alive for a year.
 
-## The offer (draft — price the service, not the box)
+## The offer (draft: price the service, not the box)
 
 | tier | what | who pays | notes |
 |---|---|---|---|
@@ -62,7 +62,7 @@ Not because of the brand. Because of the three things the network already has th
 - **Installation and maintenance labour.** Fab Lab Bali today; every fab lab in the network tomorrow. The "kept alive" tier is only possible because there's a workshop within driving distance.
 - **A curriculum.** Fab Academy 2027 can carry "install and operate a node" as a module. That's a trained installer pipeline, worldwide, at zero marginal cost.
 
-Bali Air Dispatch is one observatory instance, for one island, built by people in our own circle. PLANETAI's observatory is the *layer* — the same read API at every node, aggregator and region, feeding planetai.fab.city and index.fab.city. BAD is a source we read, a pattern we learned from, and a map we should densify with hardware fab labs keep alive. Not a competitor, not the ceiling.
+Bali Air Dispatch is one observatory instance, for one island, built by people in our own circle. PLANETAI's observatory is the *layer*: the same read API at every node, aggregator and region, feeding planetai.fab.city and index.fab.city. BAD is a source we read, a pattern we learned from, and a map we should densify with hardware fab labs keep alive. Not a competitor, not the ceiling.
 
 ## Ninety days
 
@@ -77,7 +77,7 @@ Bali Air Dispatch is one observatory instance, for one island, built by people i
 - **Maintenance costs more than the tier.** Then it's a nonprofit or it's dead. Pilots exist to price this.
 - **WhatsApp.** Indonesians live there; Telegram is our stopgap. Meta Business approval for templated alerts is a slog. Budget the slog.
 - **The engineer.** Someone has to own install.sh across a zoo of machines. If it's Tomas past day 30, the product is a hobby.
-- **BAD's API changes or goes away.** We store what we pull; the node keeps working on its own sensors. And we should be contributing sensors to BAD, not only reading it — that's what makes us a good neighbour and a resilient one.
+- **BAD's API changes or goes away.** We store what we pull; the node keeps working on its own sensors. And we should be contributing sensors to BAD, not only reading it: that's what makes us a good neighbour and a resilient one.
 
 ## Names
 

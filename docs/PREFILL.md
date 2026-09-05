@@ -1,89 +1,39 @@
-# Pre-filled data — what a node knows before it has a sensor
+# What a node knows before it has a sensor
 
-A node needs coordinates. That's it. On first start it pulls three months of history and forty years of normals for
-its location from free, key-free, global sources, and starts sending useful messages the same day. Hardware makes it
-better; hardware is not the entry fee.
+On first start, with an empty database, the node pulls for its coordinates:
 
-```bash
-./install.sh --preset barcelona --name lab-roof     # no sensor flags at all
-```
+| source | what | span | cost |
+|---|---|---|---|
+| Copernicus CAMS (via Open-Meteo) | hourly PM2.5, PM10, O₃, NO₂, dust, UV, 11 km grid | last 92 days, then live | free, no key |
+| NASA POWER | monthly temperature, humidity, rain normals | 40 years | free, no key |
+| Open-Meteo | weather now: temp, humidity, wind, rain | live | free, no key |
+| OpenStreetMap Nominatim | the place name | once | free |
 
-Within about a minute: ~2,200 rows in the database, a place name, a modelled air-quality line, and a seasonal
-baseline going back to 1981.
+So `planetai status` has something to say within minutes, anywhere on Earth: today's modelled air against three months
+of history, today's weather against forty years of normals. `BOOTSTRAP=0` skips it.
 
-## What arrives, and from where
+## The number this makes possible
 
-| source | what you get | key? | coverage | when |
-|---|---|---|---|---|
-| **Copernicus CAMS** via Open-Meteo | 92 days of hourly PM2.5 and PM10 history, then current PM2.5/PM10/dust/AOD/CO/NO₂/O₃/UV every poll | no | global, ~11 km grid | first start + every 5 min |
-| **NASA POWER** | monthly long-term normals for solar irradiance, temperature, rainfall, humidity, wind — satellite-derived, 1981–present | no | global, 0.5° grid | first start |
-| **Open-Meteo forecast** | current temperature, humidity, precipitation, wind speed and direction | no | global | every poll |
-| **OpenStreetMap Nominatim** | a place name, so alerts say somewhere real instead of two decimals | no | global | first start, once |
-| **CKAN portals** | how much of your city's open data was updated in 90 days | no | any CKAN portal | daily |
+The gap between the model and your first sensor. At node #1 the CAMS cell tracks the street at r = 0.51 and the room at
+r = −0.18. The model knows the district; a sensor knows the address. That difference is the reason the sensor exists,
+and the node can state it the day a sensor arrives.
 
-All of it lands as `kind='model'` or `kind='portal'`. **None of it is a measurement of your place**, and the core will
-never let a pack claim a `live` Index cell from it. That distinction is the point, not a caveat.
+## Opt-in, because they need a key
 
-## The one number this makes possible on day one
+OpenAQ (global public sensors), Google Flood Hub, Sentinel-5P via Earth Engine, NASA FIRMS. Each is a code pack or an
+adapter behind a flag, off by default. Nothing that needs an account runs unless you turn it on.
 
-The `cold-start` pack ships enabled and turns the above into three messages that need no hardware:
+## Presets
 
-- today's modelled air quality, stated plainly as a model;
-- today against forty years of normals for this month at this point ("it is 4 °C above normal here");
-- and, once you *do* put a sensor up, the weekly gap between your reading and the model.
+`presets/<city>.env`: bali, barcelona, boston, santiago, delhi. Coordinates, time zone, city key, the open-data portal,
+and for Bali the public station feed. `planetai setup` picks one when your place falls inside a pilot city.
 
-That third one is the argument for the whole project compressed into one line. When a node's outdoor sensor reads
-48 µg/m³ against a modelled 22, the model isn't broken — it's a 11 km grid cell that cannot see a fire two streets
-away. **The gap is the local signal.** A global model tells you what the atmosphere is doing over your district; only
-something at the address tells you what you are breathing. Being able to show that difference, from day one, is a
-better argument for buying a sensor than any brochure.
+## Not embedded
 
-## What needs a key, and is therefore opt-in
+No copies of datasets, no model weights, no map tiles. The node fetches what it needs when it needs it and keeps only
+what it computed. A node is a few hundred kilobytes of code.
 
-Not shipped enabled, because "sign up for an account" is exactly the friction this page exists to remove.
+## Attribution
 
-| source | why you'd add it | what it costs |
-|---|---|---|
-| **OpenAQ** | harmonised regulatory + low-cost station data worldwide; the reference layer outside Bali | free registration, `X-API-Key` header |
-| **Google Flood Hub** | riverine flood forecasts, listed in the Index registry for Bali, Barcelona and Santiago | Google Cloud project |
-| **Google Air Quality API** | gridded AQ at higher resolution | paid tier |
-| **Copernicus Data Space (Sentinel)** | actual satellite imagery — NDVI, land surface temperature, built-up area | free registration, and raster handling the node doesn't have |
-| **Bali Air Dispatch** | island-wide aggregated ambient picture, Bali only | none, key-free, but meaningless anywhere else |
-
-## Site presets
-
-Four pilot sites ship as one-line presets: coordinates, timezone, language, and the city's open-data portal.
-
-```bash
-./install.sh --preset bali        # Bali Satu Data, and the island air archive as reference
-./install.sh --preset barcelona   # Open Data BCN
-./install.sh --preset boston      # Analyze Boston
-./install.sh --preset santiago    # datos.gob.cl
-./install.sh --preset delhi       # no portal adapter yet, CAMS as the reference
-```
-
-Anywhere else works identically with `--lat --lon`; the bootstrap sources are global. Adding your city is a pull
-request with one file in `presets/`.
-
-## What I deliberately did *not* embed
-
-**Static datasets in the repo.** World Bank waste figures, economic complexity rankings, admin boundaries — all
-tempting, all a licensing and staleness liability in a git repo, and all fetchable at install if a pack ever needs
-them. A repo should ship code and thresholds, not a copy of someone else's database going quietly out of date.
-
-**A pre-seeded demo database.** Fake readings that look real are how a project starts lying to itself. Every row in a
-fresh node is either genuinely from your coordinates or absent.
-
-**Anything requiring an account.** The install must complete with no sign-ups. Everything above respects that; the
-opt-in table is opt-in for exactly this reason.
-
-## Attribution you inherit
-
-Using this data puts obligations on you, and they're carried in each source's `sensors.meta`:
-
-- **CAMS** — credit the CAMS ENSEMBLE data provider *and* Open-Meteo, per Open-Meteo's terms.
-- **NASA POWER** — credit the NASA Langley Research Center POWER Project.
-- **Nominatim** — OpenStreetMap contributors, ODbL. The node queries it once per install, never in a loop, with a real user agent, per their usage policy.
-- **CKAN portals** — each city's own licence.
-
-If you publish a chart from a node, those credits travel with it.
+Copernicus Atmosphere Monitoring Service (CC BY 4.0); NASA POWER; Open-Meteo (CC BY 4.0); OpenStreetMap (ODbL). The
+daily export names them.

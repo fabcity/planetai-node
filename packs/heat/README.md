@@ -9,7 +9,7 @@ Turns the temperature and humidity the node already stores into three sentences 
 - `night_no_relief` — overnight indoor minimum above 28 °C, the WHO ceiling for restorative sleep. Once a day,
   ending in the only thing that helps long-term: shade or airflow, not a bigger fan.
 - `Social|Community` — hours per sensor in the last 30 days with indoor apparent temperature ≥ 32 °C. The Social
-  column of the Index is empty across the whole registry; this is one honest number for it.
+  column of the Index is empty across the whole registry; this is one number for it.
 
 **Where the numbers come from.** Steadman's apparent temperature as published by the Australian Bureau of
 Meteorology (AT = T + 0.33·e − 4.0, e in hPa). The no-wind form fits indoors. Thresholds are BoM's and WHO's, not

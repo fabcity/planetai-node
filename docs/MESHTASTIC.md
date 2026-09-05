@@ -1,141 +1,96 @@
-# Setting up the radios
+# Radios
 
-Three kinds of radio, three jobs. Which board you hold decides the job, not the other way round.
-
-This page is the *why*. For *what to press*, in the app, one screen at a time, including the two things that stop most
-first attempts (a power switch and a six-digit code): [`MESHTASTIC_APP.md`](MESHTASTIC_APP.md).
+Three boards, three jobs. The board decides the job.
 
 | board | chip | WiFi | GPS | job |
 |---|---|---|---|---|
-| **XIAO ESP32-S3 + Wio-SX1262** | ESP32-S3 | yes | no | **the gateway**: uplinks the mesh to the node over WiFi. One per node. |
-| **Wio Tracker L1** (L1, L1 Lite, L1 e-ink) | nRF52840 | no | yes | **field sensors**: a BME680 or HM3301 on the Grove port, on a battery, somewhere with no WiFi. |
-| **Wio Tracker L1 Pro** (cased, with battery) | nRF52840 | no | yes | **the handheld / the shelf radio**: a person's, paired to their phone, receives alerts. Or a field sensor that already has a case. |
+| XIAO ESP32-S3 + Wio-SX1262 | ESP32-S3 | yes | no | **gateway**: uplinks the mesh to the node over WiFi. One per node. |
+| Wio Tracker L1 (L1, Lite, e-ink) | nRF52840 | no | yes | **field sensor**: a 3.3 V sensor on the Grove port, on a battery, where there is no WiFi. |
+| Wio Tracker L1 Pro (cased, battery) | nRF52840 | no | yes | **shelf radio**: paired to a phone, receives alerts when the internet is down. |
 
-The whole L1 series is the same board with different displays; anything below about "the Tracker" applies to all four.
-nRF52 radios have no WiFi, so they cannot talk to the node directly. They talk to the gateway over LoRa, and the gateway
-talks to the node. That is the whole topology.
+The L1 variants are one board with different displays. nRF52 radios have no WiFi, so they reach the node only through
+the gateway.
 
-**Before anything else, two rules that cost hardware if ignored.**
-1. **Never power on a radio without its antenna attached.** An SX1262 transmitting into nothing can destroy itself.
-2. **Every radio on your mesh must have the same LoRa region and the same channel.** Region is set first, before anything else works.
+Two rules that cost hardware if ignored: **antenna on before power**, always. **Same region and same channel on every
+radio**, and region first, or the radio never transmits.
 
-## 0. Region and channel: the same on every radio
+## The fast way: a USB cable
 
-**Region.** Bali is `SG_923` — the AS923 band Indonesia allocates (920–923 MHz); Meshtastic has no Indonesia-specific
-code. Barcelona `EU_868`. Boston `US`. Set it in the app under *Radio configuration → LoRa → Region*. A radio with the
-region unset does not transmit at all. A radio with the wrong region transmits illegally.
+```bash
+pip3 install --user meshtastic adafruit-nrfutil
+```
 
-**Channel.** Create one private channel on the first radio and copy it to every other: *Radio configuration → Channels
-→ add*, name it after the node (`bayu-2`), let the app generate a PSK, and share it to the other radios with the QR code
-the app produces. Everything on that channel is encrypted between radios; the gateway decrypts it for the node.
-Leave the default `LongFast` in place as well; it costs nothing and lets your radios see other Meshtastic users nearby.
+**Firmware.** Use the stable release from `github.com/meshtastic/firmware/releases`, not what the web flasher offers
+first (it offered a 2.8.1 alpha that is not a release). All radios on one version.
 
-**Preset.** *LoRa → Modem preset*: `LONG_FAST` is the right default. `MEDIUM_FAST` gives more bandwidth for
-telemetry-heavy meshes at the cost of range; try it only if packets are being dropped.
+Trackers: drag-to-drive fails on macOS 26 (error -36 / Input/output error, whatever the bootloader version: FSKit). Use
+serial DFU. Double-click RST, then:
 
-## 1. The gateway — XIAO ESP32-S3 + Wio-SX1262
+```bash
+adafruit-nrfutil dfu serial --package firmware-seeed_wio_tracker_L1-<ver>-ota.zip -p /dev/cu.usbmodem1101 -b 115200 --singlebank
+```
 
-**Firmware.** If it is not pre-flashed: connect by USB-C, open https://flasher.meshtastic.org in Chrome, choose
-*Seeed XIAO ESP32S3 & Wio-SX1262 kit*, latest stable, flash.
+XIAO: the web flasher works (it is esptool, not UF2). Hold BOOT while plugging in if no port appears. Never use the phone
+OTA app on these boards; Seeed says it can brick them.
 
-**First configuration, over Bluetooth from the phone app:** region (§0), then the channel (§0), then a name:
-*Radio configuration → User → Long name* `bayu-2 gateway`, short name `GW`. Device role stays `CLIENT`.
+**Provision** each radio with one command. The first run makes the fleet channel the **primary** channel with a random
+key and saves its URL; every later run imports it:
 
-**WiFi.** *Radio configuration → Network → WiFi enabled*, SSID and password of the network the node's computer is on.
-The radio reboots. **From now on Bluetooth is off** — on ESP32 boards Meshtastic runs WiFi or Bluetooth, not both.
-To change anything further, open `http://<the radio's IP>` in a browser (the app shows the IP under the device, or
-find it in your router), or plug it into a computer with `pip install meshtastic` and use the CLI over USB.
+```bash
+tools/mesh-provision.sh /dev/cu.usbmodem1101 "Subak edge"    SBK SENSOR SG_923 ~/planetai-mesh.url
+tools/mesh-provision.sh /dev/cu.usbmodem1101 "kitchen shelf"  SHF CLIENT SG_923 ~/planetai-mesh.url
+GATEWAY=1 MQTT_ADDR=192.168.4.190:1883 MQTT_PASS=<from planetai meshtastic> WIFI_SSID=<ssid> WIFI_PSK=<pw> \
+  tools/mesh-provision.sh /dev/cu.usbmodem1101 "bayu-2 gateway" GW CLIENT SG_923 ~/planetai-mesh.url
+```
 
-**MQTT.** Run `planetai meshtastic` on the node first: it creates the broker credentials and prints this block filled
-in with your values. Then in the web client, *Module configuration → MQTT*:
+Primary matters: radios send telemetry and position on channel 0 only. A private channel added as secondary never
+carries sensor data. The gateway sat connected for a day publishing nothing for exactly that reason.
 
-    Enabled              on
-    Address              <the node computer's LAN IP>:1883      planetai meshtastic prints it
-    Username / Password  planetai / <printed>
-    Encryption enabled   OFF      — the broker is yours. Encrypted uplink hides readings from your own node.
-    JSON output enabled  ON       — without this the node cannot read a single packet
-    Root topic           msh
-    TLS                  off
+Name field sensors for the **place**: the name becomes the sensor's name in the node. `~/planetai-mesh.url` holds the
+fleet key; keep it with `.env`. Regions: Bali `SG_923`, Barcelona `EU_868`, Boston `US`.
 
-Then *Channels → your channel → Uplink enabled ON, Downlink enabled ON*. Uplink sends the mesh to the node;
-downlink lets the node send alerts back.
+Then on the node: `planetai meshtastic` starts the broker and waits for the first packet. Indoor radios go in
+`MESH_INDOOR_NODES=!id,!id` in `.env`; a radio does not know which side of a wall it is on.
 
-**Placement.** Near the router, antenna vertical, not on a metal shelf, ideally high with a window. It is the one radio
-that must have both good WiFi and good LoRa reach.
+## The phone app
 
-**Its node number**, for alerts back over the mesh: the app shows it as `!a1b2c3d4`. The node wants decimal:
-`printf '%d\n' 0xa1b2c3d4`. Put that in `.env` as `MESH_GATEWAY_NODE_NUM`, set `MESH_ALERTS=1`, `planetai restart`.
+If you would rather tap. Bluetooth first, then the radio appears as `Meshtastic_xxxx`.
 
-## 2. Field sensors — Wio Tracker L1 / L1 Lite / L1 e-ink
+**PIN.** Radios with a screen show it. Radios without (L1 Lite, XIAO) use `123456`.
 
-**Firmware.** Pre-flashed. To update: hold the reset button pattern from Seeed's wiki to get a USB drive named
-`WIO_L1…`, drag the `.uf2` from https://flasher.meshtastic.org onto it.
+**Region.** *Radio configuration → LoRa → Region.* Do it before anything else. A radio with region unset does not transmit
+and nothing tells you.
 
-**Sensor.** Plug a Grove I²C sensor into the Grove port before powering on. Meshtastic detects I²C sensors at boot.
-**The Tracker's Grove port is 3.3 V.** A sensor that needs 5 V — the Sensirion SEN54/SEN55 all-in-one, most PM sensors
-with a fan — never powers up on it, so it is simply absent from the I²C scan and nothing tells you why (5 Sep 2026,
-an afternoon). BME280/BME680, SHT4x and AHT10 are 3.3 V and the right field sensors here. PM on a mesh radio needs
-5 V injected on VCC and a mains supply; at that point a Smart Citizen or AirGradient is the simpler instrument.
-Seeed's verified list for this board is BME280, SHT31/SHTC3/SHT4x, AHT10, BMP085, MCP9808, PCT2075. The BME680 is
-supported by Meshtastic's telemetry module in general but is *not* on Seeed's verified list for the L1; test one before
-trusting a batch of twenty-five. SEN5x (PM + VOC + NOx) is supported by the module; likewise unverified on this board. The HM3301 needs its driver present in the firmware you flash; check the release notes, and
-if it is not there yet the BME680 alone is still a useful outdoor unit.
+**Prove two radios see each other** on the default `LongFast` channel before creating a private one: a few metres apart,
+the other appears under Nodes within a minute. If not: region on both, same firmware, antennas, distance.
 
-**Configuration, over Bluetooth:** region, channel (§0), then
-- *User → Long name* the place, not the device: `Subak edge`, `Temple spring`. It becomes the sensor's name in the node.
-- *Device → Role* **`SENSOR`**: broadcasts telemetry and position, sleeps between, does not relay other traffic.
-- *Position → Broadcast interval* 30 min; *GPS* on. The Tracker has GPS, so the node learns where the sensor is without you typing coordinates.
-- *Module configuration → Telemetry → Environment measurement enabled* on, *update interval* 15 min (900 s). *Air quality enabled* on if a PM sensor is attached.
-- *Power → Sleep*: leave the defaults; the `SENSOR` role already sleeps aggressively.
+**Then the channel.** Edit the **primary** channel (`LongFast`, index 0): rename it, generate a 256-bit key. Share by
+QR to every other radio.
 
-**Power.** USB-C for the bench. In the field: a 2000–3000 mAh LiPo on the JST connector runs a `SENSOR`-role Tracker
-with 15-minute telemetry for days to weeks; a 5–6 V solar panel on the two-pin solar input keeps it running
-indefinitely. The board manages charging.
+**Field sensor:** role `SENSOR`, GPS on, position every 30 min, *Telemetry → Environment* on at 15 min. Plug the Grove
+sensor before power-up; I²C is scanned at boot.
 
-**Placement.** Antenna vertical, as high as practical, line of sight to the gateway if you can. The sensor itself needs
-to breathe and stay dry: a radiation shield or a printed vented enclosure (the outdoor-sensor-enclosure work), never a
-sealed box and never direct sun on the sensor. 3–6 m up, away from a kitchen exhaust.
+**Gateway, in this order:** region, channel, name; then WiFi, last. On ESP32 turning WiFi on turns Bluetooth off; from
+then on use the web client at the radio's IP, or USB. *Module → MQTT*: address from `planetai meshtastic`, JSON output
+**on**, encryption **off**. *Channels → primary → uplink on, downlink on.*
 
-**Indoor units.** Same setup. Then tell the node: `MESH_INDOOR_NODES=!<its id>,…` in `.env`, `planetai restart`.
-Indoor readings never enter an ambient average; the rules depend on the flag being right.
+## Sensors on radios
 
-## 3. The shelf radio and the handheld — Wio Tracker L1 Pro
+The Tracker's Grove port is **3.3 V**. A SEN54/SEN55 or any fan-driven PM sensor needs 5 V and simply does not appear.
+Use BME280/BME680, SHT4x or AHT10 on Trackers. PM belongs on a mains-powered kit. The gateway can carry a sensor too
+(same rules; keep its role `CLIENT`; mark it indoor).
 
-Same board in a case with a battery, so the same configuration as §2 minus the sensor. Two uses:
+## What went wrong, so you skip it
 
-**On a shelf in the house, paired to the household's phone.** Role `CLIENT`. This is how an alert reaches someone
-when the internet is down: the node publishes it on the mesh, the gateway transmits it, the shelf radio hears it and
-hands it to the phone over Bluetooth, the Meshtastic app shows it. Nothing in that path needs an ISP.
+- Region `0` (unset) on both radios: they never saw each other for a week.
+- The Tracker has a **physical power switch**. Lift it. Charge from a normal charger.
+- `error -36` when a copy *works* is the drive vanishing on reboot; when it fails every time, it is FSKit. Serial DFU.
+- The XIAO's serial console is off (`device.serial_enabled`), and newer firmware gates the debug log
+  (`security.debug_log_api_enabled`). Turn both on to read the radio over USB:
+  `stty -f /dev/cu.usbmodemXXX 115200 raw -echo; cat /dev/cu.usbmodemXXX`.
+- `meshtastic --get lora.region` prints numbers: `0` unset, `18` SG_923. `device.role` `6` is SENSOR.
 
-**In a pocket, for whoever walks the deployment.** Same, plus GPS on so the mesh map shows where they are. Useful for
-finding a good spot for a field sensor: watch the signal report in the app as you move.
+## Limits
 
-If instead you have a **SenseCAP T1000-E** (the card-shaped tracker), it fills the same role: nRF52840, no Grove
-port, pre-flashed, pairs to a phone. It cannot carry a sensor, but it can carry an alert.
-
-## 4. Roles, in one line each
-
-`CLIENT` — the default; talks and relays normally. Gateway, shelf radio, handheld.
-`SENSOR` — telemetry and position, sleeps, no relaying. Every field unit.
-`ROUTER` — a dedicated relay on a hill or roof, mains-powered. Only if you have a coverage gap; too many routers make a mesh worse.
-Never `ROUTER` on a battery unit, and never on the gateway.
-
-## 5. Checking it works
-
-On the node: `planetai meshtastic` waits for the first packet and lists sensors as they appear; afterwards
-`planetai sensors` shows every `msh-…` unit with its name and whether it is indoor or outdoor, and `planetai status`
-shows the mesh packet count under `mesh`. `planetai logs` shows any telemetry field the adapter did not recognise, by
-name — send those along and they get added.
-
-In the app: the gateway's node page shows *Uplink/Downlink* counters climbing; each field unit's page shows its last
-telemetry and position; the map shows where everything is.
-
-Nothing arriving is nearly always one of: JSON output off on the gateway; wrong IP for the broker (`planetai
-meshtastic` prints the right one); the gateway on a different WiFi from the node; a region mismatch between radios;
-or the field unit not on the private channel. In that order.
-
-## 6. What a mesh cannot do
-
-A LoRa frame is about 200 bytes and a channel carries a handful of them a minute. It moves telemetry and one-line
-alerts. It does not move hourly means between nodes, images, or anything a district would aggregate — that goes over
-Tailscale. `docs/NETWORKING.md` has the full split.
+A LoRa frame is about 200 bytes, a few a minute. Telemetry and one-line alerts. Hourly means between nodes go over
+Tailscale (`NETWORKING.md`).

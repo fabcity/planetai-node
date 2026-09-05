@@ -1,180 +1,96 @@
-# Packs — how other people extend a node
+# Packs
 
-The core is small on purpose: two containers, and two rules that work whatever a node measures. Everything
-specific to a place —
-what "bad" means in Kerobokan versus Poblenou, which sensor a lab happens to own, what a banjar wants to be told —
-belongs to whoever lives there. **Packs** are how that arrives without going through us.
-
-The split, in one line: **core ships what every node needs; packs ship what one place needs.** Core moves slowly
-under tagged releases we review; packs move at the speed of whoever wrote them.
-
----
-
-## 1. What a pack can extend
-
-A node has exactly four extension points. A pack is a folder that fills in one or more of them.
-
-| point | file | what it is | code? |
-|---|---|---|---|
-| **Rules** | `rules.yml` | SQL over the `stats` view + a message template. "When this is true, tell these people this." | no |
-| **Cells** | `cells.yml` | SQL returning one `value` → an `fci-cells-v0` row for the Fab City Index | no |
-| **Sources** | `adapter.py` | a `fetch(hc)` returning `(sensors, readings)` — a new sensor or public data feed | **yes** |
-| **Metadata** | `pack.yaml` | id, name, description, author, version, `requires`, scales | — |
-
-The first two are **data**. That's the important part: most of what a community actually knows how to contribute is
-a threshold and a sentence, and neither needs to be Python. A pack that teaches nodes in a monsoon climate to ignore
-the humidity spike after rain is fifteen lines of YAML.
-
-## 2. Data packs and code packs
-
-**Data packs** (`rules.yml` / `cells.yml`, no `.py`) load automatically. The SQL runs against the node's own database
-through the same path the core rules use. Low risk, low ceremony — this is the default and the one we want most of.
-
-**Code packs** (`adapter.py`) do not load unless the operator sets `PACKS_ALLOW_CODE=1`. A pack's Python runs with the
-node's privileges and network access. The node warns and skips rather than guessing:
+A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
+about air, water or heat; the packs do. Node #1 runs eight.
 
 ```
-pack acme-sensor ships code; set PACKS_ALLOW_CODE=1 to run it (read /app/packs/acme-sensor/adapter.py first)
+packs/<id>/
+  pack.yaml     id, name, description, kind (data | code), version, pip:, env:
+  rules.yml     alerts: SQL that returns rows, one message per row
+  cells.yml     Index cells: SQL that returns one `value`
+  adapter.py    a new source; code packs only
+  README.md     where the thresholds come from, what the pack assumes
 ```
 
-That warning is the whole security model at this scale, and it is deliberately blunt: **read the file**. An adapter is
-usually forty lines. If you can't read forty lines of Python, don't enable the pack — ask in the issue tracker and
-someone who can will.
+## Data packs
 
-## 3. Installing one
+YAML only. Anyone can write one. Rules read `stats` (24-hour rolling, per sensor and metric), `readings_1h` (hourly
+means, all history) and `observations` (portals and models). Postgres does the maths, including `corr()`.
 
-```bash
-cd ~/planetai/planetai-node
-git clone https://github.com/someone/planetai-pack-monsoon packs/monsoon
-docker compose restart app          # rules reload by themselves within a minute; adapters need the restart
-curl -s localhost:8080/packs | python3 -m json.tool
+```yaml
+- id: indoor_pm25_high
+  level: act                 # info | warn | act
+  cooldown_minutes: 120
+  sql: SELECT sensor_id, name, mean_15m FROM stats WHERE local AND indoor AND metric='pm25' AND mean_15m > 35
+  message:
+    en: "Indoor PM2.5 at {name} is {mean_15m:.0f} µg/m³. Purifier on, windows shut."
+    id: "PM2.5 dalam ruangan di {name} {mean_15m:.0f} µg/m³. Nyalakan pembersih udara, tutup jendela."
 ```
 
-To load only some: `PACKS_ENABLED=monsoon,cooking-hours` in `.env`. To disable one: delete the folder, or drop it
-from that list. There is no package manager, no lockfile, no dependency graph. A pack is a folder.
+Every column the message uses must come from the SQL. `make lint` checks that, plus unknown columns, cells without a
+`value`, and cooldowns over a fortnight (add `long_cooldown_ok: true` if that is deliberate).
 
-## 4. Writing one
+A cell:
 
-Copy `packs/air-quality/` — the official air pack, and proof the core is domain-blind: three rules, three Index cells,
-no code, and a README saying where every threshold was learned. Or `packs/example-cooking-hours/` for something smaller.
-
-```
-packs/my-pack/
-  pack.yaml     id, name, description, author, version, requires: { node: ">=0.1.1" }, kind: data|code
-  rules.yml     optional — ids are namespaced automatically to my-pack/<id>
-  cells.yml     optional — [{ cell: "Environmental|Community", unit: "...", sql: "SELECT ... AS value", state: partial }]
-  adapter.py    optional — def fetch(hc) -> (sensors, readings); same contract as app/sources.py
-  README.md     what it does, where it was learned, what it assumes
+```yaml
+- cell: "Environmental|Community"
+  unit: "PM2.5 µg/m³ 24h mean"
+  state: live                # live | partial | mock. The core demotes live to partial below min_buckets.
+  min_buckets: 12
+  sql: SELECT avg(mean_24h) AS value FROM stats WHERE local AND indoor AND metric='pm25'
 ```
 
-Two rules of authorship worth stating:
+`state` is provenance, not confidence. `live` means measured here; `partial` means derived or a model; never claim `live`
+for a model.
 
-**Your rule must end in something a person does.** "PM2.5 is elevated" is not a pack. "Close the shutters on the
-south side, that's where the smoke comes from at this hour" is.
+## Code packs
 
-**Declare what you assume.** A pack tuned to a tropical monsoon shouldn't fire in Barcelona. Say so in the README and,
-where you can, put it in the SQL — check `indoor`, check `local`, check the sensor exists before you threshold it.
+`adapter.py` with `fetch(hc) -> (sensors, readings)`, the same contract as `app/sources.py`. Off unless
+`PACKS_ALLOW_CODE=1`: a pack runs with the node's privileges, so read it first.
 
-## 4b. Code packs that need a library
-
-Declare it in `pack.yaml`:
+Dependencies and settings are declared in `pack.yaml`; `planetai packs` installs the libraries into the image once and
+adds the settings to `.env` under a dated marker:
 
 ```yaml
 pip: [earthengine-api]
-```
-
-`planetai packs` collects every pack's `pip:` list into `app/requirements-packs.txt` (gitignored) and rebuilds the
-image once. Nothing is installed at runtime, nothing is pulled on every start, and a node with no code packs never
-runs pip at all. A code pack whose library is missing must log one line and return nothing, not raise: the
-`earth-engine` pack is the worked example.
-
-## 4b-ii. Packs that need a setting
-
-Declare it in `pack.yaml`, with the comment that explains it:
-
-```yaml
 env:
-  - "EE_PROJECT=                          # your Earth Engine project id"
-  - "COAST_MAX_KM=30                      # refuse if the nearest ocean cell is further than this"
+  - "# earth-engine: project id, or blank to read it from the key file"
+  - "EE_PROJECT="
 ```
 
-`planetai packs` appends any that `.env` does not already have, under a dated marker, and never overwrites a value
-you set. Without this a pack's settings exist only in its README, which is how the earth-engine pack shipped with
-three settings nobody could find (5 Sep 2026).
+No padding after `=`: a value pasted after spaces becomes `VAR= value`, which the shell runs as a command.
 
-## 4c. Code packs that need a credential
+A pack that needs a key or a service must log once and return nothing when it is missing. It must never take the node
+down. `packs/earth-engine` is the worked example: a dependency, a credential, four remote datasets, and it idles until
+configured.
 
-Read it from `.env` (the app container gets the whole file), and put any key *file* in `config/`, which is already
-mounted read-only into the container and where the gitignore expects it (`config/ee-key.json`). Never bake a key into
-the image or the repo. When the credential is absent, log once and idle: the node must keep running with a pack that
-is not yet configured.
+## Scripts
 
-Ten pack ideas, three of them shipped as prototypes: [`PACK_IDEAS.md`](PACK_IDEAS.md).
-
-## 4d. Packs that make things you look at
-
-A pack can ship scripts as well as rules — things you ask for rather than things that happen on a schedule:
+A pack can ship scripts: things you ask for rather than things that run on a schedule.
 
 ```bash
-planetai run <pack> <script> [args]
+planetai run earth-engine timelapse --n 4 --gap 5
 ```
 
-The script runs inside the app container, where the pack's dependencies are, and writes to `/app/out`, which is
-`out/` on the host and the only writable path a pack has. `planetai run` with no arguments lists what is available.
-`packs/earth-engine/timelapse.py` is the worked example: four satellite images of the same place, years apart,
-plus a side-by-side page.
+They run inside the app container, where the dependencies are, and write to `out/`, the one writable path. `planetai run`
+alone lists them.
 
-## 5. Where packs live — and why not here
+## What ships
 
-**Packs are not in this repository.** The core repo carries the runtime, the official adapters, and one example pack.
-Community packs live in their own repos and are listed in a separate **marketplace repo**, which renders to
-`planetai.fab.city/packs`. Adding yours is a pull request there with a manifest entry and a link to your repo.
+| pack | kind | what |
+|---|---|---|
+| air-quality | data | PM2.5 rules (inside/outside, spikes), cells |
+| heat | data | apparent temperature, heat stress, nights over 28 °C, a Social cell |
+| insight | data | digest every 3 h; daily agreement between indoor, street and model |
+| cold-start | data | day one with no hardware: modelled air, normals |
+| open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
+| coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
+| earth-engine | code | tree cover, built-up, NDVI, night lights, land change (Google Earth Engine) |
+| example-cooking-hours | data | a worked example |
 
-This is the Omarchy split, and it's the right one. Their core is `omacom/omarchy` with tagged ISO releases; community
-plugins live in `omacom/omarchy-plugin-marketplace` and surface at plugins.omarchy.org with verified and unverified
-badges; themes are a PR to the site repo with a screenshot. Three tiers, three review bars, one brand. We copy the
-shape:
+Ten more ideas, with who might write them: [`PACK_IDEAS.md`](PACK_IDEAS.md).
 
-| tier | lives in | who decides | review bar |
-|---|---|---|---|
-| **Core** | `fabcity/planetai-node` | maintainers | full review; must not add a container or a cloud dependency; a trigger in `SPEC.md §6` for anything deferred |
-| **Official pack** | `fabcity/planetai-packs` | maintainers | reviewed like core, but optional at install; where an adapter for a widely-owned sensor lands after it proves out |
-| **Community pack** | your repo, listed in `fabcity/planetai-pack-marketplace` | you | listing checks the manifest is valid, the licence is open, and the README says where it was learned. **Not** an audit of your code. |
+## Contributing one
 
-**Verified** on the listing means a maintainer has read the code and run it on a real node. **Unverified** means
-listed but unread. Unverified is a normal state, not a warning — most packs will stay there, and the badge is honest
-about what we did rather than pretending to a review we didn't do.
-
-## 6. Releases and versions
-
-**Core** is semver with git tags. `planetai update` moves you to the latest tag; `git checkout v0.1.1` moves you back.
-Schema changes are additive only (`IF NOT EXISTS`, `CREATE OR REPLACE VIEW`) so a node updates in place without a
-migration step. Breaking a contract in `SPEC.md §1` means a major version and a note in `CHANGELOG.md` explaining why.
-
-**Packs** version themselves and declare `requires: { node: ">=0.1.1" }`. A node loads a pack whose requirement it
-doesn't meet only after logging a warning — packs are not tested against every core version and we won't pretend
-otherwise.
-
-What the core promises pack authors: the four extension points, the `stats` view's columns, the `readings`/`sensors`
-schema, the `fci-cells-v0` row shape, and the adapter return contract. Those are the API. Everything else inside
-`app/` can change between releases.
-
-## 7. What won't be accepted, at any tier
-
-- A pack that phones home. Adapters read *your* sensors and *public* feeds. Nothing reports usage anywhere.
-- A pack that moves raw readings off the node. Hourly means and cells go up; raw stays.
-- A rule that treats an indoor sensor as ambient. `NOT s.indoor` is not decoration.
-- A pack that needs an API key to a service the operator can't see the terms of.
-- Anything requiring a third container. If you genuinely need one, that's a core conversation with a trigger, not a pack.
-
-See [`DOMAINS.md`](DOMAINS.md) for what a node measures today and what a pack could measure next — water, energy,
-fabrication, noise, comfort, soil — with the metric names and the decision each would drive.
-
-## 8. The honest state of this
-
-Zero *community* packs exist today. Two ship in-repo: the official `air-quality` pack (which is how node #1 works at all)
-and a small worked example. The marketplace repo doesn't exist yet and shouldn't
-until there are three real packs to put in it — a marketplace with nothing in it is worse than no marketplace.
-
-What exists now and is worth using: the loader, the four extension points, and the data/code split. If you write a
-pack this month, open an issue and it goes in the README until the marketplace earns its own repo.
+Fork, add the folder, `make lint`, open a PR. The README must say where the thresholds came from and what the pack does
+not know. Thresholds for Kuta Selatan are not thresholds for Barcelona; say which place you wrote for.

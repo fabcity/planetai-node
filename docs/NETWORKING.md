@@ -1,110 +1,46 @@
-# Networking — three problems, three layers
+# Networking
 
-Three technologies keep coming up for a node's networking. They solve three different problems and should not be
-confused with each other, or with the tree of nodes described in `ARCHITECTURE.md`.
+Three layers, each doing one thing.
 
-| problem | layer | status |
+| layer | for | command |
 |---|---|---|
-| reaching a node behind someone's router, from anywhere | **Tailscale** (WireGuard overlay) | shipped: `planetai mesh` |
-| sensors and alert delivery where there is no WiFi, no power, or no internet | **Meshtastic** (LoRa mesh) | shipped: `planetai meshtastic` |
-| encrypted messaging that works over TCP today and LoRa when a radio is plugged in | **Reticulum** (LXMF) | shipped as a bridge: `planetai reticulum` |
+| Tailscale | reaching the node from anywhere; nodes reaching each other | `planetai mesh` |
+| Meshtastic (LoRa) | sensors and alerts where there is no WiFi | `planetai meshtastic` |
+| Reticulum (LXMF) | encrypted messages when the internet is gone; later, node-to-node data | `planetai reticulum` |
 
-## 1. Tailscale — reachability
+## Tailscale
 
-**The problem.** A node sits behind a home or lab router. You are somewhere else and want to run `planetai update`.
-A household node needs to push hourly means to a district node in another building. Neither works without either
-opening ports on a router (do not) or an overlay network.
+`planetai mesh` installs the client and joins the tailnet under the node's name. No open ports; the node is reachable
+as `<name>.ts.net` from any of your devices. `PARENT_API_URL` becomes a tailnet hostname when a district node exists.
+Tailscale SSH is Linux-only. On a Mac, ordinary `ssh` over the tailnet, with Remote Login on.
 
-**What it does.** One command per machine. Each gets a stable name and address on a private WireGuard network,
-regardless of NAT, with no ports opened anywhere. `planetai mesh` installs the client and joins with the node's name. On **Linux** nodes it also turns on Tailscale SSH,
-so `ssh <node>` works from any of your devices with no keys to manage. Tailscale SSH has **no macOS server**: on a Mac
-node, reaching a shell means enabling Remote Login in System Settings and using ordinary `ssh user@<name>.ts.net`,
-which still travels over the tailnet with no open ports. Free for 100
-devices.
+Headscale, self-hosted, is the recorded exit if a partner's governance forbids a third-party coordinator. Swap the login
+server; nothing else changes.
 
-**The trade-off.** Tailscale's coordination server is a third party, which sits against the principle that nothing
-here should need one. The data path is peer-to-peer WireGuard; only key exchange and the address book go through
-them. The exit is **Headscale**, a self-hosted coordinator that the same client talks to. It is parked in `SPEC.md §6`
-with its trigger: a partner whose governance rules out a third-party coordinator, or exceeding the free tier.
-Switching is one flag on each node (`--login-server`).
+## Meshtastic
 
-**Headless Macs.** Use the Homebrew daemon (`brew install tailscale`), not the App Store app. The daemon runs as a
-system service with nobody logged in, which is what a node in a cupboard needs. `planetai mesh` does this.
+The ground layer. One gateway radio with WiFi uplinks the mesh to a broker on the node; field radios carry sensors on
+batteries; a shelf radio paired to a phone receives alerts with no internet. Everything about the radios is in
+[`MESHTASTIC.md`](MESHTASTIC.md).
 
-**Unattended joins** for future nodes: create a pre-authorised key in the Tailscale admin console and run
-`TS_AUTHKEY=tskey-auth-… planetai mesh`. No browser step.
+A LoRa frame is about 200 bytes, a few a minute. Telemetry and one-line alerts, not data between nodes.
 
-## 2. Meshtastic — the ground layer
+## Reticulum
 
-**The problem.** A sensor on a rice-field edge, a temple spring, a rooftop with no router. And: delivering an alert
-when the internet is down, which in Bali is a routine condition rather than an edge case.
-
-**What it does.** LoRa radios (in our case Seeed Wio Tracker L1 and Wio-SX1262) form a mesh that carries a few hundred
-bytes a minute over kilometres, on a battery, for weeks. Meshtastic's telemetry module reads sensors natively: BME680
-and SEN5x today, HM3301 when its driver lands. The HM3301 is the same Seeed particulate sensor as the Smart Citizen 2.3
-kit, so its readings need no humidity correction.
-
-**How it reaches the node.** One radio is the *gateway*: a WiFi-capable board (an ESP32 such as the Wio-SX1262) whose
-MQTT module uplinks the mesh to a broker. That broker is Mosquitto on the node, behind the `mqtt` compose profile with a
-password. `planetai meshtastic` creates the credentials, starts the broker, and prints every setting to type into the
-gateway, then waits for the first packet. The adapter subscribes to `msh/#`, reads the JSON form of each packet
-(`telemetry` → readings, `position` → the sensor's coordinates from the radio's GPS, `nodeinfo` → its name), and files
-mesh sensors as `kind='sensor'`, `local=true`, outdoor unless listed in `MESH_INDOOR_NODES`. Unknown telemetry fields
-are logged once rather than dropped, so a firmware rename shows up in the log instead of as silence.
-
-**Outbound.** With `MESH_ALERTS=1` and the gateway's node number set, act-level alerts are published to the mesh
-downlink topic and the gateway transmits them. Only the first line goes; a LoRa frame carries about 200 bytes.
-
-**The same broker also takes DIY pods**: anything publishing `planetai/sensors/<id>/<metric>` with
-`{"value": 12.3}` lands as `pod-<id>`. An ESP32 with a PMS5003 and ten lines of firmware is a sensor.
-
-The nRF52 boards (Wio Tracker L1) have no WiFi and cannot be the gateway alone. They are the field sensors, or a
-gateway by USB serial to the node's host with a small bridge.
-
-**Three things not to get wrong.**
-- **Region.** Bali is **AS923**; Barcelona EU868; Boston US915. The SX1262 is wideband, so the board works anywhere, but firmware region and antenna must match local law.
-- **Broker.** The firmware's default MQTT server is `mqtt.meshtastic.org`, a public broker. Point the gateway at the node's own Mosquitto or every reading leaves the building.
-- **What LoRa is not.** It is not node-to-node transport. A district cannot pull a household's hourly means over LoRa; the bandwidth is two orders of magnitude short. The FAB26 plan says this correctly: "LoRa is local; the pipe that makes it a global dataset is MQTT."
-
-Setting up each radio, by board and by job: [`MESHTASTIC.md`](MESHTASTIC.md).
-
-**Relation to FAB26.** The six-month program hands 35 radios to lab reps. The plan's critical-path item was that the
-"MQTT broker → ingest → FCI Observations pipe does not exist yet." planetai-node with Mosquitto and the `meshtastic`
-adapter is that pipe, and it removes the need for a shared central broker: each lab's gateway talks to that lab's own
-node, and nodes push cells up. The shared broker survives only as a fallback for a lab with a radio and no computer.
-
-## 3. Reticulum — the bridge is in, the radio is a config block
-
-**What it is.** A networking stack that runs over anything (LoRa via RNode, serial, TCP, I2P) with encryption,
-authentication and source anonymity built in, and store-and-forward through propagation nodes. Architecturally it
-is the most sovereign option on this page and the only one that could carry node-to-node data with no internet.
-
-**Why not now.** A small ecosystem; no consumer phone experience comparable to Meshtastic's app; RNode hardware you
-flash yourself; no sensor-telemetry conventions to inherit; a Python stack that is research-grade where the FAB26
-program needs product-grade. Tailscale and Meshtastic cover every current need more simply, and someone else
-maintains both.
-
-**What ships.** `planetai reticulum` starts a small bridge container (`app/reticulum_bridge.py`, behind the `reticulum`
-profile) that gives the node an LXMF address, announces it, and does two things. Inbox: a message reading `act <id> [note]`
-from Sideband or NomadNet becomes a recorded action on that alert — the loop closes over a medium that needs no
-internet. Outbox: act-level alerts are delivered to every LXMF address in `RETICULUM_ALERT_DESTINATIONS`. The
-transport is whatever `config/reticulum/config` enables: a TCP server on 4242 always (reachable over the LAN or the
-tailnet, so Sideband on a phone connects to it today); an RNode LoRa radio when its block is uncommented and the
-device is passed into the container, which is Linux-only because macOS Docker cannot see USB serial.
-
-**Still parked.** Node-to-node *data* transport over Reticulum (a district pulling means from a child with no internet
-between them). That is a Transport-enabled node plus a store-and-forward design, and the trigger stands: build it when
-that deployment exists.
+The bridge container gives the node an LXMF address. Inbox: `act <id>` from Sideband records an action. Outbox: alerts
+to `RETICULUM_ALERT_DESTINATIONS`. TCP today; an RNode LoRa interface is a commented block in `config/reticulum/config.tpl`.
+Node-to-node data over Reticulum returns when a district and a community node have no internet between them (SPEC §6).
 
 ## What connects to what
 
 ```
-  phone (Meshtastic app) ◀── BLE ── radio on the shelf ◀── LoRa ── field sensors (Tracker L1 + BME680/HM3301)
-                                                              │
-                                              gateway (ESP32, WiFi) ── MQTT ──▶ Mosquitto on the node
-                                                                                      │
-                                                            you, anywhere ── Tailscale ──▶ node ── Tailscale ──▶ district node
+sensors (WiFi)  ──HTTP──▶ node ◀──MQTT── gateway radio ◀──LoRa── field radios, shelf radio
+                          │
+                          ├──Telegram──▶ phones          (internet)
+                          ├──LoRa (via gateway)──▶ shelf radio    (no internet needed)
+                          ├──LXMF──▶ Sideband           (no internet needed)
+                          ├──MQTT discovery──▶ Home Assistant
+                          └──Tailscale──▶ you, other nodes, a district
 ```
 
-Three layers, none of them ours to maintain. What is ours is the adapter, the rules, and the record of whether
-anyone acted.
+Raw readings never leave the node on any of these. Hourly means go up to a parent; alerts go out; that is all.

@@ -1,103 +1,58 @@
-# Development machine
+# Developing
 
-One machine develops; nodes only consume. Mixing the two is how a node breaks at 9pm and how history quietly forks.
+## Two machines
 
-| | development | node |
-|---|---|---|
-| where | a laptop — for this project, `~/Documents/Claude/Projects/FAB CITY/planetai-node` | wherever it runs, e.g. `~/planetai/planetai-node` on `fablabbali` |
-| does | edit, lint, test, commit, tag, push, cut releases | `./update.sh`, and nothing else |
-| git | full remote | `git remote set-url --push origin no-push` so an accidental push fails loudly |
-| holds | no `.env`, no database | its own `.env`, its own data, neither ever in git |
+The dev machine has git and pushes. A node runs `planetai update` and never commits. Node #1 is a Mac mini at Fab Lab
+Bali; its Python is Apple's 3.9 with no third-party libraries, and that is the Python the CLI must run on.
 
-## Setting one up
+## Before every commit
 
 ```bash
-git clone https://github.com/fabcity/planetai-node
-cd planetai-node
-make dev-setup      # installs the pre-commit hook
-make lint && make test
+make lint      # shell syntax, SQL idempotency, compose mounts, CLI snippets as Python 3.9 with stdlib only,
+               # rules and cells against init.sql, docs against the code, the GUI, pyflakes, the app imports
+make test      # six offline suites: adapters, Meshtastic parsing, cell provenance, code packs, settings, outside resolution
 ```
 
-Needs `git`, `make`, `python3`, and `gh` (or any git credential helper). Docker only if you want to run a node
-locally for testing — everything in `make lint` and `make test` is offline and needs neither Docker nor network.
+The pre-commit hook runs lint and refuses `.env`, credentials, `.DS_Store`, and anything under `.git`. Install it once:
+`cp tools/hooks/pre-commit .git/hooks/`.
 
-## What `make lint` checks
+## What each gate exists for
 
-Each gate exists because something shipped broken. Together they are about 200 lines and run offline in a second.
+Every gate is a bug that shipped.
 
-| gate | catches | the bug that caused it |
-|---|---|---|
-| `bash -n` | shell syntax | an apostrophe inside `${x:-...}` |
-| `tools/check_sql.py` | non-idempotent SQL, comments inside expressions, compose mounts the repo does not ship | a comment that ate a closing bracket; a missing mosquitto config Docker replaced with an empty directory |
-| `tools/check_cli_python.py` | CLI snippets that need Python ≥3.10, or a third-party library | f-strings that crashed on the node's Python 3.9; PyYAML the node does not have |
-| `tools/check_rules.py` | rules and cells against `init.sql`: unknown columns, message placeholders the SQL never returns, cells with no `value`, cooldowns over a fortnight | a 69-day cooldown that made `test-alert` report a dead node |
-| `tools/check_docs.py` | docs naming files, commands, settings, endpoints or packs that do not exist; stale counts; a README index out of step with `docs/` | this audit |
-| `make test` | five offline suites: adapters, Meshtastic parsing, cell provenance, both code packs | a topic parse that would have doubled `/2/` in every downlink |
+| gate | the bug |
+|---|---|
+| `check_sql.py` | a comment ate a closing bracket; a missing config Docker replaced with an empty directory; `.DS_Store` committed; `\| grep -q` under pipefail failing a good dump |
+| `check_cli_python.py` | f-strings that crashed on Python 3.9; PyYAML the node does not have; a `for` after a semicolon |
+| `check_rules.py` | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned |
+| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved |
+| `check_ui.py` | an element id the script referenced that was not in the markup |
+| import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
 
-Two habits go with them. **Test the artifact, not a transcription of it** — twice a test retyped the code it was
-testing and the escaping bug made it pass. And **when you add a gate, break something on purpose first** and watch it
-fail; a check that has never failed has not been tested.
+## Two habits
 
-## The pre-commit hook
+**Test the artifact, not a transcription of it.** Three times a test retyped the code it was testing and the escaping
+bug made it pass.
 
-`make dev-setup` symlinks `tools/hooks/pre-commit`. It refuses a commit that contains:
+**Break something on purpose before trusting a new gate.** A check that has never failed has not been tested.
 
-- `.env`, `backups/`, `*.before-update`, or `.git` contents;
-- anything matching a live credential — a Telegram token (which appears in URLs, so a pasted log leaks it), a long `*_TOKEN=` or `*_API_KEY=` value, or a real `POSTGRES_PASSWORD`;
-- a change that fails `make lint` (SQL parens and idempotency, the Dockerfile module glob, YAML, shell syntax).
-
-Every one of those corresponds to something that already went wrong here. If a check can't run it **fails the
-commit** rather than passing quietly — the first version of this hook used a PCRE lookahead that `grep -E` rejects,
-so it errored, swallowed the error, and let a fake token through on its own test. A security check that no-ops
-silently is worse than no check.
-
-## Running a node locally to test a change
-
-Use a second folder and a different port so you never touch a real node's data:
+## Releasing
 
 ```bash
-git clone https://github.com/fabcity/planetai-node ~/tmp/test-node && cd ~/tmp/test-node
-chmod +x install.sh backup.sh update.sh
-echo "APP_PORT=8082" >> .env 2>/dev/null || true
-./install.sh --preset barcelona --name test-bcn
-curl -s localhost:8082/health | python3 -m json.tool
+tools/release.sh v0.19     # lint, tag, push. Needs a CHANGELOG section.
+tools/bundle.sh            # the tarball the website serves to testers without repo access
+cd ../planetai && make deploy
 ```
 
-No sensor needed — it bootstraps from CAMS and NASA POWER for the preset's coordinates. Throw the folder away
-afterwards; `docker compose down -v` removes its data volume.
+## Layout
 
-## Publishing for beta testers
-
-The repository is private, so testers install from a tarball the website serves:
-
-```bash
-tools/bundle.sh                 # writes ../planetai/node0/get/{planetai-node.tar.gz,VERSION,SHA256}
-cd ../planetai && make deploy   # publishes the site, and with it the bundle
 ```
-
-Run it after every release you want testers to have. `install` and `update.sh` prefer git when the repo is
-reachable and fall back to the tarball when it is not, so the same commands work for both audiences.
-
-## Cutting a release
-
-```bash
-make release V=0.4.5
+app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py ·
+              bootstrap.py · static/index.html (the dashboard)
+bin/planetai  the operator CLI
+packs/        eight packs; see PACKS.md
+config/       rules.yml (two domain-blind rules), mosquitto, reticulum
+tools/        gates, hooks, bundle, release, mesh-provision.sh, nas/ (the NAS puller)
+tests/        offline suites
+docs/         you are here
 ```
-
-Refuses to run on a dirty tree, refuses if `CHANGELOG.md` has no `## v0.4.5` section (say what changed and why),
-refuses if the tag exists. Then lints, tests, tags, pushes, and builds a tarball into `~/Downloads` with `.git`,
-`.env` and `backups/` excluded — a tarball carrying `.git` overwrites the repository of anyone who unpacks it over
-a clone, which happened to both a laptop and a node on 3 September 2026.
-
-Nodes then take it with `./update.sh`.
-
-## Where the pieces live
-
-| repo | what | where it deploys |
-|---|---|---|
-| `fabcity/planetai-node` | this — the node runtime, packs, docs | every node |
-| `fabcity/planetai` (site) | planetai.fab.city, including `/node0/` | Cloudflare |
-| `fabcity/awesome-fabcity-data` | the Index's source registry; the Airtable `Data Sources` table syncs one-way from it | — |
-
-Local siblings worth reconciling rather than duplicating: `FAB CITY/home-sensor`, `FAB CITY/fci-ingestion-tool`,
-`MDG/PLANETAI-local-ingest`. If any has working code it should become a pack or be marked superseded.

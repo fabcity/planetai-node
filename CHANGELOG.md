@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.19 — 2026-09-05 — documentation cut by two thirds
+
+29 documents, 28,900 words to 9,900. Plain sentences, no padding, no hedging. Same facts.
+
+- Three Meshtastic guides became one (`MESHTASTIC.md`: radios and jobs, the USB way, the phone app, sensors on radios,
+  what went wrong). `START_HERE.md` from 3,600 words to 780. `README.md` from 1,900 to 470.
+- `STORAGE.md` and `MAC_MINI.md` now describe the actual setup: the mini keeps the database, TX-NAS-BALI pulls the dumps
+  hourly with the read-only token, since 5 September 2026. `tools/nas/README.md` is the two-file recipe.
+- The docs gate exempts the changelog from file-existence checks; it is a record and files move.
+
 ## v0.18.2 — 2026-09-05
 
 - **Fixed: `planetai storage` stopped halfway** — before the exports, IPFS and the NAS token — on a node with no exports yet. `nex="$(ls exports/x/*.json | wc -l)"`: `ls` fails, `pipefail` fails the assignment, `set -e` ends the function silently. Counts use a `nullglob` array now. Verified by running the real function against a folder with no exports.
