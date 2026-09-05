@@ -29,6 +29,16 @@ assert "bad-aq-1" not in ids, "stale must be dropped"
 assert "bad-pa-46949" not in ids, "42 km away must be outside a 15 km radius"
 assert "bad-iqs-x" in ids and [x for x in s if x["sensor_id"] == "bad-iqs-x"][0]["indoor"]
 
+# a Smart Citizen kit the node polls itself must not come back a second time via BAD (it was: sc-19236 and
+# bad-sc-19236 were both counted in the ambient average, with BAD's indoor flag disagreeing with Smart Citizen's)
+bad2 = {"readings": [
+    {"station_id": "sc-19236", "name": "Ungasan Kit", "source": "Smart Citizen", "latitude": -8.8198, "longitude": 115.1666, "observed_at": "2026-09-05T02:00:00Z", "stale": False, "pm25": 7.0},
+    {"station_id": "sc-19760", "name": "Bayu Sensor", "source": "Smart Citizen", "latitude": -8.8100, "longitude": 115.1600, "observed_at": "2026-09-05T02:00:00Z", "stale": False, "pm25": 8.0}]}
+s, r = sources.baliairdispatch(HC(bad2), -8.8271, 115.15709, 15, skip_station_ids={"sc-19236"})
+ids = {x["sensor_id"] for x in s}
+assert "bad-sc-19236" not in ids, "a kit this node reads directly must be skipped from BAD"
+assert "bad-sc-19760" in ids, "someone else's kit still comes through BAD"
+
 ag = {"serialno": "84fce612a5b4", "rco2": 612, "pm01": 4, "pm02": 9, "pm10": 11, "atmp": 29.4, "rhum": 61, "tvocIndex": 98, "noxIndex": 1, "firmware": "3.1.9", "model": "I-9PSL"}
 s, r = sources.airgradient(HC(ag), ["airgradient_84fce6.local"], -8.65, 115.22, False)
 m = {k: v for _, _, k, v in r}

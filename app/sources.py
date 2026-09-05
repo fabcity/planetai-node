@@ -124,12 +124,19 @@ def smartcitizen(hc: httpx.Client, device_ids: list[int], explicit_local: set[in
 BAD_LATEST = "https://baliairdispatch.com/api/v1/latest"
 
 
-def baliairdispatch(hc: httpx.Client, node_lat: float, node_lon: float, radius_km: float):
+def baliairdispatch(hc: httpx.Client, node_lat: float, node_lon: float, radius_km: float,
+                    skip_station_ids: set[str] | None = None):
+    """skip_station_ids: BAD station ids this node already reads directly (e.g. `sc-19236` for a Smart Citizen kit
+    it polls itself). Without this the same physical kit lands twice — once as sc-19236, once as bad-sc-19236 —
+    and is counted twice in the ambient average, with BAD's metadata (which disagreed with Smart Citizen's own
+    indoor/outdoor flag on two kits) winning half the time."""
     sensors, readings = [], []
     r = hc.get(BAD_LATEST)
     r.raise_for_status()
     for row in r.json().get("readings", []):
         if row.get("stale") or row.get("latitude") is None or row.get("longitude") is None:
+            continue
+        if skip_station_ids and str(row.get("station_id")) in skip_station_ids:
             continue
         if km(node_lat, node_lon, row["latitude"], row["longitude"]) > radius_km:
             continue
@@ -243,7 +250,9 @@ def enabled(hc: httpx.Client):
     if pa:
         out.append(("purpleair", lambda: purpleair(hc, pa, lat, lon, indoor)))
     if os.getenv("BAD_ENABLED", "0") == "1":
-        out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(os.getenv("BAD_RADIUS_KM", "15")))))
+        # BAD republishes Smart Citizen kits as station id `sc-<kit>`; skip the ones this node reads directly
+        skip = {f"sc-{i}" for i in ids}
+        out.append(("baliairdispatch", lambda: baliairdispatch(hc, lat, lon, float(os.getenv("BAD_RADIUS_KM", "15")), skip)))
     if os.getenv("OPENMETEO_ENABLED", "1") == "1" and os.getenv("NODE_LAT"):
         _lat, _lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
         out.append(("open-meteo", lambda: openmeteo(hc, _lat, _lon)))

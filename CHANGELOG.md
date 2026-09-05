@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.10.1 — 2026-09-05
+
+- **Fixed:** a Smart Citizen kit the node polls directly also arrived through Bali Air Dispatch as `bad-sc-<kit>`, so it was counted twice in the ambient average — and BAD's indoor/outdoor metadata disagreed with Smart Citizen's own on two of your kits. Kits read directly are now skipped from BAD. Seen on node #1 once account discovery was on.
+- **Fixed:** `update.sh` pulled a named branch, which skips tags, so the version stamp stuck at `v0.7-N`. Tags are fetched first now.
+
 ## v0.10 — 2026-09-05
 
 **The node reads your whole account, tells you more, and hands automations to Home Assistant.**
