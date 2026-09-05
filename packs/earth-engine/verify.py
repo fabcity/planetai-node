@@ -55,13 +55,28 @@ except Exception as e:
     sys.exit(1)
 
 print("5. a real query ", end="")
+# A single-image dataset with a long life and no deprecation history. (COPERNICUS/DEM/GLO30 is an ImageCollection,
+# not an Image, and is superseded — using it here failed for two unrelated reasons at once.)
 try:
     lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
-    v = ee.Image("COPERNICUS/DEM/GLO30").select("DEM").reduceRegion(
+    v = ee.Image("USGS/SRTMGL1_003").select("elevation").reduceRegion(
         reducer=ee.Reducer.first(), geometry=ee.Geometry.Point([lon, lat]), scale=30).getInfo()
     print(f"ok  ground elevation at this node: {list(v.values())[0]} m")
 except Exception as e:
     print(f"FAILED — {e}"); sys.exit(1)
+
+print("6. the pack's own datasets")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import adapter  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+year = datetime.now(timezone.utc).year - 1
+for name, cid in (("Dynamic World", adapter.DW), ("Sentinel-2", adapter.S2),
+                  ("VIIRS night lights", adapter.VIIRS), ("AlphaEarth embeddings", adapter.EMB)):
+    try:
+        n = ee.ImageCollection(cid).filterDate(f"{year}-01-01", f"{year}-12-31").limit(1).size().getInfo()
+        print(f"   {name:24} {'ok' if n else 'reachable but empty for ' + str(year)}   {cid}")
+    except Exception as e:
+        print(f"   {name:24} FAILED — {str(e)[:70]}   {cid}")
 
 print("\nSetup is good. The pack fetches once a day; to see it now:")
 print("  docker compose exec -T app python -c \"import sys; sys.path.insert(0,'/app/packs/earth-engine'); "
