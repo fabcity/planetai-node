@@ -52,7 +52,8 @@ Prefer flags to a form? The installer underneath takes them directly:
 ./install.sh --name mayur-vihar --lat 28.6139 --lon 77.2090 --no-bad     # anywhere, no sensor
 ```
 
-Two containers — Postgres and one Python service, about 700 lines. Runs on a Mac (Apple Silicon or Intel), any Linux
+Two containers by default — Postgres and one Python service, about 1,400 lines. (A broker for Meshtastic and
+Home Assistant, and a Reticulum bridge, are optional profiles, off unless you turn them on.) Runs on a Mac (Apple Silicon or Intel), any Linux
 box, a Raspberry Pi 4/5, or Windows via WSL2. Reads **Smart Citizen** (cloud API), **AirGradient** and **PurpleAir**
 (both directly over your WiFi, no cloud), alone or mixed. First reading in five minutes. First alert when the air earns one.
 
@@ -144,7 +145,10 @@ update.sh           in-place update: backup → pull → migrate → rebuild →
 backup.sh           nightly pg_dump, 14-day retention, point BACKUP_DIR at a NAS
 tests/              offline adapter tests against saved payloads
 packs/              community extensions — drop a folder here (docs/PACKS.md)
-docs/               START_HERE · USE_CASES · PACK_IDEAS · UPDATING · PLATFORMS · MAC_MINI · NETWORKING · MESHTASTIC · MESHTASTIC_APP · MESHTASTIC_FLEET · sensors · PACKS · DOMAINS · COVERAGE · PREFILL
+docs/               getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATING
+                    what it can tell you    USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL
+                    extending it            PACKS · PACK_IDEAS · DEVELOPING
+                    radios and reachability NETWORKING · MESHTASTIC · MESHTASTIC_APP · MESHTASTIC_FLEET
 ARCHITECTURE.md     the building
 SPEC.md             this brick: contracts, and the retired pieces with their triggers
 PRODUCT.md          who this is for and what they pay for

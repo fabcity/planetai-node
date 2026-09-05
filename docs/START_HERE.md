@@ -39,7 +39,8 @@ it is alive.
 It also publishes what it knows in the Fab City Index format and records whether anyone acted on an
 alert, which is the ρ measurement. Both happen on their own; you do not need to think about them on day one.
 
-Everything runs in two containers: one holds the database, one holds the program. They touch nothing else
+Everything runs in two containers: one holds the database, one holds the program. (Turning on Meshtastic,
+Home Assistant or Reticulum adds one more each; nothing else.) They touch nothing else
 on the machine. Deleting the folder removes it all.
 
 ## 2. Your five inputs

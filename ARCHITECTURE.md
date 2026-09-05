@@ -152,8 +152,10 @@ address running a node is a ρ instrument. That's the H0-A hypothesis reduced to
 
 Not a roadmap. Each stage names what exists, what it proves, and the trigger for the next.
 
-**Stage 0 — now.** One node, two containers, ~650 lines. Sense: Smart Citizen 19880 + Bali Air Dispatch.
-Observe: Postgres, hourly view, read API. Act: five rules → Telegram, `POST /actions` records acknowledgement.
+**Stage 0 — now.** One node, two containers by default (a broker and a Reticulum bridge are optional profiles),
+about 1,400 lines. Sense: nine adapters across sensor, portal and model classes. Observe: Postgres, hourly view,
+read API. Act: two domain-blind core rules plus whatever the loaded packs contribute — eight packs ship — to
+Telegram, the mesh, and Home Assistant; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.
 → Trigger for Stage 1: five nodes alive 30 days, at least one `acted` row per node.

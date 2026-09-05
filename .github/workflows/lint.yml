@@ -9,6 +9,8 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install pyyaml
       - run: make lint
+      - name: docs match the code
+        run: python3 tools/check_docs.py
       - name: rules and cells match the schema
         run: |
           pip install -q sqlglot pyyaml

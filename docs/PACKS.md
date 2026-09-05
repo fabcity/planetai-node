@@ -1,6 +1,7 @@
 # Packs — how other people extend a node
 
-The core is small on purpose: two containers, four adapters, five rules. Everything specific to a place —
+The core is small on purpose: two containers, and two rules that work whatever a node measures. Everything
+specific to a place —
 what "bad" means in Kerobokan versus Poblenou, which sensor a lab happens to own, what a banjar wants to be told —
 belongs to whoever lives there. **Packs** are how that arrives without going through us.
 

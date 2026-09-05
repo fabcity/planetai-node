@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.12.1 — 2026-09-05 — documentation audit
+
+- **`tools/check_docs.py`**: checks every claim in the docs that a machine can check — files, `planetai` commands, environment variables, relative links, HTTP endpoints, pack names, size claims, and whether README's index matches `docs/`. Runs in `make lint` and CI. Verified by removing an entry from the index and watching it fail.
+- **Corrected**: "two containers, four adapters, five rules" (now two containers by default, nine adapters, two domain-blind core rules plus packs); "about 700 lines" (about 1,400); ARCHITECTURE's Stage 0 description.
+- **README's docs index** was missing `DEVELOPING.md` and had become a flat list of fifteen names; it is now grouped by what you are trying to do.
+- **SPEC §6**: the fired triggers are struck through rather than deleted, `UPSTREAM_*` records why the settings were removed while the contract stands, and the notifier row notes that four channels now exist and the trigger was always an auth lifecycle, not a channel count.
+- **`docs/DEVELOPING.md`** gained a table of what `make lint` checks and which real failure caused each gate, plus the two habits: test the artifact rather than a transcription of it, and break something on purpose before trusting a new gate.
+
 ## v0.12 — 2026-09-05
 
 **Packs can make things you look at, not only numbers.**

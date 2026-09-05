@@ -69,7 +69,9 @@ and a written migration.
 
 ## 6. Staged upgrades — retired pieces and their triggers
 
-Each was built, audited, and cut on 2 September 2026. None is lost; each returns on its named condition, not on a roadmap.
+Each was built, audited, and cut on 2 September 2026. None is lost; each returns on its named condition, not on a
+roadmap. Four triggers have since fired, and they are struck through below rather than deleted, so the record of
+what was deferred and why stays legible.
 
 | piece | returns when | what it looks like |
 |---|---|---|
@@ -85,8 +87,9 @@ Each was built, audited, and cut on 2 September 2026. None is lost; each returns
 | **TimescaleDB** | `readings` passes ~50M rows or `stats` takes over a second | swap the image, `create_hypertable`, the SQL is already compatible |
 | **Telegram reply → action** | the first operator who says "I did it" in the chat instead of curl | a 20-line webhook that maps a reply to `#<alert_id>` into `POST /actions` |
 | **Cells → Airtable / index.fab.city** | the Index surface wants to pull from a node rather than read Airtable | aggregator (or a cron) pushes `GET /cells` rows into `FCI Observations`; states preserved |
-| **Upstream model / compute** | a rule or brief needs inference a Pi can't do | `UPSTREAM_MODEL_URL` (OpenAI-compatible) / `UPSTREAM_COMPUTE_URL`; caller unchanged whether it's Ollama, BSC, or a frontier API |
-| **Separate notifier service** | a second channel (WhatsApp Business) with its own auth lifecycle | until then, a function |
+| **Upstream model / compute** | a rule or brief needs inference a Pi can't do | `UPSTREAM_MODEL_URL` (OpenAI-compatible) / `UPSTREAM_COMPUTE_URL`. Removed from `.env.example` in v0.9 because no code reads them: the names are the contract, the settings return with the code that uses them |
+| **Separate notifier service** | a second channel (WhatsApp Business) with its own auth lifecycle | until then, a function. Note: Telegram, the LoRa mesh, LXMF and Home Assistant are now four channels and all four are still functions in `notify()`. The trigger is an auth lifecycle, not a channel count. |
+| **Artifacts from packs** | ~~—~~ **shipped v0.12**: `out/` is mounted writable and `planetai run <pack> <script>` executes a pack's scripts | `packs/earth-engine/timelapse.py` is the worked example |
 
 The rule: a piece comes back when its trigger fires, with a PR that names the trigger. Not before.
 

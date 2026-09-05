@@ -21,6 +21,23 @@ make lint && make test
 Needs `git`, `make`, `python3`, and `gh` (or any git credential helper). Docker only if you want to run a node
 locally for testing — everything in `make lint` and `make test` is offline and needs neither Docker nor network.
 
+## What `make lint` checks
+
+Each gate exists because something shipped broken. Together they are about 200 lines and run offline in a second.
+
+| gate | catches | the bug that caused it |
+|---|---|---|
+| `bash -n` | shell syntax | an apostrophe inside `${x:-...}` |
+| `tools/check_sql.py` | non-idempotent SQL, comments inside expressions, compose mounts the repo does not ship | a comment that ate a closing bracket; a missing mosquitto config Docker replaced with an empty directory |
+| `tools/check_cli_python.py` | CLI snippets that need Python ≥3.10, or a third-party library | f-strings that crashed on the node's Python 3.9; PyYAML the node does not have |
+| `tools/check_rules.py` | rules and cells against `init.sql`: unknown columns, message placeholders the SQL never returns, cells with no `value`, cooldowns over a fortnight | a 69-day cooldown that made `test-alert` report a dead node |
+| `tools/check_docs.py` | docs naming files, commands, settings, endpoints or packs that do not exist; stale counts; a README index out of step with `docs/` | this audit |
+| `make test` | five offline suites: adapters, Meshtastic parsing, cell provenance, both code packs | a topic parse that would have doubled `/2/` in every downlink |
+
+Two habits go with them. **Test the artifact, not a transcription of it** — twice a test retyped the code it was
+testing and the escaping bug made it pass. And **when you add a gate, break something on purpose first** and watch it
+fail; a check that has never failed has not been tested.
+
 ## The pre-commit hook
 
 `make dev-setup` symlinks `tools/hooks/pre-commit`. It refuses a commit that contains:
