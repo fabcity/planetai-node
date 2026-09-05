@@ -15,6 +15,7 @@
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; install code-pack Python dependencies into the image
+#   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -580,6 +581,28 @@ cmd_packs() {
   say "done. Code packs also need PACKS_ALLOW_CODE=1 in .env to run. Read their adapter.py first."
 }
 
+
+# ---------------------------------------------------------------- run a script a pack ships
+# Packs can carry scripts as well as rules: things you ask for rather than things that happen on a schedule.
+# They run inside the app container, where the pack's dependencies are, and write to out/ on the host.
+cmd_run() {
+  local pack="${1:-}" script="${2:-}"; shift 2 2>/dev/null || true
+  if [[ -z "$pack" || -z "$script" ]]; then
+    echo "usage: planetai run <pack> <script> [args...]"
+    echo
+    echo "available:"
+    for f in packs/*/*.py; do
+      local p s; p="$(basename "$(dirname "$f")")"; s="$(basename "$f" .py)"
+      [[ "$s" == "adapter" ]] && continue
+      local desc; desc="$(awk 'NR>1 && NF {sub(/^"""/,""); print; exit}' "$f" | cut -c1-58)"
+      printf '  planetai run %-14s %-12s %s\n' "$p" "$s" "$desc"
+    done
+    return 1
+  fi
+  [[ -f "packs/$pack/$script.py" ]] || fail "packs/$pack/$script.py does not exist"
+  docker compose exec -T -e PACK_OUT=/app/out app python "/app/packs/$pack/$script.py" "$@"
+}
+
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
@@ -601,6 +624,7 @@ case "${1:-help}" in
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   homeassistant|ha) cmd_homeassistant;;
   packs) cmd_packs;;
+  run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
   *) sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;

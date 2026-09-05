@@ -41,7 +41,7 @@ tracked = set(subprocess.run(["git", "ls-files"], capture_output=True, text=True
 runtime_created = {"config/mosquitto/passwd", "config/reticulum/config", "config/ee-key.json", "app/requirements-packs.txt"}
 for m in re.finditer(r"^\s*-\s*\./([^:\s]+):", compose, re.M):
     src = m.group(1).rstrip("/")
-    if src in runtime_created or src.startswith(("backups", "packs")):
+    if src in runtime_created or src.startswith(("backups", "packs", "out")):
         continue
     if not any(f == src or f.startswith(src + "/") for f in tracked):
         errs.append(f"docker-compose.yml mounts ./{src} but the repo ships nothing there (Docker would mount an empty dir)")

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.12 — 2026-09-05
+
+**Packs can make things you look at, not only numbers.**
+
+- `out/` is mounted read-write into the app container as `/app/out` — the one writable path a pack has, for images, charts and briefs. Gitignored.
+- **`planetai run <pack> <script> [args]`** runs a script a pack ships, inside the container where its dependencies are. With no arguments it lists what is available.
+- **`packs/earth-engine/timelapse.py`**: four satellite images of the same place, five years apart, plus a side-by-side HTML page. Each frame is the annual median of clear pixels, so clouds are gone and what you see is the year. Landsat by default (the only archive reaching back far enough with one instrument family — 2010, 2015, 2020, 2025 out of the box); Sentinel-2 for 2016 onward at three times the resolution. `--years`, `--n`, `--gap`, `--km`, `--px`, `--lat/--lon`, `--dry-run`.
+- Fixed while building it: `COPERNICUS/DEM/GLO30` in the verifier was an ImageCollection used as an Image, and deprecated. Replaced with SRTM, and a step 6 now probes the four datasets the pack actually reads.
+
 ## v0.11.5 — 2026-09-05
 
 - **Fixed:** `planetai packs` treated a pack's `env:` comment lines as settings, so it appended four bare comments to `.env` and reported them as four added settings (the real settings were already present and correctly skipped). A comment now travels only with the setting it explains, and only when that setting is actually added.

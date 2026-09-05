@@ -1,0 +1,2 @@
+Files a pack produces for you to look at — images, charts, briefs — land here on the host.
+Mounted read-write into the app container as /app/out. Contents are gitignored.

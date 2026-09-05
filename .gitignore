@@ -14,3 +14,7 @@ config/reticulum/config
 app/requirements-packs.txt
 # Earth Engine service-account key
 config/ee-key.json
+
+# pack artifacts (images, charts, briefs)
+out/*
+!out/.gitkeep

@@ -110,6 +110,19 @@ is not yet configured.
 
 Ten pack ideas, three of them shipped as prototypes: [`PACK_IDEAS.md`](PACK_IDEAS.md).
 
+## 4d. Packs that make things you look at
+
+A pack can ship scripts as well as rules — things you ask for rather than things that happen on a schedule:
+
+```bash
+planetai run <pack> <script> [args]
+```
+
+The script runs inside the app container, where the pack's dependencies are, and writes to `/app/out`, which is
+`out/` on the host and the only writable path a pack has. `planetai run` with no arguments lists what is available.
+`packs/earth-engine/timelapse.py` is the worked example: four satellite images of the same place, years apart,
+plus a side-by-side page.
+
 ## 5. Where packs live — and why not here
 
 **Packs are not in this repository.** The core repo carries the runtime, the official adapters, and one example pack.

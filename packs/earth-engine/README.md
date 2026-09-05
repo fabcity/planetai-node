@@ -43,6 +43,20 @@ Until all of that exists the pack logs one line and stays idle. It cannot take t
 changed, not what; 1 km around a house in Kuta Selatan is mostly other people's land. `partial` forever, and the
 methodology's rule holds: bioregion context flows down to nodes, never up into their cells.
 
+**Images, not just numbers.** The pack also ships a script:
+
+```bash
+planetai run earth-engine timelapse                        # 4 frames, 5 years apart, ending last year
+planetai run earth-engine timelapse --km 1 --px 1536       # tighter and sharper
+planetai run earth-engine timelapse --n 6 --gap 3 --source sentinel   # 2016 onward, 10 m pixels
+planetai run earth-engine timelapse --years 2000,2012,2025 --km 4
+```
+
+Each frame is the **annual median of clear pixels**, so clouds and any one day's haze are gone; what you see is the
+year. Landsat by default because it is the only archive reaching back far enough for a fifteen-year comparison with
+one instrument family — a like-for-like series matters more than resolution when the question is what changed.
+Sentinel-2 is three times sharper for 2016 onward. PNGs and a side-by-side HTML page land in `out/` on the host.
+
 **Status.** Not yet run against a live Earth Engine account. The logic is tested with a fake `ee`
 (`tests/test_packs.py`); dataset IDs are as published at time of writing and the fetch logs by name any that fail.
 The first real run should be watched in `planetai logs`.
