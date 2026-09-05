@@ -1,4 +1,7 @@
 FROM python:3.12-slim
+# pip in a container runs as root by design; its warnings about that, and about its own new versions, are noise
+# that shows up red in `planetai update` and hides the lines that matter.
+ENV PIP_ROOT_USER_ACTION=ignore PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY requirements*.txt ./
 # requirements-packs.txt is written by `planetai packs` from the `pip:` lists of code packs (gitignored)
