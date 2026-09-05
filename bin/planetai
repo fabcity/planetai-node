@@ -264,7 +264,7 @@ cmd_doctor() {
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
   chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]#]' .env"  "a space after = makes the shell run the value: grep -nE '^[A-Z_]+= +[^ #]' .env"
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
-  chk "a backup in the last 2 days" "find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null | grep -q ."   "planetai backup — and check cron: crontab -l | grep backup"
+  chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (a nightly one is scheduled)"
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
@@ -637,7 +637,7 @@ cmd_ui() {
 
 
 # ---------------------------------------------------------------- storage: where the data is, and where copies go
-mounted() { case "$1" in /Volumes/*|/mnt/*|/media/*) mount | grep -q " on $(echo "$1" | cut -d/ -f1-3) ";; *) return 0;; esac; }
+mounted() { case "$1" in /Volumes/*|/mnt/*|/media/*) grep -q " on $(echo "$1" | cut -d/ -f1-3) " <<< "$(mount)";; *) return 0;; esac; }
 cmd_storage() {
   local sub="${1:-}"
   if [[ "$sub" == "set" ]]; then

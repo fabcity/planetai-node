@@ -29,7 +29,7 @@ die(){ printf '%s backup FAILED: %s\n' "$(date +%H:%M)" "$*" >&2; exit 1; }
 case "$DIR" in
   /Volumes/*|/mnt/*|/media/*)
     top="$(echo "$DIR" | cut -d/ -f1-3)"
-    if ! mount | grep -q " on ${top} "; then
+    if ! grep -q " on ${top} " <<< "$(mount)"; then
       die "$top is not mounted. Refusing to create a local folder with its name. Mount the drive, or change BACKUP_DIR."
     fi;;
 esac
@@ -40,7 +40,10 @@ mkdir -p "$DIR" || die "cannot create $DIR"
 OUT="$DIR/${NAME}-${STAMP}.sql.gz"
 docker compose exec -T db pg_dump -U planetai planetai | gzip > "$OUT.tmp" || die "pg_dump failed"
 gzip -t "$OUT.tmp" 2>/dev/null || die "the dump is not a valid gzip"
-if ! gunzip -c "$OUT.tmp" | grep -q "CREATE TABLE.*readings" ; then rm -f "$OUT.tmp"; die "the dump has no readings table — refusing to keep it"; fi
+# not `grep -q` under pipefail: it exits on the first match, gunzip gets SIGPIPE, the pipeline "fails" on a good dump.
+# Count matches instead and let the pipeline run to the end.
+hits="$(gunzip -c "$OUT.tmp" | grep -c "CREATE TABLE[^;]*readings" || true)"
+if [[ "${hits:-0}" == "0" ]]; then rm -f "$OUT.tmp"; die "the dump has no readings table — refusing to keep it"; fi
 mv "$OUT.tmp" "$OUT"
 log "$OUT ($(du -h "$OUT" | cut -f1))"
 find "$DIR" -name "${NAME}-*.sql.gz" -mtime "+${KEEP}" -delete

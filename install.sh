@@ -89,7 +89,7 @@ grep -q '^POSTGRES_PASSWORD=change-me' .env && setenv POSTGRES_PASSWORD "$(opens
 
 # ---- port clash check
 PORT="$(grep '^APP_PORT=' .env | cut -d= -f2)"; PORT="${PORT:-8080}"
-if docker compose ps -q app 2>/dev/null | grep -q . ; then :; elif lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+if [[ -n "$(docker compose ps -q app 2>/dev/null)" ]]; then :; elif lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   warn "port $PORT is already in use on this machine:"; lsof -nP -iTCP:"$PORT" -sTCP:LISTEN | tail -n +2 | awk '{print "     "$1" (pid "$2")"}' | sort -u
   die "set APP_PORT=8081 (or any free port) in .env and re-run"
 fi
@@ -121,12 +121,12 @@ chk "telegram set"    "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env"
 grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env || warn "alerts go to the log only until TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_IDS are set in .env (then: docker compose up -d)"
 
 # ---- backup cron (best effort; skip silently if no crontab)
-if need crontab && ! crontab -l 2>/dev/null | grep -q planetai-backup; then
+if need crontab && ! grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)"; then
   ( crontab -l 2>/dev/null; echo "17 3 * * * cd $(pwd) && ./backup.sh >/dev/null 2>&1 # planetai-backup" ) | crontab - 2>/dev/null && say "nightly backup scheduled (03:17)"
 fi
 
 echo
-if docker compose logs app 2>/dev/null | grep -qE 'api\.telegram\.org/bot[0-9]+:'; then
+if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/dev/null)"; then
   warn "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
   warn "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
   warn "Then clear the old logs: docker compose down && docker compose up -d"

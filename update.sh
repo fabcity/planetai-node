@@ -120,7 +120,7 @@ chk "readings intact"   "[ \$(docker compose exec -T db psql -U planetai -tAc 'S
 chk "views rebuilt"     "curl -sf localhost:${PORT}/stats"
 chk "packs loaded"      "curl -sf localhost:${PORT}/packs"
 echo
-if docker compose logs app 2>/dev/null | grep -qE 'api\.telegram\.org/bot[0-9]+:'; then
+if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/dev/null)"; then
   warn "a Telegram bot token is visible in this node's container logs (logged by versions before v0.4.3)."
   warn "Revoke it via @BotFather /revoke, update .env, then: docker compose down && docker compose up -d"
 fi

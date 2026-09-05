@@ -46,6 +46,15 @@ for m in re.finditer(r"^\s*-\s*\./([^:\s]+):", compose, re.M):
     if not any(f == src or f.startswith(src + "/") for f in tracked):
         errs.append(f"docker-compose.yml mounts ./{src} but the repo ships nothing there (Docker would mount an empty dir)")
 
+# `producer | grep -q` under pipefail is a race: grep exits on the first match, the producer gets SIGPIPE, the
+# pipeline "fails" on good input. It made a valid dump read as "no readings table" (5 Sep). Capture first, then grep.
+for f in ("backup.sh", "update.sh", "install.sh", "bin/planetai"):
+    s = open(f).read()
+    if "pipefail" in s:
+        for i, line in enumerate(s.splitlines(), 1):
+            if re.search(r"\|\s*grep\s+-[a-zA-Z]*q", line) and "<<<" not in line:
+                errs.append(f"{f}:{i}: `| grep -q` under pipefail races on large output; use grep -q ... <<< \"$(producer)\"")
+
 # nothing tracked may be OS litter or a cache: .DS_Store committed once and blocked planetai update on the node
 tracked = subprocess.run(["git", "ls-files"], capture_output=True, text=True).stdout.split()
 for f in tracked:
