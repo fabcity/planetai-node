@@ -31,4 +31,4 @@ FIRMS detections crossed with wind direction. Details and effort in `PACK_IDEAS.
 ## Writing one
 
 Copy `packs/heat`. Change the metrics, the thresholds, the messages. Say in the README where the thresholds come from
-and which place you wrote for. `make lint`. That is a domain.
+and which place you wrote for. Run `make lint`. You have a domain pack.

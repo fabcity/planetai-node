@@ -44,7 +44,7 @@ GATEWAY=1 MQTT_ADDR=192.168.4.190:1883 MQTT_PASS=<from planetai meshtastic> WIFI
 ```
 
 Primary matters: radios send telemetry and position on channel 0 only. A private channel added as secondary never
-carries sensor data. The gateway sat connected for a day publishing nothing for exactly that reason.
+carries sensor data. Our gateway sat connected for a day publishing nothing because the channel was secondary.
 
 Name field sensors for the **place**: the name becomes the sensor's name in the node. `~/planetai-mesh.url` holds the
 fleet key; keep it with `.env`. Regions: Bali `SG_923`, Barcelona `EU_868`, Boston `US`.

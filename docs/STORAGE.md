@@ -85,5 +85,5 @@ planetai backup          # publishes yesterday now
 cat exports/bayu-2/CIDS.txt
 ```
 
-Anyone can fetch `ipfs://<cid>`. Do this when a second node or a partner wants the data. A commons with one
-contributor is a folder.
+Anyone can fetch `ipfs://<cid>`. Turn this on when a second node or a partner wants the data; with one contributor
+there is nothing to share yet.

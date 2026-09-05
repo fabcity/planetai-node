@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.24.1 — 2026-09-05 — the words, again
+
+`README.md` and `docs/START_HERE.md` rewritten as product copy: what you get first (alerts you can act on, a dashboard
+that reads like a sentence, a bot you can talk to, a house that learns its rhythm, your data kept, nothing to buy), then
+install, the first ten minutes, everyday use, what it will not do, when it breaks. Instructions checked against the
+CLI as it is today: the four dashboard views, `planetai agent local`, the Model page, `/act` in Telegram. The rest of
+the docs swept for the phrases that read like a machine wrote them.
+
 ## v0.24 — 2026-09-05 — the dashboard, redesigned
 
 The design is Tomas's PLANETAI_Node_v5 on the Fab City design system: a warm dark field, Figtree and Funnel Sans, the

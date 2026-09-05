@@ -32,8 +32,8 @@ Every gate is a bug that shipped.
 
 ## Two habits
 
-**Test the artifact, not a transcription of it.** Three times a test retyped the code it was testing and the escaping
-bug made it pass.
+**Test the file, not a copy typed into the test.** Three times a test retyped the code it was checking, and the
+retyping hid the bug.
 
 **Break something on purpose before trusting a new gate.** A check that has never failed has not been tested.
 

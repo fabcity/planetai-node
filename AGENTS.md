@@ -45,7 +45,7 @@ Development happens on a dev machine, not on the node. The node only runs `plane
 Before any commit: `make lint && make test`. Lint runs every gate that exists because something once shipped broken:
 SQL idempotency, compose mounts, CLI snippets as Python 3.9, rules and cells against the schema, docs against the code,
 the dashboard's ids, pyflakes, the app import. If you add a gate, break something on purpose first and watch it fail.
-Test the artifact, not a retyped copy of it.
+Test the file itself, not a copy typed into the test.
 
 Adding a source, a rule or a cell is a pack: `docs/PACKS.md`. Copy `packs/heat`. Say in the README where the thresholds
 came from and which place they were written for.

@@ -1,7 +1,7 @@
 # Sensors and sources
 
 How readings enter a node, and the rules that keep the numbers right. Several rules come from Bali Air Dispatch's
-methodology; where we copy one, we say so.
+methodology, and are credited where used.
 
 ## The adapter contract
 
@@ -16,7 +16,7 @@ def my_source(hc: httpx.Client, ...) -> tuple[list[dict], list[tuple]]:
 ```
 
 Readings dedupe on `(sensor_id, metric, ts)`, so polling twice is harmless. `local` means yours. `indoor` must be
-honest; the rules depend on it. `kind` is `sensor`, `portal`, `model` or `child`; only `sensor` enters `stats`.
+correct; the rules depend on it. `kind` is `sensor`, `portal`, `model` or `child`; only `sensor` enters `stats`.
 
 Metrics: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc`. Units: µg/m³, °C, %, kPa.
 
@@ -51,7 +51,7 @@ Copernicus model at 11 km; climate normals. `kind='model'`, never in an ambient 
 4. **Instants are UTC; days are local.** Daily buckets use `NODE_TZ`. Bali's 9 am burn peak vanishes on a UTC day.
 5. **Corrected ≠ raw.** Store both. Never overwrite raw.
 6. **Gaps are real.** No fill, no zero, no interpolation.
-7. **These are not reference instruments.** Good for patterns and magnitudes. Say so.
+7. **These are not reference instruments.** Good for patterns and magnitudes; the node labels them as such.
 
 ## "Outside" resolves in one order
 

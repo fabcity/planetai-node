@@ -15,8 +15,8 @@ of history, today's weather against forty years of normals. `BOOTSTRAP=0` skips 
 ## The number this makes possible
 
 The gap between the model and your first sensor. At node #1 the CAMS cell tracks the street at r = 0.51 and the room at
-r = −0.18. The model knows the district; a sensor knows the address. That difference is the reason the sensor exists,
-and the node can state it the day a sensor arrives.
+r = −0.18. The model knows the district; a sensor knows the address. The node can put a number on that difference the day a
+sensor arrives.
 
 ## Opt-in, because they need a key
 

@@ -40,7 +40,7 @@ Six of twenty. `planetai cells` shows them; the dashboard draws them as a honeyc
 | Environmental \| Region | a grid operator's hourly mix | a regional partner |
 | Economic \| Region, Bioregion | procurement feeds (TED, ChileCompra, LKPP); material-flow accounts | an institution |
 
-The Social column is the emptiest in the whole registry. Heat-exposure hours is the first number in it.
+The Social column has the fewest sources of any in the registry. Heat-exposure hours is the first number in it.
 
 ## Reading the map
 

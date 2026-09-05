@@ -1,6 +1,31 @@
 # Start here
 
-You need a computer that stays on, Docker, and the name of a place. A sensor helps but is not required.
+PLANETAI node is a small program that runs on a computer in your home, lab or office and tells you about the air,
+the heat and the weather around it, in plain sentences, on Telegram. It reads the sensors you already have, compares them
+with the public sensors nearby and with satellite models, and speaks only when something should change. Your readings
+stay on your machine.
+
+## What you get
+
+**Alerts you can act on.** Not "PM2.5 is 42." Instead: what is happening, what it means for the people in the house, and
+what to do. "Inside is worse than outside. Something is cooking or burning. Open a window." In English or Bahasa Indonesia.
+
+**A dashboard that reads like a sentence.** "Falling to 9 micrograms, under the street, under the model, under the line."
+Then the day as a chart, every sensor with a note on what it is doing, the sea, the land, the weather. Open it on your
+phone or leave it on a screen on the wall.
+
+**A bot you can talk to.** Ask it how the air is, how big the swell is, what the kitchen did overnight, or tell it you
+closed the windows. It runs on a small model on your own machine, and uses a bigger one when it can reach it.
+
+**A house that learns its own rhythm.** After a week the node knows when your street is worst, when it is cleanest, and
+how much of the outside air your building keeps out. It tells you the hour to air the house.
+
+**Your data, kept.** The database never leaves the machine. Backups run nightly and can be pulled by a NAS or copied to
+any storage you choose. What the node shares upward is a daily summary, and only if you point it somewhere.
+
+**Nothing to buy.** It runs on a Mac, a Linux box, a Raspberry Pi or a Windows PC with WSL2, and works with the sensors
+people already own: Smart Citizen, AirGradient, PurpleAir, Meshtastic radios. Without a sensor it still knows your
+weather, the satellite air model for your district and forty years of climate for your coordinates.
 
 ## Install
 
@@ -8,78 +33,78 @@ You need a computer that stays on, Docker, and the name of a place. A sensor hel
 curl -fsSL planetai.fab.city/node0/install | bash
 ```
 
-Works on macOS, Linux, a Raspberry Pi 4/5, and Windows with WSL2. The installer asks four things:
+It asks four things: a name for the node, the place (type a town; it finds the coordinates), what the node is for (a
+home, a business, a lab, a district), and your sensor if you have one. Two minutes later it is running.
 
-1. **A name** for the node. It appears in every alert. `bayu-2`, `lab-roof`.
-2. **The place**, typed as words. It finds coordinates and time zone, shows them, and asks before going on.
-3. **What the node is for**: a home, a business, a community or lab node, or a district. Sets defaults, nothing more.
-4. **Your sensor**, if you have one. Smart Citizen (kit id, or your username to read every kit on the account),
-   AirGradient or PurpleAir (address on your WiFi), or none.
+The install ends with a checklist. A cross next to *telegram connected* is expected; that comes next. A cross next to
+*database* or *node answers* means something is wrong; see [When it breaks](#when-it-breaks).
 
-Then it installs. First build takes one to three minutes. It ends with a `doctor:` block and `Done!`. A cross next to
-*telegram connected* is expected; that is the next step. A cross next to *database* or *node answers* means stop and
-read [When it breaks](#when-it-breaks).
-
-Within five minutes the node has its first readings. On the first start it also pulls three months of Copernicus
-air-quality history and forty years of NASA climate normals for your coordinates, so it has something to say from day one.
-
-## Get the alerts
+## Your first ten minutes
 
 ```bash
-planetai telegram      # message @BotFather, /newbot, paste the token; then message your bot once
-planetai test-alert    # fires a real alert within a minute
-planetai act 3         # tell the node you did something about alert 3. This is what it measures.
+planetai telegram      # connects a bot: make one with @BotFather, paste the token, message it once
+planetai test-alert    # a real alert arrives on your phone within a minute
+planetai ui            # the dashboard's address, and the token for its settings pages
 ```
 
-The last one matters. The node's own number, ρ, is the share of alerts that led to an action. Nobody else measures it.
+Open the dashboard. Set up → Sources is where you add or change sensors. Set up → Model is where the bot's brain lives.
+
+When an alert arrives that you act on, tell the node, in Telegram (`/act 12 closed the windows`) or with the button on the
+dashboard. The node keeps one score for itself: how many of its alerts led to someone doing something. That number is
+called ρ, and it is the only one on the page that comes from a person.
+
+## Talk to it
+
+```bash
+planetai agent local   # installs Ollama and a small model on this machine; the bot answers from now on
+```
+
+Then message your bot: "how is the air?", "how big is the swell?", "is the node healthy?". With a laptop or workstation
+on your network running a bigger model, set its address under Set up → Model and the bot uses that when it can reach it.
 
 ## Everyday
 
 ```
-planetai status      alive? what has it read, what fired, your ρ
-planetai doctor      every check, with the fix named next to each failure
-planetai ui          the dashboard in a browser, and the token for its settings pages
-planetai logs        what it is doing now
-planetai update      backup, fetch, migrate, rebuild, verify
-planetai storage     where the data is, where copies go
+planetai status      is it alive, what has it read, what fired
+planetai doctor      every check, with the fix written next to any failure
+planetai logs        what it is doing right now
+planetai update      backup, fetch the latest version, migrate, rebuild, verify
+planetai storage     where the data is, where the copies go
 ```
 
-`planetai` alone lists everything else: mesh radios, Home Assistant, packs, IPFS.
+`planetai` on its own lists the rest: mesh radios, Home Assistant, packs, IPFS, restore.
 
-## A good week
+A good week looks like this: a short note from the bot each morning, a handful of alerts rather than dozens, one or two
+that changed what you did, and a fresh file in `backups/`. Dozens of alerts a day means the thresholds are wrong for
+your place; tell us which ones.
 
-The daily pulse arrives each morning. `planetai status` shows no errors and a growing count. A few alerts, not dozens.
-You changed something because of one and told the node with `planetai act`. There is a fresh file in `backups/`.
+## What it will not do
 
-Dozens of alerts means the thresholds are wrong for your place. Say so; that is the most useful thing a tester can report.
-
-## What it needs from you
-
-Nothing automatic. The database stays on your machine. Raw readings never leave it. If you point the node at a community
-node later, hourly averages travel, not rows, and you decide whether to do that at all.
-
-What helps: which alerts were wrong, which were useful, what broke, and whether anyone did anything differently.
+It does not send your readings anywhere. It does not switch anything on or off; connect it to Home Assistant if you want
+that. It does not replace a reference instrument; low-cost sensors drift and disagree, and the node says so where it
+matters. It does not need the internet to keep working, only to send you messages.
 
 ## When it breaks
 
-Start with `planetai doctor`. Every line below happened to a real node.
+`planetai doctor` first. Everything below has happened to a real node.
 
-| symptom | first thing to check |
+| what you see | what to do |
 |---|---|
-| Nothing installs | Docker is not running. Open OrbStack or Docker Desktop, wait, run the line again. |
-| `command not found: planetai` | Open a new terminal window. The PATH change does not reach the old one. |
+| Nothing installs | Docker is not running. Open OrbStack or Docker Desktop, then run the line again. |
+| `command not found: planetai` | Open a new terminal window. |
 | `port is already in use` | `planetai config`, set `APP_PORT=8081`, `planetai restart`. |
-| No alerts at all | Normal when the air is fine. `planetai test-alert` proves the path. |
+| No alerts at all | Normal when the air is fine. `planetai test-alert` proves the path works. |
 | Alerts every few minutes | Thresholds wrong for your place. Tell us. |
-| The sensor shows nothing | `planetai sensors`. A Smart Citizen kit must be publishing; an AirGradient must be on the same network. |
-| Telegram says nothing | Message the bot first. A bot cannot start a conversation. Then `planetai telegram` again. |
-| Stopped after a power cut | Containers restart themselves; the computer must boot and log in on its own. macOS: Login Items, and Energy → start after power failure. |
-| A setting changed nothing | `planetai restart`. And no space after `=` in `.env`: `NAME= value` runs `value` as a command. |
+| A sensor shows nothing | `planetai sensors`. A Smart Citizen kit must be publishing; an AirGradient must be on the same network. |
+| Telegram says nothing | Message the bot first; a bot cannot start a conversation. Then `planetai telegram` again. |
+| The bot does not answer | `planetai logs agent`. The first lines say whether Telegram is set and which model it found. |
+| Stopped after a power cut | The computer must boot and log in on its own. On a Mac: Login Items, and Energy → start after power failure. |
+| A setting changed nothing | Settings made in the dashboard win over `.env`; the page says so next to them. |
 | `planetai update` fails on `.DS_Store` | `find . -name .DS_Store -delete`, then update again. |
 
 When you ask for help, send `planetai status`, `planetai doctor` and the last twenty lines of `planetai logs`. Not `.env`:
-it holds your bot token and database password. If you paste a log anywhere, check it for `api.telegram.org/bot` first.
+it holds your tokens.
 
 ## Remove it
 
-`planetai stop` keeps the data. To remove everything: `docker compose down -v` in the node folder, then delete the folder.
+`planetai stop` keeps the data. `docker compose down -v` in the node folder removes everything; then delete the folder.
