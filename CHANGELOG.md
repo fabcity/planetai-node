@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.16.1 — 2026-09-05 — after the first look
+
+Seven things from seeing it rendered, in the order they mattered.
+
+- **`MG/M³` was a bug**: `text-transform: uppercase` turned µ into M and micrograms into milligrams. The unit line is no longer transformed.
+- **The rotated inscriptions are gone.** Outside and model readings are horizontal, right-anchored at the exposed vertices, at 36 and 24 px instead of 28 and 22. The geometry only admits that with a deeper offset (48/96 instead of 36/72), which also gives the stack more depth. Placement proven by pushing the true glyph corners through the SVG transform and testing point-in-polygon against all three hexagons, at three widths.
+- **The phone cropped the world hexagon.** The overflow check measured element boxes, not SVG content spilling past them; the SVG now clips to its box and its viewBox carries a margin.
+- **One threshold.** Good/moderate at 12 (US) contradicted the WHO 15 line drawn on the strip beneath it. WHO everywhere now: 15 and 35.
+- An empty sensor tile said "–". It now says what it is waiting for.
+- The world hexagon's mesh read as compression noise in dark mode; hairline, lighter, crisp-edged.
+- The header shows the place, from `/health`.
+
 ## v0.16 — 2026-09-05
 
 **The dashboard is a zoom: room, street, world.** Three hexagons of the same size offset behind one another: the

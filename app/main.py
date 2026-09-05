@@ -407,7 +407,7 @@ def health():
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
-            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0), **state,
+            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0), "city": os.getenv("NODE_CITY", ""), **state,
             **({"mesh": mesh_state} if MQTT_HOST else {})}
 
 

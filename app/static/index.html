@@ -45,19 +45,20 @@ section{display:none}section.on{display:block}
 .zoom{display:grid;gap:32px;align-items:center;padding:16px 0 24px}
 @media(min-width:980px){.zoom{grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px}}
 .stack{position:relative;width:100%;max-width:560px;margin:0 auto}
-.stack svg{width:100%;height:auto;display:block;overflow:visible}
+.stack svg{width:100%;height:auto;display:block;overflow:hidden}
 .hx{transform-origin:center;opacity:0;animation:arrive 700ms var(--ease) forwards}
 .hx.world{animation-delay:0ms}.hx.street{animation-delay:160ms}.hx.room{animation-delay:320ms}
 @keyframes arrive{from{opacity:0;transform:translate(10px,10px)}to{opacity:1;transform:none}}
 .room-fill{fill:var(--paper2);transition:fill 600ms var(--ease)}.room-fill.good{fill:var(--green)}.room-fill.mid{fill:var(--orange)}.room-fill.bad{fill:var(--red)}
 .street-line{fill:var(--paper);stroke:var(--ink);stroke-width:2}
-.world-line{fill:url(#iso);stroke:var(--n400);stroke-width:1.5}
+.world-line{fill:url(#iso);stroke:var(--n500);stroke-width:1.5}
 .big{font:800 96px/1 var(--fd);letter-spacing:-.05em;fill:var(--paper);text-anchor:middle}.big.plain{fill:var(--ink)}
 .lbl{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;text-anchor:middle;fill:var(--paper);opacity:.85}.lbl.plain{fill:var(--n600)}
-.mid-n{font:800 28px/1 var(--fd);letter-spacing:-.04em;fill:var(--ink);text-anchor:middle}
-.mid-l{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--n600);text-anchor:middle}
-.far-n{font:800 22px/1 var(--fd);letter-spacing:-.03em;fill:var(--blue);text-anchor:middle}
-.far-l{font:500 10px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--blue);text-anchor:middle;opacity:.9}
+.unit{font:500 12px var(--fb);letter-spacing:.06em;text-anchor:middle;fill:var(--paper);opacity:.85}.unit.plain{fill:var(--n600)}
+.mid-n{font:800 36px/1 var(--fd);letter-spacing:-.04em;fill:var(--ink);text-anchor:end}
+.mid-l{font:500 11px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--n600);text-anchor:end;transform:translateX(-50px)}
+.far-n{font:800 24px/1 var(--fd);letter-spacing:-.03em;fill:var(--blue);text-anchor:end}
+.far-l{font:500 10px var(--fb);letter-spacing:.14em;text-transform:uppercase;fill:var(--blue);text-anchor:end;opacity:.9;transform:translateX(-36px)}
 .verdict h1{font-size:clamp(2.1rem,3.6vw,3.4rem);font-weight:800;line-height:1.02;letter-spacing:-.03em;max-width:18ch}
 .verdict p{margin:18px 0 0;font-size:17px;line-height:1.5;color:var(--ink2);max-width:42ch}
 .verdict .fine{margin-top:22px;font-size:13px;color:var(--n600)}
@@ -175,21 +176,21 @@ body.kiosk .kfoot{display:flex}
 <section id="display" class="on">
   <div class="zoom">
     <div class="stack">
-      <svg viewBox="-28 -28 330 362" role="img" aria-labelledby="zl"><title id="zl">Inside, outside and the world: PM2.5 at three distances</title>
+      <svg viewBox="-24 -24 344 376" role="img" aria-labelledby="zl"><title id="zl">Inside, outside and the world: PM2.5 at three distances</title>
         <defs>
           <!-- the isometric mesh, as the system uses it: a texture clipped inside one hexagon, never a wallpaper -->
           <pattern id="iso" width="14" height="24.25" patternUnits="userSpaceOnUse">
-            <path d="M7 0 L7 24.25 M0 6.06 L7 12.12 L14 6.06 M0 18.19 L7 12.12 L14 18.19" fill="none" stroke="var(--line)" stroke-width="1"/>
+            <path d="M7 0 L7 24.25 M0 6.06 L7 12.12 L14 6.06 M0 18.19 L7 12.12 L14 18.19" fill="none" stroke="var(--n400)" stroke-width=".6" opacity=".7" shape-rendering="crispEdges"/>
           </pattern>
         </defs>
-        <!-- three pointy-top hexagons of the same size, each offset (36,36) behind the one in front. The exposed band
-             between two of them runs along the lower-right edge at -30°, so the readings there follow that edge. -->
-        <g class="hx world"><polygon class="world-line" points="172,72 272,129.7 272,245.2 172,302.9 72,245.2 72,129.7"/>
-          <g transform="rotate(-30 204 256)"><text class="far-l" x="204" y="247">world · model</text><text class="far-n" id="farnum" x="204" y="268">–</text></g></g>
-        <g class="hx street"><polygon class="street-line" points="136,36 236,93.7 236,209.2 136,266.9 36,209.2 36,93.7"/>
-          <g transform="rotate(-30 168 220)"><text class="mid-l" x="168" y="209">outside</text><text class="mid-n" id="midnum" x="168" y="236">–</text></g></g>
+        <!-- three pointy-top hexagons of the same size, each offset (48,48) behind the one in front. The exposed band
+             between two of them is widest at the bottom vertices, so the readings sit there, right-aligned, horizontal. -->
+        <g class="hx world"><polygon class="world-line" points="196,96 296,153.7 296,269.2 196,326.9 96,269.2 96,153.7"/>
+          <text class="far-l" x="248" y="290">model</text><text class="far-n" id="farnum" x="248" y="290">–</text></g>
+        <g class="hx street"><polygon class="street-line" points="148,48 248,105.7 248,221.2 148,278.9 48,221.2 48,105.7"/>
+          <text class="mid-l" x="198" y="237">outside</text><text class="mid-n" id="midnum" x="198" y="237">–</text></g>
         <g class="hx room"><polygon class="room-fill" id="roomfill" points="100,0 200,57.7 200,173.2 100,230.9 0,173.2 0,57.7"/>
-          <text class="lbl" id="inlbl" x="100" y="78">inside</text><text class="big" id="innum" x="100" y="152">–</text><text class="lbl" id="inunit" x="100" y="184">µg/m³ · PM2.5</text></g>
+          <text class="lbl" id="inlbl" x="100" y="78">inside</text><text class="big" id="innum" x="100" y="152">–</text><text class="unit" id="inunit" x="100" y="184">µg/m³ · PM2.5</text></g>
       </svg>
     </div>
     <div class="verdict">
@@ -260,7 +261,7 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const fmt=(v,d=0)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
 const ago=ts=>{if(!ts)return'';const s=(Date.now()-new Date(ts))/1000;return s<90?'just now':s<5400?Math.round(s/60)+' min ago':s<172800?Math.round(s/3600)+' h ago':Math.round(s/86400)+' d ago';};
 const mean=a=>{a=a.filter(x=>x!=null);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;};
-const pmClass=v=>v==null?'':v<=12?'good':v<=35.5?'mid':'bad';
+const pmClass=v=>v==null?'':v<=15?'good':v<=35?'mid':'bad';   // WHO 2021 24 h guideline 15; 35 is the first interim target
 const heatClass=v=>v==null?'':v<27?'good':v<32?'mid':'bad';
 const apparent=(t,rh)=>t==null||rh==null?null:t+0.33*(rh/100*6.105*Math.exp(17.27*t/(237.7+t)))-4;
 const compass=d=>d==null?'':['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
@@ -295,11 +296,11 @@ async function refresh(){
     $('#midnum').textContent=fmt(ov); $('#farnum').textContent=fmt(mv);
     let v='',p='';
     if(iv==null&&ov==null){v='No sensor yet.';p='The node reads the model for your coordinates. Add a sensor under Set up → Sources and the hexagon fills in.';}
-    else if(iv==null){v=ov<=12?'Clean outside.':ov<=35.5?'Moderate outside.':'Unhealthy outside.';p=`Outside from ${outSrc}. No indoor sensor yet — the inner hexagon is waiting for one.`;}
+    else if(iv==null){v=ov<=15?'Clean outside.':ov<=35?'Moderate outside.':'Unhealthy outside.';p=`Outside from ${outSrc}. No indoor sensor yet — the inner hexagon is waiting for one.`;}
     else if(ov!=null&&iv>1.5*ov&&iv>15){v='Inside is worse than outside.';p=`${fmt(iv)} in the house against ${fmt(ov)} on the street. Something is burning or cooking indoors — open a window.`;}
-    else if(ov!=null&&ov>1.5*iv&&ov>35.5){v='Keep the windows shut.';p=`The street is at ${fmt(ov)}; the house is holding it to ${fmt(iv)}. The building is doing its job.`;}
-    else if(iv<=12){v='The air is clean.';p=ov!=null?`Inside ${fmt(iv)}, outside ${fmt(ov)}. Nothing to do.`:'Nothing to do.';}
-    else if(iv<=35.5){v='Moderate.';p='Fine for most people; anyone with asthma or a heart condition should take it easy.';}
+    else if(ov!=null&&ov>1.5*iv&&ov>35){v='Keep the windows shut.';p=`The street is at ${fmt(ov)}; the house is holding it to ${fmt(iv)}. The building is doing its job.`;}
+    else if(iv<=15){v='The air is clean.';p=ov!=null?`Inside ${fmt(iv)}, outside ${fmt(ov)}. Nothing to do.`:'Nothing to do.';}
+    else if(iv<=35){v='Moderate.';p='Fine for most people; anyone with asthma or a heart condition should take it easy.';}
     else{v='Unhealthy inside.';p='Purifier on, windows shut, and check who is in the room.';}
     $('#verdict').textContent=v; $('#verdict-p').textContent=p;
     const gap=ov!=null&&mv!=null?ov-mv:null;
@@ -309,7 +310,7 @@ async function refresh(){
     const inT=S('temp').filter(r=>r.local&&r.indoor&&r.mean_15m!=null&&fresh(r)), inH=S('humidity').filter(r=>r.local&&r.indoor&&r.mean_15m!=null&&fresh(r));
     const at=apparent(mean(inT.map(r=>r.mean_15m)),mean(inH.map(r=>r.mean_15m)));
     $('#room').innerHTML=(roomIds.length?roomIds.map(id=>{const m=by[id],s=sensors.find(x=>x.sensor_id===id)||{},pm=m.pm25,any=Object.values(m)[0];
-        const main=pm?`<div class="num ${pmClass(pm.mean_15m)}">${fmt(pm.mean_15m)}<small>µg/m³</small></div>${trace(sparks[id]||[],'var(--ink)')}`:m.temp?`<div class="num">${fmt(m.temp.mean_15m,1)}<small>°C</small></div><div class="k">${m.humidity?fmt(m.humidity.mean_15m)+'% humidity':''}${m.iaq?' · IAQ '+fmt(m.iaq.last):''}</div>`:`<div class="num">–</div>`;
+        const main=pm?`<div class="num ${pmClass(pm.mean_15m)}">${fmt(pm.mean_15m)}<small>µg/m³</small></div>${trace(sparks[id]||[],'var(--ink)')}`:m.temp?`<div class="num">${fmt(m.temp.mean_15m,1)}<small>°C</small></div><div class="k">${m.humidity?fmt(m.humidity.mean_15m)+'% humidity':''}${m.iaq?' · IAQ '+fmt(m.iaq.last):''}</div>`:m.battery_pct||m.battery_v?`<div class="num">${fmt(m.battery_pct?m.battery_pct.last:null)}<small>% battery</small></div><div class="k">no sensor on its Grove port yet</div>`:`<div class="k" style="margin-top:14px">waiting for its first reading</div>`;
         return`<div class="chip"><span class="hexlet in"></span><div><div class="name">${esc(s.name||id)}</div><div class="sub">${pm&&m.temp?fmt(m.temp.mean_15m,1)+' °C · '+fmt(m.humidity?m.humidity.mean_15m:null)+'%':id.startsWith('msh')?'over the mesh':''}${any&&any.silent_minutes>60?' · quiet '+Math.round(any.silent_minutes/60)+' h':''}</div></div>${main}</div>`;}).join(''):`<div class="empty">No indoor sensor yet. <a href="#" onclick="show('setup');return false">Add one</a> — a Smart Citizen kit, an AirGradient on the WiFi, or a BME680 on a mesh radio.</div>`)
       +(at!=null?`<div class="chip"><span class="hexlet in"></span><div><div class="name">Feels like</div><div class="sub">apparent temperature, indoors</div></div><div class="num ${heatClass(at)}">${fmt(at,1)}<small>°C</small></div><div class="k">${at>=40?'heatstroke territory':at>=32?'heat stress: water, air, rest':at>=27?'warm':'comfortable'}</div></div>`:'');
     $('#room-sub').textContent=roomIds.length?`${roomIds.length} indoor sensor${roomIds.length===1?'':'s'} of yours, 15-minute means.`:'Your indoor sensors.';
@@ -337,7 +338,7 @@ async function refresh(){
     const P=['Environmental','Economic','Social','Governance'];
     $('#honey').innerHTML=P.map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));return c?`<div class="cell ${c.state}" title="${esc(c.cell)} — ${fmt(c.value,1)} ${esc(c.unit)}"><span><b>${fmt(c.value,c.value<10?1:0)}</b><small>${p.slice(0,3)}</small></span></div>`:`<div class="cell none" title="${p}: no source yet"><span><b>–</b><small>${p.slice(0,3)}</small></span></div>`;}).join('')+`<div class="k">${cells.length} of 20 cells in the Fab City Index have a source here.<br>Green is measured, blue is partial, empty has no source yet.</div>`;
     $('#nodeinfo').innerHTML=[['readings stored',h.ingested],['polls',h.polls],['up',Math.floor(h.uptime_s/3600)+' h '+Math.floor(h.uptime_s%3600/60)+' min'],['sensors',`${sensors.filter(s=>s.local).length} yours, ${sensors.filter(s=>!s.local&&s.kind==='sensor').length} public, ${sensors.filter(s=>s.kind==='model').length} models`],['mesh',h.mesh&&h.mesh.packets?`${h.mesh.packets} packets via ${h.mesh.gateway}`:'no radio yet'],['ρ',rho.rho==null?'–':`${fmt(rho.rho,2)} — ${rho.acted} of ${rho.alerts_act} alerts led to an action`],['errors',errs?Object.entries(h.errors).map(([k,v])=>k+': '+v).join('; '):'none']].map(([k,v])=>`<tr><th>${k}</th><td>${esc(String(v))}</td></tr>`).join('');
-    $('#nodeplace').textContent=PLACE||(h.node+' · '+(h.last_poll?'live':'starting'));
+    $('#nodeplace').textContent=(h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':'')+(h.last_poll?'live':'starting');
     $('#k-time').textContent=new Date().toLocaleString(undefined,{weekday:'long',hour:'2-digit',minute:'2-digit'});
   }catch(e){$('#dot').className='dot bad';$('#pulsetxt').textContent='node not answering';}
 }
