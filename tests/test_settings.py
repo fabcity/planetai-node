@@ -23,7 +23,7 @@ tok = next(r for r in d["runtime"] if r["key"] == "TELEGRAM_BOT_TOKEN")
 assert tok["secret"] and tok["value"] == "•••• set" and tok["set"], "secrets are masked, presence is shown"
 sc = next(r for r in d["runtime"] if r["key"] == "SC_USER")
 assert sc["source"] == "gui" and sc["value"] == "gui-user"
-assert all(r["group"] in ("sources", "alerts", "packs", "integrations", "keys", "node") for r in d["runtime"])
+assert all(r["group"] in ("sources", "alerts", "packs", "integrations", "keys", "agent", "node") for r in d["runtime"])
 assert {b["key"] for b in d["bootstrap"]} >= {"NODE_NAME", "APP_PORT", "NODE_TZ"}
 
 # only runtime keys may be written
