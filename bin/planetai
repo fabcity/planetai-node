@@ -350,6 +350,9 @@ print(u[-1]["message"]["chat"]["id"] if u and "message" in u[-1] else "")' 2>/de
   [[ -n "$chat" ]] || fail "no message arrived in two minutes. Send one to @${me}, then run planetai telegram again."
   say "found your chat: $chat"
   envset TELEGRAM_BOT_TOKEN "$tok"; envset TELEGRAM_CHAT_IDS "$chat"
+  # the dashboard may hold its own values for these, and those win over .env. Write the same values there too, so the
+  # terminal and the dashboard never disagree about which bot this node talks to.
+  runtime_set TELEGRAM_BOT_TOKEN "$tok" TELEGRAM_CHAT_IDS "$chat" || warn "the node is not answering, so only .env was written; planetai restart makes it take effect"
   curl -sf "https://api.telegram.org/bot${tok}/sendMessage" -d chat_id="$chat" -d text="$(envget NODE_NAME) is connected. Alerts will arrive here." >/dev/null && say "sent you a hello"
   docker compose up -d --force-recreate app >/dev/null 2>&1
   say "the node is restarting with Telegram on. Try:  planetai test-alert"
@@ -832,6 +835,14 @@ cmd_agent_local() {
   echo
   say "running. Message your bot:  is the node healthy?   /act 23 closed the windows   /model"
   echo "  Its actions show in the audit trail as '$(envget AGENT_NAME || echo local-model)/<rung>'. Stop: planetai agent stop.  Logs: planetai logs agent"
+}
+
+# runtime_set KEY VALUE [KEY VALUE ...]: write settings where the dashboard writes them, so .env and the dashboard agree.
+runtime_set() {
+  local tok; tok="$(envget ADMIN_TOKEN)"; [[ -n "$tok" ]] || return 1
+  local body="{" k v first=1
+  while [[ $# -ge 2 ]]; do k="$1"; v="$2"; shift 2; [[ $first -eq 1 ]] || body+=","; first=0; body+="$(printf '"%s":"%s"' "$k" "$(sed 's/\\/\\\\/g; s/"/\\"/g' <<< "$v")")"; done; body+="}"
+  curl -sf -X PUT "http://localhost:$(port)/settings" -H "Authorization: Bearer $tok" -H "X-Agent: planetai-cli" -H 'content-type: application/json' -d "$body" >/dev/null
 }
 
 # ---------------------------------------------------------------- the rest

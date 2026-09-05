@@ -384,7 +384,7 @@ async function loadSetup(){
   const rows=DESC.runtime.filter(r=>r.group===GROUP);
   $('#form').innerHTML=rows.map(r=>{
     const isBool=/^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY)$/.test(r.key);
-    const src=`<span class="src">${r.source==='gui'?'set here':r.source==='env'?'from .env':'default'}</span>`;
+    const src=`<span class="src">${r.source==='gui'?'set here · overrides .env':r.source==='env'?'from .env':'default'}</span>`;
     if(isBool)return`<div class="field"><label class="switch"><input type="checkbox" data-key="${r.key}" ${r.value==='1'?'checked':''}><span class="tr"></span><span>${esc(r.label)}${src}<div class="help">${esc(r.help)}</div></span></label></div>`;
     if(r.key==='ALERT_LOCALE')return`<div class="field"><label>${esc(r.label)}${src}<select data-key="${r.key}"><option value="en" ${r.value==='en'?'selected':''}>English</option><option value="id" ${r.value==='id'?'selected':''}>Bahasa Indonesia</option></select></label></div>`;
     if(r.key==='NODE_KIND')return`<div class="field"><label>${esc(r.label)}${src}<select data-key="${r.key}">${['home','business','community','district'].map(k=>`<option ${r.value===k?'selected':''}>${k}</option>`).join('')}</select></label><div class="help">${esc(r.help)}</div></div>`;

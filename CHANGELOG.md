@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.23.3 — 2026-09-05
+
+- **The terminal and the dashboard now write Telegram to the same place.** A value saved in the dashboard overrides
+  `.env` by design, so `planetai telegram` (which wrote `.env` only) could change the file and change nothing. It now
+  writes the dashboard's store too, through the same `/settings` call, with `planetai-cli` in the audit trail. The
+  dashboard labels such values "set here · overrides .env" so a shadowed file edit is visible. This is also why a token
+  changed in the dashboard did not reach the bot until the loop started reading settings (v0.23.1).
+
 ## v0.23.2 — 2026-09-05
 
 - **The bot can now see the sea, the weather, the satellites and the land.** Asked for the swell, it said it had no such

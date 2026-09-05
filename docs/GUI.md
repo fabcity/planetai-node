@@ -28,7 +28,8 @@ use.
 
 Behind the admin token, once per browser. Sources, alerts and Telegram, packs (a switch each; code packs behind one more
 switch), integrations, keys, the node's place in the tree, and the bootstrap settings read-only. A test-alert button.
-Changes are live within twenty seconds. A blank field returns a setting to `.env`.
+Changes are live within twenty seconds. A blank field returns a setting to `.env`. A value set here **overrides** the
+same key in `.env`, and the page says so next to it; `planetai telegram` writes both places so they cannot disagree.
 
 Settings live in a `settings` table that overlays `.env`; the code reads them at the moment of use. Ports, the database
 and the extra containers stay in `.env` because they are read once at start.
