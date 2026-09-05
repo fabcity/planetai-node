@@ -11,10 +11,26 @@ year's and last year's mean 64-dimension AlphaEarth embedding. Readings are stam
 fetch inserts nothing new after the first. Two `Environmental|Bioregion` cells (tree cover, land change) and a
 monthly rule that says the land changed without pretending to know how.
 
+**Check the setup** once configured, instead of waiting a day for the first fetch:
+
+```bash
+docker compose exec -T app python /app/packs/earth-engine/verify.py
+```
+
+It walks the five steps in order — library, settings, key file, credentials, a real query — and names the one that
+is not done. Step 5 prints the ground elevation at the node, which is a harmless query that proves the whole path.
+
 **What it needs from you**
-1. An Earth Engine project (free for research and non-commercial use) at https://code.earthengine.google.com.
-2. A service account with Earth Engine access and its JSON key, saved as `config/ee-key.json` (that directory is
-   already mounted read-only into the app; the file is gitignored).
+1. **A registered project.** Go to https://code.earthengine.google.com/register — creating a Cloud project and
+   registering it for Earth Engine are separate things, and starting at that page does both. Choose *Unpaid usage →
+   Non-commercial*, the closest role (research or educational), and the **Community tier** unless you plan heavy
+   compute. Registration enables the Earth Engine API immediately.
+2. **A service account and its JSON key.** A node has no browser, so the interactive login is not an option.
+   Cloud Console → *IAM & Admin → Service Accounts → Create*. Grant it **Earth Engine Resource Viewer** and
+   **Service Usage Consumer** on the project. Then *Keys → Add key → Create new key → JSON*; it downloads once.
+   Copy it to `config/ee-key.json` on the node (that directory is mounted read-only into the app; the file is
+   gitignored). Over the tailnet:
+   `scp key.json <user>@<node>.ts.net:~/planetai/planetai-node/config/ee-key.json`
 3. In `.env`: `EE_PROJECT=<project id>`, `EE_SERVICE_ACCOUNT=<email>`, `EE_KEY_FILE=/app/config/ee-key.json`,
    and `PACKS_ALLOW_CODE=1`.
 4. `planetai packs` — installs the pack's Python dependency into the image and rebuilds.
