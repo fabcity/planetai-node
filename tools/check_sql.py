@@ -46,5 +46,11 @@ for m in re.finditer(r"^\s*-\s*\./([^:\s]+):", compose, re.M):
     if not any(f == src or f.startswith(src + "/") for f in tracked):
         errs.append(f"docker-compose.yml mounts ./{src} but the repo ships nothing there (Docker would mount an empty dir)")
 
-print("\n".join(f"  x {e}" for e in errs) or "  init.sql + Dockerfile + compose mounts ok")
+# nothing tracked may be OS litter or a cache: .DS_Store committed once and blocked planetai update on the node
+tracked = subprocess.run(["git", "ls-files"], capture_output=True, text=True).stdout.split()
+for f in tracked:
+    if f.endswith((".DS_Store", ".pyc")) or "__pycache__" in f or f.endswith("~"):
+        errs.append(f"{f} is tracked; it is OS or editor litter")
+
+print("\n".join(f"  x {e}" for e in errs) or "  init.sql + Dockerfile + compose mounts + no litter ok")
 sys.exit(1 if errs else 0)

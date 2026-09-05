@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.17.1 — 2026-09-05
+
+- **Fixed:** two `.DS_Store` files were committed with `git add -A`; the node had its own untracked copies and `git pull` refused to overwrite them, so `planetai update` failed. Removed from the repo, gitignored, blocked by the pre-commit hook and by `make lint`; `update.sh` sweeps Finder litter before pulling.
+- **Fixed:** the schema version was read with `max(version)`, a text comparison, so `'0.4'` beat `'0.14'` and every update since v0.14 reported "schema 0.4 → 0.4" while the database was actually at 0.14. Now the latest applied version, in `update.sh` and `/health`.
+
 ## v0.17 — 2026-09-05 — storage
 
 **Where the data lives, where copies go, and what the node gives away.** `docs/STORAGE.md`, `planetai storage`.

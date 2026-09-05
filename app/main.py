@@ -402,7 +402,8 @@ def health():
     schema = None
     try:
         with db() as con, con.cursor() as cur:
-            cur.execute("SELECT max(version) AS v FROM schema_version")
+            # latest applied, not the lexically largest: '0.4' > '0.14' as text
+            cur.execute("SELECT version AS v FROM schema_version ORDER BY applied_at DESC, string_to_array(version,'.')::int[] DESC LIMIT 1")
             schema = (cur.fetchone() or {}).get("v")
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"

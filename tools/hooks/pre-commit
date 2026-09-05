@@ -26,6 +26,11 @@ if hits="$(grep -nE '^\+.*POSTGRES_PASSWORD=' <<<"$diff" | grep -vE 'change-me|P
   fail "a database password appears in this diff"
 fi
 
+# 2b. Finder litter and caches never get committed
+if git diff --cached --name-only --diff-filter=AM | grep -qE '(^|/)\.DS_Store$|__pycache__|\.pyc$'; then    # added/modified only: deleting litter is fine
+  echo "pre-commit: .DS_Store / __pycache__ staged. Unstage them: git rm --cached <file>"; exit 1
+fi
+
 # 3. the offline gates. Each one corresponds to an outage we already had.
 make lint >/dev/null || fail "make lint failed — run 'make lint' to see why"
 exit 0

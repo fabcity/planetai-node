@@ -22,3 +22,7 @@ out/*
 # daily exports (published, not tracked here)
 exports/*
 !exports/.gitkeep
+
+# macOS litter
+.DS_Store
+**/.DS_Store

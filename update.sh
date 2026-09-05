@@ -46,7 +46,7 @@ PULL=1; [[ "${1:-}" == "--no-pull" ]] && PULL=0
 say "backing up the database first"
 ./backup.sh || die "backup failed — not updating. Fix the backup, then re-run."
 
-FROM="$(docker compose exec -T db psql -U planetai -tAc "SELECT max(version) FROM schema_version" planetai 2>/dev/null || echo "pre-0.4")"
+FROM="$(docker compose exec -T db psql -U planetai -tAc "SELECT version FROM schema_version ORDER BY applied_at DESC, string_to_array(version,'.')::int[] DESC LIMIT 1" planetai 2>/dev/null || echo "pre-0.4")"
 say "current schema: ${FROM}"
 
 # 2. keep local edits from being silently clobbered
@@ -72,6 +72,7 @@ elif [[ $PULL -eq 1 ]] && [[ -d .git ]]; then
   branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
   git branch --set-upstream-to="origin/$branch" "$branch" >/dev/null 2>&1 || true
   git fetch -q --tags origin 2>/dev/null || true      # pulling a named branch skips tags; version stamps need them
+  find . -name .DS_Store -not -path './.git/*' -delete 2>/dev/null || true    # Finder litter blocks a pull if the repo ever had it
   if ! git pull --ff-only origin "$branch"; then
     warn "git pull failed (local changes?). Commit or stash them, or re-run with --no-pull after unpacking manually."
     exit 1
@@ -105,7 +106,7 @@ docker compose up -d --build
 
 # 7. verify
 sleep 8
-TO="$(docker compose exec -T db psql -U planetai -tAc "SELECT max(version) FROM schema_version" planetai 2>/dev/null || echo "?")"
+TO="$(docker compose exec -T db psql -U planetai -tAc "SELECT version FROM schema_version ORDER BY applied_at DESC, string_to_array(version,'.')::int[] DESC LIMIT 1" planetai 2>/dev/null || echo "?")"
 ok=1
 chk(){ if eval "$2" >/dev/null 2>&1; then echo "  ✓ $1"; else echo "  ✗ $1"; ok=0; fi; }
 echo "doctor:"
