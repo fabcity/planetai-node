@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import re
 import threading
 import time
@@ -37,7 +38,13 @@ ANNOUNCE_S = int(os.getenv("RETICULUM_ANNOUNCE_S", "1800"))
 ACT = re.compile(r"^\s*act\s+(\d+)\s*(.*)$", re.I)
 
 os.makedirs(DATA, exist_ok=True)
-reticulum = RNS.Reticulum(configdir=os.getenv("RETICULUM_CONFIGDIR", "/etc/reticulum"))
+# RNS writes its own storage under configdir, and the config is mounted read-only (the container crash-looped on
+# 'Read-only file system: /etc/reticulum/storage'). Run it from a copy of the config inside the writable volume.
+_cfg_src = os.path.join(os.getenv("RETICULUM_CONFIGDIR", "/etc/reticulum"), "config")
+_cfg_dir = os.path.join(DATA, "rns"); os.makedirs(_cfg_dir, exist_ok=True)
+if os.path.exists(_cfg_src):
+    shutil.copyfile(_cfg_src, os.path.join(_cfg_dir, "config"))
+reticulum = RNS.Reticulum(configdir=_cfg_dir)
 id_path = os.path.join(DATA, "identity")
 identity = RNS.Identity.from_file(id_path) if os.path.exists(id_path) else RNS.Identity()
 if not os.path.exists(id_path):
