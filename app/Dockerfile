@@ -3,6 +3,11 @@ FROM python:3.12-slim
 # that shows up red in `planetai update` and hides the lines that matter.
 ENV PIP_ROOT_USER_ACTION=ignore PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
+# rasterio's wheel carries its own GDAL but links libexpat, which manylinux assumes the system provides and
+# python:3.12-slim does not. Without it `pip install rasterio` succeeds and `import rasterio` fails, so
+# `planetai packs install` reports success and the earth pack dies on its first run. 436 kB.
+RUN apt-get update && apt-get install -y --no-install-recommends libexpat1 \
+ && rm -rf /var/lib/apt/lists/*
 COPY requirements*.txt ./
 # requirements-packs.txt is written by `planetai packs` from the `pip:` lists of code packs (gitignored)
 RUN pip install --no-cache-dir -r requirements.txt \
