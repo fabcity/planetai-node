@@ -56,3 +56,7 @@ assert "CREATE ROLE planetai_ro" in _sql and "REVOKE ALL ON settings FROM planet
 assert "index.run_ro(cur, rule[\"sql\"])" in main, "main.py: rules run through run_ro"
 assert "run_ro(cur, c[\"sql\"])" in open("app/index.py").read(), "index.py: cells run through run_ro"
 print("pack SQL runs read-only")
+# v0.32 — every container's log is capped; db, agent and ipfs were not, and the agent logs every tool call
+for _svc, _def in compose["services"].items():
+    assert _def.get("logging", {}).get("options", {}).get("max-size"), f"docker-compose.yml: service {_svc} has no log cap"
+print("every container log is capped")

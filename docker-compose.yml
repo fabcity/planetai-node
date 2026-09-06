@@ -18,6 +18,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U planetai"]
       interval: 10s
       retries: 10
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }   # every service is capped: an uncapped log fills the disk the database lives on
 
   app:
     build: ./app
@@ -69,6 +70,7 @@ services:
       TZ: ${NODE_TZ:-UTC}
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [app]
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }   # the agent logs every tool call
 
   # IPFS: publishes the daily export (aggregates, never raw) to the content-addressed commons. profile: ipfs
   ipfs:
@@ -81,6 +83,7 @@ services:
       - ./exports:/export:ro
     environment:
       IPFS_PROFILE: lowpower
+    logging: { driver: json-file, options: { max-size: "5m", max-file: "2" } }
 
   reticulum:
     build: { context: ./app, dockerfile: Dockerfile.reticulum }
