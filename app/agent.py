@@ -179,7 +179,7 @@ def act(alert_id: int, note: str = "acted", agent: str = "agent") -> dict:
 def settings_get() -> dict:
     """Every runtime setting with its group, help and current value. Secrets are masked. Bootstrap settings (ports, database)
     are shown read-only; they change only in .env on the node."""
-    return settings.describe()
+    return settings.describe(unlocked=True)      # every MCP call is already behind the admin token
 
 
 @mcp.tool()

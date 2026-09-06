@@ -790,9 +790,13 @@ def _admin(authorization: str) -> None:
 
 
 @app.get("/settings")
-def get_settings():
-    """Every runtime setting with its group, help and current value (secrets masked), plus bootstrap keys read-only."""
-    return settings.describe()
+def get_settings(authorization: str = Header("")):
+    """Every runtime setting with its group, help and current value, plus bootstrap keys read-only. Secrets are always
+    masked. Without the admin token, so is everything that is the household's rather than the node's (chat ids, sensor
+    hosts, account names, remote URLs; see settings.PUBLIC). A wrong token reads as no token: the dashboard's layout
+    read must keep working for every screen in the house."""
+    tok = os.getenv("ADMIN_TOKEN", "").strip()
+    return settings.describe(unlocked=bool(tok) and _bearer_ok(authorization, tok))
 
 
 @app.put("/settings")

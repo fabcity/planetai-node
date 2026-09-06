@@ -69,6 +69,12 @@ RUNTIME = {
     "PARENT_TOKEN":       ("node", "Token for the parent", True, False, ""),
     "NODE_KIND":          ("node", "Kind", False, False, "home | business | community | district."),
 }
+# What an anonymous reader on the LAN may see the value of. Everything else shows as "•••• set" until the admin token is
+# presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
+# are not secrets, but they are the household's, and GET /settings answers anyone on the WiFi (found 6 Sep 2026).
+PUBLIC = {"BRIEFINGS", "BRIEF_MORNING", "BRIEF_EVENING", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
+          "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
+          "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "NODE_KIND"}
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
     "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
@@ -115,13 +121,16 @@ def _mask(v: str) -> str:
     return ("•••• set" if v else "") if v is not None else ""
 
 
-def describe() -> dict:
+def describe(unlocked: bool = False) -> dict:
+    """unlocked=False is what an anonymous GET /settings gets: secrets masked, and every value outside PUBLIC masked too.
+    unlocked=True (admin token presented, or an MCP call, which is behind the token already) shows all but the secrets."""
     db = _rows()
-    out = {"runtime": [], "bootstrap": []}
+    out = {"unlocked": unlocked, "runtime": [], "bootstrap": []}
     for k, (group, label, secret, restart, help_) in RUNTIME.items():
         v = get(k, "")
+        hide = secret or (not unlocked and k not in PUBLIC)
         out["runtime"].append({"key": k, "group": group, "label": label, "secret": secret, "restart": restart, "help": help_,
-                               "value": _mask(v) if secret else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default")})
+                               "value": _mask(v) if hide else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default")})
     for k, label in BOOTSTRAP.items():
         out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, "")})
     return out

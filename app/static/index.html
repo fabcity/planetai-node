@@ -296,7 +296,7 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
     <h2 class="t" style="font-size:clamp(1.8rem,3vw,2.5rem)">How this node was told to behave.</h2>
     <p class="sub" style="font-size:15.5px;margin-top:12px;max-width:56ch">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code style="font-family:ui-monospace,monospace;font-size:13.5px">.env</code>. A value set here overrides the same key in <code style="font-family:ui-monospace,monospace;font-size:13.5px">.env</code>.</p>
     <div class="gate card r2" id="gate">
-      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:ui-monospace,monospace">planetai ui</code> on the node prints it. Reading is open to anyone on your network; writing is not.</p>
+      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:ui-monospace,monospace">planetai ui</code> on the node prints it. Anyone on your network can read the node's own settings; the household's (chat ids, sensor hosts, accounts) and every change need the token.</p>
       <input type="password" id="tok" placeholder="admin token" autocomplete="off">
       <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap"><button class="btn big" onclick="unlock()">Unlock</button><button class="btn big ghost" onclick="show('now')">Back</button></div>
     </div>
@@ -612,7 +612,8 @@ function lock(){localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();}
 // ------------------------------------------------------------------ set up
 const GROUPS={sources:['Sources','What the node reads: your sensors, your account, and the public references around you.'],alerts:['Alerts','Two reports a day at the hours you choose, in this node\'s own time zone. Between them, only what you asked to be interrupted for; everything else is still recorded, shown here, and summed up in the next report.'],packs:['Packs','Which packs load. Code packs stay off until you allow them; read one before you do.'],integrations:['Integrations','Home Assistant over MQTT, and the Reticulum bridge.'],keys:['Keys','What packs need to reach outside services. Secrets are never shown again once saved.'],agent:['Model','Which model answers the Telegram bot: the node\'s own, a bigger one on your tailnet, or an online one with a key. The strongest reachable is used; the bot falls back to the local one.'],node:['The tree','Who this node reports to, and who may report to it.'],bootstrap:['Bootstrap','Read once at start. Edit .env on the node and run planetai restart.']};
 async function loadSetup(){
-  DESC=await api('/settings'); PACKS=await api('/packs').catch(()=>[]);
+  DESC=await fetch('/settings',{headers:TOKEN?{authorization:'Bearer '+TOKEN}:{}}).then(r=>r.ok?r.json():Promise.reject(r.status)); PACKS=await api('/packs').catch(()=>[]);
+  if(TOKEN&&!DESC.unlocked){toast('That token is not right.',true);lock();return;}   // values stay masked without the token, so a wrong one shows here, not at save time
   const unlocked=!!TOKEN; $('#gate').style.display=unlocked?'none':'block'; $('#setup-body').style.display=unlocked?'grid':'none';
   if(!unlocked)return;
   $('#tabs').innerHTML=Object.entries(GROUPS).map(([g,[l]])=>`<button class="${g===GROUP?'on':''}" onclick="GROUP='${g}';loadSetup()">${l}</button>`).join('')+`<div class="acts"><button class="btn big" onclick="testAlert()">Send a test alert</button><button class="btn big ghost" onclick="lock()">Lock</button></div>`;
