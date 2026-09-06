@@ -526,8 +526,13 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
     Empty until the place pack has run; never an error."""
     want = {k.strip() for k in kinds.split(",") if k.strip()}
     feats: list = []
+    diag: dict = {"tables": {}, "rows": {}}
     try:
         with db() as con, con.cursor() as cur:
+            for t in ("place_features", "place_buildings_sat", "place_runs"):
+                cur.execute(f"SELECT to_regclass('{t}') IS NOT NULL"); diag["tables"][t] = bool(cur.fetchone()[0])
+                if diag["tables"][t]:
+                    cur.execute(f"SELECT count(*) FROM {t}"); diag["rows"][t] = cur.fetchone()[0]
             cur.execute("SELECT to_regclass('place_features') IS NOT NULL")
             if cur.fetchone()[0] and want - {"sat"}:
                 cur.execute("""SELECT kind, category, name, tags->>'building' AS btype, tags->>'highway' AS hw,
@@ -545,7 +550,11 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
                     feats.append({"type": "Feature", "properties": {"kind": "sat", "confidence": conf}, "geometry": json.loads(g)})
     except Exception as e:  # noqa: BLE001
         log.warning("place/geojson: %s", e)
-    return {"type": "FeatureCollection", "features": feats,
+        diag["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+    if not feats:
+        diag["hint"] = ("the place pack has not stored anything yet: enable it (PACKS_ALLOW_CODE=1, planetai packs, planetai restart) and let it poll, or planetai run place refresh"
+                        if not diag["rows"].get("place_features") else "features exist but none matched; see error")
+    return {"type": "FeatureCollection", "features": feats, "diag": diag,
             "center": [float(os.getenv("NODE_LON", 0) or 0), float(os.getenv("NODE_LAT", 0) or 0)],
             "radius_m": int(settings.get("PLACE_RADIUS_M", "1000") or 1000)}
 
