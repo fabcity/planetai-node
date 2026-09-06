@@ -32,6 +32,12 @@ first-run path was not rehearsed. Everything else in the brief was.
    beta, now that it rejects unknown alerts and foreign stages); `pg_dump --exclude-table-data=settings` (dashboard
    settings would then not survive a restore) or encrypt at rest.
 
+**Decided by Tomas, 6 September (later the same day), and done in v0.32:** (1) `main` is the beta channel; the
+tarball is refreshed by the release and the site footer points at `planetai-node`. (2) The Raspberry Pi is dropped
+for the beta; the site stops promising it. (3) Token on `POST /readings` (d55e115), settings rows out of dumps
+(058b60e), a read-only role for pack SQL (f8e638e); `POST /actions` stays open for the household's button. Spanish:
+drafted by the assistant on branch `es-messages` (PR #1) for Tomas to read as a native speaker before it ships.
+
 Smaller calls listed under the dimensions: the cell count to state publicly (node #1 reports 8 rows, 6 distinct
 cells; COVERAGE.md says seven; the site says seven and "4 of 20"; the dashboard says 8/20); `daily_pulse` still in
 `config/rules.yml` although v0.30 says the reports replaced it (deleting it is yours); the heat pack's Social cell
@@ -81,10 +87,10 @@ valid and invalid input; every POST with and without a token; MCP `tools/list` a
 | 1.5 | blocker | The zero-hardware bootstrap (92 days CAMS + NASA normals) **never ran** on a wizard install: the wizard's `--force-recreate` killed the first container mid-bootstrap and every later start saw a non-empty table. | both VMs: only 14 rows after install; run by hand the same code fetched 4,416 + 60 rows in seconds | fixed 461d15a |
 | 1.6 | serious | `if not PARENT:` tested a function; "push to parent failed: Request URL is missing an 'http://'" logged hourly on every node. | node #1 48 h log, once per hour; VM log | fixed db271a8 |
 | 1.7 | serious | Wizard ignored `presets/`: Santiago and Barcelona nodes got no `CKAN_PORTALS`, so Governance\|City cannot fill. | both VMs: `CKAN_PORTALS=` | fixed 52fdc67 |
-| 1.8 | serious | `planetai packs` (a listing command) rebuilds the image and appends settings to `.env`. | VM: "installing into the image: earthengine-api (rebuild…)" on a plain `planetai packs` | open (design) |
+| 1.8 | serious | `planetai packs` (a listing command) rebuilds the image and appends settings to `.env`. | VM: "installing into the image: earthengine-api (rebuild…)" on a plain `planetai packs` | fixed 5ba16af: the listing only lists; `planetai packs install` writes |
 | 1.9 | serious | `planetai reticulum` leaves the bridge container restart-looping on the clean node. | VM2: `planetai-reticulum-1 Restarting (1)` | open; log in §1 addendum |
-| 1.10 | polish | `planetai run` lists scripts with garbled descriptions (first code line instead of a docstring). | VM: `planetai run place refresh  import os, sys` | open |
-| 1.11 | polish | `planetai config` without a tty: `a: unbound variable`. `planetai telegram` `getUpdates` takes the last update even when it is not a message. | VM log | open |
+| 1.10 | polish | `planetai run` lists scripts with garbled descriptions (first code line instead of a docstring). | VM: `planetai run place refresh  import os, sys` | fixed 31c21fb |
+| 1.11 | polish | `planetai config` without a tty: `a: unbound variable`. `planetai telegram` `getUpdates` takes the last update even when it is not a message. | VM log | fixed 31c21fb |
 | 1.12 | polish | `/alerts?limit=-1`, `/readings?limit=0`, `/export?day=2026-13-45` → 500. | VM | fixed e2be884, bbbae70 |
 | 1.13 | polish | `backup.sh` reported an HTTP 500 from `/export` as "node not answering". | VM update log | fixed e32cba2 |
 | 1.14 | polish | `release.sh` called `tools/package.sh`, which does not exist: the tag would be pushed and the script would fail. | `ls tools/` | fixed 6cefa6c |
@@ -138,8 +144,9 @@ briefings 6–9 lines; both fit a phone screen by length.
 
 ## 3. Language
 
-**Spanish: nothing.** `ALERT_LOCALE` accepts `en | id` only (`app/settings.py:46`). Inventory of what a Santiago or
-Poblenou tester reads, for a deliberate ES set (not machine-written here):
+**Spanish: nothing at v0.31.** `ALERT_LOCALE` accepted `en | id` only (`app/settings.py:46`). Inventory of what a Santiago or
+Poblenou tester reads. The first four rows have an `es` set on branch `es-messages` (PR #1, 6 Sep), written by the
+assistant for Tomas's review; the rest stay English by decision:
 
 | surface | strings | languages today |
 |---|---|---|
@@ -177,7 +184,7 @@ Rehearsed as a stranger (transcripts in the session scratchpad: `vm_install_1_sa
 | 4.4 | blocker | arm64 Linux: `exec format error` from the database image. | transcripts `1c`, `2b`; `docker manifest inspect` | decision 2 |
 | 4.4b | blocker (introduced and removed during the review) | The first version of the docker-group fix (7bb7273) lost every install flag on re-exec: a Linux first run produced a Bali node named `bayu-2`. | VM4 `.env`, `/health` `node bayu-2 lat -8.8271` | fixed 374acf7, re-rehearsed on VM5 |
 | 4.5 | serious | Fresh macOS account: `install` appends PATH only to rc files that exist; `~/.zshrc` does not → `command not found: planetai` in every new terminal, and the docs' advice ("open a new terminal") does not help. | `install:101-102` | fixed d2522c6 |
-| 4.6 | polish | "Poblenou, Barcelona" offers two identical choices ("Sant Martí, Catalunya, ES" twice). | transcript `2b` | open |
+| 4.6 | polish | "Poblenou, Barcelona" offers two identical choices ("Sant Martí, Catalunya, ES" twice). | transcript `2b` | fixed 31c21fb |
 | 4.7 | polish | The wizard's default name is the hostname (`lima-pai-clean`), fine; the hero says "Two minutes, four questions"; measured: 8 s of questions, 23 s of install with a warm image, 60–90 s cold. | transcripts | ok |
 
 Timing on the clean VM, v0.31 path (`3`): see addendum. The what_next screen's `[o]` runs `xdg-open` (no browser on a
@@ -206,9 +213,9 @@ Measured on VM2 (v0.30) and node #1's 48 h log.
 
 | # | severity | finding | status |
 |---|---|---|---|
-| 5.1 | serious | Log rotation: `app`, `mosquitto`, `reticulum` capped; **`db`, `agent`, `ipfs` uncapped** (the agent logs every tool call). | open (compose) |
-| 5.2 | polish | Doctor has no disk-space check. | open |
-| 5.3 | polish | `planetai packs` grows the image by ~350 MB (Earth Engine client) for every node, enabled or not. | open |
+| 5.1 | serious | Log rotation: `app`, `mosquitto`, `reticulum` capped; **`db`, `agent`, `ipfs` uncapped** (the agent logs every tool call). | fixed 5c38ea1 |
+| 5.2 | polish | Doctor has no disk-space check. | fixed f721e2a |
+| 5.3 | polish | `planetai packs` grows the image by ~350 MB (Earth Engine client) for every node, enabled or not. | fixed 5ba16af: only `packs install` grows it |
 
 ## 6. Security
 
@@ -223,16 +230,16 @@ additionally has caddy on 8080 (its node is on 8081) and Ollama on 11434 loopbac
 | # | severity | finding | evidence | status |
 |---|---|---|---|---|
 | 6.1 | blocker | `GET /settings/raw` accepted the read-only **`BACKUP_TOKEN`** and returned every secret unmasked (Telegram token, AI keys, all tokens). | `main.py:697-711`; VM: 200 with the backup token before, 401 after | fixed b94e2e8 |
-| 6.2 | serious | `POST /readings` without a token creates a *local, indoor* sensor; the rules then fire act-level alerts to the phone and the value enters "live" cells. | VM: `{"accepted":1}`; two act alerts "at evil" within a minute | decision 3 |
+| 6.2 | serious | `POST /readings` without a token creates a *local, indoor* sensor; the rules then fire act-level alerts to the phone and the value enters "live" cells. | VM: `{"accepted":1}`; two act alerts "at evil" within a minute | fixed d55e115 (admin token; decision 3, 6 Sep) |
 | 6.3 | serious | `POST /actions` without a token; accepted `stage='settings'` and non-existent alerts (500). | VM before/after | partly fixed 04598b0 (stage whitelist, 404); openness = decision 3 |
-| 6.4 | serious | Dumps include the `settings` table (Telegram token on node #1; `settings` keys on node #1: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS`, …). Docs claimed otherwise. | node #1 `select key from settings` | doc fixed 9c2aafb; data = decision 3 |
-| 6.5 | serious | Pack rule/cell SQL runs as the DB owner: a "data pack, safe to merge" can `SELECT value FROM settings` into an alert text (`/alerts` is unauthenticated). | `main.py:373`, `index.py:50` | open: needs a read-only role in `init.sql` (schema change, not made) |
+| 6.4 | serious | Dumps include the `settings` table (Telegram token on node #1; `settings` keys on node #1: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_IDS`, …). Docs claimed otherwise. | node #1 `select key from settings` | doc 9c2aafb; rows excluded from dumps 058b60e (decision 3, 6 Sep) |
+| 6.5 | serious | Pack rule/cell SQL runs as the DB owner: a "data pack, safe to merge" can `SELECT value FROM settings` into an alert text (`/alerts` is unauthenticated). | `main.py:373`, `index.py:50` | fixed f8e638e: `planetai_ro`, schema 0.21 (decision 3, 6 Sep) |
 | 6.6 | serious | `update.sh` executed `.env` as shell (also code execution from a pack's `env:` line at next update). | see 1.3 | fixed a840460 |
 | 6.7 | serious | Agent loop logged `settings_set` arguments (secrets) into the container log. | `agent_loop.py:178` | fixed b8e98d1 |
 | 6.8 | serious | Supply chain: `/install` fetches `raw.githubusercontent.com/…/main/install` unpinned; tarball checksum optional at install and absent at update; `curl \| sh` for Docker, Tailscale, Ollama; `ipfs/kubo:latest`; `Dockerfile.reticulum` pip unpinned; `mcp>=2.0` unbounded. | `install:8-9`, `update.sh:77` | update checksum fixed 19c7e3b; rest = decision 1 / open |
 | 6.9 | serious | `.env.before-update` copied with umask perms (world-readable secrets). | `update.sh:69` | fixed 19c7e3b |
-| 6.10 | polish | `GET /settings` (unauthenticated) shows chat ids, LAN sensor hosts, remote URLs; secrets masked correctly (`•••• set`). | node #1, VM | open |
-| 6.11 | polish | Token compares with `!=` (not constant-time); containers run as root; `reticulum` receives the whole `.env`; `envset` sed breaks on `\|`/`&`; `packs/_test` left behind on Ctrl-C (fixed 978b8ea); `cmd_act` JSON quoting (fixed 978b8ea). | audit | mostly open |
+| 6.10 | polish | `GET /settings` (unauthenticated) shows chat ids, LAN sensor hosts, remote URLs; secrets masked correctly (`•••• set`). | node #1, VM | fixed a80b604: masked without the admin token |
+| 6.11 | polish | Token compares with `!=` (not constant-time); containers run as root; `reticulum` receives the whole `.env`; `envset` sed breaks on `\|`/`&`; `packs/_test` left behind on Ctrl-C (fixed 978b8ea); `cmd_act` JSON quoting (fixed 978b8ea). | audit | compares d4e0f41, envset ce89a4b; root containers and reticulum's whole `.env` open |
 | 6.12 | ok | Secrets in logs: 48 h of node #1 logs contain no `api.telegram.org/bot<digits>:` and no token strings; `status --json`/`doctor --json` carry none; the CLI prints ADMIN_TOKEN/BACKUP_TOKEN/MQTT_PASS to the terminal by design and none of those go to `.planetai-setup.log`. | grep | ok |
 
 **Egress (everything that leaves a node):** Telegram `sendMessage` (alert text, chat id; token in URL by Telegram's
@@ -251,9 +258,9 @@ decision 3.
 | 7.2 | serious | **Node #1 has no backup cron** (`crontab -l`: none). Its daily dumps exist only because `planetai update` ran daily. Doctor said "a nightly one is scheduled" without checking. | ssh `crontab -l`; `backups/` dates = update dates | doctor check added 40afcbb; node #1's crontab is yours to add (`planetai doctor` now prints the line) |
 | 7.3 | serious | Backup verification: `backup.sh` checks gzip validity and a `readings` table ✓; 30-day retention via `find -mtime +30` ✓; `LAST_OK` ✓. Restore rehearsed: see addendum. | | ok |
 | 7.4 | serious | Rollback for a tester means `git checkout <tag>; planetai restart` (UPDATING.md). It does not rebuild, which is right, but `.env`'s version stamp lied until bbb19db. A tarball-installed node has no git and no rollback path at all. | VM1 update test | partly fixed; tarball rollback = decision 1 |
-| 7.5 | polish | Doctor names a fix for every failure it detects ✓ (13 checks). Missing checks: disk space, log size, time sync. | | open |
+| 7.5 | polish | Doctor names a fix for every failure it detects ✓ (13 checks). Missing checks: disk space (added f721e2a), log size, time sync. | | partly fixed |
 | 7.6 | polish | Issue templates exist (`node-problem.yml`, `new-source.yml`). `info@fab.city`: MX records point at Google Workspace; whether the alias routes to a person I cannot verify from here. | `dig MX fab.city` | verify |
-| 7.7 | polish | `.planetai-setup.log` on node #1 is 600 KB and grows with every `planetai packs`/`update` (appends). | node #1 | open |
+| 7.7 | polish | `.planetai-setup.log` on node #1 is 600 KB and grows with every `planetai packs`/`update` (appends). | node #1 | fixed ce89a4b |
 
 Disk growth over 30 days, from node #1's rate: ≈30 MB database + ≈30 dumps (28 KB–1 MB each, compressed) + container
 logs capped at 30 MB (`app`) but uncapped for `db`/`agent`.
@@ -263,10 +270,10 @@ logs capped at 30 MB (`app`) but uncapped for `db`/`agent`.
 | # | severity | finding | status |
 |---|---|---|---|
 | 8.1 | serious | Counts stale in five places: "fifteen tools" (17), "eight packs" (9), README badge 0.24, "three things" in the install stub, "Seven of twenty" vs 8 rows/6 cells. | fixed 9c2aafb, a6b8f2a (gate); cell count = decision |
-| 8.2 | serious | START_HERE promised Telegram `/act 12` for every tester; it needs the bot (`planetai agent local`). The evening report also ends every waiting item with `→ /act N`. | doc fixed 9c2aafb; report text open |
+| 8.2 | serious | START_HERE promised Telegram `/act 12` for every tester; it needs the bot (`planetai agent local`). The evening report also ends every waiting item with `→ /act N`. | doc 9c2aafb; report and test alert 27a8f42 |
 | 8.3 | serious | PLATFORMS.md and START_HERE promised Raspberry Pi; "database grows around 50 MB a year" vs ≈1 MB/day measured. | fixed 9c2aafb |
 | 8.4 | serious | STORAGE.md: "Dumps hold … not tokens" — false since v0.20. | fixed 9c2aafb |
-| 8.5 | polish | Every documented command exists; commands not in `--help` or any doc: `start`, `restart`, `sensors`, `cells`, `version`, `geocode`, `dashboard`, `ha`, `agents`, `mcp` (aliases). | open |
+| 8.5 | polish | Every documented command exists; commands not in `--help` or any doc: `start`, `restart`, `sensors`, `cells`, `version`, `geocode`, `dashboard`, `ha`, `agents`, `mcp` (aliases). | fixed 31c21fb (aliases stay unlisted) |
 | 8.6 | polish | Install line: README/START_HERE/PLATFORMS/MAC_MINI say `/node0/install`; the site stub is `/install`. Both work; the `/node0/install` copy has already drifted (different banner). | decision 1 |
 | 8.7 | polish | UPDATING.md said the tarball path "verifies its checksum": only the install did. | fixed 19c7e3b |
 | 8.8 | ok | AGENTS.md invariants match observed behaviour except: "secrets never logged" (6.7, fixed) and "live means measured here" (holds: the heat cell claims live only at ≥12 buckets; but it reports 0.0 hours with no sensor — decision). | |

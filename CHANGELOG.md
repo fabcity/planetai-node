@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.32 — 2026-09-06 — the review's open items, decided and closed
+
+The beta review (v0.31) left a list; Tomas decided the three questions on it and this release does the work. Every
+change was rehearsed on the Lima node from the review (`planetai update` v0.31 → v0.32, then each behaviour checked
+by hand), then pushed to `main`, which is the beta channel.
+
+For a tester, what changes:
+
+- **Nobody on your WiFi can feed your node readings.** `POST /readings` needs the admin token. On the clean node a
+  curl from the LAN had created an indoor sensor at 999 µg/m³ and two act-level alerts reached the phone within a
+  minute. Nothing shipped used the endpoint without a token, so nothing you have breaks.
+- **Dumps no longer carry your Telegram token.** `backup.sh` leaves the rows of the `settings` table out of every
+  dump (the table itself stays, empty). Cost, said plainly: dashboard settings do not survive a restore; the node runs
+  on `.env` and `planetai telegram` reconnects a bot that was set from the dashboard. `planetai restore` says so.
+- **A pack cannot read your secrets.** Rules and cells from `packs/` run as a read-only database role
+  (`planetai_ro`, schema 0.21): every table but `settings`, no writes. `planetai update` creates the role; a database
+  that predates it is told once in the log and keeps working.
+- **What anyone on the network can read of your settings is smaller.** Without the admin token, `GET /settings`
+  masks the household's values (chat ids, sensor hosts, accounts, remote URLs) the way it already masked secrets;
+  the node's own settings (alert level, hours, language, layout) stay readable so every screen in the house agrees.
+  The dashboard's Set up view sends the token once unlocked and tells you at once if it is wrong.
+- **Tokens are compared in constant time**, through one helper, on every gate (`/mcp`, `/settings/raw`, `/backups`,
+  `PUT /settings`, `POST /test-alert`, `POST /readings`, `POST /aggregates`).
+- **`planetai packs` only lists.** It used to append pack settings to `.env` and rebuild the image (350 MB of Earth
+  Engine client) when asked what was loaded. `planetai packs install` is now the step that writes; the listing says
+  when it is needed. The docs and the two pack READMEs say `packs install`.
+- **Every container's log is capped.** `db`, `agent` and `ipfs` were not (the agent logs every tool call). The update
+  recreates the `db` container once to apply the cap; the data volume is untouched.
+- **`planetai doctor` checks the free space** on the disk the node lives on and names the fix under 1 GB.
+- **Reports and the test alert say how to close the loop honestly**: `/act N` only when the bot runs
+  (`planetai agent local`), `planetai act N` otherwise. Replying `/act` to a bot that was not there did nothing.
+- **Terminal**: `planetai` lists every command (sensors, cells, geocode, version were missing); `planetai config`
+  without a terminal says where `.env` is instead of "a: unbound variable"; `planetai telegram` finds your message
+  even when the newest update is the bot being added to a group; `planetai run` shows each script's first docstring
+  line, not its first import; the setup wizard stops offering "Sant Martí, Catalunya, ES" three times for Poblenou;
+  `.planetai-setup.log` is trimmed past 1 MB; a `|`, `&` or `\` in a value no longer breaks the `.env` writer.
+- **Gates** (`make test`): a POST that writes must check a token before it opens the database; no `!=` on a token;
+  settings rows out of dumps; the read-only role and its use; a log cap on every service; the packs listing free of
+  `docker compose build` and `>> .env`; the act hint through one function.
+
+Decided and **not** in this release: the Raspberry Pi (no arm64 PostGIS image; the site stops promising it),
+`POST /actions` stays open on the LAN for the household's button (it rejects unknown alerts and foreign stages since
+v0.31), and `main` stays the channel `/install` fetches. Spanish for the alerts, the daily reports, the test alert and
+the bot is on branch `es-messages` (PR #1) awaiting a native reader's pass before it ships.
+
 ## v0.31 — 2026-09-06 — what the beta rehearsal found
 
 A clean Ubuntu machine, two presets (Santiago, Barcelona), no sensor, no credentials, the one line from the site. What
