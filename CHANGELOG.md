@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.26.1 — 2026-09-06 — act here
+
+- **The act trigger is on the hero.** When an act-level alert is unanswered, an orange strip under the room's sentence
+  names it, quotes its "what to do" line, and carries the **I did this** button. Every such button is now filled, in the
+  page's hue. The alerts card is titled "Act here".
+- The site's three node pages share the dashboard's tokens (type, eyebrows, pill buttons, radii, accents) and one nav.
+  The headline is back to *Observe here. Decide here. Act here.*, and an "Act here" section shows the loop as it
+  happens on a phone, beside ρ.
+
 ## v0.26 — 2026-09-06 — the frame, and the alpha notice
 
 Air was the first pack and had become the product in every description. Reframed everywhere a person or an agent

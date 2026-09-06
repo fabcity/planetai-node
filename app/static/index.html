@@ -74,6 +74,11 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .hero p.why{margin-top:20px;font-size:15.5px;line-height:1.65;color:var(--ink2);max-width:52ch}
 .chips{display:flex;gap:9px;flex-wrap:wrap;position:relative}
 .chip{background:var(--card2);border-radius:999px;padding:7px 14px;font:500 12.5px var(--fb);color:var(--ink2)}
+/* the act strip: one thing to do, and the button that closes the loop, on the hero itself */
+.actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--orange);color:var(--bg);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
+.actstrip .hex{width:12px;height:14px;background:var(--bg)}.actstrip .t{font:600 14.5px/1.4 var(--fb)}.actstrip .t small{display:block;font-weight:500;opacity:.8;font-size:12.5px;margin-top:2px}
+.actstrip .btn{background:var(--bg);color:var(--ink);white-space:nowrap}.actstrip .btn:hover{background:var(--ink);color:var(--bg)}
+@media(max-width:560px){.actstrip{grid-template-columns:auto 1fr}.actstrip .btn{grid-column:1/-1;justify-self:start}}
 /* headline tiles */
 .tile{display:flex;flex-direction:column;justify-content:space-between;gap:18px}
 .tile .v{margin-top:14px}.tile .v .num{font-size:clamp(30px,3.4vw,42px)}.tile .v small{font-size:12.5px;color:var(--mute);margin-left:6px}
@@ -97,8 +102,8 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .alert .hex{width:10px;height:11.5px;margin-top:5px}
 .alert .stamp{font:600 12.5px var(--fb);color:var(--mute);padding-top:2px;font-variant-numeric:tabular-nums}
 .alert .t{font-size:14.5px;line-height:1.55}.alert .meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--dim)}
-.btn{background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:6px 14px;font:600 12.5px var(--fb);transition:background .2s}
-.btn:hover{background:var(--hue)}.btn.big{padding:11px 20px;font-size:14px}.btn.ghost{background:none;border:1px solid rgba(244,236,226,.28);color:var(--ink)}.btn.ghost:hover{border-color:var(--ink);background:none}
+.btn{background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:6px 14px;font:600 12.5px var(--fb);transition:background .2s,transform .2s}
+.btn:hover{background:var(--hue)}.btn.act{background:var(--orange);color:var(--bg);padding:8px 16px;font-size:13px}.btn.act:hover{background:var(--ink);transform:translateY(-1px)}.btn.big{padding:11px 20px;font-size:14px}.btn.ghost{background:none;border:1px solid rgba(244,236,226,.28);color:var(--ink)}.btn.ghost:hover{border-color:var(--ink);background:none}
 .btn.hue{background:var(--hue);color:var(--bg)}.btn.hue:hover{background:var(--ink)}
 .done{font:italic 600 12.5px var(--fb);color:var(--hue)}
 /* world */
@@ -189,6 +194,7 @@ footer .fc .hex{width:8px;height:9px}
         <p class="why" id="hero-why">Waiting for the first poll.</p>
       </div>
       <div class="chips" id="hero-chips"></div>
+      <div class="actstrip" id="actstrip" hidden></div>
     </div>
     <div id="tiles" style="display:contents"></div>
   </div>
@@ -205,7 +211,7 @@ footer .fc .hex{width:8px;height:9px}
 
   <section class="grid g300 mt">
     <div class="card r2 in" style="animation-delay:.1s">
-      <div class="eyebrow">What the node said, and what you did</div>
+      <div class="eyebrow" style="color:var(--orange)">Act here · what the node said, and what you did</div>
       <div class="rho" style="margin-top:18px">
         <svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--webblue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg>
         <div><div class="num" id="rho-num">–</div><div class="k" id="rho-k">ρ — the only number here that comes from a person.</div></div>
@@ -347,11 +353,15 @@ async function refresh(){
     if(mv!=null)rows.push({name:'CAMS point',value:fmt(mv),unit:'µg/m³',color:'#3FA9F5',sp:ser?ser.model:null,story:'A satellite model sampled at your coordinates, every hour, free, anywhere on earth.'});
     $('#sensors').innerHTML=rows.map((r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`).join('')||`<div class="empty">No sensor yet. Add one under Set up → Sources.</div>`;
     $('#sens-sub').textContent=`${local.length} instrument${local.length===1?'':'s'} of yours${pub.length?`, ${near.length} beyond the wall`:''}${mv!=null?', one model overhead':''}`;
+    // the act strip: the newest unanswered act-level alert, on the hero
+    const open_=alerts.filter(a=>a.level==='act'&&!a.acted_at); const strip=$('#actstrip');
+    if(open_.length){const a=open_[0];const ln=a.text.split('\n').filter(Boolean);strip.hidden=false;strip.innerHTML=`<span class="hex"></span><div class="t">${esc(ln[0])}<small>${open_.length>1?`${open_.length} things waiting. `:''}${esc((ln.find(l=>l.startsWith('👉'))||'').replace('👉','').trim())}</small></div><button class="btn act" onclick="act(${a.id})">I did this</button>`;}
+    else{strip.hidden=true;strip.innerHTML='';}
     // alerts + rho
     const arc=rho.rho==null?0:Math.round(264*rho.rho); $('#rho-arc').setAttribute('stroke-dasharray',`${arc} 264`); $('#rho-arc').setAttribute('stroke',hue);
     $('#rho-num').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#rho-num').style.color=hue;
     $('#rho-k').textContent=rho.rho==null?'ρ — no act-level alert yet. When one comes, the button beside it is how this number is made.':`ρ — ${rho.alerts_act} ask${rho.alerts_act===1?'':'s'} in thirty days, ${rho.acted} answered. The only number here that comes from a person.`;
-    $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'?'var(--red)':a.level==='warn'?'var(--orange)':'var(--webblue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
+    $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'?'var(--red)':a.level==='warn'?'var(--orange)':'var(--webblue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn act" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
     // the world
     const wave=O('marine-point','wave_height_m'),wd=O('marine-point','wave_direction'),per=O('marine-point','wave_period_s'),sst=O('marine-point','sea_surface_temp');
     const built=O('ee-point','built_frac'),trees=O('ee-point','tree_frac'),chg=O('ee-point','land_change_score');
