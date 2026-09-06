@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.27 — 2026-09-06 — place
+
+**The node knows what is around it.** A `place` pack fetches everything OpenStreetMap has within a kilometre (buildings,
+shops, warungs, schools, clinics, temples, roads, green), stores the geometries in **PostGIS** (the database image is now
+`postgis/postgis:16-3.4`, same data directory) and answers a fixed set of questions in SQL: buildings and built share,
+commercial share, businesses per km², places by category, road kilometres, green share, the walk to the nearest school,
+clinic, market and place of worship. Readings on `place-point` (kind `map`), an `Economic|Community` cell (`partial`), a
+monthly message, an "Around you" card in the World band, and the bot's `context` tool. Refreshes monthly; recomputes
+from storage between. Tested against node #1's coordinates: 2,904 buildings, 540 road segments, 37 mapped places, no
+school on the map. Every label says a zero often means unmapped. Google Maps is not a source: its terms forbid it. Open
+Buildings and Overture are the next fetches into the same table.
+
 ## v0.26.1 — 2026-09-06 — act here
 
 - **The act trigger is on the hero.** When an act-level alert is unanswered, an orange strip under the room's sentence

@@ -1,0 +1,18 @@
+# One message a month, after the refresh, so the household knows what the node thinks is around it. Informational.
+- id: place_around
+  level: info
+  cooldown_minutes: 43200
+  long_cooldown_ok: true
+  sql: >-
+    SELECT
+      (SELECT value FROM observations WHERE sensor_id='place-point' AND metric='buildings') AS buildings,
+      round((SELECT value FROM observations WHERE sensor_id='place-point' AND metric='commercial_share')*100) AS commercial_pct,
+      (SELECT value FROM observations WHERE sensor_id='place-point' AND metric='poi_food') AS food,
+      (SELECT value FROM observations WHERE sensor_id='place-point' AND metric='poi_education') AS schools,
+      (SELECT value FROM observations WHERE sensor_id='place-point' AND metric='poi_health') AS health,
+      round((SELECT value FROM observations WHERE sensor_id='place-point' AND metric='green_share')*100) AS green_pct,
+      round((SELECT value FROM observations WHERE sensor_id='place-point' AND metric='nearest_health_m')) AS clinic_m
+    WHERE (SELECT value FROM observations WHERE sensor_id='place-point' AND metric='buildings') > 0
+  message:
+    en: "🏘️ What is around you, this month.\n\nAbout {buildings:.0f} buildings within a kilometre, {commercial_pct:.0f}% of them shops, offices or hotels. On the map: {food:.0f} places to eat, {schools:.0f} schools, {health:.0f} clinics or pharmacies, the nearest health care {clinic_m:.0f} m away. A zero here often means nobody has mapped it yet. {green_pct:.0f}% of the ground is green.\n\nThis is the map, not the street: it says what is here, not what people do. I refresh it monthly and will tell you what changed."
+    id: "🏘️ Apa yang ada di sekitar Anda, bulan ini.\n\nSekitar {buildings:.0f} bangunan dalam satu kilometer, {commercial_pct:.0f}% di antaranya toko, kantor atau hotel. Di peta: {food:.0f} tempat makan, {schools:.0f} sekolah, {health:.0f} klinik atau apotek, layanan kesehatan terdekat {clinic_m:.0f} m. Angka nol sering berarti belum ada yang memetakannya. {green_pct:.0f}% tanahnya hijau.\n\nIni peta, bukan jalan: ia bilang apa yang ada, bukan apa yang orang lakukan. Saya perbarui tiap bulan dan kabari kalau ada yang berubah."

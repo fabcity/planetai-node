@@ -23,17 +23,18 @@ rolled up. **`live` means measured here**; a model or a portal is `partial`, wha
 | Environmental \| Community | your sensors, PM2.5 24h mean | live |
 | Environmental \| City | nearest public sensors | partial |
 | Environmental \| Bioregion | sea temperature; tree cover and land change (Earth Engine) | partial |
+| Economic \| Community | mapped businesses per km² (OpenStreetMap, the `place` pack) | partial |
 | Social \| Community | heat-exposure hours from indoor temp and humidity | live |
 | Governance \| Community | ρ, alerts that led to action | partial → live at five actions |
 | Governance \| City | the open-data portal's maintenance state | partial |
 
-Six of twenty. `planetai cells` shows them; the dashboard draws them as a honeycomb.
+Seven of twenty. `planetai cells` shows them; the dashboard draws them as a honeycomb.
 
 ## Empty, and what would fill each
 
 | cell | a source that exists | who would write the pack |
 |---|---|---|
-| Economic \| Community | a fab lab's machine log (Fabman, a CSV) | a fab lab |
+| Economic \| Community, properly | a fab lab's machine log (Fabman, a CSV), a market's stall count | a fab lab |
 | Economic \| City | a business registry, KLEMS | a city partner |
 | Social \| City | a survey via the node's own Telegram bot | Making Sense |
 | Governance \| Region | Socrata / ArcGIS portals (Barcelona, Boston) | a civic-tech group |

@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Node #1 runs eight.
+about air, water or heat; the packs do. Node #1 runs nine.
 
 ```
 packs/<id>/
@@ -86,6 +86,7 @@ alone lists them.
 | open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
 | earth-engine | code | tree cover, built-up, NDVI, night lights, land change (Google Earth Engine) |
+| place | code | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | example-cooking-hours | data | a worked example |
 
 Ten more ideas, with who might write them: [`PACK_IDEAS.md`](PACK_IDEAS.md).

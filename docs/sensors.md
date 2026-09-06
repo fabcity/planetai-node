@@ -16,7 +16,7 @@ def my_source(hc: httpx.Client, ...) -> tuple[list[dict], list[tuple]]:
 ```
 
 Readings dedupe on `(sensor_id, metric, ts)`, so polling twice is harmless. `local` means yours. `indoor` must be
-correct; the rules depend on it. `kind` is `sensor`, `portal`, `model` or `child`; only `sensor` enters `stats`.
+correct; the rules depend on it. `kind` is `sensor`, `portal`, `model`, `map` or `child`; only `sensor` enters `stats`.
 
 Metrics: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc`. Units: µg/m³, °C, %, kPa.
 

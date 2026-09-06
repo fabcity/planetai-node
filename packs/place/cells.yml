@@ -1,0 +1,8 @@
+# What is around the node, as Index cells. Both partial: they describe structure, not what the place produces or how
+# people live in it. A fab lab's machine log and a market's stall count are the honest Economic numbers; this is the proxy
+# until those exist.
+- cell: "Economic|Community"
+  unit: "businesses per km² within the radius"
+  state: partial
+  min_buckets: 1
+  sql: SELECT value FROM observations WHERE sensor_id='place-point' AND metric='businesses_per_km2'

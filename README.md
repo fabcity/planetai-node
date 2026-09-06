@@ -51,7 +51,7 @@ ground truth.
   it; point it at a bigger model when you have one.
 - **Keeps the data where it was made.** Local database, nightly backups a NAS can collect, an open daily export you decide
   where to send.
-- **Grows by folders.** Air, heat, coast, land and open-data packs ship. Water, energy, noise, classroom CO₂, fire smoke
+- **Grows by folders.** Air, heat, coast, land, place (what is around you, from OpenStreetMap, in PostGIS) and open-data packs ship. Water, energy, noise, classroom CO₂, fire smoke
   are a folder of rules each, written by whoever needs them, for their place.
 
 Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
@@ -72,7 +72,7 @@ ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it retur
 ```
 app/       main.py · sources.py · index.py · packs.py · settings.py · agent.py · agent_loop.py · static/index.html
 bin/       planetai, the command line
-packs/     air-quality · heat · insight · cold-start · open-data-health · coast · earth-engine · example
+packs/     air-quality · heat · insight · cold-start · open-data-health · coast · earth-engine · place · example
 config/    rules.yml · mosquitto · reticulum
 tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
 tests/     offline suites

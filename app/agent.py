@@ -105,6 +105,13 @@ LABELS = {
                              "wind_speed": "wind speed, km/h", "wind_direction": "wind coming from, degrees", "precipitation": "rain this hour, mm"}),
     "cams-point": ("satellite_air", {"pm25_model": "PM2.5 the model estimates for the district, µg/m³", "pm10_model": "PM10, µg/m³", "o3": "ozone, µg/m³",
                                      "no2": "nitrogen dioxide, µg/m³", "co": "carbon monoxide, µg/m³", "dust": "dust, µg/m³", "uv_index": "UV index", "aod": "aerosol optical depth"}),
+    "place-point": ("place", {"buildings": "buildings within the radius (OpenStreetMap)", "built_share": "share of the ground covered by buildings (0-1)",
+                              "commercial_share": "share of buildings that are shops, offices, hotels (0-1)", "businesses_per_km2": "mapped businesses per km²",
+                              "poi_food": "places to eat on the map", "poi_retail": "shops and markets on the map", "poi_education": "schools on the map (zero often means unmapped)",
+                              "poi_health": "clinics, doctors, pharmacies on the map", "poi_worship": "temples, mosques, churches on the map", "poi_lodging": "hotels, villas, guesthouses on the map",
+                              "poi_services": "banks, post, police, fuel on the map", "roads_km": "kilometres of road", "green_share": "share of the ground that is green (0-1)",
+                              "nearest_school_m": "walk to the nearest mapped school, m", "nearest_health_m": "walk to the nearest mapped clinic or pharmacy, m",
+                              "nearest_market_m": "walk to the nearest mapped market or minimarket, m", "nearest_worship_m": "walk to the nearest place of worship, m"}),
     "ee-point": ("land", {"built_frac": "share of the surrounding km that is built-up (0-1)", "tree_frac": "share that is trees (0-1)", "crop_frac": "share that is crops (0-1)",
                           "water_frac": "share that is water (0-1)", "ndvi_median": "greenness index (NDVI, -1..1)", "night_lights": "night-time light radiance", "land_change_score": "how much the land changed since the year before (0 = none)"}),
 }
@@ -112,10 +119,11 @@ LABELS = {
 
 @mcp.tool()
 def context() -> dict:
-    """What the node knows about the place from models and satellites, right now: the sea (waves, swell, period, direction,
-    temperature), the weather (temperature, humidity, wind, rain), the satellite air-quality model for the district, and the
-    land within a kilometre (built, trees, greenness, change). Use this for any question about the sea, swell, surf, wind,
-    rain, UV, or the land. Values carry a plain label and a timestamp."""
+    """What the node knows about the place beyond its sensors: the sea (waves, swell, period, direction, temperature), the
+    weather, the satellite air-quality model for the district, the land within a kilometre from satellites (built, trees,
+    greenness, change), and the place from the map (buildings, shops, warungs, schools, clinics, roads, green, walking
+    distances). Use this for any question about the sea, weather, UV, the land, or what is around here. A zero on the map
+    often means unmapped, not absent. Values carry a plain label and a timestamp."""
     out: dict = {}
     for o in _get("/observations"):
         group, labels = LABELS.get(o["sensor_id"], (o["sensor_id"], {}))

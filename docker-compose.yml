@@ -1,7 +1,7 @@
 name: planetai
 services:
   db:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.4-alpine   # Postgres 16 with PostGIS; same data directory as postgres:16, so an existing node just switches
     restart: unless-stopped
     environment:
       POSTGRES_USER: planetai
