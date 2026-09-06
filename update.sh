@@ -120,10 +120,11 @@ done < .env.example
 [[ $NEW -eq 0 ]] && echo "   nothing new" || warn "${NEW} new setting(s) added with defaults — review .env"
 
 # 6. rebuild and restart
-# stamp the version the node is about to run, from git, so /health and planetai status report it
-if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)|" .env && rm -f .env.bak; else echo "NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)" >> .env; fi
 say "rebuilding"
-spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; see $ULOG"
+spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"
+# stamp the version the node now runs, from git, so /health and planetai status report it. After the build, not
+# before: a failed build must not leave .env claiming a version the containers never ran.
+if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)|" .env && rm -f .env.bak; else echo "NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)" >> .env; fi
 spin "restarting the containers" docker compose up -d || die "the containers did not start; see $ULOG"
 
 # 7. verify
