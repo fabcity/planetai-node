@@ -99,7 +99,21 @@ fi
 [[ -n "$LAT"  ]] && setenv NODE_LAT "$LAT"
 [[ -n "$LON"  ]] && setenv NODE_LON "$LON"
 setenv NODE_VERSION "$(git describe --tags --always 2>/dev/null || echo dev)"
-grep -q '^POSTGRES_PASSWORD=change-me' .env && setenv POSTGRES_PASSWORD "$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+NEWPW=0
+grep -q '^POSTGRES_PASSWORD=change-me' .env && { setenv POSTGRES_PASSWORD "$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"; NEWPW=1; }
+# A new .env means a new database password, and a database from an earlier node may still be on this machine (the
+# tester deleted the folder to "start over" but Docker kept the volume). The app would then fail to log in on every
+# call while pg_isready and the install's own doctor say the database is fine. Refuse now and say which way out.
+if [[ $NEWPW -eq 1 ]]; then
+  DATA_DIR_SET="$(grep '^DATA_DIR=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"
+  if { [[ -z "$DATA_DIR_SET" ]] && docker volume inspect planetai_db >/dev/null 2>&1; } || { [[ -n "$DATA_DIR_SET" && -f "$DATA_DIR_SET/PG_VERSION" ]]; }; then
+    warn "a database from an earlier node is still on this machine (${DATA_DIR_SET:-Docker volume planetai_db}), and this is a new .env,"
+    warn "so its password cannot match. Two ways out:"
+    warn "  keep that data:  put the earlier .env back in this folder, then run this again"
+    warn "  start clean:     docker volume rm planetai_db   (this deletes the old node's readings), then run this again"
+    die "not starting a node whose app cannot log in to its database"
+  fi
+fi
   [[ -n "$(grep -E "^ADMIN_TOKEN=" .env | cut -d= -f2- | sed "s/[[:space:]]*#.*//" | tr -d " ")" ]] || setenv ADMIN_TOKEN "$(openssl rand -hex 16)"     # unlocks the GUI's settings pages
 
 # ---- port clash check
