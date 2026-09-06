@@ -1,0 +1,58 @@
+{
+ "state": {
+  "globeBox": null,
+  "metrics": [
+   [
+    "m-total",
+    "56"
+   ],
+   [
+    "m-active",
+    "47"
+   ],
+   [
+    "m-continents",
+    "5"
+   ],
+   [
+    "m-labs",
+    "—"
+   ],
+   [
+    "m-sensors",
+    "—"
+   ],
+   [
+    "m-flights",
+    "—"
+   ],
+   [
+    "m-fires",
+    "—"
+   ]
+  ],
+  "connectedSources": null,
+  "canvasCount": 6,
+  "canvasesWithPixels": 3,
+  "svgNoLabel": 10,
+  "svgTotal": 60,
+  "canvasNoLabel": 0
+ },
+ "consoleErrors": [
+  "Failed to load resource: the server responded with a status of 404 (File not found)",
+  "Access to fetch at 'https://index.fab.city/api/cells/bali.json' from origin 'http://127.0.0.1:8790' has been blocked by CORS policy: The 'Access-Control-Allow-O",
+  "Failed to load resource: net::ERR_FAILED",
+  "Access to fetch at 'https://index.fab.city/api/cells/barcelona.json' from origin 'http://127.0.0.1:8790' has been blocked by CORS policy: The 'Access-Control-Al",
+  "Failed to load resource: net::ERR_FAILED",
+  "Access to fetch at 'https://index.fab.city/api/cells/santiago.json' from origin 'http://127.0.0.1:8790' has been blocked by CORS policy: The 'Access-Control-All",
+  "Failed to load resource: net::ERR_FAILED",
+  "Access to fetch at 'https://index.fab.city/api/cells/boston.json' from origin 'http://127.0.0.1:8790' has been blocked by CORS policy: The 'Access-Control-Allow",
+  "Failed to load resource: net::ERR_FAILED"
+ ],
+ "failedRequests": [
+  "https://index.fab.city/api/cells/bali.json :: net::ERR_FAILED",
+  "https://index.fab.city/api/cells/barcelona.json :: net::ERR_FAILED",
+  "https://index.fab.city/api/cells/santiago.json :: net::ERR_FAILED",
+  "https://index.fab.city/api/cells/boston.json :: net::ERR_FAILED"
+ ]
+}

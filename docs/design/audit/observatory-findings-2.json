@@ -1,0 +1,65 @@
+{
+ "onLoad": {
+  "mode": "advanced",
+  "simplifiedBtnActive": "",
+  "advancedBtnActive": "active",
+  "advVisible": 39,
+  "advTotal": 39
+ },
+ "afterSimplified": {
+  "mode": "simplified",
+  "advVisible": 1,
+  "bodyH": 1788
+ },
+ "afterAdvanced": {
+  "mode": "advanced",
+  "advVisible": 39,
+  "bodyH": 3193
+ },
+ "actSimplified": {
+  "stepButtonsVisible": 0,
+  "actSectionsVisible": 1,
+  "actSectionsTotal": 5
+ },
+ "actAdvanced": {
+  "stepButtonsVisible": 5,
+  "actSectionsVisible": 5
+ },
+ "constellationScrubber": {
+  "ranges": 3,
+  "visibleRanges": 1,
+  "ids": [
+   "decade-year",
+   "ts-bioregion",
+   "ts-constellation"
+  ],
+  "scrubberEls": 3
+ },
+ "provInline": [
+  {
+   "status": "live",
+   "inlineChild": false,
+   "visibleSourceText": false
+  },
+  {
+   "status": "live",
+   "inlineChild": false,
+   "visibleSourceText": false
+  },
+  {
+   "status": "synthetic",
+   "inlineChild": false,
+   "visibleSourceText": true
+  },
+  {
+   "status": "pending",
+   "inlineChild": false,
+   "visibleSourceText": false
+  }
+ ],
+ "afterReload": {
+  "welcomeVisible": false,
+  "disclosureSeen": null,
+  "welcomeSession": "1"
+ }
+}

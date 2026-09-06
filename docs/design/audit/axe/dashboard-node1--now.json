@@ -1,0 +1,19 @@
+{
+ "surface": "dashboard-node1",
+ "view": "now",
+ "url": "http://127.0.0.1:8899/",
+ "violations": [
+  {
+   "id": "color-contrast",
+   "impact": "serious",
+   "nodes": 9,
+   "help": "Elements must meet minimum color contrast ratio thresholds"
+  },
+  {
+   "id": "page-has-heading-one",
+   "impact": "moderate",
+   "nodes": 1,
+   "help": "Page should contain a level-one heading"
+  }
+ ]
+}

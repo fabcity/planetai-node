@@ -1,0 +1,32 @@
+[
+ {
+  "name": "landing",
+  "webAnimations": 0,
+  "smilElements": 0,
+  "cssAnimatedElements": 0
+ },
+ {
+  "name": "node0",
+  "webAnimations": 0,
+  "smilElements": 0,
+  "cssAnimatedElements": 0
+ },
+ {
+  "name": "observatory",
+  "webAnimations": 0,
+  "smilElements": 0,
+  "cssAnimatedElements": 0
+ },
+ {
+  "name": "dashboard-node1",
+  "webAnimations": 1,
+  "smilElements": 4,
+  "cssAnimatedElements": 0
+ },
+ {
+  "name": "dashboard-clean",
+  "webAnimations": 1,
+  "smilElements": 2,
+  "cssAnimatedElements": 0
+ }
+]
