@@ -708,7 +708,7 @@ def _pull_ok(authorization: str) -> None:
 def settings_raw(authorization: str = Header("")):
     """Runtime settings unmasked, for the node's own processes (the agent loop reads its model ladder here every minute,
     so the dashboard's Model page changes it live). Admin token required; never call this from a browser."""
-    _pull_ok(authorization)
+    _admin(authorization)       # not _pull_ok: the NAS's read-only BACKUP_TOKEN must not unmask the Telegram token and the AI keys
     return {k: settings.get(k, "") for k in settings.RUNTIME}
 
 
