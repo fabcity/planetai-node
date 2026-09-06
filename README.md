@@ -64,6 +64,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATI
           extending it             PACKS · PACK_IDEAS · DEVELOPING
           radios and reachability  NETWORKING · MESHTASTIC
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
+          the earth pack           HANDOFF_earth_pack
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
@@ -73,7 +74,7 @@ ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it retur
 ```
 app/       main.py · sources.py · index.py · packs.py · settings.py · agent.py · agent_loop.py · static/index.html
 bin/       planetai, the command line
-packs/     air-quality · heat · insight · cold-start · open-data-health · coast · earth-engine · place · example
+packs/     air-quality · heat · insight · cold-start · open-data-health · coast · earth-engine · earth · place · example
 config/    rules.yml · mosquitto · reticulum
 tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
 tests/     offline suites

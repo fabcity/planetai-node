@@ -1,0 +1,9 @@
+# One cell, and it is `partial` for good. The number is arithmetic this node did, but on a Google model's output:
+# an embedding is not a measurement of anything a person here could check, and `live` means measured here.
+- cell: "Environmental|City"
+  unit: "land change: mean per-pixel cosine distance between consecutive annual AlphaEarth embeddings (0 = unchanged)"
+  state: partial
+  min_buckets: 1
+  notes: "embedding-space change over a 10 km square, once a year, from a Google model. Not air, not water, not emissions, not what changed — only that this square looks different from the year before"
+  sql: |
+    SELECT value FROM observations WHERE sensor_id = 'earth-point' AND metric = 'land_change_yoy'

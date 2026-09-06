@@ -1,0 +1,26 @@
+id: earth
+name: Earth (AlphaEarth)
+description: >-
+  This node's own copy of Google's AlphaEarth Satellite Embedding layers for its square of the planet, and the
+  year-over-year change computed here from them: how different the land within a few kilometres looks from one
+  year to the next, pixel by pixel, at 10 m. Downloaded once on command, kept as files, compared with
+  arithmetic. It says something changed, never what.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.33.0" }
+kind: code
+domain: land
+metrics: [land_change_yoy, land_change_since_2017, years_cached]
+scales: [city]
+sources: [environmental/city/alphaearth]
+pip: [rasterio, numpy]
+env:
+  # No padding after `=`: a value pasted after spaces makes the line `VAR= value`, which shell reads as a command.
+  - "# earth: half-width of the square around the node, in metres. 5000 is a 10 km square: 64 MB on disk and about 103 MB pulled, per year."
+  - "EARTH_RADIUS_M=5000"
+  - "# earth: which years to fetch, comma separated. Blank means every year the dataset has (2017-2025)."
+  - "EARTH_YEARS="
+attribution: "The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and Google DeepMind. CC BY 4.0."
+needs: >-
+  Network to storage.googleapis.com on the first fetch; nothing else. No key, no account, no cloud project:
+  the bucket answers anonymous range requests. Disk: 64 MB per year cached, 576 MB for all nine.

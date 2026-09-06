@@ -89,6 +89,7 @@ alone lists them.
 | open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
 | earth-engine | code | tree cover, built-up, NDVI, night lights, land change (Google Earth Engine) |
+| earth | code | this node's own copy of the AlphaEarth embeddings, and the year-over-year land change computed here |
 | place | code | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | example-cooking-hours | data | a worked example |
 

@@ -1,0 +1,191 @@
+"""The earth pack's arithmetic, offline: no bucket, no rasterio, no database.
+
+numpy is imported without a guard on purpose. This pack's only claim is arithmetic, so a run that quietly
+prints "skipped" because numpy is missing is worse than a run that fails: it would let the pack ship with the
+de-quantisation wrong. If this line fails, install numpy on the dev machine.
+Run: PYTHONPATH=/tmp/stub:app python3 tests/test_earth.py
+"""
+import importlib.util
+import json
+import os
+import struct
+import sys
+import tempfile
+import zlib
+from pathlib import Path
+
+import numpy as np
+
+os.environ.setdefault("NODE_LAT", "-8.8271")
+os.environ.setdefault("NODE_LON", "115.15709")
+os.environ.setdefault("NODE_NAME", "test-node")
+
+spec = importlib.util.spec_from_file_location("earthpack", "packs/earth/adapter.py")
+A = importlib.util.module_from_spec(spec); spec.loader.exec_module(A)
+
+# ---------------------------------------------------------------- de-quantisation and the norm
+# The bucket's README: divide by 127.5, square, keep the sign. Not a linear scale factor.
+assert A.dequantize(np.array([127], dtype=np.int8))[0] == np.float32((127 / 127.5) ** 2)
+assert A.dequantize(np.array([-127], dtype=np.int8))[0] == np.float32(-((127 / 127.5) ** 2))
+assert A.dequantize(np.array([0], dtype=np.int8))[0] == 0.0
+# monotone in the raw value, which is what makes it a usable quantisation at all
+raw = np.arange(-127, 128, dtype=np.int8)
+assert np.all(np.diff(A.dequantize(raw)) > 0)
+# and it stays inside the range the README promises
+assert A.dequantize(raw).min() >= -1.0 and A.dequantize(raw).max() <= 1.0
+
+# Round trip: quantise a unit vector the way the dataset does, de-quantise it, and the length comes back to 1
+# within the tolerance verify.py enforces on real pixels.
+rng = np.random.default_rng(7)
+v = rng.normal(size=(64, 500)).astype(np.float32)
+v /= np.linalg.norm(v, axis=0)
+q = np.clip(np.rint(np.sign(v) * np.sqrt(np.abs(v)) * 127.5), -127, 127).astype(np.int8)
+norms = np.linalg.norm(A.dequantize(q), axis=0)
+worst = float(np.abs(norms - 1.0).max())
+assert worst < 0.01, f"quantisation round trip drifts by {worst}, more than verify.py's 0.01 tolerance"
+
+# ---------------------------------------------------------------- the distance
+def stack(vec, h, w):
+    return np.repeat(vec[:, None, None], h, 1).repeat(w, 2)
+
+u = v[:, 0] / np.linalg.norm(v[:, 0])
+qu = np.clip(np.rint(np.sign(u) * np.sqrt(np.abs(u)) * 127.5), -127, 127).astype(np.int8)
+same = stack(qu, 4, 4)
+d, masked = A.cosine_distance(same, same)
+assert not masked.any()
+assert np.allclose(d, 0.0, atol=2e-3), f"a year against itself must be 0, got {d.max()}"
+
+# the opposite vector is distance 2; a right angle is 1
+d_opp, _ = A.cosine_distance(same, stack(-qu, 4, 4))
+assert abs(float(d_opp.max()) - 2.0) < 2e-3, d_opp.max()
+e0 = np.zeros(64, dtype=np.int8); e0[0] = 127
+e1 = np.zeros(64, dtype=np.int8); e1[1] = 127
+d_perp, _ = A.cosine_distance(stack(e0, 3, 3), stack(e1, 3, 3))
+assert abs(float(d_perp.max()) - 1.0) < 2e-3, d_perp.max()
+
+# every distance stays inside [0, 2] even on adversarial input
+rand_a = rng.integers(-127, 128, size=(64, 40, 40)).astype(np.int8)
+rand_b = rng.integers(-127, 128, size=(64, 40, 40)).astype(np.int8)
+d_rand, _ = A.cosine_distance(rand_a, rand_b)
+assert float(np.nanmin(d_rand)) >= 0.0 and float(np.nanmax(d_rand)) <= 2.0
+
+# no data is -128 in every channel, it is excluded, and it does not become a number
+a = stack(qu, 5, 5).copy(); a[:, 2, 3] = -128
+d_m, m_m = A.cosine_distance(a, stack(qu, 5, 5))
+assert m_m[2, 3] and m_m.sum() == 1 and np.isnan(d_m[2, 3])
+
+# the band size must not change the answer
+d1, _ = A.cosine_distance(rand_a, rand_b, rows=7)
+assert np.allclose(np.nan_to_num(d_rand), np.nan_to_num(d1), atol=1e-6)
+
+# ---------------------------------------------------------------- the window, against a known tile
+# Node #1: -8.8271, 115.15709 falls in 50S tile x...-0000000000-0000008192, whose pixel origin is
+# 254240 E. The measured centre pixel is row 680, col 4306, and a 5000 m radius gave a window at
+# col_off 3806, row_off 180, 1000 x 1000. That is the arithmetic below, with no raster and no projection.
+r0, c0, r1, c1, clipped = A.window_px(680, 4306, 5000, 8192, 8192)
+assert (r0, c0, r1 - r0, c1 - c0) == (180, 3806, 1000, 1000), (r0, c0, r1, c1)
+assert not clipped
+# and at an edge it clips rather than reading outside the tile
+r0, c0, r1, c1, clipped = A.window_px(100, 4306, 5000, 8192, 8192)
+assert (r0, r1 - r0) == (0, 600) and clipped
+try:
+    A.window_px(-900, 4306, 5000, 8192, 8192); raise AssertionError("a square wholly off the tile must raise")
+except RuntimeError:
+    pass
+
+# ---------------------------------------------------------------- the zone the index is searched by
+assert A.utm_zone(-8.8271, 115.15709) == "50S"          # Bali
+assert A.utm_zone(41.3874, 2.1686) == "31N"             # Barcelona
+assert A.utm_zone(-33.4310, -70.6045) == "19S"          # Santiago
+assert A.utm_zone(42.3601, -71.0589) == "19N"           # Boston
+assert A.utm_zone(0.0, -180.0) == "1N" and A.utm_zone(-1.0, 179.999) == "60S"
+# the index is sorted 1N..60N then 1S..60S; the search depends on that order
+assert A._zone_key("1N") < A._zone_key("60N") < A._zone_key("1S") < A._zone_key("50S")
+
+# ---------------------------------------------------------------- the ramp and the PNG
+dist = np.array([[0.0, A.RAMP_CEILING / 2, A.RAMP_CEILING, 1.0]], dtype=np.float32)
+mask = np.array([[False, False, False, False]])
+ix = A.ramp_indices(dist, mask)
+assert ix[0, 0] == 1 and ix[0, 2] == 252 and ix[0, 3] == 252, ix     # the ceiling clamps, it does not wrap
+assert 120 < int(ix[0, 1]) < 135
+assert A.ramp_indices(dist, np.array([[True, False, False, False]]))[0, 0] == A.NODATA_IX
+
+with tempfile.TemporaryDirectory() as tmp:
+    png = Path(tmp) / "t.png"
+    grid = np.zeros((40, 200), dtype=np.uint8)
+    A.draw_marks(grid, (20, 100))
+    assert (grid == A.NODE_IX).sum() > 0, "the node ring was not drawn"
+    assert (grid == A.RULE_IX).sum() > 0, "the scale bar was not drawn"
+    n = A.write_png(png, grid, {"Copyright": A.ATTRIBUTION})
+    blob = png.read_bytes()
+    assert n == len(blob) and blob[:8] == b"\x89PNG\r\n\x1a\n"
+    # walk the chunks: the length, type and CRC of each must agree, and the header must say what we meant
+    pos, seen, idat = 8, [], b""
+    while pos < len(blob):
+        ln = struct.unpack(">I", blob[pos:pos + 4])[0]
+        kind = blob[pos + 4:pos + 8]
+        data = blob[pos + 8:pos + 8 + ln]
+        crc = struct.unpack(">I", blob[pos + 8 + ln:pos + 12 + ln])[0]
+        assert crc == zlib.crc32(kind + data) & 0xFFFFFFFF, f"bad CRC on {kind}"
+        seen.append(kind.decode())
+        if kind == b"IDAT":
+            idat += data
+        pos += 12 + ln
+    assert seen[0] == "IHDR" and seen[-1] == "IEND" and "PLTE" in seen and "tEXt" in seen
+    w_, h_, depth, ctype = struct.unpack(">IIBB", blob[16:26])
+    assert (w_, h_, depth, ctype) == (200, 40, 8, 3)
+    assert A.ATTRIBUTION.encode() in blob, "the attribution must travel inside the PNG"
+    # the pixels come back exactly, filter byte and all
+    rows = zlib.decompress(idat)
+    assert len(rows) == h_ * (w_ + 1)
+    back = np.frombuffer(rows, dtype=np.uint8).reshape(h_, w_ + 1)
+    assert (back[:, 0] == 0).all() and np.array_equal(back[:, 1:], grid)
+
+# ---------------------------------------------------------------- the cache and the adapter
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    assert A.cached_years() == [] and A.latest_pair() is None
+    A.cache().mkdir(parents=True)
+    for y in (2017, 2020, 2024, 2025):
+        np.save(A.year_file(y), np.zeros((2, 2, 2), dtype=np.int8))
+    assert A.cached_years() == [2017, 2020, 2024, 2025]
+    assert A.latest_pair() == (2024, 2025), "only consecutive years are a year-over-year pair"
+    # and when the newest years are not adjacent, the pair is the newest adjacent one, not the newest two
+    for y in (2020, 2024, 2025):
+        A.year_file(y).unlink()
+    for y in (2018, 2023):
+        np.save(A.year_file(y), np.zeros((2, 2, 2), dtype=np.int8))
+    assert A.cached_years() == [2017, 2018, 2023]
+    assert A.latest_pair() == (2017, 2018), "2018 and 2023 are five years apart, not a year-over-year pair"
+    A.year_file(2023).unlink(); A.year_file(2018).unlink()
+    for y in (2020, 2024, 2025):
+        np.save(A.year_file(y), np.zeros((2, 2, 2), dtype=np.int8))
+    # an idle pack says nothing rather than raising or inventing a reading
+    assert A.fetch(None) == ([], [])
+    for a_, b_, mean in ((2024, 2025, 0.041), (2017, 2025, 0.128)):
+        A.change_file(a_, b_, "json").write_text(json.dumps(
+            {"year_a": a_, "year_b": b_, "mean": mean, "threshold": 0.15, "share_over_threshold": 0.01,
+             "hectares_over_threshold": 100.0, "png": f"change_{a_}_{b_}.png", "tiles": ["gs://x"]}))
+    sensors, readings = A.fetch(None)
+    got = {m: v for _, _, m, v in readings}
+    assert sensors[0]["sensor_id"] == "earth-point" and sensors[0]["kind"] == "model"
+    assert sensors[0]["scale"] == "city" and sensors[0]["cadence"] == "P1Y" and not sensors[0]["local"]
+    assert A.ATTRIBUTION in sensors[0]["meta"]["attribution"]
+    assert got["land_change_yoy"] == 0.041 and got["land_change_since_2017"] == 0.128
+    assert got["years_cached"] == 4.0
+    assert all(ts.year == 2025 for ts, _, _, _ in readings), "an annual reading is stamped in its own year"
+    os.environ.pop("PACK_OUT")
+
+# the cell the pack ships must be partial, and must read the metric the adapter writes
+import yaml                                                                      # noqa: E402
+cells = yaml.safe_load(open("packs/earth/cells.yml"))
+assert len(cells) == 1 and cells[0]["cell"] == "Environmental|City"
+assert cells[0]["state"] == "partial", "a model's output is never live"
+assert "land_change_yoy" in cells[0]["sql"] and "earth-point" in cells[0]["sql"]
+manifest = yaml.safe_load(open("packs/earth/pack.yaml"))
+assert set(manifest["metrics"]) == {"land_change_yoy", "land_change_since_2017", "years_cached"}
+assert manifest["pip"] == ["rasterio", "numpy"] and manifest["scales"] == ["city"]
+assert A.ATTRIBUTION == manifest["attribution"]
+
+print("all earth pack tests pass")
+sys.exit(0)

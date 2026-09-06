@@ -63,7 +63,7 @@ as constrained JSON because a 4B model narrates its reasoning as prose otherwise
 app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py ·
               bootstrap.py · static/index.html (the dashboard)
 bin/planetai  the operator CLI
-packs/        nine packs; see PACKS.md
+packs/        ten packs; see PACKS.md
 config/       rules.yml (two domain-blind rules), mosquitto, reticulum
 tools/        gates, hooks, bundle, release, mesh-provision.sh, nas/ (the NAS puller)
 tests/        offline suites
