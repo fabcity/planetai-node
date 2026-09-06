@@ -55,8 +55,18 @@ section.view{display:none}section.view.on{display:block}section.view.wall.on{dis
 .card{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:clamp(20px,2.4vw,30px);min-width:0;transition:transform .35s cubic-bezier(.2,.6,.2,1),border-color .35s}
 .card.lift:hover{transform:translateY(-3px);border-color:var(--line2)}
 .r1{border-radius:30px}.r2{border-radius:30px 30px 30px 12px}.r3{border-radius:30px 12px 30px 30px}.r4{border-radius:12px 30px 30px 30px}
-.grid{display:grid;gap:clamp(12px,1.6vw,20px)}
-.g250{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.g260{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}.g300{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.grid{display:grid;gap:clamp(12px,1.6vw,20px);grid-auto-flow:dense;align-items:stretch}
+/* the top row: hero (2 tracks) + four tiles = six tracks wide on a desktop, three on a laptop, one on a phone. No holes. */
+.g250{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1180px){.g250{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){.g250{grid-template-columns:1fr}}
+.g260{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:1fr}
+@media(max-width:1180px){.g260{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:820px){.g260{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.g260{grid-template-columns:1fr}}
+.g300{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr)}
+@media(max-width:900px){.g300{grid-template-columns:1fr}}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,1.6vw,20px);align-content:start;grid-auto-rows:1fr}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.card.wide{grid-column:1/-1}
 .mt{margin-top:clamp(14px,2vw,22px)}
 h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-height:1.1}
 .sub{font-size:13.5px;color:var(--mute);max-width:44ch;line-height:1.6}
@@ -110,6 +120,11 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .world .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .world .row .num{font-size:clamp(24px,2.6vw,32px)}.world .row small{font-size:12px;color:var(--mute);margin-left:5px}
 .world .story{font-size:13.5px;line-height:1.6;color:var(--ink2);margin-top:9px}
+/* the plan */
+.plan svg{width:100%;height:auto;display:block;max-height:78vh;margin:0 auto}
+.plan-legend{margin-top:0;gap:14px}.plan-legend button{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font:500 12px var(--fb);color:var(--ink2);display:flex;align-items:center;gap:8px;cursor:pointer}
+.plan-legend button i{width:10px;height:10px;border-radius:50%;display:block}.plan-legend button.off{opacity:.4}
+.plan .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font:600 12px var(--fb);padding:5px 9px;border-radius:8px;transform:translate(-50%,-140%);white-space:nowrap}
 /* network */
 .net svg{width:100%;height:auto;display:block}
 .legend{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--mute)}.legend span{display:flex;align-items:center;gap:9px}.legend i{width:24px;height:0;border-top:2px dashed;display:block}
@@ -163,6 +178,14 @@ footer{position:relative;z-index:1}footer .wrap{padding:0 clamp(18px,3.5vw,48px)
 footer .row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--line);font-size:12.5px;color:var(--dim)}
 footer .fc{display:flex;align-items:center;gap:12px;color:var(--ink)}footer .fc b{font:800 15px var(--fd);letter-spacing:-.01em}
 footer .fc .hex{width:8px;height:9px}
+/* arrange mode */
+body.arranging [data-card]{outline:1.5px dashed rgba(244,236,226,.35);outline-offset:-1px;position:relative}
+body.arranging [data-card] .arr{position:absolute;right:10px;top:10px;display:flex;gap:6px;z-index:5}
+.arr button{width:30px;height:30px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:700 14px var(--fb);cursor:pointer}
+.arr button:hover{background:var(--orange)}
+.arrbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:8;display:none;gap:10px;align-items:center;background:var(--ink);color:var(--bg);padding:10px 12px 10px 18px;border-radius:999px;font:500 13.5px var(--fb);box-shadow:0 20px 50px rgba(0,0,0,.4)}
+body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:var(--bg)}.arrbar .btn.ghost{background:transparent;border:1px solid rgba(22,21,15,.3);color:var(--bg)}
+.arrbar select{background:transparent;border:1px solid rgba(22,21,15,.3);border-radius:999px;padding:6px 10px;color:var(--bg);font:inherit}
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,8px);background:var(--ink);color:var(--bg);padding:11px 18px;font:500 14px var(--fb);border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .empty{font-size:13.5px;color:var(--mute);padding:8px 0}
@@ -176,7 +199,7 @@ footer .fc .hex{width:8px;height:9px}
 
 <header><div class="wrap">
   <div class="brand"><span class="mark"><span class="hex o"></span><span class="i"></span></span><b id="nodename">node</b><span class="s" id="nodeplace">starting…</span></div>
-  <nav class="views" id="views"><button class="on" data-view="now">Now</button><button data-view="network">Network</button><button data-view="setup">Set up</button><button data-view="wall">Wall</button></nav>
+  <nav class="views" id="views"><button class="on" data-view="now">Now</button><button data-view="network">Network</button><button data-view="setup">Set up</button><button data-view="wall">Wall</button><button data-view="arrange" title="Move, hide and restore cards">Arrange</button></nav>
   <div class="link"><span class="chip" style="background:#E8873A;color:#16150F;font-weight:700;padding:4px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase" title="An experiment. Tell us what breaks: info@fab.city">alpha</span><i id="dot"></i><span id="pulsetxt">starting</span></div>
 </div></header>
 
@@ -199,18 +222,24 @@ footer .fc .hex{width:8px;height:9px}
     <div id="tiles" style="display:contents"></div>
   </div>
 
-  <section class="card day r1 mt in" style="animation-delay:.2s">
+  <section class="card day r1 mt in" data-card="day" style="animation-delay:.2s">
     <div class="head"><h2 class="t">The day it just had.</h2><div class="sub" id="day-sub">Twenty-four hours of hourly means, with what happened when the line moved.</div></div>
     <svg id="day" viewBox="0 0 1200 420" role="img" aria-label="PM2.5 inside and outside over 24 hours, annotated"></svg>
   </section>
 
-  <section class="grid g260 mt">
+  <section class="grid g260 mt" data-card="sensors" style="position:relative">
     <div class="head" style="grid-column:1/-1;margin-bottom:0"><h2 class="t">Everything this house is listening to.</h2><div class="sub" id="sens-sub"></div></div>
     <div id="sensors" style="display:contents"></div>
   </section>
 
+  <section class="card plan r1 mt in" id="plancard" data-card="plan" hidden>
+    <div class="head"><div><h2 class="t">The kilometre around you.</h2><div class="sub" id="plan-sub">Buildings in ink, roads as hairlines, green as green. Every mapped use a dot. What only the satellite knows, in orange.</div></div>
+      <div class="legend plan-legend" id="plan-legend"></div></div>
+    <svg id="plan" viewBox="0 0 1000 1000" role="img" aria-label="A plan of the kilometre around the node"></svg>
+  </section>
+
   <section class="grid g300 mt">
-    <div class="card r2 in" style="animation-delay:.1s">
+    <div class="card r2 in" data-card="act" style="animation-delay:.1s">
       <div class="eyebrow" style="color:var(--orange)">Act here · what the node said, and what you did</div>
       <div class="rho" style="margin-top:18px">
         <svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--webblue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg>
@@ -218,7 +247,7 @@ footer .fc .hex{width:8px;height:9px}
       </div>
       <div id="alerts" style="margin-top:20px"></div>
     </div>
-    <div class="grid" style="align-content:start" id="world"></div>
+    <div class="two" id="world"></div>
   </section>
 </section>
 
@@ -274,6 +303,7 @@ footer .fc .hex{width:8px;height:9px}
   <span id="foot-mid">A node of a distributed computer for places · redesigning the relationship between production and place</span>
   <span>alpha · <a href="mailto:info@fab.city">tell us what broke or helped</a> · <a href="https://planetai.fab.city/node0/">planetai.fab.city/node0</a></span>
 </div></div></footer>
+<div class="arrbar" id="arrbar"><span>Arrange: ← → move a card, ✕ hides it.</span><select id="arr-restore"><option value="">Restore a hidden card…</option></select><button class="btn ghost" onclick="layoutReset()">Default</button><button class="btn" onclick="layoutSave()">Done</button></div>
 <div class="toast" id="toast"></div>
 <script>
 // ------------------------------------------------------------------ helpers
@@ -294,7 +324,7 @@ const spark=(vals,color,h=36)=>{const v=(vals||[]).filter(x=>x!=null);if(v.lengt
 let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], GROUP='sources', LAST=null;
 const kiosk=new URLSearchParams(location.search).get('kiosk')==='1';
 document.querySelectorAll('nav.views button').forEach(b=>b.onclick=()=>show(b.dataset.view));
-function show(v){document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav.views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));document.body.classList.toggle('kiosk',v==='wall'&&kiosk);if(v==='setup')loadSetup();if(v==='network'&&LAST)drawNetwork(LAST);}
+function show(v){if(v==='arrange'){show('now');arrangeStart();return;}document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav.views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));document.body.classList.toggle('kiosk',v==='wall'&&kiosk);if(v==='setup')loadSetup();if(v==='network'&&LAST)drawNetwork(LAST);}
 function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.style.color=bad?'var(--ink)':'var(--bg)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);}
 const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 
@@ -337,7 +367,7 @@ async function refresh(){
       at!=null&&{label:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':at>=27?'#E8873A':'#7AC943',spark:atSeries,note:`${fmt(inT,1)} °C at ${fmt(inH)}% humidity indoors. ${at>=40?'Heatstroke territory.':at>=32?'Heat stress: water, air, rest.':at>=27?'Warm; fine for most.':'Comfortable.'}`},
       wind!=null&&{label:'Wind',value:fmt(wind),unit:`km/h ${compass(wdir)}`,color:'#7AC943',spark:null,note:wind<5?'Still. Whatever burns nearby stays nearby.':wind<15?'Light. Smoke drifts, slowly.':wind<30?'Breezy. Smoke travels; so does clean air.':'Strong.'},
     ].filter(Boolean);
-    $('#tiles').innerHTML=tiles.map((t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`).join('');
+    $('#tiles').innerHTML=tiles.map((t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" data-card="tile:${t.label.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`).join('');
     drawDay(ser,hue,iv);
     // every sensor, with a story
     const local=sensors.filter(s=>s.local), pub=sensors.filter(s=>!s.local&&s.kind==='sensor');
@@ -376,12 +406,13 @@ async function refresh(){
       tmod!=null&&{title:'The weather',value:fmt(tmod,1),unit:'°C outside',color:'#F4ECE2',story:`${rain?fmt(rain,1)+' mm of rain this hour':'Dry'}${uv!=null?`, ${uv<1?'no UV left in the day':uv<6?'moderate UV':'strong UV'}`:''}${o3!=null?`, ozone at ${fmt(o3)}`:''}. ${wind!=null&&wind<5&&(ov||0)>15?'Still air is keeping the smoke where it is.':'Nothing in the sky is working against you.'}`},
       ov!=null&&mv!=null&&{title:'The gap',value:(ov-mv>=0?'+':'')+fmt(ov-mv),unit:'µg/m³ over the model',color:'#E8873A',story:'The difference between your street and the satellite square it sits in — the local signal an 11 km cell cannot see.'},
     ].filter(Boolean);
-    $('#world').innerHTML=W.map((w,i)=>`<div class="card world lift ${RADII[(i+1)%4]} in" style="animation-delay:${i*70+80}ms"><div class="row"><span class="eyebrow" style="letter-spacing:.2em">${w.title}</span><span style="white-space:nowrap"><span class="num" style="color:${w.color}">${w.value}</span><small>${w.unit}</small></span></div><div class="story">${esc(w.story)}</div></div>`).join('');
+    $('#world').innerHTML=W.map((w,i)=>`<div class="card world lift ${RADII[(i+1)%4]} in" data-card="world:${w.title.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div class="row"><span class="eyebrow" style="letter-spacing:.2em">${w.title}</span><span style="white-space:nowrap"><span class="num" style="color:${w.color}">${w.value}</span><small>${w.unit}</small></span></div><div class="story">${esc(w.story)}</div></div>`).join('');
     // wall
     $('#wall-line').innerHTML=iv!=null?`The room is ${verb.toLowerCase().replace('holding at','holding at')} <b>${fmt(iv)}</b> ${new Date().getHours()>=18||new Date().getHours()<5?'tonight':'right now'}.`:`No indoor sensor <b>–</b> yet.`;
     $('#wall-why').textContent=why(iv,ov,mv,g);
     $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
     $('#foot-mid').textContent=`Node ${h.node} · one place, seen from the wall to orbit · Fab City`;
+    drawPlan(); applyLayout();
     if($('#network').classList.contains('on'))drawNetwork(LAST);
   }catch(e){$('#dot').className='bad';$('#pulsetxt').textContent='node not answering';}
 }
@@ -461,6 +492,76 @@ function drawNetwork(L){
   $('#cells-k').textContent=`${ncells} of the twenty Fab City Index cells have a source at this node. Governance is filled by ρ, which only exists because somebody here answered.`;
   const v=[['readings kept',`${(h.ingested||0).toLocaleString()} — none of them leave`],['polls',(h.polls||0).toLocaleString()],['awake for',`${Math.floor((h.uptime_s||0)/3600)} h ${Math.floor(((h.uptime_s||0)%3600)/60)} min`],['listening to',`${local} of yours, ${sensors.filter(s=>!s.local&&s.kind==='sensor').length} public, ${sensors.filter(s=>s.kind==='model').length} models`],['over the radio',h.mesh&&h.mesh.packets?`${h.mesh.packets} packets via ${h.mesh.gateway}`:'no radio yet'],['errors',Object.keys(h.errors||{}).length?Object.entries(h.errors).map(([k,x])=>k+': '+x).join('; '):'none'],['version',`${h.version||''} · Apache-2.0`]];
   $('#vitals').innerHTML=v.map(([k,x])=>`<div class="vit"><span>${k}</span><span>${esc(x)}</span></div>`).join('');
+}
+
+
+// ------------------------------------------------------------------ the plan: a figure-ground of the kilometre
+const PLAN_LAYERS={building:['buildings on the map','#F4ECE2'],sat:['only the satellite knows','#E8873A'],road:['roads','#8A8378'],green:['green','#00A057'],poi:['uses','#3FA9F5']};
+const USE_COLORS={food:'#E8873A',market:'#E8873A',retail:'#3FA9F5',education:'#7AC943',health:'#E62038',worship:'#F4ECE2',lodging:'#20388D',services:'#3FA9F5',other:'#8A8378'};
+let PLAN=null, PLAN_OFF=new Set();
+async function drawPlan(){
+  const card=$('#plancard'); if(!card)return;
+  if(!PLAN){try{PLAN=await api('/place/geojson');}catch(e){PLAN={features:[]};}}
+  const F=PLAN.features||[]; if(!F.length){card.hidden=true;return;} card.hidden=false;
+  const [clon,clat]=PLAN.center, R=PLAN.radius_m||1000, S=500/(R*1.05);           // px per metre, circle fills the square
+  const px=([lon,lat])=>[500+(lon-clon)*111320*Math.cos(clat*Math.PI/180)*S, 500-(lat-clat)*111320*S];
+  const ring=r=>r.map(px).map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ');
+  const poly=g=>g.type==='Polygon'?`M${ring(g.coordinates[0])}Z`:g.type==='MultiPolygon'?g.coordinates.map(pg=>`M${ring(pg[0])}Z`).join(' '):'';
+  let L={building:'',sat:'',road:'',green:'',poi:''}, counts={building:0,sat:0,road:0,green:0,poi:0};
+  for(const f of F){const k=f.properties.kind,g=f.geometry; if(!L.hasOwnProperty(k))continue; counts[k]++;
+    if(k==='road'&&g.type==='LineString'){const w=/^(primary|secondary|trunk)$/.test(f.properties.highway)?2.2:/^(tertiary|residential|unclassified)$/.test(f.properties.highway)?1.4:.6;L.road+=`<polyline points="${ring(g.coordinates)}" stroke-width="${w}"/>`;}
+    else if(k==='poi'){const c=g.type==='Point'?px(g.coordinates):px(g.coordinates[0][0]);L.poi+=`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${USE_COLORS[f.properties.category]||'#8A8378'}" data-name="${esc(f.properties.name||f.properties.category||'')}"><title>${esc(f.properties.name||'')}${f.properties.name?' · ':''}${esc(f.properties.category||'')}</title></circle>`;}
+    else if(g.type==='Polygon'||g.type==='MultiPolygon'){L[k]+=`<path d="${poly(g)}"/>`;}}
+  const on=k=>PLAN_OFF.has(k)?' style="display:none"':'';
+  $('#plan').innerHTML=`<defs><clipPath id="pc"><circle cx="500" cy="500" r="${R*S}"/></clipPath></defs>
+    <circle cx="500" cy="500" r="${R*S}" fill="rgba(244,236,226,.03)" stroke="rgba(244,236,226,.15)" stroke-width="1"/>
+    <g clip-path="url(#pc)">
+      <g fill="rgba(0,160,87,.22)" stroke="none"${on('green')}>${L.green}</g>
+      <g fill="none" stroke="#8A8378" stroke-linecap="round" stroke-linejoin="round" opacity=".7"${on('road')}>${L.road}</g>
+      <g fill="rgba(244,236,226,.78)" stroke="none"${on('building')}>${L.building}</g>
+      <g fill="rgba(232,135,58,.35)" stroke="#E8873A" stroke-width=".7"${on('sat')}>${L.sat}</g>
+      <g${on('poi')}>${L.poi}</g>
+    </g>
+    <circle cx="500" cy="500" r="7" fill="var(--hue)"/><circle cx="500" cy="500" r="14" fill="none" stroke="var(--hue)" stroke-width="1.5"><animate attributeName="r" values="10;26;10" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0;.8" dur="4s" repeatCount="indefinite"/></circle>
+    <text x="500" y="${500+R*S+28}" text-anchor="middle" style="font:500 12px var(--fb);letter-spacing:.14em;fill:#8A8378">${R} M · NORTH UP · ${esc(LAST?LAST.h.node:'')}</text>
+    <line x1="${500-R*S}" y1="${500+R*S+52}" x2="${500-R*S+200*S}" y2="${500+R*S+52}" stroke="#8A8378" stroke-width="1.5"/><text x="${500-R*S}" y="${500+R*S+70}" style="font:500 11px var(--fb);fill:#8A8378">200 m</text>`;
+  $('#plan').setAttribute('viewBox',`0 0 1000 ${Math.round(500+R*S+80)}`);
+  $('#plan-legend').innerHTML=Object.entries(PLAN_LAYERS).filter(([k])=>counts[k]).map(([k,[l,c]])=>`<button class="${PLAN_OFF.has(k)?'off':''}" onclick="PLAN_OFF.has('${k}')?PLAN_OFF.delete('${k}'):PLAN_OFF.add('${k}');drawPlan()"><i style="background:${c}"></i>${l} · ${counts[k].toLocaleString()}</button>`).join('');
+  const uses=F.filter(f=>f.properties.kind==='poi').reduce((m,f)=>{m[f.properties.category]=(m[f.properties.category]||0)+1;return m;},{});
+  $('#plan-sub').textContent=`${counts.building.toLocaleString()} buildings on the map${counts.sat?`, ${counts.sat.toLocaleString()} more only the satellite knows`:''}. Uses: ${Object.entries(uses).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} ${k}`).join(', ')}. OpenStreetMap${counts.sat?' and Google Open Buildings':''}; north up.`;
+}
+
+// ------------------------------------------------------------------ arrange: order and hide cards; saved on the node as UI_LAYOUT
+let LAYOUT=null;   // {order:[ids], hidden:[ids]}
+async function loadLayout(){ if(LAYOUT)return LAYOUT; try{const d=await api('/settings');const r=(d.runtime||[]).find(x=>x.key==='UI_LAYOUT');LAYOUT=r&&r.value?JSON.parse(r.value):{order:[],hidden:[]};}catch(e){LAYOUT={order:[],hidden:[]};} const loc=localStorage.getItem('planetai_layout'); if(loc&&(!LAYOUT.order.length&&!LAYOUT.hidden.length))try{LAYOUT=JSON.parse(loc);}catch(e){} return LAYOUT; }
+function cards(){return [...document.querySelectorAll('#now [data-card]')];}
+async function applyLayout(){ await loadLayout(); applyLayoutNow(); }
+function applyLayoutNow(){
+  const L=LAYOUT||{order:[],hidden:[]};
+  cards().forEach(c=>{c.style.display=L.hidden.includes(c.dataset.card)?'none':'';});
+  // order within each parent: cards that share a parent are sorted by their position in L.order; unknown ones keep place
+  const parents=new Set(cards().map(c=>c.parentElement)); parents.forEach(p=>{const kids=[...p.children].filter(c=>c.dataset&&c.dataset.card); if(kids.length<2)return;
+    const pos=id=>{const i=L.order.indexOf(id);return i<0?1e6:i;}; const sorted=[...kids].sort((a,b)=>pos(a.dataset.card)-pos(b.dataset.card)); sorted.forEach(k=>p.appendChild(k));});
+  if(document.body.classList.contains('arranging'))arrangeControls();
+}
+function arrangeStart(){document.body.classList.add('arranging');LAYOUT?arrangeControls():loadLayout().then(arrangeControls);}
+function arrangeControls(){
+  const L=LAYOUT||{order:[],hidden:[]};
+  cards().forEach(c=>{if(c.querySelector(':scope > .arr'))return;const b=document.createElement('div');b.className='arr';b.innerHTML=`<button title="move earlier" onclick="layoutMove('${c.dataset.card}',-1)">←</button><button title="move later" onclick="layoutMove('${c.dataset.card}',1)">→</button><button title="hide" onclick="layoutHide('${c.dataset.card}')">✕</button>`;c.appendChild(b);});
+  const sel=$('#arr-restore'); sel.innerHTML='<option value="">Restore a hidden card…</option>'+L.hidden.map(id=>`<option value="${id}">${id.replace(/^(tile|world):/,'').replace(/-/g,' ')}</option>`).join('');
+  sel.onchange=()=>{if(sel.value){L.hidden=L.hidden.filter(x=>x!==sel.value);applyLayoutNow();}};
+}
+function layoutMove(id,dir){const L=LAYOUT;const el=document.querySelector(`[data-card="${id}"]`);const sib=[...el.parentElement.children].filter(c=>c.dataset&&c.dataset.card&&c.style.display!=='none');const i=sib.indexOf(el),j=i+dir;if(j<0||j>=sib.length)return;
+  const ids=sib.map(c=>c.dataset.card);[ids[i],ids[j]]=[ids[j],ids[i]];L.order=L.order.filter(x=>!ids.includes(x)).concat(ids);applyLayoutNow();}
+function layoutHide(id){LAYOUT.hidden.push(id);applyLayoutNow();}
+function layoutReset(){LAYOUT={order:[],hidden:[]};localStorage.removeItem('planetai_layout');applyLayoutNow();}
+async function layoutSave(){
+  document.body.classList.remove('arranging'); document.querySelectorAll('.arr').forEach(e=>e.remove());
+  localStorage.setItem('planetai_layout',JSON.stringify(LAYOUT));
+  const tok=TOKEN||localStorage.getItem('planetai_admin')||'';
+  if(!tok){toast('Saved in this browser. Unlock Set up to save for every screen.');return;}
+  const r=await fetch('/settings',{method:'PUT',headers:{'content-type':'application/json',authorization:'Bearer '+tok,'X-Agent':'dashboard'},body:JSON.stringify({UI_LAYOUT:(LAYOUT.order.length||LAYOUT.hidden.length)?JSON.stringify(LAYOUT):''})});
+  toast(r.ok?'Layout saved on the node, for every screen.':'Saved in this browser only ('+r.status+').');
 }
 
 // ------------------------------------------------------------------ actions

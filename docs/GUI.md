@@ -20,6 +20,20 @@ annotated 24-hour chart with the WHO line, the indoor peak named ("someone cooke
 street's peak, and now. Then every sensor with a story generated from its readings. Then what the node said, with the
 ρ ring and **I did this** on every unanswered act-level alert. Then the world: the sea, the land, the weather, the gap.
 
+## The kilometre around you
+
+When the place pack has run, a plan appears under the World band: a figure-ground of the radius around the node.
+Buildings on the map in ink, roads as hairlines weighted by class, green as green, every mapped use a dot coloured by
+kind, and the buildings only the satellite knows in orange, so the mapping gap is visible. North up, a 200 m scale bar,
+the node pulsing at the centre. Legend buttons toggle each layer; hovering a dot names the place. Drawn in the browser
+from `/place/geojson`, no map tiles, works offline.
+
+## Arrange
+
+The Arrange button puts the Now view into edit mode: every card gets ← → to move it within its row and ✕ to hide it;
+a menu restores hidden cards; Default resets. Done saves the layout in the browser and, when Set up is unlocked, on the
+node as `UI_LAYOUT`, so every screen in the house shows the same arrangement.
+
 ## Network
 
 The house as one node of a larger instrument: this room, the neighbourhood, the planetary models, the parent (or "not

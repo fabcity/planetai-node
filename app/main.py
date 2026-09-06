@@ -519,6 +519,37 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "cells": cells_, "rho": rho_}
 
 
+@app.get("/place/geojson")
+def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float = 0.00002):
+    """The geometry the place pack stored: OpenStreetMap buildings, uses, green, roads, and the satellite's buildings
+    (`sat`), as one GeoJSON FeatureCollection for the dashboard's plan. Simplified so a kilometre is a few hundred KB.
+    Empty until the place pack has run; never an error."""
+    want = {k.strip() for k in kinds.split(",") if k.strip()}
+    feats: list = []
+    try:
+        with db() as con, con.cursor() as cur:
+            cur.execute("SELECT to_regclass('place_features') IS NOT NULL")
+            if cur.fetchone()[0] and want - {"sat"}:
+                cur.execute("""SELECT kind, category, name, tags->>'building' AS btype, tags->>'highway' AS hw,
+                                      ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, %s), 6) AS g
+                               FROM place_features WHERE kind = ANY(%s)""", (tolerance, list(want - {"sat"})))
+                for kind, cat, name, btype, hw, g in cur.fetchall():
+                    feats.append({"type": "Feature", "properties": {"kind": kind, "category": cat, "name": name, "building": btype, "highway": hw}, "geometry": json.loads(g)})
+            cur.execute("SELECT to_regclass('place_buildings_sat') IS NOT NULL")
+            if cur.fetchone()[0] and "sat" in want:
+                # only the satellite footprints with no mapped building within 3 m: the gap, drawn
+                cur.execute("""SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, %s), 6), s.confidence FROM place_buildings_sat s
+                               WHERE s.source='open_buildings_v3' AND NOT EXISTS (
+                                 SELECT 1 FROM place_features f WHERE f.kind='building' AND ST_DWithin(f.geom::geography, s.geom::geography, 3))""", (tolerance,))
+                for g, conf in cur.fetchall():
+                    feats.append({"type": "Feature", "properties": {"kind": "sat", "confidence": conf}, "geometry": json.loads(g)})
+    except Exception as e:  # noqa: BLE001
+        log.warning("place/geojson: %s", e)
+    return {"type": "FeatureCollection", "features": feats,
+            "center": [float(os.getenv("NODE_LON", 0) or 0), float(os.getenv("NODE_LAT", 0) or 0)],
+            "radius_m": int(settings.get("PLACE_RADIUS_M", "1000") or 1000)}
+
+
 @app.get("/history")
 def history(sensor_id: str, metric: str, limit: int = Query(500, le=5000)):
     """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,

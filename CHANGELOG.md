@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.28 — 2026-09-06 — the plan, the grid, and Arrange
+
+- **The kilometre around you, drawn.** A figure-ground plan under the World band: buildings on the map in ink, roads as
+  hairlines by class, green as green, each mapped use a coloured dot with its name on hover, the buildings only the
+  satellite knows in orange, north up, a 200 m scale, the node pulsing at the centre. Legend toggles per layer. Drawn in
+  the browser from `/place/geojson` (PostGIS, simplified); no tiles, works offline. Rendered from the real Bukit: 2,969
+  shapes, 37 uses.
+- **No more holes in the grid.** Explicit tracks instead of auto-fit: six on a desktop (hero two, four tiles), three on
+  a laptop, one on a phone; dense flow; equal row heights; the World cards as a two-by-two beside the alerts.
+- **Arrange.** A fifth button: every card gets ← → and ✕, hidden cards come back from a menu, Default resets, Done
+  saves in the browser and on the node (`UI_LAYOUT`, when Set up is unlocked) so every screen in the house agrees.
+  Exercised headlessly: move swaps, hide hides, restore lists.
+
 ## v0.27.1 — 2026-09-06 — the satellite's buildings, and the mapping briefing
 
 - **Google Open Buildings** in the place pack, through the earth-engine pack's credentials: V3 footprints within the

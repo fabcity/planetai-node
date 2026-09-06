@@ -24,8 +24,8 @@ for i in sorted(used - have):
     errs.append(f"script references #{i}, which is not in the markup")
 
 main = open("app/main.py").read()
-routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_-]*)"', main))
-for p in sorted(set(re.findall(r"(?:api|fetch)\('(/[a-z_-]+)", js))):
+routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_/-]*)"', main))   # paths may nest: /place/geojson
+for p in sorted(set(re.findall(r"(?:api|fetch)\('(/[a-z_/-]+)", js))):
     if p not in routes:
         errs.append(f"page calls {p}, which app/main.py does not define")
 
