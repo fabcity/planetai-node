@@ -175,7 +175,8 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                         spec = next((t for t in tools if t["function"]["name"] == fn), {}).get("function", {}).get("parameters", {}).get("properties", {})
                         if "agent" in spec:
                             args.setdefault("agent", f"{NAME}/{rung.name}")
-                        log.info("[%s] tool %s %s", rung.name, fn, json.dumps(args)[:160])
+                        shown = {k: ("****" if ("KEY" in k or "TOKEN" in k or "PASS" in k) else v) for k, v in args.items()} if fn != "settings_set" else {"changes": sorted((args.get("changes") or {}).keys())}
+                        log.info("[%s] tool %s %s", rung.name, fn, json.dumps(shown)[:160])   # never the values of settings_set: a Telegram token or an AI key would land in the container log
                         try:
                             res = await session.call_tool(fn, args)
                             text = "\n".join(getattr(x, "text", "") for x in res.content)[:8000]
