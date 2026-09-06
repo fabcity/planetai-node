@@ -32,7 +32,8 @@ of it your building keeps out. It tells you the hour to air the house.
 **Your data, kept; your summary, shared.** The database never leaves the machine. Backups run nightly and a NAS can
 collect them. What flows upward, if you point the node somewhere, is a daily summary: hourly means, Index cells, ρ.
 
-**Nothing to buy.** Mac, Linux, Raspberry Pi, or Windows with WSL2, and the sensors people already own. Without a
+**Nothing to buy.** A Mac, a Linux machine, or Windows with WSL2, and the sensors people already own. Raspberry Pi is
+not ready yet (see `PLATFORMS.md`). Without a
 sensor it still knows your weather, the satellite air model for your district and forty years of climate for your
 coordinates.
 
@@ -58,8 +59,8 @@ planetai ui            # the dashboard's address, and the token for its settings
 
 Open the dashboard. Set up → Sources is where you add or change sensors. Set up → Model is where the bot's brain lives.
 
-When an alert arrives that you act on, tell the node, in Telegram (`/act 12 closed the windows`) or with the button on the
-dashboard. The node keeps one score for itself: how many of its alerts led to someone doing something. That number is
+When an alert arrives that you act on, tell the node: with the button on the dashboard, with `planetai act 12` in the
+terminal, or by replying `/act 12 closed the windows` in Telegram once the bot runs (`planetai agent local`, below). The node keeps one score for itself: how many of its alerts led to someone doing something. That number is
 called ρ, and it is the only one on the page that comes from a person.
 
 ## Talk to it

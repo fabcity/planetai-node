@@ -20,8 +20,10 @@ group; log out and in once. Containers restart with the machine.
 
 ## Raspberry Pi 4 / 5
 
-64-bit Raspberry Pi OS. 4 GB is fine. Boot from an SSD if you can; SD cards die under Postgres writes within a year.
-`planetai mesh` works; the Pi makes a good district node later.
+**Not yet.** The database image the node uses (`postgis/postgis:16-3.4-alpine`) has no arm64 build, so on a Pi or
+any other arm64 Linux machine the database container stops with `exec format error` (measured on a clean Ubuntu 24.04
+arm64 VM, 6 September 2026). An Apple Silicon Mac is fine: its Docker runs amd64 images. When an arm64 image is chosen:
+64-bit Raspberry Pi OS, 4 GB, boot from an SSD; SD cards die under Postgres writes within a year.
 
 ## Windows
 
@@ -30,5 +32,6 @@ are reached from WSL2 normally.
 
 ## Any of them
 
-The node needs about 2 GB of disk; the database grows around 50 MB a year. Ethernet over WiFi where you can. The
+The node needs about 2 GB of disk. Node #1, with four local sensors and the public references, adds about 1 MB of
+readings a day: a few hundred MB a year, not 50. Ethernet over WiFi where you can. The
 machine must boot and log in on its own after a power cut, or the node is down until someone types a password.

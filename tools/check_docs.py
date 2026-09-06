@@ -121,6 +121,13 @@ for doc in DOCS:
         got = int(m.group(1).replace(",", ""))
         if abs(got - app_lines) > max(200, app_lines * 0.2):
             errs.append(f"{doc}: claims about {got} lines but app/ has {app_lines}")
+# the MCP tool count is quoted in words in three places and drifted from fifteen to seventeen without anyone noticing
+WORDS = {"fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20}
+n_tools = len(re.findall(r"^@mcp\.tool\(\)", open("app/agent.py").read(), re.M))
+for f in ("AGENTS.md", "docs/DEVELOPING.md", "bin/planetai"):
+    for w in re.findall(r"\b([a-z]+) tools\b", open(f).read()):
+        if w in WORDS and WORDS[w] != n_tools:
+            errs.append(f"{f}: says {w} tools; app/agent.py defines {n_tools}")
 if n_core_rules != 2:
     errs.append(f"config/rules.yml has {n_core_rules} rules; docs/PACKS.md says two domain-blind core rules — check both")
 

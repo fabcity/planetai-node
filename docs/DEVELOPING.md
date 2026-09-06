@@ -49,7 +49,7 @@ cd ../planetai && make deploy
 
 `AGENTS.md` at the root is the operating manual for an AI agent (Claude, Codex, a local model): the MCP surface at
 `/mcp`, the `--json` commands, the invariants, the gates. `planetai agent` prints the endpoint, the token and a config
-snippet. The MCP server is `app/agent.py`, fifteen tools over the existing API; host operations are handed back as
+snippet. The MCP server is `app/agent.py`, seventeen tools over the existing API; host operations are handed back as
 commands because the container has no Docker or git. `app/agent_loop.py` is a local model (Ollama, `qwen3:4b`) using
 those tools, talking to the household over Telegram; `planetai agent local` sets it up. A bigger model on a laptop or workstation becomes the `remote` rung with
 `tools/remote-model.sh gptoss` (llama.cpp, `--jinja` for tool calls, an API key, the tailnet address printed for the
@@ -63,7 +63,7 @@ as constrained JSON because a 4B model narrates its reasoning as prose otherwise
 app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py ·
               bootstrap.py · static/index.html (the dashboard)
 bin/planetai  the operator CLI
-packs/        eight packs; see PACKS.md
+packs/        nine packs; see PACKS.md
 config/       rules.yml (two domain-blind rules), mosquitto, reticulum
 tools/        gates, hooks, bundle, release, mesh-provision.sh, nas/ (the NAS puller)
 tests/        offline suites

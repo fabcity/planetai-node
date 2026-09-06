@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-20388D?style=flat-square"></a>
-  <a href="CHANGELOG.md"><img alt="Version 0.24" src="https://img.shields.io/badge/version-0.24-171717?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="Version 0.31" src="https://img.shields.io/badge/version-0.31-171717?style=flat-square"></a>
   <img alt="Node #1 live" src="https://img.shields.io/badge/node%20%231-live%20in%20Bali-00A057?style=flat-square">
   <img alt="Containers: 2" src="https://img.shields.io/badge/containers-2-171717?style=flat-square">
   <img alt="Clouds required: 0" src="https://img.shields.io/badge/clouds%20required-0-171717?style=flat-square">

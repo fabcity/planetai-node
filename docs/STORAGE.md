@@ -61,7 +61,8 @@ planetai storage set remote r2:planetai/bayu-2
 ```
 
 B2 or R2 cost cents a month for a node's lifetime of dumps. Drive works but is a person's account, not infrastructure.
-Dumps hold readings and alert texts, not tokens; still, treat the remote as private. rclone's `crypt` backend
+Dumps hold readings, alert texts and the `settings` table, which carries any token set from the dashboard or by
+`planetai telegram`. Treat every dump and every remote as private. rclone's `crypt` backend
 encrypts if you want that.
 
 ## The export
