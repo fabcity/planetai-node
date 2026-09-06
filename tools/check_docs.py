@@ -125,7 +125,8 @@ for doc in DOCS:
 WORDS = {"fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20}
 n_tools = len(re.findall(r"^@mcp\.tool\(\)", open("app/agent.py").read(), re.M))
 for f in ("AGENTS.md", "docs/DEVELOPING.md", "bin/planetai"):
-    for w in re.findall(r"\b([a-z]+) tools\b", open(f).read()):
+    for w in re.findall(r"\b([A-Za-z]+) tools\b", open(f).read()):
+        w = w.lower()
         if w in WORDS and WORDS[w] != n_tools:
             errs.append(f"{f}: says {w} tools; app/agent.py defines {n_tools}")
 if n_core_rules != 2:
