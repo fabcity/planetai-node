@@ -31,6 +31,8 @@ resolve() { local t="$1"; while [[ -L "$t" ]]; do local d; d="$(cd "$(dirname "$
 HOME_DIR="${PLANETAI_HOME:-$(cd "$(dirname "$(resolve "$0")")/.." && pwd)}"
 LOG="$HOME_DIR/.planetai-setup.log"
 cd "$HOME_DIR" 2>/dev/null || { echo "no node at $HOME_DIR. Install with: curl -fsSL planetai.fab.city/install | bash"; exit 1; }
+# every long step appends here and nothing ever trimmed it: node #1's was 600 KB after four days. Keep the last ~200 KB.
+if [[ -f "$LOG" ]] && [[ "$(wc -c < "$LOG" | tr -d ' ')" -gt 1000000 ]]; then tail -c 200000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"; fi
 
 # ---------------------------------------------------------------- tiny ui, no dependencies
 B=$'\033[1m'; D=$'\033[2m'; G=$'\033[32m'; Y=$'\033[33m'; R=$'\033[31m'; BL=$'\033[34m'; N=$'\033[0m'
@@ -92,7 +94,10 @@ envset() { # idempotent upsert
   local k="$1" v="$2"
   [[ -f .env ]] || cp .env.example .env
   if grep -q "^${k}=" .env; then
-    if [[ "$(uname -s)" == Darwin ]]; then sed -i '' "s|^${k}=.*|${k}=${v}|" .env; else sed -i "s|^${k}=.*|${k}=${v}|" .env; fi
+    # the value goes into a sed replacement: `&` would paste the match, `|` would end it, `\` would escape. A CKAN
+    # portal list or a JSON layout carries all three. Escape them; the key is always [A-Z_].
+    local esc; esc="$(printf '%s' "$v" | sed -e 's/[\\&|]/\\&/g')"
+    if [[ "$(uname -s)" == Darwin ]]; then sed -i '' "s|^${k}=.*|${k}=${esc}|" .env; else sed -i "s|^${k}=.*|${k}=${esc}|" .env; fi
   else echo "${k}=${v}" >> .env; fi
 }
 port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }

@@ -65,3 +65,7 @@ assert 'packs) shift; cmd_packs "$@"' in cli and "packs_install()" in cli and 'i
 _list = cli[cli.index("cmd_packs() {"):cli.index("packs_install() {")]
 assert "docker compose build" not in _list and ">> .env" not in _list, "planetai packs (the listing) must not build or write .env"
 print("packs listing is read-only")
+# v0.32 — envset escapes what sed would swallow (a CKAN list carries `|` and `&`), and the setup log is capped
+assert "sed -e 's/[\\\\&|]/\\\\&/g'" in cli, "CLI: envset must escape \\ & | before the sed replacement"
+assert "tail -c 200000" in cli, "CLI: .planetai-setup.log is trimmed"
+print("envset escapes, setup log capped")
