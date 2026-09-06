@@ -42,6 +42,15 @@ def TG_TOKEN(): return cfg("TELEGRAM_BOT_TOKEN")
 def CHATS(): return {c.strip() for c in cfg("TELEGRAM_CHAT_IDS").replace(" ", "").split(",") if c.strip()}
 BRIEF_HOUR = int(os.getenv("BRIEF_HOUR", "7"))
 LOCALE = os.getenv("ALERT_LOCALE", "en")
+
+
+LANG_NAME = {"id": "Bahasa Indonesia", "es": "Spanish"}.get(LOCALE, "English")
+
+
+def T(en: str, **other: str) -> str:
+    """The bot's own few sentences, in the node's language. Bahasa falls back to English here until a native reader
+    has been through the set; the model itself answers in whatever ALERT_LOCALE says."""
+    return other.get(LOCALE, en)
 MAX_ROUNDS = 8
 SKIP_FOR = 300
 
@@ -105,7 +114,7 @@ SYSTEM = f"""You run PLANETAI node '{NODE}', a small computer that connects ever
 the wall to satellites overhead, and tells the people there what to do about the air, the heat, the sea and the land. You have tools that read the node and act on it. You are talking to the people who live
 or work here, on Telegram.
 - Use tools to answer; never guess numbers. For "how is it" questions call health_check and status. For the sea, swell, surf, wind, rain, UV or the land, call `context`. For a sensor's history, `readings`.
-- Answer in {'Bahasa Indonesia' if LOCALE == 'id' else 'English'}. Explain, do not just report: say what is happening, what it means for them, and what to do.
+- Answer in {LANG_NAME}. Explain, do not just report: say what is happening, what it means for them, and what to do.
 - Start with an emoji that fits (🏠 inside, 🌳 outside, 🛰️ satellites, 🌊 sea, 🥵 heat, 📡 a sensor, ✅ fine, ⚠️ watch, 🚨 act). Use a few more where they help the eye. Short paragraphs, not lists.
 - Avoid statistics. No means, peaks, correlations, percentages or counts unless the person asks for numbers. One number is fine when it drives the advice (a PM2.5 level, a temperature).
 - When a person says they did something about an alert, record it with `act`, their words as the note, and thank them.
@@ -183,12 +192,14 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                         except Exception as e:  # noqa: BLE001
                             text = f"tool error: {type(e).__name__}: {e}"
                         messages.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
-                return "I ran out of steps. Ask something narrower.", rung.name
+                return T("I ran out of steps. Ask something narrower.", es="Me quedé sin pasos. Pregunta algo más concreto."), rung.name
             except (httpx.HTTPError, KeyError, ValueError) as e:
                 last_err = e
                 rung.skip_until = time.time() + SKIP_FOR
                 log.warning("[%s] unavailable (%s: %s); trying the next rung", rung.name, type(e).__name__, str(e)[:100])
-    return f"No model answered ({type(last_err).__name__ if last_err else 'none configured'}). On the node: `ollama list`, and check AGENT_* in .env.", "none"
+    why = type(last_err).__name__ if last_err else 'none configured'
+    return T(f"No model answered ({why}). On the node: `ollama list`, and check AGENT_* in .env.",
+             es=f"Ningún modelo respondió ({why}). En el nodo: `ollama list`, y revisa AGENT_* en .env."), "none"
 
 
 class TelegramError(Exception):
@@ -272,7 +283,7 @@ async def main():
                         parts = text.split(maxsplit=2)
                         if len(parts) >= 2 and parts[1].isdigit():
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2] if len(parts) > 2 else "acted", "agent": f"{NAME}/telegram"})
-                            await telegram("sendMessage", chat_id=chat, text=f"Recorded: you acted on #{parts[1]}.")
+                            await telegram("sendMessage", chat_id=chat, text=T(f"Recorded: you acted on #{parts[1]}.", es=f"Anotado: actuaste sobre #{parts[1]}."))
                             continue
                     if text.startswith("/model"):
                         arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""

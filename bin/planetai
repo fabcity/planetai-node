@@ -432,7 +432,9 @@ print((x.get("message") or x.get("edited_message") or x.get("channel_post") or {
   # the dashboard may hold its own values for these, and those win over .env. Write the same values there too, so the
   # terminal and the dashboard never disagree about which bot this node talks to.
   runtime_set TELEGRAM_BOT_TOKEN "$tok" TELEGRAM_CHAT_IDS "$chat" || warn "the node is not answering, so only .env was written; planetai restart makes it take effect"
-  curl -sf "https://api.telegram.org/bot${tok}/sendMessage" -d chat_id="$chat" -d text="$(envget NODE_NAME) is connected. Alerts will arrive here." >/dev/null && say "sent you a hello"
+  local hello="$(envget NODE_NAME) is connected. Alerts will arrive here."
+  case "$(envget ALERT_LOCALE)" in es) hello="$(envget NODE_NAME) está conectado. Los avisos llegarán aquí.";; esac
+  curl -sf "https://api.telegram.org/bot${tok}/sendMessage" -d chat_id="$chat" -d text="$hello" >/dev/null && say "sent you a hello"
   docker compose up -d --force-recreate app >/dev/null 2>&1
   say "the node is restarting with Telegram on. Try:  planetai test-alert"
 }
@@ -459,6 +461,7 @@ Y
   message:
     en: "Test alert from your node. If you can read this, the whole path works: rule to message to you. Record it with \`planetai act <id>\`."
     id: "Alert uji dari node Anda. Jika Anda membaca ini, seluruh jalur berfungsi. Catat dengan \`planetai act <id>\`."
+    es: "Aviso de prueba de tu nodo. Si lees esto, todo el camino funciona: de la regla al mensaje y hasta ti. Regístralo con \`planetai act <id>\`."
 Y
   echo "  A rule that always fires has been added. The node checks rules every minute."
   printf '  Waiting'

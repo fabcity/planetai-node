@@ -7,3 +7,4 @@
   message:
     en: "🗄️ The city's open-data portal is going quiet.\n\nMost of what {name} publishes has not been updated in months. A portal that stops updating slowly becomes an archive, and the city loses a way to be checked.\n\n👉 Worth raising with whoever runs it."
     id: "🗄️ Portal data terbuka kota mulai sepi.\n\nSebagian besar yang diterbitkan {name} belum diperbarui berbulan-bulan. Portal yang berhenti diperbarui perlahan jadi arsip, dan kota kehilangan satu cara untuk diperiksa.\n\n👉 Layak disampaikan ke pengelolanya."
+    es: "🗄️ El portal de datos abiertos de la ciudad se está apagando.\n\nCasi todo lo que publica {name} lleva meses sin actualizarse. Un portal que deja de actualizar se convierte poco a poco en un archivo, y la ciudad pierde una forma de ser fiscalizada.\n\n👉 Vale la pena planteárselo a quien lo lleva."

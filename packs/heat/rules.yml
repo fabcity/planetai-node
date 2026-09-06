@@ -18,6 +18,7 @@
   message:
     en: "🥵 It is dangerously hot at {name}: it feels like {at} °C.\n\nHumidity is stopping sweat from cooling the body, so the air feels hotter than the thermometer says and the strain builds quietly.\n\n👉 Drink water, move air, stop hard work, and check on anyone old, young or unwell."
     id: "🥵 Panas berbahaya di {name}: terasa seperti {at} °C.\n\nKelembapan menghambat keringat mendinginkan tubuh, jadi udara terasa lebih panas dari angka termometer dan beban menumpuk diam-diam.\n\n👉 Minum air, gerakkan udara, hentikan kerja berat, dan cek orang tua, anak kecil, atau yang sakit."
+    es: "🥵 Hace un calor peligroso en {name}: la sensación es de {at} °C.\n\nLa humedad impide que el sudor enfríe el cuerpo, así que el aire se siente más caliente de lo que marca el termómetro y el desgaste se acumula sin que se note.\n\n👉 Bebe agua, mueve el aire, para el trabajo duro y pregunta cómo están los mayores, los niños y quien esté enfermo."
 
 - id: heat_danger
   level: act
@@ -34,6 +35,7 @@
   message:
     en: "🚨🥵 DANGER at {name}: it feels like {at} °C.\n\nThis is heatstroke territory. The body cannot shed heat at this level, and it goes wrong fast.\n\n👉 Cool the room or leave it. Wet skin, a fan, shade, water. Do not leave anyone alone in it."
     id: "🚨🥵 BAHAYA di {name}: terasa seperti {at} °C.\n\nIni wilayah heatstroke. Tubuh tidak bisa membuang panas di tingkat ini, dan cepat memburuk.\n\n👉 Dinginkan ruangan atau keluar. Basahi kulit, kipas, teduh, air. Jangan tinggalkan siapa pun sendirian di dalamnya."
+    es: "🚨🥵 PELIGRO en {name}: la sensación es de {at} °C.\n\nEsto es terreno de golpe de calor. A este nivel el cuerpo no consigue soltar calor, y se descompone rápido.\n\n👉 Enfría la habitación o sal de ella. Piel mojada, un ventilador, sombra, agua. No dejes a nadie solo ahí."
 
 - id: night_no_relief
   level: info
@@ -49,3 +51,4 @@
   message:
     en: "🌙🥵 Last night never cooled down at {name}.\n\nWhen a room stays this warm all night, the body does not recover in sleep; people wake tired and the heat wears them down day by day.\n\n👉 Open up at the coolest hour, just before dawn. If this is every night, the room needs shade or airflow, not a bigger fan."
     id: "🌙🥵 Semalam tidak sempat dingin di {name}.\n\nKalau ruangan sehangat ini semalaman, tubuh tidak pulih saat tidur; orang bangun lelah dan panas menggerus hari demi hari.\n\n👉 Buka di jam terdingin, sebelum subuh. Kalau tiap malam begini, ruangan perlu peneduh atau aliran udara, bukan kipas lebih besar."
+    es: "🌙🥵 Anoche nunca refrescó en {name}.\n\nCuando una habitación sigue así de caliente toda la noche, el cuerpo no se recupera durmiendo; la gente se levanta cansada y el calor la va desgastando día a día.\n\n👉 Abre a la hora más fresca, justo antes del amanecer. Si pasa todas las noches, la habitación necesita sombra o corriente de aire, no un ventilador más grande."
