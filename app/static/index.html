@@ -172,7 +172,7 @@ footer .fc .hex{width:8px;height:9px}
 <header><div class="wrap">
   <div class="brand"><span class="mark"><span class="hex o"></span><span class="i"></span></span><b id="nodename">node</b><span class="s" id="nodeplace">starting…</span></div>
   <nav class="views" id="views"><button class="on" data-view="now">Now</button><button data-view="network">Network</button><button data-view="setup">Set up</button><button data-view="wall">Wall</button></nav>
-  <div class="link"><i id="dot"></i><span id="pulsetxt">starting</span></div>
+  <div class="link"><span class="chip" style="background:#E8873A;color:#16150F;font-weight:700;padding:4px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase" title="An experiment. Tell us what breaks: info@fab.city">alpha</span><i id="dot"></i><span id="pulsetxt">starting</span></div>
 </div></header>
 
 <main><div class="wrap">
@@ -266,7 +266,7 @@ footer .fc .hex{width:8px;height:9px}
 <footer><div class="wrap"><div class="row">
   <div class="fc"><span style="display:flex;gap:3px"><span class="hex" style="background:var(--red)"></span><span class="hex" style="background:var(--blue)"></span><span class="hex" style="background:var(--green)"></span></span><b>FAB.CITY</b></div>
   <span id="foot-mid">A node of a distributed computer for places · redesigning the relationship between production and place</span>
-  <a href="https://planetai.fab.city/node0/">planetai.fab.city/node0</a>
+  <span>alpha · <a href="mailto:info@fab.city">tell us what broke or helped</a> · <a href="https://planetai.fab.city/node0/">planetai.fab.city/node0</a></span>
 </div></div></footer>
 <div class="toast" id="toast"></div>
 <script>
@@ -367,7 +367,7 @@ async function refresh(){
     $('#wall-line').innerHTML=iv!=null?`The room is ${verb.toLowerCase().replace('holding at','holding at')} <b>${fmt(iv)}</b> ${new Date().getHours()>=18||new Date().getHours()<5?'tonight':'right now'}.`:`No indoor sensor <b>–</b> yet.`;
     $('#wall-why').textContent=why(iv,ov,mv,g);
     $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
-    $('#foot-mid').textContent=`Node ${h.node} of a distributed computer for places · redesigning the relationship between production and place`;
+    $('#foot-mid').textContent=`Node ${h.node} · one place, seen from the wall to orbit · Fab City`;
     if($('#network').classList.contains('on'))drawNetwork(LAST);
   }catch(e){$('#dot').className='bad';$('#pulsetxt').textContent='node not answering';}
 }

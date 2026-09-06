@@ -1,31 +1,40 @@
 # Start here
 
-PLANETAI node is a small program that runs on a computer in your home, lab or office and tells you about the air,
-the heat and the weather around it, in plain sentences, on Telegram. It reads the sensors you already have, compares them
-with the public sensors nearby and with satellite models, and speaks only when something should change. Your readings
-stay on your machine.
+> **Alpha.** This is an experiment and you are joining it. Things will break; what you report decides what gets fixed
+> first. Write to **info@fab.city** with what broke, what helped, and what did not.
+
+PLANETAI node is a small program that runs on a computer in your home, lab or community centre. It connects everything
+that measures where you stand, from the sensor on the wall to the satellite overhead, into one picture of the place,
+sharp enough to act on: what to do about the air, the heat, the sea, the land, today, here. It tells you in plain
+sentences on Telegram, keeps the readings on your machine, and passes upward only what a city, a bioregion or a
+planetary model needs from the ground.
+
+Air is the first thing it watches, because that is the sensor most people already own. Heat, the coast and the land
+ship too. Water, energy, noise and more are a folder of rules each.
 
 ## What you get
 
-**Alerts you can act on.** Not "PM2.5 is 42." Instead: what is happening, what it means for the people in the house, and
-what to do. "Inside is worse than outside. Something is cooking or burning. Open a window." In English or Bahasa Indonesia.
+**Every scale in one picture.** The kitchen sensor, a radio in a field with no WiFi, the public station down the road,
+the city's open data, the satellite model overhead. The gap between them is the signal no map has.
+
+**Alerts you can act on.** Not "PM2.5 is 42." What is happening, what it means for the people in the house, and what to
+do. "Inside is worse than outside. Something is cooking or burning. Open a window." English or Bahasa Indonesia.
 
 **A dashboard that reads like a sentence.** "Falling to 9 micrograms, under the street, under the model, under the line."
-Then the day as a chart, every sensor with a note on what it is doing, the sea, the land, the weather. Open it on your
-phone or leave it on a screen on the wall.
+Then the day as a chart, every source with a note, the sea, the land, the weather. On your phone or on a screen on the wall.
 
-**A bot you can talk to.** Ask it how the air is, how big the swell is, what the kitchen did overnight, or tell it you
-closed the windows. It runs on a small model on your own machine, and uses a bigger one when it can reach it.
+**A bot you can talk to.** Ask how the air is, how big the swell is, what the kitchen did overnight, or say you closed
+the windows. A small model on your own machine answers; a bigger one on your network when it can reach it.
 
-**A house that learns its own rhythm.** After a week the node knows when your street is worst, when it is cleanest, and
-how much of the outside air your building keeps out. It tells you the hour to air the house.
+**A place that learns its own rhythm.** After a week the node knows when your street is worst and cleanest, and how much
+of it your building keeps out. It tells you the hour to air the house.
 
-**Your data, kept.** The database never leaves the machine. Backups run nightly and can be pulled by a NAS or copied to
-any storage you choose. What the node shares upward is a daily summary, and only if you point it somewhere.
+**Your data, kept; your summary, shared.** The database never leaves the machine. Backups run nightly and a NAS can
+collect them. What flows upward, if you point the node somewhere, is a daily summary: hourly means, Index cells, ρ.
 
-**Nothing to buy.** It runs on a Mac, a Linux box, a Raspberry Pi or a Windows PC with WSL2, and works with the sensors
-people already own: Smart Citizen, AirGradient, PurpleAir, Meshtastic radios. Without a sensor it still knows your
-weather, the satellite air model for your district and forty years of climate for your coordinates.
+**Nothing to buy.** Mac, Linux, Raspberry Pi, or Windows with WSL2, and the sensors people already own. Without a
+sensor it still knows your weather, the satellite air model for your district and forty years of climate for your
+coordinates.
 
 ## Install
 
@@ -102,8 +111,8 @@ matters. It does not need the internet to keep working, only to send you message
 | A setting changed nothing | Settings made in the dashboard win over `.env`; the page says so next to them. |
 | `planetai update` fails on `.DS_Store` | `find . -name .DS_Store -delete`, then update again. |
 
-When you ask for help, send `planetai status`, `planetai doctor` and the last twenty lines of `planetai logs`. Not `.env`:
-it holds your tokens.
+When you ask for help, write to **info@fab.city** with `planetai status`, `planetai doctor` and the last twenty lines of
+`planetai logs`. Not `.env`: it holds your tokens. Tell us what you expected as well as what happened.
 
 ## Remove it
 

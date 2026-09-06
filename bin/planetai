@@ -295,6 +295,7 @@ what_next() {
   printf '    on this machine     %shttp://localhost:%s%s\n' "$BL" "$p" "$N"
   [[ -n "$ip" ]] && printf '    from your phone     %shttp://%s:%s%s   (same WiFi)\n' "$BL" "$ip" "$p" "$N"
   printf '    settings token      %s%s%s   (planetai ui shows it again)\n\n' "$D" "${tok:-not set yet}" "$N"
+  printf '  %sThis is an alpha.%s Things will break; tell us what happened, what helped and what did not: %sinfo@fab.city%s\n\n' "$Y" "$N" "$B" "$N"
   printf '  %sIn the terminal%s\n' "$B" "$N"
   printf '    %splanetai%s             every command, one line each\n' "$BL" "$N"
   printf '    %splanetai telegram%s    alerts on your phone, two minutes\n' "$BL" "$N"

@@ -13,40 +13,48 @@
 
 # planetai-node
 
-**Know your air. Keep your data.** A small program for a computer in your home, lab or office. It reads the sensors you
-have, compares them with the street and the sky, and tells you what to do, in plain sentences, on Telegram. Readings never
-leave your machine.
+**See your place at higher resolution.** A small program for a computer in your home, lab or community centre. It
+connects everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into
+one picture sharp enough to act on: what to do about the air, the heat, the sea, the land, today, here. It tells the
+people there in plain sentences, on Telegram, and passes upward what the models of a bioregion and a planet cannot see
+from above: what the ground is doing.
+
+> **Alpha.** This is an experiment. Installing a node makes you part of it: things will break, some will surprise you,
+> and what you report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
 
 ```bash
 curl -fsSL planetai.fab.city/node0/install | bash
 ```
 
 Four questions, two minutes, running. Then `planetai telegram` for the alerts and `planetai ui` for the dashboard.
-Full walk-through in [`docs/START_HERE.md`](docs/START_HERE.md).
+Walk-through in [`docs/START_HERE.md`](docs/START_HERE.md).
+
+## What it is
+
+Hyperlocal awareness for climate and local challenges, built on distributed design and production. A city is measured
+today by satellites, by models with 11 km squares, and by a few reference stations; none of them know your kitchen at
+3 am, the shade on your street, or which hour to open the windows. A node fills that resolution gap from below, with the
+sensors people already own, and decides where it stands instead of sending readings away. Community scale first, then
+city, then region; upward, only summaries, to the [Fab City Index](https://index.fab.city) and to the models that need
+ground truth.
 
 ## What it does
 
-- **Tells you when it matters.** Inside worse than outside; the street over the WHO line; heat the body cannot shed; a
-  sensor that went quiet; a swell worth knowing about. Each message says what is happening, what it means, and what to do.
-- **Shows you the place, not a table.** A dashboard with the room's number as a sentence, the day as an annotated chart,
-  every sensor with a note, the sea, the land and the weather. Four views: Now, Network, Set up, Wall.
-- **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node's data and
-  explains it. Point it at a bigger model on your network, or online with a key, and it gets sharper.
-- **Learns the house.** After a week it knows the street's daily rhythm and how much of it your building keeps out.
-- **Keeps the data yours.** Local database, nightly backups a NAS can collect, exports in an open format you decide where
-  to send. Twenty years of readings would fit on a phone.
-- **Works with what you have.** Smart Citizen (your whole account), AirGradient and PurpleAir over your WiFi, Meshtastic
-  radios over LoRa, public stations nearby, free global models. Mac, Linux, Raspberry Pi, Windows with WSL2.
-- **Extends with a folder.** Air, heat, coast, land and open-data packs ship; a new domain is a folder of rules, not a fork.
+- **Connects every scale.** Sensors on WiFi (Smart Citizen, AirGradient, PurpleAir), radios over LoRa where there is no
+  WiFi (Meshtastic), public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth
+  Engine's view of the land. One schema from the room to the planet.
+- **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
+  whether anything changed: ρ, the share of alerts that led to an action, a number the Index never had.
+- **Shows the place.** A dashboard with the room's number as a sentence, the day as an annotated chart, every source with
+  a note, the sea, the land, the weather. Four views: Now, Network, Set up, Wall.
+- **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node and explains
+  it; point it at a bigger model when you have one.
+- **Keeps the data where it was made.** Local database, nightly backups a NAS can collect, an open daily export you decide
+  where to send.
+- **Grows by folders.** Air, heat, coast, land and open-data packs ship. Water, energy, noise, classroom CO₂, fire smoke
+  are a folder of rules each, written by whoever needs them, for their place.
 
-## Why
-
-Air-quality maps know your district. They do not know your kitchen, your bedroom at 3 am, or which hour to open the
-windows. A sensor at your address does, and most people who own one look at it twice and stop. This turns that sensor
-into something that speaks up when it should and stays quiet when it should not, and it measures whether anyone listened.
-
-The node is the smallest unit of the [Fab City Index](https://index.fab.city): places measuring themselves and sharing
-summaries upward, never raw data. Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
+Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
 
 ## Read next
 
@@ -73,4 +81,4 @@ presets/   bali · barcelona · boston · santiago · delhi
 
 ## Licence
 
-Apache 2.0. Fab City Foundation, 2026.
+Apache 2.0. Fab City Foundation, 2026. Alpha; feedback to info@fab.city.

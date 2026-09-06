@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.26 — 2026-09-06 — the frame, and the alpha notice
+
+Air was the first pack and had become the product in every description. Reframed everywhere a person or an agent
+reads what this is: **hyperlocal awareness for climate and local challenges, built on distributed design and
+production.** The node connects everything measuring one place, from a particle sensor to a satellite, into one
+picture sharp enough to act on at the scale of a house, a street, a city, and passes upward what bioregional and
+planetary models cannot see from above. README, START_HERE, the agent's own instructions (`agent.py`, `agent_loop.py`,
+`AGENTS.md`), the dashboard footer, the install bootstrap.
+
+**Alpha, said plainly.** A band on every page of planetai.fab.city/node0, a note at the top of README and START_HERE,
+an `alpha` pill in the dashboard header with the feedback address in the footer, a line on the screen after install, a
+line in the install bootstrap: this is an experiment, installing a node makes you part of it, tell **info@fab.city** what
+broke, what helped and what did not.
+
 ## v0.25 — 2026-09-05
 
 - **The terminal shows its work.** A spinner with the elapsed time on every long step: the install, the image build,
