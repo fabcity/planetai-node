@@ -1,8 +1,8 @@
 # Handoff — the earth pack (AlphaEarth)
 
 What shipped in v0.33, what was measured, what was decided and why, and what still needs Tomas. Scope was
-E.1 + E.2 + E.4 of `claude/PLANETAI_AlphaEarth_Integration_Plan.md` (6 Sep). E.3, E.5, E.6 and E.7 were not
-started.
+E.1 + E.2 + E.4 of `claude/PLANETAI_AlphaEarth_Integration_Plan.md` (6 Sep), then E.3 and the E.5 framing in
+the v0.33.1 round. E.6 and E.7 were not started.
 
 ## Tracker rows for `claude/PLANETAI_Next_Steps_Tracker.md`
 
@@ -12,7 +12,7 @@ started.
 | E.2 the Kuta Selatan exhibit | planned | **done** — `out/earth/exhibit_kuta_selatan_2023_2025.html`, built from node #1's own coordinates and its published air record |
 | E.3 the NAS mirror of `out/earth/` | planned | **done** — `tools/nas/pull.py` archives the results, not the cache |
 | E.4 the observatory card | planned | **done, not deployed** — two commits in `fabcity/planetai`, `make check` green |
-| E.5 the academic sample application, 15 Oct | planned | **needs Tomas** — see below |
+| E.5 the academic sample application, 15 Oct | planned | **framed** — Tomas decided 6 Sep to claim the method, not a result. Material below; the text is still to write |
 | E.6 | planned | not started |
 | E.7 | planned | not started |
 
@@ -147,26 +147,34 @@ one, which is correct but worth knowing. The modal template now says what is set
 Verified in a browser against a local server: 4 cards of real data, the pill and its class, the scope
 sentence, the footer, the modal, both connector cards, and the empty state with the file removed.
 
-## The release, and one thing to know about the branch
+## The releases, and the parallel session
 
-`v0.33` is tagged at `fc437f9`, `origin/main` points at the same commit, and the tarball in
-`../planetai/node0/get/` is v0.33, 392 kB, 157 files. Rehearsed afterwards on the Lima node: `./update.sh`
-took it from v0.32.1 to v0.33 with nothing lost (4,633 readings, 13 alerts, 7 actions), the pack appears in
-`planetai packs`, `planetai run earth verify` exits 0, and the card renders in all three of its states —
-absent pack (hidden entirely, height 0), loaded but never fetched (the sentence naming `planetai run earth
-fetch` and the measured size), and cached (the map).
+`v0.33` is tagged at `fc437f9` and `v0.33.1` at `fd277db`, which is where `origin/main` and this checkout
+both stand. The tarball in `../planetai/node0/get/` is v0.33.1, 392 kB, 156 files.
 
-**A second session was working in this checkout at the same time, and moved it twice.** First it branched
-`audit/design-2026-09` off `main` after the pack commit and left the tree there, so three of this work's
-commits landed on that branch; `main` was fast-forwarded to them, no rewriting, and v0.33 went out clean.
-Then, after the v0.33 release, it branched `audit/design-2026-09-report` from *before* this work's last
-commit and committed 209 screenshot files there — which silently reverted the handoff on disk and would have
-mixed the v0.33.1 release into a design-audit branch.
+Rehearsed on the Lima node at both versions. v0.32.1 → v0.33: nothing lost (4,633 readings, 13 alerts, 7
+actions), the pack appears in `planetai packs`, `planetai run earth verify` exits 0, and the card renders in
+all three of its states — absent pack (hidden entirely, height 0), loaded but never fetched (the sentence
+naming `planetai run earth fetch` and the measured size), and cached (the map). v0.33 → v0.33.1: nothing lost
+(4,659 readings), no rules files in either pack, no rule failures in the log, one land-change cell instead of
+two, `/earth` lists its comparisons, `?pair=` serves them, and `verify` exits 0 again.
 
-So v0.33.1 was built in a separate `git worktree` at `origin/main`, and that checkout was left exactly as the
-other session had it. Nothing of this work is on either audit branch that is not also on `main`. Two agents
-in one working tree cost about forty minutes here and nearly lost a doc commit; the fix is a worktree per
-agent, and it is worth making a rule.
+**A design audit ran in parallel, in this same checkout.** It moved the working tree twice: onto
+`audit/design-2026-09` after the pack commit, so three of this work's commits landed there before `main` was
+fast-forwarded to them; and then, after v0.33 shipped, onto `audit/design-2026-09-report` branched from
+*before* this work's last commit, where it committed 209 screenshot files. The second move silently reverted
+the handoff on disk and would have mixed the v0.33.1 release into the audit branch, so v0.33.1 was built in a
+separate `git worktree` at `origin/main` and the shared checkout was left untouched until Tomas confirmed the
+audit was read-only work.
+
+Resolved: `main` carries this work, the checkout is back on `main` at `fd277db`, and nothing of this work
+sits on an audit branch that is not also on `main`. The two audit branches are left alone —
+`audit/design-2026-09` is now an ancestor of `main`, and `audit/design-2026-09-report` still holds the 209
+audit files, which exist nowhere else.
+
+The lesson is cheap and worth keeping: **one working tree per agent.** `git worktree add` costs nothing and
+makes two agents in one repository safe. Sharing a checkout cost about forty minutes here and came close to
+losing a commit that had already been pushed.
 
 ## Also found, not fixed
 
@@ -197,16 +205,45 @@ agent, and it is worth making a rule.
   back as the page's background colour while the DOM measured as fully rendered. The card was verified by
   measurement (widths, overflow, image geometry, visibility) rather than by eye.
 
-## What E.5 needs from you
+## E.5, the academic sample application, 15 Oct — decided: claim the method
 
-**E.5, the academic sample application, 15 Oct.** What exists now that did not before: a working, honest,
-reproducible pipeline from a public dataset to a number on a node, with measured costs, and one worked
-example over a real place. What does not exist: any node with more than five days of its own air record
-(node #1 started measuring on 2 September 2026), so the pairing in the exhibit is deliberately unresolved and
-says so. If the application wants to claim a relationship between land structure and local air, it needs a
-node with a year of readings, and the earliest that can be true is September 2027. What the application can
-claim now is the instrument and the method, not a result. Tell me which of those two the reviewers are being
-asked to fund and the text can be written against it.
+Tomas's call on 6 September: the application claims the instrument and the method, not a result. That is the
+right call, because there is no result to claim — node #1 began measuring air on 2 September 2026, so the
+earliest date a land-against-air claim could rest on a year of local readings is September 2027.
+
+**What can be claimed, with something measured behind each.**
+
+- A small computer in a house can hold and interrogate a planetary-scale foundation-model product on its own
+  disk, with no account, no key, no cloud project and no institutional agreement. 64 MB a year for a 10 km
+  square, about 103 MB pulled, 150 seconds, from a bucket that answers anonymous range requests. Those are
+  measured numbers at four sites, not estimates.
+- The arithmetic is reproducible and checked rather than asserted. The de-quantisation is the dataset's own;
+  unit length was verified on 20,000 real pixels in Bali and again on 2,000 in Santiago at every run of
+  `planetai run earth verify`; the distance bounds, the no-data handling, the window maths and the image
+  writer are pinned by offline tests, each of which was broken on purpose and watched to fail.
+- It runs unchanged at four pilot sites in four UTM zones and three climates, on an ARM node with 3 GB of
+  memory, and one of them is in Indonesia rather than in the lab that wrote it.
+- Provenance is enforced by the instrument, not by the author's good intentions. The cell is `partial` and
+  the core will not promote it, whatever the number looks like.
+- The method surfaced its own confound and the project acted on it. Measuring four squares showed that the
+  year-over-year mean cannot separate construction from phenology, so the alert that was planned was not
+  shipped. That is the strongest thing in the application: a pipeline that declines to make a claim it
+  cannot support, with the evidence written down.
+
+**What must not be claimed.** Any relationship between land structure and local air — the exhibit pairs the
+two and says in plain words that they cannot explain each other. Any statement that a particular change *was*
+a building or a road; embedding change is unattributed by construction. Comparability of the number between
+climates, which is the confound above. Novelty of the dataset itself, which is Google's and is cited as such
+everywhere it appears.
+
+**The one result that is available is a negative one**, and it is worth putting in: over four pilot squares
+and one year-pair, the mean per-pixel embedding distance does not distinguish a place being built on from a
+place with deciduous trees and snow. Kuta Selatan 0.0414 and Boston 0.0404 against Barcelona 0.0164 and
+Santiago 0.0151. A reviewer can check it against the same public files.
+
+**What would turn it into a result, and when.** A node with a year of its own readings — September 2027 at
+the earliest for node #1 — or a way to separate phenology from structure inside the 64 channels, which nobody
+here has attempted.
 
 ## The exhibit
 
