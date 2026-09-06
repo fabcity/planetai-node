@@ -20,6 +20,6 @@ git tag -a "v${V}" -m "v${V}"
 git push origin main --tags
 
 say "building tarball (no .git, no .env)"
-tools/package.sh "$V" ~/Downloads
+tools/bundle.sh
 
 say "released v${V}. Nodes update with:  ./update.sh"
