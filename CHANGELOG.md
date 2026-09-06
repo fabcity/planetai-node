@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.32.1 — 2026-09-06 — starting over on the same machine
+
+Found while rehearsing v0.32 from the site's install line on a clean VM whose earlier node had been deleted: Docker
+had kept the database volume, the new `.env` got a new password, and the app could not log in to its own database
+while `pg_isready`, `/health` (200) and the install's doctor all looked fine. A tester who deletes the folder to
+start again does exactly this.
+
+- `install.sh` refuses to start a node whose fresh password cannot match an existing database (the `planetai_db`
+  volume, or a `DATA_DIR` with a `PG_VERSION` file) and names the two ways out: put the earlier `.env` back, or
+  `docker volume rm planetai_db`.
+- `planetai doctor` gains "app logs in to the database" and names the same fix.
+
 ## v0.32 — 2026-09-06 — the review's open items, decided and closed
 
 The beta review (v0.31) left a list; Tomas decided the three questions on it and this release does the work. Every
