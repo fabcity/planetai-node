@@ -4,7 +4,7 @@ Reviewed: `fabcity/planetai-node` at v0.30 (a5a67bb), the site at planetai.fab.c
 every file in the brief read; a clean-machine rehearsal (Lima, Ubuntu 24.04 arm64, no Docker, no credentials) with the
 Santiago and Barcelona presets; every subcommand and endpoint exercised on the clean node; 48 hours of node #1 logs; a
 security audit and a site inventory by two subagents (their reports are in the session scratchpad; the facts are
-carried here). Fixes are on branch `beta-review-2026-09`, one per commit, gates green; released as v0.31.
+carried here). Fixes are one per commit, gates green, on `main`, released as **v0.31** (tag `v0.31`); the same commits sit on branch `beta-review-2026-09`.
 
 Multipass, OrbStack and a fresh macOS account all need administrator rights this laptop does not have, so the macOS
 first-run path was not rehearsed. Everything else in the brief was.
@@ -350,6 +350,8 @@ clean VMs with amd64 emulation, as a Mac has):
 - VM5, first run, no Docker, Barcelona, with 374acf7: **109 s** to the green screen and the *What now?* prompt, exit 0;
   `NODE_NAME=poblenou-test`, `NODE_LAT=41.4036418`, `NODE_KIND=home`, `CKAN_PORTALS=open-data-bcn=…`, `BAD_ENABLED=0`,
   `backups/` owned by the user, cron line present, bootstrap `cams_history 4416, power_climatology 60, place Sant Martí`.
-- VM6, first run from `main` after the release: VM6_RESULT_PLACEHOLDER
+- VM6, first run from `main` after the release, the exact documented line with no overrides, Santiago: **102 s** to the
+  green screen and the *What now?* prompt, exit 0; `version v0.31`, `NODE_NAME=santiago-test`, `NODE_LAT=-33.43107`,
+  `CKAN_PORTALS=datos-gob-cl=…`, `BAD_ENABLED=0`, cron present, bootstrap complete, `/readings` and `/export` 200.
 - The `[o]`/`[t]` prompt never appeared through `curl | bash` on any version before 07e6f02 (`-t 0` on a pipe).
 
