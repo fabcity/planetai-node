@@ -529,25 +529,24 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
     diag: dict = {"tables": {}, "rows": {}}
     try:
         with db() as con, con.cursor() as cur:
+            one = lambda: next(iter(cur.fetchone().values()))        # rows are dicts in this app; take the single column  # noqa: E731
             for t in ("place_features", "place_buildings_sat", "place_runs"):
-                cur.execute(f"SELECT to_regclass('{t}') IS NOT NULL"); diag["tables"][t] = bool(cur.fetchone()[0])
+                cur.execute(f"SELECT to_regclass('{t}') IS NOT NULL AS ok"); diag["tables"][t] = bool(one())
                 if diag["tables"][t]:
-                    cur.execute(f"SELECT count(*) FROM {t}"); diag["rows"][t] = cur.fetchone()[0]
-            cur.execute("SELECT to_regclass('place_features') IS NOT NULL")
-            if cur.fetchone()[0] and want - {"sat"}:
+                    cur.execute(f"SELECT count(*) AS n FROM {t}"); diag["rows"][t] = one()
+            if diag["tables"]["place_features"] and want - {"sat"}:
                 cur.execute("""SELECT kind, category, name, tags->>'building' AS btype, tags->>'highway' AS hw,
                                       ST_AsGeoJSON(ST_SimplifyPreserveTopology(geom, %s), 6) AS g
                                FROM place_features WHERE kind = ANY(%s)""", (tolerance, list(want - {"sat"})))
-                for kind, cat, name, btype, hw, g in cur.fetchall():
-                    feats.append({"type": "Feature", "properties": {"kind": kind, "category": cat, "name": name, "building": btype, "highway": hw}, "geometry": json.loads(g)})
-            cur.execute("SELECT to_regclass('place_buildings_sat') IS NOT NULL")
-            if cur.fetchone()[0] and "sat" in want:
+                for r in cur.fetchall():
+                    feats.append({"type": "Feature", "properties": {"kind": r["kind"], "category": r["category"], "name": r["name"], "building": r["btype"], "highway": r["hw"]}, "geometry": json.loads(r["g"])})
+            if diag["tables"]["place_buildings_sat"] and "sat" in want:
                 # only the satellite footprints with no mapped building within 3 m: the gap, drawn
-                cur.execute("""SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, %s), 6), s.confidence FROM place_buildings_sat s
+                cur.execute("""SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, %s), 6) AS g, s.confidence FROM place_buildings_sat s
                                WHERE s.source='open_buildings_v3' AND NOT EXISTS (
                                  SELECT 1 FROM place_features f WHERE f.kind='building' AND ST_DWithin(f.geom, s.geom, 0.00003))""", (tolerance,))   # geometry: uses the GiST index
-                for g, conf in cur.fetchall():
-                    feats.append({"type": "Feature", "properties": {"kind": "sat", "confidence": conf}, "geometry": json.loads(g)})
+                for r in cur.fetchall():
+                    feats.append({"type": "Feature", "properties": {"kind": "sat", "confidence": r["confidence"]}, "geometry": json.loads(r["g"])})
     except Exception as e:  # noqa: BLE001
         log.warning("place/geojson: %s", e)
         diag["error"] = f"{type(e).__name__}: {str(e)[:200]}"

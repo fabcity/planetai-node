@@ -95,3 +95,15 @@ def yearly(ee, lat, lon, radius_m):
             out.append((year, float(count), float(h) if h is not None else None))
     log.info("place: Open Buildings Temporal %s", [(y, round(c)) for y, c, _ in out])
     return out
+
+
+def yearly_crosscheck(ee, lat, lon, radius_m):
+    """A second estimate of the latest year's count, independent of the fractional-count band: built area where presence
+    > 0.5, in m², and the same area divided by 120 m² (a typical Bukit footprint). If this disagrees with yearly() by more
+    than a few times, yearly() is misreading the band and the series must not be shown."""
+    circle = ee.Geometry.Point([lon, lat]).buffer(radius_m)
+    coll = ee.ImageCollection(TEMPORAL).filterBounds(circle)
+    latest = coll.aggregate_array("inference_time_epoch_s").reduce(ee.Reducer.max()).getInfo()
+    img = coll.filter(ee.Filter.eq("inference_time_epoch_s", latest)).mosaic()
+    area = img.select("building_presence").gt(0.5).multiply(ee.Image.pixelArea()).reduceRegion(ee.Reducer.sum(), circle, 4, maxPixels=1e9).getInfo().get("building_presence")
+    return float(area or 0), float(area or 0) / 120.0

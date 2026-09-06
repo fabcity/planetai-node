@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.29.1 — 2026-09-06
+
+- **Fixed: `/place/geojson` returned nothing.** The app's cursors return rows as dicts; the endpoint indexed them as
+  tuples and swallowed the `KeyError`. The plan never drew although the pack had stored 3,510 map features and 7,219
+  satellite footprints. Rows read by name now; the endpoint reports its tables, counts and any error.
+- **The yearly building series is held back until it is verified.** `verify` on node #1 reported 90→136 buildings for
+  2016→2023 beside 7,219 footprints in the same circle: a 50× mismatch that means `yearly()` misreads the
+  fractional-count band. The dashboard shows the growth sentence only when the series is within 3× of the footprint
+  count; `verify` gained a sixth step that cross-checks against built area.
+
 ## v0.29 — 2026-09-06 — from where you stand, outward
 
 The Now view reorganised by distance, which is also the Index's scale axis: **Here** (the sentence and the thing to do),
