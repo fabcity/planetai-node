@@ -80,7 +80,7 @@ print("reinstall over a leftover volume is refused and diagnosed")
 # v0.33 — the earth pack. A pack whose files, endpoint, card and cell must ship together: the pack alone
 # leaves the dashboard blank, the endpoint alone has nothing to serve, the card alone renders an empty box.
 import os as _os
-for _f in ("pack.yaml", "README.md", "adapter.py", "cells.yml", "fetch.py", "change.py", "status.py", "verify.py"):
+for _f in ("pack.yaml", "README.md", "adapter.py", "cells.yml", "fetch.py", "change.py", "status.py", "verify.py", "similar.py"):
     assert _os.path.exists(f"packs/earth/{_f}"), f"packs/earth/{_f}"
 _earth = yaml.safe_load(open("packs/earth/pack.yaml"))
 assert _earth["pip"] == ["rasterio", "numpy"] and _earth["kind"] == "code"

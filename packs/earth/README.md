@@ -83,7 +83,16 @@ planetai run earth change           # the two latest consecutive cached years
 planetai run earth change 2023 2025 # any two
 planetai run earth status           # years, bytes, comparisons, what the cell reports
 planetai run earth verify           # the dataset's claims against the files, and whether the reading landed
+planetai run earth similar          # the four pilots compared with each other and with their own tiles
 ```
+
+`similar` is the odd one out: it is not about this node. It reads the dataset's own 128x overview layer (1.28 km
+a cell, a few hundred kB a tile) for each of the four pilot sites in `presets/`, takes the mean embedding
+around each, and reports the cosine similarity between every pair plus the ten closest cells inside each
+pilot's own UTM tile. That tile is about 82 km on a side, so this is a regional search and every surface that
+shows the result says so. A global search would need every tile of the dataset or a vector index over all of
+it. `--out FILE` writes the JSON somewhere else; the observatory reads it from
+`observatory/data/alphaearth_similarity.json` in the site repo.
 
 The pack is code, so it needs `PACKS_ALLOW_CODE=1` in `.env` and `planetai packs install` for `rasterio` and
 `numpy`. Read `packs/earth/adapter.py` before you enable it.
