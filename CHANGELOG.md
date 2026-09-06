@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.30 — 2026-09-06 — when the node speaks
+
+Node #1 sent 60 messages in two days with no shape: "Good morning" at 13:02 (the daily pulse fired on a **UTC** hour),
+heat stress fourteen times in an afternoon, the digest ten times. Replaced with a schedule.
+
+- **Two reports a day**, at local hours (`BRIEF_MORNING` 6, `BRIEF_EVENING` 18): what the night or the day did, the
+  peak indoors, what is still waiting for a decision with its `/act` number, which sensors have gone quiet. Written by
+  the node from the same data the dashboard shows, so the two cannot disagree; the bot passes it through unchanged.
+- **`ALERT_LEVEL`** decides what interrupts between reports: `act` only when something needs doing, `warn` also when
+  something changed, `info` everything. Below the line an alert is still recorded, still on the dashboard, and summed
+  up in the next report.
+- **`QUIET_HOURS`** (22:00–06:00): only act-level alerts go out; the rest wait for the morning.
+- All hours are the node's own (`NODE_TZ`), never UTC. `tests/test_briefing.py` asserts exactly the reported bug —
+  06:00 UTC is 14:00 in Bali, so a "6" schedule must not fire then — plus the midnight-wrapping quiet window and the
+  level floor.
+- The old `daily_pulse` and the daily `modelled_air_today` are superseded by the reports; heat stress cools down for
+  four hours instead of three.
+- All of it editable in the dashboard's **Alerts** page: two hour pickers, what to be interrupted for, quiet hours.
+  `GET /briefing?kind=morning|evening` returns the report as it would read right now; the bot has a `daily_report` tool.
+
 ## v0.29.1 — 2026-09-06
 
 - **Fixed: `/place/geojson` returned nothing.** The app's cursors return rows as dicts; the endpoint indexed them as

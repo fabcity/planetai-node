@@ -36,6 +36,13 @@ RUNTIME = {
     # alerts
     "TELEGRAM_BOT_TOKEN": ("alerts", "Telegram bot token", True, False, "From @BotFather. Never shown again once saved."),
     "TELEGRAM_CHAT_IDS":  ("alerts", "Telegram chat ids", False, False, "Comma-separated. planetai telegram finds yours."),
+    "BRIEFINGS":          ("alerts", "Daily reports", False, False, "Two reports a day, in your own time zone: what the night or the day did, what is still waiting for you. 1 = on."),
+    "BRIEF_MORNING":      ("alerts", "Morning report hour", False, False, "Local hour, 0-23. Default 6."),
+    "BRIEF_EVENING":      ("alerts", "Evening report hour", False, False, "Local hour, 0-23. Default 18."),
+    "ALERT_LEVEL":        ("alerts", "Interrupt me for", False, False, "act = only when something needs doing · warn = also when something changed · info = everything. Anything below the line is still recorded and shown on the dashboard, and appears in the next report."),
+    "QUIET_HOURS":        ("alerts", "Quiet hours", False, False, "1 = between the hours below, only act-level alerts are sent; the rest wait for the morning report."),
+    "QUIET_FROM":         ("alerts", "Quiet from", False, False, "Local hour, default 22."),
+    "QUIET_TO":           ("alerts", "Quiet until", False, False, "Local hour, default 6."),
     "ALERT_LOCALE":       ("alerts", "Alert language", False, False, "en or id."),
     "MESH_ALERTS":        ("alerts", "Alerts over the LoRa mesh", False, False, "1 to send act-level alerts through the gateway radio."),
     "MESH_GATEWAY_NODE_NUM": ("alerts", "Gateway node number", False, False, "Decimal, for mesh downlink."),

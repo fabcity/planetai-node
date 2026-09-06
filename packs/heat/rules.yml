@@ -5,7 +5,7 @@
 
 - id: heat_stress_now
   level: act
-  cooldown_minutes: 180
+  cooldown_minutes: 240
   sql: |
     WITH x AS (
       SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+from zoneinfo import ZoneInfo
 import logging
 import os
 import threading
@@ -268,9 +269,105 @@ def load_rules() -> list[dict]:
     return core + packs.rules()
 
 
+def _local_now() -> datetime:
+    """The node's own clock. Everything a person is told about time uses this, never UTC: a 'good morning' that arrives
+    at one in the afternoon is the bug this exists to prevent."""
+    try:
+        return datetime.now(ZoneInfo(NODE_TZ))
+    except Exception:  # noqa: BLE001
+        return datetime.now(timezone.utc)
+
+
+def _hours(key: str, default: str) -> list[int]:
+    return [int(x) for x in (settings.get(key, default) or default).replace(" ", "").split(",") if x.strip().isdigit()]
+
+
+def _due(cur, rule_id: str, hours: list[int], window_min: int = 20) -> bool:
+    """True at most once per scheduled local hour: within `window_min` of it, and nothing sent for this rule since."""
+    now = _local_now()
+    if not any(now.hour == h and now.minute < window_min for h in hours):
+        return False
+    cur.execute("SELECT 1 FROM alerts WHERE rule_id=%s AND ts > now() - interval '6 hours' LIMIT 1", (rule_id,))
+    return cur.fetchone() is None
+
+
+def _quiet(level: str) -> bool:
+    """During quiet hours only act-level alerts go out; the rest wait for the next briefing. 22:00-06:00 by default."""
+    if settings.get("QUIET_HOURS", "1") != "1" or level == "act":
+        return False
+    h = _local_now().hour
+    a, b = _hours("QUIET_FROM", "22")[0], _hours("QUIET_TO", "6")[0]
+    return (a <= h or h < b) if a > b else (a <= h < b)
+
+
+def briefing(kind: str) -> str:
+    """The morning and evening report: what the node saw, what it said, what is still waiting. Built from the same data
+    the dashboard shows, so the two never disagree."""
+    loc = _local_now()
+    with db() as con, con.cursor() as cur:
+        cur.execute("""SELECT avg(mean_15m) FILTER (WHERE local AND indoor) AS inside,
+                              avg(mean_15m) FILTER (WHERE local AND NOT indoor) AS mine,
+                              avg(mean_15m) FILTER (WHERE NOT local AND kind='sensor') AS street
+                       FROM stats WHERE metric='pm25' AND silent_minutes < 120""")
+        a = cur.fetchone() or {}
+        cur.execute("""SELECT max(mean_15m) AS t, avg(mean_15m) AS avg_t FROM stats WHERE metric='temp' AND local AND indoor AND silent_minutes < 120""")
+        t = cur.fetchone() or {}
+        cur.execute("""SELECT count(*) AS n, count(*) FILTER (WHERE level='act') AS act FROM alerts
+                       WHERE ts > now() - interval '12 hours' AND rule_id NOT LIKE 'briefing%%'""")
+        fired = cur.fetchone() or {}
+        cur.execute("""SELECT id, text FROM alerts a WHERE level='act' AND ts > now() - interval '24 hours'
+                       AND NOT EXISTS (SELECT 1 FROM actions x WHERE x.alert_id=a.id) ORDER BY ts DESC LIMIT 3""")
+        waiting = cur.fetchall()
+        cur.execute("SELECT count(*) AS n FROM sensors s WHERE s.local AND NOT EXISTS (SELECT 1 FROM stats t WHERE t.sensor_id=s.sensor_id AND t.silent_minutes < 180)")
+        quiet_sensors = (cur.fetchone() or {}).get("n", 0)
+    inside, mine, street = a.get("inside"), a.get("mine"), a.get("street")
+    out = mine if mine is not None else street
+    f = lambda v, d=0: "—" if v is None else f"{v:.{d}f}"  # noqa: E731
+    if kind == "morning":
+        head = f"🌅 Good morning. {loc:%A %d %B}."
+        body = f"Overnight the house held at {f(inside)} µg/m³" + (f", the street at {f(out)}" if out is not None else "") + "."
+        if t.get("t") is not None:
+            body += f" It got to {f(t['t'],1)} °C indoors."
+        tail = "Nothing needed doing overnight." if not fired.get("act") else f"{fired['act']} thing{'s' if fired['act']!=1 else ''} asked for a decision."
+    else:
+        head = f"🌇 Evening. {loc:%A %d %B}."
+        body = f"The house is at {f(inside)} µg/m³" + (f" against {f(out)} outside" if out is not None else "") + "."
+        if t.get("t") is not None:
+            body += f" The day peaked at {f(t['t'],1)} °C indoors."
+        tail = f"{fired.get('n',0)} message{'s' if fired.get('n',0)!=1 else ''} in the last twelve hours."
+    lines = [head, "", body, tail]
+    if quiet_sensors:
+        lines.append(f"📡 {quiet_sensors} of your sensors have gone quiet.")
+    if waiting:
+        lines.append("")
+        lines.append("Still waiting on you:")
+        for w in waiting:
+            lines.append(f"  · {w['text'].splitlines()[0][:90]}  →  /act {w['id']}")
+    lines.append("")
+    lines.append("Ask me anything about the air, the heat, the sea or what is around here.")
+    return "\n".join(lines)
+
+
+def run_briefings(cur) -> None:
+    """Two reports a day at local hours you choose. Everything else in the node is an interruption; these are the news."""
+    if settings.get("BRIEFINGS", "1") != "1":
+        return
+    for kind, key, default in (("morning", "BRIEF_MORNING", "6"), ("evening", "BRIEF_EVENING", "18")):
+        rid = f"briefing/{kind}"
+        if _due(cur, rid, _hours(key, default)):
+            text = briefing(kind)
+            cur.execute("INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,'node','info',%s) RETURNING id", (rid, text))
+            notify("info", text, force=True)
+            log.info("briefing sent: %s", kind)
+
+
 def run_rules() -> None:
     rules = load_rules()
     with db() as con, con.cursor() as cur:
+        try:
+            run_briefings(cur)
+        except Exception as e:  # noqa: BLE001
+            log.warning("briefing failed: %s", e)
         for rule in rules:
             try:
                 cur.execute(rule["sql"])
@@ -295,11 +392,16 @@ def run_rules() -> None:
                 level = rule.get("level", "info")
                 cur.execute("INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,%s,%s,%s) RETURNING id", (rule["id"], sid, level, text))
                 alert_id = cur.fetchone()["id"]
-                notify(level, f"{text}\n\n#{alert_id}")   # the id is how a reply becomes an action
+                # what interrupts a person: act always; warn if ALERT_LEVEL allows; info only in a briefing (it is
+                # recorded either way, and appears on the dashboard). Quiet hours hold everything but act.
+                floor = {"act": 2, "warn": 1, "info": 0}
+                send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "warn"), 1) and not _quiet(level)
+                if send:
+                    notify(level, f"{text}\n\n#{alert_id}")   # the id is how a reply becomes an action
                 ha_alert(level, text, alert_id)
 
 
-def notify(level: str, text: str) -> None:
+def notify(level: str, text: str, force: bool = False) -> None:
     icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
@@ -556,6 +658,12 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
     return {"type": "FeatureCollection", "features": feats, "diag": diag,
             "center": [float(os.getenv("NODE_LON", 0) or 0), float(os.getenv("NODE_LAT", 0) or 0)],
             "radius_m": int(settings.get("PLACE_RADIUS_M", "1000") or 1000)}
+
+
+@app.get("/briefing")
+def briefing_now(kind: str = "morning"):
+    """The report as it would be sent right now. The dashboard, the bot and the scheduled message all read this."""
+    return briefing("morning" if kind != "evening" else "evening")
 
 
 @app.get("/history")

@@ -147,6 +147,13 @@ def readings(sensor_id: str, metric: str, hours: int = 24) -> dict:
 
 
 @mcp.tool()
+def daily_report(kind: str = "morning") -> str:
+    """The node's own morning or evening report: what the night or the day did, what is still waiting for a decision.
+    The same text the node sends on Telegram at its scheduled hours. kind: morning | evening."""
+    return _get(f"/briefing?kind={kind}")
+
+
+@mcp.tool()
 def history(sensor_id: str, metric: str) -> list:
     """Every reading of a slow series, oldest first: e.g. sensor_id='place-point', metric='sat_buildings_yearly' for how
     many buildings stood within a kilometre each year 2016-2023, or 'sat_height_m_yearly' for their mean height."""

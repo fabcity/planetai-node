@@ -71,6 +71,18 @@ Three to six metres up. Away from a kitchen exhaust, a chimney, a parking spot. 
 rain. 2.4 GHz WiFi. Name it after the place. For our own enclosures, the outdoor-sensor-enclosure work is the printable
 answer; Fab Lab Bali prints it.
 
+## When the node speaks
+
+Two reports a day at local hours you choose (`BRIEF_MORNING`, `BRIEF_EVENING`; 6 and 18 by default): what the night or
+the day did, anything still waiting for a decision, which sensors went quiet. Between them, only what you asked to be
+interrupted for — `ALERT_LEVEL` is `act` (something needs doing), `warn` (something changed) or `info` (everything).
+Below that line an alert is still recorded, shown on the dashboard, and summed up in the next report. `QUIET_HOURS`
+holds everything but `act` between 22:00 and 06:00.
+
+All of these are local hours, read from `NODE_TZ`. A report scheduled for 6 arrives at six in the morning where the node
+is, which is the bug this replaced: the old daily pulse fired on a UTC hour and said "good morning" at one in the
+afternoon in Bali.
+
 ## Thresholds
 
 | PM2.5 µg/m³ | scale | used for |

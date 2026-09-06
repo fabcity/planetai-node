@@ -12,9 +12,12 @@
     en: "📡 {name} has gone quiet.\n\nIt has not sent a reading for a while. Most often that is power or WiFi: a cable knocked loose, a router that rebooted, a battery that ran down.\n\n👉 Check that its light is on and that it is on the network."
     id: "📡 {name} tidak terdengar.\n\nSudah cukup lama tidak mengirim data. Biasanya soal listrik atau WiFi: kabel lepas, router restart, baterai habis.\n\n👉 Cek lampunya menyala dan tersambung ke jaringan."
 
+# Superseded by the morning report (BRIEF_MORNING), which says the same thing with the night's numbers in it.
+# Kept at a long cooldown so an existing node does not lose it until it updates.
 - id: daily_pulse
   level: info
-  cooldown_minutes: 1440
+  cooldown_minutes: 100000
+  long_cooldown_ok: true
   sql: |
     SELECT 'node' AS sensor_id,
            count(DISTINCT sensor_id) FILTER (WHERE local) AS ours,

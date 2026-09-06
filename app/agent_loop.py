@@ -242,7 +242,8 @@ async def main():
                 if TG_TOKEN() and CHATS() and now.hour == BRIEF_HOUR and last_brief_day != now.date():
                     last_brief_day = now.date()
                     try:
-                        brief, rung = await ask(session, tools, "Run health_check and status. Write the morning note for the household: 🌅 how the air and the node are this morning, in plain words, and whether anything needs doing today. No statistics. Warm, short.")
+                        # the node writes the report; the model is not in the path of a scheduled message
+                        brief, rung = (await ask(session, tools, "Call daily_report(kind='morning') and pass its text through unchanged."), "node")
                         for chat in CHATS():
                             await telegram("sendMessage", chat_id=chat, text=brief)
                         log.info("brief sent via %s", rung)

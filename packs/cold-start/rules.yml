@@ -2,7 +2,8 @@
 
 - id: modelled_air_today
   level: info
-  cooldown_minutes: 1440
+  cooldown_minutes: 10080   # weekly: the daily reports carry the model reading now
+  long_cooldown_ok: true
   sql: |
     SELECT 'cams-point' AS sensor_id, round(value)::int AS pm
     FROM observations WHERE sensor_id = 'cams-point' AND metric = 'pm25_model'
