@@ -548,8 +548,9 @@ def sensors_():
 
 
 @app.get("/readings")
-def readings(sensor_id: str | None = None, metric: str | None = None, limit: int = Query(200, le=10000)):
-    return q("SELECT ts, sensor_id, metric, value FROM readings WHERE (%s IS NULL OR sensor_id=%s) AND (%s IS NULL OR metric=%s) ORDER BY ts DESC LIMIT %s",
+def readings(sensor_id: str | None = None, metric: str | None = None, limit: int = Query(200, ge=1, le=10000)):
+    # the NULL parameters need a type or Postgres cannot plan the query (500 on every call since psycopg 3)
+    return q("SELECT ts, sensor_id, metric, value FROM readings WHERE (%s::text IS NULL OR sensor_id=%s::text) AND (%s::text IS NULL OR metric=%s::text) ORDER BY ts DESC LIMIT %s",
              sensor_id, sensor_id, metric, metric, limit)
 
 
@@ -566,7 +567,7 @@ def observations():
 
 
 @app.get("/alerts")
-def alerts(limit: int = Query(50, le=1000)):
+def alerts(limit: int = Query(50, ge=0, le=1000)):
     """Alerts newest first, each with its id (what `planetai act <id>` and the GUI's Act button need) and whether
     anyone has already acted on it."""
     return q("""SELECT a.id, a.ts, a.rule_id, a.sensor_id, a.level, a.text,
@@ -575,7 +576,7 @@ def alerts(limit: int = Query(50, le=1000)):
 
 
 @app.get("/series")
-def series(metric: str = "pm25", hours: int = Query(24, le=168)):
+def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
     """Hourly means for the dashboard's strip: local indoor, everything outdoor (yours and references), and the
     model, as three aligned arrays. What readings_1h already knows, shaped for a chart."""
     rows = q("""
@@ -608,7 +609,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
         if row["sensor_id"] not in alias:
             k = "indoor" if row["indoor"] else "outdoor"; counts[k] += 1; alias[row["sensor_id"]] = f"{k}-{counts[k]}"
         return alias[row["sensor_id"]]
-    rows = [{"t": r["bucket"].isoformat(), "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
+    rows = [{"t": r["bucket"], "sensor": name(r),                      # q() already renders timestamps as ISO strings "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
              "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]} for r in hourly]
     alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
     with db() as con, con.cursor() as cur:
@@ -617,7 +618,7 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3),
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
-            "alerts": [{"t": a["ts"].isoformat(), "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
+            "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
             "cells": cells_, "rho": rho_}
 
 
@@ -667,15 +668,15 @@ def briefing_now(kind: str = "morning"):
 
 
 @app.get("/history")
-def history(sensor_id: str, metric: str, limit: int = Query(500, le=5000)):
+def history(sensor_id: str, metric: str, limit: int = Query(500, ge=1, le=5000)):
     """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,
     a monthly refresh. `/sparks` is the hourly view; this is the raw one."""
-    return [{"ts": r["ts"].isoformat(), "value": r["value"]} for r in
+    return [{"ts": r["ts"], "value": r["value"]} for r in            # q() already renders timestamps as ISO strings
             q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s ORDER BY ts LIMIT %s", sensor_id, metric, limit)]
 
 
 @app.get("/sparks")
-def sparks(metric: str = "pm25", hours: int = Query(24, le=168)):
+def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
     """Per-sensor hourly means, aligned to the same buckets, for small traces inside the dashboard's sensor tiles."""
     rows = q("""
         WITH h AS (SELECT generate_series(date_trunc('hour', now()) - make_interval(hours => %s - 1), date_trunc('hour', now()), interval '1 hour') AS bucket),
