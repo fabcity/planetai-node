@@ -177,7 +177,11 @@ PY
     say "installed. planetai status --json for the state; planetai ui for the token."
     return
   fi
-  if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
+  # a node is "installed" when its containers exist. A .env with a name but no containers is an install that did
+  # not finish (Docker not reachable at the time, the image failed to build): ask the questions again.
+  if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]] && docker info >/dev/null 2>&1 && [[ -z "$(docker compose ps -aq 2>/dev/null)" ]]; then
+    say "a previous set-up here did not finish. Starting again."
+  elif [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
     step "This machine already runs a node: $(envget NODE_NAME) ($(envget NODE_CITY), $(envget NODE_LAT), $(envget NODE_LON))"
     local what
     choose what "What would you like to do?" \
