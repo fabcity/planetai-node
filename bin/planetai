@@ -148,6 +148,7 @@ cmd_setup() {
   exec 3>>"$LOG"
   # An agent, or a script, installs without a terminal: planetai setup --answers node.json
   # {"name":"bayu-2","place":"Kuta Selatan" | "lat":-8.83,"lon":115.16, "kind":"home","sensor":{"sc_user":"x"} | {"sc":"19880"} | {"airgradient":"host"} | {"purpleair":"ip"}}
+  if [[ "${1:-}" == "--finish" ]]; then finish_setup; return; fi     # re-entered under the docker group, see below
   if [[ "${1:-}" == "--answers" ]]; then
     local f="${2:?usage: planetai setup --answers file.json}"; [[ -f "$f" ]] || fail "$f does not exist"
     local flags; flags="$(python3 - "$f" <<'PY'
@@ -282,8 +283,18 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   spin "writing settings, pulling images, building the node" ./install.sh "${flags[@]}" || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ "$kind" == district ]] && envset NODE_SCALE city
+  # on a Linux box that had no Docker a minute ago, install.sh ran under the new docker group (sg) but this shell
+  # still lacks it: finish the same way, or the next compose call dies with "permission denied ... docker.sock"
+  if ! docker info >/dev/null 2>&1 && grep -qw docker <<< "$(id -nG "$USER")" && command -v sg >/dev/null; then
+    exec sg docker -c "$(printf '%q ' "$0" setup --finish)"
+  fi
+  finish_setup
+}
+
+# the last steps of setup: restart with the settings, wait, doctor, the green screen. Also the target of the sg re-exec.
+finish_setup() {
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
-  spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
+  spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | sed "s/[[:space:]]*#.*$//" | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
   api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
   cmd_doctor quiet || echo "  The crosses above are normal on a new node: Telegram is the next step, and the first backup runs tonight."
 
