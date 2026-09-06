@@ -245,13 +245,13 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 
   # 4. sensor
   step "4. Do you have a sensor?"
-  local kind sc ag pa indoor=0
-  choose kind "   Pick one. You can add more later." \
+  local sensor sc ag pa indoor=0        # not `kind`: that already holds home|business|community|district from question 3
+  choose sensor "   Pick one. You can add more later." \
     "None yet. Start with the global models and add hardware when I have it." \
     "Smart Citizen kit (I have the number from its smartcitizen.me URL)" \
     "AirGradient on my WiFi" \
     "PurpleAir on my WiFi"
-  case "$kind" in
+  case "$sensor" in
     Smart*) ask sc "   Kit number" ""; [[ "$sc" =~ ^[0-9]+$ ]] || fail "a Smart Citizen kit number is digits only, e.g. 19880" ;;
     AirGradient*) ask ag "   Its hostname or IP (on the device's sticker, or in your router)" "airgradient_XXXXXX.local"
                   confirm "   Is it indoors?" && indoor=1 ;;
