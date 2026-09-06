@@ -575,7 +575,8 @@ function cards(){return [...document.querySelectorAll('#now [data-card]')];}
 async function applyLayout(){ await loadLayout(); applyLayoutNow(); }
 function applyLayoutNow(){
   const L=LAYOUT||{order:[],hidden:[]};
-  cards().forEach(c=>{c.style.display=L.hidden.includes(c.dataset.card)?'none':'';});
+  cards().forEach(c=>{const id=c.dataset.card; const onlyHide=ONLY&&c.parentElement&&c.parentElement.id==='now'&&id!==ONLY; c.style.display=(L.hidden.includes(id)||onlyHide)?'none':'';});
+  if(ONLY){const hero=document.querySelector('#now .hero'); if(hero)hero.style.display=ONLY==='hero'?'':'none';}
   // order within each parent: cards that share a parent are sorted by their position in L.order; unknown ones keep place
   const parents=new Set(cards().map(c=>c.parentElement)); parents.forEach(p=>{const kids=[...p.children].filter(c=>c.dataset&&c.dataset.card); if(kids.length<2)return;
     const pos=id=>{const i=L.order.indexOf(id);return i<0?1e6:i;}; const sorted=[...kids].sort((a,b)=>pos(a.dataset.card)-pos(b.dataset.card)); sorted.forEach(k=>p.appendChild(k));});
