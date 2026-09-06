@@ -301,6 +301,14 @@ def _quiet(level: str) -> bool:
     return (a <= h or h < b) if a > b else (a <= h < b)
 
 
+def act_hint(alert_id) -> str:
+    """How this household closes the loop on alert N. `/act N` is a reply to the Telegram bot, which exists only when the
+    agent container runs (planetai agent local); on every other node the words are `planetai act N`. A tester who
+    replied /act to a bot that was not there heard nothing back (BETA review, 8.2)."""
+    bot = "agent" in os.getenv("COMPOSE_PROFILES", "")
+    return f"/act {alert_id}" if bot else f"planetai act {alert_id}"
+
+
 def briefing(kind: str) -> str:
     """The morning and evening report: what the node saw, what it said, what is still waiting. Built from the same data
     the dashboard shows, so the two never disagree."""
@@ -343,7 +351,7 @@ def briefing(kind: str) -> str:
         lines.append("")
         lines.append("Still waiting on you:")
         for w in waiting:
-            lines.append(f"  · {w['text'].splitlines()[0][:90]}  →  /act {w['id']}")
+            lines.append(f"  · {w['text'].splitlines()[0][:90]}  →  {act_hint(w['id'])}")
     lines.append("")
     lines.append("Ask me anything about the air, the heat, the sea or what is around here.")
     return "\n".join(lines)
@@ -819,11 +827,13 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
 def test_alert(authorization: str = Header("")):
     """Fire one act-level alert now, through every configured channel. Same as `planetai test-alert`."""
     _admin(authorization)
-    text = "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do.\n\n👉 Reply /act with the number below to show me how you close the loop."
+    text = "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do."
     with db() as con, con.cursor() as cur:
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
-    notify("act", f"{text}\n\n#{alert_id}")
+    how = act_hint(alert_id)
+    closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop; the dashboard's Act button does the same."
+    notify("act", f"{text}\n\n{closing}\n\n#{alert_id}")
     ha_alert("act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
 

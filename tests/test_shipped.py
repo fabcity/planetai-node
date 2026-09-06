@@ -69,3 +69,7 @@ print("packs listing is read-only")
 assert "sed -e 's/[\\\\&|]/\\\\&/g'" in cli, "CLI: envset must escape \\ & | before the sed replacement"
 assert "tail -c 200000" in cli, "CLI: .planetai-setup.log is trimmed"
 print("envset escapes, setup log capped")
+# v0.32 — a report or a test alert says `/act N` only when the bot that reads it is running; otherwise `planetai act N`
+assert "def act_hint" in main and main.count("act_hint(") >= 3, "main.py: the /act hint goes through act_hint()"
+assert "→  /act {" not in main and "Reply /act with the number" not in main, "main.py: an unconditional /act instruction remains"
+print("act hints honest without a bot")
