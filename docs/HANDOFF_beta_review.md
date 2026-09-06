@@ -9,7 +9,8 @@ For a fresh session that continues this work. The full findings, scores and evid
 - `fabcity/planetai-node` is **public**; `fabcity/planetai` (the site) is **private**. `main` is the beta channel by
   decision: `/install` fetches it, `planetai update` follows it.
 - v0.31 was the review's release. **v0.32** (this pass) closes the review's open items after Tomas decided the three
-  questions: `git log v0.31..v0.32 --oneline`, one fix per commit, gates green (`make lint && make test`, run with
+  questions; **v0.32.1** adds the reinstall guard found while rehearsing it: `git log v0.31..v0.32.1 --oneline`, one
+  fix per commit, gates green (`make lint && make test`, run with
   every check enabled on the laptop's miniconda Python: fastapi, sqlglot, pyflakes present).
 - The second pass was run from a Cowork session that cannot push to GitHub or reach planetai.fab.city; every commit
   was authored in that session, carried to the laptop checkout (`~/Documents/Claude/Projects/FAB CITY/planetai-node`)
@@ -25,8 +26,9 @@ For a fresh session that continues this work. The full findings, scores and evid
   (`node0/get/`), **not deployed**: `make deploy` in that repo is a publish and is Tomas's. Narrative changes (cell
   count, ρ 0.67, the legacy agents/hardware block, version stamp, alpha on the front page) are proposed in the
   review's §9, not made.
-- Test VMs (Lima, `limactl list`): `pai-clean` (Santiago-shaped node, now v0.32), `pai-clean2` (restore target),
-  `pai-clean4`–`pai-clean6` (release rehearsals). `limactl delete <name>` removes them.
+- Test VMs (Lima, `limactl list`): `pai-clean` (Santiago-shaped node, updated v0.31 → v0.32 → v0.32.1 in this
+  pass), `pai-clean2` (restore target), `pai-clean4`–`pai-clean6` (release rehearsals; `pai-clean6` ran the v0.32
+  fresh install from the site line in 38 s and the reinstall-over-a-volume refusal). `limactl delete <name>` removes them.
 
 ## Decisions made on 6 September, and why
 
@@ -76,6 +78,6 @@ Polish, not done
 1. Ask Tomas to read PR #1 (Spanish); merge; the gate in `tests/test_packs.py` keeps future rules trilingual.
 2. If node #1 moves to v0.32: `planetai update` there, then `planetai doctor` shows the missing cron line to add;
    `planetai storage` still shows the read-only backup token the NAS uses (unchanged).
-3. Site: `make deploy` in the site checkout publishes the committed footer/alpha/Pi changes and the v0.32 tarball;
-   then check `https://planetai.fab.city/node0/get/VERSION` reads `v0.32`.
+3. Site: `make deploy` in the site checkout publishes the committed footer/alpha/Pi changes and the v0.32.1 tarball;
+   then check `https://planetai.fab.city/node0/get/VERSION` reads `v0.32.1`.
 4. The narrative diffs in review §9 and the cell-count decision, once Tomas words them.
