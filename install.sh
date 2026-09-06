@@ -30,7 +30,9 @@ done
 OS="$(uname -s)"; ARCH="$(uname -m)"
 case "$ARCH" in x86_64|amd64) ARCH=amd64;; aarch64|arm64) ARCH=arm64;; *) die "unsupported arch $ARCH (32-bit ARM? use a 64-bit OS)";; esac
 if [[ "$OS" == "Darwin" ]]; then PLATFORM=macos
-elif [[ "$OS" == "Linux" ]]; then . /etc/os-release 2>/dev/null || true
+elif [[ "$OS" == "Linux" ]]; then
+  # read ID in a subshell: os-release also defines NAME, which would overwrite the --name flag (every Linux node was called "Ubuntu")
+  ID="$( . /etc/os-release 2>/dev/null && echo "${ID:-}" )"
   case "${ID:-}" in debian|ubuntu|raspbian|linuxmint|pop) PLATFORM=debian;; arch|manjaro|cachyos|endeavouros) PLATFORM=arch;; fedora|rhel|rocky|almalinux) PLATFORM=fedora;; *) PLATFORM=linux;; esac
 else die "unsupported OS $OS"; fi
 grep -qi microsoft /proc/version 2>/dev/null && { PLATFORM="wsl-${PLATFORM}"; say "Windows (WSL2) detected"; }
