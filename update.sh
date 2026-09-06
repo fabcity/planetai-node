@@ -12,7 +12,7 @@ if [[ -z "${PLANETAI_UPDATE_COPY:-}" ]]; then
   tmp="$(mktemp -t planetai-update.XXXXXX)"; cp "${BASH_SOURCE[0]}" "$tmp"
   PLANETAI_UPDATE_COPY="$NODE_DIR" exec bash "$tmp" "$@"
 fi
-trap 'rm -f "${BASH_SOURCE[0]}"' EXIT      # the temp copy
+COPY="${BASH_SOURCE[0]}"; trap 'rm -f "$COPY"' EXIT   # the temp copy, by name: an EXIT trap that reads BASH_SOURCE while a sourced file is on the stack deletes THAT file (v0.30 deleted .env)
 cd "$PLANETAI_UPDATE_COPY"                 # back into the node folder; the copy lives in /tmp
 
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
