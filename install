@@ -2,7 +2,7 @@
 #   curl -fsSL planetai.fab.city/install | bash
 #
 # The whole install, from a blank machine. Gets git, gets the code, hands off to `planetai setup`,
-# which asks you three things and does the rest. Safe to re-run: it updates in place.
+# which asks you four things and does the rest. Safe to re-run: it updates in place.
 set -euo pipefail
 
 REPO="${PLANETAI_REPO:-https://github.com/fabcity/planetai-node}"
@@ -98,6 +98,8 @@ mkdir -p "$HOME/.local/bin"
 ln -sf "$DIR/bin/planetai" "$HOME/.local/bin/planetai"
 # make sure `planetai` resolves in new shells. Silent no-op if the PATH line is already there.
 case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *)
+  # a fresh macOS account has no ~/.zshrc yet: create the file for the login shell, or `planetai` is never found
+  case "${SHELL:-}" in */zsh) touch "$HOME/.zshrc";; */bash) touch "$HOME/.bashrc";; esac
   for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
     [[ -f "$rc" ]] && ! grep -q '\.local/bin' "$rc" && printf '\nexport PATH="$HOME/.local/bin:$PATH"\n' >> "$rc"
   done
