@@ -469,7 +469,9 @@ def bootstrap_once() -> None:
     if os.getenv("BOOTSTRAP", "1") != "1" or not os.getenv("NODE_LAT"):
         return
     with db() as con, con.cursor() as cur:
-        cur.execute("SELECT count(*) AS n FROM readings")
+        # "already bootstrapped" means model history exists, not "any row": the wizard recreates the app container
+        # seconds after the first start, and a poll that landed before the kill left 14 rows that skipped this forever
+        cur.execute("SELECT count(*) AS n FROM readings WHERE sensor_id='cams-point' AND ts < now() - interval '2 days'")
         if (cur.fetchone() or {}).get("n"):
             return
         log.info("first start: bootstrapping from global open data (no sensor needed)")
