@@ -33,3 +33,13 @@ assert "agent:['Model'" in gui, "gui: Model tab"
 assert "cmd_agent_local()" in cli and "local) cmd_agent_local" in cli
 assert "def refresh_ladder" in open("app/agent_loop.py").read()
 print("all shipped claims present")
+
+# v0.32 — the LAN write that could wake the household. Every POST that writes raw data must check a token before touching
+# the database. Found on the clean node: a curl from the WiFi created an indoor sensor at 999 µg/m³ and two act-level alerts.
+def _handler(name):
+    m = re.search(rf"^@app\.post\(\"/{name}\"\)\n(.*?)(?=^@app\.|\Z)", main, re.M | re.S)
+    assert m, f"main.py: no POST /{name}"
+    return m.group(1)
+_body = _handler("readings")
+assert "_admin(authorization)" in _body.split("with db()")[0], "POST /readings must check the admin token before it opens the database"
+print("write endpoints gated")

@@ -38,7 +38,7 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 | `db` | postgres:16-alpine. Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
 | `app` | Python 3.12. Three timer threads (poll, rules, push) + FastAPI on :8080. ~210 lines. |
 
-`GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors).
+`GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 
 Compute at node #1: an M-series Mac. Postgres and one Python process idle at under 200 MB. A Pi 4 with 2 GB does this without noticing.
 

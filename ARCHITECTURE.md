@@ -79,8 +79,9 @@ don't summarise upward.
 Every layer speaks three protocols. Compute, apps, and partner systems attach by speaking one of them.
 
 **Readings**: `(ts, sensor_id, metric, value)` + a `sensors` row `(source, name, lat, lon, indoor, local, meta)`.
-Up: children push hourly means (`POST /aggregates`). Down: anyone with a sensor or a phone posts raw
-(`POST /readings`). The instance decides what it keeps.
+Up: children push hourly means (`POST /aggregates`). Down: a sensor or a phone the household trusts posts raw
+(`POST /readings`, with the node's admin token: a posted reading counts as one of the house's own). The instance
+decides what it keeps.
 
 **Cells**: `fci-cells-v0`: `{city, cell: "Pillar|Scale", value, unit, source, observed_at, state: live|partial|mock}`.
 Exactly the `FCI Observations` row. Every instance exposes `GET /cells`. The Index surface (or the aggregator above)
@@ -100,7 +101,8 @@ The point of fixing the contracts is that compute is a *deployment decision*, no
 
 **Downstream: phones and small devices.**
 A mobile app is a client of the nearest node: reads `/stats` and `/alerts`, writes `POST /readings` (phone
-sensors, photos, "burning here" reports) and `POST /actions` (I shut the windows). It needs no server of its own.
+sensors, photos, "burning here" reports; it carries the node's admin token, given once when the phone is paired) and
+`POST /actions` (I shut the windows; open to the household's phones). It needs no server of its own.
 When on-device models arrive (classify a photo of smoke, run the tiny persistence model), they run against the same
 endpoints. Federated participation, if ever wanted, is a `POST` of model deltas to the same node: the Flower
 Android/iOS SDKs speak to a SuperNode that would sit next to the node's API. Nothing above the node changes.

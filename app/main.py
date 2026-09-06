@@ -3,7 +3,7 @@
   run rules.yml (SQL) → telegram/log   (every 60s, cooldown enforced in SQL against the alerts table)
   push hourly aggregates to PARENT_API_URL if set   (every hour)
   answer HTTP: /health /sensors /readings /stats /observations /alerts /aggregates /cells /rho /packs
-              POST /aggregates (parent side, token) · POST /actions (ρ) · POST /readings (downstream contributors)
+              POST /aggregates (parent side, token) · POST /actions (ρ) · POST /readings (downstream contributors, admin token)
 """
 from __future__ import annotations
 
@@ -850,11 +850,16 @@ def action(body: dict):
 
 
 @app.post("/readings")
-def post_readings(body: dict):
-    """Downstream contributors (a phone, a DIY pod on the LAN) post raw readings.
+def post_readings(body: dict, authorization: str = Header("")):
+    """Downstream contributors (a phone, a DIY pod on the LAN) post raw readings. Admin token required: a posted
+    reading becomes a *local, indoor* sensor whose values fire act-level alerts and enter live cells, so anyone on the
+    WiFi could otherwise wake the household with 999 µg/m³ from a curl (found on the clean node, 6 Sep 2026).
     {"sensor": {"sensor_id": "phone-abc", "source": "mobile", "name": "...", "lat":..,"lon":.., "indoor": false},
      "readings": [{"ts": "...", "metric": "<name>", "value": 12.3}, ...]}   The sensor is local by definition."""
-    s = body["sensor"]
+    _admin(authorization)
+    s = body.get("sensor") or {}
+    if not s.get("sensor_id"):
+        raise HTTPException(422, "sensor.sensor_id is required")
     with db() as con, con.cursor() as cur:
         cur.execute("""INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, meta)
                        VALUES (%s,%s,%s,%s,%s,%s,TRUE,%s) ON CONFLICT (sensor_id) DO UPDATE SET lat=EXCLUDED.lat, lon=EXCLUDED.lon, indoor=EXCLUDED.indoor""",
