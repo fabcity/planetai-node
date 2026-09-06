@@ -102,7 +102,7 @@ grep -q '^POSTGRES_PASSWORD=change-me' .env && setenv POSTGRES_PASSWORD "$(opens
   [[ -n "$(grep -E "^ADMIN_TOKEN=" .env | cut -d= -f2- | sed "s/[[:space:]]*#.*//" | tr -d " ")" ]] || setenv ADMIN_TOKEN "$(openssl rand -hex 16)"     # unlocks the GUI's settings pages
 
 # ---- port clash check
-PORT="$(grep '^APP_PORT=' .env | cut -d= -f2)"; PORT="${PORT:-8080}"
+PORT="$(grep '^APP_PORT=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"; PORT="${PORT:-8080}"
 if [[ -n "$(docker compose ps -q app 2>/dev/null)" ]]; then :; elif lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
   warn "port $PORT is already in use on this machine:"; lsof -nP -iTCP:"$PORT" -sTCP:LISTEN | tail -n +2 | awk '{print "     "$1" (pid "$2")"}' | sort -u
   die "set APP_PORT=8081 (or any free port) in .env and re-run"
@@ -129,7 +129,7 @@ chk() { if eval "$2" >/dev/null 2>&1; then echo "  ✓ $1"; else echo "  ✗ $1"
 echo "doctor:"
 chk "all modules in image" "[ \"\$(ls app/*.py | wc -l)\" -eq \"\$(docker compose exec -T app sh -c 'ls /app/*.py | wc -l')\" ]"
 chk "db healthy"      "docker compose exec -T db pg_isready -U planetai"
-PORT="$(grep '^APP_PORT=' .env | cut -d= -f2)"; PORT="${PORT:-8080}"
+PORT="$(grep '^APP_PORT=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"; PORT="${PORT:-8080}"
 chk "app answering"   "curl -sf localhost:${PORT}/health"
 chk "telegram set"    "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env"
 [[ -x backup.sh ]] || { chmod +x backup.sh; echo "  ✓ backup.sh made executable"; }
