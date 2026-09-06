@@ -15,7 +15,9 @@ packs/<id>/
 ## Data packs
 
 YAML only. Anyone can write one. Rules read `stats` (24-hour rolling, per sensor and metric), `readings_1h` (hourly
-means, all history) and `observations` (portals and models). Postgres does the maths, including `corr()`.
+means, all history) and `observations` (portals and models). Postgres does the maths, including `corr()`. The SQL runs
+as a read-only role (`planetai_ro`, in `init.sql`): every table but `settings`, and no writes, so a rule cannot read a
+token into an alert text or change a row.
 
 ```yaml
 - id: indoor_pm25_high

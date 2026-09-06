@@ -21,6 +21,29 @@ CITY = os.getenv("NODE_CITY", "unknown")
 SCALE = os.getenv("NODE_SCALE", "community").capitalize()
 
 
+_ro = {"missing": False}
+
+
+def run_ro(cur, sql: str) -> list:
+    """Run one pack statement as planetai_ro (init.sql ≥ 0.21): SELECT on every table but settings, no writes. The role
+    switch lives inside a transaction so it ends with the statement, whatever happens to it. On a database that has
+    not been updated yet the role is missing: say so once and run as the owner, rather than silence every rule."""
+    if not _ro["missing"]:
+        try:
+            with cur.connection.transaction():
+                cur.execute("SET LOCAL ROLE planetai_ro")
+                cur.execute(sql)
+                return cur.fetchall()
+        except Exception as e:  # noqa: BLE001
+            if "planetai_ro" in str(e) and "does not exist" in str(e):
+                _ro["missing"] = True
+                log.warning("role planetai_ro is missing (schema before 0.21): pack SQL runs as the database owner until planetai update")
+            else:
+                raise
+    cur.execute(sql)
+    return cur.fetchall()
+
+
 def _row(cell: str, value, unit: str, source: str, state: str, note: str = "") -> dict:
     return {"city": CITY, "cell": cell, "value": None if value is None else round(float(value), 3), "unit": unit,
             "source": source, "observed_at": datetime.now(timezone.utc).isoformat(), "state": state, "notes": note}
@@ -47,8 +70,8 @@ def cells(cur) -> list[dict]:
     have = _buckets(cur) if defs else 0
     for c in defs:
         try:
-            cur.execute(c["sql"])
-            row = cur.fetchone()
+            rows = run_ro(cur, c["sql"])
+            row = rows[0] if rows else None
         except Exception as e:  # noqa: BLE001
             log.warning("pack cell %s failed: %s", c.get("cell"), e); continue
         if not row or row.get("value") is None:

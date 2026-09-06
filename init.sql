@@ -102,3 +102,17 @@ CREATE TABLE IF NOT EXISTS settings (
 ALTER TABLE actions DROP CONSTRAINT IF EXISTS actions_stage_check;
 ALTER TABLE actions ADD CONSTRAINT actions_stage_check CHECK (stage IN ('acknowledged','acted','measured','settings'));
 INSERT INTO schema_version (version) VALUES ('0.20') ON CONFLICT DO NOTHING;
+
+-- Pack SQL (rules.yml, cells.yml) runs as planetai_ro: SELECT on every table except settings, no writes. A "data pack,
+-- safe to merge" could otherwise SELECT a token out of settings into an alert text, and /alerts answers anyone on the
+-- LAN. The app switches role for the one statement (SET LOCAL ROLE inside a transaction) and is itself again for the
+-- INSERT that records the alert. Tables a pack creates later (place_*) inherit SELECT through the default privileges.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'planetai_ro') THEN CREATE ROLE planetai_ro NOLOGIN; END IF;
+END $$;
+GRANT planetai_ro TO CURRENT_USER;
+GRANT USAGE ON SCHEMA public TO planetai_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO planetai_ro;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO planetai_ro;
+REVOKE ALL ON settings FROM planetai_ro;
+INSERT INTO schema_version (version) VALUES ('0.21') ON CONFLICT DO NOTHING;

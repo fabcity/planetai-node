@@ -371,8 +371,7 @@ def run_rules() -> None:
             log.warning("briefing failed: %s", e)
         for rule in rules:
             try:
-                cur.execute(rule["sql"])
-                rows = cur.fetchall()
+                rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
             except Exception as e:  # noqa: BLE001
                 log.warning("rule %s failed: %s", rule.get("id"), e)
                 continue

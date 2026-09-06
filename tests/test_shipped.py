@@ -50,3 +50,9 @@ print("token compares constant-time")
 # v0.32 — dumps leave the settings rows behind (the Telegram token lived there on node #1 and travelled to the NAS)
 assert "--exclude-table-data=settings" in open("backup.sh").read(), "backup.sh: settings rows must stay out of dumps"
 print("dumps carry no settings rows")
+# v0.32 — pack SQL runs as a read-only role that cannot see settings
+_sql = open("init.sql").read()
+assert "CREATE ROLE planetai_ro" in _sql and "REVOKE ALL ON settings FROM planetai_ro" in _sql, "init.sql: read-only role for pack SQL"
+assert "index.run_ro(cur, rule[\"sql\"])" in main, "main.py: rules run through run_ro"
+assert "run_ro(cur, c[\"sql\"])" in open("app/index.py").read(), "index.py: cells run through run_ro"
+print("pack SQL runs read-only")

@@ -8,22 +8,43 @@ os.environ.setdefault("NODE_CITY", "testville")
 import index  # noqa: E402
 
 
+class Tx:
+    """A transaction block that records whether it was open when a statement ran, and whether it closed."""
+    def __init__(self, cur): self.cur = cur
+    def __enter__(self): self.cur.in_tx = True; return self
+    def __exit__(self, *exc): self.cur.in_tx = False; return False
+
+
+class Con:
+    def __init__(self, cur): self.cur = cur
+    def transaction(self): return Tx(self.cur)
+
+
 class Cur:
-    """Just enough cursor to drive index.cells(): a bucket count, then one row per pack cell, then rho."""
-    def __init__(self, buckets): self.buckets, self.q = buckets, None
-    def execute(self, sql, *a): self.q = sql
+    """Just enough cursor to drive index.cells(): a bucket count, then one row per pack cell, then rho. Records the role
+    each statement ran under (SET LOCAL ROLE inside the transaction), so the test can see pack SQL run read-only."""
+    def __init__(self, buckets, role_missing=False):
+        self.buckets, self.q, self.in_tx, self.role, self.ran = buckets, None, False, None, []
+        self.role_missing = role_missing; self.connection = Con(self)
+    def execute(self, sql, *a):
+        self.q = sql
+        if sql.startswith("SET LOCAL ROLE"):
+            if self.role_missing: raise Exception('role "planetai_ro" does not exist')
+            self.role = sql.split()[-1]; return
+        self.ran.append((sql, self.role if self.in_tx else None))
     def fetchone(self):
         if "count(*) AS n" in self.q: return {"n": self.buckets}
         if "alerts_act" in self.q: return {"alerts_act": 0, "acted": 0, "median_minutes": None}
         return {"value": 12.0}
+    def fetchall(self): return [self.fetchone()]
 
 
-def cells_with(buckets, state, min_buckets):
+def cells_with(buckets, state, min_buckets, cur=None):
     index_packs = type(sys)("packs")
     index_packs.cells = lambda: [{"cell": "Environmental|Community", "unit": "u", "sql": "select 1 as value",
                                   "state": state, "min_buckets": min_buckets, "pack": "t"}]
     sys.modules["packs"] = index_packs
-    return index.cells(Cur(buckets))
+    return index.cells(cur or Cur(buckets))
 
 
 # a `live` claim is demoted until the data supports it, then allowed. Before the fix the pack said `partial`
@@ -69,3 +90,20 @@ assert v > 10, "the Uluwatu 3.0 must not drag the street average down"
 v, src = resolve_outside([], *N)
 assert src == "model"
 print("outside resolution order pinned")
+
+
+# pack SQL runs as the read-only role, inside a transaction that ends with the statement; the core's own queries
+# (bucket count, rho) run as the owner. A data pack "safe to merge" could otherwise read settings into an alert text.
+cur = Cur(20)
+cells_with(20, "live", 12, cur)
+roles = {sql[:16]: role for sql, role in cur.ran}
+assert roles["select 1 as valu"] == "planetai_ro", f"pack SQL must run as planetai_ro, ran as {roles}"
+assert roles[next(k for k in roles if k.startswith("SELECT count(*)"))] is None, "the core's own SQL stays with the owner"
+assert cur.in_tx is False, "the role switch must not outlive its statement"
+# a database that predates the role (schema < 0.21): say so once, keep the cells coming
+index._ro["missing"] = False
+cur = Cur(20, role_missing=True)
+assert cells_with(20, "live", 12, cur)[0]["value"] == 12.0, "cells must still compute when the role is missing"
+assert index._ro["missing"] is True, "the fallback is remembered, not retried every minute"
+index._ro["missing"] = False
+print("pack SQL role tests pass")
