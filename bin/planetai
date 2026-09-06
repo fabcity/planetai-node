@@ -375,6 +375,9 @@ cmd_doctor() {
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"
   chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"
+  # the disk the node lives on: the database volume and the backups share it by default; when it fills, Postgres stops
+  local freek; freek="$(df -Pk . 2>/dev/null | awk 'NR==2{print $4}')"; freek="${freek:-0}"
+  chk "over 1 GB free on this disk" "[ \"$freek\" -gt 1048576 ]"   "$(( freek / 1024 )) MB free where the node lives. The database and tonight's backup fail when it fills: free space here, or move the backups: planetai storage set backups <dir on another disk>"
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
     chk "broker up :1883"        "nc -z localhost 1883"                                 "planetai logs mosquitto"
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
