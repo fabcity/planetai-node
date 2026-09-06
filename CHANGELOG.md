@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.33 — 2026-09-06 — the node keeps its own square of the planet
+
+Google publishes the AlphaEarth Foundations Satellite Embedding layers — 64 numbers describing every 10 m
+pixel of the land surface, one layer a year since 2017 — as Cloud-Optimized GeoTIFFs in a public bucket under
+CC BY 4.0. A new pack downloads the square around your node, keeps it on your disk, and compares two years
+here. No account, no key, no cloud project. Two vectors for the same pixel point the same way if nothing
+happened there and apart if something did, so the arithmetic is one dot product per pixel.
+
+For a tester, what changes:
+
+- **A new pack, `earth`, and it is off until you ask for it.** Like every code pack it needs
+  `PACKS_ALLOW_CODE=1` and `planetai packs install`. Nothing downloads on a poll: the pack fetches only when
+  you run `planetai run earth fetch`.
+- **What it costs, measured, not estimated.** One year of a 10 km square around the node is **64 MB on your
+  disk** and **about 103 MB pulled**, and takes **about two and a half minutes**. All nine years is 576 MB
+  kept and 925 MB pulled. The first fetch also reads 9 MB of the dataset's tile index, once. Rehearsed at both
+  pilot coordinates: Bali 2023-2025 in 359 s, Santiago 2024-2025 in 215 s.
+- **What it does not measure.** Land surface and coastal water as seen from orbit. Not air, not water, not
+  emissions. One layer a year, published after the year ends, so it is a record and not a warning. And it says
+  *something* changed in a place, never *what* — a new building, a widened road, a cleared slope and a flooded
+  field all move the number the same way. Someone who walks there can tell you which.
+- **A card in the Region band and `GET /earth`.** The map, the year pair, the share of the square that changed
+  and the hectares, with a `Derived` pill: this is a Google model's output that your node did arithmetic on,
+  not something your node measured. One Index cell, `Environmental|City`, `partial` for good.
+- **`planetai packs install` now adds about 250 MB to the image** when the earth pack is present, for
+  `rasterio` and `numpy`. Measured on the Lima node: 458 MB → 710 MB, a nine-minute rebuild. That happens
+  whether or not the pack is enabled, because the installer takes every pack's `pip:` list; if you do not want
+  it, delete `packs/earth/` before you run it.
+- **The app image gains `libexpat1`** (436 kB, every node). Without it `pip install rasterio` succeeds and
+  `import rasterio` fails, so the installer would report success and the pack would die on its first run.
+
+For someone working on the code: `make test` now runs `tests/test_earth.py`, which imports numpy without a
+guard. A dev machine without numpy fails the suite instead of printing "skipped" — deliberately, because the
+whole pack is arithmetic and the de-quantisation is easy to get wrong in a way that still looks plausible.
+
 ## v0.32.1 — 2026-09-06 — starting over on the same machine
 
 Found while rehearsing v0.32 from the site's install line on a clean VM whose earlier node had been deleted: Docker
