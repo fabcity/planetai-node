@@ -11,6 +11,7 @@ import json
 from zoneinfo import ZoneInfo
 import logging
 import os
+import secrets
 import threading
 import time
 from datetime import datetime, timezone
@@ -513,7 +514,7 @@ async def _mcp_auth(request, call_next):
     if request.url.path.startswith("/mcp"):
         tok = os.getenv("ADMIN_TOKEN", "").strip()
         auth = request.headers.get("authorization", "")
-        if not tok or auth != f"Bearer {tok}":
+        if not tok or not _bearer_ok(auth, tok):
             from fastapi.responses import JSONResponse
             return JSONResponse({"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}, status_code=401)
     return await call_next(request)
@@ -701,12 +702,23 @@ BACKUPS = Path("/app/backups")
 EXPORTS = Path("/app/exports")
 
 
+def _bearer_ok(authorization: str, *tokens: str) -> bool:
+    """True when the Authorization header carries one of `tokens`. Compared in constant time: `!=` returns at the first
+    differing byte, which lets a caller on the LAN measure its way to a token one character at a time."""
+    given = authorization.replace("Bearer ", "", 1).strip().encode()
+    ok = False
+    for t in tokens:
+        if t and secrets.compare_digest(given, t.encode()):
+            ok = True          # no early return: the time taken must not say which token matched
+    return ok
+
+
 def _pull_ok(authorization: str) -> None:
     """A read-only token for whoever collects backups (a NAS), separate from the admin token. Either works."""
-    tokens = {t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip()) if t}
+    tokens = [t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip()) if t]
     if not tokens:
         raise HTTPException(403, "no BACKUP_TOKEN or ADMIN_TOKEN set on this node")
-    if authorization.replace("Bearer ", "", 1) not in tokens:
+    if not _bearer_ok(authorization, *tokens):
         raise HTTPException(401, "bad or missing token")
 
 
@@ -773,7 +785,7 @@ def _admin(authorization: str) -> None:
     tok = os.getenv("ADMIN_TOKEN", "").strip()
     if not tok:
         raise HTTPException(403, "ADMIN_TOKEN is not set in .env; run `planetai ui` to create one")
-    if authorization != f"Bearer {tok}":
+    if not _bearer_ok(authorization, tok):
         raise HTTPException(401, "bad or missing admin token")
 
 
@@ -881,7 +893,7 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
     Raw readings never travel this path."""
     if not AGG_TOKEN():
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
-    if authorization != f"Bearer {AGG_TOKEN()}":
+    if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
     rows = body.get("rows", [])
     child = body.get("node", "?")

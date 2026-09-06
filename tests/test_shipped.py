@@ -43,3 +43,7 @@ def _handler(name):
 _body = _handler("readings")
 assert "_admin(authorization)" in _body.split("with db()")[0], "POST /readings must check the admin token before it opens the database"
 print("write endpoints gated")
+# v0.32 — tokens are compared in constant time, by one helper. A `!=` on a token is the pattern to refuse.
+assert "secrets.compare_digest" in main and "def _bearer_ok" in main, "main.py: token compares go through _bearer_ok"
+assert not re.search(r'!= f"Bearer|not in tokens', main), "main.py: a token is still compared with != or `in`"
+print("token compares constant-time")
