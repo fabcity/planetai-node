@@ -833,9 +833,15 @@ def rho():
 def action(body: dict):
     """A human closes the loop: {"alert_id": 12, "stage": "acted", "actor": "ibu wayan", "note": "closed windows"}.
     A mobile app, a Telegram reply handler, or curl — all the same call."""
+    stage = body.get("stage")
+    if stage not in ("acknowledged", "acted"):            # 'settings' rows are written by the node itself, never posted
+        raise HTTPException(400, "stage must be acknowledged or acted")
     with db() as con, con.cursor() as cur:
+        cur.execute("SELECT 1 FROM alerts WHERE id = %s", (body.get("alert_id"),))
+        if not cur.fetchone():
+            raise HTTPException(404, "no such alert")
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
-                    (body.get("alert_id"), body["stage"], body.get("actor"), body.get("note")))
+                    (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}
 
 
