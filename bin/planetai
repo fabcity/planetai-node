@@ -317,7 +317,9 @@ what_next() {
   printf '    %splanetai%s             every command, one line each\n' "$BL" "$N"
   printf '    %splanetai telegram%s    alerts on your phone, two minutes\n' "$BL" "$N"
   printf '    %splanetai status%s      what it has read so far\n\n' "$BL" "$N"
-  if [[ -t 0 && -t 1 ]]; then
+  # under `curl ... | bash` stdin is the pipe, so test the terminal itself, not stdin: the [o]/[t] prompt never showed for
+  # anyone who used the documented install line
+  if [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null; then
     printf '  What now?  %s[o]%s open the dashboard   %s[t]%s connect Telegram   %s[Enter]%s stay in the terminal\n  ' "$B" "$N" "$B" "$N" "$B" "$N"
     local k; IFS= read -r -n1 k </dev/tty || k=""; echo
     case "$k" in
