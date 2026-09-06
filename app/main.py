@@ -675,6 +675,65 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
             "radius_m": int(settings.get("PLACE_RADIUS_M", "1000") or 1000)}
 
 
+def _earth_dir() -> Path:
+    return OUT / "earth" / NODE
+
+
+def _earth_latest() -> dict | None:
+    """The newest comparison the earth pack computed, preferring a year-over-year pair over a longer span."""
+    d = _earth_dir()
+    if not d.is_dir():
+        return None
+    out = []
+    for f in sorted(d.glob("change_*.json")):
+        try:
+            out.append(json.loads(f.read_text()))
+        except Exception as e:  # noqa: BLE001
+            log.warning("earth: %s is not readable json (%s)", f.name, e)
+    if not out:
+        return None
+    yoy = [c for c in out if c.get("year_b", 0) - c.get("year_a", 0) == 1]
+    return sorted(yoy or out, key=lambda c: (c.get("year_b", 0), c.get("year_a", 0)))[-1]
+
+
+@app.get("/earth")
+def earth():
+    """What the earth pack has: the years of AlphaEarth embeddings cached for this node's square, and the
+    latest year-over-year comparison it computed from them. Empty until `planetai run earth fetch`; never an
+    error, so the dashboard card can say what is missing instead of showing a blank box."""
+    d = _earth_dir()
+    years = sorted(int(p.stem) for p in d.glob("*.npy") if p.stem.isdigit()) if d.is_dir() else []
+    size = sum(p.stat().st_size for p in d.glob("*")) if d.is_dir() else 0
+    latest = _earth_latest()
+    enabled = "earth" in [m.get("id") for m in packs.manifests()]
+    body = {"node": NODE, "enabled": enabled, "years": years, "bytes": size, "latest": latest,
+            "png": "/earth/change.png" if latest and (d / str(latest.get("png", ""))).is_file() else None,
+            "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0),
+            "radius_m": int(settings.get("EARTH_RADIUS_M", "5000") or 5000),
+            "attribution": "The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and "
+                           "Google DeepMind. CC BY 4.0."}
+    if not enabled:
+        body["hint"] = "the earth pack is not loaded; see docs/PACKS.md"
+    elif not years:
+        body["hint"] = "no satellite record yet: planetai run earth fetch"
+    elif not latest:
+        body["hint"] = f"{len(years)} year(s) cached, nothing compared yet: planetai run earth change"
+    return body
+
+
+@app.get("/earth/change.png")
+def earth_change_png():
+    """The latest land-change map the earth pack drew. The file name comes from the pack's own JSON, never
+    from the request, and only a .png inside this node's own earth directory is served."""
+    from fastapi.responses import FileResponse
+    latest = _earth_latest()
+    name = Path(str((latest or {}).get("png", ""))).name
+    p = _earth_dir() / name
+    if not (name.endswith(".png") and p.is_file()):
+        raise HTTPException(404, "no land-change map yet: planetai run earth change")
+    return FileResponse(p, media_type="image/png", filename=name)
+
+
 @app.get("/briefing")
 def briefing_now(kind: str = "morning"):
     """The report as it would be sent right now. The dashboard, the bot and the scheduled message all read this."""
@@ -707,6 +766,7 @@ def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
 # ---------------------------------------------------------------- backups and exports, for a machine that pulls them
 BACKUPS = Path("/app/backups")
 EXPORTS = Path("/app/exports")
+OUT = Path(os.getenv("PACK_OUT", "/app/out"))      # the one writable mount; packs put their artifacts here
 
 
 def _bearer_ok(authorization: str, *tokens: str) -> bool:

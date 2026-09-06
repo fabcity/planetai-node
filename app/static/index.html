@@ -101,6 +101,13 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .hero p.why{margin-top:20px;font-size:15.5px;line-height:1.65;color:var(--ink2);max-width:52ch}
 .chips{display:flex;gap:9px;flex-wrap:wrap;position:relative}
 .chip{background:var(--card2);border-radius:999px;padding:7px 14px;font:500 12.5px var(--fb);color:var(--ink2)}
+.prov{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font:600 10.5px var(--fb);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;border:1px solid var(--webblue);color:var(--webblue);background:rgba(63,169,245,.08)}
+.prov::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--webblue);flex:none}
+.earthrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
+@media(max-width:900px){.earthrow{grid-template-columns:1fr}}
+#earthcard[hidden]{display:none}   /* belt and braces: the act strip once showed as an empty bar because its class set display */
+#earth-img{display:block;width:100%;height:auto;max-width:100%;border-radius:10px;background:var(--card2);image-rendering:pixelated}
+.attrib{margin-top:10px;font:400 11px var(--fb);color:var(--mute);line-height:1.5}
 /* the act strip: one thing to do, and the button that closes the loop, on the hero itself */
 .actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--orange);color:var(--bg);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
 .actstrip[hidden]{display:none}   /* the class sets display:grid, which beats the hidden attribute: an empty orange bar showed on every node with nothing to act on */
@@ -265,6 +272,13 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
   <section class="band" data-card="region">
     <div class="bandhead"><span class="dist">Region · 11 km and beyond</span><h2 class="t">Sky, land and sea.</h2><div class="sub" id="region-sub">What satellites and models say about this square of the map. They know the district, not your kitchen.</div></div>
     <div class="cards c4" id="world"></div>
+    <div class="card r1 mt" data-card="earth" id="earthcard" hidden>
+      <div class="head"><h2 class="t" style="font-size:1.25rem">The land, year over year.</h2><span class="prov" id="earth-prov">Derived</span></div>
+      <div class="earthrow mt">
+        <div><img id="earth-img" alt="A map of how much the land around this node changed between two years: pale is unchanged, white is changed most" hidden><div class="note" id="earth-empty" hidden></div></div>
+        <div><div class="sub" id="earth-sub"></div><div class="attrib" id="earth-attrib"></div></div>
+      </div>
+    </div>
   </section>
 
   <section class="band" data-card="act">
@@ -450,6 +464,7 @@ async function refresh(){
     $('#wall-why').textContent=why(iv,ov,mv,g);
     $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
     $('#foot-mid').textContent=`Node ${h.node} · one place, seen from the wall to orbit · Fab City`;
+    drawEarth();
     drawPlan().then(()=>{ if(ONLY){document.body.classList.add('kiosk');document.querySelectorAll('#now > *').forEach(el=>{el.style.display=(el.dataset.card===ONLY||el.id===ONLY||el.id===ONLY+'card')?'':'none';});} if(location.hash&&!window.__scrolled){const t=document.querySelector(location.hash); if(t&&!t.hidden){t.scrollIntoView(); window.__scrolled=true;}} }); applyLayout();
     if($('#network').classList.contains('on'))drawNetwork(LAST);
   }catch(e){$('#dot').className='bad';$('#pulsetxt').textContent='node not answering';}
@@ -537,6 +552,28 @@ function drawNetwork(L){
 const PLAN_LAYERS={building:['buildings on the map','#F4ECE2'],sat:['only the satellite knows','#E8873A'],road:['roads','#8A8378'],green:['green','#00A057'],poi:['uses','#3FA9F5']};
 const USE_COLORS={food:'#E8873A',market:'#E8873A',retail:'#3FA9F5',education:'#7AC943',health:'#E62038',worship:'#F4ECE2',lodging:'#20388D',services:'#3FA9F5',other:'#8A8378'};
 let PLAN=null, PLAN_OFF=new Set();
+async function drawEarth(){
+  const card=$('#earthcard'); if(!card)return;
+  let e; try{e=await api('/earth');}catch(err){card.hidden=true;return;}
+  // the pack may be absent, loaded but empty, or full. Only the last of those is a card worth showing;
+  // a loaded-but-empty pack gets the sentence that says which command fills it. Never an empty box.
+  if(!e||!e.enabled){card.hidden=true;return;}
+  card.hidden=false;
+  $('#earth-attrib').textContent=e.attribution||'';
+  const img=$('#earth-img'), empty=$('#earth-empty');
+  if(!e.latest||!e.png){
+    img.hidden=true; empty.hidden=false;
+    empty.textContent=e.years&&e.years.length?`${e.years.length} year${e.years.length===1?'':'s'} downloaded, nothing compared yet. planetai run earth change`
+      :'No satellite record yet. planetai run earth fetch pulls it (about 103 MB per year, 64 MB kept).';
+    $('#earth-sub').textContent='This node can keep its own copy of Google\u2019s AlphaEarth layers for the square around it and compare two years here. Nothing is downloaded until you ask.';
+    return;
+  }
+  empty.hidden=true; img.hidden=false; img.src=e.png+'?t='+encodeURIComponent(e.latest.computed_at||'');
+  const L=e.latest, km=(L.px&&L.px[0]?L.px[0]*(L.metres_per_pixel||10)/1000:0);
+  $('#earth-sub').innerHTML=`Between <b>${L.year_a}</b> and <b>${L.year_b}</b>, ${fmt(L.share_over_threshold*100,1)}% of this ${fmt(km,km%1?1:0)} km square looks different enough to count as changed \u2014 <b>${fmt(L.hectares_over_threshold)}</b> hectares. Averaged over the whole square the change score is ${fmt(L.mean,3)}, where 0 would mean nothing moved.`
+    +`<div class="note mt">Pale is unchanged, white is changed most; black is no data. North up, 10 m a pixel, the scale bar is 1 km, the ring is this node. It says something changed, not what \u2014 someone who walks there can.</div>`;
+}
+
 async function drawPlan(){
   const card=$('#plancard'); if(!card)return;
   if(!PLAN){try{PLAN=await api('/place/geojson');}catch(e){PLAN={features:[]};}}

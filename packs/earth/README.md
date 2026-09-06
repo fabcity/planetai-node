@@ -94,6 +94,10 @@ One: `Environmental|City`, `partial`, the mean per-pixel distance for the latest
 `partial` however good it is. The node did the arithmetic, but the input is a model's description of a place,
 not a measurement anyone here could repeat, and `live` in this project means measured here.
 
+The `air-quality` pack already contributes an `Environmental|City` cell (PM2.5 from public reference
+stations). Two cells under one key is how this node already works — `Environmental|Bioregion` carries three —
+and `/cells` lists both with their own units. Nothing overwrites anything.
+
 ## Two numbers for one thing
 
 The `earth-engine` pack already reports `land_change_score` on `ee-point`: 1 − cosine similarity of the *mean*

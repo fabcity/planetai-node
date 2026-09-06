@@ -77,3 +77,22 @@ print("act hints honest without a bot")
 assert "docker volume inspect planetai_db" in open("install.sh").read() and "NEWPW" in open("install.sh").read(), "install.sh: refuse a new password over an old volume"
 assert "app logs in to the database" in cli, "doctor: the locked-out app must be a named failure"
 print("reinstall over a leftover volume is refused and diagnosed")
+# v0.33 — the earth pack. A pack whose files, endpoint, card and cell must ship together: the pack alone
+# leaves the dashboard blank, the endpoint alone has nothing to serve, the card alone renders an empty box.
+import os as _os
+for _f in ("pack.yaml", "README.md", "adapter.py", "cells.yml", "fetch.py", "change.py", "status.py", "verify.py"):
+    assert _os.path.exists(f"packs/earth/{_f}"), f"packs/earth/{_f}"
+_earth = yaml.safe_load(open("packs/earth/pack.yaml"))
+assert _earth["pip"] == ["rasterio", "numpy"] and _earth["kind"] == "code"
+assert "EARTH_RADIUS_M=5000" in "".join(_earth["env"]) and "EARTH_YEARS=" in "".join(_earth["env"])
+assert "Google and Google DeepMind" in _earth["attribution"], "the licence's own wording, not a paraphrase"
+_cells = yaml.safe_load(open("packs/earth/cells.yml"))
+assert len(_cells) == 1 and _cells[0]["cell"] == "Environmental|City" and _cells[0]["state"] == "partial"
+assert not _os.path.exists("packs/earth/rules.yml"), "v0 ships no alert: earth-engine's land_changed already fires"
+assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
+assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
+assert 'Path(str((latest or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"
+assert 'data-card="earth"' in gui and 'id="earthcard"' in gui and 'drawEarth()' in gui
+assert "class=\"prov\"" in gui, "gui: the earth card needs its provenance pill"
+assert "planetai run earth fetch" in gui, "gui: the empty state must name the command that fills it"
+print("the earth pack, its endpoint, its card and its cell all ship")
