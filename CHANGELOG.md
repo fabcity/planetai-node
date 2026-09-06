@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.31 — 2026-09-06 — what the beta rehearsal found
+
+A clean Ubuntu machine, two presets (Santiago, Barcelona), no sensor, no credentials, the one line from the site. What
+broke for that stranger is fixed here; what needs a decision is in `docs/reviews/BETA_READINESS_2026-09.md`.
+
+For a tester, what changes:
+
+- **The install finishes with the green screen** (dashboard address, token, `[o]`/`[t]`), not the red box. A new node
+  always failed its own doctor (no Telegram yet, no backup yet) and the wizard treated that as a failure.
+- **Linux, first run**: after installing Docker the script continues instead of dying on the docker socket with the fix
+  buried in the log. `backups/` is created by you, not by Docker as root, so backups can be written.
+- **Your node keeps its name** on Linux (every Linux node was called "Ubuntu"), and **"None yet" for the sensor no longer
+  corrupts `NODE_KIND`**, which made `planetai update` fail and then **delete `.env`**. `update.sh` no longer executes
+  `.env` as shell, and a failed update cannot remove it.
+- **The 92-day history arrives** on a zero-hardware node: the first-start bootstrap was being killed by the wizard's own
+  restart and then skipped for good.
+- **`/export`, `/history`, `/readings` work** (they returned 500 on every call, so no nightly export was ever written);
+  a negative limit is a 422, not a 500; an impossible export date is a 422.
+- **Santiago and Barcelona nodes get their open-data portal**: the wizard now applies the pilot preset it detects.
+- **`planetai doctor` checks that the nightly backup is scheduled** and prints the crontab line if it is not. Node #1
+  had none.
+- **The dashboard's empty orange bar is gone**; "Set up" no longer wraps on a phone.
+- **`/settings/raw` needs the admin token**, not the NAS's read-only backup token. `POST /actions` accepts only
+  `acknowledged`/`acted` for an alert that exists. The agent loop no longer logs the values a model passes to
+  `settings_set`. The tarball update path verifies the published checksum; `.env.before-update` stays at 600.
+- **Gates**: the app-import check in `make lint` had never run (a `$"` in the recipe) and could not fail; it does both
+  now. `check_docs` compares every "N tools" in words with the code (seventeen, not fifteen).
+- **Docs**: Raspberry Pi is marked *not yet* (no arm64 PostGIS image exists); dumps do contain the `settings` table;
+  Telegram `/act` needs `planetai agent local`; nine packs; the database grows about 1 MB a day on node #1.
+- New: `docs/BETA_TESTER_GUIDE.md`, `docs/reviews/BETA_READINESS_2026-09.md`, `docs/HANDOFF_beta_review.md`.
+
+Not in this release, by decision: an arm64 database image; `POST /readings` still needs no token; dumps still carry
+tokens; the `main` branch is still what `/install` fetches.
+
 ## v0.30 — 2026-09-06 — when the node speaks
 
 Node #1 sent 60 messages in two days with no shape: "Good morning" at 13:02 (the daily pulse fired on a **UTC** hour),
