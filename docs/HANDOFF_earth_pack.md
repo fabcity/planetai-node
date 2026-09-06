@@ -119,6 +119,24 @@ one, which is correct but worth knowing. The modal template now says what is set
 Verified in a browser against a local server: 4 cards of real data, the pill and its class, the scope
 sentence, the footer, the modal, both connector cards, and the empty state with the file removed.
 
+## The release, and one thing to know about the branch
+
+`v0.33` is tagged at `fc437f9`, `origin/main` points at the same commit, and the tarball in
+`../planetai/node0/get/` is v0.33, 392 kB, 157 files. Rehearsed afterwards on the Lima node: `./update.sh`
+took it from v0.32.1 to v0.33 with nothing lost (4,633 readings, 13 alerts, 7 actions), the pack appears in
+`planetai packs`, `planetai run earth verify` exits 0, and the card renders in all three of its states —
+absent pack (hidden entirely, height 0), loaded but never fetched (the sentence naming `planetai run earth
+fetch` and the measured size), and cached (the map).
+
+**A second session was working in this checkout at the same time.** It created the branch
+`audit/design-2026-09` from `main` after the pack commit and left the working tree on it, so the last three
+commits of this work were made there rather than on `main`. Nothing of that session's is committed — its
+output is the untracked `docs/design/` — and all three commits are from this work, so `main` was
+fast-forwarded to them without any rewriting. The end state is clean: `main`, `origin/main` and `v0.33` all
+at `fc437f9`. But the checkout is still on `audit/design-2026-09`, `docs/design/` (112 MB of dashboard
+screenshots) is still untracked, and whoever owns that branch should decide what happens to it. Two agents
+in one working tree is worth avoiding.
+
 ## Also found, not fixed
 
 - **The site has no JavaScript parse gate, and it cost an hour.** An apostrophe inside a single-quoted
