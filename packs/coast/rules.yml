@@ -13,6 +13,7 @@
   message:
     en: "🌊⚠️ A big, long-period swell is arriving.\n\nWaves like this travel from far away and carry a lot of energy. On exposed beaches that means strong currents and a heavy shore break, and small boats have a hard time.\n\n👉 Swim at protected beaches only. Small boats stay in. Experienced surfers only."
     id: "🌊⚠️ Ombak besar berperiode panjang sedang datang.\n\nOmbak seperti ini datang dari jauh dan membawa energi besar. Di pantai terbuka artinya arus kuat dan hempasan keras, dan perahu kecil kesulitan.\n\n👉 Berenang hanya di pantai terlindung. Perahu kecil jangan melaut. Peselancar berpengalaman saja."
+    es: "🌊⚠️ Está llegando una marejada grande y de periodo largo.\n\nOlas así vienen de muy lejos y traen mucha energía. En playas expuestas eso significa corrientes fuertes y una rompiente pesada, y las embarcaciones pequeñas lo pasan mal.\n\n👉 Nadar solo en playas protegidas. Las embarcaciones pequeñas, en puerto. Surf solo con experiencia."
 
 - id: sea_warm_anomaly
   level: info
@@ -27,3 +28,4 @@
   message:
     en: "🌡️🐠 The sea is warmer than usual for this time of year.\n\nWhen warm water lingers for days, coral gets stressed and fish move. It matters to anyone who watches the reef, fishes, or runs a dive boat.\n\nNothing to do at home; worth knowing if the sea is part of your life."
     id: "🌡️🐠 Laut lebih hangat dari biasanya untuk musim ini.\n\nKalau air hangat bertahan beberapa hari, karang tertekan dan ikan berpindah. Penting bagi yang mengamati karang, memancing, atau menjalankan kapal selam.\n\nTidak ada yang perlu dilakukan di rumah; baik diketahui kalau laut bagian dari hidup Anda."
+    es: "🌡️🐠 El mar está más cálido de lo normal para esta época.\n\nCuando el agua cálida se queda varios días, el coral se estresa y los peces se mueven. Importa a quien vigila el arrecife, pesca o lleva un barco de buceo.\n\nEn casa no hay nada que hacer; conviene saberlo si el mar es parte de tu vida."

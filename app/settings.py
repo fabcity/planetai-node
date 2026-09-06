@@ -43,7 +43,7 @@ RUNTIME = {
     "QUIET_HOURS":        ("alerts", "Quiet hours", False, False, "1 = between the hours below, only act-level alerts are sent; the rest wait for the morning report."),
     "QUIET_FROM":         ("alerts", "Quiet from", False, False, "Local hour, default 22."),
     "QUIET_TO":           ("alerts", "Quiet until", False, False, "Local hour, default 6."),
-    "ALERT_LOCALE":       ("alerts", "Alert language", False, False, "en or id."),
+    "ALERT_LOCALE":       ("alerts", "Alert language", False, False, "en, id or es. Alerts, the two daily reports and the test alert; the dashboard and the terminal stay in English."),
     "MESH_ALERTS":        ("alerts", "Alerts over the LoRa mesh", False, False, "1 to send act-level alerts through the gateway radio."),
     "MESH_GATEWAY_NODE_NUM": ("alerts", "Gateway node number", False, False, "Decimal, for mesh downlink."),
     # integrations

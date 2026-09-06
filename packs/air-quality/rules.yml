@@ -17,6 +17,7 @@
   message:
     en: "🏠😷 The air inside at {name} is unhealthy right now.\n\nFine particles are high enough to bother people with asthma, children and older people, and to tire anyone over a few hours.\n\n👉 Run the purifier if you have one. Before opening a window, check whether outside is any better; often it is not."
     id: "🏠😷 Udara di dalam {name} sedang tidak sehat.\n\nPartikel halusnya cukup tinggi untuk mengganggu penderita asma, anak-anak dan orang tua, dan membuat siapa pun lelah dalam beberapa jam.\n\n👉 Nyalakan pembersih udara kalau ada. Sebelum membuka jendela, cek dulu apakah di luar lebih baik; sering kali tidak."
+    es: "🏠😷 El aire dentro de {name} no es saludable ahora mismo.\n\nHay partículas finas suficientes para afectar a personas con asma, a niños y a mayores, y para cansar a cualquiera en unas horas.\n\n👉 Enciende el purificador si tienes uno. Antes de abrir una ventana, mira si fuera está mejor; muchas veces no lo está."
 
 - id: outside_worse_keep_shut
   level: act
@@ -51,6 +52,7 @@
   message:
     en: "🌫️🚪 Outside is worse than inside at {name}.\n\nThe street air is carrying more smoke or dust than your rooms right now, and your building is holding it out. Opening up would let it in.\n\n👉 Keep windows and doors shut for now. I will tell you when outside clears."
     id: "🌫️🚪 Di luar lebih buruk daripada di dalam di {name}.\n\nUdara jalan membawa lebih banyak asap atau debu daripada ruangan Anda, dan bangunan Anda menahannya. Membuka jendela akan memasukkannya.\n\n👉 Tutup jendela dan pintu dulu. Saya kabari kalau di luar sudah bersih."
+    es: "🌫️🚪 Fuera está peor que dentro en {name}.\n\nEl aire de la calle lleva más humo o polvo que tus habitaciones, y el edificio lo está dejando fuera. Abrir lo dejaría entrar.\n\n👉 Mantén ventanas y puertas cerradas por ahora. Te aviso cuando fuera despeje."
 
 - id: inside_worse_ventilate
   level: act
@@ -85,6 +87,7 @@
   message:
     en: "🔥🪟 Inside is worse than outside at {name}.\n\nSomething in the house is making smoke or fine dust: cooking, incense, a candle, a mosquito coil. The air outside is cleaner than what you are breathing.\n\n👉 Open a window or two and let it through. It clears faster than a purifier can catch it."
     id: "🔥🪟 Di dalam lebih buruk daripada di luar di {name}.\n\nAda yang membuat asap atau debu halus di rumah: memasak, dupa, lilin, obat nyamuk bakar. Udara di luar lebih bersih daripada yang Anda hirup.\n\n👉 Buka satu dua jendela dan biarkan mengalir. Lebih cepat bersih daripada menunggu pembersih udara."
+    es: "🔥🪟 Dentro está peor que fuera en {name}.\n\nAlgo en la casa está haciendo humo o polvo fino: la cocina, incienso, una vela, un espiral antimosquitos. El aire de fuera está más limpio que el que respiras.\n\n👉 Abre una o dos ventanas y deja que corra. Se despeja más rápido de lo que un purificador lo atrapa."
 
 - id: outdoor_pm25_high
   level: act
@@ -95,6 +98,7 @@
   message:
     en: "🌫️🚨 The air outside at {name} is unhealthy for everyone.\n\nThis is the level where healthy adults feel it too: a scratchy throat, tired eyes, a heavier chest with exertion. Burning season, most likely.\n\n👉 Close up. Put off outdoor work and exercise. Keep children and anyone with asthma or a heart condition indoors."
     id: "🌫️🚨 Udara di luar di {name} tidak sehat untuk semua orang.\n\nDi tingkat ini orang dewasa sehat pun merasakannya: tenggorokan perih, mata lelah, dada berat saat bergerak. Kemungkinan musim bakar.\n\n👉 Tutup rumah. Tunda kerja dan olahraga di luar. Anak-anak dan penderita asma atau jantung tetap di dalam."
+    es: "🌫️🚨 El aire fuera de {name} no es saludable para nadie.\n\nA este nivel lo notan también los adultos sanos: garganta rasposa, ojos cansados, el pecho más pesado al esforzarse. Casi siempre es humo: quemas o calefacción.\n\n👉 Cierra todo. Aplaza el trabajo y el ejercicio al aire libre. Que los niños y quien tenga asma o problemas de corazón se queden dentro."
 
 # ---------------------------------------------------------------- something changed, even if nothing is unhealthy yet
 - id: indoor_spike
@@ -109,6 +113,7 @@
   message:
     en: "📈🏠 Something just changed the air at {name}.\n\nFine particles indoors rose quickly in the last few minutes. It is not unhealthy yet, but a jump like this usually has a cause you can see: a pan on the fire, incense, a candle, smoke drifting in from outside.\n\n👉 Worth a look. If it keeps climbing I will say so."
     id: "📈🏠 Ada yang mengubah udara di {name}.\n\nPartikel halus di dalam naik cepat beberapa menit terakhir. Belum tidak sehat, tapi lonjakan seperti ini biasanya ada sebabnya: wajan di api, dupa, lilin, asap masuk dari luar.\n\n👉 Coba lihat. Kalau terus naik, saya kabari."
+    es: "📈🏠 Algo acaba de cambiar el aire en {name}.\n\nLas partículas finas dentro subieron rápido en los últimos minutos. Todavía no es insalubre, pero un salto así suele tener una causa a la vista: una sartén al fuego, incienso, una vela, humo que entra de fuera.\n\n👉 Vale la pena echar un vistazo. Si sigue subiendo, te lo digo."
 
 - id: outdoor_spike
   level: warn
@@ -124,3 +129,4 @@
   message:
     en: "📈🌫️ The outside air at {name} just got worse.\n\nA sudden rise like this is almost always burning nearby: leaves, rubbish, a field. It may pass in an hour or it may settle in for the evening.\n\n👉 If it keeps rising, shut the windows before it comes indoors."
     id: "📈🌫️ Udara luar di {name} baru saja memburuk.\n\nKenaikan mendadak seperti ini hampir selalu karena pembakaran di dekat sini: daun, sampah, ladang. Bisa lewat dalam sejam, bisa juga menetap sampai malam.\n\n👉 Kalau terus naik, tutup jendela sebelum masuk ke dalam."
+    es: "📈🌫️ El aire fuera de {name} acaba de empeorar.\n\nUna subida tan rápida casi siempre es algo quemándose cerca: hojas, basura, un campo. Puede pasar en una hora o quedarse toda la tarde.\n\n👉 Si sigue subiendo, cierra las ventanas antes de que entre."

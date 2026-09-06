@@ -332,28 +332,51 @@ def briefing(kind: str) -> str:
     inside, mine, street = a.get("inside"), a.get("mine"), a.get("street")
     out = mine if mine is not None else street
     f = lambda v, d=0: "—" if v is None else f"{v:.{d}f}"  # noqa: E731
-    if kind == "morning":
-        head = f"🌅 Good morning. {loc:%A %d %B}."
-        body = f"Overnight the house held at {f(inside)} µg/m³" + (f", the street at {f(out)}" if out is not None else "") + "."
-        if t.get("t") is not None:
-            body += f" It got to {f(t['t'],1)} °C indoors."
-        tail = "Nothing needed doing overnight." if not fired.get("act") else f"{fired['act']} thing{'s' if fired['act']!=1 else ''} asked for a decision."
+    n_act, n_all = int(fired.get("act") or 0), int(fired.get("n") or 0)
+    if LOCALE() == "es":
+        # the day and month names come from the locale-free strftime, so the date is written by hand
+        dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+        meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+        fecha = f"{dias[loc.weekday()]} {loc.day} de {meses[loc.month - 1]}"
+        if kind == "morning":
+            head = f"🌅 Buenos días. {fecha}."
+            body = f"Durante la noche la casa se mantuvo en {f(inside)} µg/m³" + (f", la calle en {f(out)}" if out is not None else "") + "."
+            if t.get("t") is not None:
+                body += f" Dentro llegó a {f(t['t'],1)} °C."
+            tail = "Nada pidió una decisión esta noche." if not n_act else (f"{n_act} cosa pidió una decisión." if n_act == 1 else f"{n_act} cosas pidieron una decisión.")
+        else:
+            head = f"🌇 Buenas tardes. {fecha}."
+            body = f"La casa está en {f(inside)} µg/m³" + (f" frente a {f(out)} fuera" if out is not None else "") + "."
+            if t.get("t") is not None:
+                body += f" El día llegó a {f(t['t'],1)} °C dentro."
+            tail = f"{n_all} mensaje{'s' if n_all != 1 else ''} en las últimas doce horas."
+        quiet_line = f"📡 {quiet_sensors} de tus sensores se han quedado en silencio."
+        waiting_line, ask_line = "Todavía pendiente de ti:", "Pregúntame lo que quieras sobre el aire, el calor, el mar o lo que hay alrededor."
     else:
-        head = f"🌇 Evening. {loc:%A %d %B}."
-        body = f"The house is at {f(inside)} µg/m³" + (f" against {f(out)} outside" if out is not None else "") + "."
-        if t.get("t") is not None:
-            body += f" The day peaked at {f(t['t'],1)} °C indoors."
-        tail = f"{fired.get('n',0)} message{'s' if fired.get('n',0)!=1 else ''} in the last twelve hours."
+        if kind == "morning":
+            head = f"🌅 Good morning. {loc:%A %d %B}."
+            body = f"Overnight the house held at {f(inside)} µg/m³" + (f", the street at {f(out)}" if out is not None else "") + "."
+            if t.get("t") is not None:
+                body += f" It got to {f(t['t'],1)} °C indoors."
+            tail = "Nothing needed doing overnight." if not n_act else f"{n_act} thing{'s' if n_act != 1 else ''} asked for a decision."
+        else:
+            head = f"🌇 Evening. {loc:%A %d %B}."
+            body = f"The house is at {f(inside)} µg/m³" + (f" against {f(out)} outside" if out is not None else "") + "."
+            if t.get("t") is not None:
+                body += f" The day peaked at {f(t['t'],1)} °C indoors."
+            tail = f"{n_all} message{'s' if n_all != 1 else ''} in the last twelve hours."
+        quiet_line = f"📡 {quiet_sensors} of your sensors have gone quiet."
+        waiting_line, ask_line = "Still waiting on you:", "Ask me anything about the air, the heat, the sea or what is around here."
     lines = [head, "", body, tail]
     if quiet_sensors:
-        lines.append(f"📡 {quiet_sensors} of your sensors have gone quiet.")
+        lines.append(quiet_line)
     if waiting:
         lines.append("")
-        lines.append("Still waiting on you:")
+        lines.append(waiting_line)
         for w in waiting:
             lines.append(f"  · {w['text'].splitlines()[0][:90]}  →  {act_hint(w['id'])}")
     lines.append("")
-    lines.append("Ask me anything about the air, the heat, the sea or what is around here.")
+    lines.append(ask_line)
     return "\n".join(lines)
 
 
@@ -827,12 +850,18 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
 def test_alert(authorization: str = Header("")):
     """Fire one act-level alert now, through every configured channel. Same as `planetai test-alert`."""
     _admin(authorization)
-    text = "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do."
+    es = LOCALE() == "es"
+    text = ("🔔 Una prueba de tu nodo.\n\nSi lees esto, todo el camino funciona: una regla se disparó, el nodo escribió un mensaje y te llegó aquí. Los avisos reales se verán así: qué pasa, qué significa y qué hacer."
+            if es else
+            "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do.")
     with db() as con, con.cursor() as cur:
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
     how = act_hint(alert_id)
-    closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop; the dashboard's Act button does the same."
+    if es:
+        closing = f"👉 Responde {how} para mostrarme cómo cierras el círculo." if how.startswith("/") else f"👉 En la terminal, {how} registra que cerraste el círculo; el botón «I did this» del panel hace lo mismo."
+    else:
+        closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop; the dashboard's «I did this» button does the same."
     notify("act", f"{text}\n\n{closing}\n\n#{alert_id}")
     ha_alert("act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}

@@ -43,6 +43,7 @@
   message:
     en: "🌬️ How the air is right now.\n\n🏠 Inside: {inside} µg/m³, {trend}.\n🌳 Outside: {outside} µg/m³.\n🛰️ The satellites guess {modelled} µg/m³ for the whole district.\n\nUnder 15 is clean air by the WHO's measure; over 35 is when to act. Ask me for the day's story if you want it."
     id: "🌬️ Keadaan udara sekarang.\n\n🏠 Dalam: {inside} µg/m³, {trend}.\n🌳 Luar: {outside} µg/m³.\n🛰️ Satelit menebak {modelled} µg/m³ untuk seluruh kecamatan.\n\nDi bawah 15 udara bersih menurut WHO; di atas 35 saatnya bertindak. Tanya cerita harinya kalau mau."
+    es: "🌬️ Cómo está el aire ahora mismo.\n\n🏠 Dentro: {inside} µg/m³, {trend}.\n🌳 Fuera: {outside} µg/m³.\n🛰️ Los satélites calculan {modelled} µg/m³ para todo el distrito.\n\nPor debajo de 15 es aire limpio según la OMS; por encima de 35 toca actuar. Pídeme la historia del día si la quieres."
 
 # ---------------------------------------------------------------- daily: how well do the three layers agree?
 - id: agreement
@@ -74,6 +75,7 @@
   message:
     en: "📊 Your house and the street, this week.\n\nThe air indoors followed the street, as it does in most homes; your building held back a good part of what was outside. The satellite model roughly tracked your street but said nothing useful about your rooms: it sees a district, not a house.\n\nAsk me for the numbers behind this if you want them."
     id: "📊 Rumah Anda dan jalan, minggu ini.\n\nUdara di dalam mengikuti jalan, seperti di kebanyakan rumah; bangunan Anda menahan sebagian besar yang ada di luar. Model satelit kira-kira mengikuti jalan Anda tapi tidak bilang apa pun yang berguna soal ruangan Anda: ia melihat kecamatan, bukan rumah.\n\nTanya angkanya kalau mau."
+    es: "📊 Tu casa y la calle, esta semana.\n\nEl aire de dentro siguió al de la calle, como en casi todas las casas; el edificio frenó buena parte de lo que había fuera. El modelo de satélite siguió más o menos tu calle, pero no dijo nada útil de tus habitaciones: ve un distrito, no una casa.\n\nPídeme los números si los quieres."
 
 # ---------------------------------------------------------------- daily: when is the street worst, and is the house following it?
 - id: rhythm
@@ -99,3 +101,4 @@
   message:
     en: "🕐 Your street has a rhythm.\n\nThis week the outside air was worst around {worst_hr}:00 and cleanest around {best_hr}:00. Indoors it followed a little later, peaking near {worst_in_hr}:00. That is the burning and the traffic, not the weather.\n\n👉 If you air the house, {best_hr}:00 is the hour."
     id: "🕐 Jalan Anda punya ritme.\n\nMinggu ini udara luar terburuk sekitar pukul {worst_hr}:00 dan terbersih sekitar {best_hr}:00. Di dalam mengikuti sedikit belakangan, puncak dekat pukul {worst_in_hr}:00. Itu pembakaran dan lalu lintas, bukan cuaca.\n\n👉 Kalau ingin membuka rumah, pukul {best_hr}:00 waktunya."
+    es: "🕐 Tu calle tiene un ritmo.\n\nEsta semana el aire de fuera estuvo peor hacia las {worst_hr}:00 y más limpio hacia las {best_hr}:00. Dentro siguió un poco después, con el pico cerca de las {worst_in_hr}:00. Eso son las quemas y el tráfico, no el clima.\n\n👉 Si ventilas la casa, la hora es las {best_hr}:00."
