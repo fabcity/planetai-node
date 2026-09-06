@@ -9,7 +9,7 @@ version: 0.1.0
 requires: { node: ">=0.10.0" }
 kind: code
 domain: land
-metrics: [tree_frac, built_frac, crop_frac, water_frac, ndvi_median, night_lights, land_change_score]
+metrics: [tree_frac, built_frac, crop_frac, water_frac, ndvi_median, night_lights]
 scales: [bioregion]
 pip: [earthengine-api]
 env:

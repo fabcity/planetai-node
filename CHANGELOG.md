@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.33.1 — 2026-09-06 — one number for the land, not two
+
+Found on the way out of v0.33: the new `earth` pack and the older `earth-engine` pack both published a
+year-over-year land-change number, both labelled `partial`, both described in words as "the land changed",
+and they disagreed. On node #1 Earth Engine said 0.037 and the earth pack said 0.041. They were measuring
+different things — Earth Engine took the cosine distance between two years' *mean* vectors over 1 km, the
+earth pack takes the mean of the *per-pixel* distances over 10 km, and averaging vectors first cancels the
+noise that averaging distances keeps — but nothing on any screen said so.
+
+For a tester, what changes:
+
+- **`earth-engine` no longer reports land change.** Its `land_change_score`, its second
+  `Environmental|Bioregion` cell and its `land_changed` alert are gone. It keeps what only Earth Engine can
+  give: tree cover and built-up fraction from Dynamic World, Sentinel-2 NDVI, VIIRS night lights.
+- **The `land_changed` alert is gone and nothing replaces it yet.** It was going to move to the `earth`
+  pack, and then the measurements said not to. Four pilot squares, 2024→2025: Kuta Selatan 0.041, Boston
+  0.040, Barcelona 0.016, Santiago 0.015. Boston and Barcelona are at the same latitude and differ by two and
+  a half times, and Boston's change is spread over built-up land rather than water, so the likeliest reason is
+  snow and leaf-off between two annual composites — not 326 hectares of Boston rebuilt in a year. Any
+  threshold that fires in Kuta Selatan, where the land really is being built on, fires in Boston every year
+  for nothing. This node does not send messages a household would ignore, so it sends none: the map and the
+  number are on the dashboard for a person to look at. If you ran `earth-engine` with a key you lose a
+  message you had; that is the cost of not having one we can defend.
+- **A NAS now archives what the earth pack computed.** `tools/nas/pull.py` fetches every `change_*.json` and
+  its map. Not the embedding cache: that is 64 MB a year and `planetai run earth fetch` remakes any of it in
+  about two and a half minutes from a public bucket. What cannot be remade once a node is gone is the record
+  of what that node computed and when, and that is a few hundred kB a pair.
+- **`GET /earth` lists every comparison, not just the latest**, and `GET /earth/change.png?pair=2023_2025`
+  serves any of their maps. The pair only chooses among the comparisons the node actually computed; the file
+  name still never comes from the request.
+
 ## v0.33 — 2026-09-06 — the node keeps its own square of the planet
 
 Google publishes the AlphaEarth Foundations Satellite Embedding layers — 64 numbers describing every 10 m

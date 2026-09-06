@@ -1,11 +1,14 @@
 """Tests for the shipped code packs' logic, without their services.
   · coast: the inland refusal and the metric mapping, against a saved Marine API payload
   · earth-engine: compute() against a fake `ee` that returns known numbers; fetch() stays idle without credentials
+    (land change is no longer here: it moved to the `earth` pack in v0.33.1, tests/test_earth.py)
 Run: PYTHONPATH=/tmp/stub:app python3 tests/test_packs.py"""
 import importlib.util
 import os
 import sys
 import types
+
+import yaml
 
 def load(path, name):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -65,9 +68,7 @@ class FakeIC:
     def mode(s): return FakeImage({"label": {"1": 60, "6": 30, "4": 10}})                      # 60% trees, 30% built, 10% crops
     def median(s): return FakeImage({"ndvi": 0.42})
     def first(s):
-        if s.cid == eepack.VIIRS: return FakeImage({"avg_rad": 3.7})
-        vec = {f"A{i:02d}": (1.0 if s.year == 2025 else (1.0 if i < 60 else -1.0)) for i in range(64)}   # 4 of 64 dims flipped
-        return FakeImage(vec)
+        return FakeImage({"avg_rad": 3.7})
 class FakeReducer:
     @staticmethod
     def frequencyHistogram(): return "hist"
@@ -85,8 +86,11 @@ out = eepack.compute(fake_ee, -8.8271, 115.15709, 2025)
 assert abs(out["tree_frac"] - 0.6) < 1e-9 and abs(out["built_frac"] - 0.3) < 1e-9 and abs(out["crop_frac"] - 0.1) < 1e-9
 assert out["water_frac"] == 0.0, "an absent class is 0, not missing"
 assert out["ndvi_median"] == 0.42 and out["night_lights"] == 3.7
-# 4 of 64 dims flipped sign: cosine = (60-4)/64 = 0.875 -> change score 0.125
-assert abs(out["land_change_score"] - 0.125) < 1e-9, out["land_change_score"]
+# land change is the earth pack's now. One number for one thing: this pack must not publish a second.
+assert "land_change_score" not in out, "land_change_score moved to the earth pack in v0.33.1"
+assert not any("land_change" in m for m in yaml.safe_load(open("packs/earth-engine/pack.yaml"))["metrics"])
+assert "land_change" not in open("packs/earth-engine/cells.yml").read()
+assert "land_change" not in open("packs/earth-engine/adapter.py").read()
 
 # without credentials the pack must stay idle, not raise, and must not retry every poll
 for k in ("EE_PROJECT", "EE_SERVICE_ACCOUNT", "EE_KEY_FILE"): os.environ.pop(k, None)

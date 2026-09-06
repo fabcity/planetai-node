@@ -88,11 +88,27 @@ assert "EARTH_RADIUS_M=5000" in "".join(_earth["env"]) and "EARTH_YEARS=" in "".
 assert "Google and Google DeepMind" in _earth["attribution"], "the licence's own wording, not a paraphrase"
 _cells = yaml.safe_load(open("packs/earth/cells.yml"))
 assert len(_cells) == 1 and _cells[0]["cell"] == "Environmental|City" and _cells[0]["state"] == "partial"
-assert not _os.path.exists("packs/earth/rules.yml"), "v0 ships no alert: earth-engine's land_changed already fires"
+print("the earth pack, its endpoint, its card and its cell all ship")
+# v0.33.1 — one number for the land. earth-engine published a second land-change score with different
+# provenance; it was retired and the alert moved to the pack that owns the metric.
+for _f in ("adapter.py", "pack.yaml", "cells.yml"):
+    assert "land_change" not in open(f"packs/earth-engine/{_f}").read(), f"earth-engine/{_f} still has land change"
+assert not _os.path.exists("packs/earth-engine/rules.yml"), "earth-engine's land_changed was retired"
+# and no pack alerts on land change until the number can be calibrated across climates: any threshold that
+# fires in Kuta Selatan (0.041) also fires in Boston (0.040), most likely on snow and leaf-off.
+assert not _os.path.exists("packs/earth/rules.yml"), "the earth pack must ship no alert; see its README"
+assert "a household would ignore" in open("packs/earth/README.md").read(), \
+    "packs/earth/README.md must say WHY there is no alert, not just that there is none"
+for _n in ("0.0414", "0.0404", "0.0164", "0.0151"):
+    assert _n in open("packs/earth/README.md").read(), f"the README must carry the {_n} measurement"
+# v0.33.1 — every comparison is reachable, so a NAS can archive the ones that cannot be recomputed cheaply
+assert 'def _earth_changes' in main and '"changes": changes' in main
+assert 'pattern=r"^(\\d{4}_\\d{4})?$"' in main, "main.py: the pair must be a pattern, not a path"
+assert 'def earth(ddir)' in open("tools/nas/pull.py").read(), "tools/nas/pull.py: archive the earth results"
+print("one land-change number, its alert, and the results a NAS can archive")
 assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
 assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
-assert 'Path(str((latest or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"
+assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"
 assert 'data-card="earth"' in gui and 'id="earthcard"' in gui and 'drawEarth()' in gui
 assert "class=\"prov\"" in gui, "gui: the earth card needs its provenance pill"
 assert "planetai run earth fetch" in gui, "gui: the empty state must name the command that fills it"
-print("the earth pack, its endpoint, its card and its cell all ship")

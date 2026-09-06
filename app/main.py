@@ -679,21 +679,28 @@ def _earth_dir() -> Path:
     return OUT / "earth" / NODE
 
 
-def _earth_latest() -> dict | None:
-    """The newest comparison the earth pack computed, preferring a year-over-year pair over a longer span."""
+def _earth_changes() -> list[dict]:
+    """Every comparison the earth pack computed here, oldest pair first. Small: about a kilobyte each, and a
+    node has at most eight of them."""
     d = _earth_dir()
     if not d.is_dir():
-        return None
+        return []
     out = []
     for f in sorted(d.glob("change_*.json")):
         try:
             out.append(json.loads(f.read_text()))
         except Exception as e:  # noqa: BLE001
             log.warning("earth: %s is not readable json (%s)", f.name, e)
+    return sorted(out, key=lambda c: (c.get("year_b", 0), c.get("year_a", 0)))
+
+
+def _earth_latest() -> dict | None:
+    """The newest comparison, preferring a year-over-year pair over a longer span."""
+    out = _earth_changes()
     if not out:
         return None
     yoy = [c for c in out if c.get("year_b", 0) - c.get("year_a", 0) == 1]
-    return sorted(yoy or out, key=lambda c: (c.get("year_b", 0), c.get("year_a", 0)))[-1]
+    return (yoy or out)[-1]
 
 
 @app.get("/earth")
@@ -704,9 +711,13 @@ def earth():
     d = _earth_dir()
     years = sorted(int(p.stem) for p in d.glob("*.npy") if p.stem.isdigit()) if d.is_dir() else []
     size = sum(p.stat().st_size for p in d.glob("*")) if d.is_dir() else 0
+    changes = _earth_changes()
     latest = _earth_latest()
     enabled = "earth" in [m.get("id") for m in packs.manifests()]
+    for c in changes:                       # so a NAS, or anything else, can fetch each map without guessing
+        c["png_url"] = f"/earth/change.png?pair={c['year_a']}_{c['year_b']}"
     body = {"node": NODE, "enabled": enabled, "years": years, "bytes": size, "latest": latest,
+            "changes": changes,
             "png": "/earth/change.png" if latest and (d / str(latest.get("png", ""))).is_file() else None,
             "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0),
             "radius_m": int(settings.get("EARTH_RADIUS_M", "5000") or 5000),
@@ -722,15 +733,17 @@ def earth():
 
 
 @app.get("/earth/change.png")
-def earth_change_png():
-    """The latest land-change map the earth pack drew. The file name comes from the pack's own JSON, never
-    from the request, and only a .png inside this node's own earth directory is served."""
+def earth_change_png(pair: str = Query("", pattern=r"^(\d{4}_\d{4})?$")):
+    """A land-change map the earth pack drew: the latest, or `?pair=2023_2025`. The file name always comes
+    from the pack's own JSON, never from the request — the pair only chooses among the comparisons this node
+    actually computed — and only a .png inside this node's own earth directory is served."""
     from fastapi.responses import FileResponse
-    latest = _earth_latest()
-    name = Path(str((latest or {}).get("png", ""))).name
+    want = _earth_latest() if not pair else next(
+        (c for c in _earth_changes() if f"{c.get('year_a')}_{c.get('year_b')}" == pair), None)
+    name = Path(str((want or {}).get("png", ""))).name
     p = _earth_dir() / name
     if not (name.endswith(".png") and p.is_file()):
-        raise HTTPException(404, "no land-change map yet: planetai run earth change")
+        raise HTTPException(404, "no such land-change map: planetai run earth change")
     return FileResponse(p, media_type="image/png", filename=name)
 
 

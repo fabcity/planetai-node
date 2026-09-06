@@ -4,8 +4,12 @@ Everything is computed server-side in Earth Engine and only scalars come back: t
   · Dynamic World class fractions for the year (trees, built, crops, water)     GOOGLE/DYNAMICWORLD/V1
   · Sentinel-2 annual median NDVI                                               COPERNICUS/S2_SR_HARMONIZED
   · VIIRS monthly night-lights radiance, latest month                           NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG
-  · AlphaEarth satellite-embedding change: 1 − cosine similarity between this   GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL
-    year's and last year's 64-dim mean embedding — how much the land changed
+
+Land change used to be here too, as the cosine distance between two years' mean 64-dim AlphaEarth vectors over
+the same 1 km buffer. It moved to the `earth` pack in v0.33.1, which reads the same embeddings from Google's
+public bucket with no account and compares them per pixel over 10 km. Two numbers for one idea, with different
+provenance and no way for a reader to tell why they disagreed (0.037 here against 0.041 there on node #1), is
+worse than one. This pack keeps what only Earth Engine can give: Dynamic World, Sentinel-2 and VIIRS.
 
 kind='model', scale='bioregion'. Context published downward; never a `live` cell.
 
@@ -27,7 +31,6 @@ _state = {"last": 0.0, "warned": False}
 DW = "GOOGLE/DYNAMICWORLD/V1"
 S2 = "COPERNICUS/S2_SR_HARMONIZED"
 VIIRS = "NOAA/VIIRS/DNB/MONTHLY_V1/VCMSLCFG"
-EMB = "GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL"
 DW_CLASSES = {0: "water_frac", 1: "tree_frac", 4: "crop_frac", 6: "built_frac"}
 
 
@@ -88,19 +91,6 @@ def compute(ee, lat: float, lon: float, year: int, buffer_m: int = 1000) -> dict
     except Exception as e:  # noqa: BLE001
         log.warning("earth-engine: VIIRS failed (%s)", type(e).__name__)
 
-    # AlphaEarth embeddings: cosine distance between this year's and last year's mean 64-d vector over the buffer
-    try:
-        def vec(yr):
-            img = ee.ImageCollection(EMB).filterBounds(aoi).filterDate(f"{yr}-01-01", f"{yr}-12-31").first()
-            d = img.reduceRegion(reducer=ee.Reducer.mean(), geometry=aoi, scale=10, maxPixels=1e8).getInfo() or {}
-            return [float(d[f"A{i:02d}"]) for i in range(64) if d.get(f"A{i:02d}") is not None]
-        a, b = vec(year), vec(year - 1)
-        if len(a) == 64 and len(b) == 64:
-            dot = sum(x * y for x, y in zip(a, b))
-            na, nb = sum(x * x for x in a) ** 0.5, sum(y * y for y in b) ** 0.5
-            out["land_change_score"] = 1.0 - dot / (na * nb) if na and nb else 0.0
-    except Exception as e:  # noqa: BLE001
-        log.warning("earth-engine: satellite embedding failed (%s)", type(e).__name__)
     return out
 
 
@@ -132,8 +122,8 @@ def fetch(hc):
     ts = datetime(year, 7, 1, tzinfo=timezone.utc)      # mid-year stamp for annual quantities
     sensor = {"sensor_id": "ee-point", "source": "earth-engine", "name": f"Land within 1 km (Earth Engine, {year})",
               "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "model", "scale": "bioregion", "cadence": "P1Y",
-              "meta": {"datasets": [DW, S2, VIIRS, EMB], "buffer_m": 1000,
-                       "attribution": "Google Earth Engine; Dynamic World (Google/WRI, CC BY 4.0); Copernicus Sentinel-2; NOAA VIIRS; Google Satellite Embedding V1 (CC BY 4.0)"}}
+              "meta": {"datasets": [DW, S2, VIIRS], "buffer_m": 1000,
+                       "attribution": "Google Earth Engine; Dynamic World (Google/WRI, CC BY 4.0); Copernicus Sentinel-2; NOAA VIIRS"}}
     readings = [(ts, "ee-point", m, v) for m, v in values.items()]
     log.info("earth-engine: %d metrics for %d around the node", len(readings), year)
     return [sensor], readings

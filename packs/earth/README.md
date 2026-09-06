@@ -44,10 +44,31 @@ because one de-quantised year is 256 MB of float and a node may have 2 GB of mem
 `CHANGED = 0.15`, one constant at the top of `packs/earth/change.py`. It is the only number in this pack that
 was chosen rather than measured, and it was calibrated on one 10 km square of Kuta Selatan, Bali. There, it
 sits at about the 99th percentile of a consecutive-year comparison: 0.96 % of the square for 2023→2024,
-1.19 % for 2024→2025, and 4.9 % over the two-year gap 2023→2025. So a quiet year stays quiet and a real change
-stands out. Somewhere with monsoon flooding, snow, or a working agricultural calendar will have a different
-baseline; look at the distribution in the JSON before trusting the hectares. A lower threshold is not more
-sensitive, it is noisier: at 0.05 a third of this square is "changed" every year.
+1.19 % for 2024→2025, and 4.9 % over the two-year gap 2023→2025. So in that square a quiet year stays quiet
+and a real change stands out. A lower threshold is not more sensitive, it is noisier: at 0.05 a third of this
+square is "changed" every year.
+
+### The number is not comparable between places, and there is no alert
+
+Read the distribution in the JSON before you trust the hectares, because the baseline moves with the climate,
+not only with what people build. Measured for 2024→2025 at the four pilot coordinates:
+
+| place | mean | over 0.15 |
+|---|---|---|
+| Kuta Selatan, Bali | 0.0414 | 1.19 % |
+| Boston | 0.0404 | 3.26 % |
+| Barcelona | 0.0164 | 0.15 % |
+| Santiago | 0.0151 | 0.10 % |
+
+Boston and Barcelona sit at the same latitude and differ by two and a half times. Boston's change is spread
+across built-up land, not water — the harbour is one of the quietest parts of its map — so the likeliest
+explanation is snow and deciduous leaf-off between two annual composites rather than 326 hectares of Boston
+being rebuilt in a year. That is a guess: nothing here has separated seasonality from construction.
+
+Which is why this pack ships **no alert**. Any threshold that fires in Kuta Selatan, where the land really is
+being built on, also fires in Boston every year for reasons nobody there can act on, and this node does not
+send messages a household would ignore. The map and the number are on the dashboard for a person to look at.
+When there is a way to tell a season from a bulldozer, the alert can come back.
 
 ## The cache
 
@@ -107,15 +128,16 @@ The `air-quality` pack already contributes an `Environmental|City` cell (PM2.5 f
 stations). Two cells under one key is how this node already works — `Environmental|Bioregion` carries three —
 and `/cells` lists both with their own units. Nothing overwrites anything.
 
-## Two numbers for one thing
+## Where the land-change number used to live
 
-The `earth-engine` pack already reports `land_change_score` on `ee-point`: 1 − cosine similarity of the *mean*
-embedding vector over 1 km, computed inside Earth Engine, behind a service-account key. This pack reports the
-mean of the *per-pixel* distances over 10 km, computed here, from a public bucket, with no key. They are
-different quantities and they will not agree — averaging vectors first cancels the noise that averaging
-distances keeps. On node #1, Earth Engine's 1 km score for 2025 is 0.037; this pack's 10 km 2024→2025 mean is
-0.041. Two numbers for the same idea, with different provenance, is a thing to resolve rather than ship
-forever. Flagged in `docs/HANDOFF_earth_pack.md`; the decision is not the pack's to make.
+Until v0.33.1 the `earth-engine` pack also published a `land_change_score`: 1 − cosine similarity of the
+*mean* embedding vector over a 1 km buffer, computed inside Earth Engine, behind a service-account key. This
+pack publishes the mean of the *per-pixel* distances over 10 km, computed here, from a public bucket, with no
+key. They are different quantities and they did not agree — averaging vectors first cancels the noise that
+averaging distances keeps, and on node #1 the two read 0.037 and 0.041 without any way for a reader to tell
+why. Two numbers for one idea with different provenance is worse than one, so the Earth Engine one was
+retired and the `land_changed` alert moved here with it. `earth-engine` keeps what only Earth Engine can
+give: Dynamic World, Sentinel-2 and VIIRS.
 
 ## Attribution
 
