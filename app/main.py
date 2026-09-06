@@ -426,7 +426,7 @@ def notify(level: str, text: str, force: bool = False) -> None:
 
 # ---------------------------------------------------------------- hourly push (child → parent)
 def push_aggregates() -> None:
-    if not PARENT:
+    if not PARENT():          # the function, not the setting: a bare PARENT is always truthy
         return
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
