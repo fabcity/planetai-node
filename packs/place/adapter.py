@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS place_features (
   fetched_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS place_features_geom ON place_features USING GIST (geom);
+CREATE INDEX IF NOT EXISTS place_features_kind ON place_features (kind);
 CREATE TABLE IF NOT EXISTS place_runs (
   run_at TIMESTAMPTZ PRIMARY KEY, radius_m INT NOT NULL, n_features INT NOT NULL, source TEXT NOT NULL
 );

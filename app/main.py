@@ -540,7 +540,7 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
                 # only the satellite footprints with no mapped building within 3 m: the gap, drawn
                 cur.execute("""SELECT ST_AsGeoJSON(ST_SimplifyPreserveTopology(s.geom, %s), 6), s.confidence FROM place_buildings_sat s
                                WHERE s.source='open_buildings_v3' AND NOT EXISTS (
-                                 SELECT 1 FROM place_features f WHERE f.kind='building' AND ST_DWithin(f.geom::geography, s.geom::geography, 3))""", (tolerance,))
+                                 SELECT 1 FROM place_features f WHERE f.kind='building' AND ST_DWithin(f.geom, s.geom, 0.00003))""", (tolerance,))   # geometry: uses the GiST index
                 for g, conf in cur.fetchall():
                     feats.append({"type": "Feature", "properties": {"kind": "sat", "confidence": conf}, "geometry": json.loads(g)})
     except Exception as e:  # noqa: BLE001

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.28.1 — 2026-09-06
+
+- **Fixed: `planetai run place gaps` hung.** The satellite-versus-map comparison cast both geometries to geography, which
+  bypasses the spatial index; every footprint was compared with every building, millions of distance calculations, in
+  silence. Now in geometry with a degree tolerance (0.00003° ≈ 3 m), which the GiST index serves in seconds; the same
+  fix in `/place/geojson`. `gaps` prints each step as it goes and gives up after two minutes instead of never.
+
 ## v0.28 — 2026-09-06 — the plan, the grid, and Arrange
 
 - **The kilometre around you, drawn.** A figure-ground plan under the World band: buildings on the map in ink, roads as

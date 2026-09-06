@@ -12,21 +12,27 @@ radius = int(os.getenv("PLACE_RADIUS_M", "1000"))
 node = os.getenv("NODE_NAME", "node")
 out_dir = os.getenv("PACK_OUT", "/app/out")
 
+def say(m): print(f"  · {m}", flush=True)
+
+print(f"place gaps for {node}, {radius} m around {lat:.4f}, {lon:.4f}", flush=True)
 with psycopg.connect(os.environ["DATABASE_URL"]) as con, con.cursor() as cur:
+    cur.execute("SET statement_timeout = '120s'")
     cur.execute("SELECT to_regclass('place_features') IS NOT NULL")
     if not cur.fetchone()[0]:
         raise SystemExit("no place data yet: enable the place pack and let it poll once (or: planetai run place refresh)")
-    cur.execute("SELECT count(*) FROM place_features WHERE kind='building'"); osm_b = cur.fetchone()[0]
+    cur.execute("SELECT count(*) FROM place_features WHERE kind='building'"); osm_b = cur.fetchone()[0]; say(f"{osm_b:,} buildings on the map")
     cur.execute("SELECT to_regclass('place_buildings_sat') IS NOT NULL"); has_sat = cur.fetchone()[0]
     sat_b, sat_conf = 0, 0.0
     if has_sat:
-        cur.execute("SELECT count(*), coalesce(avg(confidence),0) FROM place_buildings_sat WHERE source='open_buildings_v3'"); sat_b, sat_conf = cur.fetchone()
+        cur.execute("SELECT count(*), coalesce(avg(confidence),0) FROM place_buildings_sat WHERE source='open_buildings_v3'"); sat_b, sat_conf = cur.fetchone(); say(f"{sat_b:,} satellite footprints")
     # satellite buildings with no OSM building within 3 m: the ones to draw
     unmapped = 0
     if sat_b:
+        say("comparing the two (indexed; a few seconds)")
+        # geometry, not geography: geography casts skip the spatial index and this becomes millions of distance calculations
         cur.execute("""SELECT count(*) FROM place_buildings_sat s WHERE source='open_buildings_v3' AND NOT EXISTS (
-                         SELECT 1 FROM place_features f WHERE f.kind='building' AND ST_DWithin(f.geom::geography, s.geom::geography, 3))""")
-        unmapped = cur.fetchone()[0]
+                         SELECT 1 FROM place_features f WHERE f.kind='building' AND ST_DWithin(f.geom, s.geom, 0.00003))""")
+        unmapped = cur.fetchone()[0]; say(f"{unmapped:,} footprints with nothing drawn near them")
     cur.execute("SELECT count(*) FROM place_features WHERE kind='building' AND coalesce(tags->>'building','yes')='yes'"); untyped = cur.fetchone()[0]
     cur.execute("SELECT category, count(*) FROM place_features WHERE kind='poi' GROUP BY category"); by_cat = dict(cur.fetchall())
     cur.execute("SELECT count(*) FROM place_features WHERE kind='poi' AND name IS NOT NULL AND NOT (tags ? 'opening_hours')"); no_hours = cur.fetchone()[0]
@@ -51,7 +57,7 @@ lines += ["## How", "", "StreetComplete (Android) asks the questions above as yo
           "traces buildings over Bing or Esri imagery. Never from Google Maps or Google imagery: its licence poisons the map. "
           "Edits reach this node within minutes: `planetai run place refresh`.", ""]
 text = "\n".join(lines)
-print(text)
+print("", flush=True); print(text, flush=True)
 os.makedirs(out_dir, exist_ok=True)
 open(os.path.join(out_dir, "place-gaps.md"), "w").write(text)
 print("\nwritten: out/place-gaps.md")
