@@ -8,21 +8,31 @@ planetai ui        # the URLs, and the token that unlocks the settings pages
 
 ## Now
 
-The design is PLANETAI_Node_v5 on the Fab City design system: a warm dark field, Figtree for words, Funnel Sans for
-numbers and headings, the three brand hues as accents, the hexagon as the only mark. Every sentence on the page is
-computed from the API; nothing is typed in.
+The page reads from where you stand, outward. Each band names its distance.
 
-The room's number is a sentence: "Falling to 9 micrograms — under the street, under the model, under the line", each
-clause computed against the outside reading, the satellite model and the WHO guideline, with the verb from the last
-three hours. Beside it, why, and what to do. Four headline tiles with a day's sparkline: the street (your kit outside,
-or the nearest public sensors), the model and its gap to your street, how it feels indoors, the wind. Then the day: an
-annotated 24-hour chart with the WHO line, the indoor peak named ("someone cooked" if the room beat the street), the
-street's peak, and now. Then every sensor with a story generated from its readings. Then what the node said, with the
-ρ ring and **I did this** on every unanswered act-level alert. Then the world: the sea, the land, the weather, the gap.
+**Here.** The room's number as a sentence ("Falling to 9 micrograms, under the street, under the model, under the
+line"), why, and, when an act-level alert is unanswered, an orange strip naming it with the button that closes the loop.
+
+**Room.** How it feels indoors, then each indoor sensor with a note on what it is doing and a day's trace.
+
+**Street, a few hundred metres.** Your kit on the wall, the nearest public sensors with their distance, the wind as a
+direction. Then the day: a 24-hour chart of inside, the street and the model, with the WHO line and the peaks named.
+
+**Neighbourhood, 1 km.** The plan: buildings on the map in ink, roads as hairlines, green as green, every mapped use a
+dot, the buildings only the satellite knows in orange. Beside it, what is here in numbers, what is unmapped, and one
+button: **Fix the map**, which opens the OpenStreetMap editor at your coordinates.
+
+**Region, 11 km and beyond.** The satellite air model and its gap to your street, the land within a kilometre from
+orbit, the sea, the weather.
+
+**Act here.** ρ, and every alert with **I did this** beside the ones that asked for something.
+
+Cards sit at their natural height on fixed tracks (four across on a desktop, two on a laptop, one on a phone). Every
+sentence is computed from the API; nothing is typed in.
 
 ## The kilometre around you
 
-When the place pack has run, a plan appears under the World band: a figure-ground of the radius around the node.
+When the place pack has run, the Neighbourhood band appears: a figure-ground of the radius around the node.
 Buildings on the map in ink, roads as hairlines weighted by class, green as green, every mapped use a dot coloured by
 kind, and the buildings only the satellite knows in orange, so the mapping gap is visible. North up, a 200 m scale bar,
 the node pulsing at the centre. Legend buttons toggle each layer; hovering a dot names the place. Drawn in the browser

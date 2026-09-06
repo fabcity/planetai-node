@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.29 — 2026-09-06 — from where you stand, outward
+
+The Now view reorganised by distance, which is also the Index's scale axis: **Here** (the sentence and the thing to do),
+**Room** (feels like, each indoor sensor), **Street** (your kit outside, the public sensors, the wind, the day chart),
+**Neighbourhood · 1 km** (the plan, what is here, what is unmapped, and a **Fix the map** button that opens the
+OpenStreetMap editor at the node), **Region · 11 km and beyond** (the model, the land, the sea, the weather), and
+**Act here** (ρ and the alerts). Each band names its distance. Cards sit at their natural height on fixed tracks; the
+`1fr` rows that stretched short cards are gone. Measured at three widths: zero stretched cards in any band.
+
 ## v0.28.1 — 2026-09-06
 
 - **Fixed: `planetai run place gaps` hung.** The satellite-versus-map comparison cast both geometries to geography, which

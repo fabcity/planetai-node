@@ -55,7 +55,24 @@ section.view{display:none}section.view.on{display:block}section.view.wall.on{dis
 .card{background:var(--card);border:1px solid var(--line);border-radius:30px;padding:clamp(20px,2.4vw,30px);min-width:0;transition:transform .35s cubic-bezier(.2,.6,.2,1),border-color .35s}
 .card.lift:hover{transform:translateY(-3px);border-color:var(--line2)}
 .r1{border-radius:30px}.r2{border-radius:30px 30px 30px 12px}.r3{border-radius:30px 12px 30px 30px}.r4{border-radius:12px 30px 30px 30px}
-.grid{display:grid;gap:clamp(12px,1.6vw,20px);grid-auto-flow:dense;align-items:stretch}
+.grid{display:grid;gap:clamp(12px,1.6vw,20px);grid-auto-flow:dense;align-items:start}
+/* bands by distance: a label, a title, then cards at their natural height on fixed tracks */
+.band{padding-top:clamp(28px,3.4vw,44px)}
+.bandhead{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:8px clamp(18px,3vw,40px);align-items:end;margin-bottom:16px}
+.bandhead .dist{grid-column:1/-1;font:600 10.5px var(--fb);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
+.bandhead h2.t{font-size:clamp(1.3rem,2.1vw,1.8rem)}.bandhead .sub{max-width:60ch;padding-bottom:4px}
+@media(max-width:820px){.bandhead{grid-template-columns:1fr}}
+.cards{display:grid;gap:clamp(12px,1.6vw,20px);align-items:start;grid-auto-flow:dense}
+.cards.c4{grid-template-columns:repeat(4,minmax(0,1fr))}.cards.c1{grid-template-columns:1fr}
+@media(max-width:1100px){.cards.c4{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.cards.c4{grid-template-columns:1fr}}
+.cards .wide2{grid-column:span 2}@media(max-width:520px){.cards .wide2{grid-column:span 1}}
+.planrow{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
+@media(max-width:900px){.planrow{grid-template-columns:1fr}}
+.actrow{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);gap:clamp(12px,1.6vw,20px);align-items:start}
+@media(max-width:900px){.actrow{grid-template-columns:1fr}}
+.hero{margin-top:0}
+.card.tile,.card.sensor,.card.world{min-height:0}
+.mapbtn{display:inline-flex;align-items:center;gap:8px;margin-top:14px}
 /* the top row: hero (2 tracks) + four tiles = six tracks wide on a desktop, three on a laptop, one on a phone. No holes. */
 .g250{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media(max-width:1180px){.g250{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -72,7 +89,7 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .sub{font-size:13.5px;color:var(--mute);max-width:44ch;line-height:1.6}
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;flex-wrap:wrap;margin-bottom:18px}
 /* hero */
-.hero{grid-column:span 2;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:28px;min-height:340px}
+.hero{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:28px;min-height:340px}
 @media(max-width:620px){.hero{grid-column:span 1}}
 .hero .iso{position:absolute;inset:0;pointer-events:none;opacity:.5;-webkit-mask-image:radial-gradient(circle at 80% 30%,#000,transparent 70%);mask-image:radial-gradient(circle at 80% 30%,#000,transparent 70%);background-image:linear-gradient(60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(-60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(0deg,rgba(244,236,226,.06) 1px,transparent 1px);background-size:22px 38px}
 .hero .bighex{position:absolute;right:-8%;top:-30%;width:min(60%,420px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 22%,transparent);pointer-events:none;transition:background .8s}
@@ -121,13 +138,15 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .world .row .num{font-size:clamp(24px,2.6vw,32px)}.world .row small{font-size:12px;color:var(--mute);margin-left:5px}
 .world .story{font-size:13.5px;line-height:1.6;color:var(--ink2);margin-top:9px}
 /* the plan */
-.plan svg{width:100%;height:auto;display:block;max-height:78vh;margin:0 auto}
+.plan svg{width:100%;height:auto;display:block;max-height:80vh;margin:8px auto 0}
+.plan{padding:18px 18px 12px}
 .plan-legend{margin-top:0;gap:14px}.plan-legend button{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font:500 12px var(--fb);color:var(--ink2);display:flex;align-items:center;gap:8px;cursor:pointer}
 .plan-legend button i{width:10px;height:10px;border-radius:50%;display:block}.plan-legend button.off{opacity:.4}
 .plan .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font:600 12px var(--fb);padding:5px 9px;border-radius:8px;transform:translate(-50%,-140%);white-space:nowrap}
 /* network */
 .net svg{width:100%;height:auto;display:block}
-.legend{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--mute)}.legend span{display:flex;align-items:center;gap:9px}.legend i{width:24px;height:0;border-top:2px dashed;display:block}
+.legend{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--mute)}
+.plan-legend{margin-top:0;gap:10px}.legend span{display:flex;align-items:center;gap:9px}.legend i{width:24px;height:0;border-top:2px dashed;display:block}
 .cellrow{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0}
 .cell{text-align:center}.cell .ring{position:relative;width:70px;height:70px}.cell .ring span{position:absolute;inset:0;display:grid;place-items:center;font:800 17px var(--fd);letter-spacing:-.03em}
 .cell .l{font:600 10px var(--fb);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-top:8px}
@@ -205,49 +224,53 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
 
 <main><div class="wrap">
 
-<!-- ============================================================ NOW -->
+<!-- ============================================================ NOW: from where you stand, outward -->
 <section class="view on" id="now">
-  <div class="grid g250" style="padding-top:clamp(14px,2vw,26px)">
-    <div class="card hero r1 in">
-      <div class="iso" aria-hidden="true"></div><div class="bighex" aria-hidden="true"></div><div class="bighex2" aria-hidden="true"></div>
-      <div class="tri" aria-hidden="true"><span style="background:var(--red)"></span><span style="background:var(--blue)"></span><span style="background:var(--green)"></span></div>
-      <div class="body">
-        <div class="eyebrow" id="hero-eye">The room, right now</div>
-        <p class="big" id="hero-line">Reading the room<b>–</b></p>
-        <p class="why" id="hero-why">Waiting for the first poll.</p>
-      </div>
-      <div class="chips" id="hero-chips"></div>
-      <div class="actstrip" id="actstrip" hidden></div>
+  <div class="card hero r1 in" style="margin-top:clamp(14px,2vw,26px)">
+    <div class="iso" aria-hidden="true"></div><div class="bighex" aria-hidden="true"></div><div class="bighex2" aria-hidden="true"></div>
+    <div class="tri" aria-hidden="true"><span style="background:var(--red)"></span><span style="background:var(--blue)"></span><span style="background:var(--green)"></span></div>
+    <div class="body">
+      <div class="eyebrow" id="hero-eye">The room, right now</div>
+      <p class="big" id="hero-line">Reading the room<b>–</b></p>
+      <p class="why" id="hero-why">Waiting for the first poll.</p>
     </div>
-    <div id="tiles" style="display:contents"></div>
+    <div class="chips" id="hero-chips"></div>
+    <div class="actstrip" id="actstrip" hidden></div>
   </div>
 
-  <section class="card day r1 mt in" data-card="day" style="animation-delay:.2s">
-    <div class="head"><h2 class="t">The day it just had.</h2><div class="sub" id="day-sub">Twenty-four hours of hourly means, with what happened when the line moved.</div></div>
-    <svg id="day" viewBox="0 0 1200 420" role="img" aria-label="PM2.5 inside and outside over 24 hours, annotated"></svg>
+  <section class="band" data-card="room">
+    <div class="bandhead"><span class="dist">Room</span><h2 class="t">Inside.</h2><div class="sub" id="room-sub"></div></div>
+    <div class="cards c4" id="room"></div>
   </section>
 
-  <section class="grid g260 mt" data-card="sensors" style="position:relative">
-    <div class="head" style="grid-column:1/-1;margin-bottom:0"><h2 class="t">Everything this house is listening to.</h2><div class="sub" id="sens-sub"></div></div>
-    <div id="sensors" style="display:contents"></div>
-  </section>
-
-  <section class="card plan r1 mt in" id="plancard" data-card="plan" hidden>
-    <div class="head"><div><h2 class="t">The kilometre around you.</h2><div class="sub" id="plan-sub">Buildings in ink, roads as hairlines, green as green. Every mapped use a dot. What only the satellite knows, in orange.</div></div>
-      <div class="legend plan-legend" id="plan-legend"></div></div>
-    <svg id="plan" viewBox="0 0 1000 1000" role="img" aria-label="A plan of the kilometre around the node"></svg>
-  </section>
-
-  <section class="grid g300 mt">
-    <div class="card r2 in" data-card="act" style="animation-delay:.1s">
-      <div class="eyebrow" style="color:var(--orange)">Act here · what the node said, and what you did</div>
-      <div class="rho" style="margin-top:18px">
-        <svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--webblue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg>
-        <div><div class="num" id="rho-num">–</div><div class="k" id="rho-k">ρ — the only number here that comes from a person.</div></div>
-      </div>
-      <div id="alerts" style="margin-top:20px"></div>
+  <section class="band" data-card="street">
+    <div class="bandhead"><span class="dist">Street · a few hundred metres</span><h2 class="t">Outside the door.</h2><div class="sub" id="street-sub"></div></div>
+    <div class="cards c4" id="street"></div>
+    <div class="card day r1 mt" data-card="day">
+      <div class="head"><h2 class="t" style="font-size:1.25rem">The day it just had.</h2><div class="sub" id="day-sub"></div></div>
+      <svg id="day" viewBox="0 0 1200 420" role="img" aria-label="PM2.5 inside and outside over 24 hours, annotated"></svg>
     </div>
-    <div class="two" id="world"></div>
+  </section>
+
+  <section class="band" data-card="plan" id="plancard" hidden>
+    <div class="bandhead"><span class="dist">Neighbourhood · <span id="plan-r">1 km</span></span><h2 class="t">The kilometre around you.</h2><div class="sub" id="plan-sub"></div></div>
+    <div class="planrow">
+      <div class="card plan r1"><div class="legend plan-legend" id="plan-legend"></div><svg id="plan" viewBox="0 0 1000 1000" role="img" aria-label="A plan of the kilometre around the node"></svg></div>
+      <div class="cards c1" id="place"></div>
+    </div>
+  </section>
+
+  <section class="band" data-card="region">
+    <div class="bandhead"><span class="dist">Region · 11 km and beyond</span><h2 class="t">Sky, land and sea.</h2><div class="sub" id="region-sub">What satellites and models say about this square of the map. They know the district, not your kitchen.</div></div>
+    <div class="cards c4" id="world"></div>
+  </section>
+
+  <section class="band" data-card="act">
+    <div class="bandhead"><span class="dist" style="color:var(--orange)">Act here</span><h2 class="t">What it said, and what you did.</h2><div class="sub" id="act-sub"></div></div>
+    <div class="actrow">
+      <div class="card r2"><div class="rho"><svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--webblue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg><div><div class="num" id="rho-num">–</div><div class="k" id="rho-k">ρ — the only number here that comes from a person.</div></div></div></div>
+      <div class="card r1"><div id="alerts"></div></div>
+    </div>
   </section>
 </section>
 
@@ -367,7 +390,8 @@ async function refresh(){
       at!=null&&{label:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':at>=27?'#E8873A':'#7AC943',spark:atSeries,note:`${fmt(inT,1)} °C at ${fmt(inH)}% humidity indoors. ${at>=40?'Heatstroke territory.':at>=32?'Heat stress: water, air, rest.':at>=27?'Warm; fine for most.':'Comfortable.'}`},
       wind!=null&&{label:'Wind',value:fmt(wind),unit:`km/h ${compass(wdir)}`,color:'#7AC943',spark:null,note:wind<5?'Still. Whatever burns nearby stays nearby.':wind<15?'Light. Smoke drifts, slowly.':wind<30?'Breezy. Smoke travels; so does clean air.':'Strong.'},
     ].filter(Boolean);
-    $('#tiles').innerHTML=tiles.map((t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" data-card="tile:${t.label.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`).join('');
+    const tileHTML=(t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" data-card="tile:${t.label.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`;
+    const roomTiles=tiles.filter(t=>t.label==='Feels like'), streetTiles=tiles.filter(t=>t.label!=='Feels like'&&t.label!=='The model'), regionTiles=tiles.filter(t=>t.label==='The model');
     drawDay(ser,hue,iv);
     // every sensor, with a story
     const local=sensors.filter(s=>s.local), pub=sensors.filter(s=>!s.local&&s.kind==='sensor');
@@ -377,12 +401,16 @@ async function refresh(){
       if(pm){value=fmt(pm.mean_15m);unit='µg/m³';color=s.indoor?hue:'#7AC943';}
       else if(m.temp){value=fmt(m.temp.mean_15m,1);unit='°C';color='#F4ECE2';sp=sparkT[s.sensor_id];}
       else if(m.battery_pct){value=fmt(m.battery_pct.last);unit='% battery';color='#8A8378';sp=null;}
-      rows.push({name:s.name||s.sensor_id,value,unit,color,sp,story:sensorStory(s,m,silent,by,inPM)});}
-    if(at!=null)rows.push({name:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':'#F4ECE2',sp:atSeries,story:'Not measured — worked out from temperature and humidity. The number bodies notice.'});
-    for(const s of near.map(r=>sensors.find(x=>x.sensor_id===r.sensor_id)||r)){const m=by[s.sensor_id]||{};rows.push({name:s.name||s.sensor_id,value:fmt(m.pm25?m.pm25.mean_15m:null),unit:'µg/m³',color:'#8A8378',sp:sparks[s.sensor_id],story:`Somebody else's, ${fmt(dist(s),1)} km down the road. ${ov!=null&&m.pm25&&Math.abs(m.pm25.mean_15m-ov)<2?'It agrees with yours, which is worth knowing.':'A second opinion on the street.'}`});}
-    if(mv!=null)rows.push({name:'CAMS point',value:fmt(mv),unit:'µg/m³',color:'#3FA9F5',sp:ser?ser.model:null,story:'A satellite model sampled at your coordinates, every hour, free, anywhere on earth.'});
-    $('#sensors').innerHTML=rows.map((r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`).join('')||`<div class="empty">No sensor yet. Add one under Set up → Sources.</div>`;
-    $('#sens-sub').textContent=`${local.length} instrument${local.length===1?'':'s'} of yours${pub.length?`, ${near.length} beyond the wall`:''}${mv!=null?', one model overhead':''}`;
+      rows.push({name:s.name||s.sensor_id,value,unit,color,sp,indoor:!!s.indoor,story:sensorStory(s,m,silent,by,inPM)});}
+    if(at!=null&&false)rows.push({name:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':'#F4ECE2',sp:atSeries,story:'Not measured — worked out from temperature and humidity. The number bodies notice.'});
+    for(const s of near.map(r=>sensors.find(x=>x.sensor_id===r.sensor_id)||r)){const m=by[s.sensor_id]||{};rows.push({name:s.name||s.sensor_id,value:fmt(m.pm25?m.pm25.mean_15m:null),unit:'µg/m³',color:'#8A8378',sp:sparks[s.sensor_id],indoor:false,story:`Somebody else's, ${fmt(dist(s),1)} km down the road. ${ov!=null&&m.pm25&&Math.abs(m.pm25.mean_15m-ov)<2?'It agrees with yours, which is worth knowing.':'A second opinion on the street.'}`});}
+
+    const sensorHTML=(r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" data-card="sensor:${(r.name||'').toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`;
+    const indoorRows=rows.filter(r=>r.indoor), outRows=rows.filter(r=>!r.indoor&&r.name!=='CAMS point'&&r.name!=='Feels like');
+    $('#room').innerHTML=roomTiles.map(tileHTML).join('')+indoorRows.map(sensorHTML).join('')||`<div class="empty">No indoor sensor yet. Add one under Set up → Sources: a Smart Citizen kit, an AirGradient on the WiFi, or a BME680 on a mesh radio.</div>`;
+    $('#room-sub').textContent=inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the house, 15-minute means. ${iv!=null&&ov!=null?(iv<ov?'The building is keeping the street out.':iv>ov*1.3?'Whatever is in the air started in here.':'Inside follows the street.'):''}`:'Your indoor sensors.';
+    $('#street').innerHTML=streetTiles.map(tileHTML).join('')+outRows.map((r,i)=>sensorHTML(r,i+2)).join('')||`<div class="empty">No outdoor sensor within reach; the model stands in for the street.</div>`;
+    $('#street-sub').textContent=`${mine.length?`Your kit on the wall${near.length?`, the ${near.length} nearest public sensor${near.length===1?'':'s'}`:''}`:near.length?`The ${near.length} nearest public sensor${near.length===1?'':'s'}`:'No outdoor sensor yet'}, and the wind. ${wind!=null&&wind<5&&(ov||0)>15?'Still air: whatever burns nearby stays nearby.':''}`;
     // the act strip: the newest unanswered act-level alert, on the hero
     const open_=alerts.filter(a=>a.level==='act'&&!a.acted_at); const strip=$('#actstrip');
     if(open_.length){const a=open_[0];const ln=a.text.split('\n').filter(Boolean);strip.hidden=false;strip.innerHTML=`<span class="hex"></span><div class="t">${esc(ln[0])}<small>${open_.length>1?`${open_.length} things waiting. `:''}${esc((ln.find(l=>l.startsWith('👉'))||'').replace('👉','').trim())}</small></div><button class="btn act" onclick="act(${a.id})">I did this</button>`;}
@@ -391,6 +419,7 @@ async function refresh(){
     const arc=rho.rho==null?0:Math.round(264*rho.rho); $('#rho-arc').setAttribute('stroke-dasharray',`${arc} 264`); $('#rho-arc').setAttribute('stroke',hue);
     $('#rho-num').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#rho-num').style.color=hue;
     $('#rho-k').textContent=rho.rho==null?'ρ — no act-level alert yet. When one comes, the button beside it is how this number is made.':`ρ — ${rho.alerts_act} ask${rho.alerts_act===1?'':'s'} in thirty days, ${rho.acted} answered. The only number here that comes from a person.`;
+    $('#act-sub').textContent=open_.length?`${open_.length} thing${open_.length===1?'':'s'} waiting for you. The button beside each is how ρ is made.`:'Nothing waiting. Every act-level alert gets a button; pressing it is the measurement.';
     $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'?'var(--red)':a.level==='warn'?'var(--orange)':'var(--webblue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn act" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
     // the world
     const wave=O('marine-point','wave_height_m'),wd=O('marine-point','wave_direction'),per=O('marine-point','wave_period_s'),sst=O('marine-point','sea_surface_temp');
@@ -406,7 +435,13 @@ async function refresh(){
       tmod!=null&&{title:'The weather',value:fmt(tmod,1),unit:'°C outside',color:'#F4ECE2',story:`${rain?fmt(rain,1)+' mm of rain this hour':'Dry'}${uv!=null?`, ${uv<1?'no UV left in the day':uv<6?'moderate UV':'strong UV'}`:''}${o3!=null?`, ozone at ${fmt(o3)}`:''}. ${wind!=null&&wind<5&&(ov||0)>15?'Still air is keeping the smoke where it is.':'Nothing in the sky is working against you.'}`},
       ov!=null&&mv!=null&&{title:'The gap',value:(ov-mv>=0?'+':'')+fmt(ov-mv),unit:'µg/m³ over the model',color:'#E8873A',story:'The difference between your street and the satellite square it sits in — the local signal an 11 km cell cannot see.'},
     ].filter(Boolean);
-    $('#world').innerHTML=W.map((w,i)=>`<div class="card world lift ${RADII[(i+1)%4]} in" data-card="world:${w.title.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div class="row"><span class="eyebrow" style="letter-spacing:.2em">${w.title}</span><span style="white-space:nowrap"><span class="num" style="color:${w.color}">${w.value}</span><small>${w.unit}</small></span></div><div class="story">${esc(w.story)}</div></div>`).join('');
+    const worldHTML=(w,i)=>`<div class="card world lift ${RADII[(i+1)%4]} in ${w.wide?'wide2':''}" data-card="world:${w.title.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div class="row"><span class="eyebrow" style="letter-spacing:.2em">${w.title}</span><span style="white-space:nowrap"><span class="num" style="color:${w.color}">${w.value}</span><small>${w.unit}</small></span></div><div class="story">${esc(w.story)}</div>${w.action||''}</div>`;
+    const placeCard=W.find(w=>w.title.startsWith('Around you')); const region=W.filter(w=>!w.title.startsWith('Around you'));
+    $('#world').innerHTML=regionTiles.map(tileHTML).join('')+region.map(worldHTML).join('');
+    if(placeCard){placeCard.wide=false;placeCard.action=`<a class="btn act mapbtn" href="https://www.openstreetmap.org/edit#map=17/${h.lat}/${h.lon}" target="_blank" rel="noopener">Fix the map →</a><div class="k" style="font-size:12px;color:var(--mute);margin-top:8px">StreetComplete or Every Door on a phone; iD in the browser. Never from Google. Edits reach this node within minutes.</div>`;
+      $('#place').innerHTML=worldHTML(placeCard,0)+(cov!=null&&cov<0.9?`<div class="card r3" style="border-color:rgba(232,135,58,.4)"><div class="eyebrow" style="color:var(--orange);letter-spacing:.2em">Unmapped</div><div class="story" style="margin-top:8px">About <b style="color:var(--ink)">${fmt((sat||0)-(bld||0))}</b> buildings the satellite sees have nothing drawn on the map. The orange shapes on the plan are them. An afternoon with a few phones fixes a kilometre.</div></div>`:'');}
+    else $('#place').innerHTML='';
+    $('#plan-r').textContent=(PLAN&&PLAN.radius_m?PLAN.radius_m>=1000?(PLAN.radius_m/1000)+' km':PLAN.radius_m+' m':'1 km');
     // wall
     $('#wall-line').innerHTML=iv!=null?`The room is ${verb.toLowerCase().replace('holding at','holding at')} <b>${fmt(iv)}</b> ${new Date().getHours()>=18||new Date().getHours()<5?'tonight':'right now'}.`:`No indoor sensor <b>–</b> yet.`;
     $('#wall-why').textContent=why(iv,ov,mv,g);
