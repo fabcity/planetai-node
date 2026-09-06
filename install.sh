@@ -14,6 +14,7 @@ warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1; }
 
+ARGS=("$@")                 # kept whole: the docker-group re-exec below needs them after the loop has shifted them away
 NAME=""; SC=""; AG=""; PA=""; LAT=""; LON=""; INDOOR=""; NOBAD=""; PRESET=""; NOBOOT=""
 SCUSER=""; KIND=""; TZ_=""; YES=0
 while [[ $# -gt 0 ]]; do
@@ -64,7 +65,7 @@ fi
 # while trying to connect to the docker API" and asking the person to log out and in
 if ! docker info >/dev/null 2>&1 && grep -qw docker <<< "$(id -nG "$USER")" && [[ -z "${PLANETAI_SG:-}" ]] && command -v sg >/dev/null; then
   say "docker group applied for this run (new terminals have it automatically)"
-  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "$@")"
+  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "${ARGS[@]}")"
 fi
 docker info >/dev/null 2>&1 || die "Docker is installed but this user cannot reach it. Log out and back in (the docker group is new), then run the same line again."
 docker compose version >/dev/null 2>&1 || die "docker compose plugin missing"
