@@ -279,7 +279,8 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   [[ "$kind" == district ]] && envset NODE_SCALE city
   spin "starting with your settings" docker compose up -d --force-recreate app || fail "the app container did not restart with your settings"
   spin "waiting for the first answer" bash -c 'for i in $(seq 1 30); do curl -sf "http://localhost:$(grep ^APP_PORT= .env | cut -d= -f2 | tr -d " " || echo 8080)/health" >/dev/null && exit 0; sleep 1; done; exit 1' || true
-  cmd_doctor quiet || fail "install finished but a check failed; see doctor output above"
+  api /health >/dev/null || fail "the node is not answering on port $(port). Look at: planetai logs"
+  cmd_doctor quiet || echo "  The crosses above are normal on a new node: Telegram is the next step, and the first backup runs tonight."
 
   what_next
 }
