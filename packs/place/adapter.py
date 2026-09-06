@@ -21,8 +21,12 @@ import math
 import os
 from datetime import datetime, timedelta, timezone
 
+import sys
+
 import psycopg
 from psycopg.types.json import Jsonb
+
+sys.path.insert(0, os.path.dirname(__file__))      # so `import satellite` works when the pack is loaded from packs/place
 
 log = logging.getLogger("planetai.place")
 OVERPASS = os.getenv("OVERPASS_URL", "https://overpass-api.de/api/interpreter")
@@ -176,6 +180,26 @@ def fetch(hc):
         stale = last is None or last[1] != radius or last[0] < datetime.now(timezone.utc) - timedelta(days=days)
         if stale:
             refresh(con, hc, lat, lon, radius)
+            # the satellite's buildings, if Earth Engine is configured; a missing key is logged once, never fatal
+            try:
+                import satellite as S
+                ee = S.init_ee()
+                S.footprints(ee, con, lat, lon, radius)
+                with con.cursor() as cur:
+                    cur.execute("CREATE TABLE IF NOT EXISTS place_yearly (year INT PRIMARY KEY, buildings REAL, height_m REAL, fetched_at TIMESTAMPTZ DEFAULT now())")
+                    for year, count, h in S.yearly(ee, lat, lon, radius):
+                        cur.execute("INSERT INTO place_yearly (year, buildings, height_m) VALUES (%s,%s,%s) ON CONFLICT (year) DO UPDATE SET buildings=EXCLUDED.buildings, height_m=EXCLUDED.height_m, fetched_at=now()", (year, count, h))
+                con.commit()
+            except Exception as e:  # noqa: BLE001
+                log.warning("place: Open Buildings skipped (%s: %s)", type(e).__name__, str(e)[:120])
+        sat_n, sat_conf, yearly = 0, None, []
+        with con.cursor() as cur:
+            cur.execute("SELECT to_regclass('place_buildings_sat') IS NOT NULL")
+            if cur.fetchone()[0]:
+                cur.execute("SELECT count(*), avg(confidence) FROM place_buildings_sat WHERE source='open_buildings_v3'"); sat_n, sat_conf = cur.fetchone()
+            cur.execute("SELECT to_regclass('place_yearly') IS NOT NULL")
+            if cur.fetchone()[0]:
+                cur.execute("SELECT year, buildings, height_m FROM place_yearly ORDER BY year"); yearly = cur.fetchall()
         with con.cursor() as cur:
             cur.execute(METRICS_SQL, {"lat": lat, "lon": lon, "commercial": list(COMMERCIAL_BUILDINGS), "food": list(FOOD), "road_exclude": list(ROAD_EXCLUDE)})
             m = dict(zip([d.name for d in cur.description], cur.fetchone()))
@@ -194,5 +218,14 @@ def fetch(hc):
     sensor = {"sensor_id": "place-point", "source": "openstreetmap", "name": f"Around here, {radius} m",
               "lat": lat, "lon": lon, "indoor": False, "local": False, "kind": "map", "scale": "community", "cadence": f"P{days}D",
               "meta": {"attribution": "© OpenStreetMap contributors (ODbL), via Overpass", "radius_m": radius, "features": n_feat, "fetched": run_at.isoformat()}}
+    if sat_n:
+        vals["sat_buildings"] = sat_n; vals["sat_confidence"] = sat_conf
+        vals["osm_building_coverage"] = min(1.0, (m["buildings"] or 0) / sat_n)
     readings = [(run_at, "place-point", k, float(v)) for k, v in vals.items() if v is not None]
+    # the yearly series, dated 1 July of each year: the place's growth as a time series on the same sensor
+    for year, count, h in yearly:
+        ts = datetime(year, 7, 1, tzinfo=timezone.utc)
+        readings.append((ts, "place-point", "sat_buildings_yearly", float(count)))
+        if h is not None:
+            readings.append((ts, "place-point", "sat_height_m_yearly", float(h)))
     return [sensor], readings

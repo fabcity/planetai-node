@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.27.1 — 2026-09-06 — the satellite's buildings, and the mapping briefing
+
+- **Google Open Buildings** in the place pack, through the earth-engine pack's credentials: V3 footprints within the
+  radius into PostGIS, and the Temporal dataset's yearly building count and mean height 2016–2023 as a series on
+  `place-point`. The node can say how many buildings the satellite sees, how many the map has, and how the count grew.
+  `/history` serves non-hourly series; the bot's `history` tool reads them; the dashboard card says "the satellite sees
+  4,100; the map has 2,904 (71%). Since 2016 …".
+- **`planetai run place gaps`**: the mapping briefing — satellite footprints with no building drawn, untyped buildings,
+  categories with nothing on the map, named places without hours, unnamed streets — written to `out/place-gaps.md`, with
+  how to fix it (StreetComplete, Every Door, iD; never Google). **`planetai run place verify`** checks PostGIS,
+  Overpass, Earth Engine and both Open Buildings datasets, naming the step that fails.
+- Not testable on the dev machine (no Docker, no Earth Engine key): the quadrant geometry and the OSM path are tested
+  here; the PostGIS and Earth Engine paths are what `verify` is for, on the node.
+
 ## v0.27 — 2026-09-06 — place
 
 **The node knows what is around it.** A `place` pack fetches everything OpenStreetMap has within a kilometre (buildings,

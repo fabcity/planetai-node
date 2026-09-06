@@ -519,6 +519,14 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
             "cells": cells_, "rho": rho_}
 
 
+@app.get("/history")
+def history(sensor_id: str, metric: str, limit: int = Query(500, le=5000)):
+    """Every reading of one metric from one sensor, oldest first. For series that are not hourly: a yearly building count,
+    a monthly refresh. `/sparks` is the hourly view; this is the raw one."""
+    return [{"ts": r["ts"].isoformat(), "value": r["value"]} for r in
+            q("SELECT ts, value FROM readings WHERE sensor_id=%s AND metric=%s ORDER BY ts LIMIT %s", sensor_id, metric, limit)]
+
+
 @app.get("/sparks")
 def sparks(metric: str = "pm25", hours: int = Query(24, le=168)):
     """Per-sensor hourly means, aligned to the same buckets, for small traces inside the dashboard's sensor tiles."""

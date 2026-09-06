@@ -105,7 +105,11 @@ LABELS = {
                              "wind_speed": "wind speed, km/h", "wind_direction": "wind coming from, degrees", "precipitation": "rain this hour, mm"}),
     "cams-point": ("satellite_air", {"pm25_model": "PM2.5 the model estimates for the district, µg/m³", "pm10_model": "PM10, µg/m³", "o3": "ozone, µg/m³",
                                      "no2": "nitrogen dioxide, µg/m³", "co": "carbon monoxide, µg/m³", "dust": "dust, µg/m³", "uv_index": "UV index", "aod": "aerosol optical depth"}),
-    "place-point": ("place", {"buildings": "buildings within the radius (OpenStreetMap)", "built_share": "share of the ground covered by buildings (0-1)",
+    "place-point": ("place", {"sat_buildings": "buildings the satellite sees within the radius (Google Open Buildings, confidence ≥ 0.65)",
+                              "sat_confidence": "mean detection confidence of those (0-1)", "osm_building_coverage": "share of the satellite's buildings that OpenStreetMap has drawn (0-1)",
+                              "sat_buildings_yearly": "building count in the latest year of the temporal dataset; use `history` for the 2016-2023 series",
+                              "sat_height_m_yearly": "mean building height, m, latest year",
+                              "buildings": "buildings within the radius (OpenStreetMap)", "built_share": "share of the ground covered by buildings (0-1)",
                               "commercial_share": "share of buildings that are shops, offices, hotels (0-1)", "businesses_per_km2": "mapped businesses per km²",
                               "poi_food": "places to eat on the map", "poi_retail": "shops and markets on the map", "poi_education": "schools on the map (zero often means unmapped)",
                               "poi_health": "clinics, doctors, pharmacies on the map", "poi_worship": "temples, mosques, churches on the map", "poi_lodging": "hotels, villas, guesthouses on the map",
@@ -140,6 +144,13 @@ def readings(sensor_id: str, metric: str, hours: int = 24) -> dict:
     if vals is None:
         return {"error": f"no {metric} from {sensor_id} in that window", "sensors_with_it": sorted(rows)}
     return {"sensor_id": sensor_id, "metric": metric, "hours": hours, "hourly_means_oldest_first": vals}
+
+
+@mcp.tool()
+def history(sensor_id: str, metric: str) -> list:
+    """Every reading of a slow series, oldest first: e.g. sensor_id='place-point', metric='sat_buildings_yearly' for how
+    many buildings stood within a kilometre each year 2016-2023, or 'sat_height_m_yearly' for their mean height."""
+    return _get(f"/history?sensor_id={sensor_id}&metric={metric}")
 
 
 @mcp.tool()

@@ -35,9 +35,29 @@ The questions above are a fixed set and could be answered in Python. PostGIS is 
 not fixed: distance from the kitchen sensor to the nearest busy road, how much roof is within 200 m of the outdoor kit,
 which sensors sit downwind of the burning. The geometries are in the node's database, queryable by any pack.
 
-## Sources to add
+## The satellite's buildings
 
-Overture Maps (monthly releases: diff two and see what opened, closed, was built); Google Open Buildings (footprints
-and heights where OSM is thin). Both open. Both a second fetch into the same table.
+With the earth-engine pack's credentials in place, the monthly refresh also fetches **Google Open Buildings** (CC BY):
+the V3 footprints within the radius (confidence ≥ 0.65) into `place_buildings_sat`, and the Temporal dataset's yearly
+building count and mean height, 2016–2023, into `place_yearly` and onto `place-point` as `sat_buildings_yearly` and
+`sat_height_m_yearly`, dated 1 July of each year. The node can then say how many buildings the satellite sees, how many
+the map has (`osm_building_coverage`), and how the count grew. `GET /history?sensor_id=place-point&metric=sat_buildings_yearly`
+is the series; the bot's `history` tool reads it.
+
+## Fixing the map
+
+```bash
+planetai run place verify   # PostGIS, OpenStreetMap, Earth Engine, Open Buildings: each step named
+planetai run place gaps     # the mapping briefing: what is unmapped here, and how to fix it
+```
+
+`gaps` compares the satellite's footprints with the map's, counts the untyped buildings, the categories with nothing,
+the named places without hours, the unnamed streets, and writes `out/place-gaps.md`: the briefing for a mapping afternoon
+at the lab. StreetComplete asks the questions as you walk; Every Door adds places; iD traces buildings over Bing or Esri.
+Never from Google Maps or Google imagery. Edits reach the node within minutes: `planetai run place refresh`.
+
+## Next source
+
+Overture Maps: monthly releases; diff two and see what opened, closed, was built. A second fetch into the same table.
 
 © OpenStreetMap contributors, ODbL.
