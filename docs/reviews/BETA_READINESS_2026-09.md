@@ -44,7 +44,7 @@ on v0.30 a no-sensor install ends in a red "Something went wrong" box, is named 
 failed update deletes `.env`. Condition two: their machine is a Mac or an x86 Linux/WSL2 box, not a Raspberry Pi. Both
 must be told plainly that nothing is in Spanish yet and that Telegram `/act` replies do nothing until they run
 `planetai agent local`; `docs/BETA_TESTER_GUIDE.md` says both. Rehearsed on a clean machine: the v0.31 path reaches the
-green screen in about a minute after Docker is installed (first-time image build 1–3 minutes on a slower box).
+green screen in 258 s on a machine that had no Docker (23 s once the images exist).
 
 ## Scores
 
@@ -175,6 +175,7 @@ Rehearsed as a stranger (transcripts in the session scratchpad: `vm_install_1_sa
 | 4.2 | blocker | Re-running the line after that failure: **"This machine already runs a node: Ubuntu (bali, -33.43, -70.60)"** with *Update* as the default. | transcript `1b`, `2b` | fixed 96186b3 |
 | 4.3 | blocker | Every fresh install ended in the **red "Something went wrong" box** because a new node fails its own doctor (no Telegram, no backup). The green screen (dashboard URL, token, `[o]`/`[t]`) was never shown. | transcripts `1d`, `2c` | fixed 24a4a1b |
 | 4.4 | blocker | arm64 Linux: `exec format error` from the database image. | transcripts `1c`, `2b`; `docker manifest inspect` | decision 2 |
+| 4.4b | blocker (introduced and removed during the review) | The first version of the docker-group fix (7bb7273) lost every install flag on re-exec: a Linux first run produced a Bali node named `bayu-2`. | VM4 `.env`, `/health` `node bayu-2 lat -8.8271` | fixed 374acf7, re-rehearsed on VM5 |
 | 4.5 | serious | Fresh macOS account: `install` appends PATH only to rc files that exist; `~/.zshrc` does not → `command not found: planetai` in every new terminal, and the docs' advice ("open a new terminal") does not help. | `install:101-102` | fixed d2522c6 |
 | 4.6 | polish | "Poblenou, Barcelona" offers two identical choices ("Sant Martí, Catalunya, ES" twice). | transcript `2b` | open |
 | 4.7 | polish | The wizard's default name is the hostname (`lima-pai-clean`), fine; the hero says "Two minutes, four questions"; measured: 8 s of questions, 23 s of install with a warm image, 60–90 s cold. | transcripts | ok |
@@ -341,7 +342,14 @@ clean VMs with amd64 emulation, as a Mac has):
 - VM3, first run, no Docker: Docker installed, image built, node up (`install.sh` under the docker group) in 94 s, then the
   wizard's own compose call failed on the socket → fixed (7e5caa9: `finish_setup` re-entered under `sg`). Re-run: green
   screen, all checks, exit 0 in 23 s.
-- VM4, first run, no Docker, Barcelona: see the line below (filled when the run finished).
+- VM4, first run, no Docker, Barcelona: **258 s** from the pasted line to the green screen (git and Docker installed, image
+  built under emulation, node up, all doctor checks including "nightly backup scheduled", the *What now?* prompt shown),
+  exit 0. **But** the node came up as `bayu-2` at Bali coordinates with `BAD_ENABLED=1`: my own docker-group re-exec in
+  `install.sh` ran after the argument loop had shifted the flags away. Fixed in 374acf7 (arguments kept whole) and
+  re-rehearsed on VM5 (below). A fix rehearsed once is not a fix.
+- VM5, first run, no Docker, Barcelona, with 374acf7: **109 s** to the green screen and the *What now?* prompt, exit 0;
+  `NODE_NAME=poblenou-test`, `NODE_LAT=41.4036418`, `NODE_KIND=home`, `CKAN_PORTALS=open-data-bcn=…`, `BAD_ENABLED=0`,
+  `backups/` owned by the user, cron line present, bootstrap `cams_history 4416, power_climatology 60, place Sant Martí`.
+- VM6, first run from `main` after the release: VM6_RESULT_PLACEHOLDER
 - The `[o]`/`[t]` prompt never appeared through `curl | bash` on any version before 07e6f02 (`-t 0` on a pipe).
 
-VM4_RESULT_PLACEHOLDER
