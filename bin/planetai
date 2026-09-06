@@ -17,7 +17,7 @@
 #   planetai packs          what is loaded; install code-pack Python dependencies into the image
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
-#   planetai backup         dump + export + copy now, instead of waiting for 03:10
+#   planetai backup         dump + export + copy now, instead of waiting for 03:17
 #   planetai restore <f>    replace the live database with a dump (takes a safety backup first)
 #   planetai ipfs           publish each day's export to IPFS
 #   planetai agent          connect an AI agent: the MCP endpoint, the token, config snippets
@@ -360,7 +360,8 @@ cmd_doctor() {
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
   chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
-  chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (a nightly one is scheduled)"
+  chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"
+  chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"
   case ",$(envget COMPOSE_PROFILES)," in *,mqtt,*)
     chk "broker up :1883"        "nc -z localhost 1883"                                 "planetai logs mosquitto"
     chk "mesh packets arriving"  "[ \$(mesh_packets) -gt 0 ]"                              "gateway not uplinking yet: planetai meshtastic prints the settings";; esac
@@ -768,7 +769,7 @@ cmd_storage() {
     printf '   %s dumps, keep %s days\n' "$n" "$(envget BACKUP_KEEP || true)"; [[ -n "$last" ]] && echo "                     last: $(basename "$last") ($(du -h "$last" | cut -f1))" || printf '                     %sno backup yet%s\n' "$Y" "$N"
     [[ -f "$bdir/LAST_OK" ]] && echo "                     last run OK at $(cat "$bdir/LAST_OK")"
   else printf '   %s(does not exist yet)%s\n' "$Y" "$N"; fi
-  echo "                     nightly at 03:10 by cron; on demand:  planetai backup"
+  echo "                     nightly at 03:17 by cron; on demand:  planetai backup"
   echo
   local rem; rem="$(envget BACKUP_REMOTE)"
   if [[ -n "$rem" ]]; then echo "  Off-machine copy   $rem  (rclone, after each backup)$(command -v rclone >/dev/null || printf '  %s✗ rclone not installed%s' "$R" "$N")"

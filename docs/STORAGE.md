@@ -23,7 +23,7 @@ restore. A USB drive that sleeps is not that.
 
 ## Backups
 
-Nightly at 03:10, `backup.sh` dumps the database, checks the file is a valid gzip with a readings table, keeps
+Nightly at 03:17, `backup.sh` dumps the database, checks the file is a valid gzip with a readings table, keeps
 `BACKUP_KEEP` days (30), and writes `LAST_OK`. If `BACKUP_DIR` is under `/Volumes`, `/mnt` or `/media` and the drive
 is not mounted, it refuses rather than write to a local folder with the drive's name.
 
