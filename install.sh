@@ -58,8 +58,15 @@ elif ! need docker; then
     *)    curl -fsSL https://get.docker.com | sh;;
   esac
   sudo usermod -aG docker "$USER" || true
-  warn "added you to the docker group — if 'docker ps' fails, log out/in and re-run."
+  warn "added you to the docker group"
 fi
+# the new group is not in this shell yet: continue under it now (sg), rather than dying with "permission denied
+# while trying to connect to the docker API" and asking the person to log out and in
+if ! docker info >/dev/null 2>&1 && grep -qw docker <<< "$(id -nG "$USER")" && [[ -z "${PLANETAI_SG:-}" ]] && command -v sg >/dev/null; then
+  say "docker group applied for this run (new terminals have it automatically)"
+  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "$@")"
+fi
+docker info >/dev/null 2>&1 || die "Docker is installed but this user cannot reach it. Log out and back in (the docker group is new), then run the same line again."
 docker compose version >/dev/null 2>&1 || die "docker compose plugin missing"
 
 # ---- .env
