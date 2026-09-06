@@ -43,7 +43,7 @@ header .wrap{padding-top:20px;padding-bottom:20px;display:flex;align-items:cente
 .mark .o{position:absolute;inset:0;background:var(--ink)}.mark .i{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--hue)}
 .brand b{font:800 17px var(--fd);letter-spacing:-.02em}.brand span.s{font-size:13px;color:var(--mute);white-space:nowrap}
 nav.views{display:flex;gap:5px;background:rgba(244,236,226,.07);border-radius:999px;padding:4px}
-nav.views button{background:transparent;border:0;border-radius:999px;padding:8px 18px;font:500 14px var(--fb);color:var(--mute);transition:background .2s,color .2s}
+nav.views button{background:transparent;border:0;border-radius:999px;padding:8px 18px;font:500 14px var(--fb);color:var(--mute);transition:background .2s,color .2s;white-space:nowrap}
 nav.views button.on{background:var(--ink);color:var(--bg);font-weight:600}nav.views button:hover:not(.on){opacity:.75}
 .link{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mute)}
 .link i{width:7px;height:7px;border-radius:50%;background:var(--webblue);display:block;position:relative}
@@ -103,6 +103,7 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .chip{background:var(--card2);border-radius:999px;padding:7px 14px;font:500 12.5px var(--fb);color:var(--ink2)}
 /* the act strip: one thing to do, and the button that closes the loop, on the hero itself */
 .actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--orange);color:var(--bg);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
+.actstrip[hidden]{display:none}   /* the class sets display:grid, which beats the hidden attribute: an empty orange bar showed on every node with nothing to act on */
 .actstrip .hex{width:12px;height:14px;background:var(--bg)}.actstrip .t{font:600 14.5px/1.4 var(--fb)}.actstrip .t small{display:block;font-weight:500;opacity:.8;font-size:12.5px;margin-top:2px}
 .actstrip .btn{background:var(--bg);color:var(--ink);white-space:nowrap}.actstrip .btn:hover{background:var(--ink);color:var(--bg)}
 @media(max-width:560px){.actstrip{grid-template-columns:auto 1fr}.actstrip .btn{grid-column:1/-1;justify-self:start}}

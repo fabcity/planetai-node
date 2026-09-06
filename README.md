@@ -63,6 +63,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATI
           what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
           extending it             PACKS · PACK_IDEAS · DEVELOPING
           radios and reachability  NETWORKING · MESHTASTIC
+          the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
