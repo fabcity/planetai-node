@@ -191,6 +191,7 @@ h3.g{font:800 1.45rem var(--fd);letter-spacing:-.02em}
 .wall .stats .eyebrow{letter-spacing:.22em}.wall .stats .num{font-size:clamp(34px,4vw,52px);margin-top:8px}
 .wall .foot{margin-left:auto;align-self:flex-end;font-size:13px;color:var(--dim)}
 body.kiosk header,body.kiosk footer{display:none}
+body.kiosk .band{padding-top:clamp(16px,2vw,28px)}
 .wall .exit{position:absolute;right:0;top:0;font:600 12px var(--fb);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-decoration:none;padding:10px 14px;border:1px solid var(--line);border-radius:999px;display:none;z-index:2}
 body.kiosk .wall .exit{display:inline-block}.wall .exit:hover{color:var(--ink);border-color:var(--line2)}
 footer{position:relative;z-index:1}footer .wrap{padding:0 clamp(18px,3.5vw,48px) 34px}
@@ -346,6 +347,7 @@ function smooth(pts){if(pts.length<2)return'';let d=`M${pts[0][0].toFixed(1)},${
 const spark=(vals,color,h=36)=>{const v=(vals||[]).filter(x=>x!=null);if(v.length<2)return`<svg viewBox="0 0 240 ${h}" preserveAspectRatio="none"></svg>`;const max=Math.max(...v)*1.05||1,min=Math.min(...v,0);const arr=vals.map(x=>x==null?null:x);let last=null;const pts=arr.map((x,i)=>{if(x!=null)last=x;const y=last==null?h-3:h-3-((last-min)/(max-min||1))*(h-7);return[i/(arr.length-1)*240,y];});const p=smooth(pts);return`<svg viewBox="0 0 240 ${h}" preserveAspectRatio="none"><path d="${p} L240,${h} L0,${h} Z" fill="${color}" opacity=".13"/><path d="${p}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity=".9"/></svg>`;};
 let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], GROUP='sources', LAST=null;
 const kiosk=new URLSearchParams(location.search).get('kiosk')==='1';
+const ONLY=new URLSearchParams(location.search).get('only');   // ?only=plan|room|street|region|act|day : that band alone, for a wall screen or a capture
 document.querySelectorAll('nav.views button').forEach(b=>b.onclick=()=>show(b.dataset.view));
 function show(v){if(v==='arrange'){show('now');arrangeStart();return;}document.querySelectorAll('section.view').forEach(s=>s.classList.toggle('on',s.id===v));document.querySelectorAll('nav.views button').forEach(b=>b.classList.toggle('on',b.dataset.view===v));document.body.classList.toggle('kiosk',v==='wall'&&kiosk);if(v==='setup')loadSetup();if(v==='network'&&LAST)drawNetwork(LAST);}
 function toast(m,bad){const t=$('#toast');t.textContent=m;t.style.background=bad?'var(--red)':'var(--ink)';t.style.color=bad?'var(--ink)':'var(--bg)';t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2800);}
@@ -447,7 +449,7 @@ async function refresh(){
     $('#wall-why').textContent=why(iv,ov,mv,g);
     $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
     $('#foot-mid').textContent=`Node ${h.node} · one place, seen from the wall to orbit · Fab City`;
-    drawPlan(); applyLayout();
+    drawPlan().then(()=>{ if(ONLY){document.body.classList.add('kiosk');document.querySelectorAll('#now > *').forEach(el=>{el.style.display=(el.dataset.card===ONLY||el.id===ONLY||el.id===ONLY+'card')?'':'none';});} if(location.hash&&!window.__scrolled){const t=document.querySelector(location.hash); if(t&&!t.hidden){t.scrollIntoView(); window.__scrolled=true;}} }); applyLayout();
     if($('#network').classList.contains('on'))drawNetwork(LAST);
   }catch(e){$('#dot').className='bad';$('#pulsetxt').textContent='node not answering';}
 }
