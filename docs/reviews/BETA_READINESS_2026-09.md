@@ -310,7 +310,38 @@ Exact diffs for 9.1, 9.6, 9.8 (mechanical; the narrative ones above are for you 
 +Four questions, then it installs
 ```
 
-## Addendum: results that arrived while this file was being written
+## Addendum: results from the later runs
 
-(§1 restore into a second node, MCP per-tool calls, the reticulum crash, `agent local` on a 3 GB machine, and the
-Phase 3 timing from the site path are appended below once their runs finished.)
+**Restore into a second fresh node (VM1 → VM2, review build).** `planetai backup` on VM1 → `Ubuntu-2026-09-06.sql.gz`
+(28 KB) → `planetai restore` on VM2 (confirm by typing the node name; safety backup taken first) → 8 seconds → counts on
+VM2 `4511|7|5|4` (readings, alerts, actions, sensors), identical to VM1. The `settings` table travelled with the dump
+(VM2 now holds VM1's `ALERT_LEVEL`), which is the point in decision 3.
+
+**MCP, one call per tool (VM2, v0.30):** 17 tools listed; `status`, `health_check`, `sensors`, `context`, `readings`,
+`alerts`, `cells`, `packs`, `series`, `settings_get` (secrets masked, none shown), `daily_report`, `export_day`,
+`maintenance`, `run_pack_script` (`place verify` ran: PostGIS ✓, Overpass 504 that day), `settings_set` (recorded as
+`beta-review`), `act` (recorded) all answered. `history` errored on v0.30 (the 500 fixed in v0.31). Wrong token → 401.
+
+**`planetai reticulum`**: crash-looped on v0.30 (`OSError: Read-only file system: '/etc/reticulum/storage'`; the
+config is mounted `:ro` and RNS writes under its configdir). Fixed in 5fd2f4c; on the review build the bridge comes up
+in 24 s with an LXMF address and `bridge up: http :4243`.
+
+**`planetai homeassistant`, `planetai ipfs`, `planetai meshtastic`**: all ran on the clean node (broker with password,
+kubo node id, gateway instructions printed; `meshtastic` waits for a packet as documented).
+
+**`planetai agent local` on a 3 GB VM**: Ollama installed, `qwen3:4b` pulled in 254 s, the agent container started,
+ladder logged, "telegram: NOT configured" stated plainly. Works; the docs' "8 GB machine" is the honest minimum.
+
+**Node-side layout**: `PUT /settings {"UI_LAYOUT": …}` hides a card for a fresh browser with no `localStorage`
+(measured: `tile:wind` display none in a new tab). Arrange mode in the browser saves `planetai_layout` locally and
+leaves arranging on Done. ✓
+
+**Phase 3, the site path with the release build** (`curl -fsSL planetai.fab.city/install | PLANETAI_REF=… bash` on
+clean VMs with amd64 emulation, as a Mac has):
+- VM3, first run, no Docker: Docker installed, image built, node up (`install.sh` under the docker group) in 94 s, then the
+  wizard's own compose call failed on the socket → fixed (7e5caa9: `finish_setup` re-entered under `sg`). Re-run: green
+  screen, all checks, exit 0 in 23 s.
+- VM4, first run, no Docker, Barcelona: see the line below (filled when the run finished).
+- The `[o]`/`[t]` prompt never appeared through `curl | bash` on any version before 07e6f02 (`-t 0` on a pipe).
+
+VM4_RESULT_PLACEHOLDER
