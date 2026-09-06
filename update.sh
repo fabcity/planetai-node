@@ -32,20 +32,21 @@ spin() {
 }
 
 [[ -f .env ]] || die "no .env here — is this a node folder?"
-# `.env` is sourced below, so a stray space after `=` makes the shell try to run the value as a command.
-# Catch it here and name the line, rather than failing with "command not found".
+# A space after `=` breaks the value docker compose reads. Name the line rather than fail later.
 bad="$(grep -nE '^[A-Z_]+=[[:space:]]+[^[:space:]#]' .env || true)"
 if [[ -n "$bad" ]]; then
-  printf '\033[1;31mxx .env has a space after `=`, which the shell reads as a command:\033[0m\n' >&2
+  printf '\033[1;31mxx .env has a space after `=`:\033[0m\n' >&2
   printf '   %s\n' "$bad" >&2
   printf '   Remove the spaces so it reads NAME=value, then run this again.\n' >&2
   exit 1
 fi
-set -a; . ./.env; set +a
+# .env is read key by key, never sourced: a value with spaces or `$(...)` (a pack's env: line, a sentence the
+# wizard once wrote into NODE_KIND) would run as a command on the host.
 # nodes installed before v0.14 have no admin token; the GUI needs one to change settings
 rand_hex() { openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
 # judge the VALUE, not the line: a line like `ADMIN_TOKEN=   # comment` has text after = and no value
 envval() { { grep -E "^$1=" .env || true; } | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '" '; }
+APP_PORT="$(envval APP_PORT)"; BACKUP_DIR="$(envval BACKUP_DIR)"
 if [[ -z "$(envval BACKUP_TOKEN)" ]]; then
   tok="$(rand_hex)"; [[ -n "$tok" ]] && { grep -q "^BACKUP_TOKEN=" .env && sed -i.bak "s|^BACKUP_TOKEN=.*|BACKUP_TOKEN=${tok}|" .env && rm -f .env.bak || echo "BACKUP_TOKEN=${tok}" >> .env; echo "   + BACKUP_TOKEN (read-only, for a NAS that collects backups)"; }
 fi
