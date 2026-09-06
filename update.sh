@@ -67,7 +67,7 @@ say "current schema: ${FROM}"
 
 # 2. keep local edits from being silently clobbered
 for f in config/rules.yml .env; do
-  [[ -f "$f" ]] && cp "$f" "$f.before-update"
+  [[ -f "$f" ]] && cp -p "$f" "$f.before-update"     # -p: .env is 600; the copy must not be world-readable
 done
 
 # 3. get the new code
@@ -76,6 +76,11 @@ if [[ $PULL -eq 1 ]] && [[ ! -d .git ]] && [[ -f VERSION ]]; then
   say "updating from ${PLANETAI_SITE:-https://planetai.fab.city/node0}"
   tmp="$(mktemp -d)"
   if curl -fsSL "${PLANETAI_SITE:-https://planetai.fab.city/node0}/get/planetai-node.tar.gz" -o "$tmp/n.tar.gz"; then
+    # the same check the installer makes: refuse a download that does not match the published checksum
+    if command -v shasum >/dev/null && curl -fsSL "${PLANETAI_SITE:-https://planetai.fab.city/node0}/get/SHA256" -o "$tmp/sha" 2>/dev/null; then
+      want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$(shasum -a 256 "$tmp/n.tar.gz" | awk '{print $1}')"
+      [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
+    fi
     tar xzf "$tmp/n.tar.gz" -C "$tmp" && ( cd "$tmp/planetai-node" && tar cf - . ) | tar xf - --exclude=.env
     say "now $(cat VERSION 2>/dev/null || echo '?')"
   else
