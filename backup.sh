@@ -55,7 +55,9 @@ if [[ "$EXPORT" == "1" ]]; then
   if curl -fsS --max-time 60 "http://localhost:${PORT}/export?day=${Y}" -o "$EXD/${Y}.json.tmp"; then
     python3 -c "import json,sys; d=json.load(open('$EXD/${Y}.json.tmp')); assert 'hourly' in d" 2>/dev/null && mv "$EXD/${Y}.json.tmp" "$EXD/${Y}.json" && log "export $EXD/${Y}.json" || { rm -f "$EXD/${Y}.json.tmp"; log "export skipped: node returned no data for $Y"; }
   else
-    rm -f "$EXD/${Y}.json.tmp"; log "export skipped: node not answering on $PORT"
+    rm -f "$EXD/${Y}.json.tmp"
+    if curl -sf --max-time 10 "http://localhost:${PORT}/health" >/dev/null; then log "export skipped: the node answered /export?day=${Y} with an error (planetai logs shows it)"
+    else log "export skipped: node not answering on $PORT"; fi
   fi
   # ---- 4. publish to IPFS: content-addressed, public by design — which is why only the export goes, never the dump
   if [[ "$IPFS" == "1" && -f "$EXD/${Y}.json" ]]; then
