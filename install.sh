@@ -102,6 +102,8 @@ if [[ -n "$(docker compose ps -q app 2>/dev/null)" ]]; then :; elif lsof -nP -iT
 fi
 
 # ---- up
+# create the bind-mounted folders first: on Linux, Docker makes a missing one root-owned, and backup.sh then cannot write
+mkdir -p backups exports out
 say "building and starting"
 docker compose pull db 2>/dev/null || true
 docker compose up -d --build
