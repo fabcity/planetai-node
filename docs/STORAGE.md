@@ -61,9 +61,11 @@ planetai storage set remote r2:planetai/bayu-2
 ```
 
 B2 or R2 cost cents a month for a node's lifetime of dumps. Drive works but is a person's account, not infrastructure.
-Dumps hold readings, alert texts and the `settings` table, which carries any token set from the dashboard or by
-`planetai telegram`. Treat every dump and every remote as private. rclone's `crypt` backend
-encrypts if you want that.
+Dumps hold readings, sensors, alerts and actions. They do not hold the rows of the `settings` table (the dashboard's
+values, a Telegram token saved from Set up): `backup.sh` excludes them so no token travels to a NAS or a remote. After
+a restore the node runs on `.env`; `planetai telegram` reconnects the bot if it was set from the dashboard. Alert texts
+name places and numbers, so treat every dump and every remote as private anyway. rclone's `crypt` backend encrypts if
+you want that.
 
 ## The export
 

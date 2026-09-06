@@ -47,3 +47,6 @@ print("write endpoints gated")
 assert "secrets.compare_digest" in main and "def _bearer_ok" in main, "main.py: token compares go through _bearer_ok"
 assert not re.search(r'!= f"Bearer|not in tokens', main), "main.py: a token is still compared with != or `in`"
 print("token compares constant-time")
+# v0.32 — dumps leave the settings rows behind (the Telegram token lived there on node #1 and travelled to the NAS)
+assert "--exclude-table-data=settings" in open("backup.sh").read(), "backup.sh: settings rows must stay out of dumps"
+print("dumps carry no settings rows")

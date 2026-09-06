@@ -38,7 +38,10 @@ mkdir -p "$DIR" || die "cannot create $DIR"
 
 # ---- 2. dump, and prove the dump is a database
 OUT="$DIR/${NAME}-${STAMP}.sql.gz"
-docker compose exec -T db pg_dump -U planetai planetai | gzip > "$OUT.tmp" || die "pg_dump failed"
+# --exclude-table-data=settings: the settings table carries whatever the dashboard or `planetai telegram` saved, the
+# Telegram bot token included, and dumps travel (a NAS, an rclone remote). The table itself stays in the dump, empty;
+# after a restore the node falls back to .env and `planetai telegram` reconnects the bot (planetai restore says so).
+docker compose exec -T db pg_dump -U planetai --exclude-table-data=settings planetai | gzip > "$OUT.tmp" || die "pg_dump failed"
 gzip -t "$OUT.tmp" 2>/dev/null || die "the dump is not a valid gzip"
 # not `grep -q` under pipefail: it exits on the first match, gunzip gets SIGPIPE, the pipeline "fails" on a good dump.
 # Count matches instead and let the pipeline run to the end.

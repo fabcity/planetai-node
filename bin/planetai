@@ -816,6 +816,9 @@ cmd_restore() {
   docker compose exec -T db psql -U planetai -d planetai -v ON_ERROR_STOP=0 -f - < init.sql >>"$LOG" 2>&1 || true
   docker compose start app >>"$LOG" 2>&1
   say "restored. $(docker compose exec -T db psql -U planetai -tAc 'select count(*) from readings') readings."
+  # dumps carry no settings rows (backup.sh excludes them so tokens never travel): the node runs on .env until re-set
+  echo "  Dashboard settings and anything saved from Set up are not in a dump, on purpose: the node now uses .env."
+  echo "  Telegram: if it was connected from the dashboard rather than the terminal, run  planetai telegram  once more."
 }
 
 cmd_ipfs() {
