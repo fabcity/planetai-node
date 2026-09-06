@@ -23,6 +23,10 @@
 #   planetai agent          connect an AI agent: the MCP endpoint, the token, config snippets
 #   planetai agent local    a model on this machine (Ollama) that runs the node and answers on Telegram; `agent stop` stops it
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
+#   planetai sensors         every sensor the node knows: yours and the references (--json)
+#   planetai cells           the Index cells this node fills, with provenance (--json)
+#   planetai geocode <place> what the setup wizard would find for a place name
+#   planetai version         the version this folder is at
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -80,7 +84,7 @@ ask() { # ask VAR "prompt" "default"
   read -r a </dev/tty || true
   printf -v "$v" '%s' "${a:-$d}"
 }
-confirm() { local a; printf '%s%s%s %s[Y/n]%s ' "$B" "$1" "$N" "$D" "$N"; read -r a </dev/tty || true; [[ -z "$a" || "$a" =~ ^[Yy] ]]; }
+confirm() { local a=""; printf '%s%s%s %s[Y/n]%s ' "$B" "$1" "$N" "$D" "$N"; read -r a </dev/tty 2>/dev/null || true; [[ -z "$a" || "$a" =~ ^[Yy] ]]; }   # a="" not `local a`: with no tty, read fails and set -u would say "a: unbound variable"
 choose() { # choose VAR "prompt" opt1 opt2 ...
   local v="$1" p="$2"; shift 2; local i=1 a
   printf '%s%s%s\n' "$B" "$p" "$N"
@@ -143,7 +147,9 @@ for x in json.load(sys.stdin)[:3]:
     admin = a.get("state") or a.get("county") or ""
     print("|".join([x["lat"], x["lon"], name, admin, (a.get("country_code") or "").upper(), "", city]))' 2>/dev/null || true)"
   [[ -z "$nm" ]] && return 0
-  nm="$(echo "$nm" | awk -F'|' '{k=sprintf("%.3f|%.3f",$1,$2); if(!seen[k]++) print}')"
+  # one line per place: Nominatim returns a suburb several times over (three "Sant Martí, Catalunya, ES" for Poblenou),
+  # so drop repeats by coordinates and again by the label the wizard would show
+  nm="$(echo "$nm" | awk -F'|' '{k=sprintf("%.3f|%.3f",$1,$2); if(!seen[k]++) print}' | awk -F'|' '{k=$3"|"$4"|"$5; if(!seen[k]++) print}')"
   while IFS='|' read -r la lo n ad c _ ci; do echo "$la|$lo|$n|$ad|$c|$(tz_for "$la" "$lo")|$ci"; done <<<"$nm"
 }
 
@@ -410,10 +416,14 @@ cmd_telegram() {
   echo "  3. Open a chat with @${me} (or add it to a group and make it an admin), and send it any message."
   printf '     Waiting for your message'
   local chat=""; for i in $(seq 1 60); do
+    # the newest update is not always a message (adding the bot to a group is a my_chat_member event; an edit is
+    # edited_message), and the old check only looked at the last one, so the wait never ended. Newest message wins.
     chat="$(curl -sf "https://api.telegram.org/bot${tok}/getUpdates" | json '
 import sys
 u=d.get("result",[])
-print(u[-1]["message"]["chat"]["id"] if u and "message" in u[-1] else "")' 2>/dev/null || true)"
+m=[x for x in u if any(k in x for k in ("message","edited_message","channel_post"))]
+x=m[-1] if m else {}
+print((x.get("message") or x.get("edited_message") or x.get("channel_post") or {}).get("chat",{}).get("id",""))' 2>/dev/null || true)"
     [[ -n "$chat" ]] && break; printf '.'; sleep 2
   done; echo
   [[ -n "$chat" ]] || fail "no message arrived in two minutes. Send one to @${me}, then run planetai telegram again."
@@ -737,7 +747,11 @@ cmd_run() {
     for f in packs/*/*.py; do
       local p s; p="$(basename "$(dirname "$f")")"; s="$(basename "$f" .py)"
       [[ "$s" == "adapter" ]] && continue
-      local desc; desc="$(awk 'NR>1 && NF {sub(/^"""/,""); print; exit}' "$f" | cut -c1-58)"
+      # the first line of the module docstring, wherever the docstring starts; a file without one shows nothing,
+      # not its first import line
+      local desc; desc="$(awk '
+        !found && /^[[:space:]]*(r|u)?("""|\047\047\047)/ { found=1; sub(/^[[:space:]]*(r|u)?("""|\047\047\047)[[:space:]]*/, ""); sub(/("""|\047\047\047).*$/, ""); if ($0 != "") { print; exit }; next }
+        found && NF { print; exit }' "$f" | cut -c1-58)"
       printf '  planetai run %-14s %-12s %s\n' "$p" "$s" "$desc"
     done
     return 1
@@ -937,7 +951,7 @@ runtime_set() {
 # ---------------------------------------------------------------- the rest
 cmd_update()  { chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
-cmd_config()  { "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
+cmd_config()  { [[ -t 0 ]] || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }; "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
 cmd_start()   { docker compose up -d && say "started"; }
 cmd_stop()    { docker compose down && say "stopped (data kept)"; }
 cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
