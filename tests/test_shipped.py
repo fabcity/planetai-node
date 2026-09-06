@@ -60,3 +60,8 @@ print("pack SQL runs read-only")
 for _svc, _def in compose["services"].items():
     assert _def.get("logging", {}).get("options", {}).get("max-size"), f"docker-compose.yml: service {_svc} has no log cap"
 print("every container log is capped")
+# v0.32 — `planetai packs` lists; only `planetai packs install` touches .env and the image
+assert 'packs) shift; cmd_packs "$@"' in cli and "packs_install()" in cli and 'install" ]]; then packs_install' in cli, "CLI: packs vs packs install"
+_list = cli[cli.index("cmd_packs() {"):cli.index("packs_install() {")]
+assert "docker compose build" not in _list and ">> .env" not in _list, "planetai packs (the listing) must not build or write .env"
+print("packs listing is read-only")

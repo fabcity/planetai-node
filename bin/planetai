@@ -14,7 +14,7 @@
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
-#   planetai packs          what is loaded; install code-pack Python dependencies into the image
+#   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
@@ -664,6 +664,9 @@ pack_pips() {
 }
 
 cmd_packs() {
+  # `planetai packs` lists; `planetai packs install` writes (.env keys, the image). A listing that rebuilt the image and
+  # appended to .env surprised the first tester who only wanted to see what was loaded (6 Sep 2026).
+  if [[ "${1:-}" == "install" ]]; then packs_install; return; fi
   step "Packs"
   local loaded; loaded="$(api /packs || true)"
   if [[ -z "$loaded" ]]; then
@@ -675,6 +678,17 @@ cmd_packs() {
     printf '%s' "$loaded" | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10)," ")[:70]))'
   fi
   echo
+  # what `install` would do, said rather than done
+  local reqs; reqs="$(pack_pips)"; local missing=0
+  while IFS= read -r line; do [[ -z "$line" || "$line" == \#* ]] && continue; grep -q "^${line%%=*}=" .env 2>/dev/null || missing=$((missing+1)); done < <(pack_envs)
+  if [[ -n "$reqs" && "$(cat app/requirements-packs.txt 2>/dev/null)" != "$reqs" ]] || [[ $missing -gt 0 ]]; then
+    echo "  Code packs here declare Python dependencies or settings that are not installed yet."
+    echo "  To add them to .env and the image (a rebuild, a minute or two):  planetai packs install"
+  fi
+}
+
+packs_install() {
+  step "Packs: install"
   # settings a pack needs, declared as `env:` in its pack.yaml. A `#` line explains the setting under it and
   # travels only if that setting is actually added — otherwise the file collects orphan comments.
   local added=0 pending=""
@@ -683,7 +697,7 @@ cmd_packs() {
     if [[ "$line" == \#* ]]; then pending="$line"; continue; fi
     local k="${line%%=*}"
     if grep -q "^${k}=" .env 2>/dev/null; then pending=""; continue; fi
-    [[ $added -eq 0 ]] && printf '\n# ---- pack settings, added by `planetai packs` on %s ----\n' "$(date +%F)" >> .env
+    [[ $added -eq 0 ]] && printf '\n# ---- pack settings, added by `planetai packs install` on %s ----\n' "$(date +%F)" >> .env
     [[ -n "$pending" ]] && echo "$pending" >> .env
     echo "$line" >> .env; echo "    + ${k}"; pending=""; added=$((added+1))
   done < <(pack_envs)
@@ -932,7 +946,7 @@ case "${1:-help}" in
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   homeassistant|ha) cmd_homeassistant;;
-  packs) cmd_packs;;
+  packs) shift; cmd_packs "$@";;
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;
   backup) cmd_backup;;

@@ -660,7 +660,7 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
         log.warning("place/geojson: %s", e)
         diag["error"] = f"{type(e).__name__}: {str(e)[:200]}"
     if not feats:
-        diag["hint"] = ("the place pack has not stored anything yet: enable it (PACKS_ALLOW_CODE=1, planetai packs, planetai restart) and let it poll, or planetai run place refresh"
+        diag["hint"] = ("the place pack has not stored anything yet: enable it (PACKS_ALLOW_CODE=1, planetai packs install, planetai restart) and let it poll, or planetai run place refresh"
                         if not diag["rows"].get("place_features") else "features exist but none matched; see error")
     return {"type": "FeatureCollection", "features": feats, "diag": diag,
             "center": [float(os.getenv("NODE_LON", 0) or 0), float(os.getenv("NODE_LAT", 0) or 0)],

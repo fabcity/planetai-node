@@ -8,7 +8,7 @@ clinics and pharmacies, places of worship, lodging, services; kilometres of road
 nearest school, clinic, market and place of worship. One `Economic|Community` cell (businesses per km², `partial`). One
 message a month.
 
-**Setup.** Nothing to configure. `PACKS_ALLOW_CODE=1` (it is a code pack), `planetai packs`, `planetai restart`. The
+**Setup.** Nothing to configure. `PACKS_ALLOW_CODE=1` (it is a code pack), `planetai packs install`, `planetai restart`. The
 first poll fetches everything within `PLACE_RADIUS_M` (1000) from the Overpass API and stores the geometries in
 PostGIS, which the node's database image now includes. Later polls recompute from what is stored; every
 `PLACE_REFRESH_DAYS` (30) it fetches again. `planetai run place refresh` forces a fetch.

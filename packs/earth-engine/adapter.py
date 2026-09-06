@@ -113,7 +113,7 @@ def fetch(hc):
         import ee  # noqa: PLC0415
     except ImportError:
         if not _state["warned"]:
-            log.warning("earth-engine pack: earthengine-api is not installed. planetai packs installs code-pack dependencies.")
+            log.warning("earth-engine pack: earthengine-api is not installed. planetai packs install installs code-pack dependencies.")
             _state["warned"] = True
         return [], []
     try:

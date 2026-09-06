@@ -19,7 +19,7 @@ without pretending to know how.
    `PACKS_ALLOW_CODE=1`. `EE_PROJECT` and `EE_SERVICE_ACCOUNT` can stay blank; the key names both. If you set
    `EE_PROJECT`, use the project id (`planetai-node`), not the service account's 21-digit number; Earth Engine reports that
    mistake as "project not found".
-4. `planetai packs` (installs `earthengine-api`), `planetai restart`.
+4. `planetai packs install` (installs `earthengine-api`), `planetai restart`.
 5. `planetai run earth-engine verify`: library, settings, key, credentials, a real query, the four datasets. Names the step
    that failed.
 

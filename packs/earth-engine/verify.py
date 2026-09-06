@@ -14,7 +14,7 @@ try:
     import ee
     print("ok")
 except ImportError:
-    print("MISSING — run `planetai packs` on the host to install earthengine-api into the image"); sys.exit(1)
+    print("MISSING — run `planetai packs install` on the host to install earthengine-api into the image"); sys.exit(1)
 
 print("2. settings     ", end="")
 missing = [k for k in ("EE_PROJECT", "EE_SERVICE_ACCOUNT", "EE_KEY_FILE") if not os.getenv(k)]

@@ -50,7 +50,8 @@ for a model.
 `adapter.py` with `fetch(hc) -> (sensors, readings)`, the same contract as `app/sources.py`. Off unless
 `PACKS_ALLOW_CODE=1`: a pack runs with the node's privileges, so read it first.
 
-Dependencies and settings are declared in `pack.yaml`; `planetai packs` installs the libraries into the image once and
+Dependencies and settings are declared in `pack.yaml`; `planetai packs` lists what is loaded and what is missing, and
+`planetai packs install` installs the libraries into the image once and
 adds the settings to `.env` under a dated marker:
 
 ```yaml
