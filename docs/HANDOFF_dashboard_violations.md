@@ -135,17 +135,26 @@ Tomas before writing them:
 4. **`AGENTS.md` says "`cells[].state`: green is measured, blue derived or modelled".** The pillar rings no
    longer follow that, because green now means a loop closed. The rings tell live from derived by dash. That
    line in `AGENTS.md` should be settled one way or the other.
+5. **A node installed from the tarball reports its version as `dev`.** That is every beta tester. `install.sh`
+   stamps `NODE_VERSION` from `git describe`, which has nothing to read on a tarball install, so it falls
+   through to `dev` even though `VERSION` sits in the same folder saying `v0.36`. `update.sh` does the same.
+   `/health`, `planetai status` and the dashboard's vitals row all show `dev`, so you cannot tell which
+   version a tester is running or whether an update landed. The fix is to fall back to `cat VERSION` before
+   `dev`, one line in each file. Left out of v0.36 on purpose: the tag and the tarball were already cut, and
+   this is release metadata rather than the visual language. It wants its own small release.
 
 ## Rehearsal
 
 Both paths reached the new dashboard with no manual step.
 
-- **Fresh install from the site line**, on a wiped VM with no `~/planetai`: driven through a pty by
-  `drive_install.py`, the way a stranger types it, against the real tarball served over HTTP with
-  `PLANETAI_SITE` pointed at it and `PLANETAI_REPO` made unreachable so it took the tarball path beta testers
-  take. 79 seconds. Doctor green apart from `telegram connected` and `a backup exists`, both expected on a node
-  minutes old. `/`, `/static/node-ground.svg` and `/static/jetbrains-mono-latin.woff2` all 200. Zero matches
-  for `bighex`, `--hue`, `#7AC943`, `radial-gradient(` or `#3FA9F5` in the page it serves.
+- **Fresh install from the site line**, on a wiped VM with no `~/planetai`, from the tarball
+  `tools/release.sh` actually built for v0.36: driven through a pty by `drive_install.py`, the way a stranger
+  types it, served over HTTP with `PLANETAI_SITE` pointed at it and `PLANETAI_REPO` made unreachable so it
+  took the tarball path beta testers take. 36 seconds. Doctor green apart from `telegram connected` and
+  `a backup exists`, both expected on a node minutes old. `/`, `/static/node-ground.svg` and
+  `/static/jetbrains-mono-latin.woff2` all 200. Zero matches for `bighex`, `--hue`, `#7AC943`,
+  `radial-gradient(`, `#3FA9F5` or `#E8873A` in the page it serves. `VERSION` reads `v0.36`; `/health` reads
+  `dev`, which is finding 5 above and not new here.
 - **`planetai update` from the previous version**, on a VM installed at v0.35 with 4,514 readings in its
   database: backup taken, schema applied, image rebuilt, containers restarted, `updated. Nothing was lost:
   4,540 readings, 3 alerts, 0 actions.` It now reports `v0.36` on `/health` and serves the new page.
