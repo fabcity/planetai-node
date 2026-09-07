@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.33.4 — 2026-09-07 — moving a node
+
+Both location packs kept their caches when the node's coordinates changed. Found by asking how to regenerate the
+plan after editing `NODE_LAT` / `NODE_LON` in `.env`.
+
+- **`place`**: the staleness test read only the radius and the age, and `place_runs` never recorded where the fetch
+  was centred. A moved node served the previous neighbourhood's geometry to the plan for up to thirty days while
+  computing "nearest school" and "nearest clinic" from the new point against those old features. The run now records
+  its point, a move refetches on the next poll and says so in the log, and the satellite footprints and the yearly
+  series are cleared with it — they described the old circle and only the Earth Engine step refills them.
+- **`earth`**: a moved point or a changed `EARTH_RADIUS_M` re-resolved the tiles but skipped every cached year as
+  "already cached", so the node went on comparing a square around the previous address, with `meta.json` claiming
+  the new one. Those years are now re-read, with the reason and the count printed first (about 103 MB a year).
+- **Both**: a correction smaller than 1% of the radius, never under 25 m, is not a move — retyping a decimal costs
+  no download. `planetai run place verify` and `planetai run earth verify` now fail on a cache that belongs to
+  another point; earth's step 5 claimed to check this and only measured the window's span.
+- To move a node: edit `.env`, `planetai restart`, `planetai run place refresh`, then reload the dashboard. Both
+  pack READMEs say it.
+
 ## v0.33.3 — 2026-09-07 — `planetai update` ships a pack's code, not its libraries, and now says so
 
 From node #1, after updating to v0.33.2 and running `planetai run earth fetch`: 9 MB of tile index downloaded,
