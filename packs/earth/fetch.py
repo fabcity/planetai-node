@@ -62,6 +62,12 @@ if stale_square:
         if y not in years:
             A.year_file(y).unlink()
             print(f"  {y}: removed, it was read around the previous point (planetai run earth fetch {y} to get it back)")
+    # The comparisons too: /earth and the dashboard card read every change_*.json in this directory, so a map of the
+    # previous square would keep answering for this node until someone ran `earth change` again. The Index cell reads
+    # them as well, which is how a node in Barcelona reported a year of Chilean land change.
+    for f in sorted(A.cache().glob("change_*")):
+        f.unlink()
+        print(f"  {f.name}: removed, it compares the previous square (planetai run earth change after this)")
 
 todo = [y for y in years if force or stale_square or not A.year_file(y).exists()]
 skipped = [y for y in years if y not in todo]

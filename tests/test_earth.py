@@ -211,6 +211,8 @@ _change = open("packs/earth/change.py").read()
 assert 'orphan = [y for y, w in ((a, wa), (b, wb)) if not w.get("bounds")]' in _change, \
     "change must refuse a year with no window for the current square"
 
+assert 'A.cache().glob("change_*")' in _fetch, "a moved square must not leave its comparison for the card to serve"
+
 print("earth move tests pass")
 print("all earth pack tests pass")
 sys.exit(0)
