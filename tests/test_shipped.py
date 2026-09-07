@@ -192,3 +192,11 @@ for _r in _trust.values():
     assert set(_r["message"]) >= {"en", "id"}, "every alert speaks English and Indonesian"
     assert "µg" not in _r["message"]["en"], "statistics stay out of alert messages"
 print("the trust pack ships three rules and no cells")
+
+# v0.35 — the rhythm rule told households the evening PM peak was "the burning and the traffic". The noise channel
+# we already store says otherwise: r(pm25, noise) = -0.24 at node #1, and the loud hours are the clean ones.
+_ins = {r["id"]: r for r in yaml.safe_load(open("packs/insight/rules.yml"))}
+assert "traffic" not in _ins["rhythm"]["message"]["en"], "the noise channel contradicts the traffic claim"
+assert "'noise'" in _ins["rhythm"]["sql"], "rhythm reads the noise channel it has been discarding"
+assert "quiet_hr" in _ins["rhythm"]["sql"], "the message needs the hour the street is loudest to contrast with"
+print("rhythm no longer blames traffic")

@@ -75,27 +75,29 @@
     en: "📊 Your house and the street, this week.\n\nThe air indoors followed the street, as it does in most homes; your building held back a good part of what was outside. The satellite model roughly tracked your street but said nothing useful about your rooms: it sees a district, not a house.\n\nAsk me for the numbers behind this if you want them."
     id: "📊 Rumah Anda dan jalan, minggu ini.\n\nUdara di dalam mengikuti jalan, seperti di kebanyakan rumah; bangunan Anda menahan sebagian besar yang ada di luar. Model satelit kira-kira mengikuti jalan Anda tapi tidak bilang apa pun yang berguna soal ruangan Anda: ia melihat kecamatan, bukan rumah.\n\nTanya angkanya kalau mau."
 
-# ---------------------------------------------------------------- daily: when is the street worst, and is the house following it?
+# ---------------------------------------------------------------- daily: when is the street worst, and does the noise agree?
+# Cross-joins `loud`, which is empty without a local outdoor noise sensor — so a node with none gets no alert at
+# all, on purpose. See packs/insight/README.md.
 - id: rhythm
   level: info
   cooldown_minutes: 1440
   sql: |
     WITH by_hour AS (
       SELECT extract(hour FROM r.bucket AT TIME ZONE current_setting('TimeZone'))::int AS hr,
-             avg(r.mean) FILTER (WHERE NOT s.indoor AND s.kind='sensor') AS outdoor,
-             avg(r.mean) FILTER (WHERE s.local AND s.indoor) AS indoor
+             avg(r.mean) FILTER (WHERE s.local AND NOT s.indoor AND r.metric = 'pm25')  AS outdoor,
+             avg(r.mean) FILTER (WHERE s.local AND s.indoor AND r.metric = 'pm25')      AS indoor,
+             avg(r.mean) FILTER (WHERE s.local AND NOT s.indoor AND r.metric = 'noise') AS noise
       FROM readings_1h r JOIN sensors s USING (sensor_id)
-      WHERE r.metric = 'pm25' AND r.bucket > now() - interval '7 days'
-      GROUP BY 1 HAVING count(*) FILTER (WHERE NOT s.indoor) >= 5),
-    worst AS (SELECT hr, outdoor FROM by_hour ORDER BY outdoor DESC NULLS LAST LIMIT 1),
-    best  AS (SELECT hr, outdoor FROM by_hour ORDER BY outdoor ASC  NULLS LAST LIMIT 1),
-    worst_in AS (SELECT hr, indoor FROM by_hour ORDER BY indoor DESC NULLS LAST LIMIT 1)
+      WHERE r.metric IN ('pm25', 'noise') AND r.bucket > now() - interval '7 days' AND s.kind = 'sensor'
+      GROUP BY 1),
+    worst AS (SELECT hr, outdoor FROM by_hour WHERE outdoor IS NOT NULL ORDER BY outdoor DESC LIMIT 1),
+    best  AS (SELECT hr, outdoor FROM by_hour WHERE outdoor IS NOT NULL ORDER BY outdoor ASC  LIMIT 1),
+    loud  AS (SELECT hr, noise   FROM by_hour WHERE noise   IS NOT NULL ORDER BY noise   DESC LIMIT 1)
     SELECT 'node' AS sensor_id,
            lpad(worst.hr::text, 2, '0') AS worst_hr, round(worst.outdoor::numeric) AS worst_v,
-           lpad(best.hr::text, 2, '0')  AS best_hr,  round(best.outdoor::numeric)  AS best_v,
-           lpad(worst_in.hr::text, 2, '0') AS worst_in_hr, round(worst_in.indoor::numeric) AS worst_in_v
-    FROM worst, best, worst_in
-    WHERE worst.outdoor IS NOT NULL AND best.outdoor IS NOT NULL
+           lpad(best.hr::text, 2, '0')  AS best_hr,
+           lpad(loud.hr::text, 2, '0')  AS quiet_hr
+    FROM worst, best, loud
   message:
-    en: "🕐 Your street has a rhythm.\n\nThis week the outside air was worst around {worst_hr}:00 and cleanest around {best_hr}:00. Indoors it followed a little later, peaking near {worst_in_hr}:00. That is the burning and the traffic, not the weather.\n\n👉 If you air the house, {best_hr}:00 is the hour."
-    id: "🕐 Jalan Anda punya ritme.\n\nMinggu ini udara luar terburuk sekitar pukul {worst_hr}:00 dan terbersih sekitar {best_hr}:00. Di dalam mengikuti sedikit belakangan, puncak dekat pukul {worst_in_hr}:00. Itu pembakaran dan lalu lintas, bukan cuaca.\n\n👉 Kalau ingin membuka rumah, pukul {best_hr}:00 waktunya."
+    en: "🕐 Your street has a rhythm.\n\nThis week the outside air was worst around {worst_hr}:00 and cleanest around {best_hr}:00. The street was loudest around {quiet_hr}:00, a different hour entirely. Burning after dark fits that pattern.\n\n👉 If you air the house, {best_hr}:00 is the hour."
+    id: "🕐 Jalan Anda punya ritme.\n\nMinggu ini udara luar terburuk sekitar pukul {worst_hr}:00 dan terbersih sekitar pukul {best_hr}:00. Jalan paling ramai sekitar pukul {quiet_hr}:00, jam yang sama sekali berbeda. Pembakaran setelah gelap cocok dengan pola ini.\n\n👉 Kalau ingin membuka rumah, pukul {best_hr}:00 waktunya."
