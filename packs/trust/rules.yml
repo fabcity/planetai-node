@@ -63,7 +63,7 @@
 # ---------------------------------------------------------------- a local sensor with holes in the week
 - id: coverage_low
   level: info
-  cooldown_minutes: 1440
+  cooldown_minutes: 10080
   sql: |
     WITH seasoned AS (
       SELECT sensor_id FROM readings
@@ -80,7 +80,7 @@
     FROM have
     WHERE 100.0 * hours / 168 < 60
   message:
-    en: "🕳️ {name} is missing most of the week.\n\nIt reported for only part of the last seven days, so any weekly figure that includes it is really a figure about the hours it was awake. Its own latest reading still looks current, which is why this needs saying.\n\n👉 Check its power and its WiFi. If it cannot hold a connection where it is, it needs moving or a better aerial."
+    en: "🕳️ {name} is missing most of this week.\n\nIt reported for only part of the last seven days, so any weekly figure that includes it is really a figure about the hours it was awake. Its own latest reading still looks current, which is why this needs saying.\n\n👉 Check its power and its WiFi. If it cannot hold a connection where it is, it needs moving or a better aerial."
     id: "🕳️ {name} kehilangan sebagian besar data minggu ini.\n\nIa hanya melapor sebagian dari tujuh hari terakhir, jadi angka mingguan yang memakainya sebenarnya hanya soal jam-jam saat ia hidup. Bacaan terakhirnya tetap tampak baru, dan itu sebabnya ini perlu disebut.\n\n👉 Periksa listrik dan WiFi-nya. Kalau tidak bisa menjaga koneksi di tempatnya sekarang, ia perlu dipindah atau antena yang lebih baik."
 
 # ---------------------------------------------------------------- two sensors in the same place, different levels

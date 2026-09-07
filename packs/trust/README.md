@@ -3,18 +3,23 @@
 Whether the node's own sensors are telling it the truth. Three rules, no Index cell: this pack says something about
 our instruments, not about the place.
 
+**A week, or silence.** Every rule joins the same `seasoned` gate: a sensor with under seven days of readings on
+this node is never named. A statement about an instrument needs a week — a day of one says more about the weather
+and the hour than about the sensor. All three rules are `info` with a seven-day cooldown, so the pack speaks in the
+week's instrument paragraph rather than interrupting a household in the evening.
+
 **What it adds**
-- `channel_dead` — a channel that has been flat (max − min = 0 within the hour) for 6 or more of the last 24
-  hourly buckets, and whose most recent bucket is flat too. Requiring the latest hour to still be flat is what
-  makes this "frozen right now": a channel that sat still for six hours overnight and then moved again — a stable
-  PM2.5 reading, say — does not match. Fires only under a kit that has reported at all in the last 2 hours,
-  because a channel on a kit that has gone fully silent is `coverage_low`'s problem, not this one's.
-- `coverage_low` — a local ambient channel that reported for under 60% of the last 7 days (under 60% of 168
-  hours). A kit can be at 3% coverage and still show a reading from four minutes ago; this rule is what says so.
-- `peer_disagreement` — two local ambient sensors within 50 m of each other whose 24-hour means differ by more
-  than 15% (a ratio outside 0.85–1.15). The cooldown that stops an alert repeating is keyed on the sensor, not the
-  metric, so a sensor disagreeing on several metrics at once still produces a single alert, naming the metric with
-  the largest disagreement.
+- `channel_dead` — a channel flat (max − min = 0 within the hour) for every one of the last 24 hourly buckets,
+  with all 24 present and none of them moving, while at least one other `ambient` channel on the same kit did move
+  in the same day. A flat value of 0 is skipped: a floor is not a freeze. Fires only under a kit that has reported
+  at all in the last 2 hours, because a channel on a kit that has gone fully silent is `coverage_low`'s problem.
+- `coverage_low` — a seasoned local ambient channel that reported for under 60% of the last 7 days (under 60% of
+  168 hours). A kit can be at 3% coverage and still show a reading from four minutes ago; this rule is what says so.
+- `peer_disagreement` — two seasoned local ambient sensors within 50 m of each other whose seven-day means differ
+  both relatively and absolutely: a ratio outside 0.85–1.15 **and** a difference of at least a per-metric floor
+  (5 µg/m³ for pm1, pm25 and pm10; 2 °C for temp; 5 points for humidity; 0.3 kPa for pressure; anything else,
+  15% of the pair's own mean). Both units need at least 100 of the week's 168 hourly buckets. One row per pair, so
+  A ≠ B and B ≠ A are one alert, naming both units and both numbers; the cooldown is keyed on the pair.
 
 **Silence is defined by value change, not by a timestamp.** Smart Citizen's per-reading `recorded_at` is null on
 every kit node #1 reads, so the adapter stamps every channel with the kit's own `last_reading_at` at poll time. A
@@ -36,7 +41,9 @@ this pack declares no metric of its own, rather than leaving a reader to wonder.
 units 3 m apart that disagree could have one behind a wall of incense smoke, or one with a fouled inlet. That is
 why its message asks the reader to swap the two units' positions for a day rather than naming which one is wrong:
 if the gap follows the box, it is the sensor; if it stays with the spot, it is the siting. The pack cannot do that
-diagnosis itself, only point at it.
+diagnosis itself, only point at it. It also cannot group like with like beyond `channel_roles.reference`, which is
+per source: node #1's SENX unit is a different sensor model from the kits beside it, and to this pack all three are
+`smartcitizen`.
 
 **Two things this pack does not see yet.** Found while building the channel registry that these rules read
 (`channel_roles`, Task 5):
@@ -47,15 +54,34 @@ diagnosis itself, only point at it.
 - Meshtastic's `altitude_m` (`app/sources.py:441-442`), written by the position handler outside `MESH_METRICS`
   entirely, so it never gets a role and this pack never sees it.
 
-**Where the numbers came from, and where they have not been tested.** Node #1, Ungasan, 1–7 September 2026, six
-Smart Citizen kits, PM2.5 means of 6–10 µg/m³ across the week. All three thresholds were chosen against that one
-low-PM week and have never met a burn season, when PM2.5 swings far wider and disagreement between units may
-widen with it. `peer_disagreement`'s 0.85–1.15 band came from a week where the only local collocated pair — two
-kits 31 m apart — agreed to within 4.5% (ratio 1.045), well inside the band. The 1.5x disagreement that motivated
-this rule (§3 L0 of the spec) was between three kits at the same operator's other site, 1.2 km away; after Task 2
-narrowed `local` to within `LOCAL_RADIUS_M` of this node, those three kits are no longer local to node #1, so
-`peer_disagreement` is silent here until a second local unit is collocated with an existing one. Its band has not
-yet been exercised against a real disagreement — only against one pair that agreed. `channel_dead`'s "frozen right
-now" condition returned nothing on node #1's live data too: every channel it checked was either moving or fully
-silent. The logic reads correctly against the schema, but it has never matched a genuinely frozen channel, which
-is the one fault it exists to catch.
+**Where the numbers came from, and what was wrong with the first set.** Node #1, Ungasan, Kuta Selatan. On
+7 September 2026 at 21:17 WITA this pack sent that household three warnings on Telegram and all three were wrong.
+They are the reason for every number above.
+
+- **A day was the fault under all three.** The first version of each rule asked 24 hours and treated the answer as
+  an alert. Every kit it named was two days old. `coverage_low` wants 60% of 168 hours, which no node younger than
+  about four days can reach, so a new node would have said "missing most of the week" on its first day — Lucas's
+  and Vivanco's, when they come up. Hence `seasoned`, and hence seven-day windows.
+- **`channel_dead` fired at dusk.** Its first form was six flat buckets out of the last 24 with the latest bucket
+  flat too. Ungasan Kit's light channel reads 0 from dusk to dawn — eleven flat hours ending in the latest bucket
+  — so the rule matched every evening, on every kit with a light channel, as often as its 12-hour cooldown
+  allowed. Any channel with a legitimate floor (light, uv, rain, noise) or a steady indoor value trips that form.
+  A full day of flat buckets is longer than any night in Kuta Selatan, so it needs no metric-specific exception,
+  and a channel that genuinely dies still matches after a day.
+- **A ratio says nothing in clean air.** `peer_disagreement`'s 0.85–1.15 band came from a week where node #1's one
+  collocated pair agreed to within 4.5%, and had never met a disagreement. Its first outing produced two alerts
+  for one fact: Ungasan Kit at 7.4 µg/m³ against BAYU NEW ENCLOSURE at 5.4, 30 m apart, a ratio of 1.37 and a
+  difference of 2 µg/m³. At 7 µg/m³ that band is ±1 µg/m³ — the integer resolution of a Plantower-class sensor,
+  and ten times inside its stated accuracy at low concentration. Two identical units in clean air disagree by more
+  than that most days. The absolute floors come from the instruments, not from statistics: 5 µg/m³ is Plantower's
+  own ±10 µg/m³ (or ±10%) below 100 µg/m³, halved; 2 °C and 5 points of humidity are what two boxes a few metres
+  apart differ by on a still afternoon, with the SHT31's ±0.3 °C and ±2% on top of siting; 0.3 kPa is 3 hPa, in
+  the unit this node stores pressure in.
+
+**What has and has not been exercised.** The rules are tested against node #1's own series, replayed through the
+SQL as it ships (`tests/data/node1-*.tsv`, `tests/trustdb.py`): the light channel at dusk, the 16-against-7 pair
+and the 7.4-against-5.4 pair, the 59-hours-of-168 coverage, and a synthetic channel stuck on 412 lux for 26 hours
+for the one case node #1 has never produced — a genuinely frozen channel. None of these thresholds has met a burn
+season, when PM2.5 swings far wider and disagreement between units may widen with it. Node #1's own kits reach a
+week between 9 and 12 September 2026; until then this pack says nothing at all about them, which is correct and is
+also why the first week after this release proves less than it looks.

@@ -284,6 +284,8 @@ for _id in ("channel_dead", "coverage_low", "peer_disagreement"):
     assert "HAVING min(ts) < now() - interval '7 days'" in _trust[_id]["sql"], \
         f"{_id}: a sensor with under a week of readings here is never named"
     assert "JOIN seasoned USING (sensor_id)" in _trust[_id]["sql"], f"{_id}: the gate must be joined, not just declared"
+    assert _trust[_id]["level"] == "info" and _trust[_id]["cooldown_minutes"] == 10080, \
+        f"{_id}: what this pack finds goes in the week's instrument paragraph, once a week, not into an evening"
 print("every trust rule needs a week of a sensor before it names it")
 
 # The same three rules, run over node #1's own readings (tests/data/node1-*.tsv, out of the 7 September dump).
@@ -342,3 +344,13 @@ else:
     assert trustdb.Node(trustdb.day(_real)).run(_trust["peer_disagreement"], _at) == [], \
         "a day of two boxes is a statement about the day"
     print("peer_disagreement: a week, an absolute floor, and one alert per pair")
+
+    # coverage_low keeps its 60% of 168 hours; the gate is all it needed. SENX ALL IN ONE reported 59 of tonight's
+    # last 168 hours — 35%, which is what the rule would have said, and true — but it had only been on the node
+    # for two days. Given a fortnight behind it and the same 59 hours, it is named; two days old, it is not.
+    _senx = trustdb.readings("sc-19849")
+    _old = _senx + [(_ts - datetime.timedelta(days=14), _s, _m, _v) for _ts, _s, _m, _v in _senx]
+    assert [(r["name"], r["hours"], float(r["pct"])) for r in trustdb.Node(_old).run(_trust["coverage_low"], _at)] \
+        == [("SENX ALL IN ONE", 59, 35.0)], "a seasoned sensor with 35% of the week is still worth saying"
+    assert trustdb.Node(_senx).run(_trust["coverage_low"], _at) == [], "two days old is not a hole in the week"
+    print("coverage_low: the same 60%, over sensors old enough for the question")

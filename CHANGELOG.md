@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.40 — 2026-09-07 — the trust pack needs a week of data before it says anything
+
+**For testers: the trust pack now speaks in the report, not in the alert stream.** At 21:17 tonight it sent node
+#1's household three warnings on Telegram and all three were wrong. Every rule in it asked 24 hours and called the
+answer an alert. All three now need seven days of a sensor before they will name it, and all three are `info` with
+a seven-day cooldown, so what they find belongs in the week's instrument paragraph rather than in your evening.
+
+Nothing else in the node changes: what it measures, when it speaks about the air, the heat, the sea and the land,
+and what those alerts say are untouched. Update with `./update.sh` as usual.
+
+**Your node will go quiet about its own sensors for a few days, and that is the fix.** A sensor with under seven
+days of readings on this node is never named by this pack. Node #1's oldest local kit reaches a week on
+9 September and the other four on 12 September; a node installed this week says nothing here until it has a week
+of its own.
+
+### what fired wrongly, and what each rule asks now
+
+- **`channel_dead` fired at dusk on every kit with a light channel.** It asked for six flat hourly buckets out of
+  the last 24 with the latest one flat too. Ungasan Kit's light channel reads 0 from dusk to dawn — eleven flat
+  hours, ending in the latest bucket — so it matched every evening, as often as its 12-hour cooldown allowed. Any
+  channel with a legitimate floor (light, uv, rain, noise) or a steady indoor value tripped it. It now needs a
+  whole day: all 24 of the last day's hourly buckets present and flat, none of them moving, while another ambient
+  channel on the same kit did move. A flat value of 0 is skipped, because a floor is not a freeze.
+- **`peer_disagreement` said that 7.4 and 5.4 µg/m³ disagree, twice.** It compared 24-hour means on a ratio alone
+  (0.85–1.15). At 7 µg/m³ that band is ±1 µg/m³, which is the integer resolution of a Plantower-class sensor and
+  ten times inside its stated accuracy at low concentration; two identical units in clean air disagree by more
+  than that most days. It also fired once for each unit in the pair, which is one fact twice. It now uses
+  seven-day means, needs at least 100 of the week's 168 hours from both units, and needs the difference to clear
+  an absolute floor as well as the band — 5 µg/m³ for PM, 2 °C for temperature, 5 points for humidity, 0.3 kPa for
+  pressure. One alert per pair, naming both units and both numbers.
+- **`coverage_low` had not fired yet and was about to.** 60% of 168 hours is unreachable for a node younger than
+  about four days, so a new node would have said "missing most of the week" on day one. Same 60%, over seasoned
+  sensors only.
+
+### tests
+
+The three rules are now run against node #1's own readings — the real series out of the 7 September dump, through
+the rule SQL as it ships — so the light channel at dusk, the 7.4-against-5.4 pair and the four two-day-old kits
+are regressions and not prose. See `packs/trust/README.md` for where every number comes from and what has still
+never been exercised: none of these thresholds has met a burn season.
+
 ## v0.39 — 2026-09-07 — the node knows its version, writes its own report, and draws its own ground
 
 Four parallel sessions of work, released once. v0.37 and v0.38 were written into this changelog but never
