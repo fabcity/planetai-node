@@ -97,28 +97,7 @@ def sensors() -> list:
     return sorted(by.values(), key=lambda s: (not s["local"], s["sensor_id"]))
 
 
-LABELS = {
-    "marine-point": ("sea", {"wave_height_m": "wave height, m", "swell_height_m": "swell height, m", "wave_period_s": "wave period, s",
-                             "swell_period_s": "swell period, s", "wave_direction": "waves coming from, degrees (0 north, 90 east, 180 south, 270 west)",
-                             "sea_surface_temp": "sea surface temperature, °C"}),
-    "om-point": ("weather", {"temp_model": "air temperature, °C", "humidity_model": "humidity, %", "pressure_model": "pressure, hPa",
-                             "wind_speed": "wind speed, km/h", "wind_direction": "wind coming from, degrees", "precipitation": "rain this hour, mm"}),
-    "cams-point": ("satellite_air", {"pm25_model": "PM2.5 the model estimates for the district, µg/m³", "pm10_model": "PM10, µg/m³", "o3": "ozone, µg/m³",
-                                     "no2": "nitrogen dioxide, µg/m³", "co": "carbon monoxide, µg/m³", "dust": "dust, µg/m³", "uv_index": "UV index", "aod": "aerosol optical depth"}),
-    "place-point": ("place", {"sat_buildings": "buildings the satellite sees within the radius (Google Open Buildings, confidence ≥ 0.65)",
-                              "sat_confidence": "mean detection confidence of those (0-1)", "osm_building_coverage": "share of the satellite's buildings that OpenStreetMap has drawn (0-1)",
-                              "sat_buildings_yearly": "building count in the latest year of the temporal dataset; use `history` for the 2016-2023 series",
-                              "sat_height_m_yearly": "mean building height, m, latest year",
-                              "buildings": "buildings within the radius (OpenStreetMap)", "built_share": "share of the ground covered by buildings (0-1)",
-                              "commercial_share": "share of buildings that are shops, offices, hotels (0-1)", "businesses_per_km2": "mapped businesses per km²",
-                              "poi_food": "places to eat on the map", "poi_retail": "shops and markets on the map", "poi_education": "schools on the map (zero often means unmapped)",
-                              "poi_health": "clinics, doctors, pharmacies on the map", "poi_worship": "temples, mosques, churches on the map", "poi_lodging": "hotels, villas, guesthouses on the map",
-                              "poi_services": "banks, post, police, fuel on the map", "roads_km": "kilometres of road", "green_share": "share of the ground that is green (0-1)",
-                              "nearest_school_m": "walk to the nearest mapped school, m", "nearest_health_m": "walk to the nearest mapped clinic or pharmacy, m",
-                              "nearest_market_m": "walk to the nearest mapped market or minimarket, m", "nearest_worship_m": "walk to the nearest place of worship, m"}),
-    "ee-point": ("land", {"built_frac": "share of the surrounding km that is built-up (0-1)", "tree_frac": "share that is trees (0-1)", "crop_frac": "share that is crops (0-1)",
-                          "water_frac": "share that is water (0-1)", "ndvi_median": "greenness index (NDVI, -1..1)", "night_lights": "night-time light radiance", "land_change_score": "how much the land changed since the year before (0 = none)"}),
-}
+from report import LABELS      # one copy, in the module the report is written from
 
 
 @mcp.tool()
@@ -147,10 +126,32 @@ def readings(sensor_id: str, metric: str, hours: int = 24) -> dict:
 
 
 @mcp.tool()
-def daily_report(kind: str = "morning") -> str:
-    """The node's own morning or evening report: what the night or the day did, what is still waiting for a decision.
-    The same text the node sends on Telegram at its scheduled hours. kind: morning | evening."""
-    return _get(f"/briefing?kind={kind}")
+def report_latest() -> dict:
+    """The last report the node wrote: its text, when, how many hours it covered, whether quiet hours held it, and who
+    wrote it (`rung` is `node` for the node's own). The same words the household read on Telegram."""
+    return _get("/report/latest")
+
+
+@mcp.tool()
+def report_now(agent: str = "agent") -> dict:
+    """Write and send a report right now, whatever the hour. Use it when someone asks how things are going and wants
+    the report rather than an answer. It does not take the next scheduled report's place."""
+    r = httpx.post(API + "/report/now", headers=_admin_headers(agent), timeout=180)
+    r.raise_for_status()
+    return r.json()
+
+
+@mcp.tool()
+def report_bundle(hours: int = 6) -> dict:
+    """Every number the node has about the last N hours, as one document: each sensor and metric with its min, max,
+    mean, trend and how unusual it is against the same hours of the previous week; where everything stands now; the
+    sea, weather, satellite air, map and land; the alerts and which are unanswered; the quiet sensors; rho; the Index
+    cells. This is what a report is written from — use it to answer a question about a stretch of time rather than a
+    moment, and never write a number that is not in it."""
+    r = httpx.get(API + f"/report/bundle?hours={min(max(int(hours), 1), 168)}",
+                  headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}"}, timeout=120)
+    r.raise_for_status()
+    return r.json()
 
 
 @mcp.tool()

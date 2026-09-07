@@ -73,15 +73,38 @@ answer; Fab Lab Bali prints it.
 
 ## When the node speaks
 
-Two reports a day at local hours you choose (`BRIEF_MORNING`, `BRIEF_EVENING`; 6 and 18 by default): what the night or
-the day did, anything still waiting for a decision, which sensors went quiet. Between them, only what you asked to be
-interrupted for — `ALERT_LEVEL` is `act` (something needs doing), `warn` (something changed) or `info` (everything).
-Below that line an alert is still recorded, shown on the dashboard, and summed up in the next report. `QUIET_HOURS`
-holds everything but `act` between 22:00 and 06:00.
+**One report every `REPORT_EVERY` hours**, counted from `REPORT_ANCHOR`, in the node's own time zone. The defaults are
+6 and 6, so 06:00, 12:00, 18:00 and 00:00. `REPORT_EVERY` takes 3, 4, 6, 8, 12 or 24 — each divides 24, so the rhythm
+does not walk round the clock — and refuses anything else rather than leaving a household with a schedule nobody chose.
+`planetai report every 12` and `planetai report at 7` change it without a restart.
+
+The report has six parts and is under a hundred words: where the place stands, what changed, anything only the models
+know, what happened after this window's alerts, the one thing to do before the next report, and the invitation to ask.
+The node writes it itself, from SQL against its own tables, so a node with no model reachable anywhere still gets it.
+`app/report.py` holds both halves: `bundle()`, every number the node has about the window, and `sheet()`, the report.
+
+Two numbers in it are worth knowing about. **Notability** is the window's mean against the mean of the same local hours
+on each of the previous seven days, in standard deviations of that baseline; it is null until three days exist, so a
+node in its first week claims nothing. It decides which two places get a sentence, which is how the report can say "the
+kitchen ran higher than usual" without anyone reading a chart. **Trend** is the digest's ±3 rule read across to each
+metric's own units: 3 µg/m³ for PM2.5, half a degree for a room's temperature, 5% of the window's range for a metric
+with no line of its own.
+
+**A report due inside quiet hours is written and stored and not sent.** It appears on the dashboard, saying so, and the
+next report to go out covers every hour that was held and opens with "Overnight and this morning". A node that was off
+for a week reports two days, not a hundred and sixty-eight hours.
+
+**Between reports the node speaks only when something needs doing.** `ALERT_LEVEL` is `act` by default — something needs
+doing — and can be `warn` (also when something changed) or `info` (everything). Below that line an alert is still
+recorded, still on the dashboard, and in the next report. `QUIET_HOURS` holds everything but `act` between 22:00 and
+06:00. An act alert says what to do in one sentence and asks for nothing back: no id to quote, no button to press.
 
 All of these are local hours, read from `NODE_TZ`. A report scheduled for 6 arrives at six in the morning where the node
 is, which is the bug this replaced: the old daily pulse fired on a UTC hour and said "good morning" at one in the
 afternoon in Bali.
+
+`GET /report/latest` is the last report. `GET /report/bundle?hours=` is what it was written from, behind the read-only
+token. `POST /report/now` writes one immediately, behind the admin token, and is what `planetai report` calls.
 
 ## Thresholds
 

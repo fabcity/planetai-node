@@ -70,9 +70,34 @@ assert "sed -e 's/[\\\\&|]/\\\\&/g'" in cli, "CLI: envset must escape \\ & | bef
 assert "tail -c 200000" in cli, "CLI: .planetai-setup.log is trimmed"
 print("envset escapes, setup log capped")
 # v0.32 — a report or a test alert says `/act N` only when the bot that reads it is running; otherwise `planetai act N`
-assert "def act_hint" in main and main.count("act_hint(") >= 3, "main.py: the /act hint goes through act_hint()"
+# v0.37 took the third caller: briefing()'s "Still waiting on you" list went with the briefings. What is left is
+# the definition and the test alert, which is the one place a household is deliberately taught to close the loop.
+assert "def act_hint" in main and main.count("act_hint(") >= 2, "main.py: the /act hint goes through act_hint()"
 assert "→  /act {" not in main and "Reply /act with the number" not in main, "main.py: an unconditional /act instruction remains"
-print("act hints honest without a bot")
+# v0.37 — an act alert says what to do and stops. No id to quote back, no button to press, nothing waiting on a
+# household: the node watches what the sensors do next. The test alert is the exception, and teaches on purpose.
+assert "#{alert_id}" not in main, "main.py: an act alert must not end in an id a household is expected to quote back"
+assert "Still waiting on you" not in main, "main.py: the report does not nag"
+print("act hints honest without a bot, and an act alert asks for nothing")
+# v0.37 — one report every REPORT_EVERY hours, written by the node, and every surface that reaches it
+assert '"REPORT_EVERY"' in settings and '"REPORT_ANCHOR"' in settings and '"REPORT_DEPTH"' in settings, "settings.py: the report keys"
+for k in ("REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH"):
+    assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
+assert not re.search(r"^BRIEF", env, re.M), ".env.example: the briefing keys are retired"
+assert "BRIEF_HOUR" not in open("docker-compose.yml").read(), "compose: the agent's own report hour is gone"
+assert "def run_report" in main and "def briefing(" not in main and "def run_briefings(" not in main, "main.py: one scheduler"
+assert "def report_latest" in main and "def report_bundle" in main and "def report_now" in main, "main.py: the report endpoints"
+assert 'RedirectResponse("/report/latest", status_code=301)' in main, "main.py: /briefing must not 404 a dashboard left open"
+assert "reports_due" in open("init.sql").read() and "held_quiet" in open("init.sql").read(), "init.sql: the reports table"
+assert "def bundle(" in open("app/report.py").read() and "def sheet(" in open("app/report.py").read(), "app/report.py"
+assert "FROM reports ORDER BY ts DESC LIMIT 1" in main, "main.py: /report/latest orders by ts — a report written on request has no due hour"
+assert "coalesce(due_local, ts)" in main, "main.py: a report written on request still ends the held stretch"
+assert "cmd_report()" in cli and "report) shift; cmd_report" in cli, "CLI: planetai report"
+assert "planetai report every" in cli and "planetai report at" in cli, "CLI: the report rhythm is settable and documented"
+assert "planetai report level" in cli and 'runtime_set ALERT_LEVEL' in cli, "CLI: report level — the docs promise it"
+assert "contributes: report" in open("packs/insight/rules.yml").read(), "the digest contributes to the report"
+assert "def contributors" in open("app/packs.py").read() and "def alerts" in open("app/packs.py").read(), "packs.py: a contributor is not an alert"
+print("one report, its table, its endpoints, its settings and its command all ship")
 # v0.32.1 — a reinstall over an earlier node's volume left an app that could not log in while every check said fine
 assert "docker volume inspect planetai_db" in open("install.sh").read() and "NEWPW" in open("install.sh").read(), "install.sh: refuse a new password over an old volume"
 assert "app logs in to the database" in cli, "doctor: the locked-out app must be a named failure"

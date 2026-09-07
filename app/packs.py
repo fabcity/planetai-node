@@ -58,8 +58,13 @@ def manifests() -> list[dict]:
     return out
 
 
+# What a `contributes:` rule may contribute to. A rule with one of these is not an alert: it has no message, it
+# is never sent, and its SQL is run where the thing it contributes to is built.
+CONTRIBUTES = ("report",)
+
+
 def rules() -> list[dict]:
-    """Rules contributed by packs, appended after the core rules. Rule ids are namespaced <pack>/<id>."""
+    """Every rule a pack ships, alerts and contributors alike. Rule ids are namespaced <pack>/<id>."""
     out = []
     for d in _enabled():
         f = d / "rules.yml"
@@ -72,6 +77,17 @@ def rules() -> list[dict]:
         except Exception as e:  # noqa: BLE001
             log.warning("pack %s: bad rules.yml (%s)", d.name, e)
     return out
+
+
+def alerts() -> list[dict]:
+    """The rules that can reach a household. A rule with `contributes:` is not one: it has nothing to say on its
+    own, and sending a rule with no message once printed the raw template, braces and all."""
+    return [r for r in rules() if not r.get("contributes")]
+
+
+def contributors(to: str = "report") -> list[dict]:
+    """The rules whose SQL is run where `to` is built, rather than sent. See docs/PACKS.md."""
+    return [r for r in rules() if r.get("contributes") == to]
 
 
 def cells() -> list[dict]:

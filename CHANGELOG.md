@@ -22,6 +22,110 @@ and compares against the shipped file to keep the two together.
 
 `planetai update` rebuilds the image, which now carries one more library, `h3`. A node that has not been told
 where it stands keeps the picture it had, naming nothing.
+## v0.37 — 2026-09-07 — one clock, and the node writes the report
+
+Three schedules were sending messages from two containers and none of them knew about the others. Counted from
+node #1's own `alerts` table over the 48 hours to 17:37 on 7 September, at the shipped `ALERT_LEVEL=warn`:
+
+| | before | after |
+|---|---|---|
+| alert messages | 50 | 37 |
+| scheduled reports | 2 | 6 sent, 2 written and held at midnight |
+| from the agent container | 0 | 0 |
+| **total** | **52** | **43** |
+
+Thirteen of the fifty were warn-level — something changed, nothing to do — and they are report lines now.
+
+**The `after` column needs one line from you.** `ALERT_LEVEL`'s *default* moves from `warn` to `act`, and a
+default only reaches a fresh install: `update.sh` adds keys your `.env` is missing and never overwrites one it
+already has, which is why nothing you chose has ever been changed by an update. Your `.env` says
+`ALERT_LEVEL=warn`, so it will go on saying that. To take the thirteen:
+
+```bash
+planetai report level act        # or Set up → Alerts → Interrupt me for → "only when something needs doing"
+```
+
+The reports, the quiet midnight, the single clock and the act alerts that ask for nothing all arrive on their
+own.
+
+Two of those "before" numbers need saying out loud. **The agent container's 07:00 report has never arrived**, from
+v0.30 to v0.36. `ask()` returns `(answer, rung)`; the line wrapped that in another tuple, so Telegram was handed
+`"text": ["🌅 Good morning…", "local"]`, which the Bot API rejects because `text` must be a string. The handler
+logged `brief failed: TelegramError` every morning after spending a full model round trip with tools on text it
+threw away. Before v0.30 the unpacking was right and the copy did arrive, an hour after the node's own 06:00
+report — which is the duplicate this release was written to remove, and which had already removed itself by
+accident. And **`briefing/morning` fired once in five days**: the node's machine does not stay up, and a report
+due in a window the node slept through was simply never written.
+
+The 43 is still high because 21 of the 37 are `heat/heat_stress_now` at the 32 °C line node #1 still runs on
+v0.34. v0.35 moved that line to 35 °C apparent and replayed 36 firings down to 8 over five days. A node on
+v0.35 and this release, over the same two days: **about 27 messages, six of them reports, and nothing at all
+between midnight and six.**
+
+### What a household gets
+
+- **One report every `REPORT_EVERY` hours from `REPORT_ANCHOR`**, in the node's own time zone. Default 6 and 6:
+  06:00, 12:00, 18:00, 00:00. `REPORT_EVERY` takes 3, 4, 6, 8, 12 or 24 and refuses the rest.
+- **Six parts, under a hundred words**: where the place stands · what changed · anything only the models know ·
+  what happened after this window's alerts · the one thing to do before the next report · ask me anything.
+- **The node writes it, not a model.** SQL against its own tables. Most nodes have no model and get the same
+  report. A model may rewrite it from v0.38, under a rule that refuses any number it was not given.
+- **A report due inside quiet hours is written, stored and not sent.** It is on the dashboard the whole time,
+  saying so, and the next one folds those hours in and opens with "Overnight and this morning". A node that was
+  off for a week reports two days, not a hundred and sixty-eight hours.
+- **`ALERT_LEVEL` is `act` by default**, where it was `warn`. Everything below the line is still recorded, still
+  on the dashboard, and in the next report.
+- **An act alert asks for nothing back.** No `#41` on the end, no button on the hero, no "Still waiting on you"
+  in the report. From v0.39 the node watches what the sensors do after an alert and asks once, afterwards, what
+  you did — with what it saw in the question.
+- **The dashboard** has a new band under the hero: *Here — the last thing the node said*, with the report as you
+  received it, the hours it covers, and a Report now button behind the settings token.
+- **Spanish.** The report renders in `es` as well as `en` and `id`. It is the first Spanish anything on the node.
+  Both the Spanish and the Bahasa Indonesia templates are assistant-written and no native reader has been through
+  them; treat them as a draft.
+
+### If you want the old rhythm back
+
+```bash
+planetai report every 12 && planetai report at 6
+```
+
+Two reports a day, at six and six. For the warn-level messages as well, set *Interrupt me for* → "also when
+something changed" in the dashboard under Set up → Alerts, or `ALERT_LEVEL=warn` in `.env`.
+
+**Nothing you chose is deleted.** On the first start after the update, a node that had `BRIEFINGS`, `BRIEF_MORNING`
+or `BRIEF_EVENING` set writes `REPORT_EVERY=12` and `REPORT_ANCHOR=<your old morning hour>` once, logs it, and
+leaves the old keys where they are. A node with `BRIEF_MORNING=7` keeps seven o'clock and keeps speaking twice a
+day. A fresh install gets 6 and 6.
+
+### Under it
+
+- `app/report.py`: `bundle()` — every number the node has about a window, as one JSON document capped at 64 kB —
+  and `sheet()`, the six parts, with one template dict per language and no wording anywhere in the code.
+- **Notability**: a window's mean against the mean of the same local hours on each of the previous seven days, in
+  standard deviations of that baseline; null under three days, so a node in its first week claims nothing. It
+  decides which two places get a sentence.
+- **Trend** is the digest's ±3 read across to each metric's units: 3 µg/m³ for PM2.5, half a degree for a room's
+  temperature, 5% of the window's range otherwise. One degree and three micrograms are not the same size of change.
+- `reports` table, schema 0.23. The row for the local hour is the scheduler's lock, so a container restarted inside
+  the twenty-minute window sends nothing. The old briefings asked `alerts`, which every rule also writes to.
+- `insight/digest` carries `contributes: report` and no message: its numbers are in every report and none of it
+  interrupts anyone. `contributes:` is documented in `docs/PACKS.md`, and `make lint` refuses a rule with both a
+  message and a contribution, or with neither.
+- `GET /report/latest` · `GET /report/bundle?hours=` (read-only token) · `POST /report/now` (admin token).
+  `/briefing` answers 301 to `/report/latest` for one release and goes in v0.38.
+- MCP: `report_latest`, `report_now`, `report_bundle` replace `daily_report`. Nineteen tools.
+- CLI: `planetai report`, `report last`, `report every <h>`, `report at <h>`.
+- The agent container reads no wall clock at all, and a gate refuses one.
+- `notify`'s `force` argument is gone. It never did anything.
+- **The pre-commit hook now runs `make test` as well as `make lint`.** AGENTS.md has required both since v0.14 and
+  the hook ran one, so a commit in this release removed a function and left `test_shipped.py` red with nothing
+  listening. Re-copy it: `cp tools/hooks/pre-commit .git/hooks/`.
+
+### Not in this release
+
+The 13:03 event on 7 September — one pot, three sensors in one room, six act alerts in five minutes — is still six
+alerts. One event, one alert, and ρ measured from the sensors instead of asked for, are v0.39.
 
 ## v0.37 — 2026-09-07 — a node installed from the tarball knows which version it is
 

@@ -15,14 +15,16 @@ acting, and do not undo what the person's local model did without asking.
 ## Two ways in
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
-`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Seventeen tools:
-`status`, `health_check`, `sensors`, `context` (sea, weather, satellite air, land), `readings`, `daily_report`, `history`,
-`alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`, `export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
+`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Nineteen tools:
+`status`, `health_check`, `sensors`, `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
+`report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,
+`export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
 
 **A shell on the node**, for what needs Docker or git:
 
 ```bash
 planetai status --json      planetai doctor --json      planetai sensors --json      planetai cells --json
+planetai report             planetai report last        planetai report every <h>   planetai report at <h>
 planetai update             planetai backup             planetai restart             planetai logs
 planetai setup --answers node.json      # install without a terminal; see the JSON shape in bin/planetai
 ```
@@ -55,7 +57,8 @@ came from and which place they were written for.
 
 - `status.errors` is per loop. A key present means that loop failed on its last run.
 - `sensors[].local` means the person's own; `indoor` is what the rules use to tell the room from the street.
-- `alerts[].acted_at` is null until someone acts. Ask the person, then record with `act` and their words as the note.
+- `alerts[].acted_at` is null until someone acts. It is the person's note on what they did, not the node's own
+  measurement: record it with `act` when they tell you, and never invent one.
 - "Outside" means: the person's own outdoor sensors, else the three nearest public references, else the model. Same order
   everywhere.
 - `cells[].state`: green is measured, blue derived or modelled, absent has no source. Do not fill what cannot be measured.

@@ -24,7 +24,7 @@ SCALE = os.getenv("NODE_SCALE", "community").capitalize()
 _ro = {"missing": False}
 
 
-def run_ro(cur, sql: str) -> list:
+def run_ro(cur, sql: str, params=None) -> list:
     """Run one pack statement as planetai_ro (init.sql ≥ 0.21): SELECT on every table but settings, no writes. The role
     switch lives inside a transaction so it ends with the statement, whatever happens to it. On a database that has
     not been updated yet the role is missing: say so once and run as the owner, rather than silence every rule."""
@@ -32,7 +32,7 @@ def run_ro(cur, sql: str) -> list:
         try:
             with cur.connection.transaction():
                 cur.execute("SET LOCAL ROLE planetai_ro")
-                cur.execute(sql)
+                cur.execute(sql, params)
                 return cur.fetchall()
         except Exception as e:  # noqa: BLE001
             if "planetai_ro" in str(e) and "does not exist" in str(e):
@@ -40,7 +40,7 @@ def run_ro(cur, sql: str) -> list:
                 log.warning("role planetai_ro is missing (schema before 0.21): pack SQL runs as the database owner until planetai update")
             else:
                 raise
-    cur.execute(sql)
+    cur.execute(sql, params)
     return cur.fetchall()
 
 
@@ -95,16 +95,20 @@ def cells(cur) -> list[dict]:
     return out
 
 
-def rho(cur) -> dict:
+def rho(cur, days_ago: int = 0) -> dict:
     """rho over the last 30 days: share of level='act' alerts that got an 'acknowledged' or 'acted' row within 24h,
-    plus median detect-to-act latency in minutes. The address-scale instrument for H0-A."""
-    cur.execute("""WITH a AS (SELECT id, ts FROM alerts WHERE level='act' AND ts > now() - interval '30 days'),
+    plus median detect-to-act latency in minutes. The address-scale instrument for H0-A.
+
+    days_ago moves the whole 30-day window back, so the report can say whether the number moved this week without
+    keeping a second copy of this query anywhere."""
+    cur.execute("""WITH ref AS (SELECT now() - make_interval(days => %(back)s) AS t),
+                        a AS (SELECT id, ts FROM alerts, ref WHERE level='act' AND ts > ref.t - interval '30 days' AND ts <= ref.t),
                         f AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage IN ('acknowledged','acted') GROUP BY alert_id)
                    SELECT count(a.id) AS alerts_act,
                           count(f.alert_id) FILTER (WHERE f.t - a.ts < interval '24 hours') AS acted,
                           percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM f.t - a.ts)/60) AS median_minutes
-                   FROM a LEFT JOIN f ON f.alert_id = a.id""")
+                   FROM a LEFT JOIN f ON f.alert_id = a.id""", {"back": days_ago})
     r = cur.fetchone() or {}
     n, acted = int(r.get("alerts_act") or 0), int(r.get("acted") or 0)
-    return {"window_days": 30, "alerts_act": n, "acted": acted, "rho": round(acted / n, 3) if n else None,
+    return {"window_days": 30, "days_ago": days_ago, "alerts_act": n, "acted": acted, "rho": round(acted / n, 3) if n else None,
             "median_minutes": round(float(r["median_minutes"])) if r.get("median_minutes") is not None else None}

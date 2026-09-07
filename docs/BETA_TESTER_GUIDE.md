@@ -6,9 +6,11 @@
 This is the path two testers follow in September 2026, rehearsed on a clean Ubuntu machine on 6 September with the
 Santiago (Providencia) and Barcelona (Poblenou) presets. It is written for someone who is not a developer.
 
-**Language.** Everything the node says is in English or Bahasa Indonesia. There is no Spanish yet: not the alerts, not
-the dashboard, not the terminal, not the Telegram bot. Spanish is on the list; your report of which sentences you did
-not understand is the fastest way to get it right.
+**Language.** The alerts, the dashboard, the terminal and the Telegram bot are in English or Bahasa Indonesia
+(`ALERT_LOCALE=en` or `id`). **The report is also in Spanish** (`ALERT_LOCALE=es`) — the first Spanish anything on the
+node. The Spanish and the Bahasa Indonesia report templates were written by an assistant and no native reader has been
+through them yet, so treat them as a draft and tell us which sentences are wrong or strange. Everything else is still
+English only.
 
 ## 1. What you need
 
@@ -82,24 +84,47 @@ The token is a password. Never paste it into an email or an issue.
 planetai test-alert
 ```
 
-Within a minute an alert arrives on your phone (and in the dashboard). It ends with a number, for example `#3`. Then:
+Within a minute an alert arrives on your phone (and in the dashboard). The test alert tells you its number, for
+example `#3` — real alerts do not, because they ask for nothing back. Then:
 
 ```bash
 planetai act 3 "read it"
 ```
 
 The terminal answers with ρ ("rho"): the share of alerts that led to someone doing something. This one number is what
-the node exists to measure. On the dashboard, the button **I did this** beside an alert does the same.
+the node exists to measure. On the dashboard, the button **I did this** beside an alert in the *Act here* band does the
+same.
 
 Replying `/act 3` in Telegram only works if the node's bot is running (`planetai agent local`, which installs a small
 local model; optional, and heavy on an 8 GB machine).
 
 ## 6. Every day
 
+**One line makes your nights quieter.** From this version a node interrupts you only when something needs doing —
+`ALERT_LEVEL` is `act` for a fresh install, where it used to be `warn`. Your node already has `warn` written in its
+`.env`, and an update never overwrites a setting you have; nothing you chose is ever changed underneath you. So if you
+want the quiet:
+
+```bash
+planetai report level act
+```
+
+Twenty seconds, no restart. Everything below that line is still recorded, still on the dashboard, and in the next
+report. To go back: `planetai report level warn`, or in the dashboard under **Set up → Alerts**, *Interrupt me for*.
+
+The old two-reports-a-day rhythm, if you want it: `planetai report every 12 && planetai report at 6`.
+
+- **One report every six hours**, at 06:00, 12:00, 18:00 and 00:00 local. Six short parts: where the place stands, what
+  changed, anything only the satellites know, what happened after the alerts, the one thing to do before the next
+  report, and an invitation to ask. Under a hundred words.
+- **The one due at midnight is written and held, not sent.** You read it at six, with the night folded into it, and it
+  says so. It is on the dashboard the whole time under *Here — the last thing the node said*.
+- **Between reports: act-level alerts only.** They say what to do in one sentence and ask for nothing back — no number
+  to quote, no button on the hero. Quiet hours 22:00–06:00 hold everything but *act*.
+- Change the rhythm: `planetai report every 3|4|6|8|12|24` and `planetai report at <hour>`. Want one right now?
+  `planetai report`. The last one? `planetai report last`.
 - `planetai status` — is it alive, what it read, what fired.
 - `planetai doctor` — every check, with the fix written next to any failure.
-- Alerts arrive on Telegram: **act** when something needs doing, **warn** when something changed. Two short reports a
-  day at 06:00 and 18:00 local time. Quiet hours 22:00–06:00 hold everything but *act*.
 - Adding a sensor later: dashboard → **Set up** (needs the token from `planetai ui`) → Sources.
 
 ## 7. What to report, and where
@@ -121,6 +146,7 @@ understand, anything that took more than one try.
 | "port is already in use" | `planetai config`, set `APP_PORT=8081`, `planetai restart`. |
 | Telegram says nothing | Message the bot first; a bot cannot start a conversation. Then `planetai telegram` again. |
 | Alerts every few minutes | Thresholds wrong for your place. Tell us which ones. |
+| Nothing at all for a day | Check the report hour: `planetai report at 6`. A report due while the node was asleep is not sent late; the next one covers it. `planetai report` writes one now. |
 | Stopped after a power cut | The computer must boot and log in on its own (Mac: Login Items; Energy → start after power failure). |
 
 Updating to a newer version: `planetai update`. It backs up first and refuses to continue if the backup fails.

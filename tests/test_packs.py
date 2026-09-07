@@ -131,3 +131,21 @@ assert 'ALTER TABLE place_runs ADD COLUMN IF NOT EXISTS lat' in _src, "additive 
 assert 'for t in ("place_buildings_sat", "place_yearly")' in _src, "a move invalidates the satellite caches too"
 assert "SELECT run_at, radius_m, lat, lon FROM place_runs" in _src, "staleness must read the stored point"
 print("place move tests pass")
+
+
+# ---------------------------------------------------------------- a rule that contributes is not an alert
+os.environ.setdefault("DATABASE_URL", "postgresql://x/x")
+os.environ["PACKS_DIR"] = "packs"          # the repo's own packs, not the container's /app/packs
+_packs = load("app/packs.py", "packs_under_test")
+
+assert _packs.CONTRIBUTES == ("report",), "tools/check_rules.py carries this list too; keep them together"
+_all = {r["id"] for r in _packs.rules()}
+_alerts = {r["id"] for r in _packs.alerts()}
+_contrib = {r["id"] for r in _packs.contributors("report")}
+assert _contrib == _all - _alerts, "every rule is either sent or contributed, never both and never neither"
+assert "insight/digest" in _contrib, "the digest is part of the report now, not a message every three hours"
+for r in _packs.alerts():
+    assert r.get("message"), f"{r['id']} is loaded as an alert with no message; it would print its own braces"
+for r in _packs.contributors("report"):
+    assert not r.get("message") and not r.get("level"), f"{r['id']} contributes; it has nothing to send"
+print("a rule either says something or contributes something, and the loader knows which")
