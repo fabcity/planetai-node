@@ -489,6 +489,12 @@ try:
     if _moved:
         log.info("moved off the old briefing settings: %s. BRIEFINGS, BRIEF_MORNING and BRIEF_EVENING stay in place and are ignored",
                  ", ".join(f"{k}={v}" for k, v in sorted(_moved.items())))
+        # ALERT_LEVEL is not moved. An update adds keys a .env is missing and never overwrites one it has, which is
+        # why nothing a household chose has ever changed underneath it — and it means the new `act` default reaches
+        # only a fresh install. Say so once, with the one command, rather than deciding for them.
+        if settings.get("ALERT_LEVEL", "act") == "warn":
+            log.info("ALERT_LEVEL is still warn, so warn-level alerts still reach the phone between reports. "
+                     "`planetai report level act` leaves them to the report; nothing is lost either way")
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("could not move off the old briefing settings: %s", e)
 

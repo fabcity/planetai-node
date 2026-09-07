@@ -14,6 +14,18 @@ node #1's own `alerts` table over the 48 hours to 17:37 on 7 September, at the s
 
 Thirteen of the fifty were warn-level — something changed, nothing to do — and they are report lines now.
 
+**The `after` column needs one line from you.** `ALERT_LEVEL`'s *default* moves from `warn` to `act`, and a
+default only reaches a fresh install: `update.sh` adds keys your `.env` is missing and never overwrites one it
+already has, which is why nothing you chose has ever been changed by an update. Your `.env` says
+`ALERT_LEVEL=warn`, so it will go on saying that. To take the thirteen:
+
+```bash
+planetai report level act        # or Set up → Alerts → Interrupt me for → "only when something needs doing"
+```
+
+The reports, the quiet midnight, the single clock and the act alerts that ask for nothing all arrive on their
+own.
+
 Two of those "before" numbers need saying out loud. **The agent container's 07:00 report has never arrived**, from
 v0.30 to v0.36. `ask()` returns `(answer, rung)`; the line wrapped that in another tuple, so Telegram was handed
 `"text": ["🌅 Good morning…", "local"]`, which the Bot API rejects because `text` must be a string. The handler

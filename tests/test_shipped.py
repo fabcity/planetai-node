@@ -94,6 +94,7 @@ assert "FROM reports ORDER BY ts DESC LIMIT 1" in main, "main.py: /report/latest
 assert "coalesce(due_local, ts)" in main, "main.py: a report written on request still ends the held stretch"
 assert "cmd_report()" in cli and "report) shift; cmd_report" in cli, "CLI: planetai report"
 assert "planetai report every" in cli and "planetai report at" in cli, "CLI: the report rhythm is settable and documented"
+assert "planetai report level" in cli and 'runtime_set ALERT_LEVEL' in cli, "CLI: report level — the docs promise it"
 assert "contributes: report" in open("packs/insight/rules.yml").read(), "the digest contributes to the report"
 assert "def contributors" in open("app/packs.py").read() and "def alerts" in open("app/packs.py").read(), "packs.py: a contributor is not an alert"
 print("one report, its table, its endpoints, its settings and its command all ship")

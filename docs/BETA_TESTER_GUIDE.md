@@ -100,17 +100,19 @@ local model; optional, and heavy on an 8 GB machine).
 
 ## 6. Every day
 
-**Your nights are quieter than they were, on purpose.** From this version the node interrupts you only when
-something needs doing — `ALERT_LEVEL` is `act`, where it used to be `warn`. Everything below that line is still
-recorded, still on the dashboard, and in the next report. If you want the old, chattier node back, one line brings it
-back and takes effect in twenty seconds:
+**One line makes your nights quieter.** From this version a node interrupts you only when something needs doing —
+`ALERT_LEVEL` is `act` for a fresh install, where it used to be `warn`. Your node already has `warn` written in its
+`.env`, and an update never overwrites a setting you have; nothing you chose is ever changed underneath you. So if you
+want the quiet:
 
 ```bash
-planetai report every 12 && planetai report at 6
+planetai report level act
 ```
 
-...for the two-reports-a-day rhythm, and in the dashboard under **Set up → Alerts**, *Interrupt me for* → "also when
-something changed" for the warns.
+Twenty seconds, no restart. Everything below that line is still recorded, still on the dashboard, and in the next
+report. To go back: `planetai report level warn`, or in the dashboard under **Set up → Alerts**, *Interrupt me for*.
+
+The old two-reports-a-day rhythm, if you want it: `planetai report every 12 && planetai report at 6`.
 
 - **One report every six hours**, at 06:00, 12:00, 18:00 and 00:00 local. Six short parts: where the place stands, what
   changed, anything only the satellites know, what happened after the alerts, the one thing to do before the next

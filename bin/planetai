@@ -12,6 +12,7 @@
 #   planetai report         write and send one now; `report last` shows the last one
 #   planetai report every 6 hours between reports: 3, 4, 6, 8, 12 or 24
 #   planetai report at 6   the local hour the rhythm starts from
+#   planetai report level   what interrupts you between reports: act | warn | info
 #   planetai act <id>       your note on what you did about alert <id>
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
@@ -502,6 +503,18 @@ cmd_report() {
       runtime_set REPORT_ANCHOR "$val" || fail "could not reach the node's settings; is it running?"
       say "the rhythm starts at $val:00 local. Live within 20 seconds; no restart."
       ;;
+    level)
+      [[ "$val" =~ ^(act|warn|info)$ ]] || fail "usage: planetai report level act|warn|info
+   act  = only when something needs doing. The warns wait for the next report.
+   warn = also when something changed.
+   info = everything the node notices."
+      runtime_set ALERT_LEVEL "$val" || fail "could not reach the node's settings; is it running?"
+      case "$val" in
+        act)  say "between reports you will hear only what needs doing. Everything else is on the dashboard and in the next report.";;
+        warn) say "between reports you will also hear when something changed.";;
+        info) say "between reports you will hear everything the node notices. This is a lot.";;
+      esac
+      ;;
     last|latest)
       api /report/latest | json '
 if not d.get("text"): print("  no report yet; the first one lands at the next due hour")
@@ -509,7 +522,7 @@ else:
     print(); print(d["text"]); print()
     print("  %s \u00b7 %s hours \u00b7 written by %s%s" % (d["ts"][:16].replace("T"," "), d["window_hours"], d["rung"], "" if d["sent"] else " \u00b7 HELD for quiet hours, folded into the next one"))'
       ;;
-    *) fail "usage: planetai report [now | last | every <hours> | at <hour>]";;
+    *) fail "usage: planetai report [now | last | every <hours> | at <hour> | level act|warn|info]";;
   esac
 }
 
