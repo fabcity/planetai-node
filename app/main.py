@@ -1032,10 +1032,17 @@ def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
         SELECT ids.sensor_id, h.bucket, r.mean
         FROM ids CROSS JOIN h LEFT JOIN readings_1h r ON r.sensor_id = ids.sensor_id AND r.bucket = h.bucket AND r.metric = %s
         ORDER BY ids.sensor_id, h.bucket""", hours, metric, hours, metric)
+    # The buckets travel with the values. Without them a trace cannot draw its own time axis or say which hour
+    # the reader is hovering over, and the dashboard was guessing the hours from the array's length.
     out: dict = {}
+    hours: list = []
+    seen = set()
     for x in rows:
         out.setdefault(x["sensor_id"], []).append(x["mean"])
-    return out
+        b = str(x["bucket"])
+        if b not in seen:
+            seen.add(b); hours.append(b)
+    return {"hours": hours, "series": out}
 
 
 # ---------------------------------------------------------------- backups and exports, for a machine that pulls them

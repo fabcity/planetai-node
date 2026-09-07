@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.41.2 — 2026-09-08 — the traces say what hour it is
+
+**Every small trace now has a time under it, and tells you the exact hour when you hover.** They were shapes with
+no axis before: a bump with no way to ask when it happened. `/sparks` was sending values with no timestamps at
+all, so the page could not have drawn an axis even if it wanted to — it now sends the hour of every bucket
+alongside them.
+
+Hovering any point on a trace names the day, the hour and the reading with its unit. It works with a keyboard and
+with a screen reader, which a tooltip that chases the mouse does not.
+
+**The neighbours are separate cards again.** They were touching, which read as one block of text rather than one
+card per sensor. The forecast steps had the same problem.
+
+**One wild neighbour no longer flattens the picture.** Node #1's card read "5 to 152 µg/m³" this morning: one
+station was reading 152 while the rest read 5 to 12, and the axis stretched to fit it until the box was a smear
+against the left edge. The axis now ends past the neighbours rather than past the worst one, and a station beyond
+it is drawn as its own mark at the edge and named in the sentence — either something is burning there or that
+sensor is wrong, and both are worth saying.
+
+That fence is not the textbook one. Tukey's 1.5 × IQR fails on a small ring: with three stations reading 5, 10
+and 152, the 152 *is* the upper quartile. It uses median absolute deviation instead, which holds at three
+stations. The case it is most careful about is the opposite one — when every station reads high **and agrees**,
+that is smoke over the whole area, and nothing is pinned away. That is the reading a household most needs to see.
+
 ## v0.41.1 — 2026-09-08 — one card cannot take the others down
 
 **If your satellite cards went blank after updating to v0.41, this is the fix.** Nothing was deleted: the land,

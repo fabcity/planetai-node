@@ -127,6 +127,13 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
    The word is one of live / partial / model / cached / example. */
 .sensor .n a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(244,236,226,.28)}
 .sensor .n a:hover{border-bottom-color:currentColor}
+.sparkwrap{margin-top:6px}
+.sparkwrap svg{display:block;width:100%}
+.sparkwrap rect{cursor:crosshair}
+.sparkx{display:flex;justify-content:space-between;margin-top:3px;font:500 9.5px var(--fm);letter-spacing:.06em;color:var(--mute);opacity:.75}
+/* the station rows were touching, which read as one block of text rather than one card per neighbour */
+#stations{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+#fc-steps{display:flex;flex-direction:column;gap:10px;margin-top:10px}
 .prov{display:inline-flex;align-items:center;gap:7px;border-radius:0;padding:3px 8px;font:500 10.5px var(--fm);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;border:1px solid currentColor;color:var(--mute);background:none}
 .prov .g{flex:none;display:block}
 .earthrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
@@ -466,7 +473,37 @@ const grade=v=>v==null?null:v<=15?'clean':v<=35?'moderate':'unhealthy';     // W
 const RADII=['r1','r2','r3','r4'];
 // smooth path through points (Catmull-Rom → cubic), from the design
 function smooth(pts){if(pts.length<2)return'';let d=`M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;for(let i=0;i<pts.length-1;i++){const p0=pts[i-1]||pts[i],p1=pts[i],p2=pts[i+1],p3=pts[i+2]||p2;const c1=[p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6],c2=[p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6];d+=` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;}return d;}
-const spark=(vals,color,h=36)=>{const v=(vals||[]).filter(x=>x!=null);if(v.length<2)return`<svg viewBox="0 0 240 ${h}" preserveAspectRatio="none"></svg>`;const max=Math.max(...v)*1.05||1,min=Math.min(...v,0);const arr=vals.map(x=>x==null?null:x);let last=null;const pts=arr.map((x,i)=>{if(x!=null)last=x;const y=last==null?h-3:h-3-((last-min)/(max-min||1))*(h-7);return[i/(arr.length-1)*240,y];});const p=smooth(pts);return`<svg viewBox="0 0 240 ${h}" preserveAspectRatio="none"><path d="${p} L240,${h} L0,${h} Z" fill="${color}" opacity=".13"/><path d="${p}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity=".9"/></svg>`;};
+// A trace with a time under it. The old one drew a shape with no axis and no way to ask what hour a bump was:
+// "flying data". SPARK_HOURS holds the bucket times /sparks now ships with its values.
+//
+// The labels are HTML, not SVG text. The trace stretches to the card with preserveAspectRatio="none", which
+// squashes any text inside it horizontally — the same reason the ring strip carries no text.
+//
+// Hover is a <title> on one invisible rect per hour. No listeners, no tooltip element, no state, and it works
+// on a keyboard and a screen reader, which a div that follows the mouse does not.
+let SPARK_HOURS=[];
+// hhmm() is already defined above; only the day-and-hour form is new, for the hover text.
+const dayhr=t=>{try{return new Date(t).toLocaleString([],{weekday:'short',hour:'2-digit',minute:'2-digit'});}catch(e){return '';}};
+const spark=(vals,color,h=36,unit='')=>{
+  const arr=(vals||[]).map(x=>x==null?null:x), v=arr.filter(x=>x!=null);
+  if(v.length<2)return '';
+  const max=Math.max(...v)*1.05||1, min=Math.min(...v,0);
+  let last=null;
+  const pts=arr.map((x,i)=>{if(x!=null)last=x;const y=last==null?h-3:h-3-((last-min)/(max-min||1))*(h-7);return[i/(arr.length-1)*240,y];});
+  const p=smooth(pts);
+  const hrs=SPARK_HOURS.length===arr.length?SPARK_HOURS:null;
+  const w=240/arr.length;
+  const hit=arr.map((x,i)=>{
+    const when=hrs?dayhr(hrs[i]):`${arr.length-1-i} h ago`;
+    const val=x==null?'no reading':`${fmt(x, x<10?1:0)}${unit?' '+unit:''}`;
+    return `<rect x="${i*w-w/2}" y="0" width="${w}" height="${h}" fill="transparent"><title>${esc(when)} \u00b7 ${esc(val)}</title></rect>`;
+  }).join('');
+  const axis=hrs?`<div class="sparkx"><span>${esc(hhmm(hrs[0]))}</span><span>${esc(hhmm(hrs[Math.floor(hrs.length/2)]))}</span><span>now</span></div>`:'';
+  return `<div class="sparkwrap"><svg viewBox="0 0 240 ${h}" preserveAspectRatio="none" role="img" aria-label="the last ${arr.length} hours">`
+    +`<path d="${p} L240,${h} L0,${h} Z" fill="${color}" opacity=".13"/>`
+    +`<path d="${p}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke" opacity=".9"/>`
+    +hit+`</svg>${axis}</div>`;
+};
 let TOKEN=localStorage.getItem('planetai_admin')||'', DESC=null, PACKS=[], GROUP='sources', LAST=null;
 const kiosk=new URLSearchParams(location.search).get('kiosk')==='1';
 const ONLY=new URLSearchParams(location.search).get('only');   // ?only=plan|room|street|region|act|day : that band alone, for a wall screen or a capture
@@ -478,7 +515,7 @@ const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit
 // ------------------------------------------------------------------ the page
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparks,sparkT,sparkH,yb,rep,ring,fc]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null),api('/nearby').catch(()=>null),api('/forecast').catch(()=>null)]);
+    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparksR,sparkTR,sparkHR,yb,rep,ring,fc]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null),api('/nearby').catch(()=>null),api('/forecast').catch(()=>null)]);
     const O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
     const S=m=>stats.filter(r=>r.metric===m), fresh=r=>r.silent_minutes<120;
     const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
@@ -489,6 +526,9 @@ async function refresh(){
     const near=S('pm25').filter(r=>!r.local&&!r.indoor&&r.kind==='sensor'&&r.mean_15m!=null&&fresh(r)&&r.lat!=null).sort((a,b)=>dist(a)-dist(b)).slice(0,3);
     const outPM=mine.length?mine:near, iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m)), mv=O('cams-point','pm25_model');
     const g=grade(iv??ov), state=STATES[g]||INK, crossed=g!=null&&g!=='clean';
+    // /sparks answers {hours, series} now, so a trace can draw its own axis and name the hour under the cursor
+    const sparks=(sparksR&&sparksR.series)||{}, sparkT=(sparkTR&&sparkTR.series)||{}, sparkH=(sparkHR&&sparkHR.series)||{};
+    SPARK_HOURS=(sparksR&&sparksR.hours)||[];
     LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,state,crossed,by};
     card('#ring-sub', ()=>drawRing(ring,sparks));
     card('#fc-sub', ()=>drawForecast(fc));
@@ -519,7 +559,7 @@ async function refresh(){
       at!=null&&{label:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?RED:INK,spark:atSeries,note:`${fmt(inT,1)} °C at ${fmt(inH)}% humidity indoors. ${at>=40?'Heatstroke territory.':at>=32?'Heat stress: water, air, rest.':at>=27?'Warm; fine for most.':'Comfortable.'}`},
       wind!=null&&{label:'Wind',value:fmt(wind),unit:`km/h ${compass(wdir)}`,color:INK,spark:null,note:wind<5?'Still. Whatever burns nearby stays nearby.':wind<15?'Light. Smoke drifts, slowly.':wind<30?'Breezy. Smoke travels; so does clean air.':'Strong.'},
     ].filter(Boolean);
-    const tileHTML=(t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" data-card="tile:${t.label.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`;
+    const tileHTML=(t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" data-card="tile:${t.label.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color,36,t.unit):''}<div class="note">${esc(t.note)}</div></div></div>`;
     const roomTiles=tiles.filter(t=>t.label==='Feels like'), streetTiles=tiles.filter(t=>t.label!=='Feels like'&&t.label!=='The model'), regionTiles=tiles.filter(t=>t.label==='The model');
     drawDay(ser,state,iv);
     // every sensor, with a story
@@ -537,7 +577,7 @@ async function refresh(){
     // A link only where the sensor has a page of its own. `meta.url` is written by the Smart Citizen adapter for
     // every kit on the operator's account and by nothing else, so account kits link and public stations never do —
     // including the operator's own kits at other addresses, which are theirs to open even when they are not here.
-    const sensorHTML=(r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" data-card="sensor:${(r.name||'').toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.name)}</a>`:esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`;
+    const sensorHTML=(r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" data-card="sensor:${(r.name||'').toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.name)}</a>`:esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26,r.unit):''}</div></div>`;
     const indoorRows=rows.filter(r=>r.indoor), outRows=rows.filter(r=>!r.indoor&&r.name!=='CAMS point'&&r.name!=='Feels like');
     $('#room').innerHTML=roomTiles.map(tileHTML).join('')+indoorRows.map(sensorHTML).join('')||`<div class="empty">No indoor sensor yet. Add one under Set up → Sources: a Smart Citizen kit, an AirGradient on the WiFi, or a BME680 on a mesh radio.</div>`;
     $('#room-sub').textContent=inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the house, 15-minute means. ${iv!=null&&ov!=null?(iv<ov?'The building is keeping the street out.':iv>ov*1.3?'Whatever is in the air started in here.':'Inside follows the street.'):''}`:'Your indoor sensors.';
@@ -690,7 +730,7 @@ function drawRing(d,sparks){
       +'<div style="min-width:0;flex:1"><div class="row"><span class="n">'+esc(r.name||r.sensor_id)+'</span>'
       +'<span style="white-space:nowrap"><span class="num">'+(r.pm25==null?'–':fmt(r.pm25))+'</span><small>µg/m³</small></span></div>'
       +'<div class="story">'+km+' km away · '+esc(r.network||'unknown network')+' · '+when+'</div>'
-      +(sp?spark(sp,'#8A8378',26):'')+'</div></div>';
+      +(sp?spark(sp,'#8A8378',26,'\u00b5g/m\u00b3'):'')+'</div></div>';
   }).join('');
   if(d.stations<2||d.median==null){
     strip.hidden=true; empty.hidden=false; sub.textContent='';
@@ -702,17 +742,37 @@ function drawRing(d,sparks){
   empty.hidden=true; strip.hidden=false;
   // The range the neighbours are reading, and where this node sits on it. This is the picture the rules reason
   // about: `only_here` asks whether the node has cleared the TOP of this box, not its middle.
-  const lo=Math.min(d.lowest,d.mine==null?d.lowest:d.mine), hi=Math.max(d.highest,d.mine==null?d.highest:d.mine);
-  const pad=(hi-lo)*0.15||1, A=lo-pad, B=hi+pad, X=v=>10+((v-A)/(B-A))*580;
+  // One neighbour reading 152 while the rest read 5 to 12 stretched this axis until the box was a smear at the
+  // left edge and the picture said nothing. A box plot's answer is the 1.5 x IQR fence: the axis ends there, the
+  // far station is drawn as its own mark at the edge, and the sentence names it. Nothing is dropped — it is
+  // still in the list above and still in the median, which is why the median is what the rules use.
+  // Tukey's 1.5 x IQR fence is the usual answer and it fails here: with three neighbours reading 5, 10 and 152
+  // the third IS the upper quartile, so the fence sits at 192 and calls nothing odd. A ring is often three or
+  // four stations, so the fence has to hold at small n. Median absolute deviation does: it needs no quartiles
+  // and one wild value cannot move it. Six MADs above the median, with a floor of 5 ug/m3 so a ring that agrees
+  // exactly does not collapse the axis onto itself.
+  const seen=(d.ring||[]).filter(r=>r.reporting&&!r.indoor&&r.pm25!=null);
+  const med=v=>{const a=[...v].sort((x,y)=>x-y);return a.length?(a.length%2?a[(a.length-1)/2]:(a[a.length/2-1]+a[a.length/2])/2):null;};
+  const pv=seen.map(r=>r.pm25), m0=med(pv);
+  const mad=m0==null?0:med(pv.map(x=>Math.abs(x-m0)));
+  const fence=m0==null?Infinity:m0+6*Math.max(mad,5/6);
+  const far=seen.filter(r=>r.pm25>fence);
+  const inside=seen.filter(r=>r.pm25<=fence).map(r=>r.pm25);
+  const hiIn=inside.length?Math.max(...inside):d.p75;
+  const lo=Math.min(d.lowest,d.mine==null?d.lowest:d.mine), hi=Math.max(hiIn,d.mine==null?hiIn:d.mine);
+  const pad=(hi-lo)*0.15||1, A=lo-pad, B=hi+pad, X=v=>10+((Math.min(v,B)-A)/(B-A))*580;
   // No text inside this SVG. It scales with the card, so at 375 px a viewBox label lands at about five pixels
-  // and cannot be read; every number lives in the sentence under it instead.
-  strip.innerHTML='<line x1="'+X(d.lowest)+'" x2="'+X(d.highest)+'" y1="32" y2="32" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
+  // and cannot be read; every number lives in the sentence under it, and in a title on hover.
+  strip.innerHTML='<line x1="'+X(d.lowest)+'" x2="'+X(hiIn)+'" y1="32" y2="32" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
     +'<line x1="'+X(d.lowest)+'" x2="'+X(d.lowest)+'" y1="24" y2="40" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
-    +'<line x1="'+X(d.highest)+'" x2="'+X(d.highest)+'" y1="24" y2="40" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
-    +'<rect x="'+X(d.p25)+'" y="20" width="'+Math.max(1,X(d.p75)-X(d.p25))+'" height="24" fill="#8A8378" opacity=".25"/>'
-    +'<line x1="'+X(d.median)+'" x2="'+X(d.median)+'" y1="18" y2="46" stroke="#8A8378" stroke-width="2"/>'
-    +(d.mine==null?'':'<line x1="'+X(d.mine)+'" x2="'+X(d.mine)+'" y1="8" y2="56" stroke="#F4ECE2" stroke-width="2.5"/>');
-  const range='Your '+d.stations+' neighbours are reading '+fmt(d.lowest)+' to '+fmt(d.highest)+' µg/m³, middle '+fmt(d.median)+'. Nearest '+fmt(d.nearest_km,1)+' km.';
+    +'<line x1="'+X(hiIn)+'" x2="'+X(hiIn)+'" y1="24" y2="40" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
+    +'<rect x="'+X(d.p25)+'" y="20" width="'+Math.max(1,X(d.p75)-X(d.p25))+'" height="24" fill="#8A8378" opacity=".25"><title>the middle half of your neighbours, '+fmt(d.p25)+' to '+fmt(d.p75)+' \u00b5g/m\u00b3</title></rect>'
+    +'<line x1="'+X(d.median)+'" x2="'+X(d.median)+'" y1="18" y2="46" stroke="#8A8378" stroke-width="2"><title>the middle of your neighbours, '+fmt(d.median)+' \u00b5g/m\u00b3</title></line>'
+    +far.map(r=>'<circle cx="596" cy="32" r="4" fill="none" stroke="#8A8378" stroke-width="1.5"><title>'+esc(r.name||r.sensor_id)+', '+fmt(r.pm25)+' \u00b5g/m\u00b3 \u2014 off the right of this scale</title></circle>').join('')
+    +(d.mine==null?'':'<line x1="'+X(d.mine)+'" x2="'+X(d.mine)+'" y1="8" y2="56" stroke="#F4ECE2" stroke-width="2.5"><title>you, '+fmt(d.mine)+' \u00b5g/m\u00b3</title></line>');
+  const range='Your '+d.stations+' neighbours are reading '+fmt(d.lowest)+' to '+fmt(hiIn)+' µg/m³, middle '+fmt(d.median)+'. Nearest '+fmt(d.nearest_km,1)+' km.'
+    +(far.length?' '+(far.length===1?esc(far[0].name||far[0].sensor_id)+' is reading '+fmt(far[0].pm25)+', far outside the rest — either something is burning there or that sensor is wrong.'
+                     :far.length+' of them are far outside the rest, off the right of this scale.'):'');
   sub.textContent=(d.mine==null
     ?'You have no outdoor sensor of your own, so there is nothing to put on this line. '
     :d.mine>d.p75?'You read '+fmt(d.mine)+' µg/m³, above all but the worst of them. Whatever this is, it is closer to you than to them. '
