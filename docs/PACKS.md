@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Node #1 runs nine.
+about air, water or heat; the packs do. Node #1 runs ten.
 
 ```
 packs/<id>/
@@ -102,6 +102,7 @@ alone lists them.
 | air-quality | data | PM2.5 rules (inside/outside, spikes), cells |
 | heat | data | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | digest every 3 h; daily agreement between indoor, street and model |
+| trust | data | coverage, frozen channels, collocated disagreement — no cell, by design |
 | cold-start | data | day one with no hardware: modelled air, normals |
 | open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |

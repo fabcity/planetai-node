@@ -172,3 +172,17 @@ _load = _load[:_load.index("\ndef ")]
 assert "with con.transaction():" in _load, \
     "the delete and reinsert of channel_roles must be one transaction, not two autocommitted statements"
 assert "DELETE FROM channel_roles" in _load
+
+# v0.35 — the trust pack. Node #1 held a kit at 3% coverage reporting a timestamp four minutes old, and three
+# collocated indoor kits where one read 1.5x the other two. Nothing said so.
+_trust = {r["id"]: r for r in yaml.safe_load(open("packs/trust/rules.yml"))}
+assert set(_trust) == {"channel_dead", "coverage_low", "peer_disagreement"}, "three rules, no more"
+assert not _os.path.exists("packs/trust/cells.yml"), "a trust score is never an Index cell"
+assert "60" in _trust["coverage_low"]["sql"], "coverage_low's floor is 60% of the last 7 days"
+assert "50" in _trust["peer_disagreement"]["sql"], "collocation is 50 m"
+assert "0.85" in _trust["peer_disagreement"]["sql"] and "1.15" in _trust["peer_disagreement"]["sql"]
+assert "channel_roles" in _trust["peer_disagreement"]["sql"], "peer comparison is ambient-only, by role"
+for _r in _trust.values():
+    assert set(_r["message"]) >= {"en", "id"}, "every alert speaks English and Indonesian"
+    assert "µg" not in _r["message"]["en"], "statistics stay out of alert messages"
+print("the trust pack ships three rules and no cells")
