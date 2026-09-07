@@ -18,6 +18,8 @@ import os
 import re
 import sys
 
+import yaml
+
 errs: list[str] = []
 DOCS = sorted(glob.glob("*.md") + glob.glob("docs/*.md") + glob.glob("packs/*/README.md"))
 CLI = open("bin/planetai").read()
@@ -97,6 +99,18 @@ for doc in DOCS:
                          "acme-sensor", "air", "yourplace", "district", "id"}
         if pk not in PACKS and pk not in EXAMPLE_PACKS:
             errs.append(f"{doc}: refers to pack `{pk}`, which does not exist")
+
+# Every declared channel must be a metric some adapter actually produces. A declaration for a metric that does not
+# exist is a role nothing will ever wear, and a typo in one is silent: the rule that reads roles just returns
+# nothing.
+_src = open("app/sources.py").read()
+# the regex only sees "key": "value" pairs; pm25, pm25_raw and aqi are written by readings.append(...) tuples,
+# which have no colon between the quoted strings, so they need to be named here by hand.
+_produced = set(re.findall(r'"[^"]+":\s*"([a-z0-9_]+)"', _src)) | {"pm25", "pm25_raw", "aqi"}
+for f in ["config/channels.yml"] + sorted(glob.glob("packs/*/channels.yml")):
+    for d in yaml.safe_load(open(f)) or []:
+        if d.get("metric") not in _produced:
+            errs.append(f"{f}: declares metric `{d.get('metric')}`, which no adapter produces")
 
 # README's docs index must match the directory
 readme = open("README.md").read()

@@ -98,6 +98,9 @@ def poll_once(hc: httpx.Client) -> None:
                 errors.append(f"{name}: {str(e).splitlines()[0]}")
                 log.warning("source %s failed: %s", name, e)
                 continue
+            lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+            sources.stamp_local(sensors, float(lat_env) if lat_env else None, float(lon_env) if lon_env else None,
+                                 float(settings.get("LOCAL_RADIUS_M") or 500))
             with con.cursor() as cur:
                 for s in sensors:
                     cur.execute(
@@ -105,7 +108,7 @@ def poll_once(hc: httpx.Client) -> None:
                            VALUES (%(sensor_id)s, %(source)s, %(name)s, %(lat)s, %(lon)s, %(indoor)s, %(local)s,
                                    %(kind)s, %(scale)s, %(cadence)s, %(meta)s)
                            ON CONFLICT (sensor_id) DO UPDATE SET name=EXCLUDED.name, lat=EXCLUDED.lat, lon=EXCLUDED.lon,
-                             indoor=EXCLUDED.indoor, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
+                             indoor=EXCLUDED.indoor, local=EXCLUDED.local, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
                              cadence=EXCLUDED.cadence, meta=EXCLUDED.meta""",
                         {"kind": "sensor", "scale": os.getenv("NODE_SCALE", "community"), "cadence": None,
                          **s, "meta": Jsonb(s.get("meta") or {})},
@@ -125,6 +128,9 @@ def poll_once(hc: httpx.Client) -> None:
 
 # ---------------------------------------------------------------- MQTT ingest (Meshtastic gateway, DIY pods)
 def _store(sensors, readings) -> None:
+    lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+    sources.stamp_local(sensors, float(lat_env) if lat_env else None, float(lon_env) if lon_env else None,
+                         float(settings.get("LOCAL_RADIUS_M") or 500))
     with db() as con, con.cursor() as cur:
         for s in sensors:
             cur.execute("""INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta)
@@ -132,7 +138,7 @@ def _store(sensors, readings) -> None:
                            ON CONFLICT (sensor_id) DO UPDATE SET
                              name = COALESCE(EXCLUDED.name, sensors.name),
                              lat = COALESCE(EXCLUDED.lat, sensors.lat), lon = COALESCE(EXCLUDED.lon, sensors.lon),
-                             indoor = EXCLUDED.indoor, meta = sensors.meta || EXCLUDED.meta""",
+                             indoor = EXCLUDED.indoor, local = EXCLUDED.local, meta = sensors.meta || EXCLUDED.meta""",
                         {**s, "meta": Jsonb(s.get("meta") or {})})
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)
@@ -499,6 +505,28 @@ try:
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("could not move off the old briefing settings: %s", e)
 
+def load_channel_roles() -> int:
+    """Declarations are the file's, not the database's: replace the table on every start so a removed pack's
+    claims go with it."""
+    rows = packs.channels()
+    with db() as con, con.cursor() as cur:
+        # db() is autocommit, so the delete and the reinsert must share one explicit transaction block —
+        # otherwise the DELETE commits alone and a concurrent reader can see an empty table mid-restart.
+        with con.transaction():
+            cur.execute("DELETE FROM channel_roles")
+            cur.executemany(
+                """INSERT INTO channel_roles (source, metric, role, comparable, unit, reference, declared_by)
+                   VALUES (%(source)s,%(metric)s,%(role)s,%(comparable)s,%(unit)s,%(reference)s,%(declared_by)s)""",
+                rows)
+    log.info("channel roles: %d declared", len(rows))
+    return len(rows)
+
+
+try:
+    load_channel_roles()
+except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
+    log.warning("channel roles: %s", e)
+
 if MQTT_HOST:
     threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
 
@@ -591,6 +619,57 @@ def readings(sensor_id: str | None = None, metric: str | None = None, limit: int
 def stats():
     """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations."""
     return q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+
+
+@app.get("/trust")
+def trust():
+    """One row per local sensor, for the dashboard's trust card and the agent's health check — never both computing
+    it themselves and drifting apart from packs/trust/rules.yml. coverage_7d is the percentage of the last 168
+    hourly buckets its ambient channels reported in, same arithmetic as the coverage_low rule. frozen_channels
+    counts its ambient/enclosure channels that match all three of channel_dead's conditions: flat for 6+ hours in
+    the last 24, still flat in the latest bucket, AND the kit itself still producing raw readings in the last 2
+    hours (the `alive` CTE below) — a channel whose kit has gone dark entirely is not "frozen", it is offline, and
+    channel_dead would never fire for it. age_hours is how long since its first ever reading: under 168, the
+    sensor has not lived a full week yet, so a low coverage_7d there is not a fault, just an incomplete week."""
+    return q("""
+        WITH ours AS (
+          SELECT r.sensor_id, r.metric
+          FROM readings_1h r JOIN sensors s USING (sensor_id)
+          JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
+          WHERE s.local AND s.kind = 'sensor' AND c.role IN ('ambient', 'enclosure')
+          GROUP BY 1, 2),
+        frozen_stat AS (
+          SELECT o.sensor_id, o.metric,
+                 max(r.bucket) AS last_bucket,
+                 max(r.bucket) FILTER (WHERE r.max - r.min = 0) AS last_flat_bucket,
+                 count(*) FILTER (WHERE r.max - r.min = 0) AS flat_hours
+          FROM ours o JOIN readings_1h r ON r.sensor_id = o.sensor_id AND r.metric = o.metric
+          WHERE r.bucket > now() - interval '24 hours'
+          GROUP BY 1, 2),
+        alive AS (
+          SELECT sensor_id, max(ts) AS kit_ts FROM readings
+          WHERE ts > now() - interval '2 hours' GROUP BY 1),
+        frozen AS (
+          SELECT fs.sensor_id, count(*) AS frozen_channels
+          FROM frozen_stat fs JOIN alive a USING (sensor_id)
+          WHERE fs.flat_hours >= 6 AND fs.last_bucket = fs.last_flat_bucket
+          GROUP BY 1),
+        have AS (
+          SELECT r.sensor_id, count(DISTINCT r.bucket) AS hours
+          FROM readings_1h r JOIN sensors s USING (sensor_id)
+          JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
+          WHERE s.local AND s.kind = 'sensor' AND c.role = 'ambient' AND c.comparable
+            AND r.bucket > now() - interval '7 days'
+          GROUP BY 1),
+        age AS (SELECT sensor_id, extract(epoch FROM now() - min(ts)) / 3600 AS age_hours FROM readings GROUP BY 1)
+        SELECT s.sensor_id, s.name,
+               round(100.0 * coalesce(h.hours, 0) / 168) AS coverage_7d,
+               coalesce(f.frozen_channels, 0) AS frozen_channels,
+               round(coalesce(a.age_hours, 0)) AS age_hours
+        FROM sensors s LEFT JOIN have h USING (sensor_id) LEFT JOIN frozen f USING (sensor_id) LEFT JOIN age a USING (sensor_id)
+        WHERE s.local AND s.kind = 'sensor'
+        ORDER BY s.name
+    """)
 
 
 @app.get("/observations")

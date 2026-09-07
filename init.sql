@@ -89,6 +89,25 @@ CREATE TABLE IF NOT EXISTS schema_version (version TEXT PRIMARY KEY, applied_at 
 INSERT INTO schema_version (version) VALUES ('0.4') ON CONFLICT DO NOTHING;
 INSERT INTO schema_version (version) VALUES ('0.14') ON CONFLICT DO NOTHING;
 
+-- What a metric IS, as declared by whoever produces it. Integrity checks are written against roles, not against
+-- metric names: `temp` from a kit is ambient, `temp` from a gateway's BME680 inside its own box is not, and
+-- `bme_iaq` is a vendor index that must never be pooled. Keyed on the source because the role belongs to the
+-- instrument, not to the word. Written at startup from config/channels.yml and every pack's channels.yml.
+-- The key is per source and metric, not per device: every sensor from one adapter shares its role, so a node
+-- whose hardware differs from that adapter's usual shape (e.g. a Meshtastic pod wired to an external probe)
+-- cannot declare its own.
+CREATE TABLE IF NOT EXISTS channel_roles (
+  source      TEXT NOT NULL,
+  metric      TEXT NOT NULL,
+  role        TEXT NOT NULL CHECK (role IN ('ambient','enclosure','device_health','derived','index')),
+  comparable  BOOLEAN NOT NULL DEFAULT FALSE,   -- may be compared between sensors at the same place
+  unit        TEXT,
+  reference   TEXT,                             -- instrument family, so peer comparison groups like with like
+  declared_by TEXT NOT NULL,
+  PRIMARY KEY (source, metric)
+);
+INSERT INTO schema_version (version) VALUES ('0.22') ON CONFLICT DO NOTHING;
+
 -- Settings the GUI can change while the node runs. Overlays .env: a key here wins over the environment.
 -- Bootstrap-only keys (ports, database, compose profiles) stay in .env; the app lists which is which.
 CREATE TABLE IF NOT EXISTS settings (

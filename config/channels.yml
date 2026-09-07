@@ -1,0 +1,62 @@
+# What each metric IS, per the source that produces it. See docs/PACKS.md.
+#   ambient       — the air, water or land at a place. Comparable between sensors at the same place.
+#   enclosure     — the inside of the instrument's own box. Never comparable, never an ambient average.
+#   device_health — the instrument talking about itself. Feeds liveness, never a measurement.
+#   derived       — computed by us from other readings. Carries the provenance of its inputs.
+#   index         — a vendor's own composite number. Never pooled, never averaged across makers.
+
+- { source: smartcitizen, metric: pm25,           role: ambient, comparable: true,  unit: "µg/m³", reference: sc }
+- { source: smartcitizen, metric: pm10,           role: ambient, comparable: true,  unit: "µg/m³", reference: sc }
+- { source: smartcitizen, metric: pm1,            role: ambient, comparable: true,  unit: "µg/m³", reference: sc }
+- { source: smartcitizen, metric: temp,           role: ambient, comparable: true,  unit: "°C",    reference: sc }
+- { source: smartcitizen, metric: humidity,       role: ambient, comparable: true,  unit: "%",     reference: sc }
+- { source: smartcitizen, metric: pressure,       role: ambient, comparable: true,  unit: "kPa",   reference: sc }
+- { source: smartcitizen, metric: noise,          role: ambient, comparable: true,  unit: "dB",    reference: sc }
+- { source: smartcitizen, metric: light,          role: ambient, comparable: true,  unit: "lux",   reference: sc }
+- { source: smartcitizen, metric: gas_resistance, role: ambient, comparable: false, unit: "Ohm",   reference: bme680 }
+- { source: smartcitizen, metric: bme_iaq,        role: index,   comparable: false }
+- { source: smartcitizen, metric: eco2,           role: index,   comparable: false, unit: "ppm" }
+- { source: smartcitizen, metric: tvoc,           role: index,   comparable: false }
+
+- { source: baliairdispatch, metric: pm25,     role: ambient, comparable: true, unit: "µg/m³" }
+- { source: baliairdispatch, metric: pm25_raw, role: ambient, comparable: false, unit: "µg/m³" }
+- { source: baliairdispatch, metric: pm10,     role: ambient, comparable: true, unit: "µg/m³" }
+- { source: baliairdispatch, metric: pm1,      role: ambient, comparable: true, unit: "µg/m³" }
+- { source: baliairdispatch, metric: temp,     role: ambient, comparable: true, unit: "°C" }
+- { source: baliairdispatch, metric: humidity, role: ambient, comparable: true, unit: "%" }
+- { source: baliairdispatch, metric: aqi,      role: index,   comparable: false }
+
+- { source: airgradient, metric: pm25,       role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
+- { source: airgradient, metric: pm25_raw,   role: ambient, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: airgradient, metric: pm10,       role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
+- { source: airgradient, metric: pm1,        role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
+- { source: airgradient, metric: co2,        role: ambient, comparable: true,  unit: "ppm" }
+- { source: airgradient, metric: temp,       role: ambient, comparable: true,  unit: "°C" }
+- { source: airgradient, metric: humidity,   role: ambient, comparable: true,  unit: "%" }
+- { source: airgradient, metric: tvoc_index, role: index,   comparable: false }
+- { source: airgradient, metric: nox_index,  role: index,   comparable: false }
+
+- { source: purpleair, metric: pm25,     role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
+- { source: purpleair, metric: pm25_raw, role: ambient, comparable: false, unit: "µg/m³", reference: plantower }
+- { source: purpleair, metric: pm10,     role: ambient, comparable: true,  unit: "µg/m³", reference: plantower }
+- { source: purpleair, metric: humidity, role: ambient, comparable: true,  unit: "%" }
+- { source: purpleair, metric: temp,     role: ambient, comparable: true,  unit: "°C" }
+- { source: purpleair, metric: pressure, role: ambient, comparable: true,  unit: "kPa" }
+
+# A radio in a sealed case reports its own box, not the street. Marking these ambient is how a radiation shield's
+# temperature becomes the neighbourhood's.
+- { source: meshtastic, metric: temp,             role: enclosure,     comparable: false, unit: "°C" }
+- { source: meshtastic, metric: humidity,         role: enclosure,     comparable: false, unit: "%" }
+- { source: meshtastic, metric: pressure,         role: enclosure,     comparable: false, unit: "kPa" }
+- { source: meshtastic, metric: gas_resistance,   role: enclosure,     comparable: false, unit: "Ohm" }
+- { source: meshtastic, metric: iaq,              role: index,         comparable: false }
+- { source: meshtastic, metric: pm25,             role: ambient,       comparable: true,  unit: "µg/m³" }
+- { source: meshtastic, metric: pm10,             role: ambient,       comparable: true,  unit: "µg/m³" }
+- { source: meshtastic, metric: pm1,              role: ambient,       comparable: true,  unit: "µg/m³" }
+- { source: meshtastic, metric: co2,              role: ambient,       comparable: true,  unit: "ppm" }
+- { source: meshtastic, metric: battery_pct,      role: device_health,  comparable: false, unit: "%" }
+- { source: meshtastic, metric: battery_v,        role: device_health,  comparable: false, unit: "V" }
+- { source: meshtastic, metric: lora_util_pct,    role: device_health,  comparable: false, unit: "%" }
+- { source: meshtastic, metric: lora_channel_pct, role: device_health,  comparable: false, unit: "%" }
+
+- { source: open-meteo-cams, metric: pm25_model, role: derived, comparable: false, unit: "µg/m³" }

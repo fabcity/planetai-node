@@ -148,6 +148,75 @@ second time and the version appears, or run `./install.sh` in the node folder, w
 
 A household sees no change on the wall screen. This is release metadata: what the node measures, when it
 speaks and what it says are untouched.
+## v0.37 — 2026-09-07 — local means here, not just yours
+
+Node #1 moved to Ungasan in August. Three of its six Smart Citizen kits stayed behind at the old address, 1.2 km
+away, and one sits 7.8 km away in another town — and every one of them still counted as this node's own
+measurement, because `local` had only ever meant "on your account." A kit that measures a different building was
+filling this node's indoor cells, feeding its heat alerts, and hiding in its coverage figures next to sensors that
+are actually here. This release closes that, and adds a pack whose job is to say when the node's own numbers are
+not to be trusted.
+
+- **`local` now means ours *and* here.** A sensor still has to be on your account, and it now also has to sit
+  within `LOCAL_RADIUS_M` of the node — 500 m by default. On a node whose sensors are not all at one address, this
+  can change what counts as local: a rule or a cell that reads local sensors may change value, or go quiet, where
+  it did not before. That is a correction, not a regression — `docs/COVERAGE.md` has always said the node does not
+  fill what it cannot measure; now it actually stops. `LOCAL_RADIUS_M` cannot be set until a node has updated to
+  this release. At the default 500 m, node #1 keeps only its two outdoor kits (`sc-19236`, `sc-19874`) as local
+  and loses all three indoor ones — every indoor rule and the `Social|Community` cell go quiet. Node #1's operator
+  has instead chosen 1500, wide enough to keep the old address's three indoor kits without reaching the kit 7.8 km
+  away: at 1500 m node #1 keeps its three local indoor sensors and gains its two local outdoor ones, the first
+  time it has had both. Nothing on node #1 goes quiet at the radius it is set to run at. If your own sensors sit
+  at more than one address, check your radius before you update — the 500 m default may take more of your kits
+  out of "local" than you expect.
+
+- **Heat rules are indoor-only now.** The apparent-temperature formula both heat rules use — Steadman's, with no
+  wind term — is the indoor form; there is no still air on a street. Both `heat_stress_now` and `heat_danger` now
+  read indoor sensors only. A node whose only local sensors are outdoors gets no heat alerts. That is the right
+  answer, not a wrong number: the formula, and the 35 °C line the previous release measured with it, were never
+  valid for what an outdoor kit reads.
+
+- **Smart Citizen's `aqi` channel is now `bme_iaq`.** It was never an air quality index: it is the BME680 gas
+  sensor's own internal index, and it shared a metric name with Bali Air Dispatch's real, vendor-published AQI —
+  averaging the two averaged two different quantities together. Four things are true of the change: existing
+  `aqi` rows from Smart Citizen stay in `readings` as history; no migration deletes them; no rule reads them any
+  longer; and the new `bme_iaq` metric starts fresh, with no history behind it yet. Bali Air Dispatch's `aqi` is
+  untouched — it is a real index from a different source and was never the problem.
+
+- **A `channel_roles` registry says what a metric IS**, not just what it is called (schema 0.22). Five roles cover
+  it: `ambient` (the air, water or land at a place, comparable between sensors at the same spot), `enclosure` (the
+  inside of the instrument's own box, never comparable), `device_health` (the instrument reporting on itself),
+  `derived` (computed by us, carrying its inputs' provenance), and `index` (a vendor's own composite number, never
+  pooled or averaged with anyone else's). A role is declared once per `(source, metric)` pair, so every sensor
+  that comes from one adapter shares it — nothing to set per sensor.
+
+- **A new `trust` pack** watches whether the node's own instruments are telling it the truth. It needs no
+  configuration and writes no Index cell of its own — a score for our own equipment invites optimising the score
+  instead of fixing the sensor. It says three things: a channel that has stopped moving for six or more of the
+  last 24 hours while the rest of its kit keeps reporting (`channel_dead`); a local sensor that has reported for
+  under 60% of the last seven days even though its latest reading still looks current (`coverage_low`); and two
+  sensors within 50 m of each other whose 24-hour means disagree by more than 15% (`peer_disagreement`), which
+  asks you to swap the two units for a day rather than guessing which one is wrong. Two things it cannot see yet,
+  because nothing declares their role: PurpleAir's `channel_disagreement` (already computed in the PurpleAir
+  adapter, waiting on a rule) and Meshtastic's `altitude_m` (written outside the metrics the registry knows about).
+
+- **`rhythm` stops blaming traffic.** It used to end an evening PM2.5 peak with "that is the burning and the
+  traffic, not the weather." The one kit in the fleet with a noise sensor said otherwise: the street is loudest
+  through the late morning and afternoon and quietest overnight, while PM2.5 peaks in the evening and again near
+  dawn — the loud hours are the clean ones. `rhythm` now reads that noise channel and names the contrast instead
+  of guessing a cause. A node with no local outdoor noise sensor gets no `rhythm` alert at all; that is deliberate,
+  not a bug.
+
+- **`/trust`, a dashboard card, and a health check** put all of this somewhere you can see it. `/trust` returns one
+  row per local sensor: its 7-day coverage, how many of its channels are currently frozen, and its age. The
+  dashboard's new card shows only the sensors worth a second look, and says plainly when none need one. The
+  agent's health check reads the same endpoint the card does, so the two never drift apart from each other, and it
+  names the fix in plain language: power-cycle the kit, and if the number stays frozen, replace that sensor.
+
+Two things this release has not done. The trust pack's three thresholds were chosen against one low-PM week at one
+site (6–10 µg/m³, 1–7 September) and have never been tested against a burn season, when PM2.5 swings far wider and
+disagreement between units may widen with it. And the new dashboard card has not been checked by eye at 375, 768
+or 1440 px — only against the data it renders.
 
 ## v0.36 — 2026-09-07 — the dashboard says what the colours mean
 

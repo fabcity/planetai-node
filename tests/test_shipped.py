@@ -173,6 +173,77 @@ assert "const firstPt=g=>" in _gui, "the plan needs a geometry-agnostic first po
 assert "px(firstPt(g))" in _gui, "the poi marker must not index coordinates[0][0]"
 assert "}catch(e){skipped++;}" in _gui, "the plan's feature loop must survive one undrawable feature"
 print("the plan survives real OpenStreetMap geometry")
+# v0.35 — `local` was written once and never corrected. Node #1 carried three smartcitizen kits at local=false
+# that no current code path can produce: they were born from Bali Air Dispatch before the bad- prefix existed.
+# Both upserts must now update it, or a wrong partition of house and street survives every poll forever.
+_main = open("app/main.py").read()
+assert _main.count("local=EXCLUDED.local") + _main.count("local = EXCLUDED.local") == 2, \
+    "both sensor upserts (poll and MQTT) must update local, or a stale flag never heals"
+
+# The no-wind Steadman form is the indoor form, as packs/heat/README.md says. Both heat rules compute it, so both
+# read indoor sensors only. After LOCAL_RADIUS_M a node's local sensors may all be outdoors, where the same
+# arithmetic overstates the load; going quiet is the right answer, a wrong number is not.
+_heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
+for _rule in ("heat_stress_now", "heat_danger"):
+    assert "t.local AND t.indoor AND t.metric = 'temp'" in _heat[_rule]["sql"], \
+        f"{_rule}: apparent temperature indoors only, and its threshold was measured indoors"
+
+# The channel role registry is replaced on every start. Under an autocommit connection a bare DELETE commits on
+# its own, so a reader during a restart sees an empty table — and a trust rule joining an empty registry returns
+# nothing, which reads as "no problems found" instead of "the registry was reloading".
+_main_ch = open("app/main.py").read()
+_load = _main_ch[_main_ch.index("def load_channel_roles"):]
+_load = _load[:_load.index("\ndef ")]
+assert "with con.transaction():" in _load, \
+    "the delete and reinsert of channel_roles must be one transaction, not two autocommitted statements"
+assert "DELETE FROM channel_roles" in _load
+
+# v0.35 — the trust pack. Node #1 held a kit at 3% coverage reporting a timestamp four minutes old, and three
+# collocated indoor kits where one read 1.5x the other two. Nothing said so.
+_trust = {r["id"]: r for r in yaml.safe_load(open("packs/trust/rules.yml"))}
+assert set(_trust) == {"channel_dead", "coverage_low", "peer_disagreement"}, "three rules, no more"
+assert not _os.path.exists("packs/trust/cells.yml"), "a trust score is never an Index cell"
+assert "60" in _trust["coverage_low"]["sql"], "coverage_low's floor is 60% of the last 7 days"
+assert "50" in _trust["peer_disagreement"]["sql"], "collocation is 50 m"
+assert "0.85" in _trust["peer_disagreement"]["sql"] and "1.15" in _trust["peer_disagreement"]["sql"]
+assert "channel_roles" in _trust["peer_disagreement"]["sql"], "peer comparison is ambient-only, by role"
+# channel_dead: a naive `count(*) >= 6` over any flat hour in the last 24 fires on six *scattered* flat hours
+# (e.g. a calm night) even though the channel is moving fine right now. Pin the fix: the rule must also require
+# the most recent bucket to be among the flat ones, so it only fires on a channel frozen right now.
+assert "last_flat_bucket" in _trust["channel_dead"]["sql"], "channel_dead must track the most recent flat bucket"
+assert "f.last_bucket = f.last_flat_bucket" in _trust["channel_dead"]["sql"], \
+    "channel_dead must require the latest bucket to still be flat, not just 6 scattered flat hours"
+for _r in _trust.values():
+    assert set(_r["message"]) >= {"en", "id"}, "every alert speaks English and Indonesian"
+    assert "µg" not in _r["message"]["en"], "statistics stay out of alert messages"
+print("the trust pack ships three rules and no cells")
+
+# v0.35 — the rhythm rule told households the evening PM peak was "the burning and the traffic". The noise channel
+# we already store says otherwise: r(pm25, noise) = -0.24 at node #1, and the loud hours are the clean ones.
+_ins = {r["id"]: r for r in yaml.safe_load(open("packs/insight/rules.yml"))}
+assert "traffic" not in _ins["rhythm"]["message"]["en"], "the noise channel contradicts the traffic claim"
+assert "'noise'" in _ins["rhythm"]["sql"], "rhythm reads the noise channel it has been discarding"
+assert "quiet_hr" in _ins["rhythm"]["sql"], "the message needs the hour the street is loudest to contrast with"
+print("rhythm no longer blames traffic")
+
+# v0.36 — the trust card. Three alerts existed (channel_dead, coverage_low, peer_disagreement) and nowhere on the
+# node's own surfaces did a person see that a sensor sat at 32% coverage while its kit reported a fresh timestamp.
+assert '@app.get("/trust")' in main, "coverage is a new endpoint: the stats view is 24h by construction, no 7-day column belongs in it"
+assert 'data-card="trust"' in gui, "the node shows what it doubts about its own sensors"
+assert "Every sensor reported all week" in gui, "the trust card needs an empty state, not an empty box"
+assert "still gathering its first week" in gui, "a sensor under 7 days old must not read 0% coverage as a fault"
+_agent_src = open("app/agent.py").read()
+assert '_get("/trust")' in _agent_src, "health_check reads the same /trust the card reads, not its own recomputation"
+assert "frozen" in _agent_src.lower()
+print("the trust card and its health check are wired")
+
+# Task 8 review — /trust's frozen CTE dropped channel_dead's third condition (the kit itself still producing raw
+# readings in the last 2 hours). Without it, a sensor gone fully dark that happened to be flat before it died
+# reads as "1 channel frozen" on the card, and the health check's fix text calls it a kit that "still reports" —
+# both false for a sensor that is simply offline.
+assert "alive AS (\n          SELECT sensor_id, max(ts) AS kit_ts FROM readings\n          WHERE ts > now() - interval '2 hours'" in main, \
+    "/trust must join the same 'alive' CTE channel_dead uses (2-hour freshness gate), or a dead kit reads as a merely frozen channel"
+assert "JOIN alive a USING (sensor_id)" in main, "frozen_channels must be gated by the kit still being alive, not just by the flat hours"
 # v0.33.8 — the heat rule fired on Kuta Selatan's ordinary weather: node #1's hot room was over 32 °C apparent for
 # 86% of every reading, so 32 was its baseline, not an event. The line is 35 for the rule and 32 for the cell (a
 # count of exposure is not an interruption), and the alert texts must not move without Tomas.

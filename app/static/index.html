@@ -305,6 +305,10 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
   <section class="band" data-card="room">
     <div class="bandhead"><span class="dist">Room</span><h2 class="t">Inside.</h2><div class="sub" id="room-sub"></div></div>
     <div class="cards c4" id="room"></div>
+    <div class="card r1 mt" data-card="trust">
+      <div class="head"><h2 class="t" style="font-size:1.25rem">What the node doubts about its own sensors.</h2><div class="sub" id="trust-sub"></div></div>
+      <div id="trust"></div>
+    </div>
   </section>
 
   <section class="band" data-card="street">
@@ -445,7 +449,7 @@ const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit
 // ------------------------------------------------------------------ the page
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors,ser,sparks,sparkT,sparkH,yb,rep]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null)]);
+    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparks,sparkT,sparkH,yb,rep]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null)]);
     const O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
     const S=m=>stats.filter(r=>r.metric===m), fresh=r=>r.silent_minutes<120;
     const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
@@ -503,6 +507,15 @@ async function refresh(){
     const indoorRows=rows.filter(r=>r.indoor), outRows=rows.filter(r=>!r.indoor&&r.name!=='CAMS point'&&r.name!=='Feels like');
     $('#room').innerHTML=roomTiles.map(tileHTML).join('')+indoorRows.map(sensorHTML).join('')||`<div class="empty">No indoor sensor yet. Add one under Set up → Sources: a Smart Citizen kit, an AirGradient on the WiFi, or a BME680 on a mesh radio.</div>`;
     $('#room-sub').textContent=inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the house, 15-minute means. ${iv!=null&&ov!=null?(iv<ov?'The building is keeping the street out.':iv>ov*1.3?'Whatever is in the air started in here.':'Inside follows the street.'):''}`:'Your indoor sensors.';
+    // the trust card: only the sensors worth doubting. A sensor under 168 hours old has not lived a full week,
+    // so its coverage_7d would read like a fault (even 0%) when it is really just young — say so plainly instead.
+    const doubt=trust.filter(r=>r.age_hours<168||r.coverage_7d<60||r.frozen_channels>0);
+    $('#trust').innerHTML=doubt.length?doubt.map(r=>{
+      const cov=r.age_hours<168?'still gathering its first week':`${r.coverage_7d}% of the week`;
+      const froz=r.frozen_channels?`, ${r.frozen_channels} channel${r.frozen_channels===1?'':'s'} frozen`:'';
+      return `<div class="vit"><span>${esc(r.name||r.sensor_id)}</span><span>${cov}${froz}</span></div>`;
+    }).join(''):`<div class="empty">Every sensor reported all week.</div>`;
+    $('#trust-sub').textContent=trust.length?`${doubt.length?`${doubt.length} of ${trust.length} sensor${trust.length===1?'':'s'} need a look.`:`${trust.length} local sensor${trust.length===1?'':'s'}, seven-day coverage.`}`:'No local sensor yet.';
     $('#street').innerHTML=streetTiles.map(tileHTML).join('')+outRows.map((r,i)=>sensorHTML(r,i+2)).join('')||`<div class="empty">No outdoor sensor within reach; the model stands in for the street.</div>`;
     $('#street-sub').textContent=`${mine.length?`Your kit on the wall${near.length?`, the ${near.length} nearest public sensor${near.length===1?'':'s'}`:''}`:near.length?`The ${near.length} nearest public sensor${near.length===1?'':'s'}`:'No outdoor sensor yet'}, and the wind. ${wind!=null&&wind<5&&(ov||0)>15?'Still air: whatever burns nearby stays nearby.':''}`;
     // the act strip: the newest unanswered act-level alert, on the hero

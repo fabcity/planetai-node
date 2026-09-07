@@ -76,7 +76,7 @@ ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it retur
 ```
 app/       main.py · sources.py · index.py · packs.py · settings.py · agent.py · agent_loop.py · static/index.html
 bin/       planetai, the command line
-packs/     air-quality · heat · insight · cold-start · open-data-health · coast · earth-engine · earth · place · example
+packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place · example
 config/    rules.yml · mosquitto · reticulum
 tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
 tests/     offline suites

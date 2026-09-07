@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Node #1 runs nine.
+about air, water or heat; the packs do. Node #1 runs ten.
 
 ```
 packs/<id>/
@@ -9,6 +9,7 @@ packs/<id>/
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
+  channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
   README.md     where the thresholds come from, what the pack assumes
 ```
 
@@ -57,6 +58,22 @@ A cell:
 `state` is provenance, not confidence. `live` means measured here; `partial` means derived or a model; never claim `live`
 for a model.
 
+### Channel roles
+
+A pack that adds a metric says what it IS in `channels.yml`, keyed on `(source, metric)`:
+
+```yaml
+- { source: my-sensor, metric: co2, role: ambient, comparable: true, unit: "ppm" }
+```
+
+Five roles: `ambient` (the air, water or land at a place — comparable between sensors there), `enclosure` (the
+inside of the instrument's own box — a BME680 sealed inside a radio reports the box, not the street, so this is
+never averaged as ambient), `device_health` (the instrument talking about itself, e.g. battery), `derived`
+(computed by us from other readings), and `index` (a vendor's own composite number, never pooled with anyone
+else's). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
+A role is keyed per source and metric, not per device: every sensor an adapter drives shares it, so a node whose
+hardware differs from that adapter's usual shape (an external probe on a Meshtastic pod) cannot override it yet.
+
 ## Code packs
 
 `adapter.py` with `fetch(hc) -> (sensors, readings)`, the same contract as `app/sources.py`. Off unless
@@ -97,6 +114,7 @@ alone lists them.
 | air-quality | data | PM2.5 rules (inside/outside, spikes), cells |
 | heat | data | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | the air three ways, contributed to every report; daily agreement between indoor, street and model |
+| trust | data | coverage, frozen channels, collocated disagreement — no cell, by design |
 | cold-start | data | day one with no hardware: modelled air, normals |
 | open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
