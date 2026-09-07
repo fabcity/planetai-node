@@ -116,3 +116,27 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO planetai_ro;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO planetai_ro;
 REVOKE ALL ON settings FROM planetai_ro;
 INSERT INTO schema_version (version) VALUES ('0.21') ON CONFLICT DO NOTHING;
+
+-- Every report the node wrote, sent or held. One row per due hour, and the row IS the lock: `run_report` asks this
+-- table whether the hour already has a report, so a container that restarts inside a due window does not send a
+-- second one. (The old briefings asked `alerts`, which is also where every rule writes, and where a report the
+-- household never saw still counted as sent.)
+--   sheet            the node's own text. Always written, whatever else happens.
+--   text             what was actually sent. Equal to `sheet` until a model rewrites it (v0.36).
+--   sent             false when quiet hours held it: written, on the dashboard, folded into the next one.
+--   fallback_reason  why `text` is the sheet and not the model's: a number it invented, a timeout, no agent.
+CREATE TABLE IF NOT EXISTS reports (
+  id              BIGSERIAL PRIMARY KEY,
+  ts              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  due_local       TIMESTAMPTZ,           -- the local hour this report answers, so the lock is per hour, not per run
+  window_hours    INT,                   -- how many hours it covers: REPORT_EVERY, or more when it folds a held one
+  depth           TEXT,                  -- sheet | brief | standard | deep
+  rung            TEXT,                  -- node | local | remote | online
+  text            TEXT,
+  sheet           TEXT,
+  sent            BOOLEAN,
+  held_quiet      BOOLEAN,
+  fallback_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS reports_due ON reports (due_local DESC);
+INSERT INTO schema_version (version) VALUES ('0.22') ON CONFLICT DO NOTHING;
