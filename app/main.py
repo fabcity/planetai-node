@@ -855,10 +855,16 @@ STATIC = Path(__file__).parent / "static"
 @app.get("/", include_in_schema=False)
 @app.get("/ui", include_in_schema=False)
 def ui():
-    """The dashboard: one HTML file, no build step, reads the same API everything else does."""
+    """The dashboard: one HTML file, no build step, reads the same API everything else does.
+
+    Sent with `cache-control: no-cache`. Without any cache header a browser is free to reuse this document for as
+    long as it likes, and an ordinary reload does not always ask: after `planetai update` a screen kept running the
+    previous dashboard, with the previous bugs, until someone thought to hard-reload. The node's whole update story
+    depends on the page following the version."""
     from fastapi.responses import HTMLResponse
     f = STATIC / "index.html"
-    return HTMLResponse(f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>")
+    body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
+    return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
 def _admin(authorization: str) -> None:

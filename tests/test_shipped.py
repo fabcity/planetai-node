@@ -120,3 +120,7 @@ assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png 
 assert 'data-card="earth"' in gui and 'id="earthcard"' in gui and 'drawEarth()' in gui
 assert "class=\"prov\"" in gui, "gui: the earth card needs its provenance pill"
 assert "planetai run earth fetch" in gui, "gui: the empty state must name the command that fills it"
+# v0.33.6 — the dashboard must not be cacheable: a node that updates has to reach the screens looking at it
+_ui = re.search(r"^def ui\(\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
+assert "no-cache" in _ui, "the dashboard route must send a cache-control header, or an update never reaches an open browser"
+print("the dashboard is not cacheable")
