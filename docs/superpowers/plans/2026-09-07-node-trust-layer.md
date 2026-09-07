@@ -176,7 +176,7 @@ carried three smartcitizen kits at local=false, born from Bali Air Dispatch befo
 **Why.** `smartcitizen()` documents its own assumption: *"Every kit here is yours (listed by id or discovered from
 your account), so every one is local."* That conflates ownership with presence. `init.sql` says `local` is
 "TRUE = physically at this node (ours)". Node #1's `/health` reports `-8.8190516, 115.1644423` (Ungasan). Three of
-the six kits on the account sit at `-8.8271, 115.15709`, **1.3 km away**. They are Tomas's and they are not here.
+the six kits on the account sit at `-8.8271, 115.15709`, **1.2 km away**. They are Tomas's and they are not here.
 
 Measured distances from node #1's live coordinates:
 
@@ -184,10 +184,10 @@ Measured distances from node #1's live coordinates:
 |---|---|---|
 | `sc-19236` | 250 m | here |
 | `sc-19874` | 272 m | here |
-| `sc-19849`, `sc-19880`, `sc-19897` | 1 300 m | ours, not here |
-| `sc-19898` | 7 000 m | ours, not here |
+| `sc-19849`, `sc-19880`, `sc-19897` | 1 207 m | ours, not here |
+| `sc-19898` | 7 822 m | ours, not here |
 
-`LOCAL_RADIUS_M` defaults to **500**: above 272 and far below 1 300, so the split is not a knife-edge. It is a
+`LOCAL_RADIUS_M` defaults to **500**: above 272 and far below 1 207, so the split is not a knife-edge. It is a
 setting because a lab campus and a flat do not share a radius, and the physical world does not read defaults.
 
 **Consequence, and it is the reason Task 3 exists.** After this task node #1 has two local *outdoor* kits and
@@ -215,10 +215,10 @@ Append to `tests/test_sources.py`:
 
 ```python
 # `local` is ours AND here. An adapter says whether a sensor is ours; distance says whether it is at this node.
-# Node #1 moved to Ungasan and kept three kits 1.3 km away marked local, so its "house" was three kits in
+# Node #1 moved to Ungasan and kept three kits 1.2 km away marked local, so its "house" was three kits in
 # another building and it had no local outdoor sensor at all.
-assert round(sources.metres(-8.8190516, 115.1644423, -8.81983, 115.16657)) == 249, "sc-19236 is 249 m from node #1"
-assert round(sources.metres(-8.8190516, 115.1644423, -8.8271, 115.15709)) == 1305, "the indoor cluster is 1.3 km away"
+assert round(sources.metres(-8.8190516, 115.1644423, -8.81983, 115.16657)) == 250, "sc-19236 is 250 m from node #1"
+assert round(sources.metres(-8.8190516, 115.1644423, -8.8271, 115.15709)) == 1207, "the indoor cluster is 1.2 km away"
 assert sources.metres(-8.8190516, 115.1644423, -8.8190516, 115.1644423) == 0.0
 
 NODE = (-8.8190516, 115.1644423)
@@ -228,7 +228,7 @@ theirs   = {"sensor_id": "bad-x",    "local": False, "lat": -8.81985, "lon": 115
 nocoords = {"sensor_id": "msh-abc",  "local": True,  "lat": None,     "lon": None}
 sources.stamp_local([here, far, theirs, nocoords], *NODE, 500)
 assert here["local"] is True,  "250 m inside a 500 m radius stays local"
-assert far["local"] is False,  "1.3 km away is ours but not here"
+assert far["local"] is False,  "1.2 km away is ours but not here"
 assert theirs["local"] is False, "a public station next door is still not ours"
 assert nocoords["local"] is True, "a mesh pod on our own gateway has no coordinates and stays local"
 ```
@@ -248,8 +248,8 @@ In `app/sources.py`, after `epa_2021_correct`:
 ```python
 # ---------------------------------------------------------------- is this sensor at this node?
 # `packs/place/adapter.py` has its own metres(); core must not import from a pack, so this is the second copy.
-# Equirectangular, which is exact enough under a kilometre and cheap. Not haversine: at 500 m the difference is
-# millimetres and the radius is a judgement call anyway.
+# Equirectangular: within a metre of haversine at a kilometre, about nine metres at eight, and cheap. Measured on
+# node #1's own four sensors. Exact enough for a radius that is a judgement call anyway.
 def metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dy = (lat2 - lat1) * 111_320.0
     dx = (lon2 - lon1) * 111_320.0 * math.cos(math.radians((lat1 + lat2) / 2))
@@ -308,7 +308,7 @@ In `docs/sensors.md`, under "The adapter contract", after the paragraph explaini
 
 ```markdown
 `local` is two facts at once: an adapter says whether a sensor is *yours*, and the node checks whether it is
-*here*. A kit on your account 1.3 km away is yours and is not this node's measurement. `LOCAL_RADIUS_M` (500 m by
+*here*. A kit on your account 1.2 km away is yours and is not this node's measurement. `LOCAL_RADIUS_M` (500 m by
 default) is the line. A sensor with no coordinates that arrives over your own gateway stays local.
 ```
 
@@ -319,7 +319,7 @@ make lint && make test
 git add app/sources.py app/main.py app/settings.py docs/sensors.md tests/test_sources.py
 git commit -m "fix: local means ours and here, not ours anywhere, for a node that moved
 
-Node #1 moved to Ungasan and kept three kits 1.3 km away marked local, so its house was three kits in another
+Node #1 moved to Ungasan and kept three kits 1.2 km away marked local, so its house was three kits in another
 building and it had no local outdoor sensor. LOCAL_RADIUS_M, 500 m by default."
 ```
 
@@ -346,7 +346,7 @@ Set `lat` and `lon` in `registry.json` to what `/health` returns, and `place` to
 
 ```bash
 make lint && git add registry.json
-git commit -m "fix: node #1's registry coordinates, which were its old site 1.3 km away"
+git commit -m "fix: node #1's registry coordinates, which were its old site 1.2 km away"
 ```
 
 - [ ] **Step 2: Write the failing test for the heat rule's scope**
