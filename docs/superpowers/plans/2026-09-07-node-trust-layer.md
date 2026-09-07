@@ -905,9 +905,10 @@ make lint
 ```
 
 `tools/check_rules.py` parses every rule's SQL against `init.sql`. Expected: `N rules and cells check out`. If it
-rejects a column, the column does not exist — read `init.sql` and fix the SQL, do not weaken the check. If
-`percentile_cont ... WITHIN GROUP` trips sqlglot, replace the median with `avg(theirs)` and say so in the README:
-with two or three peers a mean and a median differ little, and the check matters more than the statistic.
+rejects a column, the column does not exist — read `init.sql` and fix the SQL, do not weaken the check.
+All four of this pack's SQL bodies were parsed against sqlglot's postgres dialect before this task was dispatched
+and all four parse, `percentile_cont(0.5) WITHIN GROUP (ORDER BY ...)` included. Keep the median. If the gate
+rejects something, it has found a real problem, not a dialect limitation.
 
 - [ ] **Step 7: Run the SQL against node #1, read-only, before trusting it**
 
