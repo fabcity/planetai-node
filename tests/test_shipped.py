@@ -106,6 +106,14 @@ assert 'def _earth_changes' in main and '"changes": changes' in main
 assert 'pattern=r"^(\\d{4}_\\d{4})?$"' in main, "main.py: the pair must be a pattern, not a path"
 assert 'def earth(ddir)' in open("tools/nas/pull.py").read(), "tools/nas/pull.py: archive the earth results"
 print("one land-change number, its alert, and the results a NAS can archive")
+# v0.33.3 — `planetai update` ships a pack's code, not its libraries. Node #1 got ModuleNotFoundError nine
+# times with no remedy named. Every entry point that needs a pack library must say which command installs it.
+assert "def require(" in open("packs/earth/adapter.py").read(), "packs/earth/adapter.py: the preflight"
+for _s in ("fetch", "change", "similar"):
+    assert "A.require(" in open(f"packs/earth/{_s}.py").read(), f"packs/earth/{_s}.py must preflight its libraries"
+assert "planetai packs install" in open("update.sh").read(), "update.sh must say when a pack needs installing"
+assert 'grep -q "planetai packs install" <<<' in open("update.sh").read(), "under pipefail, not a pipe into grep -q"
+print("a pack that lacks its libraries says which command installs them")
 assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
 assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
 assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"

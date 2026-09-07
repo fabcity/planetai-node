@@ -30,7 +30,13 @@ CREATE INDEX IF NOT EXISTS place_buildings_sat_geom ON place_buildings_sat USING
 
 
 def init_ee():
-    import ee
+    try:
+        import ee
+    except ImportError:              # a pack's libraries arrive with `planetai packs install`, not `planetai update`
+        raise SystemExit(
+            "place: the satellite half of this pack needs earthengine-api, which the app image does not have.\n"
+            "      planetai packs install     # rebuilds the image, a few minutes\n"
+            "      planetai restart")
     key = os.getenv("EE_KEY_FILE")
     if not (key and os.path.exists(key)):
         raise RuntimeError("EE_KEY_FILE must point at a readable service-account key (config/ee-key.json); the earth-engine pack's README explains")

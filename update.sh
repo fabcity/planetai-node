@@ -145,6 +145,14 @@ if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/de
   warn "Revoke it via @BotFather /revoke, update .env, then: docker compose down && docker compose up -d"
 fi
 say "schema ${FROM} → ${TO}"
+# An update can bring a new code pack, or new libraries for one already here. It does not install them:
+# app/requirements-packs.txt is gitignored and only `planetai packs install` writes it. Node #1 updated into
+# v0.33, ran `planetai run earth fetch` and got ModuleNotFoundError nine times (7 Sep 2026). Say it here, once,
+# rather than leaving it to be discovered. `planetai packs` owns the decision; this only relays it.
+if grep -q "planetai packs install" <<< "$(./bin/planetai packs 2>/dev/null)"; then
+  warn "a pack here declares Python libraries or settings this image does not have yet."
+  warn "Run:  planetai packs install     (a rebuild, a few minutes)  then  planetai restart"
+fi
 if [[ -f config/rules.yml.before-update ]] && ! diff -q config/rules.yml config/rules.yml.before-update >/dev/null 2>&1; then
   warn "config/rules.yml changed in this update. Your previous copy: config/rules.yml.before-update"
   warn "If you had edited thresholds, re-apply them — or better, move them into a pack (docs/PACKS.md)."

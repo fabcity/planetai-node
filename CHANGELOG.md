@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.33.3 — 2026-09-07 — `planetai update` ships a pack's code, not its libraries, and now says so
+
+From node #1, after updating to v0.33.2 and running `planetai run earth fetch`: 9 MB of tile index downloaded,
+then `ModuleNotFoundError: No module named 'rasterio'` printed once per year, nine times, naming no fix. The
+node had the pack and not its libraries, because `app/requirements-packs.txt` is gitignored and only
+`planetai packs install` writes it. That split is deliberate — a listing should not rebuild your image — but
+nothing told you which side of it you were on.
+
+If you are on a node that has this now: **`planetai packs install`, then `planetai restart`.**
+
+- **A pack script that needs a library it has not got says which command installs it, and stops before doing
+  any work.** `planetai run earth fetch` on such a node now prints four lines and exits, instead of
+  downloading the index and failing nine times.
+- **The same hole existed in two older packs**: `planetai run earth-engine timelapse` and
+  `planetai run place satellite` both crashed with a bare `ModuleNotFoundError` if `earthengine-api` was
+  missing. Both now name the fix.
+- **`planetai update` warns when a pack declares libraries or settings the image does not have**, so you find
+  out at the end of the update rather than the first time you run something.
+- **`make lint` refuses a pack script that imports something from its own `pip:` list without saying how to
+  install it.** Run against the three scripts that had the hole, it names all three.
+
 ## v0.33.2 — 2026-09-07 — the satellite card showed a broken image before you fetched anything
 
 Reported from node #1 straight after updating: the land card showed a broken-image box with its alt text

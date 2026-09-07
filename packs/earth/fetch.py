@@ -11,6 +11,8 @@ import time
 sys.path.insert(0, os.path.dirname(__file__))
 import adapter as A                                                              # noqa: E402
 
+A.require("numpy", "rasterio")           # before the index download, not nine years into it
+
 args = [a for a in sys.argv[1:] if not a.startswith("-")]
 force = "--force" in sys.argv[1:]
 lat, lon, radius = A.aoi()

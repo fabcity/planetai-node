@@ -31,6 +31,8 @@ args = sys.argv[1:]
 year = next((int(a) for a in args if a.isdigit()), A.YEARS[-1])
 out_path = Path(args[args.index("--out") + 1]) if "--out" in args else A.cache() / "alphaearth_similarity.json"
 
+A.require("numpy", "rasterio")
+
 import numpy as np                                                               # noqa: E402
 import rasterio                                                                  # noqa: E402
 from rasterio.warp import transform as warp_transform                            # noqa: E402

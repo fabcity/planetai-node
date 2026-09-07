@@ -20,6 +20,8 @@ import adapter as A                                                             
 # 0.05, the threshold the earth-engine pack uses on a different quantity, flags a third of this square.
 CHANGED = 0.15
 
+A.require("numpy")
+
 import numpy as np                                                               # noqa: E402
 
 args = [int(a) for a in sys.argv[1:] if a.isdigit()]

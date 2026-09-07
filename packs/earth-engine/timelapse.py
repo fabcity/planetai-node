@@ -18,7 +18,14 @@ import sys
 import urllib.request
 from datetime import datetime, timezone
 
-import ee
+try:
+    import ee
+except ImportError:                      # a pack's libraries arrive with `planetai packs install`, not `planetai update`
+    raise SystemExit(
+        "earth-engine: the app image has no earthengine-api. `planetai update` ships a pack's code,\n"
+        "not its libraries.\n"
+        "      planetai packs install     # rebuilds the image, a few minutes\n"
+        "      planetai restart")
 
 OUT = os.getenv("PACK_OUT", "/app/out")
 

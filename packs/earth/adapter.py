@@ -19,6 +19,7 @@ lazily so that a node without them loads the pack, logs once and idles.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import logging
 import os
@@ -187,6 +188,28 @@ def cosine_distance(a, b, rows: int = 100):
         masked[i:i + rows] = (np.asarray(a[0, i:i + rows, :]) == -128) | (np.asarray(b[0, i:i + rows, :]) == -128)
     dist[masked] = np.nan
     return dist, masked
+
+def require(*mods: str) -> None:
+    """Stop with the command that fixes it, before doing any work.
+
+    `planetai update` ships this pack's code but not its libraries: `app/requirements-packs.txt` is written by
+    `planetai packs install`, and it is gitignored, so a node that updates into a release carrying a new code
+    pack has the scripts and not the wheels. Without this, `fetch` downloaded 9 MB of tile index and then
+    printed `ModuleNotFoundError: No module named 'rasterio'` once per year, nine times, naming no remedy.
+    """
+    missing = [m for m in mods if importlib.util.find_spec(m) is None]
+    if missing:
+        raise SystemExit(
+            f"earth: the app image has no {', '.join(missing)}.\n"
+            f"  This pack declares {'it' if len(missing) == 1 else 'them'} in packs/earth/pack.yaml, but "
+            f"`planetai update` does not install a\n"
+            f"  pack's libraries — that is what `planetai packs install` is for.\n"
+            f"\n"
+            f"      planetai packs install     # rebuilds the image, a few minutes\n"
+            f"      planetai restart\n"
+            f"\n"
+            f"  Then run this again. `planetai run earth verify` checks the whole chain.")
+
 
 # ---------------------------------------------------------------- reading a COG over HTTPS
 
