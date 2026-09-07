@@ -12,6 +12,10 @@ The page reads from where you stand, outward. Each band names its distance.
 
 **Here.** The room's number as a sentence ("Falling to 9 micrograms, under the street, under the model, under the
 line"), why, and, when an act-level alert is unanswered, an orange strip naming it with the button that closes the loop.
+Behind the sentence is the ground: the map cell this node stands in, the seven smaller cells inside it, and its
+neighbours' edges running off the frame. It is drawn on the node from the coordinates it was set up with, and the line
+under it names the cell — `8839446033fffff · RES 8 · 525 M EDGE`. That id is how this node's readings find their place
+in the index. The same ground and the same line are on the wall.
 
 **Room.** How it feels indoors, then each indoor sensor with a note on what it is doing and a day's trace.
 

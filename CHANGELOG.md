@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.38 — 2026-09-07 — the ground under the hero is the cell this node stands in
+
+Since v0.36 a map cell has sat behind the sentence on the hero and on the wall. It was the same cell on every
+node: node #1's, in Kuta Selatan. On a node anywhere else it looked like that node's own place and was not, so
+the line naming it was cut and the drawing said nothing at all.
+
+- **The node draws its own cell**, from the coordinates it was set up with. The resolution-8 cell it stands
+  in, the seven smaller cells inside it, and its neighbours' edges running off the frame.
+- **The cell is named again, under the hero and on the wall**: `8839446033fffff · RES 8 · 525 M EDGE · THE
+  CELL THIS NODE STANDS IN`. That id is the node's place in the index, and it is now true wherever the node
+  is. The edge is this cell's own, measured. H3 publishes 531 m for resolution 8; that is an average, and no
+  cell is exactly it.
+- **`/health` carries the cell**: id, resolution, mean edge in metres. Agents and `planetai status --json`
+  read the same thing the screen shows.
+- Change the node's coordinates and restart, and the ground follows.
+
+The drawing is computed here, not fetched. A node on a LAN with no route out still draws its own cell. It is
+the same picture `planetai-design` draws with d3-geo, to the last vertex, and a test redraws node #1's cell
+and compares against the shipped file to keep the two together.
+
+`planetai update` rebuilds the image, which now carries one more library, `h3`. A node that has not been told
+where it stands keeps the picture it had, naming nothing.
+
 ## v0.37 — 2026-09-07 — a node installed from the tarball knows which version it is
 
 Every beta tester's node called itself `dev`. Testers install from the tarball, and the installer read the

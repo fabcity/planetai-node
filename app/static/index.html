@@ -98,11 +98,18 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 /* hero */
 .hero{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:28px;min-height:340px}
 @media(max-width:620px){.hero{grid-column:span 1}}
-/* The hero's ground is the node's own resolution-8 cell 8895a4c86bfffff, its seven resolution-9
-   children and its neighbours' edges leaving the frame — computed geometry from planetai-design,
-   shipped as a local file because this node may have no route out. Drawn at 7-20% ink by the asset
-   itself: it is a ground, so it is never retinted up and never tiled. */
+/* The hero's ground is this node's own resolution-8 cell, its seven resolution-9 children and its
+   neighbours' edges leaving the frame — computed here from NODE_LAT/NODE_LON by app/ground.py, not
+   fetched, because this node may have no route out. Drawn at 7-20% ink by the asset itself: it is a
+   ground, so it is never retinted up and never tiled. The cell it draws is named by .cellstamp. */
 .hero .ground{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:64% 42%;pointer-events:none;user-select:none}
+/* The ground's caption, which the design kit stamps inside the drawing at the foot of a 900x600
+   frame. Here it is page text: the hero scales the SVG with object-fit:cover, so at 1440 the foot
+   of the frame is cropped away and at 390 the left of it is, taking the cell id with it. Empty
+   until /health names a cell, and hidden while it is empty rather than leaving a gap. */
+.cellstamp{position:relative;font:500 10.5px/1.5 var(--fm);letter-spacing:.08em;color:var(--mute);opacity:.8;overflow-wrap:anywhere}
+.cellstamp:empty{display:none}
+.wall .cellstamp{margin-top:clamp(20px,3vw,34px)}
 .hero .tri{position:absolute;left:0;right:0;bottom:0;height:3px;display:flex}.hero .tri span{flex:1;display:block}
 .hero .body{position:relative}
 .hero p.big{font:500 clamp(1.35rem,2.5vw,2.1rem)/1.32 var(--fd);letter-spacing:-.02em;margin-top:14px;max-width:26ch}
@@ -275,6 +282,7 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
     </div>
     <div class="chips" id="hero-chips"></div>
     <div class="actstrip" id="actstrip" hidden></div>
+    <div class="cellstamp" id="hero-stamp"></div>
   </div>
 
   <section class="band" data-card="room">
@@ -376,6 +384,7 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
   <p class="big" id="wall-line">The room is holding at <b class="none">–</b> right now.</p>
   <p class="why" id="wall-why"></p>
   <div class="stats" id="wall-stats"></div>
+  <div class="cellstamp" id="wall-stamp"></div>
 </section>
 
 </div></main>
@@ -443,6 +452,8 @@ async function refresh(){
     $('#hero-line').querySelectorAll('b').forEach(b=>b.classList.toggle('crossed',crossed));
     $('#hero-line').classList.toggle('in',true);
     $('#hero-why').textContent=why(iv,ov,mv,g);
+    // The cell the ground draws, named. True on every node because both come from NODE_LAT/NODE_LON.
+    $('#hero-stamp').textContent=$('#wall-stamp').textContent=h.cell?h.cell.caption:'';
     $('#hero-chips').innerHTML=[inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the room`:null,mine.length?`${mine.length} on the wall outside`:near.length?`${near.length} public sensor${near.length===1?'':'s'} nearby`:null,`${new Set(obs.map(o=>o.sensor_id)).size} models overhead`].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
     // headline tiles
     const inT=mean(S('temp').filter(r=>r.local&&r.indoor&&fresh(r)).map(r=>r.mean_15m)), inH=mean(S('humidity').filter(r=>r.local&&r.indoor&&fresh(r)).map(r=>r.mean_15m)), at=apparent(inT,inH);

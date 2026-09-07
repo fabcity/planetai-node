@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600" role="img" data-variant="dark">
-<title>The node's own resolution-8 cell 8895a4c86bfffff, its six neighbours, and its seven resolution-9 children. Hero ground for the node dashboard.</title>
+<title>A resolution-8 H3 cell with its neighbours and its seven resolution-9 children. Placeholder ground, until the node is told where it stands.</title>
 <style>
   :root {
     --ground: #F9F5F2;
@@ -47,7 +47,7 @@
 <g id="cell">
   <path class="lit" d="M347.947,206.233L467.71,166.9L569.739,260.682L551.998,393.794L432.233,433.119L330.212,339.341Z" fill-opacity="0.05" stroke-width="1.5" stroke-opacity="0.20"/>
 </g>
-<!-- The design kit's copy carries a caption naming this cell and calling it the one the node stands in.
-     That is true of node #1 and of no other node, so the caption is not shipped. Until the ground is built
-     from each node's own lat/lon, this geometry stands in for every node's cell and claims nothing. -->
+<!-- This is node #1's cell in Kuta Selatan, and it is served only to a node that has no coordinates yet.
+     Once NODE_LAT and NODE_LON are set, app/ground.py draws the node's own cell and captions it. This copy
+     names no cell, because on any other node the name would be false. -->
 </svg>

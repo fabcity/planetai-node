@@ -161,3 +161,15 @@ for _r, _lang, _words in (("heat_stress_now", "en", "It is dangerously hot at {n
     assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
 assert "Kuta Selatan" in open("packs/heat/README.md").read(), "docs/PACKS.md: say which place you wrote for"
 print("the heat line is this place's, and the alert texts are untouched")
+
+# v0.38 — the hero's ground is the node's own cell, drawn from NODE_LAT/NODE_LON, and the line naming that
+# cell is on the page rather than stamped in the drawing, where object-fit:cover crops it away.
+assert "h3" in open("app/requirements.txt").read(), "app/requirements.txt: h3"
+assert "def facts(" in open("app/ground.py").read() and "def svg(" in open("app/ground.py").read()
+assert '"cell": _cell()' in main and "ground.facts(" in main and "ground.svg(" in main, "/health and /static"
+for _id in ("hero-stamp", "wall-stamp"):
+    assert f'id="{_id}"' in gui, f"gui: {_id}"
+assert "h.cell?h.cell.caption:''" in gui, "gui: the caption comes from /health"
+assert "THE CELL THIS NODE STANDS IN" not in open("app/static/node-ground.svg").read(), (
+    "the shipped file is the fallback for a node with no coordinates; it must name no cell")
+print("the ground is drawn from the node's own coordinates and the caption is on the page")

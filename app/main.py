@@ -26,6 +26,7 @@ from psycopg.types.json import Jsonb
 
 import bootstrap
 import agent
+import ground
 import index
 import packs
 import settings
@@ -549,7 +550,20 @@ def health():
         schema = "pre-0.4 (run ./update.sh)"
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
             "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0), "city": os.getenv("NODE_CITY", ""), **state,
-            **({"mesh": mesh_state} if MQTT_HOST else {})}
+            "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {})}
+
+
+def _cell() -> dict | None:
+    """The H3 cell this node stands in: id, resolution, the mean edge of this cell in metres, and the
+    line the dashboard prints under the hero. None before setup, when there is no place to name."""
+    lat, lon = os.getenv("NODE_LAT", ""), os.getenv("NODE_LON", "")
+    if not lat or not lon:
+        return None
+    try:
+        return ground.facts(float(lat), float(lon))
+    except Exception as e:  # noqa: BLE001
+        log.warning("cell: %s: %s", type(e).__name__, e)
+        return None
 
 
 @app.get("/sensors")
@@ -889,6 +903,7 @@ COMPANIONS = {
     "node-ground.svg": (STATIC / "node-ground.svg", "image/svg+xml"),
     "jetbrains-mono-latin.woff2": (STATIC / "fonts" / "jetbrains-mono-latin.woff2", "font/woff2"),
 }
+NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 
 
 @app.get("/static/{name}", include_in_schema=False)
@@ -897,12 +912,35 @@ def static_file(name: str):
 
     Same `no-cache, must-revalidate` as index.html, and for the same reason: a wall screen that keeps the
     previous design after `planetai update` is the bug that header exists to stop, and a stale ground is that
-    bug again. FileResponse sends an ETag, so revalidating costs a 304 and nothing on the wire."""
-    from fastapi.responses import FileResponse
+    bug again. FileResponse sends an ETag, so revalidating costs a 304 and nothing on the wire.
+
+    The ground is drawn here from NODE_LAT / NODE_LON rather than served from disk, so it is this
+    node's own cell and the caption naming that cell is true. The file on disk is what a node with
+    no coordinates yet gets: node #1's cell, with no caption, standing in for a place the node has
+    not been told about."""
+    from fastapi.responses import FileResponse, Response
+    if name == "node-ground.svg":
+        svg = _ground_svg()
+        if svg:
+            return Response(svg, media_type="image/svg+xml", headers=NO_CACHE)
     hit = COMPANIONS.get(name)
     if not hit or not hit[0].exists():
         raise HTTPException(404, "no such asset")
-    return FileResponse(hit[0], media_type=hit[1], headers={"cache-control": "no-cache, must-revalidate"})
+    return FileResponse(hit[0], media_type=hit[1], headers=NO_CACHE)
+
+
+def _ground_svg() -> str | None:
+    """This node's ground, or None to fall back to the file: before setup there are no coordinates
+    to draw, and an image built before h3 was a dependency has no h3. Neither is a reason to serve
+    an empty hero."""
+    lat, lon = os.getenv("NODE_LAT", ""), os.getenv("NODE_LON", "")
+    if not lat or not lon:
+        return None
+    try:
+        return ground.svg(float(lat), float(lon))
+    except Exception as e:  # noqa: BLE001
+        log.warning("node-ground: %s: %s — serving the shipped file", type(e).__name__, e)
+        return None
 
 
 def _admin(authorization: str) -> None:
