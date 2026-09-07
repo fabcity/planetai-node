@@ -19,7 +19,8 @@ Air was first because Bali has the sensors and the burn season. Everything below
 **Air** (`packs/air-quality`): PM2.5 inside and outside, spikes, WHO thresholds. **Heat** (`packs/heat`): apparent
 temperature from temp and humidity, heat stress, nights over 28 °C. **Coast** (`packs/coast`): waves and sea
 temperature. **Land** (`packs/earth-engine`): built-up, tree cover, change. **Governance** (`open-data-health`,
-and ρ in the core).
+and ρ in the core). **Trust** (`packs/trust`): not a place, the node's own instruments — whether they are frozen,
+missing hours or disagreeing with a neighbour.
 
 ## Designed, not written
 

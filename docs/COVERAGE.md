@@ -18,6 +18,11 @@ rolled up. **`live` means measured here**; a model or a portal is `partial`, wha
 
 ## Filled today, node #1
 
+This table predates v0.36, when `local` narrowed from "ours" to "ours and within `LOCAL_RADIUS_M`". Node #1's
+local/remote split changes once its operator sets that radius and the node has updated, so read this table as a
+record of what was true through 7 September 2026, not as today's answer. Re-read it from `/cells` after node #1
+updates and the radius is set.
+
 | cell | from | state |
 |---|---|---|
 | Environmental \| Community | your sensors, PM2.5 24h mean | live |

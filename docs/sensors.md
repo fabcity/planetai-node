@@ -50,12 +50,24 @@ Copernicus model at 11 km; climate normals. `kind='model'`, never in an ambient 
 ## The rules we inherit
 
 1. **Indoor sensors measure a room.** Never in an ambient average.
-2. **Latest held ≠ latest measured.** A dead sensor still has a "latest". `stats` looks back 24 h and exposes `silent_minutes`.
+2. **Silence is defined by value change, not by a timestamp.** `stats` looks back 24 h and exposes
+   `silent_minutes`, and that number is true per kit and false per channel. Smart Citizen's per-reading
+   `data.recorded_at` is null on every kit node #1 reads, so the adapter stamps every channel with one
+   kit-level `last_reading_at` at poll time. A channel that has stopped producing new values still gets a fresh
+   timestamp on every poll, and its frozen value is re-inserted under that new timestamp — forever. That pulls
+   the 24-hour mean toward the frozen number and shrinks its variance, so a dying channel's own statistics make
+   it look steadier, not worse. A timestamp check would never catch this. `packs/trust`'s `channel_dead` rule
+   looks at the value instead.
 3. **A daily mean can be one reading.** Check `n` before trusting an aggregate.
 4. **Instants are UTC; days are local.** Daily buckets use `NODE_TZ`. Bali's 9 am burn peak vanishes on a UTC day.
 5. **Corrected ≠ raw.** Store both. Never overwrite raw.
 6. **Gaps are real.** No fill, no zero, no interpolation.
 7. **These are not reference instruments.** Good for patterns and magnitudes; the node labels them as such.
+8. **Sensors in the same place disagree.** Three kits at one address read the same air and do not agree: one of
+   them (`sc-19849`) runs about 1.5× the other two, measured ratios 1.508 against `sc-19880` and 1.426 against
+   `sc-19897`. Collocation — more than one sensor at the same spot — is the cheapest calibration a node can run,
+   and most nodes have it by accident rather than by design. `packs/trust`'s `peer_disagreement` rule is what
+   reads it.
 
 ## "Outside" resolves in one order
 
