@@ -48,6 +48,20 @@ sits at about the 99th percentile of a consecutive-year comparison: 0.96 % of th
 and a real change stands out. A lower threshold is not more sensitive, it is noisier: at 0.05 a third of this
 square is "changed" every year.
 
+### Read the span first, then the years
+
+`--all` computes every consecutive pair and the full span, and prints them as one table. That is the order
+worth reading them in. Over eight years at node #1 the span flags 8.80 % of the square; the eight yearly
+steps flag 0.16 % to 3.81 % each and sum to 8.51 %, so the areas agree — persistent local change accumulates.
+What does not accumulate is the background: the yearly *means* sum to 0.2991 against the span's 0.0673, four
+fifths of it cancelling out. So the span's p95 sits at 3.65 times its median where every single year sits at
+2.1 to 2.8, and 92 % of the span's flagged pixels lie inside patches against 82–89 % for the years. The span
+is the cleaner picture of what was built. The yearly rows say when.
+
+They are worth having together. At node #1 the two quietest years in the whole record are 2020→2021 (0.16 %)
+and 2021→2022 (0.19 %), and the busiest is 2019→2020 (3.81 %). Something stopped on the Bukit and started
+again. The satellite cannot say it was the pandemic; someone who was there can.
+
 ### The number is not comparable between places, and there is no alert
 
 Read the distribution in the JSON before you trust the hectares, because the baseline moves with the climate,
@@ -111,6 +125,7 @@ planetai run earth fetch            # every year the dataset has (or EARTH_YEARS
 planetai run earth fetch 2024 2025  # just these
 planetai run earth change           # the two latest consecutive cached years
 planetai run earth change 2023 2025 # any two
+planetai run earth change --all     # every consecutive pair, plus the oldest-to-newest span
 planetai run earth status           # years, bytes, comparisons, what the cell reports
 planetai run earth verify           # the dataset's claims against the files, and whether the reading landed
 planetai run earth similar          # the four pilots compared with each other and with their own tiles

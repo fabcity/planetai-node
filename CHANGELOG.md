@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.33.8 — 2026-09-07 — the whole satellite history in one command, and an argument it does not know is an error
+
+Reported from node #1: `planetai run earth change --all` printed a perfectly ordinary result for the latest
+year pair. The flag did not exist yet, and the way the arguments were read, anything that was not a
+four-digit number was dropped — leaving an empty list, which meant "the default". A plausible answer to a
+question nobody asked is worse than an error.
+
+- **`planetai run earth change --all`** computes every consecutive cached pair and the span from the oldest
+  cached year to the newest, then prints them as one table. Pairs already computed are skipped unless
+  `--force`. With nine years cached that is nine comparisons in a couple of seconds; the download is the only
+  slow part and it has already happened.
+- **An argument the script does not recognise now stops it**, naming the argument and printing the usage.
+  A mistyped year (`217`) or a single year does the same.
+- **Read the span first.** At node #1 the eight-year span flags 8.80 % of the square and the eight yearly
+  steps sum to 8.51 %, so the areas agree. What does not agree is the mean: the yearly means sum to 0.2991
+  against the span's 0.0673, four fifths of it cancelling out year to year. The span's p95 sits at 3.65 times
+  its median where every single year sits between 2.1 and 2.8, and 92 % of its flagged pixels lie inside
+  patches against 82–89 % for the years. The span is the cleaner picture of what was built; the yearly rows
+  say when. The pack's README carries the numbers.
+
 ## v0.33.7 — 2026-09-07 — one landmark emptied the kilometre
 
 The plan of the kilometre went blank on node #1 the day it moved, and stayed blank through three releases that

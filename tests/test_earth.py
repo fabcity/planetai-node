@@ -214,5 +214,49 @@ assert 'orphan = [y for y, w in ((a, wa), (b, wb)) if not w.get("bounds")]' in _
 assert 'A.cache().glob("change_*")' in _fetch, "a moved square must not leave its comparison for the card to serve"
 
 print("earth move tests pass")
+
+# ---------------------------------------------------------------- change: its arguments, and --all
+# `planetai run earth change --all` used to print an ordinary result for the latest pair: the flag was not a
+# digit so it was dropped, and an empty argument list meant "the default". Run the real script and read what
+# it does, rather than grepping it for the word --all.
+import subprocess
+with tempfile.TemporaryDirectory() as tmp:
+    env = {**os.environ, "PACK_OUT": tmp, "NODE_NAME": "t", "NODE_LAT": "-8.8271", "NODE_LON": "115.15709",
+           "EARTH_RADIUS_M": "5000", "PYTHONPATH": os.getcwd()}
+    cache = Path(tmp) / "earth" / "t"; cache.mkdir(parents=True)
+    win = {"crs": "EPSG:32750", "bounds": {"west": 0.0, "east": 40.0, "south": 0.0, "north": 40.0},
+           "px": [4, 4], "clipped": False, "north_up": True, "node_rc": [2, 2], "object": "gs://x.tiff"}
+    rng2 = np.random.default_rng(3)
+    for y in (2020, 2021, 2022):
+        np.save(cache / f"{y}.npy", rng2.integers(-100, 100, size=(64, 4, 4)).astype(np.int8))
+    (cache / "meta.json").write_text(json.dumps(
+        {"lat": -8.8271, "lon": 115.15709, "radius_m": 5000, "windows": {str(y): win for y in (2020, 2021, 2022)}}))
+
+    def run(*a):
+        return subprocess.run([sys.executable, "packs/earth/change.py", *a], env=env, capture_output=True, text=True)
+
+    for bad in (["--evrything"], ["217", "2022"], ["2021"], ["2020", "2021", "2022"]):
+        r = run(*bad)
+        assert r.returncode == 1, f"change {' '.join(bad)} must fail, got {r.returncode}: {r.stdout}"
+        assert "usage:" in r.stdout, f"change {' '.join(bad)} must print the usage: {r.stdout}"
+    assert not list(cache.glob("change_*")), "a rejected argument must not compute anything"
+
+    r = run()                                        # the default is still the latest consecutive pair
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert {p.name for p in cache.glob("change_*.json")} == {"change_2021_2022.json"}, r.stdout
+
+    r = run("--all")                                 # every consecutive pair, plus the span
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert {p.name for p in cache.glob("change_*.json")} == {
+        "change_2020_2021.json", "change_2021_2022.json", "change_2020_2022.json"}, r.stdout
+    assert "the span" in r.stdout and "already computed, skipping 2021→2022" in r.stdout, r.stdout
+
+    before = (cache / "change_2020_2021.json").stat().st_mtime_ns
+    assert "already computed" in run("--all").stdout                       # idempotent
+    assert (cache / "change_2020_2021.json").stat().st_mtime_ns == before
+    assert "already computed" not in run("--all", "--force").stdout        # and --force redoes it
+    assert (cache / "change_2020_2021.json").stat().st_mtime_ns != before
+print("change: unknown arguments refused, --all walks the history, --force redoes it")
+
 print("all earth pack tests pass")
 sys.exit(0)

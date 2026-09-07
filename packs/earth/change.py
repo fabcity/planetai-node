@@ -1,8 +1,12 @@
-"""Compare two cached years, pixel by pixel, and write the map and the numbers.  planetai run earth change [A B]
+"""Compare two cached years, pixel by pixel, and write the map and the numbers.  planetai run earth change [A B | --all]
 
-With no years, the two most recent consecutive cached years. Writes change_<A>_<B>.png (north up, a grey ramp,
-the node ringed) and change_<A>_<B>.json (mean, median, p95, the share and the hectares above the threshold,
-the bounds, the source objects) into out/earth/<node>/.
+With no years, the two most recent consecutive cached years. With `--all`, every consecutive pair plus the
+span from the oldest cached year to the newest — the whole history in one command, which is the order worth
+reading it in: the span is where persistent change stands out from the year-to-year background, and the
+yearly steps say when each thing happened. Already-computed pairs are skipped unless `--force`.
+
+Writes change_<A>_<B>.png (north up, a grey ramp, the node ringed) and change_<A>_<B>.json (mean, median,
+p95, the share and the hectares above the threshold, the bounds, the source objects) into out/earth/<node>/.
 """
 import json
 import os
@@ -24,83 +28,129 @@ A.require("numpy")
 
 import numpy as np                                                               # noqa: E402
 
-args = [int(a) for a in sys.argv[1:] if a.isdigit()]
+USAGE = "usage: planetai run earth change [A B | --all] [--force]"
+# Anything unrecognised is an error. `planetai run earth change --all` used to fall through to the default
+# pair and print a perfectly ordinary result for a comparison nobody asked for (7 Sep 2026): a flag this
+# script did not have was not a digit, so it was dropped, and the empty argument list meant "the latest pair".
+flags = {x for x in sys.argv[1:] if x.startswith("-")}
+years = [x for x in sys.argv[1:] if not x.startswith("-")]
+unknown = sorted(flags - {"--all", "--force"}) + [y for y in years if not (y.isdigit() and len(y) == 4)]
+if unknown or len(years) not in (0, 2):
+    print(f"earth: {'do not know ' + ', '.join(unknown) if unknown else 'give two years or none'}\n{USAGE}")
+    sys.exit(1)
+do_all, force = "--all" in flags, "--force" in flags
 cached = A.cached_years()
-if len(args) == 2:
-    a, b = sorted(args)
-elif args:
-    print("usage: planetai run earth change [A B]"); sys.exit(1)
+
+if do_all:
+    if len(cached) < 2:
+        print(f"earth: fewer than two years cached (have: {', '.join(map(str, cached)) or 'none'}). "
+              f"planetai run earth fetch"); sys.exit(1)
+    pairs = [(x, y) for x, y in zip(cached, cached[1:]) if y - x == 1]
+    span = (cached[0], cached[-1])
+    if span not in pairs:
+        pairs.append(span)
+elif len(years) == 2:
+    pairs = [tuple(sorted(int(y) for y in years))]
 else:
     pair = A.latest_pair()
     if not pair:
         print(f"earth: no two consecutive years are cached (have: {', '.join(map(str, cached)) or 'none'}). "
               f"planetai run earth fetch"); sys.exit(1)
-    a, b = pair
-missing = [y for y in (a, b) if y not in cached]
+    pairs = [pair]
+
+missing = sorted({y for p in pairs for y in p} - set(cached))
 if missing:
     print(f"earth: {', '.join(map(str, missing))} not cached. planetai run earth fetch {' '.join(map(str, missing))}")
     sys.exit(1)
 
 m = A.meta()
-wa, wb = (m.get("windows", {}).get(str(y), {}) for y in (a, b))
-if wa.get("px") and wb.get("px") and wa["px"] != wb["px"]:
-    print(f"earth: {a} is {wa['px']} px and {b} is {wb['px']} px — re-fetch both with --force"); sys.exit(1)
-# meta.json records a window per year for the square the pack currently describes. A year with a file but no window
-# was read around a different point, and comparing it with one from here would report the difference between two
-# places as change over time.
-orphan = [y for y, w in ((a, wa), (b, wb)) if not w.get("bounds")]
-if orphan:
-    print(f"earth: {', '.join(map(str, orphan))} on disk but not in meta.json for this square — read around another "
-          f"point, or fetched by an older version. planetai run earth fetch {' '.join(map(str, orphan))} --force")
-    sys.exit(1)
+def compare(a, b):
+    """One pair: the arithmetic, the map and the JSON. Returns its stats, or None if this pair cannot be done
+    (which is not fatal when --all is walking a history that has a gap in it)."""
+    wa, wb = (m.get("windows", {}).get(str(y), {}) for y in (a, b))
+    if wa.get("px") and wb.get("px") and wa["px"] != wb["px"]:
+        print(f"earth: {a} is {wa['px']} px and {b} is {wb['px']} px — re-fetch both with --force"); return None
+    # meta.json records a window per year for the square the pack currently describes. A year with a file but no window
+    # was read around a different point, and comparing it with one from here would report the difference between two
+    # places as change over time.
+    orphan = [y for y, w in ((a, wa), (b, wb)) if not w.get("bounds")]
+    if orphan:
+        print(f"earth: {', '.join(map(str, orphan))} on disk but not in meta.json for this square — read around another "
+              f"point, or fetched by an older version. planetai run earth fetch {' '.join(map(str, orphan))} --force")
+        return None
 
-t0 = time.time()
-X = np.load(A.year_file(a), mmap_mode="r")
-Y = np.load(A.year_file(b), mmap_mode="r")
-dist, masked = A.cosine_distance(X, Y)
-good = dist[~masked]
-if not good.size:
-    print("earth: every pixel is masked in one of the two years"); sys.exit(1)
+    t0 = time.time()
+    X = np.load(A.year_file(a), mmap_mode="r")
+    Y = np.load(A.year_file(b), mmap_mode="r")
+    dist, masked = A.cosine_distance(X, Y)
+    good = dist[~masked]
+    if not good.size:
+        print("earth: every pixel is masked in one of the two years"); return None
 
-over = float((good > CHANGED).mean())
-px_m2 = 100.0                                                                    # 10 m x 10 m
-stats = {
-    "node": A.node(), "year_a": a, "year_b": b,
-    "mean": round(float(good.mean()), 5),
-    "median": round(float(np.median(good)), 5),
-    "p95": round(float(np.percentile(good, 95)), 5),
-    "max": round(float(good.max()), 5),
-    "threshold": CHANGED,
-    "share_over_threshold": round(over, 5),
-    "hectares_over_threshold": round(over * good.size * px_m2 / 10000.0, 1),
-    "pixels": int(good.size), "pixels_masked": int(masked.sum()),
-    "px": [int(dist.shape[1]), int(dist.shape[0])],
-    "metres_per_pixel": 10,
-    "crs": wb.get("crs") or wa.get("crs"),
-    "bounds": wb.get("bounds") or wa.get("bounds"),
-    "lat": m.get("lat"), "lon": m.get("lon"), "radius_m": m.get("radius_m"),
-    "clipped": bool(wa.get("clipped") or wb.get("clipped")),
-    "tiles": [w.get("object") for w in (wa, wb) if w.get("object")],
-    "dataset": A.DATASET, "attribution": A.ATTRIBUTION,
-    "computed_at": datetime.now(timezone.utc).isoformat(),
-    "png": A.change_file(a, b, "png").name,
-}
+    over = float((good > CHANGED).mean())
+    px_m2 = 100.0                                                                    # 10 m x 10 m
+    stats = {
+        "node": A.node(), "year_a": a, "year_b": b,
+        "mean": round(float(good.mean()), 5),
+        "median": round(float(np.median(good)), 5),
+        "p95": round(float(np.percentile(good, 95)), 5),
+        "max": round(float(good.max()), 5),
+        "threshold": CHANGED,
+        "share_over_threshold": round(over, 5),
+        "hectares_over_threshold": round(over * good.size * px_m2 / 10000.0, 1),
+        "pixels": int(good.size), "pixels_masked": int(masked.sum()),
+        "px": [int(dist.shape[1]), int(dist.shape[0])],
+        "metres_per_pixel": 10,
+        "crs": wb.get("crs") or wa.get("crs"),
+        "bounds": wb.get("bounds") or wa.get("bounds"),
+        "lat": m.get("lat"), "lon": m.get("lon"), "radius_m": m.get("radius_m"),
+        "clipped": bool(wa.get("clipped") or wb.get("clipped")),
+        "tiles": [w.get("object") for w in (wa, wb) if w.get("object")],
+        "dataset": A.DATASET, "attribution": A.ATTRIBUTION,
+        "computed_at": datetime.now(timezone.utc).isoformat(),
+        "png": A.change_file(a, b, "png").name,
+    }
 
-ix = A.ramp_indices(dist, masked)
-rc = (wb.get("node_rc") or wa.get("node_rc"))                                    # recorded north-up by fetch.py
-A.draw_marks(ix, (int(rc[0]), int(rc[1])) if rc else None)
-stats["node_rc"] = rc
-png_bytes = A.write_png(A.change_file(a, b, "png"), ix, {
-    "Title": f"Land change {a}-{b}, {A.node()}",
-    "Description": f"1 - cosine similarity of annual AlphaEarth embeddings, {a} to {b}. "
-                   f"North up, 10 m per pixel, grey ramp 0 to {A.RAMP_CEILING}. Black is no data.",
-    "Copyright": A.ATTRIBUTION,
-})
-A.change_file(a, b, "json").write_text(json.dumps(stats, indent=1))
+    ix = A.ramp_indices(dist, masked)
+    rc = (wb.get("node_rc") or wa.get("node_rc"))                                    # recorded north-up by fetch.py
+    A.draw_marks(ix, (int(rc[0]), int(rc[1])) if rc else None)
+    stats["node_rc"] = rc
+    png_bytes = A.write_png(A.change_file(a, b, "png"), ix, {
+        "Title": f"Land change {a}-{b}, {A.node()}",
+        "Description": f"1 - cosine similarity of annual AlphaEarth embeddings, {a} to {b}. "
+                       f"North up, 10 m per pixel, grey ramp 0 to {A.RAMP_CEILING}. Black is no data.",
+        "Copyright": A.ATTRIBUTION,
+    })
+    A.change_file(a, b, "json").write_text(json.dumps(stats, indent=1))
 
-print(f"earth: {a} → {b} over {stats['px'][0] * 10 / 1000:.1f} x {stats['px'][1] * 10 / 1000:.1f} km, "
-      f"{time.time() - t0:.0f}s")
-print(f"  mean {stats['mean']:.4f}  median {stats['median']:.4f}  p95 {stats['p95']:.4f}  max {stats['max']:.4f}")
-print(f"  above {CHANGED}: {over * 100:.2f}% of the square, {stats['hectares_over_threshold']:.0f} ha")
-print(f"  {A.change_file(a, b, 'png').name} ({png_bytes / 1000:.0f} kB)  {A.change_file(a, b, 'json').name}")
+    print(f"earth: {a} → {b} over {stats['px'][0] * 10 / 1000:.1f} x {stats['px'][1] * 10 / 1000:.1f} km, "
+          f"{time.time() - t0:.0f}s")
+    print(f"  mean {stats['mean']:.4f}  median {stats['median']:.4f}  p95 {stats['p95']:.4f}  max {stats['max']:.4f}")
+    print(f"  above {CHANGED}: {stats['share_over_threshold'] * 100:.2f}% of the square, "
+          f"{stats['hectares_over_threshold']:.0f} ha")
+    print(f"  {A.change_file(a, b, 'png').name} ({png_bytes / 1000:.0f} kB)  {A.change_file(a, b, 'json').name}")
+    return stats
+
+
+done, skipped = [], []
+for a, b in pairs:
+    if not force and A.change_file(a, b, "json").is_file():
+        skipped.append((a, b)); continue
+    st = compare(a, b)
+    if st:
+        done.append(st)
+
+if skipped:
+    print(f"earth: already computed, skipping {', '.join(f'{a}→{b}' for a, b in skipped)} (--force to redo)")
+if do_all:
+    have = sorted((json.loads(A.change_file(a, b, "json").read_text()) for a, b in pairs
+                   if A.change_file(a, b, "json").is_file()), key=lambda d: (d["year_b"] - d["year_a"], d["year_a"]))
+    if have:
+        print(f"\n  {'pair':13} {'mean':>7} {'median':>7} {'p95':>7} {'over ' + str(CHANGED):>9} {'hectares':>9}")
+        for d in have:
+            mark = "  the span" if d["year_b"] - d["year_a"] > 1 else ""
+            print(f"  {d['year_a']}→{d['year_b']:<8} {d['mean']:>7.4f} {d['median']:>7.4f} {d['p95']:>7.4f} "
+                  f"{d['share_over_threshold'] * 100:>8.2f}% {d['hectares_over_threshold']:>9.0f}{mark}")
+        print("\n  The span is the cleaner picture of what was built: over years, change that stays accumulates\n"
+              "  and the year-to-year background does not. The yearly rows say when each thing happened.")
 print(A.ATTRIBUTION)

@@ -114,6 +114,11 @@ for _s in ("fetch", "change", "similar"):
 assert "planetai packs install" in open("update.sh").read(), "update.sh must say when a pack needs installing"
 assert 'grep -q "planetai packs install" <<<' in open("update.sh").read(), "under pipefail, not a pipe into grep -q"
 print("a pack that lacks its libraries says which command installs them")
+# v0.33.8 — `planetai run earth change --all` is documented. Its behaviour, and the refusal of an argument
+# the script does not know, are tested by running the script in tests/test_earth.py: a string check here
+# would have passed while --all quietly did the default pair, which is the bug being fixed.
+assert "planetai run earth change --all" in open("packs/earth/README.md").read(), "the README must document --all"
+print("change --all is documented; tests/test_earth.py runs it")
 assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
 assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
 assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"
