@@ -101,7 +101,7 @@ def poll_once(hc: httpx.Client) -> None:
                            VALUES (%(sensor_id)s, %(source)s, %(name)s, %(lat)s, %(lon)s, %(indoor)s, %(local)s,
                                    %(kind)s, %(scale)s, %(cadence)s, %(meta)s)
                            ON CONFLICT (sensor_id) DO UPDATE SET name=EXCLUDED.name, lat=EXCLUDED.lat, lon=EXCLUDED.lon,
-                             indoor=EXCLUDED.indoor, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
+                             indoor=EXCLUDED.indoor, local=EXCLUDED.local, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
                              cadence=EXCLUDED.cadence, meta=EXCLUDED.meta""",
                         {"kind": "sensor", "scale": os.getenv("NODE_SCALE", "community"), "cadence": None,
                          **s, "meta": Jsonb(s.get("meta") or {})},
@@ -128,7 +128,7 @@ def _store(sensors, readings) -> None:
                            ON CONFLICT (sensor_id) DO UPDATE SET
                              name = COALESCE(EXCLUDED.name, sensors.name),
                              lat = COALESCE(EXCLUDED.lat, sensors.lat), lon = COALESCE(EXCLUDED.lon, sensors.lon),
-                             indoor = EXCLUDED.indoor, meta = sensors.meta || EXCLUDED.meta""",
+                             indoor = EXCLUDED.indoor, local = EXCLUDED.local, meta = sensors.meta || EXCLUDED.meta""",
                         {**s, "meta": Jsonb(s.get("meta") or {})})
         if readings:
             cur.executemany("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING", readings)

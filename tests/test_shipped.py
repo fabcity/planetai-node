@@ -148,3 +148,9 @@ assert "const firstPt=g=>" in _gui, "the plan needs a geometry-agnostic first po
 assert "px(firstPt(g))" in _gui, "the poi marker must not index coordinates[0][0]"
 assert "}catch(e){skipped++;}" in _gui, "the plan's feature loop must survive one undrawable feature"
 print("the plan survives real OpenStreetMap geometry")
+# v0.35 — `local` was written once and never corrected. Node #1 carried three smartcitizen kits at local=false
+# that no current code path can produce: they were born from Bali Air Dispatch before the bad- prefix existed.
+# Both upserts must now update it, or a wrong partition of house and street survives every poll forever.
+_main = open("app/main.py").read()
+assert _main.count("local=EXCLUDED.local") + _main.count("local = EXCLUDED.local") == 2, \
+    "both sensor upserts (poll and MQTT) must update local, or a stale flag never heals"
