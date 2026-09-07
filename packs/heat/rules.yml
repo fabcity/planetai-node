@@ -10,7 +10,9 @@
     WITH x AS (
       SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
       FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
-      WHERE t.local AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
+      -- indoor only: the no-wind Steadman form is the indoor form, and the 32 °C line was measured on two indoor
+      -- kits. Outdoors, with wind unaccounted for, the same arithmetic overstates the load.
+      WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
     SELECT sensor_id, name, round(t::numeric, 1) AS t, round(rh::numeric) AS rh,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
     FROM x
@@ -26,7 +28,9 @@
     WITH x AS (
       SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
       FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
-      WHERE t.local AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
+      -- indoor only: the no-wind Steadman form is the indoor form. Outdoors, with wind unaccounted for, the same
+      -- arithmetic overstates the load.
+      WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
     SELECT sensor_id, name,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
     FROM x

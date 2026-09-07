@@ -16,7 +16,10 @@ Meteorology (AT = T + 0.33·e − 4.0, e in hPa). The no-wind form fits indoors.
 ours. Tune in a fork: a Balinese kitchen and a Barcelona flat do not share a comfort line.
 
 **What it assumes.** A local sensor reporting both `temp` and `humidity` (Smart Citizen, AirGradient, and a BME680
-on a Tracker all do). Indoor for the night rule and the cell; the stress rules fire on any local sensor.
+on a Tracker all do). Indoor for all of it. The night rule, the cell and the stress rules all read local indoor
+sensors, because the no-wind Steadman form is the indoor form and the apparent-temperature line was measured
+indoors. A node whose only local sensors are outdoors gets no heat alerts, which is the right answer rather than
+a wrong number.
 
 **What it does not know.** Radiant heat (a tin roof at 14:00) and airflow (a fan on you). Apparent temperature
 underestimates the first and ignores the second. It is a floor, not a full comfort model.

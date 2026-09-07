@@ -154,3 +154,11 @@ print("the plan survives real OpenStreetMap geometry")
 _main = open("app/main.py").read()
 assert _main.count("local=EXCLUDED.local") + _main.count("local = EXCLUDED.local") == 2, \
     "both sensor upserts (poll and MQTT) must update local, or a stale flag never heals"
+
+# The no-wind Steadman form is the indoor form, as packs/heat/README.md says. Both heat rules compute it, so both
+# read indoor sensors only. After LOCAL_RADIUS_M a node's local sensors may all be outdoors, where the same
+# arithmetic overstates the load; going quiet is the right answer, a wrong number is not.
+_heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
+for _rule in ("heat_stress_now", "heat_danger"):
+    assert "t.local AND t.indoor AND t.metric = 'temp'" in _heat[_rule]["sql"], \
+        f"{_rule}: apparent temperature indoors only, and its threshold was measured indoors"
