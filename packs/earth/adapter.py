@@ -22,6 +22,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
+import math
 import os
 import re
 import urllib.request
@@ -55,6 +56,30 @@ def aoi() -> tuple[float, float, int]:
     """The node's point and the radius the pack describes around it. EARTH_RADIUS_M is a half-width: 5000 asks
     for a 10 km square."""
     return float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"]), int(os.getenv("EARTH_RADIUS_M", "5000") or 5000)
+
+
+# The cache is a square around one point, so changing NODE_LAT/NODE_LON or EARTH_RADIUS_M in .env makes every
+# cached year describe somewhere else. The tolerance keeps a corrected decimal from costing a nine-year re-read:
+# 1% of the radius, never under 25 m. (The place pack carries the same rule; packs do not import each other.)
+MOVE_FRAC, MOVE_MIN_M = 0.01, 25.0
+
+
+def metres(lat_a: float, lon_a: float, lat_b: float, lon_b: float) -> float:
+    """Metres between two points, flat-earth approximation: exact enough well inside one degree."""
+    dy = (lat_b - lat_a) * 111320.0
+    dx = (lon_b - lon_a) * 111320.0 * math.cos(math.radians((lat_a + lat_b) / 2))
+    return math.hypot(dx, dy)
+
+
+def move_tolerance(radius_m: int) -> float:
+    return max(radius_m * MOVE_FRAC, MOVE_MIN_M)
+
+
+def drift(m: dict, lat: float, lon: float):
+    """How far the node is from the point the cache was fetched around, or None when the cache records no point."""
+    if m.get("lat") is None or m.get("lon") is None:
+        return None
+    return metres(float(m["lat"]), float(m["lon"]), lat, lon)
 
 
 def wanted_years() -> list[int]:

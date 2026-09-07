@@ -24,18 +24,40 @@ if bad:
 A.cache().mkdir(parents=True, exist_ok=True)
 m = A.meta()
 tiles = m.get("tiles") or {}
-if not tiles or m.get("lat") != lat or m.get("lon") != lon:
+# A cached year is a window of pixels around a point. If the node moved, or the square changed size, every file on
+# disk is a picture of somewhere else — and they are named by year alone, so without this they would all be skipped
+# as "already cached" and the node would keep comparing the old place.
+prev_radius = m.get("radius_m")
+d = A.drift(m, lat, lon) if tiles else None
+moved = d is not None and d > A.move_tolerance(radius)
+resized = bool(tiles) and prev_radius not in (None, radius)
+stale_square = moved or resized or (bool(tiles) and d is None)
+if not tiles or stale_square:
     counted: dict = {}
     print(f"earth: finding the tiles for {lat}, {lon} (UTM {A.utm_zone(lat, lon)}) in the index …", flush=True)
     t0 = time.time()
     tiles = A.resolve(lat, lon, counted)
     print(f"  index: {counted['index_probes']} range reads + one block, {counted['index_bytes'] / 1e6:.1f} MB, "
           f"{time.time() - t0:.0f}s")
+    # a fresh dict on purpose: `windows` belongs to the square that was just abandoned
     m = {"lat": lat, "lon": lon, "radius_m": radius, "utm_zone": A.utm_zone(lat, lon),
          "dataset": A.DATASET, "attribution": A.ATTRIBUTION, "tiles": tiles}
     A.write_meta(m)
+elif d:
+    # smaller than the tolerance: the cached square still covers this point. Record where the node actually is and
+    # how far that is from the centre the pixels were read around, rather than pretending they match.
+    m["lat"], m["lon"], m["point_drift_m"] = lat, lon, round(d, 1)
+    A.write_meta(m)
 
-todo = [y for y in years if force or not A.year_file(y).exists()]
+if stale_square:
+    had = [y for y in years if A.year_file(y).exists()]
+    why = (f"the node moved {d:.0f} m" if moved else
+           f"the square changed from {prev_radius} to {radius} m" if resized else
+           "the cache does not record which point it was read around")
+    if had:
+        print(f"earth: {why} — re-reading {len(had)} cached year(s); the files on disk describe the previous square")
+
+todo = [y for y in years if force or stale_square or not A.year_file(y).exists()]
 skipped = [y for y in years if y not in todo]
 if skipped:
     print(f"earth: already cached, skipping {', '.join(map(str, skipped))} (--force to re-read)")

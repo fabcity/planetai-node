@@ -187,5 +187,25 @@ assert set(manifest["metrics"]) == {"land_change_yoy", "land_change_since_2017",
 assert manifest["pip"] == ["rasterio", "numpy"] and manifest["scales"] == ["city"]
 assert A.ATTRIBUTION == manifest["attribution"]
 
+# ---------------------------------------------------------------- a square that stopped describing this node
+# The cached years are named by year alone. Before this, changing NODE_LAT/NODE_LON re-resolved the tiles but every
+# cached year was skipped as "already cached", so the node went on comparing the previous square, and verify passed
+# because it measured the window's size and never its position.
+BALI = (-8.8271, 115.15709)
+assert round(A.metres(*BALI, BALI[0] + 0.001, BALI[1])) == 111
+assert A.move_tolerance(5000) == 50.0 and A.move_tolerance(1000) == 25.0, "1% of the radius, floor 25 m"
+assert A.drift({}, *BALI) is None, "a cache with no point recorded cannot be placed"
+assert A.drift({"lat": BALI[0], "lon": BALI[1]}, *BALI) == 0.0
+assert round(A.drift({"lat": BALI[0], "lon": BALI[1]}, BALI[0] + 0.002, BALI[1])) == 223
+assert A.drift({"lat": 41.4036, "lon": 2.2033}, *BALI) > 1e6
+
+_fetch = open("packs/earth/fetch.py").read()
+assert "stale_square = moved or resized" in _fetch, "a moved or resized square must be detected"
+assert "force or stale_square or not A.year_file(y).exists()" in _fetch, \
+    "a stale square must re-read the cached years, not skip them as already cached"
+assert 'prev_radius = m.get("radius_m")' in _fetch, "the previous radius has to be read before meta is replaced"
+_verify = open("packs/earth/verify.py").read()
+assert "A.drift(m, lat, lon)" in _verify, "verify must place the cache, not only measure it"
+print("earth move tests pass")
 print("all earth pack tests pass")
 sys.exit(0)

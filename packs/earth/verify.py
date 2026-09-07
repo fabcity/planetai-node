@@ -1,8 +1,8 @@
 """Check the pack against the dataset and the node, and say which line failed.  planetai run earth verify
 
-Six checks: the libraries import, the bucket answers without credentials, the file is the shape its README
-claims, the de-quantised vectors really have unit length, the cached window really is around this node, and
-the reading reached the database.
+Seven checks: the libraries import, the bucket answers without credentials, the file is the shape its README
+claims, the de-quantised vectors really have unit length, the cache was read around this node, the window is
+the size that was asked for, and the reading reached the database.
 """
 import os
 import sys
@@ -63,19 +63,29 @@ if years:
         step(4, worst <= TOLERANCE,
              f"{SAMPLE} de-quantised vectors from {years[-1]}: worst deviation from unit length {worst:.5f} "
              f"(tolerance {TOLERANCE})")
+    # The docstring promises this checks the window is around THIS node; measuring its span does not. A moved
+    # node otherwise passed with a square centred on the previous address.
+    d = A.drift(m, lat, lon)
+    if d is None:
+        step(5, False, "meta.json does not record which point the cache was read around — planetai run earth fetch --force")
+    else:
+        tol = A.move_tolerance(radius)
+        step(5, d <= tol, f"the cache was read around {m['lat']}, {m['lon']}, {d:.0f} m from this node (tolerance {tol:.0f} m)"
+                          + ("" if d <= tol else " — the cached years describe the previous square: planetai run earth fetch"))
     w = m.get("windows", {}).get(str(years[-1]), {})
     b = w.get("bounds") or {}
     if b:
         span_km = (b["east"] - b["west"]) / 1000.0, (b["north"] - b["south"]) / 1000.0
         want = 2 * radius / 1000.0
-        step(5, w.get("clipped") or abs(span_km[0] - want) < 0.02 and abs(span_km[1] - want) < 0.02,
+        step(6, w.get("clipped") or abs(span_km[0] - want) < 0.02 and abs(span_km[1] - want) < 0.02,
              f"the cached window is {span_km[0]:.2f} x {span_km[1]:.2f} km in {w.get('crs')}"
              + (" (clipped at the tile edge)" if w.get("clipped") else f", asked for {want:.2f}"))
     else:
-        step(5, False, "meta.json has no window bounds — re-run planetai run earth fetch --force")
+        step(6, False, "meta.json has no window bounds — re-run planetai run earth fetch --force")
 else:
     step(4, False, "no year is cached yet.  planetai run earth fetch")
-    step(5, False, "no window to check")
+    step(5, False, "no cache to place")
+    step(6, False, "no window to check")
 
 try:
     import psycopg
@@ -83,10 +93,10 @@ try:
         cur.execute("SELECT metric, value FROM observations WHERE sensor_id = 'earth-point' ORDER BY metric")
         rows = cur.fetchall()
     got = ", ".join(f"{r[0]}={float(r[1]):.4f}" for r in rows) if rows else ""
-    step(6, bool(rows), got or "earth-point has no readings yet: the pack needs PACKS_ALLOW_CODE=1 and one poll "
+    step(7, bool(rows), got or "earth-point has no readings yet: the pack needs PACKS_ALLOW_CODE=1 and one poll "
                                "after planetai run earth change")
 except Exception as e:                                                           # noqa: BLE001
-    step(6, False, f"database: {type(e).__name__}: {str(e)[:160]}")
+    step(7, False, f"database: {type(e).__name__}: {str(e)[:160]}")
 
 print(f"\n{A.ATTRIBUTION}")
 if fails:

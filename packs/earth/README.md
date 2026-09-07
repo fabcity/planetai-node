@@ -95,6 +95,15 @@ Measured on node #1 (Bali, `EARTH_RADIUS_M=5000`, a 10 km square, 1000 x 1000 px
 
 Nothing is downloaded on a poll. The pack fetches on command; the adapter only reads what is already here.
 
+## Moving a node
+
+The cache is a square around `NODE_LAT` / `NODE_LON`, and the files are named by year. Change the coordinates (or
+`EARTH_RADIUS_M`) and `planetai run earth fetch` re-reads every year it had: the pixels on disk are a picture of the
+previous square, and keeping them would compare two different places. That is a real download again, about 103 MB
+per year, so the node says how many years it is re-reading and why. A correction smaller than 1% of the radius
+(never less than 25 m) leaves the cache alone and is recorded in `meta.json` as `point_drift_m`.
+`planetai run earth verify` fails on a cache that was read around somewhere else.
+
 ## The commands
 
 ```bash
