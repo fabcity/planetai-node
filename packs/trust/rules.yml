@@ -85,36 +85,53 @@
 
 # ---------------------------------------------------------------- two sensors in the same place, different levels
 - id: peer_disagreement
-  level: warn
-  cooldown_minutes: 1440
+  level: info
+  cooldown_minutes: 10080
   sql: |
     WITH seasoned AS (
       SELECT sensor_id FROM readings
       WHERE ts > now() - interval '30 days'
       GROUP BY 1 HAVING min(ts) < now() - interval '7 days'),
+    -- An absolute floor per metric, because a ratio alone says nothing in clean air. Node #1's pm1 means on
+    -- 7 September were 16.3, 6.9 and 7.3 ug/m3; at 7 ug/m3 the 0.85-1.15 band is +/-1 ug/m3, which is the integer
+    -- resolution of a Plantower-class sensor and ten times inside its stated accuracy at low concentration. Two
+    -- identical units in clean air disagree by more than that most days, and this rule said so twice tonight.
+    -- Where each number comes from: 5 ug/m3 is Plantower's own +/-10 ug/m3 (or +/-10%) below 100 ug/m3, halved;
+    -- 2 C and 5 points of humidity are what two boxes a few metres apart differ by on a still afternoon with the
+    -- SHT31's +/-0.3 C and +/-2% on top of siting; 0.3 kPa is 3 hPa, and pressure is stored in kPa here
+    -- (config/channels.yml). These are instrument facts, not statistics from one week at one house. A metric with
+    -- no floor falls back to 15% of the pair's own mean, which is the relative band restated, so a metric nobody
+    -- has thought about yet is never louder than the band already allows.
+    floors AS (
+      SELECT metric, floor_abs FROM (VALUES
+        ('pm1', 5.0), ('pm25', 5.0), ('pm10', 5.0),
+        ('temp', 2.0), ('humidity', 5.0), ('pressure', 0.3)) AS v(metric, floor_abs)),
+    -- Seven days, not 24 hours, and at least 100 of the week's 168 hourly buckets from both units: a day of two
+    -- boxes is a statement about the day.
     ambient AS (
       SELECT r.sensor_id, s.name, s.lat, s.lon, r.metric, avg(r.mean) AS mean
       FROM readings_1h r JOIN sensors s USING (sensor_id) JOIN seasoned USING (sensor_id)
       JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
       WHERE s.local AND s.kind = 'sensor' AND c.role = 'ambient' AND c.comparable
-        AND s.lat IS NOT NULL AND r.bucket > now() - interval '24 hours'
-      GROUP BY 1, 2, 3, 4, 5 HAVING count(*) >= 12),
+        AND s.lat IS NOT NULL AND r.bucket > now() - interval '7 days'
+      GROUP BY 1, 2, 3, 4, 5 HAVING count(*) >= 100),
     -- collocated: within 50 m of each other. Equirectangular, which is exact enough at this distance.
+    -- One row per pair, not two: a.sensor_id < b.sensor_id. A != B and B != A are one fact, and the v0.35 form
+    -- sent both. The cooldown is keyed on the pair, so the fact is held for a week rather than each unit's half
+    -- of it being held separately.
     pairs AS (
-      SELECT a.sensor_id, a.name, a.metric, a.mean AS mine, b.mean AS theirs
+      SELECT a.sensor_id || '|' || b.sensor_id AS sensor_id, a.name AS name_a, b.name AS name_b, a.metric,
+             a.mean AS mean_a, b.mean AS mean_b
       FROM ambient a JOIN ambient b
-        ON b.metric = a.metric AND b.sensor_id <> a.sensor_id
+        ON b.metric = a.metric AND a.sensor_id < b.sensor_id
        AND sqrt(power((b.lat - a.lat) * 111320, 2)
-              + power((b.lon - a.lon) * 111320 * cos(radians((a.lat + b.lat) / 2)), 2)) <= 50),
-    ratio AS (
-      SELECT sensor_id, name, metric, mine / nullif(percentile_cont(0.5) WITHIN GROUP (ORDER BY theirs), 0) AS r
-      FROM pairs GROUP BY 1, 2, 3, mine)
-    -- a sensor disagreeing on several metrics at once still gets one row per metric here; ORDER BY picks the
-    -- worst one to fire, because the cooldown below is keyed on (rule_id, sensor_id), not metric.
-    SELECT sensor_id, name, metric, round(r::numeric, 2) AS r
-    FROM ratio
-    WHERE r < 0.85 OR r > 1.15
-    ORDER BY abs(r - 1) DESC
+              + power((b.lon - a.lon) * 111320 * cos(radians((a.lat + b.lat) / 2)), 2)) <= 50)
+    SELECT p.sensor_id, p.name_a, p.name_b, p.metric,
+           round(p.mean_a::numeric, 1) AS a, round(p.mean_b::numeric, 1) AS b
+    FROM pairs p LEFT JOIN floors f USING (metric)
+    WHERE (p.mean_a / nullif(p.mean_b, 0) < 0.85 OR p.mean_a / nullif(p.mean_b, 0) > 1.15)
+      AND abs(p.mean_a - p.mean_b) >= coalesce(f.floor_abs, 0.15 * (p.mean_a + p.mean_b) / 2)
+    ORDER BY abs(p.mean_a - p.mean_b) DESC
   message:
-    en: "⚖️ Two sensors in the same place disagree at {name}.\n\nIts {metric} sits well above or below its neighbours a few metres away. They see the same air, so one of them is reading off, or it is sitting closer to something the others cannot smell.\n\n👉 Swap the two units' positions for a day. If the gap follows the box it is the sensor; if it stays with the spot it is the siting."
-    id: "⚖️ Dua sensor di tempat yang sama tidak sepakat di {name}.\n\nNilai {metric}-nya jauh di atas atau di bawah tetangganya yang hanya beberapa meter. Mereka menghirup udara yang sama, jadi salah satunya membaca keliru, atau ia lebih dekat ke sesuatu yang tidak tercium yang lain.\n\n👉 Tukar posisi dua unit itu selama sehari. Kalau selisihnya ikut kotaknya, sensornya; kalau tetap di tempatnya, penempatannya."
+    en: "\u2696\uFE0F {name_a} and {name_b} disagree about {metric}: {a} against {b} over the last week.\n\nThey are a few metres apart and see the same air, so one of them is reading off, or one is sitting closer to something the other cannot smell.\n\n\U0001F449 Swap the two units' positions for a day. If the gap follows the box it is the sensor; if it stays with the spot it is the siting."
+    id: "\u2696\uFE0F {name_a} dan {name_b} tidak sepakat soal {metric}: {a} berbanding {b} selama seminggu terakhir.\n\nJaraknya hanya beberapa meter dan udaranya sama, jadi salah satunya membaca keliru, atau salah satunya lebih dekat ke sesuatu yang tidak tercium yang lain.\n\n\U0001F449 Tukar posisi dua unit itu selama sehari. Kalau selisihnya ikut kotaknya, sensornya; kalau tetap di tempatnya, penempatannya."

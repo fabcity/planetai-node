@@ -207,6 +207,9 @@ assert not _os.path.exists("packs/trust/cells.yml"), "a trust score is never an 
 assert "60" in _trust["coverage_low"]["sql"], "coverage_low's floor is 60% of the last 7 days"
 assert "50" in _trust["peer_disagreement"]["sql"], "collocation is 50 m"
 assert "0.85" in _trust["peer_disagreement"]["sql"] and "1.15" in _trust["peer_disagreement"]["sql"]
+# ... and a ratio is not enough: at 7 ug/m3 that band is +/-1 ug/m3, under a Plantower's own resolution (v0.40).
+assert "('pm1', 5.0)" in _trust["peer_disagreement"]["sql"], "pm needs an absolute floor of 5 ug/m3 as well as the band"
+assert "a.sensor_id < b.sensor_id" in _trust["peer_disagreement"]["sql"], "A != B and B != A are one fact, one row"
 assert "channel_roles" in _trust["peer_disagreement"]["sql"], "peer comparison is ambient-only, by role"
 # channel_dead: six flat hours out of the last 24, latest bucket flat too, is what dusk looks like on any light
 # channel — node #1's fired every evening (v0.40). Frozen means a whole day: every bucket of the last 24 present
@@ -322,3 +325,20 @@ else:
     _floor = trustdb.week(trustdb.readings("sc-19874"), _at) + trustdb.flat("sc-19874", "light", 0, 26, _at)
     assert trustdb.Node(_floor).run(_trust["channel_dead"], _at) == [], "0 lux for a day is night, not a dead sensor"
     print("channel_dead: a day on one number, and a floor of 0 is not a freeze")
+
+    # peer_disagreement, over the five kits' real pm1. Tonight it fired twice for one fact — Ungasan Kit at
+    # 7.4 ug/m3 against BAYU NEW ENCLOSURE at 5.4, and then the same pair the other way round — where a ratio of
+    # 1.37 is two units 30 m apart differing by 2 ug/m3, inside a Plantower's resolution. Over the week the pack
+    # now asks for: the SENX unit's 16 against its two neighbours' 7 is a real disagreement and is named once per
+    # pair, naming both units; the 6.8-against-7.2 pair is not named; the 7.4-against-5.4 pair is not either,
+    # because the difference is under the 5 ug/m3 floor however far outside the band the ratio sits.
+    _peers = trustdb.Node(trustdb.week(_real, _at)).run(_trust["peer_disagreement"], _at)
+    assert [r["sensor_id"] for r in _peers] == ["sc-19849|sc-19880", "sc-19849|sc-19897"], \
+        f"one row per pair, the low pair and the sub-resolution pair silent, got {_peers}"
+    for _r in _peers:
+        assert _r["name_a"] == "SENX ALL IN ONE" and _r["name_b"] in ("Bayu 2 - Indoor", "NEW FIRMWARE TEST")
+        assert _trust["peer_disagreement"]["message"]["en"].format(**_r).startswith("⚖️ SENX ALL IN ONE and ")
+    # Twenty-four hours of the same five kits says nothing at all: the rule no longer looks at 24 hours.
+    assert trustdb.Node(trustdb.day(_real)).run(_trust["peer_disagreement"], _at) == [], \
+        "a day of two boxes is a statement about the day"
+    print("peer_disagreement: a week, an absolute floor, and one alert per pair")
