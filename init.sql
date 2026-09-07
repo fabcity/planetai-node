@@ -140,3 +140,9 @@ CREATE TABLE IF NOT EXISTS reports (
 );
 CREATE INDEX IF NOT EXISTS reports_due ON reports (due_local DESC);
 INSERT INTO schema_version (version) VALUES ('0.22') ON CONFLICT DO NOTHING;
+
+-- A cell's value is in the report only to say whether it moved, so the row that carried it has to keep it: nothing
+-- else on the node stores what `Environmental|Community` was six hours ago. Additive, like every column added after
+-- its table shipped.
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS cells JSONB;
+INSERT INTO schema_version (version) VALUES ('0.23') ON CONFLICT DO NOTHING;
