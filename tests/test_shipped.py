@@ -124,3 +124,10 @@ assert "planetai run earth fetch" in gui, "gui: the empty state must name the co
 _ui = re.search(r"^def ui\(\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
 assert "no-cache" in _ui, "the dashboard route must send a cache-control header, or an update never reaches an open browser"
 print("the dashboard is not cacheable")
+# v0.33.7 — one unusual OpenStreetMap object must not blank the plan. A poi mapped as an open way made
+# drawPlan destructure a number and the kilometre stayed empty, silently, because drawPlan() is not awaited.
+_gui = gui
+assert "const firstPt=g=>" in _gui, "the plan needs a geometry-agnostic first point for its poi markers"
+assert "px(firstPt(g))" in _gui, "the poi marker must not index coordinates[0][0]"
+assert "}catch(e){skipped++;}" in _gui, "the plan's feature loop must survive one undrawable feature"
+print("the plan survives real OpenStreetMap geometry")

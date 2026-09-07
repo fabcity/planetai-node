@@ -605,11 +605,20 @@ async function drawPlan(){
   const px=([lon,lat])=>[500+(lon-clon)*111320*Math.cos(clat*Math.PI/180)*S, 500-(lat-clat)*111320*S];
   const ring=r=>r.map(px).map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ');
   const poly=g=>g.type==='Polygon'?`M${ring(g.coordinates[0])}Z`:g.type==='MultiPolygon'?g.coordinates.map(pg=>`M${ring(pg[0])}Z`).join(' '):'';
-  let L={building:'',sat:'',road:'',green:'',poi:''}, counts={building:0,sat:0,road:0,green:0,poi:0};
-  for(const f of F){const k=f.properties.kind,g=f.geometry; if(!L.hasOwnProperty(k))continue; counts[k]++;
-    if(k==='road'&&g.type==='LineString'){const w=/^(primary|secondary|trunk)$/.test(f.properties.highway)?2.2:/^(tertiary|residential|unclassified)$/.test(f.properties.highway)?1.4:.6;L.road+=`<polyline points="${ring(g.coordinates)}" stroke-width="${w}"/>`;}
-    else if(k==='poi'){const c=g.type==='Point'?px(g.coordinates):px(g.coordinates[0][0]);L.poi+=`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${USE_COLORS[f.properties.category]||'#8A8378'}" data-name="${esc(f.properties.name||f.properties.category||'')}"><title>${esc(f.properties.name||'')}${f.properties.name?' · ':''}${esc(f.properties.category||'')}</title></circle>`;}
-    else if(g.type==='Polygon'||g.type==='MultiPolygon'){L[k]+=`<path d="${poly(g)}"/>`;}}
+  let L={building:'',sat:'',road:'',green:'',poi:''}, counts={building:0,sat:0,road:0,green:0,poi:0}, skipped=0;
+  // The first [lon,lat] of any geometry, however deeply nested. A poi is usually a Point, but OpenStreetMap also
+  // carries amenities as open ways — Garuda Wisnu Kencana, inside node #1's kilometre, is one — and for a
+  // LineString `coordinates[0][0]` is a number, not a pair. Destructuring that number threw, and because
+  // drawPlan() is called without an await the rejection escaped refresh()'s catch: no plan, no message, no clue.
+  const firstPt=g=>{let c=g&&g.coordinates; while(Array.isArray(c)&&Array.isArray(c[0]))c=c[0]; return c;};
+  for(const f of F){const k=f.properties.kind,g=f.geometry; if(!L.hasOwnProperty(k))continue;
+   try{
+    if(k==='road'&&g.type==='LineString'){const w=/^(primary|secondary|trunk)$/.test(f.properties.highway)?2.2:/^(tertiary|residential|unclassified)$/.test(f.properties.highway)?1.4:.6;L.road+=`<polyline points="${ring(g.coordinates)}" stroke-width="${w}"/>`;counts[k]++;}
+    else if(k==='poi'){const c=px(firstPt(g));L.poi+=`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${USE_COLORS[f.properties.category]||'#8A8378'}" data-name="${esc(f.properties.name||f.properties.category||'')}"><title>${esc(f.properties.name||'')}${f.properties.name?' · ':''}${esc(f.properties.category||'')}</title></circle>`;counts[k]++;}
+    else if(g.type==='Polygon'||g.type==='MultiPolygon'){L[k]+=`<path d="${poly(g)}"/>`;counts[k]++;}
+    else{skipped++;}                                  // a shape this plan has no way to draw (a building mapped as a node)
+   }catch(e){skipped++;}                              // and one unusual object must never cost the whole kilometre
+  }
   const on=k=>PLAN_OFF.has(k)?' style="display:none"':'';
   $('#plan').innerHTML=`<defs><clipPath id="pc"><circle cx="500" cy="500" r="${R*S}"/></clipPath></defs>
     <circle cx="500" cy="500" r="${R*S}" fill="rgba(244,236,226,.03)" stroke="rgba(244,236,226,.15)" stroke-width="1"/>
