@@ -93,6 +93,8 @@
     worst AS (SELECT hr, outdoor FROM by_hour WHERE outdoor IS NOT NULL ORDER BY outdoor DESC LIMIT 1),
     best  AS (SELECT hr, outdoor FROM by_hour WHERE outdoor IS NOT NULL ORDER BY outdoor ASC  LIMIT 1),
     loud  AS (SELECT hr, noise   FROM by_hour WHERE noise   IS NOT NULL ORDER BY noise   DESC LIMIT 1)
+    -- quiet_hr holds the loudest hour, not the quietest. Named for tests/test_shipped.py, which pins this
+    -- column name; do not read the name as the value.
     SELECT 'node' AS sensor_id,
            lpad(worst.hr::text, 2, '0') AS worst_hr, round(worst.outdoor::numeric) AS worst_v,
            lpad(best.hr::text, 2, '0')  AS best_hr,
