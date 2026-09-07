@@ -261,3 +261,40 @@ its path is in the session's scratchpad as `make_exhibit.py`. Say the word and i
 script in the pack.
 
 Copy the three files into a tracked directory under docs/ only if you want them in the repo.
+
+---
+
+## Addendum, 7 September 2026 — moving a node (v0.33.4)
+
+Tomas asked how to regenerate the 1 km plan after editing `NODE_LAT` / `NODE_LON`. There is no stored drawing: the
+dashboard builds it from `/place/geojson`, so the answer is `planetai restart`, `planetai run place refresh`, reload
+the page. Answering it turned up the same bug in both location packs, and the rehearsal turned up two more instances.
+
+- `place` decided staleness from the radius and the age only, and `place_runs` never recorded its centre. A moved
+  node served the previous neighbourhood for up to thirty days while computing distances from the new point.
+- `earth` re-resolved its tiles on a move but skipped every cached year as "already cached" (the files are named by
+  year), so it kept comparing the previous square, with `meta.json` claiming the new one.
+- Then: a partial re-fetch left one year from each square and `change` compared them (same pixel shape, so its only
+  check passed). And the old square's `change_*.json` stayed on disk, where `/earth`, the card and the Index cell
+  went on reading it.
+
+Both packs now record the point they were read around, treat a move as staleness, and drop what belonged to the
+abandoned square. A drift under 1% of the radius (floor 25 m) is not a move. Each pack carries its own copy of that
+rule; packs do not import each other.
+
+**Rehearsed on `pai-clean`** (Santiago → Poblenou → 800 m north → back to Santiago): the legacy path refetched and
+recorded its point (4,860 Santiago features became 8,803 Poblenou ones); an 11 m correction changed nothing; an
+813 m move logged `place: refreshing (the node moved 813 m)`; `earth verify` step 5 failed with
+`the cache was read around -33.43107, -70.60454, 11609697 m from this node` while the old step 6 still reported
+`10.00 x 10.00 km, asked for 10.00`; `earth fetch 2025` removed 2024 and the stale comparison, then re-read 50 MB.
+
+### Two things to know, neither introduced here
+
+1. **Postgres segfaulted three times on this bench**, on `INSERT INTO readings … ON CONFLICT DO NOTHING` (signal 11,
+   automatic recovery each time, no data lost), while PostGIS was writing 8,803 geometries from the move. 160,000
+   rows pushed through the same statement by hand afterwards produced no crash, and **node #1 has none in 14 hours**
+   on the same amd64 image. The difference is the emulator: this VM runs it under `qemu-user-static`, node #1 under
+   Colima. Read as a test-bench artifact, not a node finding — but if a tester on x86 or Colima ever reports
+   `server closed the connection unexpectedly`, this is the first place to look.
+2. **A move plus an unreachable Overpass means a retry every poll** until it lands (Overpass was 504-ing during the
+   rehearsal). That is how the age-based path has always behaved; it is not new, and the node keeps serving.
