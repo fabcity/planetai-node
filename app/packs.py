@@ -22,6 +22,7 @@ import yaml
 
 log = logging.getLogger("planetai.packs")
 PACKS_DIR = Path(os.getenv("PACKS_DIR", "/app/packs"))
+CORE_CHANNELS = Path(os.getenv("CHANNELS_PATH", "/app/config/channels.yml"))
 
 
 def _allow_code() -> bool:
@@ -87,6 +88,35 @@ def cells() -> list[dict]:
                 out.append(c)
         except Exception as e:  # noqa: BLE001
             log.warning("pack %s: bad cells.yml (%s)", d.name, e)
+    return out
+
+
+ROLES = ("ambient", "enclosure", "device_health", "derived", "index")
+
+
+def channels() -> list[dict]:
+    """Channel role declarations: core's own, then every enabled pack's. A pack may not redeclare a pair core has
+    already claimed; the first declaration wins and the duplicate is logged, so a merged pack cannot quietly
+    relabel PM2.5 as a vendor index."""
+    out, seen = [], set()
+    files = [(CORE_CHANNELS, "core")] + [(d / "channels.yml", d.name) for d in _enabled()]
+    for f, who in files:
+        if not f.exists():
+            continue
+        try:
+            decls = yaml.safe_load(f.read_text()) or []
+        except Exception as e:  # noqa: BLE001
+            log.warning("channels.yml in %s did not parse: %s", who, e); continue
+        for c in decls:
+            key = (c.get("source"), c.get("metric"))
+            if not all(key) or c.get("role") not in ROLES:
+                log.warning("%s: skipping channel declaration %r", who, c); continue
+            if key in seen:
+                log.warning("%s: %s/%s is already declared; keeping the first", who, *key); continue
+            seen.add(key)
+            out.append({"source": key[0], "metric": key[1], "role": c["role"],
+                        "comparable": bool(c.get("comparable", False)), "unit": c.get("unit"),
+                        "reference": c.get("reference"), "declared_by": who})
     return out
 
 

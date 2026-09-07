@@ -495,6 +495,26 @@ try:
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("bootstrap failed: %s", e)
 
+
+def load_channel_roles() -> int:
+    """Declarations are the file's, not the database's: replace the table on every start so a removed pack's
+    claims go with it."""
+    rows = packs.channels()
+    with db() as con, con.cursor() as cur:
+        cur.execute("DELETE FROM channel_roles")
+        cur.executemany(
+            """INSERT INTO channel_roles (source, metric, role, comparable, unit, reference, declared_by)
+               VALUES (%(source)s,%(metric)s,%(role)s,%(comparable)s,%(unit)s,%(reference)s,%(declared_by)s)""",
+            rows)
+    log.info("channel roles: %d declared", len(rows))
+    return len(rows)
+
+
+try:
+    load_channel_roles()
+except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 has no channel_roles table yet
+    log.warning("channel roles: %s", e)
+
 if MQTT_HOST:
     threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
 

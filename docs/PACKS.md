@@ -9,6 +9,7 @@ packs/<id>/
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
+  channels.yml  what a pack's own metrics ARE — ambient, enclosure, index, etc.
   README.md     where the thresholds come from, what the pack assumes
 ```
 
@@ -44,6 +45,20 @@ A cell:
 
 `state` is provenance, not confidence. `live` means measured here; `partial` means derived or a model; never claim `live`
 for a model.
+
+### Channel roles
+
+A pack that adds a metric says what it IS in `channels.yml`, keyed on `(source, metric)`:
+
+```yaml
+- { source: my-sensor, metric: co2, role: ambient, comparable: true, unit: "ppm" }
+```
+
+Five roles: `ambient` (the air, water or land at a place — comparable between sensors there), `enclosure` (the
+inside of the instrument's own box — a BME680 sealed inside a radio reports the box, not the street, so this is
+never averaged as ambient), `device_health` (the instrument talking about itself, e.g. battery), `derived`
+(computed by us from other readings), and `index` (a vendor's own composite number, never pooled with anyone
+else's). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
 
 ## Code packs
 

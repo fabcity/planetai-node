@@ -131,3 +131,20 @@ assert 'ALTER TABLE place_runs ADD COLUMN IF NOT EXISTS lat' in _src, "additive 
 assert 'for t in ("place_buildings_sat", "place_yearly")' in _src, "a move invalidates the satellite caches too"
 assert "SELECT run_at, radius_m, lat, lon FROM place_runs" in _src, "staleness must read the stored point"
 print("place move tests pass")
+
+# ---------------------------------------------------------------- channel role registry
+# The channel role registry. Integrity rules read roles, not metric names.
+# CORE_CHANNELS defaults to /app/config/channels.yml (the container mount); point it at the repo's own copy so
+# this test exercises the real, shipped file without needing a container.
+os.environ.setdefault("CHANNELS_PATH", "config/channels.yml")
+import packs as _packs
+_ch = _packs.channels()
+_by = {(c["source"], c["metric"]): c for c in _ch}
+assert _by[("smartcitizen", "pm25")]["role"] == "ambient" and _by[("smartcitizen", "pm25")]["comparable"] is True
+assert _by[("smartcitizen", "bme_iaq")]["role"] == "index", "a vendor index is never pooled"
+assert _by[("meshtastic", "temp")]["role"] == "enclosure", "a radio in a sealed case reports its own box"
+assert _by[("meshtastic", "battery_pct")]["role"] == "device_health"
+assert _by[("smartcitizen", "pm25")]["declared_by"] == "core"
+assert all(c["role"] in ("ambient", "enclosure", "device_health", "derived", "index") for c in _ch)
+assert len({(c["source"], c["metric"]) for c in _ch}) == len(_ch), "one declaration per source and metric"
+print(f"{len(_ch)} channel roles declared")
