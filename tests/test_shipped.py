@@ -211,3 +211,11 @@ _agent_src = open("app/agent.py").read()
 assert '_get("/trust")' in _agent_src, "health_check reads the same /trust the card reads, not its own recomputation"
 assert "frozen" in _agent_src.lower()
 print("the trust card and its health check are wired")
+
+# Task 8 review — /trust's frozen CTE dropped channel_dead's third condition (the kit itself still producing raw
+# readings in the last 2 hours). Without it, a sensor gone fully dark that happened to be flat before it died
+# reads as "1 channel frozen" on the card, and the health check's fix text calls it a kit that "still reports" —
+# both false for a sensor that is simply offline.
+assert "alive AS (\n          SELECT sensor_id, max(ts) AS kit_ts FROM readings\n          WHERE ts > now() - interval '2 hours'" in main, \
+    "/trust must join the same 'alive' CTE channel_dead uses (2-hour freshness gate), or a dead kit reads as a merely frozen channel"
+assert "JOIN alive a USING (sensor_id)" in main, "frozen_channels must be gated by the kit still being alive, not just by the flat hours"

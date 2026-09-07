@@ -74,13 +74,17 @@ def health_check() -> dict:
     chk("a backup in the last 2 days", fresh, "run `planetai backup` on the node and check `crontab -l | grep backup`")
     # judge each local sensor by whether its ambient channels are still moving, not by its timestamp: a dead
     # channel's kit keeps stamping fresh times over the same frozen value (see packs/trust/rules.yml, channel_dead)
-    trust = _get("/trust")
-    frozen = sorted({r["name"] or r["sensor_id"] for r in trust if r["frozen_channels"] > 0})
-    chk("no local sensor's ambient channel is frozen", not frozen,
-        f"{', '.join(frozen)} {'has' if len(frozen) == 1 else 'have'} a channel stuck on the same number for hours while the kit itself "
-        f"still reports. What this means: any reading or alert built from that channel is wrong; the rest of the kit and the rest of the "
-        f"node are unaffected. Most often one sensor inside the kit has died: power-cycle it. If the number stays frozen, replace that "
-        f"sensor — nothing it has recorded since it froze can be trusted.")
+    try:
+        trust = _get("/trust")
+    except Exception as e:  # noqa: BLE001 — this check's own fetch must not take down every other check below it
+        chk("no local sensor's ambient channel is frozen", False, f"/trust did not respond ({e}); check `planetai logs`")
+    else:
+        frozen = sorted({r["name"] or r["sensor_id"] for r in trust if r["frozen_channels"] > 0})
+        chk("no local sensor's ambient channel is frozen", not frozen,
+            f"{', '.join(frozen)} {'has' if len(frozen) == 1 else 'have'} a channel stuck on the same number for hours while the kit itself "
+            f"still reports. What this means: any reading or alert built from that channel is wrong; the rest of the kit and the rest of the "
+            f"node are unaffected. Most often one sensor inside the kit has died: power-cycle it. If the number stays frozen, replace that "
+            f"sensor — nothing it has recorded since it froze can be trusted.")
     if os.getenv("MQTT_HOST"):
         # judge the radios by their readings, not by in-memory packet counters that reset on every restart
         mesh = [r for r in _get("/stats") if r["sensor_id"].startswith("msh-")]
