@@ -56,6 +56,23 @@ the named places without hours, the unnamed streets, and writes `out/place-gaps.
 at the lab. StreetComplete asks the questions as you walk; Every Door adds places; iD traces buildings over Bing or Esri.
 Never from Google Maps or Google imagery. Edits reach the node within minutes: `planetai run place refresh`.
 
+## Moving a node
+
+Everything here is a circle around `NODE_LAT` / `NODE_LON`. There is no stored drawing: the dashboard builds the
+plan from `/place/geojson`, which reads the features in PostGIS. So a move is three steps, and the third one is the
+drawing:
+
+    # edit NODE_LAT and NODE_LON in .env (and NODE_TZ, NODE_CITY if the place changed)
+    planetai restart                  # the coordinates are read once, at start
+    planetai run place refresh        # replaces every feature with the ones around the new point
+
+Then reload the dashboard; the plan is held in the page for its lifetime, so the 60-second refresh will not redraw it.
+
+The node also notices by itself: the next poll sees that the stored run was centred somewhere else and refetches,
+and it clears the satellite footprints and the yearly series, which described the old circle. A correction smaller
+than 1% of the radius (never less than 25 m) is not treated as a move, so retyping a decimal costs no fetch.
+`planetai run place verify` names the mismatch while it lasts.
+
 ## Next source
 
 Overture Maps: monthly releases; diff two and see what opened, closed, was built. A second fetch into the same table.

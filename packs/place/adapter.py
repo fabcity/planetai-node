@@ -77,6 +77,10 @@ CREATE INDEX IF NOT EXISTS place_features_kind ON place_features (kind);
 CREATE TABLE IF NOT EXISTS place_runs (
   run_at TIMESTAMPTZ PRIMARY KEY, radius_m INT NOT NULL, n_features INT NOT NULL, source TEXT NOT NULL
 );
+-- where the fetch was centred. Without it nothing could tell that the node had moved and every geometry below
+-- described the previous address. Additive for nodes that ran before v0.33.4.
+ALTER TABLE place_runs ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+ALTER TABLE place_runs ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
 """
 
 
@@ -127,6 +131,25 @@ def _kind(tags: dict, geom: dict) -> str:
     return "other"
 
 
+# Everything this pack stores is a circle around one point, so changing NODE_LAT/NODE_LON in .env makes the whole
+# cache describe somewhere else. The tolerance keeps a corrected decimal from costing an Overpass fetch: 1% of the
+# radius, never under 25 m (0.0002 degrees of latitude is 22 m, the scale of a hand-typed correction).
+MOVE_FRAC, MOVE_MIN_M = 0.01, 25.0
+
+
+def metres(lat_a: float, lon_a: float, lat_b: float, lon_b: float) -> float:
+    """Metres between two points, flat-earth approximation: exact enough well inside one degree."""
+    dy = (lat_b - lat_a) * 111320.0
+    dx = (lon_b - lon_a) * 111320.0 * math.cos(math.radians((lat_a + lat_b) / 2))
+    return math.hypot(dx, dy)
+
+
+def moved(lat: float, lon: float, prev_lat, prev_lon, radius_m: int) -> bool:
+    if prev_lat is None or prev_lon is None:
+        return False                      # nothing to compare with; fetch() treats a run with no point as stale
+    return metres(prev_lat, prev_lon, lat, lon) > max(radius_m * MOVE_FRAC, MOVE_MIN_M)
+
+
 def refresh(con, hc, lat: float, lon: float, radius: int) -> int:
     # Overpass answers 406 to anonymous clients; say who we are, and where to write
     r = hc.post(OVERPASS, data={"data": QUERY.format(r=radius, lat=lat, lon=lon)}, timeout=120,
@@ -145,7 +168,8 @@ def refresh(con, hc, lat: float, lon: float, radius: int) -> int:
         cur.execute("DELETE FROM place_features")
         cur.executemany("""INSERT INTO place_features (osm_id, osm_type, kind, category, name, tags, geom)
                            VALUES (%s,%s,%s,%s,%s,%s, ST_SetSRID(ST_GeomFromGeoJSON(%s),4326)) ON CONFLICT (osm_id) DO NOTHING""", rows)
-        cur.execute("INSERT INTO place_runs (run_at, radius_m, n_features, source) VALUES (now(), %s, %s, 'overpass')", (radius, len(rows)))
+        cur.execute("INSERT INTO place_runs (run_at, radius_m, n_features, source, lat, lon) VALUES (now(), %s, %s, 'overpass', %s, %s)",
+                    (radius, len(rows), lat, lon))
     con.commit()
     log.info("place: %d features within %d m from Overpass", len(rows), radius)
     return len(rows)
@@ -177,9 +201,34 @@ def fetch(hc):
     with psycopg.connect(os.environ["DATABASE_URL"]) as con:
         with con.cursor() as cur:
             cur.execute(DDL); con.commit()
-            cur.execute("SELECT run_at, radius_m FROM place_runs ORDER BY run_at DESC LIMIT 1"); last = cur.fetchone()
-        stale = last is None or last[1] != radius or last[0] < datetime.now(timezone.utc) - timedelta(days=days)
-        if stale:
+            cur.execute("SELECT run_at, radius_m, lat, lon FROM place_runs ORDER BY run_at DESC LIMIT 1"); last = cur.fetchone()
+        # Why a refresh happens, said out loud: the log line is how an operator who moved a node sees that the
+        # features followed. A move is the one reason that also invalidates the satellite caches below.
+        why, point_moved = None, False
+        if last is None:
+            why = "first run"
+        elif last[1] != radius:
+            why = f"radius {last[1]} to {radius} m"
+        elif last[2] is None or last[3] is None:
+            why = "the stored run did not record where it was fetched"
+        elif moved(lat, lon, last[2], last[3], radius):
+            why, point_moved = f"the node moved {metres(last[2], last[3], lat, lon):.0f} m", True
+        elif last[0] < datetime.now(timezone.utc) - timedelta(days=days):
+            why = f"older than {days} days"
+        if why:
+            log.info("place: refreshing (%s)", why)
+            if point_moved:
+                # These two tables hold the satellite's view of the OLD circle and are keyed by nothing but this
+                # node. Only the Earth Engine step below refills them, and a node without a key has none: keeping
+                # the rows would draw the previous neighbourhood's footprints around the new point. Names are
+                # literals from this tuple, never input.
+                with con.cursor() as cur:
+                    for t in ("place_buildings_sat", "place_yearly"):
+                        cur.execute("SELECT to_regclass(%s) IS NOT NULL", (t,))
+                        if cur.fetchone()[0]:
+                            cur.execute(f"DELETE FROM {t}")
+                            log.info("place: cleared %s (it described the previous point)", t)
+                con.commit()
             refresh(con, hc, lat, lon, radius)
             # the satellite's buildings, if Earth Engine is configured; a missing key is logged once, never fatal
             try:

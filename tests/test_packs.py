@@ -99,3 +99,35 @@ eepack._state["last"] = 0
 assert eepack.fetch(None) == ([], []) and eepack._state["warned"]
 
 print("all pack tests pass")
+
+# ---------------------------------------------------------------- place: a node that moved
+# Everything the place pack stores is a circle around one point, and the staleness test used to look only at the
+# radius and the age. Change NODE_LAT/NODE_LON in .env and the node kept the previous neighbourhood's geometry for
+# up to PLACE_REFRESH_DAYS while computing "nearest clinic" from the new point to the old features.
+_pg = types.ModuleType("psycopg"); _pg.connect = lambda *a, **k: None
+_pgj = types.ModuleType("psycopg.types.json"); _pgj.Jsonb = dict
+_pgt = types.ModuleType("psycopg.types"); _pgt.json = _pgj; _pg.types = _pgt
+sys.modules.setdefault("psycopg", _pg); sys.modules.setdefault("psycopg.types", _pgt); sys.modules.setdefault("psycopg.types.json", _pgj)
+place = load("packs/place/adapter.py", "place_adapter")
+
+BALI = (-8.8271, 115.15709)
+assert round(place.metres(*BALI, BALI[0] + 0.001, BALI[1])) == 111, "one thousandth of a degree of latitude is 111 m"
+assert round(place.metres(41.4036, 2.2033, 41.4036, 2.2043)) == 83, "longitude shrinks with the cosine of latitude"
+assert place.metres(*BALI, *BALI) == 0.0
+
+# the tolerance: 1% of the radius, never under 25 m, so a hand-typed decimal is not a refetch
+assert not place.moved(BALI[0] + 0.0002, BALI[1], *BALI, 1000), "22 m is a typed correction, not a move"
+assert place.moved(BALI[0] + 0.0005, BALI[1], *BALI, 1000), "56 m at a 1 km radius is a move"
+assert not place.moved(BALI[0] + 0.0005, BALI[1], *BALI, 10000), "56 m of a 10 km circle is not"
+assert place.moved(BALI[0] + 0.002, BALI[1], *BALI, 10000), "222 m of a 10 km circle is"
+assert place.moved(41.4036, 2.2033, *BALI, 1000), "Bali to Poblenou is a move by any measure"
+# a run recorded before v0.33.4 has no point; fetch() treats that as stale rather than guessing
+assert not place.moved(*BALI, None, None, 1000)
+assert place.MOVE_MIN_M == 25.0 and place.MOVE_FRAC == 0.01
+# the reason a refresh happened has to reach the log, and the satellite caches have to be cleared on a move
+_src = open("packs/place/adapter.py").read()
+assert "place_runs (run_at, radius_m, n_features, source, lat, lon)" in _src, "the run must record its point"
+assert 'ALTER TABLE place_runs ADD COLUMN IF NOT EXISTS lat' in _src, "additive for nodes that ran before"
+assert 'for t in ("place_buildings_sat", "place_yearly")' in _src, "a move invalidates the satellite caches too"
+assert "SELECT run_at, radius_m, lat, lon FROM place_runs" in _src, "staleness must read the stored point"
+print("place move tests pass")
