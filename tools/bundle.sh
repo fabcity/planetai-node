@@ -10,9 +10,9 @@ mkdir -p "$OUT"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/planetai-node"
 # everything git tracks, minus what a tester must not receive or does not need
-git ls-files -z | grep -zvE '^(\.github/|tools/(package|release|bundle)\.sh|tools/check_|tests/)' \
+git ls-files -z | grep -zvE '^(\.github/|tools/(package|release|bundle)\.sh|tools/check_|tests/|docs/design/audit/)' \
   | xargs -0 -I{} cp --parents {} "$TMP/planetai-node/" 2>/dev/null \
-  || git ls-files | grep -vE '^(\.github/|tools/(package|release|bundle)\.sh|tools/check_|tests/)' \
+  || git ls-files | grep -vE '^(\.github/|tools/(package|release|bundle)\.sh|tools/check_|tests/|docs/design/audit/)' \
      | while read -r f; do mkdir -p "$TMP/planetai-node/$(dirname "$f")"; cp "$f" "$TMP/planetai-node/$f"; done
 echo "$VER" > "$TMP/planetai-node/VERSION"
 mkdir -p "$TMP/planetai-node/out" && cp out/.gitkeep "$TMP/planetai-node/out/" 2>/dev/null || true
