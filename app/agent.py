@@ -126,10 +126,32 @@ def readings(sensor_id: str, metric: str, hours: int = 24) -> dict:
 
 
 @mcp.tool()
-def daily_report(kind: str = "morning") -> str:
-    """The node's own morning or evening report: what the night or the day did, what is still waiting for a decision.
-    The same text the node sends on Telegram at its scheduled hours. kind: morning | evening."""
-    return _get(f"/briefing?kind={kind}")
+def report_latest() -> dict:
+    """The last report the node wrote: its text, when, how many hours it covered, whether quiet hours held it, and who
+    wrote it (`rung` is `node` for the node's own). The same words the household read on Telegram."""
+    return _get("/report/latest")
+
+
+@mcp.tool()
+def report_now(agent: str = "agent") -> dict:
+    """Write and send a report right now, whatever the hour. Use it when someone asks how things are going and wants
+    the report rather than an answer. It does not take the next scheduled report's place."""
+    r = httpx.post(API + "/report/now", headers=_admin_headers(agent), timeout=180)
+    r.raise_for_status()
+    return r.json()
+
+
+@mcp.tool()
+def report_bundle(hours: int = 6) -> dict:
+    """Every number the node has about the last N hours, as one document: each sensor and metric with its min, max,
+    mean, trend and how unusual it is against the same hours of the previous week; where everything stands now; the
+    sea, weather, satellite air, map and land; the alerts and which are unanswered; the quiet sensors; rho; the Index
+    cells. This is what a report is written from — use it to answer a question about a stretch of time rather than a
+    moment, and never write a number that is not in it."""
+    r = httpx.get(API + f"/report/bundle?hours={min(max(int(hours), 1), 168)}",
+                  headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}"}, timeout=120)
+    r.raise_for_status()
+    return r.json()
 
 
 @mcp.tool()
