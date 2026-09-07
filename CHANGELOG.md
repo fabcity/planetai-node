@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.33.5 — 2026-09-07 — the kilometre came back
+
+The plan of the kilometre disappeared from a dashboard and stayed gone. Nothing was wrong with the node: it was
+serving 4,906 features for its new point in 1.3 seconds.
+
+- **The plan band no longer hides itself in silence.** One failed or interrupted `/place/geojson` was cached as
+  "no features", and because the cache was then set, nothing refetched for the life of the page — the band vanished
+  until a manual reload, with no message. A node whose coordinates had just changed was the way in: the refetch
+  takes a while, and a page opened during it never recovered. Now the band stays and says which of the three things
+  happened, and a failure is retried on the next refresh. A node whose place pack has never run keeps it hidden.
+- **The dashboard no longer scrolls sideways on a phone.** The five buttons of the view switcher are 449 px wide
+  with no shrink, so a 375 px screen slid the whole page. The row scrolls inside itself now. Present since v0.28;
+  the beta review's "no overflow at 375/768/1440" was a false pass.
+- The plan's caption said "1 buildings on the map. Uses: ." where a place has no mapped uses.
+
 ## v0.33.4 — 2026-09-07 — moving a node
 
 Both location packs kept their caches when the node's coordinates changed. Found by asking how to regenerate the
