@@ -1,8 +1,10 @@
 """planetai-node. One process:
   poll sources → postgres   (every POLL_SECONDS)
   run rules.yml (SQL) → telegram/log   (every 60s, cooldown enforced in SQL against the alerts table)
+  write one report every REPORT_EVERY hours from REPORT_ANCHOR, in local time; the `reports` row is the lock
   push hourly aggregates to PARENT_API_URL if set   (every hour)
   answer HTTP: /health /sensors /readings /stats /observations /alerts /aggregates /cells /rho /packs
+              /report/latest · /report/bundle (read-only token) · POST /report/now (admin token)
               POST /aggregates (parent side, token) · POST /actions (ρ) · POST /readings (downstream contributors, admin token)
 """
 from __future__ import annotations
@@ -28,6 +30,7 @@ import bootstrap
 import agent
 import index
 import packs
+import report
 import settings
 import sources
 
@@ -283,15 +286,6 @@ def _hours(key: str, default: str) -> list[int]:
     return [int(x) for x in (settings.get(key, default) or default).replace(" ", "").split(",") if x.strip().isdigit()]
 
 
-def _due(cur, rule_id: str, hours: list[int], window_min: int = 20) -> bool:
-    """True at most once per scheduled local hour: within `window_min` of it, and nothing sent for this rule since."""
-    now = _local_now()
-    if not any(now.hour == h and now.minute < window_min for h in hours):
-        return False
-    cur.execute("SELECT 1 FROM alerts WHERE rule_id=%s AND ts > now() - interval '6 hours' LIMIT 1", (rule_id,))
-    return cur.fetchone() is None
-
-
 def _quiet(level: str) -> bool:
     """During quiet hours only act-level alerts go out; the rest wait for the next briefing. 22:00-06:00 by default."""
     if settings.get("QUIET_HOURS", "1") != "1" or level == "act":
@@ -309,74 +303,69 @@ def act_hint(alert_id) -> str:
     return f"/act {alert_id}" if bot else f"planetai act {alert_id}"
 
 
-def briefing(kind: str) -> str:
-    """The morning and evening report: what the node saw, what it said, what is still waiting. Built from the same data
-    the dashboard shows, so the two never disagree."""
-    loc = _local_now()
-    with db() as con, con.cursor() as cur:
-        cur.execute("""SELECT avg(mean_15m) FILTER (WHERE local AND indoor) AS inside,
-                              avg(mean_15m) FILTER (WHERE local AND NOT indoor) AS mine,
-                              avg(mean_15m) FILTER (WHERE NOT local AND kind='sensor') AS street
-                       FROM stats WHERE metric='pm25' AND silent_minutes < 120""")
-        a = cur.fetchone() or {}
-        cur.execute("""SELECT max(mean_15m) AS t, avg(mean_15m) AS avg_t FROM stats WHERE metric='temp' AND local AND indoor AND silent_minutes < 120""")
-        t = cur.fetchone() or {}
-        cur.execute("""SELECT count(*) AS n, count(*) FILTER (WHERE level='act') AS act FROM alerts
-                       WHERE ts > now() - interval '12 hours' AND rule_id NOT LIKE 'briefing%%'""")
-        fired = cur.fetchone() or {}
-        cur.execute("""SELECT id, text FROM alerts a WHERE level='act' AND ts > now() - interval '24 hours'
-                       AND NOT EXISTS (SELECT 1 FROM actions x WHERE x.alert_id=a.id) ORDER BY ts DESC LIMIT 3""")
-        waiting = cur.fetchall()
-        cur.execute("SELECT count(*) AS n FROM sensors s WHERE s.local AND NOT EXISTS (SELECT 1 FROM stats t WHERE t.sensor_id=s.sensor_id AND t.silent_minutes < 180)")
-        quiet_sensors = (cur.fetchone() or {}).get("n", 0)
-    inside, mine, street = a.get("inside"), a.get("mine"), a.get("street")
-    out = mine if mine is not None else street
-    f = lambda v, d=0: "—" if v is None else f"{v:.{d}f}"  # noqa: E731
-    if kind == "morning":
-        head = f"🌅 Good morning. {loc:%A %d %B}."
-        body = f"Overnight the house held at {f(inside)} µg/m³" + (f", the street at {f(out)}" if out is not None else "") + "."
-        if t.get("t") is not None:
-            body += f" It got to {f(t['t'],1)} °C indoors."
-        tail = "Nothing needed doing overnight." if not fired.get("act") else f"{fired['act']} thing{'s' if fired['act']!=1 else ''} asked for a decision."
-    else:
-        head = f"🌇 Evening. {loc:%A %d %B}."
-        body = f"The house is at {f(inside)} µg/m³" + (f" against {f(out)} outside" if out is not None else "") + "."
-        if t.get("t") is not None:
-            body += f" The day peaked at {f(t['t'],1)} °C indoors."
-        tail = f"{fired.get('n',0)} message{'s' if fired.get('n',0)!=1 else ''} in the last twelve hours."
-    lines = [head, "", body, tail]
-    if quiet_sensors:
-        lines.append(f"📡 {quiet_sensors} of your sensors have gone quiet.")
-    if waiting:
-        lines.append("")
-        lines.append("Still waiting on you:")
-        for w in waiting:
-            lines.append(f"  · {w['text'].splitlines()[0][:90]}  →  {act_hint(w['id'])}")
-    lines.append("")
-    lines.append("Ask me anything about the air, the heat, the sea or what is around here.")
-    return "\n".join(lines)
+def _report_every() -> int:
+    """Hours between reports. A value the scheduler cannot honour (one that does not divide 24, so the rhythm walks
+    round the clock) falls back to six rather than making the node quiet: settings.set refuses those, but .env is
+    edited by hand."""
+    v = str(settings.num("REPORT_EVERY", 6))
+    return int(v) if v in settings.CHOICES["REPORT_EVERY"] else 6
 
 
-def run_briefings(cur) -> None:
-    """Two reports a day at local hours you choose. Everything else in the node is an interruption; these are the news."""
-    if settings.get("BRIEFINGS", "1") != "1":
+def _report_hours() -> list[int]:
+    return report.due_hours(_report_every(), settings.num("REPORT_ANCHOR", 6))
+
+
+def _held_hours(cur, due, every: int) -> int:
+    """How many hours of held reports this one has to fold in. The window a household last actually read ended at
+    the newest sent report; if none was ever sent, at the start of the oldest held one."""
+    cur.execute("""SELECT coalesce(max(due_local) FILTER (WHERE sent),
+                            min(due_local) FILTER (WHERE held_quiet) - make_interval(hours => %(every)s)) AS since
+                     FROM reports""", {"every": every})
+    return report.held_hours((cur.fetchone() or {}).get("since"), due, every)
+
+
+def run_report(cur) -> None:
+    """The node's one scheduled message. Called from run_rules, before the rules, every 60 seconds.
+
+    The `reports` row is the lock, not a timer in memory: the node writes the row for this local hour and will not
+    write a second one for the same hour, so a container that restarts inside the twenty-minute window does not
+    send the report twice. That is what the old briefings got wrong in the other direction — they asked `alerts`,
+    where every rule also writes.
+
+    A report due inside quiet hours is written and stored and not sent. The next one covers both windows, so the
+    night is in the morning's report rather than lost."""
+    now = _local_now()
+    if now.hour not in _report_hours() or now.minute >= 20:
         return
-    for kind, key, default in (("morning", "BRIEF_MORNING", "6"), ("evening", "BRIEF_EVENING", "18")):
-        rid = f"briefing/{kind}"
-        if _due(cur, rid, _hours(key, default)):
-            text = briefing(kind)
-            cur.execute("INSERT INTO alerts (rule_id, sensor_id, level, text) VALUES (%s,'node','info',%s) RETURNING id", (rid, text))
-            notify("info", text, force=True)
-            log.info("briefing sent: %s", kind)
+    due = now.replace(minute=0, second=0, microsecond=0)
+    cur.execute("SELECT 1 FROM reports WHERE due_local = %s LIMIT 1", (due,))
+    if cur.fetchone():
+        return
+
+    every = _report_every()
+    held = _held_hours(cur, due, every)
+    b = report.bundle(cur, every, held_hours=held)
+    text = report.sheet(b, LOCALE())
+    quiet = _quiet("info")
+    cur.execute("""INSERT INTO reports (due_local, window_hours, depth, rung, text, sheet, sent, held_quiet, cells)
+                   VALUES (%s, %s, 'sheet', 'node', %s, %s, %s, %s, %s) RETURNING id""",
+                (due, every + held, text, text, not quiet, quiet, Jsonb(b.get("cells") or [])))
+    rid = cur.fetchone()["id"]
+    if quiet:
+        log.info("report %d written and held for quiet hours: %d hours will be folded into the next one", rid, every + held)
+        return
+    notify("info", text)          # Telegram and Home Assistant. The mesh and Reticulum carry act alerts only.
+    ha_alert("info", text, None)
+    log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
 
 
 def run_rules() -> None:
     rules = load_rules()
     with db() as con, con.cursor() as cur:
         try:
-            run_briefings(cur)
+            run_report(cur)
         except Exception as e:  # noqa: BLE001
-            log.warning("briefing failed: %s", e)
+            log.warning("report failed: %s", e)
         for rule in rules:
             try:
                 rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
@@ -409,7 +398,7 @@ def run_rules() -> None:
                 ha_alert(level, text, alert_id)
 
 
-def notify(level: str, text: str, force: bool = False) -> None:
+def notify(level: str, text: str) -> None:
     icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
@@ -769,10 +758,50 @@ def earth_year_png(year: int = Query(..., ge=1900, le=2200)):
     return FileResponse(p, media_type="image/png", filename=p.name)
 
 
-@app.get("/briefing")
-def briefing_now(kind: str = "morning"):
-    """The report as it would be sent right now. The dashboard, the bot and the scheduled message all read this."""
-    return briefing("morning" if kind != "evening" else "evening")
+@app.get("/report/latest")
+def report_latest():
+    """The last report this node wrote, sent or held. What the dashboard's Here band shows, and what the MCP tool
+    `report_latest` returns. Open, like /alerts: it is the same sentences the household already received."""
+    rows = q("""SELECT id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason
+                  FROM reports ORDER BY due_local DESC NULLS LAST, id DESC LIMIT 1""")
+    return rows[0] if rows else {"text": None, "ts": None, "depth": None, "rung": None, "held_quiet": None,
+                                 "note": "no report yet; the first one lands at the next due hour"}
+
+
+@app.get("/report/bundle")
+def report_bundle(hours: int = Query(0, ge=0, le=168), authorization: str = Header("")):
+    """Every number the node has about a window, as one document — what a report is written from. Behind the
+    read-only token: this is more of the household's own data in one place than any other endpoint returns."""
+    _pull_ok(authorization)
+    with db() as con, con.cursor() as cur:
+        return report.bundle(cur, hours or _report_every())
+
+
+@app.post("/report/now")
+def report_now(authorization: str = Header("")):
+    """Write and send a report immediately, whatever the hour. `planetai report` and /report in Telegram call this.
+    It does not take the scheduled hour's place: no `due_local`, so the next due report still happens."""
+    _admin(authorization)
+    with db() as con, con.cursor() as cur:
+        every = _report_every()
+        b = report.bundle(cur, every)
+        text = report.sheet(b, LOCALE())
+        cur.execute("""INSERT INTO reports (window_hours, depth, rung, text, sheet, sent, held_quiet, cells)
+                       VALUES (%s, 'sheet', 'node', %s, %s, TRUE, FALSE, %s) RETURNING id""",
+                    (every, text, text, Jsonb(b.get("cells") or [])))
+        rid = cur.fetchone()["id"]
+    notify("info", text)
+    ha_alert("info", text, None)
+    log.info("report %d sent on request: %d hours, %d words", rid, every, len(text.split()))
+    return {"id": rid, "text": text, "depth": "sheet", "rung": "node", "sent": True}
+
+
+@app.get("/briefing", include_in_schema=False)
+def briefing_moved(kind: str = "morning"):
+    """Gone in v0.37. A dashboard left open in a browser through the update still asks for this; answer it with
+    where the report lives now rather than a 404 in a screen nobody is looking at."""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse("/report/latest", status_code=301)
 
 
 @app.get("/history")

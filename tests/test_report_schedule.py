@@ -10,6 +10,7 @@ import os, sys
 os.environ.setdefault("DATABASE_URL", "postgresql://x/x")
 sys.path.insert(0, "app")
 
+import report
 import settings as st
 
 # ---------------------------------------------------------------- what an updating node inherits
@@ -83,3 +84,43 @@ assert "BRIEF_HOUR" not in yaml.dump(_compose), "docker-compose.yml still hands 
 assert "datetime" not in _loop, "the agent container reads no wall clock: that is how the second schedule started"
 assert "daily_report" not in _loop, "a scheduled report is not something the bot asks the model for"
 print("the agent container answers when written to and sends nothing on a schedule")
+
+
+# ---------------------------------------------------------------- the due hours, every interval, across midnight
+import datetime as dt
+
+assert report.due_hours(6, 6) == [0, 6, 12, 18], "the default: four a day from six in the morning"
+assert report.due_hours(6, 0) == [0, 6, 12, 18]
+assert report.due_hours(6, 23) == [5, 11, 17, 23], "an anchor near midnight wraps and stays four hours apart"
+assert report.due_hours(24, 7) == [7], "once a day is one hour, the anchor's"
+assert report.due_hours(12, 7) == [7, 19]
+assert report.due_hours(3, 6) == [0, 3, 6, 9, 12, 15, 18, 21]
+assert report.due_hours(4, 23) == [3, 7, 11, 15, 19, 23]
+assert report.due_hours(8, 0) == [0, 8, 16]
+for every in (int(e) for e in st.CHOICES["REPORT_EVERY"]):
+    for anchor in range(24):
+        hrs = report.due_hours(every, anchor)
+        assert len(hrs) == 24 // every, (every, anchor, hrs)
+        assert anchor % 24 in hrs, "the anchor is always one of its own due hours"
+        assert len(set(hrs)) == len(hrs), "no hour is due twice"
+        gaps = [(b - a) % 24 or 24 for a, b in zip(hrs, hrs[1:] + hrs[:1])]   # once a day wraps to 24, not 0
+        assert set(gaps) == {every}, f"every gap is the interval, midnight included: {every}/{anchor} -> {gaps}"
+# an interval that does not divide 24 would walk round the clock; .env is edited by hand, so the scheduler catches it
+for bad in (0, 5, 7, 25, -6, None):
+    assert report.due_hours(bad, 6) == [0, 6, 12, 18], f"{bad} must fall back to six"
+print("the due hours are the anchor's, one interval apart, wrapping at midnight")
+
+# ---------------------------------------------------------------- the window a folded report covers
+H = dt.datetime(2026, 9, 8, 6, 0, tzinfo=dt.timezone.utc)
+assert report.held_hours(None, H, 6) == 0, "the first report ever covers its own interval and no more"
+assert report.held_hours(H - dt.timedelta(hours=6), H, 6) == 0, "nothing was held; nothing to fold"
+assert report.held_hours(H - dt.timedelta(hours=12), H, 6) == 6, "one report held: the night joins the morning"
+assert report.held_hours(H - dt.timedelta(hours=9), H, 3) == 6, "two held at three-hour intervals"
+# the bug this function replaced: summing the held reports' own windows counted the same night three times
+assert report.held_hours(H - dt.timedelta(hours=9), H, 3) != 3 + 6
+# a node that was off for a week reports two days, not a hundred and sixty-eight hours
+assert report.held_hours(H - dt.timedelta(days=7), H, 6) == report.MAX_WINDOW - 6
+assert report.held_hours(H - dt.timedelta(days=7), H, 6) + 6 == 48
+# and a clock that went backwards must not produce a negative window
+assert report.held_hours(H + dt.timedelta(hours=3), H, 6) == 0
+print("a folded report covers every unreported hour, once, and never more than two days")

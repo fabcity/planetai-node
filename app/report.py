@@ -62,6 +62,33 @@ MAX_BYTES = 64 * 1024
 CLEAN, ACT = 15.0, 35.0
 
 
+# Two days. A node that was off for a week does not open its first report with a hundred and sixty-eight hours of
+# history: the household wants to know about now, and the bundle would not fit anyway.
+MAX_WINDOW = 48
+
+
+def due_hours(every: int, anchor: int) -> list[int]:
+    """The local hours a report is due: the anchor, and every `every` hours after it, wrapping at midnight.
+
+    An interval that does not divide 24 would walk round the clock — 06:00 on Monday, 05:00 on Tuesday — so it
+    falls back to six rather than leaving the household with a rhythm nobody chose. settings.set refuses those
+    values, but .env is edited by hand and the scheduler is the last place that can catch it."""
+    if not every or every <= 0 or every > 24 or 24 % every:
+        every = 6
+    return sorted({(anchor % 24 + k * every) % 24 for k in range(24 // every)})
+
+
+def held_hours(since, due, every: int, cap: int = MAX_WINDOW) -> int:
+    """The hours a report must cover beyond its own interval, because the reports before it were held.
+
+    `since` is the end of the last window a household actually read. Counted as the span from there, not as the
+    sum of the held reports' windows: a held report already carries the hours held before it, so summing them
+    counts the same night twice, and by the third held report in a row the window was three times the truth."""
+    if not since:
+        return 0
+    return max(0, min(round((due - since).total_seconds() / 3600), cap) - every)
+
+
 def _tz() -> str:
     return os.getenv("NODE_TZ", "").strip() or "UTC"
 
