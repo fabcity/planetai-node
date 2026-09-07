@@ -42,7 +42,8 @@ header .wrap{padding-top:20px;padding-bottom:20px;display:flex;align-items:cente
 .mark{position:relative;width:22px;height:25px;flex:none}
 .mark .o{position:absolute;inset:0;background:var(--ink)}.mark .i{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--hue)}
 .brand b{font:800 17px var(--fd);letter-spacing:-.02em}.brand span.s{font-size:13px;color:var(--mute);white-space:nowrap}
-nav.views{display:flex;gap:5px;background:rgba(244,236,226,.07);border-radius:999px;padding:4px}
+nav.views{display:flex;gap:5px;background:rgba(244,236,226,.07);border-radius:999px;padding:4px;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+nav.views::-webkit-scrollbar{display:none}   /* five nowrap buttons are 449px: on a 375px phone the row, not the page, is what scrolls */
 nav.views button{background:transparent;border:0;border-radius:999px;padding:8px 18px;font:500 14px var(--fb);color:var(--mute);transition:background .2s,color .2s;white-space:nowrap}
 nav.views button.on{background:var(--ink);color:var(--bg);font-weight:600}nav.views button:hover:not(.on){opacity:.75}
 .link{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mute)}
