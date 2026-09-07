@@ -394,7 +394,10 @@ def run_rules() -> None:
                 floor = {"act": 2, "warn": 1, "info": 0}
                 send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level)
                 if send:
-                    notify(level, f"{text}\n\n#{alert_id}")   # the id is how a reply becomes an action
+                    # No id, and nothing asking to be told. The node watches what happens next (v0.37) instead of
+                    # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
+                    # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
+                    notify(level, text)
                 ha_alert(level, text, alert_id)
 
 
@@ -965,8 +968,8 @@ def test_alert(authorization: str = Header("")):
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
     how = act_hint(alert_id)
-    closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop; the dashboard's Act button does the same."
-    notify("act", f"{text}\n\n{closing}\n\n#{alert_id}")
+    closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
+    notify("act", f"{text}\n\n{closing}")      # the hint already carries the number; a bare #id on the end taught nothing
     ha_alert("act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
 
