@@ -711,13 +711,14 @@ def earth():
     d = _earth_dir()
     years = sorted(int(p.stem) for p in d.glob("*.npy") if p.stem.isdigit()) if d.is_dir() else []
     size = sum(p.stat().st_size for p in d.glob("*")) if d.is_dir() else 0
+    frames = sorted(int(f.stem[5:]) for f in d.glob("year_*.png") if f.stem[5:].isdigit()) if d.is_dir() else []
     changes = _earth_changes()
     latest = _earth_latest()
     enabled = "earth" in [m.get("id") for m in packs.manifests()]
     for c in changes:                       # so a NAS, or anything else, can fetch each map without guessing
         c["png_url"] = f"/earth/change.png?pair={c['year_a']}_{c['year_b']}"
     body = {"node": NODE, "enabled": enabled, "years": years, "bytes": size, "latest": latest,
-            "changes": changes,
+            "changes": changes, "frames": frames, "dir": str(d),
             "png": "/earth/change.png" if latest and (d / str(latest.get("png", ""))).is_file() else None,
             "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0),
             "radius_m": int(settings.get("EARTH_RADIUS_M", "5000") or 5000),
@@ -729,6 +730,8 @@ def earth():
         body["hint"] = "no satellite record yet: planetai run earth fetch"
     elif not latest:
         body["hint"] = f"{len(years)} year(s) cached, nothing compared yet: planetai run earth change"
+    elif not frames:
+        body["hint"] = f"{len(years)} year(s) cached; for the year-by-year pictures: planetai run earth frames"
     return body
 
 
@@ -745,6 +748,17 @@ def earth_change_png(pair: str = Query("", pattern=r"^(\d{4}_\d{4})?$")):
     if not (name.endswith(".png") and p.is_file()):
         raise HTTPException(404, "no such land-change map: planetai run earth change")
     return FileResponse(p, media_type="image/png", filename=name)
+
+
+@app.get("/earth/year.png")
+def earth_year_png(year: int = Query(..., ge=1900, le=2200)):
+    """One year of the square as the earth pack drew it. The year is an integer and the name is built here,
+    so nothing from the request reaches the filesystem as a path."""
+    from fastapi.responses import FileResponse
+    p = _earth_dir() / f"year_{year}.png"
+    if not p.is_file():
+        raise HTTPException(404, f"no frame for {year}: planetai run earth frames")
+    return FileResponse(p, media_type="image/png", filename=p.name)
 
 
 @app.get("/briefing")

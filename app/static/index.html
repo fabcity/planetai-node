@@ -106,9 +106,20 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .prov::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--webblue);flex:none}
 .earthrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
 @media(max-width:900px){.earthrow{grid-template-columns:1fr}}
-#earthcard[hidden],#earth-img[hidden]{display:none}   /* both: a display rule beats the hidden attribute, and this img showed as a broken-image box with its alt text on every node that had not fetched (v0.33.1) */
+#earthcard[hidden],#earth-img[hidden],#earth-ctl[hidden]{display:none}   /* both: a display rule beats the hidden attribute, and this img showed as a broken-image box with its alt text on every node that had not fetched (v0.33.1) */
 #earth-img{display:block;width:100%;height:auto;max-width:100%;border-radius:10px;background:var(--card2);image-rendering:pixelated}
 .attrib{margin-top:10px;font:400 11px var(--fb);color:var(--mute);line-height:1.5}
+.earthctl{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.earthctl button{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:600 12px var(--fb);cursor:pointer}
+.earthctl button:hover{border-color:var(--webblue);color:var(--webblue)}
+.earthctl button[aria-pressed="true"]{border-color:var(--webblue);color:var(--webblue)}
+.earthctl input[type=range]{flex:1;min-width:120px;accent-color:var(--webblue)}
+.earthctl .yr{font:700 14px var(--fb);font-variant-numeric:tabular-nums;min-width:4ch}
+.earthhist{margin-top:14px;font:400 12px var(--fb);color:var(--mute);line-height:1.9}
+.earthhist b{color:var(--ink);font-variant-numeric:tabular-nums}
+.earthhist i{display:inline-block;height:6px;background:var(--webblue);border-radius:3px;vertical-align:middle;margin:0 8px}
+.earthpath{margin-top:12px;font:400 11px var(--fb);color:var(--mute);word-break:break-all}
+.earthpath code{font:400 11px ui-monospace,monospace;color:var(--ink2)}
 /* the act strip: one thing to do, and the button that closes the loop, on the hero itself */
 .actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--orange);color:var(--bg);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
 .actstrip[hidden]{display:none}   /* the class sets display:grid, which beats the hidden attribute: an empty orange bar showed on every node with nothing to act on */
@@ -277,8 +288,22 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
     <div class="card r1 mt" data-card="earth" id="earthcard" hidden>
       <div class="head"><h2 class="t" style="font-size:1.25rem">The land, year over year.</h2><span class="prov" id="earth-prov">Derived</span></div>
       <div class="earthrow mt">
-        <div><img id="earth-img" alt="A map of how much the land around this node changed between two years: pale is unchanged, white is changed most" hidden><div class="note" id="earth-empty" hidden></div></div>
-        <div><div class="sub" id="earth-sub"></div><div class="attrib" id="earth-attrib"></div></div>
+        <div>
+          <img id="earth-img" alt="The land around this node, seen from orbit" hidden>
+          <div class="note" id="earth-empty" hidden></div>
+          <div class="earthctl" id="earth-ctl" hidden>
+            <button id="earth-mode" type="button"></button>
+            <button id="earth-play" type="button" aria-label="Play the years">▶</button>
+            <input type="range" id="earth-slider" min="0" max="0" value="0" aria-label="Year">
+            <span class="yr" id="earth-year"></span>
+          </div>
+        </div>
+        <div>
+          <div class="sub" id="earth-sub"></div>
+          <div class="earthhist" id="earth-hist"></div>
+          <div class="earthpath" id="earth-path"></div>
+          <div class="attrib" id="earth-attrib"></div>
+        </div>
       </div>
     </div>
   </section>
@@ -554,26 +579,102 @@ function drawNetwork(L){
 const PLAN_LAYERS={building:['buildings on the map','#F4ECE2'],sat:['only the satellite knows','#E8873A'],road:['roads','#8A8378'],green:['green','#00A057'],poi:['uses','#3FA9F5']};
 const USE_COLORS={food:'#E8873A',market:'#E8873A',retail:'#3FA9F5',education:'#7AC943',health:'#E62038',worship:'#F4ECE2',lodging:'#20388D',services:'#3FA9F5',other:'#8A8378'};
 let PLAN=null, PLAN_OFF=new Set();
+let EARTH=null, EARTH_MODE='years', EARTH_I=0, EARTH_TIMER=null, EARTH_KEY=null;
+
 async function drawEarth(){
   const card=$('#earthcard'); if(!card)return;
   let e; try{e=await api('/earth');}catch(err){card.hidden=true;return;}
-  // the pack may be absent, loaded but empty, or full. Only the last of those is a card worth showing;
-  // a loaded-but-empty pack gets the sentence that says which command fills it. Never an empty box.
+  // absent pack, loaded but empty, or full. Only the last is a card worth showing; a loaded-but-empty pack
+  // gets the sentence naming the command that fills it. Never an empty box.
   if(!e||!e.enabled){card.hidden=true;return;}
-  card.hidden=false;
+  EARTH=e; card.hidden=false;
   $('#earth-attrib').textContent=e.attribution||'';
-  const img=$('#earth-img'), empty=$('#earth-empty');
+  const img=$('#earth-img'), empty=$('#earth-empty'), ctl=$('#earth-ctl');
   if(!e.latest||!e.png){
-    img.hidden=true; img.removeAttribute('src'); empty.hidden=false;
-    empty.textContent=e.years&&e.years.length?`${e.years.length} year${e.years.length===1?'':'s'} downloaded, nothing compared yet. planetai run earth change`
+    img.hidden=true; img.removeAttribute('src'); ctl.hidden=true; empty.hidden=false;
+    $('#earth-hist').textContent=''; $('#earth-path').textContent='';
+    empty.textContent=e.years&&e.years.length?`${e.years.length} year${e.years.length===1?'':'s'} downloaded, nothing compared yet. planetai run earth change --all`
       :'No satellite record yet. planetai run earth fetch pulls it (about 103 MB per year, 64 MB kept).';
     $('#earth-sub').textContent='This node can keep its own copy of Google\u2019s AlphaEarth layers for the square around it and compare two years here. Nothing is downloaded until you ask.';
     return;
   }
-  empty.hidden=true; img.hidden=false; img.src=e.png+'?t='+encodeURIComponent(e.latest.computed_at||'');
-  const L=e.latest, km=(L.px&&L.px[0]?L.px[0]*(L.metres_per_pixel||10)/1000:0);
-  $('#earth-sub').innerHTML=`Between <b>${L.year_a}</b> and <b>${L.year_b}</b>, ${fmt(L.share_over_threshold*100,1)}% of this ${fmt(km,km%1?1:0)} km square looks different enough to count as changed \u2014 <b>${fmt(L.hectares_over_threshold)}</b> hectares. Averaged over the whole square the change score is ${fmt(L.mean,3)}, where 0 would mean nothing moved.`
-    +`<div class="note mt">Pale is unchanged, white is changed most; black is no data. North up, 10 m a pixel, the scale bar is 1 km, the ring is this node. It says something changed, not what \u2014 someone who walks there can.</div>`;
+  empty.hidden=true; img.hidden=false;
+  const fr=e.frames||[], key=fr.join(',');
+  // The page refreshes every half minute. Re-choosing the year each time would yank the slider back to the
+  // newest and stop the animation under whoever was watching it, so state is set only when the set of frames
+  // actually changes. Frames are the better first view: the place itself, not the difference.
+  if(key!==EARTH_KEY){
+    EARTH_KEY=key; earthStop();
+    EARTH_MODE=fr.length>1?'years':'change';
+    EARTH_I=fr.length?fr.length-1:0;
+  }
+  if(EARTH_I>=Math.max(1,fr.length))EARTH_I=Math.max(0,fr.length-1);
+  ctl.hidden=!(fr.length>1);
+  const sl=$('#earth-slider'); sl.max=Math.max(0,fr.length-1); sl.value=EARTH_I;
+  sl.oninput=()=>{earthStop();EARTH_I=+sl.value;EARTH_MODE='years';earthShow();};
+  $('#earth-play').onclick=()=>EARTH_TIMER?earthStop():earthPlay();
+  $('#earth-mode').onclick=()=>{earthStop();EARTH_MODE=EARTH_MODE==='years'?'change':'years';earthShow();};
+  earthNarrative(); earthShow();
+}
+
+function earthStop(){ if(EARTH_TIMER){clearInterval(EARTH_TIMER);EARTH_TIMER=null;} $('#earth-play').textContent='▶'; }
+function earthPlay(){
+  const n=(EARTH.frames||[]).length; if(n<2)return;
+  EARTH_MODE='years'; $('#earth-play').textContent='❚❚';
+  EARTH_TIMER=setInterval(()=>{EARTH_I=(EARTH_I+1)%n;$('#earth-slider').value=EARTH_I;earthShow();},900);
+}
+function earthShow(){
+  const e=EARTH, img=$('#earth-img'), years=e.frames||[];
+  const onYears=EARTH_MODE==='years'&&years.length;
+  $('#earth-mode').textContent=onYears?'Show what changed':'Show the years';
+  $('#earth-mode').setAttribute('aria-pressed',onYears?'true':'false');
+  $('#earth-year').textContent=onYears?years[EARTH_I]:`${e.latest.year_a}→${e.latest.year_b}`;
+  $('#earth-slider').disabled=!onYears;
+  if(onYears){
+    img.src='/earth/year.png?year='+years[EARTH_I];
+    img.alt=`The land around this node in ${years[EARTH_I]}, drawn from the satellite record`;
+  }else{
+    img.src=e.png+'?t='+encodeURIComponent(e.latest.computed_at||'');
+    img.alt='A map of how much the land around this node changed between two years';
+  }
+}
+
+function earthNarrative(){
+  const e=EARTH, L=e.latest, km=(L.px&&L.px[0]?L.px[0]*(L.metres_per_pixel||10)/1000:0);
+  const yoy=(e.changes||[]).filter(c=>c.year_b-c.year_a===1).sort((a,b)=>a.year_a-b.year_a);
+  const span=(e.changes||[]).filter(c=>c.year_b-c.year_a>1).sort((a,b)=>(b.year_b-b.year_a)-(a.year_b-a.year_a))[0];
+  const yrs=e.years||[];
+  let t='';
+  if(span){
+    t=`This node keeps its own copy of the satellite record for a ${fmt(km,km%1?1:0)} km square, `
+     +`<b>${yrs.length}</b> years of it. Between <b>${span.year_a}</b> and <b>${span.year_b}</b>, `
+     +`${fmt(span.share_over_threshold*100,1)}% of the square looks different enough to count as changed `
+     +`\u2014 <b>${fmt(span.hectares_over_threshold)}</b> hectares.`;
+  }else{
+    t=`Between <b>${L.year_a}</b> and <b>${L.year_b}</b>, ${fmt(L.share_over_threshold*100,1)}% of this `
+     +`${fmt(km,km%1?1:0)} km square looks different enough to count as changed \u2014 `
+     +`<b>${fmt(L.hectares_over_threshold)}</b> hectares.`;
+    if(yrs.length>2)t+=` ${yrs.length} years are downloaded; planetai run earth change --all compares them all.`;
+  }
+  $('#earth-sub').innerHTML=t
+    +`<div class="note mt">${(e.frames||[]).length>1?'The years are the place itself, drawn from the record \u2014 dark water, bright land. Not a photograph: this node downloads a model\u2019s description of every 10 m pixel, never imagery. ':''}`
+    +`The change map is pale where nothing moved and white where it moved most. North up, 10 m a pixel, the bar is 1 km, the ring is this node. It says something changed, not what \u2014 someone who walks there can.</div>`;
+  // the history, one row a year, so the shape of it is visible
+  const h=$('#earth-hist');
+  if(yoy.length>1){
+    const mx=Math.max(...yoy.map(c=>c.share_over_threshold));
+    h.innerHTML='<div style="color:var(--ink2);margin-bottom:4px">Year by year, the share that changed</div>'
+      +yoy.map(c=>`<div>${c.year_a}\u2192${c.year_b} <i style="width:${Math.max(2,c.share_over_threshold/mx*90)}px"></i> `
+      +`<b>${fmt(c.share_over_threshold*100,2)}%</b> · ${fmt(c.hectares_over_threshold)} ha</div>`).join('');
+  }else h.innerHTML='';
+  // A page cannot open a folder on the machine it is served from; browsers do not allow it. So: name the
+  // path, and link the images themselves, which the node already serves.
+  const dir=e.dir||'', last=(e.frames||[]).slice(-1)[0];
+  const links=[last?`<a href="/earth/year.png?year=${last}" target="_blank">${last}</a>`:null,
+               e.png?`<a href="${e.png}" target="_blank">the change map</a>`:null].filter(Boolean).join(' · ');
+  $('#earth-path').innerHTML=dir
+    ? `Every image here is a file on the node, in <code>${esc(dir)}</code>. Open one: ${links}`
+    : '';
 }
 
 function planWait(msg){                            // the band, visible, with one sentence instead of a plan

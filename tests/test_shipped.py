@@ -119,6 +119,18 @@ print("a pack that lacks its libraries says which command installs them")
 # would have passed while --all quietly did the default pair, which is the bug being fixed.
 assert "planetai run earth change --all" in open("packs/earth/README.md").read(), "the README must document --all"
 print("change --all is documented; tests/test_earth.py runs it")
+# v0.34 — the years as pictures: a frame per cached year, animated in the card, one shared projection.
+assert _os.path.exists("packs/earth/frames.py"), "packs/earth/frames.py"
+assert "def fit_view" in open("packs/earth/adapter.py").read(), "the projection must be fittable once"
+assert '"view"' in open("packs/earth/frames.py").read(), "the projection must be kept, not refitted per year"
+assert '@app.get("/earth/year.png")' in main and 'f"year_{year}.png"' in main, \
+    "main.py: a frame is addressed by an integer year, never by a name from the request"
+assert '"frames": frames' in main and '"dir": str(d)' in main
+for _id in ("earth-ctl", "earth-play", "earth-slider", "earth-year", "earth-mode", "earth-hist", "earth-path"):
+    assert f'id="{_id}"' in gui, f"gui: #{_id}"
+assert "not a photograph" in gui.lower() or "Not a photograph" in gui, \
+    "gui: a rendering of a model must not be presented as a photograph"
+print("the years render, animate, and are not called photographs")
 assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
 assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
 assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"

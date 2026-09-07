@@ -126,6 +126,7 @@ planetai run earth fetch 2024 2025  # just these
 planetai run earth change           # the two latest consecutive cached years
 planetai run earth change 2023 2025 # any two
 planetai run earth change --all     # every consecutive pair, plus the oldest-to-newest span
+planetai run earth frames           # one picture of the place per cached year, for the card to animate
 planetai run earth status           # years, bytes, comparisons, what the cell reports
 planetai run earth verify           # the dataset's claims against the files, and whether the reading landed
 planetai run earth similar          # the four pilots compared with each other and with their own tiles
@@ -141,6 +142,25 @@ it. `--out FILE` writes the JSON somewhere else; the observatory reads it from
 
 The pack is code, so it needs `PACKS_ALLOW_CODE=1` in `.env` and `planetai packs install` for `rasterio` and
 `numpy`. Read `packs/earth/adapter.py` before you enable it.
+
+## The years, as pictures
+
+`frames` renders each cached year to `year_<YYYY>.png`: the first principal component of the 64 embedding
+dimensions mapped to grey, dark water and bright land, the node ringed, a 1 km bar, and the year burnt into
+the corner so a frame that leaves the node still says when it is. The dashboard's card animates them and the
+slider stops on any one. About 780 kB a frame; nine years is 7 MB and a few seconds, all from files already
+on disk.
+
+**They are not photographs.** This pack has never downloaded imagery. It holds a model's 64-number
+description of every 10 m pixel, and a frame is that description flattened to one number and drawn. It looks
+like a panchromatic satellite image because the strongest thing in the embedding is the same thing that
+dominates such an image, but no camera saw these greys. For real Landsat and Sentinel-2 frames,
+`planetai run earth-engine timelapse` downloads pictures and needs an Earth Engine key.
+
+The projection is fitted once over every year cached at the time, then kept in `meta.json` and reused. A
+sequence whose greys move between frames is not a sequence: when next year's layer arrives it is drawn
+through the existing projection, so the new frame joins the record instead of changing every frame before it.
+`--refit` redoes it and rewrites them all, which is what a moved square needs and a new year does not.
 
 ## The cell
 

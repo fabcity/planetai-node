@@ -355,6 +355,31 @@ def write_png(path, ix, texts: dict | None = None) -> int:
     return len(out)
 
 
+# A 3x5 digit, so a frame that leaves the node still says which year it is. Ten glyphs is cheaper than a
+# font file and the pack has no image library to load one with.
+DIGITS = {"0": "111101101101111", "1": "010110010010111", "2": "111001111100111", "3": "111001111001111",
+          "4": "101101111001001", "5": "111100111001111", "6": "111100111101111", "7": "111001001001001",
+          "8": "111101111101111", "9": "111101111001111"}
+
+
+def draw_year(ix, year: int, scale: int = 4) -> None:
+    """Burn the year into the bottom right, in place. Small, plain, and out of the way."""
+    h, w = ix.shape
+    gw = (3 * scale + scale) * len(str(year))
+    x0, y0 = w - gw - 14, h - 5 * scale - 14
+    if x0 < 0 or y0 < 0:
+        return
+    for i, ch in enumerate(str(year)):
+        g = DIGITS.get(ch)
+        if not g:
+            continue
+        for r in range(5):
+            for c in range(3):
+                if g[r * 3 + c] == "1":
+                    y, x = y0 + r * scale, x0 + i * 4 * scale + c * scale
+                    ix[y:y + scale, x:x + scale] = RULE_IX
+
+
 def draw_marks(ix, node_rc: tuple[int, int] | None = None) -> None:
     """A 1 km scale bar bottom left, and optionally a ring where the node is. In place."""
     h, w = ix.shape
@@ -371,6 +396,59 @@ def draw_marks(ix, node_rc: tuple[int, int] | None = None) -> None:
                 d = (dr * dr + dc * dc) ** 0.5
                 if 4.0 <= d <= 6.0 and 0 <= r + dr < h and 0 <= c + dc < w:
                     ix[r + dr, c + dc] = NODE_IX
+
+
+# ---------------------------------------------------------------- one picture of the place, per year
+
+# The frames are a rendering of the embedding, not a photograph: this pack never downloads imagery. The first
+# component of a PCA over the 64 dimensions carries about three fifths of them and, at least in Bali, looks
+# like a panchromatic satellite image — dark water, bright land, roads and plots legible.
+#
+# The projection is fitted once, over every year cached at the time, and then kept in meta.json. That matters
+# for a record that grows: refitting when 2026 arrives would silently change every earlier frame, and a
+# sequence whose colours move is not a sequence. A new year is projected through the existing basis.
+VIEW_SAMPLE = 40000
+
+
+def fit_view(years: list[int]) -> dict:
+    """The shared projection: one direction through the 64 dimensions, and the 256 breakpoints that map it to
+    grey. Fitted on a sample pooled from every year given, so no single year sets the exposure."""
+    import numpy as np
+    rng = np.random.default_rng(0)
+    cols = []
+    for y in years:
+        v = dequantize(np.asarray(np.load(year_file(y), mmap_mode="r")).reshape(64, -1))
+        cols.append(v[:, rng.choice(v.shape[1], min(VIEW_SAMPLE, v.shape[1]), replace=False)])
+    x = np.concatenate(cols, axis=1)
+    mu = x.mean(1, keepdims=True)
+    u, _, _ = np.linalg.svd(x - mu, full_matrices=False)
+    w = u[:, 0]
+    proj = (w[None, :] @ (x - mu))[0]
+    if float(((proj - proj.mean()) ** 3).mean()) > 0:      # a fixed sign, so two runs agree
+        w, proj = -w, -proj
+    return {"mean": [float(v) for v in mu[:, 0]], "axis": [float(v) for v in w],
+            "breaks": [float(v) for v in np.percentile(proj, np.linspace(0, 100, 256))],
+            "fitted_on": sorted(years)}
+
+
+def render_year(year: int, view: dict, node_rc=None):
+    """One year as palette indices: grey where there is data, the ramp shared with every other frame."""
+    import numpy as np
+    raw = np.asarray(np.load(year_file(year), mmap_mode="r"))
+    masked = raw[0] == -128
+    v = dequantize(raw.reshape(64, -1))
+    mu = np.array(view["mean"], dtype=np.float32)[:, None]
+    w = np.array(view["axis"], dtype=np.float32)
+    g = np.searchsorted(np.array(view["breaks"]), (w[None, :] @ (v - mu))[0])
+    ix = (1 + np.clip(g, 0, 251)).astype(np.uint8).reshape(raw.shape[1], raw.shape[2])
+    ix[masked] = NODATA_IX
+    draw_marks(ix, node_rc)
+    draw_year(ix, year)
+    return ix
+
+
+def year_png(year: int):
+    return cache() / f"year_{year}.png"
 
 
 # ---------------------------------------------------------------- the cache on disk

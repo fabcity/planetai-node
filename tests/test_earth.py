@@ -258,5 +258,40 @@ with tempfile.TemporaryDirectory() as tmp:
     assert (cache / "change_2020_2021.json").stat().st_mtime_ns != before
 print("change: unknown arguments refused, --all walks the history, --force redoes it")
 
+# ---------------------------------------------------------------- the yearly frames
+# The projection must be fitted once and reused: refitting when a year arrives would silently redraw every
+# earlier frame, and a sequence whose greys move is not a sequence.
+with tempfile.TemporaryDirectory() as tmp:
+    os.environ["PACK_OUT"] = tmp
+    A.cache().mkdir(parents=True)
+    rng3 = np.random.default_rng(11)
+    for y in (2023, 2024):
+        np.save(A.year_file(y), rng3.integers(-100, 100, size=(64, 24, 24)).astype(np.int8))
+    view = A.fit_view([2023, 2024])
+    assert view["fitted_on"] == [2023, 2024] and len(view["axis"]) == 64 and len(view["breaks"]) == 256
+    assert abs(float(np.linalg.norm(view["axis"])) - 1.0) < 1e-5, "the axis is a direction, so unit length"
+    assert A.fit_view([2023, 2024])["axis"] == view["axis"], "the same years must give the same axis"
+    # The sign of a principal axis is arbitrary; SVD picking one is not a guarantee. The pack fixes it so the
+    # projection is left-skewed, which is what keeps water dark and land bright when the fit is redone over a
+    # different set of years. Check the property, not that two identical calls agree.
+    _v = A.dequantize(np.asarray(np.load(A.year_file(2024), mmap_mode="r")).reshape(64, -1))
+    _p = (np.array(view["axis"])[None, :] @ (_v - np.array(view["mean"])[:, None]))[0]
+    assert float(((_p - _p.mean()) ** 3).mean()) <= 0, "fit_view must fix the axis sign, not take SVD's"
+    ix = A.render_year(2023, view, (12, 12))
+    assert ix.shape == (24, 24) and ix.dtype == np.uint8
+    assert ix.min() >= 0 and ix.max() <= 254
+    # a year drawn through a view fitted without it still renders, and identically each time
+    assert np.array_equal(A.render_year(2024, view), A.render_year(2024, view))
+    # no-data survives as no-data rather than becoming a grey
+    raw = np.load(A.year_file(2023)); raw[:, 3, 4] = -128; np.save(A.year_file(2023), raw)
+    assert A.render_year(2023, view)[3, 4] == A.NODATA_IX
+    # the year is burnt in, in the rule colour, bottom right
+    big = np.zeros((200, 200), dtype=np.uint8)
+    A.draw_year(big, 2017)
+    assert (big == A.RULE_IX).sum() > 0 and (big[:100, :100] == A.RULE_IX).sum() == 0, "bottom right"
+    assert A.year_png(2017).name == "year_2017.png"
+    os.environ.pop("PACK_OUT")
+print("earth frames: one shared projection, reused, and no-data stays no-data")
+
 print("all earth pack tests pass")
 sys.exit(0)

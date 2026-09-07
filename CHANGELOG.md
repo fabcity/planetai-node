@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.34 — 2026-09-07 — the years, as pictures you can play
+
+The land card knew about one year pair. Nine years were on the disk beside it and it said nothing about them.
+
+- **`planetai run earth frames`** draws one picture of the place per cached year: the strongest direction
+  through the 64 embedding dimensions, mapped to grey. Dark water, bright land, roads and plots legible, the
+  node ringed, a 1 km bar, and the year burnt into the corner so a frame that leaves the node still says
+  when it is. About 780 kB a frame, nine years in a few seconds, from files already downloaded.
+- **The card plays them.** A play button steps through the years, a slider stops on any one, and a second
+  button switches to the change map. Pick 2019 and it stays 2019 — the page refreshes every half minute and
+  no longer drags you back to the newest year.
+- **The narrative now tells the whole record**: how many years are held, what the full span found, and a
+  year-by-year list of the share that changed, so the shape of the history is visible. At node #1 that is
+  eight years, 8.8 % of the square, 880 hectares — with the two quietest years in the record being
+  2020→2021 and 2021→2022.
+- **The images are named as files.** The card prints the directory they live in on the node and links the
+  ones it is showing. A page cannot open a folder on the machine serving it; browsers do not allow that, so
+  it says where they are instead of pretending to a button that cannot work.
+
+**These are not photographs.** This pack has never downloaded imagery: it holds a model's 64-number
+description of every 10 m pixel, and a frame is that description flattened to one number and drawn. It looks
+like a panchromatic satellite image because the strongest thing in the embedding is the strongest thing in
+such an image, but no camera saw these greys, and the card says so. For real Landsat and Sentinel-2 frames,
+`planetai run earth-engine timelapse` downloads pictures and needs an Earth Engine key.
+
+The projection is fitted once, over every year cached at the time, and then kept in `meta.json`. When next
+year's layer arrives it is drawn through the same projection, so the new frame joins the sequence instead of
+silently redrawing every frame before it. `planetai run earth frames --refit` redoes it, which is what a
+moved square needs and a new year does not.
+
 ## v0.33.8 — 2026-09-07 — the whole satellite history in one command, and an argument it does not know is an error
 
 Reported from node #1: `planetai run earth change --all` printed a perfectly ordinary result for the latest
