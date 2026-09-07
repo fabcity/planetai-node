@@ -881,6 +881,30 @@ def ui():
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
 
+# The two files index.html cannot hold. The dashboard is still one HTML document with no build step: the
+# ground is an SVG whose own `:root` block would leak its paper variables into the page if it were inlined,
+# and the mono is a font. Named one by one rather than served from a directory — this port is open to a
+# household LAN, and a path parameter that reaches the filesystem is the usual way that ends badly.
+COMPANIONS = {
+    "node-ground.svg": (STATIC / "node-ground.svg", "image/svg+xml"),
+    "jetbrains-mono-latin.woff2": (STATIC / "fonts" / "jetbrains-mono-latin.woff2", "font/woff2"),
+}
+
+
+@app.get("/static/{name}", include_in_schema=False)
+def static_file(name: str):
+    """The dashboard's ground and its data face.
+
+    Same `no-cache, must-revalidate` as index.html, and for the same reason: a wall screen that keeps the
+    previous design after `planetai update` is the bug that header exists to stop, and a stale ground is that
+    bug again. FileResponse sends an ETag, so revalidating costs a 304 and nothing on the wire."""
+    from fastapi.responses import FileResponse
+    hit = COMPANIONS.get(name)
+    if not hit or not hit[0].exists():
+        raise HTTPException(404, "no such asset")
+    return FileResponse(hit[0], media_type=hit[1], headers={"cache-control": "no-cache, must-revalidate"})
+
+
 def _admin(authorization: str) -> None:
     tok = os.getenv("ADMIN_TOKEN", "").strip()
     if not tok:

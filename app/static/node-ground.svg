@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600" role="img" data-variant="dark">
+<title>The node's own resolution-8 cell 8895a4c86bfffff, its six neighbours, and its seven resolution-9 children. Hero ground for the node dashboard.</title>
+<style>
+  :root {
+    --ground: #F9F5F2;
+    --land:   #171717;
+    --land-opacity: 0.12;
+    --cells:  #20388D;
+    --rings:  #00A057;
+    --ink:    #171717;
+  }
+  svg[data-variant="dark"], .variant-dark {
+    --ground: #171717;
+    --land:   #F9F5F2;
+    --land-opacity: 0.18;
+    --cells:  #7FA5E8;
+    --rings:  #00A057;
+    --ink:    #F9F5F2;
+  }
+  .ground { fill: var(--ground); }
+  .land   { fill: var(--land); fill-opacity: var(--land-opacity); }
+  .cell   { fill: none; stroke: var(--cells); }
+  .chain  { fill: var(--cells); stroke: var(--cells); }   /* the next frame's cell: data, opacity via attribute */
+  .lit    { fill: var(--cells); stroke: var(--cells); }   /* a node's lit cell: same */
+  .ring   { fill: none; stroke: var(--rings); }
+  .hair   { fill: none; stroke: var(--ink); }
+  .fig    { fill: var(--ink); }
+  .label  { fill: var(--ink); font-family: 'JetBrains Mono', ui-monospace, monospace; }
+</style>
+<g id="neighbours">
+  <path class="hair" d="M126.177,151.79L245.926,112.456L347.947,206.233L330.212,339.341L210.461,378.666L108.447,284.892Z" stroke-width="1" stroke-opacity="0.10"/>
+  <path class="hair" d="M210.461,378.666L330.212,339.341L432.233,433.119L414.496,566.22L294.744,605.536L192.73,511.761Z" stroke-width="1" stroke-opacity="0.10"/>
+  <path class="hair" d="M432.233,433.119L551.998,393.794L654.027,487.578L636.284,620.684L516.517,660L414.496,566.22Z" stroke-width="1" stroke-opacity="0.10"/>
+  <path class="hair" d="M569.739,260.682L689.516,221.348L791.553,315.135L773.805,448.253L654.027,487.578L551.998,393.794Z" stroke-width="1" stroke-opacity="0.10"/>
+  <path class="hair" d="M485.45,33.78L605.224,-5.562L707.261,88.224L689.516,221.348L569.739,260.682L467.71,166.9Z" stroke-width="1" stroke-opacity="0.10"/>
+  <path class="hair" d="M263.659,-20.658L383.42,-60L485.45,33.78L467.71,166.9L347.947,206.233L245.926,112.456Z" stroke-width="1" stroke-opacity="0.10"/>
+</g>
+<g id="children">
+  <path class="hair" d="M403.712,278.837L440.464,248.584L486.724,269.759L496.231,321.189L459.478,351.441L413.219,330.265Z" stroke-width="0.75" stroke-opacity="0.07"/>
+  <path class="hair" d="M486.724,269.759L523.478,239.506L569.739,260.682L579.246,312.112L542.491,342.365L496.231,321.189Z" stroke-width="0.75" stroke-opacity="0.07"/>
+  <path class="hair" d="M376.469,360.516L413.219,330.265L459.478,351.441L468.985,402.869L432.233,433.119L385.976,411.943Z" stroke-width="0.75" stroke-opacity="0.07"/>
+  <path class="hair" d="M459.478,351.441L496.231,321.189L542.491,342.365L551.998,393.794L515.244,424.045L468.985,402.869Z" stroke-width="0.75" stroke-opacity="0.07"/>
+  <path class="hair" d="M347.947,206.233L384.698,175.979L430.957,197.154L440.464,248.584L403.712,278.837L357.454,257.661Z" stroke-width="0.75" stroke-opacity="0.07"/>
+  <path class="hair" d="M430.957,197.154L467.71,166.9L513.971,188.075L523.478,239.506L486.724,269.759L440.464,248.584Z" stroke-width="0.75" stroke-opacity="0.07"/>
+  <path class="hair" d="M320.705,287.914L357.454,257.661L403.712,278.837L413.219,330.265L376.469,360.516L330.212,339.341Z" stroke-width="0.75" stroke-opacity="0.07"/>
+</g>
+<g id="cell">
+  <path class="lit" d="M347.947,206.233L467.71,166.9L569.739,260.682L551.998,393.794L432.233,433.119L330.212,339.341Z" fill-opacity="0.05" stroke-width="1.5" stroke-opacity="0.20"/>
+</g>
+<!-- The design kit's copy carries a caption naming this cell and calling it the one the node stands in.
+     That is true of node #1 and of no other node, so the caption is not shipped. Until the ground is built
+     from each node's own lat/lon, this geometry stands in for every node's cell and claims nothing. -->
+</svg>
