@@ -13,6 +13,10 @@ plan after editing `NODE_LAT` / `NODE_LON` in `.env`.
 - **`earth`**: a moved point or a changed `EARTH_RADIUS_M` re-resolved the tiles but skipped every cached year as
   "already cached", so the node went on comparing a square around the previous address, with `meta.json` claiming
   the new one. Those years are now re-read, with the reason and the count printed first (about 103 MB a year).
+- **`earth`, found while rehearsing the move**: a partial re-fetch used to leave one year from each square and
+  `change` compared them, reporting the difference between two places as a year of change; and the old square's
+  change map stayed on disk, where `/earth`, the dashboard card and the Index cell kept reading it. Both are removed
+  with the square now, and `change` refuses a year that has no window recorded for the current square.
 - **Both**: a correction smaller than 1% of the radius, never under 25 m, is not a move — retyping a decimal costs
   no download. `planetai run place verify` and `planetai run earth verify` now fail on a cache that belongs to
   another point; earth's step 5 claimed to check this and only measured the window's span.
