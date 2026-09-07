@@ -11,6 +11,9 @@ domain: heat
 metrics: [temp, humidity]
 scales: [community]
 thresholds: >-
-  Apparent temperature (Steadman / Australian BoM, no-wind form): AT = T + 0.33·e − 4.0, with e the vapour
-  pressure in hPa from T and RH. 32 °C AT is the BoM "caution" threshold; 40 °C "danger". 28 °C overnight indoor
-  minimum is the WHO comfort ceiling for sleep. Tune in a fork for your place.
+  Written for Kuta Selatan, Bali. Apparent temperature (Steadman / Australian BoM, no-wind form):
+  AT = T + 0.33·e − 4.0, with e the vapour pressure in hPa from T and RH. 40 °C AT is the heat-index "danger"
+  line; 28 °C overnight indoor minimum is the WHO comfort ceiling for sleep. The 35 °C stress line is ours,
+  measured from node #1: the "extreme caution" 32 °C the pack shipped with is this place's year-round baseline,
+  not an event. The Social cell keeps 32 °C, which is right for counting exposure. Tune in a fork for your place;
+  packs/heat/README.md says how.

@@ -14,7 +14,9 @@
     SELECT sensor_id, name, round(t::numeric, 1) AS t, round(rh::numeric) AS rh,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
     FROM x
-    WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 32
+    -- 35, not the 32 of the heat-index "extreme caution" line: in Kuta Selatan 32 is the baseline, not an event.
+    -- Node #1, 2-7 Sep 2026: AT was over 32 for 86% of all readings and never once fell below 28.7. See the README.
+    WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 35
   message:
     en: "🥵 It is dangerously hot at {name}: it feels like {at} °C.\n\nHumidity is stopping sweat from cooling the body, so the air feels hotter than the thermometer says and the strain builds quietly.\n\n👉 Drink water, move air, stop hard work, and check on anyone old, young or unwell."
     id: "🥵 Panas berbahaya di {name}: terasa seperti {at} °C.\n\nKelembapan menghambat keringat mendinginkan tubuh, jadi udara terasa lebih panas dari angka termometer dan beban menumpuk diam-diam.\n\n👉 Minum air, gerakkan udara, hentikan kerja berat, dan cek orang tua, anak kecil, atau yang sakit."

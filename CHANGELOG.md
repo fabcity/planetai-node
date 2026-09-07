@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.35 — 2026-09-07 — the heat rule was measuring Bali, not a heatwave
+
+Two thirds of every message node #1's household received was one rule. `heat_stress_now` fired 20 times in the 48
+hours of 5–7 September, always reporting 32.0–34.6 °C, and four of those arrived between one and five in the
+morning — act-level alerts are the ones quiet hours do not hold. The reports-and-messages release moves
+`ALERT_LEVEL` to `act`, which drops the eight warn-level messages and leaves all twenty of these; the quiet nights
+it promises would not have arrived on node #1.
+
+- **`heat_stress_now` fires at 35 °C apparent, not 32 °C.** 32 is the bottom of the heat-index "extreme caution"
+  band, and in Kuta Selatan that band is the climate. Measured on node #1's own five days of `temp` and `humidity`:
+  the hot room was above 32 °C for 86% of every reading, never fell below 28.7 °C, and averaged 33 °C at four in
+  the morning — its coolest hour. 35 °C is that sensor's 90th percentile. Replayed over the same record with the
+  rule's real cooldown it fires eight times in five days instead of thirty-six, none at night, and nothing at all
+  on the two days the weather eased.
+- The other three candidate fixes were replayed against the same data and rejected on it. A duration condition
+  (over the line for four readings running) changes the count from 36 to 36 — the house is over 32 °C
+  continuously, so there is no spike to suppress. Requiring AT to be rising fires on the ordinary morning warm-up
+  every day and goes silent on a flat hot night, which is the case that hurts people. A cooldown of 1440 minutes
+  reaches the same eight, but every one of the eight is still a false alarm. The cooldown stays at 240; at 35 °C it
+  no longer matters.
+- The Social cell keeps 32 °C. Counting hours of exposure is not interrupting someone, and 32 °C is the right line
+  for a count.
+- `packs/heat/README.md` now says which place the numbers were written for, as `docs/PACKS.md` requires, with the
+  node #1 distribution the 35 °C came from and how to move it for a temperate flat.
+- **New gate:** a pack README's unit-bearing thresholds must appear in that pack's own files. The README is the only
+  place a household can learn why a number is that number, and nothing was checking that it still matched the SQL.
+
+The alert texts are unchanged: this release changes when the rule fires, not what it says.
 ## v0.34 — 2026-09-07 — the years, as pictures you can play
 
 The land card knew about one year pair. Nine years were on the disk beside it and it said nothing about them.
