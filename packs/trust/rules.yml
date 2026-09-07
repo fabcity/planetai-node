@@ -5,15 +5,25 @@
 # kit node #1 reads, so the adapter stamps every channel with the kit-level `last_reading_at`. A dead channel then
 # carries a fresh timestamp forever, and its frozen value is re-inserted under new timestamps, which pulls the
 # 24-hour mean toward itself and shrinks the variance. The reading looks steadier as it dies.
+#
+# A WEEK, OR SILENCE. Every rule here joins `seasoned`: a sensor with under seven days of readings on this node is
+# never named. A statement about an instrument needs a week — a day of it says more about the weather and the hour
+# than about the sensor. The gate is written into each rule's SQL, and repeated three times, because a pack must
+# not depend on a loader change to be safe: a `min_history_days` rule key in app/packs.py is the right long-term
+# home for it and is noted in docs/HANDOFF_trust.md.
 
 # ---------------------------------------------------------------- a channel that stopped changing under a live kit
 - id: channel_dead
   level: warn
   cooldown_minutes: 720
   sql: |
-    WITH ours AS (
+    WITH seasoned AS (
+      SELECT sensor_id FROM readings
+      WHERE ts > now() - interval '30 days'
+      GROUP BY 1 HAVING min(ts) < now() - interval '7 days'),
+    ours AS (
       SELECT r.sensor_id, r.metric, s.name, s.source
-      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      FROM readings_1h r JOIN sensors s USING (sensor_id) JOIN seasoned USING (sensor_id)
       JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
       WHERE s.local AND s.kind = 'sensor' AND c.role IN ('ambient', 'enclosure')
       GROUP BY 1, 2, 3, 4),
@@ -44,9 +54,13 @@
   level: info
   cooldown_minutes: 1440
   sql: |
-    WITH have AS (
+    WITH seasoned AS (
+      SELECT sensor_id FROM readings
+      WHERE ts > now() - interval '30 days'
+      GROUP BY 1 HAVING min(ts) < now() - interval '7 days'),
+    have AS (
       SELECT r.sensor_id, s.name, count(DISTINCT r.bucket) AS hours
-      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      FROM readings_1h r JOIN sensors s USING (sensor_id) JOIN seasoned USING (sensor_id)
       JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
       WHERE s.local AND s.kind = 'sensor' AND c.role = 'ambient' AND c.comparable
         AND r.bucket > now() - interval '7 days'
@@ -63,9 +77,13 @@
   level: warn
   cooldown_minutes: 1440
   sql: |
-    WITH ambient AS (
+    WITH seasoned AS (
+      SELECT sensor_id FROM readings
+      WHERE ts > now() - interval '30 days'
+      GROUP BY 1 HAVING min(ts) < now() - interval '7 days'),
+    ambient AS (
       SELECT r.sensor_id, s.name, s.lat, s.lon, r.metric, avg(r.mean) AS mean
-      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      FROM readings_1h r JOIN sensors s USING (sensor_id) JOIN seasoned USING (sensor_id)
       JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
       WHERE s.local AND s.kind = 'sensor' AND c.role = 'ambient' AND c.comparable
         AND s.lat IS NOT NULL AND r.bucket > now() - interval '24 hours'

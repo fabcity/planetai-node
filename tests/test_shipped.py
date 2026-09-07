@@ -269,3 +269,34 @@ assert "h.cell?h.cell.caption:''" in gui, "gui: the caption comes from /health"
 assert "THE CELL THIS NODE STANDS IN" not in open("app/static/node-ground.svg").read(), (
     "the shipped file is the fallback for a node with no coordinates; it must name no cell")
 print("the ground is drawn from the node's own coordinates and the caption is on the page")
+
+# v0.40 — the trust pack's three rules each asked 24 hours and called the answer an alert. At 21:17 on 7 September
+# they sent node #1's household three warnings on Telegram, all wrong, and would have sent them again every
+# evening. The fault under all three: a statement about an instrument needs a week. Every rule now joins
+# `seasoned`, so a sensor with under seven days of readings on this node is never named.
+_trust = {r["id"]: r for r in yaml.safe_load(open("packs/trust/rules.yml"))}
+for _id in ("channel_dead", "coverage_low", "peer_disagreement"):
+    assert "HAVING min(ts) < now() - interval '7 days'" in _trust[_id]["sql"], \
+        f"{_id}: a sensor with under a week of readings here is never named"
+    assert "JOIN seasoned USING (sensor_id)" in _trust[_id]["sql"], f"{_id}: the gate must be joined, not just declared"
+print("every trust rule needs a week of a sensor before it names it")
+
+# The same three rules, run over node #1's own readings (tests/data/node1-*.tsv, out of the 7 September dump).
+# Every kit there is under three days old: sc-19236, sc-19849, sc-19874 and sc-19897 first reported on 5 September
+# and sc-19880 on 2 September. The shipped v0.35 rules named four of them — `coverage_low` at 35% of the week,
+# `channel_dead` on Ungasan Kit's light channel at dusk, `peer_disagreement` five times over one collocated trio
+# and one pair. A node this young must now hear nothing.
+try:
+    import trustdb
+except ImportError:
+    print("  - trust rule replay skipped (pip install duckdb)")
+else:
+    _at, _real = trustdb.FIXTURE_NOW, trustdb.readings()
+    _node = trustdb.Node(_real)
+    for _id, _rule in _trust.items():
+        assert _node.run(_rule, _at) == [], f"{_id}: node #1's kits are two days old; the pack has nothing to say yet"
+    # The same series with a week behind it is not silent, so the silence above is the age gate and not a harness
+    # that never runs the SQL.
+    assert trustdb.Node(trustdb.week(_real, _at)).run(_trust["peer_disagreement"], _at), \
+        "given a week, the rules must still be able to speak — otherwise this test proves nothing"
+    print("the trust pack says nothing about a sensor younger than a week")
