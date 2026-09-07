@@ -89,6 +89,16 @@ for f in sorted(glob.glob("config/rules.yml") + glob.glob("packs/*/rules.yml")):
         if cd > 20160 and not r.get("long_cooldown_ok"):      # a fortnight
             errs.append(f"{where}: cooldown {cd} min is over a fortnight — it can fire about once. If deliberate, add `long_cooldown_ok: true`")
         msg = r.get("message")
+        # `contributes:` (app/packs.py CONTRIBUTES) makes a rule part of something the node builds rather than
+        # something it sends. Either it has a message or it contributes; a rule with neither reaches nobody, and a
+        # rule with both looks like an alert and is never sent.
+        con = r.get("contributes")
+        if con and con not in ("report",):
+            errs.append(f"{where}: `contributes: {con}` is not something a rule can contribute to")
+        if con and msg:
+            errs.append(f"{where}: `contributes: {con}` and a message — a contributor is never sent, so the message is dead")
+        if not con and not msg:
+            errs.append(f"{where}: no message and no `contributes:` — this rule can fire and reach nobody")
         for lang, tmpl in (msg.items() if isinstance(msg, dict) else [("", msg)]):
             for ph in re.findall(r"\{(\w+)", str(tmpl)):
                 if ph not in outs:

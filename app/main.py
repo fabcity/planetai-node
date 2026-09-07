@@ -270,7 +270,7 @@ def load_rules() -> list[dict]:
         core = yaml.safe_load(RULES.read_text()) or []
     except FileNotFoundError:
         core = []
-    return core + packs.rules()
+    return core + packs.alerts()      # a pack rule with `contributes:` is part of the report, not an alert
 
 
 def _local_now() -> datetime:

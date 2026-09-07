@@ -89,6 +89,12 @@ def held_hours(since, due, every: int, cap: int = MAX_WINDOW) -> int:
     return max(0, min(round((due - since).total_seconds() / 3600), cap) - every)
 
 
+# The names the bundle owns. A pack that contributes under one of these would overwrite the node's own numbers,
+# and a model reading the document would have no way to tell.
+RESERVED = ("meta", "series", "now", "observations", "alerts", "open_act", "sensors_quiet", "rho", "previous",
+            "cells", "health", "rules")
+
+
 def _tz() -> str:
     return os.getenv("NODE_TZ", "").strip() or "UTC"
 
@@ -202,6 +208,18 @@ def _f(v, d=1):
     return None if v is None else round(float(v), d)
 
 
+def _num(v):
+    """A number from Postgres as JSON sees it: `numeric` arrives as Decimal, which is not JSON and reads as
+    "Decimal('17')" to anything that stringifies it. Counts stay whole; everything else keeps two decimals."""
+    if v is None or isinstance(v, (bool, str)):
+        return v
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return v
+    return int(f) if f == int(f) else round(f, 2)
+
+
 def bundle(cur, hours: int, held_hours: int = 0) -> dict:
     """Every number the node has about the last `hours`, as one JSON-able document. SQL only: no source is polled
     and nothing leaves the machine. `held_hours` are the extra hours folded in from a report quiet hours held.
@@ -271,6 +289,16 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
     try:
         import packs
         b["rules"] = sorted(r["id"] for r in packs.rules())
+        for r in packs.contributors("report"):
+            key = r["id"].split("/")[-1]
+            if key in RESERVED:
+                log.warning("pack rule %s contributes under a name the bundle already uses; skipped", r["id"])
+                continue
+            try:
+                rows = index.run_ro(cur, r["sql"])
+            except Exception as e:  # noqa: BLE001 — one broken pack must not cost the household its report
+                log.warning("pack rule %s failed: %s", r["id"], e); continue
+            b[key] = {k: _num(v) for k, v in (rows[0] if rows else {}).items()} or None
     except Exception as e:  # noqa: BLE001
         b["rules"] = []
         log.warning("pack rules unavailable for the report: %s", e)

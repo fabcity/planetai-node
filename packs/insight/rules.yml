@@ -2,10 +2,12 @@
 # (24h rolling), because agreement is a question about days, not minutes. Copy this folder to change cadence:
 # the digest's cooldown is its interval.
 
-# ---------------------------------------------------------------- every 3 hours: the state of the air, three ways
+# ---------------------------------------------------------------- the state of the air, three ways
+# Not an alert any more. Until v0.36 this fired every three hours at info level, which meant it reached a phone
+# only at ALERT_LEVEL=info and was a third schedule when it did. `contributes: report` puts its numbers in every
+# report instead, under `digest` in the bundle, so nothing it computes is lost and nothing it computes interrupts.
 - id: digest
-  level: info
-  cooldown_minutes: 180
+  contributes: report
   sql: |
     WITH now_in AS (
       SELECT round(avg(mean_1h)::numeric) AS v, count(*) AS n FROM stats
@@ -40,9 +42,7 @@
            day_in.v AS day_mean, day_in.peak AS day_peak, trend.t AS trend
     FROM now_in, now_out, model, day_in, trend
     WHERE now_in.v IS NOT NULL
-  message:
-    en: "🌬️ How the air is right now.\n\n🏠 Inside: {inside} µg/m³, {trend}.\n🌳 Outside: {outside} µg/m³.\n🛰️ The satellites guess {modelled} µg/m³ for the whole district.\n\nUnder 15 is clean air by the WHO's measure; over 35 is when to act. Ask me for the day's story if you want it."
-    id: "🌬️ Keadaan udara sekarang.\n\n🏠 Dalam: {inside} µg/m³, {trend}.\n🌳 Luar: {outside} µg/m³.\n🛰️ Satelit menebak {modelled} µg/m³ untuk seluruh kecamatan.\n\nDi bawah 15 udara bersih menurut WHO; di atas 35 saatnya bertindak. Tanya cerita harinya kalau mau."
+
 
 # ---------------------------------------------------------------- daily: how well do the three layers agree?
 - id: agreement

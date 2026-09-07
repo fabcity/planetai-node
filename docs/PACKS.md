@@ -32,6 +32,18 @@ token into an alert text or change a row.
 Every column the message uses must come from the SQL. `make lint` checks that, plus unknown columns, cells without a
 `value`, and cooldowns over a fortnight (add `long_cooldown_ok: true` if that is deliberate).
 
+A rule can compute something for the report instead of interrupting anyone:
+
+```yaml
+- id: digest
+  contributes: report        # no level, no cooldown, no message: this is never sent
+  sql: SELECT round(avg(mean_1h)) AS inside FROM stats WHERE local AND indoor AND metric='pm25'
+```
+
+Its first row lands in the report bundle under the rule's own id (`bundle.digest`), where the node's own report
+reads it and a model, if one is reachable, may quote from it. A contributor has no message and is never sent;
+`make lint` refuses a rule with both, and refuses a rule with neither, which could fire and reach nobody.
+
 A cell:
 
 ```yaml
@@ -84,7 +96,7 @@ alone lists them.
 |---|---|---|
 | air-quality | data | PM2.5 rules (inside/outside, spikes), cells |
 | heat | data | apparent temperature, heat stress, nights over 28 °C, a Social cell |
-| insight | data | digest every 3 h; daily agreement between indoor, street and model |
+| insight | data | the air three ways, contributed to every report; daily agreement between indoor, street and model |
 | cold-start | data | day one with no hardware: modelled air, normals |
 | open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
