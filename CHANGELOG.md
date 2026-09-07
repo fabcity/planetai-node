@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.33.6 — 2026-09-07 — the update reaches the screen
+
+`GET /` sent no cache headers, so after `planetai update` a browser could keep serving the dashboard it already
+had — with the bugs the update fixed. An ordinary reload does not always revalidate a document the server said
+nothing about. This is why the plan-band fix in v0.33.5 appeared not to work: the node was serving it, the browser
+was not running it.
+
+- The dashboard is sent with `cache-control: no-cache, must-revalidate`. One hard reload is needed to get past a
+  copy already in a browser; after that, a node's version and its page stay together.
+
 ## v0.33.5 — 2026-09-07 — the kilometre came back
 
 The plan of the kilometre disappeared from a dashboard and stayed gone. Nothing was wrong with the node: it was
