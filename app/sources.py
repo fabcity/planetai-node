@@ -57,6 +57,32 @@ def epa_2021_correct(pm_raw: float, rh: float) -> float:
     return 2.966 + 0.69 * x + 8.84e-4 * x * x
 
 
+# ---------------------------------------------------------------- is this sensor at this node?
+# `packs/place/adapter.py` has its own metres(); core must not import from a pack, so this is the second copy.
+# Equirectangular: within a metre of haversine at a kilometre, about nine metres at eight, and cheap. Measured on
+# node #1's own four sensors. Exact enough for a radius that is a judgement call anyway.
+def metres(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    dy = (lat2 - lat1) * 111_320.0
+    dx = (lon2 - lon1) * 111_320.0 * math.cos(math.radians((lat1 + lat2) / 2))
+    return math.hypot(dx, dy)
+
+
+def stamp_local(sensors: list[dict], lat: float, lon: float, radius_m: float) -> list[dict]:
+    """`local` is ours AND here. The adapter decides ours; distance decides here.
+
+    Only ever narrows: a sensor an adapter did not claim never becomes local, whatever its coordinates. A public
+    reference station across the street is not the node's own measurement. A sensor with no coordinates that an
+    adapter claims (a Meshtastic pod reaching us over our own gateway) stays local, because we cannot measure a
+    distance we do not have and the radio itself is the evidence."""
+    for s in sensors:
+        if not s.get("local"):
+            continue
+        if s.get("lat") is None or s.get("lon") is None:
+            continue
+        s["local"] = metres(lat, lon, float(s["lat"]), float(s["lon"])) <= radius_m
+    return sensors
+
+
 # ---------------------------------------------------------------- Smart Citizen
 # Map on measurement *name*, not sensor id — ids change between kit generations (2.1 vs 2.3), names don't.
 SC_METRICS = {

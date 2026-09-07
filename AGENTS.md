@@ -54,7 +54,7 @@ came from and which place they were written for.
 ## Reading the node
 
 - `status.errors` is per loop. A key present means that loop failed on its last run.
-- `sensors[].local` means the person's own; `indoor` is what the rules use to tell the room from the street.
+- `sensors[].local` means the person's own **and** at this node; a kit of theirs further than `LOCAL_RADIUS_M` is theirs but not this node's measurement. `indoor` is what the rules use to tell the room from the street.
 - `alerts[].acted_at` is null until someone acts. Ask the person, then record with `act` and their words as the note.
 - "Outside" means: the person's own outdoor sensors, else the three nearest public references, else the model. Same order
   everywhere.

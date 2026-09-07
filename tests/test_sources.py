@@ -51,4 +51,23 @@ assert s[0]["sensor_id"] == "pa-84f3eb123456" and 34 < m["pm25"] < 38, "EPA corr
 assert abs(m["temp"] - 34.4) < 0.1 and abs(m["pressure"] - 100.62) < 0.01
 
 assert round(sources.epa_2021_correct(28, 65), 1) == 14.8   # BAD's worked example: raw 28 -> ~15
+
+# `local` is ours AND here. An adapter says whether a sensor is ours; distance says whether it is at this node.
+# Node #1 moved to Ungasan and kept three kits 1.2 km away marked local, so its "house" was three kits in
+# another building and it had no local outdoor sensor at all.
+assert round(sources.metres(-8.8190516, 115.1644423, -8.81983, 115.16657)) == 250, "sc-19236 is 250 m from node #1"
+assert round(sources.metres(-8.8190516, 115.1644423, -8.8271, 115.15709)) == 1207, "the indoor cluster is 1.2 km away"
+assert sources.metres(-8.8190516, 115.1644423, -8.8190516, 115.1644423) == 0.0
+
+NODE = (-8.8190516, 115.1644423)
+here     = {"sensor_id": "sc-19236", "local": True,  "lat": -8.81983, "lon": 115.16657}
+far      = {"sensor_id": "sc-19880", "local": True,  "lat": -8.8271,  "lon": 115.15709}
+theirs   = {"sensor_id": "bad-x",    "local": False, "lat": -8.81985, "lon": 115.16650}
+nocoords = {"sensor_id": "msh-abc",  "local": True,  "lat": None,     "lon": None}
+sources.stamp_local([here, far, theirs, nocoords], *NODE, 500)
+assert here["local"] is True,  "250 m inside a 500 m radius stays local"
+assert far["local"] is False,  "1.2 km away is ours but not here"
+assert theirs["local"] is False, "a public station next door is still not ours"
+assert nocoords["local"] is True, "a mesh pod on our own gateway has no coordinates and stays local"
+
 print("all adapter tests pass")
