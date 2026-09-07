@@ -242,6 +242,13 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
         log.warning("cells unavailable for the report: %s", e)
 
     try:
+        import packs
+        b["rules"] = sorted(r["id"] for r in packs.rules())
+    except Exception as e:  # noqa: BLE001
+        b["rules"] = []
+        log.warning("pack rules unavailable for the report: %s", e)
+
+    try:
         import agent
         b["health"] = agent.health_check()
     except Exception as e:  # noqa: BLE001
@@ -260,3 +267,193 @@ def _fit(b: dict) -> dict:
     if b["meta"]["truncated"]:
         log.info("report bundle over %d kB: dropped %d series", MAX_BYTES // 1024, b["meta"]["truncated"])
     return b
+
+
+# ---------------------------------------------------------------------------------------------------- the sheet
+# What an act-level rule watches, and the line it watches for, so the report can say whether the value came back
+# down. The numbers are the rules' own; tests/test_report_templates.py refuses a value here that is not in that
+# rule's SQL, the same way a pack README's thresholds are checked against its files. A rule that is not here gets
+# no sentence rather than a guessed one: heat_stress_now watches an apparent temperature that no column holds, and
+# in v0.37 it becomes a condition with an outcome of its own.
+THRESHOLDS = {
+    "air-quality/indoor_pm25_high":      ("pm25", 35.5),
+    "air-quality/outside_worse_keep_shut": ("pm25", 35.5),
+    "air-quality/outdoor_pm25_high":     ("pm25", 55.5),
+    "air-quality/inside_worse_ventilate": ("pm25", 15.0),
+}
+
+# What the node may mention beyond its own sensors: an observation that crossed a line a rule on this node cares
+# about. Nothing else. There is no UV rule and no rain rule in any pack that ships, so the report says nothing
+# about UV or rain — a number with no rule behind it is a fact nobody asked for.
+BEYOND = {
+    "coast/heavy_swell": ("beyond_swell", lambda o: (o.get(("marine-point", "swell_height_m")) or 0) >= 2.5
+                                                and (o.get(("marine-point", "swell_period_s")) or 0) >= 12),
+    "air-quality/indoor_pm25_high": ("beyond_satellite", lambda o: (o.get(("cams-point", "pm25_model")) or 0) > ACT),
+}
+
+# One dict per language. Every phrase a household reads is in here; the code decides which key, never the words,
+# so a new language is this dict again and nothing else. `id` and `es` are assistant-written and are waiting on a
+# native reader — see docs/BETA_TESTER_GUIDE.md.
+T = {
+    "en": {
+        "folded": "Overnight and this morning.",
+        "state_hot": "🥵 It is dangerously hot inside.",
+        "state_bad": "😷 The air inside is unhealthy right now.",
+        "state_warm": "🌫️ The air inside is middling: not clean, not unhealthy.",
+        "state_clean": "✅ The air inside is clean.",
+        "state_no_sensor": "🛰️ No sensor inside yet, so what follows is the district and not your rooms.",
+        "changed": "What changed: {clauses}.",
+        "changed_high": "{place}: the {what} ran higher than usual",
+        "changed_low": "{place}: the {what} sat lower than usual",
+        "what_pm25": "air", "what_temp": "heat", "what_humidity": "damp",
+        "beyond_swell": "Out at sea a big, long-period swell is arriving.",
+        "beyond_satellite": "The satellite has the whole district above the line to act on.",
+        "after": "After the alert: {clauses}.",
+        "after_under": "{place} is back under {n}",
+        "after_above": "{place} is still above {n}",
+        "todo_above": "👉 {place} is the one to deal with before the next report.",
+        "todo_quiet": "👉 Check {place}: it has stopped sending.",
+        "todo_health": "👉 The node itself needs a look: {fix}",
+        "todo_none": "👉 Nothing needs doing before the next report.",
+        "ask": "Ask me anything about the air, the heat, the sea or what is around here.",
+    },
+    "id": {
+        "folded": "Semalam dan pagi ini.",
+        "state_hot": "🥵 Di dalam panasnya berbahaya.",
+        "state_bad": "😷 Udara di dalam sedang tidak sehat.",
+        "state_warm": "🌫️ Udara di dalam sedang-sedang: belum bersih, belum tidak sehat.",
+        "state_clean": "✅ Udara di dalam bersih.",
+        "state_no_sensor": "🛰️ Belum ada sensor di dalam, jadi ini kecamatan, bukan ruangan Anda.",
+        "changed": "Yang berubah: {clauses}.",
+        "changed_high": "{place}: {what}nya lebih tinggi dari biasanya",
+        "changed_low": "{place}: {what}nya lebih rendah dari biasanya",
+        "what_pm25": "udara", "what_temp": "panas", "what_humidity": "kelembapan",
+        "beyond_swell": "Di laut ombak besar berperiode panjang sedang datang.",
+        "beyond_satellite": "Satelit melihat seluruh kecamatan di atas batas untuk bertindak.",
+        "after": "Setelah peringatan: {clauses}.",
+        "after_under": "{place} sudah di bawah {n}",
+        "after_above": "{place} masih di atas {n}",
+        "todo_above": "👉 {place} yang perlu diurus sebelum laporan berikutnya.",
+        "todo_quiet": "👉 Cek {place}: sudah tidak mengirim data.",
+        "todo_health": "👉 Node-nya sendiri perlu dilihat: {fix}",
+        "todo_none": "👉 Tidak ada yang perlu dilakukan sebelum laporan berikutnya.",
+        "ask": "Tanya apa saja tentang udara, panas, laut, atau apa yang ada di sekitar sini.",
+    },
+    "es": {
+        "folded": "La noche y esta mañana.",
+        "state_hot": "🥵 Dentro hace un calor peligroso.",
+        "state_bad": "😷 El aire de dentro está insalubre ahora mismo.",
+        "state_warm": "🌫️ El aire de dentro está a medias: ni limpio ni insalubre.",
+        "state_clean": "✅ El aire de dentro está limpio.",
+        "state_no_sensor": "🛰️ Aún no hay sensor dentro, así que esto es la comuna y no tus habitaciones.",
+        "changed": "Lo que cambió: {clauses}.",
+        "changed_high": "{place}: el {what} estuvo más alto de lo habitual",
+        "changed_low": "{place}: el {what} estuvo más bajo de lo habitual",
+        "what_pm25": "aire", "what_temp": "calor", "what_humidity": "vapor",
+        "beyond_swell": "Mar adentro llega un oleaje grande y de periodo largo.",
+        "beyond_satellite": "El satélite ve toda la comuna por encima de la línea para actuar.",
+        "after": "Después de la alerta: {clauses}.",
+        "after_under": "{place} volvió por debajo de {n}",
+        "after_above": "{place} sigue por encima de {n}",
+        "todo_above": "👉 {place} es lo que hay que atender antes del próximo informe.",
+        "todo_quiet": "👉 Revisa {place}: dejó de enviar datos.",
+        "todo_health": "👉 El nodo mismo necesita una revisión: {fix}",
+        "todo_none": "👉 No hay nada que hacer antes del próximo informe.",
+        "ask": "Pregúntame lo que quieras sobre el aire, el calor, el mar o lo que hay por aquí.",
+    },
+}
+
+
+def _place(row: dict) -> str:
+    """What a household calls the thing. Sensors are named '<node> - <room>' by the wizard, so the room is what
+    is left after the dash; anything else is used whole, and a sensor with no name at all is its id."""
+    name = (row.get("name") or "").strip()
+    return (name.split(" - ")[-1].strip() or name) if name else str(row.get("sensor_id") or "")
+
+
+def _n(v: float) -> str:
+    return str(int(v)) if float(v) == int(v) else f"{float(v):g}"
+
+
+def sheet(b: dict, locale: str = "en") -> str:
+    """The node's own report: six parts, plain text, deterministic, under a hundred words. This is what a household
+    on a node with no model gets, and it is the ruler a model's rewrite is checked against."""
+    t = T.get((locale or "en").split("-")[0], T["en"])
+    rules = set(b.get("rules") or [])
+    now = b.get("now") or []
+    parts = []
+
+    # 1. where the place stands
+    lead = t["folded"] + " " if b.get("meta", {}).get("folds_a_held_report") else ""
+    indoor = [r.get("mean_15m") or r.get("mean_1h") or r.get("last")
+              for r in now if r.get("local") and r.get("indoor") and r["metric"] == "pm25"]
+    indoor = [v for v in indoor if v is not None]
+    if any((a.get("rule") or "").startswith("heat/") for a in b.get("open_act") or []):
+        parts.append(lead + t["state_hot"])
+    elif not indoor:
+        parts.append(lead + t["state_no_sensor"])
+    else:
+        worst = max(indoor)
+        parts.append(lead + t["state_bad" if worst >= ACT else "state_warm" if worst >= CLEAN else "state_clean"])
+
+    # 2. what changed, and 3. what only the models know — one paragraph
+    body = []
+    # one clause per place, not per metric: "the kitchen's air ran higher, the kitchen's heat ran lower" is one
+    # story told twice, and the second half of it is noise.
+    moved, seen = [], set()
+    for s in b.get("series") or []:
+        if not (s.get("local") and s.get("kind") == "sensor" and abs(s.get("notability") or 0) >= 1.5):
+            continue
+        if s["sensor_id"] in seen:
+            continue
+        seen.add(s["sensor_id"]); moved.append(s)
+        if len(moved) == 2:
+            break
+    if moved:
+        clauses = [t["changed_high" if (s["notability"] or 0) > 0 else "changed_low"].format(
+            place=_place(s), what=t.get(f"what_{s['metric']}", s["metric"])) for s in moved]
+        body.append(t["changed"].format(clauses=", ".join(clauses)))
+    obs = {(o["sensor_id"], o["metric"]): o.get("value") for o in b.get("observations") or []}
+    for rule, (key, crossed) in BEYOND.items():
+        if rule in rules and crossed(obs):
+            body.append(t[key])
+            break                       # one clause, not a weather report
+    if body:
+        parts.append(" ".join(body))
+
+    # 4. what happened after this window's alerts, and 5. the one thing to do — one paragraph
+    tail = []
+    outcomes, still_above = [], None
+    for a in [x for x in b.get("alerts") or [] if x.get("level") == "act"]:
+        watch = THRESHOLDS.get(a.get("rule") or "")
+        if not watch:
+            continue
+        metric, line = watch
+        cur = next((r for r in now if r["sensor_id"] == a.get("sensor_id") and r["metric"] == metric), None)
+        v = None if not cur else (cur.get("mean_15m") or cur.get("mean_1h") or cur.get("last"))
+        if v is None:
+            continue
+        over = v >= line
+        outcomes.append(t["after_above" if over else "after_under"].format(place=_place(cur), n=_n(line)))
+        if over and still_above is None:
+            still_above = cur
+        if len(outcomes) == 2:
+            break
+    if outcomes:
+        tail.append(t["after"].format(clauses=", ".join(outcomes)))
+
+    quiet = (b.get("sensors_quiet") or [None])[0]
+    bad_check = next((c for c in (b.get("health") or {}).get("checks") or [] if not c.get("ok") and c.get("fix")), None)
+    if still_above is not None:
+        tail.append(t["todo_above"].format(place=_place(still_above)))
+    elif quiet:
+        tail.append(t["todo_quiet"].format(place=_place(quiet)))
+    elif bad_check:
+        tail.append(t["todo_health"].format(fix=bad_check["fix"].split(";")[0].split(".")[0]))
+    else:
+        tail.append(t["todo_none"])
+    parts.append(" ".join(tail))
+
+    # 6. the invitation
+    parts.append(t["ask"])
+    return "\n\n".join(parts)      # a part with nothing to say was never appended

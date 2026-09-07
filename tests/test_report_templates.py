@@ -138,3 +138,127 @@ assert "from report import LABELS" in _agent and "LABELS = {" not in _agent, "on
 for sid, (group, labels) in report.LABELS.items():
     assert group and labels, sid
 print("every query reads, none of them can see settings, and LABELS has one home")
+
+# ---------------------------------------------------------------- the sheet, in every language
+import copy, re, yaml
+
+RULES = {}
+for _f in sorted(__import__("glob").glob("packs/*/rules.yml")):
+    pack = _f.split("/")[1]
+    for _r in yaml.safe_load(open(_f).read()) or []:
+        RULES[f"{pack}/{_r['id']}"] = _r
+
+# The thresholds the report quotes are the rules' own. A number here that is not in that rule's SQL is a second
+# copy waiting to drift, which is exactly what the pack-README gate exists for.
+for rule, (metric, line) in report.THRESHOLDS.items():
+    assert rule in RULES, f"{rule} is in THRESHOLDS but no pack ships it"
+    sql = RULES[rule]["sql"]
+    # the whole number, not a prefix of it: plain `"35" in sql` is satisfied by the 35.5 it is meant to catch
+    assert re.search(rf"(?<![\d.]){re.escape(report._n(line))}(?![\d.])", sql), \
+        f"{rule}: the report says {line}, its SQL does not"
+    assert metric in sql, f"{rule}: the report watches {metric}, its SQL does not mention it"
+for rule in report.BEYOND:
+    assert rule in RULES, f"{rule} is in BEYOND but no pack ships it"
+assert not any(r.startswith("heat/") for r in report.THRESHOLDS), \
+    "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.37, not a guess here"
+print("every threshold the report quotes is the rule's own")
+
+# Every language carries every phrase. A key in one dict and not another is a report with a hole in it.
+assert set(report.T) == {"en", "id", "es"}, sorted(report.T)
+for loc, d in report.T.items():
+    assert set(d) == set(report.T["en"]), f"{loc} differs: {sorted(set(d) ^ set(report.T['en']))}"
+    for k, v in d.items():
+        assert v.strip() and "{" not in v.replace("{place}", "").replace("{what}", "").replace("{n}", "").replace("{clauses}", "").replace("{fix}", ""), f"{loc}/{k}: {v}"
+# every placeholder the code fills has a phrase to fill, in every language
+for m in re.findall(r"""t\[["']([a-z_]+)["']\]""", open("app/report.py").read()):
+    for loc in report.T:
+        assert m in report.T[loc], f"{loc} has no phrase for {m}"
+for metric in ("pm25", "temp", "humidity"):
+    for loc in report.T:
+        assert f"what_{metric}" in report.T[loc], f"{loc}: what_{metric}"
+print("every phrase exists in English, Bahasa Indonesia and Spanish")
+
+
+def _b(**over):
+    b = copy.deepcopy(FIXTURE)
+    b["rules"] = ["air-quality/indoor_pm25_high", "air-quality/inside_worse_ventilate", "coast/heavy_swell"]
+    for k, v in over.items():
+        b[k] = v
+    return b
+
+
+def _indoor(b, v):
+    for r in b["now"]:
+        if r["metric"] == "pm25" and r["indoor"]:
+            r["mean_15m"] = r["mean_1h"] = r["last"] = v
+    return b
+
+
+CASES = {}
+CASES["a pot still on the stove"] = _indoor(_b(), 48.0)
+CASES["the room came back down"] = _b()
+CASES["a clean afternoon"] = _indoor(_b(series=[], alerts=[], open_act=[], sensors_quiet=[]), 6.0)
+CASES["dangerous heat"] = _b(open_act=[{"id": 9, "at": "2026-09-07T15:00:00+08:00", "rule": "heat/heat_stress_now",
+                                        "sensor_id": "sc-kitchen", "line": "🥵 It is dangerously hot"}])
+CASES["no sensor indoors"] = _b(now=[r for r in FIXTURE["now"] if not r["indoor"]], series=[], alerts=[], open_act=[])
+_swell = _b()
+for _o in _swell["observations"]:
+    if _o["metric"] == "swell_height_m":
+        _o["value"] = 3.1
+_swell["observations"].append({"group": "sea", "sensor_id": "marine-point", "metric": "swell_period_s",
+                               "means": "swell period, s", "value": 14.0, "day_ago": 11.0, "at": "x"})
+CASES["a swell arriving"] = _swell
+_sat = _b()
+for _o in _sat["observations"]:
+    if _o["metric"] == "pm25_model":
+        _o["value"] = 61.0
+CASES["the satellite sees the district over the line"] = _sat
+CASES["a report folded out of quiet hours"] = _b(meta=dict(FIXTURE["meta"], folds_a_held_report=True,
+                                                           held_hours=6, window_hours=12))
+CASES["the node itself is unwell"] = _b(
+    sensors_quiet=[], alerts=[], open_act=[],
+    health={"ok": False, "checks": [{"check": "a backup in the last 2 days", "ok": False,
+                                     "fix": "run `planetai backup` on the node; check `crontab -l`"}]})
+CASES["a node at minute five"] = copy.deepcopy(EMPTY)
+
+seen_keys = set()
+for name, b in CASES.items():
+    for loc in ("en", "id", "es"):
+        s = report.sheet(b, loc)
+        assert s and s.strip(), f"{name}/{loc}: empty"
+        assert "{" not in s and "}" not in s, f"{name}/{loc}: unfilled placeholder\n{s}"
+        assert "None" not in s, f"{name}/{loc}: a None reached a household\n{s}"
+        assert "—" not in s, f"{name}/{loc}: a dash where the sentence should have been skipped\n{s}"
+        assert "  " not in s and not re.search(r"[ ]\n|\n[ ]", s), f"{name}/{loc}: loose whitespace\n{s!r}"
+        assert len(s.split()) <= 100, f"{name}/{loc}: {len(s.split())} words\n{s}"
+        assert s.split("\n\n")[-1] == report.T[loc]["ask"], f"{name}/{loc}: the invitation must be last"
+        assert s.strip()[0] not in "0123456789", f"{name}/{loc}: it opens with an emoji, not a number"
+        seen_keys |= {k for k, v in report.T[loc].items() if "{" not in v and v in s}
+    # the same bundle in three languages must be the same report, part for part
+    assert len({len(report.sheet(b, loc).split("\n\n")) for loc in ("en", "id", "es")}) == 1, f"{name}: shapes differ"
+
+# Only the whole sentences can be looked for by their text: "air" and "heat" are words that appear inside other
+# phrases, so finding them proves nothing. Every one of those must have been rendered by one of the cases above.
+_phrases = {k for k, v in report.T["en"].items() if "{" not in v and v.endswith((".", "?"))}
+assert _phrases <= seen_keys, f"never rendered, so never checked: {sorted(_phrases - seen_keys)}"
+
+# The metric words, each one asked for on purpose: a bundle where that metric is the notable one.
+for _metric, _en in (("pm25", "air"), ("temp", "heat"), ("humidity", "damp")):
+    _one = _b(series=[dict(FIXTURE["series"][0], metric=_metric, notability=4.0)], alerts=[], open_act=[])
+    for _loc in ("en", "id", "es"):
+        _s = report.sheet(_one, _loc)
+        assert report.T[_loc][f"what_{_metric}"] in _s, f"{_loc}: {_metric} never reaches a sentence\n{_s}"
+    assert f"the {_en} ran higher than usual" in report.sheet(_one, "en"), _metric
+    _low = _b(series=[dict(FIXTURE["series"][0], metric=_metric, notability=-4.0)], alerts=[], open_act=[])
+    assert f"the {_en} sat lower than usual" in report.sheet(_low, "en"), _metric
+# a part with nothing to say is left out of the report, not printed empty or as a dash
+_clean = report.sheet(CASES["a clean afternoon"], "en").split("\n\n")
+assert len(_clean) == 3 and all(p.strip() for p in _clean), _clean
+assert not any(report.T["en"]["changed"].split("{")[0] in p for p in _clean), "nothing changed, so no 'What changed'"
+assert not any("After the alert" in p for p in _clean), "no alert fired, so no 'After the alert'"
+_busy = report.sheet(CASES["a pot still on the stove"], "en").split("\n\n")
+assert len(_busy) == 4 and "What changed" in _busy[1] and "After the alert" in _busy[2], _busy
+assert "back under" in report.sheet(CASES["the room came back down"], "en")
+assert "still above" in report.sheet(CASES["a pot still on the stove"], "en")
+assert report.sheet(CASES["a node at minute five"], "es").startswith("🛰️"), "a node with no readings still speaks"
+print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")
