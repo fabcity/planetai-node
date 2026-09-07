@@ -66,7 +66,6 @@ services:
       OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
       MODEL: ${AGENT_MODEL:-qwen3:4b}
       AGENT_NAME: ${AGENT_NAME:-local-model}
-      BRIEF_HOUR: ${BRIEF_HOUR:-7}
       TZ: ${NODE_TZ:-UTC}
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on: [app]

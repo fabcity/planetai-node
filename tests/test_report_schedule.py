@@ -70,3 +70,16 @@ os.environ["REPORT_EVERY"] = "nonsense"
 assert st.num("REPORT_EVERY", 6) == 6, "and neither must a value that is not a number"
 del os.environ["REPORT_EVERY"]
 print("the report settings hold their defaults through an empty .env key")
+
+# ---------------------------------------------------------------- the agent container has no clock
+import yaml
+
+_loop = open("app/agent_loop.py").read()
+_compose = yaml.safe_load(open("docker-compose.yml"))
+assert "BRIEF_HOUR" not in _loop, "the agent's own report hour is gone; one schedule, in the app container"
+assert "BRIEF_HOUR" not in yaml.dump(_compose), "docker-compose.yml still hands the agent a report hour"
+# A wall-clock read in this file is what a second schedule is made of: the 07:00 copy came from `datetime.now()`
+# next to a BRIEF_HOUR. time.time() is the model ladder's five-minute skip clock and stays.
+assert "datetime" not in _loop, "the agent container reads no wall clock: that is how the second schedule started"
+assert "daily_report" not in _loop, "a scheduled report is not something the bot asks the model for"
+print("the agent container answers when written to and sends nothing on a schedule")

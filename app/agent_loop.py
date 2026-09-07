@@ -11,6 +11,11 @@ rung answered; `/model local` pins one for the conversation.
 All three speak the OpenAI-compatible chat protocol with tools, which Ollama, exo, OpenAI and Anthropic all serve.
 The node's own MCP tools are the model's hands; every write records X-Agent=<AGENT_NAME>/<rung>.
 
+This container has no clock. It answers when someone writes; it sends nothing on a schedule. The node keeps one
+schedule, in the app container, and writes the report itself (REPORT_EVERY / REPORT_ANCHOR): a second clock here
+sent a 07:00 copy of a report the household had already read at 06:00, and from v0.30 to v0.35 sent nothing at
+all — it handed Telegram a tuple and logged a 400 every morning.
+
 Alerts do not pass through the model. The node sends them; the model answers questions about them.
 """
 from __future__ import annotations
@@ -20,7 +25,6 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
 
 import httpx
 from mcp import ClientSession
@@ -40,7 +44,6 @@ CFG: dict = {}
 def cfg(k, d=""): return (CFG.get(k) or os.getenv(k) or d)
 def TG_TOKEN(): return cfg("TELEGRAM_BOT_TOKEN")
 def CHATS(): return {c.strip() for c in cfg("TELEGRAM_CHAT_IDS").replace(" ", "").split(",") if c.strip()}
-BRIEF_HOUR = int(os.getenv("BRIEF_HOUR", "7"))
 LOCALE = os.getenv("ALERT_LOCALE", "en")
 MAX_ROUNDS = 8
 SKIP_FOR = 300
@@ -237,19 +240,8 @@ async def main():
             await session.initialize()
             tools = to_openai_tools((await session.list_tools()).tools)
             log.info("%d tools", len(tools))
-            offset, last_brief_day, history, pins = 0, None, {}, {}
+            offset, history, pins = 0, {}, {}
             while True:
-                now = datetime.now()
-                if TG_TOKEN() and CHATS() and now.hour == BRIEF_HOUR and last_brief_day != now.date():
-                    last_brief_day = now.date()
-                    try:
-                        # the node writes the report; the model is not in the path of a scheduled message
-                        brief, rung = (await ask(session, tools, "Call daily_report(kind='morning') and pass its text through unchanged."), "node")
-                        for chat in CHATS():
-                            await telegram("sendMessage", chat_id=chat, text=brief)
-                        log.info("brief sent via %s", rung)
-                    except Exception as e:  # noqa: BLE001
-                        log.warning("brief failed: %s", type(e).__name__)
                 if not TG_TOKEN():
                     await asyncio.sleep(30); continue
                 try:
