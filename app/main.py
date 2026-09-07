@@ -403,7 +403,7 @@ def run_rules() -> None:
                 # what interrupts a person: act always; warn if ALERT_LEVEL allows; info only in a briefing (it is
                 # recorded either way, and appears on the dashboard). Quiet hours hold everything but act.
                 floor = {"act": 2, "warn": 1, "info": 0}
-                send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "warn"), 1) and not _quiet(level)
+                send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level)
                 if send:
                     notify(level, f"{text}\n\n#{alert_id}")   # the id is how a reply becomes an action
                 ha_alert(level, text, alert_id)
@@ -488,6 +488,14 @@ try:
     bootstrap_once()
 except Exception as e:  # noqa: BLE001  — never block startup on it
     log.warning("bootstrap failed: %s", e)
+
+try:
+    _moved = settings.migrate_briefings()
+    if _moved:
+        log.info("moved off the old briefing settings: %s. BRIEFINGS, BRIEF_MORNING and BRIEF_EVENING stay in place and are ignored",
+                 ", ".join(f"{k}={v}" for k, v in sorted(_moved.items())))
+except Exception as e:  # noqa: BLE001  — never block startup on it
+    log.warning("could not move off the old briefing settings: %s", e)
 
 if MQTT_HOST:
     threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
@@ -907,7 +915,10 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
     for k, v in body.items():
         if k not in settings.RUNTIME:
             raise HTTPException(400, f"{k} is not a runtime setting")
-        settings.set(k, str(v).strip())
+        try:
+            settings.set(k, str(v).strip())
+        except ValueError as e:            # a key with a fixed set of values says so; a 500 would read as the node's fault
+            raise HTTPException(400, str(e)) from None
         changed.append(k)
     who = x_agent or "gui"
     log.info("settings changed by %s: %s", who, ", ".join(changed))
