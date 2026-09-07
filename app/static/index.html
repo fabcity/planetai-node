@@ -105,7 +105,7 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .prov::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--webblue);flex:none}
 .earthrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
 @media(max-width:900px){.earthrow{grid-template-columns:1fr}}
-#earthcard[hidden]{display:none}   /* belt and braces: the act strip once showed as an empty bar because its class set display */
+#earthcard[hidden],#earth-img[hidden]{display:none}   /* both: a display rule beats the hidden attribute, and this img showed as a broken-image box with its alt text on every node that had not fetched (v0.33.1) */
 #earth-img{display:block;width:100%;height:auto;max-width:100%;border-radius:10px;background:var(--card2);image-rendering:pixelated}
 .attrib{margin-top:10px;font:400 11px var(--fb);color:var(--mute);line-height:1.5}
 /* the act strip: one thing to do, and the button that closes the loop, on the hero itself */
@@ -562,7 +562,7 @@ async function drawEarth(){
   $('#earth-attrib').textContent=e.attribution||'';
   const img=$('#earth-img'), empty=$('#earth-empty');
   if(!e.latest||!e.png){
-    img.hidden=true; empty.hidden=false;
+    img.hidden=true; img.removeAttribute('src'); empty.hidden=false;
     empty.textContent=e.years&&e.years.length?`${e.years.length} year${e.years.length===1?'':'s'} downloaded, nothing compared yet. planetai run earth change`
       :'No satellite record yet. planetai run earth fetch pulls it (about 103 MB per year, 64 MB kept).';
     $('#earth-sub').textContent='This node can keep its own copy of Google\u2019s AlphaEarth layers for the square around it and compare two years here. Nothing is downloaded until you ask.';

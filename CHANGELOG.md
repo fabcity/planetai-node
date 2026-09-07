@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.33.2 — 2026-09-07 — the satellite card showed a broken image before you fetched anything
+
+Reported from node #1 straight after updating: the land card showed a broken-image box with its alt text
+spilling across the card, above the sentence telling you to run `planetai run earth fetch`. Every node that
+had not fetched satellite data yet looked like this.
+
+The script hid the image correctly. The CSS did not let it: `#earth-img` sets `display:block`, and any
+display rule of ours beats the `hidden` attribute, whose `display:none` comes from the browser's own
+stylesheet. The comment one line above it in the same file warned about exactly this — it is how an empty
+orange act strip once showed on every node with nothing to act on — and the rule was written anyway.
+
+- **Fixed**: `#earth-img[hidden]` now cancels the display rule, and the empty state also drops the image's
+  `src` so nothing is requested. Verified on a node in both states: with no data the image computes to
+  `display:none` and occupies nothing; with data it renders the 1000 px map at 643 px inside its card.
+- **`make lint` now catches this class of bug.** `tools/check_ui.py` checks that anything the script hides
+  with `.hidden` is not un-hidden by a display rule on its id or any of its classes. Run against the two
+  bugs that shipped — this one and the 2026 act strip — it names both.
+
+Nothing else changed. The number, the map, the endpoint and the Index cell are the same as v0.33.1.
+
 ## v0.33.1 — 2026-09-06 — one number for the land, not two
 
 Found on the way out of v0.33: the new `earth` pack and the older `earth-engine` pack both published a
