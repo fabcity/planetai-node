@@ -140,6 +140,10 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--card2);color:var(--ink);border:1px solid var(--line2);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
 .actstrip[hidden]{display:none}   /* the class sets display:grid, which beats the hidden attribute: an empty bar showed on every node with nothing to act on */
 .actstrip .hex{width:12px;height:14px;background:var(--ink)}.actstrip .t{font:600 14.5px/1.4 var(--fb)}.actstrip .t small{display:block;font-weight:500;opacity:.8;font-size:12.5px;margin-top:2px}
+/* The report as the household received it, line breaks and all. No colour: it is the node's own sentences,
+   and a tint would be this page having an opinion about them. */
+.rep{white-space:pre-wrap;font:400 15px/1.6 var(--fb);color:var(--ink);margin:0}
+.rep.none{color:var(--mute)}
 .actstrip .btn{white-space:nowrap}
 @media(max-width:560px){.actstrip{grid-template-columns:auto 1fr}.actstrip .btn{grid-column:1/-1;justify-self:start}}
 /* headline tiles */
@@ -276,6 +280,19 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
     <div class="chips" id="hero-chips"></div>
     <div class="actstrip" id="actstrip" hidden></div>
   </div>
+
+  <section class="band" data-card="report">
+    <div class="bandhead"><span class="dist">Here</span><h2 class="t">The last thing the node said.</h2><div class="sub" id="report-sub"></div></div>
+    <div class="cards" id="report">
+      <div class="card r2 in">
+        <p class="rep" id="report-text"></p>
+        <div class="chips">
+          <span class="chip" id="report-when"></span>
+          <button class="btn" id="report-now" hidden onclick="reportNow()">Report now</button>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <section class="band" data-card="room">
     <div class="bandhead"><span class="dist">Room</span><h2 class="t">Inside.</h2><div class="sub" id="room-sub"></div></div>
@@ -419,7 +436,7 @@ const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit
 // ------------------------------------------------------------------ the page
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors,ser,sparks,sparkT,sparkH,yb]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[])]);
+    const [h,stats,alerts,rho,cells,obs,sensors,ser,sparks,sparkT,sparkH,yb,rep]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null)]);
     const O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
     const S=m=>stats.filter(r=>r.metric===m), fresh=r=>r.silent_minutes<120;
     const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
@@ -479,13 +496,22 @@ async function refresh(){
     $('#street-sub').textContent=`${mine.length?`Your kit on the wall${near.length?`, the ${near.length} nearest public sensor${near.length===1?'':'s'}`:''}`:near.length?`The ${near.length} nearest public sensor${near.length===1?'':'s'}`:'No outdoor sensor yet'}, and the wind. ${wind!=null&&wind<5&&(ov||0)>15?'Still air: whatever burns nearby stays nearby.':''}`;
     // the act strip: the newest unanswered act-level alert, on the hero
     const open_=alerts.filter(a=>a.level==='act'&&!a.acted_at); const strip=$('#actstrip');
-    if(open_.length){const a=open_[0];const ln=a.text.split('\n').filter(Boolean);strip.hidden=false;strip.innerHTML=`<span class="hex"></span><div class="t">${esc(ln[0])}<small>${open_.length>1?`${open_.length} things waiting. `:''}${esc((ln.find(l=>l.startsWith('👉'))||'').replace('👉','').trim())}</small></div><button class="btn act" onclick="act(${a.id})">I did this</button>`;}
+    // The instruction, and nothing asking to be told. No button and no count of things waiting: the node stopped
+    // measuring itself by whether someone pressed something (v0.36), and the outcome goes here in v0.38.
+    if(open_.length){const a=open_[0];const ln=a.text.split('\n').filter(Boolean);strip.hidden=false;strip.innerHTML=`<span class="hex"></span><div class="t">${esc(ln[0])}<small>${esc((ln.find(l=>l.startsWith('👉'))||'').replace('👉','').trim())}</small></div>`;}
     else{strip.hidden=true;strip.innerHTML='';}
+    // the report the node last wrote, whether it went out or was held
+    const rtxt=$('#report-text'), rok=rep&&rep.text;
+    rtxt.textContent=rok?rep.text:'No report yet. The first one lands at the next due hour.';
+    rtxt.classList.toggle('none',!rok);
+    $('#report-when').textContent=rok?`${hhmm(rep.ts)} · ${rep.window_hours} hours · written by ${rep.rung==='node'?'the node':esc(rep.rung)}${rep.sent?'':' · held for quiet hours, folded into the next one'}`:'';
+    $('#report-sub').textContent=rok?'Every report the node writes is here and on Telegram. Between them it speaks only when something needs doing.':'One report every few hours, in your own time zone. Set the rhythm under Set up.';
+    $('#report-now').hidden=!(TOKEN||localStorage.getItem('planetai_admin'));
     // alerts + rho
     const arc=rho.rho==null?0:Math.round(264*rho.rho); $('#rho-arc').setAttribute('stroke-dasharray',`${arc} 264`);
     $('#rho-num').textContent=rho.rho==null?'–':fmt(rho.rho,2);
-    $('#rho-k').textContent=rho.rho==null?'ρ — no act-level alert yet. When one comes, the button beside it is how this number is made.':`ρ — ${rho.alerts_act} ask${rho.alerts_act===1?'':'s'} in thirty days, ${rho.acted} answered. The only number here that comes from a person.`;
-    $('#act-sub').textContent=open_.length?`${open_.length} thing${open_.length===1?'':'s'} waiting for you. The button beside each is how ρ is made.`:'Nothing waiting. Every act-level alert gets a button; pressing it is the measurement.';
+    $('#rho-k').textContent=rho.rho==null?'ρ — no act-level alert yet.':`ρ — ${rho.alerts_act} ask${rho.alerts_act===1?'':'s'} in thirty days, ${rho.acted} with a note. The only number here that comes from a person.`;
+    $('#act-sub').textContent=open_.length?`${open_.length} act-level alert${open_.length===1?'':'s'} in the last day. The node said what to do and stopped asking.`:'What the node said. It asks for nothing back.';
     $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'||a.level==='warn'?'var(--red)':'var(--blue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn act" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
     // the world
     const wave=O('marine-point','wave_height_m'),wd=O('marine-point','wave_direction'),per=O('marine-point','wave_period_s'),sst=O('marine-point','sea_surface_temp');
@@ -808,6 +834,15 @@ async function layoutSave(){
 // ------------------------------------------------------------------ actions
 async function act(id){const note=prompt('What did you do? A few words is enough.','')||'acted';const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});toast(r.ok?`Recorded. Alert #${id} led to an action.`:'Could not record that.',!r.ok);refresh();}
 async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel.`:'Could not send.',!r.ok);refresh();}
+async function reportNow(){
+  const b=$('#report-now'), tok=TOKEN||localStorage.getItem('planetai_admin')||'';
+  b.disabled=true;
+  try{const r=await fetch('/report/now',{method:'POST',headers:{'Authorization':'Bearer '+tok}});
+      if(!r.ok)throw new Error(String(r.status));
+      toast('Report written and sent.');await refresh();}
+  catch(e){toast('Could not write a report. Is the token still right?',true);}
+  finally{b.disabled=false;}
+}
 function unlock(){TOKEN=$('#tok').value.trim();localStorage.setItem('planetai_admin',TOKEN);loadSetup();}
 function lock(){localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();}
 

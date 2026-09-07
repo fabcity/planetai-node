@@ -318,8 +318,11 @@ def _report_hours() -> list[int]:
 def _held_hours(cur, due, every: int) -> int:
     """How many hours of held reports this one has to fold in. The window a household last actually read ended at
     the newest sent report; if none was ever sent, at the start of the oldest held one."""
-    cur.execute("""SELECT coalesce(max(due_local) FILTER (WHERE sent),
-                            min(due_local) FILTER (WHERE held_quiet) - make_interval(hours => %(every)s)) AS since
+    # coalesce(due_local, ts): a report written on request has no due hour, but it did go out and it did cover a
+    # window, so it ends the held stretch. Without this a forced report at two in the morning left the night to be
+    # folded into the six o'clock one as well, and the household read it twice.
+    cur.execute("""SELECT coalesce(max(coalesce(due_local, ts)) FILTER (WHERE sent),
+                            min(coalesce(due_local, ts)) FILTER (WHERE held_quiet) - make_interval(hours => %(every)s)) AS since
                      FROM reports""", {"every": every})
     return report.held_hours((cur.fetchone() or {}).get("since"), due, every)
 
@@ -765,8 +768,10 @@ def earth_year_png(year: int = Query(..., ge=1900, le=2200)):
 def report_latest():
     """The last report this node wrote, sent or held. What the dashboard's Here band shows, and what the MCP tool
     `report_latest` returns. Open, like /alerts: it is the same sentences the household already received."""
+    # by ts, not by due_local: a report written on request has no due hour, and ordering by that hid it here and
+    # in `planetai report last` — the button said "sent" and the page went on showing the one before it.
     rows = q("""SELECT id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason
-                  FROM reports ORDER BY due_local DESC NULLS LAST, id DESC LIMIT 1""")
+                  FROM reports ORDER BY ts DESC LIMIT 1""")
     return rows[0] if rows else {"text": None, "ts": None, "depth": None, "rung": None, "held_quiet": None,
                                  "note": "no report yet; the first one lands at the next due hour"}
 

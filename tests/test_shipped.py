@@ -90,6 +90,8 @@ assert "def report_latest" in main and "def report_bundle" in main and "def repo
 assert 'RedirectResponse("/report/latest", status_code=301)' in main, "main.py: /briefing must not 404 a dashboard left open"
 assert "reports_due" in open("init.sql").read() and "held_quiet" in open("init.sql").read(), "init.sql: the reports table"
 assert "def bundle(" in open("app/report.py").read() and "def sheet(" in open("app/report.py").read(), "app/report.py"
+assert "FROM reports ORDER BY ts DESC LIMIT 1" in main, "main.py: /report/latest orders by ts — a report written on request has no due hour"
+assert "coalesce(due_local, ts)" in main, "main.py: a report written on request still ends the held stretch"
 assert "cmd_report()" in cli and "report) shift; cmd_report" in cli, "CLI: planetai report"
 assert "planetai report every" in cli and "planetai report at" in cli, "CLI: the report rhythm is settable and documented"
 assert "contributes: report" in open("packs/insight/rules.yml").read(), "the digest contributes to the report"
