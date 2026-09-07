@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.33.7 — 2026-09-07 — one landmark emptied the kilometre
+
+The plan of the kilometre went blank on node #1 the day it moved, and stayed blank through three releases that
+each looked like the cause. It was neither the cache nor the coordinates: it was one feature.
+
+- **A poi mapped as an open way stopped the whole plan drawing.** OpenStreetMap carries Garuda Wisnu Kencana as a
+  way with a poi tag; the draw took `coordinates[0][0]` as a point, which for a LineString is a bare number, and
+  threw. Because the draw is not awaited the rejection was unhandled: an empty band, no message, nothing in the
+  node's log. A poi now draws from the first coordinate of any geometry, and each feature is drawn inside its own
+  try, so one undrawable object costs that object and nothing else.
+- The caption and legend now count what is drawn rather than what was read: it claimed 2,714 buildings where 2,699
+  have outlines, because fifteen are mapped as nodes.
+
+If a plan is missing after this, the band now says so instead of disappearing (v0.33.5) and the page follows the
+node's version without a hard reload (v0.33.6).
+
 ## v0.33.6 — 2026-09-07 — the update reaches the screen
 
 `GET /` sent no cache headers, so after `planetai update` a browser could keep serving the dashboard it already
