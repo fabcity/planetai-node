@@ -39,8 +39,12 @@ EPA 2021 correction applied, raw kept as `pm25_raw`.
 **Meshtastic** (`planetai meshtastic`). Telemetry from radios via the gateway's MQTT uplink. `MESH_INDOOR_NODES` marks the
 indoor ones. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker.
 
-**Bali Air Dispatch** (`BAD_ENABLED=1`, Bali). The island's public stations within `BAD_RADIUS_KM` as outdoor references.
-Kits you read directly are skipped, so nothing is counted twice.
+**Bali Air Dispatch** (`BAD_ENABLED=1`, Bali). The ring: other people's stations within `BAD_RADIUS_KM`, as the
+outdoor reference this node is read against. Never `local`, at any distance. Three rules keep this node's own kit out
+of its own ring — the ids it already polls, anything within `BAD_MIN_SEPARATION_M` of the node, and `BAD_EXCLUDE` by
+hand — and one more keeps a single device from arriving twice under two networks' ids. Stations the archive suspects
+are indoors or malfunctioning are dropped; `BAD_INCLUDE_INDOOR=1` keeps the indoor ones.
+`planetai run nearby stations` prints the whole list with a reason for every exclusion.
 
 **Open-Meteo, CAMS, NASA POWER**. Free, key-free, anywhere. Weather now; PM2.5, PM10, O₃, NO₂, dust, UV from the
 Copernicus model at 11 km; climate normals. `kind='model'`, never in an ambient average.

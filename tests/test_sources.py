@@ -31,7 +31,11 @@ s, r = sources.baliairdispatch(HC(bad), -8.8271, 115.15709, 15)
 ids = {x["sensor_id"] for x in s}
 assert "bad-aq-1" not in ids, "stale must be dropped"
 assert "bad-pa-46949" not in ids, "42 km away must be outside a 15 km radius"
-assert "bad-iqs-x" in ids and [x for x in s if x["sensor_id"] == "bad-iqs-x"][0]["indoor"]
+# a station the archive suspects is indoors is not the street, so it is dropped by default. It is still a real
+# station someone may want, so BAD_INCLUDE_INDOOR=1 brings it back with the flag intact.
+assert "bad-iqs-x" not in ids, "suspected_indoor is dropped by default"
+s2, _ = sources.baliairdispatch(HC(bad), -8.8271, 115.15709, 15, include_indoor=True)
+assert [x for x in s2 if x["sensor_id"] == "bad-iqs-x"][0]["indoor"]
 
 # a Smart Citizen kit the node polls itself must not come back a second time via BAD (it was: sc-19236 and
 # bad-sc-19236 were both counted in the ambient average, with BAD's indoor flag disagreeing with Smart Citizen's)

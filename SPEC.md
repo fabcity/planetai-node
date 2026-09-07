@@ -47,7 +47,7 @@ Compute at node #1: an M-series Mac. Postgres and one Python process idle at und
 An adapter is a function returning `(sensors, readings)`. Two ship; see `docs/sensors.md` for the next four.
 
 - `smartcitizen`: polls `api.smartcitizen.me/v0/devices/<id>`. Maps on measurement *name* so SCK 2.1 and 2.3 both work. Marks `indoor` from the kit's `exposure`. `local = TRUE`.
-- `baliairdispatch`: polls `baliairdispatch.com/api/v1/latest`. Drops `stale`, keeps stations within `BAD_RADIUS_KM`, stores `pm25` and `pm25_raw`, carries `suspected_indoor`. `local = FALSE`. Attribution: Bali Air Dispatch + the row's network.
+- `baliairdispatch`: polls `baliairdispatch.com/api/v1/latest`. Drops `stale`, `suspected_indoor` and `suspected_malfunctioning`, keeps stations within `BAD_RADIUS_KM`, and excludes this node's own hardware three ways (ids it polls, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`) plus one device arriving under two networks' ids. Stores `pm25` and `pm25_raw`. `local = FALSE`, always. Attribution: Bali Air Dispatch + the row's network.
 
 ## 4. Security, v0.1
 
