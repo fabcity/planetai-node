@@ -103,10 +103,18 @@ for doc in DOCS:
 # Every declared channel must be a metric some adapter actually produces. A declaration for a metric that does not
 # exist is a role nothing will ever wear, and a typo in one is silent: the rule that reads roles just returns
 # nothing.
-_src = open("app/sources.py").read()
-# the regex only sees "key": "value" pairs; pm25, pm25_raw and aqi are written by readings.append(...) tuples,
-# which have no colon between the quoted strings, so they need to be named here by hand.
-_produced = set(re.findall(r'"[^"]+":\s*"([a-z0-9_]+)"', _src)) | {"pm25", "pm25_raw", "aqi"}
+# docs/PACKS.md tells a pack to declare its own metrics, so a pack's adapter counts as an adapter here. Reading
+# only app/sources.py meant every pack channel declaration failed, whatever the pack actually produced.
+def _metrics(src: str) -> set:
+    return (set(re.findall(r'"[^"]+":\s*"([a-z0-9_]+)"', src))            # {"pm25": "pm25"}
+            | set(re.findall(r'\("[^"]+",\s*"([a-z0-9_]+)"\)', src))       # ("t", "fc_temp")
+            | set(re.findall(r',\s*"([a-z0-9_]+)",\s*(?:float|round|max|abs)\b', src)))  # append((ts, sid, "x", float(v)))
+
+
+# pm25, pm25_raw and aqi are written by readings.append(...) tuples in core that none of the shapes above catch.
+_produced = {"pm25", "pm25_raw", "aqi"}
+for _a in ["app/sources.py"] + sorted(glob.glob("packs/*/adapter.py")):
+    _produced |= _metrics(open(_a).read())
 for f in ["config/channels.yml"] + sorted(glob.glob("packs/*/channels.yml")):
     for d in yaml.safe_load(open(f)) or []:
         if d.get("metric") not in _produced:

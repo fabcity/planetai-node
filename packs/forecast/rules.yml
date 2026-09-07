@@ -1,0 +1,18 @@
+# One rule, and it has no message. The forecast is context for a person reading the report, and forecasting is
+# the upstream tiers' job. Three wrong warnings reached node #1's Telegram at 21:17 on 7 September; a forecast
+# pack that starts talking is the next batch of them. This pack never sends anything.
+- id: ahead
+  contributes: report
+  sql: |
+    WITH nxt AS (
+      SELECT r.metric, r.value, r.ts
+      FROM readings r JOIN sensors s USING (sensor_id)
+      WHERE s.kind = 'model' AND s.source IN ('forecast-bmkg', 'forecast-om')
+        AND r.ts > now() AND r.ts < now() + interval '24 hours')
+    SELECT round(avg(value) FILTER (WHERE metric = 'fc_wind_speed')::numeric)              AS wind_kmh,
+           round(avg(value) FILTER (WHERE metric = 'fc_wind_direction')::numeric)          AS wind_from_deg,
+           round(sum(value) FILTER (WHERE metric = 'fc_rain')::numeric, 1)                 AS rain_mm,
+           min(ts) FILTER (WHERE metric = 'fc_rain' AND value > 0.2)                       AS rain_from,
+           round(max(value) FILTER (WHERE metric = 'fc_lead_hours')::numeric)              AS lead_hours
+    FROM nxt
+    HAVING count(*) > 0

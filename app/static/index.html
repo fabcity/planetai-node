@@ -326,6 +326,12 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
       <div class="head"><h2 class="t" style="font-size:1.25rem">The day it just had.</h2><div class="sub" id="day-sub"></div></div>
       <svg id="day" viewBox="0 0 1200 420" role="img" aria-label="PM2.5 inside and outside over 24 hours, annotated"></svg>
     </div>
+    <div class="card r1 mt" data-card="forecast" id="fccard">
+      <div class="head"><h2 class="t" style="font-size:1.25rem">The day it is about to have.</h2><span class="prov" id="fc-prov"><svg class="g" width="9" height="9" viewBox="0 0 9 9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1"><path d="M1 6h7M1 3.5h5"/></svg>forecast</span></div>
+      <div class="sub" id="fc-sub"></div>
+      <div id="fc-steps"></div>
+      <p class="note" id="fc-credit"></p>
+    </div>
   </section>
 
   <section class="band" data-card="plan" id="plancard" hidden>
@@ -463,7 +469,7 @@ const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit
 // ------------------------------------------------------------------ the page
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparks,sparkT,sparkH,yb,rep,ring]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null),api('/nearby').catch(()=>null)]);
+    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparks,sparkT,sparkH,yb,rep,ring,fc]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null),api('/nearby').catch(()=>null),api('/forecast').catch(()=>null)]);
     const O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
     const S=m=>stats.filter(r=>r.metric===m), fresh=r=>r.silent_minutes<120;
     const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
@@ -476,6 +482,7 @@ async function refresh(){
     const g=grade(iv??ov), state=STATES[g]||INK, crossed=g!=null&&g!=='clean';
     LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,state,crossed,by};
     drawRing(ring,sparks);
+    drawForecast(fc);
     // header
     $('#nodename').textContent=h.node; $('#nodeplace').textContent=`${h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':''}${clock()} · ${(h.kind||'home')} node`;
     const errs=Object.keys(h.errors||{}).length; $('#dot').className=h.last_error||errs?'bad':''; $('#pulsetxt').textContent=h.last_poll?`polled ${ago(h.last_poll)}`+(h.parent?` · linked to ${h.parent}`:''):'starting';
@@ -607,6 +614,43 @@ function sensorStory(s,m,silent,by,inPM){
   if(me!=null&&others.length&&me>mean(others)*1.4&&me>10)return'Highest in the house right now — nearest whatever is cooking or burning.';
   if(me!=null&&others.length&&me<mean(others)*0.7)return'The cleanest room in the house at the moment.';
   return`${s.sensor_id.startsWith('msh')?'Over the mesh radio':s.sensor_id.startsWith('ag')?'An AirGradient on the WiFi, nothing in the cloud':'A Smart Citizen kit'}. ${m.pm25&&m.pm25.mean_15m<=m.pm25.mean_24h*1.1?'Steady.':'Moving.'}`;
+}
+
+// ------------------------------------------------------------------ the forecast: what is arriving, and when
+const COMPASS16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compass16=d=>d==null?'?':COMPASS16[Math.round(((d%360)/22.5))%16];
+function drawForecast(d){
+  const sub=$('#fc-sub'), steps=$('#fc-steps'), credit=$('#fc-credit');
+  credit.textContent='BMKG, api.bmkg.go.id. Open-Meteo, open-meteo.com, CC-BY 4.0, when it is on. The node fetches this; it does not predict.';
+  if(!d||!d.hours||!d.hours.length){
+    steps.innerHTML=''; 
+    sub.textContent='No forecast yet. Set FORECAST_BMKG_ADM4 to this point\u2019s village code, or turn on Open-Meteo, and the next day of wind and rain appears here. `planetai run forecast verify` finds the code.';
+    return;
+  }
+  const now=Date.now(), all=d.hours.filter(h=>new Date(h.ts).getTime()>=now-3.6e6);
+  // One timeline, not two interleaved. BMKG is the official forecast where there is one; Open-Meteo carries the
+  // hours elsewhere. The disagreement between them is a sentence, not a second set of rows, and the gap sensor
+  // is not a forecast step at all.
+  const primary=all.some(h=>h.source==='forecast-bmkg')?'forecast-bmkg':'forecast-om';
+  const fut=all.filter(h=>h.source===primary);
+  const gaps=all.filter(h=>h.source==='forecast-gap'&&h.fc_temp_gap!=null);
+  const wind=fut.filter(h=>h.fc_wind_speed!=null), rain=fut.filter(h=>h.fc_rain>0.2);
+  const src=(d.sources||[]).filter(s=>s.sensor_id!=='forecast-gap').map(s=>{
+    const when=s.issued?('issued '+new Date(s.issued).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}))
+              :s.fetched?('fetched '+new Date(s.fetched).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})):'issue time unknown';
+    return esc(s.name||s.sensor_id)+' \u2014 '+when;}).join(' \u00b7 ');
+  const w0=wind[0];
+  sub.textContent=(w0?('The wind comes from the '+compass16(w0.fc_wind_direction)+' at '+fmt(w0.fc_wind_speed)+' km/h. '):'')
+    +(rain.length?('Rain expected from '+new Date(rain[0].ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+', '+fmt(fut.reduce((a,h)=>a+(h.fc_rain||0),0),1)+' mm over the day. '):'No rain expected in the next day. ')
+    +((d.far_from_node&&d.far_from_node.length)?('The forecast point is '+fmt(d.far_from_node[0].km,1)+' km from this node, which is another place. '):'')
+    +(gaps.length?('The two forecasts differ by up to '+fmt(Math.max(...gaps.map(g=>g.fc_temp_gap)),1)+' \u00b0C over the day; neither is the truth. '):'')
+    +src;
+  steps.innerHTML=fut.slice(0,8).map((h,i)=>'<div class="card sensor lift '+RADII[i%4]+'" data-card="fc:'+esc(h.ts)+'">'
+    +'<span class="hex" style="background:'+(h.fc_rain>0.2?'#8A8378':'rgba(138,131,120,.35)')+'"></span>'
+    +'<div style="min-width:0;flex:1"><div class="row"><span class="n">'+new Date(h.ts).toLocaleString([], {weekday:'short',hour:'2-digit',minute:'2-digit'})+'</span>'
+    +'<span style="white-space:nowrap"><span class="num">'+(h.fc_temp==null?'\u2013':fmt(h.fc_temp))+'</span><small>\u00b0C</small></span></div>'
+    +'<div class="story">wind from '+compass16(h.fc_wind_direction)+' '+(h.fc_wind_speed==null?'\u2013':fmt(h.fc_wind_speed))+' km/h \u00b7 '
+    +(h.fc_rain>0.2?fmt(h.fc_rain,1)+' mm rain':'dry')+(h.fc_cloud!=null?' \u00b7 '+fmt(h.fc_cloud)+'% cloud':'')+'</div></div></div>').join('');
 }
 
 // ------------------------------------------------------------------ the ring: this node against its neighbours

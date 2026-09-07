@@ -1,0 +1,28 @@
+id: forecast
+name: Forecast
+description: >-
+  Official and model weather for this point, as context for reading the node's own air: where the wind is coming
+  from and when rain is expected, over the next day. It fetches; it does not predict, and it never sends an alert.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.40.0" }
+kind: code
+domain: weather
+metrics: [fc_temp, fc_humidity, fc_wind_speed, fc_wind_direction, fc_cloud, fc_rain, fc_lead_hours,
+          fc_temp_gap, fc_wind_speed_gap]
+scales: [community]
+env:
+  - "# forecast: BMKG is Indonesia's meteorological agency and needs the village code for this point."
+  - "# `planetai run forecast verify` proves the code resolves to somewhere near the node."
+  - "FORECAST_BMKG=1"
+  - "FORECAST_BMKG_ADM4="
+  - "# Open-Meteo works anywhere, which is why it is here at all — but its free tier is non-commercial only,"
+  - "# so it is the operator's decision, not ours. Off until you turn it on."
+  - "FORECAST_OPENMETEO=0"
+  - "FORECAST_POLL_HOURS=6"
+needs:
+  - api.bmkg.go.id
+  - api.open-meteo.com
+attribution: >-
+  Weather forecast data from BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id.
+  Model forecast from Open-Meteo, open-meteo.com, CC-BY 4.0 — free tier is non-commercial use only.

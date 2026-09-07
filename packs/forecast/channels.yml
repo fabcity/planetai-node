@@ -1,0 +1,19 @@
+# A forecast is nobody's measurement of this place. It must never pool with a sensor's ambient reading, so every
+# channel here is `derived` and none is comparable — the same role open-meteo-cams' pm25_model carries in
+# config/channels.yml. The fc_ prefix is the second guard: no forecast metric shares a name with a measured one.
+- { source: forecast-bmkg, metric: fc_temp,           role: derived, comparable: false, unit: "°C" }
+- { source: forecast-bmkg, metric: fc_humidity,       role: derived, comparable: false, unit: "%" }
+- { source: forecast-bmkg, metric: fc_wind_speed,     role: derived, comparable: false, unit: "km/h" }
+- { source: forecast-bmkg, metric: fc_wind_direction, role: derived, comparable: false, unit: "°" }
+- { source: forecast-bmkg, metric: fc_cloud,          role: derived, comparable: false, unit: "%" }
+- { source: forecast-bmkg, metric: fc_rain,           role: derived, comparable: false, unit: "mm" }
+- { source: forecast-bmkg, metric: fc_lead_hours,     role: derived, comparable: false, unit: "h" }
+- { source: forecast-om,   metric: fc_temp,           role: derived, comparable: false, unit: "°C" }
+- { source: forecast-om,   metric: fc_humidity,       role: derived, comparable: false, unit: "%" }
+- { source: forecast-om,   metric: fc_wind_speed,     role: derived, comparable: false, unit: "km/h" }
+- { source: forecast-om,   metric: fc_wind_direction, role: derived, comparable: false, unit: "°" }
+- { source: forecast-om,   metric: fc_cloud,          role: derived, comparable: false, unit: "%" }
+- { source: forecast-om,   metric: fc_rain,           role: derived, comparable: false, unit: "mm" }
+- { source: forecast-om,   metric: fc_lead_hours,     role: derived, comparable: false, unit: "h" }
+- { source: forecast-gap,  metric: fc_temp_gap,       role: derived, comparable: false, unit: "°C" }
+- { source: forecast-gap,  metric: fc_wind_speed_gap, role: derived, comparable: false, unit: "km/h" }
