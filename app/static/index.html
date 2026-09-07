@@ -125,6 +125,8 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 /* Provenance is ink. It says where a number came from; it never says whether the number is good.
    A coloured pill reads as a verdict, so this carries no colour token and no radius: glyph, then word.
    The word is one of live / partial / model / cached / example. */
+.sensor .n a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(244,236,226,.28)}
+.sensor .n a:hover{border-bottom-color:currentColor}
 .prov{display:inline-flex;align-items:center;gap:7px;border-radius:0;padding:3px 8px;font:500 10.5px var(--fm);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;border:1px solid currentColor;color:var(--mute);background:none}
 .prov .g{flex:none;display:block}
 .earthrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
@@ -314,6 +316,12 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
   <section class="band" data-card="street">
     <div class="bandhead"><span class="dist">Street · a few hundred metres</span><h2 class="t">Outside the door.</h2><div class="sub" id="street-sub"></div></div>
     <div class="cards c4" id="street"></div>
+    <div class="card r1 mt" data-card="nearby-ring" id="ringcard">
+      <div class="head"><h2 class="t" style="font-size:1.25rem">You against your neighbours.</h2><span class="prov" id="ring-prov"><svg class="g" width="9" height="9" viewBox="0 0 9 9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1"><circle cx="4.5" cy="4.5" r="3.5"/><circle cx="4.5" cy="4.5" r="1"/></svg>external</span></div>
+      <div class="sub" id="ring-sub"></div>
+      <svg id="ringstrip" viewBox="0 0 600 64" role="img" aria-label="This node's PM2.5 against the range its neighbours are reading" hidden></svg>
+      <p class="note" id="ring-empty" hidden></p>
+    </div>
     <div class="card day r1 mt" data-card="day">
       <div class="head"><h2 class="t" style="font-size:1.25rem">The day it just had.</h2><div class="sub" id="day-sub"></div></div>
       <svg id="day" viewBox="0 0 1200 420" role="img" aria-label="PM2.5 inside and outside over 24 hours, annotated"></svg>
@@ -331,6 +339,12 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
   <section class="band" data-card="region">
     <div class="bandhead"><span class="dist">Region · 11 km and beyond</span><h2 class="t">Sky, land and sea.</h2><div class="sub" id="region-sub">What satellites and models say about this square of the map. They know the district, not your kitchen.</div></div>
     <div class="cards c4" id="world"></div>
+    <div class="card r1 mt" data-card="nearby-stations" id="stationscard">
+      <div class="head"><h2 class="t" style="font-size:1.25rem">Who else is measuring around here.</h2><span class="prov" id="stations-prov"><svg class="g" width="9" height="9" viewBox="0 0 9 9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1"><circle cx="4.5" cy="4.5" r="3.5"/><circle cx="4.5" cy="4.5" r="1"/></svg>external</span></div>
+      <div class="sub" id="stations-sub"></div>
+      <div id="stations"></div>
+      <p class="note" id="stations-credit"></p>
+    </div>
     <div class="card r1 mt" data-card="earth" id="earthcard" hidden>
       <div class="head"><h2 class="t" style="font-size:1.25rem">The land, year over year.</h2><span class="prov" id="earth-prov"><svg class="g" width="9" height="9" viewBox="0 0 9 9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1"><circle cx="1.5" cy="1.5" r="1"/><circle cx="4.5" cy="1.5" r="1"/><circle cx="7.5" cy="1.5" r="1"/><circle cx="1.5" cy="7.5" r="1"/><circle cx="4.5" cy="7.5" r="1"/><circle cx="7.5" cy="7.5" r="1"/></svg>model</span></div>
       <div class="earthrow mt">
@@ -449,7 +463,7 @@ const clock=()=>new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit
 // ------------------------------------------------------------------ the page
 async function refresh(){
   try{
-    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparks,sparkT,sparkH,yb,rep]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null)]);
+    const [h,stats,alerts,rho,cells,obs,sensors,trust,ser,sparks,sparkT,sparkH,yb,rep,ring]=await Promise.all([api('/health'),api('/stats'),api('/alerts?limit=8'),api('/rho'),api('/cells'),api('/observations'),api('/sensors'),api('/trust').catch(()=>[]),api('/series?metric=pm25&hours=24').catch(()=>null),api('/sparks?metric=pm25&hours=24').catch(()=>({})),api('/sparks?metric=temp&hours=24').catch(()=>({})),api('/sparks?metric=humidity&hours=24').catch(()=>({})),api('/history?sensor_id=place-point&metric=sat_buildings_yearly').catch(()=>[]),api('/report/latest').catch(()=>null),api('/nearby').catch(()=>null)]);
     const O=(sid,m)=>{const o=obs.find(x=>x.sensor_id===sid&&x.metric===m);return o?o.value:null;};
     const S=m=>stats.filter(r=>r.metric===m), fresh=r=>r.silent_minutes<120;
     const by={}; stats.forEach(r=>{(by[r.sensor_id]??={})[r.metric]=r;});
@@ -461,6 +475,7 @@ async function refresh(){
     const outPM=mine.length?mine:near, iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m)), mv=O('cams-point','pm25_model');
     const g=grade(iv??ov), state=STATES[g]||INK, crossed=g!=null&&g!=='clean';
     LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,state,crossed,by};
+    drawRing(ring,sparks);
     // header
     $('#nodename').textContent=h.node; $('#nodeplace').textContent=`${h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':''}${clock()} · ${(h.kind||'home')} node`;
     const errs=Object.keys(h.errors||{}).length; $('#dot').className=h.last_error||errs?'bad':''; $('#pulsetxt').textContent=h.last_poll?`polled ${ago(h.last_poll)}`+(h.parent?` · linked to ${h.parent}`:''):'starting';
@@ -499,11 +514,14 @@ async function refresh(){
       if(pm){value=fmt(pm.mean_15m);unit='µg/m³';color=s.indoor?state:INK;}
       else if(m.temp){value=fmt(m.temp.mean_15m,1);unit='°C';color='#F4ECE2';sp=sparkT[s.sensor_id];}
       else if(m.battery_pct){value=fmt(m.battery_pct.last);unit='% battery';color='#8A8378';sp=null;}
-      rows.push({name:s.name||s.sensor_id,value,unit,color,sp,indoor:!!s.indoor,story:sensorStory(s,m,silent,by,inPM)});}
+      rows.push({name:s.name||s.sensor_id,value,unit,color,sp,indoor:!!s.indoor,url:(s.meta&&s.meta.url)||null,story:sensorStory(s,m,silent,by,inPM)});}
     if(at!=null&&false)rows.push({name:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':'#F4ECE2',sp:atSeries,story:'Not measured — worked out from temperature and humidity. The number bodies notice.'});
-    for(const s of near.map(r=>sensors.find(x=>x.sensor_id===r.sensor_id)||r)){const m=by[s.sensor_id]||{};rows.push({name:s.name||s.sensor_id,value:fmt(m.pm25?m.pm25.mean_15m:null),unit:'µg/m³',color:'#8A8378',sp:sparks[s.sensor_id],indoor:false,story:`Somebody else's, ${fmt(dist(s),1)} km down the road. ${ov!=null&&m.pm25&&Math.abs(m.pm25.mean_15m-ov)<2?'It agrees with yours, which is worth knowing.':'A second opinion on the street.'}`});}
+    for(const s of near.map(r=>sensors.find(x=>x.sensor_id===r.sensor_id)||r)){const m=by[s.sensor_id]||{};rows.push({name:s.name||s.sensor_id,value:fmt(m.pm25?m.pm25.mean_15m:null),unit:'µg/m³',color:'#8A8378',sp:sparks[s.sensor_id],indoor:false,url:(s.meta&&s.meta.url)||null,story:`${s.meta&&s.meta.url?'Yours, but':"Somebody else's,"} ${fmt(dist(s),1)} km down the road. ${ov!=null&&m.pm25&&Math.abs(m.pm25.mean_15m-ov)<2?'It agrees with yours, which is worth knowing.':'A second opinion on the street.'}`});}
 
-    const sensorHTML=(r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" data-card="sensor:${(r.name||'').toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`;
+    // A link only where the sensor has a page of its own. `meta.url` is written by the Smart Citizen adapter for
+    // every kit on the operator's account and by nothing else, so account kits link and public stations never do —
+    // including the operator's own kits at other addresses, which are theirs to open even when they are not here.
+    const sensorHTML=(r,i)=>`<div class="card sensor lift ${RADII[i%4]} in" data-card="sensor:${(r.name||'').toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><span class="hex" style="background:${r.color}"></span><div style="min-width:0;flex:1"><div class="row"><span class="n">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.name)}</a>`:esc(r.name)}</span><span style="white-space:nowrap"><span class="num">${r.value}</span><small>${r.unit}</small></span></div><div class="story">${esc(r.story)}</div>${r.sp?spark(r.sp,r.color,26):''}</div></div>`;
     const indoorRows=rows.filter(r=>r.indoor), outRows=rows.filter(r=>!r.indoor&&r.name!=='CAMS point'&&r.name!=='Feels like');
     $('#room').innerHTML=roomTiles.map(tileHTML).join('')+indoorRows.map(sensorHTML).join('')||`<div class="empty">No indoor sensor yet. Add one under Set up → Sources: a Smart Citizen kit, an AirGradient on the WiFi, or a BME680 on a mesh radio.</div>`;
     $('#room-sub').textContent=inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the house, 15-minute means. ${iv!=null&&ov!=null?(iv<ov?'The building is keeping the street out.':iv>ov*1.3?'Whatever is in the air started in here.':'Inside follows the street.'):''}`:'Your indoor sensors.';
@@ -589,6 +607,65 @@ function sensorStory(s,m,silent,by,inPM){
   if(me!=null&&others.length&&me>mean(others)*1.4&&me>10)return'Highest in the house right now — nearest whatever is cooking or burning.';
   if(me!=null&&others.length&&me<mean(others)*0.7)return'The cleanest room in the house at the moment.';
   return`${s.sensor_id.startsWith('msh')?'Over the mesh radio':s.sensor_id.startsWith('ag')?'An AirGradient on the WiFi, nothing in the cloud':'A Smart Citizen kit'}. ${m.pm25&&m.pm25.mean_15m<=m.pm25.mean_24h*1.1?'Steady.':'Moving.'}`;
+}
+
+// ------------------------------------------------------------------ the ring: this node against its neighbours
+function drawRing(d,sparks){
+  const card=$('#ringcard'), strip=$('#ringstrip'), empty=$('#ring-empty'), sub=$('#ring-sub');
+  const list=$('#stations'), scard=$('#stationscard'), ssub=$('#stations-sub'), credit=$('#stations-credit');
+  const cite='Bali Air Dispatch, baliairdispatch.com, and the network named beside each station.';
+  credit.textContent=cite;
+  // Empty states are sentences. A blank card tells a person nothing about why it is blank.
+  if(!d||!d.ring||!d.ring.length){
+    strip.hidden=true; empty.hidden=false;
+    empty.textContent='No neighbours yet. This node has not fetched the public stations around it, so its readings speak for this address and nothing else. Bali only: set BAD_ENABLED=1.';
+    sub.textContent=''; scard.hidden=false;
+    list.innerHTML='<p class="note">Nothing fetched yet. Once the node polls, every station within '+(d&&d.radius_km?d.radius_km:15)+' km appears here with its distance.</p>';
+    ssub.textContent=''; return;
+  }
+  // `d.stations` is the number the rules actually use: reporting, outdoors, and not ours. A station the archive
+  // suspects is indoors is still listed — it was in the ring once — but it is not counted, and the row says so.
+  const skipped=d.ring.filter(r=>r.indoor).length;
+  ssub.textContent=d.stations+' of '+d.ring.length+' stations counted, within '+d.radius_km+' km'
+    +(skipped?', '+skipped+' left out as indoors':'')+'. None of them is ours: what this node reads itself is kept out of this list.';
+  list.innerHTML=d.ring.map((r,i)=>{
+    const km=r.km==null?'–':fmt(r.km,1);
+    const when=r.indoor?'indoors, not counted':r.reporting?(r.silent_minutes<2?'just now':Math.round(r.silent_minutes)+' min ago'):'not reporting';
+    const sp=sparks&&sparks[r.sensor_id];
+    return '<div class="card sensor lift '+RADII[i%4]+'" data-card="station:'+esc(r.sensor_id)+'">'
+      +'<span class="hex" style="background:'+(r.reporting?'#8A8378':'rgba(138,131,120,.35)')+'"></span>'
+      +'<div style="min-width:0;flex:1"><div class="row"><span class="n">'+esc(r.name||r.sensor_id)+'</span>'
+      +'<span style="white-space:nowrap"><span class="num">'+(r.pm25==null?'–':fmt(r.pm25))+'</span><small>µg/m³</small></span></div>'
+      +'<div class="story">'+km+' km away · '+esc(r.network||'unknown network')+' · '+when+'</div>'
+      +(sp?spark(sp,'#8A8378',26):'')+'</div></div>';
+  }).join('');
+  if(d.stations<2||d.median==null){
+    strip.hidden=true; empty.hidden=false; sub.textContent='';
+    empty.textContent=d.stations===1
+      ?'One neighbour reporting, '+fmt(d.nearest_km,1)+' km away. One is an anecdote: nothing here can tell a fire in the lane from a haze over the island.'
+      :'No neighbour is reporting right now, so there is nothing to compare this address against.';
+    return;
+  }
+  empty.hidden=true; strip.hidden=false;
+  // The range the neighbours are reading, and where this node sits on it. This is the picture the rules reason
+  // about: `only_here` asks whether the node has cleared the TOP of this box, not its middle.
+  const lo=Math.min(d.lowest,d.mine==null?d.lowest:d.mine), hi=Math.max(d.highest,d.mine==null?d.highest:d.mine);
+  const pad=(hi-lo)*0.15||1, A=lo-pad, B=hi+pad, X=v=>10+((v-A)/(B-A))*580;
+  // No text inside this SVG. It scales with the card, so at 375 px a viewBox label lands at about five pixels
+  // and cannot be read; every number lives in the sentence under it instead.
+  strip.innerHTML='<line x1="'+X(d.lowest)+'" x2="'+X(d.highest)+'" y1="32" y2="32" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
+    +'<line x1="'+X(d.lowest)+'" x2="'+X(d.lowest)+'" y1="24" y2="40" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
+    +'<line x1="'+X(d.highest)+'" x2="'+X(d.highest)+'" y1="24" y2="40" stroke="#8A8378" stroke-width="1.5" opacity=".55"/>'
+    +'<rect x="'+X(d.p25)+'" y="20" width="'+Math.max(1,X(d.p75)-X(d.p25))+'" height="24" fill="#8A8378" opacity=".25"/>'
+    +'<line x1="'+X(d.median)+'" x2="'+X(d.median)+'" y1="18" y2="46" stroke="#8A8378" stroke-width="2"/>'
+    +(d.mine==null?'':'<line x1="'+X(d.mine)+'" x2="'+X(d.mine)+'" y1="8" y2="56" stroke="#F4ECE2" stroke-width="2.5"/>');
+  const range='Your '+d.stations+' neighbours are reading '+fmt(d.lowest)+' to '+fmt(d.highest)+' µg/m³, middle '+fmt(d.median)+'. Nearest '+fmt(d.nearest_km,1)+' km.';
+  sub.textContent=(d.mine==null
+    ?'You have no outdoor sensor of your own, so there is nothing to put on this line. '
+    :d.mine>d.p75?'You read '+fmt(d.mine)+' µg/m³, above all but the worst of them. Whatever this is, it is closer to you than to them. '
+    :d.mine<d.p25?'You read '+fmt(d.mine)+' µg/m³, cleaner than most of them. '
+    :'You read '+fmt(d.mine)+' µg/m³, inside the range they are reading. Nothing here is unusual to this address. ')
+    +range+' '+cite;
 }
 
 // ------------------------------------------------------------------ the day: 24 hours, annotated from the data

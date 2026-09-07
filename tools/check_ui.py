@@ -55,6 +55,9 @@ for i in sorted(hidden_ids):
                     f"cancels it — add #{i}[hidden]{{display:none}}")
 
 sql = open("init.sql").read()
+# strip line comments first: `-- rolling stats are for sensors only;` sits inside the view and ends in a
+# semicolon, which cut the view off at its SELECT list and would silently reject any column added below it.
+sql = "\n".join(re.sub(r"--.*$", "", line) for line in sql.splitlines())
 stats = sql[sql.index("CREATE VIEW stats"):]
 stats = stats[: stats.index(";")]
 cols = set(re.findall(r"\bAS (\w+)", stats)) | {"sensor_id", "metric", "name", "local", "indoor", "kind", "scale", "lat", "lon"}
@@ -62,7 +65,8 @@ cols = set(re.findall(r"\bAS (\w+)", stats)) | {"sensor_id", "metric", "name", "
 row_ctx = " ".join(re.findall(r"(?:filter|map|forEach|reduce)\(r=>[^;]{0,200}", js))
 for f in sorted(set(re.findall(r"\br\.([a-z_0-9]+)", row_ctx))):
     if f not in cols and f not in ("key", "value", "label", "help", "secret", "set", "source", "group", "id", "cell", "state", "unit", "ts", "level", "text", "rule_id", "acted_at", "pack", "description", "name",
-                                    "coverage_7d", "frozen_channels", "age_hours"):  # /trust
+                                    "coverage_7d", "frozen_channels", "age_hours",   # /trust
+                                    "km", "network", "pm25", "reporting", "silent_minutes", "last_ts"):  # /nearby  (indoor is a stats column)
         errs.append(f"page reads r.{f}, which is not a column of the stats view")
 
 

@@ -78,11 +78,12 @@ try:
 
         cur.execute("""
             SELECT count(*) AS n,
-                   round(percentile_cont(0.5) WITHIN GROUP (ORDER BY mean_1h)::numeric, 1) AS med,
-                   round((percentile_cont(0.75) WITHIN GROUP (ORDER BY mean_1h)
-                        - percentile_cont(0.25) WITHIN GROUP (ORDER BY mean_1h))::numeric, 1) AS spread
-            FROM stats WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
-              AND mean_1h IS NOT NULL AND silent_minutes < 120""")
+                   round(percentile_cont(0.5) WITHIN GROUP (ORDER BY st.mean_1h)::numeric, 1) AS med,
+                   round((percentile_cont(0.75) WITHIN GROUP (ORDER BY st.mean_1h)
+                        - percentile_cont(0.25) WITHIN GROUP (ORDER BY st.mean_1h))::numeric, 1) AS spread
+            FROM stats st JOIN sensors sn USING (sensor_id)
+            WHERE sn.source = 'baliairdispatch' AND NOT st.local AND NOT st.indoor AND st.kind = 'sensor'
+              AND st.metric = 'pm25' AND st.mean_1h IS NOT NULL AND st.silent_minutes < 120""")
         r = cur.fetchone()
         step("the ring recomputes", r["n"] == 0 or r["med"] is not None,
              f"{r['n']} reporting, middle {r['med']} ug/m3, spread {r['spread']}")

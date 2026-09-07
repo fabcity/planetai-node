@@ -11,11 +11,11 @@ import sources  # noqa: E402
 LAT, LON = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
 with psycopg.connect(os.environ["DATABASE_URL"], row_factory=dict_row) as con, con.cursor() as cur:
     cur.execute("""
-        SELECT name, lat, lon, round(mean_1h::numeric, 1) AS pm, round(silent_minutes::numeric) AS silent
-        FROM stats
-        WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
-          AND mean_1h IS NOT NULL AND lat IS NOT NULL
-        ORDER BY silent_minutes""")
+        SELECT st.name, st.lat, st.lon, round(st.mean_1h::numeric, 1) AS pm, round(st.silent_minutes::numeric) AS silent
+        FROM stats st JOIN sensors sn USING (sensor_id)
+        WHERE sn.source = 'baliairdispatch' AND NOT st.local AND NOT st.indoor AND st.kind = 'sensor'
+          AND st.metric = 'pm25' AND st.mean_1h IS NOT NULL AND st.lat IS NOT NULL
+        ORDER BY st.silent_minutes""")
     ring = cur.fetchall()
     cur.execute("""SELECT round(avg(mean_1h)::numeric, 1) AS pm, count(*) AS n FROM stats
                    WHERE local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25' AND mean_1h IS NOT NULL""")

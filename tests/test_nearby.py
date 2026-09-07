@@ -166,4 +166,16 @@ else:
     assert _thin and _thin[0]["stations"] == 1, "one neighbour is an anecdote, and the report has to say so"
     assert _run("alone", _local + _ringrows(_keys), _keys) == [], "six neighbours is a ring"
 
+    # ---- `NOT local` is not the ring. Node #1's own kits sit 1.1 km from its coordinates, so at
+    # LOCAL_RADIUS_M=500 they are the operator's but not this node's, and `local` is FALSE on both. Scoping the
+    # ring by `NOT local` alone counted them as neighbours: the node comparing itself against its own hardware,
+    # the same duplicate the pack exists to refuse, one layer down in the SQL. The ring is the archive, by name.
+    _own_far = [(sid, src, nm, la, lo, ind, False, k) for sid, src, nm, la, lo, ind, _l, k in trustdb.sensors()]
+    _n = trustdb.Node(_local + _ringrows(_keys[:1]), _own_far
+                      + [(f"bad-{_keys[0]}", "baliairdispatch", _st[_keys[0]]["name"],
+                          _st[_keys[0]]["latitude"], _st[_keys[0]]["longitude"], False, False, "sensor")])
+    _r = _n.run(RULES["alone"], AT, -8.8271, 115.15709)
+    assert _r and _r[0]["stations"] == 1, \
+        f"five kits of the operator's own, all local=false, must not become five neighbours: {_r}"
+
     print("test_nearby: the three rules stayed silent through node #1's real week, and fire when they should")
