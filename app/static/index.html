@@ -604,7 +604,9 @@ async function drawPlan(){
   $('#plan').setAttribute('viewBox',`0 0 1000 ${Math.round(500+R*S+80)}`);
   $('#plan-legend').innerHTML=Object.entries(PLAN_LAYERS).filter(([k])=>counts[k]).map(([k,[l,c]])=>`<button class="${PLAN_OFF.has(k)?'off':''}" onclick="PLAN_OFF.has('${k}')?PLAN_OFF.delete('${k}'):PLAN_OFF.add('${k}');drawPlan()"><i style="background:${c}"></i>${l} · ${counts[k].toLocaleString()}</button>`).join('');
   const uses=F.filter(f=>f.properties.kind==='poi').reduce((m,f)=>{m[f.properties.category]=(m[f.properties.category]||0)+1;return m;},{});
-  $('#plan-sub').textContent=`${counts.building.toLocaleString()} buildings on the map${counts.sat?`, ${counts.sat.toLocaleString()} more only the satellite knows`:''}. Uses: ${Object.entries(uses).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} ${k}`).join(', ')}. OpenStreetMap${counts.sat?' and Google Open Buildings':''}; north up.`;
+  const useList=Object.entries(uses).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${v} ${k}`).join(', ');
+  const bld=counts.building===1?'1 building on the map':`${counts.building.toLocaleString()} buildings on the map`;
+  $('#plan-sub').textContent=`${bld}${counts.sat?`, ${counts.sat.toLocaleString()} more only the satellite knows`:''}.`+(useList?` Uses: ${useList}.`:'')+` OpenStreetMap${counts.sat?' and Google Open Buildings':''}; north up.`;
 }
 
 // ------------------------------------------------------------------ arrange: order and hide cards; saved on the node as UI_LAYOUT
