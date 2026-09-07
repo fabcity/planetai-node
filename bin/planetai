@@ -9,7 +9,10 @@
 #   planetai update         back up, pull, migrate, rebuild, verify
 #   planetai logs           follow the node's log
 #   planetai config         open .env in an editor
-#   planetai act <id>       record that you acted on alert <id>  (this is how rho is measured)
+#   planetai report         write and send one now; `report last` shows the last one
+#   planetai report every 6 hours between reports: 3, 4, 6, 8, 12 or 24
+#   planetai report at 6   the local hour the rhythm starts from
+#   planetai act <id>       your note on what you did about alert <id>
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
@@ -477,6 +480,39 @@ Y
   echo
   printf '  Now close the loop, which is the part the Index measures:\n    %splanetai act %s%s\n' "$B" "$id" "$N"
 }
+
+# ---------------------------------------------------------------- the report: the node's one scheduled message
+cmd_report() {
+  local sub="${1:-now}" val="${2:-}"
+  case "$sub" in
+    now|"")
+      local tok; tok="$(envget ADMIN_TOKEN)"; [[ -n "$tok" ]] || fail "no ADMIN_TOKEN in .env; run planetai ui"
+      curl -sf -m 300 -X POST "http://localhost:$(port)/report/now" -H "Authorization: Bearer $tok" -H 'content-type: application/json' \
+        | json 'print(); print(d["text"]); print(); print("  written by %s, sent." % d["rung"])' \
+        || fail "the node did not write a report; planetai logs shows why"
+      ;;
+    every)
+      [[ "$val" =~ ^(3|4|6|8|12|24)$ ]] || fail "usage: planetai report every 3|4|6|8|24 (hours between reports; each divides 24)"
+      runtime_set REPORT_EVERY "$val" || fail "could not reach the node's settings; is it running?"
+      api /report/latest >/dev/null
+      say "a report every $val hours from $(envget REPORT_ANCHOR || echo 6):00 local. Live within 20 seconds; no restart."
+      ;;
+    at)
+      [[ "$val" =~ ^([0-9]|1[0-9]|2[0-3])$ ]] || fail "usage: planetai report at <hour 0-23> (the local hour the rhythm starts from)"
+      runtime_set REPORT_ANCHOR "$val" || fail "could not reach the node's settings; is it running?"
+      say "the rhythm starts at $val:00 local. Live within 20 seconds; no restart."
+      ;;
+    last|latest)
+      api /report/latest | json '
+if not d.get("text"): print("  no report yet; the first one lands at the next due hour")
+else:
+    print(); print(d["text"]); print()
+    print("  %s \u00b7 %s hours \u00b7 written by %s%s" % (d["ts"][:16].replace("T"," "), d["window_hours"], d["rung"], "" if d["sent"] else " \u00b7 HELD for quiet hours, folded into the next one"))'
+      ;;
+    *) fail "usage: planetai report [now | last | every <hours> | at <hour>]";;
+  esac
+}
+
 
 cmd_act() {
   local id="${1:-}"; [[ "$id" =~ ^[0-9]+$ ]] || { echo "usage: planetai act <alert id> [note]"; exit 1; }
@@ -967,6 +1003,7 @@ cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null) 
 case "${1:-help}" in
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
+  report) shift; cmd_report "$@";;
   update) cmd_update;;  backup) cmd_backup;;  config) cmd_config;;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;

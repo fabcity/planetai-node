@@ -79,6 +79,22 @@ assert "→  /act {" not in main and "Reply /act with the number" not in main, "
 assert "#{alert_id}" not in main, "main.py: an act alert must not end in an id a household is expected to quote back"
 assert "Still waiting on you" not in main, "main.py: the report does not nag"
 print("act hints honest without a bot, and an act alert asks for nothing")
+# v0.36 — one report every REPORT_EVERY hours, written by the node, and every surface that reaches it
+assert '"REPORT_EVERY"' in settings and '"REPORT_ANCHOR"' in settings and '"REPORT_DEPTH"' in settings, "settings.py: the report keys"
+for k in ("REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH"):
+    assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
+assert not re.search(r"^BRIEF", env, re.M), ".env.example: the briefing keys are retired"
+assert "BRIEF_HOUR" not in open("docker-compose.yml").read(), "compose: the agent's own report hour is gone"
+assert "def run_report" in main and "def briefing(" not in main and "def run_briefings(" not in main, "main.py: one scheduler"
+assert "def report_latest" in main and "def report_bundle" in main and "def report_now" in main, "main.py: the report endpoints"
+assert 'RedirectResponse("/report/latest", status_code=301)' in main, "main.py: /briefing must not 404 a dashboard left open"
+assert "reports_due" in open("init.sql").read() and "held_quiet" in open("init.sql").read(), "init.sql: the reports table"
+assert "def bundle(" in open("app/report.py").read() and "def sheet(" in open("app/report.py").read(), "app/report.py"
+assert "cmd_report()" in cli and "report) shift; cmd_report" in cli, "CLI: planetai report"
+assert "planetai report every" in cli and "planetai report at" in cli, "CLI: the report rhythm is settable and documented"
+assert "contributes: report" in open("packs/insight/rules.yml").read(), "the digest contributes to the report"
+assert "def contributors" in open("app/packs.py").read() and "def alerts" in open("app/packs.py").read(), "packs.py: a contributor is not an alert"
+print("one report, its table, its endpoints, its settings and its command all ship")
 # v0.32.1 — a reinstall over an earlier node's volume left an app that could not log in while every check said fine
 assert "docker volume inspect planetai_db" in open("install.sh").read() and "NEWPW" in open("install.sh").read(), "install.sh: refuse a new password over an old volume"
 assert "app logs in to the database" in cli, "doctor: the locked-out app must be a named failure"
