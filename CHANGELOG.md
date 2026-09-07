@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.41.1 — 2026-09-08 — one card cannot take the others down
+
+**If your satellite cards went blank after updating to v0.41, this is the fix.** Nothing was deleted: the land,
+the plan and the year-over-year pictures were still in the database the whole time. They were not being drawn.
+
+The dashboard paints every card inside one `try`, and its `catch` only writes "node not answering" in the corner.
+So anything that threw while drawing an early card silently cost every card below it — and the satellite cards
+are drawn last, after the ring and the forecast that v0.41 added in front of them. A node whose `/nearby` or
+`/forecast` returned a shape the new code mishandled would lose the land and the plan with no error anywhere.
+
+Each card is drawn inside its own guard now. A card that cannot be drawn says so in its own box, names itself in
+the browser console, and leaves every other card alone. Checked by breaking the ring card on purpose and watching
+the earth card, the plan, the world tiles and the forecast all still render.
+
+No data changed, no schema changed, and no pack changed. If your satellite cards were blank, they come back on
+this update with the history they already had.
+
 ## v0.41 — 2026-09-08 — is this me, or is this everywhere
 
 **For testers: two new packs, both quiet until you configure them, and neither one claims to know your city.**

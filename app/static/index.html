@@ -440,6 +440,15 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
 <script>
 // ------------------------------------------------------------------ helpers
 const $=s=>document.querySelector(s), api=p=>fetch(p).then(r=>r.ok?r.json():Promise.reject(r.status));
+// Draw one card without letting it take the others down. paint() is a single try/catch, so before this a throw
+// in any card silently blanked every card below it — and the satellite cards are drawn last.
+function card(where,fn){
+  try{ return fn(); }
+  catch(e){
+    console.error('card',where,e);
+    const el=$(where); if(el){ el.hidden=false; el.textContent='This card could not be drawn from what the node returned. The rest of the page is unaffected.'; }
+  }
+}
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=(v,d=0)=>v==null||isNaN(v)?'–':Number(v).toFixed(d);
 const mean=a=>{a=(a||[]).filter(x=>x!=null);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;};
@@ -481,8 +490,8 @@ async function refresh(){
     const outPM=mine.length?mine:near, iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m)), mv=O('cams-point','pm25_model');
     const g=grade(iv??ov), state=STATES[g]||INK, crossed=g!=null&&g!=='clean';
     LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,state,crossed,by};
-    drawRing(ring,sparks);
-    drawForecast(fc);
+    card('#ring-sub', ()=>drawRing(ring,sparks));
+    card('#fc-sub', ()=>drawForecast(fc));
     // header
     $('#nodename').textContent=h.node; $('#nodeplace').textContent=`${h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':''}${clock()} · ${(h.kind||'home')} node`;
     const errs=Object.keys(h.errors||{}).length; $('#dot').className=h.last_error||errs?'bad':''; $('#pulsetxt').textContent=h.last_poll?`polled ${ago(h.last_poll)}`+(h.parent?` · linked to ${h.parent}`:''):'starting';
@@ -589,8 +598,8 @@ async function refresh(){
     $('#wall-why').textContent=why(iv,ov,mv,g);
     $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
     $('#foot-mid').textContent=`Node ${h.node} · one place, seen from the wall to orbit · Fab City`;
-    drawEarth();
-    drawPlan().then(()=>{ if(ONLY){document.body.classList.add('kiosk');document.querySelectorAll('#now > *').forEach(el=>{el.style.display=(el.dataset.card===ONLY||el.id===ONLY||el.id===ONLY+'card')?'':'none';});} if(location.hash&&!window.__scrolled){const t=document.querySelector(location.hash); if(t&&!t.hidden){t.scrollIntoView(); window.__scrolled=true;}} }); applyLayout();
+    card('#earth-empty', drawEarth);
+    drawPlan().catch(e=>console.error('plan:',e)).then(()=>{ if(ONLY){document.body.classList.add('kiosk');document.querySelectorAll('#now > *').forEach(el=>{el.style.display=(el.dataset.card===ONLY||el.id===ONLY||el.id===ONLY+'card')?'':'none';});} if(location.hash&&!window.__scrolled){const t=document.querySelector(location.hash); if(t&&!t.hidden){t.scrollIntoView(); window.__scrolled=true;}} }); applyLayout();
     if($('#network').classList.contains('on'))drawNetwork(LAST);
   }catch(e){$('#dot').className='bad';$('#pulsetxt').textContent='node not answering';}
 }
