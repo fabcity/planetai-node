@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.36 — 2026-09-07 — local means here, not just yours
+## v0.37 — 2026-09-07 — local means here, not just yours
 
 Node #1 moved to Ungasan in August. Three of its six Smart Citizen kits stayed behind at the old address, 1.2 km
 away, and one sits 7.8 km away in another town — and every one of them still counted as this node's own
@@ -70,6 +70,72 @@ site (6–10 µg/m³, 1–7 September) and have never been tested against a burn
 disagreement between units may widen with it. And the new dashboard card has not been checked by eye at 375, 768
 or 1440 px — only against the data it renders.
 
+## v0.36 — 2026-09-07 — the dashboard says what the colours mean
+
+Six things on the dashboard were decoration wearing the clothes of information. They are gone, and a check now
+fails the build if they come back.
+
+- **The big green hexagon behind the number is gone.** In its place the node draws the map cell it stands in:
+  the cell, the seven smaller cells inside it, and the edges of its neighbours running off the frame. It is
+  drawn faint, behind the sentence, and it is computed geometry rather than a shape someone liked. The
+  isometric mesh that used to cover the hero has gone with it.
+- **The number is the same colour as the words, until it is not.** It used to be green whatever it said. Now
+  it is ink, and it turns red when the reading is over the line the sentence names. Nothing else on the page
+  is green except a loop that closed.
+- **"I did this" is a green button.** Pressing it is the response, and that press is what ρ counts. Orange
+  now appears in one place only: the buildings on the plan that the satellite can see and the map has not
+  drawn.
+- **Numbers are set in JetBrains Mono.** Digits line up between one reading and the next, so a column of
+  readings can be compared by eye. The font is on the node, so it looks the same on a house with no internet.
+- **The two glows drifting behind the page are gone.** So is every gradient.
+- **The label beside the satellite section is a mark and a word, in ink.** It was a rounded blue pill, which
+  looked like a verdict on the number next to it. It says where a number came from and nothing about whether
+  the number is good.
+
+A household on a wall screen will notice the page got quieter and the number got easier to read. Nothing about
+what the node measures, when it speaks or what it says has changed.
+
+Under it:
+
+- `tools/check_ui.py` gained seven rules and fails on each: a six-sided `clip-path` wider than 24px, any hex
+  from the website palette, any gradient, a control rounded past 8px or a card past 18px that is not on a dated
+  legacy list, a provenance mark carrying a colour, orange anywhere but the satellite layer, and Fab Blue
+  `#20388D` on the dark ground where it measures 1.72:1 and cannot be seen. The dark register's blue is
+  `#7FA5E8` at 7.21:1.
+- `tests/test_check_ui.py` breaks each of those rules against a copy of the real page and requires the check to
+  name it. It runs in `make test`.
+- The dashboard is still one HTML file with no build step. The two things it cannot hold, the ground and the
+  font, are served by name from an allowlist in `app/main.py` and revalidate on every load, so an updated node
+  never shows the previous design.
+
+## v0.35 — 2026-09-07 — the heat rule was measuring Bali, not a heatwave
+
+Two thirds of every message node #1's household received was one rule. `heat_stress_now` fired 20 times in the 48
+hours of 5–7 September, always reporting 32.0–34.6 °C, and four of those arrived between one and five in the
+morning — act-level alerts are the ones quiet hours do not hold. The reports-and-messages release moves
+`ALERT_LEVEL` to `act`, which drops the eight warn-level messages and leaves all twenty of these; the quiet nights
+it promises would not have arrived on node #1.
+
+- **`heat_stress_now` fires at 35 °C apparent, not 32 °C.** 32 is the bottom of the heat-index "extreme caution"
+  band, and in Kuta Selatan that band is the climate. Measured on node #1's own five days of `temp` and `humidity`:
+  the hot room was above 32 °C for 86% of every reading, never fell below 28.7 °C, and averaged 33 °C at four in
+  the morning — its coolest hour. 35 °C is that sensor's 90th percentile. Replayed over the same record with the
+  rule's real cooldown it fires eight times in five days instead of thirty-six, none at night, and nothing at all
+  on the two days the weather eased.
+- The other three candidate fixes were replayed against the same data and rejected on it. A duration condition
+  (over the line for four readings running) changes the count from 36 to 36 — the house is over 32 °C
+  continuously, so there is no spike to suppress. Requiring AT to be rising fires on the ordinary morning warm-up
+  every day and goes silent on a flat hot night, which is the case that hurts people. A cooldown of 1440 minutes
+  reaches the same eight, but every one of the eight is still a false alarm. The cooldown stays at 240; at 35 °C it
+  no longer matters.
+- The Social cell keeps 32 °C. Counting hours of exposure is not interrupting someone, and 32 °C is the right line
+  for a count.
+- `packs/heat/README.md` now says which place the numbers were written for, as `docs/PACKS.md` requires, with the
+  node #1 distribution the 35 °C came from and how to move it for a temperate flat.
+- **New gate:** a pack README's unit-bearing thresholds must appear in that pack's own files. The README is the only
+  place a household can learn why a number is that number, and nothing was checking that it still matched the SQL.
+
+The alert texts are unchanged: this release changes when the rule fires, not what it says.
 ## v0.34 — 2026-09-07 — the years, as pictures you can play
 
 The land card knew about one year pair. Nine years were on the disk beside it and it said nothing about them.

@@ -143,6 +143,17 @@ for f in ("AGENTS.md", "docs/DEVELOPING.md", "bin/planetai"):
         w = w.lower()
         if w in WORDS and WORDS[w] != n_tools:
             errs.append(f"{f}: says {w} tools; app/agent.py defines {n_tools}")
+# A pack README's thresholds must be the pack's actual thresholds. heat/ documented 32 °C for a rule that fires at
+# 35 °C for six commits; nothing failed, and the README is the only place a household can learn why a number is that
+# number. Only unit-bearing claims ("AT >= 35 °C"), so prose about counts and percentiles stays free.
+for f in sorted(glob.glob("packs/*/README.md")):
+    pack = os.path.dirname(f)
+    body = "".join(open(x).read() for x in glob.glob(f"{pack}/*")
+                   if os.path.isfile(x) and not x.endswith("README.md"))
+    for n in set(re.findall(r"[\u2265>]=?\s*(\d+(?:\.\d+)?)\s*(?:\u00b0C|\u00b5g|%|hPa|km|m\b)", open(f).read())):
+        if not re.search(rf"(?<![\d.]){re.escape(n)}(?![\d.])", body):
+            errs.append(f"{f}: documents a threshold of {n}, which appears nowhere in {pack}/")
+
 if n_core_rules != 2:
     errs.append(f"config/rules.yml has {n_core_rules} rules; docs/PACKS.md says two domain-blind core rules — check both")
 

@@ -219,3 +219,16 @@ print("the trust card and its health check are wired")
 assert "alive AS (\n          SELECT sensor_id, max(ts) AS kit_ts FROM readings\n          WHERE ts > now() - interval '2 hours'" in main, \
     "/trust must join the same 'alive' CTE channel_dead uses (2-hour freshness gate), or a dead kit reads as a merely frozen channel"
 assert "JOIN alive a USING (sensor_id)" in main, "frozen_channels must be gated by the kit still being alive, not just by the flat hours"
+# v0.33.8 — the heat rule fired on Kuta Selatan's ordinary weather: node #1's hot room was over 32 °C apparent for
+# 86% of every reading, so 32 was its baseline, not an event. The line is 35 for the rule and 32 for the cell (a
+# count of exposure is not an interruption), and the alert texts must not move without Tomas.
+_heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
+assert ">= 35" in _heat["heat_stress_now"]["sql"], "heat_stress_now: 32 is node #1's baseline; the line is 35"
+assert ">= 40" in _heat["heat_danger"]["sql"], "heat_danger stays at the heat-index danger line"
+assert ">= 32" in open("packs/heat/cells.yml").read(), "the Social cell counts hours over 32, unchanged"
+assert _heat["heat_stress_now"]["cooldown_minutes"] == 240, "at 35 the cooldown stops mattering; it stays 240"
+for _r, _lang, _words in (("heat_stress_now", "en", "It is dangerously hot at {name}: it feels like {at} °C."),
+                          ("heat_danger", "en", "DANGER at {name}: it feels like {at} °C.")):
+    assert _words in _heat[_r]["message"][_lang], f"{_r} [{_lang}]: the message template needs Tomas's sign-off to change"
+assert "Kuta Selatan" in open("packs/heat/README.md").read(), "docs/PACKS.md: say which place you wrote for"
+print("the heat line is this place's, and the alert texts are untouched")
