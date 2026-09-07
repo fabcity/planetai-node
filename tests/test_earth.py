@@ -206,6 +206,11 @@ assert "force or stale_square or not A.year_file(y).exists()" in _fetch, \
 assert 'prev_radius = m.get("radius_m")' in _fetch, "the previous radius has to be read before meta is replaced"
 _verify = open("packs/earth/verify.py").read()
 assert "A.drift(m, lat, lon)" in _verify, "verify must place the cache, not only measure it"
+assert "A.year_file(y).unlink()" in _fetch, "years the run will not re-read must not survive a moved square"
+_change = open("packs/earth/change.py").read()
+assert 'orphan = [y for y, w in ((a, wa), (b, wb)) if not w.get("bounds")]' in _change, \
+    "change must refuse a year with no window for the current square"
+
 print("earth move tests pass")
 print("all earth pack tests pass")
 sys.exit(0)

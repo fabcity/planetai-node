@@ -45,6 +45,14 @@ m = A.meta()
 wa, wb = (m.get("windows", {}).get(str(y), {}) for y in (a, b))
 if wa.get("px") and wb.get("px") and wa["px"] != wb["px"]:
     print(f"earth: {a} is {wa['px']} px and {b} is {wb['px']} px — re-fetch both with --force"); sys.exit(1)
+# meta.json records a window per year for the square the pack currently describes. A year with a file but no window
+# was read around a different point, and comparing it with one from here would report the difference between two
+# places as change over time.
+orphan = [y for y, w in ((a, wa), (b, wb)) if not w.get("bounds")]
+if orphan:
+    print(f"earth: {', '.join(map(str, orphan))} on disk but not in meta.json for this square — read around another "
+          f"point, or fetched by an older version. planetai run earth fetch {' '.join(map(str, orphan))} --force")
+    sys.exit(1)
 
 t0 = time.time()
 X = np.load(A.year_file(a), mmap_mode="r")

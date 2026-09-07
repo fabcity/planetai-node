@@ -50,12 +50,18 @@ elif d:
     A.write_meta(m)
 
 if stale_square:
-    had = [y for y in years if A.year_file(y).exists()]
     why = (f"the node moved {d:.0f} m" if moved else
            f"the square changed from {prev_radius} to {radius} m" if resized else
            "the cache does not record which point it was read around")
-    if had:
-        print(f"earth: {why} — re-reading {len(had)} cached year(s); the files on disk describe the previous square")
+    on_disk = [y for y in A.cached_years()]
+    if on_disk:
+        print(f"earth: {why} — every cached year describes the previous square")
+    # Years this run re-reads are overwritten below. Years it does not are dropped: leaving them would let
+    # `earth change` compare one square against another and report the difference between two places.
+    for y in on_disk:
+        if y not in years:
+            A.year_file(y).unlink()
+            print(f"  {y}: removed, it was read around the previous point (planetai run earth fetch {y} to get it back)")
 
 todo = [y for y in years if force or stale_square or not A.year_file(y).exists()]
 skipped = [y for y in years if y not in todo]
