@@ -149,6 +149,7 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 /* the plan */
 .plan svg{width:100%;height:auto;display:block;max-height:80vh;margin:8px auto 0}
 .plan{padding:18px 18px 12px}
+.planwait{margin:0;padding:26px 4px 8px;color:var(--mute);font-size:.92rem;line-height:1.5;max-width:46ch}
 .plan-legend{margin-top:0;gap:14px}.plan-legend button{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font:500 12px var(--fb);color:var(--ink2);display:flex;align-items:center;gap:8px;cursor:pointer}
 .plan-legend button i{width:10px;height:10px;border-radius:50%;display:block}.plan-legend button.off{opacity:.4}
 .plan .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font:600 12px var(--fb);padding:5px 9px;border-radius:8px;transform:translate(-50%,-140%);white-space:nowrap}
@@ -265,7 +266,7 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
   <section class="band" data-card="plan" id="plancard" hidden>
     <div class="bandhead"><span class="dist">Neighbourhood · <span id="plan-r">1 km</span></span><h2 class="t">The kilometre around you.</h2><div class="sub" id="plan-sub"></div></div>
     <div class="planrow">
-      <div class="card plan r1"><div class="legend plan-legend" id="plan-legend"></div><svg id="plan" viewBox="0 0 1000 1000" role="img" aria-label="A plan of the kilometre around the node"></svg></div>
+      <div class="card plan r1"><div class="legend plan-legend" id="plan-legend"></div><svg id="plan" viewBox="0 0 1000 1000" role="img" aria-label="A plan of the kilometre around the node"></svg><p class="planwait" id="plan-wait" hidden></p></div>
       <div class="cards c1" id="place"></div>
     </div>
   </section>
@@ -575,10 +576,31 @@ async function drawEarth(){
     +`<div class="note mt">Pale is unchanged, white is changed most; black is no data. North up, 10 m a pixel, the scale bar is 1 km, the ring is this node. It says something changed, not what \u2014 someone who walks there can.</div>`;
 }
 
+function planWait(msg){                            // the band, visible, with one sentence instead of a plan
+  const card=$('#plancard'); card.hidden=false;
+  $('#plan').innerHTML=''; $('#plan').setAttribute('viewBox','0 0 1000 1'); $('#plan-legend').innerHTML='';
+  $('#plan-sub').textContent=''; const w=$('#plan-wait'); w.hidden=false; w.textContent=msg;
+}
 async function drawPlan(){
   const card=$('#plancard'); if(!card)return;
-  if(!PLAN){try{PLAN=await api('/place/geojson');}catch(e){PLAN={features:[]};}}
-  const F=PLAN.features||[]; if(!F.length){card.hidden=true;return;} card.hidden=false;
+  if(!PLAN){
+    // A failure is not an answer: caching {features:[]} here hid this band for the rest of the page's life, with
+    // nothing said, after one slow or interrupted load. Leave PLAN null and the next refresh tries again.
+    try{PLAN=await api('/place/geojson');}
+    catch(e){planWait('Could not read the map from this node ('+e+'). Trying again on the next refresh.');return;}
+  }
+  const F=PLAN.features||[];
+  if(!F.length){
+    // Nothing stored. Two different situations, and only one of them is worth a band: a node whose place pack has
+    // never run has no table at all, and nobody needs to be told about a pack they did not enable.
+    const t=(PLAN.diag||{}).tables||{};
+    if(!t.place_features){card.hidden=true;return;}
+    const h=(PLAN.diag||{}).hint||'No map stored for this point yet. On the node: planetai run place refresh';
+    planWait(h.charAt(0).toUpperCase()+h.slice(1));      // the endpoint's hint is a log sentence; this is a screen
+    PLAN=null;                                     // so a refresh after the fetch lands draws it
+    return;
+  }
+  $('#plan-wait').hidden=true; $('#plan').setAttribute('viewBox','0 0 1000 1000'); card.hidden=false;
   const [clon,clat]=PLAN.center, R=PLAN.radius_m||1000, S=500/(R*1.05);           // px per metre, circle fills the square
   const px=([lon,lat])=>[500+(lon-clon)*111320*Math.cos(clat*Math.PI/180)*S, 500-(lat-clat)*111320*S];
   const ring=r=>r.map(px).map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ');
