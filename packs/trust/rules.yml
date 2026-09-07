@@ -14,8 +14,8 @@
 
 # ---------------------------------------------------------------- a channel that stopped changing under a live kit
 - id: channel_dead
-  level: warn
-  cooldown_minutes: 720
+  level: info
+  cooldown_minutes: 10080
   sql: |
     WITH seasoned AS (
       SELECT sensor_id FROM readings
@@ -27,27 +27,38 @@
       JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
       WHERE s.local AND s.kind = 'sensor' AND c.role IN ('ambient', 'enclosure')
       GROUP BY 1, 2, 3, 4),
-    -- flat_hours counts every hour in the last 24 with no movement; last_bucket/last_flat_bucket compare the
-    -- most recent hour this channel reported against the most recent hour it was flat. A channel that froze and
-    -- later recovered has flat hours in its past but its latest bucket moves again, so it does not match here —
-    -- this alert is for a channel that is frozen right now, not one that once sat still for an evening.
+    -- Frozen means a day, not an evening. Every hourly bucket of the last 24 has to be there and flat
+    -- (max - min = 0). The v0.35 form -- six flat hours out of 24, latest bucket flat too -- fired at dusk on
+    -- Ungasan Kit's light channel, which reads 0 from dusk to dawn: eleven flat hours ending in the latest
+    -- bucket, every evening, on every kit with a light channel. Night in Kuta Selatan is under twelve hours, so
+    -- a full day needs no metric-specific exception, and a channel that genuinely dies still matches after a day.
     frozen AS (
       SELECT o.sensor_id, o.metric, o.name,
-             count(*) FILTER (WHERE r.max - r.min = 0) AS flat_hours,
-             max(r.bucket) AS last_bucket,
-             max(r.bucket) FILTER (WHERE r.max - r.min = 0) AS last_flat_bucket
+             count(*) AS hours,
+             count(*) FILTER (WHERE r.max - r.min > 0) AS moved,
+             max(r.max) AS stuck_at
       FROM ours o JOIN readings_1h r ON r.sensor_id = o.sensor_id AND r.metric = o.metric
       WHERE r.bucket > now() - interval '24 hours'
       GROUP BY 1, 2, 3),
+    -- another ambient channel on the same kit that did move in the same day. One sensor failing looks like this;
+    -- a whole kit in a cupboard does not, and `alive` alone cannot tell them apart.
+    moving AS (
+      SELECT DISTINCT r.sensor_id, r.metric
+      FROM readings_1h r JOIN sensors s USING (sensor_id)
+      JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
+      WHERE c.role = 'ambient' AND r.bucket > now() - interval '24 hours' AND r.max - r.min > 0),
     alive AS (
       SELECT sensor_id, max(ts) AS kit_ts FROM readings
       WHERE ts > now() - interval '2 hours' GROUP BY 1)
-    SELECT f.sensor_id, f.name, f.metric, f.flat_hours
+    SELECT f.sensor_id, f.name, f.metric, f.hours
     FROM frozen f JOIN alive a USING (sensor_id)
-    WHERE f.flat_hours >= 6 AND f.last_bucket = f.last_flat_bucket
+    WHERE f.hours >= 24 AND f.moved = 0
+      -- a floor is not a freeze: light, uv, rain and noise all sit at 0 for hours on end, legitimately.
+      AND f.stuck_at <> 0
+      AND EXISTS (SELECT 1 FROM moving m WHERE m.sensor_id = f.sensor_id AND m.metric <> f.metric)
   message:
-    en: "🧊 One reading at {name} has stopped moving.\n\nIts {metric} has been the same number for hours while the rest of the kit keeps reporting. That usually means one sensor has failed, not the kit.\n\n👉 Power-cycle it. If the number stays frozen, the sensor needs replacing, and nothing it has recorded for {metric} since it froze can be trusted."
-    id: "🧊 Satu bacaan di {name} berhenti bergerak.\n\nNilai {metric} sama selama berjam-jam padahal kit-nya masih melapor. Biasanya itu satu sensor yang rusak, bukan kit-nya.\n\n👉 Matikan lalu nyalakan lagi. Kalau angkanya tetap beku, sensornya harus diganti, dan semua yang tercatat untuk {metric} sejak ia beku tidak bisa dipercaya."
+    en: "\U0001F9CA One reading at {name} has stopped moving.\n\nIts {metric} has been the same number for a whole day while the rest of the kit keeps reporting. That usually means one sensor has failed, not the kit.\n\n\U0001F449 Power-cycle it. If the number stays frozen, the sensor needs replacing, and nothing it has recorded for {metric} since it froze can be trusted."
+    id: "\U0001F9CA Satu bacaan di {name} berhenti bergerak.\n\nNilai {metric} sama sepanjang satu hari penuh padahal kit-nya masih melapor. Biasanya itu satu sensor yang rusak, bukan kit-nya.\n\n\U0001F449 Matikan lalu nyalakan lagi. Kalau angkanya tetap beku, sensornya harus diganti, dan semua yang tercatat untuk {metric} sejak ia beku tidak bisa dipercaya."
 
 # ---------------------------------------------------------------- a local sensor with holes in the week
 - id: coverage_low

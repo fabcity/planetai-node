@@ -1,6 +1,7 @@
 """Every feature the CHANGELOG and docs claim must exist in the files. On 5 September two versions shipped with edit
 blocks that failed silently: the loop landed, the compose service, settings, GUI tab, CLI command and .env keys did not,
 and lint passed because nothing inconsistent was present. This test names each artifact a version promised."""
+import datetime
 import re
 import yaml
 
@@ -207,12 +208,13 @@ assert "60" in _trust["coverage_low"]["sql"], "coverage_low's floor is 60% of th
 assert "50" in _trust["peer_disagreement"]["sql"], "collocation is 50 m"
 assert "0.85" in _trust["peer_disagreement"]["sql"] and "1.15" in _trust["peer_disagreement"]["sql"]
 assert "channel_roles" in _trust["peer_disagreement"]["sql"], "peer comparison is ambient-only, by role"
-# channel_dead: a naive `count(*) >= 6` over any flat hour in the last 24 fires on six *scattered* flat hours
-# (e.g. a calm night) even though the channel is moving fine right now. Pin the fix: the rule must also require
-# the most recent bucket to be among the flat ones, so it only fires on a channel frozen right now.
-assert "last_flat_bucket" in _trust["channel_dead"]["sql"], "channel_dead must track the most recent flat bucket"
-assert "f.last_bucket = f.last_flat_bucket" in _trust["channel_dead"]["sql"], \
-    "channel_dead must require the latest bucket to still be flat, not just 6 scattered flat hours"
+# channel_dead: six flat hours out of the last 24, latest bucket flat too, is what dusk looks like on any light
+# channel — node #1's fired every evening (v0.40). Frozen means a whole day: every bucket of the last 24 present
+# and flat, and a flat value of 0 is a floor, not a freeze.
+assert "f.hours >= 24 AND f.moved = 0" in _trust["channel_dead"]["sql"], \
+    "channel_dead: a day of flat buckets with none of them moving, not 6 scattered flat hours"
+assert "f.stuck_at <> 0" in _trust["channel_dead"]["sql"], "a channel sitting at 0 has a floor, not a freeze"
+assert "last_flat_bucket" not in _trust["channel_dead"]["sql"], "the 'frozen right now' condition is gone with the 6-hour form"
 for _r in _trust.values():
     assert set(_r["message"]) >= {"en", "id"}, "every alert speaks English and Indonesian"
     assert "µg" not in _r["message"]["en"], "statistics stay out of alert messages"
@@ -300,3 +302,23 @@ else:
     assert trustdb.Node(trustdb.week(_real, _at)).run(_trust["peer_disagreement"], _at), \
         "given a week, the rules must still be able to speak — otherwise this test proves nothing"
     print("the trust pack says nothing about a sensor younger than a week")
+
+    # channel_dead, over Ungasan Kit's real light series (5-7 September): 0 from dusk to dawn, eleven flat hours
+    # ending in the latest bucket, then 4 -> 1259 lux through the day. The v0.35 rule matched it at 21:14 with
+    # flat_hours = 11. It must now match at no hour of the day, and its age must not be the reason: the series is
+    # given the week the pack asks for, so what is being tested is the flat rule itself.
+    _ungasan = trustdb.week(trustdb.readings("sc-19236"), _at)
+    _node = trustdb.Node(_ungasan)
+    for _h in range(24):
+        _when = _at - datetime.timedelta(hours=_h)
+        assert _node.run(_trust["channel_dead"], _when) == [], \
+            f"channel_dead fired on a light channel that reads 0 at night, {_h}h before the dump"
+    # A channel that has genuinely stopped: 26 hours on one number, beside the same kit's pm25 still moving.
+    _stuck = trustdb.week(trustdb.readings("sc-19874"), _at) + trustdb.flat("sc-19874", "light", 412, 26, _at)
+    _rows = trustdb.Node(_stuck).run(_trust["channel_dead"], _at)
+    assert [r["metric"] for r in _rows] == ["light"] and _rows[0]["name"] == "BAYU NEW ENCLOSURE", \
+        f"a channel stuck on 412 lux for 26 hours is the failure this rule exists to catch, got {_rows}"
+    # The same channel stuck on 0 is a floor, not a freeze — night, no rain, a quiet room.
+    _floor = trustdb.week(trustdb.readings("sc-19874"), _at) + trustdb.flat("sc-19874", "light", 0, 26, _at)
+    assert trustdb.Node(_floor).run(_trust["channel_dead"], _at) == [], "0 lux for a day is night, not a dead sensor"
+    print("channel_dead: a day on one number, and a floor of 0 is not a freeze")
