@@ -73,7 +73,10 @@ def stamp_local(sensors: list[dict], lat: float, lon: float, radius_m: float) ->
     Only ever narrows: a sensor an adapter did not claim never becomes local, whatever its coordinates. A public
     reference station across the street is not the node's own measurement. A sensor with no coordinates that an
     adapter claims (a Meshtastic pod reaching us over our own gateway) stays local, because we cannot measure a
-    distance we do not have and the radio itself is the evidence."""
+    distance we do not have and the radio itself is the evidence. If the node itself has no coordinates yet
+    (unset or half-configured), leave every claim alone rather than narrow the whole fleet to nothing."""
+    if lat is None or lon is None:
+        return sensors
     for s in sensors:
         if not s.get("local"):
             continue

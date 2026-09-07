@@ -70,4 +70,10 @@ assert far["local"] is False,  "1.2 km away is ours but not here"
 assert theirs["local"] is False, "a public station next door is still not ours"
 assert nocoords["local"] is True, "a mesh pod on our own gateway has no coordinates and stays local"
 
+# A node that does not know where it is must not decide that nothing is local. With no coordinates stamp_local
+# leaves every claim alone: blanking the fleet on a half-configured node is worse than trusting the adapter.
+unset = [{"sensor_id": "sc-19236", "local": True, "lat": -8.81983, "lon": 115.16657}]
+sources.stamp_local(unset, None, None, 500)
+assert unset[0]["local"] is True, "no node coordinates means no narrowing, not narrowing everything away"
+
 print("all adapter tests pass")

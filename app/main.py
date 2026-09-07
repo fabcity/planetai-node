@@ -94,7 +94,8 @@ def poll_once(hc: httpx.Client) -> None:
                 errors.append(f"{name}: {str(e).splitlines()[0]}")
                 log.warning("source %s failed: %s", name, e)
                 continue
-            sources.stamp_local(sensors, float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0),
+            lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+            sources.stamp_local(sensors, float(lat_env) if lat_env else None, float(lon_env) if lon_env else None,
                                  float(settings.get("LOCAL_RADIUS_M") or 500))
             with con.cursor() as cur:
                 for s in sensors:
@@ -123,7 +124,8 @@ def poll_once(hc: httpx.Client) -> None:
 
 # ---------------------------------------------------------------- MQTT ingest (Meshtastic gateway, DIY pods)
 def _store(sensors, readings) -> None:
-    sources.stamp_local(sensors, float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0),
+    lat_env, lon_env = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+    sources.stamp_local(sensors, float(lat_env) if lat_env else None, float(lon_env) if lon_env else None,
                          float(settings.get("LOCAL_RADIUS_M") or 500))
     with db() as con, con.cursor() as cur:
         for s in sensors:
