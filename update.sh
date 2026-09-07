@@ -122,9 +122,11 @@ done < .env.example
 # 6. rebuild and restart
 say "rebuilding"
 spin "building the image (pip installs; a minute or two)" docker compose build app || die "the image did not build; the node keeps running the version it had. See $ULOG"
-# stamp the version the node now runs, from git, so /health and planetai status report it. After the build, not
+# stamp the version the node now runs, so /health and planetai status report it: from git in a clone, from the
+# VERSION file the tarball carries otherwise. After the build, not
 # before: a failed build must not leave .env claiming a version the containers never ran.
-if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)|" .env && rm -f .env.bak; else echo "NODE_VERSION=$(git describe --tags --always 2>/dev/null || echo dev)" >> .env; fi
+VER="$(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)"
+if grep -q "^NODE_VERSION=" .env; then sed -i.bak "s|^NODE_VERSION=.*|NODE_VERSION=${VER}|" .env && rm -f .env.bak; else echo "NODE_VERSION=${VER}" >> .env; fi
 spin "restarting the containers" docker compose up -d || die "the containers did not start; see $ULOG"
 
 # 7. verify

@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.37 — 2026-09-07 — a node installed from the tarball knows which version it is
+
+Every beta tester's node called itself `dev`. Testers install from the tarball, and the installer read the
+version with `git describe`, which has nothing to read where there is no repository. A `VERSION` file sat in
+the same folder saying `v0.36` and nothing looked at it.
+
+- **`/health`, `planetai status` and the vitals row on the dashboard name the version the node runs.** A
+  tester can say which version produced a problem.
+- **`planetai version` prints a version.** On a tarball node it printed the node's name and place with an
+  empty space where the version goes.
+- The version is read from git, then from the `VERSION` file the tarball carries, then `dev`. `install.sh`,
+  `update.sh` and `planetai version` had the same line; all three now read the file. A git clone reports what
+  it always did.
+
+**The update that brings this fix stamps `dev` one last time.** `update.sh` copies itself to a temporary file
+and runs from there, so the script driving your update is the one you already had. Run `planetai update` a
+second time and the version appears, or run `./install.sh` in the node folder, which is idempotent and reads
+`VERSION` straight away. Nodes installed fresh from the tarball are correct from the first minute.
+
+A household sees no change on the wall screen. This is release metadata: what the node measures, when it
+speaks and what it says are untouched.
+
 ## v0.36 — 2026-09-07 — the dashboard says what the colours mean
 
 Six things on the dashboard were decoration wearing the clothes of information. They are gone, and a check now
