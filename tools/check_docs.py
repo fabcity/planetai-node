@@ -36,10 +36,16 @@ ENDPOINTS = set(re.findall(r'@app\.(?:get|post)\("(/[a-z_]*)"', MAIN))
 PACKS = {os.path.basename(os.path.dirname(p)) for p in glob.glob("packs/*/pack.yaml")}
 ENV_DECLARED = set(re.findall(r"^([A-Z][A-Z0-9_]+)=", ENVEX, re.M))
 ENV_IN_CODE = set(re.findall(r'getenv\(["\']([A-Z][A-Z0-9_]+)', CODE)) | set(re.findall(r'environ\[["\']([A-Z][A-Z0-9_]+)', CODE))
+# Keys a release retired. They are gone from .env.example and nothing reads them, and a changelog and a tester
+# guide have to be able to name them — that is how a household learns which of its settings stopped mattering.
+# Read from app/settings.py's own RETIRED, so this list shrinks when that one does.
+ENV_RETIRED = set(re.findall(r'"([A-Z][A-Z0-9_]+)"',
+                             (re.search(r"^RETIRED = \((.*?)\)", open("app/settings.py").read(), re.M | re.S)
+                              or type("", (), {"group": staticmethod(lambda _: "")})).group(1)))
 ENV_IN_PACKS = set()
 for f in glob.glob("packs/*/pack.yaml"):
     ENV_IN_PACKS |= set(re.findall(r'^\s*-\s*"?([A-Z][A-Z0-9_]+)=', open(f).read(), re.M))
-ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | {
+ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | {
     "PATH", "HOME", "EDITOR", "TS_AUTHKEY", "PLANETAI_HOME", "PLANETAI_REPO", "PLANETAI_REF",
     "COMPOSE_PROFILES", "PGTZ", "TZ", "DATABASE_URL", "CI", "PACK_OUT", "LOG_LEVEL", "SSID", "MQTT_ADDR",
     "MQTT_USER", "MQTT_PASS", "WIFI_SSID", "WIFI_PSK", "GATEWAY", "CHNAME", "MAP_KEY", "CLOUDFLARE_API_TOKEN",

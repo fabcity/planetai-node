@@ -497,7 +497,7 @@ async function refresh(){
     // the act strip: the newest unanswered act-level alert, on the hero
     const open_=alerts.filter(a=>a.level==='act'&&!a.acted_at); const strip=$('#actstrip');
     // The instruction, and nothing asking to be told. No button and no count of things waiting: the node stopped
-    // measuring itself by whether someone pressed something (v0.36), and the outcome goes here in v0.38.
+    // measuring itself by whether someone pressed something (v0.37), and the outcome goes here in v0.39.
     if(open_.length){const a=open_[0];const ln=a.text.split('\n').filter(Boolean);strip.hidden=false;strip.innerHTML=`<span class="hex"></span><div class="t">${esc(ln[0])}<small>${esc((ln.find(l=>l.startsWith('👉'))||'').replace('👉','').trim())}</small></div>`;}
     else{strip.hidden=true;strip.innerHTML='';}
     // the report the node last wrote, whether it went out or was held

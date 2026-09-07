@@ -329,7 +329,7 @@ def _fit(b: dict) -> dict:
 # down. The numbers are the rules' own; tests/test_report_templates.py refuses a value here that is not in that
 # rule's SQL, the same way a pack README's thresholds are checked against its files. A rule that is not here gets
 # no sentence rather than a guessed one: heat_stress_now watches an apparent temperature that no column holds, and
-# in v0.37 it becomes a condition with an outcome of its own.
+# in v0.39 it becomes a condition with an outcome of its own.
 THRESHOLDS = {
     "air-quality/indoor_pm25_high":      ("pm25", 35.5),
     "air-quality/outside_worse_keep_shut": ("pm25", 35.5),

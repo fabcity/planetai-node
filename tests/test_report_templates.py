@@ -160,7 +160,7 @@ for rule, (metric, line) in report.THRESHOLDS.items():
 for rule in report.BEYOND:
     assert rule in RULES, f"{rule} is in BEYOND but no pack ships it"
 assert not any(r.startswith("heat/") for r in report.THRESHOLDS), \
-    "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.37, not a guess here"
+    "heat_stress_now watches an apparent temperature no column holds; it gets an outcome in v0.39, not a guess here"
 print("every threshold the report quotes is the rule's own")
 
 # Every language carries every phrase. A key in one dict and not another is a report with a hole in it.

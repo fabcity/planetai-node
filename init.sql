@@ -122,7 +122,7 @@ INSERT INTO schema_version (version) VALUES ('0.21') ON CONFLICT DO NOTHING;
 -- second one. (The old briefings asked `alerts`, which is also where every rule writes, and where a report the
 -- household never saw still counted as sent.)
 --   sheet            the node's own text. Always written, whatever else happens.
---   text             what was actually sent. Equal to `sheet` until a model rewrites it (v0.36).
+--   text             what was actually sent. Equal to `sheet` until a model rewrites it (v0.38).
 --   sent             false when quiet hours held it: written, on the dashboard, folded into the next one.
 --   fallback_reason  why `text` is the sheet and not the model's: a number it invented, a timeout, no agent.
 CREATE TABLE IF NOT EXISTS reports (

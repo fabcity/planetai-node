@@ -3,7 +3,7 @@
 # the digest's cooldown is its interval.
 
 # ---------------------------------------------------------------- the state of the air, three ways
-# Not an alert any more. Until v0.36 this fired every three hours at info level, which meant it reached a phone
+# Not an alert any more. Until v0.37 this fired every three hours at info level, which meant it reached a phone
 # only at ALERT_LEVEL=info and was a third schedule when it did. `contributes: report` puts its numbers in every
 # report instead, under `digest` in the bundle, so nothing it computes is lost and nothing it computes interrupts.
 - id: digest

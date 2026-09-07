@@ -32,5 +32,10 @@ if git diff --cached --name-only --diff-filter=AM | grep -qE '(^|/)\.DS_Store$|_
 fi
 
 # 3. the offline gates. Each one corresponds to an outage we already had.
+# Both of them. AGENTS.md has said "make lint && make test before any commit" since v0.14 and this hook ran only
+# the first, so a commit in the reports release removed a function and left test_shipped.py red — the assertion
+# named the artifact correctly and nothing was listening (7 Sep 2026). Neither is slow: lint is a few seconds,
+# test is a few more, and both are offline.
 make lint >/dev/null || fail "make lint failed — run 'make lint' to see why"
+make test >/dev/null || fail "make test failed — run 'make test' to see why"
 exit 0

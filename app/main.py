@@ -397,7 +397,7 @@ def run_rules() -> None:
                 floor = {"act": 2, "warn": 1, "info": 0}
                 send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level)
                 if send:
-                    # No id, and nothing asking to be told. The node watches what happens next (v0.37) instead of
+                    # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of
                     # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
                     notify(level, text)
@@ -806,7 +806,7 @@ def report_now(authorization: str = Header("")):
 
 @app.get("/briefing", include_in_schema=False)
 def briefing_moved(kind: str = "morning"):
-    """Gone in v0.37. A dashboard left open in a browser through the update still asks for this; answer it with
+    """Gone in v0.38. A dashboard left open in a browser through the update still asks for this; answer it with
     where the report lives now rather than a 404 in a screen nobody is looking at."""
     from fastapi.responses import RedirectResponse
     return RedirectResponse("/report/latest", status_code=301)

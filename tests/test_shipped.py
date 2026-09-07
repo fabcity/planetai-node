@@ -70,16 +70,16 @@ assert "sed -e 's/[\\\\&|]/\\\\&/g'" in cli, "CLI: envset must escape \\ & | bef
 assert "tail -c 200000" in cli, "CLI: .planetai-setup.log is trimmed"
 print("envset escapes, setup log capped")
 # v0.32 — a report or a test alert says `/act N` only when the bot that reads it is running; otherwise `planetai act N`
-# v0.36 took the third caller: briefing()'s "Still waiting on you" list went with the briefings. What is left is
+# v0.37 took the third caller: briefing()'s "Still waiting on you" list went with the briefings. What is left is
 # the definition and the test alert, which is the one place a household is deliberately taught to close the loop.
 assert "def act_hint" in main and main.count("act_hint(") >= 2, "main.py: the /act hint goes through act_hint()"
 assert "→  /act {" not in main and "Reply /act with the number" not in main, "main.py: an unconditional /act instruction remains"
-# v0.36 — an act alert says what to do and stops. No id to quote back, no button to press, nothing waiting on a
+# v0.37 — an act alert says what to do and stops. No id to quote back, no button to press, nothing waiting on a
 # household: the node watches what the sensors do next. The test alert is the exception, and teaches on purpose.
 assert "#{alert_id}" not in main, "main.py: an act alert must not end in an id a household is expected to quote back"
 assert "Still waiting on you" not in main, "main.py: the report does not nag"
 print("act hints honest without a bot, and an act alert asks for nothing")
-# v0.36 — one report every REPORT_EVERY hours, written by the node, and every surface that reaches it
+# v0.37 — one report every REPORT_EVERY hours, written by the node, and every surface that reaches it
 assert '"REPORT_EVERY"' in settings and '"REPORT_ANCHOR"' in settings and '"REPORT_DEPTH"' in settings, "settings.py: the report keys"
 for k in ("REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH"):
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"

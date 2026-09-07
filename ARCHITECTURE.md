@@ -91,7 +91,14 @@ pulls them. Provenance `state` travels end to end and is never upgraded on the w
 measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`). Five FCC-era
 stages collapse to these four at an address; `fabricate` appears between decide and act when the action is a part.
 
-**Read API** (the Observe contract): `GET /sensors /readings /stats /aggregates /alerts /cells /rho /health`.
+**Read API** (the Observe contract): `GET /sensors /readings /stats /aggregates /alerts /cells /rho /health`, plus
+`GET /report/latest` (the last report the node wrote) and `GET /report/bundle?hours=` (every number it was written
+from, behind the read-only token).
+
+**The report** is the node's one scheduled message: one every `REPORT_EVERY` hours from `REPORT_ANCHOR`, in local time,
+written by the node from its own SQL so that a node with no model reachable still gets one. `app/report.py` holds
+`bundle()` and `sheet()`; the `reports` row for the local hour is the scheduler's lock, so a restart inside the window
+does not send it twice. A report due inside quiet hours is stored and not sent, and the next one folds those hours in.
 Same at every scale. A mobile app, the planetai.fab.city observatory, a partner's dashboard, and the aggregator
 above are all just clients.
 
