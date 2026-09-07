@@ -1,28 +1,37 @@
 # Changelog
 
-## v0.38 — 2026-09-07 — the ground under the hero is the cell this node stands in
+## v0.39 — 2026-09-07 — the node knows its version, writes its own report, and draws its own ground
 
-Since v0.36 a map cell has sat behind the sentence on the hero and on the wall. It was the same cell on every
-node: node #1's, in Kuta Selatan. On a node anywhere else it looked like that node's own place and was not, so
-the line naming it was cut and the drawing said nothing at all.
+Four parallel sessions of work, released once. v0.37 and v0.38 were written into this changelog but never
+tagged and never bundled, and two more branches each wrote a v0.37 of their own — so nothing shipped under
+either number and all four land here instead. Nodes update with `./update.sh` as usual.
 
-- **The node draws its own cell**, from the coordinates it was set up with. The resolution-8 cell it stands
-  in, the seven smaller cells inside it, and its neighbours' edges running off the frame.
-- **The cell is named again, under the hero and on the wall**: `8839446033fffff · RES 8 · 525 M EDGE · THE
-  CELL THIS NODE STANDS IN`. That id is the node's place in the index, and it is now true wherever the node
-  is. The edge is this cell's own, measured. H3 publishes 531 m for resolution 8; that is an average, and no
-  cell is exactly it.
-- **`/health` carries the cell**: id, resolution, mean edge in metres. Agents and `planetai status --json`
-  read the same thing the screen shows.
-- Change the node's coordinates and restart, and the ground follows.
+**Known limitation, not fixed here.** A node still learns its new version one update late: `VERSION` is read
+by the installer, not baked into the app image. Closing it means putting the stamp in the image.
 
-The drawing is computed here, not fetched. A node on a LAN with no route out still draws its own cell. It is
-the same picture `planetai-design` draws with d3-geo, to the last vertex, and a test redraws node #1's cell
-and compares against the shipped file to keep the two together.
+### a node installed from the tarball knows which version it is
 
-`planetai update` rebuilds the image, which now carries one more library, `h3`. A node that has not been told
-where it stands keeps the picture it had, naming nothing.
-## v0.37 — 2026-09-07 — one clock, and the node writes the report
+Every beta tester's node called itself `dev`. Testers install from the tarball, and the installer read the
+version with `git describe`, which has nothing to read where there is no repository. A `VERSION` file sat in
+the same folder saying `v0.36` and nothing looked at it.
+
+- **`/health`, `planetai status` and the vitals row on the dashboard name the version the node runs.** A
+  tester can say which version produced a problem.
+- **`planetai version` prints a version.** On a tarball node it printed the node's name and place with an
+  empty space where the version goes.
+- The version is read from git, then from the `VERSION` file the tarball carries, then `dev`. `install.sh`,
+  `update.sh` and `planetai version` had the same line; all three now read the file. A git clone reports what
+  it always did.
+
+**The update that brings this fix stamps `dev` one last time.** `update.sh` copies itself to a temporary file
+and runs from there, so the script driving your update is the one you already had. Run `planetai update` a
+second time and the version appears, or run `./install.sh` in the node folder, which is idempotent and reads
+`VERSION` straight away. Nodes installed fresh from the tarball are correct from the first minute.
+
+A household sees no change on the wall screen. This is release metadata: what the node measures, when it
+speaks and what it says are untouched.
+
+### one clock, and the node writes the report
 
 Three schedules were sending messages from two containers and none of them knew about the others. Counted from
 node #1's own `alerts` table over the 48 hours to 17:37 on 7 September, at the shipped `ALERT_LEVEL=warn`:
@@ -62,7 +71,7 @@ v0.34. v0.35 moved that line to 35 °C apparent and replayed 36 firings down to 
 v0.35 and this release, over the same two days: **about 27 messages, six of them reports, and nothing at all
 between midnight and six.**
 
-### What a household gets
+#### What a household gets
 
 - **One report every `REPORT_EVERY` hours from `REPORT_ANCHOR`**, in the node's own time zone. Default 6 and 6:
   06:00, 12:00, 18:00, 00:00. `REPORT_EVERY` takes 3, 4, 6, 8, 12 or 24 and refuses the rest.
@@ -84,7 +93,7 @@ between midnight and six.**
   Both the Spanish and the Bahasa Indonesia templates are assistant-written and no native reader has been through
   them; treat them as a draft.
 
-### If you want the old rhythm back
+#### If you want the old rhythm back
 
 ```bash
 planetai report every 12 && planetai report at 6
@@ -98,7 +107,7 @@ or `BRIEF_EVENING` set writes `REPORT_EVERY=12` and `REPORT_ANCHOR=<your old mor
 leaves the old keys where they are. A node with `BRIEF_MORNING=7` keeps seven o'clock and keeps speaking twice a
 day. A fresh install gets 6 and 6.
 
-### Under it
+#### Under it
 
 - `app/report.py`: `bundle()` — every number the node has about a window, as one JSON document capped at 64 kB —
   and `sheet()`, the six parts, with one template dict per language and no wording anywhere in the code.
@@ -122,33 +131,13 @@ day. A fresh install gets 6 and 6.
   the hook ran one, so a commit in this release removed a function and left `test_shipped.py` red with nothing
   listening. Re-copy it: `cp tools/hooks/pre-commit .git/hooks/`.
 
-### Not in this release
+#### Not in this release
 
 The 13:03 event on 7 September — one pot, three sensors in one room, six act alerts in five minutes — is still six
 alerts. One event, one alert, and ρ measured from the sensors instead of asked for, are v0.39.
 
-## v0.37 — 2026-09-07 — a node installed from the tarball knows which version it is
 
-Every beta tester's node called itself `dev`. Testers install from the tarball, and the installer read the
-version with `git describe`, which has nothing to read where there is no repository. A `VERSION` file sat in
-the same folder saying `v0.36` and nothing looked at it.
-
-- **`/health`, `planetai status` and the vitals row on the dashboard name the version the node runs.** A
-  tester can say which version produced a problem.
-- **`planetai version` prints a version.** On a tarball node it printed the node's name and place with an
-  empty space where the version goes.
-- The version is read from git, then from the `VERSION` file the tarball carries, then `dev`. `install.sh`,
-  `update.sh` and `planetai version` had the same line; all three now read the file. A git clone reports what
-  it always did.
-
-**The update that brings this fix stamps `dev` one last time.** `update.sh` copies itself to a temporary file
-and runs from there, so the script driving your update is the one you already had. Run `planetai update` a
-second time and the version appears, or run `./install.sh` in the node folder, which is idempotent and reads
-`VERSION` straight away. Nodes installed fresh from the tarball are correct from the first minute.
-
-A household sees no change on the wall screen. This is release metadata: what the node measures, when it
-speaks and what it says are untouched.
-## v0.37 — 2026-09-07 — local means here, not just yours
+### local means here, not just yours
 
 Node #1 moved to Ungasan in August. Three of its six Smart Citizen kits stayed behind at the old address, 1.2 km
 away, and one sits 7.8 km away in another town — and every one of them still counted as this node's own
@@ -217,6 +206,30 @@ Two things this release has not done. The trust pack's three thresholds were cho
 site (6–10 µg/m³, 1–7 September) and have never been tested against a burn season, when PM2.5 swings far wider and
 disagreement between units may widen with it. And the new dashboard card has not been checked by eye at 375, 768
 or 1440 px — only against the data it renders.
+
+
+### the ground under the hero is the cell this node stands in
+
+Since v0.36 a map cell has sat behind the sentence on the hero and on the wall. It was the same cell on every
+node: node #1's, in Kuta Selatan. On a node anywhere else it looked like that node's own place and was not, so
+the line naming it was cut and the drawing said nothing at all.
+
+- **The node draws its own cell**, from the coordinates it was set up with. The resolution-8 cell it stands
+  in, the seven smaller cells inside it, and its neighbours' edges running off the frame.
+- **The cell is named again, under the hero and on the wall**: `8839446033fffff · RES 8 · 525 M EDGE · THE
+  CELL THIS NODE STANDS IN`. That id is the node's place in the index, and it is now true wherever the node
+  is. The edge is this cell's own, measured. H3 publishes 531 m for resolution 8; that is an average, and no
+  cell is exactly it.
+- **`/health` carries the cell**: id, resolution, mean edge in metres. Agents and `planetai status --json`
+  read the same thing the screen shows.
+- Change the node's coordinates and restart, and the ground follows.
+
+The drawing is computed here, not fetched. A node on a LAN with no route out still draws its own cell. It is
+the same picture `planetai-design` draws with d3-geo, to the last vertex, and a test redraws node #1's cell
+and compares against the shipped file to keep the two together.
+
+`planetai update` rebuilds the image, which now carries one more library, `h3`. A node that has not been told
+where it stands keeps the picture it had, naming nothing.
 
 ## v0.36 — 2026-09-07 — the dashboard says what the colours mean
 
