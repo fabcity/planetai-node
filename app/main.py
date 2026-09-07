@@ -599,6 +599,51 @@ def stats():
     return q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
 
 
+@app.get("/trust")
+def trust():
+    """One row per local sensor, for the dashboard's trust card and the agent's health check — never both computing
+    it themselves and drifting apart from packs/trust/rules.yml. coverage_7d is the percentage of the last 168
+    hourly buckets its ambient channels reported in, same arithmetic as the coverage_low rule. frozen_channels
+    counts its ambient/enclosure channels that have been flat for 6+ hours and are still flat in the latest bucket,
+    same as channel_dead. age_hours is how long since its first ever reading: under 168, the sensor has not lived
+    a full week yet, so a low coverage_7d there is not a fault, just an incomplete week."""
+    return q("""
+        WITH ours AS (
+          SELECT r.sensor_id, r.metric
+          FROM readings_1h r JOIN sensors s USING (sensor_id)
+          JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
+          WHERE s.local AND s.kind = 'sensor' AND c.role IN ('ambient', 'enclosure')
+          GROUP BY 1, 2),
+        frozen_stat AS (
+          SELECT o.sensor_id, o.metric,
+                 max(r.bucket) AS last_bucket,
+                 max(r.bucket) FILTER (WHERE r.max - r.min = 0) AS last_flat_bucket,
+                 count(*) FILTER (WHERE r.max - r.min = 0) AS flat_hours
+          FROM ours o JOIN readings_1h r ON r.sensor_id = o.sensor_id AND r.metric = o.metric
+          WHERE r.bucket > now() - interval '24 hours'
+          GROUP BY 1, 2),
+        frozen AS (
+          SELECT sensor_id, count(*) AS frozen_channels
+          FROM frozen_stat WHERE flat_hours >= 6 AND last_bucket = last_flat_bucket
+          GROUP BY 1),
+        have AS (
+          SELECT r.sensor_id, count(DISTINCT r.bucket) AS hours
+          FROM readings_1h r JOIN sensors s USING (sensor_id)
+          JOIN channel_roles c ON c.source = s.source AND c.metric = r.metric
+          WHERE s.local AND s.kind = 'sensor' AND c.role = 'ambient' AND c.comparable
+            AND r.bucket > now() - interval '7 days'
+          GROUP BY 1),
+        age AS (SELECT sensor_id, extract(epoch FROM now() - min(ts)) / 3600 AS age_hours FROM readings GROUP BY 1)
+        SELECT s.sensor_id, s.name,
+               round(100.0 * coalesce(h.hours, 0) / 168) AS coverage_7d,
+               coalesce(f.frozen_channels, 0) AS frozen_channels,
+               round(coalesce(a.age_hours, 0)) AS age_hours
+        FROM sensors s LEFT JOIN have h USING (sensor_id) LEFT JOIN frozen f USING (sensor_id) LEFT JOIN age a USING (sensor_id)
+        WHERE s.local AND s.kind = 'sensor'
+        ORDER BY s.name
+    """)
+
+
 @app.get("/observations")
 def observations():
     """Latest value per slow-moving source: city statistics, model point samples, survey results."""

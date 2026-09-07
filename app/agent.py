@@ -72,6 +72,15 @@ def health_check() -> dict:
     dumps = sorted(backups.glob("*.sql.gz"), key=lambda p: p.stat().st_mtime) if backups.exists() else []
     fresh = dumps and (datetime.now(timezone.utc) - datetime.fromtimestamp(dumps[-1].stat().st_mtime, timezone.utc)) < timedelta(days=2)
     chk("a backup in the last 2 days", fresh, "run `planetai backup` on the node and check `crontab -l | grep backup`")
+    # judge each local sensor by whether its ambient channels are still moving, not by its timestamp: a dead
+    # channel's kit keeps stamping fresh times over the same frozen value (see packs/trust/rules.yml, channel_dead)
+    trust = _get("/trust")
+    frozen = sorted({r["name"] or r["sensor_id"] for r in trust if r["frozen_channels"] > 0})
+    chk("no local sensor's ambient channel is frozen", not frozen,
+        f"{', '.join(frozen)} {'has' if len(frozen) == 1 else 'have'} a channel stuck on the same number for hours while the kit itself "
+        f"still reports. What this means: any reading or alert built from that channel is wrong; the rest of the kit and the rest of the "
+        f"node are unaffected. Most often one sensor inside the kit has died: power-cycle it. If the number stays frozen, replace that "
+        f"sensor — nothing it has recorded since it froze can be trusted.")
     if os.getenv("MQTT_HOST"):
         # judge the radios by their readings, not by in-memory packet counters that reset on every restart
         mesh = [r for r in _get("/stats") if r["sensor_id"].startswith("msh-")]

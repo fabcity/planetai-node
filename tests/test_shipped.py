@@ -200,3 +200,14 @@ assert "traffic" not in _ins["rhythm"]["message"]["en"], "the noise channel cont
 assert "'noise'" in _ins["rhythm"]["sql"], "rhythm reads the noise channel it has been discarding"
 assert "quiet_hr" in _ins["rhythm"]["sql"], "the message needs the hour the street is loudest to contrast with"
 print("rhythm no longer blames traffic")
+
+# v0.36 — the trust card. Three alerts existed (channel_dead, coverage_low, peer_disagreement) and nowhere on the
+# node's own surfaces did a person see that a sensor sat at 32% coverage while its kit reported a fresh timestamp.
+assert '@app.get("/trust")' in main, "coverage is a new endpoint: the stats view is 24h by construction, no 7-day column belongs in it"
+assert 'data-card="trust"' in gui, "the node shows what it doubts about its own sensors"
+assert "Every sensor reported all week" in gui, "the trust card needs an empty state, not an empty box"
+assert "still gathering its first week" in gui, "a sensor under 7 days old must not read 0% coverage as a fault"
+_agent_src = open("app/agent.py").read()
+assert '_get("/trust")' in _agent_src, "health_check reads the same /trust the card reads, not its own recomputation"
+assert "frozen" in _agent_src.lower()
+print("the trust card and its health check are wired")

@@ -61,7 +61,8 @@ cols = set(re.findall(r"\bAS (\w+)", stats)) | {"sensor_id", "metric", "name", "
 # `r` is a stats row inside .filter(r=>...) / .map(r=>...) callbacks; elsewhere it is a fetch Response
 row_ctx = " ".join(re.findall(r"(?:filter|map|forEach|reduce)\(r=>[^;]{0,200}", js))
 for f in sorted(set(re.findall(r"\br\.([a-z_0-9]+)", row_ctx))):
-    if f not in cols and f not in ("key", "value", "label", "help", "secret", "set", "source", "group", "id", "cell", "state", "unit", "ts", "level", "text", "rule_id", "acted_at", "pack", "description", "name"):
+    if f not in cols and f not in ("key", "value", "label", "help", "secret", "set", "source", "group", "id", "cell", "state", "unit", "ts", "level", "text", "rule_id", "acted_at", "pack", "description", "name",
+                                    "coverage_7d", "frozen_channels", "age_hours"):  # /trust
         errs.append(f"page reads r.{f}, which is not a column of the stats view")
 
 print("\n".join(f"  x {e}" for e in errs) or "  GUI: script parses; every id, endpoint and field resolves; nothing hidden is un-hidden by CSS")
