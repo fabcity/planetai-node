@@ -998,7 +998,7 @@ cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
 cmd_sensors() { [[ "${1:-}" == "--json" ]] && { api /sensors; echo; return; }; api /sensors | json '
 for s in d: print("  %-22s %-7s %-9s %-7s  %s" % (s["sensor_id"], s["kind"], "yours" if s["local"] else "reference", "indoor" if s["indoor"] else "outdoor", s["name"]))'; }
 cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
-cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
+cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;

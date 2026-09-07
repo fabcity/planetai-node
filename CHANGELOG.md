@@ -1,5 +1,65 @@
 # Changelog
 
+## v0.37 — 2026-09-07 — a node installed from the tarball knows which version it is
+
+Every beta tester's node called itself `dev`. Testers install from the tarball, and the installer read the
+version with `git describe`, which has nothing to read where there is no repository. A `VERSION` file sat in
+the same folder saying `v0.36` and nothing looked at it.
+
+- **`/health`, `planetai status` and the vitals row on the dashboard name the version the node runs.** A
+  tester can say which version produced a problem.
+- **`planetai version` prints a version.** On a tarball node it printed the node's name and place with an
+  empty space where the version goes.
+- The version is read from git, then from the `VERSION` file the tarball carries, then `dev`. `install.sh`,
+  `update.sh` and `planetai version` had the same line; all three now read the file. A git clone reports what
+  it always did.
+
+**The update that brings this fix stamps `dev` one last time.** `update.sh` copies itself to a temporary file
+and runs from there, so the script driving your update is the one you already had. Run `planetai update` a
+second time and the version appears, or run `./install.sh` in the node folder, which is idempotent and reads
+`VERSION` straight away. Nodes installed fresh from the tarball are correct from the first minute.
+
+A household sees no change on the wall screen. This is release metadata: what the node measures, when it
+speaks and what it says are untouched.
+
+## v0.36 — 2026-09-07 — the dashboard says what the colours mean
+
+Six things on the dashboard were decoration wearing the clothes of information. They are gone, and a check now
+fails the build if they come back.
+
+- **The big green hexagon behind the number is gone.** In its place the node draws the map cell it stands in:
+  the cell, the seven smaller cells inside it, and the edges of its neighbours running off the frame. It is
+  drawn faint, behind the sentence, and it is computed geometry rather than a shape someone liked. The
+  isometric mesh that used to cover the hero has gone with it.
+- **The number is the same colour as the words, until it is not.** It used to be green whatever it said. Now
+  it is ink, and it turns red when the reading is over the line the sentence names. Nothing else on the page
+  is green except a loop that closed.
+- **"I did this" is a green button.** Pressing it is the response, and that press is what ρ counts. Orange
+  now appears in one place only: the buildings on the plan that the satellite can see and the map has not
+  drawn.
+- **Numbers are set in JetBrains Mono.** Digits line up between one reading and the next, so a column of
+  readings can be compared by eye. The font is on the node, so it looks the same on a house with no internet.
+- **The two glows drifting behind the page are gone.** So is every gradient.
+- **The label beside the satellite section is a mark and a word, in ink.** It was a rounded blue pill, which
+  looked like a verdict on the number next to it. It says where a number came from and nothing about whether
+  the number is good.
+
+A household on a wall screen will notice the page got quieter and the number got easier to read. Nothing about
+what the node measures, when it speaks or what it says has changed.
+
+Under it:
+
+- `tools/check_ui.py` gained seven rules and fails on each: a six-sided `clip-path` wider than 24px, any hex
+  from the website palette, any gradient, a control rounded past 8px or a card past 18px that is not on a dated
+  legacy list, a provenance mark carrying a colour, orange anywhere but the satellite layer, and Fab Blue
+  `#20388D` on the dark ground where it measures 1.72:1 and cannot be seen. The dark register's blue is
+  `#7FA5E8` at 7.21:1.
+- `tests/test_check_ui.py` breaks each of those rules against a copy of the real page and requires the check to
+  name it. It runs in `make test`.
+- The dashboard is still one HTML file with no build step. The two things it cannot hold, the ground and the
+  font, are served by name from an allowlist in `app/main.py` and revalidate on every load, so an updated node
+  never shows the previous design.
+
 ## v0.35 — 2026-09-07 — the heat rule was measuring Bali, not a heatwave
 
 Two thirds of every message node #1's household received was one rule. `heat_stress_now` fired 20 times in the 48

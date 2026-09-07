@@ -98,7 +98,9 @@ if ! grep -qE '^(SC_DEVICES|SC_USER|AIRGRADIENT_HOSTS|PURPLEAIR_HOSTS)=.+' .env;
 fi
 [[ -n "$LAT"  ]] && setenv NODE_LAT "$LAT"
 [[ -n "$LON"  ]] && setenv NODE_LON "$LON"
-setenv NODE_VERSION "$(git describe --tags --always 2>/dev/null || echo dev)"
+# from git in a clone, from the VERSION file the tarball carries otherwise. Testers install from the tarball,
+# where git describe has nothing to read, and every one of them reported their version as "dev".
+setenv NODE_VERSION "$(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)"
 NEWPW=0
 grep -q '^POSTGRES_PASSWORD=change-me' .env && { setenv POSTGRES_PASSWORD "$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"; NEWPW=1; }
 # A new .env means a new database password, and a database from an earlier node may still be on this machine (the

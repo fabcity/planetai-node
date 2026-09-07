@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-variant="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,48 +7,54 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;1,500&family=Funnel+Sans:wght@500;700;800&display=swap">
 <style>
-/* PLANETAI node dashboard, v0.24. Design: PLANETAI_Node_v5 on the Fab City design system (warm dark field, Figtree body,
-   Funnel Sans numerals and headings, the three brand hues as accents, the hexagon as the only mark). Every sentence on this
-   page is computed from the node's API; nothing is typed in. One file, no build step. */
+/* JetBrains Mono, self-hosted: the node runs on a LAN that may have no route out, and every number,
+   unit, timestamp, cell id and chip label on this page is the data face. Latin subset, variable 100-800. */
+@font-face{font-family:"JetBrains Mono";src:url(static/jetbrains-mono-latin.woff2) format("woff2");font-weight:100 800;font-style:normal;font-display:swap}
+/* PLANETAI node dashboard. Design: the PLANETAI visual language on the Fab City design system — warm dark
+   field, Figtree body, Funnel Sans headings, JetBrains Mono for every number, and colour as a role rather
+   than an accent. The ground is the node's own H3 cell, computed, not drawn. Every sentence on this page is
+   computed from the node's API; nothing is typed in. One file, no build step.
+   tools/check_ui.py holds the rules this file has broken before. Read it before adding a colour. */
 :root{
   --bg:#16150F;--ink:#F4ECE2;--ink2:#C7BFB2;--mute:#A39B8D;--dim:#8A8378;
   --card:rgba(244,236,226,.05);--card2:rgba(244,236,226,.08);--line:rgba(244,236,226,.09);--line2:rgba(244,236,226,.22);
-  --red:#E62038;--blue:#20388D;--green:#00A057;--webgreen:#7AC943;--webblue:#3FA9F5;--orange:#E8873A;
+  /* Colour is a role, never decoration. green = a response, a loop closed, an act taken.
+     red = a signal that got worse or crossed a line. blue = data, identity, a selected cell.
+     orange = what only the satellite knows, and nothing else. Anything else is ink.
+     This page is the dark register: Fab Blue #20388D measures 1.72:1 on ink and is invisible,
+     so blue here is the lifted #7FA5E8 at 7.21:1. It may never appear on paper (2.29:1). */
+  --red:#E62038;--blue:#7FA5E8;--green:#00A057;--orange:#FF931E;
   --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;
-  --hue:#7AC943;
+  --fm:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 *{box-sizing:border-box}html{background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 var(--fb);-webkit-font-smoothing:antialiased;min-height:100vh;position:relative;overflow-x:hidden}
-a{color:var(--webgreen);text-decoration:none}a:hover{color:var(--orange)}
+a{color:var(--blue);text-decoration:none}a:hover{color:var(--ink)}
 h1,h2,h3,h4,p{margin:0}button{font:inherit;color:inherit;cursor:pointer}
 .eyebrow{font:600 10.5px var(--fb);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
-.num{font-family:var(--fd);font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;line-height:1}
+.num{font-family:var(--fm);font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
 .hex{display:inline-block;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
 @keyframes v5in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@keyframes v5drift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(3%,-2%) scale(1.06)}100%{transform:translate(0,0) scale(1)}}
 @keyframes v5halo{0%{transform:scale(.6);opacity:.5}100%{transform:scale(1.9);opacity:0}}
 @keyframes v5flow{to{stroke-dashoffset:-240}}
 .in{animation:v5in .7s cubic-bezier(.2,.6,.2,1) both}
-/* atmosphere: grain and two slow glows, behind everything */
+/* atmosphere: grain only. The two drifting radial-gradient glows are gone: no gradients, no glows. */
 .grain{position:fixed;inset:0;pointer-events:none;z-index:4;mix-blend-mode:overlay;opacity:.5}
-.glow{position:fixed;pointer-events:none;z-index:0;border-radius:50%;filter:blur(90px);animation:v5drift 30s ease-in-out infinite}
-.glow.a{left:-16%;top:-24%;width:70vw;height:70vw;max-width:900px;max-height:900px;background:radial-gradient(circle,rgba(32,56,141,.35),transparent 60%)}
-.glow.b{right:-18%;bottom:-26%;width:60vw;height:60vw;max-width:760px;max-height:760px;background:radial-gradient(circle,color-mix(in srgb,var(--hue) 40%,transparent),transparent 60%);animation-duration:38s;animation-direction:reverse}
 .wrap{max-width:1280px;margin:0 auto;padding:0 clamp(18px,3.5vw,48px)}
 /* header */
 header{position:relative;z-index:2}
 header .wrap{padding-top:20px;padding-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
 .mark{position:relative;width:22px;height:25px;flex:none}
-.mark .o{position:absolute;inset:0;background:var(--ink)}.mark .i{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--hue)}
+.mark .o{position:absolute;inset:0;background:var(--ink)}.mark .i{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:var(--bg)}
 .brand b{font:800 17px var(--fd);letter-spacing:-.02em}.brand span.s{font-size:13px;color:var(--mute);white-space:nowrap}
 nav.views{display:flex;gap:5px;background:rgba(244,236,226,.07);border-radius:999px;padding:4px;min-width:0;max-width:100%;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
 nav.views::-webkit-scrollbar{display:none}   /* five nowrap buttons are 449px: on a 375px phone the row, not the page, is what scrolls */
 nav.views button{background:transparent;border:0;border-radius:999px;padding:8px 18px;font:500 14px var(--fb);color:var(--mute);transition:background .2s,color .2s;white-space:nowrap}
 nav.views button.on{background:var(--ink);color:var(--bg);font-weight:600}nav.views button:hover:not(.on){opacity:.75}
 .link{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mute)}
-.link i{width:7px;height:7px;border-radius:50%;background:var(--webblue);display:block;position:relative}
-.link i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--webblue);animation:v5halo 3s ease-out infinite}
+.link i{width:7px;height:7px;border-radius:50%;background:var(--blue);display:block;position:relative}
+.link i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid var(--blue);animation:v5halo 3s ease-out infinite}
 .link i.bad{background:var(--red)}.link i.bad::after{border-color:var(--red)}
 main{position:relative;z-index:1}main .wrap{padding-bottom:clamp(50px,6vw,90px)}
 section.view{display:none}section.view.on{display:block}section.view.wall.on{display:flex}
@@ -92,18 +98,28 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 /* hero */
 .hero{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:28px;min-height:340px}
 @media(max-width:620px){.hero{grid-column:span 1}}
-.hero .iso{position:absolute;inset:0;pointer-events:none;opacity:.5;-webkit-mask-image:radial-gradient(circle at 80% 30%,#000,transparent 70%);mask-image:radial-gradient(circle at 80% 30%,#000,transparent 70%);background-image:linear-gradient(60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(-60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(0deg,rgba(244,236,226,.06) 1px,transparent 1px);background-size:22px 38px}
-.hero .bighex{position:absolute;right:-8%;top:-30%;width:min(60%,420px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 22%,transparent);pointer-events:none;transition:background .8s}
-.hero .bighex2{position:absolute;right:6%;top:-14%;width:min(42%,300px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);border:0;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(244,236,226,.25);pointer-events:none}
+/* The hero's ground is the node's own resolution-8 cell 8895a4c86bfffff, its seven resolution-9
+   children and its neighbours' edges leaving the frame — computed geometry from planetai-design,
+   shipped as a local file because this node may have no route out. Drawn at 7-20% ink by the asset
+   itself: it is a ground, so it is never retinted up and never tiled. */
+.hero .ground{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:64% 42%;pointer-events:none;user-select:none}
 .hero .tri{position:absolute;left:0;right:0;bottom:0;height:3px;display:flex}.hero .tri span{flex:1;display:block}
 .hero .body{position:relative}
 .hero p.big{font:500 clamp(1.35rem,2.5vw,2.1rem)/1.32 var(--fd);letter-spacing:-.02em;margin-top:14px;max-width:26ch}
-.hero p.big b{font-weight:800;font-size:clamp(3.2rem,7.5vw,6rem);line-height:.72;letter-spacing:-.05em;color:var(--hue);vertical-align:-.06em;margin:0 .06em;transition:color .8s}
+/* The big numeral is ink. It turns red only when the reading itself crossed a line — not when it
+   merely got worse, or the page would cry wolf every warm afternoon. */
+.hero p.big b{font-family:var(--fm);font-weight:700;font-size:clamp(2.9rem,6.6vw,5.2rem);line-height:.78;letter-spacing:-.04em;color:var(--ink);vertical-align:-.06em;margin:0 .06em;transition:color .8s}
+.hero p.big b.crossed,.wall p.big b.crossed{color:var(--red)}
+/* no reading yet: the dash is a word, not a number, so it leaves the data face */
+.hero p.big b.none,.wall p.big b.none{font-family:var(--fd);font-weight:500;font-size:.42em;color:var(--mute);letter-spacing:0;vertical-align:baseline}
 .hero p.why{margin-top:20px;font-size:15.5px;line-height:1.65;color:var(--ink2);max-width:52ch}
 .chips{display:flex;gap:9px;flex-wrap:wrap;position:relative}
-.chip{background:var(--card2);border-radius:999px;padding:7px 14px;font:500 12.5px var(--fb);color:var(--ink2)}
-.prov{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font:600 10.5px var(--fb);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;border:1px solid var(--webblue);color:var(--webblue);background:rgba(63,169,245,.08)}
-.prov::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--webblue);flex:none}
+.chip{background:var(--card2);border-radius:999px;padding:7px 14px;font:400 12px var(--fm);letter-spacing:.01em;color:var(--ink2)}
+/* Provenance is ink. It says where a number came from; it never says whether the number is good.
+   A coloured pill reads as a verdict, so this carries no colour token and no radius: glyph, then word.
+   The word is one of live / partial / model / cached / example. */
+.prov{display:inline-flex;align-items:center;gap:7px;border-radius:0;padding:3px 8px;font:500 10.5px var(--fm);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;border:1px solid currentColor;color:var(--mute);background:none}
+.prov .g{flex:none;display:block}
 .earthrow{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:clamp(12px,1.6vw,20px);align-items:start}
 @media(max-width:900px){.earthrow{grid-template-columns:1fr}}
 #earthcard[hidden],#earth-img[hidden],#earth-ctl[hidden]{display:none}   /* both: a display rule beats the hidden attribute, and this img showed as a broken-image box with its alt text on every node that had not fetched (v0.33.1) */
@@ -111,24 +127,24 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .attrib{margin-top:10px;font:400 11px var(--fb);color:var(--mute);line-height:1.5}
 .earthctl{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
 .earthctl button{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:600 12px var(--fb);cursor:pointer}
-.earthctl button:hover{border-color:var(--webblue);color:var(--webblue)}
-.earthctl button[aria-pressed="true"]{border-color:var(--webblue);color:var(--webblue)}
-.earthctl input[type=range]{flex:1;min-width:120px;accent-color:var(--webblue)}
-.earthctl .yr{font:700 14px var(--fb);font-variant-numeric:tabular-nums;min-width:4ch}
+.earthctl button:hover{border-color:var(--blue);color:var(--blue)}
+.earthctl button[aria-pressed="true"]{border-color:var(--blue);color:var(--blue)}
+.earthctl input[type=range]{flex:1;min-width:120px;accent-color:var(--blue)}
+.earthctl .yr{font:700 14px var(--fm);font-variant-numeric:tabular-nums;min-width:4ch}
 .earthhist{margin-top:14px;font:400 12px var(--fb);color:var(--mute);line-height:1.9}
-.earthhist b{color:var(--ink);font-variant-numeric:tabular-nums}
-.earthhist i{display:inline-block;height:6px;background:var(--webblue);border-radius:3px;vertical-align:middle;margin:0 8px}
+.earthhist b{color:var(--ink);font-family:var(--fm);font-weight:600;font-variant-numeric:tabular-nums}
+.earthhist i{display:inline-block;height:6px;background:var(--blue);border-radius:3px;vertical-align:middle;margin:0 8px}
 .earthpath{margin-top:12px;font:400 11px var(--fb);color:var(--mute);word-break:break-all}
-.earthpath code{font:400 11px ui-monospace,monospace;color:var(--ink2)}
+.earthpath code{font:400 11px var(--fm);color:var(--ink2)}
 /* the act strip: one thing to do, and the button that closes the loop, on the hero itself */
-.actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--orange);color:var(--bg);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
-.actstrip[hidden]{display:none}   /* the class sets display:grid, which beats the hidden attribute: an empty orange bar showed on every node with nothing to act on */
-.actstrip .hex{width:12px;height:14px;background:var(--bg)}.actstrip .t{font:600 14.5px/1.4 var(--fb)}.actstrip .t small{display:block;font-weight:500;opacity:.8;font-size:12.5px;margin-top:2px}
-.actstrip .btn{background:var(--bg);color:var(--ink);white-space:nowrap}.actstrip .btn:hover{background:var(--ink);color:var(--bg)}
+.actstrip{position:relative;margin-top:22px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:var(--card2);color:var(--ink);border:1px solid var(--line2);border-radius:18px;padding:14px 16px 14px 18px;animation:v5in .6s cubic-bezier(.2,.6,.2,1) both}
+.actstrip[hidden]{display:none}   /* the class sets display:grid, which beats the hidden attribute: an empty bar showed on every node with nothing to act on */
+.actstrip .hex{width:12px;height:14px;background:var(--ink)}.actstrip .t{font:600 14.5px/1.4 var(--fb)}.actstrip .t small{display:block;font-weight:500;opacity:.8;font-size:12.5px;margin-top:2px}
+.actstrip .btn{white-space:nowrap}
 @media(max-width:560px){.actstrip{grid-template-columns:auto 1fr}.actstrip .btn{grid-column:1/-1;justify-self:start}}
 /* headline tiles */
 .tile{display:flex;flex-direction:column;justify-content:space-between;gap:18px}
-.tile .v{margin-top:14px}.tile .v .num{font-size:clamp(30px,3.4vw,42px)}.tile .v small{font-size:12.5px;color:var(--mute);margin-left:6px}
+.tile .v{margin-top:14px}.tile .v .num{font-size:clamp(28px,3.1vw,38px)}.tile .v small{font:400 12px var(--fm);color:var(--mute);margin-left:6px}
 .tile svg{width:100%;height:36px;display:block;margin-bottom:10px}
 .tile .note{font-size:12.5px;color:var(--mute);line-height:1.5}
 /* the day */
@@ -137,7 +153,7 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .sensor{display:flex;gap:14px;align-items:flex-start;padding:clamp(16px,2vw,22px)}
 .sensor .hex{width:10px;height:11.5px;margin-top:6px;flex:none}
 .sensor .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.sensor .row .n{font:600 14.5px var(--fb)}.sensor .row .num{font-size:26px}.sensor .row small{font-size:11.5px;color:var(--mute);margin-left:4px}
+.sensor .row .n{font:600 14.5px var(--fb)}.sensor .row .num{font-size:24px}.sensor .row small{font:400 11px var(--fm);color:var(--mute);margin-left:4px}
 .sensor .story{font-size:12.5px;color:var(--mute);line-height:1.55;margin-top:6px}
 .sensor svg{width:100%;height:26px;display:block;margin-top:10px}
 /* alerts + rho */
@@ -147,32 +163,35 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 .rho .k{font-size:13px;color:var(--mute);line-height:1.5;max-width:24ch;margin-top:8px}
 .alert{display:grid;grid-template-columns:12px 58px 1fr;gap:14px;align-items:start;padding:16px 0;border-top:1px solid var(--line)}
 .alert .hex{width:10px;height:11.5px;margin-top:5px}
-.alert .stamp{font:600 12.5px var(--fb);color:var(--mute);padding-top:2px;font-variant-numeric:tabular-nums}
+.alert .stamp{font:500 12px var(--fm);color:var(--mute);padding-top:2px;font-variant-numeric:tabular-nums}
 .alert .t{font-size:14.5px;line-height:1.55}.alert .meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--dim)}
 .btn{background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:6px 14px;font:600 12.5px var(--fb);transition:background .2s,transform .2s}
-.btn:hover{background:var(--hue)}.btn.act{background:var(--orange);color:var(--bg);padding:8px 16px;font-size:13px}.btn.act:hover{background:var(--ink);transform:translateY(-1px)}.btn.big{padding:11px 20px;font-size:14px}.btn.ghost{background:none;border:1px solid rgba(244,236,226,.28);color:var(--ink)}.btn.ghost:hover{border-color:var(--ink);background:none}
-.btn.hue{background:var(--hue);color:var(--bg)}.btn.hue:hover{background:var(--ink)}
-.done{font:italic 600 12.5px var(--fb);color:var(--hue)}
+.btn:hover{background:var(--ink2)}
+/* Pressing this is the response, and the press is the rho measurement. So it is green, and green
+   is not available to anything that is merely a control. */
+.btn.act{background:var(--green);color:var(--ink);padding:8px 16px;font-size:13px}.btn.act:hover{background:var(--ink);color:var(--bg);transform:translateY(-1px)}
+.btn.big{padding:11px 20px;font-size:14px}.btn.ghost{background:none;border:1px solid rgba(244,236,226,.28);color:var(--ink)}.btn.ghost:hover{border-color:var(--ink);background:none}
+.done{font:italic 600 12.5px var(--fb);color:var(--green)}
 /* world */
 .world .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-.world .row .num{font-size:clamp(24px,2.6vw,32px)}.world .row small{font-size:12px;color:var(--mute);margin-left:5px}
+.world .row .num{font-size:clamp(22px,2.4vw,29px)}.world .row small{font:400 11.5px var(--fm);color:var(--mute);margin-left:5px}
 .world .story{font-size:13.5px;line-height:1.6;color:var(--ink2);margin-top:9px}
 /* the plan */
 .plan svg{width:100%;height:auto;display:block;max-height:80vh;margin:8px auto 0}
 .plan{padding:18px 18px 12px}
 .planwait{margin:0;padding:26px 4px 8px;color:var(--mute);font-size:.92rem;line-height:1.5;max-width:46ch}
-.plan-legend{margin-top:0;gap:14px}.plan-legend button{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font:500 12px var(--fb);color:var(--ink2);display:flex;align-items:center;gap:8px;cursor:pointer}
+.plan-legend{margin-top:0;gap:14px}.plan-legend button{background:none;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font:400 11.5px var(--fm);color:var(--ink2);display:flex;align-items:center;gap:8px;cursor:pointer}
 .plan-legend button i{width:10px;height:10px;border-radius:50%;display:block}.plan-legend button.off{opacity:.4}
-.plan .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font:600 12px var(--fb);padding:5px 9px;border-radius:8px;transform:translate(-50%,-140%);white-space:nowrap}
+.plan .tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);font:500 12px var(--fm);padding:5px 9px;border-radius:8px;transform:translate(-50%,-140%);white-space:nowrap}
 /* network */
 .net svg{width:100%;height:auto;display:block}
 .legend{display:flex;gap:26px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--mute)}
 .plan-legend{margin-top:0;gap:10px}.legend span{display:flex;align-items:center;gap:9px}.legend i{width:24px;height:0;border-top:2px dashed;display:block}
 .cellrow{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0}
-.cell{text-align:center}.cell .ring{position:relative;width:70px;height:70px}.cell .ring span{position:absolute;inset:0;display:grid;place-items:center;font:800 17px var(--fd);letter-spacing:-.03em}
+.cell{text-align:center}.cell .ring{position:relative;width:70px;height:70px}.cell .ring span{position:absolute;inset:0;display:grid;place-items:center;font:700 16px var(--fm);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .cell .l{font:600 10px var(--fb);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-top:8px}
 .vit{display:grid;grid-template-columns:minmax(100px,.55fr) 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px}
-.vit span:first-child{color:var(--dim)}.vit span:last-child{font-variant-numeric:tabular-nums;color:var(--ink2)}
+.vit span:first-child{color:var(--dim)}.vit span:last-child{font-family:var(--fm);font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--ink2)}
 /* setup */
 .setup{display:grid;grid-template-columns:minmax(0,210px) minmax(0,1fr);gap:clamp(20px,3vw,44px);margin-top:26px}
 @media(max-width:760px){.setup{grid-template-columns:1fr}}
@@ -183,33 +202,33 @@ h2.t{font:800 clamp(1.4rem,2.3vw,2rem) var(--fd);letter-spacing:-.03em;line-heig
 h3.g{font:800 1.45rem var(--fd);letter-spacing:-.02em}
 .field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:18px;align-items:start;padding:18px 0;border-top:1px solid var(--line)}
 @media(max-width:620px){.field{grid-template-columns:1fr}}
-.field label{font:600 15px var(--fb)}.field .src{font:600 9.5px var(--fb);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-left:10px}.field .src.gui{color:var(--webgreen)}
+.field label{font:600 15px var(--fb)}.field .src{font:600 9.5px var(--fb);letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-left:10px}.field .src.gui{color:var(--green)}
 .field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:48ch;line-height:1.55}
 .field input,.field select{width:100%;background:rgba(244,236,226,.07);border:1px solid rgba(244,236,226,.14);border-radius:12px;padding:11px 14px;color:var(--ink);font:500 14.5px var(--fb)}
-.field input:focus,.field select:focus{outline:none;border-color:var(--webgreen)}.field input[readonly]{opacity:.7}
+.field input:focus,.field select:focus{outline:none;border-color:var(--blue)}.field input[readonly]{opacity:.7}
 .switch{display:flex;align-items:center;gap:12px;background:none;border:0;padding:6px 0}
 .switch .tr{width:44px;height:26px;border-radius:999px;position:relative;background:rgba(244,236,226,.2);transition:background .2s;flex:none}
 .switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink);transition:transform .2s}
-.switch.on .tr{background:var(--webgreen)}.switch.on .tr::after{transform:translateX(18px)}
-.switch .st{font:600 13px var(--fb);color:var(--mute)}.switch.on .st{color:var(--webgreen)}
-.savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:22px;position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.switch.on .tr{background:var(--green)}.switch.on .tr::after{transform:translateX(18px)}
+.switch .st{font:600 13px var(--fb);color:var(--mute)}.switch.on .st{color:var(--green)}
+.savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:22px;position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--line)}
 .gate{max-width:520px;margin-top:26px}.gate p{color:var(--mute);margin:8px 0 16px;font-size:15px}
 .gate input{width:100%;background:rgba(244,236,226,.07);border:1px solid rgba(244,236,226,.14);border-radius:12px;padding:11px 14px;color:var(--ink);font:500 14.5px var(--fb)}
 .pack{display:grid;grid-template-columns:auto 1fr;gap:16px;padding:16px 0;border-top:1px solid var(--line);align-items:start}
 .pack b{font:700 15px var(--fb)}.pack p{font-size:13px;color:var(--mute);margin-top:3px}
-.tag{display:inline-block;font:600 10px var(--fb);letter-spacing:.12em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--card2);color:var(--mute);margin-left:8px}
+.tag{display:inline-block;font:500 10px var(--fm);letter-spacing:.12em;text-transform:uppercase;padding:3px 9px;border-radius:999px;background:var(--card2);color:var(--mute);margin-left:8px}
 .tag.warn{background:var(--red);color:var(--ink)}
 /* wall */
 .wall{min-height:calc(100vh - 130px);display:flex;flex-direction:column;justify-content:center;position:relative;padding:40px 0}
-.wall .halo{position:absolute;left:clamp(40px,12vw,220px);top:14%;width:min(46vw,520px);aspect-ratio:1/1.15;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:color-mix(in srgb,var(--hue) 18%,transparent);pointer-events:none;z-index:0}
-.wall .halo2{background:transparent;box-shadow:inset 0 0 0 1.5px rgba(244,236,226,.22);transform:translate(9%,9%)}
+/* The wall carried the same decorative hexagons as the hero. It gets the same ground instead. */
+.wall .ground{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:cover;object-position:78% 50%;pointer-events:none;z-index:0;opacity:.75}
 .wall > *{position:relative;z-index:1}
 .wall .eye{font:600 11px var(--fb);letter-spacing:.26em;text-transform:uppercase;color:var(--mute)}
 .wall p.big{font:500 clamp(1.6rem,3.4vw,3rem)/1.28 var(--fd);letter-spacing:-.02em;margin-top:18px;max-width:22ch}
-.wall p.big b{font-weight:800;font-size:clamp(5rem,15vw,13rem);line-height:.8;letter-spacing:-.06em;color:var(--hue);vertical-align:-.1em;margin:0 .05em}
+.wall p.big b{font-family:var(--fm);font-weight:700;font-size:clamp(4.4rem,13vw,11rem);line-height:.86;letter-spacing:-.05em;color:var(--ink);vertical-align:-.1em;margin:0 .05em}
 .wall p.why{margin-top:clamp(18px,3vw,30px);font-size:clamp(17px,1.8vw,22px);line-height:1.55;color:var(--ink2);max-width:52ch}
 .wall .stats{display:flex;gap:clamp(24px,5vw,64px);flex-wrap:wrap;margin-top:clamp(28px,4vw,48px);align-items:flex-end}
-.wall .stats .eyebrow{letter-spacing:.22em}.wall .stats .num{font-size:clamp(34px,4vw,52px);margin-top:8px}
+.wall .stats .eyebrow{letter-spacing:.22em}.wall .stats .num{font-size:clamp(30px,3.6vw,46px);margin-top:8px}
 .wall .foot{margin-left:auto;align-self:flex-end;font-size:13px;color:var(--dim)}
 body.kiosk header,body.kiosk footer{display:none}
 body.kiosk .band{padding-top:clamp(16px,2vw,28px)}
@@ -223,25 +242,23 @@ footer .fc .hex{width:8px;height:9px}
 body.arranging [data-card]{outline:1.5px dashed rgba(244,236,226,.35);outline-offset:-1px;position:relative}
 body.arranging [data-card] .arr{position:absolute;right:10px;top:10px;display:flex;gap:6px;z-index:5}
 .arr button{width:30px;height:30px;border-radius:999px;border:0;background:var(--ink);color:var(--bg);font:700 14px var(--fb);cursor:pointer}
-.arr button:hover{background:var(--orange)}
+.arr button:hover{background:var(--ink2)}
 .arrbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:8;display:none;gap:10px;align-items:center;background:var(--ink);color:var(--bg);padding:10px 12px 10px 18px;border-radius:999px;font:500 13.5px var(--fb);box-shadow:0 20px 50px rgba(0,0,0,.4)}
-body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:var(--bg)}.arrbar .btn.ghost{background:transparent;border:1px solid rgba(22,21,15,.3);color:var(--bg)}
+body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:var(--ink)}.arrbar .btn.ghost{background:transparent;border:1px solid rgba(22,21,15,.3);color:var(--bg)}
 .arrbar select{background:transparent;border:1px solid rgba(22,21,15,.3);border-radius:999px;padding:6px 10px;color:var(--bg);font:inherit}
 .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,8px);background:var(--ink);color:var(--bg);padding:11px 18px;font:500 14px var(--fb);border-radius:999px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 .empty{font-size:13.5px;color:var(--mute);padding:8px 0}
-:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(122,201,67,.45);border-radius:8px}
+:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(127,165,232,.55);border-radius:8px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="grain" aria-hidden="true"><svg width="100%" height="100%" preserveAspectRatio="none"><filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#grain)" opacity=".2"/></svg></div>
-<div class="glow a" aria-hidden="true"></div><div class="glow b" aria-hidden="true"></div>
-
 <header><div class="wrap">
   <div class="brand"><span class="mark"><span class="hex o"></span><span class="i"></span></span><b id="nodename">node</b><span class="s" id="nodeplace">starting…</span></div>
   <nav class="views" id="views"><button class="on" data-view="now">Now</button><button data-view="network">Network</button><button data-view="setup">Set up</button><button data-view="wall">Wall</button><button data-view="arrange" title="Move, hide and restore cards">Arrange</button></nav>
-  <div class="link"><span class="chip" style="background:#E8873A;color:#16150F;font-weight:700;padding:4px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase" title="An experiment. Tell us what breaks: info@fab.city">alpha</span><i id="dot"></i><span id="pulsetxt">starting</span></div>
+  <div class="link"><span class="chip" style="font-weight:600;padding:4px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase" title="An experiment. Tell us what breaks: info@fab.city">alpha</span><i id="dot"></i><span id="pulsetxt">starting</span></div>
 </div></header>
 
 <main><div class="wrap">
@@ -249,11 +266,11 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
 <!-- ============================================================ NOW: from where you stand, outward -->
 <section class="view on" id="now">
   <div class="card hero r1 in" style="margin-top:clamp(14px,2vw,26px)">
-    <div class="iso" aria-hidden="true"></div><div class="bighex" aria-hidden="true"></div><div class="bighex2" aria-hidden="true"></div>
+    <img class="ground" src="static/node-ground.svg" alt="" aria-hidden="true" width="900" height="600">
     <div class="tri" aria-hidden="true"><span style="background:var(--red)"></span><span style="background:var(--blue)"></span><span style="background:var(--green)"></span></div>
     <div class="body">
       <div class="eyebrow" id="hero-eye">The room, right now</div>
-      <p class="big" id="hero-line">Reading the room<b>–</b></p>
+      <p class="big" id="hero-line">Reading the room<b class="none">–</b></p>
       <p class="why" id="hero-why">Waiting for the first poll.</p>
     </div>
     <div class="chips" id="hero-chips"></div>
@@ -286,7 +303,7 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
     <div class="bandhead"><span class="dist">Region · 11 km and beyond</span><h2 class="t">Sky, land and sea.</h2><div class="sub" id="region-sub">What satellites and models say about this square of the map. They know the district, not your kitchen.</div></div>
     <div class="cards c4" id="world"></div>
     <div class="card r1 mt" data-card="earth" id="earthcard" hidden>
-      <div class="head"><h2 class="t" style="font-size:1.25rem">The land, year over year.</h2><span class="prov" id="earth-prov">Derived</span></div>
+      <div class="head"><h2 class="t" style="font-size:1.25rem">The land, year over year.</h2><span class="prov" id="earth-prov"><svg class="g" width="9" height="9" viewBox="0 0 9 9" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1"><circle cx="1.5" cy="1.5" r="1"/><circle cx="4.5" cy="1.5" r="1"/><circle cx="7.5" cy="1.5" r="1"/><circle cx="1.5" cy="7.5" r="1"/><circle cx="4.5" cy="7.5" r="1"/><circle cx="7.5" cy="7.5" r="1"/></svg>model</span></div>
       <div class="earthrow mt">
         <div>
           <img id="earth-img" alt="The land around this node, seen from orbit" hidden>
@@ -309,9 +326,9 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
   </section>
 
   <section class="band" data-card="act">
-    <div class="bandhead"><span class="dist" style="color:var(--orange)">Act here</span><h2 class="t">What it said, and what you did.</h2><div class="sub" id="act-sub"></div></div>
+    <div class="bandhead"><span class="dist" style="color:var(--green)">Act here</span><h2 class="t">What it said, and what you did.</h2><div class="sub" id="act-sub"></div></div>
     <div class="actrow">
-      <div class="card r2"><div class="rho"><svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--webblue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg><div><div class="num" id="rho-num">–</div><div class="k" id="rho-k">ρ — the only number here that comes from a person.</div></div></div></div>
+      <div class="card r2"><div class="rho"><svg viewBox="0 0 100 100" aria-label="rho"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle id="rho-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--blue)" stroke-width="9" stroke-linecap="round" stroke-dasharray="0 264" transform="rotate(-90 50 50)"/></svg><div><div class="num" id="rho-num">–</div><div class="k" id="rho-k">ρ — the only number here that comes from a person.</div></div></div></div>
       <div class="card r1"><div id="alerts"></div></div>
     </div>
   </section>
@@ -320,10 +337,9 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
 <!-- ============================================================ NETWORK -->
 <section class="view" id="network">
   <div class="card net r1 mt" style="position:relative;overflow:hidden">
-    <div class="iso" aria-hidden="true" style="position:absolute;inset:0;pointer-events:none;opacity:.45;-webkit-mask-image:radial-gradient(circle at 50% 50%,#000,transparent 75%);mask-image:radial-gradient(circle at 50% 50%,#000,transparent 75%);background-image:linear-gradient(60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(-60deg,rgba(244,236,226,.06) 1px,transparent 1px),linear-gradient(0deg,rgba(244,236,226,.06) 1px,transparent 1px);background-size:22px 38px"></div>
     <div class="head" style="position:relative"><h2 class="t" style="font-size:clamp(1.5rem,2.5vw,2.2rem);max-width:22ch">This house is one node of a much larger instrument.</h2><div class="sub" style="max-width:46ch">Readings stay here. What travels up is hourly means, Index cells and ρ. What comes back down is forecast, model and rules — and, when a question is worth it, help from something far bigger.</div></div>
     <svg id="netsvg" viewBox="0 0 1200 470" role="img" aria-label="This node's place in the wider network" style="position:relative"></svg>
-    <div class="legend"><span><i style="border-color:var(--webgreen)"></i>what this node measures</span><span><i style="border-color:var(--webblue)"></i>what comes down from the models</span><span><i style="border-color:var(--orange)"></i>what travels upward</span></div>
+    <div class="legend"><span><i style="border-color:var(--ink)"></i>what this node measures</span><span><i style="border-color:var(--blue)"></i>what comes down from the models</span><span><i style="border-color:var(--mute)"></i>what travels upward</span></div>
   </div>
   <div class="grid g300 mt">
     <div class="card r2"><div class="eyebrow">What leaves this house</div><div class="cellrow" id="cells"></div><div class="sub" id="cells-k" style="max-width:38ch"></div></div>
@@ -335,9 +351,9 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
 <section class="view" id="setup">
   <div style="padding-top:clamp(20px,3vw,40px)">
     <h2 class="t" style="font-size:clamp(1.8rem,3vw,2.5rem)">How this node was told to behave.</h2>
-    <p class="sub" style="font-size:15.5px;margin-top:12px;max-width:56ch">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code style="font-family:ui-monospace,monospace;font-size:13.5px">.env</code>. A value set here overrides the same key in <code style="font-family:ui-monospace,monospace;font-size:13.5px">.env</code>.</p>
+    <p class="sub" style="font-size:15.5px;margin-top:12px;max-width:56ch">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code style="font-family:var(--fm);font-size:13.5px">.env</code>. A value set here overrides the same key in <code style="font-family:var(--fm);font-size:13.5px">.env</code>.</p>
     <div class="gate card r2" id="gate">
-      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:ui-monospace,monospace">planetai ui</code> on the node prints it. Anyone on your network can read the node's own settings; the household's (chat ids, sensor hosts, accounts) and every change need the token.</p>
+      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:var(--fm)">planetai ui</code> on the node prints it. Anyone on your network can read the node's own settings; the household's (chat ids, sensor hosts, accounts) and every change need the token.</p>
       <input type="password" id="tok" placeholder="admin token" autocomplete="off">
       <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap"><button class="btn big" onclick="unlock()">Unlock</button><button class="btn big ghost" onclick="show('now')">Back</button></div>
     </div>
@@ -346,7 +362,7 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
       <div>
         <h3 class="g" id="ptitle"></h3><p class="sub" id="pblurb" style="font-size:15px;margin:8px 0 6px;max-width:56ch"></p>
         <div id="pane" style="max-width:780px"></div>
-        <div class="savebar" id="savebar"><button class="btn big hue" onclick="save()">Save changes</button><span class="sub" id="savenote">Live within about twenty seconds.</span></div>
+        <div class="savebar" id="savebar"><button class="btn big" onclick="save()">Save changes</button><span class="sub" id="savenote">Live within about twenty seconds.</span></div>
       </div>
     </div>
   </div>
@@ -355,9 +371,9 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--orange);color:
 <!-- ============================================================ WALL -->
 <section class="view wall" id="wall">
   <a class="exit" href="/">exit wall</a>
-  <div class="halo" aria-hidden="true"></div><div class="halo halo2" aria-hidden="true"></div>
+  <img class="ground" src="static/node-ground.svg" alt="" aria-hidden="true" width="900" height="600">
   <div class="eye">Inside · µg/m³ · PM2.5</div>
-  <p class="big" id="wall-line">The room is holding at <b>–</b> right now.</p>
+  <p class="big" id="wall-line">The room is holding at <b class="none">–</b> right now.</p>
   <p class="why" id="wall-why"></p>
   <div class="stats" id="wall-stats"></div>
 </section>
@@ -381,7 +397,12 @@ const ago=ts=>{if(!ts)return'';const s=(Date.now()-new Date(ts))/1000;return s<9
 const hhmm=ts=>new Date(ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 const compass=d=>d==null?'':['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(d/22.5)%16];
 const apparent=(t,rh)=>t==null||rh==null?null:t+0.33*(rh/100*6.105*Math.exp(17.27*t/(237.7+t)))-4;
-const HUES={clean:'#7AC943',moderate:'#E8873A',unhealthy:'#E62038'};
+// Colour is a role, and these are the only four. Kept in step with the token block by hand because
+// getComputedStyle in an SVG string attribute is not worth the cost on every poll.
+const INK='#F4ECE2',INK2='#C7BFB2',MUTE='#A39B8D',GREY='#8A8378',RED='#E62038',BLUE='#7FA5E8',GREEN='#00A057',ORANGE='#FF931E';
+// A reading is ink until it crosses the line the page names out loud (15 µg/m³, WHO 2021 daily),
+// and then it is red. There is no third colour for 'a bit high'.
+const STATES={clean:INK,moderate:RED,unhealthy:RED};
 const grade=v=>v==null?null:v<=15?'clean':v<=35?'moderate':'unhealthy';     // WHO 2021: 15 daily guideline, 35 interim target 1
 const RADII=['r1','r2','r3','r4'];
 // smooth path through points (Catmull-Rom → cubic), from the design
@@ -408,8 +429,8 @@ async function refresh(){
     const mine=S('pm25').filter(r=>r.local&&!r.indoor&&r.mean_15m!=null&&fresh(r));
     const near=S('pm25').filter(r=>!r.local&&!r.indoor&&r.kind==='sensor'&&r.mean_15m!=null&&fresh(r)&&r.lat!=null).sort((a,b)=>dist(a)-dist(b)).slice(0,3);
     const outPM=mine.length?mine:near, iv=mean(inPM.map(r=>r.mean_15m)), ov=mean(outPM.map(r=>r.mean_15m)), mv=O('cams-point','pm25_model');
-    const g=grade(iv??ov), hue=HUES[g]||HUES.clean; document.documentElement.style.setProperty('--hue',hue);
-    LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,hue,by};
+    const g=grade(iv??ov), state=STATES[g]||INK, crossed=g!=null&&g!=='clean';
+    LAST={h,stats,alerts,rho,cells,obs,sensors,ser,sparks,iv,ov,mv,inPM,mine,near,state,crossed,by};
     // header
     $('#nodename').textContent=h.node; $('#nodeplace').textContent=`${h.city?h.city.charAt(0).toUpperCase()+h.city.slice(1)+' · ':''}${clock()} · ${(h.kind||'home')} node`;
     const errs=Object.keys(h.errors||{}).length; $('#dot').className=h.last_error||errs?'bad':''; $('#pulsetxt').textContent=h.last_poll?`polled ${ago(h.last_poll)}`+(h.parent?` · linked to ${h.parent}`:''):'starting';
@@ -419,6 +440,7 @@ async function refresh(){
     const verb=iv==null?'':(ser&&ser.indoor?trendWord(ser.indoor):'Holding at');
     $('#hero-eye').textContent=iv!=null?'The room, right now':ov!=null?'The street, right now':'No sensor yet';
     $('#hero-line').innerHTML=iv!=null?`${verb} <b>${fmt(iv)}</b> micrograms — ${parts.join(', ')}.`:ov!=null?`The street is at <b>${fmt(ov)}</b> micrograms; no indoor sensor yet.`:`The model says <b>${fmt(mv)}</b> for this square of the map.`;
+    $('#hero-line').querySelectorAll('b').forEach(b=>b.classList.toggle('crossed',crossed));
     $('#hero-line').classList.toggle('in',true);
     $('#hero-why').textContent=why(iv,ov,mv,g);
     $('#hero-chips').innerHTML=[inPM.length?`${inPM.length} sensor${inPM.length===1?'':'s'} in the room`:null,mine.length?`${mine.length} on the wall outside`:near.length?`${near.length} public sensor${near.length===1?'':'s'} nearby`:null,`${new Set(obs.map(o=>o.sensor_id)).size} models overhead`].filter(Boolean).map(c=>`<span class="chip">${c}</span>`).join('');
@@ -430,19 +452,19 @@ async function refresh(){
     const wind=O('om-point','wind_speed'), wdir=O('om-point','wind_direction');
     const tiles=[
       ov!=null&&{label:mine.length?'The street':'The neighbourhood',value:fmt(ov),unit:'µg/m³',color:'#F4ECE2',spark:ser?ser.outdoor:null,note:mine.length?`Your kit outside${mine[0].name?`, ${mine[0].name}`:''}. ${trendNote(ser&&ser.outdoor)}`:`The ${near.length} nearest public sensor${near.length===1?'':'s'}, ${fmt(dist(near[0]),1)} km away. ${trendNote(ser&&ser.outdoor)}`},
-      mv!=null&&{label:'The model',value:fmt(mv),unit:'µg/m³',color:'#3FA9F5',spark:ser?ser.model:null,note:`CAMS, an 11 km square. ${ov==null?'No street to compare it with yet.':Math.abs(ov-mv)<1.5?'It agrees with your street.':ov>mv?`Your street reads ${fmt(ov-mv)} higher — the local signal it cannot see.`:`It overstates your street by ${fmt(mv-ov)}.`}`},
-      at!=null&&{label:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?'#E62038':at>=27?'#E8873A':'#7AC943',spark:atSeries,note:`${fmt(inT,1)} °C at ${fmt(inH)}% humidity indoors. ${at>=40?'Heatstroke territory.':at>=32?'Heat stress: water, air, rest.':at>=27?'Warm; fine for most.':'Comfortable.'}`},
-      wind!=null&&{label:'Wind',value:fmt(wind),unit:`km/h ${compass(wdir)}`,color:'#7AC943',spark:null,note:wind<5?'Still. Whatever burns nearby stays nearby.':wind<15?'Light. Smoke drifts, slowly.':wind<30?'Breezy. Smoke travels; so does clean air.':'Strong.'},
+      mv!=null&&{label:'The model',value:fmt(mv),unit:'µg/m³',color:BLUE,spark:ser?ser.model:null,note:`CAMS, an 11 km square. ${ov==null?'No street to compare it with yet.':Math.abs(ov-mv)<1.5?'It agrees with your street.':ov>mv?`Your street reads ${fmt(ov-mv)} higher — the local signal it cannot see.`:`It overstates your street by ${fmt(mv-ov)}.`}`},
+      at!=null&&{label:'Feels like',value:fmt(at,1),unit:'°C',color:at>=32?RED:INK,spark:atSeries,note:`${fmt(inT,1)} °C at ${fmt(inH)}% humidity indoors. ${at>=40?'Heatstroke territory.':at>=32?'Heat stress: water, air, rest.':at>=27?'Warm; fine for most.':'Comfortable.'}`},
+      wind!=null&&{label:'Wind',value:fmt(wind),unit:`km/h ${compass(wdir)}`,color:INK,spark:null,note:wind<5?'Still. Whatever burns nearby stays nearby.':wind<15?'Light. Smoke drifts, slowly.':wind<30?'Breezy. Smoke travels; so does clean air.':'Strong.'},
     ].filter(Boolean);
     const tileHTML=(t,i)=>`<div class="card tile lift ${RADII[(i+1)%4]} in" data-card="tile:${t.label.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div><div class="eyebrow" style="letter-spacing:.2em">${t.label}</div><div class="v"><span class="num" style="color:${t.color}">${t.value}</span><small>${t.unit}</small></div></div><div>${t.spark?spark(t.spark,t.color):''}<div class="note">${esc(t.note)}</div></div></div>`;
     const roomTiles=tiles.filter(t=>t.label==='Feels like'), streetTiles=tiles.filter(t=>t.label!=='Feels like'&&t.label!=='The model'), regionTiles=tiles.filter(t=>t.label==='The model');
-    drawDay(ser,hue,iv);
+    drawDay(ser,state,iv);
     // every sensor, with a story
     const local=sensors.filter(s=>s.local), pub=sensors.filter(s=>!s.local&&s.kind==='sensor');
     const rows=[];
     for(const s of local){const m=by[s.sensor_id]||{},pm=m.pm25,any=Object.values(m)[0];const silent=any?any.silent_minutes:null;
-      let value='–',unit='',color=hue,sp=sparks[s.sensor_id];
-      if(pm){value=fmt(pm.mean_15m);unit='µg/m³';color=s.indoor?hue:'#7AC943';}
+      let value='–',unit='',color=state,sp=sparks[s.sensor_id];
+      if(pm){value=fmt(pm.mean_15m);unit='µg/m³';color=s.indoor?state:INK;}
       else if(m.temp){value=fmt(m.temp.mean_15m,1);unit='°C';color='#F4ECE2';sp=sparkT[s.sensor_id];}
       else if(m.battery_pct){value=fmt(m.battery_pct.last);unit='% battery';color='#8A8378';sp=null;}
       rows.push({name:s.name||s.sensor_id,value,unit,color,sp,indoor:!!s.indoor,story:sensorStory(s,m,silent,by,inPM)});}
@@ -460,11 +482,11 @@ async function refresh(){
     if(open_.length){const a=open_[0];const ln=a.text.split('\n').filter(Boolean);strip.hidden=false;strip.innerHTML=`<span class="hex"></span><div class="t">${esc(ln[0])}<small>${open_.length>1?`${open_.length} things waiting. `:''}${esc((ln.find(l=>l.startsWith('👉'))||'').replace('👉','').trim())}</small></div><button class="btn act" onclick="act(${a.id})">I did this</button>`;}
     else{strip.hidden=true;strip.innerHTML='';}
     // alerts + rho
-    const arc=rho.rho==null?0:Math.round(264*rho.rho); $('#rho-arc').setAttribute('stroke-dasharray',`${arc} 264`); $('#rho-arc').setAttribute('stroke',hue);
-    $('#rho-num').textContent=rho.rho==null?'–':fmt(rho.rho,2); $('#rho-num').style.color=hue;
+    const arc=rho.rho==null?0:Math.round(264*rho.rho); $('#rho-arc').setAttribute('stroke-dasharray',`${arc} 264`);
+    $('#rho-num').textContent=rho.rho==null?'–':fmt(rho.rho,2);
     $('#rho-k').textContent=rho.rho==null?'ρ — no act-level alert yet. When one comes, the button beside it is how this number is made.':`ρ — ${rho.alerts_act} ask${rho.alerts_act===1?'':'s'} in thirty days, ${rho.acted} answered. The only number here that comes from a person.`;
     $('#act-sub').textContent=open_.length?`${open_.length} thing${open_.length===1?'':'s'} waiting for you. The button beside each is how ρ is made.`:'Nothing waiting. Every act-level alert gets a button; pressing it is the measurement.';
-    $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'?'var(--red)':a.level==='warn'?'var(--orange)':'var(--webblue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn act" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
+    $('#alerts').innerHTML=alerts.length?alerts.map(a=>{const c=a.level==='act'||a.level==='warn'?'var(--red)':'var(--blue)';const line=a.text.split('\n').filter(Boolean);return`<div class="alert"><span class="hex" style="background:${c}"></span><div class="stamp">${hhmm(a.ts)}</div><div><div class="t">${esc(line[0]||'')}${line[1]?` <span style="color:var(--mute)">${esc(line.slice(1).join(' ').slice(0,140))}</span>`:''}</div><div class="meta"><span>${esc(a.rule_id.replace('/',' · '))} · #${a.id}</span>${a.level==='act'?(a.acted_at?`<span class="done">${a.acted_note?esc(a.acted_note)+', ':''}${hhmm(a.acted_at)}</span>`:`<button class="btn act" onclick="act(${a.id})">I did this</button>`):''}</div></div></div>`;}).join(''):`<div class="empty">Nothing yet. The node speaks only when something should change.</div>`;
     // the world
     const wave=O('marine-point','wave_height_m'),wd=O('marine-point','wave_direction'),per=O('marine-point','wave_period_s'),sst=O('marine-point','sea_surface_temp');
     const built=O('ee-point','built_frac'),trees=O('ee-point','tree_frac'),chg=O('ee-point','land_change_score');
@@ -474,20 +496,21 @@ async function refresh(){
     const bld=O('place-point','buildings'),comm=O('place-point','commercial_share'),food=O('place-point','poi_food'),lodg=O('place-point','poi_lodging'),hlth=O('place-point','nearest_health_m'),mkt=O('place-point','nearest_market_m'),grn=O('place-point','green_share'),bshare=O('place-point','built_share');
     const W=[
       bld!=null&&{title:'Around you, 1 km',value:fmt(sat||bld),unit:sat?'buildings, from orbit':'buildings on the map',color:'#F4ECE2',story:`${sat?`The satellite sees ${fmt(sat)}; the map has ${fmt(bld)} (${fmt((cov||0)*100)}%). `:''}${fmt((bshare||0)*100)}% of the ground built, ${fmt((comm||0)*100)}% of mapped buildings commercial. On the map: ${fmt(food)} places to eat${lodg?`, ${fmt(lodg)} villas and guesthouses`:''}${mkt!=null?`, a market ${fmt(mkt)} m away`:''}${hlth!=null?`, health care at ${fmt(hlth)} m`:''}. ${fmt((grn||0)*100)}% green.${sy!=null&&sat&&sy>sat*0.3?` Since 2016 the satellite count went from ${fmt(sy0)} to ${fmt(sy)}${sh?`, mean height ${fmt(sh,1)} m`:''}.`:''} A zero on the map often means unmapped.`},
-      wave!=null&&{title:'The sea',value:fmt(wave,1),unit:`m swell, ${compass(wd)}`,color:'#3FA9F5',story:`${per>=12?'A long period: clean, powerful lines and strong currents on the exposed beaches.':per>=10?'A solid period: proper waves on the reefs, currents to respect.':'A short period: wind swell, messy on exposed beaches.'}${sst!=null?` The water is ${fmt(sst,1)} °C${sst>=29?', warm for the season.':', normal for the season.'}`:''}`},
+      wave!=null&&{title:'The sea',value:fmt(wave,1),unit:`m swell, ${compass(wd)}`,color:INK,story:`${per>=12?'A long period: clean, powerful lines and strong currents on the exposed beaches.':per>=10?'A solid period: proper waves on the reefs, currents to respect.':'A short period: wind swell, messy on exposed beaches.'}${sst!=null?` The water is ${fmt(sst,1)} °C${sst>=29?', warm for the season.':', normal for the season.'}`:''}`},
       built!=null&&{title:'The land, 1 km around',value:fmt(built*100),unit:'% built',color:'#F4ECE2',story:`${fmt((trees||0)*100)} per cent trees${chg!=null?`, and ${fmt(chg*100,1)}% of it changed since last year`:''}. Earth Engine, last complete year.`},
       tmod!=null&&{title:'The weather',value:fmt(tmod,1),unit:'°C outside',color:'#F4ECE2',story:`${rain?fmt(rain,1)+' mm of rain this hour':'Dry'}${uv!=null?`, ${uv<1?'no UV left in the day':uv<6?'moderate UV':'strong UV'}`:''}${o3!=null?`, ozone at ${fmt(o3)}`:''}. ${wind!=null&&wind<5&&(ov||0)>15?'Still air is keeping the smoke where it is.':'Nothing in the sky is working against you.'}`},
-      ov!=null&&mv!=null&&{title:'The gap',value:(ov-mv>=0?'+':'')+fmt(ov-mv),unit:'µg/m³ over the model',color:'#E8873A',story:'The difference between your street and the satellite square it sits in — the local signal an 11 km cell cannot see.'},
+      ov!=null&&mv!=null&&{title:'The gap',value:(ov-mv>=0?'+':'')+fmt(ov-mv),unit:'µg/m³ over the model',color:INK,story:'The difference between your street and the satellite square it sits in — the local signal an 11 km cell cannot see.'},
     ].filter(Boolean);
     const worldHTML=(w,i)=>`<div class="card world lift ${RADII[(i+1)%4]} in ${w.wide?'wide2':''}" data-card="world:${w.title.toLowerCase().replace(/[^a-z]+/g,'-')}" style="animation-delay:${i*70+80}ms"><div class="row"><span class="eyebrow" style="letter-spacing:.2em">${w.title}</span><span style="white-space:nowrap"><span class="num" style="color:${w.color}">${w.value}</span><small>${w.unit}</small></span></div><div class="story">${esc(w.story)}</div>${w.action||''}</div>`;
     const placeCard=W.find(w=>w.title.startsWith('Around you')); const region=W.filter(w=>!w.title.startsWith('Around you'));
     $('#world').innerHTML=regionTiles.map(tileHTML).join('')+region.map(worldHTML).join('');
     if(placeCard){placeCard.wide=false;placeCard.action=`<a class="btn act mapbtn" href="https://www.openstreetmap.org/edit#map=17/${h.lat}/${h.lon}" target="_blank" rel="noopener">Fix the map →</a><div class="k" style="font-size:12px;color:var(--mute);margin-top:8px">StreetComplete or Every Door on a phone; iD in the browser. Never from Google. Edits reach this node within minutes.</div>`;
-      $('#place').innerHTML=worldHTML(placeCard,0)+(cov!=null&&cov<0.9?`<div class="card r3" style="border-color:rgba(232,135,58,.4)"><div class="eyebrow" style="color:var(--orange);letter-spacing:.2em">Unmapped</div><div class="story" style="margin-top:8px">About <b style="color:var(--ink)">${fmt((sat||0)-(bld||0))}</b> buildings the satellite sees have nothing drawn on the map. The orange shapes on the plan are them. An afternoon with a few phones fixes a kilometre.</div></div>`:'');}
+      $('#place').innerHTML=worldHTML(placeCard,0)+(cov!=null&&cov<0.9?`<div class="card r3" style="border-color:rgba(255,147,30,.4)"><div class="eyebrow" style="color:var(--orange);letter-spacing:.2em">Unmapped</div><div class="story" style="margin-top:8px">About <b style="color:var(--ink)">${fmt((sat||0)-(bld||0))}</b> buildings the satellite sees have nothing drawn on the map. The orange shapes on the plan are them. An afternoon with a few phones fixes a kilometre.</div></div>`:'');}
     else $('#place').innerHTML='';
     $('#plan-r').textContent=(PLAN&&PLAN.radius_m?PLAN.radius_m>=1000?(PLAN.radius_m/1000)+' km':PLAN.radius_m+' m':'1 km');
     // wall
-    $('#wall-line').innerHTML=iv!=null?`The room is ${verb.toLowerCase().replace('holding at','holding at')} <b>${fmt(iv)}</b> ${new Date().getHours()>=18||new Date().getHours()<5?'tonight':'right now'}.`:`No indoor sensor <b>–</b> yet.`;
+    $('#wall-line').innerHTML=iv!=null?`The room is ${verb.toLowerCase().replace('holding at','holding at')} <b>${fmt(iv)}</b> ${new Date().getHours()>=18||new Date().getHours()<5?'tonight':'right now'}.`:`No indoor sensor <b class="none">–</b> yet.`;
+    $('#wall-line').querySelectorAll('b').forEach(b=>b.classList.toggle('crossed',crossed));
     $('#wall-why').textContent=why(iv,ov,mv,g);
     $('#wall-stats').innerHTML=[ov!=null&&['Street',fmt(ov)],mv!=null&&['Model',fmt(mv)],at!=null&&['Feels like',fmt(at,1)+'°']].filter(Boolean).map(([k,v])=>`<div><div class="eyebrow">${k}</div><div class="num">${v}</div></div>`).join('')+`<div class="foot">${esc(h.node)}${h.parent?` · linked to ${esc(h.parent)}`:''} · ${new Date().toLocaleString([],{weekday:'long',hour:'2-digit',minute:'2-digit'})}</div>`;
     $('#foot-mid').textContent=`Node ${h.node} · one place, seen from the wall to orbit · Fab City`;
@@ -519,56 +542,59 @@ function sensorStory(s,m,silent,by,inPM){
 }
 
 // ------------------------------------------------------------------ the day: 24 hours, annotated from the data
-function drawDay(ser,hue,iv){
+function drawDay(ser,state,iv){
   const svg=$('#day'); if(!ser||!ser.buckets||!ser.buckets.length){svg.innerHTML=`<text x="60" y="200" style="font:500 14px var(--fb);fill:#8A8378">The chart appears once there is an hour of readings.</text>`;return;}
   const X0=60,X1=1140,n=ser.buckets.length,STEP=(X1-X0)/Math.max(n-1,1),BASE=300;
   const all=[...ser.indoor,...ser.outdoor,...ser.model].filter(x=>x!=null),max=Math.max(20,...all)*1.1,SC=(BASE-60)/max;
   const P=arr=>{let last=null;return arr.map((v,i)=>{if(v!=null)last=v;return last==null?null:[X0+i*STEP,BASE-last*SC];}).filter(Boolean);};
   const pi=P(ser.indoor),po=P(ser.outdoor),pm=P(ser.model);
   const who=BASE-15*SC;
-  let out=`<defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${hue}" stop-opacity=".42"/><stop offset="1" stop-color="${hue}" stop-opacity="0"/></linearGradient><filter id="glow" x="-10%" y="-40%" width="120%" height="180%"><feGaussianBlur stdDeviation="7"/></filter></defs>`;
-  out+=`<path d="M${X0} ${who} H${X1}" stroke="#E8873A" stroke-width="1.2" stroke-dasharray="3 9" fill="none" opacity=".9"/><text x="${X0}" y="${who-10}" style="font:500 12.5px var(--fb);fill:#E8873A">what the WHO calls too much · 15</text>`;
-  if(pi.length>1){const d=smooth(pi);out+=`<path d="${d} L${pi[pi.length-1][0]},${BASE} L${pi[0][0]},${BASE} Z" fill="url(#area)"/><path d="${d}" fill="none" stroke="${hue}" stroke-width="12" stroke-linecap="round" opacity=".28" filter="url(#glow)"/><path d="${d}" fill="none" stroke="${hue}" stroke-width="2.6" stroke-linecap="round"/>`;}
+  // No gradient fill and no blur pass: the area is one flat ink wash and the curve is a line.
+  let out='';
+  out+=`<path d="M${X0} ${who} H${X1}" stroke="${RED}" stroke-width="1.2" stroke-dasharray="3 9" fill="none" opacity=".75"/><text x="${X0}" y="${who-10}" style="font:500 12.5px var(--fb);fill:${RED}">what the WHO calls too much · 15</text>`;
+  if(pi.length>1){const d=smooth(pi);out+=`<path d="${d} L${pi[pi.length-1][0]},${BASE} L${pi[0][0]},${BASE} Z" fill="${INK}" fill-opacity=".08"/><path d="${d}" fill="none" stroke="${INK}" stroke-width="2.6" stroke-linecap="round"/>`;}
   if(po.length>1)out+=`<path d="${smooth(po)}" fill="none" stroke="#F4ECE2" stroke-width="1.6" stroke-dasharray="1 7" stroke-linecap="round" opacity=".7"/>`;
-  if(pm.length>1)out+=`<path d="${smooth(pm)}" fill="none" stroke="#3FA9F5" stroke-width="1.6" opacity=".8"/>`;
+  if(pm.length>1)out+=`<path d="${smooth(pm)}" fill="none" stroke="${BLUE}" stroke-width="1.6" opacity=".8"/>`;
   // annotations, computed: the indoor peak; the hours inside beat outside; now
   const inV=ser.indoor.map((v,i)=>[v,i]).filter(([v])=>v!=null);
   if(inV.length>3){const [pk,pki]=inV.reduce((a,b)=>b[0]>a[0]?b:a);const worse=ser.indoor.filter((v,i)=>v!=null&&ser.outdoor[i]!=null&&v>ser.outdoor[i]).length;
     const px=X0+pki*STEP,py=BASE-pk*SC,left=px>700;
-    if(pk>=8){out+=`<circle cx="${px}" cy="${py}" r="7" fill="#E8873A"/><path d="M${px} ${py} C ${px} ${py-46}, ${left?px-28:px+28} ${py-62}, ${left?px-62:px+62} ${py-62}" fill="none" stroke="#E8873A" stroke-width="1.2"/>`;
-      out+=`<text x="${left?px-72:px+72}" y="${py-78}" text-anchor="${left?'end':'start'}" style="font:800 18px var(--fd);letter-spacing:-.02em;fill:#E8873A">${worse?'someone cooked':'the room peaked'}</text>`;
+    if(pk>=8){out+=`<circle cx="${px}" cy="${py}" r="7" fill="${RED}"/><path d="M${px} ${py} C ${px} ${py-46}, ${left?px-28:px+28} ${py-62}, ${left?px-62:px+62} ${py-62}" fill="none" stroke="${RED}" stroke-width="1.2"/>`;
+      out+=`<text x="${left?px-72:px+72}" y="${py-78}" text-anchor="${left?'end':'start'}" style="font:800 18px var(--fd);letter-spacing:-.02em;fill:${RED}">${worse?'someone cooked':'the room peaked'}</text>`;
       out+=`<text x="${left?px-72:px+72}" y="${py-56}" text-anchor="${left?'end':'start'}" style="font:italic 500 14px var(--fb);fill:#C7BFB2">${hhmm(ser.buckets[pki])} — the room climbed to ${fmt(pk)}${worse?`,`:'.'}</text>`;
       if(worse)out+=`<text x="${left?px-72:px+72}" y="${py-36}" text-anchor="${left?'end':'start'}" style="font:italic 500 14px var(--fb);fill:#C7BFB2">${worse===1?'the only hour':worse+' hours'} it was worse than the street</text>`;}
     const outFirst=ser.outdoor.map((v,i)=>[v,i]).filter(([v])=>v!=null);
     if(outFirst.length>6){const [ok,oki]=outFirst.slice(3).reduce((a,b)=>b[0]>a[0]?b:a);const ox=X0+oki*STEP,oy=BASE-ok*SC;if(Math.abs(oki-pki)>3)out+=`<circle cx="${ox}" cy="${oy}" r="4.5" fill="#F4ECE2"/><path d="M${ox} ${oy} C ${ox} ${oy-34}, ${ox+30} ${oy-44}, ${ox+60} ${oy-44}" fill="none" stroke="#F4ECE2" stroke-width="1" opacity=".6"/><text x="${ox+70}" y="${oy-40}" style="font:italic 500 14px var(--fb);fill:#C7BFB2">the street peaked, ${hhmm(ser.buckets[oki])}</text>`;}
   }
-  if(pi.length){const [nx,ny]=pi[pi.length-1];out+=`<circle cx="${nx}" cy="${ny}" r="5.5" fill="none" stroke="${hue}" stroke-width="1.5"><animate attributeName="r" values="6;20;6" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0;.8" dur="3s" repeatCount="indefinite"/></circle><circle cx="${nx}" cy="${ny}" r="5.5" fill="${hue}"/><text x="${nx+16}" y="${ny+5}" style="font:600 13.5px var(--fb);fill:${hue}">now</text>`;}
+  if(pi.length){const [nx,ny]=pi[pi.length-1];out+=`<circle cx="${nx}" cy="${ny}" r="5.5" fill="none" stroke="${state}" stroke-width="1.5"><animate attributeName="r" values="6;20;6" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0;.8" dur="3s" repeatCount="indefinite"/></circle><circle cx="${nx}" cy="${ny}" r="5.5" fill="${state}"/><text x="${nx+16}" y="${ny+5}" style="font:600 13.5px var(--fb);fill:${state}">now</text>`;}
   [0,Math.floor(n*.25),Math.floor(n*.5),Math.floor(n*.75),n-1].forEach((i,k)=>{out+=`<text x="${X0+i*STEP}" y="332" text-anchor="${k===4?'end':k===0?'start':'middle'}" style="font:500 12.5px var(--fb);fill:#8A8378">${hhmm(ser.buckets[i])}</text>`;});
-  out+=`<rect x="60" y="372" width="30" height="9" rx="4.5" fill="${hue}"/><text x="100" y="381" style="font:500 13px var(--fb);fill:#C7BFB2">in here</text><path d="M182 377 H212" stroke="#F4ECE2" stroke-width="1.6" stroke-dasharray="1 7" stroke-linecap="round" opacity=".7"/><text x="222" y="381" style="font:500 13px var(--fb);fill:#C7BFB2">out there</text><path d="M318 377 H348" stroke="#3FA9F5" stroke-width="1.6"/><text x="358" y="381" style="font:500 13px var(--fb);fill:#C7BFB2">what the satellite model guessed for this square of the map</text>`;
+  out+=`<rect x="60" y="372" width="30" height="9" rx="4.5" fill="${INK}"/><text x="100" y="381" style="font:500 13px var(--fb);fill:${INK2}">in here</text><path d="M182 377 H212" stroke="${INK}" stroke-width="1.6" stroke-dasharray="1 7" stroke-linecap="round" opacity=".7"/><text x="222" y="381" style="font:500 13px var(--fb);fill:${INK2}">out there</text><path d="M318 377 H348" stroke="${BLUE}" stroke-width="1.6"/><text x="358" y="381" style="font:500 13px var(--fb);fill:${INK2}">what the satellite model guessed for this square of the map</text>`;
   svg.innerHTML=out;
   const inA=ser.indoor.filter(x=>x!=null);$('#day-sub').textContent=inA.length?`Twenty-four hours of hourly means. Inside averaged ${fmt(mean(inA))}${ser.outdoor.some(x=>x!=null)?`, the street ${fmt(mean(ser.outdoor))}`:''}.`:'Twenty-four hours of hourly means, once there are some.';
 }
 
 // ------------------------------------------------------------------ the network: this node in the wider instrument
 function drawNetwork(L){
-  const {h,iv,ov,mv,cells,sensors,near,mine,hue}=L; const svg=$('#netsvg');
+  const {h,iv,ov,mv,cells,sensors,near,mine,state}=L; const svg=$('#netsvg');
   const T=(x,y,t,st,anchor='middle')=>`<text x="${x}" y="${y}" text-anchor="${anchor}" style="${st}">${esc(t)}</text>`;
   const lbl="font:600 13px var(--fb);fill:#F4ECE2", dim="font:500 12px var(--fb);fill:#8A8378", eye="font:600 10px var(--fb);letter-spacing:.12em;fill:#A39B8D", big="font:800 24px var(--fd);letter-spacing:-.03em;fill:#F4ECE2";
   const flow=(d,c,dur)=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 8" opacity=".8" style="animation:v5flow ${dur}s linear infinite"/><circle r="3.5" fill="${c}"><animateMotion dur="${dur*0.7}s" repeatCount="indefinite" path="${d}"/></circle>`;
   const local=sensors.filter(s=>s.local).length, parent=h.parent||null, ncells=cells.length;
   let o='';
-  o+=flow('M232 236 C 330 236, 360 150, 452 150','#7AC943',8)+flow('M232 236 C 330 236, 360 322, 452 322','#7AC943',11)+flow('M568 150 C 660 150, 690 236, 786 236','#7AC943',9)+flow('M786 236 C 690 236, 660 322, 568 322','#3FA9F5',12);
-  if(parent)o+=flow('M896 236 C 980 236, 1000 150, 1080 150','#E8873A',10)+flow('M896 236 C 980 236, 1000 330, 1080 330','#E8873A',14);
-  o+=`<circle cx="150" cy="236" r="82" fill="none" stroke="${hue}" stroke-width="1"><animate attributeName="r" values="60;110;60" dur="5s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0;.5" dur="5s" repeatCount="indefinite"/></circle><circle cx="150" cy="236" r="82" fill="rgba(244,236,226,.06)" stroke="rgba(244,236,226,.2)"/><circle cx="150" cy="236" r="54" fill="${hue}" opacity=".9"/>`;
+  o+=flow('M232 236 C 330 236, 360 150, 452 150',INK,8)+flow('M232 236 C 330 236, 360 322, 452 322',INK,11)+flow('M568 150 C 660 150, 690 236, 786 236',INK,9)+flow('M786 236 C 690 236, 660 322, 568 322',BLUE,12);
+  if(parent)o+=flow('M896 236 C 980 236, 1000 150, 1080 150',MUTE,10)+flow('M896 236 C 980 236, 1000 330, 1080 330',MUTE,14);
+  o+=`<circle cx="150" cy="236" r="82" fill="none" stroke="${state}" stroke-width="1"><animate attributeName="r" values="60;110;60" dur="5s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0;.5" dur="5s" repeatCount="indefinite"/></circle><circle cx="150" cy="236" r="82" fill="rgba(244,236,226,.06)" stroke="rgba(244,236,226,.2)"/><circle cx="150" cy="236" r="54" fill="${state}" opacity=".9"/>`;
   o+=`<text x="150" y="228" text-anchor="middle" style="font:800 34px var(--fd);letter-spacing:-.04em;fill:#16150F">${fmt(iv)}</text>`+T(150,252,'THIS ROOM',"font:600 10px var(--fb);letter-spacing:.14em;fill:#16150F")+T(150,352,`${h.node} · ${h.kind||'home'}`,lbl)+T(150,372,`${local} sensor${local===1?'':'s'} · ${(h.ingested||0).toLocaleString()} readings, all local`,dim);
-  o+=`<circle cx="510" cy="150" r="56" fill="rgba(122,201,67,.16)" stroke="#7AC943" stroke-width="1.2"/>`+T(510,146,fmt(ov),big)+T(510,166,'THE STREET',eye)+T(510,70,'the neighbourhood',lbl)+T(510,90,mine.length?`your outdoor kit${near.length?` + ${near.length} public sensor${near.length===1?'':'s'}`:''}`:near.length?`${near.length} public sensor${near.length===1?'':'s'} nearby`:'no outdoor sensor yet',dim);
-  o+=`<circle cx="510" cy="322" r="56" fill="rgba(63,169,245,.14)" stroke="#3FA9F5" stroke-width="1.2"/>`+T(510,318,fmt(mv),big)+T(510,338,'THE MODELS',eye)+T(510,410,'planetary models',lbl)+T(510,430,'CAMS air · Open-Meteo weather & marine · Earth Engine land',dim);
+  o+=`<circle cx="510" cy="150" r="56" fill="rgba(244,236,226,.10)" stroke="${INK}" stroke-width="1.2"/>`+T(510,146,fmt(ov),big)+T(510,166,'THE STREET',eye)+T(510,70,'the neighbourhood',lbl)+T(510,90,mine.length?`your outdoor kit${near.length?` + ${near.length} public sensor${near.length===1?'':'s'}`:''}`:near.length?`${near.length} public sensor${near.length===1?'':'s'} nearby`:'no outdoor sensor yet',dim);
+  o+=`<circle cx="510" cy="322" r="56" fill="rgba(127,165,232,.14)" stroke="${BLUE}" stroke-width="1.2"/>`+T(510,318,fmt(mv),big)+T(510,338,'THE MODELS',eye)+T(510,410,'planetary models',lbl)+T(510,430,'CAMS air · Open-Meteo weather & marine · Earth Engine land',dim);
   o+=`<circle cx="842" cy="236" r="58" fill="rgba(244,236,226,.08)" stroke="rgba(244,236,226,.3)" stroke-width="1.2" ${parent?'':'stroke-dasharray="4 6"'}/>`+T(842,230,parent?'↑':'—',"font:800 22px var(--fd);fill:#F4ECE2")+T(842,250,parent?'PARENT':'NO PARENT',eye)+T(842,330,parent||'not linked yet',lbl)+T(842,350,parent?'hourly means, never raw readings':'planetai settings → The tree',dim);
-  o+=`<circle cx="1112" cy="150" r="46" fill="rgba(232,135,58,.16)" stroke="#E8873A" stroke-width="1.2"/>`+T(1112,146,`${ncells}/20`,"font:800 20px var(--fd);letter-spacing:-.03em;fill:#F4ECE2")+T(1112,164,'CELLS',"font:600 9.5px var(--fb);letter-spacing:.1em;fill:#A39B8D")+T(1112,76,'Fab City Index',lbl)+T(1180,96,'what this place can report',dim,'end');
-  o+=`<circle cx="1112" cy="330" r="46" fill="rgba(232,135,58,.1)" stroke="#E8873A" stroke-width="1.2" stroke-dasharray="4 6"/>`+T(1112,336,'MODEL',"font:600 11px var(--fb);letter-spacing:.08em;fill:#E8873A")+T(1112,404,'the agent’s ladder',lbl)+T(1180,424,'asked only when a question earns it',dim,'end');
+  o+=`<circle cx="1112" cy="150" r="46" fill="rgba(127,165,232,.16)" stroke="${BLUE}" stroke-width="1.2"/>`+T(1112,146,`${ncells}/20`,"font:800 20px var(--fd);letter-spacing:-.03em;fill:#F4ECE2")+T(1112,164,'CELLS',"font:600 9.5px var(--fb);letter-spacing:.1em;fill:#A39B8D")+T(1112,76,'Fab City Index',lbl)+T(1180,96,'what this place can report',dim,'end');
+  o+=`<circle cx="1112" cy="330" r="46" fill="rgba(127,165,232,.10)" stroke="${BLUE}" stroke-width="1.2" stroke-dasharray="4 6"/>`+T(1112,336,'MODEL',`font:600 11px var(--fb);letter-spacing:.08em;fill:${BLUE}`)+T(1112,404,'the agent’s ladder',lbl)+T(1180,424,'asked only when a question earns it',dim,'end');
   svg.innerHTML=o;
-  const P=['Environmental','Economic','Social','Governance'],C={Environmental:'#00A057',Economic:'#E62038',Social:'#7AC943',Governance:'#20388D'};
-  $('#cells').innerHTML=P.map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));const v=c?c.value:null;const dash=c?(c.state==='live'?198:87):0;return`<div class="cell" title="${p}${c?` — ${esc(c.cell.split('|')[1])}, ${c.state}`:' — no source yet'}"><div class="ring"><span>${v==null?'–':fmt(v,v<10?1:0)}</span><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="${C[p]}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/></svg></div><div class="l">${p}</div></div>`;}).join('');
+  // Four categories, one role: this is data. Green here would have said "a loop closed" about the
+  // environment cell and red "it got worse" about the economy one, neither of which the number means.
+  const P=['Environmental','Economic','Social','Governance'];
+  $('#cells').innerHTML=P.map(p=>{const c=cells.find(x=>x.cell.startsWith(p+'|'));const v=c?c.value:null;const dash=c?(c.state==='live'?198:87):0;return`<div class="cell" title="${p}${c?` — ${esc(c.cell.split('|')[1])}, ${c.state}`:' — no source yet'}"><div class="ring"><span>${v==null?'–':fmt(v,v<10?1:0)}</span><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(244,236,226,.14)" stroke-width="9"/><circle cx="50" cy="50" r="42" fill="none" stroke="${BLUE}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/></svg></div><div class="l">${p}</div></div>`;}).join('');
   $('#cells-k').textContent=`${ncells} of the twenty Fab City Index cells have a source at this node. Governance is filled by ρ, which only exists because somebody here answered.`;
   const v=[['readings kept',`${(h.ingested||0).toLocaleString()} — none of them leave`],['polls',(h.polls||0).toLocaleString()],['awake for',`${Math.floor((h.uptime_s||0)/3600)} h ${Math.floor(((h.uptime_s||0)%3600)/60)} min`],['listening to',`${local} of yours, ${sensors.filter(s=>!s.local&&s.kind==='sensor').length} public, ${sensors.filter(s=>s.kind==='model').length} models`],['over the radio',h.mesh&&h.mesh.packets?`${h.mesh.packets} packets via ${h.mesh.gateway}`:'no radio yet'],['errors',Object.keys(h.errors||{}).length?Object.entries(h.errors).map(([k,x])=>k+': '+x).join('; '):'none'],['version',`${h.version||''} · Apache-2.0`]];
   $('#vitals').innerHTML=v.map(([k,x])=>`<div class="vit"><span>${k}</span><span>${esc(x)}</span></div>`).join('');
@@ -576,8 +602,12 @@ function drawNetwork(L){
 
 
 // ------------------------------------------------------------------ the plan: a figure-ground of the kilometre
-const PLAN_LAYERS={building:['buildings on the map','#F4ECE2'],sat:['only the satellite knows','#E8873A'],road:['roads','#8A8378'],green:['green','#00A057'],poi:['uses','#3FA9F5']};
-const USE_COLORS={food:'#E8873A',market:'#E8873A',retail:'#3FA9F5',education:'#7AC943',health:'#E62038',worship:'#F4ECE2',lodging:'#20388D',services:'#3FA9F5',other:'#8A8378'};
+// Orange appears here and nowhere else on the page: it is what only the satellite knows.
+// Green appears here as green space, the one place a hue names the thing itself — the same exception
+// the design kit's kilometre plate takes. Everything else on the plan is ink, grey or blue.
+const PLAN_LAYERS={building:['buildings on the map',INK],sat:['only the satellite knows',ORANGE],road:['roads',GREY],green:['green',GREEN],poi:['uses',BLUE]};
+// A use is data, so every use is blue. Which use it is, is the label's job and the sign's job, not the
+// hue's: nine hues for nine uses was a legend nobody could hold, and four of them were role colours.
 let PLAN=null, PLAN_OFF=new Set();
 let EARTH=null, EARTH_MODE='years', EARTH_I=0, EARTH_TIMER=null, EARTH_KEY=null;
 
@@ -715,7 +745,7 @@ async function drawPlan(){
   for(const f of F){const k=f.properties.kind,g=f.geometry; if(!L.hasOwnProperty(k))continue;
    try{
     if(k==='road'&&g.type==='LineString'){const w=/^(primary|secondary|trunk)$/.test(f.properties.highway)?2.2:/^(tertiary|residential|unclassified)$/.test(f.properties.highway)?1.4:.6;L.road+=`<polyline points="${ring(g.coordinates)}" stroke-width="${w}"/>`;counts[k]++;}
-    else if(k==='poi'){const c=px(firstPt(g));L.poi+=`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${USE_COLORS[f.properties.category]||'#8A8378'}" data-name="${esc(f.properties.name||f.properties.category||'')}"><title>${esc(f.properties.name||'')}${f.properties.name?' · ':''}${esc(f.properties.category||'')}</title></circle>`;counts[k]++;}
+    else if(k==='poi'){const c=px(firstPt(g));L.poi+=`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="${BLUE}" data-name="${esc(f.properties.name||f.properties.category||'')}"><title>${esc(f.properties.name||'')}${f.properties.name?' · ':''}${esc(f.properties.category||'')}</title></circle>`;counts[k]++;}
     else if(g.type==='Polygon'||g.type==='MultiPolygon'){L[k]+=`<path d="${poly(g)}"/>`;counts[k]++;}
     else{skipped++;}                                  // a shape this plan has no way to draw (a building mapped as a node)
    }catch(e){skipped++;}                              // and one unusual object must never cost the whole kilometre
@@ -727,10 +757,10 @@ async function drawPlan(){
       <g fill="rgba(0,160,87,.22)" stroke="none"${on('green')}>${L.green}</g>
       <g fill="none" stroke="#8A8378" stroke-linecap="round" stroke-linejoin="round" opacity=".7"${on('road')}>${L.road}</g>
       <g fill="rgba(244,236,226,.78)" stroke="none"${on('building')}>${L.building}</g>
-      <g fill="rgba(232,135,58,.35)" stroke="#E8873A" stroke-width=".7"${on('sat')}>${L.sat}</g>
+      <g fill="rgba(255,147,30,.35)" stroke="${ORANGE}" stroke-width=".7"${on('sat')}>${L.sat}</g>
       <g${on('poi')}>${L.poi}</g>
     </g>
-    <circle cx="500" cy="500" r="7" fill="var(--hue)"/><circle cx="500" cy="500" r="14" fill="none" stroke="var(--hue)" stroke-width="1.5"><animate attributeName="r" values="10;26;10" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0;.8" dur="4s" repeatCount="indefinite"/></circle>
+    <circle cx="500" cy="500" r="7" fill="var(--blue)"/><circle cx="500" cy="500" r="14" fill="none" stroke="var(--blue)" stroke-width="1.5"><animate attributeName="r" values="10;26;10" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0;.8" dur="4s" repeatCount="indefinite"/></circle>
     <text x="500" y="${500+R*S+28}" text-anchor="middle" style="font:500 12px var(--fb);letter-spacing:.14em;fill:#8A8378">${R} M · NORTH UP · ${esc(LAST?LAST.h.node:'')}</text>
     <line x1="${500-R*S}" y1="${500+R*S+52}" x2="${500-R*S+200*S}" y2="${500+R*S+52}" stroke="#8A8378" stroke-width="1.5"/><text x="${500-R*S}" y="${500+R*S+70}" style="font:500 11px var(--fb);fill:#8A8378">200 m</text>`;
   $('#plan').setAttribute('viewBox',`0 0 1000 ${Math.round(500+R*S+80)}`);

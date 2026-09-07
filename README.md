@@ -65,6 +65,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · MAC_MINI · UPDATI
           radios and reachability  NETWORKING · MESHTASTIC
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
           the earth pack           HANDOFF_earth_pack
+          the dashboard's design    HANDOFF_dashboard_violations · design/shots/
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
