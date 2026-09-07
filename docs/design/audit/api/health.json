@@ -1,0 +1,1 @@
+{"ok":true,"node":"bayu-2","version":"v0.32.1-1-g5003ef1","schema":"0.21","uptime_s":4492,"lat":-8.8271,"lon":115.15709,"city":"bali","polls":15,"last_poll":"2026-09-06T14:07:25.012065+00:00","last_error":null,"ingested":796,"errors":{},"mesh":{"root_topic":"msh/SG_923","gateway":"!8f491db0","packets":12,"last":"2026-09-06T14:06:41.831869+00:00"}}

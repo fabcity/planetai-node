@@ -1,0 +1,152 @@
+[
+ {
+  "viewport": "1920x1080",
+  "eyebrow": {
+   "sel": ".wall .eye",
+   "px": 11,
+   "weight": "600",
+   "color": "rgb(163, 155, 141)",
+   "text": "Inside · µg/m³ · PM2.5"
+  },
+  "line": {
+   "sel": "#wall-line",
+   "px": 48,
+   "weight": "500",
+   "color": "rgb(244, 236, 226)",
+   "text": "The room is holding at 7 tonight."
+  },
+  "numeral": {
+   "px": 208,
+   "color": "rgb(122, 201, 67)",
+   "text": "7"
+  },
+  "why": {
+   "sel": "#wall-why",
+   "px": 22,
+   "weight": "400",
+   "color": "rgb(199, 191, 178)",
+   "text": "Nothing needs doing. The house is keepin"
+  },
+  "statLabel": {
+   "sel": ".wall .stats .eyebrow",
+   "px": 10.5,
+   "weight": "600",
+   "color": "rgb(163, 155, 141)",
+   "text": "Street"
+  },
+  "statNum": {
+   "sel": ".wall .stats .num",
+   "px": 52,
+   "weight": "800",
+   "color": "rgb(244, 236, 226)",
+   "text": "13"
+  },
+  "foot": {
+   "sel": ".wall .foot",
+   "px": 13,
+   "weight": "400",
+   "color": "rgb(138, 131, 120)",
+   "text": "bayu-2 · Sunday 10:28 PM"
+  }
+ },
+ {
+  "viewport": "2560x1440",
+  "eyebrow": {
+   "sel": ".wall .eye",
+   "px": 11,
+   "weight": "600",
+   "color": "rgb(163, 155, 141)",
+   "text": "Inside · µg/m³ · PM2.5"
+  },
+  "line": {
+   "sel": "#wall-line",
+   "px": 48,
+   "weight": "500",
+   "color": "rgb(244, 236, 226)",
+   "text": "The room is holding at 7 tonight."
+  },
+  "numeral": {
+   "px": 208,
+   "color": "rgb(122, 201, 67)",
+   "text": "7"
+  },
+  "why": {
+   "sel": "#wall-why",
+   "px": 22,
+   "weight": "400",
+   "color": "rgb(199, 191, 178)",
+   "text": "Nothing needs doing. The house is keepin"
+  },
+  "statLabel": {
+   "sel": ".wall .stats .eyebrow",
+   "px": 10.5,
+   "weight": "600",
+   "color": "rgb(163, 155, 141)",
+   "text": "Street"
+  },
+  "statNum": {
+   "sel": ".wall .stats .num",
+   "px": 52,
+   "weight": "800",
+   "color": "rgb(244, 236, 226)",
+   "text": "13"
+  },
+  "foot": {
+   "sel": ".wall .foot",
+   "px": 13,
+   "weight": "400",
+   "color": "rgb(138, 131, 120)",
+   "text": "bayu-2 · Sunday 10:28 PM"
+  }
+ },
+ {
+  "viewport": "1440x900",
+  "eyebrow": {
+   "sel": ".wall .eye",
+   "px": 11,
+   "weight": "600",
+   "color": "rgb(163, 155, 141)",
+   "text": "Inside · µg/m³ · PM2.5"
+  },
+  "line": {
+   "sel": "#wall-line",
+   "px": 48,
+   "weight": "500",
+   "color": "rgb(244, 236, 226)",
+   "text": "The room is holding at 7 tonight."
+  },
+  "numeral": {
+   "px": 208,
+   "color": "rgb(122, 201, 67)",
+   "text": "7"
+  },
+  "why": {
+   "sel": "#wall-why",
+   "px": 22,
+   "weight": "400",
+   "color": "rgb(199, 191, 178)",
+   "text": "Nothing needs doing. The house is keepin"
+  },
+  "statLabel": {
+   "sel": ".wall .stats .eyebrow",
+   "px": 10.5,
+   "weight": "600",
+   "color": "rgb(163, 155, 141)",
+   "text": "Street"
+  },
+  "statNum": {
+   "sel": ".wall .stats .num",
+   "px": 52,
+   "weight": "800",
+   "color": "rgb(244, 236, 226)",
+   "text": "13"
+  },
+  "foot": {
+   "sel": ".wall .foot",
+   "px": 13,
+   "weight": "400",
+   "color": "rgb(138, 131, 120)",
+   "text": "bayu-2 · Sunday 10:28 PM"
+  }
+ }
+]

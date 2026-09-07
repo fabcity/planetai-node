@@ -1,0 +1,13 @@
+{
+ "surface": "dashboard-node1",
+ "view": "setup",
+ "url": "http://127.0.0.1:8899/",
+ "violations": [
+  {
+   "id": "page-has-heading-one",
+   "impact": "moderate",
+   "nodes": 1,
+   "help": "Page should contain a level-one heading"
+  }
+ ]
+}

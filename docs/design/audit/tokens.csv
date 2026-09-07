@@ -1,0 +1,1209 @@
+repo,file,line,property,value,count
+planetai,assets/site-chrome.css,248,border-radius,8px,2
+planetai,assets/site-chrome.css,230,border-radius,0,1
+planetai,assets/site-chrome.css,284,border-radius,12px,1
+planetai,assets/site-chrome.css,261,border-radius,2px,1
+planetai,assets/site-chrome.css,285,box-shadow,"0 14px 40px rgba(0,0,0,0.10)",1
+planetai,assets/site-chrome.css,108,font-family,var(--font-mono),6
+planetai,assets/site-chrome.css,176,font-family,var(--font-display),3
+planetai,assets/site-chrome.css,79,font-family,var(--font-body),1
+planetai,assets/site-chrome.css,109,font-size,10.5px,2
+planetai,assets/site-chrome.css,212,font-size,12px,2
+planetai,assets/site-chrome.css,80,font-size,17px,2
+planetai,assets/site-chrome.css,178,font-size,10px,1
+planetai,assets/site-chrome.css,386,font-size,12.5px,1
+planetai,assets/site-chrome.css,326,font-size,18px,1
+planetai,assets/site-chrome.css,199,font-size,9.5px,1
+planetai,assets/site-chrome.css,316,font-size,"clamp(30px, 4vw, 46px)",1
+planetai,assets/site-chrome.css,12,hex,#20388d,3
+planetai,assets/site-chrome.css,8,hex,#1e1e1e,2
+planetai,assets/site-chrome.css,9,hex,#ffffff,2
+planetai,assets/site-chrome.css,11,hex,#00a057,1
+planetai,assets/site-chrome.css,20,hex,#4a4a44,1
+planetai,assets/site-chrome.css,36,hex,#7a5a10,1
+planetai,assets/site-chrome.css,254,hex,#d6346c,1
+planetai,assets/site-chrome.css,18,hex,#d8d3c4,1
+planetai,assets/site-chrome.css,60,hex,#e0dbc9,1
+planetai,assets/site-chrome.css,59,hex,#e1e0db,1
+planetai,assets/site-chrome.css,10,hex,#e62038,1
+planetai,assets/site-chrome.css,58,hex,#e6e5e0,1
+planetai,assets/site-chrome.css,57,hex,#ebeae5,1
+planetai,assets/site-chrome.css,17,hex,#f0ede5,1
+planetai,assets/site-chrome.css,56,hex,#f2f1ed,1
+planetai,assets/site-chrome.css,9,hex,#f7f5f1,1
+planetai,assets/site-chrome.css,55,hex,#f7f7f4,1
+planetai,assets/site-chrome.css,189,letter-spacing,0.04em,2
+planetai,assets/site-chrome.css,213,letter-spacing,0.06em,2
+planetai,assets/site-chrome.css,110,letter-spacing,0.14em,2
+planetai,assets/site-chrome.css,318,letter-spacing,-0.020em,1
+planetai,assets/site-chrome.css,179,letter-spacing,0.18em,1
+planetai,assets/site-chrome.css,285,rgb,"rgba(0,0,0,0.10)",1
+planetai,assets/site-chrome.css,126,rgb,"rgba(247, 245, 241, 0.88)",1
+planetai,assets/site-chrome.css,280,rgb,"rgba(247, 245, 241, 0.98)",1
+planetai,assets/site-chrome.css,294,rgb,"rgba(255,255,255,0.7)",1
+planetai,assets/site-chrome.css,39,rgb,"rgba(30, 30, 30, 0.10)",1
+planetai,assets/site-chrome.css,40,rgb,"rgba(30, 30, 30, 0.20)",1
+planetai,assets/site-chrome.css,41,rgb,"rgba(30, 30, 30, 0.60)",1
+planetai,assets/site-chrome.css,283,rgb,"rgba(30,30,30,0.10)",1
+planetai,assets/site-chrome.css,246,rgb,"rgba(30,30,30,0.20)",1
+planetai,assets/site-chrome.css,125,z-index,50,1
+planetai,assets/site-chrome.css,290,z-index,60,1
+planetai,index.html,261,border-radius,0,4
+planetai,index.html,813,border-radius,0 6px 6px 0,3
+planetai,index.html,539,border-radius,10px,3
+planetai,index.html,117,border-radius,2px,2
+planetai,index.html,282,border-radius,8px,2
+planetai,index.html,370,border-radius,999px,2
+planetai,index.html,683,border-radius,0 3px 3px 0,1
+planetai,index.html,312,border-radius,12px,1
+planetai,index.html,1593,border-radius,14px,1
+planetai,index.html,130,border-radius,4px,1
+planetai,index.html,1238,border-radius,50%,1
+planetai,index.html,541,box-shadow,"0 4px 14px rgba(30,30,30,0.035)",2
+planetai,index.html,1115,box-shadow,"0 0 0 3px color-mix(in srgb, var(--dot, #888) 18%, transparent)",1
+planetai,index.html,372,box-shadow,"0 0 0 3px rgba(44,158,90,0.15)",1
+planetai,index.html,313,box-shadow,"0 14px 40px rgba(0,0,0,0.10)",1
+planetai,index.html,132,font-family,var(--font-mono),39
+planetai,index.html,213,font-family,var(--font-display),13
+planetai,index.html,397,font-family,var(--font-utility),2
+planetai,index.html,97,font-family,var(--font-body),1
+planetai,index.html,429,font-family,"var(--font-display, var(--font-body))",1
+planetai,index.html,148,font-size,10.5px,12
+planetai,index.html,132,font-size,12px,11
+planetai,index.html,568,font-size,11px,7
+planetai,index.html,215,font-size,10px,4
+planetai,index.html,720,font-size,11.5px,4
+planetai,index.html,431,font-size,15px,4
+planetai,index.html,801,font-size,16px,4
+planetai,index.html,98,font-size,17px,4
+planetai,index.html,400,font-size,14px,3
+planetai,index.html,795,font-size,26px,3
+planetai,index.html,1198,font-size,12.5px,2
+planetai,index.html,732,font-size,14.5px,2
+planetai,index.html,514,font-size,18px,2
+planetai,index.html,412,font-size,19px,2
+planetai,index.html,234,font-size,9.5px,2
+planetai,index.html,1594,font-size,.85rem,1
+planetai,index.html,1418,font-size,0.85em,1
+planetai,index.html,1123,font-size,16.5px,1
+planetai,index.html,484,font-size,20px,1
+planetai,index.html,713,font-size,22px,1
+planetai,index.html,962,font-size,"clamp(28px, 3.4vw, 40px)",1
+planetai,index.html,1153,font-size,"clamp(30px, 3.6vw, 44px)",1
+planetai,index.html,505,font-size,"clamp(30px, 4vw, 46px)",1
+planetai,index.html,378,font-size,"clamp(40px, 6vw, 80px)",1
+planetai,index.html,4,hex,#1e1e1e,33
+planetai,index.html,30,hex,#20388d,17
+planetai,index.html,1597,hex,#124,7
+planetai,index.html,28,hex,#e62038,4
+planetai,index.html,4,hex,#f7f5f1,2
+planetai,index.html,27,hex,#ffffff,2
+planetai,index.html,29,hex,#00a057,1
+planetai,index.html,38,hex,#4a4a44,1
+planetai,index.html,54,hex,#7a5a10,1
+planetai,index.html,1115,hex,#888,1
+planetai,index.html,1594,hex,#8b8b84,1
+planetai,index.html,287,hex,#d6346c,1
+planetai,index.html,36,hex,#d8d3c4,1
+planetai,index.html,78,hex,#e0dbc9,1
+planetai,index.html,77,hex,#e1e0db,1
+planetai,index.html,76,hex,#e6e5e0,1
+planetai,index.html,75,hex,#ebeae5,1
+planetai,index.html,35,hex,#f0ede5,1
+planetai,index.html,74,hex,#f2f1ed,1
+planetai,index.html,73,hex,#f7f7f4,1
+planetai,index.html,247,letter-spacing,0.06em,12
+planetai,index.html,569,letter-spacing,0.08em,7
+planetai,index.html,477,letter-spacing,0.12em,5
+planetai,index.html,149,letter-spacing,0.14em,5
+planetai,index.html,225,letter-spacing,0.04em,4
+planetai,index.html,487,letter-spacing,-0.012em,2
+planetai,index.html,714,letter-spacing,-0.014em,2
+planetai,index.html,859,letter-spacing,-0.018em,2
+planetai,index.html,610,letter-spacing,-0.005em,1
+planetai,index.html,1155,letter-spacing,-0.016em,1
+planetai,index.html,507,letter-spacing,-0.020em,1
+planetai,index.html,380,letter-spacing,-0.022em,1
+planetai,index.html,963,letter-spacing,-0.02em,1
+planetai,index.html,401,letter-spacing,0.005em,1
+planetai,index.html,437,letter-spacing,0.01em,1
+planetai,index.html,1731,letter-spacing,0.02em,1
+planetai,index.html,216,letter-spacing,0.18em,1
+planetai,index.html,1105,letter-spacing,0.1em,1
+planetai,index.html,541,rgb,"rgba(30,30,30,0.035)",2
+planetai,index.html,1593,rgb,"rgba(0,0,0,.08)",1
+planetai,index.html,313,rgb,"rgba(0,0,0,0.10)",1
+planetai,index.html,1174,rgb,"rgba(247, 245, 241, 0.2)",1
+planetai,index.html,1172,rgb,"rgba(247, 245, 241, 0.6)",1
+planetai,index.html,1148,rgb,"rgba(247, 245, 241, 0.7)",1
+planetai,index.html,1162,rgb,"rgba(247, 245, 241, 0.82)",1
+planetai,index.html,165,rgb,"rgba(247, 245, 241, 0.88)",1
+planetai,index.html,308,rgb,"rgba(247, 245, 241, 0.98)",1
+planetai,index.html,322,rgb,"rgba(255,255,255,0.7)",1
+planetai,index.html,57,rgb,"rgba(30, 30, 30, 0.10)",1
+planetai,index.html,58,rgb,"rgba(30, 30, 30, 0.20)",1
+planetai,index.html,59,rgb,"rgba(30, 30, 30, 0.60)",1
+planetai,index.html,311,rgb,"rgba(30,30,30,0.10)",1
+planetai,index.html,280,rgb,"rgba(30,30,30,0.20)",1
+planetai,index.html,372,rgb,"rgba(44,158,90,0.15)",1
+planetai,index.html,1413,rgb,"rgba(74, 74, 68, 0.3)",1
+planetai,index.html,345,z-index,0,1
+planetai,index.html,348,z-index,1,1
+planetai,index.html,131,z-index,1000,1
+planetai,index.html,702,z-index,2,1
+planetai,index.html,164,z-index,50,1
+planetai,index.html,318,z-index,60,1
+planetai,local-hubs/serangan/index.html,360,border-radius,12px,8
+planetai,local-hubs/serangan/index.html,110,border-radius,6px,8
+planetai,local-hubs/serangan/index.html,123,border-radius,3px,4
+planetai,local-hubs/serangan/index.html,79,border-radius,4px,4
+planetai,local-hubs/serangan/index.html,556,border-radius,10px,3
+planetai,local-hubs/serangan/index.html,101,border-radius,5px,3
+planetai,local-hubs/serangan/index.html,92,border-radius,8px,3
+planetai,local-hubs/serangan/index.html,290,border-radius,14px,2
+planetai,local-hubs/serangan/index.html,546,border-radius,50%,2
+planetai,local-hubs/serangan/index.html,505,box-shadow,"0 1px 3px rgba(0,0,0,0.08)",2
+planetai,local-hubs/serangan/index.html,113,font-family,var(--font-mono),41
+planetai,local-hubs/serangan/index.html,47,font-family,var(--font-sans),4
+planetai,local-hubs/serangan/index.html,54,font-family,inherit,1
+planetai,local-hubs/serangan/index.html,80,font-size,11px,22
+planetai,local-hubs/serangan/index.html,119,font-size,10px,18
+planetai,local-hubs/serangan/index.html,250,font-size,12px,12
+planetai,local-hubs/serangan/index.html,215,font-size,14px,8
+planetai,local-hubs/serangan/index.html,338,font-size,13px,7
+planetai,local-hubs/serangan/index.html,172,font-size,9px,5
+planetai,local-hubs/serangan/index.html,100,font-size,12.5px,4
+planetai,local-hubs/serangan/index.html,50,font-size,15px,3
+planetai,local-hubs/serangan/index.html,84,font-size,17px,3
+planetai,local-hubs/serangan/index.html,183,font-size,18px,2
+planetai,local-hubs/serangan/index.html,153,font-size,8px,2
+planetai,local-hubs/serangan/index.html,1007,font-size,24px,1
+planetai,local-hubs/serangan/index.html,376,font-size,26px,1
+planetai,local-hubs/serangan/index.html,243,font-size,30px,1
+planetai,local-hubs/serangan/index.html,587,font-size,32px,1
+planetai,local-hubs/serangan/index.html,305,font-size,56px,1
+planetai,local-hubs/serangan/index.html,54,font-size,inherit,1
+planetai,local-hubs/serangan/index.html,28,hex,#5a5a5a,14
+planetai,local-hubs/serangan/index.html,26,hex,#c9a26a,13
+planetai,local-hubs/serangan/index.html,24,hex,#e62038,11
+planetai,local-hubs/serangan/index.html,23,hex,#20388d,9
+planetai,local-hubs/serangan/index.html,1815,hex,#7b3e75,7
+planetai,local-hubs/serangan/index.html,25,hex,#00a057,6
+planetai,local-hubs/serangan/index.html,1706,hex,#3a7ca5,4
+planetai,local-hubs/serangan/index.html,27,hex,#8a6c30,2
+planetai,local-hubs/serangan/index.html,676,hex,#1a2e75,1
+planetai,local-hubs/serangan/index.html,21,hex,#1e1e1e,1
+planetai,local-hubs/serangan/index.html,29,hex,#8a8a8a,1
+planetai,local-hubs/serangan/index.html,529,hex,#e8e5de,1
+planetai,local-hubs/serangan/index.html,22,hex,#f7f5f1,1
+planetai,local-hubs/serangan/index.html,39,hex,#fbfaf7,1
+planetai,local-hubs/serangan/index.html,38,hex,#ffffff,1
+planetai,local-hubs/serangan/index.html,135,letter-spacing,0.04em,6
+planetai,local-hubs/serangan/index.html,121,letter-spacing,0.06em,6
+planetai,local-hubs/serangan/index.html,210,letter-spacing,0.08em,5
+planetai,local-hubs/serangan/index.html,234,letter-spacing,0.02em,2
+planetai,local-hubs/serangan/index.html,245,letter-spacing,-0.015em,1
+planetai,local-hubs/serangan/index.html,379,letter-spacing,-0.01em,1
+planetai,local-hubs/serangan/index.html,308,letter-spacing,-0.02em,1
+planetai,local-hubs/serangan/index.html,84,letter-spacing,0.01em,1
+planetai,local-hubs/serangan/index.html,155,letter-spacing,0.1em,1
+planetai,local-hubs/serangan/index.html,505,rgb,"rgba(0,0,0,0.08)",2
+planetai,local-hubs/serangan/index.html,36,rgb,"rgba(0,160,87,0.10)",1
+planetai,local-hubs/serangan/index.html,34,rgb,"rgba(201,162,106,0.10)",1
+planetai,local-hubs/serangan/index.html,35,rgb,"rgba(201,162,106,0.20)",1
+planetai,local-hubs/serangan/index.html,37,rgb,"rgba(230,32,56,0.10)",1
+planetai,local-hubs/serangan/index.html,30,rgb,"rgba(30,30,30,0.10)",1
+planetai,local-hubs/serangan/index.html,31,rgb,"rgba(30,30,30,0.18)",1
+planetai,local-hubs/serangan/index.html,32,rgb,"rgba(32,56,141,0.06)",1
+planetai,local-hubs/serangan/index.html,1879,rgb,"rgba(32,56,141,0.1)",1
+planetai,local-hubs/serangan/index.html,33,rgb,"rgba(32,56,141,0.12)",1
+planetai,local-hubs/serangan/index.html,1879,rgb,"rgba(32,56,141,0.25)",1
+planetai,local-hubs/serangan/index.html,1879,rgb,"rgba(32,56,141,0.45)",1
+planetai,local-hubs/serangan/index.html,73,z-index,1000,1
+planetai,local-hubs/serangan/index.html,149,z-index,5,1
+planetai,node0/index.html,177,border-radius,16px,2
+planetai,node0/index.html,129,border-radius,50%,2
+planetai,node0/index.html,52,border-radius,0,1
+planetai,node0/index.html,163,border-radius,14px,1
+planetai,node0/index.html,213,border-radius,18px 18px 18px 6px,1
+planetai,node0/index.html,214,border-radius,18px 18px 6px 18px,1
+planetai,node0/index.html,211,border-radius,28px,1
+planetai,node0/index.html,198,border-radius,999px!important,1
+planetai,node0/index.html,204,border-radius,var(--pai-r2),1
+planetai,node0/index.html,163,box-shadow,"0 24px 56px rgba(0,0,0,.35)",1
+planetai,node0/index.html,177,box-shadow,"0 30px 80px rgba(0,0,0,.18)",1
+planetai,node0/index.html,178,box-shadow,"0 30px 80px rgba(0,0,0,.45)",1
+planetai,node0/index.html,211,box-shadow,"0 30px 80px rgba(0,0,0,.5)",1
+planetai,node0/index.html,36,font-family,var(--font-mono),14
+planetai,node0/index.html,40,font-family,var(--font-display),8
+planetai,node0/index.html,219,font-shorthand,14px/1.55,1
+planetai,node0/index.html,213,font-shorthand,15px/1.5,1
+planetai,node0/index.html,197,font-shorthand,600 10.5px,1
+planetai,node0/index.html,212,font-shorthand,600 11px,1
+planetai,node0/index.html,218,font-shorthand,800 4.4rem/0.9,1
+planetai,node0/index.html,49,font-size,11px,9
+planetai,node0/index.html,51,font-size,.92rem,3
+planetai,node0/index.html,72,font-size,.9rem,3
+planetai,node0/index.html,296,font-size,"clamp(1.8rem,3.4vw,2.6rem)",3
+planetai,node0/index.html,164,font-size,.85rem,2
+planetai,node0/index.html,98,font-size,1.2rem,2
+planetai,node0/index.html,351,font-size,"clamp(1.6rem,3vw,2.3rem)",2
+planetai,node0/index.html,100,font-size,.76rem,1
+planetai,node0/index.html,46,font-size,.82rem,1
+planetai,node0/index.html,122,font-size,.84rem,1
+planetai,node0/index.html,144,font-size,.86rem,1
+planetai,node0/index.html,35,font-size,.875rem,1
+planetai,node0/index.html,131,font-size,.8rem,1
+planetai,node0/index.html,123,font-size,.93rem,1
+planetai,node0/index.html,70,font-size,.94rem,1
+planetai,node0/index.html,169,font-size,.98rem,1
+planetai,node0/index.html,34,font-size,1.125rem,1
+planetai,node0/index.html,111,font-size,1.15rem,1
+planetai,node0/index.html,141,font-size,1.1rem,1
+planetai,node0/index.html,181,font-size,1.35rem,1
+planetai,node0/index.html,59,font-size,1.6rem,1
+planetai,node0/index.html,79,font-size,10px,1
+planetai,node0/index.html,36,font-size,12px,1
+planetai,node0/index.html,215,font-size,13.5px,1
+planetai,node0/index.html,183,font-size,2.2rem,1
+planetai,node0/index.html,43,font-size,"clamp(1.05rem,1.7vw,1.25rem)",1
+planetai,node0/index.html,154,font-size,"clamp(1.9rem,3.8vw,2.9rem)",1
+planetai,node0/index.html,120,font-size,"clamp(2.4rem,4.6vw,3.4rem)",1
+planetai,node0/index.html,174,font-size,"clamp(2.6rem,6vw,4.6rem)",1
+planetai,node0/index.html,41,font-size,"clamp(2.6rem,7vw,5rem)",1
+planetai,node0/index.html,4,hex,#1e1e1e,24
+planetai,node0/index.html,47,hex,#8b8b84,5
+planetai,node0/index.html,91,hex,#cdc9c1,4
+planetai,node0/index.html,194,hex,#16150f,3
+planetai,node0/index.html,184,hex,#7ac943,3
+planetai,node0/index.html,4,hex,#f7f5f1,3
+planetai,node0/index.html,55,hex,#182a6b,2
+planetai,node0/index.html,206,hex,#1a1a1a,2
+planetai,node0/index.html,93,hex,#93a9ff,2
+planetai,node0/index.html,54,hex,#fff,2
+planetai,node0/index.html,195,hex,#00a057,1
+planetai,node0/index.html,211,hex,#0f0e0a,1
+planetai,node0/index.html,195,hex,#20388d,1
+planetai,node0/index.html,195,hex,#3fa9f5,1
+planetai,node0/index.html,132,hex,#6ee7a8,1
+planetai,node0/index.html,194,hex,#8a8378,1
+planetai,node0/index.html,194,hex,#a39b8d,1
+planetai,node0/index.html,194,hex,#c7bfb2,1
+planetai,node0/index.html,195,hex,#e62038,1
+planetai,node0/index.html,195,hex,#e8873a,1
+planetai,node0/index.html,194,hex,#f4ece2,1
+planetai,node0/index.html,40,letter-spacing,-.03em,8
+planetai,node0/index.html,36,letter-spacing,.06em,6
+planetai,node0/index.html,59,letter-spacing,-.02em,2
+planetai,node0/index.html,120,letter-spacing,-.04em,2
+planetai,node0/index.html,79,letter-spacing,.04em,2
+planetai,node0/index.html,218,letter-spacing,-.05em,1
+planetai,node0/index.html,212,letter-spacing,.14em,1
+planetai,node0/index.html,197,letter-spacing,.24em,1
+planetai,node0/index.html,94,rgb,"rgba(247,245,241,.18)",3
+planetai,node0/index.html,163,rgb,"rgba(255,255,255,.1)",3
+planetai,node0/index.html,177,rgb,"rgba(0,0,0,.08)",1
+planetai,node0/index.html,177,rgb,"rgba(0,0,0,.18)",1
+planetai,node0/index.html,163,rgb,"rgba(0,0,0,.35)",1
+planetai,node0/index.html,178,rgb,"rgba(0,0,0,.45)",1
+planetai,node0/index.html,211,rgb,"rgba(0,0,0,.5)",1
+planetai,node0/index.html,194,rgb,"rgba(244,236,226,.05)",1
+planetai,node0/index.html,194,rgb,"rgba(244,236,226,.1)",1
+planetai,node0/index.html,317,rgb,"rgba(244,236,226,.14)",1
+planetai,node0/index.html,48,rgb,"rgba(247,245,241,.14)",1
+planetai,node0/index.html,50,rgb,"rgba(247,245,241,.28)",1
+planetai,node0/index.html,168,rgb,"rgba(255,255,255,.04)",1
+planetai,node0/more/index.html,129,border-radius,50%,2
+planetai,node0/more/index.html,52,border-radius,0,1
+planetai,node0/more/index.html,163,border-radius,14px,1
+planetai,node0/more/index.html,194,border-radius,18px 18px 18px 6px,1
+planetai,node0/more/index.html,195,border-radius,18px 18px 6px 18px,1
+planetai,node0/more/index.html,192,border-radius,28px,1
+planetai,node0/more/index.html,179,border-radius,999px!important,1
+planetai,node0/more/index.html,185,border-radius,var(--pai-r2),1
+planetai,node0/more/index.html,163,box-shadow,"0 24px 56px rgba(0,0,0,.35)",1
+planetai,node0/more/index.html,192,box-shadow,"0 30px 80px rgba(0,0,0,.5)",1
+planetai,node0/more/index.html,36,font-family,var(--font-mono),14
+planetai,node0/more/index.html,40,font-family,var(--font-display),8
+planetai,node0/more/index.html,200,font-shorthand,14px/1.55,1
+planetai,node0/more/index.html,194,font-shorthand,15px/1.5,1
+planetai,node0/more/index.html,178,font-shorthand,600 10.5px,1
+planetai,node0/more/index.html,193,font-shorthand,600 11px,1
+planetai,node0/more/index.html,199,font-shorthand,800 4.4rem/0.9,1
+planetai,node0/more/index.html,49,font-size,11px,9
+planetai,node0/more/index.html,51,font-size,.92rem,3
+planetai,node0/more/index.html,72,font-size,.9rem,3
+planetai,node0/more/index.html,522,font-size,1.4rem,2
+planetai,node0/more/index.html,261,font-size,1.9rem,2
+planetai,node0/more/index.html,100,font-size,.76rem,1
+planetai,node0/more/index.html,46,font-size,.82rem,1
+planetai,node0/more/index.html,122,font-size,.84rem,1
+planetai,node0/more/index.html,164,font-size,.85rem,1
+planetai,node0/more/index.html,144,font-size,.86rem,1
+planetai,node0/more/index.html,35,font-size,.875rem,1
+planetai,node0/more/index.html,131,font-size,.8rem,1
+planetai,node0/more/index.html,123,font-size,.93rem,1
+planetai,node0/more/index.html,70,font-size,.94rem,1
+planetai,node0/more/index.html,169,font-size,.98rem,1
+planetai,node0/more/index.html,34,font-size,1.125rem,1
+planetai,node0/more/index.html,111,font-size,1.15rem,1
+planetai,node0/more/index.html,141,font-size,1.1rem,1
+planetai,node0/more/index.html,98,font-size,1.2rem,1
+planetai,node0/more/index.html,362,font-size,1.5rem,1
+planetai,node0/more/index.html,59,font-size,1.6rem,1
+planetai,node0/more/index.html,79,font-size,10px,1
+planetai,node0/more/index.html,36,font-size,12px,1
+planetai,node0/more/index.html,196,font-size,13.5px,1
+planetai,node0/more/index.html,43,font-size,"clamp(1.05rem,1.7vw,1.25rem)",1
+planetai,node0/more/index.html,154,font-size,"clamp(1.9rem,3.8vw,2.9rem)",1
+planetai,node0/more/index.html,120,font-size,"clamp(2.4rem,4.6vw,3.4rem)",1
+planetai,node0/more/index.html,41,font-size,"clamp(2.6rem,7vw,5rem)",1
+planetai,node0/more/index.html,4,hex,#1e1e1e,24
+planetai,node0/more/index.html,47,hex,#8b8b84,5
+planetai,node0/more/index.html,175,hex,#16150f,3
+planetai,node0/more/index.html,91,hex,#cdc9c1,3
+planetai,node0/more/index.html,4,hex,#f7f5f1,3
+planetai,node0/more/index.html,55,hex,#182a6b,2
+planetai,node0/more/index.html,187,hex,#1a1a1a,2
+planetai,node0/more/index.html,93,hex,#93a9ff,2
+planetai,node0/more/index.html,54,hex,#fff,2
+planetai,node0/more/index.html,176,hex,#00a057,1
+planetai,node0/more/index.html,192,hex,#0f0e0a,1
+planetai,node0/more/index.html,176,hex,#20388d,1
+planetai,node0/more/index.html,176,hex,#3fa9f5,1
+planetai,node0/more/index.html,132,hex,#6ee7a8,1
+planetai,node0/more/index.html,176,hex,#7ac943,1
+planetai,node0/more/index.html,175,hex,#8a8378,1
+planetai,node0/more/index.html,175,hex,#a39b8d,1
+planetai,node0/more/index.html,404,hex,#a9a39c,1
+planetai,node0/more/index.html,175,hex,#c7bfb2,1
+planetai,node0/more/index.html,176,hex,#e62038,1
+planetai,node0/more/index.html,176,hex,#e8873a,1
+planetai,node0/more/index.html,175,hex,#f4ece2,1
+planetai,node0/more/index.html,36,letter-spacing,.06em,6
+planetai,node0/more/index.html,40,letter-spacing,-.03em,2
+planetai,node0/more/index.html,79,letter-spacing,.04em,2
+planetai,node0/more/index.html,59,letter-spacing,-.02em,1
+planetai,node0/more/index.html,120,letter-spacing,-.04em,1
+planetai,node0/more/index.html,199,letter-spacing,-.05em,1
+planetai,node0/more/index.html,193,letter-spacing,.14em,1
+planetai,node0/more/index.html,178,letter-spacing,.24em,1
+planetai,node0/more/index.html,94,rgb,"rgba(247,245,241,.18)",3
+planetai,node0/more/index.html,163,rgb,"rgba(255,255,255,.1)",2
+planetai,node0/more/index.html,163,rgb,"rgba(0,0,0,.35)",1
+planetai,node0/more/index.html,192,rgb,"rgba(0,0,0,.5)",1
+planetai,node0/more/index.html,175,rgb,"rgba(244,236,226,.05)",1
+planetai,node0/more/index.html,175,rgb,"rgba(244,236,226,.1)",1
+planetai,node0/more/index.html,48,rgb,"rgba(247,245,241,.14)",1
+planetai,node0/more/index.html,50,rgb,"rgba(247,245,241,.28)",1
+planetai,node0/more/index.html,168,rgb,"rgba(255,255,255,.04)",1
+planetai,node0/setup/index.html,129,border-radius,50%,2
+planetai,node0/setup/index.html,52,border-radius,0,1
+planetai,node0/setup/index.html,184,border-radius,18px 18px 18px 6px,1
+planetai,node0/setup/index.html,185,border-radius,18px 18px 6px 18px,1
+planetai,node0/setup/index.html,182,border-radius,28px,1
+planetai,node0/setup/index.html,169,border-radius,999px!important,1
+planetai,node0/setup/index.html,175,border-radius,var(--pai-r2),1
+planetai,node0/setup/index.html,182,box-shadow,"0 30px 80px rgba(0,0,0,.5)",1
+planetai,node0/setup/index.html,36,font-family,var(--font-mono),14
+planetai,node0/setup/index.html,40,font-family,var(--font-display),8
+planetai,node0/setup/index.html,190,font-shorthand,14px/1.55,1
+planetai,node0/setup/index.html,184,font-shorthand,15px/1.5,1
+planetai,node0/setup/index.html,168,font-shorthand,600 10.5px,1
+planetai,node0/setup/index.html,183,font-shorthand,600 11px,1
+planetai,node0/setup/index.html,189,font-shorthand,800 4.4rem/0.9,1
+planetai,node0/setup/index.html,49,font-size,11px,9
+planetai,node0/setup/index.html,51,font-size,.92rem,3
+planetai,node0/setup/index.html,72,font-size,.9rem,3
+planetai,node0/setup/index.html,329,font-size,1.4rem,2
+planetai,node0/setup/index.html,100,font-size,.76rem,1
+planetai,node0/setup/index.html,46,font-size,.82rem,1
+planetai,node0/setup/index.html,122,font-size,.84rem,1
+planetai,node0/setup/index.html,144,font-size,.86rem,1
+planetai,node0/setup/index.html,35,font-size,.875rem,1
+planetai,node0/setup/index.html,131,font-size,.8rem,1
+planetai,node0/setup/index.html,123,font-size,.93rem,1
+planetai,node0/setup/index.html,70,font-size,.94rem,1
+planetai,node0/setup/index.html,34,font-size,1.125rem,1
+planetai,node0/setup/index.html,111,font-size,1.15rem,1
+planetai,node0/setup/index.html,141,font-size,1.1rem,1
+planetai,node0/setup/index.html,98,font-size,1.2rem,1
+planetai,node0/setup/index.html,59,font-size,1.6rem,1
+planetai,node0/setup/index.html,79,font-size,10px,1
+planetai,node0/setup/index.html,36,font-size,12px,1
+planetai,node0/setup/index.html,186,font-size,13.5px,1
+planetai,node0/setup/index.html,43,font-size,"clamp(1.05rem,1.7vw,1.25rem)",1
+planetai,node0/setup/index.html,154,font-size,"clamp(1.9rem,3.8vw,2.9rem)",1
+planetai,node0/setup/index.html,237,font-size,"clamp(2.2rem,5.5vw,3.6rem)"">One command,<br>then four answer",1
+planetai,node0/setup/index.html,120,font-size,"clamp(2.4rem,4.6vw,3.4rem)",1
+planetai,node0/setup/index.html,41,font-size,"clamp(2.6rem,7vw,5rem)",1
+planetai,node0/setup/index.html,4,hex,#1e1e1e,24
+planetai,node0/setup/index.html,47,hex,#8b8b84,4
+planetai,node0/setup/index.html,165,hex,#16150f,3
+planetai,node0/setup/index.html,4,hex,#f7f5f1,3
+planetai,node0/setup/index.html,55,hex,#182a6b,2
+planetai,node0/setup/index.html,177,hex,#1a1a1a,2
+planetai,node0/setup/index.html,93,hex,#93a9ff,2
+planetai,node0/setup/index.html,91,hex,#cdc9c1,2
+planetai,node0/setup/index.html,54,hex,#fff,2
+planetai,node0/setup/index.html,166,hex,#00a057,1
+planetai,node0/setup/index.html,182,hex,#0f0e0a,1
+planetai,node0/setup/index.html,166,hex,#20388d,1
+planetai,node0/setup/index.html,166,hex,#3fa9f5,1
+planetai,node0/setup/index.html,132,hex,#6ee7a8,1
+planetai,node0/setup/index.html,166,hex,#7ac943,1
+planetai,node0/setup/index.html,165,hex,#8a8378,1
+planetai,node0/setup/index.html,165,hex,#a39b8d,1
+planetai,node0/setup/index.html,165,hex,#c7bfb2,1
+planetai,node0/setup/index.html,166,hex,#e62038,1
+planetai,node0/setup/index.html,166,hex,#e8873a,1
+planetai,node0/setup/index.html,165,hex,#f4ece2,1
+planetai,node0/setup/index.html,36,letter-spacing,.06em,6
+planetai,node0/setup/index.html,40,letter-spacing,-.03em,2
+planetai,node0/setup/index.html,79,letter-spacing,.04em,2
+planetai,node0/setup/index.html,59,letter-spacing,-.02em,1
+planetai,node0/setup/index.html,120,letter-spacing,-.04em,1
+planetai,node0/setup/index.html,189,letter-spacing,-.05em,1
+planetai,node0/setup/index.html,183,letter-spacing,.14em,1
+planetai,node0/setup/index.html,168,letter-spacing,.24em,1
+planetai,node0/setup/index.html,94,rgb,"rgba(247,245,241,.18)",3
+planetai,node0/setup/index.html,182,rgb,"rgba(0,0,0,.5)",1
+planetai,node0/setup/index.html,165,rgb,"rgba(244,236,226,.05)",1
+planetai,node0/setup/index.html,165,rgb,"rgba(244,236,226,.1)",1
+planetai,node0/setup/index.html,48,rgb,"rgba(247,245,241,.14)",1
+planetai,node0/setup/index.html,50,rgb,"rgba(247,245,241,.28)",1
+planetai,observatory/index.html,1164,border-radius,10px,61
+planetai,observatory/index.html,897,border-radius,100px,38
+planetai,observatory/index.html,424,border-radius,8px,33
+planetai,observatory/index.html,497,border-radius,4px,25
+planetai,observatory/index.html,399,border-radius,6px,24
+planetai,observatory/index.html,1289,border-radius,50%,21
+planetai,observatory/index.html,240,border-radius,999px,14
+planetai,observatory/index.html,3670,border-radius,3px,10
+planetai,observatory/index.html,1229,border-radius,var(--radius),9
+planetai,observatory/index.html,4798,border-radius,5px,7
+planetai,observatory/index.html,2912,border-radius,12px,5
+planetai,observatory/index.html,693,border-radius,"var(--r-pill, 9999px)",5
+planetai,observatory/index.html,319,border-radius,2px,4
+planetai,observatory/index.html,1841,border-radius,14px,3
+planetai,observatory/index.html,2483,border-radius,1px,3
+planetai,observatory/index.html,2317,border-radius,"var(--r-featured, 10px)",3
+planetai,observatory/index.html,1139,border-radius,20px,2
+planetai,observatory/index.html,15647,border-radius,4px 4px 0 0,2
+planetai,observatory/index.html,2348,border-radius,"var(--r-std, 8px)",2
+planetai,observatory/index.html,6152,border-radius,0 6px 6px 0,1
+planetai,observatory/index.html,2267,border-radius,0 8px 8px 0,1
+planetai,observatory/index.html,1104,border-radius,12px !important,1
+planetai,observatory/index.html,14047,border-radius,16px,1
+planetai,observatory/index.html,1129,border-radius,24px,1
+planetai,observatory/index.html,375,border-radius,2px !important,1
+planetai,observatory/index.html,787,border-radius,2px 2px 0 0,1
+planetai,observatory/index.html,4343,border-radius,inherit,1
+planetai,observatory/index.html,764,border-radius,"var(--r-std, 8px) var(--r-std, 8px) 0 0",1
+planetai,observatory/index.html,1443,box-shadow,var(--shadow),4
+planetai,observatory/index.html,743,box-shadow,var(--shadow-ambient),4
+planetai,observatory/index.html,2360,box-shadow,var(--shadow-focus),4
+planetai,observatory/index.html,2990,box-shadow,"0 0 0 0 rgba(58,124,165,0.55)",2
+planetai,observatory/index.html,3038,box-shadow,"0 0 0 3px rgba(26,122,67,0.15)",2
+planetai,observatory/index.html,1621,box-shadow,"0 2px 6px rgba(0,0,0,0.18)",2
+planetai,observatory/index.html,803,box-shadow,"inset 0 0 0 1px var(--ok-border-10, rgba(38,37,30,0.10))",2
+planetai,observatory/index.html,2325,box-shadow,var(--shadow-elevated),2
+planetai,observatory/index.html,2075,box-shadow,"-10px 0 36px rgba(23,48,42,0.18)",1
+planetai,observatory/index.html,9077,box-shadow,"-12px 0 30px rgba(0,0,0,0.08)",1
+planetai,observatory/index.html,289,box-shadow,"0 0 0 0 rgba(29,106,76,0)",1
+planetai,observatory/index.html,287,box-shadow,"0 0 0 0 rgba(29,106,76,0.45)",1
+planetai,observatory/index.html,262,box-shadow,"0 0 0 0 rgba(29,106,76,0.5)",1
+planetai,observatory/index.html,2996,box-shadow,"0 0 0 0 rgba(58,124,165,0)",1
+planetai,observatory/index.html,2995,box-shadow,"0 0 0 14px rgba(58,124,165,0)",1
+planetai,observatory/index.html,5199,box-shadow,"0 0 0 2px rgba(123,62,117,0.12)",1
+planetai,observatory/index.html,3040,box-shadow,"0 0 0 3px rgba(14,116,144,0.15)",1
+planetai,observatory/index.html,3042,box-shadow,"0 0 0 3px rgba(185,28,28,0.15)",1
+planetai,observatory/index.html,3041,box-shadow,"0 0 0 3px rgba(217,119,6,0.15)",1
+planetai,observatory/index.html,288,box-shadow,"0 0 0 6px rgba(29,106,76,0)",1
+planetai,observatory/index.html,18333,box-shadow,"0 14px 42px rgba(0,0,0,0.28)",1
+planetai,observatory/index.html,3552,box-shadow,0 1px 0 var(--rule),1
+planetai,observatory/index.html,4642,box-shadow,"0 1px 2px rgba(46, 38, 26, 0.04),",1
+planetai,observatory/index.html,709,box-shadow,"0 1px 5px rgba(22,43,32,0.25)",1
+planetai,observatory/index.html,715,box-shadow,"0 1px 7px rgba(61,186,126,0.32)",1
+planetai,observatory/index.html,2411,box-shadow,"0 2px 12px rgba(0,0,0,0.18)",1
+planetai,observatory/index.html,1133,box-shadow,"0 2px 12px rgba(0,0,0,0.28)",1
+planetai,observatory/index.html,1211,box-shadow,"0 2px 8px rgba(30,30,30,0.08)",1
+planetai,observatory/index.html,2672,box-shadow,"0 4px 12px rgba(23,48,42,0.06)",1
+planetai,observatory/index.html,2498,box-shadow,"0 4px 12px rgba(23,48,42,0.15)",1
+planetai,observatory/index.html,1216,box-shadow,"0 4px 12px rgba(30,30,30,0.12)",1
+planetai,observatory/index.html,1935,box-shadow,"0 4px 18px rgba(22, 43, 32, 0.18)",1
+planetai,observatory/index.html,18309,box-shadow,"0 6px 18px rgba(0,0,0,0.22)",1
+planetai,observatory/index.html,4470,box-shadow,"0 6px 30px rgba(23,48,42,0.4)",1
+planetai,observatory/index.html,4446,box-shadow,"0 8px 40px rgba(23,48,42,0.35)",1
+planetai,observatory/index.html,1105,box-shadow,none !important,1
+planetai,observatory/index.html,3979,box-shadow,"rgba(30,30,30,0.04) 0 4px 14px, rgba(30,30,30,0.02) 0 1px 3px",1
+planetai,observatory/index.html,808,box-shadow,var(--accent-glow),1
+planetai,observatory/index.html,581,font-family,var(--font-display),65
+planetai,observatory/index.html,590,font-family,var(--font-mono),63
+planetai,observatory/index.html,1234,font-family,"var(--font-mono, monospace)",59
+planetai,observatory/index.html,552,font-family,var(--font-atlas-display),41
+planetai,observatory/index.html,234,font-family,var(--font-atlas-mono),31
+planetai,observatory/index.html,569,font-family,var(--font-body),29
+planetai,observatory/index.html,3465,font-family,"var(--font-display, var(--font-body))",13
+planetai,observatory/index.html,400,font-family,"var(--font-atlas-mono,",9
+planetai,observatory/index.html,1243,font-family,"var(--font-atlas-display, var(--font-display))",6
+planetai,observatory/index.html,320,font-family,"var(--font-mono,",6
+planetai,observatory/index.html,591,font-family,inherit,4
+planetai,observatory/index.html,546,font-family,var(--font-atlas-body),4
+planetai,observatory/index.html,7833,font-family,"var(--font-mono, ui-monospace, monospace)",4
+planetai,observatory/index.html,425,font-family,"var(--font-atlas-body,",3
+planetai,observatory/index.html,19342,font-family,monospace,2
+planetai,observatory/index.html,2853,font-family,"Georgia, serif",1
+planetai,observatory/index.html,5372,font-family,"Georgia,serif",1
+planetai,observatory/index.html,458,font-family,"var(--font-atlas-display,",1
+planetai,observatory/index.html,11156,font-family,"var(--font-atlas-mono, monospace)",1
+planetai,observatory/index.html,4682,font-family,"var(--font-body,",1
+planetai,observatory/index.html,3316,font-family,"var(--font-body, sans-serif)",1
+planetai,observatory/index.html,4654,font-family,"var(--font-display,",1
+planetai,observatory/index.html,3285,font-family,"var(--font-display, serif)",1
+planetai,observatory/index.html,7822,font-family,"var(--font-mono, ui-monospace,",1
+planetai,observatory/index.html,7770,font-family,"var(--font-sans,",1
+planetai,observatory/index.html,10753,font-shorthand,{ size: 10,4
+planetai,observatory/index.html,10751,font-shorthand,"{ size: 11, family: 'IBM Plex Mono, monospace'",4
+planetai,observatory/index.html,13790,font-shorthand,{ size: 9,4
+planetai,observatory/index.html,10329,font-shorthand,"{ size: 12, weight: '500', family:",3
+planetai,observatory/index.html,18347,font-shorthand,"13px var(--font-sans,system-ui)",2
+planetai,observatory/index.html,10323,font-shorthand,"{ size: 10, family:",2
+planetai,observatory/index.html,9553,font-shorthand,"12px/1.45 ui-monospace,monospace",1
+planetai,observatory/index.html,18341,font-shorthand,"13px var(--font-mono,ui-monospace,monospace)",1
+planetai,observatory/index.html,18309,font-shorthand,"13px/1.45 var(--font-sans,system-ui)",1
+planetai,observatory/index.html,18335,font-shorthand,"500 13px/1.5 var(--font-sans,system-ui)",1
+planetai,observatory/index.html,21154,font-shorthand,"600 11px/1 var(--font-sans, sans-serif)",1
+planetai,observatory/index.html,6679,font-shorthand,"700 11px/1.4 var(--font-sans, sans-serif)",1
+planetai,observatory/index.html,10373,font-shorthand,"{ size: 12, weight: '600', family:",1
+planetai,observatory/index.html,349,font-size,11px,158
+planetai,observatory/index.html,354,font-size,12px,120
+planetai,observatory/index.html,235,font-size,10px,103
+planetai,observatory/index.html,1080,font-size,13px,97
+planetai,observatory/index.html,321,font-size,10.5px,56
+planetai,observatory/index.html,350,font-size,14px,43
+planetai,observatory/index.html,1184,font-size,22px,34
+planetai,observatory/index.html,1702,font-size,16px,33
+planetai,observatory/index.html,2031,font-size,9px,31
+planetai,observatory/index.html,678,font-size,9.5px,25
+planetai,observatory/index.html,1833,font-size,11.5px,24
+planetai,observatory/index.html,1455,font-size,13.5px,24
+planetai,observatory/index.html,1251,font-size,15px,14
+planetai,observatory/index.html,3638,font-size,28px,13
+planetai,observatory/index.html,1336,font-size,12.5px,12
+planetai,observatory/index.html,9295,font-size,19px,12
+planetai,observatory/index.html,668,font-size,17px,8
+planetai,observatory/index.html,4002,font-size,30px,8
+planetai,observatory/index.html,1363,font-size,8.5px,8
+planetai,observatory/index.html,459,font-size,18px,7
+planetai,observatory/index.html,1555,font-size,14.5px,6
+planetai,observatory/index.html,2364,font-size,26px,6
+planetai,observatory/index.html,1446,font-size,var(--ts-md),5
+planetai,observatory/index.html,2766,font-size,20px,4
+planetai,observatory/index.html,9273,font-size,"clamp(32px, 5vw, 54px)",4
+planetai,observatory/index.html,3161,font-size,7px,3
+planetai,observatory/index.html,8697,font-size,"clamp(40px, 6vw, 68px)",3
+planetai,observatory/index.html,1590,font-size,var(--ts-lg),3
+planetai,observatory/index.html,2508,font-size,24px,2
+planetai,observatory/index.html,1245,font-size,"clamp(26px, 3.2vw, 38px)",2
+planetai,observatory/index.html,21147,font-size,1.05em,1
+planetai,observatory/index.html,5372,font-size,1.6em,1
+planetai,observatory/index.html,21140,font-size,115%,1
+planetai,observatory/index.html,9809,font-size,"11px"">API, dataset, bespoke scraper.</div>",1
+planetai,observatory/index.html,2853,font-size,120px,1
+planetai,observatory/index.html,1099,font-size,20px !important,1
+planetai,observatory/index.html,7546,font-size,34px,1
+planetai,observatory/index.html,3953,font-size,44px,1
+planetai,observatory/index.html,3969,font-size,52px,1
+planetai,observatory/index.html,3947,font-size,64px,1
+planetai,observatory/index.html,3898,font-size,8px,1
+planetai,observatory/index.html,2858,font-size,"clamp(1.1rem, 2.5vw, var(--ts-lg))",1
+planetai,observatory/index.html,2864,font-size,var(--ts-base),1
+planetai,observatory/index.html,96,hex,#1e1e1e,104
+planetai,observatory/index.html,61,hex,#20388d,77
+planetai,observatory/index.html,494,hex,#fff,70
+planetai,observatory/index.html,135,hex,#e62038,53
+planetai,observatory/index.html,49,hex,#2c9e5a,42
+planetai,observatory/index.html,40,hex,#c9476e,39
+planetai,observatory/index.html,39,hex,#3a7ca5,28
+planetai,observatory/index.html,97,hex,#4a4a44,23
+planetai,observatory/index.html,36,hex,#00a057,22
+planetai,observatory/index.html,41,hex,#7b3e75,22
+planetai,observatory/index.html,91,hex,#f7f5f1,22
+planetai,observatory/index.html,707,hex,#162b20,20
+planetai,observatory/index.html,37,hex,#17302a,18
+planetai,observatory/index.html,3139,hex,#f59e0b,15
+planetai,observatory/index.html,46,hex,#a35d00,14
+planetai,observatory/index.html,95,hex,#d8d3c4,14
+planetai,observatory/index.html,82,hex,#b91c1c,13
+planetai,observatory/index.html,49,hex,#0e7490,12
+planetai,observatory/index.html,72,hex,#1a4f7a,12
+planetai,observatory/index.html,3446,hex,#6c6a62,12
+planetai,observatory/index.html,9294,hex,#d96f3a,12
+planetai,observatory/index.html,81,hex,#d97706,12
+planetai,observatory/index.html,713,hex,#3dba7e,11
+planetai,observatory/index.html,4689,hex,#b7472e,11
+planetai,observatory/index.html,42,hex,#c7a86a,11
+planetai,observatory/index.html,38,hex,#f1801e,11
+planetai,observatory/index.html,1492,hex,#8fd8ad,10
+planetai,observatory/index.html,170,hex,#ebeae5,10
+planetai,observatory/index.html,92,hex,#ffffff,10
+planetai,observatory/index.html,1858,hex,#7a5c00,8
+planetai,observatory/index.html,6897,hex,#f7f3ea,8
+planetai,observatory/index.html,3441,hex,#26251e,6
+planetai,observatory/index.html,4843,hex,#4aaac7,6
+planetai,observatory/index.html,73,hex,#7a1d0e,6
+planetai,observatory/index.html,43,hex,#7fb89a,6
+planetai,observatory/index.html,1376,hex,#8a6d00,6
+planetai,observatory/index.html,10640,hex,#9ca3af,6
+planetai,observatory/index.html,1554,hex,#a8e6c4,6
+planetai,observatory/index.html,2918,hex,#c4cfc2,6
+planetai,observatory/index.html,15589,hex,#decade,6
+planetai,observatory/index.html,171,hex,#e6e5e0,6
+planetai,observatory/index.html,93,hex,#efebde,6
+planetai,observatory/index.html,79,hex,#1a7a43,5
+planetai,observatory/index.html,1548,hex,#1e3f34,5
+planetai,observatory/index.html,7752,hex,#4a90d9,5
+planetai,observatory/index.html,7754,hex,#8b5cf6,5
+planetai,observatory/index.html,67,hex,#c8860a,5
+planetai,observatory/index.html,1992,hex,#cfccc1,5
+planetai,observatory/index.html,1377,hex,#e6c97a,5
+planetai,observatory/index.html,1375,hex,#fbeed8,5
+planetai,observatory/index.html,12848,hex,#047857,4
+planetai,observatory/index.html,5906,hex,#1a5e36,4
+planetai,observatory/index.html,3507,hex,#1a6f48,4
+planetai,observatory/index.html,3175,hex,#1f6e3a,4
+planetai,observatory/index.html,3176,hex,#3ca96b,4
+planetai,observatory/index.html,9014,hex,#4a6c7a,4
+planetai,observatory/index.html,4367,hex,#78350f,4
+planetai,observatory/index.html,3437,hex,#8a6515,4
+planetai,observatory/index.html,2920,hex,#95a49f,4
+planetai,observatory/index.html,4638,hex,#efe9dc,4
+planetai,observatory/index.html,9321,hex,#f4eedf,4
+planetai,observatory/index.html,168,hex,#f7f7f4,4
+planetai,observatory/index.html,5675,hex,#feed,4
+planetai,observatory/index.html,3144,hex,#fef3c7,4
+planetai,observatory/index.html,4595,hex,#000,3
+planetai,observatory/index.html,2688,hex,#0f6b3a,3
+planetai,observatory/index.html,1715,hex,#34b368,3
+planetai,observatory/index.html,6685,hex,#6a6a64,3
+planetai,observatory/index.html,7465,hex,#6b3fa0,3
+planetai,observatory/index.html,10728,hex,#6b7280,3
+planetai,observatory/index.html,3145,hex,#92400e,3
+planetai,observatory/index.html,361,hex,#9a1d2a,3
+planetai,observatory/index.html,77,hex,#b45309,3
+planetai,observatory/index.html,1947,hex,#c8ead6,3
+planetai,observatory/index.html,12844,hex,#d84315,3
+planetai,observatory/index.html,5055,hex,#d8a43c,3
+planetai,observatory/index.html,2860,hex,#e8ebe6,3
+planetai,observatory/index.html,3174,hex,#e8f5ec,3
+planetai,observatory/index.html,9003,hex,#e9dfc3,3
+planetai,observatory/index.html,3663,hex,#fef2f2,3
+planetai,observatory/index.html,3444,hex,#fffdf8,3
+planetai,observatory/index.html,3913,hex,#065f46,2
+planetai,observatory/index.html,2503,hex,#173028,2
+planetai,observatory/index.html,13996,hex,#22c55e,2
+planetai,observatory/index.html,4659,hex,#2a2620,2
+planetai,observatory/index.html,1604,hex,#5a2c55,2
+planetai,observatory/index.html,6907,hex,#666,2
+planetai,observatory/index.html,4664,hex,#6b6559,2
+planetai,observatory/index.html,3913,hex,#6ee7b7,2
+planetai,observatory/index.html,18584,hex,#7a5396,2
+planetai,observatory/index.html,9013,hex,#7c9ba8,2
+planetai,observatory/index.html,13996,hex,#86efac,2
+planetai,observatory/index.html,2464,hex,#914a00,2
+planetai,observatory/index.html,6523,hex,#93c5fd,2
+planetai,observatory/index.html,9003,hex,#c8d1b2,2
+planetai,observatory/index.html,83,hex,#d5d2c8,2
+planetai,observatory/index.html,9003,hex,#d9cfb6,2
+planetai,observatory/index.html,2689,hex,#e1ecf6,2
+planetai,observatory/index.html,9018,hex,#e5a255,2
+planetai,observatory/index.html,9009,hex,#e8d8b6,2
+planetai,observatory/index.html,3913,hex,#ecfdf5,2
+planetai,observatory/index.html,322,hex,#f0ede8,2
+planetai,observatory/index.html,1163,hex,#f0efea,2
+planetai,observatory/index.html,13996,hex,#f0fdf4,2
+planetai,observatory/index.html,169,hex,#f2f1ed,2
+planetai,observatory/index.html,93,hex,#f3f1eb,2
+planetai,observatory/index.html,2830,hex,#f4dfa5,2
+planetai,observatory/index.html,9010,hex,#f4ead1,2
+planetai,observatory/index.html,3417,hex,#f4f2ec,2
+planetai,observatory/index.html,2451,hex,#fbcf5f,2
+planetai,observatory/index.html,2464,hex,#fbe8dd,2
+planetai,observatory/index.html,3121,hex,#fca5a5,2
+planetai,observatory/index.html,3912,hex,#fcd34d,2
+planetai,observatory/index.html,3663,hex,#fecaca,2
+planetai,observatory/index.html,2985,hex,#ffb6c7,2
+planetai,observatory/index.html,2830,hex,#fff7e1,2
+planetai,observatory/index.html,3131,hex,#fff7ed,2
+planetai,observatory/index.html,2150,hex,#020510,1
+planetai,observatory/index.html,4283,hex,#059669,1
+planetai,observatory/index.html,13779,hex,#075a6e,1
+planetai,observatory/index.html,2150,hex,#0a1a2e,1
+planetai,observatory/index.html,96,hex,#181818,1
+planetai,observatory/index.html,76,hex,#1d6a4c,1
+planetai,observatory/index.html,1929,hex,#1e4030,1
+planetai,observatory/index.html,1857,hex,#1e7a44,1
+planetai,observatory/index.html,5156,hex,#1e7a45,1
+planetai,observatory/index.html,9026,hex,#2c3a2e,1
+planetai,observatory/index.html,140,hex,#376994,1
+planetai,observatory/index.html,18827,hex,#3a6f9e,1
+planetai,observatory/index.html,3247,hex,#3b82f6,1
+planetai,observatory/index.html,9029,hex,#3c5240,1
+planetai,observatory/index.html,2930,hex,#556660,1
+planetai,observatory/index.html,7846,hex,#5a3d8a,1
+planetai,observatory/index.html,3915,hex,#5b21b6,1
+planetai,observatory/index.html,9024,hex,#5c7a5a,1
+planetai,observatory/index.html,10087,hex,#6a6860,1
+planetai,observatory/index.html,4417,hex,#6b3a0a,1
+planetai,observatory/index.html,9171,hex,#6b7f64,1
+planetai,observatory/index.html,151,hex,#7a5a10,1
+planetai,observatory/index.html,4073,hex,#7a5aa8,1
+planetai,observatory/index.html,18825,hex,#7a6a4a,1
+planetai,observatory/index.html,13401,hex,#7a9080,1
+planetai,observatory/index.html,4650,hex,#7c7669,1
+planetai,observatory/index.html,3508,hex,#8d3252,1
+planetai,observatory/index.html,78,hex,#991b1b,1
+planetai,observatory/index.html,18310,hex,#9eb8a9,1
+planetai,observatory/index.html,1857,hex,#a7d9bb,1
+planetai,observatory/index.html,9160,hex,#b0a183,1
+planetai,observatory/index.html,8729,hex,#b3a98f,1
+planetai,observatory/index.html,14272,hex,#b3cfe0,1
+planetai,observatory/index.html,2445,hex,#b6bfb4,1
+planetai,observatory/index.html,7095,hex,#b9b0a0,1
+planetai,observatory/index.html,3132,hex,#c2410c,1
+planetai,observatory/index.html,3915,hex,#c4b5fd,1
+planetai,observatory/index.html,17348,hex,#c94a3a,1
+planetai,observatory/index.html,200,hex,#cf2d56,1
+planetai,observatory/index.html,12940,hex,#dc2626,1
+planetai,observatory/index.html,6690,hex,#ddd,1
+planetai,observatory/index.html,2688,hex,#dff3e6,1
+planetai,observatory/index.html,17381,hex,#e0912c,1
+planetai,observatory/index.html,1858,hex,#e0c580,1
+planetai,observatory/index.html,94,hex,#e0dbc9,1
+planetai,observatory/index.html,1485,hex,#e0dcd0,1
+planetai,observatory/index.html,172,hex,#e1e0db,1
+planetai,observatory/index.html,95,hex,#e4e1d7,1
+planetai,observatory/index.html,1857,hex,#e4f5ea,1
+planetai,observatory/index.html,6001,hex,#e8eef1,1
+planetai,observatory/index.html,94,hex,#e9e6dc,1
+planetai,observatory/index.html,2827,hex,#eaf6ee,1
+planetai,observatory/index.html,7573,hex,#ede9e0,1
+planetai,observatory/index.html,3915,hex,#ede9fe,1
+planetai,observatory/index.html,14008,hex,#ef4444,1
+planetai,observatory/index.html,2278,hex,#efe9d9,1
+planetai,observatory/index.html,2540,hex,#f0eee4,1
+planetai,observatory/index.html,7095,hex,#f1eee6,1
+planetai,observatory/index.html,159,hex,#f54e00,1
+planetai,observatory/index.html,3321,hex,#f6f1e3,1
+planetai,observatory/index.html,4722,hex,#f7f3e8,1
+planetai,observatory/index.html,2278,hex,#f7f4ed,1
+planetai,observatory/index.html,14004,hex,#f97316,1
+planetai,observatory/index.html,91,hex,#faf9f5,1
+planetai,observatory/index.html,2540,hex,#fafaf6,1
+planetai,observatory/index.html,1858,hex,#fbeed5,1
+planetai,observatory/index.html,2828,hex,#fce8e6,1
+planetai,observatory/index.html,14004,hex,#fdba74,1
+planetai,observatory/index.html,4365,hex,#fde68a,1
+planetai,observatory/index.html,3133,hex,#fed7aa,1
+planetai,observatory/index.html,2449,hex,#ff7a6a,1
+planetai,observatory/index.html,3119,hex,#fff1f0,1
+planetai,observatory/index.html,435,letter-spacing,0.08em,86
+planetai,observatory/index.html,237,letter-spacing,0.06em,50
+planetai,observatory/index.html,321,letter-spacing,0.04em,34
+planetai,observatory/index.html,554,letter-spacing,-0.01em,17
+planetai,observatory/index.html,383,letter-spacing,-0.015em,8
+planetai,observatory/index.html,1591,letter-spacing,-0.02em,8
+planetai,observatory/index.html,7516,letter-spacing,0.07em,8
+planetai,observatory/index.html,701,letter-spacing,0.05em,5
+planetai,observatory/index.html,1344,letter-spacing,0.10em,5
+planetai,observatory/index.html,346,letter-spacing,0,4
+planetai,observatory/index.html,402,letter-spacing,0.02em,4
+planetai,observatory/index.html,5708,letter-spacing,.06em,3
+planetai,observatory/index.html,1079,letter-spacing,.07em,3
+planetai,observatory/index.html,852,letter-spacing,0.01em,3
+planetai,observatory/index.html,3562,letter-spacing,0.12em,3
+planetai,observatory/index.html,1569,letter-spacing,0.1em,3
+planetai,observatory/index.html,582,letter-spacing,"var(--ls-h2, -0.016em)",3
+planetai,observatory/index.html,3430,letter-spacing,-0.005em,2
+planetai,observatory/index.html,1144,letter-spacing,.04em,2
+planetai,observatory/index.html,3128,letter-spacing,0.03em,2
+planetai,observatory/index.html,1236,letter-spacing,0.09em,2
+planetai,observatory/index.html,679,letter-spacing,0.14em,2
+planetai,observatory/index.html,660,letter-spacing,0.18em,2
+planetai,observatory/index.html,1084,letter-spacing,.05em,1
+planetai,observatory/index.html,581,letter-spacing,"var(--ls-h1, -0.022em)",1
+planetai,observatory/index.html,583,letter-spacing,"var(--ls-h3, -0.010em)",1
+planetai,observatory/index.html,585,letter-spacing,"var(--ls-hero, -0.028em)",1
+planetai,observatory/index.html,765,letter-spacing,"var(--ls-uppercase, 0.14em)",1
+planetai,observatory/index.html,629,rgb,"rgba(38,37,30,0.10)",11
+planetai,observatory/index.html,686,rgb,"rgba(38,37,30,0.60)",8
+planetai,observatory/index.html,4758,rgb,"rgba(23,48,42,0.08)",7
+planetai,observatory/index.html,10754,rgb,"rgba(0,0,0,0.05)",6
+planetai,observatory/index.html,2672,rgb,"rgba(23,48,42,0.06)",5
+planetai,observatory/index.html,10345,rgb,"rgba(30,30,30,0.92)",5
+planetai,observatory/index.html,2382,rgb,"rgba(0,0,0,0.15)",3
+planetai,observatory/index.html,1621,rgb,"rgba(0,0,0,0.18)",3
+planetai,observatory/index.html,4471,rgb,"rgba(143,216,173,0.3)",3
+planetai,observatory/index.html,3437,rgb,"rgba(202,148,32,0.13)",3
+planetai,observatory/index.html,1705,rgb,"rgba(232,235,230,0.88)",3
+planetai,observatory/index.html,1720,rgb,"rgba(255,255,255,0.08)",3
+planetai,observatory/index.html,1271,rgb,"rgba(30,30,30,0.06)",3
+planetai,observatory/index.html,1211,rgb,"rgba(30,30,30,0.08)",3
+planetai,observatory/index.html,188,rgb,"rgba(0,0,0,0.10)",2
+planetai,observatory/index.html,5161,rgb,"rgba(0,0,0,0.12)",2
+planetai,observatory/index.html,1133,rgb,"rgba(0,0,0,0.28)",2
+planetai,observatory/index.html,274,rgb,"rgba(154,29,42,0.04)",2
+planetai,observatory/index.html,273,rgb,"rgba(154,29,42,0.5)",2
+planetai,observatory/index.html,2948,rgb,"rgba(200,220,210,0.15)",2
+planetai,observatory/index.html,5911,rgb,"rgba(23,48,42,0.12)",2
+planetai,observatory/index.html,4446,rgb,"rgba(23,48,42,0.35)",2
+planetai,observatory/index.html,2181,rgb,"rgba(255,255,255,0.4)",2
+planetai,observatory/index.html,2182,rgb,"rgba(255,255,255,0.9)",2
+planetai,observatory/index.html,3038,rgb,"rgba(26,122,67,0.15)",2
+planetai,observatory/index.html,288,rgb,"rgba(29,106,76,0)",2
+planetai,observatory/index.html,99,rgb,"rgba(30,30,30,0.04)",2
+planetai,observatory/index.html,99,rgb,"rgba(30,30,30,0.05)",2
+planetai,observatory/index.html,268,rgb,"rgba(32,56,141,0.05)",2
+planetai,observatory/index.html,267,rgb,"rgba(32,56,141,0.3)",2
+planetai,observatory/index.html,177,rgb,"rgba(38, 37, 30, 0.10)",2
+planetai,observatory/index.html,7837,rgb,"rgba(38,140,90,0.10)",2
+planetai,observatory/index.html,692,rgb,"rgba(38,37,30,0.12)",2
+planetai,observatory/index.html,318,rgb,"rgba(38,37,30,0.18)",2
+planetai,observatory/index.html,595,rgb,"rgba(38,37,30,0.20)",2
+planetai,observatory/index.html,704,rgb,"rgba(38,37,30,0.65)",2
+planetai,observatory/index.html,820,rgb,"rgba(38,37,30,0.90)",2
+planetai,observatory/index.html,3114,rgb,"rgba(44,158,90,0.22)",2
+planetai,observatory/index.html,2995,rgb,"rgba(58,124,165,0)",2
+planetai,observatory/index.html,10270,rgb,"rgba(58,124,165,0.12)",2
+planetai,observatory/index.html,2990,rgb,"rgba(58,124,165,0.55)",2
+planetai,observatory/index.html,20661,rgb,"rgb(${r},${g},${b})",1
+planetai,observatory/index.html,16599,rgb,"rgba(0,0,0,0)",1
+planetai,observatory/index.html,187,rgb,"rgba(0,0,0,0.008)",1
+planetai,observatory/index.html,187,rgb,"rgba(0,0,0,0.02)",1
+planetai,observatory/index.html,9077,rgb,"rgba(0,0,0,0.08)",1
+planetai,observatory/index.html,188,rgb,"rgba(0,0,0,0.14)",1
+planetai,observatory/index.html,18309,rgb,"rgba(0,0,0,0.22)",1
+planetai,observatory/index.html,20885,rgb,"rgba(0,0,0,0.35)",1
+planetai,observatory/index.html,2162,rgb,"rgba(0,0,0,0.8)",1
+planetai,observatory/index.html,1380,rgb,"rgba(0,160,87,0.06)",1
+planetai,observatory/index.html,283,rgb,"rgba(122,90,16,0.05)",1
+planetai,observatory/index.html,282,rgb,"rgba(122,90,16,0.35)",1
+planetai,observatory/index.html,7845,rgb,"rgba(122,90,168,0.12)",1
+planetai,observatory/index.html,752,rgb,"rgba(123,62,117,0)",1
+planetai,observatory/index.html,5199,rgb,"rgba(123,62,117,0.12)",1
+planetai,observatory/index.html,751,rgb,"rgba(123,62,117,0.28)",1
+planetai,observatory/index.html,3040,rgb,"rgba(14,116,144,0.15)",1
+planetai,observatory/index.html,1930,rgb,"rgba(143, 216, 173, 0.25)",1
+planetai,observatory/index.html,1934,rgb,"rgba(143, 216, 173, 0.55)",1
+planetai,observatory/index.html,4447,rgb,"rgba(143,216,173,0.25)",1
+planetai,observatory/index.html,4340,rgb,"rgba(153,29,42,0.035)",1
+planetai,observatory/index.html,4400,rgb,"rgba(180,83,9,0.08)",1
+planetai,observatory/index.html,4424,rgb,"rgba(180,83,9,0.25)",1
+planetai,observatory/index.html,4416,rgb,"rgba(180,83,9,0.4)",1
+planetai,observatory/index.html,20575,rgb,"rgba(183,71,46,${alpha.toFixed(2)",1
+planetai,observatory/index.html,20469,rgb,"rgba(183,71,46,0.12)",1
+planetai,observatory/index.html,20590,rgb,"rgba(183,71,46,0.75)",1
+planetai,observatory/index.html,3042,rgb,"rgba(185,28,28,0.15)",1
+planetai,observatory/index.html,1956,rgb,"rgba(200, 234, 214, 0.40)",1
+planetai,observatory/index.html,1950,rgb,"rgba(200, 234, 214, 0.55)",1
+planetai,observatory/index.html,2978,rgb,"rgba(200,220,210,0.18)",1
+planetai,observatory/index.html,2932,rgb,"rgba(200,220,210,0.3)",1
+planetai,observatory/index.html,2983,rgb,"rgba(201, 71, 110, 0.15)",1
+planetai,observatory/index.html,2984,rgb,"rgba(201, 71, 110, 0.35)",1
+planetai,observatory/index.html,3508,rgb,"rgba(201,71,110,0.14)",1
+planetai,observatory/index.html,3509,rgb,"rgba(202,148,32,0.18)",1
+planetai,observatory/index.html,3041,rgb,"rgba(217,119,6,0.15)",1
+planetai,observatory/index.html,14657,rgb,"rgba(217,119,6,0.25)",1
+planetai,observatory/index.html,1935,rgb,"rgba(22, 43, 32, 0.18)",1
+planetai,observatory/index.html,709,rgb,"rgba(22,43,32,0.25)",1
+planetai,observatory/index.html,1126,rgb,"rgba(22,43,32,0.80)",1
+planetai,observatory/index.html,2498,rgb,"rgba(23,48,42,0.15)",1
+planetai,observatory/index.html,2075,rgb,"rgba(23,48,42,0.18)",1
+planetai,observatory/index.html,2064,rgb,"rgba(23,48,42,0.32)",1
+planetai,observatory/index.html,4470,rgb,"rgba(23,48,42,0.4)",1
+planetai,observatory/index.html,7536,rgb,"rgba(230,32,56,0.06)",1
+planetai,observatory/index.html,7537,rgb,"rgba(230,32,56,0.18)",1
+planetai,observatory/index.html,4462,rgb,"rgba(232,235,230,0.2)",1
+planetai,observatory/index.html,1717,rgb,"rgba(232,235,230,0.3)",1
+planetai,observatory/index.html,4480,rgb,"rgba(232,235,230,0.5)",1
+planetai,observatory/index.html,4462,rgb,"rgba(232,235,230,0.6)",1
+planetai,observatory/index.html,2864,rgb,"rgba(232,235,230,0.82)",1
+planetai,observatory/index.html,1718,rgb,"rgba(232,235,230,0.9)",1
+planetai,observatory/index.html,1560,rgb,"rgba(232,235,230,0.92)",1
+planetai,observatory/index.html,2469,rgb,"rgba(251, 232, 221, 0.25)",1
+planetai,observatory/index.html,2955,rgb,"rgba(255,255,255,0.06)",1
+planetai,observatory/index.html,5182,rgb,"rgba(255,255,255,0.15)",1
+planetai,observatory/index.html,2455,rgb,"rgba(255,255,255,0.16)",1
+planetai,observatory/index.html,1150,rgb,"rgba(255,255,255,0.18)",1
+planetai,observatory/index.html,8195,rgb,"rgba(255,255,255,0.2)",1
+planetai,observatory/index.html,5574,rgb,"rgba(255,255,255,0.20)",1
+planetai,observatory/index.html,21156,rgb,"rgba(255,255,255,0.35)",1
+planetai,observatory/index.html,5574,rgb,"rgba(255,255,255,0.40)",1
+planetai,observatory/index.html,7490,rgb,"rgba(255,255,255,0.45)",1
+planetai,observatory/index.html,2161,rgb,"rgba(255,255,255,0.6)",1
+planetai,observatory/index.html,1141,rgb,"rgba(255,255,255,0.60)",1
+planetai,observatory/index.html,2644,rgb,"rgba(255,255,255,0.72)",1
+planetai,observatory/index.html,5178,rgb,"rgba(255,255,255,0.8)",1
+planetai,observatory/index.html,1153,rgb,"rgba(255,255,255,0.85)",1
+planetai,observatory/index.html,258,rgb,"rgba(29,106,76,0.06)",1
+planetai,observatory/index.html,257,rgb,"rgba(29,106,76,0.3)",1
+planetai,observatory/index.html,287,rgb,"rgba(29,106,76,0.45)",1
+planetai,observatory/index.html,262,rgb,"rgba(29,106,76,0.5)",1
+planetai,observatory/index.html,3979,rgb,"rgba(30,30,30,0.02)",1
+planetai,observatory/index.html,303,rgb,"rgba(30,30,30,0.045)",1
+planetai,observatory/index.html,1269,rgb,"rgba(30,30,30,0.07)",1
+planetai,observatory/index.html,1216,rgb,"rgba(30,30,30,0.12)",1
+planetai,observatory/index.html,18341,rgb,"rgba(30,30,30,0.22)",1
+planetai,observatory/index.html,18347,rgb,"rgba(30,30,30,0.24)",1
+planetai,observatory/index.html,10376,rgb,"rgba(30,30,30,0.40)",1
+planetai,observatory/index.html,18328,rgb,"rgba(30,30,30,0.42)",1
+planetai,observatory/index.html,1269,rgb,"rgba(30,30,30,0.45)",1
+planetai,observatory/index.html,10323,rgb,"rgba(30,30,30,0.55)",1
+planetai,observatory/index.html,21153,rgb,"rgba(30,30,30,0.72)",1
+planetai,observatory/index.html,7850,rgb,"rgba(32,56,141,0.04)",1
+planetai,observatory/index.html,3510,rgb,"rgba(32,56,141,0.14)",1
+planetai,observatory/index.html,2729,rgb,"rgba(38, 37, 30, 0.06)",1
+planetai,observatory/index.html,179,rgb,"rgba(38, 37, 30, 0.20)",1
+planetai,observatory/index.html,2783,rgb,"rgba(38, 37, 30, 0.42)",1
+planetai,observatory/index.html,181,rgb,"rgba(38, 37, 30, 0.55)",1
+planetai,observatory/index.html,182,rgb,"rgba(38, 37, 30, 0.60)",1
+planetai,observatory/index.html,2407,rgb,"rgba(38, 37, 30, 0.82)",1
+planetai,observatory/index.html,183,rgb,"rgba(38, 37, 30, 0.90)",1
+planetai,observatory/index.html,329,rgb,"rgba(38,37,30,0.06)",1
+planetai,observatory/index.html,5190,rgb,"rgba(38,37,30,0.14)",1
+planetai,observatory/index.html,700,rgb,"rgba(38,37,30,0.38)",1
+planetai,observatory/index.html,2730,rgb,"rgba(38,37,30,0.55)",1
+planetai,observatory/index.html,748,rgb,"rgba(44,158,90,0)",1
+planetai,observatory/index.html,10258,rgb,"rgba(44,158,90,0.12)",1
+planetai,observatory/index.html,3507,rgb,"rgba(44,158,90,0.14)",1
+planetai,observatory/index.html,749,rgb,"rgba(44,158,90,0.28)",1
+planetai,observatory/index.html,197,rgb,"rgba(44,158,90,0.30)",1
+planetai,observatory/index.html,4643,rgb,"rgba(46, 38, 26, 0.03)",1
+planetai,observatory/index.html,4642,rgb,"rgba(46, 38, 26, 0.04)",1
+planetai,observatory/index.html,1913,rgb,"rgba(58, 124, 165, 0.35)",1
+planetai,observatory/index.html,197,rgb,"rgba(58,124,165,0.22)",1
+planetai,observatory/index.html,750,rgb,"rgba(58,124,165,0.28)",1
+planetai,observatory/index.html,715,rgb,"rgba(61,186,126,0.32)",1
+planetai,observatory/index.html,2154,z-index,1,11
+planetai,observatory/index.html,2085,z-index,2,4
+planetai,observatory/index.html,2405,z-index,1000,2
+planetai,observatory/index.html,836,z-index,560,2
+planetai,observatory/index.html,2846,z-index,0,1
+planetai,observatory/index.html,492,z-index,10000,1
+planetai,observatory/index.html,14664,z-index,3,1
+planetai,observatory/index.html,14666,z-index,4,1
+planetai,observatory/index.html,2164,z-index,5,1
+planetai,observatory/index.html,742,z-index,580,1
+planetai,observatory/index.html,632,z-index,600,1
+planetai,observatory/index.html,1200,z-index,620,1
+planetai,observatory/index.html,4443,z-index,700,1
+planetai,observatory/index.html,20885,z-index,710,1
+planetai,observatory/index.html,4467,z-index,720,1
+planetai,observatory/index.html,9077,z-index,80,1
+planetai,observatory/index.html,1125,z-index,800,1
+planetai,observatory/index.html,2065,z-index,900,1
+planetai,observatory/index.html,18304,z-index,9000,1
+planetai,observatory/index.html,2076,z-index,910,1
+planetai,observatory/index.html,18328,z-index,9100,1
+planetai,observatory/index.html,21151,z-index,950,1
+planetai,observatory/index.html,9553,z-index,99999,1
+planetai,timeline/index.html,135,border-radius,0,2
+planetai,timeline/index.html,153,border-radius,8px,2
+planetai,timeline/index.html,183,border-radius,12px,1
+planetai,timeline/index.html,163,border-radius,2px,1
+planetai,timeline/index.html,184,box-shadow,"0 14px 40px rgba(0,0,0,0.10)",1
+planetai,timeline/index.html,105,font-family,var(--font-mono),9
+planetai,timeline/index.html,86,font-family,var(--font-display),7
+planetai,timeline/index.html,43,font-family,var(--font-body),1
+planetai,timeline/index.html,119,font-size,12px,4
+planetai,timeline/index.html,236,font-size,13px,3
+planetai,timeline/index.html,97,font-size,17px,3
+planetai,timeline/index.html,243,font-size,11px,2
+planetai,timeline/index.html,351,font-size,14px,2
+planetai,timeline/index.html,250,font-size,16px,2
+planetai,timeline/index.html,88,font-size,10px,1
+planetai,timeline/index.html,372,font-size,14.5px,1
+planetai,timeline/index.html,318,font-size,15.5px,1
+planetai,timeline/index.html,428,font-size,15px,1
+planetai,timeline/index.html,44,font-size,16.5px,1
+planetai,timeline/index.html,271,font-size,18px,1
+planetai,timeline/index.html,224,font-size,21px,1
+planetai,timeline/index.html,312,font-size,22px,1
+planetai,timeline/index.html,107,font-size,9.5px,1
+planetai,timeline/index.html,402,font-size,"clamp(28px, 4vw, 42px)",1
+planetai,timeline/index.html,262,font-size,"clamp(32px, 4.5vw, 50px)",1
+planetai,timeline/index.html,215,font-size,"clamp(40px, 6vw, 68px)",1
+planetai,timeline/index.html,19,hex,#1e1e1e,12
+planetai,timeline/index.html,23,hex,#20388d,3
+planetai,timeline/index.html,128,hex,#d6346c,2
+planetai,timeline/index.html,22,hex,#00a057,1
+planetai,timeline/index.html,29,hex,#4a4a44,1
+planetai,timeline/index.html,27,hex,#d8d3c4,1
+planetai,timeline/index.html,21,hex,#e62038,1
+planetai,timeline/index.html,20,hex,#f7f5f1,1
+planetai,timeline/index.html,26,hex,#ffffff,1
+planetai,timeline/index.html,98,letter-spacing,0.04em,3
+planetai,timeline/index.html,207,letter-spacing,0.1em,3
+planetai,timeline/index.html,264,letter-spacing,-0.015em,2
+planetai,timeline/index.html,217,letter-spacing,-0.02em,1
+planetai,timeline/index.html,434,letter-spacing,0.01em,1
+planetai,timeline/index.html,120,letter-spacing,0.06em,1
+planetai,timeline/index.html,244,letter-spacing,0.08em,1
+planetai,timeline/index.html,108,letter-spacing,0.14em,1
+planetai,timeline/index.html,89,letter-spacing,0.18em,1
+planetai,timeline/index.html,184,rgb,"rgba(0,0,0,0.10)",1
+planetai,timeline/index.html,398,rgb,"rgba(247, 245, 241, 0.7)",1
+planetai,timeline/index.html,412,rgb,"rgba(247, 245, 241, 0.82)",1
+planetai,timeline/index.html,59,rgb,"rgba(247, 245, 241, 0.88)",1
+planetai,timeline/index.html,179,rgb,"rgba(247, 245, 241, 0.98)",1
+planetai,timeline/index.html,193,rgb,"rgba(255,255,255,0.7)",1
+planetai,timeline/index.html,62,rgb,"rgba(30, 30, 30, 0.10)",1
+planetai,timeline/index.html,182,rgb,"rgba(30,30,30,0.10)",1
+planetai,timeline/index.html,151,rgb,"rgba(30,30,30,0.20)",1
+planetai,timeline/index.html,376,rgb,"rgba(32, 56, 141, 0.03)",1
+planetai,timeline/index.html,377,rgb,"rgba(32, 56, 141, 0.06)",1
+planetai,timeline/index.html,50,rgb,"rgba(32, 56, 141, 0.25)",1
+planetai,timeline/index.html,58,z-index,50,1
+planetai,timeline/index.html,189,z-index,60,1
+planetai-node,app/static/index.html,45,border-radius,999px,13
+planetai-node,app/static/index.html,34,border-radius,50%,7
+planetai-node,app/static/index.html,167,border-radius,12px,3
+planetai-node,app/static/index.html,55,border-radius,30px,2
+planetai-node,app/static/index.html,153,border-radius,8px,2
+planetai-node,app/static/index.html,109,border-radius,10px,1
+planetai-node,app/static/index.html,57,border-radius,12px 30px 30px 30px,1
+planetai-node,app/static/index.html,112,border-radius,18px,1
+planetai-node,app/static/index.html,57,border-radius,30px 12px 30px 30px,1
+planetai-node,app/static/index.html,57,border-radius,30px 30px 30px 12px,1
+planetai-node,app/static/index.html,220,box-shadow,"0 0 0 3px rgba(122,201,67,.45)",1
+planetai-node,app/static/index.html,214,box-shadow,"0 20px 50px rgba(0,0,0,.4)",1
+planetai-node,app/static/index.html,192,box-shadow,"inset 0 0 0 1.5px rgba(244,236,226,.22)",1
+planetai-node,app/static/index.html,96,box-shadow,"inset 0 0 0 1.5px rgba(244,236,226,.25)",1
+planetai-node,app/static/index.html,311,font-family,"ui-monospace,monospace",3
+planetai-node,app/static/index.html,25,font-family,var(--fd),1
+planetai-node,app/static/index.html,160,font-shorthand,600 10px var(--fb),4
+planetai-node,app/static/index.html,103,font-shorthand,500 12.5px var(--fb),3
+planetai-node,app/static/index.html,151,font-shorthand,500 12px var(--fb),3
+planetai-node,app/static/index.html,520,font-shorthand,500 13px var(--fb),3
+planetai-node,app/static/index.html,167,font-shorthand,500 14.5px var(--fb),3
+planetai-node,app/static/index.html,46,font-shorthand,500 14px var(--fb),3
+planetai-node,app/static/index.html,24,font-shorthand,600 10.5px var(--fb),3
+planetai-node,app/static/index.html,513,font-shorthand,italic 500 14px var(--fb),3
+planetai-node,app/static/index.html,194,font-shorthand,600 11px var(--fb),2
+planetai-node,app/static/index.html,138,font-shorthand,600 12.5px var(--fb),2
+planetai-node,app/static/index.html,153,font-shorthand,600 12px var(--fb),2
+planetai-node,app/static/index.html,181,font-shorthand,600 13px var(--fb),2
+planetai-node,app/static/index.html,173,font-shorthand,600 9.5px var(--fb),2
+planetai-node,app/static/index.html,44,font-shorthand,800 17px var(--fd),2
+planetai-node,app/static/index.html,23,font-shorthand,inherit,2
+planetai-node,app/static/index.html,21,font-shorthand,16px/1.65 var(--fb),1
+planetai-node,app/static/index.html,110,font-shorthand,400 11px var(--fb),1
+planetai-node,app/static/index.html,602,font-shorthand,500 11px var(--fb),1
+planetai-node,app/static/index.html,214,font-shorthand,500 13.5px var(--fb),1
+planetai-node,app/static/index.html,99,font-shorthand,"500 clamp(1.35rem,2.5vw,2.1rem)/1.32 var(--fd)",1
+planetai-node,app/static/index.html,195,font-shorthand,"500 clamp(1.6rem,3.4vw,3rem)/1.28 var(--fd)",1
+planetai-node,app/static/index.html,518,font-shorthand,600 13.5px var(--fb),1
+planetai-node,app/static/index.html,128,font-shorthand,600 14.5px var(--fb),1
+planetai-node,app/static/index.html,114,font-shorthand,600 14.5px/1.4 var(--fb),1
+planetai-node,app/static/index.html,173,font-shorthand,600 15px var(--fb),1
+planetai-node,app/static/index.html,212,font-shorthand,700 14px var(--fb),1
+planetai-node,app/static/index.html,186,font-shorthand,700 15px var(--fb),1
+planetai-node,app/static/index.html,170,font-shorthand,800 1.45rem var(--fd),1
+planetai-node,app/static/index.html,207,font-shorthand,800 15px var(--fd),1
+planetai-node,app/static/index.html,512,font-shorthand,800 18px var(--fd),1
+planetai-node,app/static/index.html,540,font-shorthand,800 20px var(--fd),1
+planetai-node,app/static/index.html,539,font-shorthand,800 22px var(--fd),1
+planetai-node,app/static/index.html,529,font-shorthand,800 24px var(--fd),1
+planetai-node,app/static/index.html,536,font-shorthand,800 34px var(--fd),1
+planetai-node,app/static/index.html,88,font-shorthand,"800 clamp(1.4rem,2.3vw,2rem) var(--fd)",1
+planetai-node,app/static/index.html,143,font-shorthand,italic 600 12.5px var(--fb),1
+planetai-node,app/static/index.html,44,font-size,13px,7
+planetai-node,app/static/index.html,48,font-size,12.5px,6
+planetai-node,app/static/index.html,89,font-size,13.5px,4
+planetai-node,app/static/index.html,139,font-size,12px,3
+planetai-node,app/static/index.html,101,font-size,15.5px,2
+planetai-node,app/static/index.html,183,font-size,15px,2
+planetai-node,app/static/index.html,259,font-size,"1.25rem"">The day it just had.</h2><div class=""sub"" id=""day-s",1
+planetai-node,app/static/index.html,276,font-size,"1.25rem"">The land, year over year.</h2><span class=""prov"" id",1
+planetai-node,app/static/index.html,128,font-size,11.5px,1
+planetai-node,app/static/index.html,231,font-size,11px,1
+planetai-node,app/static/index.html,311,font-size,"13.5px"">.env</code>. A value set here overrides the same key",1
+planetai-node,app/static/index.html,311,font-size,"13.5px"">.env</code>.</p>",1
+planetai-node,app/static/index.html,139,font-size,14.5px,1
+planetai-node,app/static/index.html,141,font-size,14px,1
+planetai-node,app/static/index.html,128,font-size,26px,1
+planetai-node,app/static/index.html,63,font-size,"clamp(1.3rem,2.1vw,1.8rem)",1
+planetai-node,app/static/index.html,297,font-size,"clamp(1.5rem,2.5vw,2.2rem)",1
+planetai-node,app/static/index.html,310,font-size,"clamp(1.8rem,3vw,2.5rem)"">How this node was told to behave.<",1
+planetai-node,app/static/index.html,197,font-size,"clamp(17px,1.8vw,22px)",1
+planetai-node,app/static/index.html,134,font-size,"clamp(2.2rem,3.6vw,3rem)",1
+planetai-node,app/static/index.html,146,font-size,"clamp(24px,2.6vw,32px)",1
+planetai-node,app/static/index.html,100,font-size,"clamp(3.2rem,7.5vw,6rem)",1
+planetai-node,app/static/index.html,119,font-size,"clamp(30px,3.4vw,42px)",1
+planetai-node,app/static/index.html,199,font-size,"clamp(34px,4vw,52px)",1
+planetai-node,app/static/index.html,196,font-size,"clamp(5rem,15vw,13rem)",1
+planetai-node,app/static/index.html,16,hex,#e8873a,19
+planetai-node,app/static/index.html,14,hex,#f4ece2,17
+planetai-node,app/static/index.html,14,hex,#8a8378,13
+planetai-node,app/static/index.html,16,hex,#7ac943,12
+planetai-node,app/static/index.html,16,hex,#3fa9f5,10
+planetai-node,app/static/index.html,14,hex,#c7bfb2,7
+planetai-node,app/static/index.html,16,hex,#e62038,6
+planetai-node,app/static/index.html,94,hex,#000,4
+planetai-node,app/static/index.html,14,hex,#16150f,4
+planetai-node,app/static/index.html,16,hex,#00a057,3
+planetai-node,app/static/index.html,16,hex,#20388d,3
+planetai-node,app/static/index.html,14,hex,#a39b8d,3
+planetai-node,app/static/index.html,44,letter-spacing,-.02em,5
+planetai-node,app/static/index.html,88,letter-spacing,-.03em,4
+planetai-node,app/static/index.html,104,letter-spacing,.08em,3
+planetai-node,app/static/index.html,160,letter-spacing,.12em,3
+planetai-node,app/static/index.html,203,letter-spacing,.14em,3
+planetai-node,app/static/index.html,25,letter-spacing,-.04em,2
+planetai-node,app/static/index.html,24,letter-spacing,.24em,2
+planetai-node,app/static/index.html,207,letter-spacing,-.01em,1
+planetai-node,app/static/index.html,100,letter-spacing,-.05em,1
+planetai-node,app/static/index.html,196,letter-spacing,-.06em,1
+planetai-node,app/static/index.html,173,letter-spacing,.16em,1
+planetai-node,app/static/index.html,540,letter-spacing,.1em,1
+planetai-node,app/static/index.html,199,letter-spacing,.22em,1
+planetai-node,app/static/index.html,194,letter-spacing,.26em,1
+planetai-node,app/static/index.html,410,letter-spacing,".2em"">${t.label",1
+planetai-node,app/static/index.html,455,letter-spacing,".2em"">${w.title",1
+planetai-node,app/static/index.html,459,letter-spacing,".2em"">Unmapped</div><div class=""story"" s",1
+planetai-node,app/static/index.html,94,rgb,"rgba(244,236,226,.06)",7
+planetai-node,app/static/index.html,175,rgb,"rgba(244,236,226,.14)",4
+planetai-node,app/static/index.html,45,rgb,"rgba(244,236,226,.07)",3
+planetai-node,app/static/index.html,15,rgb,"rgba(244,236,226,.08)",3
+planetai-node,app/static/index.html,215,rgb,"rgba(22,21,15,.3)",2
+planetai-node,app/static/index.html,178,rgb,"rgba(244,236,226,.2)",2
+planetai-node,app/static/index.html,15,rgb,"rgba(244,236,226,.22)",2
+planetai-node,app/static/index.html,214,rgb,"rgba(0,0,0,.4)",1
+planetai-node,app/static/index.html,594,rgb,"rgba(0,160,87,.22)",1
+planetai-node,app/static/index.html,537,rgb,"rgba(122,201,67,.16)",1
+planetai-node,app/static/index.html,220,rgb,"rgba(122,201,67,.45)",1
+planetai-node,app/static/index.html,541,rgb,"rgba(232,135,58,.1)",1
+planetai-node,app/static/index.html,540,rgb,"rgba(232,135,58,.16)",1
+planetai-node,app/static/index.html,597,rgb,"rgba(232,135,58,.35)",1
+planetai-node,app/static/index.html,459,rgb,"rgba(232,135,58,.4)",1
+planetai-node,app/static/index.html,592,rgb,"rgba(244,236,226,.03)",1
+planetai-node,app/static/index.html,15,rgb,"rgba(244,236,226,.05)",1
+planetai-node,app/static/index.html,15,rgb,"rgba(244,236,226,.09)",1
+planetai-node,app/static/index.html,168,rgb,"rgba(244,236,226,.12)",1
+planetai-node,app/static/index.html,592,rgb,"rgba(244,236,226,.15)",1
+planetai-node,app/static/index.html,96,rgb,"rgba(244,236,226,.25)",1
+planetai-node,app/static/index.html,141,rgb,"rgba(244,236,226,.28)",1
+planetai-node,app/static/index.html,539,rgb,"rgba(244,236,226,.3)",1
+planetai-node,app/static/index.html,210,rgb,"rgba(244,236,226,.35)",1
+planetai-node,app/static/index.html,596,rgb,"rgba(244,236,226,.78)",1
+planetai-node,app/static/index.html,35,rgb,"rgba(32,56,141,.35)",1
+planetai-node,app/static/index.html,104,rgb,"rgba(63,169,245,.08)",1
+planetai-node,app/static/index.html,538,rgb,"rgba(63,169,245,.14)",1
+planetai-node,app/static/index.html,52,z-index,1,3
+planetai-node,app/static/index.html,34,z-index,0,2
+planetai-node,app/static/index.html,39,z-index,2,2
+planetai-node,app/static/index.html,33,z-index,4,1
+planetai-node,app/static/index.html,211,z-index,5,1
+planetai-node,app/static/index.html,214,z-index,8,1
+planetai-node,app/static/index.html,217,z-index,9,1
