@@ -182,6 +182,12 @@ assert "60" in _trust["coverage_low"]["sql"], "coverage_low's floor is 60% of th
 assert "50" in _trust["peer_disagreement"]["sql"], "collocation is 50 m"
 assert "0.85" in _trust["peer_disagreement"]["sql"] and "1.15" in _trust["peer_disagreement"]["sql"]
 assert "channel_roles" in _trust["peer_disagreement"]["sql"], "peer comparison is ambient-only, by role"
+# channel_dead: a naive `count(*) >= 6` over any flat hour in the last 24 fires on six *scattered* flat hours
+# (e.g. a calm night) even though the channel is moving fine right now. Pin the fix: the rule must also require
+# the most recent bucket to be among the flat ones, so it only fires on a channel frozen right now.
+assert "last_flat_bucket" in _trust["channel_dead"]["sql"], "channel_dead must track the most recent flat bucket"
+assert "f.last_bucket = f.last_flat_bucket" in _trust["channel_dead"]["sql"], \
+    "channel_dead must require the latest bucket to still be flat, not just 6 scattered flat hours"
 for _r in _trust.values():
     assert set(_r["message"]) >= {"en", "id"}, "every alert speaks English and Indonesian"
     assert "µg" not in _r["message"]["en"], "statistics stay out of alert messages"

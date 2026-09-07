@@ -36,8 +36,8 @@
     FROM frozen f JOIN alive a USING (sensor_id)
     WHERE f.flat_hours >= 6 AND f.last_bucket = f.last_flat_bucket
   message:
-    en: "🧊 One reading at {name} has stopped moving.\n\nIts {metric} has been the same number for hours while the rest of the kit keeps reporting. That usually means one sensor has failed, not the kit.\n\n👉 Power-cycle it. If the number stays frozen, the sensor needs replacing, and anything I have told you about {metric} since it froze was wrong."
-    id: "🧊 Satu bacaan di {name} berhenti bergerak.\n\nNilai {metric} sama selama berjam-jam padahal kit-nya masih melapor. Biasanya itu satu sensor yang rusak, bukan kit-nya.\n\n👉 Matikan lalu nyalakan lagi. Kalau angkanya tetap beku, sensornya harus diganti, dan semua yang saya sampaikan soal {metric} sejak itu salah."
+    en: "🧊 One reading at {name} has stopped moving.\n\nIts {metric} has been the same number for hours while the rest of the kit keeps reporting. That usually means one sensor has failed, not the kit.\n\n👉 Power-cycle it. If the number stays frozen, the sensor needs replacing, and nothing it has recorded for {metric} since it froze can be trusted."
+    id: "🧊 Satu bacaan di {name} berhenti bergerak.\n\nNilai {metric} sama selama berjam-jam padahal kit-nya masih melapor. Biasanya itu satu sensor yang rusak, bukan kit-nya.\n\n👉 Matikan lalu nyalakan lagi. Kalau angkanya tetap beku, sensornya harus diganti, dan semua yang tercatat untuk {metric} sejak ia beku tidak bisa dipercaya."
 
 # ---------------------------------------------------------------- a local sensor with holes in the week
 - id: coverage_low
@@ -80,9 +80,12 @@
     ratio AS (
       SELECT sensor_id, name, metric, mine / nullif(percentile_cont(0.5) WITHIN GROUP (ORDER BY theirs), 0) AS r
       FROM pairs GROUP BY 1, 2, 3, mine)
+    -- a sensor disagreeing on several metrics at once still gets one row per metric here; ORDER BY picks the
+    -- worst one to fire, because the cooldown below is keyed on (rule_id, sensor_id), not metric.
     SELECT sensor_id, name, metric, round(r::numeric, 2) AS r
     FROM ratio
     WHERE r < 0.85 OR r > 1.15
+    ORDER BY abs(r - 1) DESC
   message:
     en: "⚖️ Two sensors in the same place disagree at {name}.\n\nIts {metric} sits well above or below its neighbours a few metres away. They see the same air, so one of them is reading off, or it is sitting closer to something the others cannot smell.\n\n👉 Swap the two units' positions for a day. If the gap follows the box it is the sensor; if it stays with the spot it is the siting."
     id: "⚖️ Dua sensor di tempat yang sama tidak sepakat di {name}.\n\nNilai {metric}-nya jauh di atas atau di bawah tetangganya yang hanya beberapa meter. Mereka menghirup udara yang sama, jadi salah satunya membaca keliru, atau ia lebih dekat ke sesuatu yang tidak tercium yang lain.\n\n👉 Tukar posisi dua unit itu selama sehari. Kalau selisihnya ikut kotaknya, sensornya; kalau tetap di tempatnya, penempatannya."

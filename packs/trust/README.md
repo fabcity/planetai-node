@@ -7,12 +7,14 @@ our instruments, not about the place.
 - `channel_dead` — a channel that has been flat (max − min = 0 within the hour) for 6 or more of the last 24
   hourly buckets, and whose most recent bucket is flat too. Requiring the latest hour to still be flat is what
   makes this "frozen right now": a channel that sat still for six hours overnight and then moved again — a stable
-  pressure reading, say — does not match. Fires only under a kit that has reported at all in the last 2 hours,
+  PM2.5 reading, say — does not match. Fires only under a kit that has reported at all in the last 2 hours,
   because a channel on a kit that has gone fully silent is `coverage_low`'s problem, not this one's.
 - `coverage_low` — a local ambient channel that reported for under 60% of the last 7 days (under 60% of 168
   hours). A kit can be at 3% coverage and still show a reading from four minutes ago; this rule is what says so.
 - `peer_disagreement` — two local ambient sensors within 50 m of each other whose 24-hour means differ by more
-  than 15% (a ratio outside 0.85–1.15).
+  than 15% (a ratio outside 0.85–1.15). The cooldown that stops an alert repeating is keyed on the sensor, not the
+  metric, so a sensor disagreeing on several metrics at once still produces a single alert, naming the metric with
+  the largest disagreement.
 
 **Silence is defined by value change, not by a timestamp.** Smart Citizen's per-reading `recorded_at` is null on
 every kit node #1 reads, so the adapter stamps every channel with the kit's own `last_reading_at` at poll time. A
@@ -53,4 +55,7 @@ kits 31 m apart — agreed to within 4.5% (ratio 1.045), well inside the band. T
 this rule (§3 L0 of the spec) was between three kits at the same operator's other site, 1.2 km away; after Task 2
 narrowed `local` to within `LOCAL_RADIUS_M` of this node, those three kits are no longer local to node #1, so
 `peer_disagreement` is silent here until a second local unit is collocated with an existing one. Its band has not
-yet been exercised against a real disagreement — only against one pair that agreed.
+yet been exercised against a real disagreement — only against one pair that agreed. `channel_dead`'s "frozen right
+now" condition returned nothing on node #1's live data too: every channel it checked was either moving or fully
+silent. The logic reads correctly against the schema, but it has never matched a genuinely frozen channel, which
+is the one fault it exists to catch.
