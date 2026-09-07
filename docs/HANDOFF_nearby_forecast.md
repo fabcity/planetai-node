@@ -152,6 +152,25 @@ publishing; OpenAQ does neither. Going direct would lose both and gain nothing.
 with neither configured. Barcelona and Santiago need `FORECAST_BMKG=0` and `FORECAST_OPENMETEO=1` — and the
 non-commercial clause on Open-Meteo's free tier read before that is turned on for anything that earns money.
 
+## The release, and the one step that is yours
+
+It shipped as **v0.41**, not v0.40. `v0.40` was already tagged on 7 September for the trust-pack fix — but the
+site was still serving **v0.39**, so that tag had never been pushed and no tester ever received the trust fix.
+Both tags are pushed now, and v0.41's tarball carries both.
+
+Done: tag `v0.41` pushed to `main`; `tools/bundle.sh` rebuilt the tarball into `../planetai/node0/get/`; the
+tarball, `VERSION` and `SHA256` are committed and pushed in the site repo — the step that was missed last time.
+
+**Not done, because it is yours: `make deploy`.** `https://planetai.fab.city/node0/get/VERSION` still answers
+`v0.39`, and `update.sh` downloads from there, so **`planetai update` on a node still fetches v0.39 until you
+deploy.** The end-to-end update path is therefore the one thing in this work that has not been run.
+
+What was run instead: the built tarball was unpacked onto a node and started. Schema advanced to 0.23, thirteen
+packs load including both new ones, `/nearby` and `/forecast` both answer 200. Its checksum matches `SHA256`.
+
+`tools/bundle.sh` was not executable and `tools/release.sh` calls it directly, so the release stopped after
+tagging. Fixed and committed.
+
 ## AccuWeather
 
 Not added, and not because of tooling. Its developer terms forbid redistributing the data, cap caching at two
