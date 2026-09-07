@@ -23,14 +23,31 @@ UTC = dt.timezone.utc
 FIXTURE_NOW = dt.datetime(2026, 9, 7, 13, 14, 22, tzinfo=UTC)
 
 
-def _init_sql() -> str:
+def _schema() -> str:
+    """init.sql with its line comments stripped. `-- rolling stats are for sensors only;` sits inside the `stats`
+    view and ends in a semicolon, which silently truncated the view to its SELECT list."""
     sql = open(os.path.join(ROOT, "init.sql")).read()
+    return "\n".join(re.sub(r"--.*$", "", line) for line in sql.splitlines())
+
+
+def _init_sql() -> str:
+    sql = _schema()
     out = []
     for t in ("sensors", "readings", "channel_roles"):
         m = re.search(rf"CREATE TABLE IF NOT EXISTS {t} \(.*?\n\);", sql, re.S)
         out.append(m.group(0).replace("JSONB", "JSON"))
     out.append(re.search(r"CREATE VIEW readings_1h AS.*?;", sql, re.S).group(0))
     return "\n".join(out)
+
+
+def _stats_sql() -> str:
+    """The `stats` view verbatim from init.sql. It carries its own now(), so it is rebuilt per instant rather
+    than created once — a rolling view frozen at import time would answer every replayed hour identically."""
+    sql = _schema()
+    # DuckDB merges a USING column, so the view's `r.sensor_id` will not bind in its own GROUP BY. An explicit
+    # ON join is the same join; nothing else about the view is touched.
+    return (re.search(r"CREATE VIEW stats AS.*?;", sql, re.S).group(0)
+            .replace("JOIN sensors s USING (sensor_id)", "JOIN sensors s ON s.sensor_id = r.sensor_id"))
 
 
 def rules(pack: str = "trust") -> dict:
@@ -102,8 +119,16 @@ class Node:
                     "INSERT INTO channel_roles (source, metric, role, comparable, declared_by) VALUES (?,?,?,?,'core')",
                     (c["source"], c["metric"], c["role"], bool(c.get("comparable", False))))
 
-    def run(self, rule: dict, at: dt.datetime) -> list[dict]:
-        sql = rule["sql"].replace("now()", f"TIMESTAMPTZ '{at.isoformat()}'")
+    def run(self, rule: dict, at: dt.datetime, lat: float | None = None, lon: float | None = None) -> list[dict]:
+        stamp = f"TIMESTAMPTZ '{at.isoformat()}'"
+        # `stats` is a 24-hour rolling view over now(), so it has to be rebuilt at the instant being replayed.
+        self.con.execute("DROP VIEW IF EXISTS stats")
+        self.con.execute(_stats_sql().replace("now()", stamp).replace("CREATE VIEW", "CREATE VIEW"))
+        sql = rule["sql"].replace("now()", stamp)
+        if lat is not None:
+            # the node's coordinates reach a rule through Postgres session settings; DuckDB has none.
+            sql = (sql.replace("current_setting('planetai.lat')::float", str(lat))
+                      .replace("current_setting('planetai.lon')::float", str(lon)))
         cur = self.con.execute(sql)
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, row)) for row in cur.fetchall()]

@@ -97,3 +97,73 @@ near = min(sources.km(LAT, LON, stations[k]["latitude"], stations[k]["longitude"
 assert 3.7 < near < 3.9, f"the nearest neighbour was 3.81 km, got {near:.2f}"
 
 print("test_nearby: ok —", len(inc), "included,", len(latest) - len(inc), "excluded at 15 km")
+
+
+# ---------------------------------------------------------------- the three rules, over real air
+# Node #1's own readings (tests/data/node1-*.tsv) against its six real neighbours' hourly PM2.5 for the same days
+# (tests/data/ring_hourly_2026-09-07.json, straight out of the archive). Both sides measured; neither typed.
+import datetime as dt  # noqa: E402
+import sys  # noqa: E402
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import trustdb
+except ImportError:
+    print("  - ring rule replay skipped (pip install duckdb)")
+else:
+    AT = trustdb.FIXTURE_NOW
+    RULES = trustdb.rules("nearby")
+    _st = {s["station_id"]: s for s in fixture("bad_stations_2026-09-07.json")["stations"]}
+    _ring = fixture("ring_hourly_2026-09-07.json")
+    _keys = list(_ring)
+
+    def _who(keys):
+        return trustdb.sensors() + [(f"bad-{k}", "baliairdispatch", _st[k]["name"], _st[k]["latitude"],
+                                     _st[k]["longitude"], False, False, "sensor") for k in keys]
+
+    def _ringrows(keys, value=None):
+        return [(dt.datetime.fromisoformat(t.replace("Z", "+00:00")), f"bad-{k}", "pm25",
+                 float(value if value is not None else v))
+                for k in keys for t, v in _ring[k] if dt.datetime.fromisoformat(t.replace("Z", "+00:00")) <= AT]
+
+    _local = [r for r in trustdb.readings() if r[0] <= AT]
+
+    def _run(rule, rows, keys, at=AT):
+        return trustdb.Node(rows, _who(keys)).run(RULES[rule], at, -8.8271, 115.15709)
+
+    # ---- over the real week, all three are silent. A rule that fires more than about twice a week is wrong.
+    _start = min(r[0] for r in _local)
+    _hours = int((AT - _start).total_seconds() // 3600)
+    _all = _local + _ringrows(_keys)
+    _fired = {k: 0 for k in RULES}
+    for _h in range(0, _hours + 1, 6):                     # every sixth hour: 22 instants over five days
+        _at = _start + dt.timedelta(hours=_h)
+        _n = trustdb.Node([r for r in _all if r[0] <= _at], _who(_keys))   # only what the node could have known
+        for _k in RULES:
+            if _n.run(RULES[_k], _at, -8.8271, 115.15709):
+                _fired[_k] += 1
+    assert _fired == {"only_here": 0, "everywhere": 0, "alone": 0}, \
+        f"node #1's real week was clean air with six neighbours; nothing should have fired: {_fired}"
+
+    # ---- and each one still fires when the thing it exists for happens.
+    _smoke = [(ts, s, m, 40.0) if (s == "sc-19874" and m == "pm25" and ts > AT - dt.timedelta(hours=1))
+              else (ts, s, m, v) for ts, s, m, v in _local]
+    _hit = _run("only_here", _smoke + _ringrows(_keys), _keys)
+    assert _hit and _hit[0]["name"] == "BAYU NEW ENCLOSURE" and _hit[0]["stations"] == 6, _hit
+    assert float(_hit[0]["nearest"]) == 3.8, "and it names how far the nearest neighbour is"
+
+    # the ring's own spread is not a gate. On 7 September these six, in clean air with a median of 8.8, were
+    # 9.3 ug/m3 apart between p25 and p75 — 4 to 15 km apart across the Bukit is simply what the air does here.
+    # Any fixed agreement gate tight enough to mean the word would have made only_here dead. It measures against
+    # the ring's p75 instead, so a wide ring demands a bigger excursion and a tight one fires sooner.
+    assert _run("only_here", _smoke + _ringrows(_keys, 30.0), _keys) == [], \
+        "a node at 40 with the whole ring at 30 is not a local source; that is what `everywhere` is for"
+
+    assert _run("everywhere", _local + _ringrows(_keys, 45.0), _keys)[0]["stations"] == 6
+    assert _run("everywhere", _local + _ringrows(_keys), _keys) == [], "clean air is not an event"
+
+    _thin = _run("alone", _local + _ringrows(_keys[:1]), _keys[:1])
+    assert _thin and _thin[0]["stations"] == 1, "one neighbour is an anecdote, and the report has to say so"
+    assert _run("alone", _local + _ringrows(_keys), _keys) == [], "six neighbours is a ring"
+
+    print("test_nearby: the three rules stayed silent through node #1's real week, and fire when they should")

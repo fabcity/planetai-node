@@ -1,0 +1,101 @@
+# The ring: other people's stations around this node, from Bali Air Dispatch. One question, which one kit cannot
+# answer and which changes what a person does — is this me, or is this everywhere?
+#
+# None of these restates air-quality's rules. Those say the air is bad and what to do about it. These say where it
+# is coming from. They fire only when the answer would change the next ten minutes.
+#
+# THE RING IS NOT THE ADDRESS. Every rule reads `NOT local` stations, and no rule here claims anything about the
+# city. The node did not measure the city. There is no cell in this pack, deliberately — see the README.
+#
+# THRESHOLDS. Absolute floor first, ratio second, the way the trust pack was corrected on 7 September: a 60%
+# difference at 4 ug/m3 is two sensors rounding, not a finding.
+#   10 ug/m3   the floor for "worse than the ring". Twice the 5 ug/m3 the trust pack uses for two boxes on one
+#              wall, because these stations are kilometres apart in genuinely different air, on mixed hardware
+#              (Plantower, HM-3301, reference-grade), and real spatial variation has to be cleared before a local
+#              source is worth naming. Plantower's own stated accuracy below 100 ug/m3 is +/-10 ug/m3.
+#   1.6x       the ratio. Below this, siting explains it: a station on a hill and a kit behind a wall differ by
+#              half again on an ordinary afternoon here.
+#   the ring's own spread is not a separate threshold. "Well above the ring" means above the TOP of it: the node
+#              has to clear the ring's 75th percentile by the 10 ug/m3 floor, not just its middle. A fixed spread
+#              gate was tried first and was wrong — on 7 September node #1's six neighbours, in clean air with a
+#              median of 8.8, had a p25-p75 spread of 9.3 ug/m3, because they are 4 to 15 km apart across the
+#              Bukit and south Denpasar and that is simply what the air does here. Any fixed gate tight enough to
+#              mean "agreement" would have made this rule dead. Measuring against p75 instead needs no magic
+#              number: a wide ring demands a bigger excursion, a tight ring fires sooner, on its own.
+#   35.5       US EPA "unhealthy for sensitive groups". The same number air-quality uses, so the two packs do not
+#              draw a line in different places.
+#   2 stations the floor for saying anything at all. One neighbour is an anecdote.
+# Cooldowns are in days. Nothing here needs saying twice in an afternoon.
+
+# ---------------------------------------------------------------- the cause is at this address
+- id: only_here
+  level: act
+  cooldown_minutes: 2880
+  sql: |
+    WITH ring AS (
+      SELECT mean_1h AS pm,
+             sqrt(power((lat - current_setting('planetai.lat')::float) * 111320, 2)
+                + power((lon - current_setting('planetai.lon')::float) * 111320
+                        * cos(radians(current_setting('planetai.lat')::float)), 2)) / 1000 AS km
+      FROM stats
+      WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
+        AND mean_1h IS NOT NULL AND silent_minutes < 120 AND lat IS NOT NULL),
+    agreed AS (
+      SELECT count(*) AS n,
+             percentile_cont(0.5)  WITHIN GROUP (ORDER BY pm) AS med,
+             percentile_cont(0.75) WITHIN GROUP (ORDER BY pm) AS p75,
+             min(km) AS nearest_km
+      FROM ring),
+    mine AS (
+      SELECT sensor_id, name, mean_1h FROM stats
+      WHERE local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
+        AND mean_1h IS NOT NULL AND silent_minutes < 120)
+    SELECT m.sensor_id, m.name, a.n AS stations, round(a.nearest_km::numeric, 1) AS nearest
+    FROM mine m, agreed a
+    WHERE a.n >= 2
+      AND m.mean_1h - a.p75 >= 10 AND m.mean_1h > 1.6 * a.med
+  message:
+    en: "\U0001F50D The air at {name} is worse than the air around it.\n\n{stations} stations near here agree with each other and read much cleaner. The nearest is {nearest} km away. Something at this address is making this, or the sensor's box needs a look.\n\n\U0001F449 Step outside and use your nose. If something is burning, report it at bali-aq.fab.city/report. If nothing is, check the enclosure is clear, dry and out of the sun."
+    id: "\U0001F50D Udara di {name} lebih buruk daripada udara di sekitarnya.\n\n{stations} stasiun di dekat sini sepakat satu sama lain dan membaca jauh lebih bersih. Yang terdekat berjarak {nearest} km. Ada sesuatu di alamat ini yang menyebabkannya, atau kotak sensornya perlu diperiksa.\n\n\U0001F449 Keluarlah dan pakai hidung Anda. Kalau ada yang dibakar, laporkan di bali-aq.fab.city/report. Kalau tidak ada, periksa kotaknya bersih, kering dan tidak kena matahari."
+    es: "\U0001F50D El aire en {name} está peor que el aire de alrededor.\n\n{stations} estaciones cercanas coinciden entre sí y miden mucho más limpio. La más cercana está a {nearest} km. Algo en esta dirección lo está causando, o hay que revisar la caja del sensor.\n\n\U0001F449 Salga y use la nariz. Si algo se está quemando, repórtelo en bali-aq.fab.city/report. Si no, revise que la caja esté limpia, seca y fuera del sol."
+
+# ---------------------------------------------------------------- it is not you, it is the whole area
+- id: everywhere
+  level: info
+  cooldown_minutes: 2880
+  sql: |
+    WITH ring AS (
+      SELECT name, mean_1h AS pm,
+             sqrt(power((lat - current_setting('planetai.lat')::float) * 111320, 2)
+                + power((lon - current_setting('planetai.lon')::float) * 111320
+                        * cos(radians(current_setting('planetai.lat')::float)), 2)) / 1000 AS km
+      FROM stats
+      WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
+        AND mean_1h IS NOT NULL AND silent_minutes < 120 AND lat IS NOT NULL)
+    SELECT count(*) AS stations,
+           round(min(km)::numeric, 1) AS nearest,
+           (array_agg(name ORDER BY km))[1] AS closest
+    FROM ring
+    HAVING count(*) >= 2
+       AND percentile_cont(0.5) WITHIN GROUP (ORDER BY pm) > 35.5
+  message:
+    en: "\U0001F30F The bad air is across the whole area, not just here.\n\n{stations} stations around this node are reading it too. The nearest is {closest}, {nearest} km away. There is no fire nearby to find, and moving around will not get you out of it.\n\n\U0001F449 Close the house and wait. Opening windows will not help while the whole area is like this."
+    id: "\U0001F30F Udara buruk ini menyeluruh di seluruh kawasan, bukan hanya di sini.\n\n{stations} stasiun di sekitar node ini juga membacanya. Yang terdekat adalah {closest}, berjarak {nearest} km. Tidak ada api di dekat sini yang perlu dicari, dan berpindah tempat tidak akan menghindarkannya.\n\n\U0001F449 Tutup rumah dan tunggu. Membuka jendela tidak akan membantu selama seluruh kawasan seperti ini."
+    es: "\U0001F30F El aire malo cubre toda la zona, no solo aquí.\n\n{stations} estaciones alrededor de este nodo también lo están midiendo. La más cercana es {closest}, a {nearest} km. No hay ningún fuego cerca que buscar, y moverse no lo va a sacar de esto.\n\n\U0001F449 Cierre la casa y espere. Abrir las ventanas no ayudará mientras toda la zona esté así."
+
+# ---------------------------------------------------------------- this reading speaks for this address only
+# No message, never sent. It is the honesty line in the weekly report: when the ring is this thin, the node's own
+# number is the only number, and nothing here can tell a local cause from a regional one.
+- id: alone
+  contributes: report
+  sql: |
+    WITH ring AS (
+      SELECT sqrt(power((lat - current_setting('planetai.lat')::float) * 111320, 2)
+                + power((lon - current_setting('planetai.lon')::float) * 111320
+                        * cos(radians(current_setting('planetai.lat')::float)), 2)) / 1000 AS km
+      FROM stats
+      WHERE NOT local AND NOT indoor AND kind = 'sensor' AND metric = 'pm25'
+        AND mean_1h IS NOT NULL AND silent_minutes < 120 AND lat IS NOT NULL)
+    SELECT count(*) AS stations, round(min(km)::numeric, 1) AS nearest_km
+    FROM ring
+    HAVING count(*) < 2 OR min(km) > 10

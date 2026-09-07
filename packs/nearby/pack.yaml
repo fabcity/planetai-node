@@ -1,0 +1,20 @@
+id: nearby
+name: Nearby
+description: >-
+  The ring: other people's air sensors around this node, from Bali Air Dispatch. One kit cannot tell a fire in the
+  lane from a haze over the whole island. The ring can. Three rules — the cause is here, the cause is everywhere,
+  and there is no ring worth the name — plus the audit that proves this node's own kit is not in its own ring.
+author: PLANETAI core (official)
+version: 0.1.0
+requires: { node: ">=0.40.0" }
+kind: data
+domain: air
+metrics: [pm25, pm25_raw, pm10, pm1, temp, humidity]
+scales: [community]
+sources: [environmental/community/bali-air-dispatch]
+needs:
+  - baliairdispatch.com
+attribution: >-
+  Bali Air Dispatch, baliairdispatch.com, and the originating network named in each row's `source` field
+  (Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen, Airly). Readings remain subject to
+  their own networks' terms.
