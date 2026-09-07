@@ -354,3 +354,71 @@ else:
         == [("SENX ALL IN ONE", 59, 35.0)], "a seasoned sensor with 35% of the week is still worth saying"
     assert trustdb.Node(_senx).run(_trust["coverage_low"], _at) == [], "two days old is not a hole in the week"
     print("coverage_low: the same 60%, over sensors old enough for the question")
+
+
+# ---------------------------------------------------------------- v0.40  the ring, and the forecast
+import os as _os  # noqa: E402
+
+# both packs exist and are what they say they are
+_np = yaml.safe_load(open("packs/nearby/pack.yaml"))
+_fp = yaml.safe_load(open("packs/forecast/pack.yaml"))
+assert _np["kind"] == "data" and _np["scales"] == ["community"], "nearby: a data pack about this address"
+assert _fp["kind"] == "code" and _fp["scales"] == ["community"], "forecast: a code pack about this address"
+assert not _os.path.exists("packs/nearby/adapter.py"), \
+    "nearby has no adapter: the Bali Air Dispatch fetch lives in app/sources.py, and a second one would store " \
+    "every station twice — the same duplicate the pack exists to refuse, one layer up"
+
+# neither pack may grow an Index cell. `live` means measured here; the ring is other people's and a forecast is
+# nobody's measurement of this place. Environmental|City already exists in air-quality over the same stations.
+for _p in ("nearby", "forecast"):
+    assert not _os.path.exists(f"packs/{_p}/cells.yml"), f"{_p}: no cell, by design — see its README"
+
+# the forecast never speaks. Three wrong warnings reached node #1's Telegram at 21:17 on 7 September.
+_fr = yaml.safe_load(open("packs/forecast/rules.yml"))
+assert _fr and all(r.get("contributes") == "report" and "message" not in r and "level" not in r for r in _fr), \
+    "forecast: every rule contributes to the report and none of them can reach a phone"
+
+# the ring's three rules, and what each is for
+_nr = {r["id"]: r for r in yaml.safe_load(open("packs/nearby/rules.yml"))}
+assert set(_nr) == {"only_here", "everywhere", "alone"}, "nearby: three rules"
+assert _nr["only_here"]["level"] == "act" and _nr["everywhere"]["level"] == "info"
+assert _nr["alone"].get("contributes") == "report" and "message" not in _nr["alone"], \
+    "alone is the honesty line in the report, not an alert"
+for _id, _r in _nr.items():
+    # the ring is the archive, by name. `NOT local` alone counted the operator's own kits beyond LOCAL_RADIUS_M
+    # as neighbours: the node comparing itself against its own hardware.
+    assert "source = 'baliairdispatch'" in _r["sql"], f"nearby/{_id}: the ring is scoped to the archive, not to NOT local"
+    if "message" in _r:
+        assert set(_r["message"]) == {"en", "id", "es"}, f"nearby/{_id}: three languages"
+
+# the four exclusions, and the audit that proves them
+_src = open("app/sources.py").read()
+assert "def bad_verdicts(" in _src, "app/sources.py: one pure function decides the ring, so the audit cannot drift"
+for _w in ("identity", "proximity", "by hand", "same device"):
+    assert _w in _src, f"app/sources.py: the `{_w}` exclusion"
+assert "BAD_MIRROR_PREFIXES" in _src
+for _k in ("BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR"):
+    assert re.search(rf"^{_k}=", env, re.M) and f'"{_k}"' in settings, f".env.example and settings.py: {_k}"
+assert re.search(r"^BAD_RADIUS_KM=15$", env, re.M), \
+    ".env.example: 15 km, which is 6 real neighbours at node #1 against 3 at 10 km and 1 at 5"
+
+# both endpoints and all three cards
+assert "def nearby(" in main and "def forecast(" in main, "main.py: /nearby and /forecast"
+for _c in ("nearby-ring", "nearby-stations", "forecast"):
+    assert f'data-card="{_c}"' in gui, f"the dashboard: the {_c} card"
+assert "function drawRing(" in gui and "function drawForecast(" in gui
+assert re.search(r"^function drawRing\(", gui, re.M), \
+    "drawRing must be top level: defined inside drawDay's body it still parses, and check_ui.py cannot see it"
+# every card says where its numbers came from, on the card
+assert "baliairdispatch.com" in gui and "api.bmkg.go.id" in gui and "open-meteo.com" in gui, \
+    "the dashboard: both archives credited on the cards themselves"
+# a link only where the sensor has a page of its own — account kits, never a public station
+assert "s.meta&&s.meta.url" in gui, "the dashboard: account kits link to their own page; public stations never do"
+
+# the scripts each pack promises in its README
+for _p, _s in (("nearby", ("stations", "status", "verify", "backfill")),
+               ("forecast", ("fetch", "status", "verify"))):
+    for _n in _s:
+        assert _os.path.exists(f"packs/{_p}/{_n}.py"), f"packs/{_p}/{_n}.py"
+
+print("v0.40: two packs, two endpoints, three cards, four exclusions, and not one new cell")
