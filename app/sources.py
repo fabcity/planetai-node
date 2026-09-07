@@ -91,7 +91,10 @@ def stamp_local(sensors: list[dict], lat: float, lon: float, radius_m: float) ->
 SC_METRICS = {
     "PM2.5": "pm25", "PM10": "pm10", "PM1": "pm1",
     "Air Temperature": "temp", "Relative Humidity": "humidity", "Barometric Pressure": "pressure",
-    "AQI": "aqi", "Gas Resistance": "gas_resistance", "Noise Level": "noise", "Light": "light",
+    # `Bosch BME68X - AQI` is the BME680's own gas index, not an air quality index. Bali Air Dispatch's IQAir rows
+    # publish a real `aqi`; keeping both under one name made an average of two different quantities.
+    "AQI": "bme_iaq",
+    "Gas Resistance": "gas_resistance", "Noise Level": "noise", "Light": "light",
     "eCO2": "eco2", "TVOC": "tvoc",
 }
 

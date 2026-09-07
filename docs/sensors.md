@@ -22,7 +22,7 @@ correct; the rules depend on it. `kind` is `sensor`, `portal`, `model`, `map` or
 *here*. A kit on your account 1.2 km away is yours and is not this node's measurement. `LOCAL_RADIUS_M` (500 m by
 default) is the line. A sensor with no coordinates that arrives over your own gateway stays local.
 
-Metrics: `pm25 pm25_raw pm10 pm1 temp humidity pressure aqi gas_resistance noise light eco2 tvoc`. Units: µg/m³, °C, %, kPa.
+Metrics: `pm25 pm25_raw pm10 pm1 temp humidity pressure bme_iaq iaq gas_resistance noise light eco2 tvoc`. Units: µg/m³, °C, %, kPa.
 
 ## What ships
 

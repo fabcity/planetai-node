@@ -14,10 +14,14 @@ sc = {"name": "Bayu 2 - Indoor", "state": "has_published", "last_reading_at": "2
       "location": {"exposure": "indoor", "latitude": -8.8271, "longitude": 115.15709},
       "data": {"recorded_at": "2026-09-02T03:11:31Z", "sensors": [
           {"id": 234, "measurement": {"name": "PM2.5"}, "value": 7.0}, {"id": 237, "measurement": {"name": "Air Temperature"}, "value": 30.4},
-          {"id": 238, "measurement": {"name": "Relative Humidity"}, "value": 63.5}, {"id": 999, "measurement": {"name": "Unknown"}, "value": 1}]}}
+          {"id": 238, "measurement": {"name": "Relative Humidity"}, "value": 63.5}, {"id": 241, "measurement": {"name": "AQI"}, "value": 55},
+          {"id": 999, "measurement": {"name": "Unknown"}, "value": 1}]}}
 s, r = sources.smartcitizen(HC(sc), [19880])
 assert s[0]["sensor_id"] == "sc-19880" and s[0]["indoor"] and s[0]["local"]
-assert {m for _, _, m, _ in r} == {"pm25", "temp", "humidity"}
+# the Smart Citizen "AQI" channel is `Bosch BME68X - AQI`, the BME680's own gas index, not an air quality index.
+# Stored as `aqi` it sat in the same column as IQAir's real AQI from Bali Air Dispatch.
+assert {m for _, _, m, _ in r} == {"pm25", "temp", "humidity", "bme_iaq"}
+assert "aqi" not in {m for _, _, m, _ in r}, "our kits must not publish a metric named aqi"
 
 bad = {"readings": [
     {"station_id": "pa-46949", "name": "Klungkung", "source": "PurpleAir", "latitude": -8.533623, "longitude": 115.39973, "observed_at": "2026-08-01T20:15:11.000Z", "stale": False, "pm25": 36.6, "pm25_raw": 47.8},
