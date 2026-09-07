@@ -162,3 +162,13 @@ _heat = {r["id"]: r for r in yaml.safe_load(open("packs/heat/rules.yml"))}
 for _rule in ("heat_stress_now", "heat_danger"):
     assert "t.local AND t.indoor AND t.metric = 'temp'" in _heat[_rule]["sql"], \
         f"{_rule}: apparent temperature indoors only, and its threshold was measured indoors"
+
+# The channel role registry is replaced on every start. Under an autocommit connection a bare DELETE commits on
+# its own, so a reader during a restart sees an empty table — and a trust rule joining an empty registry returns
+# nothing, which reads as "no problems found" instead of "the registry was reloading".
+_main_ch = open("app/main.py").read()
+_load = _main_ch[_main_ch.index("def load_channel_roles"):]
+_load = _load[:_load.index("\ndef ")]
+assert "with con.transaction():" in _load, \
+    "the delete and reinsert of channel_roles must be one transaction, not two autocommitted statements"
+assert "DELETE FROM channel_roles" in _load

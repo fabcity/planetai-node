@@ -501,11 +501,14 @@ def load_channel_roles() -> int:
     claims go with it."""
     rows = packs.channels()
     with db() as con, con.cursor() as cur:
-        cur.execute("DELETE FROM channel_roles")
-        cur.executemany(
-            """INSERT INTO channel_roles (source, metric, role, comparable, unit, reference, declared_by)
-               VALUES (%(source)s,%(metric)s,%(role)s,%(comparable)s,%(unit)s,%(reference)s,%(declared_by)s)""",
-            rows)
+        # db() is autocommit, so the delete and the reinsert must share one explicit transaction block —
+        # otherwise the DELETE commits alone and a concurrent reader can see an empty table mid-restart.
+        with con.transaction():
+            cur.execute("DELETE FROM channel_roles")
+            cur.executemany(
+                """INSERT INTO channel_roles (source, metric, role, comparable, unit, reference, declared_by)
+                   VALUES (%(source)s,%(metric)s,%(role)s,%(comparable)s,%(unit)s,%(reference)s,%(declared_by)s)""",
+                rows)
     log.info("channel roles: %d declared", len(rows))
     return len(rows)
 

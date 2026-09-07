@@ -93,6 +93,9 @@ INSERT INTO schema_version (version) VALUES ('0.14') ON CONFLICT DO NOTHING;
 -- metric names: `temp` from a kit is ambient, `temp` from a gateway's BME680 inside its own box is not, and
 -- `bme_iaq` is a vendor index that must never be pooled. Keyed on the source because the role belongs to the
 -- instrument, not to the word. Written at startup from config/channels.yml and every pack's channels.yml.
+-- The key is per source and metric, not per device: every sensor from one adapter shares its role, so a node
+-- whose hardware differs from that adapter's usual shape (e.g. a Meshtastic pod wired to an external probe)
+-- cannot declare its own.
 CREATE TABLE IF NOT EXISTS channel_roles (
   source      TEXT NOT NULL,
   metric      TEXT NOT NULL,
