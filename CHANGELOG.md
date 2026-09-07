@@ -1,5 +1,81 @@
 # Changelog
 
+## v0.41 — 2026-09-08 — is this me, or is this everywhere
+
+**For testers: two new packs, both quiet until you configure them, and neither one claims to know your city.**
+`nearby` answers the only question that changes what you do when the air is bad — is it *your* address or is it
+everywhere. `forecast` says where the wind is coming from and when rain is expected, and never sends anything at
+all. Update with `./update.sh` as usual. This build also carries v0.40's trust-pack fix, which was tagged on
+7 September but never reached the download.
+
+### `nearby` — the ring of sensors around you
+
+One kit cannot tell a fire in the lane from a haze over the island. Other people's sensors can. The pack reads
+the public stations around this node from Bali Air Dispatch — which the node has fetched since v0.11 — and adds
+three rules:
+
+- **`only_here`** (act) when your address is well above a ring that is not. Go outside and use your nose; if
+  something is burning, report it. It also says the enclosure might need a look, because that is the other cause.
+- **`everywhere`** (info) when the ring reads it too. There is no fire nearby to find, and moving will not help.
+- **`alone`** — no message, never sent. It is the line in your report that says this reading speaks for this
+  address and nothing else, because fewer than two neighbours are reporting.
+
+Two cards: where you sit inside the range your neighbours are reading, and who those neighbours are with their
+distances. **Bali only for now**, because the archive is. Outside Bali the pack sits idle and says so.
+
+**Your own kit is not in your own ring.** The archive republishes Smart Citizen devices, and this node polls Smart
+Citizen directly, so the same box could arrive twice and every comparison would be the node arguing with itself.
+Four rules stop it: devices this node already polls, anything within 150 m of the node, `BAD_EXCLUDE` by hand, and
+one device arriving under two networks' ids. **`planetai run nearby stations`** prints every station in the
+archive with its distance and the reason it is in or out. Read it once.
+
+**The ring is thin here, and the pack says so rather than implying coverage it does not have.** At node #1, after
+exclusions: one neighbour within 5 km, three within 10, six within 15. `BAD_RADIUS_KM` now defaults to 15.
+
+**No Index cell**, deliberately. `live` means measured here, and the ring is measured by other people through a
+third-party aggregation.
+
+### `forecast` — what is arriving, and when
+
+Wind, rain, temperature, humidity and cloud for the next day, from **BMKG** where the node is in Indonesia and
+**Open-Meteo** anywhere. It fetches; it does not predict.
+
+**It cannot send you anything.** One rule, no message, no level, no cell — it gives your daily report one line and
+stops. After 7 September we are not shipping a pack that can start talking about tomorrow.
+
+Set `FORECAST_BMKG_ADM4` to your point's village code and run **`planetai run forecast verify`**: it prints which
+province, regency, district and village that code actually is, and how far it is from your node. Node #1 is
+`51.03.05.2002` — Ungasan, Kuta Selatan — 194 m away. Open-Meteo is **off by default**: its free tier is
+non-commercial only, and that is your call, not ours. With both on, the node records how far apart they disagree
+and tells you, because neither of them is the truth.
+
+Every value is stored with how far ahead of its own forecast it is, so a forecast that has quietly stopped
+refreshing can be told from one that is right.
+
+### new settings
+
+```
+BAD_RADIUS_KM=15            # was 8
+BAD_MIN_SEPARATION_M=150    # closer than this to the node and a station is assumed to be your own hardware
+BAD_EXCLUDE=                # station ids that are yours and the other rules missed
+BAD_INCLUDE_INDOOR=0        # stations the archive suspects are indoors are dropped
+LOCAL_RADIUS_M=500          # was read by the code and documented nowhere
+FORECAST_BMKG=1
+FORECAST_BMKG_ADM4=
+FORECAST_OPENMETEO=0
+FORECAST_POLL_HOURS=6
+```
+
+### fixed while we were in here
+
+- Stations the archive suspects are **indoors or malfunctioning** are no longer stored as outdoor references.
+- **One device, one row.** The archive does not dedupe OpenAQ against AirGradient: 23 of its 87 stations arrive
+  twice under two networks' ids at identical coordinates, which weighted half the ring double.
+- The ring was scoped by "not local", which counted **your own kits beyond `LOCAL_RADIUS_M`** as neighbours.
+- Three gates were wrong and could not have caught any of it: two extracted a database view by matching to the
+  first semicolon, and a semicolon inside a comment truncated it; and the channel-role check read only the core's
+  sources, so a pack could never declare its own channels even though the docs tell it to.
+
 ## v0.40 — 2026-09-07 — the trust pack needs a week of data before it says anything
 
 **For testers: the trust pack now speaks in the report, not in the alert stream.** At 21:17 tonight it sent node
