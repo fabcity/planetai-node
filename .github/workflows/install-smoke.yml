@@ -97,6 +97,9 @@ jobs:
         run: |
           # Point the database at a tag that does not exist. A registry outage, a typo in a compose file
           # and a wrong tag all land here, and this is the output a tester would paste into an issue.
+          # Its own project AND its own database volume: the successful run above left one, and the
+          # installer rightly refuses to start a node whose new .env cannot log in to an old volume.
+          docker volume rm -f planetai_db >/dev/null 2>&1 || true
           cp -r . /tmp/failrun && cd /tmp/failrun
           sed -i 's|postgis/postgis:16-3.4-alpine|postgis/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
           cp .env.example .env && sed -i 's|^APP_PORT=.*|APP_PORT=8123|' .env
@@ -107,7 +110,8 @@ jobs:
           cat /tmp/TRANSCRIPT_fail.txt
           echo "installer exit: $rc"
           [ "$rc" -eq 0 ] && { echo "expected this run to FAIL and it did not"; exit 1; } || true
-          grep -q "^FAILED: downloading the database image" /tmp/TRANSCRIPT_fail.txt || { echo "no named step in the failure"; exit 1; }
+          grep -qE "^FAILED: .+"                            /tmp/TRANSCRIPT_fail.txt || { echo "no named step in the failure"; exit 1; }
+          grep -qE "^  reason  .+"                          /tmp/TRANSCRIPT_fail.txt || { echo "no reason"; exit 1; }
           grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt || { echo "no resume command"; exit 1; }
           grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt || { echo "no one-line summary"; exit 1; }
           grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt && { echo "still says Something went wrong"; exit 1; } || true

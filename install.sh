@@ -18,6 +18,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 # No cursor tricks, no spinner, no colour dependence, nothing wider than 80 columns: this has to read the
 # same in a terminal, in a pipe, and in a log a tester pastes into an issue.
 LOG_FILE="${PLANETAI_INSTALL_LOG:-$PWD/.planetai-install.log}"
+STEP_T0=$SECONDS
 STEP_N=0; STEP_TOTAL=0; STEP_NAME=""; RUN_T0=$SECONDS
 : > "$LOG_FILE"
 
@@ -63,7 +64,24 @@ watch_run() {         # watch_run "why it failed" cmd...  — run it, heartbeat 
 
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
-die()  { printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
+# Every exit goes through the reporter. `die` predates it and there are a dozen calls: the old-database
+# guard, the missing coordinates, the port clash. Each one used to print a bare xx line with no step
+# name, no elapsed time and no way back — the shape the tester met on 7 September. Now they all carry
+# their step, and the summary line is printed once whichever path exits.
+die()  {
+  printf '\033[1;31mxx\033[0m %s\n' "$*" >&2
+  if [[ -n "${STEP_NAME:-}" ]]; then
+    printf '\nFAILED: %s\n' "$STEP_NAME" >&2
+    printf '  after   %ds\n' $((SECONDS-STEP_T0)) >&2
+    printf '  reason  %s\n' "$*" >&2
+    printf '  log     %s\n' "${LOG_FILE:-none yet}" >&2
+    printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n' >&2
+    printf '\ninstall FAILED at step %d/%d "%s" after %ds\n' "${STEP_N:-0}" "${STEP_TOTAL:-0}" "$STEP_NAME" $((SECONDS-RUN_T0)) >&2
+  else
+    printf '\ninstall FAILED before the first step: %s\n' "$*" >&2
+  fi
+  exit 1
+}
 need() { command -v "$1" >/dev/null 2>&1; }
 
 ARGS=("$@")                 # kept whole: the docker-group re-exec below needs them after the loop has shifted them away
