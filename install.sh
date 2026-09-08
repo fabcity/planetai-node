@@ -168,7 +168,8 @@ docker compose version >/dev/null 2>&1 || die "docker compose plugin missing"
 # long they take will wait; one who sees a single line for four minutes will not.
 STEP_TOTAL=6
 printf '\n%s\n' "Installing a node. Six steps, two to six minutes on a first run — most of it downloads."
-printf '%s\n\n' "Progress below; the full log is $LOG_FILE"
+printf '%s\n' "Progress below. Full log:"
+printf '%s\n\n' "  $LOG_FILE"
 
 # ---- .env
 step "writing settings to .env"
@@ -299,8 +300,9 @@ if grep -q '^BOOTSTRAP=1' .env; then
   echo "   watch it:  docker compose logs -f app | grep bootstrap"
 fi
 # One line, pasteable without editing, success or failure.
-printf '\ninstall OK — %d steps in %ds, node %s at %s, log %s\n' \
-  "$STEP_TOTAL" $((SECONDS-RUN_T0)) "$(grep '^NODE_NAME=' .env | cut -d= -f2)" "localhost:${PORT}" "$LOG_FILE"
+NAME_NOW="$(grep '^NODE_NAME=' .env | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"
+printf '\ninstall OK — %s, %d steps in %ds, on localhost:%s\n' "${NAME_NOW:-this node}" "$STEP_TOTAL" $((SECONDS-RUN_T0)) "$PORT"
+printf 'log: %s\n' "$LOG_FILE"
 say "First reading lands within $(grep '^POLL_SECONDS' .env | cut -d= -f2 || echo 300)s."
 echo "   make health     (or: curl -s localhost:${PORT}/health | python3 -m json.tool)"
 echo "   make stats"

@@ -122,59 +122,59 @@ strings:
     en: "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
   - key: install:145
     en: "there is no container runtime on this machine, and the node is two containers. Installing Docker."
-  - key: install:174
+  - key: install:175
     en: "writing settings to .env"
-  - key: install:180
-    en: "no preset ' '. Available"
   - key: install:181
+    en: "no preset ' '. Available"
+  - key: install:182
     en: "applying preset"
-  - key: install:194
+  - key: install:195
     en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
-  - key: install:196
-    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
   - key: install:197
-    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
+    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
   - key: install:198
+    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
+  - key: install:199
     en: "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
-  - key: install:213
-    en: "a database from an earlier node is still on this machine ( :-Docker volume planetai_db}), and this is a new .env,"
   - key: install:214
-    en: "so its password cannot match. Two ways out"
+    en: "a database from an earlier node is still on this machine ( :-Docker volume planetai_db}), and this is a new .env,"
   - key: install:215
+    en: "so its password cannot match. Two ways out"
+  - key: install:216
     en: "keep that data: put the earlier .env back in this folder, then run this again"
-  - key: install:217
+  - key: install:218
     en: "not starting a node whose app cannot log in to its database"
-  - key: install:227
-    en: "port is already in use on this machine"
   - key: install:228
+    en: "port is already in use on this machine"
+  - key: install:229
     en: "set APP_PORT=8081 (or any free port) in .env and re-run"
-  - key: install:232
+  - key: install:233
     en: "creating the folders the containers write to"
-  - key: install:242
+  - key: install:243
     en: "downloading the database image (about 162 MB)"
-  - key: install:249
+  - key: install:250
     en: "building this node's own image and starting both containers"
-  - key: install:255
+  - key: install:256
     en: "waiting for the database, then applying the schema"
-  - key: install:258
+  - key: install:259
     en: "s waiting for the database to accept connections"
-  - key: install:263
+  - key: install:264
     en: "the schema was already there (a fresh volume applies it itself)"
-  - key: install:265
+  - key: install:266
     en: "the database did not answer in 60s — the checks below will say so"
-  - key: install:270
+  - key: install:271
     en: "checking what is running"
-  - key: install:280
+  - key: install:281
     en: "✓ backup.sh made executable"
-  - key: install:287
+  - key: install:288
     en: "nightly backup scheduled (03:17)"
-  - key: install:292
-    en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
   - key: install:293
+    en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
+  - key: install:294
     en: "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
-  - key: install:298
+  - key: install:299
     en: "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
-  - key: install:302
-    en: "install OK — steps in s, node at , log"
   - key: install:304
+    en: "install OK — , steps in s, on localhost"
+  - key: install:306
     en: "First reading lands within s."
