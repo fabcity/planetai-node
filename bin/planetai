@@ -94,8 +94,15 @@ choose() { # choose VAR "prompt" opt1 opt2 ...
   local v="$1" p="$2"; shift 2; local i=1 a
   printf '%s%s%s\n' "$B" "$p" "$N"
   for o in "$@"; do printf '  %s%d%s  %s\n' "$D" "$i" "$N" "$o"; i=$((i+1)); done
-  printf '  %s>%s ' "$B" "$N"; read -r a </dev/tty || true
-  a="${a:-1}"; [[ "$a" =~ ^[0-9]+$ ]] && [[ "$a" -ge 1 && "$a" -le $# ]] || a=1
+  # A typo used to mean option 1, silently. A tester in Menorca was given five places called Mahon, none
+  # of them his, and the answer he gave put the node in Senegal with no way back. Show what Enter does,
+  # and ask again for anything that is not one of the numbers on screen.
+  while :; do
+    printf '  %s>%s %s[1]%s ' "$B" "$N" "$D" "$N"; a=""; read -r a </dev/tty || true
+    a="${a:-1}"
+    [[ "$a" =~ ^[0-9]+$ ]] && [[ "$a" -ge 1 && "$a" -le $# ]] && break
+    warn "pick a number between 1 and $#."
+  done
   eval "printf -v $v '%s' \"\${$a}\""
 }
 envget() { { grep -E "^$1=" .env 2>/dev/null || true; } | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '"'"'"' '; }
@@ -275,13 +282,23 @@ PY
     local n; n=$(echo "$hits" | wc -l | tr -d ' ')
     if [[ "$n" -gt 1 ]]; then
       local opts=(); while IFS='|' read -r la lo nm ad c t ci; do opts+=("$nm, $ad, $c  ($t)"); done <<<"$hits"
-      choose pick "   Which one?" "${opts[@]}"
+      # The way out. Without it a list with none of your places in it is a dead end, and the tester in
+      # Menorca killed the terminal to escape one — losing the answers he had already given.
+      local NONE="None of these — let me type the place differently"
+      choose pick "   Which one?" "${opts[@]}" "$NONE"
+      if [[ "$pick" == "$NONE" ]]; then
+        echo "   Try the local spelling, a nearby town, or paste 'lat,lon' — e.g. 39.89,4.27"
+        continue
+      fi
       local idx=1; for o in "${opts[@]}"; do [[ "$o" == "$pick" ]] && break; idx=$((idx+1)); done
       hits="$(echo "$hits" | sed -n "${idx}p")"
     fi
     local ci; IFS='|' read -r lat lon nm ad cc tz ci <<<"$hits"
     city="$(echo "${ci:-$nm}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/-*$//')"
     say "$nm, $ad, $cc  →  $lat, $lon  ·  $tz"
+    # A single hit used to be taken without asking. "Menorca" returned exactly one — Menorca Airport,
+    # 15 km from the tester who typed it — and the node was placed there silently.
+    confirm "   Is that the right place?" || { echo "   Type it differently: the local spelling, a nearby town, or 'lat,lon'."; continue; }
     break
   done
   # pilot keys join existing Index rows; anything else stays as its own place
