@@ -74,7 +74,7 @@ fi
 
 case "$ARCH" in
   x86_64) row arch "x86_64" 1;;
-  arm64)  if [[ "$PLATFORM" == macos ]]; then row arch "arm64 · amd64 images emulated" 1
+  arm64)  if [[ "$PLATFORM" == macos ]]; then row arch "arm64 (amd64 images emulated)" 1
           else row arch "arm64" 0 "the node's database image (postgis/postgis:16-3.4-alpine) is published for linux/amd64 only. Not a Raspberry Pi yet: docs/PLATFORMS.md"; fi;;
   *)      row arch "$ARCH" 0 "unsupported architecture; a 64-bit x86 or Apple Silicon machine is needed";;
 esac

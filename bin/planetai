@@ -233,6 +233,26 @@ PY
       *)            docker compose up -d >>"$LOG" 2>&1; cmd_doctor; return;;
     esac
   fi
+  # Four questions need somewhere to ask them. With no controlling terminal — a CI job, a provisioning
+  # script, `ssh host "curl ... | bash"` — `read </dev/tty` fails, the place loop takes the empty answer,
+  # `continue`s, and asks again forever. It printed "Place" until someone killed it. Say the headless way
+  # instead. (`curl | bash` in a real terminal is fine: stdin is the pipe, /dev/tty is still the terminal.)
+  if ! ( : </dev/tty ) 2>/dev/null; then
+    warn "there is no terminal here to ask you four questions."
+    echo
+    echo "  Install without one, with the answers in a file:"
+    echo
+    echo '    cat > node.json <<'"'"'JSON'"'"
+    echo '    {"name": "my-node", "place": "Palma de Mallorca", "kind": "home", "sensor": {}}'
+    echo "    JSON"
+    echo "    planetai setup --answers node.json"
+    echo
+    echo "  place can be a town or a neighbourhood; use \"lat\" and \"lon\" instead if you know them."
+    echo "  kind is home, business, community or district. sensor may be {} , or one of:"
+    echo '    {"sc": "19880"}   {"sc_user": "you"}   {"airgradient": "host"}   {"purpleair": "ip"}'
+    return 1
+  fi
+
   step "Let's set up a node."
   echo "  Four questions. Everything else is detected or defaulted, and you can change it later in .env."
   echo
