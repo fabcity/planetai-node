@@ -34,8 +34,13 @@ echo
 # anything. It writes nothing, installs nothing and runs no sudo.
 #   0  go   ·   1  something the tester can fix, each with its line   ·   2  this machine is below the floor
 if [[ "${PLANETAI_PREFLIGHT:-1}" == 1 ]]; then
-  if [[ -r "$(dirname "${BASH_SOURCE[0]}")/tools/preflight.sh" ]]; then
-    pf=0; bash "$(dirname "${BASH_SOURCE[0]}")/tools/preflight.sh" || pf=$?   # `; pf=$?` would abort under set -e
+  # BASH_SOURCE is UNSET when this script arrives on stdin, which is how everybody runs it: `curl | bash`.
+  # Reading it bare under `set -u` aborted right after the logo — the whole install, for every tester, and
+  # it took CI running the real pipe to see it. Unset means "no file here": look next to the script when
+  # there is one, and fetch otherwise.
+  pf_dir="$(dirname "${BASH_SOURCE[0]:-.}")"
+  if [[ -r "$pf_dir/tools/preflight.sh" ]]; then
+    pf=0; bash "$pf_dir/tools/preflight.sh" || pf=$?   # `; pf=$?` would abort under set -e
   else
     pf_src="$(curl -fsSL "${REPO/github.com/raw.githubusercontent.com}/${REF}/tools/preflight.sh")" \
       || die "could not reach the network to check this machine. Are you online?"

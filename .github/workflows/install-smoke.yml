@@ -47,6 +47,7 @@ jobs:
         env:
           PLANETAI_SITE: http://127.0.0.1:8099
           PLANETAI_HOME: /home/runner/planetai
+          PLANETAI_REF: ${{ github.sha }}     # so the raw fallback resolves too, not only the local copy
         run: |
           cat > /tmp/node.json <<'JSON'
           {"name": "ci-node", "lat": 39.57, "lon": 2.65, "kind": "home", "sensor": {}}
@@ -71,6 +72,7 @@ jobs:
         env:
           PLANETAI_SITE: http://127.0.0.1:8099
           PLANETAI_HOME: /home/runner/planetai
+          PLANETAI_REF: ${{ github.sha }}     # so the raw fallback resolves too, not only the local copy
         run: |
           PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
           [ -s /tmp/forbidden ] && { cat /tmp/forbidden; exit 1; } || true
