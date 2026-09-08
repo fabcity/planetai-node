@@ -239,7 +239,7 @@ PY
     if confirm "Continue with these?"; then
       step "Installing"
       chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-      spin "writing settings, pulling images, building the node" ./install.sh --yes || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+      PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
       finish_setup; return
     fi
     say "starting the questions again."
@@ -379,7 +379,10 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
   [[ $indoor -eq 1 ]] && flags+=(--indoor); [[ $bad -eq 0 ]] && flags+=(--no-bad)
   chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-  spin "writing settings, pulling images, building the node" ./install.sh "${flags[@]}" || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+  # NOT wrapped in spin(): install.sh prints named steps with elapsed time, and hiding them behind one
+  # spinner line is precisely what left a tester watching "building the node" for four minutes and then
+  # reading "Something went wrong."
+  PLANETAI_INSTALL_LOG="$LOG" ./install.sh "${flags[@]}" || exit 1
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ "$kind" == district ]] && envset NODE_SCALE city
   # on a Linux box that had no Docker a minute ago, install.sh ran under the new docker group (sg) but this shell
