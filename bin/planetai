@@ -145,11 +145,12 @@ geocode() { # prints lines: lat|lon|name|admin|country_code|timezone
     fi
   fi
   q="$(urlenc "$raw")"
-  local om; om="$(curl -sf "https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=en&format=json" | python3 -c '
-import sys, json
-for x in (json.load(sys.stdin).get("results") or [])[:5]:
-    print("|".join(str(x.get(k, "")) for k in ("latitude","longitude","name","admin1","country_code","timezone")) + "|" + str(x.get("name","")))' 2>/dev/null || true)"
-  if [[ -n "$om" ]]; then echo "$om"; return; fi
+  # BOTH geocoders, every time, with OpenStreetMap's first. Open-Meteo used to be asked alone and its
+  # answer returned whenever it had one — which is the failure a tester in Menorca hit: "Mahon" gave five
+  # places called Mahon in Senegal, Burkina Faso and the American Midwest, and not the town he lives in.
+  # Nominatim answers "Mahon" with Maó, Menorca, first hit; it answers "Menorca" with the island where
+  # Open-Meteo answers with the airport, 15 km from him. It knows local and alternate names, so it leads.
+  # Two requests at setup, once. Nominatim's policy is one per second and a real User-Agent: we make one.
   local nm; nm="$(curl -sf -A "planetai-node setup (+https://planetai.fab.city)"       "https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3&addressdetails=1" | python3 -c '
 import sys, json
 for x in json.load(sys.stdin)[:3]:
@@ -158,11 +159,26 @@ for x in json.load(sys.stdin)[:3]:
     city = a.get("city") or a.get("town") or a.get("municipality") or a.get("county") or a.get("state") or name
     admin = a.get("state") or a.get("county") or ""
     print("|".join([x["lat"], x["lon"], name, admin, (a.get("country_code") or "").upper(), "", city]))' 2>/dev/null || true)"
-  [[ -z "$nm" ]] && return 0
-  # one line per place: Nominatim returns a suburb several times over (three "Sant Martí, Catalunya, ES" for Poblenou),
-  # so drop repeats by coordinates and again by the label the wizard would show
-  nm="$(echo "$nm" | awk -F'|' '{k=sprintf("%.3f|%.3f",$1,$2); if(!seen[k]++) print}' | awk -F'|' '{k=$3"|"$4"|"$5; if(!seen[k]++) print}')"
-  while IFS='|' read -r la lo n ad c _ ci; do echo "$la|$lo|$n|$ad|$c|$(tz_for "$la" "$lo")|$ci"; done <<<"$nm"
+  local om; om="$(curl -sf "https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=en&format=json" | python3 -c '
+import sys, json
+for x in (json.load(sys.stdin).get("results") or [])[:5]:
+    print("|".join(str(x.get(k, "")) for k in ("latitude","longitude","name","admin1","country_code","timezone")) + "|" + str(x.get("name","")))' 2>/dev/null || true)"
+  # Nominatim carries no time zone, so fill it in per hit. Open-Meteo already has one.
+  local filled=""
+  if [[ -n "$nm" ]]; then
+    while IFS='|' read -r la lo n ad c _ ci; do
+      [[ -z "$la" ]] && continue
+      filled+="$la|$lo|$n|$ad|$c|$(tz_for "$la" "$lo")|$ci"$'\n'
+    done <<<"$nm"
+  fi
+  # one line per place: Nominatim returns a suburb several times over (three "Sant Martí, Catalunya, ES"
+  # for Poblenou), and the two sources overlap on anything either of them knows well. Drop repeats by
+  # coordinates, then again by the label the wizard would show, keeping the first — so OpenStreetMap wins.
+  printf '%s%s' "$filled" "${om:+$om$'\n'}" \
+    | grep -v '^$' \
+    | awk -F'|' '{k=sprintf("%.2f|%.2f",$1,$2); if(!seen[k]++) print}' \
+    | awk -F'|' '{k=tolower($3"|"$5); if(!seen[k]++) print}' \
+    | head -6
 }
 
 # ---------------------------------------------------------------- setup
