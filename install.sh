@@ -55,7 +55,7 @@ watch_run() {         # watch_run "why it failed" cmd...  — run it, heartbeat 
     sleep 2
     if (( SECONDS - last >= 10 )); then
       last=$SECONDS; h="$(hb_line || true)"
-      printf '        %4ds  %s\n' $((SECONDS-STEP_T0)) "${h:-working}"
+      printf '        %4ds  %s\n' $((SECONDS-STEP_T0)) "${h:-still working — the tool has printed nothing new yet}"
     fi
   done
   wait "$pid" || step_fail "$why"

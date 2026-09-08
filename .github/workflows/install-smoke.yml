@@ -54,8 +54,15 @@ jobs:
           JSON
           # `cat install | bash -s --` is what the pipe does. </dev/null and no tty: a question here hangs,
           # and the timeout turns a hang into a red job instead of a twenty-minute wait.
-          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
-          echo "installer exit: $?"
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null \
+            2>&1 | tee /tmp/TRANSCRIPT_ok.txt
+          echo "installer exit: ${PIPESTATUS[0]}"
+          # The feedback contract, asserted rather than admired: named steps, elapsed times, a summary.
+          grep -q "^\[1/6\] "            /tmp/TRANSCRIPT_ok.txt || { echo "no numbered steps"; exit 1; }
+          grep -q "^\[6/6\] "            /tmp/TRANSCRIPT_ok.txt || { echo "never reached the last step"; exit 1; }
+          grep -q "done in "               /tmp/TRANSCRIPT_ok.txt || { echo "no elapsed time on a step"; exit 1; }
+          grep -q "^install OK — "         /tmp/TRANSCRIPT_ok.txt || { echo "no one-line summary"; exit 1; }
+          awk 'length > 100 { n++ } END { exit (n > 2) }' /tmp/TRANSCRIPT_ok.txt || { echo "more than two lines over 100 columns"; exit 1; }
 
       - name: no sudo, no brew
         run: |
@@ -77,6 +84,40 @@ jobs:
           PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
           [ -s /tmp/forbidden ] && { cat /tmp/forbidden; exit 1; } || true
           cd /home/runner/planetai && make health
+
+      - name: a deliberately failed run — the step name, the reason, the resume command
+        env:
+          PLANETAI_SITE: http://127.0.0.1:8099
+          PLANETAI_HOME: /home/runner/planetai-fail
+          PLANETAI_REF: ${{ github.sha }}
+        run: |
+          # Point the database at a tag that does not exist. A registry outage, a typo in a compose file
+          # and a wrong tag all land here, and this is the output a tester would paste into an issue.
+          cp -r . /tmp/failrun && cd /tmp/failrun
+          sed -i 's|postgis/postgis:16-3.4-alpine|postgis/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
+          cp .env.example .env && sed -i 's|^APP_PORT=.*|APP_PORT=8123|' .env
+          set +e
+          COMPOSE_PROJECT_NAME=planetai_fail timeout 600 ./install.sh --name ci-fail --lat 39.57 --lon 2.65 --no-bad \
+            > /tmp/TRANSCRIPT_fail.txt 2>&1
+          rc=$?; set -e
+          cat /tmp/TRANSCRIPT_fail.txt
+          echo "installer exit: $rc"
+          [ "$rc" -eq 0 ] && { echo "expected this run to FAIL and it did not"; exit 1; } || true
+          grep -q "^FAILED: downloading the database image" /tmp/TRANSCRIPT_fail.txt || { echo "no named step in the failure"; exit 1; }
+          grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt || { echo "no resume command"; exit 1; }
+          grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt || { echo "no one-line summary"; exit 1; }
+          grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt && { echo "still says Something went wrong"; exit 1; } || true
+          echo "the failure names its step, its reason, its log and the way back"
+
+      - name: keep both transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-transcripts
+          path: |
+            /tmp/TRANSCRIPT_ok.txt
+            /tmp/TRANSCRIPT_fail.txt
+          if-no-files-found: warn
 
       - name: what a tester would paste into an issue
         if: always()
