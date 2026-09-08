@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # planetai — the one command an operator needs. Installed to ~/.local/bin by the bootstrap.
 #
+#   planetai preflight      can this machine run a node? checks only; changes nothing (--json)
 #   planetai setup          ask four things, install, start
 #   planetai status         is it alive, what has it read
 #   planetai doctor         checks, with the fix named for each failure
@@ -193,6 +194,16 @@ PY
     say "installed. planetai status --json for the state; planetai ui for the token."
     return
   fi
+  # Every environment check happens here, before question 1. A tester who answers four questions and only then
+  # hears that this machine cannot run a node has spent his evening for nothing — which is what happened on
+  # 7 September 2026, twice, because platform detection lived inside install.sh.
+  #   0  go   ·   1  something the tester can fix, each with its line   ·   2  this machine is below the floor
+  if [[ "${PLANETAI_PREFLIGHT_OK:-0}" != 1 ]]; then
+    local pf=0; bash tools/preflight.sh || pf=$?     # `; pf=$?` would abort under set -e before it is read
+    [[ $pf -eq 2 ]] && exit 0            # a verdict, not a crash: nothing here says "something went wrong"
+    [[ $pf -eq 0 ]] || exit 1
+  fi
+
   # a node is "installed" when its containers exist. A .env with a name but no containers is an install that did
   # not finish (Docker not reachable at the time, the image failed to build): ask the questions again.
   if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]] && docker info >/dev/null 2>&1 && [[ -z "$(docker compose ps -aq 2>/dev/null)" ]]; then
@@ -1014,6 +1025,7 @@ cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api
 cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
+  preflight) shift; exec bash tools/preflight.sh "$@";;
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   report) shift; cmd_report "$@";;
