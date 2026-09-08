@@ -81,13 +81,17 @@ esac
 
 # ---------------------------------------------------------------- memory
 MEMB=0
-if [[ "$PLATFORM" == macos ]]; then MEMB="$(sysctl -n hw.memsize 2>/dev/null || echo 0)"
+if [[ "$PLATFORM" == macos ]]; then
+  # /usr/sbin is not on every PATH, and a check that cannot measure must not report 0 GB and fail —
+  # that is the same lie this whole script exists to stop telling.
+  MEMB="$(sysctl -n hw.memsize 2>/dev/null || /usr/sbin/sysctl -n hw.memsize 2>/dev/null || echo 0)"
 else MEMB=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 0) * 1024 )); fi
 MEMGB=$(( MEMB / 1073741824 ))
 # 4 GB is Docker Desktop's own stated minimum; WSL2's is 8 GB.
 MEMNEED=4; [[ "$PLATFORM" == wsl ]] && MEMNEED=8
-row memory "${MEMGB} GB" "$([[ $MEMGB -ge $MEMNEED ]] && echo 1 || echo 0)" \
-  "${MEMNEED} GB is the container runtime's own minimum; this machine has ${MEMGB} GB"
+if [[ $MEMB -eq 0 ]]; then row memory "could not read it" 1
+else row memory "${MEMGB} GB" "$([[ $MEMGB -ge $MEMNEED ]] && echo 1 || echo 0)" \
+  "${MEMNEED} GB is the container runtime's own minimum; this machine has ${MEMGB} GB"; fi
 
 # ---------------------------------------------------------------- disk
 TARGET="${PLANETAI_HOME:-$HOME}"; [[ -d "$TARGET" ]] || TARGET="$HOME"
