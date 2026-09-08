@@ -24,9 +24,12 @@ STEP_N=0; STEP_TOTAL=0; STEP_NAME=""; RUN_T0=$SECONDS
 hb_line() {           # the last thing worth showing: which layer, which image, which build step
   # compose and buildkit redraw with carriage returns, so one "line" of the log holds many frames.
   # Split on \r, keep the frames that name something, take the newest, squeeze the spacing.
-  tr '\r' '\n' < "$LOG_FILE" 2>/dev/null \
+  # `|| true` is not decoration: this runs under `set -euo pipefail`, and for the first ten seconds the
+  # log is empty, so grep exits 1, the pipeline fails, and the assignment that calls this kills the whole
+  # install — silently, before any heartbeat prints. That is exactly what it did.
+  { tr '\r' '\n' < "$LOG_FILE" 2>/dev/null \
     | grep -aE 'Downloading|Extracting|Pull complete|Download complete|Verifying|Waiting|Pulling from|Creating|Created|Starting|Started|Healthy|^#[0-9]+ ' \
-    | tail -1 | sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/  */ /g' -e 's/^ *//' | cut -c1-62
+    | tail -1 | sed -e 's/\x1b\[[0-9;]*[A-Za-z]//g' -e 's/  */ /g' -e 's/^ *//' | cut -c1-62; } 2>/dev/null || true
 }
 step() {              # step "name"  — announce and start the clock
   STEP_N=$((STEP_N+1)); STEP_NAME="$1"; STEP_T0=$SECONDS
@@ -38,7 +41,7 @@ step_fail() {         # step_fail "why"
   printf 'FAILED: %s\n' "$STEP_NAME"
   printf '  after   %ds\n' $((SECONDS-STEP_T0))
   printf '  reason  %s\n' "${1:-see the log}"
-  local l; l="$(grep -aE 'ERROR|error:|Error|failed|cannot|denied|refused' "$LOG_FILE" 2>/dev/null | tail -1 | cut -c1-70)"
+  local l; l="$( { grep -aE 'ERROR|error:|Error|failed|cannot|denied|refused' "$LOG_FILE" 2>/dev/null | tail -1 | cut -c1-70; } || true)"
   [[ -n "$l" ]] && printf '  log     %s\n          %s\n' "$LOG_FILE" "$l" || printf '  log     %s\n' "$LOG_FILE"
   printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n'
   printf '\ninstall FAILED at step %d/%d "%s" after %ds — %s\n' "$STEP_N" "$STEP_TOTAL" "$STEP_NAME" $((SECONDS-RUN_T0)) "$LOG_FILE"
@@ -51,7 +54,7 @@ watch_run() {         # watch_run "why it failed" cmd...  — run it, heartbeat 
   while kill -0 "$pid" 2>/dev/null; do
     sleep 2
     if (( SECONDS - last >= 10 )); then
-      last=$SECONDS; h="$(hb_line)"
+      last=$SECONDS; h="$(hb_line || true)"
       printf '        %4ds  %s\n' $((SECONDS-STEP_T0)) "${h:-working}"
     fi
   done
