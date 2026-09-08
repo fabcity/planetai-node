@@ -113,6 +113,22 @@ probe_disk_free_k(){ [[ -n "${PF_DISK_FREE_KB:-}" ]] && { printf '%s' "$PF_DISK_
 probe_disk_mount() { [[ -n "${PF_DISK_MOUNT:-}"   ]] && { printf '%s' "$PF_DISK_MOUNT";   return; }; df -P  "$(disk_target)" 2>/dev/null | awk 'NR==2{print $6}'; }
 probe_app()        { [[ -d "$(probe_apps)/$1" ]]; }
 
+# A fix line is either prose or a command. Prose wraps at 78 columns so the table reads at 80x24; a
+# command NEVER wraps — a wrapped command cannot be copied, which is the only thing it is for.
+fixline() {
+  local t="$1" line word
+  if [[ "$t" == *"&&"* || "$t" == curl* || "$t" == sudo* || "$t" == open* || "$t" == *"| bash"* ]]; then
+    printf '                %s%s%s\n' "$D" "$t" "$N"; return
+  fi
+  line=""
+  for word in $t; do
+    if [[ -n "$line" && ${#line} -gt 0 && $(( ${#line} + ${#word} + 1 )) -gt 62 ]]; then
+      printf '                %s%s%s\n' "$D" "$line" "$N"; line="$word"
+    else line="${line:+$line }$word"; fi
+  done
+  [[ -n "$line" ]] && printf '                %s%s%s\n' "$D" "$line" "$N"
+}
+
 rows=""; fails=0; floor=0
 # JSON string escaping, in bash, because a bare Mac has no python3 either — that is the whole point of
 # this script. A fix line can be two lines long, and a raw newline inside a JSON string is invalid: the
@@ -128,8 +144,8 @@ row() {
       "$([[ $pass == 1 ]] && echo true || echo false)" \
       "$([[ "$pass" != 1 && -n "$fix" ]] && printf '"%s"' "$(jesc "$fix")" || echo null)"),"
   else
-    printf '  %-13s %-38.38s %s\n' "$name" "$val" "$([[ $pass == 1 ]] && echo "${G}✓${N}" || echo "${R}✗${N}")"
-    [[ $pass == 1 || -z "$fix" ]] || printf '                %s%s%s\n' "$D" "$fix" "$N"
+    printf '  %-13s %-44.44s %s\n' "$name" "$val" "$([[ $pass == 1 ]] && echo "${G}✓${N}" || echo "${R}✗${N}")"
+    [[ $pass == 1 || -z "$fix" ]] || fixline "$fix"
   fi
 }
 
@@ -230,17 +246,40 @@ runtime_fix() {
   esac
 }
 
+# Being on the disk is not the same as being able to run. A tester in Mallorca downloaded the OrbStack
+# .dmg the day before, so the folder existed; OrbStack needs macOS 14 and his Mac is on 12.7.6. Preflight
+# read the folder, ticked the row green, and promised to start it and wait up to five minutes for a daemon
+# that could never appear. So every runtime carries its own floor and is only counted where it can launch.
+rt_min_os() {
+  case "$1" in
+    OrbStack)         printf '%s' "$RUNTIMES_orbstack_min_os";;
+    "Docker Desktop") printf '%s' "$RUNTIMES_docker_desktop_mac_min_os";;
+    Colima)           [[ "$ARCH" == x86_64 ]] && printf '%s' "$RUNTIMES_colima_min_os_x86_64" || printf '%s' "$RUNTIMES_colima_min_os";;
+    *)                printf '';;
+  esac
+}
+rt_launchable() {                      # 0 = can start here
+  local min; min="$(rt_min_os "$1")"
+  [[ "$PLATFORM" != macos || -z "$min" ]] && return 0
+  ver_ge "$MACVER" "$min"
+}
+
 RT_NAME=""; RT_STATE=""
 if docker_running; then RT_NAME="docker"; RT_STATE=running
-elif have docker || have colima || probe_app OrbStack.app || probe_app Docker.app; then RT_STATE=installed
+elif have docker || have colima || probe_app OrbStack.app || probe_app Docker.app; then
   if   probe_app OrbStack.app; then RT_NAME="OrbStack"
   elif probe_app Docker.app;   then RT_NAME="Docker Desktop"
   elif have colima;            then RT_NAME="Colima"
   else RT_NAME="docker"; fi
+  if rt_launchable "$RT_NAME"; then RT_STATE=installed; else RT_STATE=unlaunchable; fi
 fi
 
 if [[ "$RT_STATE" == running ]]; then
   row runtime "docker, running" 1
+elif [[ "$RT_STATE" == unlaunchable ]]; then
+  # A cross, with the number, and no promise. The fix is whatever CAN run here, which on a Mac below
+  # every floor is nothing — the verdict says so rather than this row pretending otherwise.
+  row runtime "$RT_NAME installed, but requires macOS $(rt_min_os "$RT_NAME")" 0 "$(runtime_fix)"
 elif [[ "$RT_STATE" == installed ]]; then
   case "$RT_NAME" in
     OrbStack)        START="open -a OrbStack";;

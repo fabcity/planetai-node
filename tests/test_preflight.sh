@@ -33,46 +33,55 @@ hasnt "  never says something went wrong" "Something went wrong"
 has   "  reports the real memory"     "16 GB"
 has   "  reports the real free disk"  "428 GB"
 
-echo "2. above every floor, no runtime installed"
+echo "2. a runtime on the disk that cannot launch on this OS — the false pass"
+# OrbStack.app was on Lucas's disk because he downloaded the .dmg the day before. It cannot start on
+# Monterey. Preflight read the folder, ticked the row green, and promised to start it and wait.
+run "${MAC_LUCAS[@]}" PF_APPS=/tmp/pf-apps-orbstack
+has   "  named, with the version it needs" "requires macOS 14.0"
+hasnt "  no start-and-wait promise for something that cannot start" "waits up to 5 minutes"
+hasnt "  and no green tick for it"    "OrbStack, not running"
+ok    "  still below the floor overall" "$RC" 2
+
+echo "4. above every floor, no runtime installed"
 run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1
 ok    "exit 1, fixable"               "$RC" 1
 has   "  offers Colima by command"    "colima start"
 hasnt "  and does not call it below the floor" "cannot run a node"
 
-echo "3. runtime installed and stopped, above the floor"
+echo "4. runtime installed and stopped, above the floor"
 run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1 PF_APPS=/tmp/pf-apps-orbstack
 has   "  says it is not running"      "not running"
 has   "  and promises the wait"       "waits up to 5 minutes"
 
-echo "4. Apple Silicon on 13.2 — Colima supports it; the old hard-coded 13.5 did not"
+echo "5. Apple Silicon on 13.2 — Colima supports it; the old hard-coded 13.5 did not"
 run PF_OS=Darwin PF_OS_VERSION=13.2 PF_ARCH=arm64 PF_HW_MODEL=Mac14,2
 hasnt "  not turned away"             "cannot run a node"
 ok    "  exit 1, fixable"             "$RC" 1
 
-echo "5. Intel on 13.2 — vz cannot boot the guest kernel, so it IS below the floor"
+echo "6. Intel on 13.2 — vz cannot boot the guest kernel, so it IS below the floor"
 run PF_OS=Darwin PF_OS_VERSION=13.2 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro16,1
 ok    "  exit 2, below the floor"     "$RC" 2
 
-echo "6. Linux amd64"
+echo "7. Linux amd64"
 run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64
 hasnt "  no macOS verdict"            "cannot run a node"
 has   "  the installer adds Docker"   "installer adds Dock"
 
-echo "7. Linux arm64 — the database image is amd64-only"
+echo "8. Linux arm64 — the database image is amd64-only"
 run PF_OS=Linux PF_OS_PRETTY="Ubuntu 24.04 LTS" PF_ARCH=arm64
 has   "  the arch row fails"          "amd64"
 ok    "  exit 1"                      "$RC" 1
 
-echo "8. WSL2"
+echo "9. WSL2"
 run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64 PF_IS_WSL=1 PF_MEM_BYTES=4294967296
 has   "  detected as WSL2"            "WSL2"
 has   "  and holds it to 8 GB"        "8 GB is the container"
 
-echo "9. unknown Mac model — never guess"
+echo "10. unknown Mac model — never guess"
 run PF_OS=Darwin PF_OS_VERSION=12.7.6 PF_ARCH=x86_64 PF_HW_MODEL=SomeFutureMac99,9
 ok    "  still exits 2"               "$RC" 2
 
-echo "10. --json parses on every case above"
+echo "11. --json parses on every case above"
 for args in "PF_OS=Darwin PF_OS_VERSION=12.7.6 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro11,5" \
             "PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1" \
             "PF_OS=Linux PF_OS_PRETTY=Ubuntu PF_ARCH=arm64"; do
@@ -83,7 +92,7 @@ for args in "PF_OS=Darwin PF_OS_VERSION=12.7.6 PF_ARCH=x86_64 PF_HW_MODEL=MacBoo
   else echo "  FAIL --json did not parse: $args"; sed 's/^/       /' <<<"$OUT" | head -3; fails=$((fails+1)); fi
 done
 
-echo "11. it changes nothing"
+echo "12. it changes nothing"
 before="$(ls -A . | sort)"; run "${MAC_LUCAS[@]}"; after="$(ls -A . | sort)"
 ok "  no file appeared or vanished" "$before" "$after"
 if grep -nE '^[[:space:]]*sudo\b' "$PF" | grep -q .; then
