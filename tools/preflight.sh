@@ -104,14 +104,26 @@ row "disk free" "${FREEGB} GB on ${MOUNT:-/}" "$([[ $FREEGB -ge 3 ]] && echo 1 |
 # ---------------------------------------------------------------- container runtime
 have() { command -v "$1" >/dev/null 2>&1; }
 APPS="${PLANETAI_APPS:-/Applications}"     # substitutable so a test can present a machine with no runtime
-DOCKER_STATIC_URL="https://download.docker.com/mac/static/stable/${ARCH}/docker-27.3.1.tgz"
-COLIMA_LINES="curl -fsSL -o /tmp/colima https://github.com/abiosoft/colima/releases/latest/download/colima-Darwin-$(uname -m) && sudo install /tmp/colima /usr/local/bin/colima && colima start --vm-type vz --cpu 2 --memory 4 --disk 20"
+# Colima is the only macOS runtime that installs with one command and no GUI, which is what an
+# unattended mini needs. One 16 MB binary; the vz backend is Apple's own hypervisor, so no QEMU and no
+# package manager. It runs the same amd64 postgis image the node already uses.
+colima_line() {
+  local l="curl -fsSL -o /tmp/colima https://github.com/abiosoft/colima/releases/latest/download/colima-Darwin-$(uname -m) && sudo install /tmp/colima /usr/local/bin/colima"
+  # Colima drives the docker client; without Homebrew that client is a plain download too. The version is
+  # pinned because a copy-pasteable line cannot scrape a directory listing, and a pin that goes stale is
+  # harmless here: an older docker client talks to a newer daemon. Newest is at
+  # https://download.docker.com/mac/static/stable/<arch>/ (checked 8 Sep 2026: 29.8.0).
+  have docker || l="$l && curl -fsSL https://download.docker.com/mac/static/stable/$(uname -m)/docker-29.8.0.tgz | tar xz -C /tmp && sudo install /tmp/docker/docker /usr/local/bin/docker"
+  echo "$l && colima start --vm-type vz --cpu 2 --memory 4 --disk 20"
+}
 
 runtime_fix() {
   case "$PLATFORM" in
     macos)
-      if   [[ "$MAC_MAJOR" -ge 14 ]]; then echo "open https://orbstack.dev/download   (OrbStack, free for personal use; Docker Desktop also works on macOS ${MAC_MAJOR})"
-      elif [[ $MAC_FLOOR_OK -eq 1 ]];  then echo "$COLIMA_LINES"
+      if   [[ "$MAC_MAJOR" -ge 14 ]]; then echo "$(colima_line)
+                (or a GUI: OrbStack at https://orbstack.dev/download, or Docker Desktop — both work on macOS ${MAC_MAJOR})"
+      elif [[ $MAC_FLOOR_OK -eq 1 ]];  then echo "$(colima_line)
+                (Colima is the only one on macOS ${MAC_MAJOR}.${MAC_MINOR}: OrbStack and Docker Desktop both need 14)"
       else echo "nothing is installable on macOS ${MAC_MAJOR}.${MAC_MINOR} — see the verdict below"; fi;;
     wsl)   echo "install Docker Desktop for Windows, turn on 'Use the WSL 2 based engine' and WSL integration for this distro, then run this again";;
     linux) echo "the installer adds Docker itself (curl -fsSL https://get.docker.com | sh). Nothing to do now.";;
