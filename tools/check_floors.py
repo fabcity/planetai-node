@@ -16,7 +16,7 @@ import sys
 import yaml
 
 FLOORS = "data/platform_floors.yml"
-SECTIONS = ("runtimes", "vm_hosts", "linux", "windows")
+SECTIONS = ("runtimes", "vm_hosts", "linux", "windows", "assets")
 
 d = yaml.safe_load(open(FLOORS))
 stale_days = int(d.get("meta", {}).get("staleness_days", 180))
@@ -63,7 +63,7 @@ if "node" in d:
 
 # A floor the installer asserts but nobody recorded is the failure mode this file exists to stop, so
 # name the entries preflight is entitled to read and fail if one vanishes.
-REQUIRED = {"runtimes.orbstack", "runtimes.docker_desktop_mac", "runtimes.colima",
+REQUIRED = {"assets.utm_dmg", "assets.ubuntu_server_iso", "runtimes.orbstack", "runtimes.docker_desktop_mac", "runtimes.colima",
             "vm_hosts.utm", "vm_hosts.vmware_fusion_13_0", "vm_hosts.virtualbox", "vm_hosts.multipass",
             "linux.docker_engine_ubuntu", "linux.docker_engine_debian", "windows.docker_desktop_wsl2"}
 present = {p for p, _, _ in rows}

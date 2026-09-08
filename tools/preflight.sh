@@ -67,6 +67,25 @@ VM_HOSTS_multipass_min_os="14.0"
 VM_HOSTS_multipass_min_os_x86_64="14.0"
 VM_HOSTS_multipass_install="gui"
 VM_HOSTS_multipass_source="https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/"
+MAC_LAST_MONTEREY="12.7.6"
+mac_ceiling() {   # identifier -> last macOS|marketing name, or empty when unknown
+  case "$1" in
+    "MacBookPro11,4") printf '%s|%s' "12.7.6" "MacBook Pro (Retina, 15-inch, Mid 2015)";;
+    "MacBookPro11,5") printf '%s|%s' "12.7.6" "MacBook Pro (Retina, 15-inch, Mid 2015)";;
+    "MacBookPro12,1") printf '%s|%s' "12.7.6" "MacBook Pro (Retina, 13-inch, Early 2015)";;
+    "MacBookPro13,1") printf '%s|%s' "12.7.6" "MacBook Pro (13-inch, 2016, Two Thunderbolt 3 ports)";;
+    "MacBookPro13,2") printf '%s|%s' "12.7.6" "MacBook Pro (13-inch, 2016, Four Thunderbolt 3 ports)";;
+    "MacBookPro13,3") printf '%s|%s' "12.7.6" "MacBook Pro (15-inch, 2016)";;
+    "MacBookPro14,1") printf '%s|%s' "13.7.6" "MacBook Pro (13-inch, 2017, Two Thunderbolt 3 ports)";;
+    "MacBookPro14,2") printf '%s|%s' "13.7.6" "MacBook Pro (13-inch, 2017, Four Thunderbolt 3 ports)";;
+    "MacBookPro14,3") printf '%s|%s' "13.7.6" "MacBook Pro (15-inch, 2017)";;
+    *) printf '';;
+  esac
+}
+ASSET_utm_dmg_url="https://github.com/utmapp/UTM/releases/download/v4.7.5/UTM.dmg"
+ASSET_utm_dmg_version="v4.7.5"
+ASSET_ubuntu_server_iso_url="https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
+ASSET_ubuntu_server_iso_version="24.04.4"
 LINUX_ubuntu_min="22.04"
 LINUX_debian_min="11"
 LINUX_fedora_min="43"
@@ -112,6 +131,8 @@ disk_target()      { local t="${PLANETAI_HOME:-$HOME}"; [[ -d "$t" ]] || t="$HOM
 probe_disk_free_k(){ [[ -n "${PF_DISK_FREE_KB:-}" ]] && { printf '%s' "$PF_DISK_FREE_KB"; return; }; df -Pk "$(disk_target)" 2>/dev/null | awk 'NR==2{print $4}'; }
 probe_disk_mount() { [[ -n "${PF_DISK_MOUNT:-}"   ]] && { printf '%s' "$PF_DISK_MOUNT";   return; }; df -P  "$(disk_target)" 2>/dev/null | awk 'NR==2{print $6}'; }
 probe_app()        { [[ -d "$(probe_apps)/$1" ]]; }
+probe_cores()      { [[ -n "${PF_CORES:-}" ]] && { printf '%s' "$PF_CORES"; return; }
+                     sysctl -n hw.ncpu 2>/dev/null || /usr/sbin/sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo ""; }
 
 # A fix line is either prose or a command. Prose wraps at 78 columns so the table reads at 80x24; a
 # command NEVER wraps — a wrapped command cannot be copied, which is the only thing it is for.
@@ -324,6 +345,11 @@ row ports "$([[ -z "$busy" ]] && echo "8080, 5432 free" || echo "$busy in use")"
   "set APP_PORT to a free port in .env before installing (8080 is the dashboard; 5432 is the database, bound to localhost)"
 
 # ---------------------------------------------------------------- verdict
+# Did the machine itself pass, and only its system fail? That decides whether the verdict opens by
+# saying what this computer is, or stays quiet about it.
+HW_OK=0
+[[ $MEMGB -ge $MEMNEED && $FREEGB -ge $NODE_min_free_disk_gb && "$ARCH" == x86_64 ]] && HW_OK=1
+
 if [[ $JSON -eq 1 ]]; then
   verdict=ok; [[ $fails -gt 0 ]] && verdict=fixable; [[ $floor -eq 1 ]] && verdict=below-floor
   printf '{"ok":%s,"verdict":"%s","os":"%s","arch":"%s","checks":[%s]}\n' \
@@ -333,16 +359,49 @@ fi
 
 echo
 if [[ $floor -eq 1 ]]; then
-  printf '  %sThis Mac cannot run a node, and no download will change that.%s\n' "$B" "$N"
-  printf '  Every container runtime that exists for macOS wants a newer system than %s:\n' "$OSNAME"
-  printf '  %s needs %s, %s needs %s, %s needs %s on this architecture.\n\n' \
+  # What the machine IS, before what it lacks. A 2015 quad-core with 16 GB is a better node than the mini
+  # PC we would otherwise tell somebody to buy; saying only "unsupported" reads as "your laptop is junk",
+  # and that is both untrue and the opposite of this project's own argument.
+  CORES="$(probe_cores)"
+  if [[ $HW_OK -eq 1 ]]; then
+    printf '  %sThis hardware is a capable node — %s cores, %s GB, %s GB free. The OS is the only blocker.%s\n\n' \
+      "$G" "${CORES:-?}" "$MEMGB" "$FREEGB" "$N"
+  fi
+  printf '  %sNo container runtime can be installed on %s.%s\n' "$B" "$OSNAME" "$N"
+  printf '  %s needs %s, %s needs %s, %s needs %s here.\n\n' \
     "$RUNTIMES_orbstack_name" "$RUNTIMES_orbstack_min_os" \
     "$RUNTIMES_docker_desktop_mac_name" "$RUNTIMES_docker_desktop_mac_min_os" \
     "$RUNTIMES_colima_name" "$([[ "$ARCH" == x86_64 ]] && echo "$RUNTIMES_colima_min_os_x86_64" || echo "$RUNTIMES_colima_min_os")"
-  printf '  %sTwo ways forward%s\n' "$B" "$N"
-  printf '    upgrade this Mac to macOS %s or newer, if it is on Apple'"'"'s list — then run this again\n' "$MAC_FLOOR"
-  printf '    or use another machine: any x86 Linux box, or a Mac on %s+\n\n' "$MAC_FLOOR"
-  printf '  %sNothing was installed and nothing was changed.%s  Sources: docs/PLATFORMS.md\n\n' "$D" "$N"
+
+  # Is upgrading a route on THIS model? One of three sentences, and never a guess.
+  CEIL="$(mac_ceiling "$MODEL")"; CEIL_VER="${CEIL%%|*}"; CEIL_NAME="${CEIL#*|}"
+  printf '  %sIs upgrading a route?%s\n' "$B" "$N"
+  if [[ -z "$CEIL" ]]; then
+    printf '    I do not have a last-supported macOS for %s, so I will not guess.\n' "${MODEL:-this model}"
+    printf '    Apple lists it: https://support.apple.com/en-us/HT201862\n'
+    printf '    If this Mac can reach macOS %s, upgrade and run this again.\n\n' "$MAC_FLOOR"
+  elif ver_ge "$CEIL_VER" "$MAC_FLOOR"; then
+    printf '    Yes. %s can run macOS %s — upgrade, then run this again.\n\n' "$CEIL_NAME" "$CEIL_VER"
+  else
+    printf '    No. This model cannot go past macOS %s — upgrading is not a route.\n' "$CEIL_VER"
+    printf '    %s, and Apple ships nothing newer for it.\n\n' "$CEIL_NAME"
+  fi
+
+  # Routes, as commands. Not "use another machine".
+  printf '  %sTwo routes that work on this machine%s\n\n' "$B" "$N"
+  printf '  %s1. Linux in a virtual machine, on this Mac.%s UTM is free, needs no account, and on Intel\n' "$B" "$N"
+  printf '     it uses Apple'"'"'s own hypervisor, so the CPU runs at close to full speed.\n'
+  printf '     %sUTM %s supports macOS %s — this Mac included.%s\n' "$D" "$ASSET_utm_dmg_version" "$VM_HOSTS_utm_min_os" "$N"
+  printf '       curl -fL -o ~/Downloads/UTM.dmg %s\n' "$ASSET_utm_dmg_url"
+  printf '       open ~/Downloads/UTM.dmg\n'
+  printf '       curl -fL -o ~/Downloads/ubuntu-server.iso %s\n' "$ASSET_ubuntu_server_iso_url"
+  printf '     %sThen in UTM: Create a New Virtual Machine → Virtualize → Linux → that .iso.\n' "$D"
+  printf '     Give it 2 CPUs, 4096 MB, 25 GB. Install Ubuntu Server, then inside the VM run\n'
+  printf '     the same line you ran here.%s\n\n' "$N"
+  printf '  %s2. Linux on the metal, and this laptop becomes the node.%s The better end state: no\n' "$B" "$N"
+  printf '     macOS underneath, nothing to keep awake, and the floor stops moving.\n'
+  printf '       %sdocs/REVIVE_A_LAPTOP.md%s — a USB stick and about an hour\n\n' "$D" "$N"
+  printf '  %sNothing was installed and nothing was changed.%s  Floors: data/platform_floors.yml\n\n' "$D" "$N"
   exit 2
 fi
 if [[ $fails -eq 0 ]]; then

@@ -201,6 +201,31 @@ windows:
       2.1.5 or later", "8GB system RAM", "64-bit processor with Second Level Address Translation
       (SLAT)", "Enable hardware virtualization in BIOS/UEFI."
 
+# ---------------------------------------------------------------- the files a route downloads
+# Pinned on purpose: a verdict has to end in a command somebody can paste, and a command cannot scrape a
+# directory listing. A pin goes stale, so it is dated and `make check-floors` fails when it ages out.
+# Both were fetched, not assumed: 200 and 200 on the checked date.
+assets:
+  utm_dmg:
+    name: UTM
+    url: https://github.com/utmapp/UTM/releases/download/v4.7.5/UTM.dmg
+    version: v4.7.5
+    source: https://github.com/utmapp/UTM/releases
+    checked: 2026-09-08
+    says: >
+      v4.7.5 is the newest release GitHub marks as latest; v5.x are marked prerelease. 100 releases are
+      retained, so a Mac below a current build's floor can fetch an older one.
+
+  ubuntu_server_iso:
+    name: Ubuntu Server LTS, amd64
+    url: https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso
+    version: 24.04.4
+    source: https://releases.ubuntu.com/24.04/
+    checked: 2026-09-08
+    says: >
+      ubuntu-24.04.4-live-server-amd64.iso is present in that directory on the checked date. Server, not
+      desktop: a node has no screen, and the desktop image is four times the download.
+
 # ---------------------------------------------------------------- what the node itself needs
 node:
   min_ram_gb: 4              # the container runtime's floor; the node measures 229 MiB across both containers

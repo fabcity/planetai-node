@@ -13,7 +13,7 @@ import sys
 
 import yaml
 
-FLOORS, TARGET = "data/platform_floors.yml", "tools/preflight.sh"
+FLOORS, CEILINGS, TARGET = "data/platform_floors.yml", "data/mac_ceilings.yml", "tools/preflight.sh"
 BEGIN = "# ---- BEGIN GENERATED FLOORS"
 END = "# ---- END GENERATED FLOORS"
 
@@ -38,6 +38,20 @@ def block() -> str:
             out.append(f'{section.upper()}_{i}_min_os_x86_64="{sh(e.get("min_os_x86_64") or e.get("min_os"))}"')
             out.append(f'{section.upper()}_{i}_install="{sh(e.get("install"))}"')
             out.append(f'{section.upper()}_{i}_source="{sh(e.get("source"))}"')
+    # The Mac ceilings, as a bash case block: an identifier in, its last macOS out. Never guess — an
+    # identifier that is not here falls through to empty, and the verdict says it does not know.
+    c = yaml.safe_load(open(CEILINGS))
+    out.append(f'MAC_LAST_MONTEREY="{c["meta"]["last_monterey"]}"')
+    out.append("mac_ceiling() {   # identifier -> last macOS|marketing name, or empty when unknown")
+    out.append('  case "$1" in')
+    for ident, (last, name) in sorted(c["ceilings"].items()):
+        out.append('    "%s") printf \'%%s|%%s\' "%s" "%s";;' % (ident, last, name))
+    out.append("    *) printf '';;")
+    out.append("  esac")
+    out.append("}")
+    for k, e in d["assets"].items():
+        out.append(f'ASSET_{k}_url="{e["url"]}"')
+        out.append(f'ASSET_{k}_version="{e["version"]}"')
     lin, win, node = d["linux"], d["windows"], d["node"]
     out += [f'LINUX_ubuntu_min="{lin["docker_engine_ubuntu"]["min_os"]}"',
             f'LINUX_debian_min="{lin["docker_engine_debian"]["min_os"]}"',
