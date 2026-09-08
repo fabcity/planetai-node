@@ -1,0 +1,126 @@
+# The stranger's command, on amd64, on the oldest system docs/PLATFORMS.md claims to support.
+#
+# Every gate this repository has ran green on 7 September and a tester in Mallorca still could not
+# install. Nothing tested the install itself, on a machine that had nothing on it, without a person
+# there to press RETURN. This does.
+#
+# What it asserts, on every push:
+#   · exit 0
+#   · no interactive prompt — no terminal exists, and a hang fails on the timeout rather than waiting
+#   · no sudo and no brew: both are shadowed by a fake that records the call and fails
+#   · `make health` answers
+#
+# It runs the bootstrap byte for byte as the pipe delivers it. Only the source is overridden, with the
+# same environment variables a tester can use: the tarball comes from THIS commit, served over HTTP the
+# way the site serves it, so a pull request is tested rather than the last release.
+name: install smoke
+on: [push, pull_request]
+
+jobs:
+  amd64-linux:
+    # ubuntu-22.04 is x86_64 and the oldest Linux docs/PLATFORMS.md claims (Docker Engine's own list:
+    # Jammy 22.04 is the oldest supported LTS). A hosted runner is a clean VM, which is the point.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }        # bundle.sh reads `git describe`
+
+      - name: build the tarball this commit would ship, and serve it the way the site does
+        run: |
+          mkdir -p /tmp/site/get
+          bash tools/bundle.sh /tmp/site/get
+          ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
+          for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8099/get/SHA256
+
+      - name: shadow sudo and brew, so a call to either is a failure and not a surprise
+        run: |
+          mkdir -p /tmp/notools
+          for t in sudo brew; do
+            printf '#!/bin/sh\necho "$0 $*" >> /tmp/forbidden\nexit 1\n' > /tmp/notools/$t
+            chmod +x /tmp/notools/$t
+          done
+          rm -f /tmp/forbidden
+
+      - name: the stranger's command, with no terminal and nothing to press
+        env:
+          PLANETAI_SITE: http://127.0.0.1:8099
+          PLANETAI_HOME: /home/runner/planetai
+          PLANETAI_REF: ${{ github.sha }}     # so the raw fallback resolves too, not only the local copy
+        run: |
+          cat > /tmp/node.json <<'JSON'
+          {"name": "ci-node", "lat": 39.57, "lon": 2.65, "kind": "home", "sensor": {}}
+          JSON
+          # `cat install | bash -s --` is what the pipe does. </dev/null and no tty: a question here hangs,
+          # and the timeout turns a hang into a red job instead of a twenty-minute wait.
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
+          echo "installer exit: $?"
+
+      - name: no sudo, no brew
+        run: |
+          if [ -s /tmp/forbidden ]; then echo "the install called:"; cat /tmp/forbidden; exit 1; fi
+          echo "neither was called"
+
+      - name: make health
+        run: |
+          cd /home/runner/planetai
+          for i in $(seq 60); do curl -sf localhost:8080/health >/dev/null && break; sleep 2; done
+          make health
+
+      - name: it is safe to run twice, and the second run does not ask again
+        env:
+          PLANETAI_SITE: http://127.0.0.1:8099
+          PLANETAI_HOME: /home/runner/planetai
+          PLANETAI_REF: ${{ github.sha }}     # so the raw fallback resolves too, not only the local copy
+        run: |
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
+          [ -s /tmp/forbidden ] && { cat /tmp/forbidden; exit 1; } || true
+          cd /home/runner/planetai && make health
+
+      - name: what a tester would paste into an issue
+        if: always()
+        run: bash tools/preflight.sh --json || true
+
+  intel-mac:
+    # A real Intel Mac, verified available: GitHub offers macos-15-intel and macos-26-intel. The oldest
+    # Intel image, macos-13, has been retired, so there is NO hosted runner at the 13.5 floor — that
+    # case stays a manual gate on a real Mac before each tag.
+    #
+    # These runners have no Docker daemon (licensing), so this job cannot finish an install. What it can
+    # prove is the part that broke: on a Mac, the installer asks for no Xcode Command Line Tools, runs no
+    # sudo, touches no Homebrew, and preflight names a runtime this macOS can actually run.
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: preflight, on Intel
+        run: |
+          bash tools/preflight.sh --json > /tmp/pf.json || true
+          cat /tmp/pf.json
+          python3 - /tmp/pf.json <<'PY'
+          import json, sys
+          d = json.load(open(sys.argv[1]))
+          assert d["arch"] == "x86_64", d["arch"]
+          assert [c for c in d["checks"] if c["check"] == "os"][0]["ok"], "macOS 15 must clear the floor"
+          print("  ok  Intel, above the floor")
+          PY
+      - name: shadow xcode-select, sudo and brew
+        run: |
+          mkdir -p /tmp/notools
+          for t in sudo brew xcode-select git; do
+            printf '#!/bin/sh\necho "$0 $*" >> /tmp/forbidden\nexit 1\n' > /tmp/notools/$t
+            chmod +x /tmp/notools/$t
+          done
+          rm -f /tmp/forbidden
+      - name: the bootstrap reaches the runtime check without asking for any of them
+        env: { PLANETAI_HOME: /Users/runner/planetai }
+        run: |
+          cat > /tmp/node.json <<'JSON'
+          {"name": "ci-node", "lat": 39.57, "lon": 2.65, "kind": "home", "sensor": {}}
+          JSON
+          # No daemon here, so this stops at the runtime check. It must stop there and nowhere earlier,
+          # and it must not have called xcode-select, git, sudo or brew on the way.
+          PATH="/tmp/notools:$PATH" timeout 600 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null || true
+          if [ -s /tmp/forbidden ]; then echo "the install called:"; cat /tmp/forbidden; exit 1; fi
+          echo "no xcode-select, no git, no sudo, no brew"

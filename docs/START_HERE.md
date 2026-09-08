@@ -40,7 +40,7 @@ coordinates.
 ## Install
 
 ```bash
-curl -fsSL planetai.fab.city/node0/install | bash
+curl -fsSL planetai.fab.city/install | bash
 ```
 
 It asks four things: a name for the node, the place (type a town; it finds the coordinates), what the node is for (a

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # planetai — the one command an operator needs. Installed to ~/.local/bin by the bootstrap.
 #
+#   planetai preflight      can this machine run a node? checks only; changes nothing (--json)
 #   planetai setup          ask four things, install, start
 #   planetai status         is it alive, what has it read
 #   planetai doctor         checks, with the fix named for each failure
@@ -93,8 +94,15 @@ choose() { # choose VAR "prompt" opt1 opt2 ...
   local v="$1" p="$2"; shift 2; local i=1 a
   printf '%s%s%s\n' "$B" "$p" "$N"
   for o in "$@"; do printf '  %s%d%s  %s\n' "$D" "$i" "$N" "$o"; i=$((i+1)); done
-  printf '  %s>%s ' "$B" "$N"; read -r a </dev/tty || true
-  a="${a:-1}"; [[ "$a" =~ ^[0-9]+$ ]] && [[ "$a" -ge 1 && "$a" -le $# ]] || a=1
+  # A typo used to mean option 1, silently. A tester in Menorca was given five places called Mahon, none
+  # of them his, and the answer he gave put the node in Senegal with no way back. Show what Enter does,
+  # and ask again for anything that is not one of the numbers on screen.
+  while :; do
+    printf '  %s>%s %s[1]%s ' "$B" "$N" "$D" "$N"; a=""; read -r a </dev/tty || true
+    a="${a:-1}"
+    [[ "$a" =~ ^[0-9]+$ ]] && [[ "$a" -ge 1 && "$a" -le $# ]] && break
+    warn "pick a number between 1 and $#."
+  done
   eval "printf -v $v '%s' \"\${$a}\""
 }
 envget() { { grep -E "^$1=" .env 2>/dev/null || true; } | tail -1 | cut -d= -f2- | sed 's/[[:space:]]*#.*$//' | tr -d '"'"'"' '; }
@@ -137,11 +145,12 @@ geocode() { # prints lines: lat|lon|name|admin|country_code|timezone
     fi
   fi
   q="$(urlenc "$raw")"
-  local om; om="$(curl -sf "https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=en&format=json" | python3 -c '
-import sys, json
-for x in (json.load(sys.stdin).get("results") or [])[:5]:
-    print("|".join(str(x.get(k, "")) for k in ("latitude","longitude","name","admin1","country_code","timezone")) + "|" + str(x.get("name","")))' 2>/dev/null || true)"
-  if [[ -n "$om" ]]; then echo "$om"; return; fi
+  # BOTH geocoders, every time, with OpenStreetMap's first. Open-Meteo used to be asked alone and its
+  # answer returned whenever it had one — which is the failure a tester in Menorca hit: "Mahon" gave five
+  # places called Mahon in Senegal, Burkina Faso and the American Midwest, and not the town he lives in.
+  # Nominatim answers "Mahon" with Maó, Menorca, first hit; it answers "Menorca" with the island where
+  # Open-Meteo answers with the airport, 15 km from him. It knows local and alternate names, so it leads.
+  # Two requests at setup, once. Nominatim's policy is one per second and a real User-Agent: we make one.
   local nm; nm="$(curl -sf -A "planetai-node setup (+https://planetai.fab.city)"       "https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=3&addressdetails=1" | python3 -c '
 import sys, json
 for x in json.load(sys.stdin)[:3]:
@@ -150,11 +159,26 @@ for x in json.load(sys.stdin)[:3]:
     city = a.get("city") or a.get("town") or a.get("municipality") or a.get("county") or a.get("state") or name
     admin = a.get("state") or a.get("county") or ""
     print("|".join([x["lat"], x["lon"], name, admin, (a.get("country_code") or "").upper(), "", city]))' 2>/dev/null || true)"
-  [[ -z "$nm" ]] && return 0
-  # one line per place: Nominatim returns a suburb several times over (three "Sant Martí, Catalunya, ES" for Poblenou),
-  # so drop repeats by coordinates and again by the label the wizard would show
-  nm="$(echo "$nm" | awk -F'|' '{k=sprintf("%.3f|%.3f",$1,$2); if(!seen[k]++) print}' | awk -F'|' '{k=$3"|"$4"|"$5; if(!seen[k]++) print}')"
-  while IFS='|' read -r la lo n ad c _ ci; do echo "$la|$lo|$n|$ad|$c|$(tz_for "$la" "$lo")|$ci"; done <<<"$nm"
+  local om; om="$(curl -sf "https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5&language=en&format=json" | python3 -c '
+import sys, json
+for x in (json.load(sys.stdin).get("results") or [])[:5]:
+    print("|".join(str(x.get(k, "")) for k in ("latitude","longitude","name","admin1","country_code","timezone")) + "|" + str(x.get("name","")))' 2>/dev/null || true)"
+  # Nominatim carries no time zone, so fill it in per hit. Open-Meteo already has one.
+  local filled=""
+  if [[ -n "$nm" ]]; then
+    while IFS='|' read -r la lo n ad c _ ci; do
+      [[ -z "$la" ]] && continue
+      filled+="$la|$lo|$n|$ad|$c|$(tz_for "$la" "$lo")|$ci"$'\n'
+    done <<<"$nm"
+  fi
+  # one line per place: Nominatim returns a suburb several times over (three "Sant Martí, Catalunya, ES"
+  # for Poblenou), and the two sources overlap on anything either of them knows well. Drop repeats by
+  # coordinates, then again by the label the wizard would show, keeping the first — so OpenStreetMap wins.
+  printf '%s%s' "$filled" "${om:+$om$'\n'}" \
+    | grep -v '^$' \
+    | awk -F'|' '{k=sprintf("%.2f|%.2f",$1,$2); if(!seen[k]++) print}' \
+    | awk -F'|' '{k=tolower($3"|"$5); if(!seen[k]++) print}' \
+    | head -6
 }
 
 # ---------------------------------------------------------------- setup
@@ -193,10 +217,32 @@ PY
     say "installed. planetai status --json for the state; planetai ui for the token."
     return
   fi
+  # Every environment check happens here, before question 1. A tester who answers four questions and only then
+  # hears that this machine cannot run a node has spent his evening for nothing — which is what happened on
+  # 7 September 2026, twice, because platform detection lived inside install.sh.
+  #   0  go   ·   1  something the tester can fix, each with its line   ·   2  this machine is below the floor
+  if [[ "${PLANETAI_PREFLIGHT_OK:-0}" != 1 ]]; then
+    local pf=0; bash tools/preflight.sh || pf=$?     # `; pf=$?` would abort under set -e before it is read
+    [[ $pf -eq 2 ]] && exit 0            # a verdict, not a crash: nothing here says "something went wrong"
+    [[ $pf -eq 0 ]] || exit 1
+  fi
+
   # a node is "installed" when its containers exist. A .env with a name but no containers is an install that did
   # not finish (Docker not reachable at the time, the image failed to build): ask the questions again.
   if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]] && docker info >/dev/null 2>&1 && [[ -z "$(docker compose ps -aq 2>/dev/null)" ]]; then
-    say "a previous set-up here did not finish. Starting again."
+    # The answers were written to .env before anything heavy ran, so a re-run has them. It used to say
+    # "starting again" and ask all four a second time, which is what a tester meets after any failed install.
+    step "A set-up here did not finish, but your answers were saved."
+    printf '   name        %s\n   place       %s (%s, %s)\n   time zone   %s\n   city key    %s\n' \
+      "$(envget NODE_NAME)" "$(envget NODE_CITY)" "$(envget NODE_LAT)" "$(envget NODE_LON)" "$(envget NODE_TZ)" "$(envget NODE_CITY)"
+    echo
+    if confirm "Continue with these?"; then
+      step "Installing"
+      chmod +x install.sh backup.sh update.sh 2>/dev/null || true
+      spin "writing settings, pulling images, building the node" ./install.sh --yes || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+      finish_setup; return
+    fi
+    say "starting the questions again."
   elif [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
     step "This machine already runs a node: $(envget NODE_NAME) ($(envget NODE_CITY), $(envget NODE_LAT), $(envget NODE_LON))"
     local what
@@ -210,6 +256,26 @@ PY
       *)            docker compose up -d >>"$LOG" 2>&1; cmd_doctor; return;;
     esac
   fi
+  # Four questions need somewhere to ask them. With no controlling terminal — a CI job, a provisioning
+  # script, `ssh host "curl ... | bash"` — `read </dev/tty` fails, the place loop takes the empty answer,
+  # `continue`s, and asks again forever. It printed "Place" until someone killed it. Say the headless way
+  # instead. (`curl | bash` in a real terminal is fine: stdin is the pipe, /dev/tty is still the terminal.)
+  if ! ( : </dev/tty ) 2>/dev/null; then
+    warn "there is no terminal here to ask you four questions."
+    echo
+    echo "  Install without one, with the answers in a file:"
+    echo
+    echo '    cat > node.json <<'"'"'JSON'"'"
+    echo '    {"name": "my-node", "place": "Palma de Mallorca", "kind": "home", "sensor": {}}'
+    echo "    JSON"
+    echo "    planetai setup --answers node.json"
+    echo
+    echo "  place can be a town or a neighbourhood; use \"lat\" and \"lon\" instead if you know them."
+    echo "  kind is home, business, community or district. sensor may be {} , or one of:"
+    echo '    {"sc": "19880"}   {"sc_user": "you"}   {"airgradient": "host"}   {"purpleair": "ip"}'
+    return 1
+  fi
+
   step "Let's set up a node."
   echo "  Four questions. Everything else is detected or defaulted, and you can change it later in .env."
   echo
@@ -232,13 +298,23 @@ PY
     local n; n=$(echo "$hits" | wc -l | tr -d ' ')
     if [[ "$n" -gt 1 ]]; then
       local opts=(); while IFS='|' read -r la lo nm ad c t ci; do opts+=("$nm, $ad, $c  ($t)"); done <<<"$hits"
-      choose pick "   Which one?" "${opts[@]}"
+      # The way out. Without it a list with none of your places in it is a dead end, and the tester in
+      # Menorca killed the terminal to escape one — losing the answers he had already given.
+      local NONE="None of these — let me type the place differently"
+      choose pick "   Which one?" "${opts[@]}" "$NONE"
+      if [[ "$pick" == "$NONE" ]]; then
+        echo "   Try the local spelling, a nearby town, or paste 'lat,lon' — e.g. 39.89,4.27"
+        continue
+      fi
       local idx=1; for o in "${opts[@]}"; do [[ "$o" == "$pick" ]] && break; idx=$((idx+1)); done
       hits="$(echo "$hits" | sed -n "${idx}p")"
     fi
     local ci; IFS='|' read -r lat lon nm ad cc tz ci <<<"$hits"
     city="$(echo "${ci:-$nm}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/-*$//')"
     say "$nm, $ad, $cc  →  $lat, $lon  ·  $tz"
+    # A single hit used to be taken without asking. "Menorca" returned exactly one — Menorca Airport,
+    # 15 km from the tester who typed it — and the node was placed there silently.
+    confirm "   Is that the right place?" || { echo "   Type it differently: the local spelling, a nearby town, or 'lat,lon'."; continue; }
     break
   done
   # pilot keys join existing Index rows; anything else stays as its own place
@@ -286,6 +362,14 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
     "$([[ $bad -eq 1 ]] && echo 'Bali Air Dispatch + CAMS' || echo 'CAMS model')"
   echo
   confirm "Install with these?" || { echo "ok, nothing changed."; exit 0; }
+
+  # The answers go to .env now, before a single image is pulled. install.sh writes the same values again; the
+  # point is that a failure anywhere below this line leaves them on disk, so a re-run can offer them back.
+  envset NODE_NAME "$name"; envset NODE_LAT "$lat"; envset NODE_LON "$lon"
+  envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
+  [[ -n "${sc:-}" ]] && envset SC_DEVICES "$sc"; [[ -n "${ag:-}" ]] && envset AIRGRADIENT_HOSTS "$ag"
+  [[ -n "${pa:-}" ]] && envset PURPLEAIR_HOSTS "$pa"; [[ $indoor -eq 1 ]] && envset SENSOR_INDOOR 1
+  [[ $bad -eq 0 ]] && envset BAD_ENABLED 0
 
   # install
   step "Installing"
@@ -1014,6 +1098,7 @@ cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api
 cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
+  preflight) shift; exec bash tools/preflight.sh "$@";;
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   report) shift; cmd_report "$@";;

@@ -48,8 +48,39 @@ if [[ "$PLATFORM" != macos ]]; then
 fi
 
 # ---- docker
+# An installed-but-not-running runtime is not a reason to stop: it is a reason to wait. Every tester who hit
+# "Docker isn't running" had Docker on the machine and had simply not opened it since the last reboot.
+runtime_app() {                     # what is installed here, and the line that starts it
+  if   [[ -d /Applications/OrbStack.app ]]; then echo "OrbStack|open -a OrbStack"
+  elif [[ -d /Applications/Docker.app   ]]; then echo "Docker Desktop|open -a Docker"
+  elif need colima;                           then echo "Colima|colima start"
+  elif need systemctl && systemctl list-unit-files docker.service >/dev/null 2>&1; then echo "Docker|sudo systemctl start docker"
+  else echo "|"; fi
+}
+wait_for_daemon() {                 # up to 5 minutes, with the clock visible
+  local deadline=$((SECONDS + 300))
+  while (( SECONDS < deadline )); do
+    docker info >/dev/null 2>&1 && { [[ -t 1 ]] && printf '\r\033[K'; say "container runtime is up"; return 0; }
+    [[ -t 1 ]] && printf '\r  waiting for the container runtime … %d:%02d left\033[K' $(( (deadline-SECONDS)/60 )) $(( (deadline-SECONDS)%60 ))
+    sleep 2
+  done
+  [[ -t 1 ]] && printf '\r\033[K'
+  return 1
+}
+if ! docker info >/dev/null 2>&1; then
+  IFS='|' read -r rt_name rt_start <<< "$(runtime_app)"
+  if [[ -n "$rt_name" ]]; then
+    say "$rt_name is installed but not running. Starting it — this takes up to a minute on a cold boot."
+    case "$rt_start" in
+      "sudo systemctl start docker") say "this one needs sudo: it starts the system docker service, nothing else"; $rt_start || true;;
+      *) $rt_start >/dev/null 2>&1 || true;;
+    esac
+    wait_for_daemon || die "$rt_name did not come up within 5 minutes. Open it by hand, wait for it to say it is ready, then:
+   planetai setup      (your answers are saved; it will not ask them again)"
+  fi
+fi
 if [[ "$PLATFORM" == "macos" ]]; then
-  need docker && docker info >/dev/null 2>&1 || die "Docker isn't running. Install OrbStack (https://orbstack.dev, recommended) or Docker Desktop, start it, re-run."
+  docker info >/dev/null 2>&1 || die "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
 elif [[ "$PLATFORM" == wsl-* ]] && ! need docker; then
   die "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
 elif ! need docker; then
