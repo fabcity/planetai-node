@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 #   curl -fsSL planetai.fab.city/install | bash
 #
-# The whole install, from a blank machine. Gets git, gets the code, hands off to `planetai setup`,
-# which asks you four things and does the rest. Safe to re-run: it updates in place.
+# The whole install, from a blank machine. Checks the machine, downloads a signed tarball, hands off to
+# `planetai setup`, which asks you four things and does the rest. Safe to re-run: it updates in place.
+#
+# It needs curl and tar, which every macOS and every Linux already has. It does not need git, does not
+# install a package manager, and never runs sudo.
 set -euo pipefail
 
 REPO="${PLANETAI_REPO:-https://github.com/fabcity/planetai-node}"
@@ -27,23 +30,33 @@ printf '\033[0m'
 echo "  node · observe here, decide here, act here"
 echo
 
-case "$(uname -s)" in
-  Darwin)
-    if ! xcode-select -p >/dev/null 2>&1; then
-      say "macOS needs its command line tools (git, make). A dialog will open. Install them, then run this again."
-      xcode-select --install 2>/dev/null || true
-      exit 0
-    fi ;;
-  Linux)
-    if ! command -v git >/dev/null; then
-      say "installing git"
-      if command -v apt-get >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y -qq git curl make
-      elif command -v pacman >/dev/null; then sudo pacman -Sy --noconfirm git curl make
-      elif command -v dnf >/dev/null; then sudo dnf install -y git curl make
-      else die "no package manager I recognise. Install git, then run this again."; fi
-    fi ;;
-  *) die "unsupported OS: $(uname -s). Linux, macOS, or Windows via WSL2." ;;
-esac
+# Every check about this machine happens now, before anything is downloaded and before anybody is asked
+# anything. It writes nothing, installs nothing and runs no sudo.
+#   0  go   ·   1  something the tester can fix, each with its line   ·   2  this machine is below the floor
+if [[ "${PLANETAI_PREFLIGHT:-1}" == 1 ]]; then
+  if [[ -r "$(dirname "${BASH_SOURCE[0]}")/tools/preflight.sh" ]]; then
+    pf=0; bash "$(dirname "${BASH_SOURCE[0]}")/tools/preflight.sh" || pf=$?   # `; pf=$?` would abort under set -e
+  else
+    pf_src="$(curl -fsSL "${REPO/github.com/raw.githubusercontent.com}/${REF}/tools/preflight.sh")" \
+      || die "could not reach the network to check this machine. Are you online?"
+    pf=0; bash -c "$pf_src" || pf=$?
+  fi
+  # 2 is an answer, not a failure: the table above said which macOS every runtime needs and this one is older.
+  # It exits 0 so nothing here reads as a crash.
+  [[ $pf -eq 2 ]] && exit 0
+  [[ $pf -eq 0 ]] || exit 1
+  export PLANETAI_PREFLIGHT_OK=1
+fi
+
+# tar is in every base system; curl got us this far. git is not needed and is never asked for: a Mac without
+# Xcode Command Line Tools used to hit `xcode-select --install` here — a 2 GB download and a GUI dialog, for a
+# tool this script no longer uses.
+for t in curl tar; do
+  command -v "$t" >/dev/null || die "this needs $t, which is not on this machine.
+   Debian/Ubuntu:  sudo apt-get install -y $t
+   Fedora:         sudo dnf install -y $t
+   Then run the same line again. (I will not install it for you.)"
+done
 
 # Where is the node? Three cases, in order:
 #   ~/planetai is a checkout or an unpacked node   -> update it
@@ -65,10 +78,14 @@ fetch_tarball() {
   tmp="$(mktemp -d)"
   say "downloading the node from ${SITE}"
   curl -fsSL "$url" -o "$tmp/n.tar.gz" || { rm -rf "$tmp"; die "could not download $url"; }
-  if command -v shasum >/dev/null && curl -fsSL "${SITE}/get/SHA256" -o "$tmp/sha" 2>/dev/null; then
-    local want got; want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$(shasum -a 256 "$tmp/n.tar.gz" | awk '{print $1}')"
-    [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
-  fi
+  # The checksum is not optional. This used to skip silently when `shasum` was missing (it is macOS's name;
+  # Debian ships `sha256sum`), so on some machines the tarball was simply trusted. It is the only path now.
+  local sum=""; command -v shasum >/dev/null && sum="shasum -a 256"; [[ -n "$sum" ]] || { command -v sha256sum >/dev/null && sum="sha256sum"; }
+  [[ -n "$sum" ]] || { rm -rf "$tmp"; die "no shasum or sha256sum on this machine, so the download cannot be verified. Install one, then run this again."; }
+  curl -fsSL "${SITE}/get/SHA256" -o "$tmp/sha" || { rm -rf "$tmp"; die "could not fetch ${SITE}/get/SHA256, so the download cannot be verified."; }
+  local want got; want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$($sum "$tmp/n.tar.gz" | awk '{print $1}')"
+  [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
+  say "checksum verified"
   mkdir -p "$DIR"
   tar xzf "$tmp/n.tar.gz" -C "$tmp"
   # keep anything of the operator's: .env, backups, out, packs they added
@@ -85,11 +102,14 @@ if [[ -d "$DIR/.git" ]]; then
 elif [[ -f "$DIR/VERSION" ]]; then
   say "updating $DIR (from ${SITE})"
   fetch_tarball
-elif [[ "${PLANETAI_FROM_GIT:-0}" == "1" ]] || git ls-remote "$REPO" >/dev/null 2>&1; then
+elif [[ "${PLANETAI_FROM_GIT:-0}" == "1" ]]; then
+  command -v git >/dev/null || die "PLANETAI_FROM_GIT=1 needs git, which is not on this machine. Unset it to use the tarball."
   say "getting the code from git → $DIR"
   out="$(git clone -q --branch "$REF" "$REPO" "$DIR" 2>&1)" || die "git clone failed:
    $out"
 else
+  # The default, for everyone. It was `git clone` when git happened to be there, which meant the install
+  # behaved differently on two machines and reached for Xcode Command Line Tools on a bare Mac.
   fetch_tarball
 fi
 
