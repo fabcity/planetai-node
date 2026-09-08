@@ -40,11 +40,17 @@ grep -qi microsoft /proc/version 2>/dev/null && { PLATFORM="wsl-${PLATFORM}"; sa
 say "platform ${PLATFORM}/${ARCH}"
 
 if [[ "$PLATFORM" != macos ]]; then
-  for t in curl make; do need "$t" || case "$PLATFORM" in
-    *debian*) sudo apt-get update -qq && sudo apt-get install -y -qq "$t";;
-    *arch*)   sudo pacman -Sy --noconfirm "$t";;
-    *fedora*) sudo dnf install -y "$t";;
-  esac; done
+  for t in curl make; do need "$t" || {
+    # Every sudo this script runs says on the line before what it will do and why. Silence is how an
+    # installer ends up looking like something that took liberties with a machine.
+    say "$t is missing and the node needs it. This asks for your password to install just that package:"
+    case "$PLATFORM" in
+      *debian*) echo "     sudo apt-get update && sudo apt-get install -y $t"; sudo apt-get update -qq && sudo apt-get install -y -qq "$t";;
+      *arch*)   echo "     sudo pacman -Sy --noconfirm $t";               sudo pacman -Sy --noconfirm "$t";;
+      *fedora*) echo "     sudo dnf install -y $t";                       sudo dnf install -y "$t";;
+      *)        die "$t is missing and I do not recognise this distribution's package manager. Install $t, then run this again.";;
+    esac; }
+  done
 fi
 
 # ---- docker
@@ -84,11 +90,16 @@ if [[ "$PLATFORM" == "macos" ]]; then
 elif [[ "$PLATFORM" == wsl-* ]] && ! need docker; then
   die "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
 elif ! need docker; then
-  say "installing docker"
+  say "there is no container runtime on this machine, and the node is two containers. Installing Docker."
   case "$PLATFORM" in
-    *arch*) sudo pacman -Sy --noconfirm docker docker-compose && sudo systemctl enable --now docker;;
-    *)    curl -fsSL https://get.docker.com | sh;;
+    *arch*) echo "     sudo pacman -Sy --noconfirm docker docker-compose   (the packages)"
+            echo "     sudo systemctl enable --now docker                  (so it starts with the machine)"
+            sudo pacman -Sy --noconfirm docker docker-compose && sudo systemctl enable --now docker;;
+    *)      echo "     curl -fsSL https://get.docker.com | sh              (Docker's own installer; it uses sudo itself)"
+            curl -fsSL https://get.docker.com | sh;;
   esac
+  say "and one more, so you can use Docker without sudo every time — it adds your user to the docker group:"
+  echo "     sudo usermod -aG docker $USER"
   sudo usermod -aG docker "$USER" || true
   warn "added you to the docker group"
 fi
