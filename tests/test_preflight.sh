@@ -63,4 +63,22 @@ assert all(c['fix'] is None for c in d['checks'] if c['ok']), 'a passing row car
 print('  ok   parses, verdict below-floor, no fix on a passing row')
 " "$j" || { echo "  FAIL --json"; fails=$((fails+1)); }
 
+# The case that broke: above the floor, no runtime, so the fix line is TWO lines. A raw newline inside a
+# JSON string is invalid, and --json is what a tester is told to paste into an issue.
+echo "preflight: --json parses when the fix line has two lines in it"
+d="$(mktemp -d)"; mkdir -p "$d/apps"
+printf '#!/bin/sh\n[ "$1" = -productVersion ] && echo 15.7.9 || echo macOS\n' > "$d/sw_vers"
+printf '#!/bin/sh\ncase "$1" in -m) echo x86_64;; *) echo Darwin;; esac\n' > "$d/uname"
+printf '#!/bin/sh\necho 200\n' > "$d/curl"; printf '#!/bin/sh\nexit 1\n' > "$d/lsof"; chmod +x "$d"/*
+j="$(PATH="$d:/usr/bin:/bin:/usr/sbin" PLANETAI_APPS="$d/apps" bash "$PF" --json 2>&1)"; rm -rf "$d"
+python3 -c "
+import json, sys
+d = json.loads(sys.argv[1])
+r = [c for c in d['checks'] if c['check'] == 'runtime'][0]
+assert r['ok'] is False, 'a machine with no runtime should fail that row'
+assert 'colima' in r['fix'], r['fix']
+assert chr(10) in r['fix'], 'the two-line fix should survive the round trip as a real newline'
+print('  ok   parses, and the two-line fix round-trips')
+" "$j" || { echo "  FAIL --json with a two-line fix"; fails=$((fails+1)); }
+
 [[ $fails -eq 0 ]] && { echo "preflight tests pass"; exit 0; } || { echo "$fails preflight test(s) failed"; exit 1; }

@@ -20,15 +20,19 @@ G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; D=$'\033[2m'; B=$'\033[1m'; N=$'\03
 [[ -t 1 ]] || { G=""; R=""; Y=""; D=""; B=""; N=""; }
 
 rows=""; fails=0; floor=0
+# JSON string escaping, in bash, because a bare Mac has no python3 either — that is the whole point of
+# this script. A fix line can be two lines long, and a raw newline inside a JSON string is invalid: the
+# --json output, which testers are told to paste into an issue, would not parse. CI caught it.
+jesc() { local v="$1"; v="${v//\\/\\\\}"; v="${v//\"/\\\"}"; v="${v//$'\n'/\\n}"; v="${v//$'\t'/\\t}"; printf '%s' "$v"; }
 # row NAME "value" PASS "fix line"
 row() {
   local name="$1" val="$2" pass="$3" fix="${4:-}"
   [[ "$pass" == 1 ]] || fails=$((fails+1))
   if [[ $JSON -eq 1 ]]; then
     rows+="$(printf '{"check":"%s","value":"%s","ok":%s,"fix":%s}' \
-      "$name" "$(sed 's/"/\\"/g' <<<"$val")" \
+      "$name" "$(jesc "$val")" \
       "$([[ $pass == 1 ]] && echo true || echo false)" \
-      "$([[ "$pass" != 1 && -n "$fix" ]] && printf '"%s"' "$(sed 's/"/\\"/g' <<<"$fix")" || echo null)"),"
+      "$([[ "$pass" != 1 && -n "$fix" ]] && printf '"%s"' "$(jesc "$fix")" || echo null)"),"
   else
     printf '  %-13s %-38.38s %s\n' "$name" "$val" "$([[ $pass == 1 ]] && echo "${G}✓${N}" || echo "${R}✗${N}")"
     [[ $pass == 1 || -z "$fix" ]] || printf '                %s%s%s\n' "$D" "$fix" "$N"
@@ -183,7 +187,7 @@ row ports "$([[ -z "$busy" ]] && echo "8080, 5432 free" || echo "$busy in use")"
 if [[ $JSON -eq 1 ]]; then
   verdict=ok; [[ $fails -gt 0 ]] && verdict=fixable; [[ $floor -eq 1 ]] && verdict=below-floor
   printf '{"ok":%s,"verdict":"%s","os":"%s","arch":"%s","checks":[%s]}\n' \
-    "$([[ $fails -eq 0 ]] && echo true || echo false)" "$verdict" "$OSNAME" "$ARCH" "${rows%,}"
+    "$([[ $fails -eq 0 ]] && echo true || echo false)" "$verdict" "$(jesc "$OSNAME")" "$ARCH" "${rows%,}"
   [[ $floor -eq 1 ]] && exit 2; [[ $fails -eq 0 ]] && exit 0 || exit 1
 fi
 
