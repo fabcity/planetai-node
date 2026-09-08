@@ -19,7 +19,7 @@ say "tagging v${V}"
 git tag -a "v${V}" -m "v${V}"
 git push origin main --tags
 
-say "building tarball (no .git, no .env)"
-tools/bundle.sh
+say "building the tarball, committing it in the site repo, deploying"
+tools/ship.sh
 
 say "released v${V}. Nodes update with:  ./update.sh"

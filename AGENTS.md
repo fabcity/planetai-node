@@ -45,6 +45,11 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 
 Development happens on a dev machine, not on the node. The node only runs `planetai update`.
 
+A merge is not a release. `/install` and `/preflight` are stubs that fetch the current file from this
+repository every run, so those never go stale; `install.sh` and `bin/planetai` reach a tester inside the
+tarball the site serves, and that only changes when someone rebuilds it. `make released` says whether the
+site is behind main. `make ship` rebuilds it, commits it in the site repo and deploys.
+
 Before any commit: `make lint && make test`. Lint runs every gate that exists because something once shipped broken:
 SQL idempotency, compose mounts, CLI snippets as Python 3.9, rules and cells against the schema, docs against the code,
 the dashboard's ids, pyflakes, the app import. If you add a gate, break something on purpose first and watch it fail.
