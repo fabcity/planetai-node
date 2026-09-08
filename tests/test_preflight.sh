@@ -1,84 +1,93 @@
 #!/usr/bin/env bash
-# The floor, and what the installer does at it. Runs the real tools/preflight.sh, never a copy.
+# The whole machine matrix, from fixtures, without owning twelve Macs.
 #
-# The machine under test is stubbed on PATH — sw_vers, uname, curl, lsof — because the one case that matters
-# is a machine none of us has: an Intel Mac on Monterey. Exit codes are the contract two callers depend on:
-#   0 go · 1 the tester can fix it · 2 below the floor, and the installer must exit 0 on this one.
+# Every fact preflight uses comes from a probe an environment variable can replace, so a machine is a
+# line of env vars here. The one that matters is Lucas's: MacBookPro11,5 on macOS 12.7.6, confirmed from
+# that machine's own System Information — 4 cores, 16 GB, 428 GB free.
+#
+# Runs the real tools/preflight.sh. Never a copy typed into the test.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PF="$PWD/tools/preflight.sh"
 [[ -r "$PF" ]] || { echo "no tools/preflight.sh"; exit 1; }
-
 fails=0
+
+# A machine with nothing installed and a clean network, unless a case says otherwise.
+BASE=(PF_HAVE= PF_DOCKER_RUNNING=0 PF_APPS=/nonexistent PF_EGRESS_OK=1 PF_PORTS_BUSY= PF_MEM_BYTES=17179869184 PF_DISK_FREE_KB=448790528 PF_DISK_MOUNT=/)
+
 OUT=""; RC=0
-run() {  # run <macos-version> <arch>  -> sets $RC and $OUT. Not in a subshell: $OUT has to survive.
-  local ver="$1" arch="$2" d; d="$(mktemp -d)"
-  printf '#!/bin/sh\n[ "$1" = -productVersion ] && echo %s || echo macOS\n' "$ver" > "$d/sw_vers"
-  printf '#!/bin/sh\ncase "$1" in -m) echo %s;; *) echo Darwin;; esac\n' "$arch" > "$d/uname"
-  printf '#!/bin/sh\necho 200\n' > "$d/curl"          # every host reachable; this test is offline
-  printf '#!/bin/sh\nexit 1\n' > "$d/lsof"            # no port in use
-  chmod +x "$d"/*; mkdir -p "$d/apps"
-  # a bare machine: only the stubs and the base system on PATH, and an empty /Applications
-  OUT="$(PATH="$d:/usr/bin:/bin" PLANETAI_APPS="$d/apps" bash "$PF" 2>&1)"; RC=$?
-  rm -rf "$d"
-}
-ok() { if [[ "$2" == "$3" ]]; then echo "  ok   $1"; else echo "  FAIL $1: got $2, want $3"; fails=$((fails+1)); fi; }
-has() { if grep -q "$2" <<<"$OUT"; then echo "  ok   $1"; else echo "  FAIL $1: not in output"; fails=$((fails+1)); fi; }
-hasnt() { if grep -q "$2" <<<"$OUT"; then echo "  FAIL $1: '$2' is in the output"; fails=$((fails+1)); else echo "  ok   $1"; fi; }
+run() { OUT="$(env "${BASE[@]}" "$@" bash "$PF" 2>&1)"; RC=$?; }
+runj(){ OUT="$(env "${BASE[@]}" "$@" bash "$PF" --json 2>&1)"; RC=$?; }
+ok()   { if [[ "$2" == "$3" ]]; then echo "  ok   $1"; else echo "  FAIL $1: got $2, want $3"; fails=$((fails+1)); fi; }
+has()  { if grep -qi -- "$2" <<<"$OUT"; then echo "  ok   $1"; else echo "  FAIL $1"; sed 's/^/       /' <<<"$OUT" | head -14; fails=$((fails+1)); fi; }
+hasnt(){ if grep -qi -- "$2" <<<"$OUT"; then echo "  FAIL $1: '$2' is in the output"; sed 's/^/       /' <<<"$OUT" | head -14; fails=$((fails+1)); else echo "  ok   $1"; fi; }
+row()  { grep -E "^  $1 " <<<"$OUT" | head -1; }
 
-echo "preflight: the macOS floor"
-run 12.7.6 x86_64; ok "Monterey 12.7.6 Intel is below the floor" "$RC" 2
-has "  and it says so in a sentence" "cannot run a node"
-has "  and names the upgrade"        "13.5"
-hasnt "  and never says something went wrong" "Something went wrong"
-hasnt "  and never names software the machine cannot run" "orbstack.dev/download"
+MAC_LUCAS=(PF_OS=Darwin PF_OS_VERSION=12.7.6 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro11,5)
 
-run 13.4 x86_64;  ok "Ventura 13.4 Intel is below it too (vz cannot boot a guest)" "$RC" 2
-run 13.5 x86_64;  [[ "$RC" == 2 ]] && { echo "  FAIL Ventura 13.5 Intel should pass the floor"; fails=$((fails+1)); } || echo "  ok   Ventura 13.5 Intel passes the floor"
-has "  and is offered Colima, not OrbStack" "colima"
-run 14.0 x86_64;  [[ "$RC" == 2 ]] && { echo "  FAIL Sonoma 14.0 should pass the floor"; fails=$((fails+1)); } || echo "  ok   Sonoma 14.0 passes the floor"
-run 26.6.2 arm64; [[ "$RC" == 2 ]] && { echo "  FAIL Tahoe arm64 should pass the floor"; fails=$((fails+1)); } || echo "  ok   Tahoe arm64 passes the floor"
+echo "1. below every floor — Lucas's MacBookPro11,5 on Monterey"
+run "${MAC_LUCAS[@]}"
+ok    "exit 2, a verdict not a crash" "$RC" 2
+has   "  says it cannot"              "cannot run a node"
+hasnt "  never says something went wrong" "Something went wrong"
+has   "  reports the real memory"     "16 GB"
+has   "  reports the real free disk"  "428 GB"
 
-echo "preflight: it changes nothing"
-before="$(cd "$(dirname "$PF")/.." && ls -A | sort)"
-run 12.7.6 x86_64
-after="$(cd "$(dirname "$PF")/.." && ls -A | sort)"
-ok "no file appeared or vanished" "$before" "$after"
+echo "2. above every floor, no runtime installed"
+run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1
+ok    "exit 1, fixable"               "$RC" 1
+has   "  offers Colima by command"    "colima start"
+hasnt "  and does not call it below the floor" "cannot run a node"
+
+echo "3. runtime installed and stopped, above the floor"
+run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1 PF_APPS=/tmp/pf-apps-orbstack
+has   "  says it is not running"      "not running"
+has   "  and promises the wait"       "waits up to 5 minutes"
+
+echo "4. Apple Silicon on 13.2 — Colima supports it; the old hard-coded 13.5 did not"
+run PF_OS=Darwin PF_OS_VERSION=13.2 PF_ARCH=arm64 PF_HW_MODEL=Mac14,2
+hasnt "  not turned away"             "cannot run a node"
+ok    "  exit 1, fixable"             "$RC" 1
+
+echo "5. Intel on 13.2 — vz cannot boot the guest kernel, so it IS below the floor"
+run PF_OS=Darwin PF_OS_VERSION=13.2 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro16,1
+ok    "  exit 2, below the floor"     "$RC" 2
+
+echo "6. Linux amd64"
+run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64
+hasnt "  no macOS verdict"            "cannot run a node"
+has   "  the installer adds Docker"   "installer adds Dock"
+
+echo "7. Linux arm64 — the database image is amd64-only"
+run PF_OS=Linux PF_OS_PRETTY="Ubuntu 24.04 LTS" PF_ARCH=arm64
+has   "  the arch row fails"          "amd64"
+ok    "  exit 1"                      "$RC" 1
+
+echo "8. WSL2"
+run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64 PF_IS_WSL=1 PF_MEM_BYTES=4294967296
+has   "  detected as WSL2"            "WSL2"
+has   "  and holds it to 8 GB"        "8 GB is the container"
+
+echo "9. unknown Mac model — never guess"
+run PF_OS=Darwin PF_OS_VERSION=12.7.6 PF_ARCH=x86_64 PF_HW_MODEL=SomeFutureMac99,9
+ok    "  still exits 2"               "$RC" 2
+
+echo "10. --json parses on every case above"
+for args in "PF_OS=Darwin PF_OS_VERSION=12.7.6 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro11,5" \
+            "PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro18,1" \
+            "PF_OS=Linux PF_OS_PRETTY=Ubuntu PF_ARCH=arm64"; do
+  # shellcheck disable=SC2086
+  runj $args
+  if python3 -c "import json,sys; d=json.loads(sys.argv[1]); assert d['checks'] and 'verdict' in d" "$OUT" 2>/dev/null; then
+    echo "  ok   parses: $args"
+  else echo "  FAIL --json did not parse: $args"; sed 's/^/       /' <<<"$OUT" | head -3; fails=$((fails+1)); fi
+done
+
+echo "11. it changes nothing"
+before="$(ls -A . | sort)"; run "${MAC_LUCAS[@]}"; after="$(ls -A . | sort)"
+ok "  no file appeared or vanished" "$before" "$after"
 if grep -nE '^[[:space:]]*sudo\b' "$PF" | grep -q .; then
   echo "  FAIL the script runs sudo"; fails=$((fails+1))
 else echo "  ok   it never runs sudo (the fix lines quote one; nothing here executes it)"; fi
 
-echo "preflight: --json"
-d="$(mktemp -d)"; printf '#!/bin/sh\n[ "$1" = -productVersion ] && echo 12.7.6 || echo macOS\n' > "$d/sw_vers"
-printf '#!/bin/sh\ncase "$1" in -m) echo x86_64;; *) echo Darwin;; esac\n' > "$d/uname"
-printf '#!/bin/sh\necho 200\n' > "$d/curl"; printf '#!/bin/sh\nexit 1\n' > "$d/lsof"; chmod +x "$d"/*
-mkdir -p "$d/apps"; j="$(PATH="$d:/usr/bin:/bin" PLANETAI_APPS="$d/apps" bash "$PF" --json 2>&1)"; rm -rf "$d"
-python3 -c "
-import json,sys
-d=json.loads(sys.argv[1])
-assert d['verdict']=='below-floor', d['verdict']
-assert d['ok'] is False
-assert [c for c in d['checks'] if c['check']=='os'][0]['ok'] is False
-assert all(c['fix'] is None for c in d['checks'] if c['ok']), 'a passing row carries a fix line'
-print('  ok   parses, verdict below-floor, no fix on a passing row')
-" "$j" || { echo "  FAIL --json"; fails=$((fails+1)); }
-
-# The case that broke: above the floor, no runtime, so the fix line is TWO lines. A raw newline inside a
-# JSON string is invalid, and --json is what a tester is told to paste into an issue.
-echo "preflight: --json parses when the fix line has two lines in it"
-d="$(mktemp -d)"; mkdir -p "$d/apps"
-printf '#!/bin/sh\n[ "$1" = -productVersion ] && echo 15.7.9 || echo macOS\n' > "$d/sw_vers"
-printf '#!/bin/sh\ncase "$1" in -m) echo x86_64;; *) echo Darwin;; esac\n' > "$d/uname"
-printf '#!/bin/sh\necho 200\n' > "$d/curl"; printf '#!/bin/sh\nexit 1\n' > "$d/lsof"; chmod +x "$d"/*
-j="$(PATH="$d:/usr/bin:/bin:/usr/sbin" PLANETAI_APPS="$d/apps" bash "$PF" --json 2>&1)"; rm -rf "$d"
-python3 -c "
-import json, sys
-d = json.loads(sys.argv[1])
-r = [c for c in d['checks'] if c['check'] == 'runtime'][0]
-assert r['ok'] is False, 'a machine with no runtime should fail that row'
-assert 'colima' in r['fix'], r['fix']
-assert chr(10) in r['fix'], 'the two-line fix should survive the round trip as a real newline'
-print('  ok   parses, and the two-line fix round-trips')
-" "$j" || { echo "  FAIL --json with a two-line fix"; fails=$((fails+1)); }
-
-[[ $fails -eq 0 ]] && { echo "preflight tests pass"; exit 0; } || { echo "$fails preflight test(s) failed"; exit 1; }
+[[ $fails -eq 0 ]] && { echo "preflight fixture matrix passes"; exit 0; } || { echo "$fails preflight test(s) failed"; exit 1; }

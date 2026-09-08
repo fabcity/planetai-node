@@ -5,8 +5,17 @@
 #   planetai preflight [--json]                        # on a node
 #
 # Self-contained on purpose: it is fetched and run on its own, before the code is downloaded, so it may not
-# assume the repository, .env, docker, python or anything else is there. It reads; it never writes, never
-# sudos, never installs and never asks a question.
+# assume the repository, .env, docker, python or anything else is there — a Mac with no Xcode Command Line
+# Tools has no python3 either. It reads; it never writes, never sudos, never installs, never asks.
+#
+# Every fact about the machine comes from a probe that an environment variable can replace, so the whole
+# matrix runs from fixtures in tests/ without owning twelve Macs:
+#   PF_OS PF_OS_VERSION PF_ARCH PF_HW_MODEL PF_MEM_BYTES PF_DISK_FREE_KB PF_DISK_MOUNT
+#   PF_APPS PF_DOCKER_RUNNING PF_HAVE (a space-separated list of commands to pretend exist)
+#   PF_IS_LAPTOP PF_BATTERY PF_HAS_ETHERNET PF_EGRESS_OK
+#
+# The version floors are generated into this file from data/platform_floors.yml, where each one carries the
+# vendor's URL and the date somebody read it. `make lint` fails if the two have drifted.
 #
 # Exit codes, because two callers depend on them:
 #   0  every row passed — go
@@ -18,6 +27,91 @@ set -uo pipefail        # not -e: a failing check is the point
 JSON=0; [[ "${1:-}" == "--json" ]] && JSON=1
 G=$'\033[32m'; R=$'\033[31m'; Y=$'\033[33m'; D=$'\033[2m'; B=$'\033[1m'; N=$'\033[0m'
 [[ -t 1 ]] || { G=""; R=""; Y=""; D=""; B=""; N=""; }
+
+# ---- BEGIN GENERATED FLOORS
+# From data/platform_floors.yml, where each floor carries its vendor URL and the date it was read.
+# Do not edit by hand. Regenerate: python3 tools/gen_floors.py   Verify: make lint
+FLOORS_CHECKED=2026-09-08
+RUNTIMES_orbstack_name="OrbStack"
+RUNTIMES_orbstack_min_os="14.0"
+RUNTIMES_orbstack_min_os_x86_64="14.0"
+RUNTIMES_orbstack_install="gui"
+RUNTIMES_orbstack_source="https://docs.orbstack.dev/faq"
+RUNTIMES_docker_desktop_mac_name="Docker Desktop"
+RUNTIMES_docker_desktop_mac_min_os="14.0"
+RUNTIMES_docker_desktop_mac_min_os_x86_64="14.0"
+RUNTIMES_docker_desktop_mac_install="gui"
+RUNTIMES_docker_desktop_mac_source="https://docs.docker.com/desktop/setup/install/mac-install/"
+RUNTIMES_colima_name="Colima"
+RUNTIMES_colima_min_os="13.0"
+RUNTIMES_colima_min_os_x86_64="13.5"
+RUNTIMES_colima_install="binary"
+RUNTIMES_colima_source="https://github.com/abiosoft/colima/blob/main/docs/FAQ.md#are-older-macos-versions-supported"
+VM_HOSTS_utm_name="UTM"
+VM_HOSTS_utm_min_os="11.3"
+VM_HOSTS_utm_min_os_x86_64="11.3"
+VM_HOSTS_utm_install="binary"
+VM_HOSTS_utm_source="https://github.com/utmapp/UTM/releases/tag/v5.0.5"
+VM_HOSTS_vmware_fusion_13_0_name="VMware Fusion 13.0"
+VM_HOSTS_vmware_fusion_13_0_min_os="12.0"
+VM_HOSTS_vmware_fusion_13_0_min_os_x86_64="12.0"
+VM_HOSTS_vmware_fusion_13_0_install="gui"
+VM_HOSTS_vmware_fusion_13_0_source="https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/fusion-pro/13-0/using-vmware-fusion/getting-started-with-vmware-fusion/system-requirements-for-vmware-fusion.html"
+VM_HOSTS_virtualbox_name="VirtualBox"
+VM_HOSTS_virtualbox_min_os="13.0"
+VM_HOSTS_virtualbox_min_os_x86_64="13.0"
+VM_HOSTS_virtualbox_install="gui"
+VM_HOSTS_virtualbox_source="https://www.virtualbox.org/manual/topics/installation.html"
+VM_HOSTS_multipass_name="Multipass"
+VM_HOSTS_multipass_min_os="14.0"
+VM_HOSTS_multipass_min_os_x86_64="14.0"
+VM_HOSTS_multipass_install="gui"
+VM_HOSTS_multipass_source="https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/"
+LINUX_ubuntu_min="22.04"
+LINUX_debian_min="11"
+LINUX_fedora_min="43"
+WINDOWS_min="10 22H2 (build 19045)"
+WINDOWS_min_ram_gb=8
+NODE_min_ram_gb=4
+NODE_min_free_disk_gb=3
+# ---- END GENERATED FLOORS
+
+# Compare two dotted versions: ver_ge 12.7.6 13.5 is false. Pure bash — no sort -V, whose -V flag is not
+# on every platform, and no python.
+ver_ge() {
+  local a="$1" b="$2" i x y
+  local -a A B; IFS=. read -r -a A <<< "$a"; IFS=. read -r -a B <<< "$b"
+  for i in 0 1 2; do
+    x="${A[i]:-0}"; y="${B[i]:-0}"; x="${x//[^0-9]/}"; y="${y//[^0-9]/}"
+    (( 10#${x:-0} > 10#${y:-0} )) && return 0
+    (( 10#${x:-0} < 10#${y:-0} )) && return 1
+  done
+  return 0
+}
+
+# ---------------------------------------------------------------- probes. Each one is the machine, or the
+# fixture standing in for it. Nothing below this line calls uname, sw_vers, sysctl or df directly.
+probe()          { local var="$1"; shift; if [[ -n "${!var:-}" ]]; then printf '%s' "${!var}"; else "$@" 2>/dev/null || true; fi; }
+probe_os()       { probe PF_OS uname -s; }
+probe_os_ver()   { probe PF_OS_VERSION sw_vers -productVersion; }
+probe_arch()     { probe PF_ARCH uname -m; }
+probe_model()    { probe PF_HW_MODEL sysctl -n hw.model || /usr/sbin/sysctl -n hw.model; }
+probe_apps()     { printf '%s' "${PF_APPS:-/Applications}"; }
+probe_pretty()   { probe PF_OS_PRETTY bash -c '. /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-Linux}"'; }
+# have(): PF_HAVE lets a fixture say which commands exist without putting stubs on PATH
+have() { [[ -n "${PF_HAVE+x}" ]] && { [[ " $PF_HAVE " == *" $1 "* ]]; return; }; command -v "$1" >/dev/null 2>&1; }
+docker_running() { [[ -n "${PF_DOCKER_RUNNING:-}" ]] && { [[ "$PF_DOCKER_RUNNING" == 1 ]]; return; }; have docker && docker info >/dev/null 2>&1; }
+probe_mem_bytes() {
+  [[ -n "${PF_MEM_BYTES:-}" ]] && { printf '%s' "$PF_MEM_BYTES"; return; }
+  if [[ "$(probe_os)" == Darwin ]]; then
+    # /usr/sbin is not on every PATH, and a check that cannot measure must not report 0 GB and fail.
+    sysctl -n hw.memsize 2>/dev/null || /usr/sbin/sysctl -n hw.memsize 2>/dev/null || echo 0
+  else printf '%s' "$(( $(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 0) * 1024 ))"; fi
+}
+disk_target()      { local t="${PLANETAI_HOME:-$HOME}"; [[ -d "$t" ]] || t="$HOME"; printf '%s' "$t"; }
+probe_disk_free_k(){ [[ -n "${PF_DISK_FREE_KB:-}" ]] && { printf '%s' "$PF_DISK_FREE_KB"; return; }; df -Pk "$(disk_target)" 2>/dev/null | awk 'NR==2{print $4}'; }
+probe_disk_mount() { [[ -n "${PF_DISK_MOUNT:-}"   ]] && { printf '%s' "$PF_DISK_MOUNT";   return; }; df -P  "$(disk_target)" 2>/dev/null | awk 'NR==2{print $6}'; }
+probe_app()        { [[ -d "$(probe_apps)/$1" ]]; }
 
 rows=""; fails=0; floor=0
 # JSON string escaping, in bash, because a bare Mac has no python3 either — that is the whole point of
@@ -40,36 +134,46 @@ row() {
 }
 
 # ---------------------------------------------------------------- os and arch
-OS="$(uname -s)"; ARCH="$(uname -m)"
+OS="$(probe_os)"; ARCH="$(probe_arch)"
 case "$ARCH" in x86_64|amd64) ARCH=x86_64;; aarch64|arm64) ARCH=arm64;; esac
-MAC_MAJOR=0; MAC_MINOR=0; OSNAME="$OS"; PLATFORM=other
+MACVER=0; MODEL=""; OSNAME="$OS"; PLATFORM=other
 
 if [[ "$OS" == Darwin ]]; then
   PLATFORM=macos
-  VER="$(sw_vers -productVersion 2>/dev/null || echo 0)"
-  MAC_MAJOR="${VER%%.*}"; MAC_MINOR="$(cut -d. -f2 <<<"$VER.0")"
-  case "$MAC_MAJOR" in 12) CODENAME=Monterey;; 13) CODENAME=Ventura;; 14) CODENAME=Sonoma;; 15) CODENAME=Sequoia;; 26) CODENAME=Tahoe;; *) CODENAME="";; esac
-  OSNAME="macOS $VER${CODENAME:+ ($CODENAME)}"
+  MACVER="$(probe_os_ver)"; MACVER="${MACVER:-0}"
+  MODEL="$(probe_model)"
+  case "${MACVER%%.*}" in 11) CODENAME="Big Sur";; 12) CODENAME=Monterey;; 13) CODENAME=Ventura;; 14) CODENAME=Sonoma;; 15) CODENAME=Sequoia;; 26) CODENAME=Tahoe;; *) CODENAME="";; esac
+  OSNAME="macOS $MACVER${CODENAME:+ ($CODENAME)}"
 elif [[ "$OS" == Linux ]]; then
   PLATFORM=linux
-  OSNAME="$( . /etc/os-release 2>/dev/null && echo "${PRETTY_NAME:-Linux}" )"
-  grep -qi microsoft /proc/version 2>/dev/null && { PLATFORM=wsl; OSNAME="$OSNAME (WSL2)"; }
+  OSNAME="$(probe_pretty)"; OSNAME="${OSNAME:-Linux}"
+  { [[ "${PF_IS_WSL:-0}" == 1 ]] || grep -qi microsoft /proc/version 2>/dev/null; } && { PLATFORM=wsl; OSNAME="$OSNAME (WSL2)"; }
 fi
 
-# The macOS floor, measured against the three runtimes' own documentation (docs/PLATFORMS.md carries the links):
-#   OrbStack       macOS 14.0+
-#   Docker Desktop the current and two previous major releases — 14 today, and it moves
-#   Colima         macOS 13.0+, and on Intel the vz backend cannot boot a guest below 13.5
-# So 13.5 is the floor for a Mac, and below it nothing is installable.
-MAC_FLOOR_OK=1
+# The macOS floor is not a constant: it is the lowest floor of any container runtime that installs on THIS
+# architecture, read from the generated block above. On Intel that is Colima at 13.5 (Lima's vz cannot boot
+# the guest kernel below it); on Apple Silicon it is Colima at 13.0. It was hard-coded at 13.5 for both,
+# which turned away an Apple Silicon Mac on 13.0–13.4 that Colima does support.
+mac_floor() {
+  local lo="" f
+  for f in "$RUNTIMES_orbstack_min_os" "$RUNTIMES_docker_desktop_mac_min_os" \
+           "$([[ "$ARCH" == x86_64 ]] && echo "$RUNTIMES_colima_min_os_x86_64" || echo "$RUNTIMES_colima_min_os")"; do
+    [[ -z "$f" ]] && continue
+    [[ -z "$lo" ]] && { lo="$f"; continue; }
+    ver_ge "$lo" "$f" && lo="$f"
+  done
+  printf '%s' "$lo"
+}
+MAC_FLOOR=""; MAC_FLOOR_OK=1
 if [[ "$PLATFORM" == macos ]]; then
-  if [[ "$MAC_MAJOR" -lt 13 ]] || { [[ "$MAC_MAJOR" -eq 13 ]] && [[ "$MAC_MINOR" -lt 5 ]]; }; then MAC_FLOOR_OK=0; floor=1; fi
+  MAC_FLOOR="$(mac_floor)"
+  ver_ge "$MACVER" "$MAC_FLOOR" || { MAC_FLOOR_OK=0; floor=1; }
 fi
 
 [[ $JSON -eq 1 ]] || printf '\n%spreflight%s  %sno questions, no changes, nothing installed%s\n\n' "$B" "$N" "$D" "$N"
 
 if [[ "$PLATFORM" == macos ]]; then
-  row os "$OSNAME" "$MAC_FLOOR_OK" "macOS 13.5 or newer is required — see the verdict below"
+  row os "$OSNAME" "$MAC_FLOOR_OK" "macOS $MAC_FLOOR or newer is required for any container runtime — see the verdict below"
 elif [[ "$PLATFORM" == linux || "$PLATFORM" == wsl ]]; then
   row os "$OSNAME" 1
 else
@@ -84,51 +188,42 @@ case "$ARCH" in
 esac
 
 # ---------------------------------------------------------------- memory
-MEMB=0
-if [[ "$PLATFORM" == macos ]]; then
-  # /usr/sbin is not on every PATH, and a check that cannot measure must not report 0 GB and fail —
-  # that is the same lie this whole script exists to stop telling.
-  MEMB="$(sysctl -n hw.memsize 2>/dev/null || /usr/sbin/sysctl -n hw.memsize 2>/dev/null || echo 0)"
-else MEMB=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 0) * 1024 )); fi
+MEMB="$(probe_mem_bytes)"; MEMB="${MEMB:-0}"
 MEMGB=$(( MEMB / 1073741824 ))
-# 4 GB is Docker Desktop's own stated minimum; WSL2's is 8 GB.
-MEMNEED=4; [[ "$PLATFORM" == wsl ]] && MEMNEED=8
+MEMNEED="$NODE_min_ram_gb"; [[ "$PLATFORM" == wsl ]] && MEMNEED="$WINDOWS_min_ram_gb"
 if [[ $MEMB -eq 0 ]]; then row memory "could not read it" 1
 else row memory "${MEMGB} GB" "$([[ $MEMGB -ge $MEMNEED ]] && echo 1 || echo 0)" \
   "${MEMNEED} GB is the container runtime's own minimum; this machine has ${MEMGB} GB"; fi
 
 # ---------------------------------------------------------------- disk
-TARGET="${PLANETAI_HOME:-$HOME}"; [[ -d "$TARGET" ]] || TARGET="$HOME"
-FREEK="$(df -Pk "$TARGET" 2>/dev/null | awk 'NR==2{print $4}')"; FREEK="${FREEK:-0}"
+FREEK="$(probe_disk_free_k)"; FREEK="${FREEK:-0}"
 FREEGB=$(( FREEK / 1048576 ))
-MOUNT="$(df -P "$TARGET" 2>/dev/null | awk 'NR==2{print $6}')"
-row "disk free" "${FREEGB} GB on ${MOUNT:-/}" "$([[ $FREEGB -ge 3 ]] && echo 1 || echo 0)" \
-  "the images and the database need about 3 GB free; ${FREEGB} GB is left on ${MOUNT:-/}"
+MOUNT="$(probe_disk_mount)"
+row "disk free" "${FREEGB} GB on ${MOUNT:-/}" "$([[ $FREEGB -ge $NODE_min_free_disk_gb ]] && echo 1 || echo 0)" \
+  "the images and the database need about ${NODE_min_free_disk_gb} GB free; ${FREEGB} GB is left on ${MOUNT:-/}"
 
 # ---------------------------------------------------------------- container runtime
-have() { command -v "$1" >/dev/null 2>&1; }
-APPS="${PLANETAI_APPS:-/Applications}"     # substitutable so a test can present a machine with no runtime
 # Colima is the only macOS runtime that installs with one command and no GUI, which is what an
 # unattended mini needs. One 16 MB binary; the vz backend is Apple's own hypervisor, so no QEMU and no
 # package manager. It runs the same amd64 postgis image the node already uses.
 colima_line() {
-  local l="curl -fsSL -o /tmp/colima https://github.com/abiosoft/colima/releases/latest/download/colima-Darwin-$(uname -m) && sudo install /tmp/colima /usr/local/bin/colima"
+  local l="curl -fsSL -o /tmp/colima https://github.com/abiosoft/colima/releases/latest/download/colima-Darwin-${ARCH} && sudo install /tmp/colima /usr/local/bin/colima"
   # Colima drives the docker client; without Homebrew that client is a plain download too. The version is
   # pinned because a copy-pasteable line cannot scrape a directory listing, and a pin that goes stale is
   # harmless here: an older docker client talks to a newer daemon. Newest is at
   # https://download.docker.com/mac/static/stable/<arch>/ (checked 8 Sep 2026: 29.8.0).
-  have docker || l="$l && curl -fsSL https://download.docker.com/mac/static/stable/$(uname -m)/docker-29.8.0.tgz | tar xz -C /tmp && sudo install /tmp/docker/docker /usr/local/bin/docker"
+  have docker || l="$l && curl -fsSL https://download.docker.com/mac/static/stable/${ARCH}/docker-29.8.0.tgz | tar xz -C /tmp && sudo install /tmp/docker/docker /usr/local/bin/docker"
   echo "$l && colima start --vm-type vz --cpu 2 --memory 4 --disk 20"
 }
 
 runtime_fix() {
   case "$PLATFORM" in
     macos)
-      if   [[ "$MAC_MAJOR" -ge 14 ]]; then echo "$(colima_line)
-                (or a GUI: OrbStack at https://orbstack.dev/download, or Docker Desktop — both work on macOS ${MAC_MAJOR})"
+      if   ver_ge "$MACVER" "$RUNTIMES_orbstack_min_os"; then echo "$(colima_line)
+                (or a GUI: ${RUNTIMES_orbstack_name} at https://orbstack.dev/download, or ${RUNTIMES_docker_desktop_mac_name} — both work on macOS ${MACVER%%.*})"
       elif [[ $MAC_FLOOR_OK -eq 1 ]];  then echo "$(colima_line)
-                (Colima is the only one on macOS ${MAC_MAJOR}.${MAC_MINOR}: OrbStack and Docker Desktop both need 14)"
-      else echo "nothing is installable on macOS ${MAC_MAJOR}.${MAC_MINOR} — see the verdict below"; fi;;
+                (${RUNTIMES_colima_name} is the only one on macOS ${MACVER}: ${RUNTIMES_orbstack_name} and ${RUNTIMES_docker_desktop_mac_name} both need ${RUNTIMES_orbstack_min_os})"
+      else echo "no container runtime installs on macOS ${MACVER} — see the verdict below"; fi;;
     wsl)   echo "install Docker Desktop for Windows, turn on 'Use the WSL 2 based engine' and WSL integration for this distro, then run this again";;
     linux) echo "the installer adds Docker itself (curl -fsSL https://get.docker.com | sh). Nothing to do now.";;
     *)     echo "";;
@@ -136,11 +231,11 @@ runtime_fix() {
 }
 
 RT_NAME=""; RT_STATE=""
-if have docker && docker info >/dev/null 2>&1; then RT_NAME="docker"; RT_STATE=running
-elif have docker || have colima || [[ -d "$APPS/OrbStack.app" || -d "$APPS/Docker.app" ]]; then RT_STATE=installed
-  if   [[ -d "$APPS/OrbStack.app" ]]; then RT_NAME="OrbStack"
-  elif [[ -d "$APPS/Docker.app" ]];   then RT_NAME="Docker Desktop"
-  elif have colima;                          then RT_NAME="Colima"
+if docker_running; then RT_NAME="docker"; RT_STATE=running
+elif have docker || have colima || probe_app OrbStack.app || probe_app Docker.app; then RT_STATE=installed
+  if   probe_app OrbStack.app; then RT_NAME="OrbStack"
+  elif probe_app Docker.app;   then RT_NAME="Docker Desktop"
+  elif have colima;            then RT_NAME="Colima"
   else RT_NAME="docker"; fi
 fi
 
@@ -167,19 +262,25 @@ fi
 # `curl -f` would fail on the 401 the Docker registry answers with and the 404 a bare API root gives, and both
 # of those mean the host is reachable. The only real failure is no answer at all, which curl reports as 000.
 EG_OK=1; EG_BAD=""
-for h in planetai.fab.city/node0/get/SHA256 raw.githubusercontent.com registry-1.docker.io/v2/ api.open-meteo.com; do
-  code="$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' "https://$h" 2>/dev/null || echo 000)"
-  [[ "$code" != 000 ]] || { EG_OK=0; EG_BAD="${EG_BAD:+$EG_BAD }${h%%/*}"; }
-done
+if [[ -n "${PF_EGRESS_OK:-}" ]]; then
+  EG_OK="$PF_EGRESS_OK"; [[ "$EG_OK" == 1 ]] || EG_BAD="${PF_EGRESS_BAD:-the network}"
+else
+  for h in planetai.fab.city/node0/get/SHA256 raw.githubusercontent.com registry-1.docker.io/v2/ api.open-meteo.com; do
+    code="$(curl -sS --max-time 8 -o /dev/null -w '%{http_code}' "https://$h" 2>/dev/null || echo 000)"
+    [[ "$code" != 000 ]] || { EG_OK=0; EG_BAD="${EG_BAD:+$EG_BAD }${h%%/*}"; }
+  done
+fi
 row egress "$([[ $EG_OK == 1 ]] && echo "site, github, registry, open-meteo" || echo "cannot reach: $EG_BAD")" "$EG_OK" \
   "the install needs to reach $EG_BAD. A proxy or a captive portal is in the way."
 
 # ---------------------------------------------------------------- ports
-busy=""
-for p in 8080 5432; do
-  if have lsof; then lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1 && busy="${busy:+$busy, }$p"
-  elif have ss;  then ss -ltn "sport = :$p" 2>/dev/null | grep -q LISTEN && busy="${busy:+$busy, }$p"; fi
-done
+busy="${PF_PORTS_BUSY-}"
+if [[ -z "${PF_PORTS_BUSY+x}" ]]; then
+  for p in 8080 5432; do
+    if have lsof; then lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1 && busy="${busy:+$busy, }$p"
+    elif have ss;  then ss -ltn "sport = :$p" 2>/dev/null | grep -q LISTEN && busy="${busy:+$busy, }$p"; fi
+  done
+fi
 row ports "$([[ -z "$busy" ]] && echo "8080, 5432 free" || echo "$busy in use")" "$([[ -z "$busy" ]] && echo 1 || echo 0)" \
   "set APP_PORT to a free port in .env before installing (8080 is the dashboard; 5432 is the database, bound to localhost)"
 
@@ -195,10 +296,13 @@ echo
 if [[ $floor -eq 1 ]]; then
   printf '  %sThis Mac cannot run a node, and no download will change that.%s\n' "$B" "$N"
   printf '  Every container runtime that exists for macOS wants a newer system than %s:\n' "$OSNAME"
-  printf '  OrbStack needs 14.0, Docker Desktop needs 14, Colima needs 13.5 on Intel.\n\n'
+  printf '  %s needs %s, %s needs %s, %s needs %s on this architecture.\n\n' \
+    "$RUNTIMES_orbstack_name" "$RUNTIMES_orbstack_min_os" \
+    "$RUNTIMES_docker_desktop_mac_name" "$RUNTIMES_docker_desktop_mac_min_os" \
+    "$RUNTIMES_colima_name" "$([[ "$ARCH" == x86_64 ]] && echo "$RUNTIMES_colima_min_os_x86_64" || echo "$RUNTIMES_colima_min_os")"
   printf '  %sTwo ways forward%s\n' "$B" "$N"
-  printf '    upgrade this Mac to macOS 13.5 or newer, if it is on Apple'"'"'s list — then run this again\n'
-  printf '    or use another machine: any x86 Linux box, or a Mac on 13.5+\n\n'
+  printf '    upgrade this Mac to macOS %s or newer, if it is on Apple'"'"'s list — then run this again\n' "$MAC_FLOOR"
+  printf '    or use another machine: any x86 Linux box, or a Mac on %s+\n\n' "$MAC_FLOOR"
   printf '  %sNothing was installed and nothing was changed.%s  Sources: docs/PLATFORMS.md\n\n' "$D" "$N"
   exit 2
 fi
