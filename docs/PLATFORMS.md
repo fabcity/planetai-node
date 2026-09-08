@@ -9,57 +9,65 @@ curl -fsSL planetai.fab.city/install | bash
 
 ## The matrix
 
-Every floor below is the vendor's own current statement, linked. The container runtime is the only hard
-requirement the node adds; everything else it installs itself.
+The container runtime is the only hard requirement the node adds; everything else it installs itself.
+This table and the sources under it are generated from `data/platform_floors.yml`, so the page cannot
+drift from what the installer asserts.
 
+<!-- BEGIN GENERATED: tools/render_platforms.py from data/platform_floors.yml -->
 | Machine | Minimum OS | Container runtime that installs there | RAM | Free disk |
 |---|---|---|---|---|
-| **macOS, Intel (x86_64)** | **13.5** (Ventura) | ≥14.0: OrbStack, Docker Desktop or Colima · 13.5–13.7: **Colima only** (`--vm-type vz`) · 13.0–13.4: Colima on QEMU, which needs a package manager · **≤12.x: none** | 4 GB | 3 GB |
-| **macOS, Apple Silicon (arm64)** | **13.5** (Ventura) | same three, same floors. The database image is amd64-only and runs emulated. | 4 GB | 3 GB |
-| **Ubuntu / Debian (amd64)** | Ubuntu 22.04 · Debian 11 | Docker Engine, installed by this script from `get.docker.com` | 2 GB | 3 GB |
-| **Raspberry Pi OS 64-bit (arm64)** | — | **none. The node does not run here.** See below. | — | — |
-| **Windows via WSL2 (amd64)** | Win 10 22H2 (19045) · Win 11 23H2 (22631) | Docker Desktop, WSL2 backend | 8 GB | 3 GB |
+| **macOS, Intel (x86_64)** | **13.5** | ≥14.0: OrbStack, Docker Desktop or Colima · 13.5–13.7: **Colima only** (`--vm-type vz`) · **below 13.5: none** | 4 GB | 3 GB |
+| **macOS, Apple Silicon (arm64)** | **13.0** | same three. Colima reaches 13.0 here; the database image is amd64-only and runs emulated. | 4 GB | 3 GB |
+| **Ubuntu / Debian (amd64)** | Ubuntu 22.04 · Debian 11 | Docker Engine, installed by the script | 4 GB | 3 GB |
+| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no arm64 build.** | — | — |
+| **Windows via WSL2 (amd64)** | 10 22H2 (build 19045) | Docker Desktop, WSL2 backend | 8 GB | 3 GB |
 
-RAM and disk are the runtime vendor's floors, not the node's own. The node itself is much smaller than they
-are — see the next section — so the runtime is what decides whether a machine qualifies.
+### Where each number comes from
 
-## Where each floor comes from
+Every floor below is the vendor's own current sentence, with the date it was read. `make check-floors` fails when any of them is more than 180 days old.
 
-**OrbStack: macOS 14.0.** "macOS 14.0 and newer" — [OrbStack FAQ](https://docs.orbstack.dev/faq). The FAQ names the
-reason: macOS 12.0–12.2 shipped "critical virtualization bugs". There is an Intel build; the floor is the same.
+| | Floor | The vendor's words | Read |
+|---|---|---|---|
+| [OrbStack](https://docs.orbstack.dev/faq) | 14.0 | macOS 14.0 and newer | 2026-09-08 |
+| [Docker Desktop](https://docs.docker.com/desktop/setup/install/mac-install/) | 14.0 | Docker Desktop is supported on the current and two previous major macOS releases | 2026-09-08 |
+| [Colima](https://github.com/abiosoft/colima/blob/main/docs/FAQ.md#are-older-macos-versions-supported) | 13.5 | Colima requires macOS 13 or newer | 2026-09-08 |
+| [UTM](https://github.com/utmapp/UTM/releases/tag/v5.0.5) | 11.3 | "Reverted minimum version requirement imposed by v5.0.4: once again we support versions down to macOS 11.3 and iOS 14.0." | 2026-09-08 |
+| [VMware Fusion 13.0](https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/fusion-pro/13-0/using-vmware-fusion/getting-started-with-vmware-fusion/system-requirements-for-vmware-fusion.html) | 12.0 | Any Mac that officially supports macOS 12 Monterey or later. | 2026-09-08 |
+| [VMware Fusion (current line)](https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/fusion-pro/25H2/using-vmware-fusion/getting-started-with-vmware-fusion/system-requirements-for-vmware-fusion.html) | 15.0 | Any Mac that officially supports macOS 15 Sequoia or later. | 2026-09-08 |
+| [VirtualBox](https://www.virtualbox.org/manual/topics/installation.html) | 13.0 | Supported macOS hosts are listed as "26 (Tahoe)", "15 (Sequoia)", "14 (Sonoma)" and "13 (Ventura)", each "with Intel x86_64 processors" and again with… | 2026-09-08 |
+| [Multipass](https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/) | 14.0 | You can use any Mac (M-series or Intel based) with macOS 14 Sonoma or later installed. | 2026-09-08 |
+| [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/) | 22.04 | "Ubuntu Resolute 26.04 (LTS), Ubuntu Noble 24.04 (LTS), Ubuntu Jammy 22.04 (LTS)" and "compatible with x86_64 (or amd64), armhf, arm64, s390x, and ppc… | 2026-09-08 |
+| [Docker Engine on Debian](https://docs.docker.com/engine/install/debian/) | 11 | "Debian Trixie 13 (stable), Debian Bookworm 12 (oldstable), Debian Bullseye 11 (oldoldstable)" and "compatible with x86_64 (or amd64), armhf (arm/v7),… | 2026-09-08 |
+| [Docker Engine on Fedora](https://docs.docker.com/engine/install/fedora/) | 43 | you need a maintained version of one of the following Fedora versions: Fedora 44, Fedora 43 | 2026-09-08 |
+| [Docker on Arch](https://wiki.archlinux.org/title/Docker) | rolling | Arch has no Docker Engine page at docs.docker.com; docker is packaged in Arch's own extra repository and the installer uses pacman. Rolling release, s… | 2026-09-08 |
+| [Docker Desktop with the WSL2 backend](https://docs.docker.com/desktop/setup/install/windows-install/) | 10 22H2 (build 19045) | "Windows 10 64-bit: Enterprise, Pro, or Education version 22H2 (build 19045). Windows 11 64-bit: Enterprise, Pro, or Education version 23H2 (build 226… | 2026-09-08 |
 
-**Docker Desktop: a moving window.** "Docker Desktop is supported on the current and two previous major macOS
-releases" — [Install Docker Desktop on Mac](https://docs.docker.com/desktop/setup/install/mac-install/). That is 26,
-15 and 14 today (September 2026) and it drops the oldest each autumn, so **the floor moves without anyone editing this
-file.** Same page: "at least 4 GB of RAM".
+*Docker Desktop's floor moves on its own: Docker Desktop is supported on the current and two previous major macOS releases — so it drops the oldest macOS each autumn whether or not anyone edits this page.*
+<!-- END GENERATED -->
 
-**Colima: macOS 13.0, and 13.5 in practice.** "Colima requires macOS 13 or newer" —
-[Colima FAQ](https://github.com/abiosoft/colima/blob/main/docs/FAQ.md#are-older-macos-versions-supported). Below 14 it
-is the only runtime left, and on Intel it needs the `vz` backend to avoid a QEMU dependency: `vz` is "Lima >= 0.14,
-macOS >= 13.0", but "Intel Macs with macOS prior to 13.5 cannot boot Linux kernel v6.2" —
-[Lima, vmType vz](https://lima-vm.io/docs/config/vmtype/vz/). Hence 13.5 as the real floor. Colima installs as one
-binary, no package manager: [INSTALL.md](https://github.com/abiosoft/colima/blob/main/docs/INSTALL.md).
+RAM and disk are the runtime vendors' floors, not the node's own. The node itself is much smaller — see
+*What the node actually costs* below — so the runtime is what decides whether a machine qualifies.
 
-**A Mac below 13.5 has no runtime at all.** OrbStack wants 14, Docker Desktop wants 14, Colima wants 13. This is not
-a gap the installer can close; it is an OS upgrade or a different machine. The installer now says so in one sentence
-and stops, instead of naming software the machine cannot run.
+## A Mac below the floor is not finished
 
-A machine that offers **Xcode Command Line Tools 14.2** is macOS 12.5–13.x — "macOS Monterey 12.5 – macOS Ventura
-13.x" on [Apple's Xcode support page](https://developer.apple.com/support/xcode/). If that dialog appears, the machine
-is at or below the floor. (The installer no longer triggers it: it fetches a signed tarball instead of using `git`.)
+Below the floor no container runtime installs, and for some models upgrading is not a route: a MacBook
+Pro (Retina, 15-inch, Mid 2015) tops out at macOS 12.7.6, while a 2017 model reaches Ventura and clears
+the floor. `data/mac_ceilings.yml` holds what Apple's own compatibility pages establish, and
+`planetai preflight` says which case a machine is in rather than sending anyone to check a list.
 
-**Linux: Docker Engine's own list.** "Ubuntu Resolute 26.04 (LTS), Ubuntu Noble 24.04 (LTS), Ubuntu Jammy 22.04 (LTS)"
-— [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/); "Debian Trixie 13, Debian Bookworm
-12, Debian Bullseye 11" — [on Debian](https://docs.docker.com/engine/install/debian/). Both list `x86_64 (or amd64)`
-first. Fedora and Arch work; they are not on Docker's tested list, so they are not in the table.
+Two routes work on a Mac that cannot upgrade, and both are printed as commands:
 
-**Windows: Docker Desktop's own list.** "Windows 10 64-bit: Enterprise, Pro, or Education version 22H2 (build 19045).
-Windows 11 64-bit: Enterprise, Pro, or Education version 23H2 (build 22631) or higher", "WSL version 2.1.5 or later",
-"8GB system RAM", "64-bit processor with Second Level Address Translation (SLAT)", "Enable hardware virtualization in
-BIOS/UEFI" — [Install Docker Desktop on Windows](https://docs.docker.com/desktop/setup/install/windows-install/).
-Run the installer inside the Ubuntu shell. Sensors on the LAN are reached from WSL2 normally.
+- **Linux in a VM on that Mac.** UTM is free, needs no account, supports macOS 11.3, and on Intel wraps
+  Apple's Hypervisor framework so the guest CPU is near-native. Old UTM builds stay on GitHub Releases,
+  so a Mac below a current build's floor can fetch an earlier one. VMware Fusion **13.0** is the
+  alternative when the VM will outlive a few weeks — bridged networking, open-vm-tools, and
+  `vmrun start <vmx> nogui` for headless autostart; note the *current* Fusion line needs macOS 15.
+- **Linux on the metal**, and the laptop becomes the node: `REVIVE_A_LAPTOP.md`.
 
-## Raspberry Pi 4 / 5 — not yet, and here is the proof
+Not Multipass, whatever anything else in this repository says: its floor is macOS 14. Not VirtualBox
+either — its oldest supported host is Ventura.
+
+## Raspberry Pi 4 / 5 — untested, and here is what blocks it
 
 The database image the node uses publishes **one manifest, for `linux/amd64`, and nothing else**:
 
@@ -80,6 +88,29 @@ base), `eclipse-mosquitto:2` (the `mqtt` profile), `ipfs/kubo:latest` (the `ipfs
 
 When an arm64 database image is chosen: 64-bit Raspberry Pi OS, 4 GB, boot from an SSD; SD cards die under Postgres
 writes within a year.
+
+## Two machines to aim at, and which one to reach for first
+
+**Reference A — a repurposed x86_64 laptop.** The machine this section exists because of: a MacBook Pro
+(Retina, 15-inch, Mid 2015), Core i7-4870HQ, 4 cores / 8 threads, 16 GB, 428 GB free. Its Geekbench 6
+multi-core score is **3,664**
+([cpu-monkey](https://www.cpu-monkey.com/en/benchmark-intel_core_i7_4870hq-geekbench_6_multi_core),
+read 9 September 2026). Under macOS it cannot run a node at all; with Linux on the metal it is a good
+one. Any x86_64 laptop from about 2015 with 8 GB is in the same class.
+
+**Reference B — a small always-on x86 mini PC.** A Beelink MINI S12 Pro or equivalent: Intel N100,
+4 cores / 4 threads, 16 GB, 500 GB SSD, roughly 6 W idle, no fan noise to speak of. Its Geekbench 6
+multi-core score is **2,595** across 677 samples
+([cpu-monkey](https://www.cpu-monkey.com/en/benchmark-intel_processor_n100-geekbench_6_multi_core),
+read 9 September 2026).
+
+**So the ten-year-old laptop is about 40 % faster on multicore than the mini PC we would otherwise tell
+someone to buy.** That is the whole argument for reviving what a building already has: revive first, buy
+second. The mini PC wins on idle power, silence and the fact that it has no battery to age — reasons to
+choose it, but not performance ones.
+
+*The mini PC's street price is the one number here that is not verified. It moves weekly and by region,
+so price the named model where you are, on the day, and write the figure and the date in next to it.*
 
 ## What the node actually costs, measured on amd64
 
