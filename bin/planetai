@@ -213,7 +213,10 @@ PY
     local -a arr=(); while IFS= read -r -d '' x; do arr+=("$x"); done < <(printf '%s' "$flags")
     step "Installing from $f: ${arr[*]}"
     chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-    ./install.sh --yes "${arr[@]}" >>"$LOG" 2>&1 || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+    # NOT redirected into the log. This is the headless path — CI, an agent, a provisioning script —
+    # and it was the one place still swallowing every named step and elapsed time into a file nobody
+    # reads. install.sh reports for itself; let it.
+    PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes "${arr[@]}" || exit 1
     say "installed. planetai status --json for the state; planetai ui for the token."
     return
   fi
