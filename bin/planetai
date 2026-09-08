@@ -207,7 +207,19 @@ PY
   # a node is "installed" when its containers exist. A .env with a name but no containers is an install that did
   # not finish (Docker not reachable at the time, the image failed to build): ask the questions again.
   if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]] && docker info >/dev/null 2>&1 && [[ -z "$(docker compose ps -aq 2>/dev/null)" ]]; then
-    say "a previous set-up here did not finish. Starting again."
+    # The answers were written to .env before anything heavy ran, so a re-run has them. It used to say
+    # "starting again" and ask all four a second time, which is what a tester meets after any failed install.
+    step "A set-up here did not finish, but your answers were saved."
+    printf '   name        %s\n   place       %s (%s, %s)\n   time zone   %s\n   city key    %s\n' \
+      "$(envget NODE_NAME)" "$(envget NODE_CITY)" "$(envget NODE_LAT)" "$(envget NODE_LON)" "$(envget NODE_TZ)" "$(envget NODE_CITY)"
+    echo
+    if confirm "Continue with these?"; then
+      step "Installing"
+      chmod +x install.sh backup.sh update.sh 2>/dev/null || true
+      spin "writing settings, pulling images, building the node" ./install.sh --yes || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+      finish_setup; return
+    fi
+    say "starting the questions again."
   elif [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
     step "This machine already runs a node: $(envget NODE_NAME) ($(envget NODE_CITY), $(envget NODE_LAT), $(envget NODE_LON))"
     local what
@@ -297,6 +309,14 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
     "$([[ $bad -eq 1 ]] && echo 'Bali Air Dispatch + CAMS' || echo 'CAMS model')"
   echo
   confirm "Install with these?" || { echo "ok, nothing changed."; exit 0; }
+
+  # The answers go to .env now, before a single image is pulled. install.sh writes the same values again; the
+  # point is that a failure anywhere below this line leaves them on disk, so a re-run can offer them back.
+  envset NODE_NAME "$name"; envset NODE_LAT "$lat"; envset NODE_LON "$lon"
+  envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
+  [[ -n "${sc:-}" ]] && envset SC_DEVICES "$sc"; [[ -n "${ag:-}" ]] && envset AIRGRADIENT_HOSTS "$ag"
+  [[ -n "${pa:-}" ]] && envset PURPLEAIR_HOSTS "$pa"; [[ $indoor -eq 1 ]] && envset SENSOR_INDOOR 1
+  [[ $bad -eq 0 ]] && envset BAD_ENABLED 0
 
   # install
   step "Installing"
