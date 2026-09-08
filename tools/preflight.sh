@@ -131,6 +131,18 @@ disk_target()      { local t="${PLANETAI_HOME:-$HOME}"; [[ -d "$t" ]] || t="$HOM
 probe_disk_free_k(){ [[ -n "${PF_DISK_FREE_KB:-}" ]] && { printf '%s' "$PF_DISK_FREE_KB"; return; }; df -Pk "$(disk_target)" 2>/dev/null | awk 'NR==2{print $4}'; }
 probe_disk_mount() { [[ -n "${PF_DISK_MOUNT:-}"   ]] && { printf '%s' "$PF_DISK_MOUNT";   return; }; df -P  "$(disk_target)" 2>/dev/null | awk 'NR==2{print $6}'; }
 probe_app()        { [[ -d "$(probe_apps)/$1" ]]; }
+probe_laptop()     { [[ -n "${PF_IS_LAPTOP:-}" ]] && { [[ "$PF_IS_LAPTOP" == 1 ]]; return; }
+                     case "$(probe_os)" in
+                       Darwin) [[ "$(probe_model)" == MacBook* ]];;
+                       Linux)  compgen -G "/sys/class/power_supply/BAT*" >/dev/null;;
+                       *)      return 1;;
+                     esac; }
+probe_ethernet()   { [[ -n "${PF_HAS_ETHERNET:-}" ]] && { [[ "$PF_HAS_ETHERNET" == 1 ]]; return; }
+                     case "$(probe_os)" in
+                       Darwin) networksetup -listallhardwareports 2>/dev/null | grep -qiE "Hardware Port: (Ethernet|Thunderbolt Ethernet)";;
+                       Linux)  compgen -G "/sys/class/net/en*" >/dev/null || compgen -G "/sys/class/net/eth*" >/dev/null;;
+                       *)      return 0;;
+                     esac; }
 probe_cores()      { [[ -n "${PF_CORES:-}" ]] && { printf '%s' "$PF_CORES"; return; }
                      sysctl -n hw.ncpu 2>/dev/null || /usr/sbin/sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || echo ""; }
 
@@ -343,6 +355,29 @@ if [[ -z "${PF_PORTS_BUSY+x}" ]]; then
 fi
 row ports "$([[ -z "$busy" ]] && echo "8080, 5432 free" || echo "$busy in use")" "$([[ -z "$busy" ]] && echo 1 || echo 0)" \
   "set APP_PORT to a free port in .env before installing (8080 is the dashboard; 5432 is the database, bound to localhost)"
+
+# ---------------------------------------------------------------- notes, not failures
+# Only what is true of THIS machine, at most three lines, and never mixed into the verdict. A laptop is a
+# fine node and a bad one for the same reason: it is designed to go to sleep.
+if [[ $JSON -eq 0 ]] && probe_laptop; then
+  echo
+  printf '  %sThis is a laptop. Three things, none of them failures:%s\n' "$B" "$N"
+  case "$PLATFORM" in
+    macos)
+      printf '    %ssleep%s      a sleeping machine is a stopped node. Closing the lid counts.\n' "$D" "$N"
+      printf '                 %ssudo pmset -a disablesleep 1%s   (asks for your password; stops all sleep, lid included)\n' "$D" "$N"
+      printf '    %sbattery%s    a laptop left plugged in for years is worth a look before you rely on it:\n' "$D" "$N"
+      printf '                 %ssystem_profiler SPPowerDataType | grep -E "Cycle Count|Condition"%s\n' "$D" "$N";;
+    linux|wsl)
+      printf '    %ssleep%s      a sleeping machine is a stopped node. Closing the lid counts.\n' "$D" "$N"
+      printf '                 %ssudo sed -i s/^#HandleLidSwitch=.*/HandleLidSwitch=ignore/ /etc/systemd/logind.conf%s\n' "$D" "$N"
+      printf '                 %sthen: sudo systemctl restart systemd-logind%s\n' "$D" "$N"
+      printf '    %sbattery%s    a laptop left plugged in for years is worth a look before you rely on it:\n' "$D" "$N"
+      printf '                 %scat /sys/class/power_supply/BAT0/health /sys/class/power_supply/BAT0/cycle_count%s\n' "$D" "$N";;
+  esac
+  probe_ethernet || { printf '    %sethernet%s   no wired port here. For a node that stays on, a USB gigabit adapter\n' "$D" "$N"
+                      printf '                 is the wired path; WiFi drops and a node notices.\n'; }
+fi
 
 # ---------------------------------------------------------------- verdict
 # Did the machine itself pass, and only its system fail? That decides whether the verdict opens by

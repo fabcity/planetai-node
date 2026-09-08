@@ -113,7 +113,19 @@ if grep -nE '^[[:space:]]*sudo\b' "$PF" | grep -q .; then
   echo "  FAIL the script runs sudo"; fails=$((fails+1))
 else echo "  ok   never runs sudo (fix lines quote one; nothing executes it)"; fi
 
-echo "14. it fits 80 columns"
+echo "14. laptop notes: only when true, never in the verdict"
+run "${MAC_LUCAS[@]}" PF_IS_LAPTOP=1 PF_HAS_ETHERNET=0
+has   "  says it is a laptop"                     "This is a laptop"
+has   "  the sleep fix, as a command"             "pmset -a disablesleep 1"
+has   "  the battery command"                     "Cycle Count"
+has   "  and the missing wired port"              "no wired port here"
+has   "  labelled not-a-failure"                  "none of them failures"
+run "${MAC_LUCAS[@]}" PF_IS_LAPTOP=0
+hasnt "  silent on a desktop"                     "This is a laptop"
+run "${MAC_LUCAS[@]}" PF_IS_LAPTOP=1 PF_HAS_ETHERNET=1
+hasnt "  and silent about ethernet when there is a port" "no wired port here"
+
+echo "15. it fits 80 columns"
 run "${MAC_LUCAS[@]}"
 wide="$(awk '{ n=length($0); if (n>m) m=n } END { print m+0 }' <<<"$(sed -n '/preflight/,/ports/p' <<<"$OUT")")"
 if [[ "$wide" -le 80 ]]; then echo "  ok   the table is $wide columns"
