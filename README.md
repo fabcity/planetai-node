@@ -23,7 +23,7 @@ from above: what the ground is doing.
 > and what you report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
 
 ```bash
-curl -fsSL planetai.fab.city/node0/install | bash
+curl -fsSL planetai.fab.city/install | bash
 ```
 
 Four questions, two minutes, running. Then `planetai telegram` for the alerts and `planetai ui` for the dashboard.

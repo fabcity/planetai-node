@@ -35,7 +35,7 @@ OrbStack (lighter) or Docker Desktop. **Start at login: on.** Then power returns
 
 ## Install
 
-`curl -fsSL planetai.fab.city/node0/install | bash`, monitor still attached. Then `planetai mesh` so the mini is reachable
+`curl -fsSL planetai.fab.city/install | bash`, monitor still attached. Then `planetai mesh` so the mini is reachable
 from anywhere as `<name>.ts.net` with no open ports.
 
 ## From your laptop
