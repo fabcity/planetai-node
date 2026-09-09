@@ -212,8 +212,15 @@ jobs:
           s = s.replace('PORT_PLACEHOLDER', os.environ['PORT'])
           open('/tmp/run.sh','w').write(s)
           PYP
+          # The daemon is the HOST's, so every bind mount in docker-compose.yml — ./init.sql, ./config,
+          # ./packs — is resolved on the host, not inside this container. Mount the node's home at the
+          # SAME path on both sides and the two agree. Without this the database gets an empty directory
+          # where init.sql should be and comes up unhealthy, which is how Arch failed and Ubuntu did not:
+          # a race, not a distribution difference.
+          sudo mkdir -p /home/tester && sudo chmod 777 /home/tester
           docker run --rm --network host \
             -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /home/tester:/home/tester \
             -v "$PWD:/work:ro" -v /tmp/run.sh:/run.sh:ro \
             ${{ matrix.image }} bash /run.sh
         env:
@@ -222,7 +229,9 @@ jobs:
           PORT: ${{ matrix.port }}
       - name: leave the daemon as we found it
         if: always()
-        run: docker compose -p ${{ matrix.project }} down -v >/dev/null 2>&1 || true
+        run: |
+          docker compose -p ${{ matrix.project }} down -v >/dev/null 2>&1 || true
+          sudo rm -rf /home/tester || true
       - name: what a tester would paste into an issue
         if: always()
         run: bash tools/preflight.sh --json || true
