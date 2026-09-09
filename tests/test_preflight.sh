@@ -146,7 +146,19 @@ run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=arm64 PF_HW_MODEL=Mac14,2 PF_HAVE=
 ok    "  Apple Silicon passes too"                "$RC" 0
 hasnt "  and is NOT told to switch"               "this is an Intel Mac"
 
-echo "17. it fits 80 columns"
+echo "17. a read-only disk: free space is not the same as writable"
+run PF_OS=Linux PF_OS_PRETTY="Linux Mint 22.3" PF_ARCH=x86_64 PF_WRITABLE=0 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
+has   "  the row fails"                           "writable      read-only"
+has   "  the verdict blames the disk, not the node" "the reason is its disk"
+has   "  and says what to run first"              "sudo dmesg"
+has   "  and what a repeat means"                 "the drive is failing"
+hasnt "  never says the machine can run a node"   "This machine can run a node"
+ok    "  exit 1"                                  "$RC" 1
+run PF_OS=Linux PF_OS_PRETTY="Linux Mint 22.3" PF_ARCH=x86_64 PF_WRITABLE=1 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
+has   "  and passes when the disk is writable"    "writable      yes"
+has   "  saying so"                               "This machine can run a node"
+
+echo "18. it fits 80 columns"
 run "${MAC_LUCAS[@]}"
 wide="$(awk '{ n=length($0); if (n>m) m=n } END { print m+0 }' <<<"$(sed -n '/preflight/,/ports/p' <<<"$OUT")")"
 if [[ "$wide" -le 80 ]]; then echo "  ok   the table is $wide columns"
