@@ -123,6 +123,17 @@ if [[ "$PLATFORM" != macos ]]; then
   done
 fi
 
+# ---- the plan, BEFORE the container runtime, not after it. On a fresh Linux box `get.docker.com`
+# is the single biggest download of the whole install — hundreds of megabytes of packages — and it
+# used to run above the first named step, inside the outer spinner, saying nothing. A tester in
+# Menorca watched "writing settings, pulling images, building the node" for twenty minutes on
+# 8 September while Docker installed invisibly behind it. Step 1 is the runtime now.
+STEP_TOTAL=7
+printf '\n%s\n' "Installing a node. Seven steps. Two to six minutes if Docker is already here,"
+printf '%s\n' "up to twenty on a fresh Linux box, because Docker itself is a large download."
+printf '%s\n' "Progress below. Full log:"
+printf '%s\n\n' "  $LOG_FILE"
+
 # ---- docker
 # An installed-but-not-running runtime is not a reason to stop: it is a reason to wait. Every tester who hit
 # "Docker isn't running" had Docker on the machine and had simply not opened it since the last reboot.
@@ -143,6 +154,7 @@ wait_for_daemon() {                 # up to 5 minutes, with the clock visible
   [[ -t 1 ]] && printf '\r\033[K'
   return 1
 }
+step "making sure a container runtime is running"
 if ! docker info >/dev/null 2>&1; then
   IFS='|' read -r rt_name rt_start <<< "$(runtime_app)"
   if [[ -n "$rt_name" ]]; then
@@ -164,9 +176,13 @@ elif ! need docker; then
   case "$PLATFORM" in
     *arch*) echo "     sudo pacman -Sy --noconfirm docker docker-compose   (the packages)"
             echo "     sudo systemctl enable --now docker                  (so it starts with the machine)"
-            sudo pacman -Sy --noconfirm docker docker-compose && sudo systemctl enable --now docker;;
+            watch_run "pacman could not install docker — check the network and the mirrors" \
+              sudo pacman -Sy --noconfirm docker docker-compose
+            sudo systemctl enable --now docker || true;;
     *)      echo "     curl -fsSL https://get.docker.com | sh              (Docker's own installer; it uses sudo itself)"
-            curl -fsSL https://get.docker.com | sh;;
+            echo "     the big one: several hundred MB of packages, and it says little while it works"
+            watch_run "Docker's own installer failed — its output is in the log" \
+              bash -c 'curl -fsSL https://get.docker.com | sh';;
   esac
   say "and one more, so you can use Docker without sudo every time — it adds your user to the docker group:"
   echo "     sudo usermod -aG docker $USER"
@@ -181,13 +197,7 @@ if ! docker info >/dev/null 2>&1 && grep -qw docker <<< "$(id -nG "$USER")" && [
 fi
 docker info >/dev/null 2>&1 || die "Docker is installed but this user cannot reach it. Log out and back in (the docker group is new), then run the same line again."
 docker compose version >/dev/null 2>&1 || die "docker compose plugin missing"
-
-# ---- the plan, before anything long starts. A tester who knows there are six steps and roughly how
-# long they take will wait; one who sees a single line for four minutes will not.
-STEP_TOTAL=6
-printf '\n%s\n' "Installing a node. Six steps, two to six minutes on a first run — most of it downloads."
-printf '%s\n' "Progress below. Full log:"
-printf '%s\n\n' "  $LOG_FILE"
+step_ok
 
 # ---- .env
 step "writing settings to .env"
