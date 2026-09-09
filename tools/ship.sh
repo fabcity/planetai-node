@@ -21,8 +21,21 @@ for a in "$@"; do case "$a" in --no-deploy) DEPLOY=0;; --check) CHECK=1;; *) die
 HERE="$(git describe --tags --always)"
 [[ -d "$SITE/.git" ]] || die "no site repo at $SITE. Clone fabcity/planetai beside this one, or set PLANETAI_SITE_REPO."
 
+live_version() { curl -fsSL "https://planetai.fab.city/node0/get/VERSION?cb=$RANDOM.$$" 2>/dev/null || echo unreachable; }
+
 if [[ $CHECK -eq 1 ]]; then
-  LIVE="$(curl -fsSL "https://planetai.fab.city/node0/get/VERSION?cb=$RANDOM" 2>/dev/null || echo unreachable)"
+  # VERSION is served with max-age=300, so for a few minutes after a deploy some Cloudflare edges
+  # still answer from the old entry. Read once; only if that disagrees, read again a few times before
+  # calling the site behind — this check said "behind" seconds after a deploy that had worked, which
+  # is the one thing a release check must never get wrong.
+  LIVE="$(live_version)"
+  if [[ "$HERE" != "$LIVE" ]]; then
+    for _ in 1 2 3 4; do
+      sleep 10
+      LIVE="$(live_version)"
+      [[ "$HERE" == "$LIVE" ]] && break
+    done
+  fi
   printf '  main is at          %s\n  the site serves     %s\n' "$HERE" "$LIVE"
   [[ "$HERE" == "$LIVE" ]] && { say "a tester gets what is on main"; exit 0; }
   printf '\033[1;33m!!\033[0m the site is behind. A tester downloading now gets the older node: tools/ship.sh\n'
