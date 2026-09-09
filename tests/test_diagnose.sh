@@ -15,6 +15,7 @@ fn="$(sed -n '/^diagnose() {/,/^}/p' install.sh)"
 
 ok()  { echo "  ok   $1"; }
 bad() { echo "  FAIL $1"; fails=$((fails+1)); }
+
 check() { # check "<log line>" "<expected words>" "<must NOT contain>"
   local line="$1" want="$2" nope="${3:-}" out
   out="$(LOG_FILE=/tmp/dx.$$ bash -c "printf '%s\n' \"\$1\" > /tmp/dx.$$; $fn; diagnose" _ "$line")"
@@ -29,10 +30,10 @@ check() { # check "<log line>" "<expected words>" "<must NOT contain>"
 }
 
 echo "diagnose: the log decides, not the guess"
-check 'failed commit on ref "layer-sha256:4a426440ea59e29bee"' "this is the disk, not the network" "check the network"
+check 'failed commit on ref "layer-sha256:4a426440ea59e29bee"' "could not be written. This is the disk" "check the network"
 check 'write /var/lib/docker/tmp/x: no space left on device'    "the disk filled up"
-check 'error: input/output error'                               "this is the disk"
-check 'open /etc/foo: read-only file system'                    "this is the disk"
+check 'error: input/output error'                               "This is the disk"
+check 'open /etc/foo: read-only file system'                    "This is the disk"
 check 'dial tcp: lookup registry-1.docker.io: no such host'     "registry could not be reached" "disk"
 check 'net/http: TLS handshake timeout'                         "registry could not be reached" "disk"
 check 'denied: requested access to the resource is denied'      "refused the image name"
@@ -48,9 +49,19 @@ grep -q 'check the network, then run the resume command' install.sh \
   && { echo "  FAIL the old network guess is still there"; fails=$((fails+1)); } \
   || echo "  ok   the pull step's own wording no longer claims to know"
 
+echo "diagnose: every reason fits a terminal"
+# The first line rides the "  reason  " label (10 columns); the rest is indented 10. Lucas's terminal
+# wrapped the disk advice and its trailing comments landed inside the following line.
+for line in 'failed commit on ref "x"' 'no space left on device' 'no such host' 'manifest unknown'; do
+  d="$(mktemp -d)"; printf '%s\n' "$line" > "$d/log"
+  { echo "LOG_FILE=$d/log"; sed -n '/^diagnose() {/,/^}/p' install.sh; echo 'diagnose'; } > "$d/r.sh"
+  wide="$(bash "$d/r.sh" | awk '{ if (length($0)+10 > 78) print length($0)+10 }' | head -1)"
+  rm -rf "$d"
+  if [[ -z "$wide" ]]; then ok "'$line' fits 78 columns"
+  else bad "'$line' reaches $wide columns"; fi
+done
+
 echo "die: it says the message once, keeping its shape"
-# Build a tiny script that has diagnose() and die() lifted out of the real file, and run it. Nesting
-# heredocs inside command substitutions to do this is how the first version of this test broke.
 d="$(mktemp -d)"
 {
   echo 'set -uo pipefail'
@@ -62,9 +73,7 @@ d="$(mktemp -d)"
 } > "$d/run.sh"
 out="$(bash "$d/run.sh" 2>&1)"; rm -rf "$d"
 
-n="$(grep -c "second line" <<<"$out")"
-if [[ "$n" == 1 ]]; then ok "a continuation line appears once, not twice"
-else echo "  FAIL 'second line' appears $n times"; fails=$((fails+1)); fi
+[[ "$(grep -c 'second line' <<<"$out")" == 1 ]] && ok "a continuation line appears once" || bad "a continuation line is repeated"
 grep -qE '^  reason  first line here$' <<<"$out" && ok "the first line sits on the reason label" || bad "the reason label does not carry the first line"
 grep -qE '^          second line$'     <<<"$out" && ok "and the rest is indented under it"      || bad "continuation lines are not aligned"
 grep -qE '^  log '                     <<<"$out" && ok "log is on its own line"                 || bad "log ran into the previous line"

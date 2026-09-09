@@ -46,17 +46,25 @@ diagnose() {
   hit="$(grep -aoE 'no space left on device|failed commit on ref|input/output error|read-only file system|no such host|network is unreachable|TLS handshake timeout|connection refused|i/o timeout|denied: requested access|manifest unknown' "$log" 2>/dev/null | tail -1)"
   case "$hit" in
     "no space left on device")
-      printf 'the disk filled up. `df -h .` and `docker system df` say where it went.';;
+      printf 'the disk filled up. Where it went:\n  df -h .\n  docker system df';;
     "failed commit on ref"|"input/output error"|"read-only file system")
-      printf 'the download arrived and could not be WRITTEN — this is the disk, not the network.
-          sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20    what the kernel saw
-          df -h / /var/lib/docker                                       is either one full
-          docker system prune -af                                       a store left inconsistent
-        A drive that reads fine and fails on a large sustained write is a drive on its way out.';;
+      # Every line here fits 80 columns including its 10-column indent. Lucas'"'"'s terminal wrapped the
+      # first version and the trailing comments landed in the middle of the next line.
+      printf 'the download arrived but could not be written. This is the disk.
+what the kernel saw:
+  sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20
+whether either filesystem is full:
+  df -h / /var/lib/docker
+a store earlier trouble left inconsistent. This clears it, and holds
+nothing of yours before a first install:
+  sudo systemctl stop docker && sudo rm -rf /var/lib/docker
+  sudo systemctl start docker
+If the same write fails after that, it is the drive: one that reads
+fine and fails on a large sustained write is on its way out.';;
     "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
-      printf 'the registry could not be reached. A proxy, a captive portal, or the line is down.';;
+      printf 'the registry could not be reached. A proxy, a captive\nportal, or the line itself.';;
     "denied: requested access"|"manifest unknown")
-      printf 'the registry refused the image name. That is a bug here, not on your machine — tell us.';;
+      printf 'the registry refused the image name. That is a bug here,\nnot on your machine. Please tell us.';;
     *) printf '';;
   esac
 }
