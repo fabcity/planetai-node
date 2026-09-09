@@ -31,7 +31,27 @@ fi
 
 [[ -z "$(git status --porcelain)" ]] || die "this repository is dirty. Commit first — a tester should never get an uncommitted file."
 [[ "$(git rev-parse --abbrev-ref HEAD)" == main ]] || die "ship from main, not $(git rev-parse --abbrev-ref HEAD)."
-git fetch -q origin && [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || die "main and origin/main differ. Pull or push first, so the tarball matches what is public."
+# "Behind" is not "diverged". After a PR is merged on GitHub the local checkout is simply behind, a
+# fast-forward away, and refusing there sent somebody to run `git pull` and come back four separate
+# times today. Fast-forward it and carry on; refuse only when the two have actually diverged, which is
+# the case where guessing would be wrong.
+git fetch -q origin
+AHEAD="$(git rev-list --count origin/main..HEAD)"
+BEHIND="$(git rev-list --count HEAD..origin/main)"
+if [[ "$AHEAD" != 0 && "$BEHIND" != 0 ]]; then
+  die "main and origin/main have diverged — $AHEAD here, $BEHIND there. Sort that out first; a release
+   should never be built from a tree nobody else has."
+elif [[ "$AHEAD" != 0 ]]; then
+  die "main is $AHEAD commit(s) ahead of origin. Push first, so the tarball matches what is public:
+     git push"
+elif [[ "$BEHIND" != 0 ]]; then
+  say "main is $BEHIND commit(s) behind origin — fast-forwarding, then building from that"
+  # NOT backticks: inside a double-quoted string they run the command and paste its output, so this
+  # message used to execute `git pull` a second time while building itself and then print a hole where
+  # the command name should be.
+  git pull -q --ff-only || die "the fast-forward failed. Run this and read what it says:
+     git pull"
+fi
 
 say "building the tarball at ${HERE}"
 tools/bundle.sh "$SITE/node0/get"
