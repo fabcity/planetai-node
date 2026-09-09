@@ -150,16 +150,11 @@ jobs:
           cat /tmp/TRANSCRIPT_fail.txt
           echo "installer exit: $rc"
           [ "$rc" -eq 0 ] && { echo "expected this run to FAIL and it did not"; exit 1; } || true
-          grep -qE "^FAILED: .+"                            /tmp/TRANSCRIPT_fail.txt
-            /tmp/TRANSCRIPT_remove.txt || { echo "no named step in the failure"; exit 1; }
-          grep -qE "^  reason  .+"                          /tmp/TRANSCRIPT_fail.txt
-            /tmp/TRANSCRIPT_remove.txt || { echo "no reason"; exit 1; }
-          grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt
-            /tmp/TRANSCRIPT_remove.txt || { echo "no resume command"; exit 1; }
-          grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt
-            /tmp/TRANSCRIPT_remove.txt || { echo "no one-line summary"; exit 1; }
-          grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt
-            /tmp/TRANSCRIPT_remove.txt && { echo "still says Something went wrong"; exit 1; } || true
+          grep -qE "^FAILED: .+"                            /tmp/TRANSCRIPT_fail.txt || { echo "no named step in the failure"; exit 1; }
+          grep -qE "^  reason  .+"                          /tmp/TRANSCRIPT_fail.txt || { echo "no reason"; exit 1; }
+          grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt || { echo "no resume command"; exit 1; }
+          grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt || { echo "no one-line summary"; exit 1; }
+          grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt && { echo "still says Something went wrong"; exit 1; } || true
           echo "the failure names its step, its reason, its log and the way back"
 
       - name: keep both transcripts
