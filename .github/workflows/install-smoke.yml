@@ -131,6 +131,73 @@ jobs:
         if: always()
         run: bash tools/preflight.sh --json || true
 
+  # Ubuntu Server and Arch (which is what Omarchy is), from a clean userland rather than a CI image with
+  # half the world preinstalled. Each container starts with no docker, no curl-installed anything and a
+  # non-root user with sudo — the shape of a machine somebody just installed Linux on, which is where
+  # Lucas was on 8 September. The host's docker socket is mounted, so the engine the script installs has
+  # something to talk to; what is under test is the platform branch, not nested virtualisation.
+  clean-linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Ubuntu Server 22.04
+            image: ubuntu:22.04
+            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates >/dev/null
+          - name: Arch (what Omarchy is built on)
+            image: archlinux:latest
+            prep: pacman -Sy --noconfirm --quiet curl sudo tar >/dev/null
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: build the tarball this commit would ship, and serve it
+        run: |
+          mkdir -p /tmp/site/get && bash tools/bundle.sh /tmp/site/get
+          ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
+          for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
+      - name: the stranger's command, on a clean ${{ matrix.name }}
+        run: |
+          cat > /tmp/run.sh <<'INNER'
+          set -e
+          PREP_PLACEHOLDER
+          useradd -m -s /bin/bash tester
+          echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester
+          # sudo and brew are shadowed: a call to either is a failure, not a surprise.
+          mkdir -p /opt/notools
+          for t in brew xcode-select; do printf '#!/bin/sh\necho "$0 $*" >> /tmp/forbidden\nexit 1\n' > /opt/notools/$t; chmod +x /opt/notools/$t; done
+          rm -f /tmp/forbidden
+          cat > /home/tester/node.json <<'JSON'
+          {"name": "ci-clean", "lat": 39.95, "lon": 4.05, "kind": "home", "sensor": {}}
+          JSON
+          chown tester /home/tester/node.json
+          su tester -c 'cd /home/tester && PATH=/opt/notools:$PATH PLANETAI_SITE=http://172.17.0.1:8099 PLANETAI_HOME=/home/tester/planetai \
+            timeout 1500 bash -c "cat /work/install | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
+          echo "installer exit: ${PIPESTATUS[0]}"
+          [ -s /tmp/forbidden ] && { echo "it called:"; cat /tmp/forbidden; exit 1; } || true
+          grep -q "^\[1/7\] making sure a container runtime" /tmp/T.txt || { echo "the runtime phase is not step 1"; exit 1; }
+          grep -qE "^ +[0-9]+s +" /tmp/T.txt || { echo "no heartbeat during a long step"; exit 1; }
+          grep -q "^install OK" /tmp/T.txt || { echo "no success summary"; exit 1; }
+          echo "ok on this userland"
+          INNER
+          # the matrix's prep line, spliced in without YAML fighting the shell
+          python3 - <<'PYP'
+          import os
+          s = open('/tmp/run.sh').read()
+          open('/tmp/run.sh','w').write(s.replace('PREP_PLACEHOLDER', os.environ['PREP']))
+          PYP
+          docker run --rm --network host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD:/work:ro" -v /tmp/run.sh:/run.sh:ro \
+            ${{ matrix.image }} bash /run.sh
+        env:
+          PREP: ${{ matrix.prep }}
+      - name: what a tester would paste into an issue
+        if: always()
+        run: bash tools/preflight.sh --json || true
+
   intel-mac:
     # A real Intel Mac, verified available: GitHub offers macos-15-intel and macos-26-intel. The oldest
     # Intel image, macos-13, has been retired, so there is NO hosted runner at the 13.5 floor — that
