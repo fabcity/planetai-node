@@ -48,12 +48,31 @@ step_fail() {         # step_fail "why"
   printf '\ninstall FAILED at step %d/%d "%s" after %ds — %s\n' "$STEP_N" "$STEP_TOTAL" "$STEP_NAME" $((SECONDS-RUN_T0)) "$LOG_FILE"
   exit 1
 }
+# sudo cannot ask for a password from a background job. It gets SIGTTIN and stops, or gives up — and the
+# prompt lands in the log where nobody sees it. Lucas's screen on 9 September: "[sudo] password for
+# lucas:", then a heartbeat saying nothing had happened, then FAILED after 17 seconds. He was never given
+# the chance to type it. So: ask ONCE, in the foreground, before any step that needs it.
+SUDO_PRIMED=0
+sudo_first() {        # sudo_first "what it is for"
+  need sudo || return 0
+  sudo -n true 2>/dev/null && { SUDO_PRIMED=1; return 0; }   # cached, or this user needs no password
+  say "$1 needs your password, once. Nothing else in this install uses sudo."
+  sudo -v || die "sudo did not accept the password, so Docker cannot be installed.
+   Install it yourself, then run the resume command:
+     curl -fsSL https://get.docker.com | sh
+     sudo usermod -aG docker $USER"
+  SUDO_PRIMED=1
+}
+
 watch_run() {         # watch_run "why it failed" cmd...  — run it, heartbeat every 10s, never go quiet
   local why="$1"; shift
   "$@" >>"$LOG_FILE" 2>&1 &
-  local pid=$! last=$SECONDS h
+  local pid=$! last=$SECONDS refreshed=$SECONDS h
   while kill -0 "$pid" 2>/dev/null; do
     sleep 2
+    # sudo forgets after fifteen minutes by default, and get.docker.com can take longer than that on a
+    # slow line — it would then hang for a password it cannot ask for. Keep the ticket alive.
+    if [[ $SUDO_PRIMED -eq 1 ]] && (( SECONDS - refreshed >= 60 )); then refreshed=$SECONDS; sudo -n -v 2>/dev/null || true; fi
     if (( SECONDS - last >= 10 )); then
       last=$SECONDS; h="$(hb_line || true)"
       printf '        %4ds  %s\n' $((SECONDS-STEP_T0)) "${h:-still working — the tool has printed nothing new yet}"
@@ -113,6 +132,7 @@ if [[ "$PLATFORM" != macos ]]; then
   for t in curl make; do need "$t" || {
     # Every sudo this script runs says on the line before what it will do and why. Silence is how an
     # installer ends up looking like something that took liberties with a machine.
+    sudo_first "installing $t"
     say "$t is missing and the node needs it. This asks for your password to install just that package:"
     case "$PLATFORM" in
       *debian*) echo "     sudo apt-get update && sudo apt-get install -y $t"; sudo apt-get update -qq && sudo apt-get install -y -qq "$t";;
@@ -173,6 +193,7 @@ elif [[ "$PLATFORM" == wsl-* ]] && ! need docker; then
   die "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
 elif ! need docker; then
   say "there is no container runtime on this machine, and the node is two containers. Installing Docker."
+  sudo_first "installing Docker"
   case "$PLATFORM" in
     *arch*) echo "     sudo pacman -Sy --noconfirm docker docker-compose   (the packages)"
             echo "     sudo systemctl enable --now docker                  (so it starts with the machine)"

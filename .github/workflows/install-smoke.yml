@@ -153,6 +153,17 @@ jobs:
             port: 8131
             image: ubuntu:22.04
             prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 >/dev/null
+          # Lucas's actual machine. There is no official Mint image, so this is Ubuntu 24.04 wearing Mint's
+          # os-release and lsb_release: ID=linuxmint with an Ubuntu upstream, which is what our platform
+          # detection reads and what get.docker.com resolves through `lsb_release -a -u`.
+          - name: Linux Mint 22.3 (Lucas's machine)
+            project: pai_mint
+            port: 8133
+            image: ubuntu:24.04
+            prep: >-
+              apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 lsb-release >/dev/null &&
+              printf 'NAME="Linux Mint"\nVERSION="22.3 (Zara)"\nID=linuxmint\nID_LIKE="ubuntu debian"\nPRETTY_NAME="Linux Mint 22.3"\nVERSION_ID="22.3"\nVERSION_CODENAME=zara\nUBUNTU_CODENAME=noble\n' > /etc/os-release &&
+              printf '#!/bin/sh\nif [ "$1$2" = "-a-u" ]; then printf "Distributor ID:\\tUbuntu\\nCodename:\\tnoble\\n"; else printf "Distributor ID:\\tLinuxmint\\nCodename:\\tzara\\n"; fi\n' > /usr/bin/lsb_release && chmod +x /usr/bin/lsb_release
           - name: Arch (what Omarchy is built on)
             project: pai_arch
             port: 8132

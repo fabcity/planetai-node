@@ -247,10 +247,21 @@ PY
 
   # a node is "installed" when its containers exist. A .env with a name but no containers is an install that did
   # not finish (Docker not reachable at the time, the image failed to build): ask the questions again.
-  if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]] && docker info >/dev/null 2>&1 && [[ -z "$(docker compose ps -aq 2>/dev/null)" ]]; then
+  # "This machine already runs a node" was decided by .env alone once docker was unreachable, so a machine
+  # with NO container runtime at all was told it was running one — and then offered an update, which ran
+  # backup.sh, which needs docker. Lucas got `./backup.sh: line 44: docker: command not found` on a laptop
+  # where preflight had just said, correctly, "runtime none found". A node is running when its containers
+  # are: anything else is an install that stopped somewhere, and the way out of that is to continue it.
+  local node_running=0
+  if docker info >/dev/null 2>&1 && [[ -n "$(docker compose ps -q 2>/dev/null)" ]]; then node_running=1; fi
+  if [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]] && [[ $node_running -eq 0 ]]; then
     # The answers were written to .env before anything heavy ran, so a re-run has them. It used to say
     # "starting again" and ask all four a second time, which is what a tester meets after any failed install.
-    step "A set-up here did not finish, but your answers were saved."
+    if docker info >/dev/null 2>&1; then
+      step "A set-up here did not finish, but your answers were saved."
+    else
+      step "A set-up here did not finish — there is no container runtime yet. Your answers were saved."
+    fi
     printf '   name        %s\n   place       %s (%s, %s)\n   time zone   %s\n   city key    %s\n' \
       "$(envget NODE_NAME)" "$(envget NODE_CITY)" "$(envget NODE_LAT)" "$(envget NODE_LON)" "$(envget NODE_TZ)" "$(envget NODE_CITY)"
     echo
@@ -391,7 +402,6 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 
   # install
   step "Installing"
-  echo "  One to three minutes the first time. Log: $LOG"
   local flags=(--name "$name" --lat "$lat" --lon "$lon")
   [[ -n "$pilot" ]] && flags+=(--preset "$pilot")     # the pilot's portal and references; the coordinates typed here still win
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
@@ -1107,7 +1117,13 @@ runtime_set() {
 }
 
 # ---------------------------------------------------------------- the rest
-cmd_update()  { chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
+cmd_update()  {
+  # backup.sh runs pg_dump through docker. With no runtime it fails at line 44 with "docker: command not
+  # found", after the logo, after announcing the backup — which is a long way to travel to say Docker is
+  # not installed.
+  docker info >/dev/null 2>&1 || fail "there is no container runtime running, so there is nothing to update and nothing to back up.
+   Start it, or install one — planetai preflight names the one for this machine — then run this again."
+  chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
 cmd_config()  { [[ -t 0 ]] || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }; "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
 cmd_start()   { docker compose up -d && say "started"; }
