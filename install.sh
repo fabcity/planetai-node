@@ -48,19 +48,41 @@ diagnose() {
     "no space left on device")
       printf 'the disk filled up. Where it went:\n  df -h .\n  docker system df';;
     "failed commit on ref"|"input/output error"|"read-only file system")
-      # Every line here fits 80 columns including its 10-column indent. Lucas'"'"'s terminal wrapped the
+      # Every line here fits 80 columns including its 10-column indent. Lucas's terminal wrapped the
       # first version and the trailing comments landed in the middle of the next line.
-      printf 'the download arrived but could not be written. This is the disk.
-what the kernel saw:
-  sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20
-whether either filesystem is full:
-  df -h / /var/lib/docker
-a store earlier trouble left inconsistent. This clears it, and holds
+      #
+      # It used to print the dmesg and df commands and ask somebody to run them. That costs a round
+      # trip each time — a tester runs it, photographs the screen, sends the photo, waits. Both checks
+      # are read-only, so do them here and put the answer in the failure. `sudo -n` never prompts: it
+      # uses the credential sudo_first already cached, or fails and we fall back to printing the
+      # command. grep matching nothing must not take the caller down, hence the `|| true`.
+      local kern dfo
+      kern="$( { dmesg 2>/dev/null || sudo -n dmesg 2>/dev/null || true; } \
+               | grep -aiE 'i/o error|ext4-fs .*(warning|error|failed)|nvme.*(error|timeout|reset)|ata[0-9]+.*(failed|error|frozen)' \
+               | tail -3 | sed -e 's/^\[[0-9. ]*\] //' -e 's/^\(.\{66\}\).*/\1/' || true )"
+      # -P: the POSIX six-column layout, so $6 is the mount point on macOS as well as Linux. Without
+      # it, macOS df prints inode columns and this printed an inode count where the path should be.
+      dfo="$( df -hP / /var/lib/docker 2>/dev/null | tail -n +2 \
+              | awk '{ printf "%-24.24s %s full\n", $6, $5 }' || true )"
+      printf 'the download arrived but could not be written. This is the disk.\n'
+      if [[ -n "$kern" ]]; then
+        printf 'what the kernel already logged, which settles it:\n'
+        printf '%s\n' "$kern" | sed 's/^/  /'
+      else
+        printf 'what the kernel saw (needs a password, so run it yourself):\n  sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20\n'
+      fi
+      if [[ -n "$dfo" ]]; then
+        printf 'and the space, which rules a full filesystem in or out:\n'
+        printf '%s\n' "$dfo" | sed 's/^/  /'
+      else
+        printf 'whether either filesystem is full:\n  df -h / /var/lib/docker\n'
+      fi
+      printf 'a store earlier trouble left inconsistent. This clears it, and holds
 nothing of yours before a first install:
   sudo systemctl stop docker && sudo rm -rf /var/lib/docker
   sudo systemctl start docker
 If the same write fails after that, it is the drive: one that reads
-fine and fails on a large sustained write is on its way out.';;
+fine and fails on a large sustained write is on its way out.\n';;
     "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
       printf 'the registry could not be reached. A proxy, a captive\nportal, or the line itself.';;
     "denied: requested access"|"manifest unknown")
