@@ -56,7 +56,12 @@ diagnose() {
       # are read-only, so do them here and put the answer in the failure. `sudo -n` never prompts: it
       # uses the credential sudo_first already cached, or fails and we fall back to printing the
       # command. grep matching nothing must not take the caller down, hence the `|| true`.
-      local kern dfo
+      local kern dfo dev
+      dev="$( df -P / 2>/dev/null | awk 'NR==2{ sub(/p?[0-9]+$/,"",$1); print $1 }' || true )"
+      # Only the names smartctl can actually take. macOS df answers /dev/disk3s1s, which would be
+      # printed as advice that cannot work.
+      case "$dev" in /dev/sd[a-z]|/dev/nvme[0-9]n[0-9]|/dev/hd[a-z]|/dev/vd[a-z]|/dev/mmcblk[0-9]) ;;
+                     *) dev="/dev/sda";; esac
       kern="$( { dmesg 2>/dev/null || sudo -n dmesg 2>/dev/null || true; } \
                | grep -aiE 'i/o error|ext4-fs .*(warning|error|failed)|nvme.*(error|timeout|reset)|ata[0-9]+.*(failed|error|frozen)' \
                | tail -3 | sed -e 's/^\[[0-9. ]*\] //' -e 's/^\(.\{66\}\).*/\1/' || true )"
@@ -82,8 +87,11 @@ nothing of yours before a first install. Stop the socket too, or the
 daemon is woken again while the folder is being deleted:
   sudo systemctl stop docker.socket docker.service
   sudo rm -rf /var/lib/docker && sudo systemctl start docker
-If the same write fails after that, it is the drive: one that reads
-fine and fails on a large sustained write is on its way out.\n';;
+If it fails again, the fault is in the storage path: the drive, its
+cable, or its controller. SMART can say PASSED while a bad link
+corrupts writes under load, so read the error log and the CRC count:\n'
+      printf '  sudo smartctl -l error %s\n' "$dev"
+      printf '  sudo smartctl -A %s | grep -iE "CRC|Reallocat|Pending"\n' "$dev";;
     "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
       printf 'the registry could not be reached. A proxy, a captive\nportal, or the line itself.';;
     "denied: requested access"|"manifest unknown")
