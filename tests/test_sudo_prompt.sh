@@ -26,28 +26,56 @@ grep -qE 'sudo -v \|\| die' install.sh && ok "it asks with sudo -v and stops if 
 #    checks the invariant that actually matters: every executed sudo appears AFTER a sudo_first call.
 python3 - <<'PY'
 import re, sys
-lines = open("install.sh").read().split("\n")
+src = open("install.sh").read()
+lines = src.split("\n")
 
-# the body of sudo_first is where sudo legitimately lives; skip it
+# A line that PRINTS the word sudo as advice is not a line that runs it. `diagnose()` prints
+# `sudo dmesg ...` inside a multi-line printf, and a regex cannot tell that from a command — it said
+# sudo was running before sudo_first and it was reading a sentence. So walk the file tracking whether
+# each line begins inside an open quote, and only consider lines that begin at a command position.
+def quote_state(text):
+    """for each line index, True if the line STARTS inside an open quote"""
+    inside, sq, dq = [], False, False
+    for line in text.split("\n"):
+        inside.append(sq or dq)
+        i = 0
+        while i < len(line):
+            c = line[i]
+            if c == "\\" and not sq:
+                i += 2; continue
+            if c == "'" and not dq:
+                sq = not sq
+            elif c == '"' and not sq:
+                dq = not dq
+            elif c == "#" and not sq and not dq:
+                break                      # a comment: the rest of the line is not code
+            i += 1
+    return inside
+
+inside = quote_state(src)
+
 try:
     fn_start = next(i for i, l in enumerate(lines) if l.startswith("sudo_first() {"))
     fn_end = next(i for i in range(fn_start + 1, len(lines)) if lines[i] == "}")
 except StopIteration:
     print("  FAIL sudo_first is not a function"); sys.exit(1)
-body = set(range(fn_start, fn_end + 1))
+own_body = set(range(fn_start, fn_end + 1))
 
 first_call = next((i for i, l in enumerate(lines)
-                   if re.match(r"\s*sudo_first ", l) and i not in body), None)
+                   if re.match(r"\s*sudo_first ", l) and i not in own_body and not inside[i]), None)
 if first_call is None:
     print("  FAIL sudo_first is never called"); sys.exit(1)
 
-early = [(i + 1, l.strip()[:70]) for i, l in enumerate(lines[:first_call])
-         if i not in body and not l.lstrip().startswith("#") and re.match(r"\s*sudo\s+\S", l)]
+early = [(i + 1, l.strip()[:60]) for i, l in enumerate(lines[:first_call])
+         if i not in own_body and not inside[i]
+         and not l.lstrip().startswith("#") and re.match(r"\s*sudo\s+\S", l)]
 if early:
     print("  FAIL sudo runs before sudo_first has asked:")
     for n, t in early: print(f"       install.sh:{n}: {t}")
     sys.exit(1)
-print(f"  ok   sudo_first is called at line {first_call+1}, before any sudo runs")
+q = sum(1 for x in inside if x)
+print(f"  ok   sudo_first is called at line {first_call+1}, before any sudo runs "
+      f"({q} quoted lines correctly ignored)")
 PY
 [[ $? -eq 0 ]] || fails=$((fails+1))
 
