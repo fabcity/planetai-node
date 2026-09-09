@@ -32,6 +32,7 @@
 #   planetai cells           the Index cells this node fills, with provenance (--json)
 #   planetai geocode <place> what the setup wizard would find for a place name
 #   planetai version         the version this folder is at
+#   planetai remove         take this node off the machine; asks twice. --keep-data keeps the readings
 #   planetai stop | start | restart
 set -euo pipefail
 
@@ -235,6 +236,30 @@ PY
     say "installed. planetai status --json for the state; planetai ui for the token."
     return
   fi
+  # The code that runs is the code on disk. `planetai setup` executes ./install.sh from THIS folder, so a
+  # tester whose install failed keeps re-running the same installer however many fixes have shipped since
+  # he downloaded it. Lucas spent a morning on that: three fixes went out, he re-ran `planetai setup`
+  # each time, and each time it ran the installer from before any of them.
+  version_gap() {
+    [[ -d .git ]] && return 0                       # a developer's checkout knows what it is
+    local here there
+    here="$(cat VERSION 2>/dev/null || echo dev)"
+    there="$(curl -fsS --max-time 6 "https://planetai.fab.city/node0/get/VERSION" 2>/dev/null | tr -d '[:space:]')"
+    [[ -z "$there" || -z "$here" || "$here" == "$there" ]] && return 0
+    echo
+    warn "this folder holds $here. The published version is $there."
+    echo "  What runs here is what is in this folder, so a fix released after you downloaded it is not in it."
+    echo "  One line replaces the code and keeps your settings, your data and your answers:"
+    echo
+    echo "    curl -fsSL planetai.fab.city/install | bash"
+    echo
+    if [[ -t 1 ]] && ( : </dev/tty ) 2>/dev/null && confirm "  Do that now?"; then
+      exec bash -c "$(curl -fsSL https://planetai.fab.city/install)"
+    fi
+    warn "carrying on with $here. If it fails the same way as before, that is why."
+  }
+  version_gap
+
   # Every environment check happens here, before question 1. A tester who answers four questions and only then
   # hears that this machine cannot run a node has spent his evening for nothing — which is what happened on
   # 7 September 2026, twice, because platform detection lived inside install.sh.
@@ -271,17 +296,28 @@ PY
       PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
       finish_setup; return
     fi
-    say "starting the questions again."
+    # After an install that failed more than once, starting clean is often the shortest way out — and
+    # until now there was no way to do it that anyone could be sure of.
+    local next
+    choose next "   Then what?" \
+      "Ask the four questions again" \
+      "Remove this half-finished node and start clean"
+    case "$next" in
+      Remove*) cmd_remove; return;;
+      *) say "starting the questions again.";;
+    esac
   elif [[ -f .env ]] && [[ -n "$(envget NODE_NAME)" ]]; then
     step "This machine already runs a node: $(envget NODE_NAME) ($(envget NODE_CITY), $(envget NODE_LAT), $(envget NODE_LON))"
     local what
     choose what "What would you like to do?" \
       "Update it to the latest version (keeps everything)" \
       "Reconfigure it (asks the questions again; your data stays)" \
-      "Nothing, just make sure it is running"
+      "Nothing, just make sure it is running" \
+      "Remove it from this machine (asks twice; the readings go)"
     case "$what" in
       Update*)      cmd_update; return;;
       Reconfigure*) ;;
+      Remove*)      cmd_remove; return;;
       *)            docker compose up -d >>"$LOG" 2>&1; cmd_doctor; return;;
     esac
   fi
@@ -1006,6 +1042,71 @@ cmd_storage() {
 
 cmd_backup() { step "Backup"; ./backup.sh || fail "see above"; }
 
+# ---------------------------------------------------------------- remove
+# A node is a folder, two containers and a volume. Taking it off a machine was three commands in
+# START_HERE that nobody could be sure they had got right, and after a failed install the only advice was
+# "start over" with no way to do it. This is that way, and it asks twice because the volume holds
+# readings nobody else has.
+cmd_remove() {
+  local keep=0; [[ "${1:-}" == "--keep-data" ]] && keep=1
+  local name; name="$(envget NODE_NAME)"; name="${name:-this node}"
+  logo "removing $name"
+
+  # What will go, counted before anything is touched.
+  local rows="unknown" vol="" cron=0 link=0
+  if docker info >/dev/null 2>&1; then
+    rows="$(docker compose exec -T db psql -tAqU planetai -c 'SELECT count(*) FROM readings' planetai 2>/dev/null | tr -d '[:space:]')"
+    rows="${rows:-0}"
+    vol="$(docker volume ls -q 2>/dev/null | grep -x "$(basename "$PWD")_db\|planetai_db" | head -1)"
+  fi
+  grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)" && cron=1
+  [[ -L "$HOME/.local/bin/planetai" ]] && link=1
+
+  step "This will remove, from this machine:"
+  printf '   containers      %s\n' "$(docker compose ps -q 2>/dev/null | wc -l | tr -d ' ') running or stopped"
+  if [[ $keep -eq 1 ]]; then
+    printf '   database        %skept%s — the volume and every reading stay\n' "$G" "$N"
+  else
+    printf '   database        %sdeleted%s — %s readings, and no copy of them anywhere else\n' "$R" "$N" "$rows"
+  fi
+  printf '   this folder     %s\n' "$PWD"
+  [[ $cron -eq 1 ]] && printf '   nightly backup  the crontab line that runs backup.sh\n'
+  [[ $link -eq 1 ]] && printf '   the command     %s/.local/bin/planetai\n' "$HOME"
+  local nb; nb="$(ls backups/*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "$nb" != "0" ]]; then
+    printf '\n   %s%s backup(s) in %s/backups are inside the folder and go with it.%s\n' "$Y" "$nb" "$PWD" "$N"
+    printf '   %sCopy them out first if you want them: cp %s/backups/*.sql.gz ~/%s\n' "$D" "$PWD" "$N"
+  fi
+  echo
+
+  [[ -t 0 ]] || { warn "no terminal here, so nothing was removed. Run this where you can answer it."; return 1; }
+  confirm "Remove it?" || { say "nothing was removed."; return 0; }
+  local typed=""
+  printf '%sType the node'"'"'s name to confirm — %s%s%s%s: ' "$B" "$R" "$name" "$N" "$B"; printf '%s' "$N"
+  read -r typed </dev/tty || true
+  [[ "$typed" == "$name" ]] || { warn "that is not \"$name\". Nothing was removed."; return 1; }
+
+  step "Removing"
+  if docker info >/dev/null 2>&1; then
+    if [[ $keep -eq 1 ]]; then spin "stopping the containers, keeping the data" docker compose down || true
+    else spin "stopping the containers and deleting the volume" docker compose down -v || true; fi
+  else
+    warn "no container runtime here, so there is nothing running to stop"
+  fi
+  if [[ $cron -eq 1 ]]; then
+    crontab -l 2>/dev/null | grep -v planetai-backup | crontab - 2>/dev/null && say "nightly backup unscheduled"
+  fi
+  [[ $link -eq 1 ]] && { rm -f "$HOME/.local/bin/planetai"; say "removed the planetai command"; }
+
+  # The folder last, from outside it, so nothing is deleting the ground it stands on.
+  local gone="$PWD"
+  cd / || return 1
+  rm -rf "$gone" && say "removed $gone"
+  echo
+  say "gone. Nothing of this node is left on the machine except the PATH line in your shell profile."
+  echo "   To run one here again:  curl -fsSL planetai.fab.city/install | bash"
+}
+
 cmd_restore() {
   local f="${1:-}"; [[ -n "$f" ]] || { echo "usage: planetai restore <dump.sql.gz>"; echo; ls -t "$(envget BACKUP_DIR || echo ./backups)"/*.sql.gz 2>/dev/null | head -5 | sed 's/^/  /'; return 1; }
   [[ -f "$f" ]] || fail "$f does not exist"
@@ -1148,6 +1249,7 @@ case "${1:-help}" in
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;
   backup) cmd_backup;;
+  remove|uninstall) shift; cmd_remove "$@";;
   restore) shift; cmd_restore "$@";;
   ipfs) cmd_ipfs;;
   agent|agents|mcp)
