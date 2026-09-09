@@ -78,9 +78,10 @@ diagnose() {
         printf 'whether either filesystem is full:\n  df -h / /var/lib/docker\n'
       fi
       printf 'a store earlier trouble left inconsistent. This clears it, and holds
-nothing of yours before a first install:
-  sudo systemctl stop docker && sudo rm -rf /var/lib/docker
-  sudo systemctl start docker
+nothing of yours before a first install. Stop the socket too, or the
+daemon is woken again while the folder is being deleted:
+  sudo systemctl stop docker.socket docker.service
+  sudo rm -rf /var/lib/docker && sudo systemctl start docker
 If the same write fails after that, it is the drive: one that reads
 fine and fails on a large sustained write is on its way out.\n';;
     "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
@@ -302,7 +303,8 @@ if ! docker info >/dev/null 2>&1; then
      sudo journalctl -u docker --no-pager | tail -30
    If it is crash-looping and this machine has had disk trouble, its image store may be damaged. That
    store holds nothing of yours yet, so it is safe to clear:
-     sudo systemctl stop docker && sudo rm -rf /var/lib/docker && sudo systemctl start docker"
+     sudo systemctl stop docker.socket docker.service
+     sudo rm -rf /var/lib/docker && sudo systemctl start docker"
     fi
   fi
 fi

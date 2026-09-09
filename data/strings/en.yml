@@ -146,119 +146,119 @@ strings:
     en: "and the space, which rules a full filesystem in or out"
   - key: install:78
     en: "whether either filesystem is full: df -h / /var/lib/docker"
-  - key: install:87
+  - key: install:88
     en: "the registry could not be reached. A proxy, a captive portal, or the line itself."
-  - key: install:89
+  - key: install:90
     en: "the registry refused the image name. That is a bug here, not on your machine. Please tell us."
-  - key: install:103
-    en: "resume planetai setup (your answers are saved; it will not ask them again)"
   - key: install:104
-    en: "install FAILED at step / \" \" after s"
-  - key: install:115
-    en: "$1 needs your password, once. Nothing else in this install uses sudo."
-  - key: install:158
     en: "resume planetai setup (your answers are saved; it will not ask them again)"
-  - key: install:159
+  - key: install:105
     en: "install FAILED at step / \" \" after s"
-  - key: install:162
+  - key: install:116
+    en: "$1 needs your password, once. Nothing else in this install uses sudo."
+  - key: install:159
+    en: "resume planetai setup (your answers are saved; it will not ask them again)"
+  - key: install:160
+    en: "install FAILED at step / \" \" after s"
+  - key: install:163
     en: "install FAILED before the first step"
-  - key: install:177
+  - key: install:178
     en: "unknown flag $1"
-  - key: install:183
+  - key: install:184
     en: "unsupported arch (32-bit ARM? use a 64-bit OS)"
-  - key: install:189
-    en: "unsupported OS"
   - key: install:190
+    en: "unsupported OS"
+  - key: install:191
     en: "Windows (WSL2) detected"
-  - key: install:198
+  - key: install:199
     en: "is missing and the node needs it. This asks for your password to install just that package"
-  - key: install:203
+  - key: install:204
     en: "is missing and I do not recognise this distribution's package manager. Install , then run this again."
-  - key: install:223
-    en: "OrbStack|open -a OrbStack"
   - key: install:224
-    en: "Docker Desktop|open -a Docker"
+    en: "OrbStack|open -a OrbStack"
   - key: install:225
+    en: "Docker Desktop|open -a Docker"
+  - key: install:226
     en: "Colima|colima start"
-  - key: install:256
+  - key: install:257
     en: "container runtime is up"
-  - key: install:261
+  - key: install:262
     en: "\r waiting for the container runtime … : left\033[K"
-  - key: install:274
+  - key: install:275
     en: "making sure a container runtime is running"
-  - key: install:278
+  - key: install:279
     en: "is installed but not running. Starting it — this takes up to a minute on a cold boot."
-  - key: install:290
+  - key: install:291
     en: "the start command returned — waiting anyway, in case it is only slow"
-  - key: install:310
-    en: "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
   - key: install:312
-    en: "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
+    en: "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
   - key: install:314
+    en: "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
+  - key: install:316
     en: "there is no container runtime on this machine, and the node is two containers. Installing Docker."
-  - key: install:338
+  - key: install:340
     en: "this is :-a derivative} on Ubuntu . Using Docker's Ubuntu repository directly"
-  - key: install:339
+  - key: install:341
     en: "Docker's own installer mis-reads derivatives as Debian and leaves apt broken."
-  - key: install:343
+  - key: install:345
     en: "removing an earlier Docker repository that does not match this machine"
-  - key: install:355
+  - key: install:357
     en: "repository added. Now the packages — this is the large download."
-  - key: install:361
+  - key: install:363
     en: "the big one: several hundred MB of packages, and it says little while it works"
-  - key: install:383
+  - key: install:385
     en: "writing settings to .env"
-  - key: install:389
+  - key: install:391
     en: "no preset ' '. Available"
-  - key: install:390
+  - key: install:392
     en: "applying preset"
-  - key: install:403
-    en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
   - key: install:405
-    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
-  - key: install:406
-    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
+    en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
   - key: install:407
+    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
+  - key: install:408
+    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
+  - key: install:409
     en: "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
-  - key: install:426
-    en: "a database from an earlier node is still on this machine ( :-Docker volume ), and this is a new .env,"
-  - key: install:427
-    en: "so its password cannot match. Two ways out"
   - key: install:428
-    en: "keep that data: put the earlier .env back in this folder, then run this again"
+    en: "a database from an earlier node is still on this machine ( :-Docker volume ), and this is a new .env,"
+  - key: install:429
+    en: "so its password cannot match. Two ways out"
   - key: install:430
+    en: "keep that data: put the earlier .env back in this folder, then run this again"
+  - key: install:432
     en: "not starting a node whose app cannot log in to its database"
-  - key: install:440
+  - key: install:442
     en: "port is already in use on this machine"
-  - key: install:441
+  - key: install:443
     en: "set APP_PORT=8081 (or any free port) in .env and re-run"
-  - key: install:445
+  - key: install:447
     en: "creating the folders the containers write to"
-  - key: install:455
+  - key: install:457
     en: "downloading the database image (about 162 MB)"
-  - key: install:462
+  - key: install:464
     en: "building this node's own image and starting both containers"
-  - key: install:468
+  - key: install:470
     en: "waiting for the database, then applying the schema"
-  - key: install:471
+  - key: install:473
     en: "s waiting for the database to accept connections"
-  - key: install:476
-    en: "the schema was already there (a fresh volume applies it itself)"
   - key: install:478
+    en: "the schema was already there (a fresh volume applies it itself)"
+  - key: install:480
     en: "the database did not answer in 60s — the checks below will say so"
-  - key: install:483
+  - key: install:485
     en: "checking what is running"
-  - key: install:493
+  - key: install:495
     en: "✓ backup.sh made executable"
-  - key: install:500
+  - key: install:502
     en: "nightly backup scheduled (03:17)"
-  - key: install:505
+  - key: install:507
     en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
-  - key: install:506
+  - key: install:508
     en: "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
-  - key: install:511
+  - key: install:513
     en: "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
-  - key: install:516
-    en: "install OK — , steps in s, on localhost"
   - key: install:518
+    en: "install OK — , steps in s, on localhost"
+  - key: install:520
     en: "First reading lands within s."
