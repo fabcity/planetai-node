@@ -66,6 +66,42 @@ elif [[ "$BEHIND" != 0 ]]; then
      git pull"
 fi
 
+# A release should be a commit whose tests passed. This was added because I shipped v0.41.2-69 while
+# its install-smoke run was still queued, and it went red — a workflow edit of mine had split a grep
+# across two lines, which is valid bash and so no local check could see it. The tarball was fine that
+# time; the point is that nothing knew it was fine.
+#
+# Missing or unauthenticated `gh` is not a reason to block a release: warn and carry on. A red run is.
+if command -v gh >/dev/null 2>&1; then
+  CI="$(gh run list --commit "$(git rev-parse HEAD)" --limit 20 \
+        --json conclusion,status,workflowName,url 2>/dev/null || true)"
+  if [[ -z "$CI" || "$CI" == "[]" ]]; then
+    say "no CI run for this commit yet — building anyway, but nothing has tested it"
+  else
+    BAD="$(printf '%s' "$CI" | python3 -c 'import json,sys
+r=json.load(sys.stdin)
+bad=[x for x in r if x.get("conclusion") in ("failure","timed_out","cancelled")]
+print("\n".join("   %s: %s  %s" % (x["workflowName"], x["conclusion"], x["url"]) for x in bad))' 2>/dev/null || true)"
+    PENDING="$(printf '%s' "$CI" | python3 -c 'import json,sys
+r=json.load(sys.stdin)
+print(len([x for x in r if x.get("status") not in ("completed",)]))' 2>/dev/null || echo 0)"
+    if [[ -n "$BAD" ]]; then
+      printf '%s\n' "$BAD" >&2
+      die "CI is red on this commit. A tester should not be handed a build nothing vouched for.
+   Fix it, or ship deliberately with:
+     SHIP_WITHOUT_CI=1 make ship"
+    elif [[ "${PENDING:-0}" != 0 ]]; then
+      [[ "${SHIP_WITHOUT_CI:-0}" == 1 ]] || die "CI is still running on this commit ($PENDING run(s)). Wait for it, then ship — or:
+     SHIP_WITHOUT_CI=1 make ship"
+      say "CI still running, shipping anyway because SHIP_WITHOUT_CI=1"
+    else
+      say "CI is green on this commit"
+    fi
+  fi
+else
+  say "no gh here, so CI was not checked"
+fi
+
 say "building the tarball at ${HERE}"
 tools/bundle.sh "$SITE/node0/get"
 
