@@ -165,6 +165,14 @@ jobs:
           PREP_PLACEHOLDER
           useradd -m -s /bin/bash tester
           echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester
+          # The mounted socket carries the HOST's docker gid. Inside the container the docker group gets
+          # whatever gid the package picked, so `docker info` fails with a permission error that looks
+          # exactly like the real "you are not in the docker group yet" — and is not. Match the gid, so
+          # the job tests the installer and not my plumbing.
+          SOCK_GID="$(stat -c %g /var/run/docker.sock)"
+          getent group docker >/dev/null || groupadd docker
+          groupmod -g "$SOCK_GID" docker 2>/dev/null || groupadd -g "$SOCK_GID" hostdocker || true
+          usermod -aG "$SOCK_GID" tester 2>/dev/null || usermod -aG docker tester
           # sudo and brew are shadowed: a call to either is a failure, not a surprise.
           mkdir -p /opt/notools
           for t in brew xcode-select; do printf '#!/bin/sh\necho "$0 $*" >> /tmp/forbidden\nexit 1\n' > /opt/notools/$t; chmod +x /opt/notools/$t; done
@@ -178,7 +186,13 @@ jobs:
           echo "installer exit: ${PIPESTATUS[0]}"
           [ -s /tmp/forbidden ] && { echo "it called:"; cat /tmp/forbidden; exit 1; } || true
           grep -q "^\[1/7\] making sure a container runtime" /tmp/T.txt || { echo "the runtime phase is not step 1"; exit 1; }
-          grep -qE "^ +[0-9]+s +" /tmp/T.txt || { echo "no heartbeat during a long step"; exit 1; }
+          # Only a step that actually ran past ten seconds owes a heartbeat. pacman on a warm mirror
+          # finishes in two, and asserting otherwise tests the mirror, not the installer.
+          if grep -qE "done in ([1-9][0-9]|[0-9]{3,})s" /tmp/T.txt; then
+            grep -qE "^ +[0-9]+s +" /tmp/T.txt || { echo "a step ran over 10s with no heartbeat"; exit 1; }
+          else
+            echo "  (every step finished under 10s on this runner; nothing owed a heartbeat)"
+          fi
           grep -q "^install OK" /tmp/T.txt || { echo "no success summary"; exit 1; }
           grep -qi "Something went wrong" /tmp/T.txt && { echo "still says Something went wrong"; exit 1; } || true
           echo "ok on this userland"
