@@ -133,6 +133,16 @@ disk_target()      { local t="${PLANETAI_HOME:-$HOME}"; [[ -d "$t" ]] || t="$HOM
 probe_disk_free_k(){ [[ -n "${PF_DISK_FREE_KB:-}" ]] && { printf '%s' "$PF_DISK_FREE_KB"; return; }; df -Pk "$(disk_target)" 2>/dev/null | awk 'NR==2{print $4}'; }
 probe_disk_mount() { [[ -n "${PF_DISK_MOUNT:-}"   ]] && { printf '%s' "$PF_DISK_MOUNT";   return; }; df -P  "$(disk_target)" 2>/dev/null | awk 'NR==2{print $6}'; }
 probe_app()        { [[ -d "$(probe_apps)/$1" ]]; }
+# Can the node's folder be written to at all? Lucas's laptop answered every other row with a tick while
+# its root filesystem was mounted read-only — Linux does that when the kernel finds errors on the disk —
+# so "This machine can run a node" was printed to a machine that could not create a file.
+probe_writable()   {
+  [[ -n "${PF_WRITABLE:-}" ]] && { [[ "$PF_WRITABLE" == 1 ]]; return; }
+  local t="$(disk_target)/.planetai-write-test.$$"
+  ( : > "$t" ) 2>/dev/null || return 1
+  rm -f "$t" 2>/dev/null
+  return 0
+}
 probe_laptop()     { [[ -n "${PF_IS_LAPTOP:-}" ]] && { [[ "$PF_IS_LAPTOP" == 1 ]]; return; }
                      case "$(probe_os)" in
                        Darwin) [[ "$(probe_model)" == MacBook* ]];;
@@ -331,6 +341,23 @@ else
   row runtime "none found" 0 "$(runtime_fix)"
 fi
 
+# ---------------------------------------------------------------- can it be written to
+# Free space is not the same as writable. A filesystem the kernel has remounted read-only reports its
+# space cheerfully and refuses every write.
+if probe_writable; then row writable "yes" 1
+else
+  DTGT="$(disk_target)"
+  row writable "read-only: nothing can be written" 0 "the filesystem holding ${DTGT} cannot be written to. That is the machine, not the node, and it is the first thing to fix."
+  [[ $JSON -eq 1 ]] || {
+    printf '                %ssee what the kernel says about the disk:%s\n' "$D" "$N"
+    printf '                %s  mount | grep " / "%s\n' "$D" "$N"
+    printf '                %s  sudo dmesg | grep -iE "ext4|i/o error|remount" | tail -20%s\n' "$D" "$N"
+    printf '                %sLinux remounts a filesystem read-only when it finds errors on the drive.%s\n' "$D" "$N"
+    printf '                %sA reboot usually brings it back and runs a check; if it returns, the drive%s\n' "$D" "$N"
+    printf '                %sis failing and this machine should not be a node until it is replaced.%s\n' "$D" "$N"
+  }
+fi
+
 # ---------------------------------------------------------------- python3, which the CLI needs
 # This script is pure bash on purpose. `planetai` is not: it geocodes a place name, reads an answers
 # file and formats every --json with python3's standard library. A clean Arch and a minimal Ubuntu
@@ -466,6 +493,20 @@ if [[ $floor -eq 1 ]]; then
   printf '     %sThe walk-through for either: docs/REVIVE_A_LAPTOP.md — a USB stick and about an hour.%s\n\n' "$D" "$N"
   printf '  %sNothing was installed and nothing was changed.%s  Floors: data/platform_floors.yml\n\n' "$D" "$N"
   exit 2
+fi
+if ! probe_writable; then
+  printf '  %sThis machine cannot run a node yet, and the reason is its disk.%s\n\n' "$R" "$N"
+  printf '  The filesystem is mounted read-only, so nothing can be installed or written anywhere —\n'
+  printf '  not a node, not a log, not a settings file. Everything else above may be fine.\n\n'
+  printf '  %sDo this before anything else%s\n' "$B" "$N"
+  printf '    mount | grep " / "                                       is it ro?\n'
+  printf '    sudo dmesg | grep -iE "ext4|i/o error|remount" | tail -20  what the kernel found\n'
+  printf '    sudo reboot                                              usually remounts it and checks\n\n'
+  printf '  If it goes read-only again after a reboot, the drive is failing. Copy anything you want off\n'
+  printf '  it first. A node writes to its disk every few minutes, so a failing drive is the one piece of\n'
+  printf '  hardware it cannot tolerate.\n\n'
+  printf '  %sNothing was installed and nothing was changed.%s\n\n' "$D" "$N"
+  exit 1
 fi
 if [[ $fails -eq 0 ]]; then
   printf '  %sThis machine can run a node.%s\n' "$G" "$N"
