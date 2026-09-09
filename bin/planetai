@@ -73,10 +73,12 @@ logo() { printf '%s' "$BL"; cat <<'LOGO'
   ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝
 LOGO
 printf '%s  %snode · %s%s\n\n' "$N" "$D" "${1:-observe here, decide here, act here}" "$N"; }
+# "Something went wrong" on its own is the sentence a tester in Mallorca was left with, twice. A failure
+# names what failed, on the first line, before anything else.
 fail() {
-  printf '\n%s┌──────────────────────────────────────────────────────────────┐%s\n' "$R" "$N"
-  printf '%s│%s  Something went wrong.                                       %s│%s\n' "$R" "$N" "$R" "$N"
-  printf '%s└──────────────────────────────────────────────────────────────┘%s\n' "$R" "$N"
+  printf '\n%s%s%s\n' "$R" "──────────────────────────────────────────────────────────────" "$N"
+  printf '%sSet-up stopped.%s %s\n' "$R" "$N" "${FAIL_WHAT:-see the line below}"
+  printf '%s%s%s\n' "$R" "──────────────────────────────────────────────────────────────" "$N"
   printf '  %s\n\n' "$*"
   printf '  Full log:  %s\n' "$LOG"
   printf '  Nothing you had is lost. Fix the line above, then run the same command again.\n'
@@ -189,7 +191,15 @@ cmd_setup() {
   # {"name":"bayu-2","place":"Kuta Selatan" | "lat":-8.83,"lon":115.16, "kind":"home","sensor":{"sc_user":"x"} | {"sc":"19880"} | {"airgradient":"host"} | {"purpleair":"ip"}}
   if [[ "${1:-}" == "--finish" ]]; then finish_setup; return; fi     # re-entered under the docker group, see below
   if [[ "${1:-}" == "--answers" ]]; then
-    local f="${2:?usage: planetai setup --answers file.json}"; [[ -f "$f" ]] || fail "$f does not exist"
+    local f="${2:?usage: planetai setup --answers file.json}"
+    FAIL_WHAT="reading the answers file"; [[ -f "$f" ]] || fail "$f does not exist"
+    FAIL_WHAT="reading the answers file — this needs python3, which is not on every Linux"
+    have3() { command -v python3 >/dev/null 2>&1; }
+    have3 || fail "python3 is not installed, and the CLI needs it to read $f and to look up a place name.
+   Debian/Ubuntu:  sudo apt-get update && sudo apt-get install -y python3
+   Arch/Omarchy:   sudo pacman -S --noconfirm python
+   Fedora:         sudo dnf install -y python3
+   Then run the same line again. Nothing here runs pip; the standard library is enough."
     local flags; flags="$(python3 - "$f" <<'PY'
 import json, sys, urllib.request, urllib.parse
 a = json.load(open(sys.argv[1]))

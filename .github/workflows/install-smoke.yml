@@ -145,10 +145,10 @@ jobs:
         include:
           - name: Ubuntu Server 22.04
             image: ubuntu:22.04
-            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates >/dev/null
+            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 >/dev/null
           - name: Arch (what Omarchy is built on)
             image: archlinux:latest
-            prep: pacman -Sy --noconfirm --quiet curl sudo tar >/dev/null
+            prep: pacman -Sy --noconfirm --quiet curl sudo tar python >/dev/null
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
@@ -180,6 +180,7 @@ jobs:
           grep -q "^\[1/7\] making sure a container runtime" /tmp/T.txt || { echo "the runtime phase is not step 1"; exit 1; }
           grep -qE "^ +[0-9]+s +" /tmp/T.txt || { echo "no heartbeat during a long step"; exit 1; }
           grep -q "^install OK" /tmp/T.txt || { echo "no success summary"; exit 1; }
+          grep -qi "Something went wrong" /tmp/T.txt && { echo "still says Something went wrong"; exit 1; } || true
           echo "ok on this userland"
           INNER
           # the matrix's prep line, spliced in without YAML fighting the shell

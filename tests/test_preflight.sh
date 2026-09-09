@@ -125,7 +125,16 @@ hasnt "  silent on a desktop"                     "This is a laptop"
 run "${MAC_LUCAS[@]}" PF_IS_LAPTOP=1 PF_HAS_ETHERNET=1
 hasnt "  and silent about ethernet when there is a port" "no wired port here"
 
-echo "15. it fits 80 columns"
+echo "15. python3, which the CLI needs and preflight does not"
+run PF_OS=Linux PF_OS_PRETTY="Arch Linux" PF_ARCH=x86_64 PF_HAVE="docker" PF_DOCKER_RUNNING=1
+has   "  missing python3 fails the row"           "python3       not installed"
+has   "  with pacman on Arch and Omarchy"         "pacman -S --noconfirm python"
+run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64 PF_HAVE="docker" PF_DOCKER_RUNNING=1
+has   "  and apt-get on Ubuntu"                   "apt-get install -y python3"
+run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
+has   "  and passes when it is there"             "python3       present"
+
+echo "16. it fits 80 columns"
 run "${MAC_LUCAS[@]}"
 wide="$(awk '{ n=length($0); if (n>m) m=n } END { print m+0 }' <<<"$(sed -n '/preflight/,/ports/p' <<<"$OUT")")"
 if [[ "$wide" -le 80 ]]; then echo "  ok   the table is $wide columns"

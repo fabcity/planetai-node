@@ -329,6 +329,26 @@ else
   row runtime "none found" 0 "$(runtime_fix)"
 fi
 
+# ---------------------------------------------------------------- python3, which the CLI needs
+# This script is pure bash on purpose. `planetai` is not: it geocodes a place name, reads an answers
+# file and formats every --json with python3's standard library. A clean Arch and a minimal Ubuntu
+# Server have no python3, and the CLI died on them with "Something went wrong" — measured in CI on
+# 9 September 2026, on ubuntu:22.04 and archlinux:latest.
+py3_fix() {
+  case "$PLATFORM" in
+    macos) echo "python3 comes with the Xcode Command Line Tools: xcode-select --install";;
+    linux|wsl)
+      case "$(probe_pretty)" in
+        *Arch*|*Manjaro*|*Omarchy*|*CachyOS*|*EndeavourOS*) echo "sudo pacman -S --noconfirm python";;
+        *Fedora*|*Red\ Hat*|*Rocky*|*Alma*)                  echo "sudo dnf install -y python3";;
+        *)                                                   echo "sudo apt-get update && sudo apt-get install -y python3";;
+      esac;;
+    *) echo "install python3 (the standard library is enough; nothing here runs pip)";;
+  esac
+}
+if have python3; then row python3 "present" 1
+else row python3 "not installed" 0 "$(py3_fix)"; fi
+
 # ---------------------------------------------------------------- egress
 # The four hosts that decide whether an install finishes. Everything else is post-install and belongs to doctor.
 # `curl -f` would fail on the 401 the Docker registry answers with and the 404 a bare API root gives, and both
