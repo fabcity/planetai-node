@@ -27,6 +27,7 @@ import os
 import time
 
 import httpx
+from contextlib import asynccontextmanager
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -147,6 +148,27 @@ async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | 
     return r.json()["choices"][0]["message"]
 
 
+@asynccontextmanager
+async def node_session(hc: httpx.AsyncClient):
+    """One MCP session per question, not one per process. Yields (session, tools).
+
+    A session held open for the life of the container dies with the first network blip or server-side expiry, and
+    every POST /mcp after that comes back 404 'session not found'. Nothing crashes and nothing is logged, because
+    call_tool's exception is written into the tool result: the model reads "tool error", and answers "I am unable
+    to reach the node" — to every question, forever, until someone restarts the container. That was this node on
+    9 September: the session opened at 15:39, three questions at 22:16, 22:17 and 22:28 sent twelve calls, the app
+    answered 404 to all twelve, and the agent log showed only the calls going out.
+
+    The handshake is four requests to a container on the same bridge, and questions arrive minutes apart, so paying
+    it per question costs nothing anyone can feel. Reconnect logic would be more code and still lose the first call
+    after a drop.
+    """
+    async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
+        async with ClientSession(r, w) as session:
+            await session.initialize()
+            yield session, to_openai_tools((await session.list_tools()).tools)
+
+
 async def ask(session: ClientSession, tools: list[dict], user: str, history: list[dict] | None = None, pin: str | None = None) -> tuple[str, str]:
     """Returns (answer, rung name). Walks the ladder; a rung that fails is skipped for five minutes."""
     now = time.time()
@@ -184,6 +206,10 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                             res = await session.call_tool(fn, args)
                             text = "\n".join(getattr(x, "text", "") for x in res.content)[:8000]
                         except Exception as e:  # noqa: BLE001
+                            # Log it as well as handing it to the model. A tool error the model turns into "I cannot
+                            # reach the node" is invisible otherwise: the line above logs the call, and nothing logs
+                            # that it failed.
+                            log.warning("[%s] tool %s failed: %s: %s", rung.name, fn, type(e).__name__, str(e)[:200])
                             text = f"tool error: {type(e).__name__}: {e}"
                         messages.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
                 return "I ran out of steps. Ask something narrower.", rung.name
@@ -235,48 +261,61 @@ async def main():
     await asyncio.sleep(2)
     log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
     log.info("telegram: %s", f"bot set, answering {len(CHATS())} chat(s): {sorted(CHATS())}" if TG_TOKEN() and CHATS() else "NOT configured (no TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone")
-    async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
-        async with ClientSession(r, w) as session:
-            await session.initialize()
-            tools = to_openai_tools((await session.list_tools()).tools)
+    try:                                   # once, so the log says the node answered and how many tools it offers
+        async with node_session(hc) as (_s, tools):
             log.info("%d tools", len(tools))
-            offset, history, pins = 0, {}, {}
-            while True:
-                if not TG_TOKEN():
-                    await asyncio.sleep(30); continue
-                try:
-                    upd = await telegram("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
-                except TelegramError as e:
-                    msg = e.args[0] if e.args else "error"      # TelegramError carries a status code and advice, never the URL
-                    log.warning("telegram: %s", msg); await asyncio.sleep(30 if msg[:3] in ("401", "409") else 10); continue
-                except Exception as e:  # noqa: BLE001
-                    log.warning("telegram: %s", type(e).__name__); await asyncio.sleep(10); continue
-                for u in upd.get("result", []):
-                    offset = u["update_id"] + 1
-                    m = u.get("message") or {}
-                    chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
-                    if not text:
-                        continue
-                    if chat not in CHATS():
-                        log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
-                        continue
-                    if text.startswith("/act"):
-                        parts = text.split(maxsplit=2)
-                        if len(parts) >= 2 and parts[1].isdigit():
+    except Exception as e:  # noqa: BLE001
+        log.warning("could not reach the node's tools at startup (%s: %s); each question opens its own session anyway",
+                    type(e).__name__, str(e)[:120])
+    offset, history, pins = 0, {}, {}
+    while True:
+        if not TG_TOKEN():
+            await asyncio.sleep(30); continue
+        try:
+            upd = await telegram("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
+        except TelegramError as e:
+            msg = e.args[0] if e.args else "error"      # TelegramError carries a status code and advice, never the URL
+            log.warning("telegram: %s", msg); await asyncio.sleep(30 if msg[:3] in ("401", "409") else 10); continue
+        except Exception as e:  # noqa: BLE001
+            log.warning("telegram: %s", type(e).__name__); await asyncio.sleep(10); continue
+        for u in upd.get("result", []):
+            offset = u["update_id"] + 1
+            m = u.get("message") or {}
+            chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
+            if not text:
+                continue
+            if chat not in CHATS():
+                log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
+                continue
+            if text.startswith("/act"):
+                parts = text.split(maxsplit=2)
+                if len(parts) >= 2 and parts[1].isdigit():
+                    try:
+                        async with node_session(hc) as (session, _t):
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2] if len(parts) > 2 else "acted", "agent": f"{NAME}/telegram"})
-                            await telegram("sendMessage", chat_id=chat, text=f"Recorded: you acted on #{parts[1]}.")
-                            continue
-                    if text.startswith("/model"):
-                        arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
-                        if arg in {r.name for r in RUNGS}: pins[chat] = arg
-                        elif arg == "auto": pins.pop(chat, None)
-                        await telegram("sendMessage", chat_id=chat, text=ladder_text(pins, chat))
-                        continue
-                    t0 = time.time()
+                        said = f"Recorded: you acted on #{parts[1]}."
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
+                        said = f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment."
+                    await telegram("sendMessage", chat_id=chat, text=said)
+                    continue
+            if text.startswith("/model"):
+                arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
+                if arg in {r.name for r in RUNGS}: pins[chat] = arg
+                elif arg == "auto": pins.pop(chat, None)
+                await telegram("sendMessage", chat_id=chat, text=ladder_text(pins, chat))
+                continue
+            t0 = time.time()
+            try:
+                async with node_session(hc) as (session, tools):
                     answer, rung = await ask(session, tools, text, history.get(chat, [])[-6:], pins.get(chat))
-                    history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
-                    log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
-                    await telegram("sendMessage", chat_id=chat, text=answer[:4000])
+            except Exception as e:  # noqa: BLE001
+                # The node itself, not a model: say so plainly rather than letting a model guess at it.
+                log.warning("no session to the node for chat %s: %s: %s", chat, type(e).__name__, str(e)[:200])
+                answer, rung = f"⚠️ I could not open a session to the node just now ({type(e).__name__}). It may be restarting — try again in a moment.", "none"
+            history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
+            log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
+            await telegram("sendMessage", chat_id=chat, text=answer[:4000])
 
 
 if __name__ == "__main__":
