@@ -37,11 +37,36 @@ step() {              # step "name"  — announce and start the clock
   printf '[%d/%d] %s\n' "$STEP_N" "$STEP_TOTAL" "$1"
 }
 step_ok()   { printf '        done in %ds\n' $((SECONDS-STEP_T0)); }
+# What the log says the failure actually was. "check the network" was printed to a tester whose layer
+# commit failed writing to disk — `failed commit on ref "layer-sha256:..."` — on a laptop whose root
+# filesystem had gone read-only an hour earlier from kernel-detected drive errors. A reason line that
+# points at the wrong subsystem costs more than no reason line at all.
+diagnose() {
+  local log="${LOG_FILE:-/dev/null}" hit
+  hit="$(grep -aoE 'no space left on device|failed commit on ref|input/output error|read-only file system|no such host|network is unreachable|TLS handshake timeout|connection refused|i/o timeout|denied: requested access|manifest unknown' "$log" 2>/dev/null | tail -1)"
+  case "$hit" in
+    "no space left on device")
+      printf 'the disk filled up. `df -h .` and `docker system df` say where it went.';;
+    "failed commit on ref"|"input/output error"|"read-only file system")
+      printf 'the download arrived and could not be WRITTEN — this is the disk, not the network.
+          sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20    what the kernel saw
+          df -h / /var/lib/docker                                       is either one full
+          docker system prune -af                                       a store left inconsistent
+        A drive that reads fine and fails on a large sustained write is a drive on its way out.';;
+    "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
+      printf 'the registry could not be reached. A proxy, a captive portal, or the line is down.';;
+    "denied: requested access"|"manifest unknown")
+      printf 'the registry refused the image name. That is a bug here, not on your machine — tell us.';;
+    *) printf '';;
+  esac
+}
+
 step_fail() {         # step_fail "why"
   printf '\n'
   printf 'FAILED: %s\n' "$STEP_NAME"
   printf '  after   %ds\n' $((SECONDS-STEP_T0))
-  printf '  reason  %s\n' "${1:-see the log}"
+  local dx; dx="$(diagnose)"
+  printf '  reason  %s\n' "${dx:-${1:-see the log}}"
   local l; l="$( { grep -aE 'ERROR|error:|Error|failed|cannot|denied|refused' "$LOG_FILE" 2>/dev/null | tail -1 | cut -c1-70; } || true)"
   [[ -n "$l" ]] && printf '  log     %s\n          %s\n' "$LOG_FILE" "$l" || printf '  log     %s\n' "$LOG_FILE"
   printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n'
@@ -92,7 +117,8 @@ die()  {
   if [[ -n "${STEP_NAME:-}" ]]; then
     printf '\nFAILED: %s\n' "$STEP_NAME" >&2
     printf '  after   %ds\n' $((SECONDS-STEP_T0)) >&2
-    printf '  reason  %s\n' "$*" >&2
+    local dx; dx="$(diagnose)"
+    printf '  reason  %s\n' "${dx:-$*}" >&2
     printf '  log     %s\n' "${LOG_FILE:-none yet}" >&2
     printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n' >&2
     printf '\ninstall FAILED at step %d/%d "%s" after %ds\n' "${STEP_N:-0}" "${STEP_TOTAL:-0}" "$STEP_NAME" $((SECONDS-RUN_T0)) >&2
@@ -179,12 +205,31 @@ if ! docker info >/dev/null 2>&1; then
   IFS='|' read -r rt_name rt_start <<< "$(runtime_app)"
   if [[ -n "$rt_name" ]]; then
     say "$rt_name is installed but not running. Starting it — this takes up to a minute on a cold boot."
+    # Whether the start command WORKED is worth knowing. It used to be `|| true`, so a service that
+    # refused to start looked identical to one that was merely slow, and the five-minute countdown ran
+    # out before anybody learned that systemctl had already said no.
+    start_rc=0
     case "$rt_start" in
-      "sudo systemctl start docker") say "this one needs sudo: it starts the system docker service, nothing else"; $rt_start || true;;
-      *) $rt_start >/dev/null 2>&1 || true;;
+      "sudo systemctl start docker")
+        sudo_first "starting the Docker service"
+        say "this one needs sudo: it starts the system docker service, nothing else"
+        sudo systemctl start docker || start_rc=$?;;
+      *) $rt_start >/dev/null 2>&1 || start_rc=$?;;
     esac
-    wait_for_daemon || die "$rt_name did not come up within 5 minutes. Open it by hand, wait for it to say it is ready, then:
+    [[ $start_rc -eq 0 ]] || warn "the start command returned $start_rc — waiting anyway, in case it is only slow"
+    # "Open it by hand" is a Mac sentence. On Linux there is a service, and two commands that say why.
+    if [[ "$PLATFORM" == macos ]]; then
+      wait_for_daemon || die "$rt_name did not come up within 5 minutes. Open it from Applications, wait until it says it is ready, then:
    planetai setup      (your answers are saved; it will not ask them again)"
+    else
+      wait_for_daemon || die "the Docker service did not come up within 5 minutes. These two say why:
+     sudo systemctl status docker --no-pager | head -20
+     sudo journalctl -u docker --no-pager | tail -30
+   If it is crash-looping and this machine has had disk trouble, its image store may be damaged. That
+   store holds nothing of yours yet, so it is safe to clear:
+     sudo systemctl stop docker && sudo rm -rf /var/lib/docker && sudo systemctl start docker
+   Then:  planetai setup      (your answers are saved; it will not ask them again)"
+    fi
   fi
 fi
 if [[ "$PLATFORM" == "macos" ]]; then
@@ -330,7 +375,7 @@ step_ok
 DB_IMAGE="$(docker compose config --images 2>/dev/null | grep -E '[a-z0-9._-]+/[a-z0-9._-]+' | head -1)"
 DB_IMAGE="${DB_IMAGE:-postgis/postgis:16-3.4-alpine}"
 step "downloading the database image ${DB_IMAGE} (about 162 MB)"
-watch_run "the database image would not download — check the network, then run the resume command" \
+watch_run "the database image did not arrive. The log has the reason; the resume command retries." \
   docker pull "$DB_IMAGE"
 step_ok
 
