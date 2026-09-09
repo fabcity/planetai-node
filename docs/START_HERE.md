@@ -131,4 +131,11 @@ When you ask for help, write to **info@fab.city** with `planetai status`, `plane
 
 ## Remove it
 
-`planetai stop` keeps the data. `docker compose down -v` in the node folder removes everything; then delete the folder.
+```bash
+planetai remove              # containers, database, folder, cron entry, the command itself
+planetai remove --keep-data  # the same, but the readings stay in their volume
+```
+
+It lists what will go — including how many readings, and any backups inside the folder — then asks twice:
+once for yes, once for the node's name typed out. `planetai stop` is the gentler option: it stops the
+containers and keeps everything.
