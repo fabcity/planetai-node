@@ -141,12 +141,17 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
+      max-parallel: 1          # one machine at a time: both legs drive the SAME host daemon
       matrix:
         include:
           - name: Ubuntu Server 22.04
+            project: pai_ubuntu
+            port: 8131
             image: ubuntu:22.04
             prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 >/dev/null
           - name: Arch (what Omarchy is built on)
+            project: pai_arch
+            port: 8132
             image: archlinux:latest
             prep: pacman -Sy --noconfirm --quiet curl sudo tar python >/dev/null
     name: ${{ matrix.name }}
@@ -182,6 +187,7 @@ jobs:
           JSON
           chown tester /home/tester/node.json
           su tester -c 'cd /home/tester && PATH=/opt/notools:$PATH PLANETAI_SITE=http://172.17.0.1:8099 PLANETAI_HOME=/home/tester/planetai \
+            COMPOSE_PROJECT_NAME=PROJECT_PLACEHOLDER APP_PORT=PORT_PLACEHOLDER \
             timeout 1500 bash -c "cat /work/install | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
           echo "installer exit: ${PIPESTATUS[0]}"
           [ -s /tmp/forbidden ] && { echo "it called:"; cat /tmp/forbidden; exit 1; } || true
@@ -201,7 +207,10 @@ jobs:
           python3 - <<'PYP'
           import os
           s = open('/tmp/run.sh').read()
-          open('/tmp/run.sh','w').write(s.replace('PREP_PLACEHOLDER', os.environ['PREP']))
+          s = s.replace('PREP_PLACEHOLDER', os.environ['PREP'])
+          s = s.replace('PROJECT_PLACEHOLDER', os.environ['PROJECT'])
+          s = s.replace('PORT_PLACEHOLDER', os.environ['PORT'])
+          open('/tmp/run.sh','w').write(s)
           PYP
           docker run --rm --network host \
             -v /var/run/docker.sock:/var/run/docker.sock \
@@ -209,6 +218,11 @@ jobs:
             ${{ matrix.image }} bash /run.sh
         env:
           PREP: ${{ matrix.prep }}
+          PROJECT: ${{ matrix.project }}
+          PORT: ${{ matrix.port }}
+      - name: leave the daemon as we found it
+        if: always()
+        run: docker compose -p ${{ matrix.project }} down -v >/dev/null 2>&1 || true
       - name: what a tester would paste into an issue
         if: always()
         run: bash tools/preflight.sh --json || true
