@@ -7,7 +7,7 @@
 # A Spanish set belongs beside this one as es.yml, written by a person who speaks it. Nothing here
 # was machine-translated and nothing here should be.
 #
-# 101 strings from tools/preflight.sh, install.sh.
+# 105 strings from tools/preflight.sh, install.sh.
 
 strings:
   - key: tools_preflight:224
@@ -154,61 +154,69 @@ strings:
     en: "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
   - key: install:195
     en: "there is no container runtime on this machine, and the node is two containers. Installing Docker."
-  - key: install:204
-    en: "the big one: several hundred MB of packages, and it says little while it works"
+  - key: install:219
+    en: "this is :-a derivative} on Ubuntu . Using Docker's Ubuntu repository directly"
+  - key: install:220
+    en: "Docker's own installer mis-reads derivatives as Debian and leaves apt broken."
   - key: install:224
-    en: "writing settings to .env"
-  - key: install:230
-    en: "no preset ' '. Available"
-  - key: install:231
-    en: "applying preset"
-  - key: install:244
-    en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
-  - key: install:246
-    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
-  - key: install:247
-    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
-  - key: install:248
-    en: "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
-  - key: install:263
-    en: "a database from an earlier node is still on this machine ( :-Docker volume planetai_db}), and this is a new .env,"
+    en: "removing an earlier Docker repository that does not match this machine"
+  - key: install:236
+    en: "repository added. Now the packages — this is the large download."
+  - key: install:242
+    en: "the big one: several hundred MB of packages, and it says little while it works"
   - key: install:264
+    en: "writing settings to .env"
+  - key: install:270
+    en: "no preset ' '. Available"
+  - key: install:271
+    en: "applying preset"
+  - key: install:284
+    en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
+  - key: install:286
+    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
+  - key: install:287
+    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
+  - key: install:288
+    en: "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
+  - key: install:303
+    en: "a database from an earlier node is still on this machine ( :-Docker volume planetai_db}), and this is a new .env,"
+  - key: install:304
     en: "so its password cannot match. Two ways out"
-  - key: install:265
-    en: "keep that data: put the earlier .env back in this folder, then run this again"
-  - key: install:267
-    en: "not starting a node whose app cannot log in to its database"
-  - key: install:277
-    en: "port is already in use on this machine"
-  - key: install:278
-    en: "set APP_PORT=8081 (or any free port) in .env and re-run"
-  - key: install:282
-    en: "creating the folders the containers write to"
-  - key: install:292
-    en: "downloading the database image (about 162 MB)"
-  - key: install:299
-    en: "building this node's own image and starting both containers"
   - key: install:305
+    en: "keep that data: put the earlier .env back in this folder, then run this again"
+  - key: install:307
+    en: "not starting a node whose app cannot log in to its database"
+  - key: install:317
+    en: "port is already in use on this machine"
+  - key: install:318
+    en: "set APP_PORT=8081 (or any free port) in .env and re-run"
+  - key: install:322
+    en: "creating the folders the containers write to"
+  - key: install:332
+    en: "downloading the database image (about 162 MB)"
+  - key: install:339
+    en: "building this node's own image and starting both containers"
+  - key: install:345
     en: "waiting for the database, then applying the schema"
-  - key: install:308
-    en: "s waiting for the database to accept connections"
-  - key: install:313
-    en: "the schema was already there (a fresh volume applies it itself)"
-  - key: install:315
-    en: "the database did not answer in 60s — the checks below will say so"
-  - key: install:320
-    en: "checking what is running"
-  - key: install:330
-    en: "✓ backup.sh made executable"
-  - key: install:337
-    en: "nightly backup scheduled (03:17)"
-  - key: install:342
-    en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
-  - key: install:343
-    en: "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
   - key: install:348
-    en: "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
+    en: "s waiting for the database to accept connections"
   - key: install:353
-    en: "install OK — , steps in s, on localhost"
+    en: "the schema was already there (a fresh volume applies it itself)"
   - key: install:355
+    en: "the database did not answer in 60s — the checks below will say so"
+  - key: install:360
+    en: "checking what is running"
+  - key: install:370
+    en: "✓ backup.sh made executable"
+  - key: install:377
+    en: "nightly backup scheduled (03:17)"
+  - key: install:382
+    en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
+  - key: install:383
+    en: "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
+  - key: install:388
+    en: "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
+  - key: install:393
+    en: "install OK — , steps in s, on localhost"
+  - key: install:395
     en: "First reading lands within s."

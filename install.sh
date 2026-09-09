@@ -201,9 +201,49 @@ elif ! need docker; then
               sudo pacman -Sy --noconfirm docker docker-compose
             sudo systemctl enable --now docker || true;;
     *)      echo "     curl -fsSL https://get.docker.com | sh              (Docker's own installer; it uses sudo itself)"
-            echo "     the big one: several hundred MB of packages, and it says little while it works"
-            watch_run "Docker's own installer failed — its output is in the log" \
-              bash -c 'curl -fsSL https://get.docker.com | sh';;
+            # get.docker.com works out which distribution it is on, and on an Ubuntu DERIVATIVE it can get
+            # that wrong in a way that poisons apt. Lucas is on Linux Mint 22.3. Its `lsb_release -a -u`
+            # exited non-zero, so Docker's script skipped its forked-distro path, read /etc/debian_version
+            # — which on an Ubuntu noble base says "trixie/sid" — concluded Debian trixie, added the DEBIAN
+            # repository and tried to install Debian packages onto Ubuntu:
+            #     deb [...] https://download.docker.com/linux/debian trixie stable
+            #     E: Unable to correct problems, you have held broken packages.
+            #
+            # /etc/os-release already carries UBUNTU_CODENAME, which is the one fact needed, so on a
+            # derivative we neither guess nor let it guess. The commands below are Docker's own documented
+            # Ubuntu procedure — what its script would have run had it detected correctly. Mint, Pop!_OS,
+            # elementary and Zorin all land here.
+            UBU_CODENAME="$( . /etc/os-release 2>/dev/null && echo "${UBUNTU_CODENAME:-}" )"
+            DIST_ID="$( . /etc/os-release 2>/dev/null && echo "${ID:-}" )"
+            if [[ -n "$UBU_CODENAME" && "$DIST_ID" != ubuntu ]]; then
+              say "this is ${DIST_ID:-a derivative} on Ubuntu ${UBU_CODENAME}. Using Docker's Ubuntu repository directly —"
+              echo "     Docker's own installer mis-reads derivatives as Debian and leaves apt broken."
+              # A previous attempt may already have left the wrong repository behind, and apt will keep
+              # failing while it is there. Remove it before adding the right one.
+              if [[ -f /etc/apt/sources.list.d/docker.list ]] && ! grep -q "linux/ubuntu ${UBU_CODENAME}" /etc/apt/sources.list.d/docker.list; then
+                warn "removing an earlier Docker repository that does not match this machine"
+                sudo rm -f /etc/apt/sources.list.d/docker.list
+              fi
+              watch_run "could not add Docker's Ubuntu repository — see the log" bash -c '
+                set -e
+                sudo apt-get -qq update
+                sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq install ca-certificates curl
+                sudo install -m 0755 -d /etc/apt/keyrings
+                sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+                sudo chmod a+r /etc/apt/keyrings/docker.asc
+                printf "deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu %s stable\n" \
+                  "$(dpkg --print-architecture)" "'"$UBU_CODENAME"'" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null'
+              echo "     repository added. Now the packages — this is the large download."
+              watch_run "the Docker packages would not install. The log has apt's own words; 'sudo apt-get -f install' often names the conflict" bash -c '
+                set -e
+                sudo apt-get -qq update
+                sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin'
+            else
+              echo "     the big one: several hundred MB of packages, and it says little while it works"
+              watch_run "Docker's own installer failed — its output is in the log" \
+                bash -c 'curl -fsSL https://get.docker.com | sh'
+            fi
+            ;;
   esac
   say "and one more, so you can use Docker without sudo every time — it adds your user to the docker group:"
   echo "     sudo usermod -aG docker $USER"
