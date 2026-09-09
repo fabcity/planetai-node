@@ -196,15 +196,50 @@ runtime_app() {                     # what is installed here, and the line that 
   elif need systemctl && systemctl list-unit-files docker.service >/dev/null 2>&1; then echo "Docker|sudo systemctl start docker"
   else echo "|"; fi
 }
+# "The daemon is not up" and "I cannot reach the daemon" are different sentences, and `docker info`
+# fails with the same exit code for both. Lucas waited the full five minutes and gave up on a daemon
+# that had been listening since 12:34:55 — his journal says so: "Daemon has completed initialization",
+# "API listen on /run/docker.sock". He had been added to the docker group in an earlier run, and a shell
+# that started before that cannot use it. The re-exec that fixes it lived a hundred lines further down,
+# past the wait that had already died.
+#
+# Return codes: 0 the daemon is usable · 2 the daemon is up but THIS shell may not touch its socket
+#               1 it never came up
+daemon_state() {
+  local err
+  err="$(docker info 2>&1 >/dev/null)" && return 0
+  case "$err" in
+    *"permission denied"*|*"Got permission denied while trying to connect"*) return 2;;
+  esac
+  # The socket existing with a live service is the same story, whatever the client says.
+  if [[ -S /var/run/docker.sock || -S /run/docker.sock ]] \
+     && { ! need systemctl || [[ "$(systemctl is-active docker 2>/dev/null)" == active ]]; }; then
+    return 2
+  fi
+  return 1
+}
 wait_for_daemon() {                 # up to 5 minutes, with the clock visible
-  local deadline=$((SECONDS + 300))
+  local deadline=$((SECONDS + 300)) st
   while (( SECONDS < deadline )); do
-    docker info >/dev/null 2>&1 && { [[ -t 1 ]] && printf '\r\033[K'; say "container runtime is up"; return 0; }
+    daemon_state; st=$?
+    case $st in
+      0) [[ -t 1 ]] && printf '\r\033[K'; say "container runtime is up"; return 0;;
+      2) [[ -t 1 ]] && printf '\r\033[K'
+         say "the runtime is up. This shell is not in the docker group yet — using it for this run."
+         return 2;;
+    esac
     [[ -t 1 ]] && printf '\r  waiting for the container runtime … %d:%02d left\033[K' $(( (deadline-SECONDS)/60 )) $(( (deadline-SECONDS)%60 ))
     sleep 2
   done
   [[ -t 1 ]] && printf '\r\033[K'
   return 1
+}
+# Continue under the docker group now, rather than telling somebody to log out and back in.
+use_docker_group() {
+  [[ -n "${PLANETAI_SG:-}" ]] && return 1                # already re-exec'd once; do not loop
+  need sg || return 1
+  grep -qw docker <<< "$(id -nG "$USER" 2>/dev/null)" || sudo usermod -aG docker "$USER" || return 1
+  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "${ARGS[@]}")"
 }
 step "making sure a container runtime is running"
 if ! docker info >/dev/null 2>&1; then
@@ -225,10 +260,14 @@ if ! docker info >/dev/null 2>&1; then
     [[ $start_rc -eq 0 ]] || warn "the start command returned $start_rc — waiting anyway, in case it is only slow"
     # "Open it by hand" is a Mac sentence. On Linux there is a service, and two commands that say why.
     if [[ "$PLATFORM" == macos ]]; then
-      wait_for_daemon || die "$rt_name did not come up within 5 minutes. Open it from Applications, wait until it says it is ready, then:
+      wait_for_daemon; wd=$?
+      [[ $wd -eq 2 ]] && use_docker_group
+      [[ $wd -eq 1 ]] && die "$rt_name did not come up within 5 minutes. Open it from Applications, wait until it says it is ready, then:
    planetai setup      (your answers are saved; it will not ask them again)"
     else
-      wait_for_daemon || die "the Docker service did not come up within 5 minutes. These two say why:
+      wait_for_daemon; wd=$?
+      [[ $wd -eq 2 ]] && use_docker_group
+      [[ $wd -eq 1 ]] && die "the Docker service did not come up within 5 minutes. These two say why:
      sudo systemctl status docker --no-pager | head -20
      sudo journalctl -u docker --no-pager | tail -30
    If it is crash-looping and this machine has had disk trouble, its image store may be damaged. That
@@ -302,9 +341,9 @@ elif ! need docker; then
 fi
 # the new group is not in this shell yet: continue under it now (sg), rather than dying with "permission denied
 # while trying to connect to the docker API" and asking the person to log out and in
-if ! docker info >/dev/null 2>&1 && grep -qw docker <<< "$(id -nG "$USER")" && [[ -z "${PLANETAI_SG:-}" ]] && command -v sg >/dev/null; then
+if ! docker info >/dev/null 2>&1; then
   say "docker group applied for this run (new terminals have it automatically)"
-  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "${ARGS[@]}")"
+  use_docker_group || true
 fi
 docker info >/dev/null 2>&1 || die "Docker is installed but this user cannot reach it. Log out and back in (the docker group is new), then run the same line again."
 docker compose version >/dev/null 2>&1 || die "docker compose plugin missing"
