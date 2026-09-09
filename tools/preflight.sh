@@ -84,6 +84,8 @@ mac_ceiling() {   # identifier -> last macOS|marketing name, or empty when unkno
 }
 ASSET_utm_dmg_url="https://github.com/utmapp/UTM/releases/download/v4.7.5/UTM.dmg"
 ASSET_utm_dmg_version="v4.7.5"
+ASSET_omarchy_iso_url="https://iso.omarchy.org/omarchy-4.0.3.iso"
+ASSET_omarchy_iso_version="4.0.3"
 ASSET_ubuntu_server_iso_url="https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso"
 ASSET_ubuntu_server_iso_version="24.04.4"
 LINUX_ubuntu_min="22.04"
@@ -454,13 +456,31 @@ if [[ $floor -eq 1 ]]; then
   printf '     Give it 2 CPUs, 4096 MB, 25 GB. Install Ubuntu Server, then inside the VM run\n'
   printf '     the same line you ran here.%s\n\n' "$N"
   printf '  %s2. Linux on the metal, and this laptop becomes the node.%s The better end state: no\n' "$B" "$N"
-  printf '     macOS underneath, nothing to keep awake, and the floor stops moving.\n'
-  printf '       %sdocs/REVIVE_A_LAPTOP.md%s — a USB stick and about an hour\n\n' "$D" "$N"
+  printf '     macOS underneath, nothing to keep awake, and the floor stops moving. Two choices,\n'
+  printf '     depending on whether anyone still uses this machine day to day:\n\n'
+  printf '     %sUbuntu Server%s — nobody uses it, it just runs. No desktop, ssh in, lowest upkeep.\n' "$B" "$N"
+  printf '       curl -fL -o ~/Downloads/ubuntu-server.iso %s\n' "$ASSET_ubuntu_server_iso_url"
+  printf '     %sOmarchy %s%s — a laptop somebody uses AND a node. Arch underneath, a finished desktop,\n' "$B" "$ASSET_omarchy_iso_version" "$N"
+  printf '     five questions from stick to working machine.\n'
+  printf '       curl -fL -o ~/Downloads/omarchy.iso %s\n' "$ASSET_omarchy_iso_url"
+  printf '     %sThe walk-through for either: docs/REVIVE_A_LAPTOP.md — a USB stick and about an hour.%s\n\n' "$D" "$N"
   printf '  %sNothing was installed and nothing was changed.%s  Floors: data/platform_floors.yml\n\n' "$D" "$N"
   exit 2
 fi
 if [[ $fails -eq 0 ]]; then
-  printf '  %sThis machine can run a node.%s\n\n' "$G" "$N"
+  printf '  %sThis machine can run a node.%s\n' "$G" "$N"
+  # An Intel Mac works today and is on a treadmill: OrbStack went to 14, Docker Desktop drops the oldest
+  # macOS every autumn, Multipass went to 14. Apple ships no new Intel Macs, so the floor only rises.
+  # A note, not a failure, and only where it is true.
+  if [[ "$PLATFORM" == macos && "$ARCH" == x86_64 ]]; then
+    printf '\n  %sWorth knowing, while it is working:%s this is an Intel Mac, and every container runtime\n' "$Y" "$N"
+    printf '  for macOS has raised its floor in the last two years. Linux on this machine does not have\n'
+    printf '  that problem, and it is a better node — nothing to keep awake, and the floor stops moving.\n'
+    printf '    %sUbuntu Server%s  nobody uses it, it just runs\n' "$B" "$N"
+    printf '    %sOmarchy%s        a laptop somebody uses, and a node\n' "$B" "$N"
+    printf '    %sdocs/REVIVE_A_LAPTOP.md%s\n' "$D" "$N"
+  fi
+  echo
   exit 0
 fi
 printf '  %s%d check%s failed.%s Each line above carries the fix. Nothing was installed.\n' "$Y" "$fails" "$([[ $fails -eq 1 ]] || echo s)" "$N"

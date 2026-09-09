@@ -216,6 +216,20 @@ assets:
       v4.7.5 is the newest release GitHub marks as latest; v5.x are marked prerelease. 100 releases are
       retained, so a Mac below a current build's floor can fetch an older one.
 
+  omarchy_iso:
+    name: Omarchy
+    url: https://iso.omarchy.org/omarchy-4.0.3.iso
+    version: 4.0.3
+    source: https://omarchy.org
+    checked: 2026-09-09
+    says: >
+      "Beautiful, fun & agentic Linux" — Arch underneath, Hyprland on top, installed from an ISO by
+      answering five questions. "even a 2011 ThinkPad X220 with 2GB of RAM can run Omarchy". 5.83 GB,
+      with a published SHA-256 at the same URL plus .sha256; both fetched, both 200.
+    note: >
+      The everyday-desktop end of the two Linux routes: a machine somebody actually uses AND a node.
+      Arch underneath, so the installer takes its pacman branch — the same one CI now simulates.
+
   ubuntu_server_iso:
     name: Ubuntu Server LTS, amd64
     url: https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso

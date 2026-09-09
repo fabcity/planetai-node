@@ -134,7 +134,19 @@ has   "  and apt-get on Ubuntu"                   "apt-get install -y python3"
 run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
 has   "  and passes when it is there"             "python3       present"
 
-echo "16. it fits 80 columns"
+echo "16. Linux first: two named distros, and a word to an Intel Mac that works"
+run "${MAC_LUCAS[@]}" PF_HAVE=python3
+has   "  Ubuntu Server, for a box nobody uses"    "Ubuntu Server — nobody uses it"
+has   "  Omarchy, for a laptop somebody uses"     "a laptop somebody uses AND a node"
+has   "  and the Omarchy iso as a command"        "omarchy.org/omarchy-4.0.3.iso"
+run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=x86_64 PF_HW_MODEL=MacBookPro16,1 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
+ok    "  a working Intel Mac still passes"        "$RC" 0
+has   "  and is told about the treadmill"         "this is an Intel Mac"
+run PF_OS=Darwin PF_OS_VERSION=15.6.1 PF_ARCH=arm64 PF_HW_MODEL=Mac14,2 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
+ok    "  Apple Silicon passes too"                "$RC" 0
+hasnt "  and is NOT told to switch"               "this is an Intel Mac"
+
+echo "17. it fits 80 columns"
 run "${MAC_LUCAS[@]}"
 wide="$(awk '{ n=length($0); if (n>m) m=n } END { print m+0 }' <<<"$(sed -n '/preflight/,/ports/p' <<<"$OUT")")"
 if [[ "$wide" -le 80 ]]; then echo "  ok   the table is $wide columns"

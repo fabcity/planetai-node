@@ -7,90 +7,108 @@
 # A Spanish set belongs beside this one as es.yml, written by a person who speaks it. Nothing here
 # was machine-translated and nothing here should be.
 #
-# 91 strings from tools/preflight.sh, install.sh.
+# 100 strings from tools/preflight.sh, install.sh.
 
 strings:
-  - key: tools_preflight:222
+  - key: tools_preflight:224
     en: "preflight no questions, no changes, nothing installed"
-  - key: tools_preflight:275
+  - key: tools_preflight:277
     en: "no container runtime installs on macOS — see the verdict below"
-  - key: tools_preflight:276
+  - key: tools_preflight:278
     en: "install Docker Desktop for Windows, turn on 'Use the WSL 2 based engine' and WSL integration for this distro, then run this again"
-  - key: tools_preflight:325
+  - key: tools_preflight:327
     en: "the install starts it and waits up to 5 minutes ( )"
-  - key: tools_preflight:339
+  - key: tools_preflight:341
     en: "python3 comes with the Xcode Command Line Tools: xcode-select --install"
-  - key: tools_preflight:346
+  - key: tools_preflight:348
     en: "install python3 (the standard library is enough; nothing here runs pip)"
-  - key: tools_preflight:365
+  - key: tools_preflight:367
     en: "site, github, registry, open-meteo"
-  - key: tools_preflight:365
+  - key: tools_preflight:367
     en: "cannot reach"
-  - key: tools_preflight:376
+  - key: tools_preflight:378
     en: "8080, 5432 free"
-  - key: tools_preflight:384
+  - key: tools_preflight:386
     en: "This is a laptop. Three things, none of them failures"
-  - key: tools_preflight:387
-    en: "sleep a sleeping machine is a stopped node. Closing the lid counts."
   - key: tools_preflight:389
-    en: "battery a laptop left plugged in for years is worth a look before you rely on it"
-  - key: tools_preflight:390
-    en: "system_profiler SPPowerDataType | grep -E \"Cycle Count|Condition\""
-  - key: tools_preflight:392
     en: "sleep a sleeping machine is a stopped node. Closing the lid counts."
-  - key: tools_preflight:395
+  - key: tools_preflight:391
     en: "battery a laptop left plugged in for years is worth a look before you rely on it"
-  - key: tools_preflight:396
-    en: "cat /sys/class/power_supply/BAT0/health /sys/class/power_supply/BAT0/cycle_count"
+  - key: tools_preflight:392
+    en: "system_profiler SPPowerDataType | grep -E \"Cycle Count|Condition\""
+  - key: tools_preflight:394
+    en: "sleep a sleeping machine is a stopped node. Closing the lid counts."
+  - key: tools_preflight:397
+    en: "battery a laptop left plugged in for years is worth a look before you rely on it"
   - key: tools_preflight:398
+    en: "cat /sys/class/power_supply/BAT0/health /sys/class/power_supply/BAT0/cycle_count"
+  - key: tools_preflight:400
     en: "ethernet no wired port here. For a node that stays on, a USB gigabit adapter"
-  - key: tools_preflight:399
+  - key: tools_preflight:401
     en: "is the wired path; WiFi drops and a node notices."
-  - key: tools_preflight:422
+  - key: tools_preflight:424
     en: "This hardware is a capable node — cores, GB, GB free. The OS is the only blocker."
-  - key: tools_preflight:425
+  - key: tools_preflight:427
     en: "No container runtime can be installed on ."
-  - key: tools_preflight:426
+  - key: tools_preflight:428
     en: "needs , needs , needs here."
-  - key: tools_preflight:433
-    en: "Is upgrading a route?"
   - key: tools_preflight:435
-    en: "I do not have a last-supported macOS for , so I will not guess."
+    en: "Is upgrading a route?"
   - key: tools_preflight:437
-    en: "If this Mac can reach macOS , upgrade and run this again."
+    en: "I do not have a last-supported macOS for , so I will not guess."
   - key: tools_preflight:439
-    en: "Yes. can run macOS — upgrade, then run this again."
+    en: "If this Mac can reach macOS , upgrade and run this again."
   - key: tools_preflight:441
+    en: "Yes. can run macOS — upgrade, then run this again."
+  - key: tools_preflight:443
     en: "No. This model cannot go past macOS — upgrading is not a route."
-  - key: tools_preflight:442
+  - key: tools_preflight:444
     en: ", and Apple ships nothing newer for it."
-  - key: tools_preflight:446
-    en: "Two routes that work on this machine"
-  - key: tools_preflight:447
-    en: "1. Linux in a virtual machine, on this Mac. UTM is free, needs no account, and on Intel"
   - key: tools_preflight:448
-    en: "it uses Apple"
+    en: "Two routes that work on this machine"
   - key: tools_preflight:449
-    en: "UTM supports macOS — this Mac included."
+    en: "1. Linux in a virtual machine, on this Mac. UTM is free, needs no account, and on Intel"
+  - key: tools_preflight:450
+    en: "it uses Apple"
   - key: tools_preflight:451
-    en: "open ~/Downloads/UTM.dmg"
+    en: "UTM supports macOS — this Mac included."
   - key: tools_preflight:453
-    en: "Then in UTM: Create a New Virtual Machine → Virtualize → Linux → that .iso."
-  - key: tools_preflight:454
-    en: "Give it 2 CPUs, 4096 MB, 25 GB. Install Ubuntu Server, then inside the VM run"
+    en: "open ~/Downloads/UTM.dmg"
   - key: tools_preflight:455
-    en: "the same line you ran here."
+    en: "Then in UTM: Create a New Virtual Machine → Virtualize → Linux → that .iso."
   - key: tools_preflight:456
-    en: "2. Linux on the metal, and this laptop becomes the node. The better end state: no"
+    en: "Give it 2 CPUs, 4096 MB, 25 GB. Install Ubuntu Server, then inside the VM run"
   - key: tools_preflight:457
-    en: "macOS underneath, nothing to keep awake, and the floor stops moving."
+    en: "the same line you ran here."
   - key: tools_preflight:458
-    en: "docs/REVIVE_A_LAPTOP.md — a USB stick and about an hour"
+    en: "2. Linux on the metal, and this laptop becomes the node. The better end state: no"
   - key: tools_preflight:459
-    en: "Nothing was installed and nothing was changed. Floors: data/platform_floors.yml"
+    en: "macOS underneath, nothing to keep awake, and the floor stops moving. Two choices,"
+  - key: tools_preflight:460
+    en: "depending on whether anyone still uses this machine day to day"
+  - key: tools_preflight:461
+    en: "Ubuntu Server — nobody uses it, it just runs. No desktop, ssh in, lowest upkeep."
   - key: tools_preflight:463
-    en: "This machine can run a node."
+    en: "Omarchy — a laptop somebody uses AND a node. Arch underneath, a finished desktop,"
+  - key: tools_preflight:464
+    en: "five questions from stick to working machine."
   - key: tools_preflight:466
+    en: "The walk-through for either: docs/REVIVE_A_LAPTOP.md — a USB stick and about an hour."
+  - key: tools_preflight:467
+    en: "Nothing was installed and nothing was changed. Floors: data/platform_floors.yml"
+  - key: tools_preflight:471
+    en: "This machine can run a node."
+  - key: tools_preflight:476
+    en: "Worth knowing, while it is working: this is an Intel Mac, and every container runtime"
+  - key: tools_preflight:477
+    en: "for macOS has raised its floor in the last two years. Linux on this machine does not have"
+  - key: tools_preflight:478
+    en: "that problem, and it is a better node — nothing to keep awake, and the floor stops moving."
+  - key: tools_preflight:479
+    en: "Ubuntu Server nobody uses it, it just runs"
+  - key: tools_preflight:480
+    en: "Omarchy a laptop somebody uses, and a node"
+  - key: tools_preflight:486
     en: "check failed. Each line above carries the fix. Nothing was installed."
   - key: install:47
     en: "resume planetai setup (your answers are saved; it will not ask them again)"
