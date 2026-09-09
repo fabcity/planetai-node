@@ -52,6 +52,19 @@ grep -q "deleted" <<<"$out" && bad "  still threatens to delete the readings" ||
 
 echo "remove: no terminal, no deletion"
 # ---------------------------------------------------------------------------------------------------
+# The shape a tester with a broken node actually uses: `curl … /remove | bash`. stdin is the pipe, the
+# terminal is still right there, and the answers are read from /dev/tty. This used to print the whole
+# list of what it would remove and then refuse — "no terminal here, so nothing was removed" — because
+# the guard tested stdin instead of /dev/tty. It never removed anything for anybody who piped it.
+echo "remove: piped in, with a terminal still attached"
+mk
+out="$(PATH="$STUB:/usr/bin:/bin:/usr/local/bin" PLANETAI_HOME="$D" \
+       python3 "$REPO/tests/pty_run.py" y mahon1 -- \
+       bash -c "printf '' | bash '$D/bin/planetai' remove" 2>&1)"
+grep -q "no terminal here" <<<"$out" && bad "  still refuses when piped" || ok "  does not refuse for lack of a terminal"
+if [[ -d "$D" ]]; then bad "  piped, it did not remove the folder"; else ok "  and removes the node"; fi
+
+# ---------------------------------------------------------------------------------------------------
 # With docker unreachable, `docker compose down -v` never runs. It used to delete the folder anyway and
 # then print "gone. Nothing of this node is left on the machine" — while four named volumes stayed, with
 # no compose file left anywhere to name them. A fresh install into the same folder then re-attached the

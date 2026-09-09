@@ -1113,7 +1113,7 @@ cmd_remove() {
   fi
   echo
 
-  [[ -t 0 ]] || { warn "no terminal here, so nothing was removed. Run this where you can answer it."; return 1; }
+  ( : </dev/tty ) 2>/dev/null || { warn "no terminal here, so nothing was removed. Run this where you can answer it."; return 1; }
   confirm "Remove it?" || { say "nothing was removed."; return 0; }
   local typed=""
   printf '%sType the node'"'"'s name to confirm — %s%s%s%s: ' "$B" "$R" "$name" "$N" "$B"; printf '%s' "$N"
@@ -1302,7 +1302,7 @@ cmd_update()  {
    Start it, or install one — planetai preflight names the one for this machine — then run this again."
   chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
 cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
-cmd_config()  { [[ -t 0 ]] || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }; "${EDITOR:-nano}" .env && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
+cmd_config()  { ( : </dev/tty ) 2>/dev/null || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }; "${EDITOR:-nano}" .env </dev/tty && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
 cmd_start()   { docker compose up -d && say "started"; }
 cmd_stop()    { docker compose down && say "stopped (data kept)"; }
 cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
