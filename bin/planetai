@@ -53,8 +53,8 @@ step() { printf '\n%s%s%s\n' "$B" "$*" "$N"; }
 #                            then ✓ label (Ns) or ✗ label with the last log lines. Any wait over a few seconds goes through this.
 spin() {
   local label="$1"; shift; local t0=$SECONDS rc=0
-  if [[ ! -t 1 ]]; then "$@" >>"$LOG" 2>&1 || rc=$?; [[ $rc -eq 0 ]] && printf '  ✓ %s (%ds)\n' "$label" $((SECONDS-t0)) || printf '  ✗ %s\n' "$label"; return $rc; fi
-  "$@" >>"$LOG" 2>&1 & local pid=$! i=0; local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
+  if [[ ! -t 1 ]]; then "$@" >>"$LOG" 2>&1 </dev/null || rc=$?; [[ $rc -eq 0 ]] && printf '  ✓ %s (%ds)\n' "$label" $((SECONDS-t0)) || printf '  ✗ %s\n' "$label"; return $rc; fi
+  "$@" >>"$LOG" 2>&1 </dev/null & local pid=$! i=0; local frames='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'
   tput civis 2>/dev/null || true
   while kill -0 "$pid" 2>/dev/null; do
     printf '\r  %s%s%s %s %s%ds%s\033[K' "$BL" "${frames:$((i%10)):1}" "$N" "$label" "$D" $((SECONDS-t0)) "$N"; i=$((i+1)); sleep 0.1
@@ -1047,32 +1047,66 @@ cmd_backup() { step "Backup"; ./backup.sh || fail "see above"; }
 # START_HERE that nobody could be sure they had got right, and after a failed install the only advice was
 # "start over" with no way to do it. This is that way, and it asks twice because the volume holds
 # readings nobody else has.
+# The compose project name is the folder's basename unless COMPOSE_PROJECT_NAME says otherwise, and
+# every node lives in ~/planetai — so on any one machine all nodes share one project and one set of
+# volume names. That is why a leftover volume is not bad luck: it is the default.
+proj()  { printf '%s' "${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"; }
+# Every volume this node owns. By compose's own label first, then by name, because a volume created by
+# an older compose may carry no label — and grep matching nothing must not take the caller down.
+# Takes the project name, because the checks that matter run AFTER the folder is deleted, and by then
+# basename "$PWD" is "/".
+node_volumes() { local pj="${1:-$(proj)}"
+  { { docker volume ls -q --filter "label=com.docker.compose.project=$pj" 2>/dev/null || true
+      docker volume ls -q 2>/dev/null | grep -E "^${pj}_(db|mosquitto|reticulum|ipfsdata)$" || true
+    } | sort -u; } || true
+}
+# The names a node's volumes WOULD have, computable with no daemon at all. When docker is unreachable
+# we cannot list what exists, but we can still tell somebody exactly what to delete later — deleting
+# the folder is what otherwise leaves that data with nothing left on the machine that names it.
+node_volume_names() { local pj="${1:-$(proj)}" v; for v in db mosquitto reticulum ipfsdata; do printf '%s_%s\n' "$pj" "$v"; done; }
+
 cmd_remove() {
   local keep=0; [[ "${1:-}" == "--keep-data" ]] && keep=1
   local name; name="$(envget NODE_NAME)"; name="${name:-this node}"
   logo "removing $name"
 
   # What will go, counted before anything is touched.
-  local rows="unknown" vol="" cron=0 link=0
+  local rows="unknown" vols="" cron=0 link=0 daemon=0
+  local PROJ; PROJ="$(proj)"; local GONE="$PWD"
   if docker info >/dev/null 2>&1; then
-    rows="$(docker compose exec -T db psql -tAqU planetai -c 'SELECT count(*) FROM readings' planetai 2>/dev/null | tr -d '[:space:]')"
+    daemon=1
+    rows="$(docker compose exec -T db psql -tAqU planetai -c 'SELECT count(*) FROM readings' planetai </dev/null 2>/dev/null | tr -d '[:space:]' || true)"
     rows="${rows:-0}"
-    vol="$(docker volume ls -q 2>/dev/null | grep -x "$(basename "$PWD")_db\|planetai_db" | head -1)"
+    vols="$(node_volumes "$PROJ")"
   fi
   grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)" && cron=1
   [[ -L "$HOME/.local/bin/planetai" ]] && link=1
 
   step "This will remove, from this machine:"
-  printf '   containers      %s\n' "$(docker compose ps -q 2>/dev/null | wc -l | tr -d ' ') running or stopped"
+  printf '   containers      %s\n' "$(docker compose ps -q 2>/dev/null | wc -l | tr -d ' ' || true) running or stopped"
   if [[ $keep -eq 1 ]]; then
     printf '   database        %skept%s — the volume and every reading stay\n' "$G" "$N"
   else
     printf '   database        %sdeleted%s — %s readings, and no copy of them anywhere else\n' "$R" "$N" "$rows"
   fi
   printf '   this folder     %s\n' "$PWD"
+  if [[ $daemon -eq 1 ]]; then
+    if [[ -n "$vols" ]]; then
+      printf '   docker volumes  %s\n' "$(tr '\n' ' ' <<< "$vols")"
+    else
+      printf '   docker volumes  none left to remove\n'
+    fi
+  else
+    # The case that orphaned Lucas's data: no daemon, so `docker compose down -v` never ran, the folder
+    # went anyway, and four volumes were left with no compose file left on the machine to name them.
+    printf '\n   %sdocker is not running here, so the containers and the database volume cannot be\n' "$Y"
+    printf '   removed now. Everything else goes. These are the names to delete once it starts:%s\n' "$N"
+    node_volume_names "$PROJ" | sed 's/^/     docker volume rm /'
+    printf '   %sStart docker and run this again instead, if you can — then nothing is left behind.%s\n' "$D" "$N"
+  fi
   [[ $cron -eq 1 ]] && printf '   nightly backup  the crontab line that runs backup.sh\n'
   [[ $link -eq 1 ]] && printf '   the command     %s/.local/bin/planetai\n' "$HOME"
-  local nb; nb="$(ls backups/*.sql.gz 2>/dev/null | wc -l | tr -d ' ')"
+  local nb; nb="$(ls backups/*.sql.gz 2>/dev/null | wc -l | tr -d ' ' || true)"; nb="${nb:-0}"
   if [[ "$nb" != "0" ]]; then
     printf '\n   %s%s backup(s) in %s/backups are inside the folder and go with it.%s\n' "$Y" "$nb" "$PWD" "$N"
     printf '   %sCopy them out first if you want them: cp %s/backups/*.sql.gz ~/%s\n' "$D" "$PWD" "$N"
@@ -1087,11 +1121,22 @@ cmd_remove() {
   [[ "$typed" == "$name" ]] || { warn "that is not \"$name\". Nothing was removed."; return 1; }
 
   step "Removing"
-  if docker info >/dev/null 2>&1; then
-    if [[ $keep -eq 1 ]]; then spin "stopping the containers, keeping the data" docker compose down || true
-    else spin "stopping the containers and deleting the volume" docker compose down -v || true; fi
+  if [[ $daemon -eq 1 ]]; then
+    if [[ $keep -eq 1 ]]; then
+      spin "stopping the containers, keeping the data" docker compose down || true
+    else
+      spin "stopping the containers and deleting the volumes" docker compose down -v || true
+      # `docker compose down -v` used to be the only thing that ever deleted a volume, behind a `|| true`
+      # that swallowed its failure. It removes what the compose file declares, which misses a volume left
+      # by an older layout, and does nothing at all when it fails. Delete by name too, and notice.
+      local v left=""
+      for v in $(node_volumes "$PROJ"); do
+        docker volume rm "$v" >/dev/null 2>&1 || left="$left $v"
+      done
+      [[ -z "$left" ]] || warn "these volumes would not delete:$left — something is still using them."
+    fi
   else
-    warn "no container runtime here, so there is nothing running to stop"
+    warn "docker is not running, so the containers and volumes are being left as they are"
   fi
   if [[ $cron -eq 1 ]]; then
     crontab -l 2>/dev/null | grep -v planetai-backup | crontab - 2>/dev/null && say "nightly backup unscheduled"
@@ -1099,11 +1144,42 @@ cmd_remove() {
   [[ $link -eq 1 ]] && { rm -f "$HOME/.local/bin/planetai"; say "removed the planetai command"; }
 
   # The folder last, from outside it, so nothing is deleting the ground it stands on.
-  local gone="$PWD"
   cd / || return 1
-  rm -rf "$gone" && say "removed $gone"
+  rm -rf "$GONE" && say "removed $GONE"
+
+  # It used to end by asserting "gone. Nothing of this node is left" — printed unconditionally, after a
+  # `down -v` that may never have run. Measure instead, now that the folder is out of the way.
+  step "Checking that it is actually gone"
+  local rest="" n
+  n="$(docker ps -aq --filter "label=com.docker.compose.project=$PROJ" 2>/dev/null | wc -l | tr -d ' ' || true)"
+  [[ "${n:-0}" == 0 ]] || rest="$rest$n container(s) still here:  docker rm -f \$(docker ps -aq --filter label=com.docker.compose.project=$PROJ)\n"
+  if [[ $keep -eq 0 ]]; then
+    local vl; vl="$(node_volumes "$PROJ" | tr '\n' ' ' || true)"
+    [[ -z "${vl// /}" ]] || rest="${rest}volumes still holding data:  docker volume rm ${vl% }\n"
+  fi
+  [[ ! -d "$GONE" ]] || rest="${rest}the folder is still there:  rm -rf $GONE\n"
+  [[ ! -L "$HOME/.local/bin/planetai" ]] || rest="${rest}the command is still linked:  rm $HOME/.local/bin/planetai\n"
+  grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)" && rest="${rest}the crontab line is still there:  crontab -e\n"
+
   echo
-  say "gone. Nothing of this node is left on the machine except the PATH line in your shell profile."
+  if [[ $daemon -eq 0 ]]; then
+    # Docker was unreachable, so `down -v` never ran and nothing here can list what survived. Saying
+    # "no volumes" would be a guess dressed as a check — which is what it used to do.
+    warn "the folder, the command and the crontab line are gone. The containers and the database"
+    printf '   volume cannot be checked or removed from here, because docker is not running. Once it\n'
+    printf '   starts, this finishes the job:\n\n'
+    node_volume_names "$PROJ" | sed 's/^/     docker volume rm /'
+    printf '     docker rm -f $(docker ps -aq --filter label=com.docker.compose.project=%s)\n' "$PROJ"
+    printf '\n   %sThis matters: a fresh install into the same folder re-attaches a leftover volume and\n' "$Y"
+    printf '   comes up carrying the old node\047s readings and name.%s\n' "$N"
+  elif [[ -z "$rest" ]]; then
+    say "checked: no containers, no volumes, no folder, no command. Only the PATH line in your shell profile is left, and it is harmless."
+  else
+    warn "removed what it could, but this is still on the machine:"
+    printf '%b' "$rest" | sed 's/^/     /'
+    printf '\n   %sThis matters: a fresh install into the same folder re-attaches a leftover volume and\n' "$Y"
+    printf '   comes up carrying the old node\047s readings and name.%s\n' "$N"
+  fi
   echo "   To run one here again:  curl -fsSL planetai.fab.city/install | bash"
 }
 

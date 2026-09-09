@@ -51,6 +51,63 @@ grep -q "kept" <<<"$out" && ok "  says the data is kept" || bad "  does not say 
 grep -q "deleted" <<<"$out" && bad "  still threatens to delete the readings" || ok "  and does not threaten the readings"
 
 echo "remove: no terminal, no deletion"
+# ---------------------------------------------------------------------------------------------------
+# With docker unreachable, `docker compose down -v` never runs. It used to delete the folder anyway and
+# then print "gone. Nothing of this node is left on the machine" — while four named volumes stayed, with
+# no compose file left anywhere to name them. A fresh install into the same folder then re-attached the
+# db volume and came up carrying the old node's readings and name. That is what happened to a tester.
+echo "remove: with docker down it does not pretend, and it hands over the names"
+mk; out="$(run y mahon1)"
+grep -q "docker is not running" <<<"$out" && ok "  says docker is not running" || bad "  silent about the daemon"
+for v in db mosquitto reticulum ipfsdata; do
+  grep -q "docker volume rm planetai_$v" <<<"$out" \
+    && ok "  gives the command for planetai_$v" || bad "  no way to delete planetai_$v later"
+done
+grep -q "no containers, no volumes, no folder" <<<"$out" \
+  && bad "  claims a clean machine it never checked" || ok "  and does not claim it is all gone"
+grep -q "re-attaches a leftover volume" <<<"$out" \
+  && ok "  and says why that matters for the next install" || bad "  does not say what the leftover does"
+
+# ---------------------------------------------------------------------------------------------------
+# The same thing against real docker, which is the only way to know the volumes actually go. Its own
+# project name, never "planetai", so this can never reach a node somebody is running.
+if docker info >/dev/null 2>&1; then
+  echo "remove: against real docker, every volume it named is gone afterwards"
+  PJ="pairm$$"
+  RD="$(mktemp -d)/$PJ"; mkdir -p "$RD/bin"
+  printf 'NODE_NAME=rmtest\nAPP_PORT=8099\n' > "$RD/.env"; printf 'v0.0.0-test\n' > "$RD/VERSION"
+  cp bin/planetai "$RD/bin/planetai"
+  cat > "$RD/docker-compose.yml" <<'YML'
+services:
+  db:
+    image: alpine:3
+    command: sleep 300
+    volumes: [ "db:/a", "mosquitto:/b", "reticulum:/c", "ipfsdata:/d" ]
+volumes:
+  db: {}
+  mosquitto: {}
+  reticulum: {}
+  ipfsdata: {}
+YML
+  ( cd "$RD" && docker compose up -d >/dev/null 2>&1 )
+  before="$(docker volume ls -q | grep -cE "^${PJ}_(db|mosquitto|reticulum|ipfsdata)$" || true)"
+  [[ "$before" == 4 ]] && ok "  four volumes exist to start with" || bad "  fixture made $before volumes, wanted 4"
+  PLANETAI_HOME="$RD" python3 "$REPO/tests/pty_run.py" y rmtest -- bash "$RD/bin/planetai" remove >/tmp/rm-real.txt 2>&1
+  after="$(docker volume ls -q | grep -cE "^${PJ}_(db|mosquitto|reticulum|ipfsdata)$" || true)"
+  [[ "$after" == 0 ]] && ok "  and none of them are left" || bad "  $after volume(s) survived remove"
+  cn="$(docker ps -aq --filter "label=com.docker.compose.project=$PJ" 2>/dev/null | wc -l | tr -d ' ')"
+  [[ "$cn" == 0 ]] && ok "  no containers left" || bad "  $cn container(s) left"
+  [[ ! -d "$RD" ]] && ok "  the folder is gone" || bad "  the folder is still there"
+  grep -q "no containers, no volumes, no folder" /tmp/rm-real.txt \
+    && ok "  and it says so only because it checked" || bad "  did not report a verified clean removal"
+  # never leave the fixture behind, whatever happened above
+  ( cd "$RD" 2>/dev/null && docker compose down -v >/dev/null 2>&1 ) || true
+  docker volume ls -q | grep -E "^${PJ}_" | xargs -r docker volume rm >/dev/null 2>&1 || true
+  rm -rf "$RD"
+else
+  echo "  --   real-docker removal not checked (no reachable daemon)"
+fi
+
 mk; out="$(PATH="$STUB:/usr/bin:/bin" PLANETAI_HOME="$D" bash "$D/bin/planetai" remove </dev/null 2>&1)"
 if [[ -d "$D" ]]; then ok "with nothing to answer it, the folder stays"; else bad "it deleted with no terminal"; fi
 

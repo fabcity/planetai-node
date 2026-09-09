@@ -93,6 +93,42 @@ jobs:
           [ -s /tmp/forbidden ] && { cat /tmp/forbidden; exit 1; } || true
           cd /home/runner/planetai && make health
 
+      - name: remove takes the volumes with it, and the next install is a NEW node
+        env:
+          PLANETAI_SITE: http://127.0.0.1:8099
+          PLANETAI_HOME: /home/runner/planetai
+          PLANETAI_REF: ${{ github.sha }}
+        run: |
+          # The failure nobody was testing for. `planetai remove` deleted volumes only through
+          # `docker compose down -v`, behind a `|| true`, and it exited silently before even asking on
+          # any node whose db container was down (a failing command substitution under `set -e`). So a
+          # tester ran remove, saw nothing removed or nothing said, installed again — and got the OLD
+          # node back: same readings, same name, because the compose project is the folder's basename
+          # and the volume re-attached. Nothing in CI would have noticed.
+          before=$(docker volume ls -q | grep -cE '^planetai_(db|mosquitto|reticulum|ipfsdata)$' || true)
+          echo "volumes before remove: $before"
+          [ "$before" -gt 0 ] || { echo "fixture problem: the installed node left no volumes to remove"; exit 1; }
+          name=$(grep '^NODE_NAME=' /home/runner/planetai/.env | cut -d= -f2 | tr -d ' ')
+          echo "removing node: $name"
+          # remove reads its answers from /dev/tty on purpose, so it needs a real terminal
+          python3 tests/pty_run.py y "$name" -- bash /home/runner/planetai/bin/planetai remove \
+            > /tmp/TRANSCRIPT_remove.txt 2>&1
+          cat /tmp/TRANSCRIPT_remove.txt
+          after=$(docker volume ls -q | grep -cE '^planetai_(db|mosquitto|reticulum|ipfsdata)$' || true)
+          echo "volumes after remove: $after"
+          [ "$after" -eq 0 ] || { echo "remove left $after volume(s) behind — the next install would adopt them"; exit 1; }
+          [ -d /home/runner/planetai ] && { echo "remove left the folder"; exit 1; } || true
+          grep -q "no containers, no volumes, no folder" /tmp/TRANSCRIPT_remove.txt \
+            || { echo "remove did not report a verified clean removal"; exit 1; }
+          # and now the part that actually bit somebody: install again, into the same folder, and check
+          # that what comes up is a NEW node rather than the old one wearing a new name.
+          sed 's/"name": *"[^"]*"/"name": "ci-second"/' /tmp/node.json > /tmp/node2.json
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node2.json' </dev/null
+          cd /home/runner/planetai
+          got=$(grep '^NODE_NAME=' .env | cut -d= -f2 | tr -d ' ')
+          [ "$got" = "ci-second" ] || { echo "the second install came up as '$got', not 'ci-second' — it adopted the old node"; exit 1; }
+          echo "the second install is its own node: $got"
+
       - name: a deliberately failed run — the step name, the reason, the resume command
         env:
           PLANETAI_SITE: http://127.0.0.1:8099
@@ -114,11 +150,16 @@ jobs:
           cat /tmp/TRANSCRIPT_fail.txt
           echo "installer exit: $rc"
           [ "$rc" -eq 0 ] && { echo "expected this run to FAIL and it did not"; exit 1; } || true
-          grep -qE "^FAILED: .+"                            /tmp/TRANSCRIPT_fail.txt || { echo "no named step in the failure"; exit 1; }
-          grep -qE "^  reason  .+"                          /tmp/TRANSCRIPT_fail.txt || { echo "no reason"; exit 1; }
-          grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt || { echo "no resume command"; exit 1; }
-          grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt || { echo "no one-line summary"; exit 1; }
-          grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt && { echo "still says Something went wrong"; exit 1; } || true
+          grep -qE "^FAILED: .+"                            /tmp/TRANSCRIPT_fail.txt
+            /tmp/TRANSCRIPT_remove.txt || { echo "no named step in the failure"; exit 1; }
+          grep -qE "^  reason  .+"                          /tmp/TRANSCRIPT_fail.txt
+            /tmp/TRANSCRIPT_remove.txt || { echo "no reason"; exit 1; }
+          grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt
+            /tmp/TRANSCRIPT_remove.txt || { echo "no resume command"; exit 1; }
+          grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt
+            /tmp/TRANSCRIPT_remove.txt || { echo "no one-line summary"; exit 1; }
+          grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt
+            /tmp/TRANSCRIPT_remove.txt && { echo "still says Something went wrong"; exit 1; } || true
           echo "the failure names its step, its reason, its log and the way back"
 
       - name: keep both transcripts
@@ -129,6 +170,7 @@ jobs:
           path: |
             /tmp/TRANSCRIPT_ok.txt
             /tmp/TRANSCRIPT_fail.txt
+            /tmp/TRANSCRIPT_remove.txt
           if-no-files-found: warn
 
       - name: what a tester would paste into an issue

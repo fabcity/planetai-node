@@ -396,11 +396,15 @@ grep -q '^POSTGRES_PASSWORD=change-me' .env && { setenv POSTGRES_PASSWORD "$(ope
 # call while pg_isready and the install's own doctor say the database is fine. Refuse now and say which way out.
 if [[ $NEWPW -eq 1 ]]; then
   DATA_DIR_SET="$(grep '^DATA_DIR=' .env | cut -d= -f2 | sed 's/[[:space:]]*#.*$//' | tr -d ' ')"
-  if { [[ -z "$DATA_DIR_SET" ]] && docker volume inspect planetai_db >/dev/null 2>&1; } || { [[ -n "$DATA_DIR_SET" && -f "$DATA_DIR_SET/PG_VERSION" ]]; }; then
-    warn "a database from an earlier node is still on this machine (${DATA_DIR_SET:-Docker volume planetai_db}), and this is a new .env,"
+  # The volume is named after the compose project, which is the folder's basename unless
+  # COMPOSE_PROJECT_NAME says otherwise. This used to look for "planetai_db" literally, so it saw
+  # nothing whenever the node lived in a folder called anything else.
+  DBVOL="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}_db"
+  if { [[ -z "$DATA_DIR_SET" ]] && docker volume inspect "$DBVOL" >/dev/null 2>&1; } || { [[ -n "$DATA_DIR_SET" && -f "$DATA_DIR_SET/PG_VERSION" ]]; }; then
+    warn "a database from an earlier node is still on this machine (${DATA_DIR_SET:-Docker volume $DBVOL}), and this is a new .env,"
     warn "so its password cannot match. Two ways out:"
     warn "  keep that data:  put the earlier .env back in this folder, then run this again"
-    warn "  start clean:     docker volume rm planetai_db   (this deletes the old node's readings), then run this again"
+    warn "  start clean:     docker volume rm $DBVOL   (this deletes the old node's readings), then run this again"
     die "not starting a node whose app cannot log in to its database"
   fi
 fi
