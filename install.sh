@@ -65,8 +65,9 @@ step_fail() {         # step_fail "why"
   printf '\n'
   printf 'FAILED: %s\n' "$STEP_NAME"
   printf '  after   %ds\n' $((SECONDS-STEP_T0))
-  local dx; dx="$(diagnose)"
-  printf '  reason  %s\n' "${dx:-${1:-see the log}}"
+  local dx; dx="$(diagnose)"; dx="${dx:-${1:-see the log}}"
+  printf '  reason  %s\n' "$(printf '%s' "$dx" | head -1)"
+  printf '%s\n' "$dx" | tail -n +2 | sed -e 's/^ */          /' 
   local l; l="$( { grep -aE 'ERROR|error:|Error|failed|cannot|denied|refused' "$LOG_FILE" 2>/dev/null | tail -1 | cut -c1-70; } || true)"
   [[ -n "$l" ]] && printf '  log     %s\n          %s\n' "$LOG_FILE" "$l" || printf '  log     %s\n' "$LOG_FILE"
   printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n'
@@ -113,17 +114,22 @@ warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 # name, no elapsed time and no way back — the shape the tester met on 7 September. Now they all carry
 # their step, and the summary line is printed once whichever path exits.
 die()  {
-  printf '\033[1;31mxx\033[0m %s\n' "$*" >&2
+  # Say it ONCE. This printed the whole message as an `xx` line, then again as the `reason`, and the
+  # resume line a third time because a long message ended with its own "Then: planetai setup". Lucas's
+  # screen carried the same eight lines twice, which is harder to read than one line would have been.
   if [[ -n "${STEP_NAME:-}" ]]; then
+    local dx; dx="$(diagnose)"
     printf '\nFAILED: %s\n' "$STEP_NAME" >&2
     printf '  after   %ds\n' $((SECONDS-STEP_T0)) >&2
-    local dx; dx="$(diagnose)"
-    printf '  reason  %s\n' "${dx:-$*}" >&2
+    # A multi-line reason keeps its own shape, indented under the label rather than folded into it.
+    printf '  reason  %s\n' "$(printf '%s' "${dx:-$*}" | head -1)" >&2
+    printf '%s\n' "${dx:-$*}" | tail -n +2 | sed -e 's/^ */          /' >&2
     printf '  log     %s\n' "${LOG_FILE:-none yet}" >&2
     printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n' >&2
     printf '\ninstall FAILED at step %d/%d "%s" after %ds\n' "${STEP_N:-0}" "${STEP_TOTAL:-0}" "$STEP_NAME" $((SECONDS-RUN_T0)) >&2
   else
-    printf '\ninstall FAILED before the first step: %s\n' "$*" >&2
+    printf '\033[1;31mxx\033[0m %s\n' "$*" >&2
+    printf '\ninstall FAILED before the first step: %s\n' "$(printf '%s' "$*" | head -1)" >&2
   fi
   exit 1
 }
@@ -227,8 +233,7 @@ if ! docker info >/dev/null 2>&1; then
      sudo journalctl -u docker --no-pager | tail -30
    If it is crash-looping and this machine has had disk trouble, its image store may be damaged. That
    store holds nothing of yours yet, so it is safe to clear:
-     sudo systemctl stop docker && sudo rm -rf /var/lib/docker && sudo systemctl start docker
-   Then:  planetai setup      (your answers are saved; it will not ask them again)"
+     sudo systemctl stop docker && sudo rm -rf /var/lib/docker && sudo systemctl start docker"
     fi
   fi
 fi

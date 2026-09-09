@@ -13,6 +13,8 @@ fails=0
 fn="$(sed -n '/^diagnose() {/,/^}/p' install.sh)"
 [[ -n "$fn" ]] || { echo "  FAIL could not lift diagnose() from install.sh"; exit 1; }
 
+ok()  { echo "  ok   $1"; }
+bad() { echo "  FAIL $1"; fails=$((fails+1)); }
 check() { # check "<log line>" "<expected words>" "<must NOT contain>"
   local line="$1" want="$2" nope="${3:-}" out
   out="$(LOG_FILE=/tmp/dx.$$ bash -c "printf '%s\n' \"\$1\" > /tmp/dx.$$; $fn; diagnose" _ "$line")"
@@ -45,5 +47,27 @@ echo "diagnose: the pull step no longer blames the network on a guess"
 grep -q 'check the network, then run the resume command' install.sh \
   && { echo "  FAIL the old network guess is still there"; fails=$((fails+1)); } \
   || echo "  ok   the pull step's own wording no longer claims to know"
+
+echo "die: it says the message once, keeping its shape"
+# Build a tiny script that has diagnose() and die() lifted out of the real file, and run it. Nesting
+# heredocs inside command substitutions to do this is how the first version of this test broke.
+d="$(mktemp -d)"
+{
+  echo 'set -uo pipefail'
+  echo "LOG_FILE=$d/log; : > \"\$LOG_FILE\""
+  echo 'STEP_NAME="a step"; STEP_T0=$SECONDS; RUN_T0=$SECONDS; STEP_N=1; STEP_TOTAL=7'
+  sed -n '/^diagnose() {/,/^}/p' install.sh
+  sed -n '/^die()  {/,/^}/p' install.sh
+  printf 'die "first line here\n   second line\n   third line"\n'
+} > "$d/run.sh"
+out="$(bash "$d/run.sh" 2>&1)"; rm -rf "$d"
+
+n="$(grep -c "second line" <<<"$out")"
+if [[ "$n" == 1 ]]; then ok "a continuation line appears once, not twice"
+else echo "  FAIL 'second line' appears $n times"; fails=$((fails+1)); fi
+grep -qE '^  reason  first line here$' <<<"$out" && ok "the first line sits on the reason label" || bad "the reason label does not carry the first line"
+grep -qE '^          second line$'     <<<"$out" && ok "and the rest is indented under it"      || bad "continuation lines are not aligned"
+grep -qE '^  log '                     <<<"$out" && ok "log is on its own line"                 || bad "log ran into the previous line"
+[[ "$(grep -c 'resume  planetai setup' <<<"$out")" == 1 ]] && ok "resume is said once" || bad "resume repeated"
 
 [[ $fails -eq 0 ]] && { echo "diagnose tests pass"; exit 0; } || { echo "$fails failed"; exit 1; }
