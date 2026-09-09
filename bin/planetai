@@ -402,7 +402,6 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
 
   # install
   step "Installing"
-  echo "  One to three minutes the first time. Log: $LOG"
   local flags=(--name "$name" --lat "$lat" --lon "$lon")
   [[ -n "$pilot" ]] && flags+=(--preset "$pilot")     # the pilot's portal and references; the coordinates typed here still win
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")

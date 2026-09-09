@@ -16,7 +16,21 @@ git ls-files -z | grep -zvE '^(\.github/|tools/(package|release|bundle)\.sh|tool
      | while read -r f; do mkdir -p "$TMP/planetai-node/$(dirname "$f")"; cp "$f" "$TMP/planetai-node/$f"; done
 echo "$VER" > "$TMP/planetai-node/VERSION"
 mkdir -p "$TMP/planetai-node/out" && cp out/.gitkeep "$TMP/planetai-node/out/" 2>/dev/null || true
-tar czf "$OUT/planetai-node.tar.gz" -C "$TMP" planetai-node
+# macOS's tar records Apple's extended attributes as pax headers, and GNU tar on Linux prints a warning
+# for every one of them: Lucas saw several hundred lines of "tar: Ignoring unknown extended header keyword
+# 'LIBARCHIVE.xattr.com.apple.quarantine'" scroll past before his install could start. 75 of them were in
+# the shipped tarball. Strip the attributes, then tell tar not to record any it still finds. The flags
+# differ between bsdtar and GNU tar, so try and fall back rather than assume.
+command -v xattr >/dev/null && xattr -cr "$TMP/planetai-node" 2>/dev/null || true
+COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -czf "$OUT/planetai-node.tar.gz" -C "$TMP" planetai-node 2>/dev/null \
+  || COPYFILE_DISABLE=1 tar --no-xattrs -czf "$OUT/planetai-node.tar.gz" -C "$TMP" planetai-node 2>/dev/null \
+  || COPYFILE_DISABLE=1 tar czf "$OUT/planetai-node.tar.gz" -C "$TMP" planetai-node
+# A tester should never see that wall again: refuse to ship a tarball that still carries them.
+if gzip -dc "$OUT/planetai-node.tar.gz" | grep -qa 'LIBARCHIVE.xattr'; then
+  rm -f "$OUT/planetai-node.tar.gz"
+  echo "REFUSING: the tarball still carries Apple extended attributes, which make GNU tar warn on every file"
+  exit 1
+fi
 tar tzf "$OUT/planetai-node.tar.gz" | grep -qE '(^|/)\.(git|env)(/|$)' && { echo "REFUSING: bundle contains .git or .env"; rm -f "$OUT/planetai-node.tar.gz"; exit 1; }
 printf '%s\n' "$VER" > "$OUT/VERSION"
 shasum -a 256 "$OUT/planetai-node.tar.gz" | awk '{print $1}' > "$OUT/SHA256"
