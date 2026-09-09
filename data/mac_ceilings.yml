@@ -1,0 +1,46 @@
+# The last macOS a Mac model can run, so a verdict can say whether upgrading is a route at all.
+#
+# "Upgrade this Mac, if it is on Apple's list" sends a tester away to check a list, which is exactly the
+# kind of advice this installer is supposed to stop giving. With a ceiling it can say one of two things
+# and mean it:
+#   this Mac can run macOS 15.x — upgrade, then run this again
+#   this model cannot go past macOS 12.7.6 — upgrading is not a route
+#
+# NEVER guess. An identifier that is not in this table is reported as unknown and the verdict falls back
+# to naming Apple's list. This table is deliberately small: it holds only what two Apple pages together
+# establish, and it grows when somebody reads more of them.
+#
+# How each row is derived: a model that appears on Apple's macOS Monterey compatibility list and NOT on
+# the Ventura one has a ceiling of macOS 12. Both pages are cited below, with the date they were read.
+
+meta:
+  checked: 2026-09-08
+  sources:
+    monterey_compatible: https://support.apple.com/en-tm/103260
+    ventura_compatible: https://support.apple.com/en-us/102861
+    sonoma_compatible: https://support.apple.com/en-us/105113
+    identify_macbook_pro: https://support.apple.com/en-us/108052
+  says: >
+    Monterey's list runs from 2015 models to 2022; Ventura's oldest MacBook Pro is
+    "MacBook Pro (13-inch, 2017, Two Thunderbolt 3 ports)". Identifiers come from Apple's
+    "Identify your MacBook Pro model" page.
+  last_monterey: "12.7.6"
+  last_ventura: "13.7.6"
+  also_says: >
+    Sonoma's oldest MacBook Pro is a 2018 model, so a 2017 MacBook Pro tops out at Ventura — which is
+    ABOVE the container-runtime floor of 13.5. That is the "yes, upgrading is a route" case, and it is
+    the reason the verdict must consult a ceiling rather than assume an old Mac is finished.
+
+# identifier: [ last macOS it can run, the marketing name Apple uses ]
+ceilings:
+  MacBookPro11,4: ["12.7.6", "MacBook Pro (Retina, 15-inch, Mid 2015)"]
+  MacBookPro11,5: ["12.7.6", "MacBook Pro (Retina, 15-inch, Mid 2015)"]
+  MacBookPro12,1: ["12.7.6", "MacBook Pro (Retina, 13-inch, Early 2015)"]
+  MacBookPro13,1: ["12.7.6", "MacBook Pro (13-inch, 2016, Two Thunderbolt 3 ports)"]
+  MacBookPro13,2: ["12.7.6", "MacBook Pro (13-inch, 2016, Four Thunderbolt 3 ports)"]
+  MacBookPro13,3: ["12.7.6", "MacBook Pro (15-inch, 2016)"]
+  # 2017: on Ventura's list, not on Sonoma's. Ceiling 13.7.x, which clears the 13.5 floor — upgrading IS
+  # a route for these, and the verdict says so.
+  MacBookPro14,1: ["13.7.6", "MacBook Pro (13-inch, 2017, Two Thunderbolt 3 ports)"]
+  MacBookPro14,2: ["13.7.6", "MacBook Pro (13-inch, 2017, Four Thunderbolt 3 ports)"]
+  MacBookPro14,3: ["13.7.6", "MacBook Pro (15-inch, 2017)"]

@@ -1,0 +1,252 @@
+# Every version floor the installer asserts, with the vendor's URL and the date somebody read it.
+#
+# Floors used to be numbers typed into preflight from memory, and each one was wrong in the direction
+# that costs a tester an evening. They live here now: docs/PLATFORMS.md renders from this file,
+# tools/preflight.sh reads it, and nothing asserts a floor inline.
+#
+# On macOS the floor rises every year and on Linux it does not. That asymmetry is the point of this
+# file: `make check-floors` fails when an entry has not been re-read in 180 days, so a moved floor is
+# a red build here instead of a dead end on somebody's laptop.
+#
+# Adding or changing an entry: read the vendor's own page, paste its URL, put today's date in
+# checked, and quote its sentence in `says`. A floor with no source is not a floor.
+
+meta:
+  staleness_days: 180        # make check-floors fails past this
+  note: >
+    min_os is the oldest release the vendor documents as supported. Where a product line matters —
+    Fusion 13.0 versus the current line — each line is its own entry.
+
+# ---------------------------------------------------------------- container runtimes, macOS
+runtimes:
+  orbstack:
+    name: OrbStack
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "14.0"
+    moving: false
+    install: gui            # a .dmg; there is no unattended command
+    source: https://docs.orbstack.dev/faq
+    checked: 2026-09-08
+    says: "macOS 14.0 and newer"
+    note: >
+      The FAQ names the reason: macOS 12.0–12.2 shipped critical virtualization bugs. There is an
+      Intel build; the floor is the same for it.
+
+  docker_desktop_mac:
+    name: Docker Desktop
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "14.0"
+    moving: true            # THE FLOOR MOVES WITHOUT ANYONE EDITING THIS FILE
+    install: gui
+    min_ram_gb: 4
+    source: https://docs.docker.com/desktop/setup/install/mac-install/
+    checked: 2026-09-08
+    says: "Docker Desktop is supported on the current and two previous major macOS releases"
+    note: >
+      A rolling window, not a fixed number: 26, 15 and 14 as of the checked date, and it drops the
+      oldest each autumn. Recompute it, never trust min_os here beyond the checked date.
+
+  colima:
+    name: Colima
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "13.0"
+    min_os_x86_64: "13.5"   # vz cannot boot the guest kernel below 13.5 on Intel
+    moving: false
+    install: binary         # one download, no package manager
+    source: https://github.com/abiosoft/colima/blob/main/docs/FAQ.md#are-older-macos-versions-supported
+    checked: 2026-09-08
+    says: "Colima requires macOS 13 or newer"
+    note: >
+      The Intel figure is Lima's, not Colima's: "Intel Macs with macOS prior to 13.5 cannot boot
+      Linux kernel v6.2" — https://lima-vm.io/docs/config/vmtype/vz/ (checked 2026-09-08). Below 14
+      it is the only runtime left, and the vz backend avoids needing QEMU and therefore a package
+      manager.
+
+# ---------------------------------------------------------------- ways to run Linux on a Mac that
+# no container runtime supports. A VM here is not a workaround: the node's home is a Linux box.
+vm_hosts:
+  utm:
+    name: UTM
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "11.3"
+    moving: false
+    install: binary         # .dmg, direct download, no account
+    source: https://github.com/utmapp/UTM/releases/tag/v5.0.5
+    checked: 2026-09-08
+    says: >
+      "Reverted minimum version requirement imposed by v5.0.4: once again we support versions down
+      to macOS 11.3 and iOS 14.0."
+    note: >
+      The lowest floor of anything here, and free. On Intel it wraps Apple's Hypervisor framework, so
+      a Linux guest runs at near-native CPU speed rather than emulated. v4.7.5 is the newest build
+      marked latest on GitHub and also runs on macOS 11 (its notes carry macOS 11 fixes); v5.x are
+      marked prerelease. 100 releases are retained on GitHub Releases, so a Mac below a current
+      build's floor can always fetch an older one.
+
+  vmware_fusion_13_0:
+    name: VMware Fusion 13.0
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "12.0"
+    moving: false
+    install: gui
+    min_ram_gb: 8
+    source: https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/fusion-pro/13-0/using-vmware-fusion/getting-started-with-vmware-fusion/system-requirements-for-vmware-fusion.html
+    checked: 2026-09-08
+    says: "Any Mac that officially supports macOS 12 Monterey or later."
+    note: >
+      The 13.0 line is the one documented for a Monterey host. Worth it over UTM when the VM will
+      outlive a few weeks: bridged networking, open-vm-tools, and `vmrun start <vmx> nogui` for
+      headless autostart. Needs an account to download.
+
+  vmware_fusion_current:
+    name: VMware Fusion (current line)
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "15.0"
+    moving: true
+    install: gui
+    min_ram_gb: 8
+    source: https://techdocs.broadcom.com/us/en/vmware-cis/desktop-hypervisors/fusion-pro/25H2/using-vmware-fusion/getting-started-with-vmware-fusion/system-requirements-for-vmware-fusion.html
+    checked: 2026-09-08
+    says: "Any Mac that officially supports macOS 15 Sequoia or later."
+    note: Recorded so nobody points an old Mac at the current download. Use the 13.0 line there.
+
+  virtualbox:
+    name: VirtualBox
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "13.0"
+    moving: true
+    install: gui
+    source: https://www.virtualbox.org/manual/topics/installation.html
+    checked: 2026-09-08
+    says: >
+      Supported macOS hosts are listed as "26 (Tahoe)", "15 (Sequoia)", "14 (Sonoma)" and
+      "13 (Ventura)", each "with Intel x86_64 processors" and again with Apple Silicon.
+    note: >
+      Third choice, and NOT a route on a Monterey Mac: the current manual's oldest supported host is
+      Ventura. Measured, against the assumption that VirtualBox runs anywhere.
+
+  multipass:
+    name: Multipass
+    platform: macos
+    arch: [x86_64, arm64]
+    min_os: "14.0"
+    moving: false
+    install: gui
+    source: https://canonical.com/multipass/docs/latest/how-to-guides/install-multipass/
+    checked: 2026-09-08
+    says: "You can use any Mac (M-series or Intel based) with macOS 14 Sonoma or later installed."
+    note: >
+      NOT a route on an old Mac, whatever this project's own docs say elsewhere: its floor moved to
+      macOS 14. Recorded here precisely so the recommendation cannot come back by habit.
+
+# ---------------------------------------------------------------- Linux, where the floor stays put
+linux:
+  docker_engine_ubuntu:
+    name: Docker Engine on Ubuntu
+    min_os: "22.04"
+    arch: [x86_64, arm64]
+    source: https://docs.docker.com/engine/install/ubuntu/
+    checked: 2026-09-08
+    says: >
+      "Ubuntu Resolute 26.04 (LTS), Ubuntu Noble 24.04 (LTS), Ubuntu Jammy 22.04 (LTS)" and
+      "compatible with x86_64 (or amd64), armhf, arm64, s390x, and ppc64le (ppc64el) architectures"
+
+  docker_engine_debian:
+    name: Docker Engine on Debian
+    min_os: "11"
+    arch: [x86_64, arm64]
+    source: https://docs.docker.com/engine/install/debian/
+    checked: 2026-09-08
+    says: >
+      "Debian Trixie 13 (stable), Debian Bookworm 12 (oldstable), Debian Bullseye 11 (oldoldstable)"
+      and "compatible with x86_64 (or amd64), armhf (arm/v7), arm64, and ppc64le (ppc64el)"
+
+  docker_engine_fedora:
+    name: Docker Engine on Fedora
+    min_os: "43"
+    arch: [x86_64]
+    source: https://docs.docker.com/engine/install/fedora/
+    checked: 2026-09-08
+    says: "you need a maintained version of one of the following Fedora versions: Fedora 44, Fedora 43"
+
+  docker_arch:
+    name: Docker on Arch
+    min_os: rolling
+    arch: [x86_64, arm64]
+    source: https://wiki.archlinux.org/title/Docker
+    checked: 2026-09-08
+    says: >
+      Arch has no Docker Engine page at docs.docker.com; docker is packaged in Arch's own extra
+      repository and the installer uses pacman. Rolling release, so there is no version floor.
+
+# ---------------------------------------------------------------- Windows
+windows:
+  docker_desktop_wsl2:
+    name: Docker Desktop with the WSL2 backend
+    min_os: "10 22H2 (build 19045)"
+    min_ram_gb: 8
+    arch: [x86_64]
+    source: https://docs.docker.com/desktop/setup/install/windows-install/
+    checked: 2026-09-08
+    says: >
+      "Windows 10 64-bit: Enterprise, Pro, or Education version 22H2 (build 19045). Windows 11
+      64-bit: Enterprise, Pro, or Education version 23H2 (build 22631) or higher", "WSL version
+      2.1.5 or later", "8GB system RAM", "64-bit processor with Second Level Address Translation
+      (SLAT)", "Enable hardware virtualization in BIOS/UEFI."
+
+# ---------------------------------------------------------------- the files a route downloads
+# Pinned on purpose: a verdict has to end in a command somebody can paste, and a command cannot scrape a
+# directory listing. A pin goes stale, so it is dated and `make check-floors` fails when it ages out.
+# Both were fetched, not assumed: 200 and 200 on the checked date.
+assets:
+  utm_dmg:
+    name: UTM
+    url: https://github.com/utmapp/UTM/releases/download/v4.7.5/UTM.dmg
+    version: v4.7.5
+    source: https://github.com/utmapp/UTM/releases
+    checked: 2026-09-08
+    says: >
+      v4.7.5 is the newest release GitHub marks as latest; v5.x are marked prerelease. 100 releases are
+      retained, so a Mac below a current build's floor can fetch an older one.
+
+  omarchy_iso:
+    name: Omarchy
+    url: https://iso.omarchy.org/omarchy-4.0.3.iso
+    version: 4.0.3
+    source: https://omarchy.org
+    checked: 2026-09-09
+    says: >
+      "Beautiful, fun & agentic Linux" — Arch underneath, Hyprland on top, installed from an ISO by
+      answering five questions. "even a 2011 ThinkPad X220 with 2GB of RAM can run Omarchy". 5.83 GB,
+      with a published SHA-256 at the same URL plus .sha256; both fetched, both 200.
+    note: >
+      The everyday-desktop end of the two Linux routes: a machine somebody actually uses AND a node.
+      Arch underneath, so the installer takes its pacman branch — the same one CI now simulates.
+
+  ubuntu_server_iso:
+    name: Ubuntu Server LTS, amd64
+    url: https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso
+    version: 24.04.4
+    source: https://releases.ubuntu.com/24.04/
+    checked: 2026-09-08
+    says: >
+      ubuntu-24.04.4-live-server-amd64.iso is present in that directory on the checked date. Server, not
+      desktop: a node has no screen, and the desktop image is four times the download.
+
+# ---------------------------------------------------------------- what the node itself needs
+node:
+  min_ram_gb: 4              # the container runtime's floor; the node measures 229 MiB across both containers
+  min_free_disk_gb: 3        # 645 MB of images + a database volume that starts at 114 MB
+  measured_on: amd64
+  checked: 2026-09-08
+  says: >
+    Measured, not estimated: app 150.0 MiB and database 79.2 MiB at rest, under 5% of a core between
+    polls, a report in 1.5 s, and 114 MB in the volume after the 4,476-row bootstrap. The floor is
+    the runtime's, not the node's.

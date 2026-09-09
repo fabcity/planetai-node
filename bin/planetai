@@ -73,10 +73,12 @@ logo() { printf '%s' "$BL"; cat <<'LOGO'
   ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝
 LOGO
 printf '%s  %snode · %s%s\n\n' "$N" "$D" "${1:-observe here, decide here, act here}" "$N"; }
+# "Something went wrong" on its own is the sentence a tester in Mallorca was left with, twice. A failure
+# names what failed, on the first line, before anything else.
 fail() {
-  printf '\n%s┌──────────────────────────────────────────────────────────────┐%s\n' "$R" "$N"
-  printf '%s│%s  Something went wrong.                                       %s│%s\n' "$R" "$N" "$R" "$N"
-  printf '%s└──────────────────────────────────────────────────────────────┘%s\n' "$R" "$N"
+  printf '\n%s%s%s\n' "$R" "──────────────────────────────────────────────────────────────" "$N"
+  printf '%sSet-up stopped.%s %s\n' "$R" "$N" "${FAIL_WHAT:-see the line below}"
+  printf '%s%s%s\n' "$R" "──────────────────────────────────────────────────────────────" "$N"
   printf '  %s\n\n' "$*"
   printf '  Full log:  %s\n' "$LOG"
   printf '  Nothing you had is lost. Fix the line above, then run the same command again.\n'
@@ -189,7 +191,15 @@ cmd_setup() {
   # {"name":"bayu-2","place":"Kuta Selatan" | "lat":-8.83,"lon":115.16, "kind":"home","sensor":{"sc_user":"x"} | {"sc":"19880"} | {"airgradient":"host"} | {"purpleair":"ip"}}
   if [[ "${1:-}" == "--finish" ]]; then finish_setup; return; fi     # re-entered under the docker group, see below
   if [[ "${1:-}" == "--answers" ]]; then
-    local f="${2:?usage: planetai setup --answers file.json}"; [[ -f "$f" ]] || fail "$f does not exist"
+    local f="${2:?usage: planetai setup --answers file.json}"
+    FAIL_WHAT="reading the answers file"; [[ -f "$f" ]] || fail "$f does not exist"
+    FAIL_WHAT="reading the answers file — this needs python3, which is not on every Linux"
+    have3() { command -v python3 >/dev/null 2>&1; }
+    have3 || fail "python3 is not installed, and the CLI needs it to read $f and to look up a place name.
+   Debian/Ubuntu:  sudo apt-get update && sudo apt-get install -y python3
+   Arch/Omarchy:   sudo pacman -S --noconfirm python
+   Fedora:         sudo dnf install -y python3
+   Then run the same line again. Nothing here runs pip; the standard library is enough."
     local flags; flags="$(python3 - "$f" <<'PY'
 import json, sys, urllib.request, urllib.parse
 a = json.load(open(sys.argv[1]))
@@ -207,13 +217,21 @@ if "sc_user" in s: out += ["--sc-user", s["sc_user"]]
 if "sc" in s: out += ["--sc", str(s["sc"])]
 if "airgradient" in s: out += ["--airgradient", s["airgradient"]]
 if "purpleair" in s: out += ["--purpleair", s["purpleair"]]
-print("\0".join(out))
+# One flag per LINE, not NUL-joined. bash strips NUL bytes out of a command substitution — it even warns,
+# "ignored null byte in input" — so the whole list arrived as one mashed token and every answer in the
+# file was silently dropped. No flag here can contain a newline: they are names, numbers and hostnames.
+print("\n".join(out))
 PY
 )" || fail "could not read the answers file"
-    local -a arr=(); while IFS= read -r -d '' x; do arr+=("$x"); done < <(printf '%s' "$flags")
+    local -a arr=(); while IFS= read -r x; do [[ -n "$x" ]] && arr+=("$x"); done <<< "$flags"
+    # Silence here meant a node named bayu-2 in Bali, whatever the file said. Never again quietly.
+    [[ ${#arr[@]} -ge 4 ]] || fail "could not turn $f into install flags — got: ${arr[*]:-nothing}"
     step "Installing from $f: ${arr[*]}"
     chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-    ./install.sh --yes "${arr[@]}" >>"$LOG" 2>&1 || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+    # NOT redirected into the log. This is the headless path — CI, an agent, a provisioning script —
+    # and it was the one place still swallowing every named step and elapsed time into a file nobody
+    # reads. install.sh reports for itself; let it.
+    PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes "${arr[@]}" || exit 1
     say "installed. planetai status --json for the state; planetai ui for the token."
     return
   fi
@@ -239,7 +257,7 @@ PY
     if confirm "Continue with these?"; then
       step "Installing"
       chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-      spin "writing settings, pulling images, building the node" ./install.sh --yes || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+      PLANETAI_INSTALL_LOG="$LOG" ./install.sh --yes || exit 1
       finish_setup; return
     fi
     say "starting the questions again."
@@ -379,7 +397,10 @@ print(next((k for k, (a, b, c, d) in boxes.items() if a < lat < b and c < lon < 
   [[ -n "${sc:-}" ]] && flags+=(--sc "$sc"); [[ -n "${ag:-}" ]] && flags+=(--airgradient "$ag"); [[ -n "${pa:-}" ]] && flags+=(--purpleair "$pa")
   [[ $indoor -eq 1 ]] && flags+=(--indoor); [[ $bad -eq 0 ]] && flags+=(--no-bad)
   chmod +x install.sh backup.sh update.sh 2>/dev/null || true
-  spin "writing settings, pulling images, building the node" ./install.sh "${flags[@]}" || fail "$(grep -E '^xx|ERROR|Error|error:' "$LOG" | tail -3 | sed 's/^xx //')"
+  # NOT wrapped in spin(): install.sh prints named steps with elapsed time, and hiding them behind one
+  # spinner line is precisely what left a tester watching "building the node" for four minutes and then
+  # reading "Something went wrong."
+  PLANETAI_INSTALL_LOG="$LOG" ./install.sh "${flags[@]}" || exit 1
   envset NODE_TZ "$tz"; envset NODE_CITY "$city"; envset NODE_KIND "$kind"
   [[ "$kind" == district ]] && envset NODE_SCALE city
   # on a Linux box that had no Docker a minute ago, install.sh ran under the new docker group (sg) but this shell

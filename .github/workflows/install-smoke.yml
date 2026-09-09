@@ -54,8 +54,23 @@ jobs:
           JSON
           # `cat install | bash -s --` is what the pipe does. </dev/null and no tty: a question here hangs,
           # and the timeout turns a hang into a red job instead of a twenty-minute wait.
-          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
-          echo "installer exit: $?"
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null \
+            2>&1 | tee /tmp/TRANSCRIPT_ok.txt
+          echo "installer exit: ${PIPESTATUS[0]}"
+          # The feedback contract, asserted rather than admired: named steps, elapsed times, a summary.
+          grep -q "^\[1/7\] "            /tmp/TRANSCRIPT_ok.txt || { echo "no numbered steps"; exit 1; }
+          grep -q "^\[7/7\] "            /tmp/TRANSCRIPT_ok.txt || { echo "never reached the last step"; exit 1; }
+          grep -q "done in "               /tmp/TRANSCRIPT_ok.txt || { echo "no elapsed time on a step"; exit 1; }
+          grep -q "^install OK — "         /tmp/TRANSCRIPT_ok.txt || { echo "no one-line summary"; exit 1; }
+          # The answers file said ci-node. If the summary says bayu-2, the file was silently ignored and
+          # the node is in Bali — which is exactly what NUL-stripping in a command substitution did.
+          grep -q "^install OK — ci-node," /tmp/TRANSCRIPT_ok.txt || { echo "the answers file was ignored"; exit 1; }
+          grep -q "NODE_NAME=ci-node" /home/runner/planetai/.env || { echo ".env does not carry the answered name"; exit 1; }
+          # A filesystem path can exceed any budget and nothing can be done about it, so hold the
+          # reporter's own lines — steps, heartbeats, the summary — to 100 columns, not every line.
+          grep -E '^\[[0-9]+/[0-9]+\]|^ +[0-9]+s |^install (OK|FAILED)|^FAILED:' /tmp/TRANSCRIPT_ok.txt \
+            | awk 'length > 100 { print "  too wide (" length "): " $0; n++ } END { exit (n > 0) }' \
+            || { echo "a step line is over 100 columns"; exit 1; }
 
       - name: no sudo, no brew
         run: |
@@ -78,6 +93,149 @@ jobs:
           [ -s /tmp/forbidden ] && { cat /tmp/forbidden; exit 1; } || true
           cd /home/runner/planetai && make health
 
+      - name: a deliberately failed run — the step name, the reason, the resume command
+        env:
+          PLANETAI_SITE: http://127.0.0.1:8099
+          PLANETAI_HOME: /home/runner/planetai-fail
+          PLANETAI_REF: ${{ github.sha }}
+        run: |
+          # Point the database at a tag that does not exist. A registry outage, a typo in a compose file
+          # and a wrong tag all land here, and this is the output a tester would paste into an issue.
+          # Its own project AND its own database volume: the successful run above left one, and the
+          # installer rightly refuses to start a node whose new .env cannot log in to an old volume.
+          docker volume rm -f planetai_db >/dev/null 2>&1 || true
+          cp -r . /tmp/failrun && cd /tmp/failrun
+          sed -i 's|postgis/postgis:16-3.4-alpine|postgis/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
+          cp .env.example .env && sed -i 's|^APP_PORT=.*|APP_PORT=8123|' .env
+          set +e
+          COMPOSE_PROJECT_NAME=planetai_fail timeout 600 ./install.sh --name ci-fail --lat 39.57 --lon 2.65 --no-bad \
+            > /tmp/TRANSCRIPT_fail.txt 2>&1
+          rc=$?; set -e
+          cat /tmp/TRANSCRIPT_fail.txt
+          echo "installer exit: $rc"
+          [ "$rc" -eq 0 ] && { echo "expected this run to FAIL and it did not"; exit 1; } || true
+          grep -qE "^FAILED: .+"                            /tmp/TRANSCRIPT_fail.txt || { echo "no named step in the failure"; exit 1; }
+          grep -qE "^  reason  .+"                          /tmp/TRANSCRIPT_fail.txt || { echo "no reason"; exit 1; }
+          grep -q "resume  planetai setup"                 /tmp/TRANSCRIPT_fail.txt || { echo "no resume command"; exit 1; }
+          grep -q "^install FAILED at step"                /tmp/TRANSCRIPT_fail.txt || { echo "no one-line summary"; exit 1; }
+          grep -qi "Something went wrong"                  /tmp/TRANSCRIPT_fail.txt && { echo "still says Something went wrong"; exit 1; } || true
+          echo "the failure names its step, its reason, its log and the way back"
+
+      - name: keep both transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-transcripts
+          path: |
+            /tmp/TRANSCRIPT_ok.txt
+            /tmp/TRANSCRIPT_fail.txt
+          if-no-files-found: warn
+
+      - name: what a tester would paste into an issue
+        if: always()
+        run: bash tools/preflight.sh --json || true
+
+  # Ubuntu Server and Arch (which is what Omarchy is), from a clean userland rather than a CI image with
+  # half the world preinstalled. Each container starts with no docker, no curl-installed anything and a
+  # non-root user with sudo — the shape of a machine somebody just installed Linux on, which is where
+  # Lucas was on 8 September. The host's docker socket is mounted, so the engine the script installs has
+  # something to talk to; what is under test is the platform branch, not nested virtualisation.
+  clean-linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 1          # one machine at a time: both legs drive the SAME host daemon
+      matrix:
+        include:
+          - name: Ubuntu Server 22.04
+            project: pai_ubuntu
+            port: 8131
+            image: ubuntu:22.04
+            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 >/dev/null
+          - name: Arch (what Omarchy is built on)
+            project: pai_arch
+            port: 8132
+            image: archlinux:latest
+            prep: pacman -Sy --noconfirm --quiet curl sudo tar python >/dev/null
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: build the tarball this commit would ship, and serve it
+        run: |
+          mkdir -p /tmp/site/get && bash tools/bundle.sh /tmp/site/get
+          ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
+          for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
+      - name: the stranger's command, on a clean ${{ matrix.name }}
+        run: |
+          cat > /tmp/run.sh <<'INNER'
+          set -e
+          PREP_PLACEHOLDER
+          useradd -m -s /bin/bash tester
+          echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester
+          # The mounted socket carries the HOST's docker gid. Inside the container the docker group gets
+          # whatever gid the package picked, so `docker info` fails with a permission error that looks
+          # exactly like the real "you are not in the docker group yet" — and is not. Match the gid, so
+          # the job tests the installer and not my plumbing.
+          SOCK_GID="$(stat -c %g /var/run/docker.sock)"
+          getent group docker >/dev/null || groupadd docker
+          groupmod -g "$SOCK_GID" docker 2>/dev/null || groupadd -g "$SOCK_GID" hostdocker || true
+          usermod -aG "$SOCK_GID" tester 2>/dev/null || usermod -aG docker tester
+          # sudo and brew are shadowed: a call to either is a failure, not a surprise.
+          mkdir -p /opt/notools
+          for t in brew xcode-select; do printf '#!/bin/sh\necho "$0 $*" >> /tmp/forbidden\nexit 1\n' > /opt/notools/$t; chmod +x /opt/notools/$t; done
+          rm -f /tmp/forbidden
+          cat > /home/tester/node.json <<'JSON'
+          {"name": "ci-clean", "lat": 39.95, "lon": 4.05, "kind": "home", "sensor": {}}
+          JSON
+          chown tester /home/tester/node.json
+          su tester -c 'cd /home/tester && PATH=/opt/notools:$PATH PLANETAI_SITE=http://172.17.0.1:8099 PLANETAI_HOME=/home/tester/planetai \
+            COMPOSE_PROJECT_NAME=PROJECT_PLACEHOLDER APP_PORT=PORT_PLACEHOLDER \
+            timeout 1500 bash -c "cat /work/install | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
+          echo "installer exit: ${PIPESTATUS[0]}"
+          [ -s /tmp/forbidden ] && { echo "it called:"; cat /tmp/forbidden; exit 1; } || true
+          grep -q "^\[1/7\] making sure a container runtime" /tmp/T.txt || { echo "the runtime phase is not step 1"; exit 1; }
+          # Only a step that actually ran past ten seconds owes a heartbeat. pacman on a warm mirror
+          # finishes in two, and asserting otherwise tests the mirror, not the installer.
+          if grep -qE "done in ([1-9][0-9]|[0-9]{3,})s" /tmp/T.txt; then
+            grep -qE "^ +[0-9]+s +" /tmp/T.txt || { echo "a step ran over 10s with no heartbeat"; exit 1; }
+          else
+            echo "  (every step finished under 10s on this runner; nothing owed a heartbeat)"
+          fi
+          grep -q "^install OK — ci-clean," /tmp/T.txt || { echo "the answers file was ignored: $(grep '^install OK' /tmp/T.txt)"; exit 1; }
+          grep -qi "Something went wrong" /tmp/T.txt && { echo "still says Something went wrong"; exit 1; } || true
+          echo "ok on this userland"
+          INNER
+          # the matrix's prep line, spliced in without YAML fighting the shell
+          python3 - <<'PYP'
+          import os
+          s = open('/tmp/run.sh').read()
+          s = s.replace('PREP_PLACEHOLDER', os.environ['PREP'])
+          s = s.replace('PROJECT_PLACEHOLDER', os.environ['PROJECT'])
+          s = s.replace('PORT_PLACEHOLDER', os.environ['PORT'])
+          open('/tmp/run.sh','w').write(s)
+          PYP
+          # The daemon is the HOST's, so every bind mount in docker-compose.yml — ./init.sql, ./config,
+          # ./packs — is resolved on the host, not inside this container. Mount the node's home at the
+          # SAME path on both sides and the two agree. Without this the database gets an empty directory
+          # where init.sql should be and comes up unhealthy, which is how Arch failed and Ubuntu did not:
+          # a race, not a distribution difference.
+          sudo mkdir -p /home/tester && sudo chmod 777 /home/tester
+          docker run --rm --network host \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /home/tester:/home/tester \
+            -v "$PWD:/work:ro" -v /tmp/run.sh:/run.sh:ro \
+            ${{ matrix.image }} bash /run.sh
+        env:
+          PREP: ${{ matrix.prep }}
+          PROJECT: ${{ matrix.project }}
+          PORT: ${{ matrix.port }}
+      - name: leave the daemon as we found it
+        if: always()
+        run: |
+          docker compose -p ${{ matrix.project }} down -v >/dev/null 2>&1 || true
+          sudo rm -rf /home/tester || true
       - name: what a tester would paste into an issue
         if: always()
         run: bash tools/preflight.sh --json || true

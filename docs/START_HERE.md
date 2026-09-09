@@ -32,10 +32,24 @@ of it your building keeps out. It tells you the hour to air the house.
 **Your data, kept; your summary, shared.** The database never leaves the machine. Backups run nightly and a NAS can
 collect them. What flows upward, if you point the node somewhere, is a daily summary: hourly means, Index cells, ρ.
 
-**Nothing to buy.** A Mac, a Linux machine, or Windows with WSL2, and the sensors people already own. Raspberry Pi is
-not ready yet (see `PLATFORMS.md`). Without a
-sensor it still knows your weather, the satellite air model for your district and forty years of climate for your
-coordinates.
+**Nothing to buy.** An x86 Linux box first — an old laptop with Linux on it beats the mini PC you would
+otherwise buy, and it is the machine this is designed for. A Mac works, and Windows through WSL2.
+Raspberry Pi is untested (see `PLATFORMS.md`). Without a sensor it still knows your weather, the
+satellite air model for your district and forty years of climate for your coordinates.
+
+## Which machine
+
+A node wants a computer that stays on. In order:
+
+1. **An x86 Linux box.** A mini PC, or an old laptop you put Linux on — `REVIVE_A_LAPTOP.md` covers both
+   Ubuntu Server (nobody uses it, it just runs) and Omarchy (somebody uses it, and it is also a node).
+   The floor here does not move: Docker still supports Ubuntu 22.04, four years old.
+2. **A Mac**, Apple Silicon or Intel, on macOS 13 or newer. It works. Be aware that every container
+   runtime for macOS has raised its floor in the last two years, and an Intel Mac will meet that wall.
+3. **Windows**, through WSL2 with Docker Desktop.
+
+`curl -fsSL planetai.fab.city/preflight | bash` reads the machine in four seconds and tells you which
+case you are in. It installs nothing.
 
 ## Install
 
