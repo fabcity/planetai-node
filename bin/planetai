@@ -1261,5 +1261,14 @@ case "${1:-help}" in
   run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
-  *) sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;
+  help|-h|--help|"") sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;
+  # An unknown word used to print the usage block and nothing else, so somebody told to run a command
+  # that arrived in a later release read a wall of text that simply did not mention it and reported the
+  # command "not recognized". Say which word, say which version this node is, and say how to move.
+  *)
+    here="$(cat VERSION 2>/dev/null || echo dev)"
+    warn "there is no \`planetai $1\` in this node."
+    printf '   this node is %s. If somebody told you to run it, it arrived in a later release:\n\n     planetai update\n\n' "$here"
+    sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//'
+    exit 1;;
 esac

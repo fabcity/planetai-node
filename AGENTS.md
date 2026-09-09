@@ -45,10 +45,16 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 
 Development happens on a dev machine, not on the node. The node only runs `planetai update`.
 
-A merge is not a release. `/install` and `/preflight` are stubs that fetch the current file from this
-repository every run, so those never go stale; `install.sh` and `bin/planetai` reach a tester inside the
-tarball the site serves, and that only changes when someone rebuilds it. `make released` says whether the
-site is behind main. `make ship` rebuilds it, commits it in the site repo and deploys.
+A merge is not a release, and nothing reaches a tester without one. `/install` and `/preflight` are
+stubs that read the published `node0/get/VERSION`, take the commit it names, and fetch their script
+from exactly that commit — so the bootstrap, the preflight check and the node in the tarball all come
+from one commit. They used to fetch from main every run, which meant a tester received two versions at
+once: on 2026-09-08 a bootstrap that knew about `planetai remove` handed over a v0.41.2-23 node that
+did not have it, and the tester was told to type a command their copy did not contain.
+
+So a fix to the installer is not live when it merges. `make released` says whether the site is behind
+main; `make ship` rebuilds the tarball, commits it in the site repo and deploys. To hand somebody an
+unreleased fix without shipping, `PLANETAI_REF=main` still overrides the pin.
 
 Before any commit: `make lint && make test`. Lint runs every gate that exists because something once shipped broken:
 SQL idempotency, compose mounts, CLI snippets as Python 3.9, rules and cells against the schema, docs against the code,
