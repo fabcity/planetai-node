@@ -30,13 +30,30 @@ curl -fsSL planetai.fab.city/preflight | bash
 If it prints *"This hardware is a capable node"*, the hardware is fine and only the OS is in the way,
 which is exactly what this page fixes.
 
-## 1. Make the USB stick
+## 1. Choose which Linux, then make the USB stick
 
-Ubuntu Server, not Desktop: a node has no screen, and the desktop image is about four times the download.
+One question decides it: **is anybody still going to use this machine?**
+
+**No — it sits on a shelf and runs.** Ubuntu Server. No desktop, ssh in, the lowest upkeep of anything
+here, and a support window measured in years.
 
 ```bash
 curl -fL -o ~/Downloads/ubuntu-server.iso https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso
 ```
+
+**Yes — somebody uses it, and it is also a node.** [Omarchy](https://omarchy.org): Arch underneath,
+a finished desktop on top, five questions from stick to working machine. Its own page says a 2011
+ThinkPad X220 with 2 GB runs it. Everything below applies, except that you get a desktop at the end and
+the installer takes Arch's `pacman` branch instead of `apt`.
+
+```bash
+curl -fL -o ~/Downloads/omarchy.iso https://iso.omarchy.org/omarchy-4.0.3.iso
+curl -fL -o ~/Downloads/omarchy.iso.sha256 https://iso.omarchy.org/omarchy-4.0.3.iso.sha256
+shasum -a 256 -c ~/Downloads/omarchy.iso.sha256      # must say: OK
+```
+
+The rest of this page is written for Ubuntu Server, because that is the one a node usually wants. Where
+Omarchy differs, it says so.
 
 Write it to the stick with [balenaEtcher](https://etcher.balena.io) — it is the same on macOS, Windows and
 Linux, it refuses to write to your system disk by accident, and it verifies afterwards. Open it, pick the
@@ -64,7 +81,12 @@ Wi-Fi during a server install is the single most common way this goes wrong, and
 usual — see the next section. A cable for twenty minutes saves an hour. If the laptop has no ethernet
 port, a USB gigabit adapter is about the cheapest useful thing you can own.
 
-## 4. Install Ubuntu Server
+## 4. Install it
+
+**Omarchy:** answer its five questions and skip to step 6 — it hands back a finished desktop, and it
+brings its own Wi-Fi handling. Then come back for the lid and the install line.
+
+**Ubuntu Server:**
 
 Take every default except these:
 
@@ -109,6 +131,8 @@ sudo systemctl restart systemd-logind
 Close the lid. `ssh` in from another machine. If you get a prompt, it is done.
 
 ## 7. Install the node
+
+Same line on either, and on Omarchy the installer uses `pacman` instead of `apt` without being told.
 
 The same line as everywhere else, now on a machine that can run it:
 

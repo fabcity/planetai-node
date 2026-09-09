@@ -21,20 +21,25 @@ def rows(d: dict) -> str:
     ram, disk = node["min_ram_gb"], node["min_free_disk_gb"]
     colima_x86 = r["colima"].get("min_os_x86_64") or r["colima"]["min_os"]
     orb = r["orbstack"]["min_os"]
+    # Linux first, macOS second, Windows third — a node's home is an always-on box, and on Linux the
+    # floor does not move. That order is a decision (9 September 2026), not an accident of editing.
     out = [
         "| Machine | Minimum OS | Container runtime that installs there | RAM | Free disk |",
         "|---|---|---|---|---|",
-        f"| **macOS, Intel (x86_64)** | **{colima_x86}** | ≥{orb}: OrbStack, Docker Desktop or Colima · "
-        f"{colima_x86}–13.7: **Colima only** (`--vm-type vz`) · **below {colima_x86}: none** | "
-        f"{ram} GB | {disk} GB |",
-        f"| **macOS, Apple Silicon (arm64)** | **{r['colima']['min_os']}** | same three. Colima reaches "
-        f"{r['colima']['min_os']} here; the database image is amd64-only and runs emulated. | {ram} GB | {disk} GB |",
-        f"| **Ubuntu / Debian (amd64)** | Ubuntu {lin['docker_engine_ubuntu']['min_os']} · "
+        f"| **Ubuntu / Debian (amd64)** — *the first choice* | Ubuntu {lin['docker_engine_ubuntu']['min_os']} · "
         f"Debian {lin['docker_engine_debian']['min_os']} | Docker Engine, installed by the script | {ram} GB | {disk} GB |",
-        "| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no "
-        "arm64 build.** | — | — |",
+        f"| **Arch, and Omarchy on top of it (amd64)** | rolling | Docker from Arch's own repository, "
+        f"installed by the script | {ram} GB | {disk} GB |",
+        f"| **macOS, Apple Silicon (arm64)** | **{r['colima']['min_os']}** | OrbStack, Docker Desktop or "
+        f"Colima. Colima reaches {r['colima']['min_os']} here; the database image is amd64-only and runs "
+        f"emulated. | {ram} GB | {disk} GB |",
+        f"| **macOS, Intel (x86_64)** | **{colima_x86}** | ≥{orb}: all three · {colima_x86}–13.7: "
+        f"**Colima only** (`--vm-type vz`) · **below {colima_x86}: none, and Linux is the route** | "
+        f"{ram} GB | {disk} GB |",
         f"| **Windows via WSL2 (amd64)** | {win['docker_desktop_wsl2']['min_os']} | Docker Desktop, WSL2 "
         f"backend | {win['docker_desktop_wsl2']['min_ram_gb']} GB | {disk} GB |",
+        "| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no "
+        "arm64 build.** | — | — |",
         "",
         "### Where each number comes from",
         "",

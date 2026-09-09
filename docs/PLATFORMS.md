@@ -1,7 +1,14 @@
 # Platforms
 
-One installer, four platforms. It detects which. What it cannot do is make a machine newer than it is, so this
-page states the floor for each, where the floor comes from, and what a machine below it should do instead.
+**Linux first, macOS second, Windows third.** Not a preference — a consequence. A node's home is a box
+that stays on, and a laptop under macOS is designed to go to sleep. More to the point: on macOS the floor
+rises every year, and on Linux it does not. Docker Desktop supports "the current and two previous major
+macOS releases" *by policy*, so a Mac falls off that list on its own, with nobody deciding anything.
+Docker Engine still supports Ubuntu 22.04 and Debian 11, four and five years old.
+
+One installer, five platforms. It detects which. What it cannot do is make a machine newer than it is, so
+this page states the floor for each, where the floor comes from, and what a machine below it should do
+instead — which is usually Linux, on the same hardware.
 
 ```bash
 curl -fsSL planetai.fab.city/install | bash
@@ -16,11 +23,12 @@ drift from what the installer asserts.
 <!-- BEGIN GENERATED: tools/render_platforms.py from data/platform_floors.yml -->
 | Machine | Minimum OS | Container runtime that installs there | RAM | Free disk |
 |---|---|---|---|---|
-| **macOS, Intel (x86_64)** | **13.5** | ≥14.0: OrbStack, Docker Desktop or Colima · 13.5–13.7: **Colima only** (`--vm-type vz`) · **below 13.5: none** | 4 GB | 3 GB |
-| **macOS, Apple Silicon (arm64)** | **13.0** | same three. Colima reaches 13.0 here; the database image is amd64-only and runs emulated. | 4 GB | 3 GB |
-| **Ubuntu / Debian (amd64)** | Ubuntu 22.04 · Debian 11 | Docker Engine, installed by the script | 4 GB | 3 GB |
-| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no arm64 build.** | — | — |
+| **Ubuntu / Debian (amd64)** — *the first choice* | Ubuntu 22.04 · Debian 11 | Docker Engine, installed by the script | 4 GB | 3 GB |
+| **Arch, and Omarchy on top of it (amd64)** | rolling | Docker from Arch's own repository, installed by the script | 4 GB | 3 GB |
+| **macOS, Apple Silicon (arm64)** | **13.0** | OrbStack, Docker Desktop or Colima. Colima reaches 13.0 here; the database image is amd64-only and runs emulated. | 4 GB | 3 GB |
+| **macOS, Intel (x86_64)** | **13.5** | ≥14.0: all three · 13.5–13.7: **Colima only** (`--vm-type vz`) · **below 13.5: none, and Linux is the route** | 4 GB | 3 GB |
 | **Windows via WSL2 (amd64)** | 10 22H2 (build 19045) | Docker Desktop, WSL2 backend | 8 GB | 3 GB |
+| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no arm64 build.** | — | — |
 
 ### Where each number comes from
 
@@ -47,6 +55,21 @@ Every floor below is the vendor's own current sentence, with the date it was rea
 
 RAM and disk are the runtime vendors' floors, not the node's own. The node itself is much smaller — see
 *What the node actually costs* below — so the runtime is what decides whether a machine qualifies.
+
+## Two ways to put Linux on a machine
+
+The choice is not really which distribution. It is whether anybody still uses the machine.
+
+**Ubuntu Server** — nobody uses it, it just runs. No desktop, ssh in, the lowest upkeep of anything here,
+and the longest support window: 22.04 is four years old and Docker still supports it. This is the right
+answer for a mini PC in a hallway, or a laptop with the lid shut on a shelf.
+
+**Omarchy** — a machine somebody uses *and* a node. Arch underneath, Hyprland on top, installed from an
+ISO by answering five questions. Its own page says a 2011 ThinkPad X220 with 2 GB of RAM runs it, which
+is smaller than any node in this network. Arch is a rolling release, so there is no version floor to
+outlive — and the installer takes its pacman branch, which CI simulates on every push.
+
+Either way the install line is the same one, and `docs/REVIVE_A_LAPTOP.md` walks the whole thing.
 
 ## A Mac below the floor is not finished
 
