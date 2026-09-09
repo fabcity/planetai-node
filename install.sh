@@ -46,17 +46,25 @@ diagnose() {
   hit="$(grep -aoE 'no space left on device|failed commit on ref|input/output error|read-only file system|no such host|network is unreachable|TLS handshake timeout|connection refused|i/o timeout|denied: requested access|manifest unknown' "$log" 2>/dev/null | tail -1)"
   case "$hit" in
     "no space left on device")
-      printf 'the disk filled up. `df -h .` and `docker system df` say where it went.';;
+      printf 'the disk filled up. Where it went:\n  df -h .\n  docker system df';;
     "failed commit on ref"|"input/output error"|"read-only file system")
-      printf 'the download arrived and could not be WRITTEN — this is the disk, not the network.
-          sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20    what the kernel saw
-          df -h / /var/lib/docker                                       is either one full
-          docker system prune -af                                       a store left inconsistent
-        A drive that reads fine and fails on a large sustained write is a drive on its way out.';;
+      # Every line here fits 80 columns including its 10-column indent. Lucas'"'"'s terminal wrapped the
+      # first version and the trailing comments landed in the middle of the next line.
+      printf 'the download arrived but could not be written. This is the disk.
+what the kernel saw:
+  sudo dmesg | grep -iE "i/o error|ext4|nvme|ata" | tail -20
+whether either filesystem is full:
+  df -h / /var/lib/docker
+a store earlier trouble left inconsistent. This clears it, and holds
+nothing of yours before a first install:
+  sudo systemctl stop docker && sudo rm -rf /var/lib/docker
+  sudo systemctl start docker
+If the same write fails after that, it is the drive: one that reads
+fine and fails on a large sustained write is on its way out.';;
     "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
-      printf 'the registry could not be reached. A proxy, a captive portal, or the line is down.';;
+      printf 'the registry could not be reached. A proxy, a captive\nportal, or the line itself.';;
     "denied: requested access"|"manifest unknown")
-      printf 'the registry refused the image name. That is a bug here, not on your machine — tell us.';;
+      printf 'the registry refused the image name. That is a bug here,\nnot on your machine. Please tell us.';;
     *) printf '';;
   esac
 }
@@ -65,8 +73,9 @@ step_fail() {         # step_fail "why"
   printf '\n'
   printf 'FAILED: %s\n' "$STEP_NAME"
   printf '  after   %ds\n' $((SECONDS-STEP_T0))
-  local dx; dx="$(diagnose)"
-  printf '  reason  %s\n' "${dx:-${1:-see the log}}"
+  local dx; dx="$(diagnose)"; dx="${dx:-${1:-see the log}}"
+  printf '  reason  %s\n' "$(printf '%s' "$dx" | head -1)"
+  printf '%s\n' "$dx" | tail -n +2 | sed -e 's/^ */          /' 
   local l; l="$( { grep -aE 'ERROR|error:|Error|failed|cannot|denied|refused' "$LOG_FILE" 2>/dev/null | tail -1 | cut -c1-70; } || true)"
   [[ -n "$l" ]] && printf '  log     %s\n          %s\n' "$LOG_FILE" "$l" || printf '  log     %s\n' "$LOG_FILE"
   printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n'
@@ -113,17 +122,22 @@ warn() { printf '\033[1;33m!!\033[0m %s\n' "$*"; }
 # name, no elapsed time and no way back — the shape the tester met on 7 September. Now they all carry
 # their step, and the summary line is printed once whichever path exits.
 die()  {
-  printf '\033[1;31mxx\033[0m %s\n' "$*" >&2
+  # Say it ONCE. This printed the whole message as an `xx` line, then again as the `reason`, and the
+  # resume line a third time because a long message ended with its own "Then: planetai setup". Lucas's
+  # screen carried the same eight lines twice, which is harder to read than one line would have been.
   if [[ -n "${STEP_NAME:-}" ]]; then
+    local dx; dx="$(diagnose)"
     printf '\nFAILED: %s\n' "$STEP_NAME" >&2
     printf '  after   %ds\n' $((SECONDS-STEP_T0)) >&2
-    local dx; dx="$(diagnose)"
-    printf '  reason  %s\n' "${dx:-$*}" >&2
+    # A multi-line reason keeps its own shape, indented under the label rather than folded into it.
+    printf '  reason  %s\n' "$(printf '%s' "${dx:-$*}" | head -1)" >&2
+    printf '%s\n' "${dx:-$*}" | tail -n +2 | sed -e 's/^ */          /' >&2
     printf '  log     %s\n' "${LOG_FILE:-none yet}" >&2
     printf '  resume  planetai setup      (your answers are saved; it will not ask them again)\n' >&2
     printf '\ninstall FAILED at step %d/%d "%s" after %ds\n' "${STEP_N:-0}" "${STEP_TOTAL:-0}" "$STEP_NAME" $((SECONDS-RUN_T0)) >&2
   else
-    printf '\ninstall FAILED before the first step: %s\n' "$*" >&2
+    printf '\033[1;31mxx\033[0m %s\n' "$*" >&2
+    printf '\ninstall FAILED before the first step: %s\n' "$(printf '%s' "$*" | head -1)" >&2
   fi
   exit 1
 }
@@ -190,15 +204,50 @@ runtime_app() {                     # what is installed here, and the line that 
   elif need systemctl && systemctl list-unit-files docker.service >/dev/null 2>&1; then echo "Docker|sudo systemctl start docker"
   else echo "|"; fi
 }
+# "The daemon is not up" and "I cannot reach the daemon" are different sentences, and `docker info`
+# fails with the same exit code for both. Lucas waited the full five minutes and gave up on a daemon
+# that had been listening since 12:34:55 — his journal says so: "Daemon has completed initialization",
+# "API listen on /run/docker.sock". He had been added to the docker group in an earlier run, and a shell
+# that started before that cannot use it. The re-exec that fixes it lived a hundred lines further down,
+# past the wait that had already died.
+#
+# Return codes: 0 the daemon is usable · 2 the daemon is up but THIS shell may not touch its socket
+#               1 it never came up
+daemon_state() {
+  local err
+  err="$(docker info 2>&1 >/dev/null)" && return 0
+  case "$err" in
+    *"permission denied"*|*"Got permission denied while trying to connect"*) return 2;;
+  esac
+  # The socket existing with a live service is the same story, whatever the client says.
+  if [[ -S /var/run/docker.sock || -S /run/docker.sock ]] \
+     && { ! need systemctl || [[ "$(systemctl is-active docker 2>/dev/null)" == active ]]; }; then
+    return 2
+  fi
+  return 1
+}
 wait_for_daemon() {                 # up to 5 minutes, with the clock visible
-  local deadline=$((SECONDS + 300))
+  local deadline=$((SECONDS + 300)) st
   while (( SECONDS < deadline )); do
-    docker info >/dev/null 2>&1 && { [[ -t 1 ]] && printf '\r\033[K'; say "container runtime is up"; return 0; }
+    daemon_state; st=$?
+    case $st in
+      0) [[ -t 1 ]] && printf '\r\033[K'; say "container runtime is up"; return 0;;
+      2) [[ -t 1 ]] && printf '\r\033[K'
+         say "the runtime is up. This shell is not in the docker group yet — using it for this run."
+         return 2;;
+    esac
     [[ -t 1 ]] && printf '\r  waiting for the container runtime … %d:%02d left\033[K' $(( (deadline-SECONDS)/60 )) $(( (deadline-SECONDS)%60 ))
     sleep 2
   done
   [[ -t 1 ]] && printf '\r\033[K'
   return 1
+}
+# Continue under the docker group now, rather than telling somebody to log out and back in.
+use_docker_group() {
+  [[ -n "${PLANETAI_SG:-}" ]] && return 1                # already re-exec'd once; do not loop
+  need sg || return 1
+  grep -qw docker <<< "$(id -nG "$USER" 2>/dev/null)" || sudo usermod -aG docker "$USER" || return 1
+  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "${ARGS[@]}")"
 }
 step "making sure a container runtime is running"
 if ! docker info >/dev/null 2>&1; then
@@ -219,16 +268,19 @@ if ! docker info >/dev/null 2>&1; then
     [[ $start_rc -eq 0 ]] || warn "the start command returned $start_rc — waiting anyway, in case it is only slow"
     # "Open it by hand" is a Mac sentence. On Linux there is a service, and two commands that say why.
     if [[ "$PLATFORM" == macos ]]; then
-      wait_for_daemon || die "$rt_name did not come up within 5 minutes. Open it from Applications, wait until it says it is ready, then:
+      wait_for_daemon; wd=$?
+      [[ $wd -eq 2 ]] && use_docker_group
+      [[ $wd -eq 1 ]] && die "$rt_name did not come up within 5 minutes. Open it from Applications, wait until it says it is ready, then:
    planetai setup      (your answers are saved; it will not ask them again)"
     else
-      wait_for_daemon || die "the Docker service did not come up within 5 minutes. These two say why:
+      wait_for_daemon; wd=$?
+      [[ $wd -eq 2 ]] && use_docker_group
+      [[ $wd -eq 1 ]] && die "the Docker service did not come up within 5 minutes. These two say why:
      sudo systemctl status docker --no-pager | head -20
      sudo journalctl -u docker --no-pager | tail -30
    If it is crash-looping and this machine has had disk trouble, its image store may be damaged. That
    store holds nothing of yours yet, so it is safe to clear:
-     sudo systemctl stop docker && sudo rm -rf /var/lib/docker && sudo systemctl start docker
-   Then:  planetai setup      (your answers are saved; it will not ask them again)"
+     sudo systemctl stop docker && sudo rm -rf /var/lib/docker && sudo systemctl start docker"
     fi
   fi
 fi
@@ -297,9 +349,9 @@ elif ! need docker; then
 fi
 # the new group is not in this shell yet: continue under it now (sg), rather than dying with "permission denied
 # while trying to connect to the docker API" and asking the person to log out and in
-if ! docker info >/dev/null 2>&1 && grep -qw docker <<< "$(id -nG "$USER")" && [[ -z "${PLANETAI_SG:-}" ]] && command -v sg >/dev/null; then
+if ! docker info >/dev/null 2>&1; then
   say "docker group applied for this run (new terminals have it automatically)"
-  exec sg docker -c "PLANETAI_SG=1 $(printf '%q ' "$0" "${ARGS[@]}")"
+  use_docker_group || true
 fi
 docker info >/dev/null 2>&1 || die "Docker is installed but this user cannot reach it. Log out and back in (the docker group is new), then run the same line again."
 docker compose version >/dev/null 2>&1 || die "docker compose plugin missing"
