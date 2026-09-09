@@ -217,10 +217,15 @@ if "sc_user" in s: out += ["--sc-user", s["sc_user"]]
 if "sc" in s: out += ["--sc", str(s["sc"])]
 if "airgradient" in s: out += ["--airgradient", s["airgradient"]]
 if "purpleair" in s: out += ["--purpleair", s["purpleair"]]
-print("\0".join(out))
+# One flag per LINE, not NUL-joined. bash strips NUL bytes out of a command substitution — it even warns,
+# "ignored null byte in input" — so the whole list arrived as one mashed token and every answer in the
+# file was silently dropped. No flag here can contain a newline: they are names, numbers and hostnames.
+print("\n".join(out))
 PY
 )" || fail "could not read the answers file"
-    local -a arr=(); while IFS= read -r -d '' x; do arr+=("$x"); done < <(printf '%s' "$flags")
+    local -a arr=(); while IFS= read -r x; do [[ -n "$x" ]] && arr+=("$x"); done <<< "$flags"
+    # Silence here meant a node named bayu-2 in Bali, whatever the file said. Never again quietly.
+    [[ ${#arr[@]} -ge 4 ]] || fail "could not turn $f into install flags — got: ${arr[*]:-nothing}"
     step "Installing from $f: ${arr[*]}"
     chmod +x install.sh backup.sh update.sh 2>/dev/null || true
     # NOT redirected into the log. This is the headless path — CI, an agent, a provisioning script —

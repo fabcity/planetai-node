@@ -62,6 +62,10 @@ jobs:
           grep -q "^\[7/7\] "            /tmp/TRANSCRIPT_ok.txt || { echo "never reached the last step"; exit 1; }
           grep -q "done in "               /tmp/TRANSCRIPT_ok.txt || { echo "no elapsed time on a step"; exit 1; }
           grep -q "^install OK — "         /tmp/TRANSCRIPT_ok.txt || { echo "no one-line summary"; exit 1; }
+          # The answers file said ci-node. If the summary says bayu-2, the file was silently ignored and
+          # the node is in Bali — which is exactly what NUL-stripping in a command substitution did.
+          grep -q "^install OK — ci-node," /tmp/TRANSCRIPT_ok.txt || { echo "the answers file was ignored"; exit 1; }
+          grep -q "NODE_NAME=ci-node" /home/runner/planetai/.env || { echo ".env does not carry the answered name"; exit 1; }
           # A filesystem path can exceed any budget and nothing can be done about it, so hold the
           # reporter's own lines — steps, heartbeats, the summary — to 100 columns, not every line.
           grep -E '^\[[0-9]+/[0-9]+\]|^ +[0-9]+s |^install (OK|FAILED)|^FAILED:' /tmp/TRANSCRIPT_ok.txt \
@@ -199,7 +203,7 @@ jobs:
           else
             echo "  (every step finished under 10s on this runner; nothing owed a heartbeat)"
           fi
-          grep -q "^install OK" /tmp/T.txt || { echo "no success summary"; exit 1; }
+          grep -q "^install OK — ci-clean," /tmp/T.txt || { echo "the answers file was ignored: $(grep '^install OK' /tmp/T.txt)"; exit 1; }
           grep -qi "Something went wrong" /tmp/T.txt && { echo "still says Something went wrong"; exit 1; } || true
           echo "ok on this userland"
           INNER
