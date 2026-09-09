@@ -172,85 +172,85 @@ strings:
     en: "Docker Desktop|open -a Docker"
   - key: install:189
     en: "Colima|colima start"
-  - key: install:196
+  - key: install:220
     en: "container runtime is up"
-  - key: install:197
+  - key: install:225
     en: "\r waiting for the container runtime … : left\033[K"
-  - key: install:203
-    en: "making sure a container runtime is running"
-  - key: install:207
-    en: "is installed but not running. Starting it — this takes up to a minute on a cold boot."
-  - key: install:219
-    en: "the start command returned — waiting anyway, in case it is only slow"
-  - key: install:236
-    en: "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
   - key: install:238
+    en: "making sure a container runtime is running"
+  - key: install:242
+    en: "is installed but not running. Starting it — this takes up to a minute on a cold boot."
+  - key: install:254
+    en: "the start command returned — waiting anyway, in case it is only slow"
+  - key: install:275
+    en: "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
+  - key: install:277
     en: "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
-  - key: install:240
+  - key: install:279
     en: "there is no container runtime on this machine, and the node is two containers. Installing Docker."
-  - key: install:264
+  - key: install:303
     en: "this is :-a derivative} on Ubuntu . Using Docker's Ubuntu repository directly"
-  - key: install:265
+  - key: install:304
     en: "Docker's own installer mis-reads derivatives as Debian and leaves apt broken."
-  - key: install:269
+  - key: install:308
     en: "removing an earlier Docker repository that does not match this machine"
-  - key: install:281
+  - key: install:320
     en: "repository added. Now the packages — this is the large download."
-  - key: install:287
+  - key: install:326
     en: "the big one: several hundred MB of packages, and it says little while it works"
-  - key: install:309
-    en: "writing settings to .env"
-  - key: install:315
-    en: "no preset ' '. Available"
-  - key: install:316
-    en: "applying preset"
-  - key: install:329
-    en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
-  - key: install:331
-    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
-  - key: install:332
-    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
-  - key: install:333
-    en: "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
   - key: install:348
+    en: "writing settings to .env"
+  - key: install:354
+    en: "no preset ' '. Available"
+  - key: install:355
+    en: "applying preset"
+  - key: install:368
+    en: "this node needs coordinates: pass --lat and --lon, or --preset <site>"
+  - key: install:370
+    en: "no sensor configured — that is fine. On first start this node will pull 92 days of CAMS air quality"
+  - key: install:371
+    en: "and NASA POWER climatology for its coordinates, so it has something true to say before hardware arrives."
+  - key: install:372
+    en: "Add a sensor later with --sc / --airgradient / --purpleair, or edit .env."
+  - key: install:387
     en: "a database from an earlier node is still on this machine ( :-Docker volume planetai_db}), and this is a new .env,"
-  - key: install:349
+  - key: install:388
     en: "so its password cannot match. Two ways out"
-  - key: install:350
+  - key: install:389
     en: "keep that data: put the earlier .env back in this folder, then run this again"
-  - key: install:352
+  - key: install:391
     en: "not starting a node whose app cannot log in to its database"
-  - key: install:362
+  - key: install:401
     en: "port is already in use on this machine"
-  - key: install:363
+  - key: install:402
     en: "set APP_PORT=8081 (or any free port) in .env and re-run"
-  - key: install:367
+  - key: install:406
     en: "creating the folders the containers write to"
-  - key: install:377
+  - key: install:416
     en: "downloading the database image (about 162 MB)"
-  - key: install:384
+  - key: install:423
     en: "building this node's own image and starting both containers"
-  - key: install:390
+  - key: install:429
     en: "waiting for the database, then applying the schema"
-  - key: install:393
+  - key: install:432
     en: "s waiting for the database to accept connections"
-  - key: install:398
+  - key: install:437
     en: "the schema was already there (a fresh volume applies it itself)"
-  - key: install:400
+  - key: install:439
     en: "the database did not answer in 60s — the checks below will say so"
-  - key: install:405
+  - key: install:444
     en: "checking what is running"
-  - key: install:415
+  - key: install:454
     en: "✓ backup.sh made executable"
-  - key: install:422
+  - key: install:461
     en: "nightly backup scheduled (03:17)"
-  - key: install:427
+  - key: install:466
     en: "a Telegram bot token is visible in this node's container logs (from a version before v0.4.3)."
-  - key: install:428
+  - key: install:467
     en: "Revoke it: message @BotFather -> /revoke -> pick the bot -> put the new token in .env -> make restart"
-  - key: install:433
+  - key: install:472
     en: "first start pulls ~2,200 rows of history for your location (CAMS 92 days + NASA POWER normals)."
-  - key: install:438
+  - key: install:477
     en: "install OK — , steps in s, on localhost"
-  - key: install:440
+  - key: install:479
     en: "First reading lands within s."
