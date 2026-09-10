@@ -66,7 +66,18 @@ WHERE_WORDS = {
 NOUN_WORDS = {
     "en": {"room": "the room", "yard": "the wall outside", "ring": "the street", "region": "the model"},
     "id": {"room": "ruangan", "yard": "dinding luar", "ring": "jalan", "region": "model"},
-    "es": {"room": "la habitación", "yard": "la pared de fuera", "ring": "la calle", "region": "el modelo"},
+    # Spanish contracts de + el into del, so "por encima de el modelo" is wrong and every other
+    # phrasing that fixes it breaks one of the three templates. "lo que dice el modelo" works in all
+    # three and reads better than any of them.
+    "es": {"room": "la habitación", "yard": "la pared de fuera", "ring": "la calle",
+           "region": "lo que dice el modelo"},
+}
+# The four distances as column headings: short, and the same four words wherever they appear. English
+# keeps the system's own words (Decision 6); the other two get the household's.
+LABEL_WORDS = {
+    "en": {"room": "room", "yard": "yard", "ring": "ring", "region": "region"},
+    "id": {"room": "ruangan", "yard": "halaman", "ring": "sekitar", "region": "wilayah"},
+    "es": {"room": "habitación", "yard": "patio", "ring": "alrededor", "region": "región"},
 }
 # {cmp} is assembled from these. Never a bare number: a comparison a household can read.
 CMP_WORDS = {
@@ -84,6 +95,7 @@ REASON_WORDS = {
         "over_line":        "over the line, and nobody has been asked to do anything",
         "no_alert":         "nothing to say",
         "context_only":     "context — it informs, it never asks",
+        "ask_how":          "Reply /act {id} and say what you did.",
         "not_watched":      "not watched here",
         "no_source":        "no source",
     },
@@ -94,6 +106,7 @@ REASON_WORDS = {
         "over_line":        "di atas batas, dan belum ada yang diminta melakukan apa pun",
         "no_alert":         "tidak ada yang perlu dikatakan",
         "context_only":     "konteks — memberi tahu, tidak pernah meminta",
+        "ask_how":          "Balas /act {id} dan sebutkan apa yang Anda lakukan.",
         "not_watched":      "tidak dipantau di sini",
         "no_source":        "tidak ada sumber",
     },
@@ -104,6 +117,7 @@ REASON_WORDS = {
         "over_line":        "por encima del límite, y no se ha pedido nada a nadie",
         "no_alert":         "nada que decir",
         "context_only":     "contexto — informa, nunca pide",
+        "ask_how":          "Responde /act {id} y di qué hiciste.",
         "not_watched":      "no se vigila aquí",
         "no_source":        "sin fuente",
     },

@@ -31,8 +31,9 @@ acting, and do not undo what the person's local model did without asking.
 ## Two ways in
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
-`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Nineteen tools:
-`status`, `health_check`, `sensors`, `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
+`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Twenty tools:
+`status`, `health_check`, `issues` (how the place is doing, in the household's own words), `sensors`,
+`context` (sea, weather, satellite air, land), `readings`, `report_latest`,
 `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,
 `export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
 

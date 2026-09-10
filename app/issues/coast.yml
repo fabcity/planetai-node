@@ -38,7 +38,9 @@ readouts:
     unit: m
     dp: 1
     label: { en: swell, id: alun, es: mar de fondo }
-  - metric: swell_period_s
+  # wave_period_s, not swell_period_s: the wave period is the one Open-Meteo Marine always answers
+  # with, and it is the number a fisher reads. The swell period is carried in Figures when it is there.
+  - metric: wave_period_s
     sensor_id: marine-point
     unit: s
     dp: 0

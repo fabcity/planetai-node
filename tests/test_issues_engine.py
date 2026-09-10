@@ -29,7 +29,7 @@ from issues import engine        # noqa: E402
 
 logging.getLogger("planetai.issues").setLevel(logging.ERROR)
 
-FIX = json.loads((ROOT / "docs/design/fixtures/node1-2026-09-06.json").read_text())
+FIX = json.loads((ROOT / "app/issues/fixtures/node1-2026-09-06.json").read_text())
 NOW = datetime.fromisoformat(FIX["as_of"])
 DECL = I.load()
 fails = []
@@ -40,33 +40,9 @@ def check(ok, msg):
         fails.append(msg)
 
 
-class Cur:
-    """The five reads `engine._read` makes, answered from a snapshot instead of from Postgres.
-
-    Matching on the table name in the SQL rather than on the whole statement: the test would
-    otherwise fail on a whitespace change, which is not what it is for.
-    """
-    TABLES = (("FROM stats", "stats"), ("FROM observations", "observations"),
-              ("FROM alerts", "alerts"), ("FROM actions", "actions"),
-              ("FROM readings_1h", "readings_1h"))
-
-    def __init__(self, data):
-        self.data, self.rows = data, []
-
-    def execute(self, sql, args=()):
-        for needle, key in self.TABLES:
-            if needle in sql:
-                self.rows = [dict(r) for r in self.data.get(key, [])]
-                if key == "actions":
-                    self.rows = [r for r in self.rows if r.get("alert_id") is not None]
-                if key == "readings_1h":
-                    for r in self.rows:                     # the view's own column names
-                        r["bucket"] = datetime.fromisoformat(r["bucket"])
-                return
-        raise AssertionError(f"the engine ran a query this test does not know how to answer: {sql[:80]}")
-
-    def fetchall(self):
-        return self.rows
+# The engine's own snapshot cursor, not a double written for this test: `/issues/fixtures/<name>`
+# renders through the same class, so a fixture that replays here is a fixture the route can serve.
+Cur = engine.Replay
 
 
 class Settings:
@@ -291,7 +267,7 @@ check({r["provenance"] for r in OUT["issues"]["land"]["provenance"]} <= {"model"
       "land's figures carry only words the layer knows")
 
 # --- an eighth issue costs no query ---------------------------------------------------------------
-class Counting(Cur):
+class Counting(engine.Replay):
     def __init__(self, data):
         super().__init__(data)
         self.n = 0

@@ -37,7 +37,8 @@ from datetime import datetime, timezone
 
 import packs
 
-from . import (CMP_WORDS, DISTANCES, LOCALES, NOUN_WORDS, REASON_WORDS, WHERE_WORDS, order)
+from . import (CMP_WORDS, DISTANCES, LABEL_WORDS, LOCALES, NOUN_WORDS, REASON_WORDS,
+               WHERE_WORDS, order)
 from .schema import is_open, is_seen, place_of, stage_of
 
 log = logging.getLogger("planetai.issues")
@@ -49,6 +50,11 @@ FRESH_MINUTES = 120
 ASK_CURRENT_HOURS = 2
 # "a warn in the last 24 h" — the window `notable` is measured over.
 NOTABLE_HOURS = 24
+# An ask is an alert somebody is expected to answer, and ρ is the share of them that got an answer
+# (app/index.py:105 counts level='act' and nothing else). So `open_asks` holds act-level alerts only:
+# an `info` note was never an ask, and saying "still open, the reading came back" about a digest is
+# both untrue and a way to make the strip look busy when nothing is being asked of anyone.
+ASK_LEVEL = "act"
 
 
 # ---------------------------------------------------------------------------------------- arithmetic
@@ -296,7 +302,7 @@ def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], 
     recent = [a for a in mine if (_age_minutes(a.get("ts"), now) or 1e9) < NOTABLE_HOURS * 60]
     open_asks = []
     for a in mine:
-        if not is_open(a, actions):
+        if a.get("level") != ASK_LEVEL or not is_open(a, actions):
             continue
         age = _age_minutes(a.get("ts"), now)
         open_asks.append({
@@ -304,8 +310,15 @@ def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], 
             "sensor_id": a.get("sensor_id"), "level": a.get("level"), "text": a.get("text"),
             "age_minutes": None if age is None else round(age),
             "stage": stage_of(a, actions), "seen": is_seen(a, actions),
-            "current": bool(a.get("level") == "act" and (over or (age is not None and age < ASK_CURRENT_HOURS * 60))),
+            "current": bool(over or (age is not None and age < ASK_CURRENT_HOURS * 60)),
         })
+    open_asks.sort(key=lambda a: (not a["current"], -(a["id"] or 0)))
+    # Each ask carries its own two sentences in every locale — what it is, and how to close it — so a
+    # phone, a wall screen and Telegram all say the same thing and none of them writes it themselves.
+    for a in open_asks:
+        code = "open_ask_current" if a["current"] else "open_ask_stale"
+        a["says"] = {loc: _reason_text({"code": code, "at": a["ts"]}, loc) for loc in LOCALES}
+        a["how"] = {loc: _reason_text({"code": "ask_how", "alert_id": a["id"]}, loc) for loc in LOCALES}
     return open_asks, recent
 
 
@@ -322,12 +335,11 @@ def _state(d, stack, open_asks, recent, line) -> tuple[str, dict]:
         a = current[0]
         return "act", {"code": "open_ask_current", "at": a["ts"], "alert_id": a["id"]}
 
-    stale = [a for a in open_asks if a["level"] == "act"]
     room = (stack.get("room") or {}).get("value")
     over = line is not None and room is not None and room > float(line["value"])
     loud = [a for a in recent if a.get("level") in ("act", "warn")]
-    if stale:
-        a = stale[0]
+    if open_asks:                          # act-level by construction, and none of them current
+        a = open_asks[0]
         return "notable", {"code": "open_ask_stale", "at": a["ts"], "alert_id": a["id"]}
     if loud:
         a = loud[0]
@@ -349,9 +361,11 @@ def _hhmm(ts) -> str:
 
 
 def _reason_text(reason: dict, loc: str) -> str:
+    """One line of why, in one language. Every word comes from REASON_WORDS; nothing is typed here."""
     words = REASON_WORDS.get(loc, REASON_WORDS["en"])
     tpl = words.get(reason["code"], "")
-    return tpl.format(when=_hhmm(reason.get("at")), level=reason.get("level", ""))
+    return tpl.format(when=_hhmm(reason.get("at")), level=reason.get("level", ""),
+                      id=reason.get("alert_id", ""))
 
 
 def _trend(series: list[float | None], compare: dict) -> str:
@@ -477,6 +491,53 @@ def _read(cur) -> dict:
     }
 
 
+class Replay:
+    """A cursor that answers `_read`'s five queries from a snapshot instead of from Postgres.
+
+    This is what makes `?fixture=<name>` worth having: a fixture is rendered through the real engine,
+    at the hour it was captured, so a design round and a wall screen are looking at the same code. A
+    fixture with a baked-in `issues` block would go stale the first time the state machine changed
+    and nothing would say so.
+
+    It matches on the table name rather than the whole statement, so a whitespace change in the SQL
+    does not break every fixture and every test.
+    """
+    TABLES = (("FROM stats", "stats"), ("FROM observations", "observations"),
+              ("FROM alerts", "alerts"), ("FROM actions", "actions"),
+              ("FROM readings_1h", "readings_1h"))
+
+    def __init__(self, snapshot: dict):
+        self.snapshot, self.rows = snapshot, []
+
+    def execute(self, sql: str, args=()):
+        for needle, key in self.TABLES:
+            if needle in sql:
+                self.rows = [dict(r) for r in (self.snapshot.get(key) or [])]
+                if key == "actions":
+                    self.rows = [r for r in self.rows if r.get("alert_id") is not None]
+                if key == "readings_1h":
+                    for r in self.rows:
+                        if isinstance(r.get("bucket"), str):
+                            r["bucket"] = datetime.fromisoformat(r["bucket"])
+                return
+        raise LookupError(f"a snapshot cannot answer this query: {sql[:80]}")
+
+    def fetchall(self):
+        return self.rows
+
+
+def replay(snapshot: dict, settings, decl: dict) -> dict:
+    """A snapshot's own issues, computed at the hour it was captured.
+
+    `now` comes from the snapshot: a stack computed against today's wall clock would report every
+    figure in a week-old capture as hours stale, which is true of the clock and false of the data.
+    """
+    now = snapshot.get("as_of")
+    if isinstance(now, str):
+        now = datetime.fromisoformat(now)
+    return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now)
+
+
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
@@ -542,7 +603,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     headline_issue = _headline(out, declared)
     return {"order": declared, "undeclared": undeclared, "dropped": dropped,
-            "headline": headline_issue, "as_of": now.isoformat(), "issues": out}
+            "headline": headline_issue, "as_of": now.isoformat(),
+            # the column headings, so the page and Telegram both take their words from the node
+            "distances": list(DISTANCES), "labels": LABEL_WORDS,
+            "issues": out}
 
 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}

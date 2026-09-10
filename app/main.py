@@ -30,6 +30,7 @@ import bootstrap
 import agent
 import ground
 import index
+import issues.api
 import packs
 import report
 import settings
@@ -587,7 +588,7 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/report/latest", "/readings",
     "/history", "/exports",
-}), ("/static/", "/exports/"))
+}), ("/static/", "/exports/", "/issues"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
@@ -639,6 +640,8 @@ async def _share_level(request, call_next):
             f"network read it."})
     return await call_next(request)
 
+
+app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
 
 for _r in agent.http_routes():        # MCP at exactly /mcp, no trailing-slash redirect
     app.router.routes.append(_r)
