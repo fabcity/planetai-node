@@ -2,6 +2,12 @@
 
 Reconciled at `4f96a38` (main, `v0.41.2-92-g4f96a38`), clean tree, 10 September 2026.
 
+> **Update, 10 September.** The plan was blocked on the missing review. Tomas's answer was to write it
+> rather than reconstruct or fabricate it, so `docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md` now
+> exists — 28 findings at `4f96a38`, with the ten IDs this brief pinned keeping their numbers. The section
+> below is left as written, because how a missing document was established still matters; the 54-row table
+> is superseded and says so.
+
 ## What this document could not do, and why
 
 The task named two reviews and 79 findings. **Only one review exists.**
@@ -30,7 +36,7 @@ the 54 are partly known because the task itself describes them (A1, A2, A3, A5, 
 eight of those ten were reproduced and are recorded in full. The other 44 have no text, so they have no
 file, no line, no claim and no proposed fix — there is nothing to check against HEAD.
 
-**`docs/plans/IMPROVEMENT_PLAN_2026-09.md` was therefore not written.** Its structure comes from the missing
+**`docs/plans/IMPROVEMENT_PLAN_2026-09.md` was not written on the 9th, for these reasons.** Its structure comes from the missing
 review's §6 (the six group headings), its "do not touch" list comes from both reviews' over-engineering
 sections, and 54 of the findings its PRs must close are unknown. A plan built on 44 invented findings, in a
 repository whose rule is that every claim carries the line that proves it, would be worse than no plan.
@@ -88,15 +94,22 @@ gate: `tests/test_sudo_prompt.sh` no longer asserts a line number. It walks the 
 
 ### The 54 that do not exist: A1–A15 · S1–S17 · P1–P12 · D1–D10
 
+**Superseded by a second pass, 10 September.** Tomas's instruction on reading the above was to write the
+missing review rather than reconstruct it or fabricate it. That review is
+`docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md`, written against `4f96a38` — this commit — so every
+finding in it is by definition open, and there is nothing to reconcile. It carries **28** findings, not 54:
+the ten IDs this brief pinned by content keep their numbers and their claims, eighteen were found in this
+pass, and nothing was added to reach a number.
+
 | ids | status |
 |---|---|
-| A4, A7, A8, A9, A10, A11, A12, A13, A14, A15 | **UNRECONCILED · text not found** (10) |
-| S1, S2, S4, S5, S6, S7, S9, S10, S11, S12, S13, S14, S15, S16, S17 | **UNRECONCILED · text not found** (15) |
-| P2, P3, P4, P6, P7, P8, P9, P10, P11, P12 | **UNRECONCILED · text not found** (10) |
-| D1, D3, D4, D5, D6, D7, D8, D9, D10 | **UNRECONCILED · text not found** (9) |
-| A6 | **UNRECONCILED · partly known** — the task names it as "the LXMF inbox is also open". Consistent with HEAD: `docker-compose.yml:95` publishes `4242:4242` to the LAN and `app/reticulum_bridge.py` is the one container terminating traffic from strangers. Not reconcilable without the finding's claim and line |
-| P5 | **UNRECONCILED · partly known** — "nearby's `baliairdispatch` source". Consistent with HEAD: `app/sources.py:334-344` gates it on `BAD_ENABLED` and passes `BAD_RADIUS_KM` default `"15"`, `BAD_MIN_SEPARATION_M` default `"150"` as settings already. Which of those the finding objects to is unknown |
-| A1, A2, A3, A5, D2, P1, S3, S8 | **UNRECONCILED · reproduced anyway** — the task specifies the run for each. All eight CONFIRMED; transcripts below. Their status against the finding's own text is still unknown, because three of the eight turned out to behave differently from the way the task's one-line summary describes them |
+| A1, A2, A3, A5, D2, P1, S3, S8 | **CONFIRMED** — pinned by the brief, reproduced on `pai-clean` before the second pass was written; transcripts below. Three of the eight behave worse than the brief's one-line summary describes, and the second pass says how |
+| A6, P5 | **pinned, carried** — A6 is the LXMF inbox: real at HEAD (`docker-compose.yml:91`, `:95`), and its fix is F2+F5, so it gets no separate PR. P5 is nearby's `baliairdispatch`: half-answered at HEAD (its three parameters are already runtime settings), and the second pass records it as a design question with a named trigger rather than a defect |
+| A4, A7–A12 | **new in the second pass** (7) — A4 the float-cast class behind A1/A3; A7 `/sensors` publishes the household's device hostnames (RESERVED · prompt A); A8 one word in a `cells.yml` 500s `/cells` and `/export`; A9 three rows claim one cell key; A10 ρ's median is a different population from its numerator; A11 the broker has no ACL; A12 `/health`'s coordinates (RESERVED · prompt A) |
+| S1, S2, S4–S7, S9, S10 | **new in the second pass** (8) — S1 `version_gap` before the preflight; S2 four unannounced sudos the test cannot see; S4 `planetai storage` prints the backup token; S5 two unvalidated `storage set` arms; S6 no update lock; S7 no whole-run transcript; S9 no `planetai support`; S10 `make test` is one `&&` chain |
+| P2, P3 | **new / cross-referenced** — P2 two shipped packs define two cells with one key (confirmed live); P3 defers to F12 |
+| D1, D3, D4 | **new / cross-referenced** — D1 defers to F8; D3 Reset does not reset (confirmed in a browser); D4 the admin token in `localStorage`, with the XSS hunt that found no execution recorded as carefully as a finding |
+| A13–A15, S11–S17, P4, P6–P12, D5–D10 | **not used.** The brief's ID ranges implied 54 findings. There are 28. These numbers name nothing rather than something invented |
 
 ---
 
