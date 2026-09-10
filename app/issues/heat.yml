@@ -1,0 +1,100 @@
+# Heat. Apparent temperature, and the same formula on both sides of every comparison.
+#
+# The id and es strings below are ASSISTANT-WRITTEN and have not been read by a native speaker.
+
+name:
+  en: Heat
+  id: Panas
+  es: Calor
+
+kind: sensed
+metric: apparent          # not a stored metric: computed from temp + humidity by the `apparent` function
+unit: °C
+dp: 1
+
+# Not a global standard, and the file says so out loud. 35 is this place's stress line, measured at
+# node #1 over 2-7 September 2026: the heat-index "extreme caution" 32 the pack shipped with is Kuta
+# Selatan's year-round baseline, not an event. `sql:` names the rule carrying the same number and
+# tests/test_issues.py holds the two together.
+#
+# The place prompt's baselines release replaces this with the place's own p90 per hour once there
+# are fourteen days of them, keeping 41 as the medical floor. Until that table exists the pack's
+# measured line stands and heat speaks in degrees rather than in ranks.
+line:
+  value: 35
+  unit: °C
+  source: "packs/heat, measured at node #1 (Kuta Selatan) — this place's line, not a global one"
+  sql: heat/heat_stress_now
+
+packs:
+  domains: [heat]
+  rules:
+    - cold-start/hotter_than_normal
+
+# Apparent temperature everywhere, from the same two channels by the same formula. A room median
+# against a model's Steadman would be two different quantities on one scale, which is the mistake
+# this issue exists to not make: `function: apparent` appears on all four columns or on none.
+distances:
+  room:
+    from: stats
+    place: room
+    metrics: [temp, humidity]
+    field: mean_15m
+    aggregate: median
+    function: apparent
+  yard:
+    from: stats
+    place: yard
+    metrics: [temp, humidity]
+    field: mean_15m
+    aggregate: median
+    function: apparent
+  ring:
+    from: stats
+    place: ring
+    metrics: [temp, humidity]
+    field: mean_1h
+    aggregate: fenced_median
+    function: apparent
+  region:
+    from: observations
+    sensor_id: om-point
+    metrics: [temp_model, humidity_model]
+    function: apparent
+
+sentences:
+  en:
+    attribution:
+      clear:         "It feels like {n} {unit} {where}, under the line. {cmp}"
+      inside:        "It feels like {n} {unit} {where} — warmer in here than anywhere around. {cmp}"
+      everywhere:    "It feels like {n} {unit} {where}, and it is this warm everywhere around. {cmp}"
+      outside_worse: "It feels like {n} {unit} {where}, cooler than the street. {cmp}"
+      mixed:         "It feels like {n} {unit} {where}. {cmp}"
+      unknown:       "It feels like {n} {unit} {where}. {cmp}"
+    state:
+      none: "Nothing here reports both temperature and humidity, so there is no apparent temperature to give."
+  id:
+    attribution:
+      clear:         "Terasa seperti {n} {unit} {where}, di bawah batas. {cmp}"
+      inside:        "Terasa seperti {n} {unit} {where} — lebih panas di sini daripada di sekitar. {cmp}"
+      everywhere:    "Terasa seperti {n} {unit} {where}, dan sepanas ini di seluruh sekitar. {cmp}"
+      outside_worse: "Terasa seperti {n} {unit} {where}, lebih sejuk daripada di jalan. {cmp}"
+      mixed:         "Terasa seperti {n} {unit} {where}. {cmp}"
+      unknown:       "Terasa seperti {n} {unit} {where}. {cmp}"
+    state:
+      none: "Tidak ada di sini yang melaporkan suhu dan kelembapan sekaligus, jadi suhu terasa tidak bisa dihitung."
+  es:
+    attribution:
+      clear:         "Se siente como {n} {unit} {where}, por debajo del límite. {cmp}"
+      inside:        "Se siente como {n} {unit} {where} — más calor aquí dentro que en cualquier sitio alrededor. {cmp}"
+      everywhere:    "Se siente como {n} {unit} {where}, y hace este calor en todo el alrededor. {cmp}"
+      outside_worse: "Se siente como {n} {unit} {where}, más fresco que la calle. {cmp}"
+      mixed:         "Se siente como {n} {unit} {where}. {cmp}"
+      unknown:       "Se siente como {n} {unit} {where}. {cmp}"
+    state:
+      none: "Nada de aquí informa temperatura y humedad a la vez, así que no hay temperatura aparente que dar."
+
+empty:
+  en: Heat needs temperature and humidity from the same sensor. Add one indoors and the room fills in.
+  id: Panas memerlukan suhu dan kelembapan dari sensor yang sama. Tambahkan satu di dalam ruangan.
+  es: El calor necesita temperatura y humedad del mismo sensor. Añade uno dentro y la habitación se rellena.

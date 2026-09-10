@@ -1,0 +1,76 @@
+# Land. What the ground within a few kilometres did, from one year to the next.
+#
+# A context issue: yearly cadence, no rules at act level, and it never asks a household for anything.
+# It informs. The dashboard draws it with the satellite component rather than a stack strip.
+#
+# The id and es strings below are ASSISTANT-WRITTEN and have not been read by a native speaker.
+
+name:
+  en: Land
+  id: Lahan
+  es: Suelo
+
+kind: context
+metric: land_change
+unit: "%"
+dp: 1
+
+line: ~                   # nothing to cross. A year-over-year change is not a threshold.
+
+packs:
+  domains: [land]         # earth (this node's own AlphaEarth copy) and earth-engine (the catalog)
+  rules: []
+
+# Land has no room, no yard and no ring: nothing in the house measures what the land did, and
+# neither does a neighbour's kit. The page says that rather than leaving three empty boxes.
+distances:
+  room: ~
+  yard: ~
+  ring: ~
+  region:
+    # The node's own record first: packs/earth downloaded the embeddings, compared them here with
+    # arithmetic, and wrote share_over_threshold and hectares_over_threshold into its own JSON. That
+    # is the thing the household watches, and it is what the sentence is built from.
+    from: earth
+    # Earth Engine's land_change_score is a DIFFERENT MEASURE of a similar idea, computed by somebody
+    # else's cluster over a different footprint. It stands in when the earth pack has not run, it is
+    # named as the fallback wherever it appears, and the two are never averaged.
+    fallback:
+      from: observations
+      sensor_id: ee-point
+      metrics: [land_change_score]
+      note: Earth Engine's own year-over-year score, not this node's change map
+
+# Context issues carry readouts instead of a stack: numbers with no line and no comparison.
+readouts:
+  - metric: built_frac
+    sensor_id: ee-point
+    unit: "%"
+    scale: 100
+    dp: 0
+    label: { en: built, id: terbangun, es: construido }
+  - metric: tree_frac
+    sensor_id: ee-point
+    unit: "%"
+    scale: 100
+    dp: 0
+    label: { en: trees, id: pohon, es: árboles }
+
+sentences:
+  en:
+    state:
+      context: "{n} {unit} {where} changed. {cmp}"
+      none: "No satellite record yet for this square."
+  id:
+    state:
+      context: "{n} {unit} {where} berubah. {cmp}"
+      none: "Belum ada rekaman satelit untuk kotak ini."
+  es:
+    state:
+      context: "{n} {unit} {where} cambió. {cmp}"
+      none: "Aún no hay registro satelital para este cuadrado."
+
+empty:
+  en: "No satellite record yet. To fetch one: planetai run earth fetch, then planetai run earth change."
+  id: "Belum ada rekaman satelit. Untuk mengambilnya: planetai run earth fetch, lalu planetai run earth change."
+  es: "Aún no hay registro satelital. Para obtenerlo: planetai run earth fetch, luego planetai run earth change."

@@ -97,6 +97,7 @@ test_report_templates|PYTHONPATH=/tmp/stub:app python3 tests/test_report_templat
 test_shipped|python3 tests/test_shipped.py
 test_share|PYTHONPATH=app python3 tests/test_share.py
 test_issues_schema|python3 tests/test_issues_schema.py
+test_issues|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues.py
 test_check_ui|python3 tests/test_check_ui.py
 test_dashboard|python3 tests/test_dashboard.py
 test_ground|python3 tests/test_ground.py

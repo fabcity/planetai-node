@@ -1,0 +1,215 @@
+"""Issues — what a place can be better or worse at, that a household recognises by name.
+
+The core measures nothing in particular (docs/DOMAINS.md, first line). The dashboard was the one
+component that did: it knew the word `pm25`, it knew WHO 15, and it worked out for itself which
+sensor was "the room". This package is where that knowledge moves, so the page can go back to
+drawing.
+
+One `.yml` per issue, in this directory. Each declares its name in three languages, whether it is
+sensed or context, its metric and unit, its line, which packs feed it, how each of the four
+distances is computed, its sentence templates, and what to say with no source. **Adding a fifth
+issue is a fifth `.yml` plus a pack that declares its domain, and nothing else changes** —
+`tests/test_issues.py` asserts exactly that by loading a synthetic `water.yml`.
+
+Loading is as dumb as `app/packs.py`: read the directory, parse the YAML, validate, log and skip
+anything broken. A malformed file must not take the node down; `make lint` is where a broken file in
+this repo gets caught.
+"""
+from __future__ import annotations
+
+import logging
+import re
+from pathlib import Path
+
+import yaml
+
+log = logging.getLogger("planetai.issues")
+HERE = Path(__file__).resolve().parent
+
+LOCALES = ("en", "id", "es")
+KINDS = ("sensed", "context")
+
+# The four distances, in order. From schema.py so there is one list, not two.
+from .schema import DISTANCES  # noqa: E402  (kept here so `issues.DISTANCES` reads naturally)
+
+# The attribution classifier's classes. A sensed issue needs a sentence for every one of them,
+# because the classifier will hand it any of them and a missing template is a `{brace}` on a wall.
+CLASSES = ("clear", "inside", "everywhere", "outside_worse", "mixed", "unknown")
+
+# The five states. `act` · `notable` · `quiet` are said with the attribution sentence; `context` and
+# `none` have nothing to attribute, so they are said with their own.
+STATE_SENTENCES = ("context", "none")
+
+# Everything a template may ask for, and nothing else. The engine fills all five; a template using
+# a name that is not here would render a literal brace to somebody's kitchen wall.
+PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp")
+
+WHERE_FROM = ("stats", "observations", "earth")
+AGGREGATES = ("mean", "median", "fenced_median")
+FUNCTIONS = ("apparent",)
+
+
+def _problems(key: str, d: dict) -> list[str]:
+    """Everything wrong with one issue declaration, in the words its author needs to fix it."""
+    p: list[str] = []
+    if not isinstance(d, dict):
+        return [f"{key}: the file is not a mapping"]
+
+    for loc in LOCALES:
+        if not (d.get("name") or {}).get(loc):
+            p.append(f"{key}: name.{loc} is missing")
+        if not (d.get("empty") or {}).get(loc):
+            p.append(f"{key}: empty.{loc} is missing — say what there is to say with no source")
+
+    kind = d.get("kind")
+    if kind not in KINDS:
+        p.append(f"{key}: kind is {kind!r}; it must be one of {KINDS}")
+    for f in ("metric", "unit"):
+        if not d.get(f):
+            p.append(f"{key}: {f} is missing")
+    if not isinstance(d.get("dp"), int):
+        p.append(f"{key}: dp must be an integer number of decimal places")
+
+    line = d.get("line")
+    if line is not None:
+        if not isinstance(line, dict):
+            p.append(f"{key}: line must be a mapping or empty (~)")
+        else:
+            for f in ("value", "source"):
+                if line.get(f) is None:
+                    p.append(f"{key}: line.{f} is missing — a line with no named source is a number "
+                             f"somebody will have to go and look up")
+
+    packs = d.get("packs") or {}
+    if not isinstance(packs.get("domains"), list) or not packs["domains"]:
+        p.append(f"{key}: packs.domains must list at least one pack domain")
+    if not isinstance(packs.get("rules", []), list):
+        p.append(f"{key}: packs.rules must be a list of <pack>/<rule> ids")
+    for rid in packs.get("rules") or []:
+        if "/" not in str(rid):
+            p.append(f"{key}: packs.rules has {rid!r}; rule ids are namespaced <pack>/<id>")
+
+    dist = d.get("distances")
+    if not isinstance(dist, dict) or set(dist) != set(DISTANCES):
+        p.append(f"{key}: distances must have exactly these keys: {', '.join(DISTANCES)} "
+                 f"(an absent distance is ~, so the page can say why)")
+    else:
+        if not any(dist.values()):
+            p.append(f"{key}: every distance is empty, so this issue can never have a value")
+        for name, spec in dist.items():
+            p += _distance_problems(f"{key}.distances.{name}", spec)
+
+    for r in d.get("readouts") or []:
+        if not isinstance(r, dict) or not r.get("metric") or not r.get("sensor_id"):
+            p.append(f"{key}: a readout needs at least a metric and a sensor_id")
+        elif not all((r.get("label") or {}).get(loc) for loc in LOCALES):
+            p.append(f"{key}: the {r['metric']} readout needs a label in every locale")
+
+    want = set(STATE_SENTENCES) if kind == "context" else {"none"}
+    for loc in LOCALES:
+        s = (d.get("sentences") or {}).get(loc)
+        if not isinstance(s, dict):
+            p.append(f"{key}: sentences.{loc} is missing — all three locales carry the same placeholders")
+            continue
+        attribution = s.get("attribution") or {}
+        if kind == "sensed":
+            for c in CLASSES:
+                if not attribution.get(c):
+                    p.append(f"{key}: sentences.{loc}.attribution.{c} is missing")
+        state = s.get("state") or {}
+        for st in want:
+            if not state.get(st):
+                p.append(f"{key}: sentences.{loc}.state.{st} is missing")
+        for where, tpl in list(attribution.items()) + list(state.items()):
+            for ph in re.findall(r"\{(\w+)\}", str(tpl)):
+                if ph not in PLACEHOLDERS:
+                    p.append(f"{key}: sentences.{loc}.{where} asks for {{{ph}}}, which the engine "
+                             f"does not fill. It fills {', '.join(PLACEHOLDERS)}.")
+    return p
+
+
+def _distance_problems(where: str, spec) -> list[str]:
+    if spec is None:
+        return []
+    if not isinstance(spec, dict):
+        return [f"{where} must be a mapping or ~"]
+    p = []
+    src = spec.get("from")
+    if src not in WHERE_FROM:
+        p.append(f"{where}.from is {src!r}; it must be one of {WHERE_FROM}")
+    if src == "stats":
+        if spec.get("place") not in DISTANCES:
+            p.append(f"{where}.place is {spec.get('place')!r}; it must be one of {DISTANCES}")
+        if not spec.get("field"):
+            p.append(f"{where}.field is missing — which of the rolling means to read")
+        if spec.get("aggregate") not in AGGREGATES:
+            p.append(f"{where}.aggregate is {spec.get('aggregate')!r}; it must be one of {AGGREGATES}")
+    if src == "observations" and not spec.get("sensor_id"):
+        p.append(f"{where}.sensor_id is missing — which model or portal row to read")
+    if src in ("stats", "observations"):
+        metrics = spec.get("metrics")
+        if not isinstance(metrics, list) or not 1 <= len(metrics) <= 2:
+            p.append(f"{where}.metrics must be one metric, or two for a function that takes two")
+    fn = spec.get("function")
+    if fn is not None and fn not in FUNCTIONS:
+        p.append(f"{where}.function is {fn!r}; the engine knows {FUNCTIONS}")
+    if fn == "apparent" and len(spec.get("metrics") or []) != 2:
+        p.append(f"{where} applies apparent(), which needs exactly two metrics: temperature then humidity")
+    if "fallback" in spec:
+        p += _distance_problems(f"{where}.fallback", spec["fallback"])
+        if not (spec["fallback"] or {}).get("note"):
+            p.append(f"{where}.fallback needs a note saying what it is, because a fallback that is a "
+                     f"different measure must be named as one wherever it appears")
+    return p
+
+
+def load(path: Path | str | None = None) -> dict[str, dict]:
+    """Every issue declared in `path` (this directory by default), keyed by file stem.
+
+    A file that does not parse or does not validate is logged and dropped: one bad issue must not
+    cost the household the other three.
+    """
+    out: dict[str, dict] = {}
+    for f in sorted(Path(path or HERE).glob("*.yml")):
+        try:
+            d = yaml.safe_load(f.read_text()) or {}
+        except Exception as e:  # noqa: BLE001
+            log.warning("issue %s: does not parse (%s)", f.name, e)
+            continue
+        bad = _problems(f.stem, d)
+        if bad:
+            for b in bad:
+                log.warning("issue %s: %s", f.name, b)
+            continue
+        d["key"] = f.stem
+        out[f.stem] = d
+    return out
+
+
+def order(declared: str, available: dict[str, dict]) -> tuple[list[str], list[str]]:
+    """NODE_ISSUES, parsed. Returns (the order to draw, the names that were dropped).
+
+    An unknown name is dropped and logged, never fatal: a keeper who types `air,heat,watar` gets a
+    page with air and heat on it and a line in the log, not a node that will not answer. An empty
+    setting falls back to the order the files are in, which is the packs' own alphabetical order.
+    """
+    names = [n for n in (declared or "").replace(" ", "").split(",") if n]
+    keep = [n for n in names if n in available]
+    dropped = [n for n in names if n not in available]
+    for n in dropped:
+        log.warning("NODE_ISSUES names %r, which no app/issues/*.yml declares — dropping it", n)
+    seen, uniq = set(), []
+    for n in keep:
+        if n not in seen:
+            seen.add(n); uniq.append(n)
+    return (uniq or sorted(available)), dropped
+
+
+def issues(cur, settings) -> dict:
+    """The whole issues object: order, per-issue state, stack, line, attribution, sentence, asks.
+
+    The engine is imported here rather than at module scope so that `engine` can import this module
+    for its declarations without the two chasing each other round an import cycle.
+    """
+    from . import engine
+    return engine.compute(cur, settings, load())
