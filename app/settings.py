@@ -59,7 +59,7 @@ RUNTIME = {
     "EE_PROJECT":         ("keys", "Earth Engine project", False, False, "Project id, not the service account number. Blank reads it from the key file."),
     "EE_KEY_FILE":        ("keys", "Earth Engine key file", False, False, "Path inside the container; the file goes in config/."),
     "COAST_MAX_KM":       ("keys", "Coast: max distance to sea, km", False, False, ""),
-    "AGENT_PREFER":       ("agent", "Model preference", False, True, "strongest tries online, remote, local; fallback puts online last, under your own machines; private never uses online."),
+    "AGENT_PREFER":       ("agent", "Model preference", False, True, "strongest tries online, remote, local; fallback tries your remote model, then online, then the small local one; private never uses online."),
     "AGENT_REMOTE_URL":   ("agent", "Remote model URL", False, True, "A bigger local model on your tailnet, OpenAI-compatible: http://<host>:8082/v1"),
     "AGENT_REMOTE_MODEL": ("agent", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
     "AGENT_REMOTE_KEY":   ("agent", "Remote model key", True, True, "If that server asks for one."),

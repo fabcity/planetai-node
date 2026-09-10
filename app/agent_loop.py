@@ -4,8 +4,10 @@
   remote   a bigger local model elsewhere on your tailnet: a laptop's Ollama, an exo cluster. Private, no key.
   local    Ollama on this machine, qwen3:4b. Always there.
 
-AGENT_PREFER=strongest tries online, remote, local in that order; AGENT_PREFER=private never uses online. A rung that
-is unreachable, unauthorised or erroring is skipped for five minutes. `/model` in Telegram shows the ladder and which
+AGENT_PREFER=strongest tries online, remote, local in that order. =fallback tries your own remote model first, then
+online, then local — online above local because a rung is skipped only when it *fails*, and a 4B model never fails,
+it answers badly. =private never uses online at all. A rung that is unreachable, unauthorised or erroring is
+skipped for five minutes. `/model` in Telegram shows the ladder and which
 rung answered; `/model local` pins one for the conversation.
 
 All three speak the OpenAI-compatible chat protocol with tools, which Ollama, exo, OpenAI and Anthropic all serve.
@@ -92,10 +94,14 @@ def ladder(cfg: dict) -> list[Rung]:
     if prefer == "private":
         rungs = [r for r in rungs if r.name != "online"]
     elif prefer == "fallback":
-        # This household's own machines answer first; the online model is the net under them, used only when
-        # neither the tailnet box nor Ollama answers. `strongest` sends every question off the network, which is
-        # the opposite of what someone who wanted a backup asked for.
-        rungs = [r for r in rungs if r.name != "online"] + [r for r in rungs if r.name == "online"]
+        # Your own big model, then the online one, then the small local model last.
+        #
+        # Online has to sit ABOVE local, not below it. A rung is skipped only when it *fails*, and qwen3:4b never
+        # fails — it answers, weakly. Putting online last therefore meant that the moment the tailnet box was
+        # asleep the household got 4B answers and the paid model it had configured was never once reached. Local
+        # stays on the bottom as the floor that works with no internet at all.
+        rank = {"remote": 0, "online": 1, "local": 2}
+        rungs.sort(key=lambda r: rank[r.name])
     for r in rungs:                        # keep the skip clocks across rebuilds
         r.skip_until = _SKIPS.get(r.name, 0.0)
     return rungs
@@ -263,7 +269,7 @@ def ladder_text(pins: dict, chat: str) -> str:
     # told every household that changed it there that it was still on 'strongest'.
     prefer = cfg("AGENT_PREFER", "strongest")
     order = {"private": "the node's own machines only, nothing leaves the network",
-             "fallback": "this machine and your tailnet first, online only if neither answers",
+             "fallback": "your remote model first, then online, then the small local one as the offline floor",
              "strongest": "strongest first, so online answers whenever it is configured"}
     return "Model ladder, tried top to bottom:\n" + "\n".join(lines) + \
         f"\nPrefer: {prefer} — {order.get(prefer, 'unknown value; treated as strongest')}." + \
