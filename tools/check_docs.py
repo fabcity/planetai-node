@@ -10,6 +10,9 @@ instruction that no longer works. This checks the claims that can be checked wit
   · every HTTP endpoint a doc mentions exists in app/main.py
   · every pack a doc names exists in packs/
   · README's docs/ index lists exactly the files in docs/
+  · every skills/*/SKILL.md has frontmatter whose name is its folder, and a description
+  · AGENTS.md's routing table sends a person to every skill that exists
+  · every file llms.txt links to exists
 
 Run: python3 tools/check_docs.py
 """
@@ -21,7 +24,12 @@ import sys
 import yaml
 
 errs: list[str] = []
-DOCS = sorted(glob.glob("*.md") + glob.glob("docs/*.md") + glob.glob("packs/*/README.md"))
+# A skill is a document that tells somebody to run things, so it is held to the same gates as a doc:
+# a command it names must dispatch, a path it names must exist. That is the whole point of writing
+# them here rather than in a prompt somebody pastes.
+DOCS = sorted(glob.glob("*.md") + glob.glob("docs/*.md") + glob.glob("packs/*/README.md")
+             + glob.glob("skills/*/SKILL.md"))
+SKILLS = sorted(os.path.basename(os.path.dirname(f)) for f in glob.glob("skills/*/SKILL.md"))
 CLI = open("bin/planetai").read()
 MAIN = open("app/main.py").read()
 ENVEX = open(".env.example").read()
@@ -47,7 +55,9 @@ ENV_RETIRED = set(re.findall(r'"([A-Z][A-Z0-9_]+)"',
 ENV_IN_PACKS = set()
 for f in glob.glob("packs/*/pack.yaml"):
     ENV_IN_PACKS |= set(re.findall(r'^\s*-\s*"?([A-Z][A-Z0-9_]+)=', open(f).read(), re.M))
-ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | {
+ENV_IN_MCP = set(re.findall(r"\$\{([A-Z][A-Z0-9_]+)", open(".mcp.json").read()))
+ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | ENV_IN_MCP | {
+    "FCI_PUBLISHER",   # the Index's write flag; it lives with cells-ingest, not here
     "PATH", "HOME", "EDITOR", "TS_AUTHKEY", "PLANETAI_HOME", "PLANETAI_REPO", "PLANETAI_REF",
     "COMPOSE_PROFILES", "PGTZ", "TZ", "DATABASE_URL", "CI", "PACK_OUT", "LOG_LEVEL", "SSID", "MQTT_ADDR",
     "MQTT_USER", "MQTT_PASS", "WIFI_SSID", "WIFI_PSK", "GATEWAY", "CHNAME", "MAP_KEY", "CLOUDFLARE_API_TOKEN",
@@ -76,7 +86,7 @@ for doc in DOCS:
                # a build artifact: present on any machine that has run the app, absent in a clean
                # checkout. `make lint` passed on every laptop and failed on every CI run since 5 Sep.
                "app/__pycache__"}
-    for path in set(re.findall(r"`((?:docs|packs|app|config|tools|tests|presets|out)/[A-Za-z0-9_./-]+)`", text)):
+    for path in set(re.findall(r"`((?:docs|packs|app|config|tools|tests|presets|out|skills)/[A-Za-z0-9_./-]+)`", text)):
         p = path.rstrip("/.")
         if p in RUNTIME or path in RUNTIME or p.startswith("out/") or doc == "CHANGELOG.md":   # out/ holds runtime artifacts     # the changelog is a record; files move
             continue
@@ -173,6 +183,44 @@ for f in sorted(glob.glob("packs/*/README.md")):
 
 if n_core_rules != 2:
     errs.append(f"config/rules.yml has {n_core_rules} rules; docs/PACKS.md says two domain-blind core rules — check both")
+
+# ---- the agent-facing layer -------------------------------------------------------------------
+# A skill is read by a machine that will act on it. Three things have to hold or it silently does not
+# load, or loads and sends somebody nowhere.
+
+# a) frontmatter: name equals the folder, and a description exists. agentskills.io shape.
+for f in sorted(glob.glob("skills/*/SKILL.md")):
+    folder = os.path.basename(os.path.dirname(f))
+    text = open(f).read()
+    m = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    if not m:
+        errs.append(f"{f}: no YAML frontmatter (--- name/description ---) at the top")
+        continue
+    fm = yaml.safe_load(m.group(1)) or {}
+    if fm.get("name") != folder:
+        errs.append(f"{f}: frontmatter name is {fm.get('name')!r}, but the folder is {folder!r}")
+    if not str(fm.get("description") or "").strip():
+        errs.append(f"{f}: frontmatter has no description; that line is what decides when it is read")
+
+# b) a skill nobody is routed to is a file nobody opens. AGENTS.md's first section is the routing table.
+agents = open("AGENTS.md").read()
+for name in SKILLS:
+    if f"skills/{name}/SKILL.md" not in agents:
+        errs.append(f"AGENTS.md: the routing table does not send anyone to skills/{name}/SKILL.md")
+
+# c) llms.txt is an index for an agent that cannot see the tree. A dead link there is a dead end.
+if os.path.exists("llms.txt"):
+    RAW = "https://raw.githubusercontent.com/fabcity/planetai-node/main/"
+    llms = open("llms.txt").read()
+    for url in sorted(set(re.findall(r"https://raw\.githubusercontent\.com/\S+?(?=[)\s])", llms))):
+        if not url.startswith(RAW):
+            errs.append(f"llms.txt: {url} is not this repository at main")
+        elif not os.path.exists(url[len(RAW):]):
+            errs.append(f"llms.txt: links to `{url[len(RAW):]}`, which does not exist")
+    for name in SKILLS:
+        if f"skills/{name}/SKILL.md" not in llms:
+            errs.append(f"llms.txt: does not index skills/{name}/SKILL.md")
+
 
 print("\n".join(f"  x {e}" for e in errs) or f"  {len(DOCS)} documents check out")
 sys.exit(1 if errs else 0)
