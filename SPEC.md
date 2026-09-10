@@ -49,9 +49,13 @@ An adapter is a function returning `(sensors, readings)`. Two ship; see `docs/se
 - `smartcitizen`: polls `api.smartcitizen.me/v0/devices/<id>`. Maps on measurement *name* so SCK 2.1 and 2.3 both work. Marks `indoor` from the kit's `exposure`. `local = TRUE`.
 - `baliairdispatch`: polls `baliairdispatch.com/api/v1/latest`. Drops `stale`, `suspected_indoor` and `suspected_malfunctioning`, keeps stations within `BAD_RADIUS_KM`, and excludes this node's own hardware three ways (ids it polls, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`) plus one device arriving under two networks' ids. Stores `pm25` and `pm25_raw`. `local = FALSE`, always. Attribution: Bali Air Dispatch + the row's network.
 
-## 4. Security, v0.1
+## 4. Security, v0.43
 
-Nothing listens on the network except `app:8080` (LAN). Postgres is localhost-only. `.env` is `chmod 600`, never committed. No mesh, no auth, no TLS: because no packet crosses a network boundary yet. The moment node #2 exists on another network, §6 applies.
+`app:8080` is published on every interface, because the things that read this node are on the network: the NAS that pulls hourly dumps from `/backups` — the only off-machine copy of readings that exist nowhere else — the phones and wall screens in the house, Home Assistant, and the agent's MCP surface on the tailnet. Postgres is not: `db` binds `127.0.0.1:5432`, and so do IPFS's two ports.
+
+A token guards every write and every secret read. **`SHARE_LEVEL` decides what an unauthenticated reader on that LAN may see** — `off` by default, which answers such a reader the dashboard, `/health` with the node's position rounded to 110 m, the daily CC-BY export and the layout, and refuses the rest with a sentence naming the setting; `open` answers the whole read API, which is what a wall screen with no token needs. A request carrying a token reads what it always read, from anywhere, at either level. The building's own geometry (`/place/geojson`) needs a token at every level. `.env` is `chmod 600`, never committed.
+
+There is no TLS. The boundary this section used to argue did not exist was crossed in v0.7 — see the first struck-through row in §6 — so it is deferred on its own terms now, not on an absence: the traffic that leaves this machine goes over Tailscale, which encrypts it, and a node reachable from outside the tailnet is what turns TLS from a checkbox into a requirement.
 
 ## 5. Update and rollback
 
@@ -85,6 +89,7 @@ what was deferred and why stays legible.
 | **Local LLM (Ollama)** | someone asks the node a question the alert doesn't answer | a `/brief` endpoint that turns 24h stats into a paragraph in the local language |
 | **Edge role / MQTT bridge** | a real network partition between sensors and the hub | a Pi with a broker forwarding upstream |
 | **TimescaleDB** | `readings` passes ~50M rows or `stats` takes over a second | swap the image, `create_hypertable`, the SQL is already compatible |
+| **A loopback-only node** (`SHARE_LEVEL=none`) | a node is on a network its household does not trust, *and* it can afford to lose the NAS pull, the phones, Home Assistant and MCP — all four of which read over the LAN | a third level, opted into, never a default; the socket keeps binding `0.0.0.0` and the middleware answers nothing without a token |
 | **Telegram reply → action** | the first operator who says "I did it" in the chat instead of curl | a 20-line webhook that maps a reply to `#<alert_id>` into `POST /actions` |
 | **Cells → Airtable / index.fab.city** | the Index surface wants to pull from a node rather than read Airtable | aggregator (or a cron) pushes `GET /cells` rows into `FCI Observations`; states preserved |
 | **Upstream model / compute** | a rule or brief needs inference a Pi can't do | `UPSTREAM_MODEL_URL` (OpenAI-compatible) / `UPSTREAM_COMPUTE_URL`. Removed from `.env.example` in v0.9 because no code reads them: the names are the contract, the settings return with the code that uses them |

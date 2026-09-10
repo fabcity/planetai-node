@@ -72,6 +72,13 @@ RUNTIME = {
     "PARENT_API_URL":     ("node", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
     "PARENT_TOKEN":       ("node", "Token for the parent", True, False, ""),
     "NODE_KIND":          ("node", "Kind", False, False, "home | business | community | district."),
+    "SHARE_LEVEL":        ("node", "What a reader without a token may see", False, False,
+                           "off (default) = the dashboard shell, /health with the position rounded, the daily export and the layout, and nothing else. "
+                           "open = the whole read API to anyone on your network, so a wall screen or a phone works with no token; writes still need one. "
+                           "cell and means are reserved and refused today: cell will answer the neighbouring H3 cells that ask, means will hand hourly means to a parent node. "
+                           "This never changes what a request carrying a token may read, from anywhere \u2014 the NAS, Home Assistant and the agent are unaffected at every level."),
+    "ACT_TOKEN":          ("node", "Token for closing a loop", True, False,
+                           "Lets someone in the house record that they acted on an alert (POST /actions) without holding the admin token: it cannot read a secret or change a setting. `planetai ui` prints it."),
 }
 # What an anonymous reader on the LAN may see the value of. Everything else shows as "•••• set" until the admin token is
 # presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
@@ -79,7 +86,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "NODE_KIND"}
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "NODE_KIND", "SHARE_LEVEL"}
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
     "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
@@ -94,6 +101,7 @@ CHOICES = {
     "REPORT_ANCHOR": tuple(str(h) for h in range(24)),
     "REPORT_DEPTH":  ("auto", "brief", "standard", "deep"),
     "AGENT_PREFER":  ("strongest", "fallback", "private"),   # a typo here would fail open: not-"private" sends household data off the network
+    "SHARE_LEVEL":   ("off", "open"),                        # cell and means are named in the help and refused here, so a node cannot sit at a level that does nothing
 }
 
 # Keys the reports release retired. Rows for them are left in `settings` and in .env, and nothing reads them: a
@@ -175,14 +183,18 @@ def _mask(v: str) -> str:
     return ("•••• set" if v else "") if v is not None else ""
 
 
-def describe(unlocked: bool = False) -> dict:
+def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
     """unlocked=False is what an anonymous GET /settings gets: secrets masked, and every value outside PUBLIC masked too.
-    unlocked=True (admin token presented, or an MCP call, which is behind the token already) shows all but the secrets."""
+    unlocked=True (admin token presented, or an MCP call, which is behind the token already) shows all but the secrets.
+
+    `public` narrows that set without narrowing the rows: at SHARE_LEVEL=off a caller who is neither on this machine
+    nor carrying a token gets UI_LAYOUT and SHARE_LEVEL only — the layout because every screen in the house reads it,
+    SHARE_LEVEL because a screen being refused needs to be able to name what is refusing it."""
     db = _rows()
     out = {"unlocked": unlocked, "runtime": [], "bootstrap": []}
     for k, (group, label, secret, restart, help_) in RUNTIME.items():
         v = get(k, "")
-        hide = secret or (not unlocked and k not in PUBLIC)
+        hide = secret or (not unlocked and k not in public)
         out["runtime"].append({"key": k, "group": group, "label": label, "secret": secret, "restart": restart, "help": help_,
                                "value": _mask(v) if hide else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default")})
     for k, label in BOOTSTRAP.items():

@@ -22,7 +22,7 @@ from pathlib import Path
 import httpx
 import psycopg
 import yaml
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
@@ -62,6 +62,10 @@ def MESH_GATEWAY_NUM():
     return int(settings.get("MESH_GATEWAY_NODE_NUM", "0") or 0)
 def AGG_TOKEN():
     return settings.get("AGGREGATE_TOKEN", "").strip()
+def SHARE_LEVEL():
+    return (settings.get("SHARE_LEVEL", "off") or "off").strip().lower()
+def ACT_TOKEN():
+    return settings.get("ACT_TOKEN", "").strip()
 def PARENT_TOKEN():
     return settings.get("PARENT_TOKEN", "").strip()
 def HA_DISCOVERY():
@@ -565,6 +569,77 @@ async def _mcp_auth(request, call_next):
     return await call_next(request)
 
 
+# What a request carrying no token may read at each SHARE_LEVEL: exact paths, plus the prefixes for the two routes that
+# carry a wildcard. Anything not named here is refused — /place/geojson, /settings/raw, /backups, /aggregates and every
+# write — so a route added next release is private until someone puts it on this list on purpose. That is the opposite
+# of the SELECT * in /sensors, which published every new column the day it landed (A7).
+#
+# The `off` list is the dashboard's shell and the two reads that keep the node's own machinery running: /export, which
+# backup.sh fetches over the published port to write the daily CC-BY file (already rounded to 3 dp and public by
+# design), and /settings, reduced to UI_LAYOUT and SHARE_LEVEL by the route itself.
+#
+# The `open` list is what a wall screen on the house WiFi needs: the twenty-one paths the dashboard fetches
+# (`grep -oE "(api|fetch)\('/[a-z0-9/._{}-]+" app/static/index.html`), less the three writes and /place/geojson, plus
+# the two <img> routes that grep does not see (/earth/year.png at index.html:904, /earth/change.png from /earth's
+# png_url) and the other-consumer reads /readings, /exports and /export.
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export"}), ("/static/",))
+_SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
+    "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
+    "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/report/latest", "/readings",
+    "/history", "/exports",
+}), ("/static/", "/exports/"))
+_SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
+
+
+def _node_tokens() -> list[str]:
+    """Every token this node accepts. A request carrying one is not what SHARE_LEVEL is about: it is the NAS pulling
+    /backups, the agent, Home Assistant, a parent node or someone in the house, and it reads exactly what it read
+    before, from anywhere — which is the whole reason the setting can default to `off` without breaking a node on
+    update. Each endpoint still checks its own token after this, so BACKUP_TOKEN getting past here does not unmask
+    the Telegram token at /settings/raw."""
+    return [t for t in (os.getenv("ADMIN_TOKEN", "").strip(), settings.get("BACKUP_TOKEN", "").strip(),
+                        AGG_TOKEN(), ACT_TOKEN()) if t]
+
+
+def _is_local(request: Request) -> bool:
+    """The socket's own peer address, never a header: X-Forwarded-For would make this a one-line bypass, and uvicorn
+    runs without --proxy-headers (app/Dockerfile:19) so nothing populates it here anyway.
+
+    Inside Docker this is true for the app's own MCP tools (agent.py talks to 127.0.0.1) and for a shell in the
+    container, and false for the browser on the machine hosting it, which arrives as the bridge gateway. That is
+    deliberate rather than an oversight: on a node whose Docker forwards through a VM — Colima, Lima — a LAN client
+    arrives as the gateway too, so trusting the bridge would trust the whole WiFi and this setting would do nothing.
+    Fail closed and let the household set `open`, or carry a token."""
+    return (getattr(request.client, "host", "") or "") in ("127.0.0.1", "::1", "localhost")
+
+
+@app.middleware("http")
+async def _share_level(request, call_next):
+    """SHARE_LEVEL decides what a request with no token may read. The levels are in settings.RUNTIME["SHARE_LEVEL"];
+    the allowlists are above. It governs what is answered, not where the socket binds: docker-compose.yml still
+    publishes 8080 on every interface, because the NAS pulling hourly backups is the only off-machine copy of these
+    readings, and the phones, the wall screens, Home Assistant and MCP are all on the network too.
+
+    /mcp is passed straight through: _mcp_auth has already decided it, and checking the admin token twice would
+    refuse an agent that authenticated correctly. That bypass is also why it does not matter which of the two
+    middlewares Starlette ends up running first (it runs the last-registered outermost, i.e. this one).
+
+    The 403 names the setting because the person reading it is usually the household, not a developer."""
+    request.state.share_trusted = trusted = (
+        _bearer_ok(request.headers.get("authorization", ""), *_node_tokens()) or _is_local(request))
+    if request.url.path.startswith("/mcp") or trusted:
+        return await call_next(request)
+    level = SHARE_LEVEL()
+    exact, prefixes = _SHARE.get(level, _SHARE_OFF)
+    if request.url.path not in exact and not request.url.path.startswith(prefixes):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=403, content={"error":
+            f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
+            f"carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your "
+            f"network read it."})
+    return await call_next(request)
+
+
 for _r in agent.http_routes():        # MCP at exactly /mcp, no trailing-slash redirect
     app.router.routes.append(_r)
 
@@ -585,8 +660,14 @@ def health():
             schema = (cur.fetchone() or {}).get("v")
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
+    # A12: 3 decimals, for every caller at every level. /export has always rounded here (:838) and round(x, 3) is
+    # 110 m, which changes no answer a consumer computes from this — while five decimals is 1.1 m, i.e. the doorway.
+    # `cell` is an H3 resolution 8 (~500 m edge), coarser than the rounding, so it does not put the position back.
+    # `node` stays: /export publishes it under CC BY by design, /aggregates posts it to a parent, agent.py reads it
+    # out of here, and the dashboard prints it in five places. If the name is ever sensitive it comes out of all of
+    # them at once, which is a different change.
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
-            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0), "city": os.getenv("NODE_CITY", ""), **state,
+            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3), "city": os.getenv("NODE_CITY", ""), **state,
             "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {})}
 
 
@@ -603,9 +684,32 @@ def _cell() -> dict | None:
         return None
 
 
+# What of a sensor's `meta` an untrusted caller sees: provenance, which is what makes a reading citable. Everything
+# else in there describes the household's network rather than the measurement.
+_META_PUBLIC = ("licence", "attribution", "model", "dataset", "network", "note", "corrected")
+
+
 @app.get("/sensors")
-def sensors_():
-    return q("SELECT * FROM sensors ORDER BY local DESC, name")
+def sensors_(request: Request):
+    """Every sensor this node reads, its position, and where its numbers come from.
+
+    The columns are named rather than `SELECT *`, which is the actual fix for A7: the star published every column
+    added to `sensors` on the day it landed, so the redaction below would have gone stale by itself. Add a column and
+    it stays private until it is named here.
+
+    For a caller that is neither on this machine nor carrying a token, the position is rounded to 3 decimals (110 m,
+    the rounding /export has always used) and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
+    `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic` — an AirGradient row otherwise hands a
+    stranger on the WiFi `{"host": "airgradient_84fce6.local", "model": "I-9PSL", "firmware": "3.1.9"}` next to a
+    room name and five decimals of position."""
+    rows = q("SELECT sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta FROM sensors ORDER BY local DESC, name")
+    if getattr(request.state, "share_trusted", False):
+        return rows
+    for r in rows:
+        for k in ("lat", "lon"):
+            r[k] = round(r[k], 3) if r[k] is not None else None
+        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in _META_PUBLIC} or None
+    return rows
 
 
 @app.get("/readings")
@@ -843,10 +947,18 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
 
 
 @app.get("/place/geojson")
-def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float = 0.00002):
+def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float = Query(0.00002, ge=0.000001, le=0.01)):
     """The geometry the place pack stored: OpenStreetMap buildings, uses, green, roads, and the satellite's buildings
     (`sat`), as one GeoJSON FeatureCollection for the dashboard's plan. Simplified so a kilometre is a few hundred KB.
-    Empty until the place pack has run; never an error."""
+    Empty until the place pack has run; never an error.
+
+    **On no SHARE_LEVEL allowlist, at any level: this machine or a token, and nothing else.** It is the exact building
+    footprints and roads within PLACE_RADIUS_M of the address — the doorway A12 is about, drawn — and unlike a
+    rounded coordinate there is no version of it that is safe to hand to the network. The dashboard's plan card is
+    therefore empty on an unauthenticated screen and says so.
+
+    `tolerance` carries bounds (F11): at 0 the query skipped ST_SimplifyPreserveTopology entirely and returned the
+    unsimplified kilometre against a docstring promising a few hundred KB. The dashboard never passes it (:960)."""
     want = {k.strip() for k in kinds.split(",") if k.strip()}
     feats: list = []
     diag: dict = {"tables": {}, "rows": {}}
@@ -1193,13 +1305,20 @@ def _admin(authorization: str) -> None:
 
 
 @app.get("/settings")
-def get_settings(authorization: str = Header("")):
+def get_settings(request: Request, authorization: str = Header("")):
     """Every runtime setting with its group, help and current value, plus bootstrap keys read-only. Secrets are always
     masked. Without the admin token, so is everything that is the household's rather than the node's (chat ids, sensor
     hosts, account names, remote URLs; see settings.PUBLIC). A wrong token reads as no token: the dashboard's layout
-    read must keep working for every screen in the house."""
+    read must keep working for every screen in the house.
+
+    At SHARE_LEVEL=off a caller that is neither on this machine nor carrying a token sees the value of UI_LAYOUT and
+    SHARE_LEVEL only. The layout because of the promise in the paragraph above; SHARE_LEVEL because a screen that is
+    being refused everything else needs to be able to name what is refusing it. Every other row is still there,
+    masked, so the dashboard's Set up view still renders and still says what would be unlocked."""
     tok = os.getenv("ADMIN_TOKEN", "").strip()
-    return settings.describe(unlocked=bool(tok) and _bearer_ok(authorization, tok))
+    unlocked = bool(tok) and _bearer_ok(authorization, tok)
+    reduced = not unlocked and not getattr(request.state, "share_trusted", False) and SHARE_LEVEL() == "off"
+    return settings.describe(unlocked=unlocked, public={"UI_LAYOUT", "SHARE_LEVEL"} if reduced else settings.PUBLIC)
 
 
 @app.put("/settings")
@@ -1258,9 +1377,23 @@ def rho():
 
 
 @app.post("/actions")
-def action(body: dict):
+def action(body: dict, request: Request, authorization: str = Header("")):
     """A human closes the loop: {"alert_id": 12, "stage": "acted", "actor": "ibu wayan", "note": "closed windows"}.
-    A mobile app, a Telegram reply handler, or curl — all the same call."""
+    A mobile app, a Telegram reply handler, or curl — all the same call.
+
+    F10: unchanged and open on this machine, so the MCP `act` tool and a shell in the container keep working with no
+    token. From anywhere else it needs ACT_TOKEN or ADMIN_TOKEN — the weaker token on purpose, so someone in the
+    house can be given the ability to close a loop without being given the key to /settings/raw. `planetai ui` prints
+    both. Note this holds at SHARE_LEVEL=off too: `off` refuses this path in the middleware for a caller with no
+    token at all, but BACKUP_TOKEN gets past that gate, and a read-only NAS token must not be able to write rho.
+
+    Deliberately no one-action-per-alert cap: two people who both acted are both recording something true."""
+    if not _is_local(request):
+        tokens = [t for t in (ACT_TOKEN(), os.getenv("ADMIN_TOKEN", "").strip()) if t]
+        if not tokens:
+            raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
+        if not _bearer_ok(authorization, *tokens):
+            raise HTTPException(401, "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>")
     stage = body.get("stage")
     if stage not in ("acknowledged", "acted"):            # 'settings' rows are written by the node itself, never posted
         raise HTTPException(400, "stage must be acknowledged or acted")
@@ -1295,7 +1428,7 @@ def post_readings(body: dict, authorization: str = Header("")):
 
 
 @app.get("/aggregates")
-def aggregates(hours: int = Query(24, le=24 * 90)):
+def aggregates(hours: int = Query(24, ge=1, le=24 * 90)):   # ge: hours=-1 made make_interval walk forwards and the window empty
     return q("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - make_interval(hours => %s) ORDER BY bucket DESC", hours)
 
 

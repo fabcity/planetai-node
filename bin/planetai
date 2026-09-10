@@ -973,18 +973,35 @@ cmd_ui() {
     envset ADMIN_TOKEN "$tok"; docker compose up -d --force-recreate app >>"$LOG" 2>&1; say "created an admin token"
   fi
   [[ -n "$(envget ADMIN_TOKEN)" ]] || fail "ADMIN_TOKEN is empty in .env even after trying to set it — check that .env is writable"
+  if [[ -z "$(envget ACT_TOKEN)" ]]; then
+    local atok; atok="$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    [[ -n "$atok" ]] && { envset ACT_TOKEN "$atok"; docker compose up -d --force-recreate app >>"$LOG" 2>&1; say "created a token for closing a loop"; }
+  fi
   local ip; ip="$(lan_ip)"; local p; p="$(port)"
   echo "  On this machine:      http://localhost:${p}/"
   [[ -n "$ip" ]] && echo "  On your network:      http://${ip}:${p}/"
   [[ -n "$(envget MESH_NAME)" ]] && echo "  On the tailnet:       http://$(envget MESH_NAME):${p}/"
   echo "  On a small display:   add  ?kiosk=1  — big numbers only, refreshes every 30 s"
   echo
-  echo "  The Display and Sensors pages are open to anyone who can reach the node, like the API."
-  echo "  Set up (sources, alerts, packs, keys) asks for this token once per browser:"
+  local lvl; lvl="$(envget SHARE_LEVEL)"; lvl="${lvl:-off}"
+  if [[ "$lvl" == "off" ]]; then
+    echo "  SHARE_LEVEL is off, so a screen on your network gets the dashboard and the node's status and no readings."
+    echo "  To let every screen in the house read them without a token, set SHARE_LEVEL to open in Set up below."
+  else
+    echo "  SHARE_LEVEL is $lvl: anything on your network can read the sensors. Writing still needs a token."
+  fi
+  echo "  The plan card needs a token at every level: it is the shape of your building."
+  echo
+  echo "  Set up (sources, alerts, packs, keys) asks for the admin token once per browser:"
   echo
   printf '     %s%s%s\n' "$B" "$(envget ADMIN_TOKEN)" "$N"
   echo
-  echo "  Anyone with the token can change what the node reads and where it sends alerts. Treat it like a password."
+  echo "  Anyone with it can change what the node reads and where it sends alerts. Treat it like a password."
+  echo
+  echo "  For closing a loop from a phone — recording that someone acted — the weaker token, which cannot read a"
+  echo "  secret or change a setting:"
+  echo
+  printf '     %s%s%s\n' "$B" "$(envget ACT_TOKEN)" "$N"
 }
 
 

@@ -409,8 +409,10 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
     <h2 class="t" style="font-size:clamp(1.8rem,3vw,2.5rem)">How this node was told to behave.</h2>
     <p class="sub" style="font-size:15.5px;margin-top:12px;max-width:56ch">Everything here is live within about twenty seconds; nothing needs a restart. A blank field hands the setting back to <code style="font-family:var(--fm);font-size:13.5px">.env</code>. A value set here overrides the same key in <code style="font-family:var(--fm);font-size:13.5px">.env</code>.</p>
     <div class="gate card r2" id="gate">
-      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:var(--fm)">planetai ui</code> on the node prints it. Anyone on your network can read the node's own settings; the household's (chat ids, sensor hosts, accounts) and every change need the token.</p>
+      <h3 class="g">Unlock</h3><p>Changing settings needs the admin token. <code style="font-family:var(--fm)">planetai ui</code> on the node prints it, and the weaker one below it. Anyone on your network can read the node's own settings; the household's (chat ids, sensor hosts, accounts) and every change need the token. What a screen with no token at all may read is <code style="font-family:var(--fm)">SHARE_LEVEL</code>, in Node.</p>
       <input type="password" id="tok" placeholder="admin token" autocomplete="off">
+      <p style="margin-top:14px">Or the token for closing a loop only — it records that someone acted, and reads the sensors, but cannot change a setting or read a secret.</p>
+      <input type="password" id="acttok" placeholder="token for closing a loop" autocomplete="off">
       <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap"><button class="btn big" onclick="unlock()">Unlock</button><button class="btn big ghost" onclick="show('now')">Back</button></div>
     </div>
     <div class="setup" id="setup-body" style="display:none">
@@ -446,7 +448,9 @@ body.arranging .arrbar{display:flex}.arrbar .btn{background:var(--green);color:v
 <div class="toast" id="toast"></div>
 <script>
 // ------------------------------------------------------------------ helpers
-const $=s=>document.querySelector(s), api=p=>fetch(p).then(r=>r.ok?r.json():Promise.reject(r.status));
+const $=s=>document.querySelector(s), tok_=()=>localStorage.getItem('planetai_admin')||localStorage.getItem('planetai_act')||'',
+      auth_=()=>tok_()?{authorization:'Bearer '+tok_()}:{},   // SHARE_LEVEL=off answers a read only to this machine or a token
+      api=p=>fetch(p,{headers:auth_()}).then(r=>r.ok?r.json():Promise.reject(r.status));
 // Draw one card without letting it take the others down. paint() is a single try/catch, so before this a throw
 // in any card silently blanked every card below it — and the satellite cards are drawn last.
 function card(where,fn){
@@ -958,7 +962,9 @@ async function drawPlan(){
     // A failure is not an answer: caching {features:[]} here hid this band for the rest of the page's life, with
     // nothing said, after one slow or interrupted load. Leave PLAN null and the next refresh tries again.
     try{PLAN=await api('/place/geojson');}
-    catch(e){planWait('Could not read the map from this node ('+e+'). Trying again on the next refresh.');return;}
+    catch(e){planWait(e===403
+      ? 'The plan is the shape of this building, so this node answers it only on the machine it runs on, or to a request carrying a token. Unlock in Set up to draw it here.'
+      : 'Could not read the map from this node ('+e+'). Trying again on the next refresh.');return;}
   }
   const F=PLAN.features||[];
   if(!F.length){
@@ -1046,7 +1052,7 @@ async function layoutSave(){
 }
 
 // ------------------------------------------------------------------ actions
-async function act(id){const note=prompt('What did you do? A few words is enough.','')||'acted';const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});toast(r.ok?`Recorded. Alert #${id} led to an action.`:'Could not record that.',!r.ok);refresh();}
+async function act(id){const note=prompt('What did you do? A few words is enough.','')||'acted';const r=await fetch('/actions',{method:'POST',headers:{'content-type':'application/json',...auth_()},body:JSON.stringify({alert_id:id,stage:'acted',actor:'gui',note})});toast(r.ok?`Recorded. Alert #${id} led to an action.`:'Could not record that.',!r.ok);refresh();}
 async function testAlert(){const r=await fetch('/test-alert',{method:'POST',headers:{authorization:'Bearer '+TOKEN}});const j=r.ok?await r.json():{};toast(r.ok?`Alert #${j.alert_id} sent on every channel.`:'Could not send.',!r.ok);refresh();}
 async function reportNow(){
   const b=$('#report-now'), tok=TOKEN||localStorage.getItem('planetai_admin')||'';
@@ -1057,8 +1063,10 @@ async function reportNow(){
   catch(e){toast('Could not write a report. Is the token still right?',true);}
   finally{b.disabled=false;}
 }
-function unlock(){TOKEN=$('#tok').value.trim();localStorage.setItem('planetai_admin',TOKEN);loadSetup();}
-function lock(){localStorage.removeItem('planetai_admin');TOKEN='';loadSetup();}
+function unlock(){TOKEN=$('#tok').value.trim();localStorage.setItem('planetai_admin',TOKEN);
+  const a=$('#acttok').value.trim(); if(a)localStorage.setItem('planetai_act',a);
+  loadSetup();}
+function lock(){localStorage.removeItem('planetai_admin');localStorage.removeItem('planetai_act');TOKEN='';loadSetup();}
 
 // ------------------------------------------------------------------ set up
 const GROUPS={sources:['Sources','What the node reads: your sensors, your account, and the public references around you.'],alerts:['Alerts','Two reports a day at the hours you choose, in this node\'s own time zone. Between them, only what you asked to be interrupted for; everything else is still recorded, shown here, and summed up in the next report.'],packs:['Packs','Which packs load. Code packs stay off until you allow them; read one before you do.'],integrations:['Integrations','Home Assistant over MQTT, and the Reticulum bridge.'],keys:['Keys','What packs need to reach outside services. Secrets are never shown again once saved.'],agent:['Model','Which model answers the Telegram bot: the node\'s own, a bigger one on your tailnet, or an online one with a key. The strongest reachable is used; the bot falls back to the local one.'],node:['The tree','Who this node reports to, and who may report to it.'],bootstrap:['Bootstrap','Read once at start. Edit .env on the node and run planetai restart.']};

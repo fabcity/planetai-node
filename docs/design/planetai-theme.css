@@ -1,0 +1,18 @@
+/* The dashboard's :root token block, extracted verbatim from app/static/index.html.
+
+   A committed fixture, not a stylesheet: nothing loads this file, and no build step reads it. app/static/index.html
+   stays the only source of these values. `python3 tools/check_theme.py` reports when the two have drifted apart, so
+   that a changed token shows up as a diff in a review instead of on a wall screen. Regenerate with
+   `python3 tools/check_theme.py --write`. */
+:root{
+  --bg:#16150F;--ink:#F4ECE2;--ink2:#C7BFB2;--mute:#A39B8D;--dim:#8A8378;
+  --card:rgba(244,236,226,.05);--card2:rgba(244,236,226,.08);--line:rgba(244,236,226,.09);--line2:rgba(244,236,226,.22);
+  /* Colour is a role, never decoration. green = a response, a loop closed, an act taken.
+     red = a signal that got worse or crossed a line. blue = data, identity, a selected cell.
+     orange = what only the satellite knows, and nothing else. Anything else is ink.
+     This page is the dark register: Fab Blue #20388D measures 1.72:1 on ink and is invisible,
+     so blue here is the lifted #7FA5E8 at 7.21:1. It may never appear on paper (2.29:1). */
+  --red:#E62038;--blue:#7FA5E8;--green:#00A057;--orange:#FF931E;
+  --fd:"Funnel Sans",system-ui,sans-serif;--fb:"Figtree",system-ui,sans-serif;
+  --fm:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
