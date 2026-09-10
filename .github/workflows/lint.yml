@@ -10,6 +10,11 @@ jobs:
       # numpy for tests/test_earth.py, duckdb for the rule replays in test_nearby and test_shipped.
       # Without them those suites skip, and tests/all fails a run whose skips are not declared.
       - run: pip install pyyaml numpy duckdb
+      # The app's own dependencies, so three checks stop skipping on a clean runner: test_share's
+      # request half (it drives FastAPI's TestClient, and it is the only test of the share-level
+      # boundary), test_ground, and `make lint`'s import-check — which exists because a function
+      # called as if it were a string took the node down for an hour on 5 September.
+      - run: pip install -r app/requirements.txt
       - run: make lint
       - name: docs match the code
         run: python3 tools/check_docs.py
