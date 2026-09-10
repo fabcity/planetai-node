@@ -14,6 +14,10 @@ RUN pip install --no-cache-dir -r requirements.txt \
  && if [ -s requirements-packs.txt ]; then pip install --no-cache-dir -r requirements-packs.txt; fi
 # every module, not a list — a list silently omits new files and the app dies on import (v0.4.1)
 COPY *.py ./
+# app/ is not volume-mounted (docker-compose.yml mounts config, packs, out, backups, exports only),
+# so a package directory reaches the image only by being named here. `COPY *.py` does not see it,
+# and neither does it see the .yml files the issues are declared in.
+COPY issues ./issues
 COPY static ./static
 EXPOSE 8080
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
