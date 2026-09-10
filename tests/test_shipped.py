@@ -445,3 +445,36 @@ assert "tool %s failed" in agent, \
     "agent_loop.py: a failed tool call must reach the log, not only the model"
 
 print("v0.41.3: the node session lives for one question, and a failed tool call says so in the log")
+
+
+# ---- v0.44 · the small ones. Each of these shipped once and nothing would have caught it a second time.
+
+# F6: a stray `#` at 6 Sep's "/export returned 500 on every call" fix swallowed three keys out of the
+# CC-BY export, so a consumer could not tell a CAMS model point-sample from a measured reading except by
+# matching sensor-id strings — in a repository whose provenance rule is that live and derived never mix.
+# Read the dict the function actually builds, not the SQL above it: the SQL still selected all three.
+import ast as _ast  # noqa: E402
+
+_export_keys = set()
+for _n in _ast.walk(_ast.parse(main)):
+    if isinstance(_n, _ast.FunctionDef) and _n.name == "export":
+        for _d in _ast.walk(_n):
+            if isinstance(_d, _ast.Dict) and any(
+                isinstance(_k, _ast.Constant) and _k.value == "sensor" for _k in _d.keys if _k):
+                _export_keys = {_k.value for _k in _d.keys if isinstance(_k, _ast.Constant)}
+assert {"t", "sensor", "metric", "kind", "local", "indoor"} <= _export_keys, \
+    f"/export's hourly rows must carry kind, local and indoor — a comment ate them once. Built: {sorted(_export_keys)}"
+
+# S4: `planetai storage` printed the read-only backup token, and `planetai storage` is what somebody pastes
+# into an issue when their backups have stopped. `planetai ui` is the one command that prints a token to a
+# person sitting at the machine; nowhere else may.
+_fn, _leaks = "", []
+for _i, _line in enumerate(cli.split("\n"), 1):
+    _m = re.match(r"^([a-z_]+)\(\)", _line)
+    if _m:
+        _fn = _m.group(1)
+    if re.search(r"(printf|echo)\b.*envget [A-Z_]*TOKEN", _line) and _fn != "cmd_ui":
+        _leaks.append(f"bin/planetai:{_i} ({_fn or 'top level'})")
+assert not _leaks, "a token is printed outside cmd_ui: " + "; ".join(_leaks)
+
+print("v0.44: /export carries its provenance columns, and only planetai ui prints a token")

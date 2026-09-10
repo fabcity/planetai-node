@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #   curl -fsSL planetai.fab.city/install | bash
 #
-# The whole install, from a blank machine. Checks the machine, downloads a signed tarball, hands off to
-# `planetai setup`, which asks you four things and does the rest. Safe to re-run: it updates in place.
+# The whole install, from a blank machine. Checks the machine, downloads the tarball and verifies its
+# published checksum, then hands off to `planetai setup`, which asks you four things and does the rest.
+# Safe to re-run: it updates in place.
 #
 # It needs curl and tar, which every macOS and every Linux already has. It does not need git, does not
 # install a package manager, and never runs sudo.

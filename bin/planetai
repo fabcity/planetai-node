@@ -541,7 +541,7 @@ cmd_doctor() {
   # reinstall over a leftover volume: pg_isready happy, the app locked out, the install's doctor all green.
   chk "app logs in to the database" "h=\"\$(curl -sf localhost:$p/health)\"; [[ -n \"\$h\" ]] && ! grep -q '\"schema\": *\"pre-0.4' <<< \"\$h\""   "the app cannot use the database (planetai logs shows 'password authentication failed'): the POSTGRES_PASSWORD in .env does not match the database volume, usually after a reinstall over an earlier node's volume. Keep the data: restore the earlier .env. Start clean: planetai stop && docker volume rm planetai_db && planetai start"
   chk "coordinates set"          "grep -qE '^NODE_LAT=-?[0-9]' .env"                    "planetai setup"
-  chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]#]' .env"  "a space after = makes the shell run the value: grep -nE '^[A-Z_]+= +[^ #]' .env"
+  chk ".env has no stray spaces" "! grep -qE '^[A-Z_]+=[[:space:]]+[^[:space:]]' .env"   "a space after = makes the shell run the value, and a `#` after it hands the container the comment: grep -nE '^[A-Z_]+= +' .env"
   chk "backup destination mounted" "mounted \"\$(envget BACKUP_DIR || echo ./backups)\""   "the NAS or drive in BACKUP_DIR is not mounted; tonight's backup will refuse. Mount it, or: planetai storage set backups <dir>"
   chk "a backup in the last 2 days" "[[ -n \"\$(find \"\$(envget BACKUP_DIR || echo ./backups)\" -name '*.sql.gz' -mtime -2 2>/dev/null)\" ]]"   "planetai backup — and check cron: crontab -l | grep backup"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
@@ -1002,6 +1002,10 @@ cmd_ui() {
   echo
   echo "  Anyone with it can change what the node reads and where it sends alerts. Treat it like a password."
   echo
+  echo "  For a NAS that collects backups — read-only, fetches dumps and nothing else:"
+  echo
+  printf '     %s%s%s\n' "$B" "$(envget BACKUP_TOKEN)" "$N"
+  echo
   echo "  For closing a loop from a phone — recording that someone acted — the weaker token, which cannot read a"
   echo "  secret or change a setting:"
   echo
@@ -1055,13 +1059,15 @@ cmd_storage() {
   if [[ "$(envget IPFS_PUBLISH)" == "1" ]]; then local ncid=0; [[ -f "$ex/CIDS.txt" ]] && ncid="$(wc -l < "$ex/CIDS.txt" | tr -d ' ')"; echo "  IPFS               publishing. $ncid CID(s) in $ex/CIDS.txt"
   else echo "  IPFS               off.  planetai ipfs   to publish each day's export to the commons"; fi
   echo
-  echo "  Pulled by a NAS    GET /backups and /backups/<file> with this read-only token:"
-  printf '                     %s%s%s\n' "$B" "$(envget BACKUP_TOKEN)" "$N"
+  local btok shown; btok="$(envget BACKUP_TOKEN)"
+  # Not the token itself: this is the command somebody pastes into an issue when their backups stop.
+  [[ -n "$btok" ]] && shown="set  ·  planetai ui prints it" || shown="not set — planetai update writes one"
+  echo "  Pulled by a NAS    GET /backups and /backups/<file>, with the read-only backup token:"
+  printf '                     %s\n' "$shown"
   echo
   echo "  Change:  planetai storage set backups /Volumes/NAS/planetai    set remote r2:planetai/$(envget NODE_NAME)    set keep 60"
 }
 
-cmd_backup() { step "Backup"; ./backup.sh || fail "see above"; }
 
 # ---------------------------------------------------------------- remove
 # A node is a folder, two containers and a volume. Taking it off a machine was three commands in
@@ -1322,7 +1328,7 @@ cmd_update()  {
   docker info >/dev/null 2>&1 || fail "there is no container runtime running, so there is nothing to update and nothing to back up.
    Start it, or install one — planetai preflight names the one for this machine — then run this again."
   chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
-cmd_backup()  { chmod +x backup.sh; ./backup.sh; }
+cmd_backup()  { step "Backup"; chmod +x backup.sh; ./backup.sh || fail "see above"; }   # one definition: bash took the last, and the last had no `fail`
 cmd_config()  { ( : </dev/tty ) 2>/dev/null || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }; "${EDITOR:-nano}" .env </dev/tty && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
 cmd_start()   { docker compose up -d && say "started"; }
 cmd_stop()    { docker compose down && say "stopped (data kept)"; }
@@ -1345,7 +1351,6 @@ case "${1:-help}" in
   packs) shift; cmd_packs "$@";;
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;
-  backup) cmd_backup;;
   remove|uninstall) shift; cmd_remove "$@";;
   restore) shift; cmd_restore "$@";;
   ipfs) cmd_ipfs;;

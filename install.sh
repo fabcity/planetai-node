@@ -440,7 +440,7 @@ if [[ $NEWPW -eq 1 ]]; then
     die "not starting a node whose app cannot log in to its database"
   fi
 fi
-  [[ -n "$(grep -E "^ADMIN_TOKEN=" .env | cut -d= -f2- | sed "s/[[:space:]]*#.*//" | tr -d " ")" ]] || setenv ADMIN_TOKEN "$(openssl rand -hex 16)"     # unlocks the GUI's settings pages
+  [[ -n "$(grep -E "^ADMIN_TOKEN=" .env | cut -d= -f2- | sed "s/[[:space:]]*#.*//" | tr -d " ")" ]] || setenv ADMIN_TOKEN "$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"     # unlocks the GUI's settings pages
 
 step_ok
 
