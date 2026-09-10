@@ -62,7 +62,7 @@ LINT_EXIT=0
 ```
 
 **Finding zero, again, and it has got worse.** The first review's finding zero was that `make test` runs 17
-suites and CI runs one. `make test` now runs **26** (`Makefile:30`; `v0.42` added
+suites and CI runs one. `make test` now runs **25** (`Makefile:30`; `v0.42` added
 `test_release_consistency`, `test_ship_gate`, `test_daemon_state`, `test_diagnose`, `test_ladder`). CI still
 runs one: `.github/workflows/lint.yml:29-32`, `tests/test_sources.py`. Every security assertion in
 `tests/test_shipped.py` — including the four added in `v0.42` about the MCP session — runs only on a
@@ -623,7 +623,7 @@ doctor rows and matches no value from `.env`. That last assert is the whole poin
 ### S10 · `make test` is one `&&` chain, and `make lint` exits 0 with gates that did not run
 `Makefile:30`, `Makefile` lint target · the multiplier
 
-`Makefile:30` is 26 suites joined by `&&`. The first failure hides the other 25 and nothing counts what ran,
+`Makefile:30` is 25 suites joined by `&&`. The first failure hides the other 24 and nothing counts what ran,
 what failed or what skipped. `make lint` has the mirror problem: this pass's run printed
 `- requirements resolve skipped (venv failed)` as one warning among twelve success lines and exited **0**.
 Six suites print their own "skipped" lines that nobody tallies.
@@ -634,10 +634,10 @@ skip that reads as a pass is not even a green gate.
 **Shorter diff:** `tests/all` — a runner that keeps going, counts pass/fail/skip, prints one line per suite
 and exits non-zero if anything failed **or** if a skip was not on an expected-skip list. Then `make test`
 calls it and `lint.yml` runs `make test` with `numpy` and `duckdb` on the pip line (F3).
-**Could break:** the first green CI run will be red, because 26 suites have never all run on a clean
+**Could break:** the first green CI run will be red, because 25 suites have never all run on a clean
 runner. That is the point of doing it first.
 **Check:** the runner is its own check. `tests/all` with one suite forced to fail must exit non-zero and
-still report the other 25.
+still report the other 24.
 
 ### S11 · the backup cron the installer writes cannot find `docker`, and the doctor calls it green
 `install.sh:509-510`, `bin/planetai:546` · **CONFIRMED on node #1, 10 September** · found by running S-group's own verification

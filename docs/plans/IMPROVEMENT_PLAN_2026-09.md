@@ -9,7 +9,7 @@ Status of every finding at this commit: `docs/reviews/RECONCILIATION_2026-09-09.
 decision and 3½ on `docs/SPEC_custody.md` being accepted, so roughly 4½ days can start immediately after
 PR 1 and PR 1 is a day on its own.
 
-**PR 1 is the multiplier and nothing lands before it.** `make test` runs 26 suites, CI runs one, and
+**PR 1 is the multiplier and nothing lands before it.** `make test` runs 25 suites, CI runs one, and
 `make lint` exited 0 on this tree with a gate that did not run. Every PR below is gated; a gate that a
 build does not run is a comment.
 
@@ -97,14 +97,14 @@ idempotent SQL, that day the directory earns itself and not before.
 after a failure, and counts pass / fail / skip — the shape `tools/preflight.sh` already uses for its own
 rows. It exits non-zero if anything failed **or** if a skip is not on a declared expected-skip list, which
 is what makes `make lint`'s silent `- requirements resolve skipped (venv failed)` a failure instead of a
-line nobody reads. `Makefile:30`'s 26-term `&&` chain becomes `bash tests/all`. `lint.yml` gets `numpy` and
+line nobody reads. `Makefile:30`'s 25-term `&&` chain becomes `bash tests/all`. `lint.yml` gets `numpy` and
 `duckdb` on its existing pip line and `- run: make test` in place of the hand-rolled last step.
 **the gate:** the runner is its own gate. In `tests/all`, one line: with `PLANETAI_TEST_FAIL=test_logic.py`
-forcing one suite to fail, the runner must exit non-zero **and** still report the other 25 —
+forcing one suite to fail, the runner must exit non-zero **and** still report the other 24 —
 `[ "$fail" -gt 0 ] && exit 1`, with the per-suite line printed before it.
 **verify:** on `pai-clean`, `make test` prints 26 lines and a total; then push and read the CI log. Expect
 red on the first push.
-**could break:** the first CI run will fail, because 26 suites have never all run on a clean amd64 runner —
+**could break:** the first CI run will fail, because 25 suites have never all run on a clean amd64 runner —
 `tests/test_earth.py` needs `numpy`, `tests/trustdb.py` needs `duckdb`, and `test_ground.py` may want `h3`.
 That is the point: find it now, once, rather than in every PR below.
 **size:** a day. Most of it is whatever the clean runner reveals, not the runner.

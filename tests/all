@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Run every suite. Keep going. Count what happened.
+#
+#   bash tests/all
+#
+# `make test` used to be one line of every suite joined by `&&`, so the first failure hid the other
+# the rest and nothing counted what ran. CI ran one of them (tests/test_sources.py), which
+# meant every security assertion in test_shipped.py only ever ran on whoever remembered to type `make test`.
+# A green tick that tests one suite of twenty-six is worse than a red one, because people believe it.
+#
+# So: run all of them, print a line per suite, and end with a count. Exit non-zero if anything failed, or if
+# a check skipped that is not declared below — a gate that silently did not run is the thing this exists to
+# make visible.
+#
+# Bash 3.2 (Apple's /bin/bash): no `declare -A`, no `mapfile`, no `${var,,}`.
+set -uo pipefail                 # not -e: keeping going after a failure is the entire point
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# Seven suites import `sources` without the real httpx. Same stub `make test` made inline before this file.
+mkdir -p /tmp/stub && printf 'class Client: pass\n' > /tmp/stub/httpx.py
+
+# Suites allowed to print "skipped" and still count as green, and why. A skip from anything else fails the
+# run. These four skip a part of themselves when a dependency or a node is absent; the rest of each still runs.
+#   test_dashboard  the fence check needs a node answering on APP_PORT
+#   test_ground     needs app/requirements.txt installed (h3 and friends)
+#   test_nearby     the ring rule replay needs duckdb
+#   test_shipped    the trust rule replay needs duckdb
+# test_earth deliberately fails rather than skips when numpy is missing (see its own header): a pack that
+# ships because a suite printed "skipped" is the failure it is guarding against. Do not add it here.
+EXPECTED_SKIPS=" test_dashboard test_ground test_nearby test_shipped "
+
+pass=0; fail=0; skips=0; undeclared=0
+failed_names=""; skip_lines=""
+
+# run <name> <command string>
+run() {
+  name="$1"; cmd="$2"
+  t0=$SECONDS; rc=0
+  if [ "${PLANETAI_TEST_FAIL:-}" = "$name" ]; then
+    out="forced failure: PLANETAI_TEST_FAIL=$name"; rc=1      # the runner's own check, see the bottom of this file
+  else
+    out="$(bash -c "$cmd" 2>&1)" || rc=$?
+  fi
+  took=$((SECONDS - t0))
+
+  # A skipped check announces itself on its own line. Count them whether or not the suite passed: a suite
+  # can pass while one of its checks did not run, and that is exactly what nobody was counting.
+  this_skips="$(printf '%s\n' "$out" | grep -i "skipped" || true)"
+  if [ -n "$this_skips" ]; then
+    n=$(printf '%s\n' "$this_skips" | grep -c .)
+    skips=$((skips + n))
+    skip_lines="${skip_lines}$(printf '%s\n' "$this_skips" | sed "s|^ *|      $name: |")
+"
+    case "$EXPECTED_SKIPS" in
+      *" $name "*) ;;
+      *) undeclared=$((undeclared + 1))
+         skip_lines="${skip_lines}      ^^ $name is not in EXPECTED_SKIPS, so this run fails
+" ;;
+    esac
+  fi
+
+  if [ $rc -eq 0 ]; then
+    pass=$((pass + 1)); printf '  \033[32m✓\033[0m %-26s %ds\n' "$name" "$took"
+  else
+    fail=$((fail + 1)); failed_names="${failed_names} ${name}"
+    printf '  \033[31m✗\033[0m %-26s exit %d\n' "$name" "$rc"
+    printf '%s\n' "$out" | tail -12 | sed 's/^/        /'
+  fi
+}
+
+# Exactly the invocations `make test` used, in the same order. One per line: name|command.
+# Keep this list and the Makefile's `test:` target in step — the Makefile now calls this file and nothing else.
+while IFS='|' read -r name cmd; do
+  [ -n "${name:-}" ] || continue
+  case "$name" in \#*) continue;; esac
+  run "$name" "$cmd"
+done <<'SUITES'
+test_release_consistency|bash tests/test_release_consistency.sh
+test_ship_gate|bash tests/test_ship_gate.sh
+test_daemon_state|bash tests/test_daemon_state.sh
+test_diagnose|bash tests/test_diagnose.sh
+test_remove|bash tests/test_remove.sh
+test_sudo_prompt|bash tests/test_sudo_prompt.sh
+test_running_state|bash tests/test_running_state.sh
+test_preflight|bash tests/test_preflight.sh
+test_geocode|bash tests/test_geocode.sh
+test_sources|PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
+test_nearby|PYTHONPATH=/tmp/stub:app python3 tests/test_nearby.py
+test_forecast|PYTHONPATH=/tmp/stub:app python3 tests/test_forecast.py
+test_meshtastic|PYTHONPATH=/tmp/stub:app python3 tests/test_meshtastic.py
+test_logic|PYTHONPATH=/tmp/stub:app python3 tests/test_logic.py
+test_packs|PYTHONPATH=/tmp/stub:app python3 tests/test_packs.py
+test_settings|PYTHONPATH=/tmp/stub:app python3 tests/test_settings.py
+test_ladder|PYTHONPATH=app python3 tests/test_ladder.py
+test_report_schedule|PYTHONPATH=/tmp/stub:app python3 tests/test_report_schedule.py
+test_report_templates|PYTHONPATH=/tmp/stub:app python3 tests/test_report_templates.py
+test_shipped|python3 tests/test_shipped.py
+test_share|PYTHONPATH=app python3 tests/test_share.py
+test_check_ui|python3 tests/test_check_ui.py
+test_dashboard|python3 tests/test_dashboard.py
+test_ground|python3 tests/test_ground.py
+test_briefing|PYTHONPATH=/tmp/stub:app python3 tests/test_briefing.py
+test_earth|PYTHONPATH=/tmp/stub:app python3 tests/test_earth.py
+SUITES
+
+total=$((pass + fail))
+echo
+printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pass" "$fail" "$skips"
+[ -n "$skip_lines" ] && printf '%s' "$skip_lines"
+[ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
+
+# Twenty-six is the number of suites in the list above. If the list and this number disagree, one of them
+# is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
+if [ "$total" -ne 26 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 26 — the list in this file lost or gained a line\n' "$total"
+  exit 1
+fi
+[ "$fail" -gt 0 ] && exit 1
+[ "$undeclared" -gt 0 ] && exit 1
+exit 0
+
+# The runner's own check, because a runner that cannot fail is not a gate:
+#   PLANETAI_TEST_FAIL=test_logic bash tests/all
+# must exit 1, report test_logic as failed, and still run and report the other twenty-four.

@@ -580,7 +580,7 @@ LINT_EXIT=0
 
 `- requirements resolve skipped (venv failed)` is one warning line among twelve success lines, and the
 build is green. `make test` has the mirror problem in the other direction: `Makefile:30` is a single
-`&&` chain of 26 suites, so the first failure hides the remaining 25, and nothing counts what ran, what
+`&&` chain of 25 suites, so the first failure hides the remaining 24, and nothing counts what ran, what
 failed or what skipped. Six suites print their own "skipped" lines that no one tallies.
 
 This is not a style complaint — it is the reason F3 has stayed open through five releases and the reason
