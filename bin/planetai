@@ -121,7 +121,10 @@ envset() { # idempotent upsert
 }
 port() { local p; p="$(envget APP_PORT)"; echo "${p:-8080}"; }
 mesh_packets() { api /health | json 'print(d.get("mesh",{}).get("packets",0))' 2>/dev/null || echo 0; }
-api() { curl -sf "localhost:$(port)$1" 2>/dev/null; }
+# The CLI runs on the node's own machine, but the container sees the Docker bridge gateway, not loopback, so
+# SHARE_LEVEL judges it like any LAN client and at the default (`off`) refuses everything but /health. The
+# node's own command line carries the node's own token; that is what it is for.
+api() { local t; t="$(envget ADMIN_TOKEN)"; curl -sf ${t:+-H "Authorization: Bearer $t"} "localhost:$(port)$1" 2>/dev/null; }
 # `d` is the parsed stdin. The snippet goes on its own line, so loops and ifs work, not only expressions
 # (a `for` after a semicolon is a SyntaxError, and it shipped once).
 json() { python3 -c "import sys,json
@@ -682,7 +685,8 @@ cmd_act() {
   local id="${1:-}"; [[ "$id" =~ ^[0-9]+$ ]] || { echo "usage: planetai act <alert id> [note]"; exit 1; }
   local note="${2:-acted}"
   local body; body="$(python3 -c 'import json,sys; print(json.dumps({"alert_id": int(sys.argv[1]), "stage": "acted", "actor": sys.argv[2], "note": sys.argv[3]}))' "$id" "$(whoami)" "$note")"
-  curl -sf -X POST "localhost:$(port)/actions" -H 'content-type: application/json' -d "$body" >/dev/null && say "recorded: you acted on #$id" || { warn "the node did not record it (is alert #$id real? planetai status shows the ids)"; return 1; }
+  local t; t="$(envget ACT_TOKEN)"; [[ -n "$t" ]] || t="$(envget ADMIN_TOKEN)"
+  curl -sf -X POST "localhost:$(port)/actions" ${t:+-H "Authorization: Bearer $t"} -H 'content-type: application/json' -d "$body" >/dev/null && say "recorded: you acted on #$id" || { warn "the node did not record it (is alert #$id real? planetai status shows the ids)"; return 1; }
   api /rho | json 'print("  rho is now %s  (%s/%s alerts answered, median %s min)" % (d["rho"], d["acted"], d["alerts_act"], d["median_minutes"]))'
 }
 

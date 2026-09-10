@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.43.1 — 2026-09-10 — the node's own commands carry the node's own token
+
+**Fixes what v0.43 broke for anyone who kept the default.** `SHARE_LEVEL=off` judges a request by the address
+the container sees, and Docker publishes the port through its bridge — so the node's *own* machine arrives as a
+LAN client, not as loopback. Four of the node's own callers asked their own API with no token and were refused:
+
+- `planetai update`'s doctor printed `✗ views rebuilt` and `✗ packs loaded` and ended `xx something is off`, on a
+  node that was polling, storing and answering perfectly. Found on bayu-ungasan within an hour of v0.43.
+- `planetai status`, `alerts`, `packs`, `rho`, `sensors` and `report last` all read through one helper, `api()`,
+  which carried no token — so all six returned nothing.
+- `planetai act <id>`, the command the test alert teaches a household to type, could not record an action.
+
+All four now send the node's own token, which is what it is for: `api()` takes `ADMIN_TOKEN`, `planetai act`
+takes `ACT_TOKEN` and falls back to the admin one, and the doctor takes `ADMIN_TOKEN`. Nothing about what a
+*stranger* may read has changed — v0.43's whole point is intact, and a node already set to `open` never saw any
+of this.
+
+`tests/test_share.py` grows the check that would have caught all four: every `curl` any shipped script makes to
+this node's own API must either hit a path on the `off` allowlist or carry a token — including calls through a
+helper, where the path is a variable and so could be anything.
+
 ## v0.43 — 2026-09-10 — a stranger on the WiFi
 
 **A stranger on your network can no longer read your sensors' hostnames or the shape of your building.**
