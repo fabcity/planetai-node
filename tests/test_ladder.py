@@ -31,7 +31,9 @@ def names(**over):
 
 
 assert names(AGENT_PREFER="strongest") == ["online", "remote", "local"], names(AGENT_PREFER="strongest")
-assert names(AGENT_PREFER="fallback") == ["remote", "local", "online"], names(AGENT_PREFER="fallback")
+# online ABOVE local: a rung is skipped only when it fails, and the 4B local model never fails, it answers
+# badly — so online last meant a configured paid model was never reached while the tailnet box slept.
+assert names(AGENT_PREFER="fallback") == ["remote", "online", "local"], names(AGENT_PREFER="fallback")
 assert names(AGENT_PREFER="private") == ["remote", "local"], names(AGENT_PREFER="private")
 
 # fallback with nothing online configured is just the local ladder, not an empty one
@@ -50,7 +52,7 @@ sys.path.insert(0, "app")
 import settings as S  # noqa: E402
 assert S.CHOICES["AGENT_PREFER"] == ("strongest", "fallback", "private"), S.CHOICES.get("AGENT_PREFER")
 
-print("the ladder: strongest online-first, fallback online-last, private online-never, and a non-URL is not a rung")
+print("the ladder: strongest online-first, fallback remote-online-local, private online-never, and a non-URL is not a rung")
 
 # A key that ships blank must not carry a trailing comment. Compose's env_file strips an inline comment only when the
 # key has a value: `KEY=    # note` hands the container "# note". Node #1 ran for weeks with the text of
