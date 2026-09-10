@@ -1,10 +1,12 @@
 # Turn an old laptop into a node
 
-> **Not yet rehearsed.** Every command here is written from the vendors' own documentation and from what
-> `planetai preflight` already knows about the machine, but nobody has walked this end to end on real
-> hardware. Until somebody has, treat it as a plan and not a recipe, and tell **info@fab.city** where it
-> was wrong. The rest of this repository's instructions were rehearsed before they were published; this
-> page is marked because it was not.
+> **Partly rehearsed, and the part that was rehearsed is not the part this page recommends.**
+> On 10 September 2026 a 2015 MacBook Pro became a live node this way — on **Linux Mint 22.3**, which is
+> neither of the two distributions below, and only after its SSD was replaced. So: the Mint route is
+> walked, and §0.5 exists because of what that machine cost before anybody thought to test its disk.
+> The Ubuntu Server and Omarchy routes are still written from the vendors' own documentation and from
+> what `planetai preflight` knows about the machine; nobody has walked either end to end. Treat those
+> two as a plan and not a recipe, and tell **info@fab.city** where they were wrong.
 
 A node's home is a box that stays on. A laptop is designed to go to sleep, which makes it a poor node
 under macOS or Windows and a good one under Linux, where you can simply tell it not to.
@@ -27,8 +29,34 @@ Check the machine is worth it:
 curl -fsSL planetai.fab.city/preflight | bash
 ```
 
-If it prints *"This hardware is a capable node"*, the hardware is fine and only the OS is in the way,
-which is exactly what this page fixes.
+If it prints *"This hardware is a capable node"*, the CPU, the memory and the OS are settled. It does
+not test the disk, which is the next section and the one that matters most on a machine this old.
+
+## 0.5. Test the disk before you trust the machine
+
+The processor in a 2015 laptop is fine. Its SSD has been powered for ten years, and **an old SSD is the
+most likely thing to fail in an old laptop** — not the CPU, not the memory.
+
+It fails in a specific way that is easy to miss: small writes keep working, so the machine feels
+healthy, browses, updates, and only falls over on a long sustained write. Installing a node happens to
+be a long sustained write — a 162 MB database image — so the node install is often the first thing to
+find the fault, and it looks like the installer's fault. It is not.
+
+Five minutes, after Linux is on it and before you rely on it:
+
+```bash
+dd if=/dev/zero of=~/writetest bs=1M count=3000 conv=fsync status=progress; rm -f ~/writetest; sudo dmesg | tail -20
+```
+
+Clean output means it wrote 3 GB without complaint. **`I/O error`, `hard resetting link`, or
+`failed command: WRITE FPDMA QUEUED` means replace the drive** before you go further. A 2.5" SATA SSD
+is the cheapest part of this project and the only one that ends the machine when it goes.
+
+> **`smartctl` saying `PASSED` does not clear the drive.** The tester whose machine taught us this had
+> `overall-health PASSED`, `Reallocated_Sector_Ct 0`, `Current_Pending_Sector 0`,
+> `UDMA_CRC_Error_Count 0` and an empty SMART error log — and it was still the SSD. Those counters
+> measure dead cells and cable corruption; a controller that stops answering under load trips none of
+> them. Trust the write test, not the health summary.
 
 ## 1. Choose which Linux, then make the USB stick
 
@@ -52,8 +80,22 @@ curl -fL -o ~/Downloads/omarchy.iso.sha256 https://iso.omarchy.org/omarchy-4.0.3
 shasum -a 256 -c ~/Downloads/omarchy.iso.sha256      # must say: OK
 ```
 
+**Yes, and you want the ordinary answer.** [Linux Mint](https://linuxmint.com) — Cinnamon, a desktop
+that behaves the way people expect, and the only route on this page anybody has actually walked. It is
+what the 2015 MacBook in the banner runs.
+
+```bash
+curl -fL -o ~/Downloads/linuxmint.iso https://mirrors.kernel.org/linuxmint/stable/22.3/linuxmint-22.3-cinnamon-64bit.iso
+```
+
+Mint used to break the node install: it identifies itself in a way that made Docker's own installer read
+it as Debian and add a repository for a release that did not match, which ended in held broken packages.
+That is fixed — the installer reads `UBUNTU_CODENAME` and takes Docker's documented Ubuntu path. If you
+are cleaning up after an older attempt, `docs/TROUBLESHOOTING.md` has the one line that clears it.
+
 The rest of this page is written for Ubuntu Server, because that is the one a node usually wants. Where
-Omarchy differs, it says so.
+Omarchy differs, it says so. Mint follows the Ubuntu Server steps except that it installs a desktop, so
+you can skip the ethernet advice in §3 if its live session already sees your Wi-Fi.
 
 Write it to the stick with [balenaEtcher](https://etcher.balena.io) — it is the same on macOS, Windows and
 Linux, it refuses to write to your system disk by accident, and it verifies afterwards. Open it, pick the
@@ -158,7 +200,22 @@ still run as a node on mains power, but check it before you put it somewhere you
 cat /sys/class/power_supply/BAT0/health /sys/class/power_supply/BAT0/cycle_count
 ```
 
+## If the install fails
+
+Read what it says: the installer names the step, the reason, the log and the way back, and on a disk
+failure it prints the kernel's own words rather than asking you to go and find them. Then
+[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md), which is organised by what is on your screen.
+
+The one worth knowing before you start: **`FAILED: downloading the database image` with
+`failed commit on ref "layer-sha256:…"` is the disk**, not your network. Go back to §0.5.
+
 ## When you are done
 
 `planetai status` on the machine, or from your laptop over SSH. The node is now a box that stays on,
 which is what it always wanted to be.
+
+---
+
+*Second node on record: `mahon1`, Menorca — a 2015 MacBook Pro, Linux Mint 22.3, live 10 September 2026.
+It took several evenings, six of which were our bugs and one of which was its SSD. Every one of those
+six is fixed and has a test; the seventh is why §0.5 is where it is.*
