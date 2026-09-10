@@ -71,14 +71,31 @@ _SKIPS: dict[str, float] = {}
 def ladder(cfg: dict) -> list[Rung]:
     """Build the ladder from settings (the dashboard's Model page) with the environment as fallback."""
     g = lambda k, d="": (cfg.get(k) or os.getenv(k) or d)  # noqa: E731
+
+    def url_ok(name, u):
+        """A URL that is not one is not a rung. Node #1 held the literal text of .env.example's comment —
+        '# https://api.anthropic.com/v1 or ...' — in AGENT_ONLINE_URL, pasted in through the Model page. With no key
+        set it was harmless and invisible; the moment a key arrived it would have been a rung that could only fail."""
+        if u.startswith("http://") or u.startswith("https://"):
+            return True
+        log.warning("%s rung ignored: %s is not a URL (%r). Set it on the dashboard's Model page.",
+                    name, f"AGENT_{name.upper()}_URL", u[:60])
+        return False
+
     rungs = []
-    if g("AGENT_ONLINE_URL") and g("AGENT_ONLINE_KEY"):
+    if g("AGENT_ONLINE_URL") and g("AGENT_ONLINE_KEY") and url_ok("online", g("AGENT_ONLINE_URL")):
         rungs.append(Rung("online", g("AGENT_ONLINE_URL"), g("AGENT_ONLINE_MODEL", "claude-sonnet-4-6"), g("AGENT_ONLINE_KEY")))
-    if g("AGENT_REMOTE_URL"):
+    if g("AGENT_REMOTE_URL") and url_ok("remote", g("AGENT_REMOTE_URL")):
         rungs.append(Rung("remote", g("AGENT_REMOTE_URL"), g("AGENT_REMOTE_MODEL", "gpt-oss-120b"), g("AGENT_REMOTE_KEY")))
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
-    if g("AGENT_PREFER", "strongest") == "private":
+    prefer = g("AGENT_PREFER", "strongest")
+    if prefer == "private":
         rungs = [r for r in rungs if r.name != "online"]
+    elif prefer == "fallback":
+        # This household's own machines answer first; the online model is the net under them, used only when
+        # neither the tailnet box nor Ollama answers. `strongest` sends every question off the network, which is
+        # the opposite of what someone who wanted a backup asked for.
+        rungs = [r for r in rungs if r.name != "online"] + [r for r in rungs if r.name == "online"]
     for r in rungs:                        # keep the skip clocks across rebuilds
         r.skip_until = _SKIPS.get(r.name, 0.0)
     return rungs
@@ -242,7 +259,15 @@ async def telegram(method: str, **params):
 def ladder_text(pins: dict, chat: str) -> str:
     now = time.time()
     lines = [f"{'→' if pins.get(chat) == r.name else ' '} {r.name:7} {r.model} @ {r.url.replace('http://','').replace('https://','')[:40]}" + ("  (skipped, retry soon)" if r.skip_until > now else "") for r in RUNGS]
-    return "Model ladder, strongest first:\n" + "\n".join(lines) + f"\nPrefer: {'private' if not any(r.name=='online' for r in RUNGS) and os.getenv('AGENT_PREFER')=='private' else 'strongest'}. Pin one: /model local | remote | online. Unpin: /model auto"
+    # cfg(), not os.getenv(): the Model page writes AGENT_PREFER to the database, and reading only the environment
+    # told every household that changed it there that it was still on 'strongest'.
+    prefer = cfg("AGENT_PREFER", "strongest")
+    order = {"private": "the node's own machines only, nothing leaves the network",
+             "fallback": "this machine and your tailnet first, online only if neither answers",
+             "strongest": "strongest first, so online answers whenever it is configured"}
+    return "Model ladder, tried top to bottom:\n" + "\n".join(lines) + \
+        f"\nPrefer: {prefer} — {order.get(prefer, 'unknown value; treated as strongest')}." + \
+        "\nPin one: /model local | remote | online. Unpin: /model auto"
 
 
 async def main():
