@@ -106,7 +106,8 @@ def rho(cur, days_ago: int = 0) -> dict:
                         f AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage IN ('acknowledged','acted') GROUP BY alert_id)
                    SELECT count(a.id) AS alerts_act,
                           count(f.alert_id) FILTER (WHERE f.t - a.ts < interval '24 hours') AS acted,
-                          percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM f.t - a.ts)/60) AS median_minutes
+                          percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM f.t - a.ts)/60)
+                            FILTER (WHERE f.t - a.ts < interval '24 hours') AS median_minutes
                    FROM a LEFT JOIN f ON f.alert_id = a.id""", {"back": days_ago})
     r = cur.fetchone() or {}
     n, acted = int(r.get("alerts_act") or 0), int(r.get("acted") or 0)

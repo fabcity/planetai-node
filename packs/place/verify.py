@@ -26,7 +26,7 @@ try:
 except Exception as e:
     step(2, False, f"place_runs: {e}")
 try:
-    t0 = time.time(); n = A.refresh(con, httpx.Client(), lat, lon, radius); step(3, True, f"OpenStreetMap: {n} features within {radius} m in {time.time()-t0:.0f}s")
+    t0 = time.time(); n = A.refresh(con, httpx.Client(timeout=120), lat, lon, radius); step(3, True, f"OpenStreetMap: {n} features within {radius} m in {time.time()-t0:.0f}s")
 except Exception as e:
     step(3, False, f"OpenStreetMap via Overpass: {e}")
 try:

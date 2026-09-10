@@ -139,8 +139,14 @@ chk "all modules in image" "[ \"\$(ls app/*.py | wc -l)\" -eq \"\$(docker compos
 chk "db healthy"        "docker compose exec -T db pg_isready -U planetai"
 chk "app answering"     "curl -sf localhost:${PORT}/health"
 chk "readings intact"   "[ \$(docker compose exec -T db psql -U planetai -tAc 'SELECT count(*) FROM readings' planetai) -gt 0 ]"
-chk "views rebuilt"     "curl -sf localhost:${PORT}/stats"
-chk "packs loaded"      "curl -sf localhost:${PORT}/packs"
+# The doctor asks the node's own API over the published port, so the container sees the Docker bridge gateway
+# rather than loopback — a LAN client, as far as SHARE_LEVEL is concerned. At the v0.43 default (`off`) an
+# unauthenticated /stats and /packs are refused, and an update on a node that was working perfectly ended
+# "xx something is off" with two red ticks. The node's own maintenance carries the node's own token.
+# /health needs none: it is on every level's allowlist, which is why "app answering" stayed green and hid this.
+AUTH="$(envval ADMIN_TOKEN)"; AUTH="${AUTH:+-H \"Authorization: Bearer ${AUTH}\"}"
+chk "views rebuilt"     "curl -sf $AUTH localhost:${PORT}/stats"
+chk "packs loaded"      "curl -sf $AUTH localhost:${PORT}/packs"
 echo
 if grep -qE 'api\.telegram\.org/bot[0-9]+:' <<< "$(docker compose logs app 2>/dev/null)"; then
   warn "a Telegram bot token is visible in this node's container logs (logged by versions before v0.4.3)."

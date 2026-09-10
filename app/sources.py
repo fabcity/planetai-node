@@ -369,7 +369,7 @@ OM_MAP = {"temperature_2m": "temp_model", "relative_humidity_2m": "humidity_mode
 
 def openmeteo(hc: httpx.Client, lat: float, lon: float):
     r = hc.get("https://api.open-meteo.com/v1/forecast",
-               params={"latitude": lat, "longitude": lon, "current": OM_CURRENT, "timezone": "UTC"})
+               params={"latitude": round(lat, 3), "longitude": round(lon, 3), "current": OM_CURRENT, "timezone": "UTC"})
     r.raise_for_status()
     d = r.json()
     cur = d.get("current") or {}
@@ -431,7 +431,7 @@ def _om_air_sensor(lat, lon):
 
 
 def openmeteo_air(hc: httpx.Client, lat: float, lon: float):
-    r = hc.get(OM_AIR_URL, params={"latitude": lat, "longitude": lon, "current": OM_AIR, "timezone": "UTC"})
+    r = hc.get(OM_AIR_URL, params={"latitude": round(lat, 3), "longitude": round(lon, 3), "current": OM_AIR, "timezone": "UTC"})
     r.raise_for_status()
     cur = (r.json().get("current") or {})
     t = cur.get("time")
