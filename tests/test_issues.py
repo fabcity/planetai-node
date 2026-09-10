@@ -44,9 +44,12 @@ shipped = {p.stem for p in (ROOT / "app/issues").glob("*.yml")}
 for extra in shipped - set(DECL):
     fails.append(f"app/issues/{extra}.yml exists but did not validate")
 
-# The validator has to actually refuse things, or "it validates" means nothing. Six ways in.
+# The validator has to actually refuse things, or "it validates" means nothing. Ten ways in.
 BREAKS = {
     "no kind": lambda d: d.pop("kind"),
+    "no compare mode": lambda d: d["compare"].pop("mode"),
+    "verb with no verbs": lambda d: d["sentences"]["en"].pop("verbs"),
+    "a where for a fifth distance": lambda d: d.__setitem__("where", {"en": {"street": "x"}}),
     "a fifth distance": lambda d: d["distances"].__setitem__("street", None),
     "an unfillable placeholder": lambda d: d["sentences"]["en"]["attribution"].__setitem__("clear", "{room} µg"),
     "a line with no source": lambda d: d["line"].pop("source"),
@@ -127,6 +130,7 @@ for key, d in DECL.items():
 WATER = {
     "name": {"en": "Water", "id": "Air bersih", "es": "Agua"},
     "kind": "sensed", "metric": "turbidity", "unit": "NTU", "dp": 1,
+    "compare": {"mode": "ratio", "margin": 1.5},
     "line": {"value": 5, "unit": "NTU", "source": "WHO drinking-water guideline", "sql": None},
     "packs": {"domains": ["water"], "rules": []},
     "distances": {

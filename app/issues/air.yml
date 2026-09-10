@@ -17,6 +17,13 @@ metric: pm25
 unit: µg/m³
 dp: 0
 
+# How two distances are compared when the sentence says "over" or "level with". A concentration
+# compares by ratio; a temperature has to compare by difference, or 30 °C against 20 °C reads as
+# half again as hot. Each issue says which, because the engine must not guess from the unit.
+compare:
+  mode: ratio
+  margin: 1.5
+
 # The line this issue is judged against. No pack declares a threshold as data — `thresholds:` in
 # both pack.yaml files that have one is prose — so the number is written here once, and `sql:` names
 # the rule whose SQL carries the same number. tests/test_issues.py greps that rule and fails if the
@@ -54,8 +61,12 @@ distances:
   ring:
     from: stats
     place: ring
+    # mean_15m, the same window as the room. Comparing a 15-minute room against a 1-hour ring puts
+    # two different quantities on one scale, which is the thing a stack exists not to do — and it is
+    # the same mistake as a room median against a model's Steadman. /nearby uses mean_1h; it is
+    # answering a different question (who is out there) and is left alone.
     metrics: [pm25]
-    field: mean_1h
+    field: mean_15m
     # Not a plain median. One station reading 152 while the rest read 5 to 12 is either a fire in
     # that lane or a broken sensor, and either way it must not become "the neighbourhood". Tukey's
     # 1.5 x IQR fails at three stations, where the outlier IS the upper quartile; median absolute
@@ -68,6 +79,11 @@ distances:
 
 sentences:
   en:
+    # {verb}: which way the room's own last three hours went against the three before them.
+    verbs:
+      rising:  "Climbing to"
+      steady:  "Holding at"
+      falling: "Falling to"
     attribution:
       clear:         "{verb} {n} {unit} {where}, under the line. {cmp}"
       inside:        "{verb} {n} {unit} {where}, and whatever is burning is in here with you. {cmp}"
@@ -78,6 +94,11 @@ sentences:
     state:
       none: "No air sensor here yet, and no model for this point."
   id:
+    # {verb}: which way the room's own last three hours went against the three before them.
+    verbs:
+      rising:  "Naik ke"
+      steady:  "Bertahan di"
+      falling: "Turun ke"
     attribution:
       clear:         "{verb} {n} {unit} {where}, di bawah batas. {cmp}"
       inside:        "{verb} {n} {unit} {where}, dan sumbernya ada di dalam ruangan ini. {cmp}"
@@ -88,6 +109,11 @@ sentences:
     state:
       none: "Belum ada sensor udara di sini, dan tidak ada model untuk titik ini."
   es:
+    # {verb}: which way the room's own last three hours went against the three before them.
+    verbs:
+      rising:  "Subiendo a"
+      steady:  "Manteniéndose en"
+      falling: "Bajando a"
     attribution:
       clear:         "{verb} {n} {unit} {where}, por debajo del límite. {cmp}"
       inside:        "{verb} {n} {unit} {where}, y lo que arde está aquí dentro. {cmp}"

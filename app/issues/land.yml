@@ -56,6 +56,14 @@ readouts:
     dp: 0
     label: { en: trees, id: pohon, es: árboles }
 
+# "over this square of the map" is the shared phrase and it is nearly right here, but the square is
+# the one packs/earth downloaded, whose size is EARTH_RADIUS_M — so the phrase carries no number and
+# the size travels in provenance instead, where it can be true on every node.
+where:
+  en: { region: of the square this node watches }
+  id: { region: dari kotak yang dipantau node ini }
+  es: { region: del cuadrado que vigila este nodo }
+
 sentences:
   en:
     state:

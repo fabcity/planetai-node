@@ -47,6 +47,67 @@ PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp")
 WHERE_FROM = ("stats", "observations", "earth")
 AGGREGATES = ("mean", "median", "fenced_median")
 FUNCTIONS = ("apparent",)
+COMPARE_MODES = ("ratio", "difference")
+TRENDS = ("rising", "steady", "falling")
+
+# The words shared by every issue, so four files do not carry four copies of "the street". An issue
+# overrides one of these with its own `where:` block — land and coast both rename `region`, because
+# "over this square of the map" is not where a wave is.
+WHERE_WORDS = {
+    "en": {"room": "in the room", "yard": "on the wall outside", "ring": "on the street",
+           "region": "over this square of the map"},
+    "id": {"room": "di dalam ruangan", "yard": "di dinding luar", "ring": "di jalan",
+           "region": "di atas kotak peta ini"},
+    "es": {"room": "en la habitación", "yard": "en la pared de fuera", "ring": "en la calle",
+           "region": "sobre este cuadrado del mapa"},
+}
+# The same four places as things a number can be compared WITH, which is a different phrase in every
+# language and in English too: "over on the street" is not a sentence.
+NOUN_WORDS = {
+    "en": {"room": "the room", "yard": "the wall outside", "ring": "the street", "region": "the model"},
+    "id": {"room": "ruangan", "yard": "dinding luar", "ring": "jalan", "region": "model"},
+    "es": {"room": "la habitación", "yard": "la pared de fuera", "ring": "la calle", "region": "el modelo"},
+}
+# {cmp} is assembled from these. Never a bare number: a comparison a household can read.
+CMP_WORDS = {
+    "en": {"over": "over {noun}", "under": "under {noun}", "level": "level with {noun}"},
+    "id": {"over": "di atas {noun}", "under": "di bawah {noun}", "level": "setara dengan {noun}"},
+    "es": {"over": "por encima de {noun}", "under": "por debajo de {noun}", "level": "igual que {noun}"},
+}
+# Why an issue is in the state it is in. The engine returns the code and the rendered line, so the
+# page draws a kicker without owning any of these words. Eight codes, three locales, one table.
+REASON_WORDS = {
+    "en": {
+        "open_ask_current": "an open ask from {when}, still true",
+        "open_ask_stale":   "one ask still open from {when}; the reading came back on its own",
+        "alert_today":      "a {level} at {when}, since passed",
+        "over_line":        "over the line, and nobody has been asked to do anything",
+        "no_alert":         "nothing to say",
+        "context_only":     "context — it informs, it never asks",
+        "not_watched":      "not watched here",
+        "no_source":        "no source",
+    },
+    "id": {
+        "open_ask_current": "permintaan terbuka sejak {when}, masih berlaku",
+        "open_ask_stale":   "satu permintaan masih terbuka sejak {when}; bacaan sudah kembali sendiri",
+        "alert_today":      "{level} pada {when}, sudah lewat",
+        "over_line":        "di atas batas, dan belum ada yang diminta melakukan apa pun",
+        "no_alert":         "tidak ada yang perlu dikatakan",
+        "context_only":     "konteks — memberi tahu, tidak pernah meminta",
+        "not_watched":      "tidak dipantau di sini",
+        "no_source":        "tidak ada sumber",
+    },
+    "es": {
+        "open_ask_current": "una petición abierta desde {when}, aún vigente",
+        "open_ask_stale":   "queda una petición abierta desde {when}; la lectura volvió por sí sola",
+        "alert_today":      "un {level} a las {when}, ya pasado",
+        "over_line":        "por encima del límite, y no se ha pedido nada a nadie",
+        "no_alert":         "nada que decir",
+        "context_only":     "contexto — informa, nunca pide",
+        "not_watched":      "no se vigila aquí",
+        "no_source":        "sin fuente",
+    },
+}
 
 
 def _problems(key: str, d: dict) -> list[str]:
@@ -79,6 +140,15 @@ def _problems(key: str, d: dict) -> list[str]:
                 if line.get(f) is None:
                     p.append(f"{key}: line.{f} is missing — a line with no named source is a number "
                              f"somebody will have to go and look up")
+
+    cmp_ = d.get("compare") or {}
+    if kind == "sensed":
+        if cmp_.get("mode") not in COMPARE_MODES:
+            p.append(f"{key}: compare.mode is {cmp_.get('mode')!r}; it must be one of {COMPARE_MODES}. "
+                     f"A concentration compares by ratio, a temperature by difference, and the engine "
+                     f"must not guess from the unit.")
+        if not isinstance(cmp_.get("margin"), (int, float)) or cmp_.get("margin") is True:
+            p.append(f"{key}: compare.margin must be a number")
 
     packs = d.get("packs") or {}
     if not isinstance(packs.get("domains"), list) or not packs["domains"]:
@@ -120,11 +190,25 @@ def _problems(key: str, d: dict) -> list[str]:
         for st in want:
             if not state.get(st):
                 p.append(f"{key}: sentences.{loc}.state.{st} is missing")
+        uses_verb = False
         for where, tpl in list(attribution.items()) + list(state.items()):
-            for ph in re.findall(r"\{(\w+)\}", str(tpl)):
+            found = re.findall(r"\{(\w+)\}", str(tpl))
+            uses_verb = uses_verb or "verb" in found
+            for ph in found:
                 if ph not in PLACEHOLDERS:
                     p.append(f"{key}: sentences.{loc}.{where} asks for {{{ph}}}, which the engine "
                              f"does not fill. It fills {', '.join(PLACEHOLDERS)}.")
+        # {verb} is the only placeholder whose words are the issue's own, because "Climbing to" is
+        # right for a concentration and wrong for a sea temperature. An issue that asks for it says
+        # its three words; an issue that does not need not.
+        if uses_verb:
+            for t in TRENDS:
+                if not (s.get("verbs") or {}).get(t):
+                    p.append(f"{key}: sentences.{loc} uses {{verb}}, so sentences.{loc}.verbs.{t} "
+                             f"is needed")
+        for w in (d.get("where") or {}).get(loc, {}):
+            if w not in DISTANCES:
+                p.append(f"{key}: where.{loc}.{w} is not one of {', '.join(DISTANCES)}")
     return p
 
 

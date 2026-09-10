@@ -49,6 +49,12 @@ readouts:
     dp: 1
     label: { en: sea, id: laut, es: mar }
 
+# A wave is not over a square of the map.
+where:
+  en: { region: at the nearest ocean cell }
+  id: { region: di sel laut terdekat }
+  es: { region: en la celda de océano más cercana }
+
 sentences:
   en:
     state:

@@ -12,6 +12,12 @@ metric: apparent          # not a stored metric: computed from temp + humidity b
 unit: °C
 dp: 1
 
+# Degrees compare by difference, not by ratio: 30 °C against 20 °C is ten degrees, not half again
+# as hot. 2 °C is the margin below which two distances are called level with each other.
+compare:
+  mode: difference
+  margin: 2
+
 # Not a global standard, and the file says so out loud. 35 is this place's stress line, measured at
 # node #1 over 2-7 September 2026: the heat-index "extreme caution" 32 the pack shipped with is Kuta
 # Selatan's year-round baseline, not an event. `sql:` names the rule carrying the same number and
@@ -53,7 +59,7 @@ distances:
     from: stats
     place: ring
     metrics: [temp, humidity]
-    field: mean_1h
+    field: mean_15m
     aggregate: fenced_median
     function: apparent
   region:
