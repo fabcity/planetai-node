@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "planetai": {
+      "type": "http",
+      "url": "${PLANETAI_MCP_URL:-http://localhost:8080/mcp}",
+      "headers": {
+        "Authorization": "Bearer ${PLANETAI_ADMIN_TOKEN}",
+        "X-Agent": "${PLANETAI_AGENT_NAME:-someone-with-an-agent}"
+      }
+    }
+  }
+}
