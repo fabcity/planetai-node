@@ -69,6 +69,30 @@ assert "headers" not in code_of("_is_local"), \
     "_is_local reads a header: X-Forwarded-For would make the loopback bypass a one-line spoof. Use request.client only."
 print("allowlists: the plan, the raw settings and every write are off them")
 
+# The node calls its own API over the published port — update.sh's doctor, backup.sh's export, the CLI. Those
+# arrive at the container as the Docker bridge gateway, not loopback, so SHARE_LEVEL judges them like any LAN
+# client. Every such call must therefore either hit a path on the `off` allowlist or carry a token. v0.43 shipped
+# without this check and update.sh's doctor reported two failures on a healthy node (found on bayu-ungasan).
+_off_paths = set(re.findall(r'"(/[a-z0-9/._-]*)"', SRC[SRC.index("_SHARE_OFF = ("):SRC.index("_SHARE_OPEN = (")]))
+_selfcalls = []
+for f in ("update.sh", "backup.sh", "install.sh", "bin/planetai"):
+    text = open(f).read()
+    for i, line in enumerate(text.splitlines(), 1):
+        # A literal path, or a variable one ($1 in a helper) — an unknown path is the dangerous case, because a
+        # helper is reused: bin/planetai's api() reaches six endpoints through one curl and one $1.
+        for path in re.findall(r'curl[^|;]*?localhost:[^/\s"]+(/[a-z0-9/._-]+|\$\{?\w+)', line):
+            if path in _off_paths or "Authorization" in line:
+                continue
+            # the header may reach curl through a variable ($AUTH, $t, $tok): accept any name this file
+            # assigns an Authorization header to, so the check follows the fix and not its spelling.
+            names = set(re.findall(r'\$\{?(\w+)', line))
+            if any(re.search(rf'^\s*(?:local\s+)?{n}=.*Authorization', text, re.M) for n in names):
+                continue
+            _selfcalls.append(f"{f}:{i} {path}")
+assert not _selfcalls, ("these call the node's own API on a path SHARE_LEVEL=off refuses, with no token — they "
+                        f"will fail on a default node: {_selfcalls}")
+print("self-calls: every one is on the off allowlist or carries a token")
+
 # The setting itself, and the reserved names that are refused rather than silently accepted.
 assert '"SHARE_LEVEL"' in SETTINGS and '"ACT_TOKEN"' in SETTINGS, "settings.py: both new keys"
 assert '"SHARE_LEVEL":   ("off", "open")' in SETTINGS, "settings.py: SHARE_LEVEL must refuse anything but off and open"
