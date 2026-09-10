@@ -4,8 +4,10 @@
   remote   a bigger local model elsewhere on your tailnet: a laptop's Ollama, an exo cluster. Private, no key.
   local    Ollama on this machine, qwen3:4b. Always there.
 
-AGENT_PREFER=strongest tries online, remote, local in that order; AGENT_PREFER=private never uses online. A rung that
-is unreachable, unauthorised or erroring is skipped for five minutes. `/model` in Telegram shows the ladder and which
+AGENT_PREFER=strongest tries online, remote, local in that order. =fallback tries your own remote model first, then
+online, then local — online above local because a rung is skipped only when it *fails*, and a 4B model never fails,
+it answers badly. =private never uses online at all. A rung that is unreachable, unauthorised or erroring is
+skipped for five minutes. `/model` in Telegram shows the ladder and which
 rung answered; `/model local` pins one for the conversation.
 
 All three speak the OpenAI-compatible chat protocol with tools, which Ollama, exo, OpenAI and Anthropic all serve.
@@ -27,6 +29,7 @@ import os
 import time
 
 import httpx
+from contextlib import asynccontextmanager
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -70,14 +73,35 @@ _SKIPS: dict[str, float] = {}
 def ladder(cfg: dict) -> list[Rung]:
     """Build the ladder from settings (the dashboard's Model page) with the environment as fallback."""
     g = lambda k, d="": (cfg.get(k) or os.getenv(k) or d)  # noqa: E731
+
+    def url_ok(name, u):
+        """A URL that is not one is not a rung. Node #1 held the literal text of .env.example's comment —
+        '# https://api.anthropic.com/v1 or ...' — in AGENT_ONLINE_URL, pasted in through the Model page. With no key
+        set it was harmless and invisible; the moment a key arrived it would have been a rung that could only fail."""
+        if u.startswith("http://") or u.startswith("https://"):
+            return True
+        log.warning("%s rung ignored: %s is not a URL (%r). Set it on the dashboard's Model page.",
+                    name, f"AGENT_{name.upper()}_URL", u[:60])
+        return False
+
     rungs = []
-    if g("AGENT_ONLINE_URL") and g("AGENT_ONLINE_KEY"):
+    if g("AGENT_ONLINE_URL") and g("AGENT_ONLINE_KEY") and url_ok("online", g("AGENT_ONLINE_URL")):
         rungs.append(Rung("online", g("AGENT_ONLINE_URL"), g("AGENT_ONLINE_MODEL", "claude-sonnet-4-6"), g("AGENT_ONLINE_KEY")))
-    if g("AGENT_REMOTE_URL"):
+    if g("AGENT_REMOTE_URL") and url_ok("remote", g("AGENT_REMOTE_URL")):
         rungs.append(Rung("remote", g("AGENT_REMOTE_URL"), g("AGENT_REMOTE_MODEL", "gpt-oss-120b"), g("AGENT_REMOTE_KEY")))
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
-    if g("AGENT_PREFER", "strongest") == "private":
+    prefer = g("AGENT_PREFER", "strongest")
+    if prefer == "private":
         rungs = [r for r in rungs if r.name != "online"]
+    elif prefer == "fallback":
+        # Your own big model, then the online one, then the small local model last.
+        #
+        # Online has to sit ABOVE local, not below it. A rung is skipped only when it *fails*, and qwen3:4b never
+        # fails — it answers, weakly. Putting online last therefore meant that the moment the tailnet box was
+        # asleep the household got 4B answers and the paid model it had configured was never once reached. Local
+        # stays on the bottom as the floor that works with no internet at all.
+        rank = {"remote": 0, "online": 1, "local": 2}
+        rungs.sort(key=lambda r: rank[r.name])
     for r in rungs:                        # keep the skip clocks across rebuilds
         r.skip_until = _SKIPS.get(r.name, 0.0)
     return rungs
@@ -147,6 +171,27 @@ async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | 
     return r.json()["choices"][0]["message"]
 
 
+@asynccontextmanager
+async def node_session(hc: httpx.AsyncClient):
+    """One MCP session per question, not one per process. Yields (session, tools).
+
+    A session held open for the life of the container dies with the first network blip or server-side expiry, and
+    every POST /mcp after that comes back 404 'session not found'. Nothing crashes and nothing is logged, because
+    call_tool's exception is written into the tool result: the model reads "tool error", and answers "I am unable
+    to reach the node" — to every question, forever, until someone restarts the container. That was this node on
+    9 September: the session opened at 15:39, three questions at 22:16, 22:17 and 22:28 sent twelve calls, the app
+    answered 404 to all twelve, and the agent log showed only the calls going out.
+
+    The handshake is four requests to a container on the same bridge, and questions arrive minutes apart, so paying
+    it per question costs nothing anyone can feel. Reconnect logic would be more code and still lose the first call
+    after a drop.
+    """
+    async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
+        async with ClientSession(r, w) as session:
+            await session.initialize()
+            yield session, to_openai_tools((await session.list_tools()).tools)
+
+
 async def ask(session: ClientSession, tools: list[dict], user: str, history: list[dict] | None = None, pin: str | None = None) -> tuple[str, str]:
     """Returns (answer, rung name). Walks the ladder; a rung that fails is skipped for five minutes."""
     now = time.time()
@@ -184,6 +229,10 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                             res = await session.call_tool(fn, args)
                             text = "\n".join(getattr(x, "text", "") for x in res.content)[:8000]
                         except Exception as e:  # noqa: BLE001
+                            # Log it as well as handing it to the model. A tool error the model turns into "I cannot
+                            # reach the node" is invisible otherwise: the line above logs the call, and nothing logs
+                            # that it failed.
+                            log.warning("[%s] tool %s failed: %s: %s", rung.name, fn, type(e).__name__, str(e)[:200])
                             text = f"tool error: {type(e).__name__}: {e}"
                         messages.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
                 return "I ran out of steps. Ask something narrower.", rung.name
@@ -216,7 +265,15 @@ async def telegram(method: str, **params):
 def ladder_text(pins: dict, chat: str) -> str:
     now = time.time()
     lines = [f"{'→' if pins.get(chat) == r.name else ' '} {r.name:7} {r.model} @ {r.url.replace('http://','').replace('https://','')[:40]}" + ("  (skipped, retry soon)" if r.skip_until > now else "") for r in RUNGS]
-    return "Model ladder, strongest first:\n" + "\n".join(lines) + f"\nPrefer: {'private' if not any(r.name=='online' for r in RUNGS) and os.getenv('AGENT_PREFER')=='private' else 'strongest'}. Pin one: /model local | remote | online. Unpin: /model auto"
+    # cfg(), not os.getenv(): the Model page writes AGENT_PREFER to the database, and reading only the environment
+    # told every household that changed it there that it was still on 'strongest'.
+    prefer = cfg("AGENT_PREFER", "strongest")
+    order = {"private": "the node's own machines only, nothing leaves the network",
+             "fallback": "your remote model first, then online, then the small local one as the offline floor",
+             "strongest": "strongest first, so online answers whenever it is configured"}
+    return "Model ladder, tried top to bottom:\n" + "\n".join(lines) + \
+        f"\nPrefer: {prefer} — {order.get(prefer, 'unknown value; treated as strongest')}." + \
+        "\nPin one: /model local | remote | online. Unpin: /model auto"
 
 
 async def main():
@@ -235,48 +292,61 @@ async def main():
     await asyncio.sleep(2)
     log.info("%s: ladder %s", NODE, [f"{r.name}:{r.model}" for r in RUNGS])
     log.info("telegram: %s", f"bot set, answering {len(CHATS())} chat(s): {sorted(CHATS())}" if TG_TOKEN() and CHATS() else "NOT configured (no TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_IDS in settings or .env) — the bot will not answer anyone")
-    async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
-        async with ClientSession(r, w) as session:
-            await session.initialize()
-            tools = to_openai_tools((await session.list_tools()).tools)
+    try:                                   # once, so the log says the node answered and how many tools it offers
+        async with node_session(hc) as (_s, tools):
             log.info("%d tools", len(tools))
-            offset, history, pins = 0, {}, {}
-            while True:
-                if not TG_TOKEN():
-                    await asyncio.sleep(30); continue
-                try:
-                    upd = await telegram("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
-                except TelegramError as e:
-                    msg = e.args[0] if e.args else "error"      # TelegramError carries a status code and advice, never the URL
-                    log.warning("telegram: %s", msg); await asyncio.sleep(30 if msg[:3] in ("401", "409") else 10); continue
-                except Exception as e:  # noqa: BLE001
-                    log.warning("telegram: %s", type(e).__name__); await asyncio.sleep(10); continue
-                for u in upd.get("result", []):
-                    offset = u["update_id"] + 1
-                    m = u.get("message") or {}
-                    chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
-                    if not text:
-                        continue
-                    if chat not in CHATS():
-                        log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
-                        continue
-                    if text.startswith("/act"):
-                        parts = text.split(maxsplit=2)
-                        if len(parts) >= 2 and parts[1].isdigit():
+    except Exception as e:  # noqa: BLE001
+        log.warning("could not reach the node's tools at startup (%s: %s); each question opens its own session anyway",
+                    type(e).__name__, str(e)[:120])
+    offset, history, pins = 0, {}, {}
+    while True:
+        if not TG_TOKEN():
+            await asyncio.sleep(30); continue
+        try:
+            upd = await telegram("getUpdates", offset=offset, timeout=25, allowed_updates=["message"])
+        except TelegramError as e:
+            msg = e.args[0] if e.args else "error"      # TelegramError carries a status code and advice, never the URL
+            log.warning("telegram: %s", msg); await asyncio.sleep(30 if msg[:3] in ("401", "409") else 10); continue
+        except Exception as e:  # noqa: BLE001
+            log.warning("telegram: %s", type(e).__name__); await asyncio.sleep(10); continue
+        for u in upd.get("result", []):
+            offset = u["update_id"] + 1
+            m = u.get("message") or {}
+            chat = str((m.get("chat") or {}).get("id", "")); text = (m.get("text") or "").strip()
+            if not text:
+                continue
+            if chat not in CHATS():
+                log.info("message from chat %s ignored: not in TELEGRAM_CHAT_IDS %s", chat, sorted(CHATS()))
+                continue
+            if text.startswith("/act"):
+                parts = text.split(maxsplit=2)
+                if len(parts) >= 2 and parts[1].isdigit():
+                    try:
+                        async with node_session(hc) as (session, _t):
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2] if len(parts) > 2 else "acted", "agent": f"{NAME}/telegram"})
-                            await telegram("sendMessage", chat_id=chat, text=f"Recorded: you acted on #{parts[1]}.")
-                            continue
-                    if text.startswith("/model"):
-                        arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
-                        if arg in {r.name for r in RUNGS}: pins[chat] = arg
-                        elif arg == "auto": pins.pop(chat, None)
-                        await telegram("sendMessage", chat_id=chat, text=ladder_text(pins, chat))
-                        continue
-                    t0 = time.time()
+                        said = f"Recorded: you acted on #{parts[1]}."
+                    except Exception as e:  # noqa: BLE001
+                        log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
+                        said = f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment."
+                    await telegram("sendMessage", chat_id=chat, text=said)
+                    continue
+            if text.startswith("/model"):
+                arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
+                if arg in {r.name for r in RUNGS}: pins[chat] = arg
+                elif arg == "auto": pins.pop(chat, None)
+                await telegram("sendMessage", chat_id=chat, text=ladder_text(pins, chat))
+                continue
+            t0 = time.time()
+            try:
+                async with node_session(hc) as (session, tools):
                     answer, rung = await ask(session, tools, text, history.get(chat, [])[-6:], pins.get(chat))
-                    history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
-                    log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
-                    await telegram("sendMessage", chat_id=chat, text=answer[:4000])
+            except Exception as e:  # noqa: BLE001
+                # The node itself, not a model: say so plainly rather than letting a model guess at it.
+                log.warning("no session to the node for chat %s: %s: %s", chat, type(e).__name__, str(e)[:200])
+                answer, rung = f"⚠️ I could not open a session to the node just now ({type(e).__name__}). It may be restarting — try again in a moment.", "none"
+            history.setdefault(chat, []).extend([{"role": "user", "content": text}, {"role": "assistant", "content": answer}])
+            log.info("chat %s via %s: %.1fs", chat, rung, time.time() - t0)
+            await telegram("sendMessage", chat_id=chat, text=answer[:4000])
 
 
 if __name__ == "__main__":

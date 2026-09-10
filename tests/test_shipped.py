@@ -426,3 +426,22 @@ for _p, _s in (("nearby", ("stations", "status", "verify", "backfill")),
         assert _os.path.exists(f"packs/{_p}/{_n}.py"), f"packs/{_p}/{_n}.py"
 
 print("v0.40: two packs, two endpoints, three cards, four exclusions, and not one new cell")
+
+# v0.41.3 — the bot's MCP session is opened per question, not per process. Held for the life of the container it
+# expires, every later POST /mcp answers 404 "session not found", and because call_tool's exception becomes the tool
+# *result* the model reads "tool error" and replies "I am unable to reach the node" to everything, forever, with
+# nothing in the log but the calls going out. Node #1, 9 September: three questions, twelve 404s, no error line.
+agent = open("app/agent_loop.py").read()
+assert "async def node_session(" in agent, "agent_loop.py: the node_session helper"
+assert agent.count("streamable_http_client(") == 1, \
+    "agent_loop.py: only node_session may open an MCP session — a second one is a session outliving a question"
+assert re.search(r"^    offset, history, pins = ", agent, re.M), \
+    "agent_loop.py: main's poll loop must sit at the top of main, outside any MCP session — indented deeper it is " \
+    "nested in one again, and that session outlives the question (refresh_ladder has a `while True` of its own, so " \
+    "the loop keyword alone proves nothing)"
+assert agent.count("async with node_session(") >= 2, \
+    "agent_loop.py: /act and each question each open their own session"
+assert "tool %s failed" in agent, \
+    "agent_loop.py: a failed tool call must reach the log, not only the model"
+
+print("v0.41.3: the node session lives for one question, and a failed tool call says so in the log")

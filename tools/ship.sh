@@ -24,20 +24,28 @@ HERE="$(git describe --tags --always)"
 live_version() { curl -fsSL "https://planetai.fab.city/node0/get/VERSION?cb=$RANDOM.$$" 2>/dev/null || echo unreachable; }
 
 if [[ $CHECK -eq 1 ]]; then
+  # The question is whether the site is behind MAIN, so compare main — not HEAD. It compared HEAD, and
+  # HEAD is usually a feature branch: from a branch five commits ahead this printed the branch's own
+  # describe labelled "main is at" and called the site behind, when main and the site agreed exactly.
+  # A release check that cries wolf on every branch is one nobody reads. Shipping refuses anywhere but
+  # main; the check now answers about main from anywhere.
+  MAIN="$(git describe --tags --always main 2>/dev/null)" || die "no main branch here."
+  BR="$(git rev-parse --abbrev-ref HEAD)"
   # VERSION is served with max-age=300, so for a few minutes after a deploy some Cloudflare edges
   # still answer from the old entry. Read once; only if that disagrees, read again a few times before
   # calling the site behind — this check said "behind" seconds after a deploy that had worked, which
   # is the one thing a release check must never get wrong.
   LIVE="$(live_version)"
-  if [[ "$HERE" != "$LIVE" ]]; then
+  if [[ "$MAIN" != "$LIVE" ]]; then
     for _ in 1 2 3 4; do
       sleep 10
       LIVE="$(live_version)"
-      [[ "$HERE" == "$LIVE" ]] && break
+      [[ "$MAIN" == "$LIVE" ]] && break
     done
   fi
-  printf '  main is at          %s\n  the site serves     %s\n' "$HERE" "$LIVE"
-  [[ "$HERE" == "$LIVE" ]] && { say "a tester gets what is on main"; exit 0; }
+  printf '  main is at          %s\n  the site serves     %s\n' "$MAIN" "$LIVE"
+  [[ "$BR" == main ]] || printf '  (you are on %s, at %s — nothing on it is public until it reaches main.)\n' "$BR" "$HERE"
+  [[ "$MAIN" == "$LIVE" ]] && { say "a tester gets what is on main"; exit 0; }
   printf '\033[1;33m!!\033[0m the site is behind. A tester downloading now gets the older node: tools/ship.sh\n'
   exit 1
 fi
