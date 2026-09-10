@@ -56,6 +56,8 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.
 - Nothing runs pip on the host. The node's Python is Apple's 3.9 with the standard library only. The CLI must stay that way.
+- The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES`, and
+  served at `GET /issues`. The node computes; the page draws. A number the page works out for itself is a bug.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.
 

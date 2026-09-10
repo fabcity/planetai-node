@@ -109,21 +109,32 @@ alone lists them.
 
 ## What ships
 
-| pack | kind | what |
-|---|---|---|
-| air-quality | data | PM2.5 rules (inside/outside, spikes), cells |
-| heat | data | apparent temperature, heat stress, nights over 28 °C, a Social cell |
-| insight | data | the air three ways, contributed to every report; daily agreement between indoor, street and model |
-| nearby | data | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
-| forecast | code | wind and rain for the next day, from BMKG and Open-Meteo — context for the report, no alerts, no cell |
-| trust | data | coverage, frozen channels, collocated disagreement — needs a week of a sensor before it names it; all three `info`, no cell, by design |
-| cold-start | data | day one with no hardware: modelled air, normals |
-| open-data-health | data | a CKAN portal's maintenance state → Governance\|City |
-| coast | code | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
-| earth-engine | code | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
-| earth | code | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
-| place | code | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
-| example-cooking-hours | data | a worked example |
+The `issue` column is which band of the dashboard a pack feeds. It comes from the pack's `domain:`,
+except for a cross-domain pack, whose rules are claimed one by one in `app/issues/*.yml`. A pack that
+reaches no issue and is not named as deliberately outside them fails `tests/test_issues.py` — see
+[`DOMAINS.md`](DOMAINS.md).
+
+| pack | kind | issue | what |
+|---|---|---|---|
+| air-quality | data | air | PM2.5 rules (inside/outside, spikes), cells |
+| heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
+| insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
+| nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
+| forecast | code | — feeds air and heat | wind and rain for the next day, from BMKG and Open-Meteo — context for the report, no alerts, no cell |
+| trust | data | — the instruments | coverage, frozen channels, collocated disagreement — needs a week of a sensor before it names it; all three `info`, no cell, by design |
+| cold-start | data | air (`modelled_air_today`, `sensor_vs_model`), heat (`hotter_than_normal`) | day one with no hardware: modelled air, normals |
+| open-data-health | data | — the loop and the Index | a CKAN portal's maintenance state → Governance\|City |
+| coast | code | coast | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
+| earth-engine | code | land (the fallback) | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
+| earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
+| place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
+| example-cooking-hours | data | air | a worked example |
+
+`earth` and `earth-engine` both say something about land and they are **different measures**. Land's
+number is `earth`'s: the change this node computed itself from embeddings it downloaded.
+`earth-engine`'s `land_change_score` is somebody else's cluster's answer over a different footprint;
+it stands in when `earth` has not run, is labelled as the fallback wherever it appears, and the two
+are never averaged.
 
 Ten more ideas, with who might write them: [`PACK_IDEAS.md`](PACK_IDEAS.md).
 
