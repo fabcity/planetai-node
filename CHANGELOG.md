@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.43 — 2026-09-10 — a stranger on the WiFi
+
+**A stranger on your network can no longer read your sensors' hostnames or the shape of your building.**
+Until today anyone on the house WiFi could `curl` this node and get back
+`{"host": "airgradient_84fce6.local", "firmware": "3.1.9"}` next to a room name and your position to five
+decimals — 1.1 m, the doorway — and `/place/geojson` handed them every building footprint and road within
+`PLACE_RADIUS_M` of the address. `SPEC.md §4` said no packet crossed a network boundary; the compose file
+had been publishing 8080 on every interface since v0.1.
+
+**What to set to get the wall screen working again.** The new `SHARE_LEVEL` defaults to `off`, which answers
+a request with no token the dashboard, the node's status and the layout — and no readings. That is the safe
+default, not the useful one: **set `SHARE_LEVEL` to `open` in the dashboard's Set up view** and every screen
+and phone in the house reads the sensors again with no token, which is what most nodes want. Writes still
+need one, at either level. A request *carrying* a token is unchanged at both levels and from anywhere, so the
+NAS pulling `/backups`, Home Assistant and the agent's MCP surface keep working untouched — nothing about
+where the node listens has changed. `/place/geojson` is the exception: the shape of your building needs a
+token at every level, and the dashboard's plan card now says so instead of going blank.
+
+`/health` rounds the node's position to three decimals — 110 m — for every caller at every level, which is
+the rounding `/export` has always used and changes no answer a consumer computes. `/sensors` names its
+columns instead of `SELECT *`, so the next column added to the table stays private until someone publishes
+it on purpose, and for a caller with no token it drops `host`, `firmware`, `mesh_node`, `gateway`, `channel`,
+`root_topic` and `topic` while keeping the provenance that makes a reading citable.
+
+**Closing a loop from a phone** now uses `ACT_TOKEN`, a second weaker token `planetai ui` prints beside the
+admin one: it records that someone acted and reads the sensors, and it cannot read a secret or change a
+setting. On the machine the node runs on, `POST /actions` is open with no token as before. And
+`?tolerance=0` on `/place/geojson`, which skipped simplification and returned an unsimplified kilometre
+against a docstring promising a few hundred KB, is bounded — as is every other numeric parameter in all 44
+routes, checked by an AST walk in `tests/test_share.py`.
+
+Also: `docs/design/planetai-theme.css` holds the dashboard's `:root` tokens as a committed fixture, and
+`tools/check_theme.py` reports when the page and the fixture have drifted apart, so a changed colour shows
+up in a review rather than on a wall screen. Report-only, on purpose.
+
 ## v0.42 — 2026-09-10 — an agent arrives knowing where to start
 
 **The installer rebuild is in.** `planetai remove` removes, and says what it could not; a disk that has

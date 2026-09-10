@@ -65,7 +65,10 @@ def on_message(message):
         return
     alert_id, note = int(m.group(1)), (m.group(2).strip() or "acted (via reticulum)")
     try:
-        httpx.post(f"{API}/actions", json={"alert_id": alert_id, "stage": "acted", "actor": f"lxmf:{src}", "note": note}, timeout=10).raise_for_status()
+        # ACT_TOKEN because this is another container, so the API sees a peer that is not this machine: /actions is
+        # open on loopback only. It arrives here from .env via `env_file`, like every other key this service reads.
+        httpx.post(f"{API}/actions", json={"alert_id": alert_id, "stage": "acted", "actor": f"lxmf:{src}", "note": note},
+                   headers={"Authorization": f"Bearer {os.getenv('ACT_TOKEN', '')}"}, timeout=10).raise_for_status()
         reply(message.source_hash, f"recorded: you acted on #{alert_id}")
     except Exception as e:  # noqa: BLE001
         log.warning("could not record action: %s", e)
