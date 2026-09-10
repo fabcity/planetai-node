@@ -475,7 +475,7 @@ def loop(fn, every: int, delay: int = 0):
     threading.Thread(target=run, daemon=True, name=name).start()
 
 
-hc = httpx.Client(timeout=60, headers={"User-Agent": f"planetai-node/{NODE}"})
+hc = httpx.Client(timeout=60, headers={"User-Agent": "planetai-node"})
 
 
 def bootstrap_once() -> None:
@@ -933,8 +933,9 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
         if row["sensor_id"] not in alias:
             k = "indoor" if row["indoor"] else "outdoor"; counts[k] += 1; alias[row["sensor_id"]] = f"{k}-{counts[k]}"
         return alias[row["sensor_id"]]
-    rows = [{"t": r["bucket"], "sensor": name(r),                      # q() already renders timestamps as ISO strings "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
-             "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]} for r in hourly]
+    rows = [{"t": r["bucket"], "sensor": name(r), "local": r["local"], "indoor": r["indoor"], "kind": r["kind"],
+             "metric": r["metric"], "mean": r["mean"], "min": r["min"], "max": r["max"], "n": r["n"]}   # q() renders timestamps as ISO strings
+            for r in hourly]
     alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)

@@ -73,7 +73,8 @@ services:
 
   # IPFS: publishes the daily export (aggregates, never raw) to the content-addressed commons. profile: ipfs
   ipfs:
-    image: ipfs/kubo:latest
+    image: ipfs/kubo:v0.43.0        # pinned 10 Sep 2026, the current release: an unpinned kubo that
+                                    # changes its data directory on a pull takes the CIDs with it
     profiles: ["ipfs"]
     restart: unless-stopped
     ports: ["4001:4001", "127.0.0.1:5001:5001", "127.0.0.1:8085:8080"]
