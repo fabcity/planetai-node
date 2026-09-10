@@ -1,3 +1,19 @@
+# Start here: what the person in front of you is asking for
+
+Four situations bring somebody to this repository with an agent. Find theirs in the first column, read
+that skill, then do the third column. If none of them fits, read the rest of this file — it is written
+for an agent already inside a running node.
+
+| the person says | read this skill | then do this |
+|---|---|---|
+| "help me install this", "I want a node", "will it run on my old laptop?" | `skills/setup-node/SKILL.md` | Run the preflight first and read its exit code. Never continue past exit 2. |
+| "it stopped working", "no alerts since Tuesday", here is a log | `skills/troubleshoot-node/SKILL.md` | Ask for `planetai doctor --json`, `status --json` and twenty lines of logs. Never `.env`. |
+| "connect this to Claude / Codex / my agent", "how do I reach it from outside?" | `skills/connect-agent/SKILL.md` | Get the URL and token from `planetai agent`. Tailscale, never a port forward. |
+| "put our city on the Fab City Index", "how do we publish cells?" | `skills/publish-to-index/SKILL.md` | Establish the tier first. One node per pilot writes; a home node never does. |
+
+The skills order the documents; they do not replace them. Everything below is what an agent operating a
+node needs to know, and it is the authority.
+
 # For the agent operating this node
 
 You are working on a PLANETAI node: a small computer that connects everything measuring one place, from sensors on the
@@ -40,6 +56,7 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.
 - Nothing runs pip on the host. The node's Python is Apple's 3.9 with the standard library only. The CLI must stay that way.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
+- When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.
 
 ## Changing code
 

@@ -1,0 +1,85 @@
+# planetai-node
+
+> A small program for a computer in somebody's home, lab or community centre. It connects everything that
+> measures one place — a particle sensor on the wall, a radio in a field, the public station down the road,
+> the city's open data, the satellite overhead — into one picture sharp enough to act on, tells the people
+> there in plain sentences on Telegram, and keeps the raw readings on the machine. Apache-2.0, alpha.
+
+The node is also an MCP server with nineteen tools. If you are an agent working for somebody, start with
+AGENTS.md: its first section routes you to the skill for what they are actually asking. Raw URLs below are
+the files themselves.
+
+## Start here
+
+- [AGENTS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/AGENTS.md): the front door for an agent — the routing table, the two ways in, and the invariants that must not be broken.
+- [README.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/README.md): what a node is, what it does, and the one line that installs it.
+- [docs/START_HERE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/START_HERE.md): the human walk-through — which machine, the install, the first ten minutes, and the table of everything that has broken on a real node.
+
+## Skills
+
+- [skills/setup-node/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/setup-node/SKILL.md): installing a node with somebody, from the preflight check to the first alert on their phone.
+- [skills/troubleshoot-node/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/troubleshoot-node/SKILL.md): diagnosing a node that is broken, quiet, or lying — what to ask for, and what never to ask for.
+- [skills/connect-agent/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/connect-agent/SKILL.md): giving your own agent the node's MCP tools over a tailnet, without opening a port.
+- [skills/publish-to-index/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/publish-to-index/SKILL.md): the tier contract for writing cells to the Fab City Index, and why most nodes never do.
+
+## Getting a node running
+
+- [docs/PLATFORMS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/PLATFORMS.md): which machines and operating systems can run a node, with the version floors and where they came from.
+- [docs/REVIVE_A_LAPTOP.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/REVIVE_A_LAPTOP.md): turning an old laptop into a node with Ubuntu Server or Omarchy — a USB stick and about an hour.
+- [docs/MAC_MINI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/MAC_MINI.md): running a node on a Mac that stays on, including the settings that stop it sleeping.
+- [docs/UPDATING.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/UPDATING.md): what `planetai update` does, in what order, and how to get back if it goes wrong.
+- [docs/STORAGE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/STORAGE.md): where the data lives, why never on a network mount, and how backups reach a NAS.
+- [docs/PREFILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/PREFILL.md): what a node knows about a place before it has measured anything.
+
+## What it can tell you
+
+- [docs/USE_CASES.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/USE_CASES.md): what people actually use a node for, written as situations rather than features.
+- [docs/sensors.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/sensors.md): every sensor the node can read, how it finds them, and what each one is good for.
+- [docs/DOMAINS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/DOMAINS.md): air, heat, coast, land and place — what each domain measures and where its thresholds come from.
+- [docs/COVERAGE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/COVERAGE.md): how much of a place a node can honestly claim to see, and how that is computed.
+- [docs/GUI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/GUI.md): the dashboard's four views and what each one is for.
+
+## Extending it
+
+- [docs/PACKS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/PACKS.md): how to add a source, a rule or an Index cell as a folder — the only supported way to extend a node.
+- [docs/PACK_IDEAS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/PACK_IDEAS.md): packs nobody has written yet, with what each would need.
+- [docs/DEVELOPING.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/DEVELOPING.md): working on the node itself — the lint gates, the tests, and why a merge is not a release.
+- [CONTRIBUTING.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/CONTRIBUTING.md): how a change gets in, and who is responsible for it.
+
+## Radios and reachability
+
+- [docs/NETWORKING.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/NETWORKING.md): Tailscale, Meshtastic and Reticulum — what connects to what, and how to reach a node from elsewhere.
+- [docs/MESHTASTIC.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/MESHTASTIC.md): putting sensors on LoRa where there is no WiFi.
+
+## How it is built
+
+- [ARCHITECTURE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/ARCHITECTURE.md): the shape of the whole thing, including the `fci-cells-v0` row the Index reads.
+- [SPEC.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/SPEC.md): what was deliberately left out, and the condition under which it returns.
+- [PRODUCT.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/PRODUCT.md): who a node is for and who pays for what.
+- [CHANGELOG.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/CHANGELOG.md): every release, written as what changed for the person running a node.
+
+## The beta and the reviews
+
+- [docs/BETA_TESTER_GUIDE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/BETA_TESTER_GUIDE.md): what a beta tester is being asked to do and what to report.
+- [docs/reviews/BETA_READINESS_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/BETA_READINESS_2026-09.md): whether the node was ready for testers, and what had to change first.
+- [docs/reviews/CODE_REVIEW_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/CODE_REVIEW_2026-09.md): a full read of the code with the findings that were acted on.
+- [docs/reviews/INSIGHTS_DESIGN_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/INSIGHTS_DESIGN_2026-09.md): how the node decides what is worth saying.
+- [docs/reviews/AGENT_READY_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/AGENT_READY_2026-09.md): the strategy this agent-facing layer implements, and the risks it accepts.
+
+## Handoffs — one feature each, in detail
+
+- [docs/HANDOFF_beta_review.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_beta_review.md): the beta review and what it changed.
+- [docs/HANDOFF_dashboard_violations.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_dashboard_violations.md): the dashboard's design rules and the checker that enforces them.
+- [docs/HANDOFF_earth_pack.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_earth_pack.md): the satellite view of the land, and what it can and cannot say.
+- [docs/HANDOFF_nearby_forecast.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_nearby_forecast.md): the ring of neighbouring stations and the forecast beside it.
+- [docs/HANDOFF_reports.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_reports.md): the morning brief and the other scheduled messages.
+- [docs/HANDOFF_trust.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_trust.md): how the node says how much to trust a number.
+
+## Optional
+
+- [CLAUDE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/CLAUDE.md): a pointer to AGENTS.md, for Claude.
+- [GEMINI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/GEMINI.md): a pointer to AGENTS.md, for Gemini.
+- [packs/air-quality/README.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/packs/air-quality/README.md): the air pack — thresholds, sources, and the place they were written for.
+- [packs/heat/README.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/packs/heat/README.md): the heat pack, and the model pack to copy when writing your own.
+- [packs/coast/README.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/packs/coast/README.md): the coast pack — sea state and what it means for the people on it.
+- [packs/place/README.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/packs/place/README.md): what is around the node, from OpenStreetMap.

@@ -74,6 +74,24 @@ AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
 
+## Bring your own agent
+
+A node is a thing you operate, and most people who install one will do it with an agent beside them. This
+repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of four skills
+in `skills/`, and `make lint` fails if a skill names a command or a path that does not exist. Paste this
+to your agent and nothing else:
+
+> You are helping me with a PLANETAI node — an open-source program that turns a spare computer in my home
+> or lab into a hyperlocal environmental monitor. Start by reading
+> https://raw.githubusercontent.com/fabcity/planetai-node/main/AGENTS.md — its first section is a table
+> that routes you to the right skill for what I am asking, and the rest of it is what you must not break.
+> Read that skill before you tell me to run anything. Never ask me for the contents of my `.env` file, and
+> never suggest exposing the node to the internet; the answer to reaching it from elsewhere is Tailscale.
+
+`llms.txt` indexes every document here for an agent arriving from outside, and `.mcp.json` wires a clone of
+this repository to a running node — the URL and the token come from your shell, so nothing secret is in the
+file. `planetai agent` on the node prints the three facts you need for any other client.
+
 ## Layout
 
 ```

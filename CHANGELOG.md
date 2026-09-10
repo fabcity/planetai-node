@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.42 — 2026-09-10 — an agent arrives knowing where to start
+
+**The installer rebuild is in.** `planetai remove` removes, and says what it could not; a disk that has
+gone read-only is diagnosed with the kernel's own words instead of a guess about the drive; the daemon is
+no longer called dead while it is answering; stopping means the socket too; and the release check answers
+about main from whatever branch you are on. Those merged over the last two days and are the reason this
+release exists at all.
+
+**And the repository now tells an agent where to begin.** Everything agent-facing here was written for an
+agent already inside a running node — the invariants, the nineteen tools, what not to break. The four
+people who actually turn up with an agent are somewhere else: no node yet, a node that went quiet at 9pm,
+a wish to hold the node's tools, a city wanting to publish cells. `AGENTS.md` opens with a routing table
+to four skills in `skills/` that answer exactly those; `llms.txt` indexes every document; `.mcp.json`
+wires a clone to a node with nothing secret in the file; a README paragraph is the one thing to paste to
+your agent; and a pull-request template says a person is responsible for every change, whatever wrote it.
+
+Why now: an agent given a list of invariants and no starting point improvises, and we have already merged
+nothing and lost an afternoon to a contribution that was confidently shaped wrong. `tools/check_docs.py`
+now refuses to build when a skill names a command or a path that does not exist, when `AGENTS.md` fails to
+route to a skill that exists, or when `llms.txt` links to a file that does not — because a prompt nobody
+lints rots faster than the docs it replaced.
+
 ## v0.41.2 — 2026-09-08 — the traces say what hour it is
 
 **Every small trace now has a time under it, and tells you the exact hour when you hover.** They were shapes with
