@@ -8,8 +8,8 @@ is allowed to assume exist. `tests/test_issues_schema.py` asserts every name in 
 
 Two seams are deliberate and marked:
 
-  · `place_of` is the ONE function `docs/SPEC_custody.md` changes when it is accepted. Today `local`
-    carries two meanings at once — "ours" and "here" — and this function reads it as geography.
+  · `place_of` is the ONE function the custody spec changes when it is accepted (docs/SPEC_custody.md,
+    which is pending). Today `local` carries two meanings at once — "ours" and "here" — and this function reads it as geography.
     Custody makes `kind IN ('own','child')` the ownership test and leaves `local` as geography, at
     which point the `local` clauses below become `kind` clauses and nothing else in this package moves.
 

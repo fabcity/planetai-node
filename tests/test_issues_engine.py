@@ -150,11 +150,26 @@ check(round(OUT["issues"]["land"]["stack"]["region"]["value"], 1) == 1.2,
 check(OUT["issues"]["land"]["stack"]["region"]["source"].startswith("this node's own"),
       "land's sentence and stack come from the node's own record, not from Earth Engine's score")
 
-# 5: the fallback is named as a different measure
+# 5: with no record, land is `none` — it does not reach for a different measure of the same idea.
+# The capture still HOLDS a land_change_score row (observations keeps the latest per source per
+# metric forever, and node #1 ran earth-engine before v0.33.1 retired that metric), so this is the
+# case where falling back would put a year-old number on the wall as this year's answer.
+check(any(o["metric"] == "land_change_score" for o in FIX["observations"]),
+      "the capture no longer holds a retired land_change_score row, so this case proves nothing")
 no_earth = run(earth=None)
-lr = no_earth["issues"]["land"]["stack"]["region"]
-check(lr is not None and lr.get("fallback"), "with no earth record, land falls back and says so")
-check(lr["value"] == 0.037, f"the fallback is ee-point's land_change_score, got {lr['value']}")
+land = no_earth["issues"]["land"]
+check(land["stack"]["region"] is None, "with no earth record land's region is empty")
+check(land["state"] == "none" and land["reason"]["code"] == "no_source",
+      f"with no earth record land is {land['state']}/{land['reason']['code']}, expected none/no_source")
+check("earth fetch" in land["sentence"]["en"] or "satellite record" in land["sentence"]["en"],
+      f"land must say how to get a record: {land['sentence']['en']}")
+check(land["readouts"], "land keeps its built and trees readouts with no change record")
+# and the mechanism is gone, not just unused
+from issues import _distance_problems  # noqa: E402
+check(_distance_problems("x", {"from": "earth", "fallback": {"from": "observations",
+                                                            "sensor_id": "ee-point",
+                                                            "metrics": ["land_change_score"]}}),
+      "the validator must refuse a fallback, or the retired metric comes back in a fork")
 
 # 6: none — no source at all
 empty = {"stats": [], "observations": [], "alerts": [], "actions": [], "readings_1h": []}
@@ -183,6 +198,13 @@ check(part["issues"]["land"]["state"] == "none" and part["issues"]["land"]["watc
       "an undeclared issue is none and not watched")
 check(part["issues"]["land"]["reason"]["code"] == "not_watched",
       "and it says that, rather than pretending it has no source")
+for loc in I.LOCALES:
+    s = part["issues"]["coast"]["sentence"][loc]
+    check("watch" in s.lower() or "pantau" in s.lower() or "vigila" in s.lower(),
+          f"an unwatched issue's {loc} sentence must say it is not watched, not that there is no "
+          f"source — there may well be one: {s}")
+check(part["issues"]["coast"]["sentence"]["en"][0].isupper(),
+      "and it must be a sentence")
 check(part["headline"] == "heat", "the headline only ever comes from the declared issues")
 
 # --- the headline rule ---------------------------------------------------------------------------

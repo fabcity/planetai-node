@@ -253,11 +253,13 @@ def _distance_problems(where: str, spec) -> list[str]:
         p.append(f"{where}.function is {fn!r}; the engine knows {FUNCTIONS}")
     if fn == "apparent" and len(spec.get("metrics") or []) != 2:
         p.append(f"{where} applies apparent(), which needs exactly two metrics: temperature then humidity")
+    # There is no `fallback:`. It existed for one afternoon, pointing at a metric retired in v0.33.1,
+    # and the reason it was retired is the reason not to have the mechanism: a second number for one
+    # idea, with different provenance, is worse than one number. An issue with no source says so.
     if "fallback" in spec:
-        p += _distance_problems(f"{where}.fallback", spec["fallback"])
-        if not (spec["fallback"] or {}).get("note"):
-            p.append(f"{where}.fallback needs a note saying what it is, because a fallback that is a "
-                     f"different measure must be named as one wherever it appears")
+        p.append(f"{where} has a fallback. Issues do not fall back to a different measure of the "
+                 f"same idea — see the region column in app/issues/land.yml for why. A distance "
+                 f"with no source is empty and the page says why.")
     return p
 
 

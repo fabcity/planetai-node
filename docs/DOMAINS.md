@@ -18,7 +18,7 @@ is the node's own instruments, not the place at all.
 |---|---|---|---|
 | **air** | `air-quality`, `nearby` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
 | **heat** | `heat` | sensed | 35 °C apparent — measured at node #1, this place's line and not a global one |
-| **land** | `earth`, `earth-engine` | context | none. A year-over-year change is not a threshold |
+| **land** | `earth` (the change), `earth-engine` (built, trees) | context | none. A year-over-year change is not a threshold |
 | **coast** | `coast` | context | none |
 | — | `forecast` (weather) | | feeds air and heat |
 | — | `place` | | the ground, its own band on the dashboard |

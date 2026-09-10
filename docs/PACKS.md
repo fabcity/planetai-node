@@ -125,16 +125,20 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | cold-start | data | air (`modelled_air_today`, `sensor_vs_model`), heat (`hotter_than_normal`) | day one with no hardware: modelled air, normals |
 | open-data-health | data | — the loop and the Index | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | coast | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
-| earth-engine | code | land (the fallback) | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
+| earth-engine | code | — Dynamic World, Sentinel-2, VIIRS | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | example-cooking-hours | data | air | a worked example |
 
-`earth` and `earth-engine` both say something about land and they are **different measures**. Land's
-number is `earth`'s: the change this node computed itself from embeddings it downloaded.
-`earth-engine`'s `land_change_score` is somebody else's cluster's answer over a different footprint;
-it stands in when `earth` has not run, is labelled as the fallback wherever it appears, and the two
-are never averaged.
+Land's number is `earth`'s and only `earth`'s: the change this node computed itself, from embeddings
+it downloaded. `earth-engine` contributes land's readouts (built and trees, from Dynamic World) but
+not its change figure. It used to publish a `land_change_score`, and v0.33.1 retired it because it
+was a second number for one idea with different provenance — the reason is in
+[`packs/earth/README.md`](../packs/earth/README.md). Land does not fall back to it, and it does not
+fall back to anything: `observations` keeps the latest row per source per metric forever, so a node
+that ran the pack before the retirement still holds that row, and reading it would put a number
+retired a year ago on the wall as this year's answer. With no record, land is `none` and says how to
+fetch one.
 
 Ten more ideas, with who might write them: [`PACK_IDEAS.md`](PACK_IDEAS.md).
 

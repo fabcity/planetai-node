@@ -199,23 +199,18 @@ def _from_observations(spec: dict, obs: list[dict], now: datetime) -> dict | Non
 def _from_earth(spec: dict, earth: dict | None, obs: list[dict], now: datetime) -> dict | None:
     """The node's own AlphaEarth record: what packs/earth computed here, from files it downloaded.
 
-    Falls back to Earth Engine's own land_change_score, which is A DIFFERENT MEASURE of a similar
-    idea over a different footprint. The two are never averaged, and the fallback's `note` travels
-    with the cell so nothing downstream can present it as the node's own answer.
+    No fallback, on purpose. See the comment on land.yml's region column: the candidate metric was
+    retired in v0.33.1 as a second number for one idea, and `observations` would still be holding a
+    stale row for it on any node that ran the pack before then. With no record this returns None, the
+    issue is `none`, and the page says how to fetch one.
     """
     latest = (earth or {}).get("latest") or {}
-    if latest.get("share_over_threshold") is not None:
-        return _cell(latest["share_over_threshold"] * 100, 1,
-                     f"this node's own AlphaEarth comparison, {latest.get('year_a')}"
-                     f"–{latest.get('year_b')}", "model",
-                     _age_minutes(latest.get("computed_at"), now), ["earth"])
-    fb = spec.get("fallback")
-    if not fb:
+    if latest.get("share_over_threshold") is None:
         return None
-    cell = _from_observations(fb, obs, now) if fb.get("from") == "observations" else None
-    if cell:
-        cell["fallback"] = fb.get("note")
-    return cell
+    return _cell(latest["share_over_threshold"] * 100, 1,
+                 f"this node's own AlphaEarth comparison, {latest.get('year_a')}"
+                 f"\u2013{latest.get('year_b')}", "model",
+                 _age_minutes(latest.get("computed_at"), now), ["earth"])
 
 
 def _age_minutes(ts, now: datetime) -> float | None:
@@ -570,8 +565,13 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                         "stack": {dist: None for dist in DISTANCES}, "line": d.get("line"),
                         "attribution": None, "open_asks": [], "series": {dist: None for dist in DISTANCES},
                         "readouts": [], "provenance": [],
-                        "sentence": {loc: (d.get("sentences", {}).get(loc, {}).get("state", {}).get("none")
-                                           or d["empty"][loc]) for loc in LOCALES}}
+                        # "not watched here", not "no source". The node may well have a source for
+                        # this — coast has a marine model wherever there is a sea — and telling a
+                        # stranger there is none would be false. The row is greyed and says the
+                        # true thing: nobody here asked for it.
+                        "sentence": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
+                                          + _reason_text({"code": "not_watched"}, loc)[1:] + "."
+                                     for loc in LOCALES}}
             continue
 
         compare = d.get("compare") or {"mode": "ratio", "margin": 1.5}
@@ -636,12 +636,9 @@ def _provenance(d: dict, stack: dict, earth: dict | None) -> list[dict]:
         cell = stack.get(dist)
         if not cell:
             continue
-        row = {"figure": f"{d['key']}.{dist}", "value": cell["value"], "unit": d["unit"],
-               "source": cell["source"], "provenance": cell["provenance"],
-               "age_minutes": cell["age_minutes"], "n": cell["n"]}
-        if cell.get("fallback"):
-            row["fallback"] = cell["fallback"]
-        rows.append(row)
+        rows.append({"figure": f"{d['key']}.{dist}", "value": cell["value"], "unit": d["unit"],
+                     "source": cell["source"], "provenance": cell["provenance"],
+                     "age_minutes": cell["age_minutes"], "n": cell["n"]})
     for r in d.get("_readouts") or []:
         rows.append({"figure": f"{d['key']}.{r['metric']}", "value": r["value"], "unit": r["unit"],
                      "source": r["source"], "provenance": r["provenance"], "age_minutes": None,
