@@ -1,7 +1,7 @@
 # Improvement plan — September 2026
 
 Written against `4f96a38` (main, `v0.41.2-92-g4f96a38`, the tree the v0.42 CHANGELOG entry describes),
-10 September 2026. It closes the 24 open findings of `docs/reviews/CODE_REVIEW_2026-09.md` and the 28 of
+10 September 2026. It closes the 24 open findings of `docs/reviews/CODE_REVIEW_2026-09.md` and the 29 of
 `docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md`, minus the four reserved for prompt A.
 Status of every finding at this commit: `docs/reviews/RECONCILIATION_2026-09-09.md`.
 
@@ -13,9 +13,17 @@ PR 1 and PR 1 is a day on its own.
 `make lint` exited 0 on this tree with a gate that did not run. Every PR below is gated; a gate that a
 build does not run is a comment.
 
-**Node #1** (v0.30, no backup cron): the cron goes on **today**, before any of this. It updates to v0.43
-when prompt A ships, and to **v0.44 after PR 8** — by then the secrets are out of the container that faces
-strangers, a settings typo can no longer stop the poll loop, and a pack file can no longer stop the alerts.
+**Node #1 is not on v0.30 and the brief was wrong about it — checked on the machine, 10 September.** It is
+`bayu-ungasan` on `mini`, a **git checkout already at `4f96a38`**, healthy on port 8081, 31 polls, no
+errors. So it does not "update to v0.44": being a checkout on main, it takes every merge as soon as it
+pulls, which makes it the beta channel in the most literal sense and means **PRs 6, 7 and 8 reach it before
+any tag does**. Do not merge those on a Friday. **Its backup cron is now on and verified** — see below.
+
+**The cron went on today, and installing it found a bug (S11).** cron runs with `/usr/bin:/bin`, node #1's
+docker is at `/opt/homebrew/bin`, so the line `install.sh:510` writes fails with
+`docker: command not found` — while `planetai doctor` reports `✓ nightly backup scheduled`, because that
+row greps the crontab for a line rather than for a line that works. With a `PATH=` line prepended the same
+test produced a real 2.1 MB dump and a fresh `LAST_OK`. Node #1 is fixed; PR 9 fixes the installer.
 
 **Node #2 — Lucas, Menorca, v0.41.2 from the tarball — must not run `planetai update` until PR 16.**
 Today, if the published `SHA256` is unreachable for any reason, `update.sh` skips the checksum silently,
@@ -262,13 +270,13 @@ instead of failing after 60 s, and `planetai doctor` shows the bridge row green.
 **could break:** `RETICULUM_ALERT_DESTINATIONS` set only in `.env` stops reaching the bridge if it is left
 off the list — it must be one of the six.
 **size:** under 1 h.
-**release:** **yes, and this is where node #1 updates to v0.44.** It runs reticulum, it holds a real
-`TELEGRAM_BOT_TOKEN`, and PRs 3, 6 and 7 are in by now. Confirm the backup cron is on before updating, not
-after.
+**release:** **yes — tag it v0.44.** Node #1 runs reticulum and holds a real `TELEGRAM_BOT_TOKEN`, so this
+is the PR that matters most to it — but it is a git checkout on main and will already have taken PRs 6, 7
+and 8 when it next pulls, tag or no tag. The tag is for node #2 and whoever installs next.
 
-## PR 9 · `storage set` refuses what would quietly stop the backup
-**closes:** F15, S5
-**touches:** `bin/planetai:1002-1004`, `backup.sh:52`
+## PR 9 · three ways the backup quietly stops, and none of them show
+**closes:** F15, S5, S11
+**touches:** `bin/planetai:1002-1004`, `:546`, `backup.sh:52`, `install.sh:509-510`
 **the change:** two lines, in the shape `cmd_report` uses five times forty lines away.
 `[[ "$val" =~ ^[0-9]+$ ]] || fail "days is a whole number"` on `keep`, because a non-numeric
 `BACKUP_KEEP` makes `backup.sh:52`'s `find -mtime +$KEEP` exit non-zero under `set -euo pipefail` **after**

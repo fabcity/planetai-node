@@ -20,7 +20,7 @@ tarball), S8 (`planetai setup` on a running node), P1 (`nearest_health_m`), P5 (
 `baliairdispatch`), D2 ("I did this" then Cancel). Eight of those ten were reproduced on `pai-clean` before
 this was written; the transcripts are in the reconciliation, not repeated here.
 
-**The count is what it is: 28, not 54.** Ten pinned, eighteen found. Nothing was added to reach a number.
+**The count is what it is: 29, not 54.** Ten pinned, nineteen found (S11 was found on 10 September by running S-group's own verification on node #1, after the rest was written). Nothing was added to reach a number.
 Where the brief pinned an ID and I found nothing beyond what an existing F-finding already says, the ID
 carries a cross-reference rather than a new claim, and the numbering has no gaps invented to hide that.
 
@@ -638,6 +638,51 @@ calls it and `lint.yml` runs `make test` with `numpy` and `duckdb` on the pip li
 runner. That is the point of doing it first.
 **Check:** the runner is its own check. `tests/all` with one suite forced to fail must exit non-zero and
 still report the other 25.
+
+### S11 · the backup cron the installer writes cannot find `docker`, and the doctor calls it green
+`install.sh:509-510`, `bin/planetai:546` · **CONFIRMED on node #1, 10 September** · found by running S-group's own verification
+
+`install.sh:510` writes:
+
+```bash
+( crontab -l 2>/dev/null; echo "17 3 * * * cd $(pwd) && ./backup.sh >/dev/null 2>&1 # planetai-backup" ) | crontab -
+```
+
+No `PATH`. cron runs with `/usr/bin:/bin`, and on every machine this project targets `docker` is somewhere
+else — `/opt/homebrew/bin` for Colima or Homebrew, `/usr/local/bin` for Docker Desktop, `~/.orbstack/bin`
+for OrbStack. Installed on node #1 and tested with a one-shot line two minutes out:
+
+```
+./backup.sh: line 44: docker: command not found
+19:30 backup FAILED: pg_dump failed
+```
+
+And the row that names it went **green**, because `bin/planetai:546` is
+`grep -q planetai-backup <<< "$(crontab -l 2>/dev/null)"` — it checks that a line exists, not that the line
+can run. So installing the cron made the doctor greener and the backups no more likely. It is bounded:
+`a backup in the last 2 days` (`:543`) goes red after 48 hours, so this is a two-day lie rather than a
+permanent one — on the one thing protecting readings that exist nowhere else.
+
+Also worth knowing for anyone writing a cron line here: **`%` is special in a crontab command field.** The
+one-shot test's `date -u +%FT%TZ > /tmp/stamp` never wrote a stamp in either run, because cron read `%F` as
+a newline. Escape it or avoid it; `backup.sh`'s own line has no `%` and is fine.
+
+With `PATH=/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin` as the crontab's first line, the same test:
+
+```
+19:33 backup: ./backups/bayu-ungasan-2026-09-10.sql.gz (2.1M)
+19:33 backup: export exports/bayu-ungasan/2026-09-09.json
+LAST_OK  2026-09-10T11:33:02Z
+```
+
+**Shorter diff:** `install.sh` writes a `PATH=` line into the crontab, derived from where it just found
+docker — it already resolves it during the install. Two lines, and `>/dev/null 2>&1` becomes a log file so
+the next failure is readable.
+**Could break:** a crontab that already has a `PATH` line for something else; write it only if absent, and
+`crontab -l` is already read on the line above.
+**Check:** in `tests/test_running_state.sh` — the crontab line `install.sh` writes must be preceded by a
+`PATH=` containing the directory of `command -v docker`. And in `bin/planetai:546`, the doctor row checks
+the same thing rather than the line's mere existence.
 
 ---
 
