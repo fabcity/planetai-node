@@ -87,9 +87,9 @@ nothing of yours before a first install. Stop the socket too, or the
 daemon is woken again while the folder is being deleted:
   sudo systemctl stop docker.socket docker.service
   sudo rm -rf /var/lib/docker && sudo systemctl start docker
-If it fails again, the fault is in the storage path: the drive, its
-cable, or its controller. SMART can say PASSED while a bad link
-corrupts writes under load, so read the error log and the CRC count:\n'
+If it fails again it is the storage path: drive, cable, controller.
+These two help - but a clean result does NOT clear the drive. An SSD
+can time out on long writes with every counter still at zero:\n'
       printf '  sudo smartctl -l error %s\n' "$dev"
       printf '  sudo smartctl -A %s | grep -iE "CRC|Reallocat|Pending"\n' "$dev";;
     "no such host"|"network is unreachable"|"TLS handshake timeout"|"connection refused"|"i/o timeout")
