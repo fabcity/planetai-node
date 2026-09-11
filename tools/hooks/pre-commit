@@ -36,6 +36,12 @@ fi
 # the first, so a commit in the reports release removed a function and left test_shipped.py red — the assertion
 # named the artifact correctly and nothing was listening (7 Sep 2026). Neither is slow: lint is a few seconds,
 # test is a few more, and both are offline.
-make lint >/dev/null || fail "make lint failed — run 'make lint' to see why"
-make test >/dev/null || fail "make test failed — run 'make test' to see why"
+# `env -u` because git exports GIT_DIR and GIT_INDEX_FILE to its hooks, and in a WORKTREE that
+# GIT_DIR is .git/worktrees/<name> — so a suite that shells out to git reads the wrong repository.
+# tests/test_ship_gate.sh does, and failed here every time, on a tree where `make test` run by hand
+# passed. The symptom is the worst kind: a gate that is red for a reason that has nothing to do with
+# the diff, which teaches people to reach for --no-verify.
+gates() { env -u GIT_DIR -u GIT_INDEX_FILE -u GIT_WORK_TREE -u GIT_PREFIX "$@"; }
+gates make lint >/dev/null || fail "make lint failed — run 'make lint' to see why"
+gates make test >/dev/null || fail "make test failed — run 'make test' to see why"
 exit 0
