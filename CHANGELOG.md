@@ -1,5 +1,51 @@
 # Changelog
 
+## Unreleased — the dashboard draws
+
+The other half of the redesign: the page. **Not on a node yet, and nothing here has been seen by a
+beta tester.**
+
+**The page is three files.** `app/static/index.html` is a skeleton with four view shells and no
+logic; `app/static/dashboard.css` is how it is arranged; `app/static/dashboard.js` draws all of it.
+One function fetches, one function writes to the DOM, and every component in between is
+`(data, ctx) => string` drawn inside its own guard — a component that throws draws its own box and
+names itself in the console, and nothing else on the page goes dark. What each band shows is a list
+you can edit.
+
+**The node computes; the page draws.** There is no mean, no median, no apparent temperature and no
+threshold left in the page's JavaScript. The MAD fence that trimmed the ring's axis is
+`issues.engine.fenced_median` now, and `tests/test_dashboard.py` fails if a `mad` or a `fence` comes
+back.
+
+**The frozen layer is on the node**: `planetai-theme.css` byte-identical to the design repo,
+`tokens.css` adapted and saying so at its top, `signs.svg` and `kilometre-cells.json` copied. Funnel
+Sans, Figtree and JetBrains Mono are self-hosted with their SIL OFL licences beside them and named
+in `NOTICE`. Circular Std is deliberately absent: a commercial face that must not go into a public
+tarball. `tools/check_theme.py` holds the three copied files to the design repo and is blocking in
+`make lint`.
+
+**The ring card shows the ring's shape, not a second median.** The Stack owns "the street". On live
+data the two read 14.6 and 13.9 and both said the street, which is one page saying two things about
+one quantity. The card now shows lowest, the middle half, highest, where this node sits on that, how
+many stations and how far the nearest is.
+
+**Five of `check_ui.py`'s rules had been passing for weeks while checking nothing**, and are fixed
+here: four keyed on colour tokens the layer had replaced, the orange rule exempted every use of the
+token it was guarding because the token is *called* `--satellite-only`, and the markup half of the
+file was "whatever follows `</style>`", which the skeleton does not have. New rule 9 covers the
+stylesheets: a `url()` naming a file nothing serves, or an `@import` to a CDN — a node serves this
+page on a LAN that may have no route out.
+
+**`tools/shots.py` renders the page in a browser**, which had not happened until now. The first run
+was wrong in five ways, all fixed: every paragraph rendered in the browser's default serif on white
+(nothing set a body font, because tokens.css puts it on a `body.fc` class this page does not carry);
+the hero's and the plan's ground drew at 900 px and pushed the page sideways on a phone; Figures did
+the same; `?fixture=` still reached for `/settings`; and the wall carried the header, five buttons
+on a screen across a room.
+
+**The Bahasa and Spanish in the page's own strings are assistant-written** and have not been read by
+a native speaker, like the ones in `app/issues/*.yml`. PR #1 (`es-messages`) is the review channel.
+
 ## v0.44 — 2026-09-11 — the node knows its issues
 
 Nothing on any screen has changed. This is the half of the dashboard redesign that lives on the node,

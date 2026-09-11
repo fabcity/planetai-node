@@ -92,9 +92,13 @@ for (const f of readdirSync(BUNDLES).filter(n => n.endsWith('.json'))) {
         sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
         height: document.documentElement.scrollHeight,
       }));
-      const name = `${fixture}-${view}-${width}.png`;
+      // jpeg, like the shots already in docs/design/shots: these are committed so a review has
+      // something to look at, and a full-page PNG of a 9800px page is megabytes in a tarball that
+      // goes to households. The assertions above are what is actually checked; the picture is for
+      // a person.
+      const name = `${fixture}-${view}-${width}.jpg`;
       mkdirSync(OUT, { recursive: true });
-      await page.screenshot({ path: `${OUT}/${name}`, fullPage: true });
+      await page.screenshot({ path: `${OUT}/${name}`, fullPage: true, type: 'jpeg', quality: 72 });
 
       // The mono is expected to 404 at its nested path, by decision (docs/HANDOFF_issues.md §2).
       const unexpected = missed.filter(p => p !== '/static/fonts/jetbrains-mono-latin.woff2');

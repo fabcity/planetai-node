@@ -1,11 +1,12 @@
-# Handoff: the dashboard as a modular renderer (Release 2 of prompt 5b), mid-flight
+# Handoff: the dashboard as a modular renderer (Release 2 of prompt 5b)
 
 11 September 2026. Branch `the-dashboard-draws`, worktree `planetai-node-dashboard/`.
 
-**This branch does not pass `make test`, and its last commit says so in its subject line.** Two
-suites fail, both for the same reason: the page was replaced and parts of it have not been ported
-yet. The list is exact and short, and it is in "What is left" below. Do not merge this until it is
-green; do work from it rather than starting again, because the hard parts are done.
+**`bash tests/all` is 31 of 31 and `make lint` passes.** The page has been rendered in a browser —
+`docs/design/shots/` — and **nothing has been seen by a person other than Tomas, and nothing has
+reached a beta tester.** §2.9's rule stands.
+
+What is left is at the bottom, under "Still open".
 
 Release 1 (`GET /issues`, the four issue declarations, the engine) shipped in **v0.44** and is live
 on node #1. Read `docs/HANDOFF_issues.md` first — it carries the information model, the five things
@@ -15,8 +16,10 @@ the original brief had wrong, and the decisions this release is built on.
 
 ```bash
 cd "planetai-node-dashboard"          # a worktree; the main checkout has another session in it
-git log --oneline origin/main..HEAD   # four commits, then one WIP
-bash tests/all                        # 29 of 31, and the two failures are below
+git log --oneline origin/main..HEAD
+bash tests/all                        # 31 of 31
+make lint                             # includes check_theme now, and it fails rather than reports
+python3 tools/shots.py                # renders every fixture, four widths, Now and the wall
 ```
 
 `planetai-node/` (the main checkout) is a **different session's** working tree — the earth-cache
@@ -63,47 +66,101 @@ New **rule 9** covers the stylesheets: a `url()` naming a file nothing serves, o
 CDN. `tokens.css` arrived with one of each. **Sixteen break-on-purpose gates fire**
 (`tests/test_check_ui.py`).
 
-## What is left
+## What Release 2 added after the WIP commit
 
-Two suites are red. Everything below is *unported surface*, not a bug.
+**The five pieces the skeleton had lost are back, as components.**
 
-**`tests/test_shipped.py`** — these strings are gone from the page and the features behind them have
-not been rebuilt:
+| component | where it sits | what it reads |
+|---|---|---|
+| `trustCard` | the place band, beside the sensors it doubts (§2.3) | `/trust` |
+| `ring` (`drawRing`) | the air band | `/nearby` |
+| `stations` (`drawStations`) | the air band, under the ring | `/nearby` |
+| `forecast` (`drawForecast`) | heat or air, whichever this place declared first | `/forecast` |
+| the kits under each source card | every sensed band's Sources | `/sensors` |
 
-| missing | what to build |
-|---|---|
-| `data-card="trust"`, `Every sensor reported all week`, `still gathering its first week` | the **trust card**. §2.3: trust findings sit in the place band, beside the sensors they doubt. `/trust` is not fetched yet. Node #1 has a live example: `sc-19874` at `coverage_7d: 41`. |
-| `function drawRing(` | the **ring card**. Decided: the Stack owns "the street"; this card shows the ring's *shape* — lowest, p25, p75, highest, who, how far — and **not** a second median. Reads `/nearby`. |
-| `function drawForecast(` | the **forecast strip**. `/forecast` is empty on node #1 until `FORECAST_BMKG_ADM4` is set. |
-| `baliairdispatch.com`, `api.bmkg.go.id`, `open-meteo.com` | the **attribution lines** each pack requires. They belong on the bands that use those sources and in Figures. |
-| `s.meta&&s.meta.url` | a sensor card links to its own kit's page where the source gives one. |
-| `h.cell?h.cell.caption:''` | a literal-match artefact; the cell stamp *is* rendered. Reword the assertion rather than the code. |
+`drawRing` and `drawForecast` keep their old top-level names: `tests/test_shipped.py` has asserted
+`function drawRing(` since v0.30 and a method on an object literal is invisible to it. They are
+registered in `COMPONENTS` and obey the same contract as everything else. The ring and the forecast
+are reached through `COMPOSITES.ringCards` / `COMPOSITES.forecastStrip`, which gate on the issue the
+band is about — the same shape as `satellites`, which is land's.
 
-**`tests/test_dashboard.py`** — tests the MAD fence by lifting it out of `index.html` and running it
-in node. **The fence moved to the node in Release 1** (`app/issues/engine.py: fenced_median`) and is
-tested by `tests/test_issues_engine.py`. Repoint this suite at the engine, keeping its docstring:
-the reasoning about Tukey failing at three stations is the valuable part.
+**The ring card shows the shape and no median**, per the decision below. Its axis runs lowest to
+highest with nothing trimming it: the fence moved to the node in Release 1, all four numbers are in
+the sentence underneath, and one station at 152 squashing the box against the left edge is the true
+shape of that ring rather than a picture to be corrected.
 
-~~**2.6** `check_theme.py`~~ **done.** It holds `app/static/planetai-theme.css`, `signs.svg` and
-`kilometre-cells.json` to the sibling design checkout byte for byte, forgives the one `src:` line by
-decision and nothing else, and is blocking in `make lint`. The old report-only fixture under
-`docs/design/` is gone. Still open: **2.7** visual baselines with Playwright. **2.8** docs and
-CHANGELOG. **2.9** prove, screenshot, hold for Tomas.
+**Attribution comes from the endpoint** (`/nearby.attribution`, `/forecast.attribution`) with the
+literal as the fallback a node that has never fetched shows. Both archives are named on the cards
+that use them.
 
-## Decisions already taken — do not reopen
+**A kit links to its own page where `/sensors` gives one.** An account kit has a `url` in its meta;
+a public station never does, and `/sensors` strips the key entirely for a reader the node does not
+trust — so the link appears exactly where somebody can open it.
 
-1. **The Stack owns "the street."** The ring card shows the ring's shape. On live data the two read
-   14.6 and 13.9 and both said "the street", which is what this settles.
-2. **`/static/{name}` takes a name, not a path.** The six renderer files are on `COMPANIONS`.
-   `planetai-theme.css` declares `fonts/jetbrains-mono-latin.woff2`, a nested path that cannot
-   match, so **that one request 404s by decision** — `dashboard.css` declares the same family at the
-   flat name. It is one named pair in `check_ui.py`'s `DEAD_BY_DECISION`. **Do not widen it**, and
-   `check_theme` must forgive exactly that line and no other.
-3. **Both satellite records ship.** `/earth/year.png` is the node's own AlphaEarth layer (`model`,
-   and the card says "Not a photograph"); `/earth/frame.png?source=sentinel` is imagery (`partial`,
-   with its credits). `/earth`'s `imagery` key lists the years. Never merge the two lists.
-4. **`ANATOMY` stays in the page.** It could move into `/issues`; do not. The page must stay
-   renderable from a fixture alone, which is what makes a design round possible.
+**Sources is still one card per distance**, carrying the value the node computed, with the kits
+behind it listed under it. Not one card per sensor with its own number: `engine._cell` keeps the
+sensor ids and not their values, and working a per-sensor figure out in the page would be the page
+computing again. §3 wants one card per sensor; that lands when `/issues` publishes the per-sensor
+values, and the names under each card become their headings.
+
+**`tests/test_dashboard.py` calls the engine.** It used to lift the fence out of `index.html` with a
+regular expression and run it in node. Its docstring is kept — the reasoning about Tukey failing at
+three stations is the valuable part — and it gained the other half: a `mad =` or a `fence =` in
+`dashboard.js` fails the suite.
+
+**`tools/check_theme.py` is a gate.** It holds `planetai-theme.css`, `signs.svg` and
+`kilometre-cells.json` to the sibling design checkout line by line, forgives the one `src:` line by
+decision (normalised on the basename, reported) and nothing else, and is blocking in `make lint`.
+Six break-on-purpose cases. The design repo is absent on a node and in CI, where it prints one line
+and exits 0.
+
+**`tools/shots.py` renders the page.** Every fixture, Now and the wall, 375 · 768 · 1440 · 1920. It
+fails on a page error, a component that drew its guard box, a page that scrolls sideways, or a
+request the fixture path should not have made. No node, no database, no port: playwright fulfils
+every request from disk, mirroring `COMPANIONS` including its refusals. Shots are JPEG in
+`docs/design/shots/` and are excluded from the tester tarball along with the tool.
+
+### What the first render found
+
+Eight shots, and the first run was red on all eight. Worth reading, because four of the five were
+invisible to every static gate in the repo:
+
+1. **Every paragraph rendered in the browser's default serif, on white.** `tokens.css` puts the base
+   typography on `body.fc`, and this body carries no `fc` class on purpose: that rule pins the
+   background and the text colour to fixed Fab City values the wall's dark register could never
+   flip, and its `.fc a` outranks the page's link colour. So nothing set a body font, a background
+   or a colour at all. `dashboard.css` declares the base in the programme layer's own roles now.
+2. **The ground drew at 900×600 in the corner.** The rules said `.hero .bg svg`, `.wall .bg svg`,
+   `.plan>svg`; the renderer writes an `<img>` — one cached request instead of 4 kB in every
+   document. The plan's copy pushed the page sideways at 375 and 768.
+3. **Figures pushed the page sideways at 375.** It scrolls inside its own box now.
+4. **`?fixture=` still fetched `/settings`**, which is the one request that stopped the page being
+   renderable from a fixture alone — the property a design round depends on.
+5. **The wall carried the header**: five buttons on a screen across a room, against R6. Gone, with
+   one `NOW` exit in its place, because the wall is reachable from the nav and a laptop that got
+   there had no way back. The wall's kicker ran its words together (`HEATACT· AN OPEN ASK`).
+
+Also: the trust card said "No local sensor yet." and "Every sensor reported all week." at once, and
+the four new eyebrows carried full stops that no other eyebrow on the page has.
+
+## Still open
+
+- **2.9 has not happened.** Nothing has been proven on `pai-clean` or on a node, and no beta tester
+  has seen anything.
+- **The committed fixture renders three cards empty.** `node1-2026-09-06.json` predates
+  `planetai snapshot` and carries no `/nearby`, `/forecast`, `/trust` or `/sensors`, so the ring,
+  the stations, the forecast and the trust card come out as their empty states — which is worth a
+  picture, but is not the populated page. `planetai snapshot` answers all twelve endpoints; a
+  capture taken with it renders the whole thing. **Committing a live capture of somebody's house is
+  Tomas's call, not a session's.**
+- **The ledger prints the alert's emoji.** §3: the emoji are a Telegram affordance and stay there.
+- **The satellite loop is still ~7 MB** — see below. Not solved.
+- **`app/main.py`'s COMPANIONS comment says the three `.css` files are copied from planetai-design
+  and held there by `check_theme`.** Only `planetai-theme.css` is: `tokens.css` is adapted and
+  `dashboard.css` is ours. `tokens.css` says so accurately at its own top. Left alone because
+  Release 2 touches no `.py` under `app/`; fix it when something else opens that file.
+- **2.6 · 2.7 · 2.8 are done.** `check_theme`, the baselines, and this file plus the CHANGELOG and
+  `docs/DEVELOPING.md`.
 
 ## Things that will bite
 
@@ -120,7 +177,12 @@ CHANGELOG. **2.9** prove, screenshot, hold for Tomas.
 
 ## Verified, and not
 
-Nothing has been rendered in a browser. The page parses, `make lint` passes, 29 of 31 suites pass,
-and every assertion above is static. **No screenshot exists, nothing has been seen by a person, and
-§2.9's rule stands: nothing reaches a tester before Tomas looks.** The Bahasa and Spanish in
-`WORDS` and in `app/issues/*.yml` are assistant-written; PR #1 (`es-messages`) is the review channel.
+**Verified:** `bash tests/all` is 31 of 31. `make lint` passes, `check_theme` included. The page
+renders in Chromium from the committed fixture at four widths in both views with no page error, no
+component falling into its guard, no sideways scroll and no request outside the fixture — eight
+JPEGs in `docs/design/shots/`.
+
+**Not verified:** nothing has run on a node or on `pai-clean`. No live data has reached the page —
+every number in those shots is the 6 September capture replayed. Nobody but Tomas has looked, and
+**nothing reaches a tester before Tomas looks.** The Bahasa and Spanish in `WORDS` and in
+`app/issues/*.yml` are assistant-written; PR #1 (`es-messages`) is the review channel.
