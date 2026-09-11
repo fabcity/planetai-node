@@ -999,7 +999,31 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
 
 
 def _earth_dir() -> Path:
-    return OUT / "earth" / NODE
+    """The directory holding this node's AlphaEarth square.
+
+    The pack names it for the node, but the embeddings describe a *place*, so the name is not the key: after
+    node #1 was renamed `bayu-2` → `bayu-ungasan` there were two directories of the same square and the
+    older one had stopped being readable by anything. A directory whose meta.json says it was read around
+    this point, at this radius, answers for this node whatever it is called — the node's own name preferred
+    when more than one does. `packs/earth/adapter.py:cache()` carries the same rule, because core does not
+    import a pack; `app/sources.py:metres()` is already the second copy of the distance for the same reason.
+    """
+    root = OUT / "earth"
+    mine = root / NODE
+    lat, lon = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+    if not (root.is_dir() and lat and lon):
+        return mine
+    radius = int(settings.get("EARTH_RADIUS_M", "5000") or 5000)
+    tol = max(radius * 0.01, 25.0)          # the pack's move tolerance: 1% of the radius, floor 25 m
+    for p in sorted(root.glob("*/meta.json"), key=lambda q: (q.parent != mine, q.parent.name)):
+        try:
+            m = json.loads(p.read_text())
+            if m.get("radius_m") in (None, radius) and \
+                    sources.metres(float(m["lat"]), float(m["lon"]), float(lat), float(lon)) <= tol:
+                return p.parent
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+    return mine
 
 
 def _earth_changes() -> list[dict]:
