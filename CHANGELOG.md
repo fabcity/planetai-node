@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased — the node knows its issues
+
+Nothing on any screen has changed. This is the half of the dashboard redesign that lives on the node,
+merged first so the page can be rewritten against a real endpoint rather than against a plan.
+
+**`GET /issues`** answers, for each issue this place watches: which state it is in and why, the same
+quantity at four distances (room · yard · ring · region) with a source and a provenance word for
+each, the line it is judged against and where that line came from, the open asks and whether each is
+still true, twenty-four hours of series, and one sentence in English, Bahasa and Spanish. `issues`
+is the twentieth MCP tool and returns the same object. `/stack` in Telegram prints it.
+
+**`NODE_ISSUES`** is the new setting: the order of the issues this node reports, most important
+first. Your preset guessed from a map — change it. Its pane in Set up arrives with the dashboard.
+
+**`planetai snapshot`** writes one JSON of every answer the node gives, so a screen that looks wrong
+can be looked at by somebody who is not standing in front of it.
+
+**The Bahasa and Spanish strings in `app/issues/*.yml` are assistant-written and have not been read
+by a native speaker.** Every file says so at its top. Two of four beta testers read Spanish first;
+these want a pass from someone who speaks it before they are on a wall.
+
+Two numbers moved, and both were wrong before:
+
+- The street is a **fenced** median now. One station reading 152 while the rest read 5 to 12 is
+  either a fire in that lane or a broken sensor, and either way it was becoming "the neighbourhood".
+  The fence was in the dashboard's JavaScript, drawing a chart axis; it is arithmetic and belongs on
+  the node.
+- An alert somebody merely **saw** no longer counts as one they answered. `/alerts.acted_at` is the
+  earliest of *acknowledged* and *acted*, so a glance closed an ask. ρ itself was never affected —
+  it has always measured both stages together, deliberately — but the page would have gone quiet on
+  a tap.
+
+And one number stopped being shown: land no longer falls back to Earth Engine's `land_change_score`,
+retired in v0.33.1. `observations` keeps the latest row per source per metric forever, so a node that
+ran that pack before the retirement still holds one, and showing it would put a year-old number on
+the wall as this year's answer. With no record, land says how to fetch one.
+
 ## v0.43.2 — 2026-09-11 — planetai ui said off while the wall was drawing
 
 `planetai ui` read `SHARE_LEVEL` from `.env` and announced *"SHARE_LEVEL is off, so a screen on your network

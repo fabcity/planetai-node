@@ -219,6 +219,33 @@ def cells() -> list:
 
 
 @mcp.tool()
+def issues(issue: str | None = None) -> dict:
+    """What this place is better or worse at right now, named the way the household names it.
+
+    One entry per issue the keeper watches (air, heat, land, coast — the order is theirs, set as
+    NODE_ISSUES). Each carries: its state (act = something needs doing now · notable = something
+    changed today · quiet = nothing to say · context = it informs and never asks · none = not
+    watched or no source) and why; the same quantity at four distances (room, yard, ring, region)
+    with a source and a provenance word for each; the line it is judged against and where that line
+    comes from; the open asks, and whether each is still true; and one sentence in English, Bahasa
+    and Spanish.
+
+    `headline` is the issue to lead with: the highest state present, ties going to the keeper's
+    order. Prefer this tool over `stats` or `readings` for any question about how the place is
+    doing — it is the same vocabulary the household's own screen uses, so you and they will not
+    describe the same evening in two different ways. Pass `issue` for one of them.
+    """
+    out = _get("/issues")
+    if not issue:
+        return out
+    one = (out.get("issues") or {}).get(issue)
+    if one is None:
+        return {"error": f"this node does not declare {issue!r}", "declares": out.get("order", []),
+                "also_knows": out.get("undeclared", [])}
+    return {"issue": issue, "as_of": out.get("as_of"), "labels": out.get("labels"), **one}
+
+
+@mcp.tool()
 def series(metric: str = "pm25", hours: int = 24) -> dict:
     """Hourly means for the last N hours: indoor (yours), outdoor (yours and references), and the model, as aligned arrays."""
     return _get(f"/series?metric={metric}&hours={min(hours, 168)}")

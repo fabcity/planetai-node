@@ -31,8 +31,9 @@ acting, and do not undo what the person's local model did without asking.
 ## Two ways in
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
-`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Nineteen tools:
-`status`, `health_check`, `sensors`, `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
+`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Twenty tools:
+`status`, `health_check`, `issues` (how the place is doing, in the household's own words), `sensors`,
+`context` (sea, weather, satellite air, land), `readings`, `report_latest`,
 `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,
 `export_day`, `run_pack_script`, `maintenance`. Start with `health_check`; every failing check names its fix.
 
@@ -55,6 +56,8 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 - A model or a portal is `partial`, whatever its quality. `live` means measured here.
 - Alerts say what to do in one sentence and name the threshold's source. Do not add alerts a household would ignore.
 - Nothing runs pip on the host. The node's Python is Apple's 3.9 with the standard library only. The CLI must stay that way.
+- The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES`, and
+  served at `GET /issues`. The node computes; the page draws. A number the page works out for itself is a bug.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.
 

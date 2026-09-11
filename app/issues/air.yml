@@ -1,0 +1,130 @@
+# Air. The first issue, and the template for the next one.
+#
+# An issue is something a place can be better or worse at, that a household recognises by name.
+# This file is the whole declaration: adding a fifth issue is a fifth file like this one plus a pack
+# that declares its domain. Nothing in app/issues/*.py knows the word "pm25".
+#
+# The id and es strings below are ASSISTANT-WRITTEN and have not been read by a native speaker.
+# See CHANGELOG.md. Fix them in place; nothing else changes.
+
+name:
+  en: Air
+  id: Udara
+  es: Aire
+
+kind: sensed              # sensed = the node has eyes on it and rules that can ask for something
+metric: pm25
+unit: µg/m³
+dp: 0
+
+# How two distances are compared when the sentence says "over" or "level with". A concentration
+# compares by ratio; a temperature has to compare by difference, or 30 °C against 20 °C reads as
+# half again as hot. Each issue says which, because the engine must not guess from the unit.
+compare:
+  mode: ratio
+  margin: 1.5
+
+# The line this issue is judged against. No pack declares a threshold as data — `thresholds:` in
+# both pack.yaml files that have one is prose — so the number is written here once, and `sql:` names
+# the rule whose SQL carries the same number. tests/test_issues.py greps that rule and fails if the
+# two ever drift apart, which is the guarantee importing it would have given.
+line:
+  value: 15
+  unit: µg/m³
+  source: WHO 2021 global air quality guidelines, 24-hour mean
+  sql: air-quality/inside_worse_ventilate
+
+packs:
+  domains: [air]          # every rule and metric from a pack whose domain is `air`
+  rules:                  # plus these, from packs whose domain is cross-domain
+    - cold-start/modelled_air_today
+    - cold-start/sensor_vs_model
+    - insight/agreement
+    - insight/rhythm
+    - example-cooking-hours/post_cooking_summary
+
+# The four distances, which are the columns of every issue. Each says where its number comes from,
+# which rows, which field and how they are combined. An absent distance is `~` and the page says why.
+distances:
+  room:
+    from: stats
+    place: room
+    metrics: [pm25]
+    field: mean_15m
+    aggregate: mean
+  yard:
+    from: stats
+    place: yard
+    metrics: [pm25]
+    field: mean_15m
+    aggregate: mean
+  ring:
+    from: stats
+    place: ring
+    # mean_15m, the same window as the room. Comparing a 15-minute room against a 1-hour ring puts
+    # two different quantities on one scale, which is the thing a stack exists not to do — and it is
+    # the same mistake as a room median against a model's Steadman. /nearby uses mean_1h; it is
+    # answering a different question (who is out there) and is left alone.
+    metrics: [pm25]
+    field: mean_15m
+    # Not a plain median. One station reading 152 while the rest read 5 to 12 is either a fire in
+    # that lane or a broken sensor, and either way it must not become "the neighbourhood". Tukey's
+    # 1.5 x IQR fails at three stations, where the outlier IS the upper quartile; median absolute
+    # deviation holds. This was JavaScript in the dashboard (index.html:761) until now.
+    aggregate: fenced_median
+  region:
+    from: observations
+    sensor_id: cams-point
+    metrics: [pm25_model]
+
+sentences:
+  en:
+    # {verb}: which way the room's own last three hours went against the three before them.
+    verbs:
+      rising:  "Climbing to"
+      steady:  "Holding at"
+      falling: "Falling to"
+    attribution:
+      clear:         "{verb} {n} {unit} {where}, under the line. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, and whatever is burning is in here with you. {cmp}"
+      everywhere:    "{verb} {n} {unit} {where}, and the whole area reads the same. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}, and the house is keeping the street out. {cmp}"
+      mixed:         "{verb} {n} {unit} {where}. {cmp}"
+      unknown:       "{verb} {n} {unit} {where}. {cmp}"
+    state:
+      none: "No air sensor here yet, and no model for this point."
+  id:
+    # {verb}: which way the room's own last three hours went against the three before them.
+    verbs:
+      rising:  "Naik ke"
+      steady:  "Bertahan di"
+      falling: "Turun ke"
+    attribution:
+      clear:         "{verb} {n} {unit} {where}, di bawah batas. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, dan sumbernya ada di dalam ruangan ini. {cmp}"
+      everywhere:    "{verb} {n} {unit} {where}, dan seluruh daerah ini sama. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}, dan rumah menahan udara jalan di luar. {cmp}"
+      mixed:         "{verb} {n} {unit} {where}. {cmp}"
+      unknown:       "{verb} {n} {unit} {where}. {cmp}"
+    state:
+      none: "Belum ada sensor udara di sini, dan tidak ada model untuk titik ini."
+  es:
+    # {verb}: which way the room's own last three hours went against the three before them.
+    verbs:
+      rising:  "Subiendo a"
+      steady:  "Manteniéndose en"
+      falling: "Bajando a"
+    attribution:
+      clear:         "{verb} {n} {unit} {where}, por debajo del límite. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, y lo que arde está aquí dentro. {cmp}"
+      everywhere:    "{verb} {n} {unit} {where}, y toda la zona marca lo mismo. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}, y la casa está dejando la calle fuera. {cmp}"
+      mixed:         "{verb} {n} {unit} {where}. {cmp}"
+      unknown:       "{verb} {n} {unit} {where}. {cmp}"
+    state:
+      none: "Aún no hay sensor de aire aquí, ni modelo para este punto."
+
+empty:
+  en: The node reads the model for these coordinates. Add a sensor under Set up and the room fills in.
+  id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan ruangan akan terisi.
+  es: El nodo lee el modelo para estas coordenadas. Añade un sensor en Set up y la habitación se rellena.

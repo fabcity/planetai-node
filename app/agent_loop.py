@@ -171,6 +171,60 @@ async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | 
     return r.json()["choices"][0]["message"]
 
 
+def _tool_json(res) -> dict:
+    """An MCP tool result's payload. The server returns text content holding JSON."""
+    for c in getattr(res, "content", []) or []:
+        text = getattr(c, "text", None)
+        if text:
+            try:
+                return json.loads(text)
+            except ValueError:
+                continue
+    return {}
+
+
+def stack_text(data: dict, one: str = "") -> str:
+    """`/stack` and `/stack <issue>`, written from the node's own sentences and nothing else.
+
+    The sentence, the state and the four distances are all computed on the node (app/issues/), so
+    this function only lays them out. It picks the locale from ALERT_LOCALE, the same setting the
+    alerts and the report use, so the house is answered in one language.
+    """
+    if data.get("error"):
+        known = ", ".join(data.get("declares") or []) or "nothing yet"
+        return f"I do not watch that here. This node watches: {known}."   # the only line here that is not the node's
+    if one:
+        rows = [(one, data)]
+        head = None
+    else:
+        issues, head = data.get("issues") or {}, data.get("headline")
+        rows = [(k, issues[k]) for k in (data.get("order") or []) if k in issues]
+    if not rows:
+        return "No issues are declared on this node yet. Set NODE_ISSUES under Set up → Issues."
+    out = []
+    for key, iss in rows:
+        name = (iss.get("name") or {}).get(LOCALE) or key
+        mark = " ←" if head == key else ""
+        out.append(f"{name.upper()} · {iss.get('state', '?')}{mark}")
+        out.append(iss.get("sentence", {}).get(LOCALE) or "")
+        labels = (data.get("labels") or {}).get(LOCALE, {})
+        cols = []
+        for dist in (data.get("distances") or ("room", "yard", "ring", "region")):
+            cell = (iss.get("stack") or {}).get(dist)
+            if not cell or cell.get("value") is None:
+                continue
+            cols.append(f"{labels.get(dist, dist)} {cell['value']:.{iss.get('dp', 0)}f} "
+                        f"({cell.get('provenance', '?')})")
+        if cols:
+            out.append("  " + " · ".join(cols) + f" {iss.get('unit', '')}")
+        for ask in (iss.get("open_asks") or [])[:2]:
+            says = (ask.get("says") or {}).get(LOCALE, "")
+            how = (ask.get("how") or {}).get(LOCALE, "")
+            out.append(f"  #{ask.get('id')} — {says}. {how}".rstrip())
+        out.append("")
+    return "\n".join(out).strip()
+
+
 @asynccontextmanager
 async def node_session(hc: httpx.AsyncClient):
     """One MCP session per question, not one per process. Yields (session, tools).
@@ -330,6 +384,21 @@ async def main():
                         said = f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment."
                     await telegram("sendMessage", chat_id=chat, text=said)
                     continue
+            if text.startswith("/stack"):
+                # No model, ever. /stack is a read of the node's own arithmetic printed through a
+                # template, so it answers on a node with no agent rung reachable at all — which is
+                # the same promise the report and the alerts already make. It sits above ask() so a
+                # model never gets the chance to paraphrase a number.
+                arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
+                try:
+                    async with node_session(hc) as (session, _t):
+                        res = await session.call_tool("issues", {"issue": arg} if arg else {})
+                    said = stack_text(_tool_json(res), arg)
+                except Exception as e:  # noqa: BLE001
+                    log.warning("/stack failed: %s: %s", type(e).__name__, str(e)[:200])
+                    said = f"⚠️ I could not read the node ({type(e).__name__}). Nothing is wrong with your air; this is me."
+                await telegram("sendMessage", chat_id=chat, text=said)
+                continue
             if text.startswith("/model"):
                 arg = text.split(maxsplit=1)[1].strip().lower() if " " in text else ""
                 if arg in {r.name for r in RUNGS}: pins[chat] = arg

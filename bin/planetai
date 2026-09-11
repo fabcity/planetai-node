@@ -30,6 +30,7 @@
 #   planetai run <pack> <script> [args]   run a script a pack ships; output lands in out/
 #   planetai sensors         every sensor the node knows: yours and the references (--json)
 #   planetai cells           the Index cells this node fills, with provenance (--json)
+#   planetai snapshot        one JSON of everything the node answers, for a design round or a bug report (--out FILE)
 #   planetai geocode <place> what the setup wizard would find for a place name
 #   planetai version         the version this folder is at
 #   planetai remove         take this node off the machine; asks twice. --keep-data keeps the readings
@@ -1257,8 +1258,8 @@ cmd_agent() {
   step "Agents"
   local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
   echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
-  echo "  with an MCP client) gets nineteen tools: status, health_check, sensors, context, readings, report_latest,"
-  echo "  report_now, report_bundle, history,"
+  echo "  with an MCP client) gets twenty tools: status, health_check, issues, sensors, context, readings,"
+  echo "  report_latest, report_now, report_bundle, history,"
   echo "  alerts, act, settings_get, settings_set, packs, cells, series, export_day, run_pack_script, maintenance."
   echo "  Writes record the agent's name (X-Agent)."
   echo
@@ -1342,6 +1343,73 @@ cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
 cmd_sensors() { [[ "${1:-}" == "--json" ]] && { api /sensors; echo; return; }; api /sensors | json '
 for s in d: print("  %-22s %-7s %-9s %-7s  %s" % (s["sensor_id"], s["kind"], "yours" if s["local"] else "reference", "indoor" if s["indoor"] else "outdoor", s["name"]))'; }
 cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
+# One file holding every answer the node gives, so a screen that looks wrong can be looked at somewhere
+# else. It is what a design round renders against (the dashboard reads it back with ?fixture=<name>)
+# and what a tester sends when something on the page is not what they expected.
+#
+# WHAT IT CONTAINS: 15-minute, hourly and daily means per sensor; alert texts; sensor names and the
+# node's position; the last report; rho. That is the keeper's own data, and it should be treated the
+# way you would treat a photograph of their kitchen wall.
+# WHAT IT NEVER CONTAINS: raw readings. Not one row of them, at any flag, ever — they do not leave the
+# machine that recorded them (SPEC.md, "Invariants"). It also carries no token and no .env value: the
+# token is used to ask, and is not written down.
+cmd_snapshot() {
+  local out="" p tok
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --out) out="${2:-}"; shift 2;;
+      --out=*) out="${1#--out=}"; shift;;
+      *) warn "planetai snapshot takes --out FILE and nothing else (got: $1)"; return 1;;
+    esac
+  done
+  p="$(port)"; tok="$(envget ADMIN_TOKEN)"
+  [[ -n "$tok" ]] || { warn "no ADMIN_TOKEN in .env. Run: planetai ui"; return 1; }
+  SNAP_OUT="$out" SNAP_PORT="$p" SNAP_TOKEN="$tok" python3 -c '
+import json, os, sys, urllib.error, urllib.request
+from datetime import datetime
+
+PATHS = ["/health", "/issues", "/stats", "/alerts?limit=50", "/rho", "/cells", "/observations",
+         "/sensors", "/trust", "/report/latest", "/nearby", "/forecast"]
+base = "http://localhost:" + os.environ["SNAP_PORT"]
+tok = os.environ["SNAP_TOKEN"]
+
+def get(path):
+    req = urllib.request.Request(base + path, headers={"Authorization": "Bearer " + tok,
+                                                       "X-Agent": "planetai-cli"})
+    return json.load(urllib.request.urlopen(req, timeout=30))
+
+out = {"as_of": datetime.now().astimezone().isoformat(), "provenance": {"read": {}, "refused": {}}}
+for path in PATHS:
+    key = path.lstrip("/").split("?")[0].replace("/", "_")
+    try:
+        out[key] = get(path)
+        out["provenance"]["read"][key] = "GET " + path + ", verbatim"
+    except Exception as e:
+        # A node with no coast pack has no /forecast worth reading, and a node with no sensors has no
+        # /trust. That is not a failed snapshot; it is the snapshot saying so.
+        out[key] = None
+        out["provenance"]["refused"][key] = "GET %s: %s" % (path, type(e).__name__)
+h = out.get("health") or {}
+out["node"], out["version"] = h.get("node"), h.get("version")
+out["provenance"]["what_this_is"] = (
+    "Every answer this node gives, at one moment. It holds 15-minute means, alert texts, sensor "
+    "names and the node position: data that belongs to the household. It holds no raw readings, "
+    "and no token.")
+
+name = os.environ.get("SNAP_OUT") or "snapshot-%s-%s.json" % (
+    out.get("node") or "node", datetime.now().strftime("%Y-%m-%dT%H%M"))
+with open(name, "w") as f:
+    json.dump(out, f, indent=1, ensure_ascii=False)
+    f.write("\n")
+n = sum(1 for v in out["provenance"]["read"])
+print("  wrote %s  ·  %d of %d endpoints answered" % (name, n, len(PATHS)))
+for key, why in sorted(out["provenance"]["refused"].items()):
+    print("    %-14s no answer (%s)" % (key, why.split(": ")[-1]))
+'
+  echo "  It carries means, alert texts and sensor names — the household's own data. No raw readings, no token."
+  echo "  To render it in the dashboard, copy it into app/issues/fixtures/ on a dev machine and open ?fixture=<name>."
+}
+
 cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
@@ -1368,6 +1436,7 @@ case "${1:-help}" in
     esac;;
   run) shift; cmd_run "$@";;
   version|-v|--version) cmd_version;;
+  snapshot) shift; cmd_snapshot "$@";;
   geocode) shift; geocode "$*";;   # try a place name without installing anything
   help|-h|--help|"") sed -n '/^#   planetai setup/,/^#   planetai stop/p' "$0" | sed 's/^#//';;
   # An unknown word used to print the usage block and nothing else, so somebody told to run a command

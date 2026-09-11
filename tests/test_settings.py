@@ -1,5 +1,6 @@
 """The settings layer: DB overlays env, blank returns to env, secrets mask, only RUNTIME keys are writable.
 Run: PYTHONPATH=/tmp/stub:app python3 tests/test_settings.py"""
+import re
 import os
 import sys
 
@@ -36,7 +37,23 @@ assert row["TELEGRAM_BOT_TOKEN"]["value"] == "•••• set"
 for k in ("TELEGRAM_CHAT_IDS", "AIRGRADIENT_HOSTS", "PURPLEAIR_HOSTS", "SC_DEVICES", "CKAN_PORTALS", "AGENT_REMOTE_URL", "PARENT_API_URL", "EE_PROJECT"):
     assert k not in settings.PUBLIC, f"{k} names a host, an account or an address; it must not be public"
 assert "UI_LAYOUT" in settings.PUBLIC and "ALERT_LOCALE" in settings.PUBLIC
-assert all(r["group"] in ("sources", "alerts", "packs", "integrations", "keys", "agent", "node") for r in d["runtime"])
+# Every group a setting claims must have a pane in the dashboard's Set up view, or a household cannot
+# reach the setting at all. The list is read out of the page rather than retyped here, so the two
+# cannot drift. NO_PANE_YET is for a group whose setting has shipped ahead of its pane; an entry there
+# needs the reason, and the release that adds the pane deletes the entry.
+NO_PANE_YET = {
+    # NODE_ISSUES ships with GET /issues (v0.44) and is set in .env or through PUT /settings. Its pane
+    # is Set up -> Issues, which arrives with the dashboard renderer: a new tab on the shipped page is
+    # a visible change, and nothing visible goes to a household before Tomas has looked at it (R9).
+    "issues",
+}
+panes = set(re.findall(r"(\w+):\['", re.search(r"const GROUPS=\{(.*?)\};", 
+            open("app/static/index.html").read(), re.S).group(1)))
+for r in d["runtime"]:
+    assert r["group"] in panes | NO_PANE_YET, \
+        f"{r['key']} is in group {r['group']!r}, which has no pane in the dashboard's Set up view"
+assert NO_PANE_YET <= {r["group"] for r in d["runtime"]}, \
+    "NO_PANE_YET names a group no setting uses any more — delete the entry"
 assert {b["key"] for b in d["bootstrap"]} >= {"NODE_NAME", "APP_PORT", "NODE_TZ"}
 
 # only runtime keys may be written

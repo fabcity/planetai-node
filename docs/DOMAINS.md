@@ -3,6 +3,48 @@
 The core measures nothing in particular. It polls sources, stores readings, runs rules, fills Index cells. Which
 readings, which rules, which cells: that is a pack. `grep pm25 app/main.py` returns nothing.
 
+## Issues: what a domain is called in the house
+
+A **domain** is what a pack declares. An **issue** is what a household calls it, and there are fewer
+of them: air · heat · land · coast, with water, noise and energy designed in `PACK_IDEAS.md`. An
+issue is something a place can be better or worse at, that somebody living there recognises by name.
+
+Not every domain is an issue. *Weather* feeds air and heat — wind for working out where a smell came
+from, the forecast for the day ahead — but nobody asks how the weather is doing as a quality of their
+place. *Place* is the ground everything else sits on. *Governance* is the loop and the Index. *Trust*
+is the node's own instruments, not the place at all.
+
+| issue | packs | kind | the line, and where it comes from |
+|---|---|---|---|
+| **air** | `air-quality`, `nearby` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
+| **heat** | `heat` | sensed | 35 °C apparent — measured at node #1, this place's line and not a global one |
+| **land** | `earth` (the change), `earth-engine` (built, trees) | context | none. A year-over-year change is not a threshold |
+| **coast** | `coast` | context | none |
+| — | `forecast` (weather) | | feeds air and heat |
+| — | `place` | | the ground, its own band on the dashboard |
+| — | `open-data-health` (governance) | | the loop and the Index |
+| — | `trust` | | the instruments |
+| — | `insight`, `cold-start` (cross-domain) | | each rule belongs to the issue it names |
+
+A **sensed** issue has eyes on it and rules that can ask somebody to do something. A **context**
+issue informs and never asks: it has no act-level rules, and land's cadence is a year.
+
+The declarations are `app/issues/*.yml` — one file per issue, holding its name in three languages,
+its metric and unit, its line and that line's source, which packs feed it, how each of the four
+distances (room · yard · ring · region) is computed, and its sentence templates. **Adding a fifth
+issue is a fifth file plus a pack that declares its domain.** `tests/test_issues.py` asserts that by
+loading a synthetic `water.yml`, and it also asserts that every enabled pack reaches an issue or is
+named as deliberately not one — so a new pack cannot arrive unmapped and unnoticed.
+
+`NODE_ISSUES` is the keeper's order, most important first. The presets guess per place (Bali:
+`air,heat,land,coast`; Barcelona and Boston: `heat,air`) and every preset says to change it. This is
+the political layer and it should be: what matters in Serangan is decided by the people in Serangan,
+not by which pack was written first. An issue the keeper has not declared is still shown, greyed, so
+a stranger can see what the node could report.
+
+`GET /issues` is where all of it comes out, and the `issues` MCP tool returns the same object, so an
+agent and the household describe the same evening in the same words.
+
 ## The shape of any domain
 
 Every domain fits the same four parts:
