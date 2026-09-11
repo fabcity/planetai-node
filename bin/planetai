@@ -1398,7 +1398,9 @@ for r in d["bootstrap"]:
 
 config_list() {
   local want="${1:-}" group="" drift=0
-  config_rows | sort -t"$SEP" -k2,2 -k1,1 | while IFS="$SEP" read -r key grp sec rst val src envv help; do
+  # Not sorted, for the same reason cfg_groups is not: the node declares the order. Each group's keys
+  # are contiguous in settings.RUNTIME, which is what lets the heading below fire once per group.
+  config_rows | while IFS="$SEP" read -r key grp sec rst val src envv help; do
     [[ -n "$want" && "$grp" != "$want" ]] && continue
     [[ "$grp" != "$group" ]] && { group="$grp"; printf '\n  %s%s%s\n' "$BL" "$grp" "$N"; }
     local show="$val" note=""
@@ -1479,7 +1481,10 @@ cfg_shown() {
 }
 
 cfg_load() { CFG_ROWS="$(config_rows)" || return 1; }
-cfg_groups() { awk -F"$SEP" '{print $2}' <<< "$CFG_ROWS" | sort -u; }
+# First-seen, NOT sorted. settings.RUNTIME declares the order and says so at the top of itself, so
+# this menu, `planetai config list` and the dashboard's Set up tabs are one order rather than three.
+# `sort -u` put `agent` first and `issues` fifth, which is alphabetical and means nothing.
+cfg_groups() { awk -F"$SEP" '!seen[$2]++ {print $2}' <<< "$CFG_ROWS"; }
 
 # Apply everything staged: the runtime keys in one PUT, the .env ones one at a time, then offer the restart
 # only if a key that needs one actually changed.

@@ -8,7 +8,12 @@
  *
  * The contract, in the order it runs, with these names so the gates can find them:
  *
- *   snapshot()            the ONLY place that fetches. Returns one object, or one marked `refused`.
+ *   snapshot()            the ONLY place that fetches STATE. Returns one object, or one marked
+ *                         `refused`. One thing is fetched outside it and it is bytes rather than
+ *                         state: the satellite frames, by frameSrc(), once, cached for the life of
+ *                         the document. They cannot be an <img src> (the node wants its token and a
+ *                         browser will not put a header on an image) and they must never be part of
+ *                         a refresh (7 MB against a 60 kB budget, every twenty seconds).
  *   COMPONENTS            pure (data, ctx) => string. No DOM, no fetch, no colour, no exceptions
  *                         escaping. Each returns markup whose root carries data-component="<name>".
  *   ANATOMY               which components make each kind of band. Changing what a band shows is
@@ -71,10 +76,11 @@ async function snapshot() {
   let placeStatus = 0;
   const place = await fetch('/place/geojson', { headers: auth_() })
     .then(r => { placeStatus = r.status; return r.ok ? r.json() : null; }).catch(() => null);
-  const [health, issues, alerts, rho, report, earth, trust, nearby, forecast, sensors] = await Promise.all([
+  const [health, issues, alerts, rho, report, earth, trust, nearby, forecast, sensors, sparks] = await Promise.all([
     get('/health', {}), get('/issues'), get('/alerts?limit=40', []),
     get('/rho', {}), get('/report/latest', {}), get('/earth', {}),
     get('/trust', []), get('/nearby'), get('/forecast'), get('/sensors', []),
+    get('/sparks?metric=pm25&hours=24', {}),
   ]);
   const refused = [issues, alerts, rho].map(x => x && x.__refused).find(Boolean);
   if (refused) return { refused, health: health && !health.__refused ? health : {} };
@@ -84,7 +90,7 @@ async function snapshot() {
   const open_ = v => (v && v.__refused ? null : v);
   return { health, issues, alerts, rho, report, earth, place, placeStatus,
            trust: open_(trust) || [], nearby: open_(nearby), forecast: open_(forecast),
-           sensors: open_(sensors) || [] };
+           sensors: open_(sensors) || [], sparks: (open_(sparks) || {}).series || {} };
 }
 
 // -------------------------------------------------------------------------------------- the words
@@ -360,6 +366,9 @@ function drawStations(d, ctx) {
     name: r.name || r.sensor_id, value: r.pm25, unit: (d && d.unit) || '', dp: (d && d.dp) || 0,
     story: t(w.row, { km: r.km == null ? '—' : ctx.fmt(r.km, 1),
                       net: r.network || w.unknownNet, when: when(r) }),
+    // this station's own 24 hours, from /sparks. A station reading 30 that has been at 30 all day
+    // and one that was at 5 an hour ago are not the same news.
+    spark: (ctx.sparks || {})[r.sensor_id] || null,
   }, ctx)).join('');
   const skipped = ring.filter(r=>r.indoor).length;
   const sub = cards
@@ -437,6 +446,35 @@ function drawForecast(d, ctx) {
  */
 const crossed_ = (d, cell) => !!(d.line && cell && cell.value != null && cell.value > d.line.value
   && (d.state === 'act' || d.state === 'notable'));
+
+/* A 24-hour trace at tile size, restored from the page this replaces. A number with no shape behind
+ * it does not tell a household whether the room is filling or clearing, which is the first thing
+ * anybody wants from a sensor tile — and it is the cheapest thing on the page, because the node
+ * already sends the hours: `/issues` carries `series` per distance, and `/sparks` carries one array
+ * per sensor. Nothing is fetched for this and nothing is computed from it.
+ *
+ * Geometry only, like `scale` and `day`: the high and the low set the box, and that is all. The
+ * last reading carries a dot so the eye finds `now` without a label — at 26 px a label is five
+ * pixels tall and is not read.
+ */
+function spark(vals, ctx, opt = {}) {
+  const v = (vals || []).filter(x => x != null);
+  if (v.length < 2) return '';
+  const W = 132, H = 26, hi = Math.max(...v), lo = Math.min(...v), span = hi - lo || 1;
+  const n = vals.length;
+  const at = (x, i) => [(i / (n - 1)) * W, H - 2 - ((x - lo) / span) * (H - 4)];
+  const pts = vals.map((x, i) => (x == null ? null : at(x, i).join(','))).filter(Boolean).join(' ');
+  let last = null;
+  for (let i = n - 1; i >= 0; i--) if (vals[i] != null) { last = at(vals[i], i); break; }
+  const dp = opt.dp || 0;
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
+    + ` aria-label="the last ${n} hours, ${esc(ctx.fmt(lo, dp))} to ${esc(ctx.fmt(hi, dp))}`
+    + `${opt.unit ? ' ' + esc(opt.unit) : ''}">`
+    + `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.4"`
+    + ` vector-effect="non-scaling-stroke" stroke-opacity=".7"/>`
+    + (last ? `<circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="var(--ink)"/>` : '')
+    + `</svg>`;
+}
 
 const COMPONENTS = {
 
@@ -528,16 +566,30 @@ const COMPONENTS = {
     }).filter(Boolean).sort((a, b) => a.cx - b.cx);
     items.forEach(it => {
       const cr = line != null && it.v > line;
+      // Every dot names itself on hover. Three distances reading close together cannot all carry a
+      // label — the loop below drops the one with no room rather than overprinting it — and this is
+      // where that value went.
       s += `<circle cx="${it.cx}" cy="34" r="${it.id === 'room' ? 6 : 4.5}"`
         + ` fill="${it.id === 'region' ? 'var(--ground)' : cr ? 'var(--signal-worse)' : 'var(--ink)'}"`
-        + ` stroke="${cr ? 'var(--signal-worse)' : 'var(--ink)'}" stroke-width="1.5"/>`;
+        + ` stroke="${cr ? 'var(--signal-worse)' : 'var(--ink)'}" stroke-width="1.5">`
+        + `<title>${esc((ctx.issues_labels || {})[it.id] || it.id)} ${esc(ctx.fmt(it.v, d.dp))}`
+        + `${d.unit ? ' ' + esc(d.unit) : ''}</title></circle>`;
     });
-    let row = 0, last = -1e9;
+    // Two rows, and each one remembers where its own last label ended. The old rule alternated on
+    // the gap to the PREVIOUS point only, so three distances close together put the first and third
+    // back on the same row: node #1's heat band drew REGION 28.1 through RING 31.7. A label with
+    // room on neither row is dropped rather than overprinted — every value is in the stack above,
+    // and an unreadable label is worse than none.
+    const ends = [-1e9, -1e9];
     items.forEach(it => {
-      row = (it.cx - last < 70) ? 1 - row : 0; last = it.cx;
-      const label = ((ctx.issues_labels || {})[it.id] || it.id).toUpperCase();
+      const label = ((ctx.issues_labels || {})[it.id] || it.id).toUpperCase()
+        + ' ' + ctx.fmt(it.v, d.dp);
+      const half = label.length * 3.1;                // ~6.2px per mono glyph at font-size 10
+      const row = ends.findIndex(e => it.cx - half > e + 6);
+      if (row < 0) return;
+      ends[row] = it.cx + half;
       s += `<text x="${it.cx}" y="${row ? 22 : 52}" text-anchor="middle" class="mono" font-size="10"`
-        + ` letter-spacing=".06em" fill="var(--ink)" fill-opacity=".8">${esc(label)} ${esc(ctx.fmt(it.v, d.dp))}</text>`;
+        + ` letter-spacing=".06em" fill="var(--ink)" fill-opacity=".8">${esc(label)}</text>`;
     });
     return s + `</svg>`;
   },
@@ -667,14 +719,20 @@ const COMPONENTS = {
       + `<div class="top"><span class="n">${esc(d.name)}</span>`
       + `<span class="v"><span class="num">${esc(ctx.fmt(d.value, d.dp || 0))}</span><small>${esc(d.unit || '')}</small></span></div>`
       + (d.story ? `<div class="story">${esc(d.story)}</div>` : '')
+      + (d.spark ? spark(d.spark, ctx, { dp: d.dp, unit: d.unit }) : '')
       + `<div class="row">${ctx.pill(d.provenance)}${d.chip ? `<span class="chip">${esc(d.chip)}</span>` : ''}</div>`
       // The kits behind an aggregate, each linked to its own page where the source gives one. Only
       // an account kit has a `url` in its meta; a public station never does, and /sensors strips
       // the key entirely for a reader the node does not trust. So the link appears exactly where
       // somebody can actually open it.
-      + (d.kits && d.kits.length ? `<div class="kits">${d.kits.map(k => k.url
+      // Capped: the ring card listed seven of them, and seven ids stacked under a number is not a
+      // list anybody reads. The names come from /sensors, so a fixture that carries none — the
+      // committed one predates `planetai snapshot` — falls back to the raw id, which is the one
+      // case where the cap matters most.
+      + (d.kits && d.kits.length ? `<div class="kits">${d.kits.slice(0, 4).map(k => k.url
           ? `<a href="${esc(k.url)}" target="_blank" rel="noopener noreferrer">${esc(k.name)}</a>`
-          : `<span>${esc(k.name)}</span>`).join('')}</div>` : '')
+          : `<span>${esc(k.name)}</span>`).join('')}`
+        + (d.kits.length > 4 ? `<span class="more">+${d.kits.length - 4}</span>` : '') + `</div>` : '')
       + `</div>`;
   },
 
@@ -722,10 +780,14 @@ const COMPONENTS = {
     if (!frames.length) {
       return `<div class="sat" data-component="satellite"><p class="note">${esc(d.empty || 'no frames yet')}</p></div>`;
     }
+    // `data-src`, not `src`. /earth/year.png and /earth/frame.png need the node's token at
+    // SHARE_LEVEL=off and a browser cannot put a header on an <img>, so every frame came back 403
+    // and a household that HAD unlocked the page saw every number and no pictures. wireSatellites()
+    // fetches them the way the rest of the page fetches — see FRAMES there.
     const imgs = frames.map((y, i) =>
-      `<img src="${esc(d.src(y))}" alt="${esc(d.caption ? d.caption(y) : String(y))}"`
-      + ` class="${i === frames.length - 1 ? 'on' : ''}" data-i="${i}" loading="lazy">`).join('');
-    const chg = d.change ? `<img src="${esc(d.change.src)}" alt="${esc(d.change.alt)}" data-i="change" loading="lazy">` : '';
+      `<img data-src="${esc(d.src(y))}" alt="${esc(d.caption ? d.caption(y) : String(y))}"`
+      + ` class="${i === frames.length - 1 ? 'on' : ''}" data-i="${i}">`).join('');
+    const chg = d.change ? `<img data-src="${esc(d.change.src)}" alt="${esc(d.change.alt)}" data-i="change">` : '';
     const ctl = d.controls
       ? `<button type="button" data-sat="play" aria-label="Play the years">${REDUCED ? 'motion off' : 'play'}</button>`
         + `<input type="range" data-sat="slider" min="0" max="${frames.length - 1}" value="${frames.length - 1}" aria-label="Year">`
@@ -735,7 +797,10 @@ const COMPONENTS = {
       + ` data-frames="${esc(frames.join(','))}">`
       + `<div class="sat-loop">${imgs}${chg}</div>`
       + `<div class="sat-bar"><span class="yr mono" data-sat="year">${esc(String(frames[frames.length - 1]))}</span>`
-      + `<span class="sat-ctl">${ctl}</span>${ctx.pill(d.provenance)}</div>`
+      // the pill before the controls, so it lands beside the year on both cards. After them it
+      // wrapped below on the card that has controls and sat inline on the card that does not, and
+      // the one thing that tells the two records apart moved between them.
+      + `${ctx.pill(d.provenance)}<span class="sat-ctl">${ctl}</span></div>`
       + `<div class="sat-credit">${(d.credit || []).map(esc).join('<br>')}</div></div>`;
   },
 
@@ -901,6 +966,8 @@ const COMPOSITES = {
       provenance: st[x].provenance,
       chip: st[x].n > 1 ? `${st[x].n} sensors` : (ctx.issues_labels || {})[x] || x,
       story: st[x].age_minutes != null ? `last reading ${st[x].age_minutes} min ago` : '',
+      // the same 24 hours the band's own chart draws, at tile size, for this distance alone
+      spark: (d.series || {})[x] || null,
       kits: (st[x].sensors || []).map(id => kit[id] || { name: id, url: null }),
     }, ctx)).join('');
     return `<div class="sensors">${cards || `<p class="note">${esc(ctx.w.notWatched)}</p>`}</div>`;
@@ -923,11 +990,15 @@ const COMPOSITES = {
     return piece('forecast', ctx.forecast || {}, ctx);
   },
   readouts(d, ctx) {
+    // Nothing, not an empty box. The band is a two-column grid, so an empty <div> here took half of
+    // Land and left the two satellite cards squeezed into the right-hand column with a hole beside
+    // them. A composite with nothing to say says nothing; `sources` below draws a sentence instead,
+    // because "no sensor at this distance" IS something to say and an absent readout is not.
     const rows = (d.readouts || []).map(r => COMPONENTS.readout({
       label: r.label ? r.label[ctx.locale] : r.metric, value: r.value, dp: r.dp, unit: r.unit,
       source: r.source, provenance: r.provenance,
     }, ctx)).join('');
-    return `<div class="grid g3">${rows}</div>`;
+    return rows ? `<div class="grid g3">${rows}</div>` : '';
   },
   /* Land gets the satellite component twice: this node's own record, and the imagery — two records,
    * two provenance words, never merged. Everything else gets neither. */
@@ -1014,7 +1085,12 @@ function bandFor(id, snap, ctx) {
   if (id === 'hero') {
     const head = (snap.issues || {}).headline;
     const d = head && iss[head] ? { ...iss[head], key: head, cell: (snap.health || {}).cell } : { cell: (snap.health || {}).cell };
-    return `<div class="hero" data-band="hero">`
+    // The mount's own id travels with the markup that replaces it. Without it the FIRST render
+    // works and every one after it throws: outerHTML removes the element getElementById just found,
+    // and the next refresh — twenty seconds later, or the moment somebody opens another view —
+    // looks for a node that is no longer there. index.html calls these mount points; they have to
+    // survive being rendered into.
+    return `<div class="hero" id="hero" data-band="hero">`
       + `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg" alt=""></div>`
       + `<div>${piece('kicker', d, ctx)}${piece('sentence', d, ctx)}${piece('why', d, ctx)}`
       + `${piece('chips', d, ctx)}${piece('miniStack', d, ctx)}</div>`
@@ -1026,18 +1102,20 @@ function bandFor(id, snap, ctx) {
     const undecl = (snap.issues || {}).undeclared || [];
     const rows = [...order, ...undecl].filter(k => iss[k])
       .map(k => piece('indexRow', { ...iss[k], key: k }, ctx)).join('');
-    return `<div class="index" data-band="index">${rows}</div>`
-      + `<p class="note">${esc(ctx.w.headlineRule)}</p>`;
+    // One root, not two: the note has its own mount in the skeleton (#index-note) and render()
+    // fills it. Returned here it was inserted as a sibling, and the next render — which replaces
+    // #index and not the sibling — left the old one behind and added another.
+    return `<div class="index" id="index" data-band="index">${rows}</div>`;
   }
   if (id === 'place') {
-    return `<section class="band" id="band-place" data-band="place">`
+    return `<section class="band" id="place" data-band="place">`
       + `<div class="bandhead"><div class="k">${esc(ctx.w.thePlace)}</div></div>`
       + `<div class="grid g21">${assemble(ANATOMY.place, { caption: (snap.health || {}).cell ? snap.health.cell.caption : '',
         status: snap.placeStatus, plan: snap.place, node: (snap.health || {}).node, units: [],
         rows: snap.trust || [] }, ctx)}</div></section>`;
   }
   if (id === 'loop') {
-    return `<section class="band" id="band-loop" data-band="loop">`
+    return `<section class="band" id="loop" data-band="loop">`
       + `<div class="bandhead"><div class="k">${esc(ctx.w.theLoop)}</div></div>`
       + piece('rhoRow', snap.rho || {}, ctx)
       + `<div class="grid g2 mt">${piece('report', snap.report || {}, ctx)}`
@@ -1045,7 +1123,7 @@ function bandFor(id, snap, ctx) {
   }
   if (id === 'figures') {
     const rows = Object.entries(iss).flatMap(([, v]) => v.provenance || []);
-    return `<section class="band" id="band-figures" data-band="figures">`
+    return `<section class="band" id="figures" data-band="figures">`
       + `<div class="bandhead"><div class="k">${esc(ctx.w.figures)}</div></div>`
       + piece('figures', { rows }, ctx) + `</section>`;
   }
@@ -1100,6 +1178,7 @@ function render(snap, view) {
   ctx.nearby = snap.nearby || null;
   ctx.forecast = snap.forecast || null;
   ctx.sensors = snap.sensors || [];
+  ctx.sparks = snap.sparks || {};
   // Which issue carries the forecast. Declared order decides, so a node watching only air gets it
   // on air and one watching both gets it once, on whichever it put first.
   ctx.forecast_owner = (((snap.issues || {}).order) || []).find(k => k === 'heat' || k === 'air') || null;
@@ -1143,13 +1222,19 @@ function render(snap, view) {
   const want = ONLY && order.includes(ONLY) ? [ONLY] : order;
   const bands = document.getElementById('bands');
   bands.innerHTML = '';
+  const note = document.getElementById('index-note');
+  if (note) note.textContent = '';
   for (const id of want) {
     const html = bandFor(id, snap, ctx);
     if (!html) continue;
-    if (id === 'hero') { document.getElementById('hero').outerHTML = html; continue; }
-    if (id === 'index') { document.getElementById('index').outerHTML = html; continue; }
-    if (id === 'place' || id === 'loop' || id === 'figures') {
-      document.getElementById(id).outerHTML = html; continue;
+    // Each of these five replaces a mount point from index.html, and the markup carries that mount's
+    // id so the next render finds it again. A mount that is missing is skipped rather than thrown
+    // on: Arrange can hide a band, and a hidden band is not an error.
+    if (['hero', 'index', 'place', 'loop', 'figures'].includes(id)) {
+      const el = document.getElementById(id);
+      if (el) el.outerHTML = html;
+      if (id === 'index' && note) note.textContent = ctx.w.headlineRule;
+      continue;
     }
     bands.insertAdjacentHTML('beforeend', html);
   }
@@ -1163,11 +1248,51 @@ function render(snap, view) {
  * lands, which is in dashboard.css against --motion-reading-fade. Nothing else moves.
  */
 const LOOPS = {};
+
+/* The satellite frames, fetched once and kept.
+ *
+ * This is the ONE fetch outside snapshot(), and the contract at the top of this file names it. It
+ * is not state — it is bytes, and the rule it obeys instead is the one the 7 MB forced: the loop
+ * loads once and animates from memory. Node #1's nine AlphaEarth frames are ~780 kB each and the
+ * four Sentinel ~320 kB; the page refreshes every 20 seconds and §2.7 budgets 60 kB per refresh, so
+ * a frame that were part of a refresh would be four hundred times the budget, every twenty seconds,
+ * for ever. Keyed by URL at module level, so a re-render hands the same <img> the same object URL
+ * and nothing goes back to the node.
+ *
+ * A kiosk that RELOADS still pays the 7 MB again — a reload is a new document and a new module.
+ * That is not solved here and is not solvable here; it wants a cache header on the node.
+ */
+const FRAMES = {};
+const frameSrc = url => FRAMES[url] || (FRAMES[url] = fetch(url, { headers: auth_() })
+  .then(r => (r.ok ? r.blob() : Promise.reject(new Error('HTTP ' + r.status))))
+  .then(b => URL.createObjectURL(b))
+  .catch(e => { delete FRAMES[url]; throw e; }));          // so a failure can be retried, not cached
+
+/* Fill one <img>. The frame on screen goes first and the rest follow, so a nine-frame loop shows
+ * its latest year immediately instead of after 7 MB. A frame that will not load says so on the
+ * card rather than leaving the browser's broken-image glyph, which reads as a broken node. */
+function loadFrames(el) {
+  const imgs = [...el.querySelectorAll('.sat-loop img[data-src]')];
+  const first = imgs.find(im => im.classList.contains('on')) || imgs[0];
+  const one = im => frameSrc(im.dataset.src).then(u => { im.src = u; im.removeAttribute('data-src'); })
+    .catch(() => {
+      im.remove();
+      if (!el.querySelector('.sat-loop img')) {
+        const box = el.querySelector('.sat-loop');
+        if (box) box.innerHTML = `<p class="note">The node has these frames and would not hand them `
+          + `over. Unlock under Set up, or set SHARE_LEVEL to open.</p>`;
+      }
+    });
+  if (!first) return Promise.resolve();
+  return one(first).then(() => Promise.all(imgs.filter(im => im !== first).map(one)));
+}
+
 function wireSatellites(root) {
   root.querySelectorAll('[data-component="satellite"][data-frames]').forEach(el => {
     const id = el.dataset.id;
     if (LOOPS[id]) { clearInterval(LOOPS[id]); delete LOOPS[id]; }
     const frames = el.dataset.frames.split(',').filter(Boolean);
+    loadFrames(el);
     const imgs = [...el.querySelectorAll('.sat-loop img')];
     const yr = el.querySelector('[data-sat="year"]');
     const sl = el.querySelector('[data-sat="slider"]');
@@ -1338,6 +1463,14 @@ document.addEventListener('click', ev => {
  * have a pane here or a household cannot reach the setting at all — tests/test_settings.py reads
  * this object and fails when the two drift, which is how the issues group got here.
  */
+/* What each settings group is called here and what it is for.
+ *
+ * A LOOKUP, not the list. The list of groups and their ORDER come from the node — `/settings` hands
+ * back what `app/settings.py`'s RUNTIME declares, and `planetai config` reads the same rows in the
+ * same order, so the terminal and this page walk the same menu. A group the node gains that nothing
+ * here names still gets a tab, titled by its own name: before this, its keys were unreachable from
+ * the dashboard and visible in the CLI, and nothing said so.
+ */
 const GROUPS = {
   issues: ['Issues', "What this place watches, in order. The first one is where the page starts; whichever has something to say takes the top of it. Your preset guessed from a map — change it. What matters here is decided by the people who live here."],
   sources: ['Sources', 'What the node reads: your sensors, your account, and the public references around you.'],
@@ -1349,7 +1482,19 @@ const GROUPS = {
   node: ['The tree', 'Who this node reports to, and who may report to it.'],
   bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
 };
-let GROUP = 'issues', DESC = null, PACKS = [];
+let GROUP = null, DESC = null, PACKS = [];
+
+/* The groups this node has, in the order it declares them, with bootstrap last because it is the
+ * one that is read at start and cannot be changed from here. */
+function groupsOf(desc) {
+  const seen = [];
+  for (const r of (desc.runtime || [])) if (!seen.includes(r.group)) seen.push(r.group);
+  if ((desc.bootstrap || []).length) seen.push('bootstrap');
+  return seen;
+}
+const groupTitle = g => (GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[0];
+const groupBlurb = g => (GROUPS[g] || [])[1]
+  || 'This node declares this group; nothing in the dashboard describes it yet. `planetai config` shows the same keys.';
 
 const BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
 
@@ -1379,11 +1524,15 @@ async function loadSetup() {
   document.getElementById('setup-body').hidden = !unlocked;
   if (!unlocked) return;
 
-  document.getElementById('tabs').innerHTML = Object.entries(GROUPS)
-    .map(([g, [l]]) => `<button type="button" class="${g === GROUP ? 'on' : ''}" data-group="${g}">${esc(l)}</button>`).join('')
+  const groups = groupsOf(DESC);
+  // A tab that was open when the node's groups changed under it, or a first load: take the first.
+  if (!groups.includes(GROUP)) GROUP = groups[0] || null;
+  if (!GROUP) { document.getElementById('pane').innerHTML = `<p class="note">This node declares no settings.</p>`; return; }
+  document.getElementById('tabs').innerHTML = groups
+    .map(g => `<button type="button" class="${g === GROUP ? 'on' : ''}" data-group="${esc(g)}">${esc(groupTitle(g))}</button>`).join('')
     + `<span class="acts"><button type="button" class="btn ghost" data-lock="1">Lock</button></span>`;
-  document.getElementById('ptitle').textContent = GROUPS[GROUP][0];
-  document.getElementById('pblurb').textContent = GROUPS[GROUP][1];
+  document.getElementById('ptitle').textContent = groupTitle(GROUP);
+  document.getElementById('pblurb').textContent = groupBlurb(GROUP);
 
   const pane = document.getElementById('pane');
   if (GROUP === 'bootstrap') {

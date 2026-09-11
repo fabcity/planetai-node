@@ -2,14 +2,17 @@
   {
     "name": "live-refused-1440.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [],
       "broken": [],
       "bands": [],
       "sideways": false,
-      "height": 1100,
+      "height": 1215,
       "hero": "This node is not sharing its readings with the network."
     },
     "errors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
       "Failed to load resource: the server responded with a status of 403 (Forbidden)",
       "Failed to load resource: the server responded with a status of 403 (Forbidden)",
       "Failed to load resource: the server responded with a status of 403 (Forbidden)",
@@ -25,19 +28,22 @@
       "403 /place/geojson",
       "403 /issues",
       "403 /alerts",
-      "403 /earth",
       "403 /report/latest",
+      "403 /earth",
       "403 /rho",
       "403 /trust",
-      "403 /forecast",
       "403 /nearby",
-      "403 /sensors"
+      "403 /forecast",
+      "403 /sensors",
+      "403 /sparks"
     ],
     "ok": true
   },
   {
     "name": "live-now-375.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -66,11 +72,24 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
         "ledger",
-        "figures"
+        "figures",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "rhoRow"
       ],
       "broken": [],
       "bands": [
@@ -78,13 +97,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 3934,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 5549,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -93,6 +114,8 @@
   {
     "name": "live-now-768.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -121,11 +144,24 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
         "ledger",
-        "figures"
+        "figures",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "rhoRow"
       ],
       "broken": [],
       "bands": [
@@ -133,13 +169,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 2699,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 4711,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -148,6 +186,8 @@
   {
     "name": "live-now-1440.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -176,11 +216,24 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
         "ledger",
-        "figures"
+        "figures",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "rhoRow"
       ],
       "broken": [],
       "bands": [
@@ -188,13 +241,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 2437,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 3306,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -203,6 +258,8 @@
   {
     "name": "live-now-1920.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -231,11 +288,24 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
         "ledger",
-        "figures"
+        "figures",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "rhoRow"
       ],
       "broken": [],
       "bands": [
@@ -243,13 +313,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 2437,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 3307,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -258,6 +330,8 @@
   {
     "name": "live-wall-375.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -286,6 +360,14 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
@@ -303,13 +385,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 1156,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 1301,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -318,6 +402,8 @@
   {
     "name": "live-wall-768.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -346,6 +432,14 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
@@ -363,13 +457,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 1161,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 1428,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -378,6 +474,8 @@
   {
     "name": "live-wall-1440.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -406,6 +504,14 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
@@ -423,13 +529,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
       "height": 1215,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -438,6 +546,8 @@
   {
     "name": "live-wall-1920.jpg",
     "seen": {
+      "mounts": [],
+      "notes": 1,
       "components": [
         "kicker",
         "sentence",
@@ -466,6 +576,14 @@
         "stack",
         "day",
         "sensorCard",
+        "kicker",
+        "sentence",
+        "why",
+        "satellite",
+        "satellite",
+        "kicker",
+        "sentence",
+        "why",
         "trustCard",
         "rhoRow",
         "report",
@@ -483,13 +601,15 @@
         "index",
         "issue:air",
         "issue:heat",
+        "issue:land",
+        "issue:coast",
         "place",
         "loop",
         "figures"
       ],
       "sideways": false,
-      "height": 1228,
-      "hero": "Holding at 17 µg/m³ over this square of the map."
+      "height": 1232,
+      "hero": "Holding at 6 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],

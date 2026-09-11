@@ -178,6 +178,62 @@ evening. The numeral and the stack column are red only when the node's own state
 `notable` now; `scale` and `day` still mark every value past the line, because there the line is
 drawn beside the mark.
 
+## After the first review (11 September, evening)
+
+Tomas looked at the shots and asked for three things. The text and the insight work is his and is
+out of this release; these are the three that were.
+
+**Sensor graphics.** Every sensor card carries its 24 hours again, as the page this replaces did.
+Nothing is fetched for it and nothing is computed from it: `/issues` already sends `series` per
+distance, so the four Sources cards draw their own; `/sparks?metric=pm25` gives the ring's stations
+theirs, which is one request and the only new one. The last reading carries a dot, because at 26 px
+a label is five pixels tall and is not read. The kit list under each card is capped at four — the
+ring card was stacking seven raw ids.
+
+**The satellite data shows.** It never had: the committed fixture has no earth record, and the
+live VM had none either. Node #1's derived images were copied to `pai-clean` — nine AlphaEarth
+frames, four Sentinel, four Landsat, two change maps, ~19 MB — and **not the 1.1 GB of `.npy`
+embeddings, so `/earth` reports `years: []` and a `hint` saying "no satellite record yet" while
+serving nine frames.** Nothing displays that hint, but it is wrong, and a household that pruned its
+embeddings to save a gigabyte would hit it. One line in `app/main.py`; left alone here.
+
+Both records draw, side by side, told apart by the pill: the node's own AlphaEarth layer (`model`,
+"Not a photograph") and Sentinel-2 (`partial`, with the Copernicus and USGS credits).
+
+**Set up mirrors `planetai config`.** The dashboard hard-coded nine groups in its own order; the CLI
+sorted them alphabetically; `app/settings.py` declared a third. All three take the node's
+declaration now — `RUNTIME`'s own order, which says so at the top of itself, with `issues` first
+because it is the one setting that says what this place is for. A group the node gains appears in
+both surfaces; before, it appeared in the CLI and was unreachable in the dashboard, silently.
+`tests/test_config.py` holds all of it, five break-on-purpose cases.
+
+### Three bugs the first review turned up, none of them cosmetic
+
+1. **The page threw on its SECOND render, and had since the renderer landed.** `render()` replaces
+   five mount points with `outerHTML` and the replacements did not carry the mounts' ids, so the
+   next refresh — twenty seconds later, or the moment somebody opened another view — looked for a
+   node that was no longer there. **Set up opened empty because of it**, and that is how it was
+   found. Every screenshot ever taken was a first render. `tools/shots.mjs` now renders three times,
+   through the page's own controls, and fails on a lost mount.
+
+2. **The satellite images 403'd for a reader who had unlocked the page.** `/earth/year.png` and
+   `/earth/frame.png` want the node's token at `SHARE_LEVEL=off` and a browser will not put a header
+   on an `<img>`. Every frame came back 403 and the household saw every number and no pictures. The
+   frames are fetched like the rest of the page now and handed to the `<img>` as object URLs —
+   which is also the answer to the 7 MB: **the loop loads once and animates from memory**, keyed by
+   URL at module level, so a re-render never goes back to the node. A kiosk that RELOADS still pays
+   it; that wants a cache header and is still open.
+
+3. **Set up had no styles at all.** They were never ported, because the view threw before anyone
+   could see it. Re-scoped from the old page: square, ink, the layer's roles — the old ones hard-
+   coded `rgba(244,236,226,…)` as "paper on ink", a colour that cannot follow the register. The
+   toggle's on-state is ink, not green: green is a response, and a setting being on is not one.
+
+Also: an empty `readouts` composite was eating half the Land band, so the two satellite cards were
+squeezed into the right-hand column; the scale strip overprinted `REGION 28.1` through `RING 31.7`
+when three distances read close together, and drops a label it cannot fit rather than overprinting
+it (every dot names itself on hover, which is where the dropped one went).
+
 ## Still open
 
 - **No beta tester has seen anything, and nothing has run on a real node.** `pai-clean` is a VM with
@@ -189,6 +245,10 @@ drawn beside the mark.
   capture taken with it renders the whole thing. **Committing a live capture of somebody's house is
   Tomas's call, not a session's.**
 - **The ledger prints the alert's emoji.** §3: the emoji are a Telegram affordance and stay there.
+- **The text, and better insights.** Tomas's, and out of this release: the page's own strings want a
+  pass that makes them sound like a person wrote them, and the sentences the node composes want more
+  to say than a template can give them.
+- **`/earth`'s hint lies on a node that pruned its embeddings** — see above.
 - **The satellite loop is still ~7 MB** — see below. Not solved.
 - **`app/main.py`'s COMPANIONS comment says the three `.css` files are copied from planetai-design
   and held there by `check_theme`.** Only `planetai-theme.css` is: `tokens.css` is adapted and

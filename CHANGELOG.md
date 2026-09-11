@@ -48,6 +48,28 @@ been crossed — and which lines this place has crossed is the node's judgement,
 page makes because it happens to hold two numbers. The first live render put a red 17 beside the
 words `AIR QUIET · NOTHING TO SAY`, which on a model-only node is every evening.
 
+**Every sensor card carries its 24 hours**, as the page before this did. Nothing is fetched for it:
+`/issues` already sends the hours per distance, and one request to `/sparks` covers the ring's
+stations.
+
+**The satellite record draws, and it did not before.** Both of them, side by side, told apart by
+their provenance pill: the node's own AlphaEarth layer, which is a model's description of every
+10 m pixel and says so, and Sentinel-2 imagery with its credits. Two things were stopping it. The
+frames 403'd for a reader who had unlocked the page — they need the node's token and a browser will
+not put a header on an `<img>` — and they are fetched properly now, once, and animated from memory,
+which is also what keeps a 7 MB loop out of a twenty-second refresh.
+
+**Set up and `planetai config` are one menu.** Same groups, same order, same words for where a value
+came from. The order is the node's, declared once in `app/settings.py`, and `issues` leads it: it is
+the one setting that says what this place is for. Before, the dashboard kept its own list — so a
+group the node gained was visible in the terminal and unreachable in the browser, with nothing
+saying so.
+
+**A bug that had been there since the renderer landed: the page stopped updating after its first
+render.** Five mount points were replaced by markup that did not carry their ids, so every refresh
+after the first threw. Nothing static could see it and every screenshot was a first render; the
+tool that takes them renders three times now.
+
 **The Bahasa and Spanish in the page's own strings are assistant-written** and have not been read by
 a native speaker, like the ones in `app/issues/*.yml`. PR #1 (`es-messages`) is the review channel.
 

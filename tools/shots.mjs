@@ -42,11 +42,25 @@ function companion(name) {
   return null;
 }
 
+
+/* Two more renders, through the page's own controls.
+ *
+ * Out to the wall and back. The wall hides the header (R6), so the way back is the wall's own NOW
+ * button and not the nav — clicking a nav button that is display:none waits for it to become
+ * visible and never returns, which is how this first hung.
+ */
+async function reRender(page) {
+  await page.click('nav.views button[data-view="wall"]', { timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(150);
+  await page.click('.wall .exit', { timeout: 4000 }).catch(() => {});
+  await page.waitForTimeout(250);
+}
+
 const browser = await chromium.launch();
 const rows = [];
 let bad = 0;
 
-async function pass(label, { url, token, width, route }) {
+async function pass(label, { url, token, width, route, view }) {
   const ctx = await browser.newContext({ viewport: { width, height: 1100 },
                                          deviceScaleFactor: 1, reducedMotion: 'reduce' });
   const page = await ctx.newPage();
@@ -62,7 +76,28 @@ async function pass(label, { url, token, width, route }) {
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(400);
 
+  /* Render again, twice, before looking at anything.
+   *
+   * The page refreshes every twenty seconds and re-renders on every view switch, and the FIRST
+   * render is the only one a screenshot ever saw. It hid a bug that broke the page for everybody:
+   * render() replaces five mount points with outerHTML, the replacements did not carry the mounts'
+   * ids, and so the second render threw on a null and the page stopped updating — Set up opened
+   * empty because the throw happened before loadSetup() could run. Nothing static could see it.
+   *
+   * Switching views is how a person triggers it, so that is what this does.
+   */
+  await reRender(page);
+  // reRender leaves the page on Now. A wall pass has to end on the wall, or the shot is of the
+  // wrong view — which is exactly what the first run after this landed produced.
+  if (view === 'wall') {
+    await page.click('nav.views button[data-view="wall"]', { timeout: 4000 }).catch(() => {});
+    await page.waitForTimeout(250);
+  }
+
   const seen = await page.evaluate(() => ({
+    // the five mounts index.html declares. Each must still be there after three renders.
+    mounts: ['hero', 'index', 'bands', 'place', 'loop', 'figures'].filter(id => !document.getElementById(id)),
+    notes: document.querySelectorAll('#now .index ~ .note, #index-note').length,
     components: [...document.querySelectorAll('[data-component]')].map(e => e.dataset.component),
     broken: [...document.querySelectorAll('[data-component][data-error="1"]')].map(e => e.dataset.component),
     bands: [...document.querySelectorAll('[data-band]')].map(e => e.dataset.band),
@@ -89,14 +124,17 @@ if (LIVE) {
   for (const view of ['now', 'wall']) {
     for (const width of WIDTHS) {
       const r2 = await pass(`live-${view}-${width}`, {
-        url: LIVE + (view === 'wall' ? '/?theme=dark' : '/'), token: TOKEN, width });
-      const ok = !r2.errors.length && !r2.seen.broken.length && !r2.seen.sideways && !r2.missed.length;
+        url: LIVE + (view === 'wall' ? '/?theme=dark' : '/'), token: TOKEN, width, view });
+      const ok = !r2.errors.length && !r2.seen.broken.length && !r2.seen.sideways && !r2.missed.length
+        && !r2.seen.mounts.length && r2.seen.notes <= 1;
       if (!ok) bad++;
       rows.push({ ...r2, ok });
       console.log(`  ${ok ? '✓' : '✗'} ${r2.name.padEnd(34)} ${String(r2.seen.height).padStart(5)}px tall  `
         + `${[...new Set(r2.seen.components)].length} components  ${r2.seen.hero}`
         + (r2.seen.sideways ? '  SCROLLS SIDEWAYS' : '')
         + (r2.seen.broken.length ? `  BROKEN: ${r2.seen.broken.join(',')}` : '')
+        + (r2.seen.mounts.length ? `  LOST MOUNT: ${r2.seen.mounts.join(',')}` : '')
+        + (r2.seen.notes > 1 ? `  ${r2.seen.notes} index notes` : '')
         + (r2.missed.length ? `  ${[...new Set(r2.missed)].join(' | ')}` : '')
         + (r2.errors.length ? `  ERROR: ${r2.errors[0].slice(0, 90)}` : ''));
     }
@@ -146,8 +184,15 @@ for (const f of LIVE ? [] : readdirSync(BUNDLES).filter(n => n.endsWith('.json')
       await page.waitForSelector('[data-component]', { timeout: 10000 }).catch(() => {});
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(250);
+      // Render twice more before looking — see the note in pass() above. The first render is the
+      // only one a screenshot ever saw, and that is where the lost mounts hid.
+      await reRender(page);
+      if (view === 'wall') await page.click('nav.views button[data-view="wall"]').catch(() => {});
+      await page.waitForTimeout(200);
 
       const seen = await page.evaluate(() => ({
+        mounts: ['hero', 'index', 'bands', 'place', 'loop', 'figures'].filter(id => !document.getElementById(id)),
+        notes: document.querySelectorAll('#now .index ~ .note, #index-note').length,
         components: [...document.querySelectorAll('[data-component]')].map(e => e.dataset.component),
         broken: [...document.querySelectorAll('[data-component][data-error="1"]')].map(e => e.dataset.component),
         bands: [...document.querySelectorAll('[data-band]')].map(e => e.dataset.band),
@@ -164,7 +209,8 @@ for (const f of LIVE ? [] : readdirSync(BUNDLES).filter(n => n.endsWith('.json')
 
       // The mono is expected to 404 at its nested path, by decision (docs/HANDOFF_issues.md §2).
       const unexpected = missed.filter(p => p !== '/static/fonts/jetbrains-mono-latin.woff2');
-      const ok = !errors.length && !seen.broken.length && !seen.sideways && !unexpected.length;
+      const ok = !errors.length && !seen.broken.length && !seen.sideways && !unexpected.length
+        && !seen.mounts.length && seen.notes <= 1;
       if (!ok) bad++;
       rows.push({ name, ok, height: seen.height, sideways: seen.sideways,
                   components: [...new Set(seen.components)].sort(), bands: seen.bands,
@@ -173,6 +219,8 @@ for (const f of LIVE ? [] : readdirSync(BUNDLES).filter(n => n.endsWith('.json')
         + `${[...new Set(seen.components)].length} components`
         + (seen.sideways ? '  SCROLLS SIDEWAYS' : '')
         + (seen.broken.length ? `  BROKEN: ${seen.broken.join(',')}` : '')
+        + (seen.mounts.length ? `  LOST MOUNT: ${seen.mounts.join(',')}` : '')
+        + (seen.notes > 1 ? `  ${seen.notes} index notes` : '')
         + (unexpected.length ? `  FETCHED: ${[...new Set(unexpected)].join(',')}` : '')
         + (errors.length ? `  ERROR: ${errors[0].slice(0, 90)}` : ''));
       await ctx.close();
