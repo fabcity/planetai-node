@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — the node knows its issues
+## v0.44 — 2026-09-11 — the node knows its issues
 
 Nothing on any screen has changed. This is the half of the dashboard redesign that lives on the node,
 merged first so the page can be rewritten against a real endpoint rather than against a plan.
@@ -87,6 +87,8 @@ them all in one call, and `q` asks before throwing them away. A staged change to
 offers the restart once, at the end, rather than after each edit.
 
 ## v0.44 — 2026-09-11 — planetai config, and whose project this is
+
+*Shipped in the same tag as the issues layer above: v0.44 is `fc6e9f7`, which sits on top of it.*
 
 **`planetai config` replaces "open .env in nano".** A node keeps its settings in two places — the database,
 which the dashboard writes and which is live within 20 seconds, and `.env`, which the container reads once
