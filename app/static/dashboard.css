@@ -39,6 +39,15 @@
 }
 
 *{box-sizing:border-box}
+/* The page's base, which nothing else was setting. tokens.css puts it on `body.fc` and this body
+   carries no `fc` class on purpose: that rule pins the background and the text colour to the Fab
+   City paper and ink as fixed values, so the wall's dark register could never flip them, and its
+   `.fc a` would outrank the link colour below. The programme layer's roles do flip — they are
+   redefined under [data-theme="dark"] in planetai-theme.css — so the base is declared here in
+   terms of those. Without this rule every paragraph on the page renders in the browser's default
+   serif on a white ground, which is what the first render showed. */
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:400 16px/1.55 var(--fc-font-body);-webkit-font-smoothing:antialiased}
 h1,h2,h3,p{margin:0}
 a{color:var(--cells);text-decoration:none}
 a:hover{text-decoration:underline;text-underline-offset:2px}
@@ -93,7 +102,7 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 @media(max-width:900px){.hero{grid-template-columns:1fr}
 }
 .hero .bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
-.hero .bg svg{position:absolute;inset:0;width:100%;height:100%}
+.hero .bg svg,.hero .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hero>*:not(.bg){position:relative}
 .hero .k{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .hero .k .issue{color:var(--ink);font-weight:700}
@@ -198,7 +207,7 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .vit span:last-child{font:500 12px var(--mono);color:var(--mute);text-align:right;white-space:nowrap}
 /* plan */
 .plan{border:1px solid var(--hair);padding:0;position:relative;background:var(--ground)}
-.plan>svg{width:100%;height:auto;display:block}
+.plan>svg,.plan>img{width:100%;height:auto;display:block}
 .plan .cap{position:absolute;left:12px;bottom:10px;font:500 10.5px/1.5 var(--mono);letter-spacing:.08em;color:var(--mute);background:var(--ground);padding:2px 6px}
 .plan-legend{display:flex;gap:14px;flex-wrap:wrap;font:500 11px var(--mono);letter-spacing:.04em;color:var(--mute);padding:10px 12px;border-bottom:1px solid var(--hair)}
 .plan-legend i{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:6px;background:var(--ink)}
@@ -242,7 +251,8 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 }
 .rep{font-size:16px;line-height:1.6;max-width:62ch}
 /* figures table */
-table.figs{width:100%;border-collapse:collapse;font-size:12.5px}
+.figwrap{overflow-x:auto}
+table.figs{width:100%;min-width:420px;border-collapse:collapse;font-size:12.5px}
 table.figs th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:8px 10px 8px 0;border-bottom:1px solid var(--ink)}
 table.figs td{padding:7px 10px 7px 0;border-bottom:1px solid var(--hair);vertical-align:top}
 table.figs td.mono{white-space:nowrap}
@@ -251,24 +261,27 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 section.view{display:none}
 section.view.on{display:block}
 /* the wall: dark register, instruction not control, nothing to press */
+body.wallview header{display:none}
 .wall{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:clamp(28px,4vw,64px);overflow:hidden}
 .wall .row2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:clamp(24px,4vw,64px);align-items:center}
 @media(max-width:900px){.wall .row2{grid-template-columns:1fr}
 .wall .satwrap{max-width:100%}
 }
 .wall .bg{position:absolute;inset:0;pointer-events:none}
-.wall .bg svg{position:absolute;inset:0;width:100%;height:100%}
+.wall .bg svg,.wall .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .wall>*:not(.bg){position:relative}
-.wall .k{font-size:clamp(11px,1vw,14px)}
+.wall .k{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:clamp(11px,1vw,14px)}
 .wall p.big{font:700 clamp(2rem,5.2vw,5rem)/1.12 var(--fc-font-display);letter-spacing:-.03em;max-width:20ch;margin-top:.3em;text-wrap:balance}
 .wall p.big b{font-family:var(--mono);font-size:clamp(4rem,12vw,11rem);line-height:.78;letter-spacing:-.04em;vertical-align:-.06em;margin:0 .05em}
 .wall p.big b.crossed{color:var(--signal-worse)}
 .wall .why{font-size:clamp(16px,1.6vw,24px);max-width:44ch;margin-top:.8em;color:var(--ink);opacity:.86}
 .wall .wi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 32px;margin-top:clamp(28px,4vw,56px);max-width:1100px}
 .wall .wi>div{border-top:1px solid var(--hair);padding-top:10px}
+.wall .wi .ln{display:block;margin-top:4px}
 .wall .wi .name{font:700 clamp(14px,1.3vw,19px) var(--fc-font-display)}
 .wall .wi .st{font:500 clamp(10px,.85vw,12px) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-left:8px}
 .wall .wi .ln{font-size:clamp(13px,1.15vw,17px);color:var(--ink);opacity:.86;margin-top:4px}
+.wall .rho{margin-top:clamp(20px,3vw,40px)}
 .wall .foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:end;margin-top:clamp(28px,4vw,56px);font:500 clamp(11px,.9vw,13px) var(--mono);letter-spacing:.06em;color:var(--mute)}
 .wall .exit{position:absolute;top:18px;right:18px;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);border:1px solid var(--hair);padding:6px 10px;z-index:2}
 /* the binding classes every planetai-design asset carries (node-ground, kilometre), scoped to inline drawings */

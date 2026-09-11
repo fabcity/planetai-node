@@ -101,7 +101,7 @@ const WORDS = {
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, which is set under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         trust: {
-          title: 'What the node doubts about its own sensors.',
+          title: 'What the node doubts about its own sensors',
           ok: 'Every sensor reported all week.',
           sub: '{n} of {all} sensors need a look.',
           subOk: '{all} local sensors, seven-day coverage.',
@@ -110,7 +110,7 @@ const WORDS = {
           cov: '{pct}% of the week',
           frozen: ', {n} frozen channels' },
         ring: {
-          title: 'The shape of the ring.',
+          title: 'The shape of the ring',
           none: 'No neighbours yet. This node has not fetched the public stations around it, so its readings speak for this address and nothing else. Bali only: set BAD_ENABLED=1.',
           one: 'One neighbour reporting, {km} km away. One is an anecdote: nothing here can tell a fire in the lane from a haze over the island.',
           silent: 'No neighbour is reporting right now, so there is nothing to compare this address against.',
@@ -123,7 +123,7 @@ const WORDS = {
           tipSpan: 'the whole ring, {lo} to {hi} {unit}',
           tipYou: 'you, {v} {unit}' },
         stations: {
-          title: 'Who is out there, and how far.',
+          title: 'Who is out there, and how far',
           sub: '{n} of {all} stations counted, within {km} km{skipped}. None of them is ours: what this node reads itself is kept out of this list.',
           skipped: ', {n} left out as indoors',
           empty: 'Nothing fetched yet. Once the node polls, every station within {km} km appears here with its distance.',
@@ -131,7 +131,7 @@ const WORDS = {
           justNow: 'just now', ago: '{n} min ago', quiet: 'not reporting',
           indoors: 'indoors, not counted', unknownNet: 'unknown network' },
         fc: {
-          title: 'The day it is about to have.',
+          title: 'The day it is about to have',
           none: 'No forecast yet. Set FORECAST_BMKG_ADM4 to this point\u2019s village code, or turn on Open-Meteo, and the next day of wind and rain appears here. `planetai run forecast verify` finds the code.',
           wind: 'The wind comes from the {dir} at {kmh} km/h.',
           rain: 'Rain expected from {at}, {mm} mm over the day.',
@@ -149,7 +149,7 @@ const WORDS = {
         headlineRule: 'Isu dengan hal terpenting tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, diatur di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         trust: {
-          title: 'Yang diragukan node tentang sensornya sendiri.',
+          title: 'Yang diragukan node tentang sensornya sendiri',
           ok: 'Semua sensor melapor sepanjang minggu.',
           sub: '{n} dari {all} sensor perlu diperiksa.',
           subOk: '{all} sensor lokal, cakupan tujuh hari.',
@@ -158,7 +158,7 @@ const WORDS = {
           cov: '{pct}% dari minggu ini',
           frozen: ', {n} kanal beku' },
         ring: {
-          title: 'Bentuk lingkar.',
+          title: 'Bentuk lingkar',
           none: 'Belum ada tetangga. Node ini belum mengambil stasiun publik di sekitarnya, jadi bacaannya hanya berbicara untuk alamat ini. Khusus Bali: setel BAD_ENABLED=1.',
           one: 'Satu tetangga melapor, {km} km jauhnya. Satu itu anekdot: tidak ada di sini yang bisa membedakan kebakaran di gang dari kabut di atas pulau.',
           silent: 'Tidak ada tetangga yang melapor sekarang, jadi tidak ada pembanding untuk alamat ini.',
@@ -171,7 +171,7 @@ const WORDS = {
           tipSpan: 'seluruh lingkar, {lo} sampai {hi} {unit}',
           tipYou: 'Anda, {v} {unit}' },
         stations: {
-          title: 'Siapa di luar sana, dan seberapa jauh.',
+          title: 'Siapa di luar sana, dan seberapa jauh',
           sub: '{n} dari {all} stasiun dihitung, dalam {km} km{skipped}. Tidak satu pun milik kita: apa yang dibaca node ini sendiri tidak masuk daftar ini.',
           skipped: ', {n} dikeluarkan karena di dalam ruangan',
           empty: 'Belum ada yang diambil. Begitu node menarik data, setiap stasiun dalam {km} km muncul di sini dengan jaraknya.',
@@ -179,7 +179,7 @@ const WORDS = {
           justNow: 'baru saja', ago: '{n} menit lalu', quiet: 'tidak melapor',
           indoors: 'di dalam ruangan, tidak dihitung', unknownNet: 'jaringan tidak diketahui' },
         fc: {
-          title: 'Hari yang akan datang.',
+          title: 'Hari yang akan datang',
           none: 'Belum ada prakiraan. Setel FORECAST_BMKG_ADM4 ke kode desa titik ini, atau nyalakan Open-Meteo, dan sehari angin dan hujan berikutnya muncul di sini. `planetai run forecast verify` mencari kodenya.',
           wind: 'Angin datang dari {dir} pada {kmh} km/jam.',
           rain: 'Hujan diperkirakan mulai {at}, {mm} mm sepanjang hari.',
@@ -197,7 +197,7 @@ const WORDS = {
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
         trust: {
-          title: 'Lo que el nodo duda de sus propios sensores.',
+          title: 'Lo que el nodo duda de sus propios sensores',
           ok: 'Todos los sensores informaron toda la semana.',
           sub: '{n} de {all} sensores necesitan una revisi\u00f3n.',
           subOk: '{all} sensores locales, cobertura de siete d\u00edas.',
@@ -206,7 +206,7 @@ const WORDS = {
           cov: '{pct}% de la semana',
           frozen: ', {n} canales congelados' },
         ring: {
-          title: 'La forma del anillo.',
+          title: 'La forma del anillo',
           none: 'A\u00fan no hay vecinos. Este nodo no ha tra\u00eddo las estaciones p\u00fablicas a su alrededor, as\u00ed que sus lecturas hablan de esta direcci\u00f3n y de nada m\u00e1s. S\u00f3lo en Bali: pon BAD_ENABLED=1.',
           one: 'Un vecino informando, a {km} km. Uno es una an\u00e9cdota: nada aqu\u00ed distingue un fuego en el callej\u00f3n de una bruma sobre la isla.',
           silent: 'Ning\u00fan vecino est\u00e1 informando ahora, as\u00ed que no hay con qu\u00e9 comparar esta direcci\u00f3n.',
@@ -219,7 +219,7 @@ const WORDS = {
           tipSpan: 'todo el anillo, de {lo} a {hi} {unit}',
           tipYou: 't\u00fa, {v} {unit}' },
         stations: {
-          title: 'Qui\u00e9n hay ah\u00ed fuera, y a qu\u00e9 distancia.',
+          title: 'Qui\u00e9n hay ah\u00ed fuera, y a qu\u00e9 distancia',
           sub: '{n} de {all} estaciones contadas, dentro de {km} km{skipped}. Ninguna es nuestra: lo que este nodo lee por s\u00ed mismo queda fuera de esta lista.',
           skipped: ', {n} fuera por estar en interiores',
           empty: 'A\u00fan no se ha tra\u00eddo nada. En cuanto el nodo consulte, cada estaci\u00f3n dentro de {km} km aparece aqu\u00ed con su distancia.',
@@ -227,7 +227,7 @@ const WORDS = {
           justNow: 'ahora mismo', ago: 'hace {n} min', quiet: 'sin informar',
           indoors: 'en interiores, no contada', unknownNet: 'red desconocida' },
         fc: {
-          title: 'El d\u00eda que est\u00e1 por venir.',
+          title: 'El d\u00eda que est\u00e1 por venir',
           none: 'A\u00fan no hay pron\u00f3stico. Pon FORECAST_BMKG_ADM4 con el c\u00f3digo de aldea de este punto, o enciende Open-Meteo, y el pr\u00f3ximo d\u00eda de viento y lluvia aparece aqu\u00ed. `planetai run forecast verify` encuentra el c\u00f3digo.',
           wind: 'El viento viene del {dir} a {kmh} km/h.',
           rain: 'Se espera lluvia desde las {at}, {mm} mm a lo largo del d\u00eda.',
@@ -630,7 +630,8 @@ const COMPONENTS = {
     const w = ctx.w.trust;
     const rows = d.rows || [];
     const doubt = rows.filter(r=>r.age_hours < 168 || r.coverage_7d < 60 || r.frozen_channels > 0);
-    const body = doubt.length
+    const body = !rows.length ? ''
+      : doubt.length
       ? doubt.map(r=>{
         const cov = r.age_hours < 168 ? esc(w.young) : t(esc(w.cov), { pct: esc(String(r.coverage_7d)) });
         const froz = r.frozen_channels ? t(esc(w.frozen), { n: r.frozen_channels }) : '';
@@ -827,9 +828,11 @@ const COMPONENTS = {
       `<tr><td>${esc(r.figure)}</td><td class="mono">${esc(r.value == null ? '—' : String(r.value))}`
       + ` ${esc(r.unit || '')}</td><td>${esc(r.source)}</td>`
       + `<td>${ctx.pill(r.provenance)}</td></tr>`).join('');
-    return `<table class="figs" data-component="figures">`
+    // Figures is the one wide thing on this page, and a table that will not fit narrows to nothing
+    // or pushes the whole page sideways. It scrolls inside its own box instead.
+    return `<div class="figwrap"><table class="figs" data-component="figures">`
       + `<thead><tr><th>${esc(ctx.w.figure)}</th><th></th><th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
-      + `<tbody>${rows || `<tr><td colspan="4" class="note">nothing to show yet</td></tr>`}</tbody></table>`;
+      + `<tbody>${rows || `<tr><td colspan="4" class="note">nothing to show yet</td></tr>`}</tbody></table></div>`;
   },
 };
 
@@ -1056,6 +1059,10 @@ function wallView(snap, ctx) {
   }, ctx);
   const stale = (snap.health || {}).last_poll && ctx.staleFor(snap.health.last_poll);
   return `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg" alt=""></div>`
+    // The only control on the wall, and it acts on the view rather than on anything the node knows.
+    // Without it a laptop that reached the wall from the nav has no way back, because the header is
+    // gone; a kiosk never shows a pointer and nobody presses it.
+    + `<button type="button" class="exit" data-view="now">${esc(ctx.w.now)}</button>`
     + `<div class="row2"><div>${piece('kicker', d, ctx)}${piece('sentence', d, ctx)}${piece('why', d, ctx)}</div>`
     + `<div class="satwrap">${sat}</div></div>`
     + piece('wallIndex', { issues: ((snap.issues || {}).order || []).map(k => iss[k]).filter(Boolean) }, ctx)
@@ -1091,6 +1098,9 @@ function render(snap, view) {
 
   document.documentElement.dataset.theme = ctx.register === 'dark' ? 'dark' : '';
   if (!document.documentElement.dataset.theme) delete document.documentElement.dataset.theme;
+  // R6 again: the wall carries no chrome. The header is five buttons and belongs on a page someone
+  // is standing at, not on a screen across a room.
+  document.body.classList.toggle('wallview', view === 'wall');
 
   const h = snap.health || {};
   document.getElementById('nodename').textContent = h.node || 'node';
@@ -1214,6 +1224,10 @@ function toast(msg, bad) {
 let ARRANGING = false;
 async function loadLayout() {
   if (LAYOUT) return LAYOUT;
+  // A fixture is a file, not a node: there is nowhere a saved arrangement could have come from, and
+  // this was the one request that stopped `?fixture=` being renderable from the fixture alone —
+  // which is the property a design round depends on. tools/shots.mjs counts any request it makes.
+  if (FIXTURE) return (LAYOUT = { order: [], hidden: [] });
   try {
     const d = await fetch('/settings', { headers: auth_() }).then(r => r.json());
     const r = (d.runtime || []).find(x => x.key === 'UI_LAYOUT');
@@ -1288,7 +1302,7 @@ async function refresh() {
 }
 
 document.addEventListener('click', ev => {
-  const nav = ev.target.closest('nav.views button');
+  const nav = ev.target.closest('nav.views button, .wall .exit');
   if (nav) return show(nav.dataset.view);
   const a = ev.target.closest('[data-act]');
   if (a) return act(a.dataset.act, a);
