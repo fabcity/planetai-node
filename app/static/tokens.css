@@ -1,0 +1,165 @@
+/* Fab City Design System — tokens.css, ADAPTED for the node. Not a verbatim copy.
+
+   Two changes from fab-city-design-system/tokens.css, both forced, both listed here so the next
+   person diffing the two knows this file is not drifting by accident:
+
+   1. The `@import url('https://fonts.googleapis.com/...')` on its line 3 is REMOVED. A node serves
+      this page on a LAN that may have no route out, and a webfont request to a CDN is one of the
+      six violations in planetai-design/decisions/design-log.md. The families are self-hosted below.
+
+   2. The four @font-face `src` paths pointed at `assets/fonts/*.ttf`, relative to this file. The
+      node serves /static/<name> from an allowlist that takes a NAME and not a path, on purpose, on
+      a port open to a household LAN — so they point at flat names here.
+
+   Everything below the @font-face blocks is the foundation, value for value. tools/check_theme.py
+   governs planetai-theme.css, which IS byte-identical to the design repo; this file is ours.
+*/
+
+/* =============================================================
+   Fab City Design System — tokens.css  (v1, reconstructed)
+   Link this one file to inherit the whole foundation.
+   Values ported from the Fab City Design System (Claude Design).
+   Fonts fall back to system faces until the real files are added
+   to assets/fonts/ (see assets/README.md).
+   ============================================================= */
+
+/* ---------- Fonts (real files bundled in assets/fonts/ — offline fallback for the @import above) ---------- */
+@font-face{ font-family:"Funnel Sans"; src:url("FunnelSans-VariableFont_wght.ttf") format("truetype");
+  font-weight:300 800; font-style:normal; font-display:swap; }
+@font-face{ font-family:"Figtree"; src:url("Figtree-VariableFont_wght.ttf") format("truetype");
+  font-weight:300 900; font-style:normal; font-display:swap; }
+@font-face{ font-family:"Figtree"; src:url("Figtree-Italic-VariableFont_wght.ttf") format("truetype");
+  font-weight:300 900; font-style:italic; font-display:swap; }
+@font-face{ font-family:"Circular Std"; src:url("CircularStd.ttf") format("truetype");
+  font-weight:500; font-style:normal; font-display:swap; }
+
+:root{
+  /* ---- Paper & ink foundation (black & white first) ---- */
+  --fc-paper:      #F9F5F2;   /* warm off-white canvas — never #fff */
+  --fc-paper-2:    #EFEAE4;   /* raised / quiet panel */
+  --fc-ink:        #171717;   /* near-black — type & marks — never #000 */
+  --fc-ink-2:      #232323;   /* strong body */
+  --fc-grid-line:  #E4E2DD;   /* iso mesh + hairline borders */
+
+  /* ---- Warm neutral ramp (anchored paper -> ink) ---- */
+  --fc-neutral-50:  #F9F5F2;
+  --fc-neutral-100: #EFEAE4;
+  --fc-neutral-200: #E4E2DD;
+  --fc-neutral-300: #D3CEC7;
+  --fc-neutral-400: #B4AEA6;
+  --fc-neutral-500: #8F8983;
+  --fc-neutral-600: #6B6660;
+  --fc-neutral-700: #4A4641;
+  --fc-neutral-800: #2E2B27;
+  --fc-neutral-900: #171717;
+
+  /* ---- Master-brand primaries (flat, saturated, monochromatic) ---- */
+  --fc-red:   #E62038;
+  --fc-blue:  #20388D;
+  --fc-green: #00A057;
+
+  /* ---- The three pillars (hexagon rhombi as named concepts) ---- */
+  --fc-pillar-productive:  var(--fc-red);    /* Productive Cities */
+  --fc-pillar-fabrication: var(--fc-blue);   /* Digital Fabrication */
+  --fc-pillar-communities: var(--fc-green);  /* Emergent Communities */
+
+  /* ---- Web / modernised palette (WEBSITE CONTENT ONLY — not branding) ---- */
+  --fc-web-blue:   #3FA9F5;
+  --fc-web-green:  #7AC943;
+  --fc-web-orange: #FF931E;
+  --fc-web-red:    #FF1D25;
+  --fc-web-pink:   #FF7BAC;
+  --fc-web-steel:  #BDCCD4;
+
+  /* ---- Semantic roles ---- */
+  --fc-primary: var(--fc-blue);    /* primary / links / info */
+  --fc-success: var(--fc-green);
+  --fc-danger:  var(--fc-red);     /* emphasis / danger */
+  --fc-surface: var(--fc-paper);
+  --fc-text:    var(--fc-ink);
+  --fc-text-muted: var(--fc-neutral-600);
+  --fc-border:  var(--fc-neutral-200);
+
+  /* ---- Type ---- */
+  --fc-font-display:  "Funnel Sans", system-ui, -apple-system, sans-serif;
+  --fc-font-body:     "Figtree", system-ui, -apple-system, sans-serif;
+  --fc-font-wordmark: "Circular Std", "Funnel Sans", system-ui, sans-serif;
+
+  --fc-display-tracking: -0.03em;   /* tight for hero display */
+  --fc-eyebrow-tracking:  0.14em;   /* tracked-out uppercase labels */
+
+  --fc-text-display:  clamp(2.5rem, 6vw, 4.5rem);
+  --fc-text-h1:       2.5rem;
+  --fc-text-h2:       1.75rem;
+  --fc-text-subtitle: 1.25rem;
+  --fc-text-body:     1rem;
+  --fc-text-small:    0.875rem;
+  --fc-text-eyebrow:  0.75rem;
+  --fc-numeral:       clamp(3rem, 8vw, 6rem);
+
+  --fc-weight-body: 400;
+  --fc-weight-medium: 500;
+  --fc-weight-display: 700;
+  --fc-weight-heavy: 800;
+
+  /* ---- Spacing (4px base grid) ---- */
+  --fc-space-1: 4px;  --fc-space-2: 8px;  --fc-space-3: 12px; --fc-space-4: 16px;
+  --fc-space-6: 24px; --fc-space-8: 32px; --fc-space-12: 48px; --fc-space-16: 64px;
+  --fc-space-24: 96px;
+  --fc-container-xl: 1280px;
+  --fc-measure: 48rem;
+  --fc-section-y: 128px;
+  --fc-gutter: 24px;
+
+  /* ---- Radius (restrained, geometric) ---- */
+  --fc-radius-control: 8px;
+  --fc-radius-card:    14px;
+  --fc-radius-pill:    999px;   /* chips / avatars only */
+
+  /* ---- Borders ---- */
+  --fc-hairline: 1px solid var(--fc-neutral-200);
+  --fc-hex-stroke: 2px;         /* hexagon outlines: 1.5–2px ink or hue */
+
+  /* ---- Elevation ---- */
+  --fc-shadow-sm: 0 1px 2px rgba(23,23,23,.06), 0 2px 8px rgba(23,23,23,.05);
+  --fc-shadow-md: 0 4px 16px rgba(23,23,23,.08);
+  --fc-shadow-offset: 4px 4px 0 var(--fc-ink);   /* signature — use sparingly */
+
+  /* ---- Motion ---- */
+  --fc-dur-fast: 120ms; --fc-dur-base: 200ms; --fc-dur-slow: 320ms;
+  --fc-ease: cubic-bezier(.2,.6,.2,1);
+
+  /* ---- Focus ---- */
+  --fc-focus-ring: 0 0 0 3px rgba(32,56,141,.35);
+}
+
+/* ---------- Base layer ---------- */
+body.fc{
+  margin:0; background:var(--fc-paper); color:var(--fc-ink);
+  font-family:var(--fc-font-body); font-size:var(--fc-text-body); line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.fc h1,.fc h2,.fc h3,.fc .fc-display{ font-family:var(--fc-font-display);
+  font-weight:var(--fc-weight-display); letter-spacing:var(--fc-display-tracking); line-height:1.05; }
+.fc .fc-eyebrow{ font-family:var(--fc-font-body); text-transform:uppercase;
+  letter-spacing:var(--fc-eyebrow-tracking); font-size:var(--fc-text-eyebrow); font-weight:600; color:var(--fc-neutral-600); }
+.fc .fc-wordmark{ font-family:var(--fc-font-wordmark); font-weight:700; }
+.fc a{ color:var(--fc-primary); text-underline-offset:2px; }
+.fc :focus-visible{ outline:none; box-shadow:var(--fc-focus-ring); border-radius:2px; }
+
+/* Hexagon clip (pointy-top). Wrap a photo/solid element in .fc-hex. */
+.fc-hex{ clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); }
+.fc-hex--offset{ position:relative; }
+.fc-hex--offset::before{ content:""; position:absolute; inset:0; transform:translate(10%,8%);
+  border:var(--fc-hex-stroke) solid var(--fc-ink);
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); z-index:-1; }
+
+/* Isometric mesh — use ONLY inside a bounded panel or a hex cell, never full-bleed. */
+.fc-iso{
+  background-image:
+    repeating-linear-gradient(90deg,  var(--fc-grid-line) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(30deg,  var(--fc-grid-line) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(150deg, var(--fc-grid-line) 0 1px, transparent 1px 46px);
+}
+
+@media (prefers-reduced-motion: reduce){ .fc *{ animation:none !important; transition:none !important; } }
