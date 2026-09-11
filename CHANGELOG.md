@@ -37,6 +37,28 @@ retired in v0.33.1. `observations` keeps the latest row per source per metric fo
 ran that pack before the retirement still holds one, and showing it would put a year-old number on
 the wall as this year's answer. With no record, land says how to fetch one.
 
+## v0.44.2 — 2026-09-11 — an update refuses a download it could not verify
+
+**`planetai update` could report success it did not have.** The tarball path trusted the download whenever
+the checksum could not be checked, and both ways it could not be checked were silent: `shasum` is macOS's
+name for the tool and Debian ships `sha256sum`, and any hiccup fetching `SHA256` skipped the check too.
+Then the extract was the **left** operand of an `&&` list, which `set -e` exempts — so a truncated download
+installed nothing and the run carried on to the schema step, the rebuild and the doctor, and ended
+`>> updated. Nothing was lost` with **exit 0 and six green rows**. The only clue was `>> now v0.41.2`
+printed after the update, naming the version it already had.
+
+`install` fixed these same three paths some time ago and its comment records that it once did not. This is
+those five lines, copied, plus `|| die` on the extract. `update.sh` now refuses, says which of the three
+reasons it refused for, and installs nothing.
+
+This matters most for a node nobody here can see. Node #2 in Menorca is a tarball install on Linux Mint,
+and it is `update.sh`'s first run somewhere none of us can look at the screen.
+
+**One thing this cannot fix retroactively:** the `update.sh` that runs is the one already on the node. A
+node still on an older release runs the old, fail-open script for its next update, and gets this one only
+afterwards. For that hop, run `planetai version` after updating — if the version has not changed, the
+update silently did nothing.
+
 ## v0.44.1 — 2026-09-11 — config navigates, it does not march
 
 `planetai config` walked all sixty-six settings in a fixed order and asked about each one. To change a

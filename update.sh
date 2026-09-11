@@ -76,12 +76,21 @@ if [[ $PULL -eq 1 ]] && [[ ! -d .git ]] && [[ -f VERSION ]]; then
   say "updating from ${PLANETAI_SITE:-https://planetai.fab.city/node0}"
   tmp="$(mktemp -d)"
   if curl -fsSL "${PLANETAI_SITE:-https://planetai.fab.city/node0}/get/planetai-node.tar.gz" -o "$tmp/n.tar.gz"; then
-    # the same check the installer makes: refuse a download that does not match the published checksum
-    if command -v shasum >/dev/null && curl -fsSL "${PLANETAI_SITE:-https://planetai.fab.city/node0}/get/SHA256" -o "$tmp/sha" 2>/dev/null; then
-      want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$(shasum -a 256 "$tmp/n.tar.gz" | awk '{print $1}')"
-      [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
-    fi
-    tar xzf "$tmp/n.tar.gz" -C "$tmp" && ( cd "$tmp/planetai-node" && tar cf - . ) | tar xf - --exclude=.env
+    # The checksum is not optional — the same five lines the installer uses (`install`, fetch_tarball).
+    # This said `if command -v shasum && curl …SHA256`, which failed open twice and silently: `shasum` is
+    # macOS's name and Debian ships `sha256sum`, and any hiccup fetching the checksum skipped the check
+    # too. Then `tar xzf` was the LEFT operand of an `&&` list, which `set -e` exempts, so a truncated
+    # download extracted nothing and the script carried on to the schema step, the rebuild and the doctor
+    # and exited 0 with six green rows and no new code installed. On a node nobody here can see, an update
+    # that reports success it did not have is worse than one that fails.
+    sum=""; command -v shasum >/dev/null && sum="shasum -a 256"; [[ -n "$sum" ]] || { command -v sha256sum >/dev/null && sum="sha256sum"; }
+    [[ -n "$sum" ]] || { rm -rf "$tmp"; die "no shasum or sha256sum on this machine, so the download cannot be verified. Install one, then run this again."; }
+    curl -fsSL "${PLANETAI_SITE:-https://planetai.fab.city/node0}/get/SHA256" -o "$tmp/sha" || { rm -rf "$tmp"; die "could not fetch the published checksum, so the download cannot be verified."; }
+    want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$($sum "$tmp/n.tar.gz" | awk '{print $1}')"
+    [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
+    say "checksum verified"
+    tar xzf "$tmp/n.tar.gz" -C "$tmp" || { rm -rf "$tmp"; die "the download is not a readable archive, so nothing was installed. Try again; if it repeats, tell us."; }
+    ( cd "$tmp/planetai-node" && tar cf - . ) | tar xf - --exclude=.env
     say "now $(cat VERSION 2>/dev/null || echo '?')"
   else
     warn "could not reach the site; keeping the version you have"
