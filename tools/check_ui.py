@@ -11,7 +11,10 @@ import subprocess
 import sys
 
 h = open("app/static/index.html").read()
-js = h[h.rindex("<script>") + 8: h.rindex("</script>")]
+# The page is three files: a skeleton, a renderer and a stylesheet. It used to be one, and every
+# rule below was written against that one — so this is where they are told where to look now.
+js = open("app/static/dashboard.js").read() if "src=\"static/dashboard.js\"" in h \
+    else h[h.rindex("<script>") + 8: h.rindex("</script>")]
 errs = []
 
 if shutil.which("node"):
@@ -25,8 +28,17 @@ for i in sorted(used - have):
     errs.append(f"script references #{i}, which is not in the markup")
 
 main = open("app/main.py").read()
-routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_/-]*)"', main))   # paths may nest: /place/geojson
-for p in sorted(set(re.findall(r"(?:api|fetch)\('(/[a-z_/-]+)", js))):
+routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_./{}-]*)"', main))   # paths may nest: /place/geojson
+# app/issues/api.py is an APIRouter mounted with include_router, and this FastAPI version defers
+# that — app.routes holds an _IncludedRouter with no .path, so nothing here can see /issues by
+# importing. Read its decorators and put the router's own prefix back on the front.
+_api = open("app/issues/api.py").read()
+_prefix = (re.search(r'APIRouter\(prefix="([^"]+)"', _api) or [None, ""])[1]
+routes |= {(_prefix + p) or "/" for p in re.findall(r'@router\.(?:get|post|put)\("([^"]*)"', _api)}
+# `fetch('/x')`, and `get('/x')` — snapshot()'s own helper, which is how most of them are called
+_called = set(re.findall(r"(?:api|fetch|get)\('(/[a-z_/.-]+)", js))
+_called |= set(re.findall(r"[\"'`](/(?:earth|issues|actions|settings|packs|health|alerts|rho|report)[a-z_/.-]*)", js))
+for p in sorted({x.rstrip("/") or "/" for x in _called}):
     if p not in routes:
         errs.append(f"page calls {p}, which app/main.py does not define")
 
@@ -34,7 +46,7 @@ for p in sorted(set(re.findall(r"(?:api|fetch)\('(/[a-z_/-]+)", js))):
 # shipped twice: an empty orange act strip on every node with nothing to act on (.actstrip sets display:grid),
 # and a broken-image box with its alt text on every node that had not fetched satellite data yet (#earth-img
 # sets display:block). Both times the script had set .hidden correctly and the CSS quietly ignored it.
-CSS = h[: h.index("</style>")] if "</style>" in h else ""
+CSS = h[: h.index("</style>")] if "</style>" in h else open("app/static/dashboard.css").read()
 ids = dict(re.findall(r"const\s+(\w+)\s*=\s*\$\('#([a-zA-Z0-9_-]+)'\)", js))
 ids.update(dict(re.findall(r"(\w+)\s*=\s*\$\('#([a-zA-Z0-9_-]+)'\)", js)))
 hidden_ids = {ids[v] for v in re.findall(r"(\w+)\.hidden\s*=", js) if v in ids}
@@ -86,7 +98,9 @@ def strip_comments(text):
 
 CSS_SRC = strip_comments(CSS)
 JS_SRC = strip_comments(js)
-BODY = strip_comments(h[h.index("</style>"):]) if "</style>" in h else ""
+# the markup. It used to be "whatever follows the inline <style>"; the skeleton has no inline
+# style at all, and an empty BODY silently switched off every rule that reads the markup.
+BODY = strip_comments(h[h.index("</style>"):] if "</style>" in h else h)
 RULES = [(m.group(1).strip(), m.group(2)) for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", CSS_SRC)]
 
 def rule_width(body):
@@ -170,7 +184,11 @@ for sel, body in RULES:
 # --- 5. provenance is ink -------------------------------------------------------------------------------------------
 # A pill in a role colour reads as a verdict on the number beside it. Provenance says where a number came from and
 # nothing about whether it is good. Ink family and currentColor only.
-ROLE_TOKENS = ("--red", "--green", "--blue", "--orange")
+# The layer's names (planetai-design/references/planetai-layer.md). The page used to call these
+# --red/--green/--blue/--orange; those four no longer exist, so a rule written against them could
+# never fire again. Both sets are listed: a fork still on the old names is still checked.
+ROLE_TOKENS = ("--signal-worse", "--rings", "--loop-closed", "--cells", "--satellite-only",
+               "--red", "--green", "--blue", "--orange")
 PAINT = re.compile(r"#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|" + "|".join(re.escape(t) for t in ROLE_TOKENS))
 for sel, body in RULES:
     if "prov" in sel and PAINT.search(body):
@@ -183,20 +201,28 @@ for tag in re.finditer(r"<[^>]*\b(?:class|id)=\"[^\"]*prov[^\"]*\"[^>]*>", BODY)
 
 # --- 6. orange is the satellite and nothing else -----------------------------------------------------------------
 # "What only the satellite knows." It was the act button (violation 6), every link hover and the arrange bar.
-ORANGE_DEF = re.compile(r"--orange\s*:\s*#FF931E|ORANGE\s*=\s*'#FF931E'")
+# #DB7200 is the paper register's satellite orange (3.02:1 on paper); #FF931E is the dark
+# register's. Neither may appear away from the satellite layer, and neither may cross registers —
+# that last part is planetai-theme.css's own guard, checked by tools/check_theme.py.
+ORANGE_DEF = re.compile(r"--(?:orange|satellite-only)\s*:\s*#(?:FF931E|DB7200)|ORANGE\s*=\s*'#FF931E'")
 SATELLITE = re.compile(r"satellite|\bsat\b|only the satellite", re.I)
-for i, line in enumerate(strip_comments(h).splitlines(), 1):
-    if not re.search(r"--orange|#FF931E|rgba\(255,\s*147,\s*30|\bORANGE\b", line):
+for i, line in enumerate(strip_comments(h + "\n" + CSS_SRC + "\n" + JS_SRC).splitlines(), 1):
+    if not re.search(r"--orange|--satellite-only|#FF931E|#DB7200|rgba\(255,\s*147,\s*30|\bORANGE\b", line):
         continue
-    if ORANGE_DEF.search(line) or SATELLITE.search(line):
+    # The exemption is "this line is about the satellite layer". The TOKEN is called
+    # --satellite-only, so it contains that word itself and would exempt every use of it — the rule
+    # would pass anything as long as it used the token, which is exactly what it is guarding.
+    # Test the line with the token's own name taken out of it.
+    context = line.replace("--satellite-only", "").replace("satellite-only", "")
+    if ORANGE_DEF.search(line) or SATELLITE.search(context):
         continue
     errs.append(f"line {i} paints with orange away from the satellite layer: {line.strip()[:80]}")
 
 # --- 7. the dark register --------------------------------------------------------------------------------------
 # Fab Blue #20388D on ink #171717 measures 1.72:1 and is invisible; the dark register uses #7FA5E8 at 7.21:1,
 # which on paper #F9F5F2 is 2.29:1 and may never appear there. Measured, not assumed — design-log A5.
-DARK_DOC = re.search(r"<html[^>]*data-variant=\"dark\"", h) is not None
-dark_sel = re.compile(r"\[data-variant=[\"']dark[\"']\]|\.variant-dark")
+DARK_DOC = re.search(r"<html[^>]*data-theme=\"dark\"", h) is not None
+dark_sel = re.compile(r"\[data-theme=[\"']dark[\"']\]|\.variant-dark")
 for sel, body in RULES:
     in_dark = DARK_DOC or bool(dark_sel.search(sel))
     if in_dark and re.search(r"#20388D", body, re.I):
@@ -216,7 +242,21 @@ elif re.search(r"#20388D", CSS_SRC + JS_SRC + BODY, re.I):
 # The page is one HTML file, and the two companions it does reference (the H3 ground, the mono) are served by an
 # allowlist in app/main.py. A src the node does not serve is a silent 404 and a missing ground on every node.
 served = set(re.findall(r'"([a-zA-Z0-9._-]+)":\s*\(', main[main.find("COMPANIONS = {"):] if "COMPANIONS = {" in main else ""))
-for ref in sorted(set(re.findall(r'src="(?!https?:|data:|#)([^"]+)"', h)) | set(re.findall(r"url\((?!https?:|data:|#)([^)]+)\)", CSS_SRC))):
+# Everything the DOCUMENT asks for, and everything the RENDERER writes into the document. Both are
+# relative to "/", so both must say static/<name>. A url() inside app/static/*.css is relative to
+# /static/ already, where a bare name is the correct form — those are rule 9's.
+#
+# The renderer half matters: the hero's ground, the sign sprite and every satellite frame are
+# written by dashboard.js, so scanning only index.html checked almost nothing.
+_refs = set(re.findall(r'src="(?!https?:|data:|#)([^"]+)"', h))
+_refs |= set(re.findall(r'<link[^>]+href="(?!https?:|data:|#)([^"]+)"', h))
+# Any literal src/href the renderer writes — NOT only the ones already under static/, or a
+# reference that drops the prefix drops out of the check with it, which is the mistake this line
+# was written with. Template expressions (src="${...}") are the satellite frames and are routes,
+# not assets; they are excluded by the character class.
+_refs |= set(re.findall(r'src="([^"${}]+)"', js))
+_refs |= {m.split("#")[0] for m in re.findall(r'href="([^"${}]+)"', js) if "/" in m}
+for ref in sorted(_refs):
     ref = ref.strip("'\"")
     if not ref.startswith("static/"):
         errs.append(f"the page loads {ref}, which is not under static/ — app/main.py serves nothing else")

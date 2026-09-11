@@ -9,7 +9,11 @@ compose = yaml.safe_load(open("docker-compose.yml"))
 settings = open("app/settings.py").read()
 cli = open("bin/planetai").read()
 env = open(".env.example").read()
-gui = open("app/static/index.html").read()
+# The page is three files since the renderer landed: a skeleton, a script and a
+# stylesheet. "the GUI" means all of them, or an assertion passes by looking in the
+# wrong one.
+gui = "".join(open("app/static/" + f).read()
+                for f in ("index.html", "dashboard.js", "dashboard.css"))
 main = open("app/main.py").read()
 
 # v0.17 storage
@@ -30,7 +34,7 @@ assert "agent" in compose["services"] and compose["services"]["agent"]["command"
 for k in ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY", "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY"):
     assert f'"{k}"' in settings, f"settings.py: {k}"
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
-assert "agent:['Model'" in gui, "gui: Model tab"
+assert "agent: ['Model'" in gui, "gui: Model tab"
 assert "cmd_agent_local()" in cli and "local) cmd_agent_local" in cli
 assert "def refresh_ladder" in open("app/agent_loop.py").read()
 print("all shipped claims present")
@@ -156,7 +160,12 @@ assert '"view"' in open("packs/earth/frames.py").read(), "the projection must be
 assert '@app.get("/earth/year.png")' in main and 'f"year_{year}.png"' in main, \
     "main.py: a frame is addressed by an integer year, never by a name from the request"
 assert '"frames": frames' in main and '"dir": str(d)' in main
-for _id in ("earth-ctl", "earth-play", "earth-slider", "earth-year", "earth-mode", "earth-hist", "earth-path"):
+# The satellite card's controls are hooked by data-sat= now rather than by seven ids: the same
+# component is drawn more than once on a page (the node's own record and the imagery), and an id
+# cannot be. The play/pause, the year slider and the years-or-change toggle are all still there.
+for _hook in ('data-sat="play"', 'data-sat="slider"', 'data-sat="mode"', 'data-sat="year"'):
+    assert _hook in gui, f"gui: the satellite card lost {_hook}"
+for _id in ():
     assert f'id="{_id}"' in gui, f"gui: #{_id}"
 assert "not a photograph" in gui.lower() or "Not a photograph" in gui, \
     "gui: a rendering of a model must not be presented as a photograph"
@@ -164,8 +173,14 @@ print("the years render, animate, and are not called photographs")
 assert 'libexpat1' in open("app/Dockerfile").read(), "app/Dockerfile: rasterio cannot import without libexpat1"
 assert '@app.get("/earth")' in main and '@app.get("/earth/change.png")' in main
 assert 'Path(str((want or {}).get("png", ""))).name' in main, "main.py: the png name must be stripped of path components"
-assert 'data-card="earth"' in gui and 'id="earthcard"' in gui and 'drawEarth()' in gui
-assert "class=\"prov\"" in gui, "gui: the earth card needs its provenance pill"
+# The earth card became the `satellite` component, drawn twice on the Land band — the node's own
+# AlphaEarth record and the Earth Engine imagery — which is why it is a component and not an id.
+assert 'data-component="satellite"' in gui, "gui: the satellite card"
+assert "'/earth/year.png?year='" in gui or '/earth/year.png?year=' in gui, "gui: the node's own frames"
+assert '/earth/frame.png?source=sentinel' in gui, "gui: the imagery frames"
+# `prov` in the class, whatever else is beside it — tools/check_ui.py's ink-only rule keys on that
+# word, so a pill without it is a pill no gate guards.
+assert re.search(r'class="[^"]*\bprov\b', gui), "gui: the satellite card needs its provenance pill"
 assert "planetai run earth fetch" in gui, "gui: the empty state must name the command that fills it"
 # v0.33.6 — the dashboard must not be cacheable: a node that updates has to reach the screens looking at it
 _ui = re.search(r"^def ui\(\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
@@ -174,9 +189,14 @@ print("the dashboard is not cacheable")
 # v0.33.7 — one unusual OpenStreetMap object must not blank the plan. A poi mapped as an open way made
 # drawPlan destructure a number and the kilometre stayed empty, silently, because drawPlan() is not awaited.
 _gui = gui
-assert "const firstPt=g=>" in _gui, "the plan needs a geometry-agnostic first point for its poi markers"
-assert "px(firstPt(g))" in _gui, "the poi marker must not index coordinates[0][0]"
-assert "}catch(e){skipped++;}" in _gui, "the plan's feature loop must survive one undrawable feature"
+# Matched loosely on whitespace: these were written against a single file whose script was packed,
+# and the renderer that replaced it is formatted. What is being asserted is the behaviour, not the
+# spacing — a reformat must not be able to turn one of these red, and must not turn it green either.
+assert re.search(r"const\s+firstPt\s*=\s*g\s*=>", _gui), \
+    "the plan needs a geometry-agnostic first point for its poi markers"
+assert re.search(r"px\(\s*firstPt\(g\)\s*\)", _gui), "the poi marker must not index coordinates[0][0]"
+assert re.search(r"catch\s*\(\s*e\s*\)\s*\{\s*skipped\+\+", _gui), \
+    "the plan's feature loop must survive one undrawable feature"
 print("the plan survives real OpenStreetMap geometry")
 # v0.35 — `local` was written once and never corrected. Node #1 carried three smartcitizen kits at local=false
 # that no current code path can produce: they were born from Bali Air Dispatch before the bad- prefix existed.

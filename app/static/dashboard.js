@@ -1,0 +1,1084 @@
+/* The node dashboard. A renderer, and nothing else.
+ *
+ * The node computes; this file draws. Everything on the page — which issue leads, what state it is
+ * in and why, the same quantity at four distances, the line and where it came from, the sentence in
+ * the household's own language — arrives from GET /issues already worked out. There is no mean, no
+ * median, no apparent temperature and no threshold in this file. If you find yourself needing one,
+ * it belongs in app/issues/engine.py, and tools/check_ui.py will fail the page if you put it here.
+ *
+ * The contract, in the order it runs, with these names so the gates can find them:
+ *
+ *   snapshot()            the ONLY place that fetches. Returns one object, or one marked `refused`.
+ *   COMPONENTS            pure (data, ctx) => string. No DOM, no fetch, no colour, no exceptions
+ *                         escaping. Each returns markup whose root carries data-component="<name>".
+ *   ANATOMY               which components make each kind of band. Changing what a band shows is
+ *                         editing a list.
+ *   layout(snap)          the page order. Arrange edits this and saves it as UI_LAYOUT.
+ *   render(snap, view)    the ONLY writer to the DOM.
+ *   ctx                   {locale, register, fmt, sign, pill, now, as_of}, built once per render.
+ *
+ * A seam worth knowing and NOT acting on yet: ANATOMY could move into /issues, so a node could carry
+ * what its own bands show. Do not do that now — the page would stop being renderable from a fixture
+ * alone, and that is the property that makes a design round possible.
+ */
+'use strict';
+
+// ---------------------------------------------------------------------------------- what it reads
+const QS = new URLSearchParams(location.search);
+const FIXTURE = QS.get('fixture');
+const ONLY = QS.get('only');
+const KIOSK = QS.get('kiosk') === '1';
+const LOCALES = ['en', 'id', 'es'];
+const DISTANCES = ['room', 'yard', 'ring', 'region'];
+// One frame holds for --motion-satellite-year. Read from the layer rather than retyped, so the
+// design repo stays the only place that number lives.
+const MOTION_YEAR = () => {
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--motion-satellite-year').trim();
+  const n = parseFloat(v) || 4;
+  return /ms$/.test(v) ? n : n * 1000;
+};
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const tok_ = () => localStorage.getItem('planetai_admin') || localStorage.getItem('planetai_act') || '';
+const auth_ = () => (tok_() ? { authorization: 'Bearer ' + tok_() } : {});
+
+// ------------------------------------------------------------------------------------ the fetcher
+/* The only function in this file that touches the network.
+ *
+ * At SHARE_LEVEL=off a reader with no token gets the shell, /health and nothing else — which is a
+ * real state a phone on the house WiFi will be in, not an error. It comes back as a snapshot marked
+ * `refused` carrying the server's own sentence, and render() draws the shell and that sentence. A
+ * blank page would be the node lying about being broken.
+ */
+async function snapshot() {
+  const get = async (path, fallback = null) => {
+    try {
+      const r = await fetch(path, { headers: auth_() });
+      if (r.status === 403) return { __refused: (await r.json().catch(() => ({}))).error || 'refused' };
+      if (!r.ok) return fallback;
+      return await r.json();
+    } catch (e) {
+      return fallback;
+    }
+  };
+
+  if (FIXTURE) {
+    const snap = await get('/issues/fixtures/' + encodeURIComponent(FIXTURE));
+    if (!snap || snap.__refused) return { refused: (snap && snap.__refused) || 'no such fixture', health: {} };
+    return { ...snap, fixture: FIXTURE };
+  }
+
+  let placeStatus = 0;
+  const place = await fetch('/place/geojson', { headers: auth_() })
+    .then(r => { placeStatus = r.status; return r.ok ? r.json() : null; }).catch(() => null);
+  const [health, issues, alerts, rho, report, earth] = await Promise.all([
+    get('/health', {}), get('/issues'), get('/alerts?limit=40', []),
+    get('/rho', {}), get('/report/latest', {}), get('/earth', {}),
+  ]);
+  const refused = [issues, alerts, rho].map(x => x && x.__refused).find(Boolean);
+  if (refused) return { refused, health: health && !health.__refused ? health : {} };
+  return { health, issues, alerts, rho, report, earth, place, placeStatus };
+}
+
+// -------------------------------------------------------------------------------------- the words
+/* Everything a person reads that is not a sentence the node wrote. Kept here, keyed by locale, for
+ * the same reason the node keeps its own: a string typed inline is a string nobody can translate.
+ * The id and es are ASSISTANT-WRITTEN and have not been read by a native speaker — see CHANGELOG.
+ */
+const WORDS = {
+  en: { now: 'Now', watches: 'What this place watches', notWatched: 'not watched here',
+        theDay: 'The day it just had', whereItStands: 'Where it stands', sources: 'Sources',
+        thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
+        source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
+        stale: 'stale', didThis: 'I did this', noted: 'noted', theLine: 'the line',
+        headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, which is set under Set up → Issues.',
+        refused: 'This node is not sharing its readings with the network.' },
+  id: { now: 'Sekarang', watches: 'Yang dipantau di sini', notWatched: 'tidak dipantau di sini',
+        theDay: 'Hari yang baru lewat', whereItStands: 'Posisinya', sources: 'Sumber',
+        thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
+        source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
+        stale: 'basi', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
+        headlineRule: 'Isu dengan hal terpenting tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, diatur di Set up → Issues.',
+        refused: 'Node ini tidak membagikan bacaannya ke jaringan.' },
+  es: { now: 'Ahora', watches: 'Lo que vigila este lugar', notWatched: 'no se vigila aquí',
+        theDay: 'El día que acaba de pasar', whereItStands: 'Dónde está', sources: 'Fuentes',
+        thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
+        source: 'Fuente', asOf: 'A las', word: 'Palabra', answerOn: 'Responde en Telegram, no aquí.',
+        stale: 'viejo', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
+        headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
+        refused: 'Este nodo no comparte sus lecturas con la red.' },
+};
+
+// ----------------------------------------------------------------------------------------- pieces
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ctx.fmt formats; it does not decide. The decimal places are the issue's own, from the node.
+const mkCtx = (snap, view) => {
+  const locale = LOCALES.includes(snap.locale) ? snap.locale : 'en';
+  return {
+    locale,
+    w: WORDS[locale],
+    register: view === 'wall' || QS.get('theme') === 'dark' || KIOSK ? 'dark' : 'paper',
+    as_of: (snap.issues && snap.issues.as_of) || snap.as_of || null,
+    fixture: snap.fixture || null,
+    fmt: (v, dp = 0) => (v == null || isNaN(v) ? '—' : Number(v).toFixed(dp)),
+    hhmm: ts => { try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } },
+    sign: (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use href="static/signs.svg#sign-${id}"/></svg>`,
+    // `prov` is in the class on purpose: tools/check_ui.py's ink-only rule keys on that word, and a
+    // pill called anything else is a pill the gate does not guard. Provenance is a glyph and a
+    // word, never a colour — a coloured pill reads as a verdict on the number beside it.
+    pill: (word, note = '') => word
+      ? `<span class="pill prov" title="${esc(note)}"><svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(word)}"/></svg>${esc(word)}</span>`
+      : '',
+  };
+};
+
+/* Which plan layers are switched off, and what the legend calls them. Module-level because it is a
+ * view preference and not data: it survives a refresh and is not worth a round trip to the node. */
+const PLAN_OFF = new Set();
+const PLAN_LAYERS = { building: 'mapped', sat: 'from orbit only', road: 'roads', green: 'green', poi: 'uses' };
+
+// ------------------------------------------------------------------------------------- COMPONENTS
+/* Each one is (data, ctx) => string. Pure: no DOM, no fetch, no colour literal, and every one draws
+ * its own empty state rather than being hidden by somebody else.
+ */
+const COMPONENTS = {
+
+  kicker(d, ctx) {
+    const why = d.reason_text ? d.reason_text[ctx.locale] : '';
+    return `<div class="k" data-component="kicker">`
+      + `<span class="issue">${esc(d.name ? d.name[ctx.locale] : '')}</span>`
+      + `<span class="state${d.state === 'act' ? ' act' : ''}">${esc(d.state || '')}</span>`
+      + (why ? `<span>· ${esc(why)}</span>` : '') + `</div>`;
+  },
+
+  sentence(d, ctx) {
+    const s = d.sentence ? d.sentence[ctx.locale] : '';
+    if (!s) return `<p class="big" data-component="sentence">—</p>`;
+    // the numeral is the monument. The node already formatted it; this only finds it to set it.
+    const cell = (d.stack || {})[d.headline];
+    const n = cell && cell.value != null ? ctx.fmt(cell.value, d.dp) : null;
+    const crossed = d.line && cell && cell.value != null && cell.value > d.line.value;
+    const marked = n
+      ? esc(s).replace(esc(n), `<b class="mono${crossed ? ' crossed' : ''}">${esc(n)}</b>`)
+      : esc(s);
+    return `<p class="big" data-component="sentence">${marked}</p>`;
+  },
+
+  why(d, ctx) {
+    const line = d.line
+      ? `${esc(d.line.source)}${d.line.value != null ? ` · ${ctx.fmt(d.line.value, d.dp)} ${esc(d.line.unit || d.unit || '')}` : ''}`
+      : '';
+    return `<p class="why" data-component="why">${esc(d.reason_text ? d.reason_text[ctx.locale] : '')}`
+      + (line ? ` <span class="note">${line}</span>` : '') + `</p>`;
+  },
+
+  chips(d, ctx) {
+    const st = d.stack || {};
+    const bits = DISTANCES.filter(x => st[x]).map(x =>
+      `<span class="chip">${esc((ctx.issues_labels || {})[x] || x)} · ${esc(st[x].source)}</span>`);
+    return `<div class="chips" data-component="chips">${bits.join('')}</div>`;
+  },
+
+  stamp(d, ctx) {
+    return `<div class="stamp" data-component="stamp">${esc(d.cell ? d.cell.caption : '')}</div>`;
+  },
+
+  /* The Stack: one quantity at room · yard · ring · region. The one component this redesign adds
+   * that the layer does not name — planetai-design R11 owes it a spec. An absent distance says why
+   * rather than showing a blank, because "no kit on the wall outside" is information. */
+  stack(d, ctx, mini = false) {
+    const st = d.stack || {};
+    const cols = DISTANCES.map(id => {
+      const c = st[id];
+      const has = c && c.value != null;
+      const crossed = has && d.line && c.value > d.line.value;
+      const label = esc((ctx.issues_labels || {})[id] || id);
+      return `<div class="col"><div class="k">${label}</div>`
+        + `<div class="v"><span class="num${has ? '' : ' none'}${crossed ? ' crossed' : ''}">`
+        + `${has ? esc(ctx.fmt(c.value, d.dp)) : '—'}</span>`
+        + (has ? `<small>${esc(d.unit || '')}</small>` : '') + `</div>`
+        + (mini ? '' : `<div class="src">${esc(c ? c.source : ctx.w.notWatched)}</div>`
+                     + (c ? ctx.pill(c.provenance, c.fallback || '') : ''))
+        + `</div>`;
+    }).join('');
+    return `<div class="stack${mini ? ' mini' : ''}" data-component="stack" role="group"`
+      + ` aria-label="${esc(d.name ? d.name[ctx.locale] : '')} — ${esc(ctx.w.whereItStands)}">${cols}</div>`;
+  },
+
+  miniStack(d, ctx) { return COMPONENTS.stack(d, ctx, true); },
+
+  /* Dots on one scale, with the line drawn. Geometry only: every value and the line come from the
+   * node, and the only arithmetic here is turning a number into an x. */
+  scale(d, ctx) {
+    const st = d.stack || {};
+    const vals = DISTANCES.map(x => st[x] && st[x].value).filter(v => v != null);
+    if (vals.length < 2) return '';
+    const line = d.line ? d.line.value : null;
+    const max = Math.max(...vals, line ? line * 1.2 : 0) * 1.15 || 1;
+    const W = 600, x = v => 18 + (v / max) * (W - 36);
+    let s = `<svg class="scale" data-component="scale" viewBox="0 0 ${W} 56" role="img"`
+      + ` aria-label="${esc(d.name ? d.name[ctx.locale] : '')}: each distance on one scale${line ? ', with ' + esc(ctx.w.theLine) : ''}">`
+      + `<line x1="18" x2="${W - 18}" y1="34" y2="34" stroke="var(--ink)" stroke-opacity=".3"/>`;
+    if (line != null) {
+      const lx = x(line);
+      s += `<line x1="${lx}" x2="${lx}" y1="8" y2="44" stroke="var(--ink)" stroke-dasharray="3 3"/>`
+        + `<text x="${lx + 6}" y="14" class="mono" font-size="10" fill="var(--ink)" fill-opacity=".7">`
+        + `${esc(ctx.fmt(line, d.dp))}</text>`;
+    }
+    const items = DISTANCES.map(id => {
+      const c = st[id];
+      return c && c.value != null ? { id, v: c.value, cx: x(c.value) } : null;
+    }).filter(Boolean).sort((a, b) => a.cx - b.cx);
+    items.forEach(it => {
+      const cr = line != null && it.v > line;
+      s += `<circle cx="${it.cx}" cy="34" r="${it.id === 'room' ? 6 : 4.5}"`
+        + ` fill="${it.id === 'region' ? 'var(--ground)' : cr ? 'var(--signal-worse)' : 'var(--ink)'}"`
+        + ` stroke="${cr ? 'var(--signal-worse)' : 'var(--ink)'}" stroke-width="1.5"/>`;
+    });
+    let row = 0, last = -1e9;
+    items.forEach(it => {
+      row = (it.cx - last < 70) ? 1 - row : 0; last = it.cx;
+      const label = ((ctx.issues_labels || {})[it.id] || it.id).toUpperCase();
+      s += `<text x="${it.cx}" y="${row ? 22 : 52}" text-anchor="middle" class="mono" font-size="10"`
+        + ` letter-spacing=".06em" fill="var(--ink)" fill-opacity=".8">${esc(label)} ${esc(ctx.fmt(it.v, d.dp))}</text>`;
+    });
+    return s + `</svg>`;
+  },
+
+  /* The day it just had. The series are the node's, on one set of buckets, so the traces line up. */
+  day(d, ctx) {
+    const ser = d.series || {};
+    const sets = DISTANCES.filter(x => Array.isArray(ser[x]) && ser[x].some(v => v != null));
+    if (!sets.length) {
+      return `<div class="day" data-component="day"><p class="note">`
+        + `${esc(ctx.w.theDay)} — nothing recorded yet at any distance.</p></div>`;
+    }
+    const W = 720, H = 220, pad = { l: 34, r: 12, t: 14, b: 18 };
+    const all = sets.flatMap(x => ser[x]).filter(v => v != null);
+    const line = d.line ? d.line.value : null;
+    const hi = Math.max(...all, line || 0) * 1.1 || 1, lo = Math.min(...all, 0);
+    const n = Math.max(...sets.map(x => ser[x].length));
+    const X = i => pad.l + (i / Math.max(1, n - 1)) * (W - pad.l - pad.r);
+    const Y = v => H - pad.b - ((v - lo) / (hi - lo || 1)) * (H - pad.t - pad.b);
+    const dash = { room: '', yard: '4 3', ring: '1 5', region: '6 4' };
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
+      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours">`;
+    if (line != null) {
+      s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
+        + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
+    }
+    sets.forEach(k => {
+      const pts = ser[k].map((v, i) => (v == null ? null : `${X(i)},${Y(v)}`)).filter(Boolean).join(' ');
+      if (pts) {
+        s += `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.6"`
+          + ` vector-effect="non-scaling-stroke"${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''}`
+          + ` stroke-opacity="${k === 'room' ? 1 : .55}"/>`;
+      }
+    });
+    s += `</svg>`;
+    const legend = sets.map(k =>
+      `<span><i class="${k === 'room' ? '' : k === 'ring' ? 'dot' : 'dash'}"></i>`
+      + `${esc((ctx.issues_labels || {})[k] || k)}</span>`).join('');
+    return `<div class="day" data-component="day"><div class="trace">${s}</div>`
+      + `<div class="legend">${legend}</div></div>`;
+  },
+
+  /* A quantity as repeated signs. `per` is how much one sign is worth, so the row is countable. */
+  unitRow(d, ctx) {
+    const per = d.per || 1;
+    const full = Math.floor((d.n || 0) / per);
+    const rem = (d.n || 0) / per - full;
+    let row = '';
+    for (let i = 0; i < Math.min(full, 200); i++) row += ctx.sign(d.sign, d.cls || '');
+    if (rem >= 0.25) row += `<span class="part">${ctx.sign(d.sign, d.cls || '')}</span>`;
+    return `<div class="unit" data-component="unitRow"><div class="lab">${esc(d.label)}<b>${esc(d.sub || '')}</b></div>`
+      + `<div class="row">${row}</div>`
+      + (d.cap ? `<div class="cap">${esc(d.cap)}</div>` : '') + `</div>`;
+  },
+
+  readout(d, ctx) {
+    return `<div class="unit" data-component="readout"><div class="lab">${esc(d.label)}</div>`
+      + `<div class="v"><span class="num">${esc(ctx.fmt(d.value, d.dp || 0))}</span>`
+      + `<small>${esc(d.unit || '')}</small></div>`
+      + (d.source ? `<div class="cap">${esc(d.source)} ${ctx.pill(d.provenance)}</div>` : '') + `</div>`;
+  },
+
+  /* ρ as a row of rings, answered first. The count comes from /rho — node #1 is at 58 and 21, not
+   * the 28 and 14 the prototype drew. */
+  rhoRow(d, ctx) {
+    const total = d.alerts_act || 0, closed = d.acted || 0;
+    if (!total) {
+      return `<div class="rho${d.small ? ' small' : ''}" data-component="rhoRow" role="img"`
+        + ` aria-label="no asks yet"><span class="note">no asks yet</span></div>`;
+    }
+    let s = '';
+    for (let i = 0; i < Math.min(total, 120); i++) s += ctx.sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
+    return `<div class="rho${d.small ? ' small' : ''}" data-component="rhoRow" role="img"`
+      + ` aria-label="${closed} of ${total} asks answered">${s}</div>`;
+  },
+
+  /* The ask strip. It carries the HEADLINE issue's ask, so the hero and the instruction cannot
+   * disagree — they are the same issue. An ask whose reading came back is still listed, and says
+   * so, because ρ counts it; it just stops driving the hero. */
+  askStrip(d, ctx) {
+    const ask = (d.open_asks || [])[0];
+    if (!ask) return `<div class="askstrip" data-component="askStrip" hidden></div>`;
+    const says = (ask.says || {})[ctx.locale] || '';
+    const how = (ask.how || {})[ctx.locale] || '';
+    return `<div class="askstrip" data-component="askStrip" data-alert="${esc(String(ask.id))}">`
+      + `<div class="what">${esc(says)}<small>${esc(how)}</small></div>`
+      + `<button type="button" class="go" data-act="${esc(String(ask.id))}">${esc(ctx.w.didThis)}</button>`
+      + `</div>`;
+  },
+
+  sensorCard(d, ctx) {
+    return `<div class="sensor" data-component="sensorCard">`
+      + `<div class="top"><span class="n">${esc(d.name)}</span>`
+      + `<span class="v"><span class="num">${esc(ctx.fmt(d.value, d.dp || 0))}</span><small>${esc(d.unit || '')}</small></span></div>`
+      + (d.story ? `<div class="story">${esc(d.story)}</div>` : '')
+      + `<div class="row">${ctx.pill(d.provenance)}${d.chip ? `<span class="chip">${esc(d.chip)}</span>` : ''}</div>`
+      + `</div>`;
+  },
+
+  indexRow(d, ctx) {
+    const st = d.stack || {};
+    const mini = DISTANCES.filter(x => st[x] && st[x].value != null)
+      .map(x => `<b>${esc(ctx.fmt(st[x].value, d.dp))}</b>`).join(' ');
+    return `<a class="row" data-component="indexRow" href="#band-${esc(d.key)}"${d.watched ? '' : ' aria-disabled="true"'}>`
+      + `<span class="name">${esc(d.name ? d.name[ctx.locale] : d.key)}</span>`
+      + `<span class="state${d.state === 'act' ? ' act' : ''}">${esc(d.state)}</span>`
+      + `<span class="line">${esc(d.sentence ? d.sentence[ctx.locale] : '')}</span>`
+      + `<span class="mini">${mini}</span></a>`;
+  },
+
+  ledger(d, ctx) {
+    const rows = (d.alerts || []).slice(0, 14).map(a => {
+      const done = a.acted_at;
+      return `<div class="al"><span class="when mono">${esc(ctx.hhmm(a.ts))}</span>`
+        + `<span class="iss${a.level === 'act' ? ' act' : ''}">${esc(a.level || '')}</span>`
+        + `<span class="txt">${esc(String(a.text || '').split('\n')[0])}`
+        + `<span class="meta">${esc(a.rule_id || '')}</span></span>`
+        + `<span class="do">${done
+            ? `<span class="done">${ctx.sign('rho-closed', 'closed')} ${esc(ctx.w.noted)} ${esc(ctx.hhmm(done))}</span>`
+            : a.level === 'act'
+              ? `<button type="button" data-act="${esc(String(a.id))}">${esc(ctx.w.didThis)}</button>` : ''}</span></div>`;
+    }).join('');
+    return `<div class="ledger" data-component="ledger">${rows || `<p class="note">nothing yet</p>`}</div>`;
+  },
+
+  report(d, ctx) {
+    if (!d || !d.text) return `<div class="rep" data-component="report"><p class="note">no report yet</p></div>`;
+    return `<div class="rep" data-component="report">`
+      + `<div class="k">${esc(ctx.hhmm(d.ts))}${d.sent === false ? ' · held for quiet hours' : ''}</div>`
+      + `<p>${esc(d.text)}</p></div>`;
+  },
+
+  /* Two satellite records, one component, told apart by the pill. `model` is this node's own
+   * AlphaEarth layer — a description of every 10 m pixel, never a photograph. `partial` is
+   * Sentinel-2 or Landsat imagery from Earth Engine. A hard cut once every --motion-satellite-year,
+   * never a cross-fade; under reduced motion it stands on the latest year. Nothing coloured sits on
+   * a frame: the frame's own stamp stays, because the PNG has to stand alone when somebody saves it.
+   */
+  satellite(d, ctx) {
+    const frames = d.frames || [];
+    if (!frames.length) {
+      return `<div class="sat" data-component="satellite"><p class="note">${esc(d.empty || 'no frames yet')}</p></div>`;
+    }
+    const imgs = frames.map((y, i) =>
+      `<img src="${esc(d.src(y))}" alt="${esc(d.caption ? d.caption(y) : String(y))}"`
+      + ` class="${i === frames.length - 1 ? 'on' : ''}" data-i="${i}" loading="lazy">`).join('');
+    const chg = d.change ? `<img src="${esc(d.change.src)}" alt="${esc(d.change.alt)}" data-i="change" loading="lazy">` : '';
+    const ctl = d.controls
+      ? `<button type="button" data-sat="play" aria-label="Play the years">${REDUCED ? 'motion off' : 'play'}</button>`
+        + `<input type="range" data-sat="slider" min="0" max="${frames.length - 1}" value="${frames.length - 1}" aria-label="Year">`
+        + (d.change ? `<button type="button" data-sat="mode" aria-pressed="false">what changed</button>` : '')
+      : '';
+    return `<div class="sat" data-component="satellite" data-id="${esc(d.id)}"`
+      + ` data-frames="${esc(frames.join(','))}">`
+      + `<div class="sat-loop">${imgs}${chg}</div>`
+      + `<div class="sat-bar"><span class="yr mono" data-sat="year">${esc(String(frames[frames.length - 1]))}</span>`
+      + `<span class="sat-ctl">${ctl}</span>${ctx.pill(d.provenance)}</div>`
+      + `<div class="sat-credit">${(d.credit || []).map(esc).join('<br>')}</div></div>`;
+  },
+
+  /* The node's own kilometre: the plan, drawn from /place/geojson over the res-8 ground.
+   *
+   * /place/geojson needs a token at EVERY share level — it is the exact shape of the buildings
+   * around a household, the one thing SHARE_LEVEL never hands out. So on a phone on the house WiFi
+   * with no token this card has a ground and no plan, and it says which, because a card that goes
+   * blank reads as a broken node rather than a private one.
+   *
+   * Ported from the page this replaces, with three changes. Every colour is a role token now
+   * (the old one had #8A8378 and two rgba() literals inline). The node marker's pulsing <animate>
+   * is gone: motion is bound to the cadence of its own datum and a marker has no datum, so under
+   * R6 it is deleted rather than tokenised. And the legend's buttons carry data attributes rather
+   * than inline onclick, because render() is the only thing here that touches the DOM.
+   */
+  planCard(d, ctx) {
+    const plan = d.plan;
+    if (!plan || !plan.features) {
+      const why = d.status === 403
+        ? 'The plan is the shape of this building, so this node answers it only on the machine it '
+          + 'runs on, or to a request carrying a token. Unlock in Set up to draw it here.'
+        : d.status ? `Could not read the map from this node (${d.status}). Trying again on the next refresh.`
+                   : '';
+      return `<div class="plan" data-component="planCard">`
+        + `<img src="static/node-ground.svg" alt="The node's own kilometre, drawn from its coordinates">`
+        + (why ? `<p class="note">${esc(why)}</p>` : '')
+        + `<div class="cap mono">${esc(d.caption || '')}</div></div>`;
+    }
+    const F = plan.features;
+    if (!F.length) {
+      // Two different situations, and only one is worth a band: a node whose place pack has never
+      // run has no table at all, and nobody needs telling about a pack they did not enable.
+      const t = (plan.diag || {}).tables || {};
+      if (!t.place_features) return '';
+      const h = (plan.diag || {}).hint || 'No map stored for this point yet. On the node: planetai run place refresh';
+      return `<div class="plan" data-component="planCard"><p class="note">`
+        + `${esc(h.charAt(0).toUpperCase() + h.slice(1))}</p></div>`;
+    }
+    const [clon, clat] = plan.center, R = plan.radius_m || 1000, S = 500 / (R * 1.05);
+    const px = ([lon, lat]) => [500 + (lon - clon) * 111320 * Math.cos(clat * Math.PI / 180) * S,
+                                500 - (lat - clat) * 111320 * S];
+    const ring = r => r.map(px).map(pt => pt.map(v => v.toFixed(1)).join(',')).join(' ');
+    const poly = g => g.type === 'Polygon' ? `M${ring(g.coordinates[0])}Z`
+      : g.type === 'MultiPolygon' ? g.coordinates.map(pg => `M${ring(pg[0])}Z`).join(' ') : '';
+    /* The first [lon,lat] of any geometry, however deeply nested. A poi is usually a Point, but
+     * OpenStreetMap also carries amenities as open ways — Garuda Wisnu Kencana, inside node #1's
+     * kilometre, is one — and for a LineString `coordinates[0][0]` is a number, not a pair.
+     * Destructuring that number threw, and the whole kilometre went blank with no message. */
+    const firstPt = g => { let c = g && g.coordinates; while (Array.isArray(c) && Array.isArray(c[0])) c = c[0]; return c; };
+    const L = { building: '', sat: '', road: '', green: '', poi: '' };
+    const counts = { building: 0, sat: 0, road: 0, green: 0, poi: 0 };
+    let skipped = 0;
+    for (const f of F) {
+      const k = f.properties.kind, g = f.geometry;
+      if (!Object.prototype.hasOwnProperty.call(L, k)) continue;
+      try {
+        if (k === 'road' && g.type === 'LineString') {
+          const w = /^(primary|secondary|trunk)$/.test(f.properties.highway) ? 2.2
+            : /^(tertiary|residential|unclassified)$/.test(f.properties.highway) ? 1.4 : 0.6;
+          L.road += `<polyline points="${ring(g.coordinates)}" stroke-width="${w}"/>`; counts.road++;
+        } else if (k === 'poi') {
+          const c = px(firstPt(g));
+          L.poi += `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="4.5" fill="var(--cells)">`
+            + `<title>${esc(f.properties.name || f.properties.category || '')}</title></circle>`;
+          counts.poi++;
+        } else if (g.type === 'Polygon' || g.type === 'MultiPolygon') {
+          L[k] += `<path d="${poly(g)}"/>`; counts[k]++;
+        } else { skipped++; }
+      } catch (e) { skipped++; }   // one unusual object must never cost the whole kilometre
+    }
+    const off = k => (PLAN_OFF.has(k) ? ' hidden' : '');
+    const h = Math.round(500 + R * S + 80);
+    const svg = `<svg viewBox="0 0 1000 ${h}" role="img" aria-label="The kilometre around this node">`
+      + `<defs><clipPath id="pc"><circle cx="500" cy="500" r="${R * S}"/></clipPath></defs>`
+      + `<circle cx="500" cy="500" r="${R * S}" fill="none" stroke="var(--hair)"/>`
+      + `<g clip-path="url(#pc)">`
+      + `<g class="veg"${off('green')}>${L.green}</g>`
+      + `<g class="road"${off('road')}>${L.road}</g>`
+      + `<g class="fig"${off('building')}>${L.building}</g>`
+      + `<g class="sat"${off('sat')}>${L.sat}</g>`
+      + `<g${off('poi')}>${L.poi}</g></g>`
+      + `<circle cx="500" cy="500" r="7" fill="var(--cells)"/>`
+      + `<text x="500" y="${500 + R * S + 28}" text-anchor="middle" class="mono label">`
+      + `${R} M · NORTH UP · ${esc(d.node || '')}</text>`
+      + `<line x1="${500 - R * S}" y1="${500 + R * S + 52}" x2="${500 - R * S + 200 * S}"`
+      + ` y2="${500 + R * S + 52}" stroke="var(--ink)" stroke-opacity=".5"/>`
+      + `<text x="${500 - R * S}" y="${500 + R * S + 70}" class="mono label">200 m</text></svg>`;
+    const legend = Object.entries(PLAN_LAYERS).filter(([k]) => counts[k])
+      .map(([k, label]) => `<button type="button" data-layer="${k}"${PLAN_OFF.has(k) ? ' class="off"' : ''}>`
+        + `<i class="${k}"></i>${esc(label)} ${counts[k].toLocaleString()}</button>`).join('');
+    return `<div class="plan" data-component="planCard">${svg}`
+      + `<div class="plan-legend">${legend}</div>`
+      + (skipped ? `<div class="cap">${skipped} shape${skipped === 1 ? '' : 's'} this plan has no way to draw</div>` : '')
+      + `<div class="cap mono">${esc(d.caption || '')}</div></div>`;
+  },
+
+  /* Every number on the page, its source, its as-of and its word. Generated from /issues'
+   * provenance, so a figure with no row here cannot be drawn — which is what makes `live` earned. */
+  figures(d, ctx) {
+    const rows = (d.rows || []).map(r =>
+      `<tr><td>${esc(r.figure)}</td><td class="mono">${esc(r.value == null ? '—' : String(r.value))}`
+      + ` ${esc(r.unit || '')}</td><td>${esc(r.source)}</td>`
+      + `<td>${ctx.pill(r.provenance)}</td></tr>`).join('');
+    return `<table class="figs" data-component="figures">`
+      + `<thead><tr><th>${esc(ctx.w.figure)}</th><th></th><th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
+      + `<tbody>${rows || `<tr><td colspan="4" class="note">nothing to show yet</td></tr>`}</tbody></table>`;
+  },
+};
+
+// ---------------------------------------------------------------------------------------- ANATOMY
+/* What each kind of band is made of. Changing what a band shows is editing one of these lists —
+ * that is the whole point of the file being arranged this way.
+ */
+const ANATOMY = {
+  hero:           ['kicker', 'sentence', 'why', 'chips', 'miniStack', 'askStrip', 'rhoRow', 'stamp'],
+  'issue.sensed': ['kicker', 'sentence', 'why', 'stack', 'scale', 'day', 'sources'],
+  'issue.context': ['kicker', 'sentence', 'why', 'readouts', 'satellites'],
+  place:          ['planCard', 'units'],
+  loop:           ['rhoRow', 'report', 'ledger'],
+  figures:        ['figures'],
+  wall:           ['kicker', 'sentence', 'why', 'satellite', 'wallIndex', 'rhoRow', 'stamp'],
+  index:          ['indexRow'],
+};
+
+// ----------------------------------------------------------------------------------------- layout
+/* The page order: the hero, the index, one band per declared issue, then the place, the loop and
+ * the figures. Arrange edits this and saves it as UI_LAYOUT, exactly as it always has.
+ */
+let LAYOUT = null;
+
+function layout(snap) {
+  const order = ((snap.issues || {}).order) || [];
+  const base = ['hero', 'index', ...order.map(k => 'issue:' + k), 'place', 'loop', 'figures'];
+  if (!LAYOUT) return base;
+  const hidden = new Set(LAYOUT.hidden || []);
+  const wanted = (LAYOUT.order || []).filter(x => base.includes(x));
+  const rest = base.filter(x => !wanted.includes(x));
+  return [...wanted, ...rest].filter(x => !hidden.has(x));
+}
+
+// ------------------------------------------------------------------------------------- composites
+/* A few anatomy entries are groups rather than single components: a band's Sources column is many
+ * sensorCards, a context band's readouts are many readouts. They live here, they call COMPONENTS,
+ * and they are as pure as the things they call.
+ */
+const COMPOSITES = {
+  sources(d, ctx) {
+    const st = d.stack || {};
+    const cards = DISTANCES.filter(x => st[x]).map(x => COMPONENTS.sensorCard({
+      name: st[x].source, value: st[x].value, unit: d.unit, dp: d.dp,
+      provenance: st[x].provenance,
+      chip: st[x].n > 1 ? `${st[x].n} sensors` : (ctx.issues_labels || {})[x] || x,
+      story: st[x].age_minutes != null ? `last reading ${st[x].age_minutes} min ago` : '',
+    }, ctx)).join('');
+    return `<div class="sensors">${cards || `<p class="note">${esc(ctx.w.notWatched)}</p>`}</div>`;
+  },
+  readouts(d, ctx) {
+    const rows = (d.readouts || []).map(r => COMPONENTS.readout({
+      label: r.label ? r.label[ctx.locale] : r.metric, value: r.value, dp: r.dp, unit: r.unit,
+      source: r.source, provenance: r.provenance,
+    }, ctx)).join('');
+    return `<div class="grid g3">${rows}</div>`;
+  },
+  /* Land gets the satellite component twice: this node's own record, and the imagery — two records,
+   * two provenance words, never merged. Everything else gets neither. */
+  satellites(d, ctx) {
+    if (d.key !== 'land') return '';
+    const e = ctx.earth || {};
+    const own = COMPONENTS.satellite({
+      id: 'sat-own', frames: e.frames || [], provenance: 'model', controls: true,
+      src: y => `/earth/year.png?year=${y}`,
+      caption: y => `This node's own satellite layer for ${y}`,
+      change: e.png ? { src: '/earth/change.png', alt: 'Where the land changed between the last two years' } : null,
+      // Said on the card, not just in a comment: this is a rendering of a model, and a household
+      // looking at grey land needs to know it is not a picture of their village from space.
+      credit: ['Not a photograph. This is the node\'s own copy of a model\'s 64-number description '
+               + 'of every 10 m pixel, flattened to one number and drawn in grey.',
+               e.attribution || ''].filter(Boolean),
+      // /earth works out which command comes next — fetch, then change, then frames — and says so
+      // in `hint`. Preferring it over a guess here is the same rule as everywhere else on this
+      // page: the node knows, so the node says. The fallback names the whole sequence.
+      empty: e.hint || 'No satellite record yet. On the node: planetai run earth fetch, then '
+                     + 'planetai run earth change, then planetai run earth frames.',
+    }, ctx);
+    const img = (e.imagery || {});
+    const sen = COMPONENTS.satellite({
+      id: 'sat-imagery', frames: img.sentinel || [], provenance: 'partial', controls: false,
+      src: y => `/earth/frame.png?source=sentinel&year=${y}`,
+      caption: y => `Sentinel-2 annual median for ${y}`,
+      credit: img.credit || [],
+      empty: 'No imagery yet — on the node: planetai run earth-engine timelapse',
+    }, ctx);
+    return `<div class="grid g2">${own}${sen}</div>`;
+  },
+  units(d, ctx) {
+    return (d.units || []).map(u => COMPONENTS.unitRow(u, ctx)).join('')
+      || `<p class="note">nothing mapped around this node yet</p>`;
+  },
+  wallIndex(d, ctx) {
+    const rows = (d.issues || []).map(i =>
+      `<div><span class="name">${esc(i.name ? i.name[ctx.locale] : '')}</span>`
+      + `<span class="st">${esc(i.state)}</span>`
+      + `<span class="ln">${esc(i.sentence ? i.sentence[ctx.locale] : '')}</span></div>`).join('');
+    return `<div class="wi">${rows}</div>`;
+  },
+};
+
+/* One component, drawn inside its own guard. A throw draws that component's own box and names
+ * itself in the console; nothing else on the page goes dark. This replaces the single try/catch
+ * that wrapped the whole of the old refresh(), where one bad card took every card below it — three
+ * releases running, and the satellite cards were drawn last.
+ */
+function piece(name, data, ctx) {
+  try {
+    const fn = COMPONENTS[name] || COMPOSITES[name];
+    if (!fn) throw new Error('no component named ' + name);
+    return fn(data, ctx) || '';
+  } catch (e) {
+    console.error('component', name, e);
+    return `<div class="card" data-component="${esc(name)}" data-error="1"><p class="note">`
+      + `This part could not be drawn from what the node returned. The rest of the page is unaffected.</p></div>`;
+  }
+}
+
+const assemble = (names, data, ctx) => names.map(n => piece(n, data, ctx)).join('');
+
+// -------------------------------------------------------------------------------------- the bands
+function issueBand(key, iss, ctx) {
+  const d = { ...iss, key };
+  const kind = d.kind === 'context' ? 'issue.context' : 'issue.sensed';
+  const quiet = d.state === 'quiet' || d.state === 'none';
+  return `<section class="band${quiet ? ' quiet' : ''}" id="band-${esc(key)}" data-band="issue:${esc(key)}">`
+    + `<div class="bandhead">${piece('kicker', d, ctx)}`
+    + `<h2 class="t">${piece('sentence', d, ctx)}</h2>${piece('why', d, ctx)}</div>`
+    + `<div class="grid g2">`
+    + assemble(ANATOMY[kind].filter(n => !['kicker', 'sentence', 'why'].includes(n)), d, ctx)
+    + `</div></section>`;
+}
+
+function bandFor(id, snap, ctx) {
+  const iss = (snap.issues || {}).issues || {};
+  if (id.startsWith('issue:')) {
+    const k = id.slice(6);
+    return iss[k] ? issueBand(k, iss[k], ctx) : '';
+  }
+  if (id === 'hero') {
+    const head = (snap.issues || {}).headline;
+    const d = head && iss[head] ? { ...iss[head], key: head, cell: (snap.health || {}).cell } : { cell: (snap.health || {}).cell };
+    return `<div class="hero" data-band="hero">`
+      + `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg" alt=""></div>`
+      + `<div>${piece('kicker', d, ctx)}${piece('sentence', d, ctx)}${piece('why', d, ctx)}`
+      + `${piece('chips', d, ctx)}${piece('miniStack', d, ctx)}</div>`
+      + `<div class="side">${piece('askStrip', d, ctx)}`
+      + `${piece('rhoRow', { ...(snap.rho || {}), small: true }, ctx)}${piece('stamp', d, ctx)}</div></div>`;
+  }
+  if (id === 'index') {
+    const order = (snap.issues || {}).order || [];
+    const undecl = (snap.issues || {}).undeclared || [];
+    const rows = [...order, ...undecl].filter(k => iss[k])
+      .map(k => piece('indexRow', { ...iss[k], key: k }, ctx)).join('');
+    return `<div class="index" data-band="index">${rows}</div>`
+      + `<p class="note">${esc(ctx.w.headlineRule)}</p>`;
+  }
+  if (id === 'place') {
+    return `<section class="band" id="band-place" data-band="place">`
+      + `<div class="bandhead"><div class="k">${esc(ctx.w.thePlace)}</div></div>`
+      + `<div class="grid g21">${assemble(ANATOMY.place, { caption: (snap.health || {}).cell ? snap.health.cell.caption : '',
+        status: snap.placeStatus, plan: snap.place, node: (snap.health || {}).node, units: [] }, ctx)}</div></section>`;
+  }
+  if (id === 'loop') {
+    return `<section class="band" id="band-loop" data-band="loop">`
+      + `<div class="bandhead"><div class="k">${esc(ctx.w.theLoop)}</div></div>`
+      + piece('rhoRow', snap.rho || {}, ctx)
+      + `<div class="grid g2 mt">${piece('report', snap.report || {}, ctx)}`
+      + `${piece('ledger', { alerts: snap.alerts || [] }, ctx)}</div></section>`;
+  }
+  if (id === 'figures') {
+    const rows = Object.entries(iss).flatMap(([, v]) => v.provenance || []);
+    return `<section class="band" id="band-figures" data-band="figures">`
+      + `<div class="bandhead"><div class="k">${esc(ctx.w.figures)}</div></div>`
+      + piece('figures', { rows }, ctx) + `</section>`;
+  }
+  return '';
+}
+
+function wallView(snap, ctx) {
+  const iss = (snap.issues || {}).issues || {};
+  const head = (snap.issues || {}).headline;
+  const d = head && iss[head] ? { ...iss[head], key: head, cell: (snap.health || {}).cell } : { cell: (snap.health || {}).cell };
+  const e = snap.earth || {};
+  const img = e.imagery || {};
+  const useImagery = (img.sentinel || []).length > 0;
+  const sat = COMPONENTS.satellite({
+    id: 'wall-sat',
+    frames: useImagery ? img.sentinel : (e.frames || []),
+    provenance: useImagery ? 'partial' : 'model',
+    controls: false,                                   // R6: the wall is an instruction, not a control
+    src: y => useImagery ? `/earth/frame.png?source=sentinel&year=${y}` : `/earth/year.png?year=${y}`,
+    caption: y => `${y}`,
+    credit: useImagery ? (img.credit || []) : [e.attribution || ''],
+    empty: '',
+  }, ctx);
+  const stale = (snap.health || {}).last_poll && ctx.staleFor(snap.health.last_poll);
+  return `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg" alt=""></div>`
+    + `<div class="row2"><div>${piece('kicker', d, ctx)}${piece('sentence', d, ctx)}${piece('why', d, ctx)}</div>`
+    + `<div class="satwrap">${sat}</div></div>`
+    + piece('wallIndex', { issues: ((snap.issues || {}).order || []).map(k => iss[k]).filter(Boolean) }, ctx)
+    + piece('rhoRow', snap.rho || {}, ctx)
+    + `<div class="foot"><span>${esc((snap.health || {}).node || '')}</span>`
+    + `<span>${esc((snap.health || {}).cell ? snap.health.cell.caption : '')}</span>`
+    + (stale ? `<span class="st">${esc(ctx.w.stale)}</span>` : '')
+    + `<span>${esc(ctx.w.answerOn)}</span></div>`;
+}
+
+// --------------------------------------------------------------------------------------- render
+/* The only function that writes to the DOM. Everything above builds strings.
+ *
+ * ?only=<band> shows one band, for a wall screen or a capture. An unknown name shows the whole
+ * page rather than a blank one — a typo in a URL should not look like a broken node.
+ */
+let LAST = null;
+
+function render(snap, view) {
+  const ctx = mkCtx(snap, view);
+  ctx.issues_labels = ((snap.issues || {}).labels || {})[ctx.locale] || {};
+  ctx.earth = snap.earth || {};
+  ctx.staleFor = ts => {
+    const poll = (snap.health || {}).poll_seconds || 300;
+    return ts ? (Date.now() - new Date(ts)) / 1000 > poll * 2 : false;
+  };
+
+  document.documentElement.dataset.theme = ctx.register === 'dark' ? 'dark' : '';
+  if (!document.documentElement.dataset.theme) delete document.documentElement.dataset.theme;
+
+  const h = snap.health || {};
+  document.getElementById('nodename').textContent = h.node || 'node';
+  document.getElementById('nodeplace').textContent =
+    [h.city, h.kind, ctx.as_of ? `${ctx.w.asOf} ${ctx.hhmm(ctx.as_of)}` : ''].filter(Boolean).join(' · ');
+  document.getElementById('headprov').innerHTML =
+    ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
+                : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || '');
+
+  // SHARE_LEVEL=off with no token: the shell, and the node's own sentence about why. Not a blank.
+  if (snap.refused) {
+    document.getElementById('hero').outerHTML =
+      `<div class="hero" id="hero"><div><p class="big">${esc(ctx.w.refused)}</p>`
+      + `<p class="why">${esc(snap.refused)}</p></div></div>`;
+    ['index', 'bands', 'place', 'loop', 'figures'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.innerHTML = '';
+    });
+    return;
+  }
+
+  if (view === 'wall') {
+    document.getElementById('wallbox').innerHTML = wallView(snap, ctx);
+    wireSatellites(document.getElementById('wallbox'));
+    return;
+  }
+
+  const order = layout(snap);
+  const want = ONLY && order.includes(ONLY) ? [ONLY] : order;
+  const bands = document.getElementById('bands');
+  bands.innerHTML = '';
+  for (const id of want) {
+    const html = bandFor(id, snap, ctx);
+    if (!html) continue;
+    if (id === 'hero') { document.getElementById('hero').outerHTML = html; continue; }
+    if (id === 'index') { document.getElementById('index').outerHTML = html; continue; }
+    if (id === 'place' || id === 'loop' || id === 'figures') {
+      document.getElementById(id).outerHTML = html; continue;
+    }
+    bands.insertAdjacentHTML('beforeend', html);
+  }
+  wireSatellites(document);
+  if (ARRANGING) arrangeControls();
+}
+
+// ---------------------------------------------------------------------------------- the two wires
+/* R6: motion is bound to the cadence of its own datum, and there are exactly two on this page.
+ * The satellite's year, here, as a hard cut and never a morph; and the 120 ms fade when a reading
+ * lands, which is in dashboard.css against --motion-reading-fade. Nothing else moves.
+ */
+const LOOPS = {};
+function wireSatellites(root) {
+  root.querySelectorAll('[data-component="satellite"][data-frames]').forEach(el => {
+    const id = el.dataset.id;
+    if (LOOPS[id]) { clearInterval(LOOPS[id]); delete LOOPS[id]; }
+    const frames = el.dataset.frames.split(',').filter(Boolean);
+    const imgs = [...el.querySelectorAll('.sat-loop img')];
+    const yr = el.querySelector('[data-sat="year"]');
+    const sl = el.querySelector('[data-sat="slider"]');
+    const play = el.querySelector('[data-sat="play"]');
+    const mode = el.querySelector('[data-sat="mode"]');
+    const st = { i: frames.length - 1, mode: 'years' };
+    const show = () => {
+      imgs.forEach(im => im.classList.toggle('on',
+        st.mode === 'change' ? im.dataset.i === 'change' : +im.dataset.i === st.i));
+      if (yr) yr.textContent = st.mode === 'change' ? 'what changed' : frames[st.i];
+      if (sl) { sl.value = st.i; sl.disabled = st.mode === 'change'; }
+      if (mode) mode.setAttribute('aria-pressed', String(st.mode === 'change'));
+    };
+    const stop = () => { if (LOOPS[id]) { clearInterval(LOOPS[id]); delete LOOPS[id]; } if (play) play.textContent = REDUCED ? 'motion off' : 'play'; };
+    const run = () => {
+      if (REDUCED) return;                       // stands on the latest year, and reads frozen
+      st.mode = 'years';
+      LOOPS[id] = setInterval(() => { st.i = (st.i + 1) % frames.length; show(); }, MOTION_YEAR());
+      if (play) play.textContent = 'pause';
+    };
+    if (play) play.onclick = () => (LOOPS[id] ? stop() : run());
+    if (sl) sl.oninput = () => { stop(); st.mode = 'years'; st.i = +sl.value; show(); };
+    if (mode) mode.onclick = () => { stop(); st.mode = st.mode === 'change' ? 'years' : 'change'; show(); };
+    show();
+    if (frames.length > 1 && !el.closest('#setup')) run();
+  });
+}
+
+// ------------------------------------------------------------------------------------- the buttons
+/* Closing a loop. PR 5's fix is carried here rather than inherited: `prompt(…) || 'acted'` posted
+ * the action even when somebody pressed Cancel, and ρ — the one number this project exists to
+ * produce — went up for a dismissed dialog. Cancel now means cancel.
+ */
+async function act(id, btn) {
+  const note = prompt('What did you do? (a few words)');
+  if (note === null) return;                                    // Cancel means cancel
+  const tok = tok_();
+  if (!tok) {
+    toast('This screen has no token, so it cannot record that. Reply /act ' + id + ' on Telegram, '
+      + 'or run planetai ui on the node for a token that only closes loops.', true);
+    return;
+  }
+  try {
+    const r = await fetch('/actions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Agent': 'dashboard', ...auth_() },
+      body: JSON.stringify({ alert_id: Number(id), stage: 'acted', note: note || 'acted' }),
+    });
+    if (!r.ok) throw new Error(String(r.status));
+    if (btn) btn.replaceWith(Object.assign(document.createElement('span'),
+      { className: 'done', textContent: 'noted · the ring closes' }));
+  } catch (e) {
+    toast('The node did not record that. Nothing was written; try again in a moment.', true);
+  }
+}
+
+function toast(msg, bad) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('bad', !!bad);
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 4200);
+}
+
+// --------------------------------------------------------------------------------------- arrange
+let ARRANGING = false;
+async function loadLayout() {
+  if (LAYOUT) return LAYOUT;
+  try {
+    const d = await fetch('/settings', { headers: auth_() }).then(r => r.json());
+    const r = (d.runtime || []).find(x => x.key === 'UI_LAYOUT');
+    LAYOUT = r && r.value ? JSON.parse(r.value) : { order: [], hidden: [] };
+  } catch (e) { LAYOUT = { order: [], hidden: [] }; }
+  return LAYOUT;
+}
+function arrangeControls() {
+  document.querySelectorAll('[data-band]').forEach(el => {
+    if (el.querySelector(':scope > .arr')) return;
+    const id = el.dataset.band;
+    const bar = document.createElement('div');
+    bar.className = 'arr';
+    bar.innerHTML = `<button type="button" data-move="-1" aria-label="Move up">←</button>`
+      + `<button type="button" data-move="1" aria-label="Move down">→</button>`
+      + `<button type="button" data-hide="1" aria-label="Hide">✕</button>`;
+    bar.onclick = ev => {
+      const b = ev.target.closest('button'); if (!b) return;
+      const order = layout(LAST);
+      if (b.dataset.hide) { LAYOUT.hidden = [...(LAYOUT.hidden || []), id]; }
+      else {
+        const i = order.indexOf(id), j = i + Number(b.dataset.move);
+        if (j < 0 || j >= order.length) return;
+        const next = [...order]; next.splice(j, 0, next.splice(i, 1)[0]);
+        LAYOUT.order = next;
+      }
+      render(LAST, 'now');
+    };
+    el.prepend(bar);
+  });
+}
+/* Reset writes the same empty UI_LAYOUT that Done writes, so it survives a reload instead of
+ * coming back from the node on the next poll. (Improvement plan PR 5, D3.) */
+async function layoutSave(reset) {
+  LAYOUT = reset ? { order: [], hidden: [] } : LAYOUT;
+  const tok = localStorage.getItem('planetai_admin');
+  if (!tok) { toast('Arranging needs the admin token — unlock under Set up.', true); return; }
+  try {
+    await fetch('/settings', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok, 'X-Agent': 'dashboard' },
+      body: JSON.stringify({ UI_LAYOUT: (LAYOUT.order.length || LAYOUT.hidden.length) ? JSON.stringify(LAYOUT) : '' }),
+    });
+    toast(reset ? 'Back to the default order.' : 'Saved on the node.');
+  } catch (e) { toast('Could not save the layout.', true); }
+  ARRANGING = false;
+  document.getElementById('arrbar').hidden = true;
+  document.querySelectorAll('.arr').forEach(el => el.remove());
+  render(LAST, 'now');
+}
+
+// ------------------------------------------------------------------------------------------ views
+function show(v) {
+  if (v === 'arrange') {
+    ARRANGING = true;
+    document.getElementById('arrbar').hidden = false;
+    show('now');
+    return;
+  }
+  document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === v));
+  document.querySelectorAll('nav.views button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  if (LAST) render(LAST, v);
+  if (v === 'setup') loadSetup();
+  window.scrollTo(0, 0);
+}
+
+// ------------------------------------------------------------------------------------------- boot
+async function refresh() {
+  LAST = await snapshot();
+  const view = [...document.querySelectorAll('section.view')].find(s => s.classList.contains('on'));
+  render(LAST, view ? view.id : 'now');
+}
+
+document.addEventListener('click', ev => {
+  const nav = ev.target.closest('nav.views button');
+  if (nav) return show(nav.dataset.view);
+  const a = ev.target.closest('[data-act]');
+  if (a) return act(a.dataset.act, a);
+  if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
+  if (ev.target.id === 'btn-arr-done') return layoutSave(false);
+  if (ev.target.id === 'btn-back') return show('now');
+  if (ev.target.id === 'btn-unlock') return unlock();
+  if (ev.target.id === 'btn-save') return saveSettings();
+});
+
+(async function boot() {
+  if (KIOSK) document.body.classList.add('kiosk');
+  await loadLayout();
+  await refresh();
+  if (KIOSK || QS.get('theme') === 'dark') show('wall');
+  setInterval(refresh, 20000);
+})();
+
+// ------------------------------------------------------------------------------------------ set up
+/* Ported from the page this file replaces, with one pane added. Every group a setting claims must
+ * have a pane here or a household cannot reach the setting at all — tests/test_settings.py reads
+ * this object and fails when the two drift, which is how the issues group got here.
+ */
+const GROUPS = {
+  issues: ['Issues', "What this place watches, in order. The first one is where the page starts; whichever has something to say takes the top of it. Your preset guessed from a map — change it. What matters here is decided by the people who live here."],
+  sources: ['Sources', 'What the node reads: your sensors, your account, and the public references around you.'],
+  alerts: ['Alerts', "Reports at the hours you choose, in this node's own time zone. Between them, only what you asked to be interrupted for."],
+  packs: ['Packs', 'Which packs load. Code packs stay off until you allow them; read one before you do.'],
+  integrations: ['Integrations', 'Home Assistant over MQTT, and the Reticulum bridge.'],
+  keys: ['Keys', 'What packs need to reach outside services. Secrets are never shown again once saved.'],
+  agent: ['Model', 'Which model answers the Telegram bot. The strongest reachable is used.'],
+  node: ['The tree', 'Who this node reports to, and who may report to it.'],
+  bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
+};
+let GROUP = 'issues', DESC = null, PACKS = [];
+
+const BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
+
+function unlock() {
+  const t = document.getElementById('tok').value.trim();
+  if (t) localStorage.setItem('planetai_admin', t);
+  const a = document.getElementById('acttok').value.trim();
+  if (a) localStorage.setItem('planetai_act', a);
+  loadSetup();
+}
+function lock() {
+  localStorage.removeItem('planetai_admin');
+  localStorage.removeItem('planetai_act');
+  loadSetup();
+}
+
+async function loadSetup() {
+  const tok = localStorage.getItem('planetai_admin') || '';
+  try {
+    DESC = await fetch('/settings', { headers: tok ? { authorization: 'Bearer ' + tok } : {} }).then(r => r.json());
+    PACKS = await fetch('/packs', { headers: auth_() }).then(r => r.ok ? r.json() : []).catch(() => []);
+  } catch (e) { toast('The node did not answer.', true); return; }
+  // values stay masked without the token, so a wrong one shows here and not at save time
+  if (tok && !DESC.unlocked) { toast('That token is not right.', true); lock(); return; }
+  const unlocked = !!tok && DESC.unlocked;
+  document.getElementById('gate').hidden = unlocked;
+  document.getElementById('setup-body').hidden = !unlocked;
+  if (!unlocked) return;
+
+  document.getElementById('tabs').innerHTML = Object.entries(GROUPS)
+    .map(([g, [l]]) => `<button type="button" class="${g === GROUP ? 'on' : ''}" data-group="${g}">${esc(l)}</button>`).join('')
+    + `<span class="acts"><button type="button" class="btn ghost" data-lock="1">Lock</button></span>`;
+  document.getElementById('ptitle').textContent = GROUPS[GROUP][0];
+  document.getElementById('pblurb').textContent = GROUPS[GROUP][1];
+
+  const pane = document.getElementById('pane');
+  if (GROUP === 'bootstrap') {
+    pane.innerHTML = (DESC.bootstrap || []).map(b =>
+      `<div class="field"><div><label>${esc(b.label)}</label><div class="help">${esc(b.key)}</div></div>`
+      + `<div><input type="text" readonly value="${esc(b.value || '')}" placeholder="not set"></div></div>`).join('');
+    return;
+  }
+  if (GROUP === 'packs') {
+    const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
+    const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
+    pane.innerHTML = PACKS.map(p =>
+      `<div class="pack"><button type="button" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
+      + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>`
+      + `<div><b>${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
+      + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
+      + `<div class="help">${esc(p.description || '')}</div></div></div>`).join('');
+    return;
+  }
+  const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
+  pane.innerHTML = rows.map(r => {
+    const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
+    const left = `<div><label>${esc(r.label)}${src}</label><div class="help">${esc(r.help)}</div></div>`;
+    if (BOOLS.test(r.key)) {
+      return `<div class="field">${left}<div><button type="button" class="switch ${r.value === '1' ? 'on' : ''}"`
+        + ` data-key="${esc(r.key)}" data-bool="1"><span class="tr"></span></button></div></div>`;
+    }
+    if (r.key === 'ALERT_LOCALE') {
+      return `<div class="field">${left}<div><select data-key="${esc(r.key)}">`
+        + [['en', 'English'], ['id', 'Bahasa Indonesia'], ['es', 'Español']].map(([v, l]) =>
+          `<option value="${v}"${r.value === v ? ' selected' : ''}>${l}</option>`).join('')
+        + `</select></div></div>`;
+    }
+    return `<div class="field">${left}<div><input data-key="${esc(r.key)}"`
+      + (r.secret
+        ? ` type="password" placeholder="${r.set ? 'Set — type to replace' : 'Not set'}"`
+        : ` type="text" value="${esc(r.value)}"`)
+      + ` autocomplete="off"></div></div>`;
+  }).join('') || `<div class="empty">Nothing to set in this group.</div>`;
+}
+
+async function saveSettings() {
+  const tok = localStorage.getItem('planetai_admin');
+  const body = {};
+  if (GROUP === 'packs') {
+    const all = [...document.querySelectorAll('[data-pack]')];
+    const on = all.filter(c => c.classList.contains('on')).map(c => c.dataset.pack);
+    body.PACKS_ENABLED = on.length === all.length ? '' : on.join(',');
+  } else {
+    document.querySelectorAll('[data-key]').forEach(el => {
+      const k = el.dataset.key;
+      if (el.dataset.bool) body[k] = el.classList.contains('on') ? '1' : '0';
+      else if (el.type === 'password') { if (el.value) body[k] = el.value; }
+      else body[k] = el.value;
+    });
+  }
+  const r = await fetch('/settings', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok, 'X-Agent': 'dashboard' },
+    body: JSON.stringify(body),
+  });
+  if (r.status === 401) { toast('That token is not right.', true); lock(); return; }
+  if (r.status === 403) { toast('The node has no admin token yet — run planetai ui.', true); return; }
+  toast(r.ok ? 'Saved. Live within about twenty seconds.' : 'Could not save (' + r.status + ').', !r.ok);
+  if (r.ok) { loadSetup(); refresh(); }
+}
+
+// the Set up pane's own clicks: tabs, switches, lock
+document.addEventListener('click', ev => {
+  const g = ev.target.closest('[data-group]');
+  if (g) { GROUP = g.dataset.group; return loadSetup(); }
+  if (ev.target.closest('[data-lock]')) return lock();
+  const sw = ev.target.closest('.switch');
+  if (sw) sw.classList.toggle('on');
+  const ly = ev.target.closest('[data-layer]');
+  if (ly) {
+    const k = ly.dataset.layer;
+    PLAN_OFF.has(k) ? PLAN_OFF.delete(k) : PLAN_OFF.add(k);
+    if (LAST) render(LAST, 'now');
+  }
+});

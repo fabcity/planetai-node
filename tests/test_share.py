@@ -17,7 +17,11 @@ import re
 SRC = open("app/main.py").read()
 SETTINGS = open("app/settings.py").read()
 ENV = open(".env.example").read()
-GUI = open("app/static/index.html").read()
+# The page is three files since the renderer landed: a skeleton, a script and a
+# stylesheet. "the GUI" means all of them, or an assertion passes by looking in the
+# wrong one.
+GUI = "".join(open("app/static/" + f).read()
+                for f in ("index.html", "dashboard.js", "dashboard.css"))
 
 # ---------------------------------------------------------------- the structural half
 tree = ast.parse(SRC)
@@ -120,7 +124,11 @@ for word in ("cell", "means"):
     assert word in SETTINGS.split('"SHARE_LEVEL":        (')[1][:1200], f"settings.py: {word} must be named in SHARE_LEVEL's help as reserved"
 assert re.search(r"^SHARE_LEVEL=off", ENV, re.M) and re.search(r"^ACT_TOKEN=", ENV, re.M), ".env.example: both new keys"
 assert "planetai_act" in GUI and "acttok" in GUI, "the dashboard's Unlock panel needs the second token field"
-assert "e===403" in GUI, "the plan card must say why it is empty rather than going blank"
+# The renderer handles the refusal in snapshot() and says so in render() and in the plan card,
+# rather than in one `e===403` inside a paint function as the single-file page did.
+assert "403" in GUI, "the page must notice a refusal at all"
+assert "needs a token" in GUI, "the plan card must say why it is empty rather than going blank"
+assert "refused" in GUI, "a refused read must reach render() as a state, not as a blank page"
 print("setting: declared, bounded, documented, and in the dashboard")
 
 import settings as S

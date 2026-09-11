@@ -47,8 +47,8 @@ NO_PANE_YET = {
     # a visible change, and nothing visible goes to a household before Tomas has looked at it (R9).
     "issues",
 }
-panes = set(re.findall(r"(\w+):\['", re.search(r"const GROUPS=\{(.*?)\};", 
-            open("app/static/index.html").read(), re.S).group(1)))
+panes = set(re.findall(r"(\w+):\s*\['", re.search(r"const GROUPS\s*=\s*\{(.*?)\n\};", 
+            open("app/static/dashboard.js").read(), re.S).group(1)))
 for r in d["runtime"]:
     assert r["group"] in panes | NO_PANE_YET, \
         f"{r['key']} is in group {r['group']!r}, which has no pane in the dashboard's Set up view"
