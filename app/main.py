@@ -586,7 +586,8 @@ async def _mcp_auth(request, call_next):
 _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
-    "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/report/latest", "/readings",
+    "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
+    "/report/latest", "/readings",
     "/history", "/exports",
 }), ("/static/", "/exports/", "/issues"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
@@ -1039,8 +1040,17 @@ def earth():
     enabled = "earth" in [m.get("id") for m in packs.manifests()]
     for c in changes:                       # so a NAS, or anything else, can fetch each map without guessing
         c["png_url"] = f"/earth/change.png?pair={c['year_a']}_{c['year_b']}"
+    # The other record, if the earth-engine pack has ever run: real imagery, brightness-matched,
+    # `partial` wherever it is drawn. Named separately from `frames` because they are different
+    # things and a page that merges them is telling a reader a model output is a photograph.
+    sentinel = sorted(_sentinel_frames("sentinel"))
+    landsat = sorted(_sentinel_frames("landsat"))
     body = {"node": NODE, "enabled": enabled, "years": years, "bytes": size, "latest": latest,
             "changes": changes, "frames": frames, "dir": str(d),
+            "imagery": {"sentinel": sentinel, "landsat": landsat,
+                        "credit": ["Contains modified Copernicus Sentinel data, processed by "
+                                   "Google Earth Engine.",
+                                   "Landsat courtesy of the U.S. Geological Survey."]},
             "png": "/earth/change.png" if latest and (d / str(latest.get("png", ""))).is_file() else None,
             "lat": float(os.getenv("NODE_LAT", 0) or 0), "lon": float(os.getenv("NODE_LON", 0) or 0),
             "radius_m": int(settings.get("EARTH_RADIUS_M", "5000") or 5000),
@@ -1080,6 +1090,48 @@ def earth_year_png(year: int = Query(..., ge=1900, le=2200)):
     p = _earth_dir() / f"year_{year}.png"
     if not p.is_file():
         raise HTTPException(404, f"no frame for {year}: planetai run earth frames")
+    return FileResponse(p, media_type="image/png", filename=p.name)
+
+
+def _sentinel_frames(source: str = "sentinel") -> dict[int, Path]:
+    """The frames `planetai run earth-engine timelapse` left in out/, by year.
+
+    Matched by glob and not by name. The pack writes `<node>-<year>-<source>-<km>km.png`, and the
+    node name in that filename is whatever the node was called the day the pack ran — on node #1 the
+    files say `bayu-2` and NODE_NAME has since become `bayu-ungasan`, so building the name from NODE
+    finds nothing. The km changes with the pack's own settings too. The year is the only part of the
+    name this node can be sure of.
+    """
+    out = {}
+    for f in sorted(OUT.glob(f"*-[0-9][0-9][0-9][0-9]-{source}-*.png")):
+        try:
+            out[int(f.stem.split("-")[-3])] = f
+        except (ValueError, IndexError):        # a file that merely looks like one of ours
+            continue
+    return out
+
+
+@app.get("/earth/frame.png")
+def earth_frame_png(year: int = Query(..., ge=1972, le=2200),
+                    source: str = Query("sentinel", pattern=r"^(sentinel|landsat)$")):
+    """One year from the *other* satellite record: real imagery, brightness-matched across the years.
+
+    This is not what /earth/year.png serves. That one is this node's own AlphaEarth layer — a model's
+    64-number description of every 10 m pixel, flattened to one number and drawn in grey, never a
+    photograph. These are Sentinel-2 (or Landsat) annual medians fetched through Earth Engine, so
+    they are `partial`: somebody else's cluster made them, and they carry their own credit line.
+
+    Both are on the Land band and on the wall, and the page must never let a reader take one for the
+    other. Neither the year nor the source reaches the filesystem as a path: the year is an integer
+    in range, the source is one of two words, and the file itself comes from a glob of out/.
+    """
+    from fastapi.responses import FileResponse
+    have = _sentinel_frames(source)
+    p = have.get(year)
+    if not p:
+        raise HTTPException(404, f"no {source} frame for {year}"
+                                 + (f"; this node has {sorted(have)}" if have
+                                    else ": planetai run earth-engine timelapse"))
     return FileResponse(p, media_type="image/png", filename=p.name)
 
 
@@ -1259,6 +1311,19 @@ def ui():
 COMPANIONS = {
     "node-ground.svg": (STATIC / "node-ground.svg", "image/svg+xml"),
     "jetbrains-mono-latin.woff2": (STATIC / "fonts" / "jetbrains-mono-latin.woff2", "font/woff2"),
+    # The renderer: a skeleton, its script, its layout, and the frozen layer it draws with. The
+    # three .css files are copied from planetai-design and never edited here; tools/check_theme.py
+    # holds them to the sibling repo. Flat names on purpose — this route takes a name, not a path,
+    # because a path parameter that reaches the filesystem is the usual way a port open to a
+    # household LAN ends badly. That is also why the mono stays at /static/jetbrains-mono-latin.woff2
+    # rather than the fonts/ subdirectory planetai-theme.css names; check_theme knows about that one
+    # line and reports it rather than failing on it.
+    "dashboard.js": (STATIC / "dashboard.js", "application/javascript"),
+    "dashboard.css": (STATIC / "dashboard.css", "text/css"),
+    "planetai-theme.css": (STATIC / "planetai-theme.css", "text/css"),
+    "tokens.css": (STATIC / "tokens.css", "text/css"),
+    "signs.svg": (STATIC / "signs.svg", "image/svg+xml"),
+    "kilometre-cells.json": (STATIC / "kilometre-cells.json", "application/json"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 
