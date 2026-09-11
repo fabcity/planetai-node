@@ -189,6 +189,13 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .sensor .v small{font:500 11px var(--mono);color:var(--mute);margin-left:4px}
 .sensor .story{font-size:12.5px;color:var(--mute);margin-top:6px;line-height:1.45}
 .sensor .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.sensor .kits{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font:500 11px var(--mono);letter-spacing:.02em;color:var(--dim)}
+/* the ring's shape, and the rows the node doubts. Both are two-column lines, not tables: a table
+   with two cells is a table nobody can read on a phone. */
+.ringstrip{width:100%;height:64px;display:block;margin:12px 0 10px;overflow:visible}
+.vit{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--hair);font-size:13.5px}
+.vit:first-of-type{border-top:0}
+.vit span:last-child{font:500 12px var(--mono);color:var(--mute);text-align:right;white-space:nowrap}
 /* plan */
 .plan{border:1px solid var(--hair);padding:0;position:relative;background:var(--ground)}
 .plan>svg{width:100%;height:auto;display:block}

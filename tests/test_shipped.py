@@ -292,9 +292,17 @@ print("the heat line is this place's, and the alert texts are untouched")
 assert "h3" in open("app/requirements.txt").read(), "app/requirements.txt: h3"
 assert "def facts(" in open("app/ground.py").read() and "def svg(" in open("app/ground.py").read()
 assert '"cell": _cell()' in main and "ground.facts(" in main and "ground.svg(" in main, "/health and /static"
-for _id in ("hero-stamp", "wall-stamp"):
-    assert f'id="{_id}"' in gui, f"gui: {_id}"
-assert "h.cell?h.cell.caption:''" in gui, "gui: the caption comes from /health"
+# The stamp used to be two ids written into a fixed skeleton, #hero-stamp and #wall-stamp, each
+# filled by its own line. The page is a renderer now: there is one `stamp` component, listed in the
+# hero's anatomy and in the wall's, so it is drawn in both places from one piece of code. Asserting
+# the anatomy is the same guarantee the two ids gave and a stronger one — an id can exist in the
+# markup while nothing writes to it.
+assert 'data-component="stamp"' in gui, "gui: the cell stamp"
+for _a in ("hero", "wall"):
+    _anat = re.search(rf"^\s*{_a}:\s*\[([^\]]*)\]", gui, re.M)
+    assert _anat and "'stamp'" in _anat.group(1), f"gui: ANATOMY.{_a} must carry the cell stamp"
+assert "d.cell ? d.cell.caption" in gui, "gui: the caption is the cell's own, not the drawing's"
+assert "(snap.health || {}).cell" in gui, "gui: and the cell comes from /health"
 assert "THE CELL THIS NODE STANDS IN" not in open("app/static/node-ground.svg").read(), (
     "the shipped file is the fallback for a node with no coordinates; it must name no cell")
 print("the ground is drawn from the node's own coordinates and the caption is on the page")

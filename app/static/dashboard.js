@@ -71,13 +71,20 @@ async function snapshot() {
   let placeStatus = 0;
   const place = await fetch('/place/geojson', { headers: auth_() })
     .then(r => { placeStatus = r.status; return r.ok ? r.json() : null; }).catch(() => null);
-  const [health, issues, alerts, rho, report, earth] = await Promise.all([
+  const [health, issues, alerts, rho, report, earth, trust, nearby, forecast, sensors] = await Promise.all([
     get('/health', {}), get('/issues'), get('/alerts?limit=40', []),
     get('/rho', {}), get('/report/latest', {}), get('/earth', {}),
+    get('/trust', []), get('/nearby'), get('/forecast'), get('/sensors', []),
   ]);
   const refused = [issues, alerts, rho].map(x => x && x.__refused).find(Boolean);
   if (refused) return { refused, health: health && !health.__refused ? health : {} };
-  return { health, issues, alerts, rho, report, earth, place, placeStatus };
+  // The four below are the ported cards' own sources. A refusal on one of them is NOT a refused
+  // page — /issues can answer while /sensors does not — so it is turned into an absence and the
+  // card that reads it draws the empty state it already has.
+  const open_ = v => (v && v.__refused ? null : v);
+  return { health, issues, alerts, rho, report, earth, place, placeStatus,
+           trust: open_(trust) || [], nearby: open_(nearby), forecast: open_(forecast),
+           sensors: open_(sensors) || [] };
 }
 
 // -------------------------------------------------------------------------------------- the words
@@ -92,26 +99,155 @@ const WORDS = {
         source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
         stale: 'stale', didThis: 'I did this', noted: 'noted', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, which is set under Set up → Issues.',
-        refused: 'This node is not sharing its readings with the network.' },
+        refused: 'This node is not sharing its readings with the network.',
+        trust: {
+          title: 'What the node doubts about its own sensors.',
+          ok: 'Every sensor reported all week.',
+          sub: '{n} of {all} sensors need a look.',
+          subOk: '{all} local sensors, seven-day coverage.',
+          none: 'No local sensor yet.',
+          young: 'still gathering its first week',
+          cov: '{pct}% of the week',
+          frozen: ', {n} frozen channels' },
+        ring: {
+          title: 'The shape of the ring.',
+          none: 'No neighbours yet. This node has not fetched the public stations around it, so its readings speak for this address and nothing else. Bali only: set BAD_ENABLED=1.',
+          one: 'One neighbour reporting, {km} km away. One is an anecdote: nothing here can tell a fire in the lane from a haze over the island.',
+          silent: 'No neighbour is reporting right now, so there is nothing to compare this address against.',
+          shape: '{n} neighbours. Lowest {lo}, middle half {p25} to {p75}, highest {hi}, all in {unit}. Nearest {km} km.',
+          youAbove: 'You read {v} {unit}, above the middle half of them. Whatever this is, it is closer to you than to them.',
+          youBelow: 'You read {v} {unit}, below the middle half of them.',
+          youIn: 'You read {v} {unit}, inside the middle half they are reading. Nothing here is unusual to this address.',
+          youNone: 'You have no outdoor sensor of your own, so there is nothing to put on this line.',
+          tipBox: 'the middle half of your neighbours, {p25} to {p75} {unit}',
+          tipSpan: 'the whole ring, {lo} to {hi} {unit}',
+          tipYou: 'you, {v} {unit}' },
+        stations: {
+          title: 'Who is out there, and how far.',
+          sub: '{n} of {all} stations counted, within {km} km{skipped}. None of them is ours: what this node reads itself is kept out of this list.',
+          skipped: ', {n} left out as indoors',
+          empty: 'Nothing fetched yet. Once the node polls, every station within {km} km appears here with its distance.',
+          row: '{km} km away \u00b7 {net} \u00b7 {when}',
+          justNow: 'just now', ago: '{n} min ago', quiet: 'not reporting',
+          indoors: 'indoors, not counted', unknownNet: 'unknown network' },
+        fc: {
+          title: 'The day it is about to have.',
+          none: 'No forecast yet. Set FORECAST_BMKG_ADM4 to this point\u2019s village code, or turn on Open-Meteo, and the next day of wind and rain appears here. `planetai run forecast verify` finds the code.',
+          wind: 'The wind comes from the {dir} at {kmh} km/h.',
+          rain: 'Rain expected from {at}, {mm} mm over the day.',
+          dry: 'No rain expected in the next day.',
+          far: 'The forecast point is {km} km from this node, which is another place.',
+          gap: 'The two forecasts differ by up to {c} \u00b0C over the day; neither is the truth.',
+          step: 'wind from {dir} {kmh} km/h \u00b7 {sky}',
+          stepDry: 'dry', stepRain: '{mm} mm rain', stepCloud: ' \u00b7 {n}% cloud',
+          notPredict: 'The node fetches this; it does not predict.' } },
   id: { now: 'Sekarang', watches: 'Yang dipantau di sini', notWatched: 'tidak dipantau di sini',
         theDay: 'Hari yang baru lewat', whereItStands: 'Posisinya', sources: 'Sumber',
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
         source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
         stale: 'basi', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
         headlineRule: 'Isu dengan hal terpenting tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, diatur di Set up → Issues.',
-        refused: 'Node ini tidak membagikan bacaannya ke jaringan.' },
+        refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
+        trust: {
+          title: 'Yang diragukan node tentang sensornya sendiri.',
+          ok: 'Semua sensor melapor sepanjang minggu.',
+          sub: '{n} dari {all} sensor perlu diperiksa.',
+          subOk: '{all} sensor lokal, cakupan tujuh hari.',
+          none: 'Belum ada sensor lokal.',
+          young: 'masih mengumpulkan minggu pertamanya',
+          cov: '{pct}% dari minggu ini',
+          frozen: ', {n} kanal beku' },
+        ring: {
+          title: 'Bentuk lingkar.',
+          none: 'Belum ada tetangga. Node ini belum mengambil stasiun publik di sekitarnya, jadi bacaannya hanya berbicara untuk alamat ini. Khusus Bali: setel BAD_ENABLED=1.',
+          one: 'Satu tetangga melapor, {km} km jauhnya. Satu itu anekdot: tidak ada di sini yang bisa membedakan kebakaran di gang dari kabut di atas pulau.',
+          silent: 'Tidak ada tetangga yang melapor sekarang, jadi tidak ada pembanding untuk alamat ini.',
+          shape: '{n} tetangga. Terendah {lo}, setengah tengah {p25} sampai {p75}, tertinggi {hi}, semua dalam {unit}. Terdekat {km} km.',
+          youAbove: 'Anda membaca {v} {unit}, di atas setengah tengah mereka. Apa pun ini, sumbernya lebih dekat ke Anda daripada ke mereka.',
+          youBelow: 'Anda membaca {v} {unit}, di bawah setengah tengah mereka.',
+          youIn: 'Anda membaca {v} {unit}, di dalam setengah tengah yang mereka baca. Tidak ada yang luar biasa di alamat ini.',
+          youNone: 'Anda belum punya sensor luar ruangan sendiri, jadi tidak ada yang bisa ditaruh di garis ini.',
+          tipBox: 'setengah tengah tetangga Anda, {p25} sampai {p75} {unit}',
+          tipSpan: 'seluruh lingkar, {lo} sampai {hi} {unit}',
+          tipYou: 'Anda, {v} {unit}' },
+        stations: {
+          title: 'Siapa di luar sana, dan seberapa jauh.',
+          sub: '{n} dari {all} stasiun dihitung, dalam {km} km{skipped}. Tidak satu pun milik kita: apa yang dibaca node ini sendiri tidak masuk daftar ini.',
+          skipped: ', {n} dikeluarkan karena di dalam ruangan',
+          empty: 'Belum ada yang diambil. Begitu node menarik data, setiap stasiun dalam {km} km muncul di sini dengan jaraknya.',
+          row: '{km} km jauhnya \u00b7 {net} \u00b7 {when}',
+          justNow: 'baru saja', ago: '{n} menit lalu', quiet: 'tidak melapor',
+          indoors: 'di dalam ruangan, tidak dihitung', unknownNet: 'jaringan tidak diketahui' },
+        fc: {
+          title: 'Hari yang akan datang.',
+          none: 'Belum ada prakiraan. Setel FORECAST_BMKG_ADM4 ke kode desa titik ini, atau nyalakan Open-Meteo, dan sehari angin dan hujan berikutnya muncul di sini. `planetai run forecast verify` mencari kodenya.',
+          wind: 'Angin datang dari {dir} pada {kmh} km/jam.',
+          rain: 'Hujan diperkirakan mulai {at}, {mm} mm sepanjang hari.',
+          dry: 'Tidak ada hujan diperkirakan sehari ke depan.',
+          far: 'Titik prakiraan berjarak {km} km dari node ini, yang berarti tempat lain.',
+          gap: 'Kedua prakiraan berbeda hingga {c} \u00b0C sepanjang hari; tidak satu pun adalah kebenaran.',
+          step: 'angin dari {dir} {kmh} km/jam \u00b7 {sky}',
+          stepDry: 'kering', stepRain: 'hujan {mm} mm', stepCloud: ' \u00b7 awan {n}%',
+          notPredict: 'Node mengambil data ini; ia tidak meramal.' } },
   es: { now: 'Ahora', watches: 'Lo que vigila este lugar', notWatched: 'no se vigila aquí',
         theDay: 'El día que acaba de pasar', whereItStands: 'Dónde está', sources: 'Fuentes',
         thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
         source: 'Fuente', asOf: 'A las', word: 'Palabra', answerOn: 'Responde en Telegram, no aquí.',
         stale: 'viejo', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
-        refused: 'Este nodo no comparte sus lecturas con la red.' },
+        refused: 'Este nodo no comparte sus lecturas con la red.',
+        trust: {
+          title: 'Lo que el nodo duda de sus propios sensores.',
+          ok: 'Todos los sensores informaron toda la semana.',
+          sub: '{n} de {all} sensores necesitan una revisi\u00f3n.',
+          subOk: '{all} sensores locales, cobertura de siete d\u00edas.',
+          none: 'Todav\u00eda no hay sensor local.',
+          young: 'a\u00fan reuniendo su primera semana',
+          cov: '{pct}% de la semana',
+          frozen: ', {n} canales congelados' },
+        ring: {
+          title: 'La forma del anillo.',
+          none: 'A\u00fan no hay vecinos. Este nodo no ha tra\u00eddo las estaciones p\u00fablicas a su alrededor, as\u00ed que sus lecturas hablan de esta direcci\u00f3n y de nada m\u00e1s. S\u00f3lo en Bali: pon BAD_ENABLED=1.',
+          one: 'Un vecino informando, a {km} km. Uno es una an\u00e9cdota: nada aqu\u00ed distingue un fuego en el callej\u00f3n de una bruma sobre la isla.',
+          silent: 'Ning\u00fan vecino est\u00e1 informando ahora, as\u00ed que no hay con qu\u00e9 comparar esta direcci\u00f3n.',
+          shape: '{n} vecinos. M\u00ednimo {lo}, mitad central de {p25} a {p75}, m\u00e1ximo {hi}, todo en {unit}. El m\u00e1s cercano a {km} km.',
+          youAbove: 'Lees {v} {unit}, por encima de la mitad central de ellos. Sea lo que sea, est\u00e1 m\u00e1s cerca de ti que de ellos.',
+          youBelow: 'Lees {v} {unit}, por debajo de la mitad central de ellos.',
+          youIn: 'Lees {v} {unit}, dentro de la mitad central que ellos leen. Nada aqu\u00ed es inusual para esta direcci\u00f3n.',
+          youNone: 'No tienes sensor exterior propio, as\u00ed que no hay nada que poner en esta l\u00ednea.',
+          tipBox: 'la mitad central de tus vecinos, de {p25} a {p75} {unit}',
+          tipSpan: 'todo el anillo, de {lo} a {hi} {unit}',
+          tipYou: 't\u00fa, {v} {unit}' },
+        stations: {
+          title: 'Qui\u00e9n hay ah\u00ed fuera, y a qu\u00e9 distancia.',
+          sub: '{n} de {all} estaciones contadas, dentro de {km} km{skipped}. Ninguna es nuestra: lo que este nodo lee por s\u00ed mismo queda fuera de esta lista.',
+          skipped: ', {n} fuera por estar en interiores',
+          empty: 'A\u00fan no se ha tra\u00eddo nada. En cuanto el nodo consulte, cada estaci\u00f3n dentro de {km} km aparece aqu\u00ed con su distancia.',
+          row: 'a {km} km \u00b7 {net} \u00b7 {when}',
+          justNow: 'ahora mismo', ago: 'hace {n} min', quiet: 'sin informar',
+          indoors: 'en interiores, no contada', unknownNet: 'red desconocida' },
+        fc: {
+          title: 'El d\u00eda que est\u00e1 por venir.',
+          none: 'A\u00fan no hay pron\u00f3stico. Pon FORECAST_BMKG_ADM4 con el c\u00f3digo de aldea de este punto, o enciende Open-Meteo, y el pr\u00f3ximo d\u00eda de viento y lluvia aparece aqu\u00ed. `planetai run forecast verify` encuentra el c\u00f3digo.',
+          wind: 'El viento viene del {dir} a {kmh} km/h.',
+          rain: 'Se espera lluvia desde las {at}, {mm} mm a lo largo del d\u00eda.',
+          dry: 'No se espera lluvia en el pr\u00f3ximo d\u00eda.',
+          far: 'El punto del pron\u00f3stico est\u00e1 a {km} km de este nodo, que es otro lugar.',
+          gap: 'Los dos pron\u00f3sticos difieren hasta {c} \u00b0C a lo largo del d\u00eda; ninguno es la verdad.',
+          step: 'viento del {dir} {kmh} km/h \u00b7 {sky}',
+          stepDry: 'seco', stepRain: '{mm} mm de lluvia', stepCloud: ' \u00b7 {n}% de nubes',
+          notPredict: 'El nodo trae esto; no predice.' } },
 };
 
 // ----------------------------------------------------------------------------------------- pieces
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* The three ported cards compose their own sentences, so their strings above are templates rather
+ * than fragments: `{n} of {all} sensors need a look.` Concatenating fragments would fix English
+ * word order into every other language, which is the one mistake a dictionary cannot correct.
+ * Values are substituted verbatim — escape them before they get here, as esc() does elsewhere. */
+const t = (s, v) => String(s || '').replace(/\{(\w+)\}/g, (_, k) => (v[k] == null ? '' : v[k]));
 
 // ctx.fmt formats; it does not decide. The decimal places are the issue's own, from the node.
 const mkCtx = (snap, view) => {
@@ -138,6 +274,153 @@ const mkCtx = (snap, view) => {
  * view preference and not data: it survives a refresh and is not worth a round trip to the node. */
 const PLAN_OFF = new Set();
 const PLAN_LAYERS = { building: 'mapped', sat: 'from orbit only', road: 'roads', green: 'green', poi: 'uses' };
+
+// ------------------------------------------------------------------------------- the ported cards
+/* Three cards from the page this file replaces: the ring, the stations in it, and the forecast.
+ *
+ * They keep their old top-level names. `drawRing` and `drawForecast` are what tests/test_shipped.py
+ * has asserted since v0.30 and what tools/check_ui.py can see; a method on an object literal is
+ * invisible to both. They are registered in COMPONENTS below and obey the same contract as every
+ * other component: pure, (data, ctx) => string, data-component on the root, its own empty state.
+ *
+ * Each also carries its old `data-card`, because that is the name the shipped gates know it by.
+ */
+
+/* The ring's SHAPE — lowest, the middle half, highest, and where this node sits on it.
+ *
+ * Deliberately NOT a median: the Stack owns "the street" (docs/HANDOFF_issues.md, settled 11 Sep).
+ * On live data this card read 13.9 and the Stack read 14.6, both labelled the street, and one page
+ * cannot say two things about one quantity.
+ *
+ * The axis runs the whole ring, lowest to highest, and nothing trims it. The MAD fence this page
+ * used to compute moved to the node in Release 1 (app/issues/engine.py: fenced_median) and no
+ * arithmetic is left here. One station at 152 therefore squashes the box against the left edge —
+ * which is the true shape of that ring, and costs nothing, because all four numbers are written
+ * out in the sentence underneath, where the old card could not put them.
+ */
+function drawRing(d, ctx) {
+  const w = ctx.w.ring;
+  const unit = esc((d && d.unit) || '');
+  const f = v => esc(ctx.fmt(v, (d && d.dp) || 0));
+  // /nearby carries its own credit and this uses it. The line after `||` is what a node that has
+  // never fetched shows: with BAD_ENABLED unset there is no ring and no attribution to quote, and
+  // the card still has to say where these numbers would have come from.
+  const cite = esc(((d && d.attribution) || []).join(' · ')
+    || 'Bali Air Dispatch, baliairdispatch.com, and the network named beside each station.');
+  const card = (strip, note) =>
+    `<div class="card ring" data-component="ring" data-card="nearby-ring">`
+    + `<div class="k">${esc(w.title)}</div>${strip}`
+    + `<p class="note">${note}</p><p class="note">${cite}</p></div>`;
+
+  if (!d || !(d.ring || []).length) return card('', esc(w.none));
+  if (!d.stations || d.stations < 2 || d.p25 == null) {
+    return card('', d.stations === 1 ? t(esc(w.one), { km: f(d.nearest_km) }) : esc(w.silent));
+  }
+  const mine = d.mine;
+  const lo = mine == null ? d.lowest : Math.min(d.lowest, mine);
+  const hi = mine == null ? d.highest : Math.max(d.highest, mine);
+  const pad = (hi - lo) * 0.15 || 1, A = lo - pad, B = hi + pad;
+  const X = v => 10 + ((v - A) / (B - A)) * 580;
+  const tips = { lo: f(d.lowest), hi: f(d.highest), p25: f(d.p25), p75: f(d.p75), unit };
+  const shape = t(esc(w.shape), { ...tips, n: d.stations, km: f(d.nearest_km) });
+  // No text inside this SVG. It scales with the card, so at 375 px a viewBox label lands at about
+  // five pixels and cannot be read; every number lives in the sentence under it and in a title.
+  const strip = `<svg class="ringstrip" viewBox="0 0 600 64" role="img" aria-label="${shape}">`
+    + `<line x1="${X(d.lowest)}" x2="${X(d.highest)}" y1="32" y2="32" stroke="var(--ink)"`
+    + ` stroke-width="1.5" stroke-opacity=".45"><title>${t(esc(w.tipSpan), tips)}</title></line>`
+    + [d.lowest, d.highest].map(v => `<line x1="${X(v)}" x2="${X(v)}" y1="24" y2="40"`
+        + ` stroke="var(--ink)" stroke-width="1.5" stroke-opacity=".45"/>`).join('')
+    + `<rect x="${X(d.p25)}" y="20" width="${Math.max(1, X(d.p75) - X(d.p25))}" height="24"`
+    + ` fill="var(--ink)" fill-opacity=".18"><title>${t(esc(w.tipBox), tips)}</title></rect>`
+    // "you" is the one mark that is taller than the box rather than a different colour: state and
+    // identity on this page are carried by weight, never by hue.
+    + (mine == null ? '' : `<line x1="${X(mine)}" x2="${X(mine)}" y1="6" y2="58" stroke="var(--ink)"`
+        + ` stroke-width="2.5"><title>${t(esc(w.tipYou), { v: f(mine), unit })}</title></line>`)
+    + `</svg>`;
+  const you = mine == null ? esc(w.youNone)
+    : t(esc(mine > d.p75 ? w.youAbove : mine < d.p25 ? w.youBelow : w.youIn), { v: f(mine), unit });
+  return card(strip, you + ' ' + shape);
+}
+
+/* Who is out there, and how far. The ring card is the shape; this is the list behind it.
+ *
+ * The row callbacks below are `r=>` with no space on purpose: that is the shape tools/check_ui.py
+ * looks for when it checks that every field read off a row is a real column. A spaced arrow is a
+ * callback the gate silently skips.
+ */
+function drawStations(d, ctx) {
+  const w = ctx.w.stations;
+  const km = d && d.radius_km != null ? ctx.fmt(d.radius_km, 0) : '—';
+  const ring = (d && d.ring) || [];
+  const when = r => r.indoor ? w.indoors
+    : !r.reporting ? w.quiet
+    : r.silent_minutes < 2 ? w.justNow
+    : t(w.ago, { n: ctx.fmt(r.silent_minutes, 0) });
+  const cards = ring.map(r=>COMPONENTS.sensorCard({
+    name: r.name || r.sensor_id, value: r.pm25, unit: (d && d.unit) || '', dp: (d && d.dp) || 0,
+    story: t(w.row, { km: r.km == null ? '—' : ctx.fmt(r.km, 1),
+                      net: r.network || w.unknownNet, when: when(r) }),
+  }, ctx)).join('');
+  const skipped = ring.filter(r=>r.indoor).length;
+  const sub = cards
+    ? t(esc(w.sub), { n: d.stations, all: ring.length, km: esc(km),
+                      skipped: skipped ? t(esc(w.skipped), { n: skipped }) : '' })
+    : t(esc(w.empty), { km: esc(km) });
+  return `<div class="card" data-component="stations" data-card="nearby-stations">`
+    + `<div class="k">${esc(w.title)}</div><p class="note">${sub}</p>`
+    + (cards ? `<div class="sensors mt">${cards}</div>` : '') + `</div>`;
+}
+
+/* The day it is about to have. One timeline, not two interleaved: BMKG is the official forecast
+ * where there is one and Open-Meteo carries the hours elsewhere, and the disagreement between them
+ * is a sentence rather than a second set of rows.
+ */
+const COMPASS16 = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+const compass16 = deg => deg == null ? '?' : COMPASS16[Math.round((deg % 360) / 22.5) % 16];
+
+function drawForecast(d, ctx) {
+  const w = ctx.w.fc;
+  // /forecast always names both archives; the line after `||` is for a node whose forecast pack has
+  // never run, where the card exists and the endpoint's own credit does not.
+  const cite = esc(((d && d.attribution) || []).join(' · ')
+    || 'BMKG, api.bmkg.go.id. Open-Meteo, open-meteo.com, CC-BY 4.0, when it is on.');
+  const card = (steps, note) => `<div class="card fc" data-component="forecast" data-card="forecast">`
+    + `<div class="k">${esc(w.title)}</div><p class="note">${note}</p>${steps}`
+    + `<p class="note">${cite} ${esc(w.notPredict)}</p></div>`;
+
+  const hours = (d && d.hours) || [];
+  if (!hours.length) return card('', esc(w.none));
+  const now = Date.now();
+  const all = hours.filter(h => new Date(h.ts).getTime() >= now - 3.6e6);
+  const primary = all.some(h => h.source === 'forecast-bmkg') ? 'forecast-bmkg' : 'forecast-om';
+  const fut = all.filter(h => h.source === primary);
+  const gaps = all.filter(h => h.source === 'forecast-gap' && h.fc_temp_gap != null);
+  const wind = fut.filter(h => h.fc_wind_speed != null);
+  const rain = fut.filter(h => h.fc_rain > 0.2);
+  const far = ((d && d.far_from_node) || [])[0];
+  const w0 = wind[0];
+  const note = [
+    w0 ? t(esc(w.wind), { dir: esc(compass16(w0.fc_wind_direction)), kmh: esc(ctx.fmt(w0.fc_wind_speed, 0)) }) : '',
+    rain.length
+      ? t(esc(w.rain), { at: esc(ctx.hhmm(rain[0].ts)),
+                         mm: esc(ctx.fmt(fut.reduce((a, h) => a + (h.fc_rain || 0), 0), 1)) })
+      : esc(w.dry),
+    far ? t(esc(w.far), { km: esc(ctx.fmt(far.km, 1)) }) : '',
+    gaps.length ? t(esc(w.gap), { c: esc(ctx.fmt(Math.max(...gaps.map(h => h.fc_temp_gap)), 1)) }) : '',
+    ((d && d.sources) || []).filter(s => s.sensor_id !== 'forecast-gap')
+      .map(s => esc(s.name || s.sensor_id)).join(' · '),
+  ].filter(Boolean).join(' ');
+  const steps = fut.slice(0, 8).map(h => COMPONENTS.sensorCard({
+    name: ctx.hhmm(h.ts), value: h.fc_temp, unit: '°C', dp: 0,
+    story: t(w.step, {
+      dir: compass16(h.fc_wind_direction), kmh: ctx.fmt(h.fc_wind_speed, 0),
+      sky: (h.fc_rain > 0.2 ? t(w.stepRain, { mm: ctx.fmt(h.fc_rain, 1) }) : w.stepDry)
+         + (h.fc_cloud == null ? '' : t(w.stepCloud, { n: ctx.fmt(h.fc_cloud, 0) })),
+    }),
+  }, ctx)).join('');
+  return card(`<div class="sensors mt">${steps}</div>`, note);
+}
 
 // ------------------------------------------------------------------------------------- COMPONENTS
 /* Each one is (data, ctx) => string. Pure: no DOM, no fetch, no colour literal, and every one draws
@@ -333,12 +616,52 @@ const COMPONENTS = {
       + `</div>`;
   },
 
+  /* What the node doubts about its own instruments. §2.3: trust findings belong in the place band,
+   * beside the sensors they are about, not in the room with the readings they cast doubt on.
+   *
+   * The two numbers in the filter are the pack's own: 60 % is packs/trust/rules.yml's coverage_low
+   * line and 168 hours is a week. /trust answers with measurements and no verdict, so the verdict
+   * is here — and a sensor under a week old reads 0 % coverage while being perfectly healthy,
+   * which is the whole reason that first clause exists.
+   * ponytail: the doubt rule is copied from the pack rather than derived from it. It moves behind
+   * /trust the day that endpoint returns a verdict per sensor.
+   */
+  trustCard(d, ctx) {
+    const w = ctx.w.trust;
+    const rows = d.rows || [];
+    const doubt = rows.filter(r=>r.age_hours < 168 || r.coverage_7d < 60 || r.frozen_channels > 0);
+    const body = doubt.length
+      ? doubt.map(r=>{
+        const cov = r.age_hours < 168 ? esc(w.young) : t(esc(w.cov), { pct: esc(String(r.coverage_7d)) });
+        const froz = r.frozen_channels ? t(esc(w.frozen), { n: r.frozen_channels }) : '';
+        return `<div class="vit"><span>${esc(r.name || r.sensor_id)}</span><span>${cov}${froz}</span></div>`;
+      }).join('')
+      : `<p class="note">${esc(w.ok)}</p>`;
+    const sub = !rows.length ? esc(w.none)
+      : doubt.length ? t(esc(w.sub), { n: doubt.length, all: rows.length })
+        : t(esc(w.subOk), { all: rows.length });
+    return `<div class="card trust" data-component="trustCard" data-card="trust">`
+      + `<div class="k">${esc(w.title)}</div><p class="note">${sub}</p>${body}</div>`;
+  },
+
+  // The three ported cards, so piece() draws each inside its own guard like everything else.
+  ring: drawRing,
+  stations: drawStations,
+  forecast: drawForecast,
+
   sensorCard(d, ctx) {
     return `<div class="sensor" data-component="sensorCard">`
       + `<div class="top"><span class="n">${esc(d.name)}</span>`
       + `<span class="v"><span class="num">${esc(ctx.fmt(d.value, d.dp || 0))}</span><small>${esc(d.unit || '')}</small></span></div>`
       + (d.story ? `<div class="story">${esc(d.story)}</div>` : '')
       + `<div class="row">${ctx.pill(d.provenance)}${d.chip ? `<span class="chip">${esc(d.chip)}</span>` : ''}</div>`
+      // The kits behind an aggregate, each linked to its own page where the source gives one. Only
+      // an account kit has a `url` in its meta; a public station never does, and /sensors strips
+      // the key entirely for a reader the node does not trust. So the link appears exactly where
+      // somebody can actually open it.
+      + (d.kits && d.kits.length ? `<div class="kits">${d.kits.map(k => k.url
+          ? `<a href="${esc(k.url)}" target="_blank" rel="noopener noreferrer">${esc(k.name)}</a>`
+          : `<span>${esc(k.name)}</span>`).join('')}</div>` : '')
       + `</div>`;
   },
 
@@ -516,9 +839,9 @@ const COMPONENTS = {
  */
 const ANATOMY = {
   hero:           ['kicker', 'sentence', 'why', 'chips', 'miniStack', 'askStrip', 'rhoRow', 'stamp'],
-  'issue.sensed': ['kicker', 'sentence', 'why', 'stack', 'scale', 'day', 'sources'],
+  'issue.sensed': ['kicker', 'sentence', 'why', 'stack', 'scale', 'day', 'ringCards', 'forecastStrip', 'sources'],
   'issue.context': ['kicker', 'sentence', 'why', 'readouts', 'satellites'],
-  place:          ['planCard', 'units'],
+  place:          ['planCard', 'units', 'trustCard'],
   loop:           ['rhoRow', 'report', 'ledger'],
   figures:        ['figures'],
   wall:           ['kicker', 'sentence', 'why', 'satellite', 'wallIndex', 'rhoRow', 'stamp'],
@@ -547,15 +870,42 @@ function layout(snap) {
  * and they are as pure as the things they call.
  */
 const COMPOSITES = {
+  /* One card per distance, carrying the value the NODE computed for it, and under each the kits
+   * that went into it. Not one card per sensor with its own number: the engine aggregates per
+   * sensor and publishes only the result (engine._cell keeps the ids, not the values), and working
+   * a per-sensor figure out here would be the page computing again. When /issues publishes the
+   * per-sensor values, this becomes one card each and the names below become their headings. */
   sources(d, ctx) {
     const st = d.stack || {};
+    const kit = {};
+    (ctx.sensors || []).forEach(s => {
+      kit[s.sensor_id] = { name: s.name || s.sensor_id, url: (s.meta&&s.meta.url) || null };
+    });
     const cards = DISTANCES.filter(x => st[x]).map(x => COMPONENTS.sensorCard({
       name: st[x].source, value: st[x].value, unit: d.unit, dp: d.dp,
       provenance: st[x].provenance,
       chip: st[x].n > 1 ? `${st[x].n} sensors` : (ctx.issues_labels || {})[x] || x,
       story: st[x].age_minutes != null ? `last reading ${st[x].age_minutes} min ago` : '',
+      kits: (st[x].sensors || []).map(id => kit[id] || { name: id, url: null }),
     }, ctx)).join('');
     return `<div class="sensors">${cards || `<p class="note">${esc(ctx.w.notWatched)}</p>`}</div>`;
+  },
+
+  /* The ring belongs to air and to nothing else: /nearby is one archive of one metric. Same shape
+   * as `satellites` below — the band asks for it, the composite decides whether this issue is the
+   * one it is about. */
+  ringCards(d, ctx) {
+    if (d.key !== 'air') return '';
+    const near = { ...(ctx.nearby || {}), unit: d.unit, dp: d.dp };
+    return piece('ring', near, ctx) + piece('stations', near, ctx);
+  },
+
+  /* The forecast is weather, and weather is not an issue (§2): it is context that feeds air and
+   * heat. One card, so it goes on whichever of those two this place declared first — set once per
+   * render, in render(), rather than guessed here. */
+  forecastStrip(d, ctx) {
+    if (!ctx.forecast_owner || d.key !== ctx.forecast_owner) return '';
+    return piece('forecast', ctx.forecast || {}, ctx);
   },
   readouts(d, ctx) {
     const rows = (d.readouts || []).map(r => COMPONENTS.readout({
@@ -668,7 +1018,8 @@ function bandFor(id, snap, ctx) {
     return `<section class="band" id="band-place" data-band="place">`
       + `<div class="bandhead"><div class="k">${esc(ctx.w.thePlace)}</div></div>`
       + `<div class="grid g21">${assemble(ANATOMY.place, { caption: (snap.health || {}).cell ? snap.health.cell.caption : '',
-        status: snap.placeStatus, plan: snap.place, node: (snap.health || {}).node, units: [] }, ctx)}</div></section>`;
+        status: snap.placeStatus, plan: snap.place, node: (snap.health || {}).node, units: [],
+        rows: snap.trust || [] }, ctx)}</div></section>`;
   }
   if (id === 'loop') {
     return `<section class="band" id="band-loop" data-band="loop">`
@@ -727,6 +1078,12 @@ function render(snap, view) {
   const ctx = mkCtx(snap, view);
   ctx.issues_labels = ((snap.issues || {}).labels || {})[ctx.locale] || {};
   ctx.earth = snap.earth || {};
+  ctx.nearby = snap.nearby || null;
+  ctx.forecast = snap.forecast || null;
+  ctx.sensors = snap.sensors || [];
+  // Which issue carries the forecast. Declared order decides, so a node watching only air gets it
+  // on air and one watching both gets it once, on whichever it put first.
+  ctx.forecast_owner = (((snap.issues || {}).order) || []).find(k => k === 'heat' || k === 'air') || null;
   ctx.staleFor = ts => {
     const poll = (snap.health || {}).poll_seconds || 300;
     return ts ? (Date.now() - new Date(ts)) / 1000 > poll * 2 : false;
