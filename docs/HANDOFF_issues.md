@@ -143,6 +143,57 @@ node's state.
 - **`/stack` over real Telegram.** `stack_text()` was rendered from the fixture in all three
   locales; no message has been sent.
 
+## Matched against node #1, live, 11 September
+
+`bayu-ungasan`, `v0.43.1-1-g35cbd7b` — the same commit as current `main`. Read-only over the
+tailnet; nothing was written. The engine was replayed against its live `/stats`, `/observations`,
+`/alerts` and `/earth`, which is the closest thing to seeing the new page without building it.
+
+```
+headline: air     (NOT heat — the prototype's hero is a different evening)
+AIR   act      #155, 17 min old, still true
+      "Holding at 21 µg/m³ in the room, and the whole area reads the same.
+       Level with the wall outside, level with the street, over the model."
+      room=21 n=3 live · yard=16 n=1 live · ring=15 n=4 partial · region=12 n=1 model
+      attribution: everywhere
+HEAT  notable  #149 open 18 h, the reading came back
+      room=29.8 n=4 live · yard=31.3 n=1 live · ring=34.2 n=4 partial · region=30.2 n=1 model
+LAND  context  1.3 % of the square changed · built 91 %, trees 9 %
+COAST context  2.0 m · swell 1.8 m, period 13 s, sea 26.8 °C
+```
+
+Seven ways the running node differs from what the prototype was drawn against:
+
+1. **Node #1 has a yard now.** `sc-19236` (Ungasan Kit) and `sc-19874` (Bayu new enclosure) are
+   local and outdoor. The 6 September capture had none, so **the prototype's Stack shows that column
+   empty and the live one fills all four.** Anything designed around three columns is wrong.
+2. **`/earth` has no frames.** `frames: []`, 9 years and 582 MB cached, and the endpoint's own hint
+   says `planetai run earth frames`. The satellite loop — R6's subject for the wall, and the
+   component §2.3 asks for twice on the Land band — has nothing to draw until that runs.
+3. **`/forecast` is empty.** `sources: []`, `hours: []`; the BMKG village code is unset.
+4. **ρ has moved**: 58 act alerts, 21 acted, ρ 0.362, median 104 min. The prototype draws 28 rings
+   with 14 closed. The ρ row must take its count from `/rho`, not from a constant.
+5. **The earth record has moved**: 2024→2025 is 1.29 % / 129.1 ha (the prototype has 1.19 % /
+   119.2 ha) and the 2017→2025 span is 8.47 % / 846.8 ha (prototype: 8.8 % / 880 ha).
+6. **`noise` is already being measured** — `sc-19236` reports it on the yard. A fifth issue is a
+   fifth file and the data is there today. There is no indoor noise sensor, so it would be a
+   yard-and-nothing-else stack.
+7. **`ee-point.land_change_score` is still on the node**, value 0.0371, timestamped 2025-07-01 with
+   cadence `P1Y` — so it is *current by its own cadence*, not stale. A fallback that checked
+   freshness would have used it. This is claim 5 above, confirmed on the live node rather than
+   argued from the README.
+
+### The ring appears twice, with two different numbers
+
+On live data the Stack's ring reads **14.6** and the ring card's `/nearby` median reads **13.9**,
+and both are labelled the street. Both sets are Bali Air Dispatch stations; they differ because
+`/issues` takes a fenced median of `mean_15m` over the 4 stations fresh within 15 minutes, and
+`/nearby` takes a plain median of `mean_1h` over the 6 fresh within an hour.
+
+Neither is wrong. Two of them on one page is. **Decision for Release 2**, and the recommendation is
+to let the Stack own "the street" and relabel the ring card as what it uniquely gives — the *shape*
+of the ring (lowest, p25, p75, highest, who, how far) — rather than a second median.
+
 ## ⛔ For Tomas, before Release 2 starts
 
 **1. Release 2 cannot keep to zero touches in `app/*.py`, and it is worse than a dict entry.**
@@ -175,6 +226,23 @@ only its `frames` input changes. Land's own record loop needs no new route — `
 `@app.get("...")` decorators, and this FastAPI version defers `include_router`, so `app.routes` holds
 an `_IncludedRouter` with no `.path`. A dashboard calling `/issues` fails rule 3 today. Release 2's
 `check_ui` must also parse `app/issues/api.py`'s `@router.get` decorators with the router's prefix.
+
+## Landing coherently with what else is moving
+
+- **`main` moved under this branch.** `#22` ("The small ones") landed at `35cbd7b` and replaced
+  `make test`'s chain of `&&` with `bash tests/all`. This branch is rebased onto it. The three new
+  suites are registered in `tests/all` and its own count gate is 29; **had the rebase been taken
+  without that, all three would have stopped running silently** — the exact failure `tests/all` was
+  written to end. `make lint` keeps main's line plus `app/issues/*.py` through py_compile and
+  pyflakes.
+- **`#22` also gave `/history` `local`, `indoor` and `kind` per row.** That is a route to a
+  per-place hourly series without `readings_1h`, which no endpoint exposes. Worth knowing for
+  Release 2's traces and for teaching `planetai snapshot` to capture a series.
+- **PR #1 `es-messages` is open and is the Spanish review channel.** The Spanish in
+  `app/issues/*.yml` is assistant-written and should go through the same reader, not a separate
+  pass. Same for the Bahasa.
+- **Nothing here conflicts with the reports or trust worktrees**, which are at `125bd1f` and
+  `dc15338` and have not moved this week.
 
 ## For prompt B (the improvement plan)
 
