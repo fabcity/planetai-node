@@ -37,6 +37,36 @@ retired in v0.33.1. `observations` keeps the latest row per source per metric fo
 ran that pack before the retirement still holds one, and showing it would put a year-old number on
 the wall as this year's answer. With no record, land says how to fetch one.
 
+## v0.44 — 2026-09-11 — planetai config, and whose project this is
+
+**`planetai config` replaces "open .env in nano".** A node keeps its settings in two places — the database,
+which the dashboard writes and which is live within 20 seconds, and `.env`, which the container reads once
+at start — and the database wins. Reading `.env` therefore tells you what somebody typed once, not what the
+node is doing. That is how `planetai ui` came to announce `SHARE_LEVEL=off` to a household whose wall was
+drawing at `open`.
+
+So every listing shows the value **in force**, where it came from, and says in red when `.env` holds
+something else and is being ignored:
+
+```
+planetai config                    guided, section by section  (--section alerts for one group)
+planetai config list               every setting, its value, and its source
+planetai config get KEY            one setting, its help, and whether .env is being ignored for it
+planetai config set KEY VALUE      the database for a runtime key, .env for a bootstrap one
+planetai config unset KEY          back to .env, or to the built-in default
+planetai config edit               the raw file in $EDITOR, which is what this command used to be
+```
+
+The schema, labels, help and accepted values all come from `settings.RUNTIME` through `GET /settings`, so
+the command cannot drift from the code it configures: add a setting and it appears here. A value the node
+refuses now quotes that setting's own help instead of failing silently — `runtime_set` swallowed a 400, so
+a typo in a key with a fixed set of values looked exactly like the node being unreachable.
+
+**The logo says whose project this is, and which version is talking.** Under the blue PLANETAI, both in the
+CLI and in the installer: `a Fab City project · v0.44`. The installer shows the version it is about to
+fetch, with a three-second timeout so an offline machine is told by the preflight rather than by a hang.
+One `version()` resolver now serves the banner and `planetai version`; there were two, and two drift.
+
 ## v0.43.2 — 2026-09-11 — planetai ui said off while the wall was drawing
 
 `planetai ui` read `SHARE_LEVEL` from `.env` and announced *"SHARE_LEVEL is off, so a screen on your network

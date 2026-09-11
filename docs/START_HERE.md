@@ -116,7 +116,7 @@ matters. It does not need the internet to keep working, only to send you message
 |---|---|
 | Nothing installs | Docker is not running. Open OrbStack or Docker Desktop, then run the line again. |
 | `command not found: planetai` | Open a new terminal window. |
-| `port is already in use` | `planetai config`, set `APP_PORT=8081`, `planetai restart`. |
+| `port is already in use` | `planetai config set APP_PORT 8081` — it writes `.env` and offers the restart. |
 | No alerts at all | Normal when the air is fine. `planetai test-alert` proves the path works. |
 | Alerts every few minutes | Thresholds wrong for your place. Tell us. |
 | A sensor shows nothing | `planetai sensors`. A Smart Citizen kit must be publishing; an AirGradient must be on the same network. |

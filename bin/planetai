@@ -9,7 +9,11 @@
 #   planetai test-alert     make a real alert fire now, so you see the whole path
 #   planetai update         back up, pull, migrate, rebuild, verify
 #   planetai logs           follow the node's log
-#   planetai config         open .env in an editor
+#   planetai config         every setting, guided — what it is, what it is set to, and where from
+#   planetai config list    see them all without changing anything
+#   planetai config get KEY one setting, and whether .env is being ignored for it
+#   planetai config set KEY VALUE   change one; the node has it within 20 s
+#   planetai config edit    the raw .env in an editor, as before
 #   planetai report         write and send one now; `report last` shows the last one
 #   planetai report every 6 hours between reports: 3, 4, 6, 8, 12 or 24
 #   planetai report at 6   the local hour the rhythm starts from
@@ -65,6 +69,9 @@ spin() {
   else printf '\r  %s✗%s %s\033[K\n' "$R" "$N" "$label"; tail -6 "$LOG" | sed 's/^/      /'; fi
   return $rc
 }
+# The version, however this node was installed: a git checkout describes, a tarball carries VERSION, and a
+# node mid-install has neither and is honestly "dev".
+version() { git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev; }
 logo() { printf '%s' "$BL"; cat <<'LOGO'
 
   ██████╗ ██╗      █████╗ ███╗   ██╗███████╗████████╗ █████╗ ██╗
@@ -74,7 +81,8 @@ logo() { printf '%s' "$BL"; cat <<'LOGO'
   ██║     ███████╗██║  ██║██║ ╚████║███████╗   ██║   ██║  ██║██║
   ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝
 LOGO
-printf '%s  %snode · %s%s\n\n' "$N" "$D" "${1:-observe here, decide here, act here}" "$N"; }
+printf '%s  %snode · %s%s\n' "$N" "$D" "${1:-observe here, decide here, act here}" "$N"
+printf '  %sa Fab City project · %s%s\n\n' "$D" "$(version)" "$N"; }
 # "Something went wrong" on its own is the sentence a tester in Mallorca was left with, twice. A failure
 # names what failed, on the first line, before anything else.
 fail() {
@@ -1324,7 +1332,14 @@ runtime_set() {
   local tok; tok="$(envget ADMIN_TOKEN)"; [[ -n "$tok" ]] || return 1
   local body="{" k v first=1
   while [[ $# -ge 2 ]]; do k="$1"; v="$2"; shift 2; [[ $first -eq 1 ]] || body+=","; first=0; body+="$(printf '"%s":"%s"' "$k" "$(sed 's/\\/\\\\/g; s/"/\\"/g' <<< "$v")")"; done; body+="}"
-  curl -sf -X PUT "http://localhost:$(port)/settings" -H "Authorization: Bearer $tok" -H "X-Agent: planetai-cli" -H 'content-type: application/json' -d "$body" >/dev/null
+  local out code
+  out="$(curl -s -w '\n%{http_code}' -X PUT "http://localhost:$(port)/settings" -H "Authorization: Bearer $tok" -H "X-Agent: planetai-cli" -H 'content-type: application/json' -d "$body")"
+  code="${out##*$'\n'}"; out="${out%$'\n'*}"
+  [[ "$code" == 2* ]] && return 0
+  # 400 is the node refusing a value, and its message quotes the setting's own help. Saying only "could not
+  # reach the node" for that sent people looking at Docker for a typo.
+  [[ "$code" == 400 ]] && warn "$(json 'print(d.get("detail") or d)' <<< "$out" 2>/dev/null || echo "$out")"
+  return 1
 }
 
 # ---------------------------------------------------------------- the rest
@@ -1336,7 +1351,140 @@ cmd_update()  {
    Start it, or install one — planetai preflight names the one for this machine — then run this again."
   chmod +x update.sh; logo "updating $(envget NODE_NAME)"; ./update.sh; }
 cmd_backup()  { step "Backup"; chmod +x backup.sh; ./backup.sh || fail "see above"; }   # one definition: bash took the last, and the last had no `fail`
-cmd_config()  { ( : </dev/tty ) 2>/dev/null || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }; "${EDITOR:-nano}" .env </dev/tty && confirm "Restart the node to apply?" && docker compose up -d --force-recreate app; }
+# ---------------------------------------------------------------- config: the settings, without the raw file
+#
+# A node keeps its settings in two places and that is the thing this command exists to make visible:
+#
+#   the database   every key in settings.RUNTIME. The dashboard writes here. Live within ~20 s, no restart.
+#   .env           read once, when the container starts. Everything in settings.BOOTSTRAP lives only here,
+#                  and it is also the fallback for a RUNTIME key the database has no row for.
+#
+# The database wins. So `cat .env` answers "what did somebody type once", not "what is this node doing" —
+# which is how `planetai ui` came to announce SHARE_LEVEL=off to a household whose wall was drawing at open.
+# Every listing here shows the value in force and where it came from, and says so out loud when .env
+# disagrees. The schema, the labels, the help and the accepted values all come from settings.RUNTIME through
+# GET /settings, so this command cannot drift from the code it configures.
+#
+#   planetai config                    guided, section by section
+#   planetai config --section alerts   just that group
+#   planetai config list [--section G] every setting, its value, and where it came from
+#   planetai config get KEY
+#   planetai config set KEY VALUE      the database for a runtime key, .env for a bootstrap one
+#   planetai config unset KEY          back to .env, or to the built-in default
+#   planetai config edit               the raw .env in $EDITOR, which is what this command used to be
+
+SEP=$'\x1f'
+# A setting's help is a paragraph, not a label. Wrap it where a terminal can read it.
+wrap() { fold -s -w 74 <<< "$1" | sed "s/^/    ${D}/; s/\$/${N}/"; }
+config_json() { api /settings || { warn "the node is not answering on $(port), so only .env can be read. Try: planetai start"; return 1; }; }
+
+# One row per setting: key, group, whether it is a secret, needs a restart, its value in force, where that
+# came from, and what .env says. Tab-separated, because a help string contains everything else.
+config_rows() {
+  config_json | ENVFILE=".env" json '
+import os, re
+SEP = chr(31)
+env = {}
+for line in open(os.environ["ENVFILE"], encoding="utf-8", errors="replace") if os.path.exists(os.environ["ENVFILE"]) else []:
+    m = re.match(r"\s*([A-Z0-9_]+)\s*=(.*)", line)
+    if m:
+        env[m.group(1)] = re.sub(r"\s*#.*$", "", m.group(2)).strip().strip("\"\x27")
+for r in d["runtime"]:
+    print(SEP.join([r["key"], r["group"], "secret" if r["secret"] else "-", "restart" if r["restart"] else "-",
+                     r["value"], r["source"], env.get(r["key"], ""), r["help"]]))
+for r in d["bootstrap"]:
+    print(SEP.join([r["key"], "bootstrap", "-", "restart", r["value"], "env", env.get(r["key"], ""), r["label"]]))'
+}
+
+config_list() {
+  local want="${1:-}" group="" drift=0
+  config_rows | sort -t"$SEP" -k2,2 -k1,1 | while IFS="$SEP" read -r key grp sec rst val src envv help; do
+    [[ -n "$want" && "$grp" != "$want" ]] && continue
+    [[ "$grp" != "$group" ]] && { group="$grp"; printf '\n  %s%s%s\n' "$BL" "$grp" "$N"; }
+    local show="$val" note=""
+    [[ -z "$show" ]] && show="$D—$N"
+    [[ "$sec" == secret && -n "$val" ]] && show="•••• set"
+    # The whole point: say when the file and the node disagree, rather than letting someone read the file
+    # and believe it. A secret is masked by the API, so there is nothing to compare.
+    [[ "$sec" != secret && -n "$envv" && "$envv" != "$val" ]] && note=" ${R}← .env says ${envv}${N}"
+    [[ "$src" == gui ]] && note="$note ${D}(set here, not in .env)${N}"
+    printf '    %-24s %s%s\n' "$key" "$show" "$note"
+  done
+  printf '\n  %sthe value shown is the one in force. red means .env holds something else and is being ignored.%s\n' "$D" "$N"
+}
+
+config_get() {
+  local key="$1" hit
+  hit="$(config_rows | awk -F"$SEP" -v k="$key" '$1==k')"
+  [[ -n "$hit" ]] || { warn "$key is not a setting this node has. planetai config list shows them all."; return 1; }
+  local grp sec rst val src envv help
+  IFS="$SEP" read -r key grp sec rst val src envv help <<< "$hit"
+  printf '  %s%s%s\n' "$BL" "$key" "$N"; wrap "$help"
+  [[ "$sec" == secret ]] && val="$([[ -n "$val" ]] && echo "•••• set" || echo "not set")"
+  printf '    in force   %s   %s(from %s)%s\n' "${val:-—}" "$D" "$src" "$N"
+  [[ "$sec" != secret && -n "$envv" && "$envv" != "$val" ]] && printf '    .env says  %s%s%s   %s\n' "$R" "$envv" "$N" "and is being ignored"
+  [[ "$grp" == bootstrap ]] && printf '    %slives in .env only; changing it needs planetai restart%s\n' "$D" "$N"
+  [[ "$rst" == restart && "$grp" != bootstrap ]] && printf '    %sneeds planetai restart to take effect%s\n' "$D" "$N"
+  return 0
+}
+
+config_set() {
+  local key="$1" val="${2-}" grp
+  grp="$(config_rows | awk -F"$SEP" -v k="$key" '$1==k {print $2}')"
+  [[ -n "$grp" ]] || { warn "$key is not a setting this node has. planetai config list shows them all."; return 1; }
+  if [[ "$grp" == bootstrap ]]; then
+    envset "$key" "$val"; say "$key set in .env"
+    confirm "Restart the node so it takes effect?" && cmd_restart
+    return 0
+  fi
+  runtime_set "$key" "$val" || { warn "$key was not changed."; return 1; }
+  say "$key is now ${val:-the .env or built-in value}, on this node, within 20 s"
+}
+
+config_unset() { config_set "$1" ""; }
+
+# Guided, in the openclaw shape: walk the groups, show what each setting is and what it is doing now, and
+# take a new value or a blank to keep it. Refuses without a terminal rather than half-running, and says
+# which non-interactive command to use instead — being told the equivalent beats being told no.
+config_wizard() {
+  local want="${1:-}"
+  ( : </dev/tty ) 2>/dev/null || {
+    warn "planetai config needs a terminal for the guided walk."
+    echo "  Without one:  planetai config list        see every setting and its value"
+    echo "                planetai config get KEY     one setting, and where its value came from"
+    echo "                planetai config set KEY V   change one"
+    return 1; }
+  local group=""
+  while IFS="$SEP" read -r key grp sec rst val src envv help; do
+    [[ -n "$want" && "$grp" != "$want" ]] && continue
+    [[ "$grp" == bootstrap ]] && continue        # .env only, and a restart each: planetai config edit
+    [[ "$grp" != "$group" ]] && { group="$grp"; printf '\n  %s%s%s\n' "$BL" "$grp" "$N"; }
+    local shown="$val"
+    [[ "$sec" == secret && -n "$val" ]] && shown="•••• set"
+    printf '\n  %s%s%s\n' "$BL" "$key" "$N"; wrap "$help"
+    [[ "$sec" != secret && -n "$envv" && "$envv" != "$val" ]] && printf '    %s.env says %s and is being ignored%s\n' "$R" "$envv" "$N"
+    printf '    now: %s\n' "${shown:-—}"
+    local ans; read -r -p "    new value (blank keeps it): " ans </dev/tty || return 0
+    [[ -z "$ans" ]] && continue
+    runtime_set "$key" "$ans" && say "$key set" || warn "$key unchanged"
+  done < <(config_rows | sort -t"$SEP" -k2,2 -k1,1)
+  echo; say "done. planetai config list shows everything."
+}
+
+cmd_config() {
+  local sub="${1:-}" want=""
+  case "$sub" in --section) want="${2:-}"; sub="";; --section=*) want="${sub#--section=}"; sub="";; esac
+  case "$sub" in
+    list) shift; [[ "${1:-}" == --section ]] && want="${2:-}"; [[ "${1:-}" == --section=* ]] && want="${1#--section=}"; config_list "$want";;
+    get)   [[ -n "${2:-}" ]] || { warn "usage: planetai config get KEY"; return 1; }; config_get "$2";;
+    set)   [[ -n "${2:-}" ]] || { warn "usage: planetai config set KEY VALUE"; return 1; }; config_set "$2" "${3-}";;
+    unset) [[ -n "${2:-}" ]] || { warn "usage: planetai config unset KEY"; return 1; }; config_unset "$2";;
+    edit)  ( : </dev/tty ) 2>/dev/null || { echo "no terminal here. Edit $HOME_DIR/.env with any editor, then: planetai restart"; return 1; }
+           "${EDITOR:-nano}" .env </dev/tty && confirm "Restart the node to apply?" && cmd_restart;;
+    ""|--section) config_wizard "$want";;
+    *) warn "planetai config [list|get|set|unset|edit] — or no argument for the guided walk (got: $sub)"; return 1;;
+  esac
+}
 cmd_start()   { docker compose up -d && say "started"; }
 cmd_stop()    { docker compose down && say "stopped (data kept)"; }
 cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
@@ -1410,14 +1558,14 @@ for key, why in sorted(out["provenance"]["refused"].items()):
   echo "  To render it in the dashboard, copy it into app/issues/fixtures/ on a dev machine and open ?fixture=<name>."
 }
 
-cmd_version() { echo "planetai-node $(git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null || echo dev)  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
+cmd_version() { echo "planetai-node $(version)  ·  a Fab City project  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"; }
 
 case "${1:-help}" in
   preflight) shift; exec bash tools/preflight.sh "$@";;
   setup) shift; cmd_setup "$@";;      status) shift; cmd_status "$@";;     doctor) shift; cmd_doctor "$@";;
   telegram) cmd_telegram;;            test-alert) cmd_test_alert;;  act) shift; cmd_act "$@";;
   report) shift; cmd_report "$@";;
-  update) cmd_update;;  backup) cmd_backup;;  config) cmd_config;;  logs) shift; cmd_logs "$@";;
+  update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
