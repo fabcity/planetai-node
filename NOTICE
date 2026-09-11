@@ -6,3 +6,14 @@ Reads public data from Smart Citizen (Fab Lab Barcelona) and Bali Air Dispatch a
 anything published from them must credit the archive and the originating network.
 
 The EPA 2021 humidity correction implements Barkjohn et al. (2021) as extended by US EPA (2022).
+
+Fonts bundled in app/static/fonts/, each under the SIL Open Font License 1.1, with the licence text
+beside the file:
+
+  JetBrains Mono   Copyright 2020 The JetBrains Mono Project Authors   OFL-JetBrainsMono.txt
+  Funnel Sans      Copyright 2024 The Funnel Project Authors           OFL-FunnelSans.txt
+  Figtree          Copyright 2022 The Figtree Project Authors          OFL-Figtree.txt
+
+Circular Std, named by the Fab City design system's --fc-font-wordmark token, is a commercial
+typeface and is deliberately NOT bundled. The token falls back to Funnel Sans.
+

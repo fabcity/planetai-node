@@ -1311,6 +1311,14 @@ def ui():
 COMPANIONS = {
     "node-ground.svg": (STATIC / "node-ground.svg", "image/svg+xml"),
     "jetbrains-mono-latin.woff2": (STATIC / "fonts" / "jetbrains-mono-latin.woff2", "font/woff2"),
+    # Funnel Sans and Figtree, self-hosted for the same reason as the mono: a node serves this page
+    # on a LAN that may have no route out, so a webfont from a CDN is a page with no typography.
+    # Shipped as the variable .ttf the design system bundles — converting to woff2 would halve
+    # 177 kB on a local network and cost a build step, which this repo does not have. SIL OFL 1.1;
+    # the licences are beside the files in app/static/fonts/.
+    "FunnelSans-VariableFont_wght.ttf": (STATIC / "fonts" / "FunnelSans-VariableFont_wght.ttf", "font/ttf"),
+    "Figtree-VariableFont_wght.ttf": (STATIC / "fonts" / "Figtree-VariableFont_wght.ttf", "font/ttf"),
+    "Figtree-Italic-VariableFont_wght.ttf": (STATIC / "fonts" / "Figtree-Italic-VariableFont_wght.ttf", "font/ttf"),
     # The renderer: a skeleton, its script, its layout, and the frozen layer it draws with. The
     # three .css files are copied from planetai-design and never edited here; tools/check_theme.py
     # holds them to the sibling repo. Flat names on purpose — this route takes a name, not a path,

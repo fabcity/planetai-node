@@ -223,6 +223,39 @@ for ref in sorted(set(re.findall(r'src="(?!https?:|data:|#)([^"]+)"', h)) | set(
     elif ref[len("static/"):] not in served:
         errs.append(f"the page loads {ref}, which app/main.py's COMPANIONS allowlist does not serve")
 
+# --- 9. the stylesheets the page loads ------------------------------------------------------------
+# Everything under app/static/*.css is served to a household LAN by the COMPANIONS allowlist in
+# app/main.py, and a node may have no route out at all. Two ways that goes wrong silently: a url()
+# naming a file nothing serves (no typography, no error), and an @import to a CDN (works on the
+# laptop it was written on, dead in the house). tokens.css arrived with both.
+import glob as _glob
+# The one dead reference this project has decided to live with, named exactly, in exactly one file.
+# planetai-theme.css is generated from planetai-design/references/planetai-layer.md and is copied
+# here byte-for-byte — tools/check_theme.py holds it to the design repo. Its @font-face names
+# `fonts/jetbrains-mono-latin.woff2`, a NESTED path, and /static/<name> takes a name and not a path
+# on purpose, on a port that answers a household LAN. So that one request 404s. It costs nothing
+# but the request: dashboard.css declares the same family at the flat name the node does serve.
+# Making it resolve means a path parameter reaching the filesystem, which is the trade that was
+# weighed and refused. Do not widen this to a pattern.
+DEAD_BY_DECISION = {("planetai-theme.css", "fonts/jetbrains-mono-latin.woff2")}
+for css_path in sorted(_glob.glob("app/static/*.css")):
+    body = strip_comments(open(css_path).read())
+    name = css_path.split("/")[-1]
+    for ref in re.findall(r"url\(\s*['\"]?([^'\")]+)", body):
+        ref = ref.strip()
+        if ref.startswith("data:"):
+            continue
+        if ref.startswith(("http://", "https://", "//")):
+            errs.append(f"{name} loads {ref[:60]} from the network. A node serves this page on a LAN "
+                        f"that may have no route out; bundle it and put it in COMPANIONS.")
+        elif ref not in served and (name, ref) not in DEAD_BY_DECISION:
+            errs.append(f"{name} loads {ref}, which app/main.py's COMPANIONS allowlist does not serve")
+    for imp in re.findall(r"@import\s+(?:url\()?\s*['\"]([^'\"]+)", body):
+        if imp.startswith(("http://", "https://", "//")):
+            errs.append(f"{name} @imports {imp[:60]} from the network — same reason.")
+        elif imp not in served:
+            errs.append(f"{name} @imports {imp}, which COMPANIONS does not serve")
+
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"
       "       no decorative hexagon, no website palette, no gradient, no rounded verdict, orange only on the\n"

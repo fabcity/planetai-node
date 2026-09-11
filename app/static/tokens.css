@@ -24,14 +24,20 @@
    ============================================================= */
 
 /* ---------- Fonts (real files bundled in assets/fonts/ — offline fallback for the @import above) ---------- */
+/* SIL OFL 1.1, both families. The licence travels with the files: see
+   app/static/fonts/OFL-FunnelSans.txt and OFL-Figtree.txt. */
 @font-face{ font-family:"Funnel Sans"; src:url("FunnelSans-VariableFont_wght.ttf") format("truetype");
   font-weight:300 800; font-style:normal; font-display:swap; }
 @font-face{ font-family:"Figtree"; src:url("Figtree-VariableFont_wght.ttf") format("truetype");
   font-weight:300 900; font-style:normal; font-display:swap; }
 @font-face{ font-family:"Figtree"; src:url("Figtree-Italic-VariableFont_wght.ttf") format("truetype");
   font-weight:300 900; font-style:italic; font-display:swap; }
-@font-face{ font-family:"Circular Std"; src:url("CircularStd.ttf") format("truetype");
-  font-weight:500; font-style:normal; font-display:swap; }
+/* Circular Std is NOT declared here, and its file is not in this repository. It is a commercial
+   typeface from Lineto, and this node ships as a public tarball that anyone can download — putting
+   it in there would be redistributing a font nobody bought a redistribution licence for. The only
+   token that names it is --fc-font-wordmark, for the Fab City wordmark, which this dashboard never
+   draws; its own fallback chain already goes to Funnel Sans, so the token still resolves. If a
+   surface ever does need the wordmark set properly, it needs a licence, not a copied file. */
 
 :root{
   /* ---- Paper & ink foundation (black & white first) ---- */
