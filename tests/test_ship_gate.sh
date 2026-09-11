@@ -5,6 +5,14 @@
 #
 # Drives the real precondition block from tools/ship.sh against throwaway repositories.
 set -uo pipefail
+
+# git exports these to its hooks, and a hook that runs `make test` passes them down here. Every
+# `git add` below would then write into the caller's REAL index instead of the throwaway repo:
+# running from a pre-commit hook in a worktree, this suite staged f, g, h, i and j into the actual
+# commit being made, and they reached a real branch. A test that shells out to git has to own its
+# own environment — the hook was fixed too, but this is the half that cannot be bypassed.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
+
 cd "$(dirname "$0")/.."
 SHIP="$PWD/tools/ship.sh"; fails=0
 ok(){ echo "  ok   $1"; }; bad(){ echo "  FAIL $1"; fails=$((fails+1)); }
