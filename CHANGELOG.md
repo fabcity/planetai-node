@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.43.2 — 2026-09-11 — planetai ui said off while the wall was drawing
+
+`planetai ui` read `SHARE_LEVEL` from `.env` and announced *"SHARE_LEVEL is off, so a screen on your network
+gets the dashboard and the node's status and no readings"* to a household whose wall screen was, at that
+moment, drawing every card. The database overlays `.env` for every key in `settings.RUNTIME`, and the
+dashboard's Set up view writes to the database and never touches `.env` — so `.env` holds what somebody
+typed once, not what the node is doing. Found on bayu-ungasan.
+
+A new `setting()` in `bin/planetai` asks the node for the value in force and falls back to `.env` only when
+the node is not answering, which is the one time `.env` is the better answer. Two older status lines had the
+same fault and now use it too: the report rhythm `planetai report` prints, and the warning that Telegram is
+unconfigured, which fired at a node configured through the dashboard.
+
+`tests/test_share.py` gains the rule behind it: a **secret** may be read from `.env` and only from `.env`,
+because `GET /settings` masks secrets at every level and the API cannot answer with one; every other runtime
+setting must come from the node. That distinction is what separates the three bugs above from the token
+reads that are correct as they are.
+
 ## v0.43.1 — 2026-09-10 — the node's own commands carry the node's own token
 
 **Fixes what v0.43 broke for anyone who kept the default.** `SHARE_LEVEL=off` judges a request by the address

@@ -93,6 +93,25 @@ assert not _selfcalls, ("these call the node's own API on a path SHARE_LEVEL=off
                         f"will fail on a default node: {_selfcalls}")
 print("self-calls: every one is on the off allowlist or carries a token")
 
+# A status line that reads .env reports what someone typed once, not what is in force: the database overlays
+# .env for every key in settings.RUNTIME, and the dashboard writes to the database. `planetai ui` announced
+# "SHARE_LEVEL is off, a screen gets no readings" to a household whose wall was drawing at `open`.
+_cli = open("bin/planetai").read()
+# A secret may be read from .env and only from .env: GET /settings masks it at every level, so the API
+# cannot answer with one. Everything else in RUNTIME must come from the node, because the database overlays
+# .env and the dashboard writes to the database — .env then holds what someone typed once, not what is in
+# force. `planetai ui` announced "SHARE_LEVEL is off, a screen gets no readings" to a household whose wall
+# was drawing at `open` (11 Sep 2026), because it asked .env.
+_secret = set(re.findall(r'^\s*"([A-Z_]+)":\s*\([^)]*?,\s*True,\s*(?:True|False),', SETTINGS, re.M | re.S))
+_runtime = set(re.findall(r'^\s*"([A-Z_]+)":\s*\(', SETTINGS, re.M))
+assert "SHARE_LEVEL" in _runtime and "TELEGRAM_BOT_TOKEN" in _secret, "the settings.py parse above went stale"
+_stale = [f"bin/planetai:{i} {k}" for i, line in enumerate(_cli.splitlines(), 1)
+          for k in re.findall(r'envget (\w+)', line) if k in _runtime - _secret]
+assert not _stale, ("these read a non-secret runtime setting from .env, which the database overlays, so they "
+                    f"report or act on a value the node may not be using — use setting(): {_stale}")
+assert "setting() {" in _cli, "bin/planetai needs the setting() helper that reads the effective value"
+print("status lines: runtime settings are reported as the node has them, not as .env has them")
+
 # The setting itself, and the reserved names that are refused rather than silently accepted.
 assert '"SHARE_LEVEL"' in SETTINGS and '"ACT_TOKEN"' in SETTINGS, "settings.py: both new keys"
 assert '"SHARE_LEVEL":   ("off", "open")' in SETTINGS, "settings.py: SHARE_LEVEL must refuse anything but off and open"
