@@ -51,6 +51,21 @@ done
 out="$(./bin/planetai help 2>&1)"
 hasnt "$out" "there is no" "and asking for help is not treated as a typo"
 
+# --- an update refuses a download it could not verify (S3) ---------------------------------------
+# `update.sh` trusted the tarball whenever the check could not run, and both ways it could not run were
+# silent: `shasum` is macOS's name and Debian ships `sha256sum`, and any hiccup fetching the checksum
+# skipped it too. The extract was then the LEFT operand of an `&&` list, which `set -e` exempts, so a
+# truncated download installed nothing and the run continued to the schema step, the rebuild and the
+# doctor, and ended `>> updated. Nothing was lost` with exit 0. `install` fixed the same three paths
+# already; these assert the two files cannot drift apart again.
+for f in update.sh install; do
+  src="$(cat "$f")"
+  has "$src" 'sha256sum' "$f knows Debian's name for the tool, not only macOS's"
+  hasnt "$src" 'if command -v shasum >/dev/null &&' "$f does not make the checksum conditional on shasum alone"
+done
+hasnt "$(cat update.sh)" 'tar xzf "$tmp/n.tar.gz" -C "$tmp" &&' "update.sh does not leave the extract as the left operand of &&, where set -e cannot see it fail"
+has "$(cat update.sh)" 'so the download cannot be verified' "update.sh says why it refused"
+
 printf '\n'
 [[ $fail -eq 0 ]] && { echo "release consistency tests pass"; exit 0; }
 echo "$fail failed"; exit 1
