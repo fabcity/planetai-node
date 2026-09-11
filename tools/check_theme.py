@@ -1,77 +1,108 @@
 #!/usr/bin/env python3
-"""Report the diff between the dashboard's :root token block and the committed copy in docs/design/planetai-theme.css.
+"""Hold the node's copy of the frozen layer to the design repo it was copied from.
 
-**Report-only. It prints and exits 0, and it is not in `make lint`.** It exists so that when a token changes, the
-change is visible as a diff in a review rather than discovered on a wall screen: the dashboard is one file with no
-build step, so a colour edited in `app/static/index.html` reaches every screen in the house on the next reload with
-nothing having said what moved.
+    python3 tools/check_theme.py                 # in `make lint`, and it FAILS
 
-The .css file is a committed fixture, not a stylesheet anything loads. `app/static/index.html` remains the only
-source of these values.
+Three files under `app/static/` are not this repo's to edit: `planetai-theme.css` is generated from
+planetai-design/references/planetai-layer.md, and `signs.svg` and `kilometre-cells.json` are that
+repo's assets. They were copied here because a node serves its dashboard on a LAN that may have no
+route out, and a copy with no guard drifts — a colour edited on this side reaches every screen in
+the house on the next reload with nothing having said what moved. This is the guard.
 
-Turning this into a failing gate — and deciding which direction is authoritative when the two disagree — is the
-design session's call, not this script's. It reports; somebody who owns the tokens decides.
+**One line is allowed to differ, and it is named.** `planetai-theme.css` declares the mono at
+`fonts/jetbrains-mono-latin.woff2`. `GET /static/{name}` takes a NAME and not a path, deliberately,
+on a port that answers a household LAN, so that request 404s — a cost of one request, paid on
+purpose, because the alternative is a path parameter reaching the filesystem. `dashboard.css`
+declares the same family at the flat name the node does serve, which is the declaration that
+resolves. So a `src:` line whose two sides name the same FILE by different paths is reported and
+forgiven. Anything else — a second such line, a different file, a changed token, a moved brace —
+fails, and the fix is to copy the file again rather than to widen this.
 
-    python3 tools/check_theme.py
+The design repo is a sibling checkout on a laptop and is absent on a node and in CI, where this
+prints one line and exits 0. Point it somewhere else with PLANETAI_DESIGN_REPO.
 """
 from __future__ import annotations
 
 import difflib
+import os
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-HTML = ROOT / "app/static/index.html"
-CSS = ROOT / "docs/design/planetai-theme.css"
+DESIGN = Path(os.environ.get("PLANETAI_DESIGN_REPO", ROOT.parent / "planetai-design"))
+
+# node copy -> its original in the design repo. Copied verbatim; neither side is edited here.
+FROZEN = {
+    "app/static/planetai-theme.css": "planetai-theme.css",
+    "app/static/signs.svg": "assets/signs/signs.svg",
+    "app/static/kilometre-cells.json": "assets/h3/kilometre-cells.json",
+}
+
+SRC_LINE = re.compile(r"^(\s*src:\s*url\(['\"]?)([^'\")]+)(.*)$")
 
 
-def root_block(text: str) -> str:
-    """The `:root{ ... }` block, verbatim. Non-greedy to the first `}`, which is correct here because the block holds
-    no nested braces — a nested rule would need this to count them, and would also mean the block stopped being a
-    flat list of tokens, which is the thing worth keeping legible."""
-    m = re.search(r"^:root\{.*?^\}", text, re.S | re.M)
-    return m.group(0) if m else ""
+def forgiven(ours: str, theirs: str) -> str | None:
+    """The one difference this project has decided to live with, or None.
+
+    Both sides must be a `src: url(...)` naming the same file by a different path, and nothing else
+    on the line may move. A basename comparison is the normalisation: `fonts/x.woff2` and `x.woff2`
+    are the same file reached two ways, `x.woff2` and `y.woff2` are two files.
+    """
+    a, b = SRC_LINE.match(ours), SRC_LINE.match(theirs)
+    if not (a and b):
+        return None
+    if (a.group(1), a.group(3)) != (b.group(1), b.group(3)):
+        return None
+    if a.group(2) == b.group(2) or a.group(2).rsplit("/", 1)[-1] != b.group(2).rsplit("/", 1)[-1]:
+        return None
+    return f"{b.group(2)} -> {a.group(2)}"
+
+
+def check(rel: str, sub: str, errs: list[str], notes: list[str]) -> None:
+    ours_p, theirs_p = ROOT / rel, DESIGN / sub
+    if not theirs_p.exists():
+        errs.append(f"{rel}: {theirs_p} is missing from the design repo — nothing to hold it to")
+        return
+    ours, theirs = ours_p.read_text().splitlines(), theirs_p.read_text().splitlines()
+    if len(ours) != len(theirs):
+        errs.append(f"{rel}: {len(ours)} lines here, {len(theirs)} in the design repo. Copy it again.")
+        return
+    bad = []
+    for i, (o, t) in enumerate(zip(ours, theirs), 1):
+        if o == t:
+            continue
+        note = forgiven(o, t)
+        if note:
+            notes.append(f"{rel}:{i} the mono, flattened by decision: {note}")
+        else:
+            bad.append(i)
+    if bad:
+        errs.append(f"{rel}: {len(bad)} line(s) differ from the design repo, at {', '.join(map(str, bad))}:\n"
+                    + "".join(difflib.unified_diff([ours[i - 1] + "\n" for i in bad],
+                                                   [theirs[i - 1] + "\n" for i in bad],
+                                                   fromfile=rel, tofile=str(theirs_p), n=0)).rstrip())
 
 
 def main() -> int:
-    html = root_block(HTML.read_text())
-    if not html:
-        print(f"check_theme: no :root block found in {HTML.relative_to(ROOT)} — the extractor needs updating, not the CSS.")
+    if not DESIGN.exists():
+        print(f"  - theme check skipped ({DESIGN} is not here; it is a sibling checkout, not a dependency)")
         return 0
-    if not CSS.exists():
-        print(f"check_theme: {CSS.relative_to(ROOT)} does not exist. To create it:\n"
-              f"  python3 tools/check_theme.py --write")
-        return 0
-    css = root_block(CSS.read_text())
-    if html == css:
-        n = len(re.findall(r"--[a-z0-9-]+:", html))
-        print(f"check_theme: {n} tokens, identical in the dashboard and docs/design/planetai-theme.css.")
-        return 0
-    print("check_theme: the dashboard's tokens and the committed copy differ. Nothing is broken by this; it is here so\n"
-          "the change is reviewable. Either the design session moved a token (update the .css with --write) or the\n"
-          "dashboard drifted (put it back).\n")
-    sys.stdout.writelines(difflib.unified_diff(
-        css.splitlines(keepends=True), html.splitlines(keepends=True),
-        fromfile="docs/design/planetai-theme.css", tofile="app/static/index.html", n=2))
-    print()
-    return 0            # report-only, on purpose. See the docstring.
-
-
-HEADER = """/* The dashboard's :root token block, extracted verbatim from app/static/index.html.
-
-   A committed fixture, not a stylesheet: nothing loads this file, and no build step reads it. app/static/index.html
-   stays the only source of these values. `python3 tools/check_theme.py` reports when the two have drifted apart, so
-   that a changed token shows up as a diff in a review instead of on a wall screen. Regenerate with
-   `python3 tools/check_theme.py --write`. */
-"""
-
-
-def write() -> int:
-    CSS.write_text(HEADER + root_block(HTML.read_text()) + "\n")
-    print(f"wrote {CSS.relative_to(ROOT)}")
+    errs: list[str] = []
+    notes: list[str] = []
+    for rel, sub in FROZEN.items():
+        check(rel, sub, errs, notes)
+    for n in notes:
+        print(f"  ~ {n}")
+    if errs:
+        print("\n".join(f"  x {e}" for e in errs))
+        print("\n  The frozen layer belongs to planetai-design. Change it there, then copy it here —\n"
+              "  and if a second line has to differ, it needs a decision, not an exception in this file.")
+        return 1
+    print(f"  {len(FROZEN)} frozen files match {DESIGN.name}"
+          + (f", with {len(notes)} line forgiven by decision" if notes else ""))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(write() if "--write" in sys.argv else main())
+    raise SystemExit(main())

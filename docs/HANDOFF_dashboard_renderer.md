@@ -84,10 +84,10 @@ in node. **The fence moved to the node in Release 1** (`app/issues/engine.py: fe
 tested by `tests/test_issues_engine.py`. Repoint this suite at the engine, keeping its docstring:
 the reasoning about Tukey failing at three stations is the valuable part.
 
-Then, still untouched from the brief: **2.6** `check_theme.py` rewritten (compare
-`app/static/planetai-theme.css` byte-for-byte with `../planetai-design/planetai-theme.css` **except
-the single `src:` line** — see below — and make it blocking in `make lint`; delete the old
-`docs/design/planetai-theme.css` fixture). **2.7** visual baselines with Playwright. **2.8** docs and
+~~**2.6** `check_theme.py`~~ **done.** It holds `app/static/planetai-theme.css`, `signs.svg` and
+`kilometre-cells.json` to the sibling design checkout byte for byte, forgives the one `src:` line by
+decision and nothing else, and is blocking in `make lint`. The old report-only fixture under
+`docs/design/` is gone. Still open: **2.7** visual baselines with Playwright. **2.8** docs and
 CHANGELOG. **2.9** prove, screenshot, hold for Tomas.
 
 ## Decisions already taken — do not reopen
