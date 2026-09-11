@@ -37,6 +37,33 @@ retired in v0.33.1. `observations` keeps the latest row per source per metric fo
 ran that pack before the retirement still holds one, and showing it would put a year-old number on
 the wall as this year's answer. With no record, land says how to fetch one.
 
+## v0.44.1 — 2026-09-11 — config navigates, it does not march
+
+`planetai config` walked all sixty-six settings in a fixed order and asked about each one. To change a
+single value you answered sixty-five prompts you did not come for. That is `planetai setup` — the flow that
+walks everything once, at install, and already has `--answers` for doing it unattended — wearing the wrong
+hat.
+
+Now it navigates. Categories first, then the settings in the one you picked, then the setting:
+
+```
+  config  bayu-ungasan          1 unsaved
+
+    1  agent           7 settings
+    2  alerts         12 settings
+    3  bootstrap      16 settings · .env, needs a restart
+    …
+  number to open · s save and exit · q quit
+```
+
+`b` goes back, `q` leaves, `s` saves — from anywhere, at any depth. `planetai config --section alerts` goes
+straight in.
+
+**Changes are staged rather than written as you go**, because otherwise "cancel" cannot mean anything. A
+touched setting shows as `warn → act` wherever it appears, the header counts what is unsaved, `s` writes
+them all in one call, and `q` asks before throwing them away. A staged change to a key that needs a restart
+offers the restart once, at the end, rather than after each edit.
+
 ## v0.44 — 2026-09-11 — planetai config, and whose project this is
 
 **`planetai config` replaces "open .env in nano".** A node keeps its settings in two places — the database,

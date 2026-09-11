@@ -27,7 +27,30 @@ assert re.search(r'config\)\s*shift;\s*cmd_config "\$@"', cli), (
     'the dispatch must be `config) shift; cmd_config "$@"` or every subcommand is silently dropped')
 for sub in ("list", "get", "set", "unset", "edit"):
     assert f"    {sub})" in cli or f"    {sub}|" in cli, f"planetai config {sub} is not in cmd_config"
-assert "config_wizard" in cli, "the guided walk is missing"
+assert "config_wizard" in cli, "the navigable menu is missing"
+
+# ---- config navigates; it does not march. `planetai setup` is the flow that walks all sixty-six settings
+# once, at install. A config command that makes you answer every one to change a single value is a setup
+# flow wearing the wrong hat, and that is what the first version of this was.
+nav = cli[cli.index("config_wizard()"):cli.index("cmd_config() {")]
+assert "config_menu_group" in cli, "there is no category level: config must navigate, not walk every setting"
+grp = cli[cli.index("config_menu_group()"):cli.index("config_wizard()")]
+for token, why in ((" b|B", "back"), (" q|Q", "quit"), (" s|S", "save and exit")):
+    assert token in grp, f"the settings menu has no {why} key — you must be able to leave from anywhere"
+for token, why in (("q|Q", "quit"), ("s|S", "save and exit")):
+    assert token in nav, f"the category menu has no {why} key"
+
+# ---- changes are staged, so cancel means something
+assert "CFG_PENDING" in cli and "cfg_pend_put" in cli, "changes must be staged, or `cancel` cannot exist"
+edit = cli[cli.index("config_edit_one()"):cli.index("config_menu_group()")]
+assert "runtime_set" not in edit and "envset" not in edit, (
+    "editing one setting must stage it, not write it — otherwise quitting cannot throw it away")
+save = cli[cli.index("config_save()"):cli.index("cfg_quit()")]
+assert "runtime_set" in save and "envset" in save, "save must write both the runtime keys and the .env ones"
+assert "confirm" in cli[cli.index("cfg_quit()"):cli.index("config_edit_one()")], (
+    "quitting with unsaved changes must ask before discarding them")
+# Bash 3.2 is Apple's /bin/bash and has no associative arrays; pending is a string of KEY<US>VALUE lines.
+assert "declare -A" not in cli, "declare -A is bash 4; this runs on Apple's bash 3.2"
 
 # ---- a runtime key is written where the node reads it, a bootstrap key where the container reads it
 cset = cli[cli.index("config_set()"):cli.index("config_unset()")]

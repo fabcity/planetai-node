@@ -9,7 +9,7 @@
 #   planetai test-alert     make a real alert fire now, so you see the whole path
 #   planetai update         back up, pull, migrate, rebuild, verify
 #   planetai logs           follow the node's log
-#   planetai config         every setting, guided — what it is, what it is set to, and where from
+#   planetai config         go to the setting you want: categories, then settings. s saves, q cancels
 #   planetai config list    see them all without changing anything
 #   planetai config get KEY one setting, and whether .env is being ignored for it
 #   planetai config set KEY VALUE   change one; the node has it within 20 s
@@ -1365,8 +1365,8 @@ cmd_backup()  { step "Backup"; chmod +x backup.sh; ./backup.sh || fail "see abov
 # disagrees. The schema, the labels, the help and the accepted values all come from settings.RUNTIME through
 # GET /settings, so this command cannot drift from the code it configures.
 #
-#   planetai config                    guided, section by section
-#   planetai config --section alerts   just that group
+#   planetai config                    navigate: categories, then the settings in one. s saves, q cancels
+#   planetai config --section alerts   straight into one category
 #   planetai config list [--section G] every setting, its value, and where it came from
 #   planetai config get KEY
 #   planetai config set KEY VALUE      the database for a runtime key, .env for a bootstrap one
@@ -1443,32 +1443,145 @@ config_set() {
 
 config_unset() { config_set "$1" ""; }
 
-# Guided, in the openclaw shape: walk the groups, show what each setting is and what it is doing now, and
-# take a new value or a blank to keep it. Refuses without a terminal rather than half-running, and says
-# which non-interactive command to use instead — being told the equivalent beats being told no.
+# Navigate to the one setting you came for. `planetai setup` is the flow that walks everything, once, at
+# install; a config command that marches through all sixty-six to change one is a setup flow wearing the
+# wrong hat. So: categories, then the settings in one, then the setting — with `b` back and `q` out from
+# anywhere.
+#
+# Changes are STAGED, not written as you go, because "cancel" has to mean something. A staged change shows
+# as `old → new` wherever the setting appears, `s` writes them all in one call, and `q` asks before it
+# throws them away. Bash 3.2 (Apple's /bin/bash) has no associative arrays, so pending is a string of
+# KEY<US>VALUE lines.
+CFG_PENDING=""
+CFG_ROWS=""
+
+cfg_pend_get() { [[ -n "$CFG_PENDING" ]] && awk -F"$SEP" -v k="$1" '$1==k {print $2; exit}' <<< "$CFG_PENDING"; }
+cfg_pend_has() { [[ -n "$CFG_PENDING" ]] && awk -F"$SEP" -v k="$1" '$1==k {f=1} END{exit !f}' <<< "$CFG_PENDING"; }
+cfg_pend_put() {
+  local k="$1" v="$2" kept=""
+  [[ -n "$CFG_PENDING" ]] && kept="$(awk -F"$SEP" -v k="$k" '$1!=k' <<< "$CFG_PENDING")"
+  CFG_PENDING="$(printf '%s\n%s%s%s' "$kept" "$k" "$SEP" "$v" | sed '/^$/d')"
+}
+cfg_pend_count() { [[ -z "$CFG_PENDING" ]] && { echo 0; return; }; grep -c . <<< "$CFG_PENDING"; }
+# "2 unsaved" in a header, or nothing at all when there is nothing to lose.
+cfg_pend_note() { local n; n="$(cfg_pend_count)"; [[ "$n" -gt 0 ]] && printf '%s%d unsaved%s' "$Y" "$n" "$N"; }
+
+# The value to show for a key: the staged one if it has been touched, else the one in force.
+cfg_shown() {
+  local key="$1" sec="$2" val="$3" out
+  if cfg_pend_has "$key"; then
+    out="$(cfg_pend_get "$key")"
+    printf '%s %s→%s %s' "${val:-—}" "$Y" "$N" "${out:-—}"
+  else
+    [[ "$sec" == secret && -n "$val" ]] && val="•••• set"
+    printf '%s' "${val:-—}"
+  fi
+}
+
+cfg_load() { CFG_ROWS="$(config_rows)" || return 1; }
+cfg_groups() { awk -F"$SEP" '{print $2}' <<< "$CFG_ROWS" | sort -u; }
+
+# Apply everything staged: the runtime keys in one PUT, the .env ones one at a time, then offer the restart
+# only if a key that needs one actually changed.
+config_save() {
+  [[ "$(cfg_pend_count)" -eq 0 ]] && { say "nothing to save"; return 0; }
+  local pairs=() envs=() needs_restart=0 k v grp
+  while IFS="$SEP" read -r k v; do
+    [[ -z "$k" ]] && continue
+    grp="$(awk -F"$SEP" -v k="$k" '$1==k {print $2; exit}' <<< "$CFG_ROWS")"
+    if [[ "$grp" == bootstrap ]]; then envs+=("$k" "$v"); needs_restart=1
+    else pairs+=("$k" "$v"); [[ "$(awk -F"$SEP" -v k="$k" '$1==k {print $4; exit}' <<< "$CFG_ROWS")" == restart ]] && needs_restart=1; fi
+  done <<< "$CFG_PENDING"
+  local ok=1
+  if [[ ${#pairs[@]} -gt 0 ]]; then runtime_set "${pairs[@]}" || ok=0; fi
+  if [[ ${#envs[@]} -gt 0 ]]; then
+    local i=0; while [[ $i -lt ${#envs[@]} ]]; do envset "${envs[$i]}" "${envs[$((i+1))]}"; i=$((i+2)); done
+  fi
+  [[ $ok -eq 1 ]] || { warn "nothing was changed — the staged edits are still here."; return 1; }
+  say "saved $(cfg_pend_count) change(s)"
+  CFG_PENDING=""
+  [[ $needs_restart -eq 1 ]] && confirm "One of those needs a restart. Restart now?" && cmd_restart
+  return 0
+}
+
+# Returns 0 to keep going, 1 to leave the whole command.
+cfg_quit() {
+  local n; n="$(cfg_pend_count)"
+  [[ "$n" -eq 0 ]] && return 1
+  confirm "Throw away $n unsaved change(s)?" && return 1
+  return 0
+}
+
+config_edit_one() {
+  local key="$1" line grp sec rst val src envv help ans
+  line="$(awk -F"$SEP" -v k="$key" '$1==k' <<< "$CFG_ROWS")"
+  IFS="$SEP" read -r key grp sec rst val src envv help <<< "$line"
+  printf '\n  %s%s%s   %s%s%s\n' "$BL" "$key" "$N" "$D" "$grp" "$N"
+  wrap "$help"
+  [[ "$sec" != secret && -n "$envv" && "$envv" != "$val" ]] && printf '    %s.env says %s and is being ignored%s\n' "$R" "$envv" "$N"
+  [[ "$grp" == bootstrap ]] && printf '    %slives in .env; takes effect on the next restart%s\n' "$D" "$N"
+  printf '    now: %s\n\n' "$(cfg_shown "$key" "$sec" "$val")"
+  printf '    %sa value stages it · - clears it · enter goes back%s\n' "$D" "$N"
+  read -r -p "    > " ans || return 0
+  [[ -z "$ans" ]] && return 0
+  [[ "$ans" == "-" ]] && ans=""
+  cfg_pend_put "$key" "$ans"
+  say "staged. $(cfg_pend_count) unsaved — s saves them."
+}
+
+config_menu_group() {
+  local grp="$1" keys=() n i ans line key sec val rst
+  while IFS="$SEP" read -r line; do keys+=("$line"); done < <(awk -F"$SEP" -v g="$grp" '$2==g {print $1}' <<< "$CFG_ROWS" | sort)
+  while :; do
+    printf '\n  %s%s%s   %s\n\n' "$BL" "$grp" "$N" "$(cfg_pend_note)"
+    n=${#keys[@]}
+    for ((i=0; i<n; i++)); do
+      key="${keys[$i]}"
+      IFS="$SEP" read -r _ _ sec rst val _ _ _ <<< "$(awk -F"$SEP" -v k="$key" '$1==k' <<< "$CFG_ROWS")"
+      printf '   %s%2d%s  %-26s %s\n' "$BL" $((i+1)) "$N" "$key" "$(cfg_shown "$key" "$sec" "$val")"
+    done
+    printf '\n  %snumber to change · b back · s save and exit · q quit%s\n' "$D" "$N"
+    read -r -p "  > " ans || return 1
+    case "$ans" in
+      b|B|"") return 0;;
+      q|Q) cfg_quit || return 1;;
+      s|S) config_save && return 1;;
+      *) if [[ "$ans" =~ ^[0-9]+$ ]] && [[ "$ans" -ge 1 && "$ans" -le $n ]]; then config_edit_one "${keys[$((ans-1))]}"
+         else warn "type a number from the list, or b, s or q"; fi;;
+    esac
+  done
+}
+
 config_wizard() {
-  local want="${1:-}"
   ( : </dev/tty ) 2>/dev/null || {
-    warn "planetai config needs a terminal for the guided walk."
-    echo "  Without one:  planetai config list        see every setting and its value"
+    warn "planetai config needs a terminal to navigate."
+    echo "  Without one:  planetai config list        every setting and its value"
     echo "                planetai config get KEY     one setting, and where its value came from"
     echo "                planetai config set KEY V   change one"
     return 1; }
-  local group=""
-  while IFS="$SEP" read -r key grp sec rst val src envv help; do
-    [[ -n "$want" && "$grp" != "$want" ]] && continue
-    [[ "$grp" == bootstrap ]] && continue        # .env only, and a restart each: planetai config edit
-    [[ "$grp" != "$group" ]] && { group="$grp"; printf '\n  %s%s%s\n' "$BL" "$grp" "$N"; }
-    local shown="$val"
-    [[ "$sec" == secret && -n "$val" ]] && shown="•••• set"
-    printf '\n  %s%s%s\n' "$BL" "$key" "$N"; wrap "$help"
-    [[ "$sec" != secret && -n "$envv" && "$envv" != "$val" ]] && printf '    %s.env says %s and is being ignored%s\n' "$R" "$envv" "$N"
-    printf '    now: %s\n' "${shown:-—}"
-    local ans; read -r -p "    new value (blank keeps it): " ans </dev/tty || return 0
-    [[ -z "$ans" ]] && continue
-    runtime_set "$key" "$ans" && say "$key set" || warn "$key unchanged"
-  done < <(config_rows | sort -t"$SEP" -k2,2 -k1,1)
-  echo; say "done. planetai config list shows everything."
+  cfg_load || return 1
+  local want="${1:-}"
+  [[ -n "$want" ]] && { grep -qx "$want" <<< "$(cfg_groups)" || { warn "there is no '$want' section. There is: $(cfg_groups | tr '\n' ' ')"; return 1; }; config_menu_group "$want"; [[ "$(cfg_pend_count)" -gt 0 ]] && config_save; return 0; }
+  local groups=() g n i ans count
+  while read -r g; do groups+=("$g"); done < <(cfg_groups)
+  while :; do
+    printf '\n  %sconfig%s  %s%s%s   %s\n\n' "$BL" "$N" "$D" "$(envget NODE_NAME)" "$N" "$(cfg_pend_note)"
+    n=${#groups[@]}
+    for ((i=0; i<n; i++)); do
+      g="${groups[$i]}"
+      count="$(awk -F"$SEP" -v g="$g" '$2==g' <<< "$CFG_ROWS" | grep -c .)"
+      printf '   %s%2d%s  %-14s %s%2d setting%s%s%s\n' "$BL" $((i+1)) "$N" "$g" "$D" "$count" "$([[ $count -eq 1 ]] || echo s)" \
+        "$([[ "$g" == bootstrap ]] && echo ' · .env, needs a restart')" "$N"
+    done
+    printf '\n  %snumber to open · s save and exit · q quit%s\n' "$D" "$N"
+    read -r -p "  > " ans || return 0
+    case "$ans" in
+      q|Q|"") cfg_quit || return 0;;
+      s|S) config_save; return 0;;
+      *) if [[ "$ans" =~ ^[0-9]+$ ]] && [[ "$ans" -ge 1 && "$ans" -le $n ]]; then config_menu_group "${groups[$((ans-1))]}" || return 0
+         else warn "type a number from the list, or s or q"; fi;;
+    esac
+  done
 }
 
 cmd_config() {
