@@ -143,7 +143,7 @@ understand, anything that took more than one try.
 | Nothing installs, or "Docker isn't running" (Mac) | Open OrbStack or Docker Desktop, then run the line again. |
 | Linux: "permission denied … docker.sock" | Log out and back in, then run the line again. |
 | `command not found: planetai` | Open a new terminal window. |
-| "port is already in use" | `planetai config`, set `APP_PORT=8081`, `planetai restart`. |
+| "port is already in use" | `planetai config set APP_PORT 8081` — it writes `.env` and offers the restart. |
 | Telegram says nothing | Message the bot first; a bot cannot start a conversation. Then `planetai telegram` again. |
 | Alerts every few minutes | Thresholds wrong for your place. Tell us which ones. |
 | Nothing at all for a day | Check the report hour: `planetai report at 6`. A report due while the node was asleep is not sent late; the next one covers it. `planetai report` writes one now. |

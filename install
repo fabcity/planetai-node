@@ -29,6 +29,10 @@ cat <<'LOGO'
 LOGO
 printf '\033[0m'
 echo "  node · observe here, decide here, act here"
+# The version this install is about to fetch. Three seconds, and no version rather than a wait if the site
+# is slow or this machine is offline — the preflight below is what should report that, with a fix attached.
+_v="$(curl -fsSL --max-time 3 "$SITE/get/VERSION" 2>/dev/null || true)"
+printf '\033[2m  a Fab City project%s\033[0m\n' "${_v:+ · ${_v}}"
 echo
 
 # Every check about this machine happens now, before anything is downloaded and before anybody is asked
