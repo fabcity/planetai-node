@@ -167,9 +167,10 @@ Seven ways the running node differs from what the prototype was drawn against:
 1. **Node #1 has a yard now.** `sc-19236` (Ungasan Kit) and `sc-19874` (Bayu new enclosure) are
    local and outdoor. The 6 September capture had none, so **the prototype's Stack shows that column
    empty and the live one fills all four.** Anything designed around three columns is wrong.
-2. **`/earth` has no frames.** `frames: []`, 9 years and 582 MB cached, and the endpoint's own hint
-   says `planetai run earth frames`. The satellite loop — R6's subject for the wall, and the
-   component §2.3 asks for twice on the Land band — has nothing to draw until that runs.
+2. ~~**`/earth` has no frames.**~~ **Run 11 Sep.** Nine frames, 2017–2025, all serving over
+   `/earth/year.png?year=`, ~780 KB each. The four Sentinel frames from `earth-engine timelapse`
+   (2016, 2019, 2022, 2025, ~320 KB each) were already in `out/` and now have a route too. Both
+   records are live on node #1.
 3. **`/forecast` is empty.** `sources: []`, `hours: []`; the BMKG village code is unset.
 4. **ρ has moved**: 58 act alerts, 21 acted, ρ 0.362, median 104 min. The prototype draws 28 rings
    with 14 closed. The ρ row must take its count from `/rho`, not from a constant.
@@ -190,59 +191,48 @@ and both are labelled the street. Both sets are Bali Air Dispatch stations; they
 `/issues` takes a fenced median of `mean_15m` over the 4 stations fresh within 15 minutes, and
 `/nearby` takes a plain median of `mean_1h` over the 6 fresh within an hour.
 
-Neither is wrong. Two of them on one page is. **Decision for Release 2**, and the recommendation is
-to let the Stack own "the street" and relabel the ring card as what it uniquely gives — the *shape*
-of the ring (lowest, p25, p75, highest, who, how far) — rather than a second median.
+Neither is wrong. Two of them on one page is. **Settled 11 Sep**: the Stack owns "the street" and
+the ring card shows the ring's *shape* — lowest, p25, p75, highest, who and how far — not a second
+median.
 
-## ⛔ For Tomas, before Release 2 starts
+## Settled, 11 September — Release 2 touches no `.py` file
 
-**1. Release 2 cannot keep to zero touches in `app/*.py`, and it is worse than a dict entry.**
+All three blockers are closed. Tomas decided; the node side landed in this branch.
 
-`/static/{name}` is not a directory server — it is a hardcoded two-key `COMPANIONS` dict at
-`app/main.py:1251`, and `check_ui.py` rule 8 fails any `src`/`url()` not in it. So `dashboard.js`,
-`dashboard.css`, `tokens.css`, `planetai-theme.css`, `signs.svg` and `kilometre-cells.json` all need
-entries: that is touch #4 in that file.
+**1. The dashboard's files are on the `/static` allowlist.** `COMPANIONS` gains `dashboard.js`,
+`dashboard.css`, `planetai-theme.css`, `tokens.css`, `signs.svg` and `kilometre-cells.json`. They do
+not exist yet and the route 404s a missing file exactly as before, so nothing changes today — the
+point is that **Release 2 now touches nothing in `app/*.py`**, which is what the brief wanted.
 
-The harder half: `planetai-theme.css` line 25 is `src: url("fonts/jetbrains-mono-latin.woff2")` — a
-**nested** path. `@app.get("/static/{name}")` has a plain path parameter, which does not match a
-slash, so `/static/fonts/jetbrains-mono-latin.woff2` is a 404 with **no route at all**. And 2.6 wants
-the node's copy byte-identical to the sibling repo's file, so that one URL cannot simply be rewritten.
+The mono stays at the flat `/static/jetbrains-mono-latin.woff2` rather than the `fonts/`
+subdirectory `planetai-theme.css` names. This route takes a *name*, not a path, deliberately, on a
+port open to a household LAN. **`tools/check_theme.py` (Release 2) must therefore compare the node's
+copy byte-for-byte against `../planetai-design/planetai-theme.css` EXCEPT the single `src:` line,
+which it normalises and reports.** That exception is the whole of the decision; do not widen it.
 
-Three ways out, recommendation first:
+**2. The Sentinel loop lands.** `GET /earth/frame.png?year=&source=sentinel|landsat` serves what
+`planetai run earth-engine timelapse` left in `out/`, and `/earth` publishes the available years
+under a new `imagery` key. It is on the `open` allowlist beside the other two image routes.
 
-1. One `COMPANIONS` edit, and `check_theme` compares byte-identically **except** the single `src:`
-   line, which it normalises and reports. The woff2 stays flat at `/static/jetbrains-mono-latin.woff2`
-   where it already is and where the shipped page already loads it.
-2. Both touches — the dict and `{name:path}` with an allowlist — and a genuinely identical copy.
-3. Ship it identical and let the mono fall back to `ui-monospace` on the node, which is the one thing
-   the layer's own comment says not to do.
+`imagery` is deliberately **not** merged into `frames`. `/earth/year.png` is this node's own
+AlphaEarth layer — a model's 64-number description of every 10 m pixel, flattened to grey, never a
+photograph, `model`. `/earth/frame.png` is Sentinel-2 or Landsat imagery from somebody else's
+cluster, `partial`, with its own credit line (both lines are in `imagery.credit`). The `satellite`
+component takes the same shape twice and the pill is what separates them.
 
-**2. The Sentinel frames route (2.3b).** `/earth/frame.png?source=sentinel&year=` is one more
-decorator in `app/main.py`, on top of the above. The `satellite` component is identical either way;
-only its `frames` input changes. Land's own record loop needs no new route — `/earth`,
-`/earth/year.png` and `/earth/change.png` are all on the `open` allowlist already.
+**3. The ring is the Stack's.** The Stack owns "the street". The ring card stops showing a second
+median and shows what only it gives — lowest, p25, p75, highest, who, and how far. No endpoint
+changes; `/nearby` keeps answering exactly as it does.
 
-**3. `check_ui.py` can no longer find `/issues` in `app/main.py`.** Its route regex reads
-`@app.get("...")` decorators, and this FastAPI version defers `include_router`, so `app.routes` holds
-an `_IncludedRouter` with no `.path`. A dashboard calling `/issues` fails rule 3 today. Release 2's
-`check_ui` must also parse `app/issues/api.py`'s `@router.get` decorators with the router's prefix.
+### Still standing for Release 2
 
-## Landing coherently with what else is moving
-
-- **`main` moved under this branch.** `#22` ("The small ones") landed at `35cbd7b` and replaced
-  `make test`'s chain of `&&` with `bash tests/all`. This branch is rebased onto it. The three new
-  suites are registered in `tests/all` and its own count gate is 29; **had the rebase been taken
-  without that, all three would have stopped running silently** — the exact failure `tests/all` was
-  written to end. `make lint` keeps main's line plus `app/issues/*.py` through py_compile and
-  pyflakes.
-- **`#22` also gave `/history` `local`, `indoor` and `kind` per row.** That is a route to a
-  per-place hourly series without `readings_1h`, which no endpoint exposes. Worth knowing for
-  Release 2's traces and for teaching `planetai snapshot` to capture a series.
-- **PR #1 `es-messages` is open and is the Spanish review channel.** The Spanish in
-  `app/issues/*.yml` is assistant-written and should go through the same reader, not a separate
-  pass. Same for the Bahasa.
-- **Nothing here conflicts with the reports or trust worktrees**, which are at `125bd1f` and
-  `dc15338` and have not moved this week.
+- **`check_ui.py` cannot find `/issues` in `app/main.py`.** Its route regex reads `@app.get(...)`
+  decorators and this FastAPI defers `include_router`, so `app.routes` holds an `_IncludedRouter`
+  with no `.path`. A dashboard calling `/issues` fails rule 3 today. Release 2's `check_ui` must
+  also parse `app/issues/api.py`'s `@router.get` decorators with the router's prefix.
+- **The satellite loop is ~7 MB.** Node #1's nine frames are ~780 KB each, and the four Sentinel
+  frames ~320 KB. §2.7 budgets 60 KB per refresh. The loop must load once and animate from memory;
+  it can never be part of a refresh, and a kiosk that reloads pays the 7 MB again.
 
 ## For prompt B (the improvement plan)
 
