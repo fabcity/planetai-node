@@ -426,6 +426,18 @@ function drawForecast(d, ctx) {
 /* Each one is (data, ctx) => string. Pure: no DOM, no fetch, no colour literal, and every one draws
  * its own empty state rather than being hidden by somebody else.
  */
+/* Red is "a signal that got worse or crossed a line", and the NODE decides whether this place has
+ * crossed one — not the page, by comparing two numbers it happens to have. A model's point sample
+ * sitting over the WHO 24-hour line while the node itself calls the issue `quiet` is the page
+ * shouting over the node, and on a model-only node that is every evening: the VM's first live
+ * render put a red 17 next to the words NOTHING TO SAY.
+ *
+ * `scale` and `day` still mark every value past the line, because there the line is drawn beside
+ * the mark and the reader can see what the mark means. A numeral has no line next to it.
+ */
+const crossed_ = (d, cell) => !!(d.line && cell && cell.value != null && cell.value > d.line.value
+  && (d.state === 'act' || d.state === 'notable'));
+
 const COMPONENTS = {
 
   kicker(d, ctx) {
@@ -442,7 +454,7 @@ const COMPONENTS = {
     // the numeral is the monument. The node already formatted it; this only finds it to set it.
     const cell = (d.stack || {})[d.headline];
     const n = cell && cell.value != null ? ctx.fmt(cell.value, d.dp) : null;
-    const crossed = d.line && cell && cell.value != null && cell.value > d.line.value;
+    const crossed = crossed_(d, cell);
     const marked = n
       ? esc(s).replace(esc(n), `<b class="mono${crossed ? ' crossed' : ''}">${esc(n)}</b>`)
       : esc(s);
@@ -476,7 +488,7 @@ const COMPONENTS = {
     const cols = DISTANCES.map(id => {
       const c = st[id];
       const has = c && c.value != null;
-      const crossed = has && d.line && c.value > d.line.value;
+      const crossed = crossed_(d, c);
       const label = esc((ctx.issues_labels || {})[id] || id);
       return `<div class="col"><div class="k">${label}</div>`
         + `<div class="v"><span class="num${has ? '' : ' none'}${crossed ? ' crossed' : ''}">`

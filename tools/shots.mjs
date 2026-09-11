@@ -24,6 +24,11 @@ const [BUNDLES, OUT, ROOT] = process.argv.slice(2);
 const STATIC = `${ROOT}/app/static`;
 const ORIGIN = 'http://node.invalid';
 const WIDTHS = [375, 768, 1440, 1920];
+// --url: a node that is actually running, instead of a fixture routed from disk. Same assertions,
+// real network, and one extra pass with no token at all — at SHARE_LEVEL=off that is what a phone
+// on the house WiFi gets, and the page is supposed to say so rather than go blank.
+const LIVE = process.env.NODE_URL || '';
+const TOKEN = process.env.PAI_TOKEN || '';
 
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css',
                 '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2',
@@ -41,7 +46,64 @@ const browser = await chromium.launch();
 const rows = [];
 let bad = 0;
 
-for (const f of readdirSync(BUNDLES).filter(n => n.endsWith('.json'))) {
+async function pass(label, { url, token, width, route }) {
+  const ctx = await browser.newContext({ viewport: { width, height: 1100 },
+                                         deviceScaleFactor: 1, reducedMotion: 'reduce' });
+  const page = await ctx.newPage();
+  const errors = [], missed = [];
+  page.on('pageerror', e => errors.push(String(e)));
+  page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+  if (token) await ctx.addInitScript(t => localStorage.setItem('planetai_admin', t), token);
+  if (route) await page.route('**/*', route(missed));
+  else page.on('response', r => { if (r.status() >= 400) missed.push(`${r.status()} ${new URL(r.url()).pathname}`); });
+
+  await page.goto(url, { waitUntil: route ? 'load' : 'networkidle' });
+  await page.waitForSelector('[data-component]', { timeout: 10000 }).catch(() => {});
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(400);
+
+  const seen = await page.evaluate(() => ({
+    components: [...document.querySelectorAll('[data-component]')].map(e => e.dataset.component),
+    broken: [...document.querySelectorAll('[data-component][data-error="1"]')].map(e => e.dataset.component),
+    bands: [...document.querySelectorAll('[data-band]')].map(e => e.dataset.band),
+    sideways: document.documentElement.scrollWidth > window.innerWidth + 1,
+    height: document.documentElement.scrollHeight,
+    hero: ((document.querySelector('.hero p.big') || {}).textContent || '').trim().slice(0, 90),
+  }));
+  const name = `${label}.jpg`;
+  mkdirSync(OUT, { recursive: true });
+  await page.screenshot({ path: `${OUT}/${name}`, fullPage: true, type: 'jpeg', quality: 72 });
+  await ctx.close();
+  return { name, seen, errors, missed };
+}
+
+// A node with no token at SHARE_LEVEL=off refuses nine endpoints, and the browser logs each refusal
+// as a console error. A refusal is an answer: the page draws the node's own sentence about it. So
+// this pass is judged on the sentence and on nothing else.
+if (LIVE) {
+  const r = await pass('live-refused-1440', { url: LIVE, token: '', width: 1440 });
+  const said = /not sharing/i.test(r.seen.hero);
+  if (!said) bad++;
+  rows.push({ ...r, ok: said });
+  console.log(`  ${said ? '✓' : '✗'} ${'live-refused-1440.jpg'.padEnd(34)} no token, and the page says why`);
+  for (const view of ['now', 'wall']) {
+    for (const width of WIDTHS) {
+      const r2 = await pass(`live-${view}-${width}`, {
+        url: LIVE + (view === 'wall' ? '/?theme=dark' : '/'), token: TOKEN, width });
+      const ok = !r2.errors.length && !r2.seen.broken.length && !r2.seen.sideways && !r2.missed.length;
+      if (!ok) bad++;
+      rows.push({ ...r2, ok });
+      console.log(`  ${ok ? '✓' : '✗'} ${r2.name.padEnd(34)} ${String(r2.seen.height).padStart(5)}px tall  `
+        + `${[...new Set(r2.seen.components)].length} components  ${r2.seen.hero}`
+        + (r2.seen.sideways ? '  SCROLLS SIDEWAYS' : '')
+        + (r2.seen.broken.length ? `  BROKEN: ${r2.seen.broken.join(',')}` : '')
+        + (r2.missed.length ? `  ${[...new Set(r2.missed)].join(' | ')}` : '')
+        + (r2.errors.length ? `  ERROR: ${r2.errors[0].slice(0, 90)}` : ''));
+    }
+  }
+}
+
+for (const f of LIVE ? [] : readdirSync(BUNDLES).filter(n => n.endsWith('.json'))) {
   const fixture = basename(f, '.json');
   const body = readFileSync(`${BUNDLES}/${f}`, 'utf8');
   for (const view of ['now', 'wall']) {

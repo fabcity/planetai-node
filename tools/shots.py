@@ -6,6 +6,10 @@
 Not in `make lint` and not in `make test`: it needs Chromium, which a node does not have and a
 household should never be asked to install. It is the tool a design round is run from.
 
+`--url http://127.0.0.1:8080 --token <admin>` points it at a node that is actually running instead,
+and adds one pass with no token at all: at SHARE_LEVEL=off that is what a phone on the house WiFi
+gets, and the page is supposed to say so rather than go blank.
+
 Every fixture is computed here exactly as `GET /issues/fixtures/{name}` computes it — same engine,
 same `Replay` cursor, same `as_of` — and handed to the page as that route's body. No database, no
 app, no port. The browser half is tools/shots.mjs, which needs playwright; playwright lives in the
@@ -51,6 +55,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="docs/design/shots")
     ap.add_argument("--issues", default="air,heat,land,coast", help="NODE_ISSUES for the replay")
+    ap.add_argument("--url", help="a node that is running, e.g. http://127.0.0.1:8080, instead of the fixtures")
+    ap.add_argument("--token", default=os.environ.get("PAI_TOKEN", ""),
+                    help="its admin token, for the passes that are meant to see something")
     args = ap.parse_args()
 
     node = shutil.which("node")
@@ -58,6 +65,12 @@ def main() -> int:
     if not node or not (modules / "playwright").is_dir():
         print(f"  - shots skipped (needs node and playwright; playwright is in {modules})")
         return 0
+
+    if args.url:
+        r = subprocess.run([node, str(ROOT / "tools/shots.mjs"), "", args.out, str(ROOT)],
+                           env={**os.environ, "PLAYWRIGHT_ENTRY": (modules / "playwright/index.mjs").as_uri(),
+                                "NODE_URL": args.url.rstrip("/"), "PAI_TOKEN": args.token})
+        return r.returncode
 
     import issues as I                 # noqa: PLC0415 — after sys.path
     from issues import engine          # noqa: PLC0415

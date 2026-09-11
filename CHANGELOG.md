@@ -43,6 +43,11 @@ the hero's and the plan's ground drew at 900 px and pushed the page sideways on 
 the same; `?fixture=` still reached for `/settings`; and the wall carried the header, five buttons
 on a screen across a room.
 
+**Colour follows the node, not the page.** The hero's monument numeral turns red when a line has
+been crossed — and which lines this place has crossed is the node's judgement, not a comparison the
+page makes because it happens to hold two numbers. The first live render put a red 17 beside the
+words `AIR QUIET · NOTHING TO SAY`, which on a model-only node is every evening.
+
 **The Bahasa and Spanish in the page's own strings are assistant-written** and have not been read by
 a native speaker, like the ones in `app/issues/*.yml`. PR #1 (`es-messages`) is the review channel.
 

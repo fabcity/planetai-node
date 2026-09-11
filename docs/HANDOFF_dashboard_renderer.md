@@ -143,10 +143,45 @@ invisible to every static gate in the repo:
 Also: the trust card said "No local sensor yet." and "Every sensor reported all week." at once, and
 the four new eyebrows carried full stops that no other eyebrow on the page has.
 
+## Proven on `pai-clean`, 11 September
+
+The branch rsynced into `~/planetai` in the lima VM (excluding `.env`, `VERSION`, `data/`,
+`config/`, `backups/`, `out/`, `exports/`), `docker compose up -d --build app`, at
+`v0.44.2-8-g067a6d7`. Barcelona coordinates, Open-Meteo and CAMS, no sensors of its own — so this
+proves the machinery, not the numbers.
+
+**Every route the page needs answers, and exactly one 404s:**
+
+```
+/  /static/{dashboard.js,dashboard.css,planetai-theme.css,tokens.css,signs.svg,
+   kilometre-cells.json,node-ground.svg,jetbrains-mono-latin.woff2}      200
+/issues /issues/fixtures /health /trust /nearby /forecast /sensors /earth /rho   200
+/static/fonts/jetbrains-mono-latin.woff2                                 404   ← by decision
+```
+
+And in a browser, against the running node — `python3 tools/shots.py --url http://127.0.0.1:8080
+--token <admin>`, nine shots in `docs/design/shots/live-*.jpg`:
+
+- **no token, SHARE_LEVEL=off**: the page draws the node's own sentence about why it is not sharing,
+  and not a blank. Nine endpoints refuse; the browser logs each refusal, which is a refusal being
+  answered rather than an error.
+- **with a token, Now and the wall, 375 · 768 · 1440 · 1920**: 18 and 19 components, no component
+  in its guard box, no sideways scroll, no console error, and no non-2xx request at all. The mono's
+  nested path is never even requested: `dashboard.css` declares the same family at the flat name
+  first, so the browser resolves it there and never reaches the 404.
+
+**The live render found one more thing**, and it is fixed: the hero drew a red `17` next to the
+words `AIR QUIET · NOTHING TO SAY`. Red is "a signal that crossed a line", and the page was deciding
+that by comparing two numbers it happened to have — a model's point sample against the WHO 24-hour
+line — while the node itself was calling the issue quiet. On a model-only node that is every
+evening. The numeral and the stack column are red only when the node's own state is `act` or
+`notable` now; `scale` and `day` still mark every value past the line, because there the line is
+drawn beside the mark.
+
 ## Still open
 
-- **2.9 has not happened.** Nothing has been proven on `pai-clean` or on a node, and no beta tester
-  has seen anything.
+- **No beta tester has seen anything, and nothing has run on a real node.** `pai-clean` is a VM with
+  no sensors: the room, the yard and the ring are all empty there and the page is region-only.
 - **The committed fixture renders three cards empty.** `node1-2026-09-06.json` predates
   `planetai snapshot` and carries no `/nearby`, `/forecast`, `/trust` or `/sensors`, so the ring,
   the stations, the forecast and the trust card come out as their empty states — which is worth a
