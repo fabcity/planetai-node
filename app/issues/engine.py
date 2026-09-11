@@ -207,10 +207,21 @@ def _from_earth(spec: dict, earth: dict | None, obs: list[dict], now: datetime) 
     latest = (earth or {}).get("latest") or {}
     if latest.get("share_over_threshold") is None:
         return None
-    return _cell(latest["share_over_threshold"] * 100, 1,
+    over = latest.get("threshold")
+    cell = _cell(latest["share_over_threshold"] * 100, 1,
                  f"this node's own AlphaEarth comparison, {latest.get('year_a')}"
-                 f"\u2013{latest.get('year_b')}", "model",
-                 _age_minutes(latest.get("computed_at"), now), ["earth"])
+                 f"\u2013{latest.get('year_b')}"
+                 + (f", pixels that moved more than {over}" if over is not None else ""),
+                 "model", _age_minutes(latest.get("computed_at"), now), ["earth"])
+    # The share is the statistic the sentence uses because it accumulates the way a reader expects:
+    # on node #1, 2024-2025 is 1.3 % and 2017-2025 is 8.5 %. `mean` does not — its 2017-2025 figure
+    # (0.027) is SMALLER than one year's (0.043), because it is a mean per-pixel distance in
+    # embedding space and not a quantity of change. Both travel in `extra` so the band can draw the
+    # span without a second request, and so Figures can name the one the Index cell uses.
+    cell["extra"] = {k: latest.get(k) for k in
+                     ("mean", "median", "p95", "threshold", "hectares_over_threshold",
+                      "year_a", "year_b", "metres_per_pixel", "radius_m")}
+    return cell
 
 
 def _age_minutes(ts, now: datetime) -> float | None:
@@ -432,9 +443,10 @@ def _readouts(d, obs, loc_all=LOCALES) -> list[dict]:
         row = next((o for o in obs if o["sensor_id"] == r["sensor_id"] and o["metric"] == r["metric"]), None)
         if not row or row.get("value") is None:
             continue
-        v = row["value"] * float(r.get("scale", 1))
-        shown = f"{v:.{int(r.get('dp', 0))}f}"
-        out.append({"metric": r["metric"], "value": round(v, 6), "unit": r["unit"],
+        dp = int(r.get("dp", 0))
+        v = round(row["value"] * float(r.get("scale", 1)), dp)
+        shown = f"{v:.{dp}f}"
+        out.append({"metric": r["metric"], "value": v, "dp": dp, "unit": r["unit"],
                     "label": r["label"], "source": row.get("name") or r["sensor_id"],
                     "provenance": "model" if row.get("kind") == "model" else "partial",
                     "_text": {loc: f"{r['label'][loc]} {shown} {r['unit']}" for loc in loc_all}})

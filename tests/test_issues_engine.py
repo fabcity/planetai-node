@@ -59,8 +59,10 @@ def run(data=None, declared="air,heat,land,coast", earth=None, now=NOW):
 
 
 EARTH = {"radius_m": 5000, "years": list(range(2017, 2026)), "frames": [2017, 2019, 2022, 2025],
+         # the shape packs/earth actually writes, checked against node #1's live /earth on 11 Sep
          "latest": {"year_a": 2024, "year_b": 2025, "share_over_threshold": 0.01192,
-                    "hectares_over_threshold": 119.2, "computed_at": "2026-09-06T05:34:50Z"},
+                    "hectares_over_threshold": 119.2, "threshold": 0.15, "mean": 0.04345,
+                    "computed_at": "2026-09-06T05:34:50Z"},
          "attribution": "AlphaEarth Foundations, Google and Google DeepMind. CC BY 4.0."}
 
 OUT = run(earth=EARTH)
@@ -147,8 +149,17 @@ check(OUT["issues"]["land"]["state"] == "context",
       f"land is {OUT['issues']['land']['state']}, expected context")
 check(round(OUT["issues"]["land"]["stack"]["region"]["value"], 1) == 1.2,
       "land's region is this node's own share_over_threshold as a percentage")
-check(OUT["issues"]["land"]["stack"]["region"]["source"].startswith("this node's own"),
+lr = OUT["issues"]["land"]["stack"]["region"]
+check(lr["source"].startswith("this node's own"),
       "land's sentence and stack come from the node's own record, not from Earth Engine's score")
+# "1.3 % of the square changed" is not an answer without "changed by more than what".
+check("0.15" in lr["source"], f"land's source line must name the threshold: {lr['source']}")
+check((lr.get("extra") or {}).get("hectares_over_threshold"),
+      "the band needs the hectares without a second request")
+for r in OUT["issues"]["land"]["readouts"]:
+    check(round(r["value"], r["dp"]) == r["value"],
+          f'{r["metric"]} arrives at {r["value"]}, not rounded to its own {r["dp"]} dp — the page draws, '
+          f'it does not round')
 
 # 5: with no record, land is `none` — it does not reach for a different measure of the same idea.
 # The capture still HOLDS a land_change_score row (observations keeps the latest per source per
