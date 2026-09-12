@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — what node #1 showed
+## v0.46 — 2026-09-12 — what node #1 showed
 
 v0.45 went onto node #1 and the plan came back wrong, which is what looking at a real node is for.
 
