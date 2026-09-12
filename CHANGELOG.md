@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.49 — 2026-09-12 — the network figure moves again
+
+**The wires carry what they carry.** The figure in the Network view — this node in the middle, what
+it reads on the left, what leaves on the right — draws its wires again, each one marching its
+dashes and carrying a dot the way the data goes, with a slow halo around the node. The older page
+had this and the port to the renderer in v0.47 left it still, where it read as a diagram of an
+instrument rather than an instrument.
+
+Ink for what arrives and blue for what leaves, which is the same rule the rest of the page follows:
+what leaves is hourly means, Index cells and ρ, and blue is what data looks like here.
+
+A machine asking for less motion gets none of it: the animation is CSS rather than the SVG kind the
+old page used, and CSS is the kind a browser can switch off on that request.
+
 ## v0.48 — 2026-09-12 — a node can say "I am here"
 
 **Two nodes can now see each other without sharing anything.** A node with the Reticulum bridge can
