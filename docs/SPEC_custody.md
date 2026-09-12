@@ -89,6 +89,7 @@ category name — there is no `'own'` kind and there is no `'peer'`, `'external'
 | a phone or contributor `POST /readings` | `main.py:182` | `sensor` | **TRUE** | yes | yes, `live` |
 | `mahon1/sc-19874` — a child's hourly mean | `main.py:1625` (`receive_aggregates`) | `child` | **FALSE** | **yes** | **yes — and this is what is broken** |
 | `bad-46949` — a Bali Air Dispatch station, 300 m away | `sources.baliairdispatch` (`sources.py:243`) | `sensor` | FALSE | no | `partial` only, as `Environmental\|City` |
+| a stranger's node, heard over Reticulum today | `main.py:554` — **in memory only, no `sensors` row** | — | — | no | **never** |
 | a stranger's node, once peer-visibility §9.4 lands | not written yet | `peer` | FALSE | no | **never** |
 | `openmeteo-point`, `marine-point`, `earth-point`, `ee-point` | `sources.py:379,426`, `bootstrap.py:62` | `model` | FALSE | no | `partial` only, never `live` |
 | a CKAN dataset row | `sources.py:404` | `portal` | FALSE | no | `partial` only |
@@ -140,9 +141,13 @@ way `local` got overloaded, and the next session would write a third spec.
 ### The one case that forces something more
 
 A `kind='peer'` row written with `local=TRUE` — a stranger's node genuinely across the street, geographically
-inside `LOCAL_RADIUS_M` — satisfies `s.local` and would reach a cell. Today no code path can create it:
-`stamp_local` only narrows and no adapter claims a peer. Once peer-visibility lands, a hand-edited row, a
-restore from another node's dump, or a future adapter that forgets could.
+inside `LOCAL_RADIUS_M` — satisfies `s.local` and would reach a cell. Today no code path can create it, and
+the reason is stronger than `stamp_local` only narrowing: **a peer has no database row at all.** Since #33 a
+node hears other nodes over Reticulum and `main.py:554` keeps them in `reticulum_state["peers"]`, in memory,
+as a name and a coarse H3 cell with no readings attached. Peer-visibility §9.4 would be the first time a
+stranger's node got a `sensors` row, and that is the moment this stops being structurally impossible and
+starts being a rule someone has to keep. A hand-edited row, a restore from another node's dump, or an adapter
+that forgets could then do it.
 
 Do not answer that by pasting `AND s.kind <> 'peer'` into fifteen SQL statements. `local` is read in 2 pack
 cells, `_buckets`, and about a dozen rules; a predicate repeated fifteen times drifts within a month. Two
@@ -400,9 +405,13 @@ To be appended to "Invariants. Do not break these." as sentences:
   in-custody measurement in the last 24 h, at the parent's own tier. (This one exists at
   `ARCHITECTURE.md §7`; it belongs in `AGENTS.md` too, because it is the rule an agent is most likely to
   "fix".)
-- **Place geometry leaves at no rung.** Coordinates, room names, and a household's own sentences stay on the
-  machine that recorded them. Aggregates carry values and timestamps; alerts carry timestamps. Neither
-  carries where.
+- **Exact place never leaves; a coarse cell may, and says how coarse.** Coordinates, room names, sensor ids
+  and a household's own sentences stay on the machine that recorded them. Aggregates carry values and
+  timestamps; the events push carries timestamps. Neither carries where. The one thing that does leave is the
+  Reticulum announce, and it leaves as an H3 cell rounded UP to a coarse parent — default res 3, about 60 km,
+  an island and not an address — with `res` travelling beside it so the far end can say how blunt it is, and a
+  floor of res 6 that no settings box can go under (`main.py:735`, `PRESENCE_RES_FLOOR`). That floor is the
+  invariant. "No geometry at any rung" would be a nicer sentence and it would be false.
 - **Exactly one node per pilot writes to the spine.** A pilot is a city in `ALLOWED_CITIES`. Every other node
   computes its cells, shows them, and passes them no further.
 
