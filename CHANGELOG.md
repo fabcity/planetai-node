@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — the Network view draws
+
+**The Network tab was empty on every node since v0.45.** The renderer filled Now and the wall; the
+four cards in that view were markup nothing ever wrote to. It draws again — this node in the wider
+instrument, the Fab City Index pillars it can answer for, and the machine in the corner — and it
+gains a card naming the other PLANETAI nodes this one knows about: a parent it reports to, anything
+that reports to it, and the radio it listens on. Nothing scans for nodes; a household network is not
+a thing to go knocking on. The card says how to link one instead.
+
+The figure carries its own labels, so on a phone it is given as text rather than as a drawing three
+pixels tall.
+
+Also: four page classes were colliding with the frozen layer's binding classes, which bind on any
+element and not only inside an SVG. The Index numbers were inheriting green and the ring card's box
+plot a green stroke.
+
 ## v0.46 — 2026-09-12 — what node #1 showed
 
 v0.45 went onto node #1 and the plan came back wrong, which is what looking at a real node is for.

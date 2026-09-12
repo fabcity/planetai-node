@@ -63,26 +63,9 @@
 </section>
 
 <!-- ============================================================ NETWORK -->
-<section class="view" id="network">
-  <div class="wrap">
-    <div class="card net mt" style="position:relative;overflow:hidden">
-      <div class="head">
-        <h2 class="t">This house is one node of a much larger instrument.</h2>
-        <div class="sub">Readings stay here. What travels up to the community node is hourly means, Index cells and ρ: enough to see the place, never enough to see the house.</div>
-      </div>
-      <svg id="netsvg" viewBox="0 0 1200 470" role="img" aria-label="This node's place in the wider network"></svg>
-      <div class="legend">
-        <span><i></i>what this node measures</span>
-        <span><i class="dash"></i>what comes down from the models</span>
-        <span><i class="dot"></i>what travels upward</span>
-      </div>
-    </div>
-    <div class="grid g21 mt">
-      <div class="card"><div class="k">What leaves this house</div><div id="cells"></div><div class="sub" id="cells-k"></div></div>
-      <div class="card"><div class="k">The machine in the corner</div><div id="vitals"></div></div>
-    </div>
-  </div>
-</section>
+<!-- A mount, like the wall. It used to hold four hard-coded cards that nothing ever filled: the
+     renderer draws Now and the wall, so every box in here was empty on every node since v0.45. -->
+<section class="view" id="network"><div class="wrap" id="netbody"></div></section>
 
 <!-- ============================================================ SET UP -->
 <section class="view" id="setup">

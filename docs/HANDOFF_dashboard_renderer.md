@@ -280,6 +280,35 @@ carries the line and its source; the ask strip carries the alert's own headline.
 relation, so three "level with" clauses became one. The Telegram emoji are stripped from the ledger,
 the ask strip and the report (§3).
 
+## The Network view, 12 September
+
+**It was empty on every node since v0.45** and nobody had opened it: `render()` handled Now and the
+wall, and the four cards in `index.html` were hard-coded markup nothing ever filled. The section is
+a mount now, like the wall, and `networkView()` draws it — the figure, the other nodes, the machine,
+and the four Index pillars, all as components under `piece()`'s guard.
+
+**"Other PLANETAI nodes" answers what the node knows, not what it can find.** Nothing in this repo
+scans a network and a household's LAN is not a thing to go knocking on uninvited, so the card lists
+the three ways a node learns of another because somebody said so: a parent it was told to report to
+(`PARENT_API_URL`), a child that arrived carrying this node's aggregate token (`POST /aggregates`
+writes it as a sensor named `<their node>/<their sensor>`, `kind='child'`), and the mesh gateway its
+radio hears — under its own heading, because a radio is not a node running this software. On node #1
+that is: no parent, no children, one radio. The empty state says so and says where to link one.
+
+`set` from `/settings` is truthful at every share level even when the value is masked, so a screen
+with no token can say a parent exists without being told where it is.
+
+**The class collision worth knowing about.** The frozen layer's binding classes bind on *any*
+element, not only inside an SVG. A `<div class="ring">` takes `color: var(--rings)` and a
+`<div class="cell">` takes `stroke: var(--cells)` — which is why the four Index numbers came out
+green, and why the ring card's box plot had been drawing with a green stroke it never asked for
+since the card was named `ring`. The page's own classes are `.ringcard`, `.pillar` and `.dial` now,
+and the satellite card is `.satcard` with its year's orange set deliberately rather than inherited.
+**Before naming a page class, check it is not one of: ground land cell chain lit ring hair fig label
+sat veg.**
+
+`tools/shots.py` renders the Network view too, and fails on a view that drew nothing.
+
 ## Still open
 
 - **No beta tester has seen anything, and nothing has run on a real node.** `pai-clean` is a VM with
