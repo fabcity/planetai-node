@@ -1397,9 +1397,10 @@ function wallView(snap, ctx) {
  * The view existed in the page this replaces and the renderer never filled it: `render()` handled
  * Now and the wall, so Network was four empty boxes on every node since v0.45.
  *
- * Static, where the old one animated four flowing wires and a pulsing halo. R6 binds motion to the
- * cadence of its own datum and a dot travelling along a wire has none — the same rule that deleted
- * the node marker's pulse from the plan.
+ * The old page's four flowing wires and its pulsing halo are back, by Tomas's call: the figure is
+ * of a thing at work, and drawn still it read as a diagram of one. The motion is CSS rather than
+ * the old SMIL, so the reduced-motion rule at the foot of dashboard.css turns all of it off — SMIL
+ * ignores that rule, which is the other half of why the old ones were dropped.
  */
 function netMap(d, ctx) {
   const w = ctx.w.net;
@@ -1415,21 +1416,35 @@ function netMap(d, ctx) {
                [w.rhoOut, t(w.rhoN, { closed: d.acted, total: d.asks })]];
   const kept = t(w.kept, { n: (h.ingested || 0).toLocaleString() });
 
+  // A wire per row: in-wires run label -> node, out-wires node -> label, so the dash march and the
+  // travelling dot both go the way the data goes. Ink for what arrives, --cells for what leaves,
+  // because what leaves is the hourly means, the Index cells and rho — data about the place.
+  // Each wire meets the node on its own point of the circle rather than all six on one: converging
+  // on a single point pinched the figure into a bowtie and the top and bottom wires crossed.
+  const wire = (side, y) => {
+    const k = (y - 180) * 0.3, ey = 180 + k, dx = Math.sqrt(74 * 74 - k * k);
+    return side === 'in' ? `M450 ${y} C 516 ${y} 548 ${ey} ${675 - dx} ${ey}`
+                         : `M${675 + dx} ${ey} C 800 ${ey} 800 ${y} 858 ${y}`;
+  };
+
   const rows = (side, items) => items.map(([label, value], i) => {
     const y = 96 + i * 84;
-    const x = side === 'in' ? 430 : 798;
+    const x = side === 'in' ? 430 : 872;
+    const d = wire(side, y), ink = side === 'in' ? 'var(--ink)' : 'var(--cells)';
     return `<text x="${x}" y="${y - 8}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="mono label"`
       + ` font-size="11" letter-spacing=".1em" fill-opacity=".65">${esc(label.toUpperCase())}</text>`
       + `<text x="${x}" y="${y + 14}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="fig"`
       + ` font-size="15" font-family="var(--fc-font-body)">${esc(value)}</text>`
-      + `<line x1="${side === 'in' ? 450 : 752}" x2="${side === 'in' ? 598 : 786}" y1="${y}" y2="${y}"`
-      + ` stroke="var(--ink)" stroke-opacity=".28"/>`;
+      + `<path class="wire" d="${d}" fill="none" stroke="${ink}" stroke-width="1.6" stroke-opacity=".55"/>`
+      + `<circle class="dot" r="3.5" fill="${ink}"`
+      + ` style="offset-path:path('${d}');animation-duration:${7 + i * 2.5}s"/>`;
   }).join('');
 
   const svg = `<svg class="net" viewBox="0 0 1200 380" role="img" aria-label="${esc(w.title)}">`
     + `<text x="430" y="36" text-anchor="end" class="mono label" font-size="11" letter-spacing=".12em">${esc(w.reads.toUpperCase())}</text>`
-    + `<text x="798" y="36" class="mono label" font-size="11" letter-spacing=".12em">${esc(w.leavesShort.toUpperCase())}</text>`
+    + `<text x="872" y="36" class="mono label" font-size="11" letter-spacing=".12em">${esc(w.leavesShort.toUpperCase())}</text>`
     + rows('in', IN) + rows('out', OUT)
+    + `<circle class="halo" cx="675" cy="180" r="74" fill="none" stroke="var(--ink)" stroke-opacity=".4"/>`
     + `<circle cx="675" cy="180" r="74" fill="var(--ground)" stroke="var(--ink)"/>`
     + `<text x="675" y="172" text-anchor="middle" class="fig" font-size="17"`
     + ` font-family="var(--fc-font-display)" font-weight="700">${esc(h.node || 'node')}</text>`

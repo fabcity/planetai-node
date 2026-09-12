@@ -359,6 +359,15 @@ svg.net{width:100%;height:auto;display:block;margin-top:clamp(12px,1.6vw,20px)}
 @media(max-width:700px){svg.net{display:none}
 .netlist{display:block}
 }
+/* The network figure moves: the wires march their dashes and carry one dot each, and a halo breathes
+   around the node. CSS animations, not SMIL, because the reduced-motion rule at the foot of this
+   file can switch a CSS animation off and cannot touch an <animate>. */
+@keyframes netflow{to{stroke-dashoffset:-96}}
+@keyframes netdot{to{offset-distance:100%}}
+@keyframes nethalo{from{transform:scale(.92);opacity:.5}to{transform:scale(1.55);opacity:0}}
+svg.net .wire{stroke-dasharray:3 9;stroke-linecap:round;animation:netflow 3.4s linear infinite}
+svg.net .dot{offset-distance:0;animation:netdot 9s linear infinite}
+svg.net .halo{transform-origin:675px 180px;animation:nethalo 5s ease-out infinite}
 /* NOT .cell and NOT .ring: those are the frozen layer's binding classes and they bind on any
    element, not only inside an SVG — .ring sets color:var(--rings), which turned these four
    numbers green, and .cell sets stroke:var(--cells). Same reason the ring card is .ringcard:
@@ -422,6 +431,9 @@ body.wallview header{display:none}
 .plan g.road{fill:none;stroke:var(--ink)}
 /* a sign is a nested svg drawn in currentColor; it always has a size, so a stray one can never fall back to 300x150 */
 svg.sg{width:1em;height:1em;flex:none;vertical-align:-.12em}
-/* reduced motion: nothing on this prototype moves, and this keeps it so */
+/* reduced motion: the network figure's wires and halo are the only things on the page that move,
+   and this stops them. The dots are hidden rather than frozen: a stopped dot sits at the start of
+   its wire, which reads as a sixth mark on the figure meaning nothing. */
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}
+svg.net .dot{display:none}
 }
