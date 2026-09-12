@@ -239,6 +239,10 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .sat-loop{position:relative;aspect-ratio:1;width:100%;background:var(--raise);border:1px solid var(--hair);overflow:hidden}
 .sat-loop img{position:absolute;inset:0;width:100%;height:100%;display:none;object-fit:cover}
 .sat-loop img.on{display:block}
+/* The card was class="sat", which is one of the frozen layer's binding classes: it set
+   color:var(--satellite-only) on the whole card and every line in it inherited orange by accident.
+   The card is .satcard now and the year — which IS what only the satellite knows — says so here. */
+.sat-bar .yr{color:var(--satellite-only)}
 .sat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 /* the controls take the rest of the row, so the year and its pill stay together at the left */
 .sat-bar .sat-ctl{margin-left:auto}
@@ -340,6 +344,40 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .tabs button.on{border-left:0;border-bottom-color:var(--ink)}
 .tabs .acts{margin:0;padding:0;border:0}
 .field{grid-template-columns:1fr}
+}
+/* The network view. `.net` is the figure, `.cellrow` the four Index pillars, `.peers` the other
+   nodes and `.vitals` the machine. The page this replaces drew all four on a dark panel with
+   #F4ECE2 and #16150F written into the markup; these take the register like everything else. */
+.card.net{position:relative;overflow:hidden}
+svg.net{width:100%;height:auto;display:block;margin-top:clamp(12px,1.6vw,20px)}
+/* The figure carries its own labels, so below this width it stops being readable and the same six
+   facts are given as text instead. Same rule the ring strip follows. */
+.netlist{display:none}
+.netnode{font:700 15px var(--fc-font-display);padding:12px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);margin:4px 0}
+.netnode .note{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-left:8px}
+.netlist .k{margin-top:14px}
+@media(max-width:700px){svg.net{display:none}
+.netlist{display:block}
+}
+/* NOT .cell and NOT .ring: those are the frozen layer's binding classes and they bind on any
+   element, not only inside an SVG — .ring sets color:var(--rings), which turned these four
+   numbers green, and .cell sets stroke:var(--cells). Same reason the ring card is .ringcard:
+   as .ring its box plot inherited a green stroke it never asked for. */
+.cellrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.4vw,20px)}
+.cellrow .pillar{text-align:center}
+.cellrow .dial{position:relative;width:clamp(64px,7vw,92px);margin:0 auto}
+.cellrow .dial svg{width:100%;height:auto;display:block}
+.cellrow .dial span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 17px var(--mono);color:var(--ink)}
+.cellrow .l{font:500 11px var(--mono);letter-spacing:.06em;color:var(--mute);margin-top:8px}
+.peers{display:flex;flex-direction:column}
+.peers .k+.peer{border-top:0}
+.peers .k{margin-top:2px}
+.peer{display:flex;gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--hair)}
+.peer svg.sg{width:20px;height:20px;flex:none;color:var(--ink);margin-top:2px}
+.peer b{display:block;font:600 14px var(--fc-font-body);overflow-wrap:anywhere}
+.peer .note{display:block;margin-top:2px}
+.vitals{display:flex;flex-direction:column}
+@media(max-width:640px){.cellrow{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 }
 /* views */
 section.view{display:none}

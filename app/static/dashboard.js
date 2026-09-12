@@ -76,11 +76,12 @@ async function snapshot() {
   let placeStatus = 0;
   const place = await fetch('/place/geojson', { headers: auth_() })
     .then(r => { placeStatus = r.status; return r.ok ? r.json() : null; }).catch(() => null);
-  const [health, issues, alerts, rho, report, earth, trust, nearby, forecast, sensors, sparks] = await Promise.all([
+  const [health, issues, alerts, rho, report, earth, trust, nearby, forecast, sensors, sparks,
+         cells, settings] = await Promise.all([
     get('/health', {}), get('/issues'), get('/alerts?limit=40', []),
     get('/rho', {}), get('/report/latest', {}), get('/earth', {}),
     get('/trust', []), get('/nearby'), get('/forecast'), get('/sensors', []),
-    get('/sparks?metric=pm25&hours=24', {}),
+    get('/sparks?metric=pm25&hours=24', {}), get('/cells', []), get('/settings', {}),
   ]);
   const refused = [issues, alerts, rho].map(x => x && x.__refused).find(Boolean);
   if (refused) return { refused, health: health && !health.__refused ? health : {} };
@@ -90,7 +91,11 @@ async function snapshot() {
   const open_ = v => (v && v.__refused ? null : v);
   return { health, issues, alerts, rho, report, earth, place, placeStatus,
            trust: open_(trust) || [], nearby: open_(nearby), forecast: open_(forecast),
-           sensors: open_(sensors) || [], sparks: (open_(sparks) || {}).series || {} };
+           sensors: open_(sensors) || [], sparks: (open_(sparks) || {}).series || {},
+           // the Network view's two. /settings answers at every share level with its values masked,
+           // and `set` stays truthful, which is how a screen with no token can say a parent exists
+           // without being told where it is.
+           cells: open_(cells) || [], settings: open_(settings) || {} };
 }
 
 // -------------------------------------------------------------------------------------- the words
@@ -107,6 +112,34 @@ const WORDS = {
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         rho: '{closed} of {total} asks answered',
+        net: {
+          title: 'This house is one node of a much larger instrument.',
+          sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.',
+          reads: 'What this node reads', leaves: 'What leaves this house',
+          yours: 'your sensors', street: 'the street', models: 'the models',
+          sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations',
+          model: 'model', models_: 'models',
+          means: 'hourly means', cellsOut: 'Index cells', rhoOut: 'answered asks',
+          cellsN: '{n} of 20', rhoN: '{closed} of {total}',
+          parentNowhere: 'nowhere yet', home: 'home',
+          kept: '{n} readings kept, none of them leave',
+          others: 'Other PLANETAI nodes', radioHead: 'On the radio',
+          leavesShort: 'what leaves', index: 'The Fab City Index',
+          parentIs: 'this node reports to it, once an hour',
+          parentHidden: 'a parent is set \u2014 unlock under Set up to see which',
+          childIs: 'it reports to this node, once an hour',
+          meshIs: 'the radio this node listens on \u00b7 {n} packets',
+          meshIs1: 'the radio this node listens on \u00b7 one packet so far',
+          alone: 'None. This node knows of no other, which is the ordinary state of a node nobody has linked yet.',
+          howto: 'Nothing here scans for nodes: a household network is not a thing to go knocking on. A node learns of another under Set up \u2192 The tree \u2014 give this one a parent to report to, or an aggregate token so another may report to it.',
+          cellsK: '{n} of the twenty Fab City Index cells have a source at this node. Governance is filled by \u03c1, which only exists because somebody here answered.',
+          pillars: [{ key: 'Environmental', label: 'Environmental' }, { key: 'Economic', label: 'Economic' }, { key: 'Social', label: 'Social' }, { key: 'Governance', label: 'Governance' }],
+          machine: 'The machine in the corner',
+          vKept: 'readings kept', vPolls: 'polls', vAwake: 'awake for', vListening: 'listening to',
+          vRadio: 'over the radio', vErrors: 'errors', vVersion: 'version',
+          listening: '{own} of yours, {ring} public, {models} models',
+          radioOn: '{n} packets via {gw}', radioOn1: 'one packet via {gw}',
+          radioOff: 'no radio yet', noErrors: 'none' },
         place: {
           none: 'Nothing mapped around this node yet. On the node: planetai run place refresh',
           mapped: 'mapped', mappedSub: 'OpenStreetMap',
@@ -162,6 +195,34 @@ const WORDS = {
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         rho: '{closed} dari {total} permintaan dijawab',
+        net: {
+          title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.',
+          sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.',
+          reads: 'Yang dibaca node ini', leaves: 'Yang keluar dari rumah ini',
+          yours: 'sensor Anda', street: 'jalan', models: 'model',
+          sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik',
+          model: 'model', models_: 'model',
+          means: 'rata-rata per jam', cellsOut: 'sel Indeks', rhoOut: 'permintaan dijawab',
+          cellsN: '{n} dari 20', rhoN: '{closed} dari {total}',
+          parentNowhere: 'belum ke mana-mana', home: 'rumah',
+          kept: '{n} bacaan disimpan, tidak satu pun keluar',
+          others: 'Node PLANETAI lain', radioHead: 'Lewat radio',
+          leavesShort: 'yang keluar', index: 'Fab City Index',
+          parentIs: 'node ini melapor ke sana, sekali sejam',
+          parentHidden: 'induk sudah diatur \u2014 buka kunci di Set up untuk melihat yang mana',
+          childIs: 'node itu melapor ke node ini, sekali sejam',
+          meshIs: 'radio yang didengar node ini \u00b7 {n} paket',
+          meshIs1: 'radio yang didengar node ini \u00b7 baru satu paket',
+          alone: 'Tidak ada. Node ini tidak mengenal node lain, dan itu keadaan biasa bagi node yang belum dihubungkan siapa pun.',
+          howto: 'Tidak ada yang memindai jaringan di sini: jaringan rumah tangga bukan tempat untuk mengetuk pintu. Sebuah node mengenal node lain lewat Set up \u2192 The tree \u2014 beri node ini induk untuk dilapori, atau token agregat agar node lain boleh melapor ke sini.',
+          cellsK: '{n} dari dua puluh sel Fab City Index punya sumber di node ini. Governance diisi oleh \u03c1, yang ada hanya karena ada orang di sini yang menjawab.',
+          pillars: [{ key: 'Environmental', label: 'Lingkungan' }, { key: 'Economic', label: 'Ekonomi' }, { key: 'Social', label: 'Sosial' }, { key: 'Governance', label: 'Tata kelola' }],
+          machine: 'Mesin di sudut ruangan',
+          vKept: 'bacaan disimpan', vPolls: 'penarikan', vAwake: 'menyala selama', vListening: 'mendengarkan',
+          vRadio: 'lewat radio', vErrors: 'galat', vVersion: 'versi',
+          listening: '{own} milik Anda, {ring} publik, {models} model',
+          radioOn: '{n} paket lewat {gw}', radioOn1: 'satu paket lewat {gw}',
+          radioOff: 'belum ada radio', noErrors: 'tidak ada' },
         place: {
           none: 'Belum ada yang dipetakan di sekitar node ini. Di node: planetai run place refresh',
           mapped: 'dipetakan', mappedSub: 'OpenStreetMap',
@@ -217,6 +278,34 @@ const WORDS = {
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
         rho: '{closed} de {total} peticiones respondidas',
+        net: {
+          title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.',
+          sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.',
+          reads: 'Lo que lee este nodo', leaves: 'Lo que sale de esta casa',
+          yours: 'tus sensores', street: 'la calle', models: 'los modelos',
+          sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas',
+          model: 'modelo', models_: 'modelos',
+          means: 'medias horarias', cellsOut: 'celdas del \u00cdndice', rhoOut: 'peticiones respondidas',
+          cellsN: '{n} de 20', rhoN: '{closed} de {total}',
+          parentNowhere: 'a ning\u00fan sitio todav\u00eda', home: 'casa',
+          kept: '{n} lecturas guardadas, ninguna sale',
+          others: 'Otros nodos PLANETAI', radioHead: 'Por radio',
+          leavesShort: 'lo que sale', index: 'El Fab City Index',
+          parentIs: 'este nodo le informa, una vez por hora',
+          parentHidden: 'hay un padre configurado \u2014 desbloquea en Set up para ver cu\u00e1l',
+          childIs: 'informa a este nodo, una vez por hora',
+          meshIs: 'la radio que escucha este nodo \u00b7 {n} paquetes',
+          meshIs1: 'la radio que escucha este nodo \u00b7 un solo paquete',
+          alone: 'Ninguno. Este nodo no conoce ning\u00fan otro, que es el estado normal de un nodo que nadie ha enlazado todav\u00eda.',
+          howto: 'Aqu\u00ed nada escanea la red: la red de una casa no es un sitio donde ir llamando a puertas. Un nodo conoce a otro en Set up \u2192 The tree \u2014 dale un padre al que informar, o un token de agregaci\u00f3n para que otro pueda informarle.',
+          cellsK: '{n} de las veinte celdas del Fab City Index tienen fuente en este nodo. Governance la llena \u03c1, que existe s\u00f3lo porque alguien de aqu\u00ed respondi\u00f3.',
+          pillars: [{ key: 'Environmental', label: 'Ambiental' }, { key: 'Economic', label: 'Econ\u00f3mico' }, { key: 'Social', label: 'Social' }, { key: 'Governance', label: 'Gobernanza' }],
+          machine: 'La m\u00e1quina del rinc\u00f3n',
+          vKept: 'lecturas guardadas', vPolls: 'consultas', vAwake: 'encendido', vListening: 'escuchando',
+          vRadio: 'por radio', vErrors: 'errores', vVersion: 'versi\u00f3n',
+          listening: '{own} tuyos, {ring} p\u00fablicos, {models} modelos',
+          radioOn: '{n} paquetes v\u00eda {gw}', radioOn1: 'un paquete v\u00eda {gw}',
+          radioOff: 'a\u00fan sin radio', noErrors: 'ninguno' },
         place: {
           none: 'A\u00fan no hay nada cartografiado alrededor de este nodo. En el nodo: planetai run place refresh',
           mapped: 'cartografiado', mappedSub: 'OpenStreetMap',
@@ -335,7 +424,7 @@ function drawRing(d, ctx) {
   const cite = esc(((d && d.attribution) || []).join(' · ')
     || 'Bali Air Dispatch, baliairdispatch.com, and the network named beside each station.');
   const card = (strip, note) =>
-    `<div class="card ring" data-component="ring" data-card="nearby-ring">`
+    `<div class="card ringcard" data-component="ring" data-card="nearby-ring">`
     + `<div class="k">${esc(w.title)}</div>${strip}`
     + `<p class="note">${note}</p><p class="note">${cite}</p></div>`;
 
@@ -792,6 +881,9 @@ const COMPONENTS = {
   stations: drawStations,
   forecast: drawForecast,
 
+  // The Network view's four.
+  netMap, cellRings, peers, vitals,
+
   sensorCard(d, ctx) {
     return `<div class="sensor" data-component="sensorCard">`
       + `<div class="top"><span class="n">${esc(d.name)}</span>`
@@ -857,7 +949,7 @@ const COMPONENTS = {
   satellite(d, ctx) {
     const frames = d.frames || [];
     if (!frames.length) {
-      return `<div class="sat" data-component="satellite"><p class="note">${esc(d.empty || 'no frames yet')}</p></div>`;
+      return `<div class="satcard" data-component="satellite"><p class="note">${esc(d.empty || 'no frames yet')}</p></div>`;
     }
     // `data-src`, not `src`. /earth/year.png and /earth/frame.png need the node's token at
     // SHARE_LEVEL=off and a browser cannot put a header on an <img>, so every frame came back 403
@@ -872,7 +964,7 @@ const COMPONENTS = {
         + `<input type="range" data-sat="slider" min="0" max="${frames.length - 1}" value="${frames.length - 1}" aria-label="Year">`
         + (d.change ? `<button type="button" data-sat="mode" aria-pressed="false">what changed</button>` : '')
       : '';
-    return `<div class="sat" data-component="satellite" data-id="${esc(d.id)}"`
+    return `<div class="satcard" data-component="satellite" data-id="${esc(d.id)}"`
       + ` data-frames="${esc(frames.join(','))}">`
       + `<div class="sat-loop">${imgs}${chg}</div>`
       + `<div class="sat-bar"><span class="yr mono" data-sat="year">${esc(String(frames[frames.length - 1]))}</span>`
@@ -1254,6 +1346,166 @@ function wallView(snap, ctx) {
     + `<span>${esc(ctx.w.answerOn)}</span></div>`;
 }
 
+// ---------------------------------------------------------------------------------- the network
+/* This node in the wider instrument, and which other nodes it knows about.
+ *
+ * The view existed in the page this replaces and the renderer never filled it: `render()` handled
+ * Now and the wall, so Network was four empty boxes on every node since v0.45.
+ *
+ * Static, where the old one animated four flowing wires and a pulsing halo. R6 binds motion to the
+ * cadence of its own datum and a dot travelling along a wire has none — the same rule that deleted
+ * the node marker's pulse from the plan.
+ */
+function netMap(d, ctx) {
+  const w = ctx.w.net;
+  const h = d.health || {};
+  const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
+  // The six facts, once. The figure and the list below it are two renderings of this and nothing
+  // else, so they cannot come to disagree.
+  const IN = [[w.yours, n(d.own, w.sensor, w.sensors)],
+              [w.street, n(d.ring, w.station, w.stations)],
+              [w.models, n(d.models, w.model, w.models_)]];
+  const OUT = [[w.means, d.parentName || w.parentNowhere],
+               [w.cellsOut, t(w.cellsN, { n: (d.cells || []).length })],
+               [w.rhoOut, t(w.rhoN, { closed: d.acted, total: d.asks })]];
+  const kept = t(w.kept, { n: (h.ingested || 0).toLocaleString() });
+
+  const rows = (side, items) => items.map(([label, value], i) => {
+    const y = 96 + i * 84;
+    const x = side === 'in' ? 430 : 798;
+    return `<text x="${x}" y="${y - 8}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="mono label"`
+      + ` font-size="11" letter-spacing=".1em" fill-opacity=".65">${esc(label.toUpperCase())}</text>`
+      + `<text x="${x}" y="${y + 14}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="fig"`
+      + ` font-size="15" font-family="var(--fc-font-body)">${esc(value)}</text>`
+      + `<line x1="${side === 'in' ? 450 : 752}" x2="${side === 'in' ? 598 : 786}" y1="${y}" y2="${y}"`
+      + ` stroke="var(--ink)" stroke-opacity=".28"/>`;
+  }).join('');
+
+  const svg = `<svg class="net" viewBox="0 0 1200 380" role="img" aria-label="${esc(w.title)}">`
+    + `<text x="430" y="36" text-anchor="end" class="mono label" font-size="11" letter-spacing=".12em">${esc(w.reads.toUpperCase())}</text>`
+    + `<text x="798" y="36" class="mono label" font-size="11" letter-spacing=".12em">${esc(w.leavesShort.toUpperCase())}</text>`
+    + rows('in', IN) + rows('out', OUT)
+    + `<circle cx="675" cy="180" r="74" fill="var(--ground)" stroke="var(--ink)"/>`
+    + `<text x="675" y="172" text-anchor="middle" class="fig" font-size="17"`
+    + ` font-family="var(--fc-font-display)" font-weight="700">${esc(h.node || 'node')}</text>`
+    + `<text x="675" y="196" text-anchor="middle" class="mono label" font-size="10.5"`
+    + ` letter-spacing=".1em" fill-opacity=".65">${esc((h.kind || w.home).toUpperCase())}</text>`
+    + `<text x="675" y="330" text-anchor="middle" class="mono label" font-size="11" fill-opacity=".65">`
+    + `${esc(kept)}</text></svg>`;
+
+  /* The same thing as text, for a phone. A 1200-unit viewBox scaled to 375 px renders an 11 px
+   * label at about three pixels: the figure was there and unreadable. This is the rule drawRing's
+   * strip already follows — no text inside an SVG that has to survive a narrow screen. */
+  const list = side => side.map(([label, value]) =>
+    `<div class="vit"><span>${esc(label)}</span><span>${esc(value)}</span></div>`).join('');
+  const text = `<div class="netlist">`
+    + `<div class="k">${esc(w.reads)}</div>${list(IN)}`
+    + `<div class="netnode">${esc(h.node || 'node')} <span class="note">${esc(h.kind || w.home)}</span></div>`
+    + `<div class="k">${esc(w.leaves)}</div>${list(OUT)}`
+    + `<p class="note mt">${esc(kept)}</p></div>`;
+
+  return `<div data-component="netMap">${svg}${text}</div>`;
+}
+
+/* The Fab City Index, four pillars, as the share of each that this node can answer for. */
+function cellRings(d, ctx) {
+  const w = ctx.w.net;
+  const cells = d.cells || [];
+  const ring = p => {
+    const hit = cells.filter(c => String(c.cell).startsWith(p.key + '|'));
+    const live = hit.filter(c => c.state === 'live').length;
+    const dash = hit.length ? (live ? 198 : 87) : 0;
+    return `<div class="pillar"><div class="dial"><span class="mono">${hit.length || '–'}</span>`
+      + `<svg viewBox="0 0 100 100" aria-hidden="true">`
+      + `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--hair)" stroke-width="9"/>`
+      + `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--cells)" stroke-width="9"`
+      + ` stroke-linecap="round" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/>`
+      + `</svg></div><div class="l">${esc(p.label)}</div></div>`;
+  };
+  return `<div class="cellrow" data-component="cellRings">${w.pillars.map(ring).join('')}</div>`
+    + `<p class="note mt">${t(esc(w.cellsK), { n: cells.length })}</p>`;
+}
+
+/* The other PLANETAI nodes this one knows about.
+ *
+ * Knows about, not finds: nothing in this repo scans a network for nodes, and a household's LAN is
+ * not a thing to go knocking on uninvited. Three ways a node learns of another, all of them because
+ * somebody said so — a parent it was told to report to, a child that arrived carrying this node's
+ * aggregate token, and the radios its mesh gateway can hear.
+ */
+function peers(d, ctx) {
+  const w = ctx.w.net;
+  const row = (sign, name, note) => `<div class="peer">${ctx.sign(sign)}`
+    + `<div><b>${esc(name)}</b><span class="note">${esc(note)}</span></div></div>`;
+  const nodes = [];
+  if (d.parentName) nodes.push(row('machine', d.parentName, w.parentIs));
+  else if (d.parentSet) nodes.push(row('machine', w.parentHidden, w.parentIs));
+  (d.children || []).forEach(c => nodes.push(row('machine', c, w.childIs)));
+  // A mesh gateway is a RADIO, not a node running this software, and listing it under the same
+  // heading answered "are there other PLANETAI nodes?" with something that is not one.
+  const mesh = d.mesh || {};
+  const pk = mesh.packets || 0;
+  const radios = mesh.gateway
+    ? row('sensor', mesh.gateway, t(pk === 1 ? w.meshIs1 : w.meshIs, { n: pk })) : '';
+  return `<div class="peers" data-component="peers">`
+    + (nodes.join('') || `<p class="note">${esc(w.alone)}</p>`)
+    + (radios ? `<div class="k mt">${esc(w.radioHead)}</div>${radios}` : '')
+    + `</div><p class="note mt">${esc(w.howto)}</p>`;
+}
+
+/* The machine in the corner. Ported from the page this replaces, value for value. */
+function vitals(d, ctx) {
+  const w = ctx.w.net;
+  const h = d.health || {};
+  const hrs = Math.floor((h.uptime_s || 0) / 3600), min = Math.floor(((h.uptime_s || 0) % 3600) / 60);
+  const errs = Object.entries(h.errors || {});
+  const rows = [
+    [w.vKept, (h.ingested || 0).toLocaleString()],
+    [w.vPolls, (h.polls || 0).toLocaleString()],
+    [w.vAwake, `${hrs} h ${min} min`],
+    [w.vListening, t(w.listening, { own: d.own, ring: d.ring, models: d.models })],
+    [w.vRadio, (d.mesh || {}).gateway
+      ? t((d.mesh.packets || 0) === 1 ? w.radioOn1 : w.radioOn, { n: d.mesh.packets || 0, gw: d.mesh.gateway })
+      : w.radioOff],
+    [w.vErrors, errs.length ? errs.map(([k, x]) => `${k}: ${x}`).join('; ') : w.noErrors],
+    [w.vVersion, `${h.version || '?'} · Apache-2.0`],
+  ];
+  return `<div class="vitals" data-component="vitals">${rows.map(([k, v]) =>
+    `<div class="vit"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('')}</div>`;
+}
+
+/* The whole view. One place decides what the Network tab is made of, the way ANATOMY does for a
+ * band — and the numbers are gathered once here rather than by each part going looking. */
+function networkView(snap, ctx) {
+  const w = ctx.w.net;
+  const sensors = snap.sensors || [];
+  const runtime = ((snap.settings || {}).runtime) || [];
+  const parent = runtime.find(r => r.key === 'PARENT_API_URL') || {};
+  const d = {
+    health: snap.health || {},
+    mesh: (snap.health || {}).mesh || null,
+    cells: snap.cells || [],
+    own: sensors.filter(s => s.local && s.kind === 'sensor').length,
+    ring: sensors.filter(s => !s.local && s.kind === 'sensor').length,
+    models: sensors.filter(s => s.kind === 'model').length,
+    // A child arrives as a sensor named "<their node>/<their sensor>", written by POST /aggregates.
+    children: [...new Set(sensors.filter(s => s.kind === 'child')
+      .map(s => String(s.sensor_id).split('/')[0]))].sort(),
+    // `set` is truthful at every share level even when the value is masked, so a screen with no
+    // token can still say a parent exists without being told where it is.
+    parentSet: !!parent.set,
+    parentName: parent.set && parent.value && !/^•+/.test(parent.value) ? parent.value : '',
+    acted: (snap.rho || {}).acted || 0,
+    asks: (snap.rho || {}).alerts_act || 0,
+  };
+  d.cells = snap.cells || [];
+  return `<div class="card net"><div class="head"><h2 class="t">${esc(w.title)}</h2>`
+    + `<div class="sub">${esc(w.sub)}</div></div>${piece('netMap', d, ctx)}</div>`
+    + `<div class="grid g2 mt"><div class="card"><div class="k">${esc(w.others)}</div>${piece('peers', d, ctx)}</div>`
+    + `<div class="card"><div class="k">${esc(w.machine)}</div>${piece('vitals', d, ctx)}</div></div>`
+    + `<div class="card mt"><div class="k">${esc(w.index)}</div>${piece('cellRings', d, ctx)}</div>`;
+}
+
 // --------------------------------------------------------------------------------------- render
 /* The only function that writes to the DOM. Everything above builds strings.
  *
@@ -1306,6 +1558,11 @@ function render(snap, view) {
   if (view === 'wall') {
     document.getElementById('wallbox').innerHTML = wallView(snap, ctx);
     wireSatellites(document.getElementById('wallbox'));
+    return;
+  }
+  if (view === 'network') {
+    const box = document.getElementById('netbody');
+    if (box) box.innerHTML = networkView(snap, ctx);
     return;
   }
 
