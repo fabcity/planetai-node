@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+**Menorca has a preset, and the first pack written for it.** `presets/menorca.env` carries Maó's
+coordinates, `Europe/Madrid`, Spanish alerts and the Govern de les Illes Balears CKAN catalogue
+(14,731 datasets; `/api/3/action/package_search?rows=0` tested 2026-09-12). It is the sixth preset and
+the second outside the pilot four.
+
+**`packs/posidonia` reads the sea temperature the coast pack already fetches against the temperature
+at which Posidonia oceanica starts losing shoots.** Two `info` rules and one `Environmental|Bioregion`
+cell, no adapter, no key, no new metric. The 28.4 °C line is Marbà & Duarte (2010), measured over six
+years at Cabrera — 90 km from Menorca, which makes it the rare threshold in this repository that was
+measured in the same water as the node reading it. A node outside the western Mediterranean must not
+keep it: the plant is endemic and the number does not travel.
+
+**`presets/` is mounted into the app container.** `planetai run earth similar` reads the pilot sites'
+coordinates from `/app/presets/*.env`, which docker-compose never mounted, so the script has been
+crashing with `FileNotFoundError: /app/presets/bali.env` on every node since it shipped. Found by
+running it on the Menorca node.
+
 ## v0.48 — 2026-09-12 — a node can say "I am here"
 
 **Two nodes can now see each other without sharing anything.** A node with the Reticulum bridge can
