@@ -123,7 +123,16 @@ const WORDS = {
           cellsN: '{n} of 20', rhoN: '{closed} of {total}',
           parentNowhere: 'nowhere yet', home: 'home',
           kept: '{n} readings kept, none of them leave',
-          others: 'Other PLANETAI nodes', radioHead: 'On the radio',
+          others: 'Other PLANETAI nodes',
+          radioCard: 'The radios around this node',
+          meshHead: 'Meshtastic', retHead: 'Reticulum',
+          meshOn: 'On {topic} through {gw} \u00b7 {n} packets heard \u00b7 channels {chans}',
+          meshQuiet: 'The gateway is connected and no other radio has spoken yet.',
+          meshIdle: 'Channels {chans}. Nothing heard since this node last started; the radios below are the ones it knows.',
+          retOn: 'This node announces itself as planetai every {mins} minutes, at {addr}.',
+          retDown: 'The bridge is configured and not answering.',
+          retDeaf: 'It announces; it does not yet listen. Nothing here collects the announces other Reticulum nodes make, so another PLANETAI node would have to be named under Set up \u2192 The tree to appear at all.',
+          noRadios: 'No radio on this node. Meshtastic needs a gateway under Set up \u2192 Integrations; Reticulum needs its container.',
           leavesShort: 'what leaves', index: 'The Fab City Index',
           parentIs: 'this node reports to it, once an hour',
           parentHidden: 'a parent is set \u2014 unlock under Set up to see which',
@@ -206,7 +215,16 @@ const WORDS = {
           cellsN: '{n} dari 20', rhoN: '{closed} dari {total}',
           parentNowhere: 'belum ke mana-mana', home: 'rumah',
           kept: '{n} bacaan disimpan, tidak satu pun keluar',
-          others: 'Node PLANETAI lain', radioHead: 'Lewat radio',
+          others: 'Node PLANETAI lain',
+          radioCard: 'Radio di sekitar node ini',
+          meshHead: 'Meshtastic', retHead: 'Reticulum',
+          meshOn: 'Di {topic} lewat {gw} \u00b7 {n} paket terdengar \u00b7 kanal {chans}',
+          meshQuiet: 'Gateway tersambung dan belum ada radio lain yang bicara.',
+          meshIdle: 'Kanal {chans}. Belum ada yang terdengar sejak node ini terakhir dinyalakan; radio di bawah adalah yang sudah dikenalnya.',
+          retOn: 'Node ini mengumumkan dirinya sebagai planetai setiap {mins} menit, di {addr}.',
+          retDown: 'Bridge sudah diatur tetapi tidak menjawab.',
+          retDeaf: 'Ia mengumumkan, tetapi belum mendengarkan. Tidak ada yang mengumpulkan pengumuman node Reticulum lain di sini, jadi node PLANETAI lain harus disebut di Set up \u2192 The tree agar muncul.',
+          noRadios: 'Tidak ada radio di node ini. Meshtastic perlu gateway di Set up \u2192 Integrations; Reticulum perlu kontainernya.',
           leavesShort: 'yang keluar', index: 'Fab City Index',
           parentIs: 'node ini melapor ke sana, sekali sejam',
           parentHidden: 'induk sudah diatur \u2014 buka kunci di Set up untuk melihat yang mana',
@@ -289,7 +307,16 @@ const WORDS = {
           cellsN: '{n} de 20', rhoN: '{closed} de {total}',
           parentNowhere: 'a ning\u00fan sitio todav\u00eda', home: 'casa',
           kept: '{n} lecturas guardadas, ninguna sale',
-          others: 'Otros nodos PLANETAI', radioHead: 'Por radio',
+          others: 'Otros nodos PLANETAI',
+          radioCard: 'Las radios alrededor de este nodo',
+          meshHead: 'Meshtastic', retHead: 'Reticulum',
+          meshOn: 'En {topic} a trav\u00e9s de {gw} \u00b7 {n} paquetes o\u00eddos \u00b7 canales {chans}',
+          meshQuiet: 'La pasarela est\u00e1 conectada y ninguna otra radio ha hablado todav\u00eda.',
+          meshIdle: 'Canales {chans}. Nada o\u00eddo desde el \u00faltimo arranque de este nodo; las radios de abajo son las que ya conoce.',
+          retOn: 'Este nodo se anuncia como planetai cada {mins} minutos, en {addr}.',
+          retDown: 'El puente est\u00e1 configurado y no responde.',
+          retDeaf: 'Anuncia, pero todav\u00eda no escucha. Aqu\u00ed nada recoge los anuncios de otros nodos Reticulum, as\u00ed que otro nodo PLANETAI tendr\u00eda que nombrarse en Set up \u2192 The tree para aparecer.',
+          noRadios: 'Sin radio en este nodo. Meshtastic necesita una pasarela en Set up \u2192 Integrations; Reticulum necesita su contenedor.',
           leavesShort: 'lo que sale', index: 'El Fab City Index',
           parentIs: 'este nodo le informa, una vez por hora',
           parentHidden: 'hay un padre configurado \u2014 desbloquea en Set up para ver cu\u00e1l',
@@ -882,7 +909,7 @@ const COMPONENTS = {
   forecast: drawForecast,
 
   // The Network view's four.
-  netMap, cellRings, peers, vitals,
+  netMap, cellRings, peers, radios, vitals,
 
   sensorCard(d, ctx) {
     return `<div class="sensor" data-component="sensorCard">`
@@ -1435,22 +1462,67 @@ function cellRings(d, ctx) {
  */
 function peers(d, ctx) {
   const w = ctx.w.net;
-  const row = (sign, name, note) => `<div class="peer">${ctx.sign(sign)}`
+  const row = (sign, name, note, cls = '') => `<div class="peer${cls ? ' ' + cls : ''}">${ctx.sign(sign)}`
     + `<div><b>${esc(name)}</b><span class="note">${esc(note)}</span></div></div>`;
   const nodes = [];
   if (d.parentName) nodes.push(row('machine', d.parentName, w.parentIs));
   else if (d.parentSet) nodes.push(row('machine', w.parentHidden, w.parentIs));
   (d.children || []).forEach(c => nodes.push(row('machine', c, w.childIs)));
-  // A mesh gateway is a RADIO, not a node running this software, and listing it under the same
-  // heading answered "are there other PLANETAI nodes?" with something that is not one.
-  const mesh = d.mesh || {};
-  const pk = mesh.packets || 0;
-  const radios = mesh.gateway
-    ? row('sensor', mesh.gateway, t(pk === 1 ? w.meshIs1 : w.meshIs, { n: pk })) : '';
   return `<div class="peers" data-component="peers">`
     + (nodes.join('') || `<p class="note">${esc(w.alone)}</p>`)
-    + (radios ? `<div class="k mt">${esc(w.radioHead)}</div>${radios}` : '')
     + `</div><p class="note mt">${esc(w.howto)}</p>`;
+}
+
+/* The radio networks this node is on.
+ *
+ * Both of these are the thing a node CAN see without anyone sharing readings: a Meshtastic node
+ * broadcasts its name, its hardware and sometimes its position to whoever is listening, and a
+ * Reticulum node announces an address and a display name across every transport it has. This card
+ * is what the node has actually heard.
+ *
+ * Meshtastic arrives already stored: every packet the gateway uplinks becomes a sensor row carrying
+ * `meta.mesh_node`, `meta.channel` and `meta.root_topic` (app/sources.py: meshtastic_message), so
+ * the mesh is a group-by over /sensors rather than anything new to collect.
+ */
+function radios(d, ctx) {
+  const w = ctx.w.net;
+  const out = [];
+  const mesh = d.mesh || {};
+  const heard = d.meshNodes || [];
+  if (mesh.root_topic || heard.length) {
+    const chans = [...new Set(heard.map(m => m.channel).filter(Boolean))];
+    out.push(`<div class="k">${esc(w.meshHead)}</div>`);
+    // mesh_state is counted since the node last started and the nodes themselves are in the
+    // database, so a node restarted ten minutes ago knows six radios and has heard none of them.
+    // Saying "On — through — · 0 packets" was the page reporting an em dash as a fact.
+    out.push(`<p class="note">${esc(mesh.packets
+      ? t(w.meshOn, { topic: mesh.root_topic || '?', gw: mesh.gateway || '?',
+                      n: mesh.packets, chans: chans.join(', ') || '?' })
+      : t(w.meshIdle, { chans: chans.join(', ') || '?' }))}</p>`);
+    out.push(heard.length
+      ? `<div class="peers">${heard.map(m => {
+        const name = m.name || m.id;
+        // the hardware arrives as Meshtastic's enum number, which names nothing to a reader
+        const bits = [String(name).includes(m.id) ? '' : m.id, m.where].filter(Boolean);
+        return `<div class="peer">${ctx.sign('sensor')}<div><b>${esc(name)}</b>`
+          + (bits.length ? `<span class="note">${esc(bits.join(' · '))}</span>` : '')
+          + `</div></div>`;
+      }).join('')}</div>`
+      : `<p class="note">${esc(w.meshQuiet)}</p>`);
+  }
+  const r = d.reticulum || null;
+  if (r) {
+    out.push(`<div class="k mt">${esc(w.retHead)}</div>`);
+    out.push(`<p class="note">${esc(r.ok && r.address
+      ? t(w.retOn, { addr: r.address, mins: Math.round((r.announce_s || 1800) / 60) })
+      : w.retDown)}</p>`);
+    // The half that does not exist yet, said plainly rather than left as an absence somebody has to
+    // notice. Every node with this bridge already shouts "I am here"; none of them is listening.
+    // Only when it IS announcing: a bridge that is down is not announcing and not deaf either.
+    if (r.ok) out.push(`<p class="note">${esc(w.retDeaf)}</p>`);
+  }
+  if (!out.length) out.push(`<p class="note">${esc(w.noRadios)}</p>`);
+  return `<div data-component="radios">${out.join('')}</div>`;
 }
 
 /* The machine in the corner. Ported from the page this replaces, value for value. */
@@ -1495,6 +1567,15 @@ function networkView(snap, ctx) {
     // token can still say a parent exists without being told where it is.
     parentSet: !!parent.set,
     parentName: parent.set && parent.value && !/^•+/.test(parent.value) ? parent.value : '',
+    // Every Meshtastic node the gateway has uplinked, from the sensor rows meshtastic_message wrote.
+    // `meta` is cut to _META_PUBLIC for a reader with no token, so the id and the hardware are only
+    // there for somebody the node trusts — the name and the position are on the row itself.
+    meshNodes: sensors.filter(s => s.source === 'meshtastic').map(s => ({
+      id: (s.meta || {}).mesh_node || s.sensor_id,
+      name: s.name, hardware: (s.meta || {}).hardware, channel: (s.meta || {}).channel,
+      where: s.lat != null && s.lon != null ? `${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}` : '',
+    })).sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id))),
+    reticulum: (snap.health || {}).reticulum || null,
     acted: (snap.rho || {}).acted || 0,
     asks: (snap.rho || {}).alerts_act || 0,
   };
@@ -1502,7 +1583,8 @@ function networkView(snap, ctx) {
   return `<div class="card net"><div class="head"><h2 class="t">${esc(w.title)}</h2>`
     + `<div class="sub">${esc(w.sub)}</div></div>${piece('netMap', d, ctx)}</div>`
     + `<div class="grid g2 mt"><div class="card"><div class="k">${esc(w.others)}</div>${piece('peers', d, ctx)}</div>`
-    + `<div class="card"><div class="k">${esc(w.machine)}</div>${piece('vitals', d, ctx)}</div></div>`
+    + `<div class="card"><div class="k">${esc(w.radioCard)}</div>${piece('radios', d, ctx)}</div></div>`
+    + `<div class="card mt"><div class="k">${esc(w.machine)}</div>${piece('vitals', d, ctx)}</div>`
     + `<div class="card mt"><div class="k">${esc(w.index)}</div>${piece('cellRings', d, ctx)}</div>`;
 }
 

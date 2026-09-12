@@ -74,6 +74,10 @@ def HA_DISCOVERY():
 _ha_announced: set = set()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
+# What the Reticulum bridge says about itself, refreshed on its own thread. /health is called every
+# twenty seconds by every screen in the house, so it must never make an outbound request of its own:
+# a bridge that is down would turn the node's own health check into a timeout.
+reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s": None, "last": None}
 RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
@@ -539,9 +543,24 @@ def poll_sources() -> None:
     poll_once(hc)
 
 
+def poll_reticulum() -> None:
+    """Ask the bridge who it is. It announces itself on Reticulum every RETICULUM_ANNOUNCE_S — an
+    "I am here, I am planetai <node>" with no data attached — and this is the node's only window
+    onto whether that is actually happening."""
+    if not RETICULUM_URL:
+        return
+    r = httpx.get(f"{RETICULUM_URL}/health", timeout=5).json()
+    reticulum_state.update({"ok": bool(r.get("ok")), "address": r.get("address"),
+                            "destinations": r.get("destinations", 0),
+                            "announce_s": int(os.getenv("RETICULUM_ANNOUNCE_S", "1800")),
+                            "last": datetime.now(timezone.utc).isoformat()})
+
+
 loop(poll_sources, POLL, delay=2)
 loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
+if RETICULUM_URL:
+    loop(poll_reticulum, 300, delay=20)
 
 # ---------------------------------------------------------------- http
 from contextlib import asynccontextmanager
@@ -672,7 +691,8 @@ def health():
     # them at once, which is a different change.
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
             "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3), "city": os.getenv("NODE_CITY", ""), **state,
-            "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {})}
+            "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {}),
+            **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
 
 
 def _cell() -> dict | None:

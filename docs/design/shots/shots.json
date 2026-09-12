@@ -354,7 +354,7 @@
   {
     "name": "node1-2026-09-06-network-375.jpg",
     "ok": true,
-    "height": 1620,
+    "height": 1703,
     "sideways": false,
     "components": [
       "askStrip",
@@ -369,6 +369,7 @@
       "netMap",
       "peers",
       "planCard",
+      "radios",
       "readout",
       "report",
       "rhoRow",
@@ -402,7 +403,7 @@
   {
     "name": "node1-2026-09-06-network-768.jpg",
     "ok": true,
-    "height": 1132,
+    "height": 1176,
     "sideways": false,
     "components": [
       "askStrip",
@@ -417,6 +418,7 @@
       "netMap",
       "peers",
       "planCard",
+      "radios",
       "readout",
       "report",
       "rhoRow",
@@ -450,7 +452,7 @@
   {
     "name": "node1-2026-09-06-network-1440.jpg",
     "ok": true,
-    "height": 1159,
+    "height": 1358,
     "sideways": false,
     "components": [
       "askStrip",
@@ -465,6 +467,7 @@
       "netMap",
       "peers",
       "planCard",
+      "radios",
       "readout",
       "report",
       "rhoRow",
@@ -498,7 +501,7 @@
   {
     "name": "node1-2026-09-06-network-1920.jpg",
     "ok": true,
-    "height": 1159,
+    "height": 1358,
     "sideways": false,
     "components": [
       "askStrip",
@@ -513,6 +516,7 @@
       "netMap",
       "peers",
       "planCard",
+      "radios",
       "readout",
       "report",
       "rhoRow",

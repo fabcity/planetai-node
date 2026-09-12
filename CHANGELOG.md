@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — the radios around a node
+
+The Network view carries the radio networks this node is on. **Meshtastic** needed nothing new
+collected: every packet the gateway uplinks already becomes a sensor carrying its mesh id, its name
+and its channel, so the mesh is a group-by over what the node has. **Reticulum** appears through a
+new `reticulum` key on `/health`, filled on its own loop so a bridge that is down cannot turn the
+node's health check into a timeout.
+
+Worth knowing, because it is half of something: a node with the Reticulum bridge has always
+announced itself as `planetai <node>` every thirty minutes, across every transport it has, with no
+data attached. Nothing collects what it hears, so no node has ever seen another that way. The card
+says that plainly instead of leaving it as an absence.
+
 ## v0.47 — 2026-09-12 — the Network view draws
 
 **The Network tab was empty on every node since v0.45.** The renderer filled Now and the wall; the

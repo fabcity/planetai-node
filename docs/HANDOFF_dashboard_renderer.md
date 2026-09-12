@@ -309,6 +309,44 @@ sat veg.**
 
 `tools/shots.py` renders the Network view too, and fails on a view that drew nothing.
 
+## The radios, and what "nodes see each other" would take
+
+The Network view carries a card for the radio networks this node is on.
+
+**Meshtastic needs nothing collected.** Every packet the gateway uplinks already becomes a sensor row
+carrying `meta.mesh_node`, `meta.channel`, `meta.root_topic` and the name from its nodeinfo
+(`app/sources.py: meshtastic_message`), so the mesh is a group-by over `/sensors`. `mesh_state` in
+`app/main.py` counts packets **since the node last started** while the radios themselves are in the
+database, so a node restarted ten minutes ago knows six radios and has heard none — the card says
+that rather than printing a dash as a fact.
+
+**Reticulum is the interesting one.** `app/reticulum_bridge.py` already calls
+`router.announce(me.hash)` every `RETICULUM_ANNOUNCE_S` with `display_name = "planetai <node>"`.
+**Every node with the bridge is already broadcasting "I am here, I am planetai <name>" across every
+transport it has, with no data attached.** That is half of a presence layer, running today. The other
+half does not exist: nothing registers an `RNS.Transport` announce handler, so no node collects what
+it hears. The card says so in those words rather than leaving it as an absence.
+
+`/health` gains a `reticulum` key, filled by its own 300-second loop rather than per request — the
+dashboard asks `/health` every twenty seconds from every screen in the house and a bridge that is
+down must not turn that into a timeout.
+
+### What a presence layer would need, if it is wanted
+
+Two nodes today see each other only if one is the other's parent or child. To have Lucas's node in
+Menorca appear on node #1 as *"here, 12,700 km away"* without either sharing readings:
+
+1. **An announce handler in the bridge** (`RNS.Transport.register_announce_handler`, aspect filter
+   `lxmf.delivery`), keeping what it hears: display name, address, first and last seen.
+2. **A coarse place in the announce's app_data.** Not coordinates. The node already computes its own
+   H3 cell (`app/ground.py`), and a low resolution is the whole privacy control: res-8 is this
+   street, res-4 is about 22 km, res-3 about 59 km. A cell at res-3 says "Menorca" and distance
+   follows from two cell centres without either node publishing an address.
+3. **A rule for who announces.** `SHARE_LEVEL` governs what this node *answers*; announcing is the
+   node speaking unprompted, so it wants its own setting and a default of off.
+
+**The resolution is the decision, and it is Tomas's.** Everything else is small.
+
 ## Still open
 
 - **No beta tester has seen anything, and nothing has run on a real node.** `pai-clean` is a VM with
