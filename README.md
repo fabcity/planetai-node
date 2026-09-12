@@ -72,6 +72,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           the ring and the forecast HANDOFF_nearby_forecast
           air, heat, land, coast   HANDOFF_issues · DOMAINS
           the dashboard renderer  HANDOFF_dashboard_renderer · GUI
+          proposed, not decided   SPEC_custody · decisions/
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
