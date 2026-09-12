@@ -1,0 +1,21 @@
+id: posidonia
+name: Posidonia
+description: >-
+  Thermal stress on Posidonia oceanica, the seagrass meadow that holds the Balearic coast together,
+  read from the sea-surface temperature the coast pack already fetches. No new source, no key, no
+  metric of its own: pure SQL against a threshold that was measured in this sea.
+author: Lucas Marangoni (Fab City Foundation)
+version: 0.1.0
+requires: { node: ">=0.10.0" }
+kind: data
+domain: coast
+metrics: [sea_surface_temp]
+scales: [bioregion]
+thresholds: >-
+  Written for Menorca, Illes Balears. 28.4 °C is the temperature above which Posidonia oceanica shoot
+  mortality rises, from Marbà & Duarte (2010), "Mediterranean warming triggers seagrass (Posidonia
+  oceanica) shoot mortality", Global Change Biology 16:2366-2375 — six years of seawater temperature
+  and shoot demography at Cabrera Archipelago National Park, 90 km from Menorca. 27 °C sustained is
+  the softer band the same literature associates with reduced photosynthesis. Both are other people's
+  numbers, and unusually for this repository they were measured in the same water as the node that
+  reads them. A node outside the western Mediterranean must not assume they travel.

@@ -1,0 +1,34 @@
+# Coast is a context issue: it informs and never asks. Both rules are `info` — there is nothing a
+# household can do about the temperature of the sea, and an alert that asks for nothing it can do is
+# an alert people learn to ignore.
+#
+# The es strings are ASSISTANT-WRITTEN and have not been read by a native speaker, the same caveat
+# app/issues/coast.yml carries. Menorca's own language is Catalan, which ALERT_LOCALE does not offer
+# yet; see the README.
+- id: thermal_stress
+  level: info
+  cooldown_minutes: 1440
+  sql: |
+    WITH w AS (
+      SELECT avg(mean) AS t, count(*) AS hrs FROM readings_1h
+      WHERE sensor_id = 'marine-point' AND metric = 'sea_surface_temp'
+        AND bucket > now() - interval '72 hours')
+    SELECT 'marine-point' AS sensor_id, round(w.t::numeric, 1) AS sea
+    FROM w WHERE w.hrs >= 24 AND w.t >= 28.4
+  message:
+    en: "🌊🌱 The sea has averaged {sea} °C for three days.\n\nAbove 28.4 °C Posidonia begins losing shoots. It is the meadow that holds the sand down and the water clear, and it grows about a centimetre a year, so what a hot summer takes is not given back quickly.\n\nNothing to do from a house. It is the number to know if you dive, fish or run a boat here. Threshold: Marbà & Duarte 2010, measured at Cabrera."
+    es: "🌊🌱 El mar ha promediado {sea} °C durante tres días.\n\nPor encima de 28,4 °C la posidonia empieza a perder haces. Es la pradera que fija la arena y mantiene el agua clara, y crece alrededor de un centímetro al año, así que lo que se lleva un verano caluroso no vuelve pronto.\n\nNada que hacer desde casa. Es el dato que conviene conocer si buceas, pescas o llevas una barca aquí. Umbral: Marbà y Duarte 2010, medido en Cabrera."
+
+- id: warm_watch
+  level: info
+  cooldown_minutes: 10080
+  sql: |
+    WITH w AS (
+      SELECT avg(mean) AS t, count(*) AS hrs FROM readings_1h
+      WHERE sensor_id = 'marine-point' AND metric = 'sea_surface_temp'
+        AND bucket > now() - interval '7 days')
+    SELECT 'marine-point' AS sensor_id, round(w.t::numeric, 1) AS sea
+    FROM w WHERE w.hrs >= 48 AND w.t >= 27.0 AND w.t < 28.4
+  message:
+    en: "🌡️🌱 The sea has held {sea} °C for a week.\n\nThat is the band where Posidonia photosynthesises less but is not yet dying. Worth watching rather than worrying about: the line that matters is 28.4 °C.\n\nOnce a week at most."
+    es: "🌡️🌱 El mar lleva una semana a {sea} °C.\n\nEs la franja en la que la posidonia fotosintetiza menos pero todavía no muere. Conviene vigilarlo, no alarmarse: la línea que importa es 28,4 °C.\n\nUna vez por semana como máximo."
