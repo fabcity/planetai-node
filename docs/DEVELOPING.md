@@ -27,8 +27,26 @@ Every gate is a bug that shipped.
 | `check_rules.py` | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned |
 | `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved |
 | `check_ui.py` | an element id the script referenced that was not in the markup |
+| `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved |
 | import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
 | `check_requirements.sh` | `uvicorn==0.30.*` pinned against `mcp`, which needs 0.31; the image failed to build on the node |
+
+## Looking at the page
+
+```bash
+python3 tools/shots.py                 # docs/design/shots/<fixture>-<view>-<width>.jpg
+```
+
+Not a gate and not in `make test`: it needs Chromium, which a node does not have and a household
+should never be asked to install. It renders every fixture this node ships, in the Now view and on
+the wall, at four widths, and fails on a page error, a component that drew its guard box, a page
+that scrolls sideways, or a request the fixture path should not have made. Playwright comes from the
+sibling `planetai-design` checkout — `PLANETAI_DESIGN_REPO` points it elsewhere.
+
+There is no node and no database behind it: the fixture is computed exactly as
+`GET /issues/fixtures/{name}` computes it, and every request is fulfilled from disk. That includes
+the refusals — `/static/{name}` takes a name, so the mono's nested path 404s here as it does on a
+node.
 
 ## Two habits
 

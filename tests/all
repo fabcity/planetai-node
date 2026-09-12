@@ -20,14 +20,13 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 mkdir -p /tmp/stub && printf 'class Client: pass\n' > /tmp/stub/httpx.py
 
 # Suites allowed to print "skipped" and still count as green, and why. A skip from anything else fails the
-# run. These four skip a part of themselves when a dependency or a node is absent; the rest of each still runs.
-#   test_dashboard  the fence check needs a node answering on APP_PORT
+# run. These three skip a part of themselves when a dependency is absent; the rest of each still runs.
 #   test_ground     needs app/requirements.txt installed (h3 and friends)
 #   test_nearby     the ring rule replay needs duckdb
 #   test_shipped    the trust rule replay needs duckdb
 # test_earth deliberately fails rather than skips when numpy is missing (see its own header): a pack that
 # ships because a suite printed "skipped" is the failure it is guarding against. Do not add it here.
-EXPECTED_SKIPS=" test_dashboard test_ground test_nearby test_shipped "
+EXPECTED_SKIPS=" test_ground test_nearby test_shipped "
 
 pass=0; fail=0; skips=0; undeclared=0
 failed_names=""; skip_lines=""
@@ -102,7 +101,7 @@ test_issues|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues.py
 test_issues_engine|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_issues_engine.py
 test_earth_frames|PYTHONPATH=app python3 tests/test_earth_frames.py
 test_check_ui|python3 tests/test_check_ui.py
-test_dashboard|python3 tests/test_dashboard.py
+test_dashboard|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_dashboard.py
 test_ground|python3 tests/test_ground.py
 test_briefing|PYTHONPATH=/tmp/stub:app python3 tests/test_briefing.py
 test_earth|PYTHONPATH=/tmp/stub:app python3 tests/test_earth.py

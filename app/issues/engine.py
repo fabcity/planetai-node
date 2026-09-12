@@ -32,13 +32,15 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import statistics
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from datetime import datetime, timezone
 
 import packs
 
 from . import (CMP_WORDS, DISTANCES, LABEL_WORDS, LOCALES, NOUN_WORDS, REASON_WORDS,
-               WHERE_WORDS, order)
+               SPAN_WORDS, WHERE_WORDS, order)
 from .schema import is_open, is_seen, place_of, stage_of
 
 log = logging.getLogger("planetai.issues")
@@ -221,6 +223,15 @@ def _from_earth(spec: dict, earth: dict | None, obs: list[dict], now: datetime) 
     cell["extra"] = {k: latest.get(k) for k in
                      ("mean", "median", "p95", "threshold", "hectares_over_threshold",
                       "year_a", "year_b", "metres_per_pixel", "radius_m")}
+    # The longest span the pack has computed to the same end year: on node #1, 2017-2025 at 8.5 %.
+    # That is the sentence's history — one year is a number, eight years is a direction.
+    spans = [c for c in (earth or {}).get("changes") or []
+             if c.get("year_b") == latest.get("year_b") and c.get("share_over_threshold") is not None
+             and (c.get("year_b") or 0) - (c.get("year_a") or 0) > 1]
+    if spans:
+        first = min(spans, key=lambda c: c.get("year_a") or 9999)
+        cell["extra"]["since_year"] = first["year_a"]
+        cell["extra"]["since_pct"] = round(first["share_over_threshold"] * 100, 1)
     return cell
 
 
@@ -367,11 +378,62 @@ def _hhmm(ts) -> str:
 
 
 def _reason_text(reason: dict, loc: str) -> str:
-    """One line of why, in one language. Every word comes from REASON_WORDS; nothing is typed here."""
+    """One line of why, in one language. Every word comes from REASON_WORDS; nothing is typed here.
+
+    A reason that knows the day's high (`peak`, `peak_at`) takes the `_peak` form of its line where
+    one exists. On a quiet evening that is the whole of what there is to say, and "nothing to say"
+    was leaving it out.
+    """
     words = REASON_WORDS.get(loc, REASON_WORDS["en"])
-    tpl = words.get(reason["code"], "")
-    return tpl.format(when=_hhmm(reason.get("at")), level=reason.get("level", ""),
-                      id=reason.get("alert_id", ""))
+    code = reason["code"]
+    if reason.get("peak_at") and code + "_peak" in words:
+        code += "_peak"
+    return words.get(code, "").format(when=_hhmm(reason.get("at")), level=reason.get("level", ""),
+                                      id=reason.get("alert_id", ""), peak=reason.get("peak", ""),
+                                      peak_at=reason.get("peak_at", ""))
+
+
+def _clock(data: dict):
+    """The zone every hour on the page is printed in.
+
+    On a node it is NODE_TZ: Postgres runs the session in it (app/main.py), so buckets and alert
+    times arrive in one zone already. A snapshot is the case that needs this — `planetai snapshot`
+    wrote node #1's hourly buckets in UTC and its alerts in +08:00, and without a rule the quiet line
+    said "the day's high was at 06:00" beside an ask "at 14:30" on the same evening. The alerts' own
+    zone is the one the household already reads its times in, so it wins when NODE_TZ is not set.
+    """
+    name = os.getenv("NODE_TZ", "").strip()
+    if name:
+        try:
+            return ZoneInfo(name)
+        except (ZoneInfoNotFoundError, ValueError):
+            pass
+    for a in data.get("alerts") or []:
+        ts = a.get("ts")
+        if isinstance(ts, str):
+            try:
+                ts = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+        if isinstance(ts, datetime) and ts.tzinfo is not None:
+            return ts.tzinfo
+    return None
+
+
+def _peak(series: list[float | None] | None, buckets: list, dp: int, unit: str = "", tz=None) -> dict:
+    """The day's high and the hour it landed in, from the 24 hourly values the page already draws.
+
+    History, not statistics: the largest of 24 numbers and its position. Empty with fewer than six
+    hours, because "the day's high" of a sensor that came online at lunch is not a day."""
+    vals = list(series or [])
+    have = [(v, i) for i, v in enumerate(vals) if v is not None]
+    if len(have) < 6 or len(buckets) != len(vals):
+        return {}
+    v, i = max(have)
+    at = buckets[i]
+    if tz is not None and isinstance(at, datetime) and at.tzinfo is not None:
+        at = at.astimezone(tz)
+    return {"peak": f"{v:.{dp}f} {unit}".strip(), "peak_at": _hhmm(at)}
 
 
 def _trend(series: list[float | None], compare: dict) -> str:
@@ -427,12 +489,19 @@ def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attributio
         return (d.get("empty") or {}).get(loc, "")
     cell = stack.get(headline_dist) or {}
     n = cell.get("value")
+    extra = cell.get("extra") or {}
+    sw = SPAN_WORDS.get(loc, SPAN_WORDS["en"])
+    span = sw["between"].format(a=extra["year_a"], b=extra["year_b"]) \
+        if extra.get("year_a") and extra.get("year_b") else ""
+    since = sw["since"].format(pct=f"{extra['since_pct']:.1f}", year=extra["since_year"]) \
+        if extra.get("since_year") and extra.get("since_pct") is not None else ""
     return " ".join(tpl.format(
         verb=(block.get("verbs") or {}).get(verb_key, ""),
         n="" if n is None else f"{n:.{d['dp']}f}",
         unit=d["unit"],
         where=_where(d, headline_dist, loc),
         cmp=_cmp(d, stack, headline_dist, loc, compare),
+        span=span, since=since,
     ).split()).replace(" ,", ",").replace(" .", ".")
 
 
@@ -558,6 +627,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     undeclared = [k for k in sorted(decl) if k not in declared]
     domain_of = {m["id"]: m.get("domain") for m in packs.manifests()}
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
+    clock = _clock(data)
 
     buckets = sorted({r["bucket"] for r in data["hourly"]})[-24:]
     hourly: dict = {b: [] for b in buckets}
@@ -598,6 +668,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         headline = next((x for x in DISTANCES if stack.get(x)), DISTANCES[0])
         attribution = _classify(stack, line, compare) if d["kind"] == "sensed" else None
         verb_key = _trend(series.get("room") or series.get(headline), compare)
+        if reason.get("code") in ("no_alert", "over_line"):
+            reason = {**reason, **_peak(series.get("room") or series.get(headline), buckets, d["dp"], d["unit"], clock)}
         out[key] = {
             "state": state, "watched": True,
             "reason": reason,

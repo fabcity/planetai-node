@@ -61,15 +61,15 @@ sentences:
   en:
     state:
       context: "{n} {unit} {where}. {cmp}"
-      none: "No marine model for this point — the nearest ocean cell is further out than the pack will report."
+      none: "No marine model for this point: the nearest ocean cell is further out than the pack will report."
   id:
     state:
       context: "{n} {unit} {where}. {cmp}"
-      none: "Tidak ada model laut untuk titik ini — sel laut terdekat lebih jauh daripada batas pack."
+      none: "Tidak ada model laut untuk titik ini: sel laut terdekat lebih jauh daripada batas pack."
   es:
     state:
       context: "{n} {unit} {where}. {cmp}"
-      none: "No hay modelo marino para este punto — la celda de océano más cercana está más lejos de lo que el pack informa."
+      none: "No hay modelo marino para este punto: la celda de océano más cercana está más lejos de lo que el pack informa."
 
 empty:
   en: The coast pack reports nothing inland. It needs an ocean cell within COAST_MAX_KM of this node.

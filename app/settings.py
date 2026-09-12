@@ -20,7 +20,24 @@ _cache: dict = {"at": 0.0, "rows": {}}
 TTL = 20
 
 # key -> (group, label, secret?, restart?, help)
+#
+# THE ORDER OF THIS DICT IS THE ORDER OF THE SETTINGS UI, on every surface. `planetai config`'s
+# walk, `planetai config list` and the dashboard's Set up tabs all take their groups from
+# describe(), first-seen, so there is one order and it is declared here. Keep each group's keys
+# together: all three surfaces print a heading when the group changes, and a key that strays into
+# another group's block prints a second heading for a group that already had one.
+#
+# `issues` is first because it is the one setting that says what this place is for. The rest follow
+# what the node does with that: what it reads, when it interrupts, what it loads, who it talks to.
 RUNTIME = {
+    # issues — the political layer. What matters here is decided by the people who live here.
+    "NODE_ISSUES":        ("issues", "What this place watches, in order", False, False,
+                           "The issues this node reports, most important first: air, heat, land, coast. The first "
+                           "one is where the page starts, and the one with something to say takes the top of it. A "
+                           "name nothing declares is ignored with a line in the log; blank means every issue there "
+                           "is, in the packs' own order. Your preset guessed for this place \u2014 change it: what "
+                           "matters here is decided by the people who live here, not by which pack was written first."),
+
     # sources
     "SC_USER":            ("sources", "Smart Citizen username", False, False, "Every kit on the account is read as yours, indoor or outdoor from each kit's own setting."),
     "SC_DEVICES":         ("sources", "Smart Citizen kit ids", False, False, "Comma-separated. Always treated as yours, at this address."),
@@ -66,12 +83,6 @@ RUNTIME = {
     "AGENT_ONLINE_URL":   ("agent", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
     "AGENT_ONLINE_MODEL": ("agent", "Online model", False, True, "e.g. claude-sonnet-4-6"),
     "AGENT_ONLINE_KEY":   ("agent", "Online model key", True, True, "The only thing that lets household data leave your network. Your choice."),
-    "NODE_ISSUES":        ("issues", "What this place watches, in order", False, False,
-                           "The issues this node reports, most important first: air, heat, land, coast. The first "
-                           "one is where the page starts, and the one with something to say takes the top of it. A "
-                           "name nothing declares is ignored with a line in the log; blank means every issue there "
-                           "is, in the packs' own order. Your preset guessed for this place \u2014 change it: what "
-                           "matters here is decided by the people who live here, not by which pack was written first."),
     "UI_LAYOUT":          ("node", "Dashboard layout", False, False, "Order and visibility of the dashboard's cards, as JSON. Managed by the dashboard's Arrange mode; blank restores the default."),
     "AGGREGATE_TOKEN":    ("node", "Token children must present", True, False, "Set this before pointing another node at this one."),
     "BACKUP_TOKEN":       ("node", "Token for collecting backups", True, False, "Read-only: lets a NAS fetch /backups. Separate from the admin token."),

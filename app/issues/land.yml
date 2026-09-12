@@ -71,19 +71,22 @@ where:
   es: { region: del cuadrado que vigila este nodo }
 
 sentences:
+  # {span} is the latest comparison's two years and {since} the longest one the pack computed, with
+  # its figure: "1.3 % of the square this node watches changed between 2024 and 2025. 8.5 % since
+  # 2017." One year is a number; eight years is a direction, and a household deciding whether the
+  # trees behind them are going needs the direction.
   en:
     state:
-      context: "{n} {unit} {where} changed. {cmp}"
+      context: "{n} {unit} {where} changed {span}. {since} {cmp}"
       none: "No satellite record yet for this square."
   id:
     state:
-      context: "{n} {unit} {where} berubah. {cmp}"
+      context: "{n} {unit} {where} berubah {span}. {since} {cmp}"
       none: "Belum ada rekaman satelit untuk kotak ini."
   es:
     state:
-      context: "{n} {unit} {where} cambió. {cmp}"
+      context: "{n} {unit} {where} cambió {span}. {since} {cmp}"
       none: "Aún no hay registro satelital para este cuadrado."
-
 empty:
   en: "No satellite record yet. To fetch one: planetai run earth fetch, then planetai run earth change."
   id: "Belum ada rekaman satelit. Untuk mengambilnya: planetai run earth fetch, lalu planetai run earth change."

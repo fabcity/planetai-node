@@ -50,8 +50,18 @@ for svg, (lat, lon), cell in ((drawn, BALI, bali_id), (here, BARCELONA, bcn_id))
     assert line.startswith(f"{cell} · RES 8 · ") and line.endswith(" · THE CELL THIS NODE STANDS IN"), line
     assert line in svg[:svg.index("</title>")], "the file says what it is on its own, in <title>"
     assert "<text" not in svg, "the caption is the page's; a stamp in the frame gets cropped"
-gui = open("app/static/index.html").read()
-assert "h.cell?h.cell.caption:''" in gui and 'id="hero-stamp"' in gui and 'id="wall-stamp"' in gui, (
+# The page is a renderer since v0.45: the two stamps are one `stamp` component, listed in the hero's
+# anatomy and the wall's, and the caption reaches it through the band's data from /health. Asserting
+# the anatomy is the guarantee the two ids used to give — an id can exist while nothing writes to it.
+# (tests/test_shipped.py holds the same three facts; this suite skipped on every machine without h3,
+# which is how the old literal survived here after it was gone from the page.)
+import re as _re
+gui = open("app/static/dashboard.js").read()
+assert 'data-component="stamp"' in gui, "the cell stamp is a component"
+for _a in ("hero", "wall"):
+    _anat = _re.search(rf"^\s*{_a}:\s*\[([^\]]*)\]", gui, _re.M)
+    assert _anat and "'stamp'" in _anat.group(1), f"ANATOMY.{_a} must carry the cell stamp"
+assert "d.cell ? d.cell.caption" in gui and "(snap.health || {}).cell" in gui, (
     "the hero and the wall print the caption from /health")
 assert '"cell": _cell()' in open("app/main.py").read(), "/health carries the cell"
 assert "THE CELL THIS NODE STANDS IN" not in shipped, (

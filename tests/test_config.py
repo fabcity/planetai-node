@@ -17,10 +17,40 @@ rows = cli[cli.index("config_rows()"):cli.index("config_list()")]
 assert '"\\t"' not in rows and "'\\t'" not in rows, (
     "config_rows is tab-separated again: tab is IFS whitespace, so `read` swallows every empty field and "
     "each setting with no .env entry shifts its help text into the .env column")
-for f in ("sort -t", "awk -F", "IFS="):
+for f in ("awk -F", "IFS="):
     seg = [l for l in cli.splitlines() if f in l and ("config_" in l or "read -r key" in l)]
     assert seg, f"config no longer uses {f} — check the separator is still threaded through"
     assert all("$SEP" in l for l in seg), f"{f} in config must use $SEP, not a literal: {seg}"
+
+# ---- one order, and the node declares it
+# `cfg_groups` sorted alphabetically and `config_list` sorted by group, while the dashboard's Set up tabs
+# were a hand-written object literal. Three orders for the same nine groups, and `agent` led two of them
+# because it starts with an a. app/settings.py's RUNTIME is the declaration now, and all three read it.
+assert "!seen[$2]++" in cli, (
+    "cfg_groups must keep the node's own order, first-seen. `sort -u` is alphabetical, which is not an order "
+    "anybody chose — see the comment at the top of app/settings.py's RUNTIME")
+for fn in ("config_list()", "config_wizard()"):
+    body = cli[cli.index(fn):][:1400]
+    assert not re.search(r"config_rows\s*\|\s*sort|cfg_groups\s*\|\s*sort", body), (
+        f"{fn} sorts the rows again; the order is settings.RUNTIME's and nothing else re-decides it")
+
+_groups = re.findall(r'^\s*"[A-Z0-9_]+":\s*\(\s*"([a-z]+)"', settings, re.M)
+assert _groups, "could not read the group of a single RUNTIME key — has the tuple shape changed?"
+_runs = [g for i, g in enumerate(_groups) if i == 0 or _groups[i - 1] != g]
+assert len(_runs) == len(set(_runs)), (
+    f"a settings group is split across RUNTIME rather than declared in one block: {_runs}. All three "
+    "surfaces print a heading when the group changes, so a strayed key prints a second heading for it.")
+assert _runs[0] == "issues", (
+    "issues leads the settings, on every surface: it is the one setting that says what this place is for")
+
+# The dashboard must take the list and the order from the node, not keep its own copy. A group the node
+# gains was unreachable in the UI and visible in the CLI, and nothing said so.
+_js = open("app/static/dashboard.js").read()
+assert "function groupsOf(" in _js, "the dashboard must derive its Set up tabs from /settings"
+assert re.search(r"groupsOf\(DESC\)", _js), "...and actually call it when it draws them"
+assert not re.search(r"Object\.entries\(GROUPS\)|Object\.keys\(GROUPS\)", _js), (
+    "the dashboard is enumerating its own GROUPS object again. That object is a lookup for titles and "
+    "blurbs; the list of groups belongs to the node, which is what `planetai config` reads too.")
 
 # ---- the subcommands actually reach the function
 assert re.search(r'config\)\s*shift;\s*cmd_config "\$@"', cli), (

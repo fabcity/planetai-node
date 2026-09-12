@@ -79,51 +79,47 @@ distances:
 
 sentences:
   en:
-    # {verb}: which way the room's own last three hours went against the three before them.
     verbs:
       rising:  "Climbing to"
       steady:  "Holding at"
       falling: "Falling to"
     attribution:
       clear:         "{verb} {n} {unit} {where}, under the line. {cmp}"
-      inside:        "{verb} {n} {unit} {where}, and whatever is burning is in here with you. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, and the source is indoors with you. {cmp}"
       everywhere:    "{verb} {n} {unit} {where}, and the whole area reads the same. {cmp}"
-      outside_worse: "{verb} {n} {unit} {where}, and the house is keeping the street out. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}. The house is keeping the street out. {cmp}"
       mixed:         "{verb} {n} {unit} {where}. {cmp}"
       unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "No air sensor here yet, and no model for this point."
   id:
-    # {verb}: which way the room's own last three hours went against the three before them.
     verbs:
       rising:  "Naik ke"
       steady:  "Bertahan di"
       falling: "Turun ke"
     attribution:
       clear:         "{verb} {n} {unit} {where}, di bawah batas. {cmp}"
-      inside:        "{verb} {n} {unit} {where}, dan sumbernya ada di dalam ruangan ini. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, dan sumbernya ada di dalam rumah bersama Anda. {cmp}"
       everywhere:    "{verb} {n} {unit} {where}, dan seluruh daerah ini sama. {cmp}"
-      outside_worse: "{verb} {n} {unit} {where}, dan rumah menahan udara jalan di luar. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}. Rumah menahan udara jalan di luar. {cmp}"
       mixed:         "{verb} {n} {unit} {where}. {cmp}"
       unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Belum ada sensor udara di sini, dan tidak ada model untuk titik ini."
   es:
-    # {verb}: which way the room's own last three hours went against the three before them.
     verbs:
       rising:  "Subiendo a"
-      steady:  "Manteniéndose en"
+      steady:  "Estable en"
       falling: "Bajando a"
     attribution:
       clear:         "{verb} {n} {unit} {where}, por debajo del límite. {cmp}"
-      inside:        "{verb} {n} {unit} {where}, y lo que arde está aquí dentro. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, y la fuente está dentro, contigo. {cmp}"
       everywhere:    "{verb} {n} {unit} {where}, y toda la zona marca lo mismo. {cmp}"
-      outside_worse: "{verb} {n} {unit} {where}, y la casa está dejando la calle fuera. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}. La casa está dejando la calle fuera. {cmp}"
       mixed:         "{verb} {n} {unit} {where}. {cmp}"
       unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Aún no hay sensor de aire aquí, ni modelo para este punto."
-
 empty:
   en: The node reads the model for these coordinates. Add a sensor under Set up and the room fills in.
   id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan ruangan akan terisi.

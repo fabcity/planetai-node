@@ -1,0 +1,367 @@
+/* The node dashboard's layout. Three stylesheets load, in this order, and each owns one thing:
+
+     tokens.css          the Fab City foundation, every token prefixed --fc-
+     planetai-theme.css  the PLANETAI programme layer, generated from
+                         planetai-design/references/planetai-layer.md and copied here byte for byte
+     dashboard.css       this file: how the page is arranged, and nothing about what it means
+
+   So there is no colour literal below. Every colour is var(--ink), var(--ground), var(--cells),
+   var(--rings), var(--signal-worse), var(--satellite-only) — the roles the layer names — and the
+   four page-local tokens right here, which are derived from those and exist only because a layout
+   needs a muted ink and a hairline and the layer does not name one.
+
+   The register lives on <html data-theme="dark">, which is the layer's own word. Paper by day, and
+   the dark register on the wall.
+*/
+:root {
+  /* A solid, not ink at an opacity: measured 5.6:1 on paper, which an opacity does not guarantee. */
+  --mute: #5F5A54;
+  --dim:  #7C766F;
+  --hair: var(--fc-grid-line);
+  --raise: rgba(23, 23, 23, .035);
+}
+:root[data-theme="dark"] {
+  --mute: #A3A19F;
+  --dim:  #8A8886;
+  --hair: rgba(249, 245, 242, .14);
+  --raise: rgba(249, 245, 242, .05);
+}
+
+/* The mono, at the flat name this node serves. planetai-theme.css declares the same family at
+   `fonts/jetbrains-mono-latin.woff2`, a nested path /static/<name> cannot match — see the note in
+   tools/check_ui.py. This declaration is the one that resolves. */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("jetbrains-mono-latin.woff2") format("woff2");
+  font-weight: 400 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+*{box-sizing:border-box}
+/* The page's base, which nothing else was setting. tokens.css puts it on `body.fc` and this body
+   carries no `fc` class on purpose: that rule pins the background and the text colour to the Fab
+   City paper and ink as fixed values, so the wall's dark register could never flip them, and its
+   `.fc a` would outrank the link colour below. The programme layer's roles do flip — they are
+   redefined under [data-theme="dark"] in planetai-theme.css — so the base is declared here in
+   terms of those. Without this rule every paragraph on the page renders in the browser's default
+   serif on a white ground, which is what the first render showed. */
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:400 16px/1.55 var(--fc-font-body);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+a{color:var(--cells);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:1px solid var(--ink);border-radius:0;padding:8px 14px}
+button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:clamp(18px,3.5vw,48px)}
+/* type roles */
+.k{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-weight:700;letter-spacing:-.02em;line-height:1}
+.t{font:800 clamp(1.35rem,2.1vw,1.85rem)/1.12 var(--fc-font-display);letter-spacing:-.03em}
+.sub{font-size:14px;color:var(--mute);max-width:56ch;line-height:1.55}
+.note{font-size:13px;color:var(--mute);line-height:1.5}
+.hr{border:0;border-top:1px solid var(--hair);margin:0}
+/* header */
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--hair)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand svg{width:18px;height:20px;flex:none;color:var(--ink)}
+.brand b{font:800 17px var(--fc-font-display);letter-spacing:-.02em}
+.brand .s{font-size:13px;color:var(--mute)}
+@media(max-width:560px){.brand .s{display:none}
+}
+nav.views{display:flex;gap:0;border:1px solid var(--ink);max-width:100%;overflow-x:auto;scrollbar-width:none}
+nav.views button{border:0;border-right:1px solid var(--ink);padding:8px 16px;font:500 13.5px var(--fc-font-body);color:var(--mute);white-space:nowrap}
+nav.views button:last-child{border-right:0}
+nav.views button.on{background:var(--ink);color:var(--ground)}
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* provenance pill: ink only, square, glyph + word. No colour token may ever land on it. */
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle}
+.pill svg.sg{width:11px;height:11px}
+.pill.soft{border-color:var(--hair)}
+.chip{display:inline-block;border:1px solid var(--hair);padding:2px 8px;font:500 11px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+/* cards and bands */
+.card{border:1px solid var(--hair);padding:clamp(16px,2vw,24px);background:var(--ground);min-width:0}
+.card.raise{background:var(--raise)}
+.band{padding-top:clamp(30px,3.6vw,48px)}
+.bandhead{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,38ch);gap:8px clamp(18px,3vw,40px);align-items:end;margin-bottom:18px}
+.bandhead .k{grid-column:1/-1;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.bandhead .sub{justify-self:end;text-align:left}
+@media(max-width:900px){.bandhead{grid-template-columns:1fr}
+.bandhead .sub{justify-self:start}
+}
+.grid{display:grid;gap:clamp(12px,1.5vw,18px);align-items:start}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g21{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+@media(max-width:900px){.g2,.g3,.g21{grid-template-columns:1fr}
+}
+.mt{margin-top:clamp(12px,1.5vw,18px)}
+/* hero */
+.hero{position:relative;overflow:hidden;border:1px solid var(--hair);margin-top:clamp(16px,2vw,28px);padding:clamp(20px,2.6vw,36px);display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:clamp(18px,3vw,44px)}
+@media(max-width:900px){.hero{grid-template-columns:1fr}
+}
+.hero .bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
+.hero .bg svg,.hero .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.hero>*:not(.bg){position:relative}
+.hero .k{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.hero .k .issue{color:var(--ink);font-weight:700}
+.hero p.big{font:700 clamp(1.55rem,2.9vw,2.5rem)/1.2 var(--fc-font-display);letter-spacing:-.03em;margin-top:14px;max-width:24ch;text-wrap:balance}
+.hero p.big b{font-family:var(--mono);font-weight:700;font-size:clamp(3rem,7vw,5.6rem);line-height:.78;letter-spacing:-.04em;vertical-align:-.06em;margin:0 .06em;color:var(--ink)}
+.hero p.big b.crossed{color:var(--signal-worse)}
+.hero p.big b.none{font-family:var(--fc-font-display);font-size:inherit;font-weight:700}
+.hero .why{margin-top:14px;max-width:52ch;font-size:15.5px;line-height:1.55}
+.hero .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.hero .side{display:flex;flex-direction:column;gap:18px;justify-content:space-between}
+.hero .stamp{font:500 10.5px/1.5 var(--mono);letter-spacing:.08em;color:var(--mute);overflow-wrap:anywhere;margin-top:auto}
+/* the act strip: one instruction, one green button; the answered state is the same strip with the ring closed */
+.askstrip{border:1px solid var(--ink);padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;align-items:center;background:var(--ground)}
+.askstrip .what{font:600 15px/1.4 var(--fc-font-body)}
+.askstrip .what small{display:block;font-weight:400;color:var(--mute);font-size:13px;margin-top:2px}
+.askstrip button.go{background:var(--rings);border-color:var(--rings);color:#fff;font-weight:600;padding:10px 16px}
+.askstrip .done{display:flex;align-items:center;gap:8px;color:var(--rings);font:600 13px var(--fc-font-body)}
+.askstrip[hidden]{display:none}
+/* hidden must beat display:grid; this bug shipped twice */
+@media(max-width:560px){.askstrip{grid-template-columns:1fr}
+}
+/* the stack: one quantity at four distances on one scale */
+.stack{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.stack .col{padding:12px 10px 10px 0;border-right:1px solid var(--hair);min-width:0}
+.stack .col:last-child{border-right:0}
+.stack .col+.col{padding-left:12px}
+@media(max-width:560px){.stack{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stack .col:nth-child(2){border-right:0}
+.stack .col:nth-child(n+3){border-top:1px solid var(--hair)}
+.stack .col:nth-child(3){padding-left:0}
+}
+.stack .col .k{font-size:10.5px}
+.stack .v{display:flex;align-items:baseline;gap:5px;margin-top:6px;white-space:nowrap}
+.stack .v .num{font-size:clamp(1.3rem,1.9vw,1.7rem)}
+.stack .v small{font:500 11px var(--mono);color:var(--mute)}
+.stack .v .num.crossed{color:var(--signal-worse)}
+.stack .v .num.none{color:var(--dim);font-weight:400}
+.stack .src{font-size:12px;color:var(--mute);line-height:1.45;margin-top:4px;min-height:2.9em}
+.stack .col .pill{margin-top:8px}
+.stack.mini{border:0;grid-template-columns:repeat(4,auto);gap:0 18px;justify-content:start}
+.stack.mini .col{padding:0;border:0}
+.stack.mini .v .num{font-size:1.15rem}
+.stack.mini .src{display:none}
+.stack.mini .pill{display:none}
+.scale{margin-top:10px}
+.scale svg{width:100%;height:56px;display:block;overflow:visible}
+/* the day: a trace with a time under it */
+.day .trace>svg{width:100%;height:auto;display:block}
+.dayx{display:flex;justify-content:space-between;font:500 10.5px var(--mono);letter-spacing:.06em;color:var(--mute);margin-top:4px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font:500 11px var(--mono);letter-spacing:.04em;color:var(--mute);margin-top:10px}
+.legend i{display:inline-block;width:18px;border-top:1.5px solid var(--ink);vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top-style:dashed}
+.legend i.dot{border-top-style:dotted}
+/* unit rows: more quantity is more signs, never a bigger sign */
+.unit{display:grid;grid-template-columns:minmax(0,120px) minmax(0,1fr);gap:6px 14px;align-items:center;padding:8px 0;border-top:1px solid var(--hair)}
+.unit:first-child{border-top:0}
+.unit .lab{font:500 11px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.unit .lab b{display:block;font:600 12.5px/1.3 var(--fc-font-body);letter-spacing:0;text-transform:none;color:var(--ink)}
+.unit .row{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.unit .row svg.sg{width:18px;height:18px;color:var(--ink)}
+.unit .row svg.sat{color:var(--satellite-only)}
+.unit .row svg.faint{opacity:.28}
+.unit .row .part{display:inline-block;overflow:hidden;height:18px}
+.unit .cap{grid-column:2;font:500 11px var(--mono);color:var(--mute);letter-spacing:.02em}
+@media(max-width:560px){.unit{grid-template-columns:1fr}
+.unit .cap{grid-column:1}
+}
+/* the issue index */
+.index{border-top:1px solid var(--ink);margin-top:clamp(12px,1.5vw,18px)}
+.index .row{display:grid;grid-template-columns:110px 92px minmax(0,1fr) auto;gap:10px 18px;align-items:center;padding:12px 0;border-bottom:1px solid var(--hair);color:inherit}
+.index .row:hover{background:var(--raise)}
+.index .name{font:700 15px var(--fc-font-display);letter-spacing:-.01em}
+.index .state{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.index .state.act{color:var(--ink);font-weight:700}
+.index .line{font-size:14.5px;min-width:0}
+.index .line small{color:var(--mute)}
+.index .mini{display:flex;gap:14px;font:500 12px var(--mono);color:var(--mute);white-space:nowrap}
+.index .mini b{color:var(--ink);font-weight:600}
+@media(max-width:820px){.index .row{grid-template-columns:96px 1fr}
+.index .line{grid-column:1/-1}
+.index .mini{display:none}
+}
+/* sensors */
+.sensors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(10px,1.2vw,14px)}
+@media(max-width:900px){.sensors{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){.sensors{grid-template-columns:1fr}
+}
+.sensor{border:1px solid var(--hair);padding:12px 14px}
+.sensor .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.sensor .n{font:600 13.5px var(--fc-font-body)}
+.sensor .v .num{font-size:1.2rem}
+.sensor .v small{font:500 11px var(--mono);color:var(--mute);margin-left:4px}
+.sensor .story{font-size:12.5px;color:var(--mute);margin-top:6px;line-height:1.45}
+.sensor .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.sensor .spark{width:100%;height:26px;display:block;margin-top:8px;overflow:visible}
+.sensor .kits{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font:500 11px var(--mono);letter-spacing:.02em;color:var(--dim)}
+.sensor .kits .more{opacity:.7}
+/* the ring's shape, and the rows the node doubts. Both are two-column lines, not tables: a table
+   with two cells is a table nobody can read on a phone. */
+.ringstrip{width:100%;height:64px;display:block;margin:12px 0 10px;overflow:visible}
+.vit{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--hair);font-size:13.5px}
+.vit:first-of-type{border-top:0}
+.vit span:last-child{font:500 12px var(--mono);color:var(--mute);text-align:right;white-space:nowrap}
+/* plan */
+.plan{border:1px solid var(--hair);padding:0;position:relative;background:var(--ground)}
+.plan>svg,.plan>img{width:100%;height:auto;display:block}
+.plan .cap{position:absolute;left:12px;bottom:10px;font:500 10.5px/1.5 var(--mono);letter-spacing:.08em;color:var(--mute);background:var(--ground);padding:2px 6px}
+.plan-legend{display:flex;gap:14px;flex-wrap:wrap;font:500 11px var(--mono);letter-spacing:.04em;color:var(--mute);padding:10px 12px;border-bottom:1px solid var(--hair)}
+.plan-legend i{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:6px;background:var(--ink)}
+.plan-legend i.sat{background:var(--satellite-only)}
+.plan-legend i.road{background:none;border-top:1px solid var(--ink);height:0;vertical-align:3px}
+.plan-legend i.use{background:var(--cells);border-radius:50%}
+.plan-legend i.green{background:var(--ink);opacity:.12}
+.plan-legend i.mesh{background:none;border:1px solid var(--ink);opacity:.5}
+/* the satellite: a frame that changes once a year, so it moves once every --motion-satellite-year and never fades */
+.sat-loop{position:relative;aspect-ratio:1;width:100%;background:var(--raise);border:1px solid var(--hair);overflow:hidden}
+.sat-loop img{position:absolute;inset:0;width:100%;height:100%;display:none;object-fit:cover}
+.sat-loop img.on{display:block}
+.sat-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
+/* the controls take the rest of the row, so the year and its pill stay together at the left */
+.sat-bar .sat-ctl{margin-left:auto}
+.sat-bar .yr{font:700 clamp(1.4rem,2vw,1.9rem)/1 var(--mono);letter-spacing:-.02em}
+.sat-ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sat-ctl button{font:500 12px var(--mono);letter-spacing:.04em;padding:6px 10px;border:1px solid var(--ink);background:none;color:var(--ink)}
+.sat-ctl button[aria-pressed="true"]{background:var(--ink);color:var(--ground)}
+.sat-ctl input[type=range]{accent-color:var(--ink);width:120px}
+.sat-credit{font:500 10.5px/1.5 var(--mono);letter-spacing:.04em;color:var(--mute);margin-top:8px}
+.wall .satwrap{border:1px solid var(--hair);padding:0;max-width:min(38vw,560px);width:100%}
+.wall .sat-bar .yr{color:var(--ink)}
+/* loop */
+.rho{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.rho svg.sg{width:20px;height:20px;color:var(--ink)}
+.rho svg.closed{color:var(--rings)}
+.rho.small svg.sg{width:13px;height:13px}
+.done svg.sg{width:14px;height:14px;color:var(--rings)}
+.ledger .al{display:grid;grid-template-columns:52px 74px minmax(0,1fr) auto;gap:8px 14px;padding:12px 0;border-top:1px solid var(--hair);align-items:start}
+.ledger .al:first-child{border-top:0}
+.ledger .when{font:500 12px/1.6 var(--mono);color:var(--mute)}
+.ledger .iss{font:500 11px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.ledger .iss.act{color:var(--ink);font-weight:700}
+.ledger .txt{font-size:14px;line-height:1.5}
+.ledger .txt small{color:var(--mute)}
+.ledger .txt .meta{font:500 11px var(--mono);color:var(--dim);margin-top:4px;letter-spacing:.02em}
+.ledger .do{white-space:nowrap}
+.ledger .do button{background:var(--rings);border-color:var(--rings);color:#fff;font-weight:600;font-size:13px;padding:7px 12px}
+.ledger .do .done{color:var(--rings);font:600 12.5px var(--fc-font-body)}
+@media(max-width:640px){.ledger .al{grid-template-columns:52px 1fr}
+.ledger .do{grid-column:2}
+}
+.rep{font-size:16px;line-height:1.6;max-width:62ch}
+/* figures table */
+.figwrap{overflow-x:auto}
+table.figs{width:100%;min-width:420px;border-collapse:collapse;font-size:12.5px}
+table.figs th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:8px 10px 8px 0;border-bottom:1px solid var(--ink)}
+table.figs td{padding:7px 10px 7px 0;border-bottom:1px solid var(--hair);vertical-align:top}
+table.figs td.mono{white-space:nowrap}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-block:26px 40px;font-size:12.5px;color:var(--mute);border-top:1px solid var(--hair);margin-top:clamp(36px,4vw,60px)}
+/* Set up.
+ *
+ * Never ported until now, because the view threw before it could be looked at: render() lost its
+ * mount points on the second render and Set up opens through render(). These rules come from the
+ * page this replaces, re-scoped — the old ones were written for a dark page and hard-coded
+ * rgba(244,236,226,…) as "paper on ink", which is a colour that cannot follow the register.
+ *
+ * Square, like the rest of the page: the old pane rounded its controls to 12px and its toggles to
+ * a pill, and every one of those selectors is still sitting in check_ui.py's RADIUS_LEGACY waiting
+ * to be deleted. They can be, now — nothing here rounds anything.
+ *
+ * The toggle's on-state is ink and not green. Green is a role on this page: a response, a loop
+ * closed, an act taken. A setting being on is none of those; it is a state, and state is weight.
+ */
+.gate{max-width:560px;margin-top:26px;border:1px solid var(--hair);padding:clamp(16px,2vw,24px)}
+.gate input{width:100%;background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:10px 12px;color:var(--ink);font:500 14px var(--fc-font-body);margin-top:8px}
+.gate input:focus{outline:none;border-color:var(--ink)}
+.gate .sub{margin-top:14px}
+.gate .row{display:flex;gap:10px;flex-wrap:wrap}
+.setup{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr);gap:clamp(18px,3vw,40px);margin-top:26px;align-items:start}
+/* The nav is column one, spanning the four children beside it — the title, the blurb, the pane and
+   the save bar. `1 / -1` does not work here: -1 is the last line of the EXPLICIT grid and this grid
+   declares no rows, so the nav took row one alone, made it four hundred pixels tall and left the
+   title floating at the top of a hole. Everything else is column two. Auto-placement cannot do this on its own:
+   .setup's four other children are siblings of the nav, not wrapped, so the blurb landed under the
+   tabs and the pane started a row below the title with a hole between them. */
+.setup>:not(.tabs){grid-column:2}
+.tabs{display:flex;flex-direction:column;gap:2px;position:sticky;top:18px;align-self:start;grid-column:1;grid-row:1/span 4}
+.tabs button{text-align:left;background:none;border:0;border-left:2px solid transparent;border-radius:0;padding:9px 12px;font:500 14px var(--fc-font-body);color:var(--mute)}
+.tabs button:hover{background:var(--raise);color:var(--ink)}
+.tabs button.on{border-left-color:var(--ink);color:var(--ink);font-weight:700;background:var(--raise)}
+.tabs .acts{display:flex;flex-direction:column;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--hair)}
+#ptitle{margin-top:0}
+#pblurb{margin:8px 0 4px}
+.field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:10px 24px;align-items:start;padding:16px 0;border-top:1px solid var(--hair)}
+.field label{display:block;font:600 15px var(--fc-font-body)}
+.field .src{display:block;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:52ch;line-height:1.55}
+.field input,.field select{width:100%;background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:10px 12px;color:var(--ink);font:500 14px var(--fc-font-body)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--ink)}
+.field input[readonly]{color:var(--mute);background:none}
+.switch{display:flex;align-items:center;gap:10px;background:none;border:0;padding:4px 0}
+.switch .tr{width:40px;height:22px;border-radius:0;position:relative;background:var(--raise);border:1px solid var(--hair);flex:none}
+.switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;background:var(--dim)}
+.switch.on .tr{border-color:var(--ink)}
+.switch.on .tr::after{background:var(--ink);transform:translateX(18px)}
+.savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:20px;margin-top:8px;position:sticky;bottom:0;background:var(--ground);border-top:1px solid var(--hair)}
+.savebar .sub{margin:0}
+.pack{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
+.pack b{font:700 15px var(--fc-font-body)}
+.pack .help{font-size:13px;color:var(--mute);margin-top:5px;max-width:60ch;line-height:1.55}
+.tag{display:inline-block;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--hair);color:var(--mute);margin-left:8px}
+@media(max-width:820px){.setup{grid-template-columns:1fr}
+.setup>:not(.tabs){grid-column:1}
+.tabs{position:static;flex-direction:row;flex-wrap:wrap;grid-row:auto;grid-column:1}
+.tabs button{border-left:0;border-bottom:2px solid transparent}
+.tabs button.on{border-left:0;border-bottom-color:var(--ink)}
+.tabs .acts{margin:0;padding:0;border:0}
+.field{grid-template-columns:1fr}
+}
+/* views */
+section.view{display:none}
+section.view.on{display:block}
+/* the wall: dark register, instruction not control, nothing to press */
+body.wallview header{display:none}
+.wall{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:clamp(28px,4vw,64px);overflow:hidden}
+.wall .row2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:clamp(24px,4vw,64px);align-items:center}
+@media(max-width:900px){.wall .row2{grid-template-columns:1fr}
+.wall .satwrap{max-width:100%}
+}
+.wall .bg{position:absolute;inset:0;pointer-events:none}
+.wall .bg svg,.wall .bg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.wall>*:not(.bg){position:relative}
+.wall .k{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:clamp(11px,1vw,14px)}
+.wall p.big{font:700 clamp(2rem,5.2vw,5rem)/1.12 var(--fc-font-display);letter-spacing:-.03em;max-width:20ch;margin-top:.3em;text-wrap:balance}
+.wall p.big b{font-family:var(--mono);font-size:clamp(4rem,12vw,11rem);line-height:.78;letter-spacing:-.04em;vertical-align:-.06em;margin:0 .05em}
+.wall p.big b.crossed{color:var(--signal-worse)}
+.wall .why{font-size:clamp(16px,1.6vw,24px);max-width:44ch;margin-top:.8em;color:var(--ink);opacity:.86}
+.wall .wi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px 32px;margin-top:clamp(28px,4vw,56px);max-width:1100px}
+.wall .wi>div{border-top:1px solid var(--hair);padding-top:10px}
+.wall .wi .ln{display:block;margin-top:4px}
+.wall .wi .name{font:700 clamp(14px,1.3vw,19px) var(--fc-font-display)}
+.wall .wi .st{font:500 clamp(10px,.85vw,12px) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-left:8px}
+.wall .wi .ln{font-size:clamp(13px,1.15vw,17px);color:var(--ink);opacity:.86;margin-top:4px}
+.wall .rho{margin-top:clamp(20px,3vw,40px)}
+.wall .foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:end;margin-top:clamp(28px,4vw,56px);font:500 clamp(11px,.9vw,13px) var(--mono);letter-spacing:.06em;color:var(--mute)}
+.wall .exit{position:absolute;top:18px;right:18px;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);border:1px solid var(--hair);padding:6px 10px;z-index:2}
+/* the binding classes every planetai-design asset carries (node-ground, kilometre), scoped to inline drawings */
+svg .ground{fill:var(--ground)}
+svg .land{fill:var(--ink);fill-opacity:.12}
+svg .cell{fill:none;stroke:var(--cells)}
+svg .chain{fill:var(--cells);stroke:var(--cells)}
+svg .lit{fill:var(--cells);stroke:var(--cells);color:var(--cells)}
+svg .ring{fill:none;stroke:var(--rings);color:var(--rings)}
+svg .hair{fill:none;stroke:var(--ink)}
+svg .fig{fill:var(--ink);color:var(--ink)}
+svg .label{fill:var(--ink);font-family:var(--mono)}
+svg .sat{fill:var(--satellite-only);color:var(--satellite-only)}
+svg .veg{fill:var(--ink);color:var(--ink)}
+/* a sign is a nested svg drawn in currentColor; it always has a size, so a stray one can never fall back to 300x150 */
+svg.sg{width:1em;height:1em;flex:none;vertical-align:-.12em}
+/* reduced motion: nothing on this prototype moves, and this keeps it so */
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}
+}

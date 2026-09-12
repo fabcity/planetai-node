@@ -29,7 +29,7 @@ compare:
 line:
   value: 35
   unit: °C
-  source: "packs/heat, measured at node #1 (Kuta Selatan) — this place's line, not a global one"
+  source: "this place's own line, measured at node #1 (Kuta Selatan), not a global one"
   sql: heat/heat_stress_now
 
 packs:
@@ -69,37 +69,51 @@ distances:
     function: apparent
 
 sentences:
+  # Heat has verbs now, like air: the last three hours against the three before them. "Warming to
+  # 31 °C in the room" is a different evening from "Cooling to 31 °C", and the number alone could
+  # not tell them apart. Steady keeps the old opening.
   en:
+    verbs:
+      rising:  "Warming to"
+      steady:  "It feels like"
+      falling: "Cooling to"
     attribution:
-      clear:         "It feels like {n} {unit} {where}, under the line. {cmp}"
-      inside:        "It feels like {n} {unit} {where} — warmer in here than anywhere around. {cmp}"
-      everywhere:    "It feels like {n} {unit} {where}, and it is this warm everywhere around. {cmp}"
-      outside_worse: "It feels like {n} {unit} {where}, cooler than the street. {cmp}"
-      mixed:         "It feels like {n} {unit} {where}. {cmp}"
-      unknown:       "It feels like {n} {unit} {where}. {cmp}"
+      clear:         "{verb} {n} {unit} {where}, under the line. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, warmer than anywhere around it. {cmp}"
+      everywhere:    "{verb} {n} {unit} {where}, and it is this warm everywhere around. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}, cooler than the street. {cmp}"
+      mixed:         "{verb} {n} {unit} {where}. {cmp}"
+      unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Nothing here reports both temperature and humidity, so there is no apparent temperature to give."
   id:
+    verbs:
+      rising:  "Memanas ke"
+      steady:  "Terasa seperti"
+      falling: "Mendingin ke"
     attribution:
-      clear:         "Terasa seperti {n} {unit} {where}, di bawah batas. {cmp}"
-      inside:        "Terasa seperti {n} {unit} {where} — lebih panas di sini daripada di sekitar. {cmp}"
-      everywhere:    "Terasa seperti {n} {unit} {where}, dan sepanas ini di seluruh sekitar. {cmp}"
-      outside_worse: "Terasa seperti {n} {unit} {where}, lebih sejuk daripada di jalan. {cmp}"
-      mixed:         "Terasa seperti {n} {unit} {where}. {cmp}"
-      unknown:       "Terasa seperti {n} {unit} {where}. {cmp}"
+      clear:         "{verb} {n} {unit} {where}, di bawah batas. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, lebih panas daripada mana pun di sekitarnya. {cmp}"
+      everywhere:    "{verb} {n} {unit} {where}, dan sepanas ini di seluruh sekitar. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}, lebih sejuk daripada di jalan. {cmp}"
+      mixed:         "{verb} {n} {unit} {where}. {cmp}"
+      unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Tidak ada di sini yang melaporkan suhu dan kelembapan sekaligus, jadi suhu terasa tidak bisa dihitung."
   es:
+    verbs:
+      rising:  "Calentándose hasta"
+      steady:  "Se siente como"
+      falling: "Enfriándose hasta"
     attribution:
-      clear:         "Se siente como {n} {unit} {where}, por debajo del límite. {cmp}"
-      inside:        "Se siente como {n} {unit} {where} — más calor aquí dentro que en cualquier sitio alrededor. {cmp}"
-      everywhere:    "Se siente como {n} {unit} {where}, y hace este calor en todo el alrededor. {cmp}"
-      outside_worse: "Se siente como {n} {unit} {where}, más fresco que la calle. {cmp}"
-      mixed:         "Se siente como {n} {unit} {where}. {cmp}"
-      unknown:       "Se siente como {n} {unit} {where}. {cmp}"
+      clear:         "{verb} {n} {unit} {where}, por debajo del límite. {cmp}"
+      inside:        "{verb} {n} {unit} {where}, más calor que en cualquier sitio alrededor. {cmp}"
+      everywhere:    "{verb} {n} {unit} {where}, y hace este calor en todo el alrededor. {cmp}"
+      outside_worse: "{verb} {n} {unit} {where}, más fresco que la calle. {cmp}"
+      mixed:         "{verb} {n} {unit} {where}. {cmp}"
+      unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Nada de aquí informa temperatura y humedad a la vez, así que no hay temperatura aparente que dar."
-
 empty:
   en: Heat needs temperature and humidity from the same sensor. Add one indoors and the room fills in.
   id: Panas memerlukan suhu dan kelembapan dari sensor yang sama. Tambahkan satu di dalam ruangan.
