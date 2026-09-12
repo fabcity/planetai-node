@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased — the dashboard draws
+## v0.45 — 2026-09-12 — the dashboard draws
 
-The other half of the redesign: the page. **Not on a node yet, and nothing here has been seen by a
-beta tester.**
+The other half of the redesign: the page. Proven on a VM with node #1's satellite record and
+reviewed by Tomas; node #1 gets it first, and testers get it on their next `planetai update`.
+Nothing here has been seen on a wall in a room yet.
 
 **The page is three files.** `app/static/index.html` is a skeleton with four view shells and no
 logic; `app/static/dashboard.css` is how it is arranged; `app/static/dashboard.js` draws all of it.
