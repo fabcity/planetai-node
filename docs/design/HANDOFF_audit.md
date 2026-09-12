@@ -1,21 +1,25 @@
 # Handoff: the September 2026 surface audit
 
+The evidence moved on 12 September 2026. It was captured in this repo at `docs/design/audit/`; it
+now lives in **`planetai-design`, at `design/audit/2026-09/`** — see `docs/design/README.md`. Every
+path below has been rewritten to the new home. The report itself stays here.
+
 ## What exists
 
 | File | What it is |
 |---|---|
 | `docs/design/AUDIT_2026-09.md` | The report. Findings, evidence, severity, recommendations, in that order. |
-| `docs/design/audit/tokens.csv` | 1,208 rows. Every hex, rgb/hsl/oklch, font-family, font shorthand, font-size, border-radius, box-shadow, letter-spacing and z-index in nine HTML and CSS files across both repos, with `repo, file, line, property, value, count`. |
-| `docs/design/audit/shots/` | 162 PNGs. Six surfaces (landing, observatory, node0, dashboard on node #1, dashboard on pai-clean, FAB26 simulator) at 375×812, 768×1024 and 1440×900, light scheme, full page. Plus `shots/focus/<surface>/tab-{3,10,20}.png`. |
-| `docs/design/audit/shots/_contact-sheet-*.png` | One grid per surface, five columns, tall pages cropped to the top 900 px of their scaled height and labelled "(top)". |
-| `docs/design/audit/axe/` | One JSON per surface and view, plus `_summary.json` and `focus-order.json` (30 keyboard stops per surface with the computed outline and box-shadow at each). |
-| `docs/design/audit/perf/` | `fast3g.json`, `observatory-coverage.json`, `reduced-motion.json`. |
-| `docs/design/audit/api/` | The read-only capture from node #1 at 2026-09-06T14:08:06Z: `health`, `stats`, `rho`, `cells`, `alerts`, and `capture_time.txt`. Every live figure quoted in the report comes from these. |
-| `docs/design/audit/observatory-*.json` | The ten-findings verification: `observatory-findings.json`, `observatory-findings-2.json` (mode toggle, scrubbers, persistence), `observatory-prov-by-view.json`, `observatory-load-state.json`. |
-| `docs/design/audit/ia-clickpaths.json` | Visible-link counts per surface behind the click-path table. |
-| `docs/design/audit/chart-accessible-names.json` | SVG and canvas accessible-name counts per surface. |
-| `docs/design/audit/wall-type-sizes.json` | Computed font sizes in the wall view at 1440, 1920 and 2560 wide. |
-| `docs/design/audit/scripts/` | Every script that produced the above. Kept so the set can be rebuilt, not because it is nice code. |
+| `planetai-design/design/audit/2026-09/tokens.csv` | 1,208 rows. Every hex, rgb/hsl/oklch, font-family, font shorthand, font-size, border-radius, box-shadow, letter-spacing and z-index in nine HTML and CSS files across both repos, with `repo, file, line, property, value, count`. |
+| `planetai-design/design/audit/2026-09/shots/` | 162 PNGs. Six surfaces (landing, observatory, node0, dashboard on node #1, dashboard on pai-clean, FAB26 simulator) at 375×812, 768×1024 and 1440×900, light scheme, full page. Plus `shots/focus/<surface>/tab-{3,10,20}.png`. |
+| `planetai-design/design/audit/2026-09/shots/_contact-sheet-*.png` | One grid per surface, five columns, tall pages cropped to the top 900 px of their scaled height and labelled "(top)". |
+| `planetai-design/design/audit/2026-09/axe/` | One JSON per surface and view, plus `_summary.json` and `focus-order.json` (30 keyboard stops per surface with the computed outline and box-shadow at each). |
+| `planetai-design/design/audit/2026-09/perf/` | `fast3g.json`, `observatory-coverage.json`, `reduced-motion.json`. |
+| `planetai-design/design/audit/2026-09/api/` | The read-only capture from node #1 at 2026-09-06T14:08:06Z: `health`, `stats`, `rho`, `cells`, `alerts`, and `capture_time.txt`. Every live figure quoted in the report comes from these. |
+| `planetai-design/design/audit/2026-09/observatory-*.json` | The ten-findings verification: `observatory-findings.json`, `observatory-findings-2.json` (mode toggle, scrubbers, persistence), `observatory-prov-by-view.json`, `observatory-load-state.json`. |
+| `planetai-design/design/audit/2026-09/ia-clickpaths.json` | Visible-link counts per surface behind the click-path table. |
+| `planetai-design/design/audit/2026-09/chart-accessible-names.json` | SVG and canvas accessible-name counts per surface. |
+| `planetai-design/design/audit/2026-09/wall-type-sizes.json` | Computed font sizes in the wall view at 1440, 1920 and 2560 wide. |
+| `planetai-design/design/audit/2026-09/scripts/` | Every script that produced the above. Kept so the set can be rebuilt, not because it is nice code. |
 
 Nothing here is linked from a README, so `tools/check_docs.py` leaves it alone. That is deliberate.
 
@@ -62,7 +66,7 @@ limactl start pai-clean
 cd /tmp/planetai-audit && npm init -y && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i playwright-core axe-core
 ```
 
-Then, from `docs/design/audit/scripts/`, with `OUT` inside each script pointed at `docs/design/audit`:
+Then, from `planetai-design/design/audit/2026-09/scripts/`, with `OUT` inside each script pointed at `planetai-design/design/audit/2026-09`:
 
 ```bash
 node shots.js landing && node shots.js node0 && node shots.js dashboard-node1 && node shots.js dashboard-clean && node shots.js observatory && node sim.js && python3 sheet.py
@@ -74,7 +78,7 @@ The whole set takes about 25 minutes, most of it the observatory's 54 views. `no
 node axe.js && node probe.js all && node obs-verify.js && node obs2.js && node obs3.js && node ia.js && node prov.js && node charts.js && node wall.js && python3 tokens.py
 ```
 
-`tokens.py` and `sheet.py` write straight into `docs/design/audit/`; the rest write JSON there too. All paths inside the scripts are absolute and will need editing on another machine.
+`tokens.py` and `sheet.py` write straight into `planetai-design/design/audit/2026-09/`; the rest write JSON there too. All paths inside the scripts are absolute and will need editing on another machine.
 
 ## The first four questions for the next phase
 
