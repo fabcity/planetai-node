@@ -2,6 +2,11 @@
 
 What it gives the node:
   · an LXMF address (announced on the network) so Sideband, NomadNet or another node can message it
+  · presence: a `planetai.presence` destination announcing the node's name and a COARSE map cell, and
+    an announce handler collecting the same from other nodes. Neither end publishes a position: the
+    cell is rounded to whatever RETICULUM_PRESENCE_RES says (default 3, about sixty kilometres), and
+    the distance between two nodes is the distance between two cell centres. Off until a household
+    sets RETICULUM_PRESENCE=1; the node decides, this container only asks and obeys.
   · an inbox: a message whose text is  `act <alert id> [note]`  becomes POST /actions on the node — closing the
     loop over a medium that works with no internet, exactly as a Telegram reply or `planetai act` would
   · an outbox: POST /send {"text": ...} delivers the text to every LXMF destination in RETICULUM_ALERT_DESTINATIONS
@@ -56,6 +61,72 @@ with open(os.path.join(DATA, "address"), "w") as f:
     f.write(RNS.hexrep(me.hash, delimit=False))
 
 
+# ---------------------------------------------------------------- presence: "I am here", and nothing else
+#
+# A destination of our own, `planetai.presence`, announced with a small JSON payload: the node's
+# name, a COARSE map cell, and the version. No readings, no address, no coordinates. The node API
+# decides whether to announce at all and how coarse the cell is — this container has no settings and
+# no h3, and asking keeps the policy in one place (GET /presence, app/main.py).
+#
+# The receiving half is an announce handler on the same aspect. Every PLANETAI node with this bridge
+# has been announcing its LXMF address since the bridge was written; none of them was listening, so
+# no node has ever seen another this way.
+PRESENCE = RNS.Destination(identity, RNS.Destination.IN, RNS.Destination.SINGLE, "planetai", "presence")
+HEARD_MAX = 200
+heard: dict = {}
+heard_lock = threading.Lock()
+announcing = False
+
+
+class PresenceHandler:
+    aspect_filter = "planetai.presence"
+
+    def received_announce(self, destination_hash, announced_identity, app_data):
+        h = RNS.hexrep(destination_hash, delimit=False)
+        if h == RNS.hexrep(PRESENCE.hash, delimit=False):
+            return                                          # our own announce, come back round
+        try:
+            body = json.loads((app_data or b"").decode("utf-8", "ignore"))
+        except Exception:                                   # noqa: BLE001 — a stranger on the network
+            return
+        if not isinstance(body, dict) or not body.get("node"):
+            return
+        now = time.time()
+        with heard_lock:
+            row = heard.get(h) or {"first": now}
+            row.update({"hash": h, "last": now,
+                        "node": str(body.get("node"))[:64],
+                        "cell": str(body.get("cell") or "")[:20] or None,
+                        "res": int(body["res"]) if isinstance(body.get("res"), int) else None,
+                        "version": str(body.get("version") or "")[:24] or None,
+                        "kind": str(body.get("kind") or "")[:24] or None})
+            heard[h] = row
+            if len(heard) > HEARD_MAX:                      # a busy network must not fill this container
+                for k, _ in sorted(heard.items(), key=lambda kv: kv[1]["last"])[:len(heard) - HEARD_MAX]:
+                    heard.pop(k, None)
+        log.info("presence: heard %s (%s)", row["node"], h[:8])
+
+
+RNS.Transport.register_announce_handler(PresenceHandler())
+
+
+def announce_presence() -> None:
+    """Ask the node what it is willing to say, then say exactly that — or nothing."""
+    global announcing
+    try:
+        p = httpx.get(f"{API}/presence", timeout=5).json()
+    except Exception as e:                                  # noqa: BLE001
+        log.debug("presence: the node did not answer (%s)", e)
+        return
+    if not p.get("enabled"):
+        announcing = False
+        return
+    body = {k: p.get(k) for k in ("node", "cell", "res", "version", "kind") if p.get(k) is not None}
+    PRESENCE.announce(app_data=json.dumps(body, separators=(",", ":")).encode())
+    announcing = True
+    log.info("presence: announced %s", body)
+
+
 def on_message(message):
     text = (message.content or b"").decode("utf-8", "ignore").strip()
     src = RNS.prettyhexrep(message.source_hash)
@@ -108,7 +179,13 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
     def do_GET(self):
         if self.path == "/health":
-            self._json(200, {"ok": True, "address": RNS.hexrep(me.hash, delimit=False), "destinations": len(DESTS)})
+            self._json(200, {"ok": True, "address": RNS.hexrep(me.hash, delimit=False),
+                             "destinations": len(DESTS), "announcing": announcing,
+                             "presence": RNS.hexrep(PRESENCE.hash, delimit=False)})
+        elif self.path == "/peers":
+            with heard_lock:
+                rows = sorted(heard.values(), key=lambda r: -r["last"])
+            self._json(200, {"peers": [dict(r, first=int(r["first"]), last=int(r["last"])) for r in rows]})
         else:
             self._json(404, {})
     def do_POST(self):
@@ -122,10 +199,15 @@ class H(BaseHTTPRequestHandler):
 
 def announce_loop():
     while True:
-        router.announce(me.hash)
+        try:
+            router.announce(me.hash)                        # the LXMF address, so a person can message it
+            announce_presence()                             # and, if the node allows it, that it exists
+        except Exception as e:                              # noqa: BLE001 — one bad announce is not the end
+            log.warning("announce failed: %s", e)
         time.sleep(ANNOUNCE_S)
 
 
 threading.Thread(target=announce_loop, daemon=True).start()
-log.info("bridge up: http :4243, announcing every %ss, %d alert destination(s)", ANNOUNCE_S, len(DESTS))
+log.info("bridge up: http :4243, announcing every %ss, %d alert destination(s), presence at %s",
+         ANNOUNCE_S, len(DESTS), RNS.prettyhexrep(PRESENCE.hash))
 HTTPServer(("0.0.0.0", 4243), H).serve_forever()

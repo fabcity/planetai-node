@@ -77,7 +77,8 @@ mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 # What the Reticulum bridge says about itself, refreshed on its own thread. /health is called every
 # twenty seconds by every screen in the house, so it must never make an outbound request of its own:
 # a bridge that is down would turn the node's own health check into a timeout.
-reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s": None, "last": None}
+reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s": None,
+                   "announcing": False, "peers": [], "last": None}
 RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
@@ -550,10 +551,41 @@ def poll_reticulum() -> None:
     if not RETICULUM_URL:
         return
     r = httpx.get(f"{RETICULUM_URL}/health", timeout=5).json()
+    peers = []
+    try:
+        peers = httpx.get(f"{RETICULUM_URL}/peers", timeout=5).json().get("peers", [])
+    except Exception as e:  # noqa: BLE001 — an older bridge has no /peers, which is not an error
+        log.debug("reticulum: no peers from the bridge (%s)", e)
     reticulum_state.update({"ok": bool(r.get("ok")), "address": r.get("address"),
                             "destinations": r.get("destinations", 0),
                             "announce_s": int(os.getenv("RETICULUM_ANNOUNCE_S", "1800")),
+                            "announcing": bool(r.get("announcing")),
+                            "peers": _with_distance(peers),
                             "last": datetime.now(timezone.utc).isoformat()})
+
+
+def _with_distance(peers: list[dict]) -> list[dict]:
+    """How far each heard node is, from its coarse cell to ours. Neither end published a position.
+
+    The distance is between two cell CENTRES, so it carries the coarseness of whichever cell is
+    blunter — at res 3 two nodes in the same cell read 0 km and are somewhere within sixty. That is
+    the point of it, and `res` travels with the answer so the page can say so.
+    """
+    here = _cell()
+    out = []
+    for p in peers or []:
+        row = {k: p.get(k) for k in ("node", "cell", "res", "version", "kind", "first", "last", "hash")}
+        row["km"] = None
+        try:
+            import h3  # noqa: PLC0415
+            if here and here.get("cell") and p.get("cell"):
+                a = h3.cell_to_latlng(h3.cell_to_parent(here["cell"], int(p["res"])))
+                b = h3.cell_to_latlng(p["cell"])
+                row["km"] = round(sources.km(a[0], a[1], b[0], b[1]))
+        except Exception as e:  # noqa: BLE001 — a malformed cell from a stranger must not break the poll
+            log.debug("reticulum: no distance for %s (%s)", p.get("node"), e)
+        out.append(row)
+    return sorted(out, key=lambda r: (r["km"] is None, r["km"] or 0))
 
 
 loop(poll_sources, POLL, delay=2)
@@ -602,7 +634,12 @@ async def _mcp_auth(request, call_next):
 # (`grep -oE "(api|fetch)\('/[a-z0-9/._{}-]+" app/static/index.html`), less the three writes and /place/geojson, plus
 # the two <img> routes that grep does not see (/earth/year.png at index.html:904, /earth/change.png from /earth's
 # png_url) and the other-consumer reads /readings, /exports and /export.
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export"}), ("/static/",))
+# /presence is here and not on the `open` list because the RETICULUM BRIDGE reads it, and the bridge
+# is another container with no token: on the default SHARE_LEVEL=off it would be refused and presence
+# would silently never announce. It is safe at every level by construction — it answers `{"enabled":
+# false}` until a household turns announcing on, and after that it returns the same handful of facts
+# the node is already broadcasting to every radio in reach.
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presence"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -693,6 +730,49 @@ def health():
             "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3), "city": os.getenv("NODE_CITY", ""), **state,
             "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
+
+
+# Nothing finer than this may be announced. res 6 is roughly 3 km across; below that a node is
+# telling an open radio network which neighbourhood it is in, and that is not a thing anyone should
+# be able to do by typing a number into a settings box.
+PRESENCE_RES_FLOOR = 6
+
+
+def _presence_res() -> int:
+    try:
+        r = int(settings.get("RETICULUM_PRESENCE_RES", "3") or 3)
+    except ValueError:
+        return 3
+    return max(0, min(r, PRESENCE_RES_FLOOR))
+
+
+@app.get("/presence")
+def presence():
+    """What this node is willing to announce about itself, and whether it is announcing at all.
+
+    The Reticulum bridge asks this — it has no h3 and no settings of its own — and announces exactly
+    what comes back, or nothing when `enabled` is false. Open on purpose at every share level: when
+    presence is on, this is the same handful of facts the node is already broadcasting to any radio
+    within reach, and when it is off it answers with nothing but that.
+
+    The cell is the node's own res-8 cell rounded UP to a coarse parent: at the default res 3 that is
+    an area about sixty kilometres across, which names an island and not an address. Distance between
+    two nodes is then two cell centres, and neither of them ever published a position.
+    """
+    on = settings.get("RETICULUM_PRESENCE", "0") == "1"
+    if not on:
+        return {"enabled": False}
+    here = _cell()
+    res = _presence_res()
+    cell = None
+    if here and here.get("cell"):
+        try:
+            import h3  # noqa: PLC0415 — only this path needs it
+            cell = h3.cell_to_parent(here["cell"], res)
+        except Exception as e:  # noqa: BLE001
+            log.warning("presence: could not coarsen %s to res %d (%s)", here.get("cell"), res, e)
+    return {"enabled": True, "node": NODE, "cell": cell, "res": res,
+            "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
 
 
 def _cell() -> dict | None:

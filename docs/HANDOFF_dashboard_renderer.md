@@ -331,7 +331,32 @@ it hears. The card says so in those words rather than leaving it as an absence.
 dashboard asks `/health` every twenty seconds from every screen in the house and a bridge that is
 down must not turn that into a timeout.
 
-### What a presence layer would need, if it is wanted
+### Presence, built — and what is proven about it
+
+Done in v0.48, off by default. A node announces a `planetai.presence` destination every
+`RETICULUM_ANNOUNCE_S` carrying `{node, cell, res, version, kind}` and nothing else, and an announce
+handler on the same aspect collects the same from anyone else. The bridge has no settings and no h3:
+it asks the node (`GET /presence`) and announces exactly what comes back, or nothing.
+
+- **`/presence` is on the `off` allowlist**, not the `open` one. The bridge is another container with
+  no token; on the `open` list it would be refused on a default node and presence would silently
+  never announce. It is safe there by construction — it answers `{"enabled": false}` until somebody
+  turns it on, and after that returns what is already going out over the radio.
+- **`RETICULUM_PRESENCE_RES` is the whole privacy decision**, and `PRESENCE_RES_FLOOR = 6` is the
+  guard: nothing finer can be set. Measured on node #1's own cell, the announced centre lands
+  **46.5 km** from the house at res 3, 14.7 km at res 4, 1.5 km at res 5 and 6. `tests/test_ground.py`
+  asserts the blur rather than describing it.
+- **Distance is two cell centres.** Bali to Menorca reads 12,494 km against a true 12,414 — the error
+  is the coarseness, which is the point. Neither node published a position.
+
+**Proven, not assumed.** rns 1.5.4 (what `app/Dockerfile.reticulum` installs — it is unpinned, and the
+module docstring's "written against 0.9.x" is stale). Two Reticulum instances over a localhost TCP
+interface: the real bridge announced and a second instance's handler received the payload intact;
+then a third announced as `menorca-1` and the bridge's `/peers` listed it. What is **not** proven is
+two nodes over LoRa or over the open Reticulum testnet, and the Sideband display of the new
+destination.
+
+### What it did NOT need
 
 Two nodes today see each other only if one is the other's parent or child. To have Lucas's node in
 Menorca appear on node #1 as *"here, 12,700 km away"* without either sharing readings:
@@ -345,7 +370,7 @@ Menorca appear on node #1 as *"here, 12,700 km away"* without either sharing rea
 3. **A rule for who announces.** `SHARE_LEVEL` governs what this node *answers*; announcing is the
    node speaking unprompted, so it wants its own setting and a default of off.
 
-**The resolution is the decision, and it is Tomas's.** Everything else is small.
+**The resolution is the decision, and it is Tomas's.** The default is 3.
 
 ## Still open
 

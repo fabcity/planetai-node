@@ -70,6 +70,18 @@ RUNTIME = {
     # integrations
     "HA_DISCOVERY":       ("integrations", "Home Assistant", False, False, "1 publishes sensors and alerts as HA entities over MQTT (needs the broker)."),
     "RETICULUM_ALERT_DESTINATIONS": ("integrations", "Reticulum alert addresses", False, False, "LXMF hashes, comma-separated."),
+    # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
+    # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
+    "RETICULUM_PRESENCE":  ("integrations", "Announce this node on Reticulum", False, False,
+                            "1 announces the node's name and a COARSE map cell every half hour, so other "
+                            "PLANETAI nodes can see that it exists and how far away it is. No readings, no "
+                            "address, nothing else — and nothing at all while this is 0."),
+    "RETICULUM_PRESENCE_RES": ("integrations", "How exactly the announce places this node", False, False,
+                               "The H3 resolution the announced cell is rounded to, and the whole of the "
+                               "privacy decision. 3 is about 60 km across and says the island; 4 is about "
+                               "22 km; 5 about 8 km; 8 is this street. Default 3. Anything finer than 6 is "
+                               "refused, because a node announcing its street to an open radio network is "
+                               "not a thing to do by typing a number."),
     "PACKS_ENABLED":      ("packs", "Enabled packs", False, False, "Empty = every pack in packs/. Or a comma-separated list of ids."),
     "PACKS_ALLOW_CODE":   ("packs", "Allow code packs", False, False, "1 lets packs with adapter.py run. Read them first."),
     # pack keys
@@ -103,7 +115,8 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES"}
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
     "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
