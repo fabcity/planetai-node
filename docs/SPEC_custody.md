@@ -238,8 +238,17 @@ enters as one reading on the hour, and `readings_1h` (`init.sql:57`, `avg(value)
 `date_trunc('hour', ts)`) averages one row — the mean of one number is that number. The child's hour survives
 unchanged. `readings`' `UNIQUE (sensor_id, metric, ts)` makes a re-push idempotent, as it already is.
 
-**Pack SQL that changes: none.** That is the point of keeping the name. Every cell and rule that reads
-`metric='pm25'` starts seeing children the moment custody is fixed, with no edit.
+**Pack SQL that changes for the metric name: none.** That is the point of keeping the name. Every cell and
+rule that reads `metric='pm25'` keeps matching.
+
+**But three cell SQLs still have to change, and they are not optional.** `packs/air-quality/cells.yml:11`
+and `:21` read `s.local AND s.kind = 'sensor'`. That `kind` clause was written to keep models and portals out
+of an air number, which custody now does on its own — and left as it is, it keeps `kind='child'` out too, so
+the roll-up would still not reach the cell that gap 1 is about. Swapping `s.local AND s.kind = 'sensor'` for
+the custody predicate is the whole edit; `packs/heat/cells.yml:13` takes the same swap without a `kind`
+clause to drop. `packs/air-quality/cells.yml:32` (`NOT s.local`, the `Environmental|City` reference cell)
+keeps `s.kind = 'sensor'` and does not change: it is asking about the ring, not about custody, and the ring is
+sensors.
 
 **Pack SQL that would have changed under the alternative** (teach each pack about `_1h`): both
 `packs/air-quality/cells.yml` cells, `packs/heat/cells.yml`, `packs/insight/rules.yml` ×4,
@@ -414,8 +423,10 @@ If §2's recommendation is taken, there is almost nothing to migrate — that is
    children are `kind='child'`, `/nearby` and models and portals are `local=FALSE`. The generated column
    computes itself on apply. The only rows whose classification changes are `child` rows, and they change
    from *wrongly excluded* to *included*, which is the fix.
-3. `_buckets` and the two `s.local` cell SQLs read custody. `packs/nearby/rules.yml` and the `stats`-reading
-   rules are untouched — they ask about the ring and want `local` in its own meaning.
+3. `_buckets` and three cell SQLs read custody: `packs/air-quality/cells.yml:11` and `:21` (dropping their
+   now-redundant `s.kind = 'sensor'`, which would otherwise keep children out) and `packs/heat/cells.yml:13`.
+   Two pack files. `packs/air-quality/cells.yml:32`, `packs/nearby/rules.yml` and every rule that reads the
+   `stats` view are untouched — they ask about the ring and want `local` in its own meaning.
 4. `receive_aggregates` drops the `_1h` suffix (§4). Children that pushed before the change leave
    `<metric>_1h` rows behind; they are inert (no SQL matches them) and expire out of every window on their
    own. Delete them or don't.
