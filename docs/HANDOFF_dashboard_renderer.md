@@ -207,6 +207,27 @@ because it is the one setting that says what this place is for. A group the node
 both surfaces; before, it appeared in the CLI and was unreachable in the dashboard, silently.
 `tests/test_config.py` holds all of it, five break-on-purpose cases.
 
+**The text, and what the node adds beyond the number (12 September).** Tomas's framing: this is
+an anticipatory climate computer for local action, with history, that sends findings upstream. Three
+additions in the engine, all from data the node already had, and a prose pass over every sentence a
+household reads, in three locales:
+
+- **Land says when, and since when.** "1.3 % of the square this node watches changed between 2024
+  and 2025. 8.5 % since 2017." The span is the latest comparison; the since is the longest one the
+  pack computed to the same year, from `/earth`'s `changes`. `{span}` and `{since}` are placeholders
+  now; every other issue fills them empty.
+- **Heat has a direction.** `Warming to` / `It feels like` / `Cooling to`, from the same three-hours-
+  against-three rule air uses. The number alone could not tell a warming room from a cooling one.
+- **The quiet line says the day's high.** "quiet; the day's high was 17 µg/m³ at 14:00" instead of
+  "nothing to say", from the 24 hourly values the chart already draws, in the alerts' own clock (the
+  snapshot had buckets in UTC and asks in +08:00; a node has one zone). A model-only node has no
+  hourly series and its quiet line stays `quiet`, which is true.
+
+Every reason line was reworded to say what happened rather than describe a state (`asked at 14:30;
+the reading came back on its own, the ask is still open`), the em dashes came off the screen, the
+ring's empty state stopped telling a Barcelona node to set a Bali flag, and the Network card says
+what travels upward and what never does. The Bahasa and Spanish are still assistant-written.
+
 ### Three bugs the first review turned up, none of them cosmetic
 
 1. **The page threw on its SECOND render, and had since the renderer landed.** `render()` replaces
@@ -245,9 +266,9 @@ it (every dot names itself on hover, which is where the dropped one went).
   capture taken with it renders the whole thing. **Committing a live capture of somebody's house is
   Tomas's call, not a session's.**
 - **The ledger prints the alert's emoji.** §3: the emoji are a Telegram affordance and stay there.
-- **The text, and better insights.** Tomas's, and out of this release: the page's own strings want a
-  pass that makes them sound like a person wrote them, and the sentences the node composes want more
-  to say than a template can give them.
+- **More to anticipate.** The forecast is on the page and not yet in a sentence: "wind from the SE
+  through the evening" beside an air reading is the next honest addition, and it needs the engine to
+  read the forecast rows it currently ignores.
 - **`/earth`'s hint lies on a node that pruned its embeddings** — see above.
 - **The satellite loop is still ~7 MB** — see below. Not solved.
 - **`app/main.py`'s COMPANIONS comment says the three `.css` files are copied from planetai-design

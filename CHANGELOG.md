@@ -43,6 +43,11 @@ the hero's and the plan's ground drew at 900 px and pushed the page sideways on 
 the same; `?fixture=` still reached for `/settings`; and the wall carried the header, five buttons
 on a screen across a room.
 
+**The node says more with what it already has.** Land gives its history: which two years it
+compared, and how much has changed since the first year it holds. Heat has a direction, warming or
+cooling, the way air always had. A quiet issue names the day's high and the hour it landed instead
+of saying nothing. Every reason line says what happened rather than which state it is in.
+
 **Colour follows the node, not the page.** The hero's monument numeral turns red when a line has
 been crossed — and which lines this place has crossed is the node's judgement, not a comparison the
 page makes because it happens to hold two numbers. The first live render put a red 17 beside the

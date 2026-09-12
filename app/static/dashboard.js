@@ -104,7 +104,7 @@ const WORDS = {
         thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
         source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
         stale: 'stale', didThis: 'I did this', noted: 'noted', theLine: 'the line',
-        headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, which is set under Set up → Issues.',
+        headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         trust: {
           title: 'What the node doubts about its own sensors',
@@ -117,7 +117,7 @@ const WORDS = {
           frozen: ', {n} frozen channels' },
         ring: {
           title: 'The shape of the ring',
-          none: 'No neighbours yet. This node has not fetched the public stations around it, so its readings speak for this address and nothing else. Bali only: set BAD_ENABLED=1.',
+          none: 'No neighbours yet: this node has not fetched the public stations around it, so these readings speak for this address alone. Where there is an archive, BAD_ENABLED=1 turns it on.',
           one: 'One neighbour reporting, {km} km away. One is an anecdote: nothing here can tell a fire in the lane from a haze over the island.',
           silent: 'No neighbour is reporting right now, so there is nothing to compare this address against.',
           shape: '{n} neighbours. Lowest {lo}, middle half {p25} to {p75}, highest {hi}, all in {unit}. Nearest {km} km.',
@@ -130,7 +130,7 @@ const WORDS = {
           tipYou: 'you, {v} {unit}' },
         stations: {
           title: 'Who is out there, and how far',
-          sub: '{n} of {all} stations counted, within {km} km{skipped}. None of them is ours: what this node reads itself is kept out of this list.',
+          sub: '{n} of {all} stations counted, within {km} km{skipped}. None of them is yours: what this node reads itself stays out of this list.',
           skipped: ', {n} left out as indoors',
           empty: 'Nothing fetched yet. Once the node polls, every station within {km} km appears here with its distance.',
           row: '{km} km away \u00b7 {net} \u00b7 {when}',
@@ -138,7 +138,7 @@ const WORDS = {
           indoors: 'indoors, not counted', unknownNet: 'unknown network' },
         fc: {
           title: 'The day it is about to have',
-          none: 'No forecast yet. Set FORECAST_BMKG_ADM4 to this point\u2019s village code, or turn on Open-Meteo, and the next day of wind and rain appears here. `planetai run forecast verify` finds the code.',
+          none: 'No forecast yet. Set FORECAST_BMKG_ADM4 to this point\u2019s village code, or turn on Open-Meteo, and the next day of wind and rain appears here. planetai run forecast verify finds the code.',
           wind: 'The wind comes from the {dir} at {kmh} km/h.',
           rain: 'Rain expected from {at}, {mm} mm over the day.',
           dry: 'No rain expected in the next day.',
@@ -152,7 +152,7 @@ const WORDS = {
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
         source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
         stale: 'basi', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
-        headlineRule: 'Isu dengan hal terpenting tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, diatur di Set up → Issues.',
+        headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         trust: {
           title: 'Yang diragukan node tentang sensornya sendiri',
@@ -165,7 +165,7 @@ const WORDS = {
           frozen: ', {n} kanal beku' },
         ring: {
           title: 'Bentuk lingkar',
-          none: 'Belum ada tetangga. Node ini belum mengambil stasiun publik di sekitarnya, jadi bacaannya hanya berbicara untuk alamat ini. Khusus Bali: setel BAD_ENABLED=1.',
+          none: 'Belum ada tetangga: node ini belum mengambil stasiun publik di sekitarnya, jadi bacaan ini hanya berbicara untuk alamat ini. Di tempat yang punya arsip, BAD_ENABLED=1 menyalakannya.',
           one: 'Satu tetangga melapor, {km} km jauhnya. Satu itu anekdot: tidak ada di sini yang bisa membedakan kebakaran di gang dari kabut di atas pulau.',
           silent: 'Tidak ada tetangga yang melapor sekarang, jadi tidak ada pembanding untuk alamat ini.',
           shape: '{n} tetangga. Terendah {lo}, setengah tengah {p25} sampai {p75}, tertinggi {hi}, semua dalam {unit}. Terdekat {km} km.',
@@ -186,7 +186,7 @@ const WORDS = {
           indoors: 'di dalam ruangan, tidak dihitung', unknownNet: 'jaringan tidak diketahui' },
         fc: {
           title: 'Hari yang akan datang',
-          none: 'Belum ada prakiraan. Setel FORECAST_BMKG_ADM4 ke kode desa titik ini, atau nyalakan Open-Meteo, dan sehari angin dan hujan berikutnya muncul di sini. `planetai run forecast verify` mencari kodenya.',
+          none: 'Belum ada prakiraan. Setel FORECAST_BMKG_ADM4 ke kode desa titik ini, atau nyalakan Open-Meteo, dan sehari angin dan hujan berikutnya muncul di sini. planetai run forecast verify mencari kodenya.',
           wind: 'Angin datang dari {dir} pada {kmh} km/jam.',
           rain: 'Hujan diperkirakan mulai {at}, {mm} mm sepanjang hari.',
           dry: 'Tidak ada hujan diperkirakan sehari ke depan.',
@@ -213,7 +213,7 @@ const WORDS = {
           frozen: ', {n} canales congelados' },
         ring: {
           title: 'La forma del anillo',
-          none: 'A\u00fan no hay vecinos. Este nodo no ha tra\u00eddo las estaciones p\u00fablicas a su alrededor, as\u00ed que sus lecturas hablan de esta direcci\u00f3n y de nada m\u00e1s. S\u00f3lo en Bali: pon BAD_ENABLED=1.',
+          none: 'A\u00fan no hay vecinos: este nodo no ha tra\u00eddo las estaciones p\u00fablicas a su alrededor, as\u00ed que estas lecturas hablan s\u00f3lo de esta direcci\u00f3n. Donde hay archivo, BAD_ENABLED=1 lo enciende.',
           one: 'Un vecino informando, a {km} km. Uno es una an\u00e9cdota: nada aqu\u00ed distingue un fuego en el callej\u00f3n de una bruma sobre la isla.',
           silent: 'Ning\u00fan vecino est\u00e1 informando ahora, as\u00ed que no hay con qu\u00e9 comparar esta direcci\u00f3n.',
           shape: '{n} vecinos. M\u00ednimo {lo}, mitad central de {p25} a {p75}, m\u00e1ximo {hi}, todo en {unit}. El m\u00e1s cercano a {km} km.',
@@ -234,7 +234,7 @@ const WORDS = {
           indoors: 'en interiores, no contada', unknownNet: 'red desconocida' },
         fc: {
           title: 'El d\u00eda que est\u00e1 por venir',
-          none: 'A\u00fan no hay pron\u00f3stico. Pon FORECAST_BMKG_ADM4 con el c\u00f3digo de aldea de este punto, o enciende Open-Meteo, y el pr\u00f3ximo d\u00eda de viento y lluvia aparece aqu\u00ed. `planetai run forecast verify` encuentra el c\u00f3digo.',
+          none: 'A\u00fan no hay pron\u00f3stico. Pon FORECAST_BMKG_ADM4 con el c\u00f3digo de aldea de este punto, o enciende Open-Meteo, y el pr\u00f3ximo d\u00eda de viento y lluvia aparece aqu\u00ed. planetai run forecast verify encuentra el c\u00f3digo.',
           wind: 'El viento viene del {dir} a {kmh} km/h.',
           rain: 'Se espera lluvia desde las {at}, {mm} mm a lo largo del d\u00eda.',
           dry: 'No se espera lluvia en el pr\u00f3ximo d\u00eda.',
@@ -600,7 +600,7 @@ const COMPONENTS = {
     const sets = DISTANCES.filter(x => Array.isArray(ser[x]) && ser[x].some(v => v != null));
     if (!sets.length) {
       return `<div class="day" data-component="day"><p class="note">`
-        + `${esc(ctx.w.theDay)} — nothing recorded yet at any distance.</p></div>`;
+        + `${esc(ctx.w.theDay)}: nothing recorded yet at any distance.</p></div>`;
     }
     const W = 720, H = 220, pad = { l: 34, r: 12, t: 14, b: 18 };
     const all = sets.flatMap(x => ser[x]).filter(v => v != null);
@@ -1027,7 +1027,7 @@ const COMPOSITES = {
       src: y => `/earth/frame.png?source=sentinel&year=${y}`,
       caption: y => `Sentinel-2 annual median for ${y}`,
       credit: img.credit || [],
-      empty: 'No imagery yet — on the node: planetai run earth-engine timelapse',
+      empty: 'No imagery yet. On the node: planetai run earth-engine timelapse',
     }, ctx);
     return `<div class="grid g2">${own}${sen}</div>`;
   },
@@ -1401,7 +1401,7 @@ function arrangeControls() {
 async function layoutSave(reset) {
   LAYOUT = reset ? { order: [], hidden: [] } : LAYOUT;
   const tok = localStorage.getItem('planetai_admin');
-  if (!tok) { toast('Arranging needs the admin token — unlock under Set up.', true); return; }
+  if (!tok) { toast('Arranging needs the admin token. Unlock under Set up.', true); return; }
   try {
     await fetch('/settings', {
       method: 'PUT',
@@ -1478,8 +1478,8 @@ const GROUPS = {
   packs: ['Packs', 'Which packs load. Code packs stay off until you allow them; read one before you do.'],
   integrations: ['Integrations', 'Home Assistant over MQTT, and the Reticulum bridge.'],
   keys: ['Keys', 'What packs need to reach outside services. Secrets are never shown again once saved.'],
-  agent: ['Model', 'Which model answers the Telegram bot. The strongest reachable is used.'],
-  node: ['The tree', 'Who this node reports to, and who may report to it.'],
+  agent: ['Model', 'Which model answers on Telegram. The strongest one the node can reach is used.'],
+  node: ['The tree', 'Who this node reports upward to, and who may report to it. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
   bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
 };
 let GROUP = null, DESC = null, PACKS = [];
@@ -1494,7 +1494,7 @@ function groupsOf(desc) {
 }
 const groupTitle = g => (GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[0];
 const groupBlurb = g => (GROUPS[g] || [])[1]
-  || 'This node declares this group; nothing in the dashboard describes it yet. `planetai config` shows the same keys.';
+  || 'This node declares this group and the dashboard has no words for it yet. planetai config shows the same keys.';
 
 const BOOLS = /^(BAD_ENABLED|OPENMETEO_ENABLED|SENSOR_INDOOR|MESH_ALERTS|HA_DISCOVERY|EXPORT_ENABLED|IPFS_PUBLISH|QUIET_HOURS|BAD_INCLUDE_INDOOR|PACKS_ALLOW_CODE)$/;
 
@@ -1595,7 +1595,7 @@ async function saveSettings() {
     body: JSON.stringify(body),
   });
   if (r.status === 401) { toast('That token is not right.', true); lock(); return; }
-  if (r.status === 403) { toast('The node has no admin token yet — run planetai ui.', true); return; }
+  if (r.status === 403) { toast('The node has no admin token yet. Run planetai ui.', true); return; }
   toast(r.ok ? 'Saved. Live within about twenty seconds.' : 'Could not save (' + r.status + ').', !r.ok);
   if (r.ok) { loadSetup(); refresh(); }
 }

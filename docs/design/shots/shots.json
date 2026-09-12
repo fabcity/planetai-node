@@ -29,10 +29,10 @@
       "403 /issues",
       "403 /alerts",
       "403 /report/latest",
-      "403 /earth",
       "403 /rho",
-      "403 /trust",
+      "403 /earth",
       "403 /nearby",
+      "403 /trust",
       "403 /forecast",
       "403 /sensors",
       "403 /sparks"
@@ -104,8 +104,8 @@
         "figures"
       ],
       "sideways": false,
-      "height": 5549,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "height": 5557,
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -176,8 +176,8 @@
         "figures"
       ],
       "sideways": false,
-      "height": 4711,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "height": 4735,
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -248,8 +248,8 @@
         "figures"
       ],
       "sideways": false,
-      "height": 3306,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "height": 3358,
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -320,8 +320,8 @@
         "figures"
       ],
       "sideways": false,
-      "height": 3307,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "height": 3360,
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -392,8 +392,8 @@
         "figures"
       ],
       "sideways": false,
-      "height": 1301,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "height": 1321,
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -464,8 +464,8 @@
         "figures"
       ],
       "sideways": false,
-      "height": 1428,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "height": 1403,
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -537,7 +537,7 @@
       ],
       "sideways": false,
       "height": 1215,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],
@@ -609,7 +609,7 @@
       ],
       "sideways": false,
       "height": 1232,
-      "hero": "Holding at 6 µg/m³ over this square of the map."
+      "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
     "missed": [],

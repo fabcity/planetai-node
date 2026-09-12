@@ -63,9 +63,54 @@ EARTH = {"radius_m": 5000, "years": list(range(2017, 2026)), "frames": [2017, 20
          "latest": {"year_a": 2024, "year_b": 2025, "share_over_threshold": 0.01192,
                     "hectares_over_threshold": 119.2, "threshold": 0.15, "mean": 0.04345,
                     "computed_at": "2026-09-06T05:34:50Z"},
+         # every comparison the pack computed, as /earth's `changes` lists them: the yearly pairs and
+         # the one long span. The sentence's "8.5 % since 2017" comes from the longest span that ends
+         # in the latest year, and from nowhere else.
+         "changes": [{"year_a": 2017, "year_b": 2025, "share_over_threshold": 0.08468},
+                     {"year_a": 2023, "year_b": 2024, "share_over_threshold": 0.0101},
+                     {"year_a": 2024, "year_b": 2025, "share_over_threshold": 0.01192}],
          "attribution": "AlphaEarth Foundations, Google and Google DeepMind. CC BY 4.0."}
 
 OUT = run(earth=EARTH)
+
+# --- what the sentences add beyond the number ---------------------------------------------------
+# Land's history. The latest pair is the number; the longest span is the direction, and a household
+# deciding whether the trees behind them are going needs both.
+_land_en = OUT["issues"]["land"]["sentence"]["en"]
+check("between 2024 and 2025" in _land_en, f"land must say which two years it compared: {_land_en}")
+check("8.5 % since 2017" in _land_en, f"land must say how far back the change goes: {_land_en}")
+_no_span = run(earth={**EARTH, "changes": [EARTH["changes"][-1]]})["issues"]["land"]["sentence"]["en"]
+check("since" not in _no_span and "  " not in _no_span,
+      f"with no long span the sentence closes cleanly rather than leaving a gap: {_no_span}")
+for loc in I.LOCALES:
+    check(OUT["issues"]["land"]["sentence"][loc].count("2017") == 1, f"land.{loc} names the span year once")
+
+# Heat has a direction now, the way air has. Whichever verb the trend picks, the numeral must survive.
+_heat_verbs = DECL["heat"]["sentences"]["en"]["verbs"]
+check(set(_heat_verbs) == {"rising", "steady", "falling"}, "heat declares all three directions")
+check(any(OUT["issues"]["heat"]["sentence"]["en"].startswith(v) for v in _heat_verbs.values()),
+      f"heat's sentence opens with one of its verbs: {OUT['issues']['heat']['sentence']['en']}")
+
+# The day's high. A quiet issue used to say "nothing to say"; with 24 hours in hand it says the one
+# thing there is to say. The reason carries the value WITH its unit and the hour it landed in.
+_quiet = run(data={**FIX, "alerts": [], "actions": []}, declared="air")["issues"]["air"]
+check(_quiet["state"] in ("quiet", "notable"), f"with no alerts air is quiet or over the line, not {_quiet['state']}")
+check(_quiet["reason"].get("peak") == "17 µg/m³", f"the day's high carries its unit: {_quiet['reason']}")
+check(re.fullmatch(r"\d\d:\d\d", _quiet["reason"].get("peak_at") or ""), f"and its hour: {_quiet['reason']}")
+check("17 µg/m³" in _quiet["reason_text"]["en"] and _quiet["reason"]["peak_at"] in _quiet["reason_text"]["en"],
+      f"the quiet line says the high and when: {_quiet['reason_text']['en']}")
+check(engine._peak([1, 2, 3], ["a", "b", "c"], 0, "x") == {}, "fewer than six hours is not a day")
+check(engine._peak([None, 4, 9, 2, None, 3, 3, 1, 2], list(range(9)), 1, "°C")["peak"] == "9.0 °C",
+      "the high skips the hours that never reported")
+# The fixture's own two clocks: alerts at +08:00, buckets in UTC. The high is printed in the alerts'
+# zone, so it sits beside the ask times on the same evening rather than eight hours away.
+_z = engine._clock({"alerts": FIX["alerts"]})
+check(_z is not None and datetime(2026, 9, 6, 6, 0, tzinfo=timezone.utc).astimezone(_z).hour == 14,
+      "the clock is the alerts' zone when NODE_TZ is unset")
+check(_quiet["reason"]["peak_at"] == "06:00" or engine._clock({"alerts": []}) is None,
+      "with no alert to take a zone from, the bucket prints as it came")
+check(engine._reason_text({"code": "no_alert"}, "en") == "quiet",
+      "with no high known the quiet line stays short rather than printing empty braces")
 
 # --- the stack -----------------------------------------------------------------------------------
 air = OUT["issues"]["air"]["stack"]

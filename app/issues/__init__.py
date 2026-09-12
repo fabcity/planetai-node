@@ -42,7 +42,10 @@ STATE_SENTENCES = ("context", "none")
 
 # Everything a template may ask for, and nothing else. The engine fills all five; a template using
 # a name that is not here would render a literal brace to somebody's kitchen wall.
-PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp")
+# `span` and `since` are the land record's own history: "between 2024 and 2025", "8.5 % since 2017".
+# They fill from the earth cell's `extra` and are empty for every other issue, so a template that
+# names them on an issue that cannot fill them renders a clean sentence rather than a brace.
+PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp", "span", "since")
 
 WHERE_FROM = ("stats", "observations", "earth")
 AGGREGATES = ("mean", "median", "fenced_median")
@@ -87,37 +90,51 @@ CMP_WORDS = {
 }
 # Why an issue is in the state it is in. The engine returns the code and the rendered line, so the
 # page draws a kicker without owning any of these words. Eight codes, three locales, one table.
+# How the land record says when. `between` takes the two years of the latest comparison; `since`
+# takes the longest span the pack computed and its figure, and carries its own full stop because the
+# template puts it between two sentences and it is often absent.
+SPAN_WORDS = {
+    "en": {"between": "between {a} and {b}", "since": "{pct} % since {year}."},
+    "id": {"between": "antara {a} dan {b}", "since": "{pct} % sejak {year}."},
+    "es": {"between": "entre {a} y {b}", "since": "{pct} % desde {year}."},
+}
 REASON_WORDS = {
     "en": {
-        "open_ask_current": "an open ask from {when}, still true",
-        "open_ask_stale":   "one ask still open from {when}; the reading came back on its own",
-        "alert_today":      "a {level} at {when}, since passed",
+        "open_ask_current": "asked at {when}, and still true",
+        "open_ask_stale":   "asked at {when}; the reading came back on its own, the ask is still open",
+        "alert_today":      "a {level} at {when}, over now",
         "over_line":        "over the line, and nobody has been asked to do anything",
-        "no_alert":         "nothing to say",
-        "context_only":     "context — it informs, it never asks",
-        "ask_how":          "Reply /act {id} and say what you did.",
+        "over_line_peak":   "over the line since the day's high of {peak} at {peak_at}, and nobody has been asked to do anything",
+        "no_alert":         "quiet",
+        "no_alert_peak":    "quiet; the day's high was {peak} at {peak_at}",
+        "context_only":     "context: it informs, it never asks",
+        "ask_how":          "Reply /act {id} on Telegram and say what you did.",
         "not_watched":      "not watched here",
         "no_source":        "no source",
     },
     "id": {
-        "open_ask_current": "permintaan terbuka sejak {when}, masih berlaku",
-        "open_ask_stale":   "satu permintaan masih terbuka sejak {when}; bacaan sudah kembali sendiri",
+        "open_ask_current": "diminta pada {when}, dan masih berlaku",
+        "open_ask_stale":   "diminta pada {when}; bacaannya sudah kembali sendiri, permintaannya masih terbuka",
         "alert_today":      "{level} pada {when}, sudah lewat",
         "over_line":        "di atas batas, dan belum ada yang diminta melakukan apa pun",
-        "no_alert":         "tidak ada yang perlu dikatakan",
-        "context_only":     "konteks — memberi tahu, tidak pernah meminta",
-        "ask_how":          "Balas /act {id} dan sebutkan apa yang Anda lakukan.",
+        "over_line_peak":   "di atas batas sejak puncak hari ini {peak} pada {peak_at}, dan belum ada yang diminta melakukan apa pun",
+        "no_alert":         "tenang",
+        "no_alert_peak":    "tenang; puncak hari ini {peak} pada {peak_at}",
+        "context_only":     "konteks: memberi tahu, tidak pernah meminta",
+        "ask_how":          "Balas /act {id} di Telegram dan sebutkan apa yang Anda lakukan.",
         "not_watched":      "tidak dipantau di sini",
         "no_source":        "tidak ada sumber",
     },
     "es": {
-        "open_ask_current": "una petición abierta desde {when}, aún vigente",
-        "open_ask_stale":   "queda una petición abierta desde {when}; la lectura volvió por sí sola",
+        "open_ask_current": "pedido a las {when}, y sigue vigente",
+        "open_ask_stale":   "pedido a las {when}; la lectura volvió sola, la petición sigue abierta",
         "alert_today":      "un {level} a las {when}, ya pasado",
         "over_line":        "por encima del límite, y no se ha pedido nada a nadie",
-        "no_alert":         "nada que decir",
-        "context_only":     "contexto — informa, nunca pide",
-        "ask_how":          "Responde /act {id} y di qué hiciste.",
+        "over_line_peak":   "por encima del límite desde el máximo del día, {peak} a las {peak_at}, y no se ha pedido nada a nadie",
+        "no_alert":         "tranquilo",
+        "no_alert_peak":    "tranquilo; el máximo del día fue {peak} a las {peak_at}",
+        "context_only":     "contexto: informa, nunca pide",
+        "ask_how":          "Responde /act {id} en Telegram y di qué hiciste.",
         "not_watched":      "no se vigila aquí",
         "no_source":        "sin fuente",
     },
