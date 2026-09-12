@@ -83,6 +83,8 @@ LABEL_WORDS = {
     "es": {"room": "habitación", "yard": "patio", "ring": "alrededor", "region": "región"},
 }
 # {cmp} is assembled from these. Never a bare number: a comparison a household can read.
+# "a, b and c". The list separator the sentences use when one comparison covers several distances.
+JOIN_WORDS = {"en": "and", "id": "dan", "es": "y"}
 CMP_WORDS = {
     "en": {"over": "over {noun}", "under": "under {noun}", "level": "level with {noun}"},
     "id": {"over": "di atas {noun}", "under": "di bawah {noun}", "level": "setara dengan {noun}"},

@@ -39,7 +39,7 @@ from datetime import datetime, timezone
 
 import packs
 
-from . import (CMP_WORDS, DISTANCES, LABEL_WORDS, LOCALES, NOUN_WORDS, REASON_WORDS,
+from . import (CMP_WORDS, DISTANCES, JOIN_WORDS, LABEL_WORDS, LOCALES, NOUN_WORDS, REASON_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
 from .schema import is_open, is_seen, place_of, stage_of
 
@@ -451,6 +451,13 @@ def _where(d: dict, dist: str, loc: str) -> str:
     return override or WHERE_WORDS.get(loc, WHERE_WORDS["en"]).get(dist, dist)
 
 
+def _join(items: list[str], word: str) -> str:
+    """a, b and c."""
+    if len(items) < 2:
+        return "".join(items)
+    return f"{', '.join(items[:-1])} {word} {items[-1]}"
+
+
 def _cmp(d, stack, headline_dist, loc, compare) -> str:
     """{cmp}: where the headline number stands against every other distance that has one.
 
@@ -464,13 +471,20 @@ def _cmp(d, stack, headline_dist, loc, compare) -> str:
         head = (stack.get(headline_dist) or {}).get("value")
         words = CMP_WORDS.get(loc, CMP_WORDS["en"])
         nouns = NOUN_WORDS.get(loc, NOUN_WORDS["en"])
-        parts = []
+        # One clause per RELATION, not one per distance. Node #1 has a yard, so three distances all
+        # answered "level" and the hero read "Level with the wall outside, level with the street,
+        # level with the model" — the same three words three times, five lines of headline on a
+        # screen budgeted for two. Grouped, that is "Level with the wall outside, the street and the
+        # model", and a household reads one comparison instead of counting three.
+        grouped: dict[str, list[str]] = {}
         for dist in DISTANCES:
             if dist == headline_dist or not stack.get(dist):
                 continue
             rel = _worse(head, stack[dist]["value"], compare)
             if rel:
-                parts.append(words[rel].format(noun=nouns.get(dist, dist)))
+                grouped.setdefault(rel, []).append(nouns.get(dist, dist))
+        join = JOIN_WORDS.get(loc, JOIN_WORDS["en"])
+        parts = [words[rel].format(noun=_join(ns, join)) for rel, ns in grouped.items()]
     if not parts:
         return ""
     s = ", ".join(parts)

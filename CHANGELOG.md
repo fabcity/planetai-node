@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased — what node #1 showed
+
+v0.45 went onto node #1 and the plan came back wrong, which is what looking at a real node is for.
+
+**The plan of the kilometre is legible again.** Every road was drawing as a filled black wedge over
+the buildings: an SVG polyline with no fill declared is filled BLACK, the programme layer has no
+class for a road, and the page had not declared one. Node #1 has 530 roads. While it was being
+found, `dashboard.css` turned out to re-declare all eleven of the layer's binding classes and to
+have drifted on two of them — vegetation drew in ink, so every park and field was the same colour
+as the buildings. The copies are gone and the layer governs again; the page declares only the road.
+
+**The place band stopped saying "nothing mapped around this node yet"** next to a plan holding four
+thousand three hundred shapes. It carries the two counts as signs instead: what OpenStreetMap has,
+and what only a satellite has seen — 2,699 against 1,599 at one sign per 250.
+
+**The hero said the same sentence three times.** The kicker, the why line and the ask strip all
+printed the reason. The why line now names the line the reading is judged against and who set it;
+the ask strip carries the alert's own words, so the hero says which reading asked for something
+rather than repeating when it asked.
+
+**One comparison per relation.** Node #1 has a yard, so three distances answered "level" and the
+hero read "Level with the wall outside, level with the street, level with the model" — five lines of
+headline. It reads "Level with the wall outside, the street and the model."
+
+**The emoji stay in Telegram** (§3), in the ledger, the ask strip and the report the node last
+wrote. Also: the ρ row says what it counts, coast's three readouts name their one source once
+instead of three times, a rule id sits under its message instead of welded to the full stop, and the
+trust card stopped pushing a phone sideways when a sensor has a long name.
+
 ## v0.45 — 2026-09-12 — the dashboard draws
 
 The other half of the redesign: the page. Proven on a VM with node #1's satellite record and

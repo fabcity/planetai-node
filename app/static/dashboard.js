@@ -106,6 +106,13 @@ const WORDS = {
         stale: 'stale', didThis: 'I did this', noted: 'noted', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
+        rho: '{closed} of {total} asks answered',
+        place: {
+          none: 'Nothing mapped around this node yet. On the node: planetai run place refresh',
+          mapped: 'mapped', mappedSub: 'OpenStreetMap',
+          orbit: 'from orbit only', orbitSub: 'Google Open Buildings',
+          cap: '{n} buildings, one sign per {per}',
+          gap: '{n} more the map does not have yet, one sign per {per}' },
         trust: {
           title: 'What the node doubts about its own sensors',
           ok: 'Every sensor reported all week.',
@@ -154,6 +161,13 @@ const WORDS = {
         stale: 'basi', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
+        rho: '{closed} dari {total} permintaan dijawab',
+        place: {
+          none: 'Belum ada yang dipetakan di sekitar node ini. Di node: planetai run place refresh',
+          mapped: 'dipetakan', mappedSub: 'OpenStreetMap',
+          orbit: 'hanya dari orbit', orbitSub: 'Google Open Buildings',
+          cap: '{n} bangunan, satu tanda per {per}',
+          gap: '{n} bangunan lagi yang belum ada di peta, satu tanda per {per}' },
         trust: {
           title: 'Yang diragukan node tentang sensornya sendiri',
           ok: 'Semua sensor melapor sepanjang minggu.',
@@ -202,6 +216,13 @@ const WORDS = {
         stale: 'viejo', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
+        rho: '{closed} de {total} peticiones respondidas',
+        place: {
+          none: 'A\u00fan no hay nada cartografiado alrededor de este nodo. En el nodo: planetai run place refresh',
+          mapped: 'cartografiado', mappedSub: 'OpenStreetMap',
+          orbit: 's\u00f3lo desde \u00f3rbita', orbitSub: 'Google Open Buildings',
+          cap: '{n} edificios, un signo por cada {per}',
+          gap: '{n} edificios m\u00e1s que el mapa a\u00fan no tiene, un signo por cada {per}' },
         trust: {
           title: 'Lo que el nodo duda de sus propios sensores',
           ok: 'Todos los sensores informaron toda la semana.',
@@ -396,7 +417,9 @@ function drawForecast(d, ctx) {
     || 'BMKG, api.bmkg.go.id. Open-Meteo, open-meteo.com, CC-BY 4.0, when it is on.');
   const card = (steps, note) => `<div class="card fc" data-component="forecast" data-card="forecast">`
     + `<div class="k">${esc(w.title)}</div><p class="note">${note}</p>${steps}`
-    + `<p class="note">${cite} ${esc(w.notPredict)}</p></div>`;
+    // two paragraphs: joined by a space the credit ran straight into the sentence after it, as
+    // "…(free tier: non-commercial use only) The node fetches this".
+    + `<p class="note mt">${cite}</p><p class="note">${esc(w.notPredict)}</p></div>`;
 
   const hours = (d && d.hours) || [];
   if (!hours.length) return card('', esc(w.none));
@@ -476,6 +499,51 @@ function spark(vals, ctx, opt = {}) {
     + `</svg>`;
 }
 
+/* What the map has against what the satellite sees, as signs rather than as two more numbers.
+ *
+ * §3 asks the place band for the mapped and the orbit-only buildings at one sign per 250. The gap
+ * between them is the whole point of the band: 2,699 buildings somebody drew, and 1,599 more that
+ * only a satellite has ever seen. The legend under the plan gives the counts; a count does not show
+ * you that the second number is more than half the first, and a row of houses does.
+ */
+const PLAN_PER = 250;
+function planUnits(plan, ctx) {
+  const F = (plan && plan.features) || [];
+  if (!F.length) return [];
+  // Only what the plan can draw, which is what its legend counts. Counting every feature instead
+  // put 2,714 in this column beside "mapped 2,699" in the legend under it.
+  const drawable = f => f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon');
+  const n = k => F.filter(f => f.properties.kind === k && drawable(f)).length;
+  const w = ctx.w.place;
+  const rows = [];
+  const mapped = n('building'), orbit = n('sat');
+  if (mapped) {
+    rows.push({ label: w.mapped, sub: w.mappedSub, n: mapped, per: PLAN_PER, sign: 'house',
+                cap: t(w.cap, { n: mapped.toLocaleString(), per: PLAN_PER }) });
+  }
+  if (orbit) {
+    rows.push({ label: w.orbit, sub: w.orbitSub, n: orbit, per: PLAN_PER, sign: 'house', cls: 'sat',
+                cap: t(w.gap, { n: orbit.toLocaleString(), per: PLAN_PER }) });
+  }
+  return rows;
+}
+
+/* An alert's own words, without the Telegram furniture.
+ *
+ * §3: "A ledger row's text is the message's words; the emoji are a Telegram affordance and stay
+ * there." They are how a rule shouts in a chat window; on a page that already carries a state, a
+ * weight and a colour role, they are decoration this language does not use. The first line is the
+ * headline the rule wrote — the rest is the body, which Telegram has room for and this does not.
+ */
+const plain = s => String(s || '')
+  .replace(/[\p{Extended_Pictographic}\uFE0F\u200D]+/gu, ' ')
+  // only a real sentence mark, and only when a break follows it: a Meshtastic id is `!8f491db0`
+  // and "mesh !8f491db0" came back as "mesh!8f491db0" the first time this ran
+  .replace(/ +([,.;:](?=\s|$))/g, '$1')
+  .replace(/[ \t]{2,}/g, ' ')
+  .trim();
+const alertLine = s => plain(String(s || '').split('\n')[0]);
+
 const COMPONENTS = {
 
   kicker(d, ctx) {
@@ -499,12 +567,16 @@ const COMPONENTS = {
     return `<p class="big" data-component="sentence">${marked}</p>`;
   },
 
+  /* The line this number is judged against, and who set it.
+   *
+   * It used to open with `reason_text` — which the kicker one line above prints in full, and which
+   * the ask strip prints a third time. Node #1's hero said "asked at 11:05; the reading came back on
+   * its own, the ask is still open" twice, once in caps and once in prose, and then ran the WHO
+   * source on from the end of it. The reason belongs to the kicker (§3). This says whose line. */
   why(d, ctx) {
-    const line = d.line
-      ? `${esc(d.line.source)}${d.line.value != null ? ` · ${ctx.fmt(d.line.value, d.dp)} ${esc(d.line.unit || d.unit || '')}` : ''}`
-      : '';
-    return `<p class="why" data-component="why">${esc(d.reason_text ? d.reason_text[ctx.locale] : '')}`
-      + (line ? ` <span class="note">${line}</span>` : '') + `</p>`;
+    if (!d.line) return '';
+    const v = d.line.value != null ? ` · ${ctx.fmt(d.line.value, d.dp)} ${esc(d.line.unit || d.unit || '')}` : '';
+    return `<p class="why" data-component="why">${esc(d.line.source)}${v}</p>`;
   },
 
   chips(d, ctx) {
@@ -662,8 +734,11 @@ const COMPONENTS = {
     }
     let s = '';
     for (let i = 0; i < Math.min(total, 120); i++) s += ctx.sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
+    // §3: the row carries a caption naming reported against observed. Fifty-eight rings wrapping
+    // three times with nothing under them is a texture, not a measurement.
     return `<div class="rho${d.small ? ' small' : ''}" data-component="rhoRow" role="img"`
-      + ` aria-label="${closed} of ${total} asks answered">${s}</div>`;
+      + ` aria-label="${closed} of ${total} asks answered">${s}</div>`
+      + `<p class="note rhocap">${t(esc(ctx.w.rho), { closed, total })}</p>`;
   },
 
   /* The ask strip. It carries the HEADLINE issue's ask, so the hero and the instruction cannot
@@ -672,7 +747,10 @@ const COMPONENTS = {
   askStrip(d, ctx) {
     const ask = (d.open_asks || [])[0];
     if (!ask) return `<div class="askstrip" data-component="askStrip" hidden></div>`;
-    const says = (ask.says || {})[ctx.locale] || '';
+    // The alert's own headline. It used to print `says`, which is word for word what the kicker
+    // three lines above prints, so the hero said one sentence twice and never said which reading
+    // had asked for something.
+    const says = alertLine(ask.text) || (ask.says || {})[ctx.locale] || '';
     const how = (ask.how || {})[ctx.locale] || '';
     return `<div class="askstrip" data-component="askStrip" data-alert="${esc(String(ask.id))}">`
       + `<div class="what">${esc(says)}<small>${esc(how)}</small></div>`
@@ -752,7 +830,7 @@ const COMPONENTS = {
       const done = a.acted_at;
       return `<div class="al"><span class="when mono">${esc(ctx.hhmm(a.ts))}</span>`
         + `<span class="iss${a.level === 'act' ? ' act' : ''}">${esc(a.level || '')}</span>`
-        + `<span class="txt">${esc(String(a.text || '').split('\n')[0])}`
+        + `<span class="txt">${esc(alertLine(a.text))}`
         + `<span class="meta">${esc(a.rule_id || '')}</span></span>`
         + `<span class="do">${done
             ? `<span class="done">${ctx.sign('rho-closed', 'closed')} ${esc(ctx.w.noted)} ${esc(ctx.hhmm(done))}</span>`
@@ -766,7 +844,8 @@ const COMPONENTS = {
     if (!d || !d.text) return `<div class="rep" data-component="report"><p class="note">no report yet</p></div>`;
     return `<div class="rep" data-component="report">`
       + `<div class="k">${esc(ctx.hhmm(d.ts))}${d.sent === false ? ' · held for quiet hours' : ''}</div>`
-      + `<p>${esc(d.text)}</p></div>`;
+      // the report is the message Telegram received, and it arrives wearing Telegram's punctuation
+      + `<p>${esc(plain(d.text))}</p></div>`;
   },
 
   /* Two satellite records, one component, told apart by the pill. `model` is this node's own
@@ -994,11 +1073,18 @@ const COMPOSITES = {
     // Land and left the two satellite cards squeezed into the right-hand column with a hole beside
     // them. A composite with nothing to say says nothing; `sources` below draws a sentence instead,
     // because "no sensor at this distance" IS something to say and an absent readout is not.
-    const rows = (d.readouts || []).map(r => COMPONENTS.readout({
+    const rs = d.readouts || [];
+    // Coast's three readouts all come from one marine cell, and each printed "Sea, 5 km off
+    // (-8.79, 115.13)" under itself — the same line three times, wrapped to four lines each in a
+    // third of a column. One source, said once, under the row it belongs to.
+    const one = rs.length > 1 && new Set(rs.map(r => `${r.source}|${r.provenance}`)).size === 1;
+    const rows = rs.map(r => COMPONENTS.readout({
       label: r.label ? r.label[ctx.locale] : r.metric, value: r.value, dp: r.dp, unit: r.unit,
-      source: r.source, provenance: r.provenance,
+      source: one ? '' : r.source, provenance: one ? '' : r.provenance,
     }, ctx)).join('');
-    return rows ? `<div class="grid g3">${rows}</div>` : '';
+    if (!rows) return '';
+    return `<div class="grid g3">${rows}</div>`
+      + (one ? `<p class="note mt">${esc(rs[0].source)} ${ctx.pill(rs[0].provenance)}</p>` : '');
   },
   /* Land gets the satellite component twice: this node's own record, and the imagery — two records,
    * two provenance words, never merged. Everything else gets neither. */
@@ -1032,8 +1118,13 @@ const COMPOSITES = {
     return `<div class="grid g2">${own}${sen}</div>`;
   },
   units(d, ctx) {
-    return (d.units || []).map(u => COMPONENTS.unitRow(u, ctx)).join('')
-      || `<p class="note">nothing mapped around this node yet</p>`;
+    // The note is for a node whose place pack has never run. It used to be the only thing that ever
+    // rendered — the band passed an empty list on every node — so node #1 read "nothing mapped
+    // around this node yet" in the column beside a plan holding four thousand three hundred shapes.
+    const rows = (d.units || []).map(u => COMPONENTS.unitRow(u, ctx)).join('');
+    // One element. Returned loose, the two rows became two grid children and the second one wrapped
+    // into the plan's column.
+    return `<div class="units">${rows || `<p class="note">${esc(ctx.w.place.none)}</p>`}</div>`;
   },
   wallIndex(d, ctx) {
     const rows = (d.issues || []).map(i =>
@@ -1111,8 +1202,8 @@ function bandFor(id, snap, ctx) {
     return `<section class="band" id="place" data-band="place">`
       + `<div class="bandhead"><div class="k">${esc(ctx.w.thePlace)}</div></div>`
       + `<div class="grid g21">${assemble(ANATOMY.place, { caption: (snap.health || {}).cell ? snap.health.cell.caption : '',
-        status: snap.placeStatus, plan: snap.place, node: (snap.health || {}).node, units: [],
-        rows: snap.trust || [] }, ctx)}</div></section>`;
+        status: snap.placeStatus, plan: snap.place, node: (snap.health || {}).node,
+        units: planUnits(snap.place, ctx), rows: snap.trust || [] }, ctx)}</div></section>`;
   }
   if (id === 'loop') {
     return `<section class="band" id="loop" data-band="loop">`
