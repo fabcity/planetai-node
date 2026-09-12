@@ -255,6 +255,31 @@ squeezed into the right-hand column; the scale strip overprinted `REGION 28.1` t
 when three distances read close together, and drops a label it cannot fit rather than overprinting
 it (every dot names itself on hover, which is where the dropped one went).
 
+## What node #1 showed, 12 September
+
+v0.45 installed on node #1 and the place band came back wrong. Reviewed in a browser against the
+live node — `tools/shots.py --url`, with a small proxy in front so an authorised reader could be
+rendered without writing the node's token into a page (`/place/geojson` needs one at every share
+level, and a browser cannot put a header on an `<img>`).
+
+**The plan.** Roads drew as filled black wedges: a `<polyline>` with no `fill` declared is filled
+black, `planetai-theme.css` has no `.road` binding class, and `dashboard.css` had not declared one.
+Finding it turned up the larger thing — **`dashboard.css` re-declared all eleven of the layer's
+binding classes**, copied from the prototype and loaded after the layer, so the page was quietly
+overriding the frozen file. Two had drifted: `.veg` said ink where the layer says `var(--rings)`, so
+every park drew in the building colour. `check_theme` holds the layer's *contents* and cannot see a
+second file redefining its selectors — worth a rule if it happens again.
+
+Also on that card: two `.cap` divs were both `position:absolute` at one corner and printed over each
+other and over the legend's second row; the uses swatch was styled `.use` while the markup writes
+the layer's key `poi`, so it was a black square beside blue dots; the unit rows counted every
+building feature (2,714) while the legend counts the ones it can draw (2,699).
+
+**Text.** The hero printed the reason three times — kicker, why line, ask strip. The why line now
+carries the line and its source; the ask strip carries the alert's own headline. `{cmp}` groups by
+relation, so three "level with" clauses became one. The Telegram emoji are stripped from the ledger,
+the ask strip and the report (§3).
+
 ## Still open
 
 - **No beta tester has seen anything, and nothing has run on a real node.** `pai-clean` is a VM with
@@ -265,7 +290,14 @@ it (every dot names itself on hover, which is where the dropped one went).
   picture, but is not the populated page. `planetai snapshot` answers all twelve endpoints; a
   capture taken with it renders the whole thing. **Committing a live capture of somebody's house is
   Tomas's call, not a session's.**
-- **The ledger prints the alert's emoji.** §3: the emoji are a Telegram affordance and stay there.
+- **The plan's green is loud.** The layer says vegetation is `var(--rings)` at full strength and
+  node #1's kilometre is a third fields, so green is the first thing the eye lands on. That is the
+  layer's call (R3 accepted the collision with "a loop closed"); changing it is a design decision,
+  not a bug fix.
+- **`/place/geojson` declares `radius_m` from the current setting and filters nothing spatially**, so
+  it serves whatever the pack ever stored — node #1's features reach 2.4 km with `radius_m: 1000`,
+  and the plan clips the rest. Harmless today because Overpass returns whole ways that merely cross
+  the circle; wrong the day somebody lowers the radius.
 - **More to anticipate.** The forecast is on the page and not yet in a sentence: "wind from the SE
   through the evening" beside an air reading is the next honest addition, and it needs the engine to
   read the forecast rows it currently ignores.

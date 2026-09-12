@@ -95,6 +95,9 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .g21{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
 @media(max-width:900px){.g2,.g3,.g21{grid-template-columns:1fr}
+/* the band is one column here, so the rule that pins the rows beside the plan has to let go —
+   pinned to a column that no longer exists, it made the page scroll sideways at 375 */
+#place .grid>:not(:first-child){grid-column:1}
 }
 .mt{margin-top:clamp(12px,1.5vw,18px)}
 /* hero */
@@ -204,19 +207,33 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 /* the ring's shape, and the rows the node doubts. Both are two-column lines, not tables: a table
    with two cells is a table nobody can read on a phone. */
 .ringstrip{width:100%;height:64px;display:block;margin:12px 0 10px;overflow:visible}
-.vit{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-top:1px solid var(--hair);font-size:13.5px}
+/* The verdict never wraps, so a long sensor name pushed it off the page: node #1 has one called
+   BAYU NEW ENCLOSURE and at 375 the row ran seven pixels past the viewport. The name gives way. */
+.vit{display:flex;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--hair);font-size:13.5px}
 .vit:first-of-type{border-top:0}
+.vit span:first-child{min-width:0;overflow-wrap:anywhere}
 .vit span:last-child{font:500 12px var(--mono);color:var(--mute);text-align:right;white-space:nowrap}
 /* plan */
+/* The plan is column one and the rows beside it stack in column two. Without this the band's
+   three children auto-placed as (1,1) (1,2) (2,1), which put the second unit row under the
+   plan instead of under the first. */
+#place .grid>:not(:first-child){grid-column:2}
+.units{display:block}
 .plan{border:1px solid var(--hair);padding:0;position:relative;background:var(--ground)}
 .plan>svg,.plan>img{width:100%;height:auto;display:block}
-.plan .cap{position:absolute;left:12px;bottom:10px;font:500 10.5px/1.5 var(--mono);letter-spacing:.08em;color:var(--mute);background:var(--ground);padding:2px 6px}
+/* Two of these can be present — the count of shapes the plan cannot draw, and the cell stamp — and
+   both were absolute at the same corner, so they printed over each other and over the legend's
+   second row. They flow under the legend instead. */
+.plan .cap{font:500 10.5px/1.5 var(--mono);letter-spacing:.08em;color:var(--mute);padding:5px 12px}
+.plan .cap:last-child{padding-bottom:11px}
 .plan-legend{display:flex;gap:14px;flex-wrap:wrap;font:500 11px var(--mono);letter-spacing:.04em;color:var(--mute);padding:10px 12px;border-bottom:1px solid var(--hair)}
 .plan-legend i{display:inline-block;width:10px;height:10px;vertical-align:-1px;margin-right:6px;background:var(--ink)}
 .plan-legend i.sat{background:var(--satellite-only)}
 .plan-legend i.road{background:none;border-top:1px solid var(--ink);height:0;vertical-align:3px}
-.plan-legend i.use{background:var(--cells);border-radius:50%}
-.plan-legend i.green{background:var(--ink);opacity:.12}
+/* the markup writes the layer's own key — `poi` — so a rule named .use styled nothing and the
+   uses swatch fell back to a black square beside blue dots on the plan */
+.plan-legend i.poi{background:var(--cells);border-radius:50%}
+.plan-legend i.green{background:var(--rings)}
 .plan-legend i.mesh{background:none;border:1px solid var(--ink);opacity:.5}
 /* the satellite: a frame that changes once a year, so it moves once every --motion-satellite-year and never fades */
 .sat-loop{position:relative;aspect-ratio:1;width:100%;background:var(--raise);border:1px solid var(--hair);overflow:hidden}
@@ -235,6 +252,7 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .wall .sat-bar .yr{color:var(--ink)}
 /* loop */
 .rho{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.rhocap{margin-top:8px}
 .rho svg.sg{width:20px;height:20px;color:var(--ink)}
 .rho svg.closed{color:var(--rings)}
 .rho.small svg.sg{width:13px;height:13px}
@@ -246,7 +264,9 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .ledger .iss.act{color:var(--ink);font-weight:700}
 .ledger .txt{font-size:14px;line-height:1.5}
 .ledger .txt small{color:var(--mute)}
-.ledger .txt .meta{font:500 11px var(--mono);color:var(--dim);margin-top:4px;letter-spacing:.02em}
+/* block, not inline: it had a margin-top and no display, so every ledger row read
+   "...at K ROOM - BAYU HOLES.heat/night_no_relief" with the rule welded to the full stop. */
+.ledger .txt .meta{display:block;font:500 11px var(--mono);color:var(--dim);margin-top:4px;letter-spacing:.02em}
 .ledger .do{white-space:nowrap}
 .ledger .do button{background:var(--rings);border-color:var(--rings);color:#fff;font-weight:600;font-size:13px;padding:7px 12px}
 .ledger .do .done{color:var(--rings);font:600 12.5px var(--fc-font-body)}
@@ -349,17 +369,17 @@ body.wallview header{display:none}
 .wall .foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:end;margin-top:clamp(28px,4vw,56px);font:500 clamp(11px,.9vw,13px) var(--mono);letter-spacing:.06em;color:var(--mute)}
 .wall .exit{position:absolute;top:18px;right:18px;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);border:1px solid var(--hair);padding:6px 10px;z-index:2}
 /* the binding classes every planetai-design asset carries (node-ground, kilometre), scoped to inline drawings */
-svg .ground{fill:var(--ground)}
-svg .land{fill:var(--ink);fill-opacity:.12}
-svg .cell{fill:none;stroke:var(--cells)}
-svg .chain{fill:var(--cells);stroke:var(--cells)}
-svg .lit{fill:var(--cells);stroke:var(--cells);color:var(--cells)}
-svg .ring{fill:none;stroke:var(--rings);color:var(--rings)}
-svg .hair{fill:none;stroke:var(--ink)}
-svg .fig{fill:var(--ink);color:var(--ink)}
-svg .label{fill:var(--ink);font-family:var(--mono)}
-svg .sat{fill:var(--satellite-only);color:var(--satellite-only)}
-svg .veg{fill:var(--ink);color:var(--ink)}
+/* The binding classes — .ground .land .cell .chain .lit .ring .hair .fig .label .sat .veg — belong to
+   planetai-theme.css and are NOT repeated here. They used to be: eleven rules copied from the
+   prototype, loaded after the layer and therefore beating it, and two of them had drifted. `.veg`
+   said ink where the layer says var(--rings), so every park and every field on the plan drew in the
+   same ink as the buildings and could not be told from them. Copying a frozen file into the file
+   that loads after it is how a layer stops being frozen.
+
+   `.road` is the one the layer has no class for, so it is the page's to declare — and it has to be
+   declared, because an SVG polyline with no fill is filled BLACK by default. Every road that crossed
+   node #1's kilometre was drawing as a solid black wedge over the map. Stroked, never filled. */
+.plan g.road{fill:none;stroke:var(--ink)}
 /* a sign is a nested svg drawn in currentColor; it always has a size, so a stray one can never fall back to 300x150 */
 svg.sg{width:1em;height:1em;flex:none;vertical-align:-.12em}
 /* reduced motion: nothing on this prototype moves, and this keeps it so */
