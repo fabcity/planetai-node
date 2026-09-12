@@ -25,3 +25,7 @@ exports/*
 # macOS litter
 .DS_Store
 **/.DS_Store
+
+# the September 2026 design audit — 135 MB of evidence, now in planetai-design at
+# design/audit/2026-09/. See docs/design/README.md. Left on disk where it already is.
+docs/design/audit/
