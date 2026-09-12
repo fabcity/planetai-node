@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.49 — 2026-09-12 — Menorca, and the network figure moves again
 
 **Menorca has a preset, and the first pack written for it.** `presets/menorca.env` carries Maó's
 coordinates, `Europe/Madrid`, Spanish alerts and the Govern de les Illes Balears CKAN catalogue
@@ -18,6 +18,18 @@ keep it: the plant is endemic and the number does not travel.
 coordinates from `/app/presets/*.env`, which docker-compose never mounted, so the script has been
 crashing with `FileNotFoundError: /app/presets/bali.env` on every node since it shipped. Found by
 running it on the Menorca node.
+
+**The wires carry what they carry.** The figure in the Network view — this node in the middle, what
+it reads on the left, what leaves on the right — draws its wires again, each one marching its
+dashes and carrying a dot the way the data goes, with a slow halo around the node. The older page
+had this and the port to the renderer in v0.47 left it still, where it read as a diagram of an
+instrument rather than an instrument.
+
+Ink for what arrives and blue for what leaves, which is the same rule the rest of the page follows:
+what leaves is hourly means, Index cells and ρ, and blue is what data looks like here.
+
+A machine asking for less motion gets none of it: the animation is CSS rather than the SVG kind the
+old page used, and CSS is the kind a browser can switch off on that request.
 
 ## v0.48 — 2026-09-12 — a node can say "I am here"
 
