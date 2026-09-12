@@ -460,6 +460,54 @@ def push_aggregates() -> None:
         log.warning("push to parent failed: %s", e)
 
 
+# ---------------------------------------------------------------- hourly push (child -> parent): rho
+def push_events() -> None:
+    """Send the parent one row per alert this node raised, as timestamps and nothing else.
+
+    ARCHITECTURE.md calls rho "the brick nobody else has", and until now it stopped at the address:
+    push_aggregates() sends readings only, so a City node's Governance cell counted the alerts it raised
+    itself while ten children below it measured rho every day.
+
+    WHAT IS NOT SENT IS THE POINT. No alert text, no actor, no sensor id, no note. "Shut the bedroom windows"
+    names a room, says somebody was home to be told, and describes a house. The timestamps carry everything
+    rho needs and none of the facts a household would mind travelling.
+
+    No ratio either. The child sends events, the parent computes rho: a mean of ten ratios is not the ratio of
+    the pooled counts, the parent cannot check a number it did not derive, and a change to the definition of
+    rho then reaches every historical child at once instead of needing a re-push.
+
+    The window is 36 hours rather than 2. An alert raised yesterday can be acknowledged today, so the row has
+    to be re-sent when its timestamps change; the parent's PRIMARY KEY (child, alert_id) makes that an update.
+    """
+    if not PARENT():
+        return
+    with db() as con, con.cursor() as cur:
+        cur.execute("""SELECT a.id, a.rule_id, a.level, a.ts,
+                              min(f.ts) FILTER (WHERE f.stage = 'acknowledged') AS responded_at,
+                              min(f.ts) FILTER (WHERE f.stage = 'acted')        AS acted_at,
+                              min(f.ts) FILTER (WHERE f.stage = 'measured')     AS measured_at
+                       FROM alerts a LEFT JOIN actions f ON f.alert_id = a.id
+                       WHERE a.ts > now() - interval '36 hours'
+                       GROUP BY a.id, a.rule_id, a.level, a.ts""")
+        rows = [{"alert_id": str(r["id"]), "rule": r["rule_id"], "level": r["level"],
+                 # rule ids are namespaced <pack>/<id>, so the pack IS the domain tag and there is nothing
+                 # to invent: a parent can weigh rho for air apart from rho for heat by reading it.
+                 "kind": (r["rule_id"] or "").split("/")[0] or None,
+                 "raised_at": r["ts"].isoformat(),
+                 **{k: (r[k].isoformat() if r[k] else None)
+                    for k in ("responded_at", "acted_at", "measured_at")}}
+                for r in cur.fetchall()]
+    if not rows:
+        return
+    try:
+        httpx.post(f"{PARENT()}/events", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+                   headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
+                   timeout=30).raise_for_status()
+        log.info("pushed %d alert events to parent", len(rows))
+    except Exception as e:  # noqa: BLE001
+        log.warning("event push to parent failed: %s", e)
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -591,6 +639,7 @@ def _with_distance(peers: list[dict]) -> list[dict]:
 loop(poll_sources, POLL, delay=2)
 loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
+loop(push_events, 3600, delay=150)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -806,7 +855,9 @@ def sensors_(request: Request):
     `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic` — an AirGradient row otherwise hands a
     stranger on the WiFi `{"host": "airgradient_84fce6.local", "model": "I-9PSL", "firmware": "3.1.9"}` next to a
     room name and five decimals of position."""
-    rows = q("SELECT sensor_id, source, name, lat, lon, indoor, local, kind, scale, cadence, meta FROM sensors ORDER BY local DESC, name")
+    # `custody` travels with the row: it is the answer to "why is my cell partial", and a person looking at
+    # /sensors should not have to rederive it from `local` and `kind`.
+    rows = q("SELECT sensor_id, source, name, lat, lon, indoor, local, custody, kind, scale, cadence, meta FROM sensors ORDER BY custody DESC, local DESC, name")
     if getattr(request.state, "share_trusted", False):
         return rows
     for r in rows:
@@ -1604,6 +1655,40 @@ def post_readings(body: dict, authorization: str = Header("")):
     return {"accepted": len(body.get("readings", []))}
 
 
+@app.post("/events")
+def receive_events(body: dict, authorization: str = Header("")):
+    """Parent side. A child pushes one row per alert it raised, as timestamps: detect, decide, deploy, measure.
+    The parent computes rho over its own alerts and these together (app/index.py::rho).
+
+    Anything not in the column list is dropped on the floor here rather than stored and forgotten — a child on
+    a newer version that starts sending `text` must not be able to put a household's sentence in this table.
+    """
+    if not AGG_TOKEN():
+        raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
+    if not _bearer_ok(authorization, AGG_TOKEN()):
+        raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    rows, child = body.get("rows", []), body.get("node", "?")
+    scale = body.get("scale", "community")
+    kept = 0
+    with db() as con, con.cursor() as cur:
+        for r in rows:
+            if not r.get("alert_id") or not r.get("raised_at"):
+                continue                      # a row with no identity or no detect time cannot measure latency
+            cur.execute("""INSERT INTO events (child, alert_id, rule, level, kind, scale, raised_at,
+                                               responded_at, acted_at, measured_at, cleared_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT (child, alert_id) DO UPDATE SET
+                             rule=EXCLUDED.rule, level=EXCLUDED.level, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
+                             responded_at=EXCLUDED.responded_at, acted_at=EXCLUDED.acted_at,
+                             measured_at=EXCLUDED.measured_at, cleared_at=EXCLUDED.cleared_at,
+                             received_at=now()""",
+                        (child, str(r["alert_id"]), r.get("rule"), r.get("level"), r.get("kind"), scale,
+                         r["raised_at"], r.get("responded_at"), r.get("acted_at"), r.get("measured_at"),
+                         r.get("cleared_at")))
+            kept += 1
+    return {"accepted": kept}
+
+
 @app.get("/aggregates")
 def aggregates(hours: int = Query(24, ge=1, le=24 * 90)):   # ge: hours=-1 made make_interval walk forwards and the window empty
     return q("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - make_interval(hours => %s) ORDER BY bucket DESC", hours)
@@ -1611,8 +1696,18 @@ def aggregates(hours: int = Query(24, ge=1, le=24 * 90)):   # ge: hours=-1 made 
 
 @app.post("/aggregates")
 def receive_aggregates(body: dict, authorization: str = Header("")):
-    """Parent side. Children push hourly means; stored as readings under metric '<metric>_1h' with the child's sensor ids.
-    Raw readings never travel this path."""
+    """Parent side. Children push hourly means, stored as readings under the child's namespaced sensor ids.
+    Raw readings never travel this path.
+
+    The metric keeps its own name. Until v0.50 it arrived as '<metric>_1h', and no pack SQL anywhere matched
+    `pm25_1h` — the cadence had been encoded in the join key, so a parent's Environmental|Community cell found
+    nothing to average even once custody let the children in. The cadence has a column and this function
+    already writes it: `sensors.cadence = 'PT1H'`, three lines down. A consumer that needs to know these are
+    means reads it there, beside `kind` and `local`.
+
+    `readings.ts` is the child's own bucket, so an hourly mean enters as one reading on the hour and the
+    parent's `readings_1h` view averages a single row back to itself. The child's hour survives unchanged, and
+    `readings`' UNIQUE (sensor_id, metric, ts) keeps a re-push idempotent."""
     if not AGG_TOKEN():
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
@@ -1627,5 +1722,5 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
                            ON CONFLICT (sensor_id) DO UPDATE SET kind='child', scale=EXCLUDED.scale""",
                         (sid, sid, body.get("scale", "community")))
             cur.execute("INSERT INTO readings (ts, sensor_id, metric, value) VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING",
-                        (r["bucket"], sid, f"{r['metric']}_1h", float(r["mean"])))
+                        (r["bucket"], sid, r["metric"], float(r["mean"])))
     return {"accepted": len(rows)}

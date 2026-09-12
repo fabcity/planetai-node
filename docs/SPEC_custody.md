@@ -1,6 +1,9 @@
 # SPEC — custody, and what `local` is actually for
 
-**Status: proposed. Nothing here is implemented. Approve or refuse it before any code moves.**
+**Status: approved 12 September 2026 and implemented in v0.50.** §3's open question was answered yes, as
+recommended. §6 is the one part NOT built: its own trigger is "after Bali has published once", and Bali has
+not. Everything else below describes the tree rather than proposing to it — where a sentence still reads as a
+proposal, the code is what happened.
 
 Two findings arrived on 10 September 2026 from two sessions that did not know about each other. Both are
 correct. They point at the same column from opposite sides.

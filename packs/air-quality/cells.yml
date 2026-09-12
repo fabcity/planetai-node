@@ -1,14 +1,18 @@
 # Index cells this pack can compute. Each SQL returns one row with a `value` column.
 # The core knows nothing about PM2.5; it just publishes what a pack can honestly compute.
 - cell: "Environmental|Community"
-  unit: "µg/m³ PM2.5 (24h mean, local sensors)"
-  state: live             # the core demotes this to `partial` until min_buckets is met
+  unit: "µg/m³ PM2.5 (24h mean, sensors in this node's custody)"
+  state: live             # the core demotes this to `partial` until min_buckets and min_sensors are met
   min_buckets: 12
-  notes: "local sensors only; indoor and outdoor kept separate by the rules"
+  # `s.custody`, not `s.local`: at a home node those are the same five kits, and at a banjar node aggregating
+  # ten houses custody is what lets their hourly means into the number at all. The old `s.kind = 'sensor'`
+  # went with it — it was here to keep models and portals out, which custody does on its own, and left in
+  # place it would have kept the children out too.
+  notes: "this node's own sensors and its children's hourly means; indoor and outdoor kept separate by the rules"
   sql: |
     SELECT avg(r.mean) AS value
     FROM readings_1h r JOIN sensors s USING (sensor_id)
-    WHERE s.local AND s.kind = 'sensor' AND r.metric = 'pm25' AND r.bucket > now() - interval '24 hours'
+    WHERE s.custody AND r.metric = 'pm25' AND r.bucket > now() - interval '24 hours'
 
 - cell: "Environmental|Community"
   unit: "% of days over the WHO 24h PM2.5 guideline (30d, local outdoor)"
@@ -18,7 +22,7 @@
     WITH d AS (
       SELECT (r.bucket AT TIME ZONE current_setting('TimeZone'))::date AS day, avg(r.mean) AS pm
       FROM readings_1h r JOIN sensors s USING (sensor_id)
-      WHERE s.local AND NOT s.indoor AND s.kind = 'sensor' AND r.metric = 'pm25' AND r.bucket > now() - interval '30 days'
+      WHERE s.custody AND NOT s.indoor AND r.metric = 'pm25' AND r.bucket > now() - interval '30 days'
       GROUP BY 1 HAVING count(*) >= 12)
     SELECT 100.0 * count(*) FILTER (WHERE pm > 15) / nullif(count(*),0) AS value FROM d
 

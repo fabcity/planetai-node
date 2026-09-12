@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS sensors (
   lat       DOUBLE PRECISION,
   lon       DOUBLE PRECISION,
   indoor    BOOLEAN NOT NULL DEFAULT FALSE,
-  local     BOOLEAN NOT NULL DEFAULT FALSE,   -- TRUE = physically at this node (ours). FALSE = reference/context.
-  kind      TEXT NOT NULL DEFAULT 'sensor',   -- sensor | portal | model | survey | child   (how the number was produced)
+  local     BOOLEAN NOT NULL DEFAULT FALSE,   -- TRUE = this node's own instrument, here. Set by the adapter, narrowed by LOCAL_RADIUS_M.
+  kind      TEXT NOT NULL DEFAULT 'sensor',   -- sensor | portal | model | survey | child | peer   (how the number was produced)
   scale     TEXT NOT NULL DEFAULT 'community',-- community | city | region | bioregion | planet  (what the number describes)
   cadence   TEXT,                             -- 'PT5M' | 'P1D' | 'P1Y' — how often it can meaningfully change
   meta      JSONB
@@ -21,6 +21,19 @@ CREATE TABLE IF NOT EXISTS sensors (
 ALTER TABLE sensors ADD COLUMN IF NOT EXISTS kind    TEXT NOT NULL DEFAULT 'sensor';
 ALTER TABLE sensors ADD COLUMN IF NOT EXISTS scale   TEXT NOT NULL DEFAULT 'community';
 ALTER TABLE sensors ADD COLUMN IF NOT EXISTS cadence TEXT;
+
+-- CUSTODY: may this row's numbers roll up and make an Index cell say `live`? (docs/SPEC_custody.md)
+--
+-- Not the same question as `local`, which is geography-and-ownership: a child node's hourly means are in
+-- this node's chain and four hundred metres down the lane, and a stranger's sensor may be across the street
+-- and in nobody's chain but their own. `local` was written on 2 September 2026 for a node that was a house.
+-- `kind` and the child push arrived the next day and nothing reconciled them. That is how a community node
+-- aggregating ten homes counted zero local buckets and could never say `live`.
+--
+-- Generated, not written: no adapter sets it, nothing can make it disagree with `local` and `kind`, and it
+-- costs one word in a WHERE clause instead of the same two-clause predicate repeated in fifteen statements.
+ALTER TABLE sensors ADD COLUMN IF NOT EXISTS custody BOOLEAN
+  GENERATED ALWAYS AS (kind = 'child' OR (local AND kind <> 'peer')) STORED;
 
 CREATE TABLE IF NOT EXISTS readings (
   ts        TIMESTAMPTZ NOT NULL,
@@ -165,3 +178,32 @@ INSERT INTO schema_version (version) VALUES ('0.22') ON CONFLICT DO NOTHING;
 -- its table shipped.
 ALTER TABLE reports ADD COLUMN IF NOT EXISTS cells JSONB;
 INSERT INTO schema_version (version) VALUES ('0.23') ON CONFLICT DO NOTHING;
+
+-- ρ from below. A child pushes one row per alert it raised. The parent computes ρ over its own alerts and
+-- these together, so a City node measures the district's action latency and not only its own.
+-- (docs/SPEC_custody.md §4)
+--
+-- WHAT IS NOT HERE IS THE POINT. No `text`, no `note`, no `actor`, no `sensor_id`. "Shut the bedroom windows"
+-- names a room, says the household was home to be told, and describes a house. It does not leave the address.
+-- Timestamps carry everything ρ needs and none of the facts a household would mind travelling.
+--
+-- The child never sends a ratio. A mean of ten ratios is not the ratio of the pooled counts, the parent could
+-- not check it, and a change to the definition of ρ would have to be re-pushed by every child instead of
+-- recomputed once here.
+CREATE TABLE IF NOT EXISTS events (
+  child         TEXT NOT NULL,           -- the pushing node's NODE name, as receive_aggregates uses it
+  alert_id      TEXT NOT NULL,           -- the child's own alerts.id, unique only within that child
+  rule          TEXT,                    -- alerts.rule_id — so a parent can weigh one rule, or ignore one
+  level         TEXT,                    -- ρ counts level='act' only, same as the parent's own alerts
+  kind          TEXT,                    -- the alert's domain tag: ρ for air apart from ρ for heat
+  scale         TEXT,                    -- what the child said it was, so a parent can refuse a wrong rung
+  raised_at     TIMESTAMPTZ NOT NULL,    -- detect
+  responded_at  TIMESTAMPTZ,             -- decide   (first 'acknowledged')
+  acted_at      TIMESTAMPTZ,             -- deploy   (first 'acted')
+  measured_at   TIMESTAMPTZ,             -- measure  (first 'measured')
+  cleared_at    TIMESTAMPTZ,             -- the condition stopped holding: an alert that resolved itself is not acted on
+  received_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (child, alert_id)          -- re-pushing the same alert updates it, so a child may push an open alert for days
+);
+CREATE INDEX IF NOT EXISTS events_window ON events (raised_at DESC);
+INSERT INTO schema_version (version) VALUES ('0.50') ON CONFLICT DO NOTHING;

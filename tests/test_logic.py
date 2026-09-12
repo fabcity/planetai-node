@@ -23,8 +23,9 @@ class Con:
 class Cur:
     """Just enough cursor to drive index.cells(): a bucket count, then one row per pack cell, then rho. Records the role
     each statement ran under (SET LOCAL ROLE inside the transaction), so the test can see pack SQL run read-only."""
-    def __init__(self, buckets, role_missing=False):
+    def __init__(self, buckets, role_missing=False, sensors=1, children=0):
         self.buckets, self.q, self.in_tx, self.role, self.ran = buckets, None, False, None, []
+        self.sensors, self.children = sensors, children
         self.role_missing = role_missing; self.connection = Con(self)
     def execute(self, sql, *a):
         self.q = sql
@@ -33,18 +34,21 @@ class Cur:
             self.role = sql.split()[-1]; return
         self.ran.append((sql, self.role if self.in_tx else None))
     def fetchone(self):
-        if "count(*) AS n" in self.q: return {"n": self.buckets}
+        # one kit at one address: the fleet every assertion below is about, unless it says otherwise
+        if "count(*) AS n" in self.q: return {"n": self.buckets, "sensors": self.sensors, "children": self.children}
         if "alerts_act" in self.q: return {"alerts_act": 0, "acted": 0, "median_minutes": None}
         return {"value": 12.0}
     def fetchall(self): return [self.fetchone()]
 
 
-def cells_with(buckets, state, min_buckets, cur=None):
+def cells_with(buckets, state, min_buckets, cur=None, sensors=1, children=0):
     index_packs = type(sys)("packs")
     index_packs.cells = lambda: [{"cell": "Environmental|Community", "unit": "u", "sql": "select 1 as value",
                                   "state": state, "min_buckets": min_buckets, "pack": "t"}]
     sys.modules["packs"] = index_packs
-    return index.cells(cur or Cur(buckets))
+    c = cur or Cur(buckets)
+    c.sensors, c.children = sensors, children
+    return index.cells(c)
 
 
 # a `live` claim is demoted until the data supports it, then allowed. Before the fix the pack said `partial`
@@ -53,6 +57,21 @@ assert cells_with(3, "live", 12)[0]["state"] == "partial", "live must be demoted
 assert cells_with(20, "live", 12)[0]["state"] == "live", "live must be allowed once min_buckets is met"
 assert cells_with(20, "partial", 12)[0]["state"] == "partial", "partial is never promoted"
 assert "3/12 hourly buckets" in cells_with(3, "live", 12)[0]["notes"], "provenance note must show the shortfall"
+
+# min_sensors (docs/SPEC_custody.md §3, decided 12 Sep 2026). Hours are not enough on their own: a node that
+# aggregates may not say `live` off one instrument, because one child reporting is one household's kitchen.
+assert cells_with(20, "live", 12, sensors=3, children=2)[0]["state"] == "live", \
+    "two children with three sensors between them is a place, and may be live"
+assert cells_with(20, "live", 12, sensors=3, children=1)[0]["state"] == "partial", \
+    "three sensors inside ONE child is one household, whatever the hour count says"
+assert cells_with(20, "live", 12, sensors=1, children=2)[0]["state"] == "partial", \
+    "two children reporting one sensor between them is still one instrument"
+assert cells_with(20, "live", 12, sensors=1, children=0)[0]["state"] == "live", \
+    "a home node with one kit is untouched by this: it describes one address and its unit says so"
+assert "3 sensors across 2 children" in cells_with(20, "live", 12, sensors=3, children=2)[0]["notes"], \
+    "an aggregated cell must say what it was aggregated from"
+assert "children" not in cells_with(20, "live", 12)[0]["notes"], \
+    "a node with no children says nothing about children"
 
 # per-loop error keys: one loop failing must not clear or mask another's state
 state = {"errors": {}}

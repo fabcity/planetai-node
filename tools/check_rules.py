@@ -15,14 +15,24 @@ import sys
 import sqlglot
 import yaml
 from sqlglot import exp
+from sqlglot.errors import ErrorLevel
 
 SQL = open("init.sql").read()
 errs, checked = [], 0
 
 
 def schema() -> dict[str, set[str]]:
+    """Table and view columns, from init.sql.
+
+    ErrorLevel.IGNORE, because sqlglot 27 reads `GENERATED ALWAYS AS (expr) STORED` in an ALTER as GENERATED
+    AS IDENTITY and raises on it — Postgres has accepted that form since 12. Raising took the whole checker
+    down, and the Makefile's fallback then printed "rule check skipped", so a gate that had crashed looked
+    like a gate that had not run on purpose. IGNORE parses what it cannot read as an opaque Command, exactly
+    as it already did for this file's DO block and its GRANTs, and the ALTER regex below picks up the columns.
+    A genuinely malformed CREATE TABLE still fails loudly: the table drops out of the schema and every rule
+    that names it is reported."""
     out: dict[str, set[str]] = {}
-    for st in sqlglot.parse(SQL, read="postgres"):
+    for st in sqlglot.parse(SQL, read="postgres", error_level=ErrorLevel.IGNORE):
         if not isinstance(st, exp.Create):
             continue
         name = getattr(getattr(st.this, "this", None), "name", None)
