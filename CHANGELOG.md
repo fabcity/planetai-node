@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — the Network view draws
+## v0.47 — 2026-09-12 — the Network view draws
 
 **The Network tab was empty on every node since v0.45.** The renderer filled Now and the wall; the
 four cards in that view were markup nothing ever wrote to. It draws again — this node in the wider
