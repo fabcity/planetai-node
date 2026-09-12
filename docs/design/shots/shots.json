@@ -31,8 +31,8 @@
       "403 /report/latest",
       "403 /rho",
       "403 /earth",
-      "403 /nearby",
       "403 /trust",
+      "403 /nearby",
       "403 /forecast",
       "403 /sensors",
       "403 /sparks"
@@ -104,7 +104,7 @@
         "figures"
       ],
       "sideways": false,
-      "height": 5557,
+      "height": 5527,
       "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
@@ -176,7 +176,7 @@
         "figures"
       ],
       "sideways": false,
-      "height": 4735,
+      "height": 4717,
       "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
@@ -608,7 +608,7 @@
         "figures"
       ],
       "sideways": false,
-      "height": 1232,
+      "height": 1228,
       "hero": "Holding at 12 µg/m³ over this square of the map."
     },
     "errors": [],
