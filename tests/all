@@ -24,9 +24,10 @@ mkdir -p /tmp/stub && printf 'class Client: pass\n' > /tmp/stub/httpx.py
 #   test_ground     needs app/requirements.txt installed (h3 and friends)
 #   test_nearby     the ring rule replay needs duckdb
 #   test_shipped    the trust rule replay needs duckdb
+#   test_custody    the peer replay needs duckdb
 # test_earth deliberately fails rather than skips when numpy is missing (see its own header): a pack that
 # ships because a suite printed "skipped" is the failure it is guarding against. Do not add it here.
-EXPECTED_SKIPS=" test_ground test_nearby test_shipped "
+EXPECTED_SKIPS=" test_ground test_nearby test_shipped test_custody "
 
 pass=0; fail=0; skips=0; undeclared=0
 failed_names=""; skip_lines=""
@@ -105,6 +106,7 @@ test_dashboard|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_dashboard.py
 test_ground|python3 tests/test_ground.py
 test_briefing|PYTHONPATH=/tmp/stub:app python3 tests/test_briefing.py
 test_earth|PYTHONPATH=/tmp/stub:app python3 tests/test_earth.py
+test_custody|PYTHONPATH=app python3 tests/test_custody.py
 SUITES
 
 total=$((pass + fail))
@@ -113,10 +115,10 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Thirty-one is the number of suites in the list above. If the list and this number disagree, one of them
+# Thirty-two is the number of suites in the list above. If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
-if [ "$total" -ne 31 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 31 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 32 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 32 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

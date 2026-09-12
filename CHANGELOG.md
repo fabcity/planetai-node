@@ -1,5 +1,52 @@
 # Changelog
 
+## v0.50 — 2026-09-13 — custody: the roll-up path can say `live`, and ρ comes up with it
+
+**`local` was doing two jobs and failing one of them.** It was written on 2 September for a node that was a
+house; `kind` and the child push arrived the next day and nothing reconciled them. So `index.py::_buckets()`
+counted `WHERE s.local`, a child's hourly means are stored `local=FALSE, kind='child'`, and a community node
+aggregating ten homes counted **zero** — every cell downgraded to `partial`, forever. The roll-up path has
+been built since v0.4.3 and could never say `live`.
+
+**Custody is now `local OR kind='child'`, as a generated column in `init.sql`.** No adapter writes it, nothing
+can make it disagree with `local` and `kind`, and it costs one word in a `WHERE` clause instead of the same
+two-clause predicate in fifteen statements. `local` keeps its own meaning — this node's own instrument, here —
+and `packs/nearby`'s ring, which asks `NOT s.local`, is untouched.
+
+The rule is not `kind IN ('sensor','child')`, which was the obvious form and is wrong: Bali Air Dispatch
+stations are written with no `kind`, so the default fills in `'sensor'`, and node #1 would have taken all 87 of
+them into its own custody. `kind` answers how a number was produced, and a neighbour's station is produced
+exactly the way ours is.
+
+**A `kind='peer'` row reaches nothing, even written `local=TRUE`.** `tests/test_custody.py` builds node #1
+twice from its own 7 September dump, once with a peer 40 m away, and asserts every cell and the custody count
+answer identically. It was written before the fix and run failing first: 192 → 204 buckets, and `packs/heat`'s
+`Social|Community` 0.0 → 4.0.
+
+**`live` needs instruments, not only hours.** At least two in-custody sensors, across at least two children
+where there are children. One child reporting is one household's kitchen, and a cell that says `live` off one
+kitchen is the same lie as a model claiming it. A home node with one kit is untouched.
+
+**A child's metrics keep their names.** They arrived as `<metric>_1h` and no pack SQL anywhere matched
+`pm25_1h`, so even a fixed custody count would have found nothing to average. The cadence has a column that
+`receive_aggregates` already writes (`PT1H`, on the child's sensor row) and that is where it belongs.
+
+**ρ rolls up: `POST /events`.** One row per alert a child raised — rule, level, and the four timestamps — and
+**no message text, no actor, no sensor id, no note**. "Shut the bedroom windows" names a room and says somebody
+was home to be told. The child never sends a ratio either: a mean of ten ratios is not the ratio of the pooled
+counts, so the parent computes ρ and a change to its definition reaches every child's history with nothing to
+re-push. A node with no children reads an empty table and gets exactly the number it had.
+
+**A lint gate that had crashed was reporting itself as skipped.** `make lint`'s rule check was
+`… && check_rules.py || echo 'skipped'`, so a checker that threw looked like one that was never installed —
+and sqlglot throws on `GENERATED ALWAYS AS (expr) STORED`, which Postgres has accepted since 12. The clause is
+now an `if/then/else`, proven to exit non-zero on a crashing checker, and `check_rules` parses with
+`ErrorLevel.IGNORE` the way it already did for this file's `DO` block and its `GRANT`s.
+
+Decided in `docs/decisions/2026-09-10-custody.md`, argued in `docs/SPEC_custody.md`. §6 of that spec — moving
+the Index publisher into this repo — is **not** in this release: its trigger is Bali publishing once, and Bali
+has not.
+
 ## v0.49 — 2026-09-12 — Menorca, and the network figure moves again
 
 **Menorca has a preset, and the first pack written for it.** `presets/menorca.env` carries Maó's

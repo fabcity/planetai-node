@@ -59,6 +59,21 @@ planetai setup --answers node.json      # install without a terminal; see the JS
 - The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES`, and
   served at `GET /issues`. The node computes; the page draws. A number the page works out for itself is a bug.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
+- **Peers never roll up.** A `kind='peer'` row is display-only: it reaches no Index cell, no custody count, and
+  no aggregate pushed to a parent, whatever its coordinates say. Custody is `local OR kind='child'`, it lives in
+  `init.sql` as a generated column, and it is the only thing a cell may count.
+- **Peers never drive an alert or a report line.** A node may show a neighbour's number and must never act on
+  it. The ring in `packs/nearby` compares against peers; it does not alert about them.
+- **State is never upgraded by aggregation.** A parent's cell is `partial` if any input was, and `live` needs
+  in-custody measurement in the last 24h at the parent's own rung — from at least two sensors, across at least
+  two children where there are children. One child reporting is one household's kitchen.
+- **Exact place never leaves; a coarse cell may, and says how coarse.** Coordinates, room names, sensor ids and
+  a household's own sentences stay on the machine that recorded them. Aggregates carry values and timestamps,
+  the event push carries timestamps, and neither carries where. The Reticulum announce is the one thing that
+  leaves, as an H3 cell rounded UP to a coarse parent with `res` beside it and a floor of res 6 no settings box
+  can go under.
+- **Exactly one node per pilot writes to the spine.** A pilot is a city in the Index's `ALLOWED_CITIES`. Every
+  other node computes its cells, shows them, and passes them no further.
 - When a document and a skill disagree, the document wins and the skill has a bug. Fix the skill, not the doc.
 
 ## Changing code
