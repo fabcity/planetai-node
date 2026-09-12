@@ -17,7 +17,24 @@ cd "$(dirname "$0")/.."
 SHIP="$PWD/tools/ship.sh"; fails=0
 ok(){ echo "  ok   $1"; }; bad(){ echo "  FAIL $1"; fails=$((fails+1)); }
 
-block="$(sed -n '/^git fetch -q origin$/,/^fi$/p' "$SHIP")"
+# The region lifted from ship.sh runs from the sync check through the line that reads the version the
+# release will be LABELLED with — as one range, in ship.sh's own order. Lifting the label line separately
+# and appending it would put it after the pull no matter where ship.sh keeps it, and the test would pass
+# on the bug. v0.50 shipped a correct tarball committed as "tester tarball at v0.49" because that read
+# sat above the pull, so it was stale by exactly one release on every release merged on GitHub.
+fetch_line="$(grep -n '^git fetch -q origin$' "$SHIP" | cut -d: -f1)"
+ff_end="$(awk -v s="$fetch_line" 'NR>s && /^fi$/ {print NR; exit}' "$SHIP")"
+here_line="$(grep -n '^HERE="\$(git describe --tags --always)"$' "$SHIP" | cut -d: -f1 | awk -v s="$ff_end" '$1>s {print; exit}')"
+
+if [[ -n "$here_line" ]]; then
+  ok "the release label is read after the fast-forward, so it names what the tarball contains"
+else
+  bad "no 'HERE=\$(git describe ...)' after the fast-forward (line ${ff_end:-?}): every release that
+       fast-forwards gets committed to the site repo under the PREVIOUS version's name"
+  here_line="$ff_end"
+fi
+
+block="$(sed -n "${fetch_line},${here_line}p" "$SHIP")"
 [[ -n "$block" ]] || { echo "  FAIL could not lift the sync check from ship.sh"; exit 1; }
 
 # a bare "origin" and a clone of it, so ahead/behind/diverged are real rather than mocked
@@ -36,6 +53,7 @@ runblock() {
     echo 'say(){ printf ">> %s\n" "$*"; }'
     echo 'die(){ printf "xx %s\n" "$*"; exit 1; }'
     printf '%s\n' "$block"
+    echo 'echo "HERE=${HERE:-<never set>}"'
     echo 'echo RESULT_OK'
   } > "$D/b.sh"
   bash "$D/b.sh" 2>&1
@@ -47,15 +65,22 @@ setup                                                   # in sync
 out="$(runblock)"; grep -q RESULT_OK <<<"$out" && ok "in sync → proceeds" || bad "in sync was refused: $out"
 cd /; rm -rf "$D"
 
-setup                                                   # behind: a merge landed on origin
+setup                                                   # behind: a merge landed on origin, and was tagged
+git tag -a v0.49 -m v0.49                               # what this checkout can still see
 git clone -q "$D/origin.git" "$D/other" 2>/dev/null && cd "$D/other" && git config user.email t@t && git config user.name t
 git checkout -q main 2>/dev/null
-echo two > g && git add g && git commit -q -m two && git push -q origin main 2>/dev/null
-cd "$D/work" && git fetch -q origin
+echo two > g && git add g && git commit -q -m two && git tag -a v0.50 -m v0.50 \
+  && git push -q origin main 2>/dev/null && git push -q origin v0.50 2>/dev/null
+cd "$D/work" && git fetch -q --tags origin
 out="$(runblock)"
 grep -q RESULT_OK <<<"$out" && ok "behind → fast-forwards and proceeds" || bad "behind was refused: $out"
 grep -q "fast-forwarding" <<<"$out" && ok "and says it did so" || bad "it fast-forwarded silently"
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] && ok "and the tree really moved" || bad "HEAD did not move"
+# the label must name what was just pulled, not what was here before it
+want="$(git describe --tags --always origin/main)"
+got="$(sed -n 's/^HERE=//p' <<<"$out" | tail -1)"
+[[ "$got" == "$want" ]] && ok "and the release is labelled $want, the version it actually contains" \
+  || bad "labelled '$got' but contains '$want' — the site repo's history would name the wrong release"
 cd /; rm -rf "$D"
 
 setup                                                   # ahead: an unpushed commit

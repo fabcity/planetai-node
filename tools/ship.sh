@@ -74,6 +74,13 @@ elif [[ "$BEHIND" != 0 ]]; then
      git pull"
 fi
 
+# HERE was read at the top, which is what the --check path above wants: it answers about the branch you
+# are standing on. Past the fast-forward it is stale by exactly one release, and every release merged on
+# GitHub rather than locally comes through here. v0.50 shipped a correct tarball under the commit message
+# "tester tarball at v0.49"; the payload was right because bundle.sh reads the tag itself, so only the site
+# repo's history lied, and it lied about every release that was ever fast-forwarded.
+HERE="$(git describe --tags --always)"
+
 # A release should be a commit whose tests passed. This was added because I shipped v0.41.2-69 while
 # its install-smoke run was still queued, and it went red — a workflow edit of mine had split a grep
 # across two lines, which is valid bash and so no local check could see it. The tarball was fine that
