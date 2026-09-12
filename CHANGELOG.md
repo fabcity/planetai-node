@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.48 — 2026-09-12 — a node can say "I am here"
+
+**Two nodes can now see each other without sharing anything.** A node with the Reticulum bridge can
+announce its name and a *coarse* map cell — nothing else, no readings, no address — and collect the
+same from any other node that does. Lucas's node in Menorca shows up on node #1 as a name, a
+distance and when it was last heard, and neither node published a position: the distance is between
+two cell centres, and the cell is rounded to about sixty kilometres across.
+
+**It is off until you turn it on**, under Set up → Integrations, because `SHARE_LEVEL` governs what a
+node answers when asked and this is a node speaking unprompted. How exact the announced cell is, is
+the whole of the privacy decision and it is a setting: res 3 puts the announced centre 46 km from
+node #1's actual house, res 5 puts it 1.5 km away, and nothing finer than res 6 can be set at all.
+
+Nothing scans anything. A node learns of another two ways and both are somebody deciding: you name
+it under Set up → The tree, or both nodes turn presence on and hear each other.
+
+**And the Network view shows the radios this node is on.** The Network view carries the radio networks this node is on. **Meshtastic** needed nothing new
+collected: every packet the gateway uplinks already becomes a sensor carrying its mesh id, its name
+and its channel, so the mesh is a group-by over what the node has. **Reticulum** appears through a
+new `reticulum` key on `/health`, filled on its own loop so a bridge that is down cannot turn the
+node's health check into a timeout.
+
+Worth knowing, because it is half of something: a node with the Reticulum bridge has always
+announced itself as `planetai <node>` every thirty minutes, across every transport it has, with no
+data attached. Nothing collects what it hears, so no node has ever seen another that way. The card
+says that plainly instead of leaving it as an absence.
+
 ## v0.47 — 2026-09-12 — the Network view draws
 
 **The Network tab was empty on every node since v0.45.** The renderer filled Now and the wall; the

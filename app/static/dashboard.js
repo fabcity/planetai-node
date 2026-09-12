@@ -123,7 +123,22 @@ const WORDS = {
           cellsN: '{n} of 20', rhoN: '{closed} of {total}',
           parentNowhere: 'nowhere yet', home: 'home',
           kept: '{n} readings kept, none of them leave',
-          others: 'Other PLANETAI nodes', radioHead: 'On the radio',
+          others: 'Other PLANETAI nodes',
+          radioCard: 'The radios around this node',
+          retPeers: 'Heard on Reticulum',
+          peerIs: 'heard {ago} \u00b7 about {km} km away',
+          heardMin: '{n} min ago', heardHr: '{n} h ago', heardDay: '{n} days ago',
+          heardMin1: 'a minute ago', heardHr1: 'an hour ago', heardDay1: 'a day ago',
+          noTree: 'No parent, and nothing reports to this one.',
+          retCoarse: 'Nobody configured these and nothing went looking for them: they announced, and this node was listening. The distance is between two coarse map cells and not two addresses \u2014 at the usual resolution a cell is about sixty kilometres across, so treat it as a direction and a rough reach.',
+          meshHead: 'Meshtastic', retHead: 'Reticulum',
+          meshOn: 'On {topic} through {gw} \u00b7 {n} packets heard \u00b7 channels {chans}',
+          meshQuiet: 'The gateway is connected and no other radio has spoken yet.',
+          meshIdle: 'Channels {chans}. Nothing heard since this node last started; the radios below are the ones it knows.',
+          retOn: 'This node announces itself as planetai every {mins} minutes, at {addr}.',
+          retDown: 'The bridge is configured and not answering.',
+          retDeaf: 'It announces; it does not yet listen. Nothing here collects the announces other Reticulum nodes make, so another PLANETAI node would have to be named under Set up \u2192 The tree to appear at all.',
+          noRadios: 'No radio on this node. Meshtastic needs a gateway under Set up \u2192 Integrations; Reticulum needs its container.',
           leavesShort: 'what leaves', index: 'The Fab City Index',
           parentIs: 'this node reports to it, once an hour',
           parentHidden: 'a parent is set \u2014 unlock under Set up to see which',
@@ -131,7 +146,7 @@ const WORDS = {
           meshIs: 'the radio this node listens on \u00b7 {n} packets',
           meshIs1: 'the radio this node listens on \u00b7 one packet so far',
           alone: 'None. This node knows of no other, which is the ordinary state of a node nobody has linked yet.',
-          howto: 'Nothing here scans for nodes: a household network is not a thing to go knocking on. A node learns of another under Set up \u2192 The tree \u2014 give this one a parent to report to, or an aggregate token so another may report to it.',
+          howto: 'Nothing here scans for nodes: a household network is not a thing to go knocking on. A node learns of another two ways, and both of them are somebody deciding \u2014 name one under Set up \u2192 The tree, as a parent to report to or with a token so another may report here; or turn on Reticulum presence under Integrations, and nodes that do the same will hear each other.',
           cellsK: '{n} of the twenty Fab City Index cells have a source at this node. Governance is filled by \u03c1, which only exists because somebody here answered.',
           pillars: [{ key: 'Environmental', label: 'Environmental' }, { key: 'Economic', label: 'Economic' }, { key: 'Social', label: 'Social' }, { key: 'Governance', label: 'Governance' }],
           machine: 'The machine in the corner',
@@ -206,7 +221,22 @@ const WORDS = {
           cellsN: '{n} dari 20', rhoN: '{closed} dari {total}',
           parentNowhere: 'belum ke mana-mana', home: 'rumah',
           kept: '{n} bacaan disimpan, tidak satu pun keluar',
-          others: 'Node PLANETAI lain', radioHead: 'Lewat radio',
+          others: 'Node PLANETAI lain',
+          radioCard: 'Radio di sekitar node ini',
+          retPeers: 'Terdengar di Reticulum',
+          peerIs: 'terdengar {ago} \u00b7 sekitar {km} km jauhnya',
+          heardMin: '{n} menit lalu', heardHr: '{n} jam lalu', heardDay: '{n} hari lalu',
+          heardMin1: 'semenit lalu', heardHr1: 'sejam lalu', heardDay1: 'sehari lalu',
+          noTree: 'Tidak ada induk, dan tidak ada yang melapor ke node ini.',
+          retCoarse: 'Tidak ada yang mengaturnya dan tidak ada yang mencarinya: mereka mengumumkan diri, dan node ini mendengarkan. Jaraknya antara dua sel peta kasar, bukan dua alamat \u2014 pada resolusi biasa satu sel sekitar enam puluh kilometer, jadi anggap sebagai arah dan jangkauan kasar.',
+          meshHead: 'Meshtastic', retHead: 'Reticulum',
+          meshOn: 'Di {topic} lewat {gw} \u00b7 {n} paket terdengar \u00b7 kanal {chans}',
+          meshQuiet: 'Gateway tersambung dan belum ada radio lain yang bicara.',
+          meshIdle: 'Kanal {chans}. Belum ada yang terdengar sejak node ini terakhir dinyalakan; radio di bawah adalah yang sudah dikenalnya.',
+          retOn: 'Node ini mengumumkan dirinya sebagai planetai setiap {mins} menit, di {addr}.',
+          retDown: 'Bridge sudah diatur tetapi tidak menjawab.',
+          retDeaf: 'Ia mengumumkan, tetapi belum mendengarkan. Tidak ada yang mengumpulkan pengumuman node Reticulum lain di sini, jadi node PLANETAI lain harus disebut di Set up \u2192 The tree agar muncul.',
+          noRadios: 'Tidak ada radio di node ini. Meshtastic perlu gateway di Set up \u2192 Integrations; Reticulum perlu kontainernya.',
           leavesShort: 'yang keluar', index: 'Fab City Index',
           parentIs: 'node ini melapor ke sana, sekali sejam',
           parentHidden: 'induk sudah diatur \u2014 buka kunci di Set up untuk melihat yang mana',
@@ -214,7 +244,7 @@ const WORDS = {
           meshIs: 'radio yang didengar node ini \u00b7 {n} paket',
           meshIs1: 'radio yang didengar node ini \u00b7 baru satu paket',
           alone: 'Tidak ada. Node ini tidak mengenal node lain, dan itu keadaan biasa bagi node yang belum dihubungkan siapa pun.',
-          howto: 'Tidak ada yang memindai jaringan di sini: jaringan rumah tangga bukan tempat untuk mengetuk pintu. Sebuah node mengenal node lain lewat Set up \u2192 The tree \u2014 beri node ini induk untuk dilapori, atau token agregat agar node lain boleh melapor ke sini.',
+          howto: 'Tidak ada yang memindai jaringan di sini: jaringan rumah tangga bukan tempat untuk mengetuk pintu. Sebuah node mengenal node lain lewat dua cara, dan keduanya karena ada yang memutuskan \u2014 sebutkan satu di Set up \u2192 The tree, sebagai induk atau dengan token agar node lain boleh melapor ke sini; atau nyalakan presence Reticulum di Integrations, dan node yang melakukan hal sama akan saling mendengar.',
           cellsK: '{n} dari dua puluh sel Fab City Index punya sumber di node ini. Governance diisi oleh \u03c1, yang ada hanya karena ada orang di sini yang menjawab.',
           pillars: [{ key: 'Environmental', label: 'Lingkungan' }, { key: 'Economic', label: 'Ekonomi' }, { key: 'Social', label: 'Sosial' }, { key: 'Governance', label: 'Tata kelola' }],
           machine: 'Mesin di sudut ruangan',
@@ -289,7 +319,22 @@ const WORDS = {
           cellsN: '{n} de 20', rhoN: '{closed} de {total}',
           parentNowhere: 'a ning\u00fan sitio todav\u00eda', home: 'casa',
           kept: '{n} lecturas guardadas, ninguna sale',
-          others: 'Otros nodos PLANETAI', radioHead: 'Por radio',
+          others: 'Otros nodos PLANETAI',
+          radioCard: 'Las radios alrededor de este nodo',
+          retPeers: 'O\u00eddos en Reticulum',
+          peerIs: 'o\u00eddo {ago} \u00b7 a unos {km} km',
+          heardMin: 'hace {n} min', heardHr: 'hace {n} h', heardDay: 'hace {n} d\u00edas',
+          heardMin1: 'hace un minuto', heardHr1: 'hace una hora', heardDay1: 'hace un d\u00eda',
+          noTree: 'Sin padre, y nada informa a este nodo.',
+          retCoarse: 'Nadie los configur\u00f3 y nada sali\u00f3 a buscarlos: se anunciaron, y este nodo estaba escuchando. La distancia es entre dos celdas de mapa gruesas y no entre dos direcciones \u2014 a la resoluci\u00f3n habitual una celda mide unos sesenta kil\u00f3metros, as\u00ed que t\u00f3mala como una direcci\u00f3n y un alcance aproximado.',
+          meshHead: 'Meshtastic', retHead: 'Reticulum',
+          meshOn: 'En {topic} a trav\u00e9s de {gw} \u00b7 {n} paquetes o\u00eddos \u00b7 canales {chans}',
+          meshQuiet: 'La pasarela est\u00e1 conectada y ninguna otra radio ha hablado todav\u00eda.',
+          meshIdle: 'Canales {chans}. Nada o\u00eddo desde el \u00faltimo arranque de este nodo; las radios de abajo son las que ya conoce.',
+          retOn: 'Este nodo se anuncia como planetai cada {mins} minutos, en {addr}.',
+          retDown: 'El puente est\u00e1 configurado y no responde.',
+          retDeaf: 'Anuncia, pero todav\u00eda no escucha. Aqu\u00ed nada recoge los anuncios de otros nodos Reticulum, as\u00ed que otro nodo PLANETAI tendr\u00eda que nombrarse en Set up \u2192 The tree para aparecer.',
+          noRadios: 'Sin radio en este nodo. Meshtastic necesita una pasarela en Set up \u2192 Integrations; Reticulum necesita su contenedor.',
           leavesShort: 'lo que sale', index: 'El Fab City Index',
           parentIs: 'este nodo le informa, una vez por hora',
           parentHidden: 'hay un padre configurado \u2014 desbloquea en Set up para ver cu\u00e1l',
@@ -297,7 +342,7 @@ const WORDS = {
           meshIs: 'la radio que escucha este nodo \u00b7 {n} paquetes',
           meshIs1: 'la radio que escucha este nodo \u00b7 un solo paquete',
           alone: 'Ninguno. Este nodo no conoce ning\u00fan otro, que es el estado normal de un nodo que nadie ha enlazado todav\u00eda.',
-          howto: 'Aqu\u00ed nada escanea la red: la red de una casa no es un sitio donde ir llamando a puertas. Un nodo conoce a otro en Set up \u2192 The tree \u2014 dale un padre al que informar, o un token de agregaci\u00f3n para que otro pueda informarle.',
+          howto: 'Aqu\u00ed nada escanea la red: la red de una casa no es un sitio donde ir llamando a puertas. Un nodo conoce a otro de dos maneras, y en ambas alguien lo decide \u2014 n\u00f3mbralo en Set up \u2192 The tree, como padre al que informar o con un token para que otro informe aqu\u00ed; o enciende la presencia Reticulum en Integrations, y los nodos que hagan lo mismo se oir\u00e1n entre s\u00ed.',
           cellsK: '{n} de las veinte celdas del Fab City Index tienen fuente en este nodo. Governance la llena \u03c1, que existe s\u00f3lo porque alguien de aqu\u00ed respondi\u00f3.',
           pillars: [{ key: 'Environmental', label: 'Ambiental' }, { key: 'Economic', label: 'Econ\u00f3mico' }, { key: 'Social', label: 'Social' }, { key: 'Governance', label: 'Gobernanza' }],
           machine: 'La m\u00e1quina del rinc\u00f3n',
@@ -882,7 +927,7 @@ const COMPONENTS = {
   forecast: drawForecast,
 
   // The Network view's four.
-  netMap, cellRings, peers, vitals,
+  netMap, cellRings, peers, radios, vitals,
 
   sensorCard(d, ctx) {
     return `<div class="sensor" data-component="sensorCard">`
@@ -1435,22 +1480,84 @@ function cellRings(d, ctx) {
  */
 function peers(d, ctx) {
   const w = ctx.w.net;
-  const row = (sign, name, note) => `<div class="peer">${ctx.sign(sign)}`
+  const row = (sign, name, note, cls = '') => `<div class="peer${cls ? ' ' + cls : ''}">${ctx.sign(sign)}`
     + `<div><b>${esc(name)}</b><span class="note">${esc(note)}</span></div></div>`;
   const nodes = [];
   if (d.parentName) nodes.push(row('machine', d.parentName, w.parentIs));
   else if (d.parentSet) nodes.push(row('machine', w.parentHidden, w.parentIs));
   (d.children || []).forEach(c => nodes.push(row('machine', c, w.childIs)));
-  // A mesh gateway is a RADIO, not a node running this software, and listing it under the same
-  // heading answered "are there other PLANETAI nodes?" with something that is not one.
-  const mesh = d.mesh || {};
-  const pk = mesh.packets || 0;
-  const radios = mesh.gateway
-    ? row('sensor', mesh.gateway, t(pk === 1 ? w.meshIs1 : w.meshIs, { n: pk })) : '';
+
+  // Nodes that said "I am here" on Reticulum. Nobody configured these and nobody went looking for
+  // them: they announced, this one was listening. The distance is two coarse cell centres, so it
+  // carries the coarseness of the blunter cell — said once under the list rather than per row.
+  const ago = secs => {
+    const m = Math.max(0, Math.round((Date.now() / 1000 - secs) / 60));
+    const [n, one, many] = m < 60 ? [m, w.heardMin1, w.heardMin]
+      : m < 1440 ? [Math.round(m / 60), w.heardHr1, w.heardHr]
+        : [Math.round(m / 1440), w.heardDay1, w.heardDay];
+    return t(n === 1 ? one : many, { n });
+  };
+  const peers = ((d.reticulum || {}).peers || []).map(pr => row('machine', pr.node,
+    pr.km == null ? ago(pr.last) : t(w.peerIs, { ago: ago(pr.last), km: pr.km.toLocaleString() })));
+
   return `<div class="peers" data-component="peers">`
-    + (nodes.join('') || `<p class="note">${esc(w.alone)}</p>`)
-    + (radios ? `<div class="k mt">${esc(w.radioHead)}</div>${radios}` : '')
-    + `</div><p class="note mt">${esc(w.howto)}</p>`;
+    + (nodes.join('') || `<p class="note">${esc(peers.length ? w.noTree : w.alone)}</p>`)
+    + (peers.length ? `<div class="k mt">${esc(w.retPeers)}</div>${peers.join('')}` : '')
+    + `</div>`
+    + (peers.length ? `<p class="note mt">${esc(w.retCoarse)}</p>` : '')
+    + `<p class="note mt">${esc(w.howto)}</p>`;
+}
+
+/* The radio networks this node is on.
+ *
+ * Both of these are the thing a node CAN see without anyone sharing readings: a Meshtastic node
+ * broadcasts its name, its hardware and sometimes its position to whoever is listening, and a
+ * Reticulum node announces an address and a display name across every transport it has. This card
+ * is what the node has actually heard.
+ *
+ * Meshtastic arrives already stored: every packet the gateway uplinks becomes a sensor row carrying
+ * `meta.mesh_node`, `meta.channel` and `meta.root_topic` (app/sources.py: meshtastic_message), so
+ * the mesh is a group-by over /sensors rather than anything new to collect.
+ */
+function radios(d, ctx) {
+  const w = ctx.w.net;
+  const out = [];
+  const mesh = d.mesh || {};
+  const heard = d.meshNodes || [];
+  if (mesh.root_topic || heard.length) {
+    const chans = [...new Set(heard.map(m => m.channel).filter(Boolean))];
+    out.push(`<div class="k">${esc(w.meshHead)}</div>`);
+    // mesh_state is counted since the node last started and the nodes themselves are in the
+    // database, so a node restarted ten minutes ago knows six radios and has heard none of them.
+    // Saying "On — through — · 0 packets" was the page reporting an em dash as a fact.
+    out.push(`<p class="note">${esc(mesh.packets
+      ? t(w.meshOn, { topic: mesh.root_topic || '?', gw: mesh.gateway || '?',
+                      n: mesh.packets, chans: chans.join(', ') || '?' })
+      : t(w.meshIdle, { chans: chans.join(', ') || '?' }))}</p>`);
+    out.push(heard.length
+      ? `<div class="peers">${heard.map(m => {
+        const name = m.name || m.id;
+        // the hardware arrives as Meshtastic's enum number, which names nothing to a reader
+        const bits = [String(name).includes(m.id) ? '' : m.id, m.where].filter(Boolean);
+        return `<div class="peer">${ctx.sign('sensor')}<div><b>${esc(name)}</b>`
+          + (bits.length ? `<span class="note">${esc(bits.join(' · '))}</span>` : '')
+          + `</div></div>`;
+      }).join('')}</div>`
+      : `<p class="note">${esc(w.meshQuiet)}</p>`);
+  }
+  const r = d.reticulum || null;
+  if (r) {
+    out.push(`<div class="k mt">${esc(w.retHead)}</div>`);
+    out.push(`<p class="note">${esc(r.ok && r.address
+      ? t(w.retOn, { addr: r.address, mins: Math.round((r.announce_s || 1800) / 60) })
+      : w.retDown)}</p>`);
+    // The half that does not exist yet, said plainly rather than left as an absence somebody has to
+    // notice. Every node with this bridge already shouts "I am here"; none of them is listening.
+    // Only when it IS announcing: a bridge that is down is not announcing and not deaf either.
+    if (r.ok) out.push(`<p class="note">${esc(w.retDeaf)}</p>`);
+  }
+  if (!out.length) out.push(`<p class="note">${esc(w.noRadios)}</p>`);
+  return `<div data-component="radios">${out.join('')}</div>`;
 }
 
 /* The machine in the corner. Ported from the page this replaces, value for value. */
@@ -1495,6 +1602,15 @@ function networkView(snap, ctx) {
     // token can still say a parent exists without being told where it is.
     parentSet: !!parent.set,
     parentName: parent.set && parent.value && !/^•+/.test(parent.value) ? parent.value : '',
+    // Every Meshtastic node the gateway has uplinked, from the sensor rows meshtastic_message wrote.
+    // `meta` is cut to _META_PUBLIC for a reader with no token, so the id and the hardware are only
+    // there for somebody the node trusts — the name and the position are on the row itself.
+    meshNodes: sensors.filter(s => s.source === 'meshtastic').map(s => ({
+      id: (s.meta || {}).mesh_node || s.sensor_id,
+      name: s.name, hardware: (s.meta || {}).hardware, channel: (s.meta || {}).channel,
+      where: s.lat != null && s.lon != null ? `${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}` : '',
+    })).sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id))),
+    reticulum: (snap.health || {}).reticulum || null,
     acted: (snap.rho || {}).acted || 0,
     asks: (snap.rho || {}).alerts_act || 0,
   };
@@ -1502,7 +1618,8 @@ function networkView(snap, ctx) {
   return `<div class="card net"><div class="head"><h2 class="t">${esc(w.title)}</h2>`
     + `<div class="sub">${esc(w.sub)}</div></div>${piece('netMap', d, ctx)}</div>`
     + `<div class="grid g2 mt"><div class="card"><div class="k">${esc(w.others)}</div>${piece('peers', d, ctx)}</div>`
-    + `<div class="card"><div class="k">${esc(w.machine)}</div>${piece('vitals', d, ctx)}</div></div>`
+    + `<div class="card"><div class="k">${esc(w.radioCard)}</div>${piece('radios', d, ctx)}</div></div>`
+    + `<div class="card mt"><div class="k">${esc(w.machine)}</div>${piece('vitals', d, ctx)}</div>`
     + `<div class="card mt"><div class="k">${esc(w.index)}</div>${piece('cellRings', d, ctx)}</div>`;
 }
 

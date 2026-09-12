@@ -18,6 +18,8 @@ import re
 import sys
 
 sys.path.insert(0, "app")
+import math
+
 try:
     import h3                                     # noqa: F401
 except ImportError:
@@ -56,6 +58,31 @@ for svg, (lat, lon), cell in ((drawn, BALI, bali_id), (here, BARCELONA, bcn_id))
 # (tests/test_shipped.py holds the same three facts; this suite skipped on every machine without h3,
 # which is how the old literal survived here after it was gone from the page.)
 import re as _re
+def _haversine(a, b):
+    p = math.pi / 180
+    x = 0.5 - math.cos((b[0] - a[0]) * p) / 2 + math.cos(a[0] * p) * math.cos(b[0] * p) * (1 - math.cos((b[1] - a[1]) * p)) / 2
+    return 12742 * math.asin(math.sqrt(x))
+
+
+# ---- presence: how much a coarse cell actually gives away -----------------------------------------
+# The announced cell is the node's own res-8 cell rounded up to a parent, and the resolution IS the
+# privacy control. These are the numbers that choice is made on, measured rather than asserted.
+_here8 = h3.latlng_to_cell(*BALI, 8)
+_blur = {}
+for _r in (3, 4, 5, 6):
+    _c = h3.cell_to_parent(_here8, _r)
+    _lat, _lon = h3.cell_to_latlng(_c)
+    _blur[_r] = ground.km(BALI[0], BALI[1], _lat, _lon) if hasattr(ground, "km") else _haversine(BALI, (_lat, _lon))
+assert _blur[3] > 20, f"res 3 must not land near the house: it is {_blur[3]:.1f} km away"
+assert _blur[3] > _blur[5], "a coarser cell has to blur further, or the setting means nothing"
+assert h3.cell_to_parent(_here8, 3) != _here8, "the announced cell is never the node's own cell"
+# and the distance between two nodes is two cell centres, so it is symmetric and carries no address
+_men = h3.cell_to_parent(h3.latlng_to_cell(39.9496, 4.1100, 8), 3)
+_a, _b = h3.cell_to_latlng(h3.cell_to_parent(_here8, 3)), h3.cell_to_latlng(_men)
+_d = _haversine(_a, _b)
+assert 11500 < _d < 13500, f"Bali to Menorca from two coarse cells is {_d:.0f} km, which is not the right planet"
+print(f"  the announced cell blurs this node by {_blur[3]:.0f} km at res 3, and Menorca reads {_d:.0f} km away")
+
 gui = open("app/static/dashboard.js").read()
 assert 'data-component="stamp"' in gui, "the cell stamp is a component"
 for _a in ("hero", "wall"):

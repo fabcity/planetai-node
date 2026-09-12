@@ -447,6 +447,30 @@ assert "baliairdispatch.com" in gui and "api.bmkg.go.id" in gui and "open-meteo.
 # a link only where the sensor has a page of its own — account kits, never a public station
 assert "s.meta&&s.meta.url" in gui, "the dashboard: account kits link to their own page; public stations never do"
 
+# v0.48 — presence. A node announcing "I am here" on Reticulum is the node speaking unprompted, so it is
+# its own setting and it is off until somebody turns it on; SHARE_LEVEL governs what a node ANSWERS.
+_bridge = open("app/reticulum_bridge.py").read()
+assert '"RETICULUM_PRESENCE":' in settings and '"RETICULUM_PRESENCE_RES":' in settings, \
+    "app/settings.py: presence is a runtime setting, so a household can turn it off from the dashboard"
+assert re.search(r'PRESENCE_RES_FLOOR\s*=\s*[0-6]\b', main), \
+    "main.py: a floor on how exact the announced cell may be. Without it a settings box publishes a street."
+assert "min(r, PRESENCE_RES_FLOOR)" in main, "the floor has to be applied, not merely declared"
+assert '"/presence"' in main[main.index("_SHARE_OFF = "):main.index("_SHARE = {")], \
+    ("/presence must answer at SHARE_LEVEL=off: the reticulum bridge is another container with no token, "
+     "and on the `open` list only it would be refused on a default node and never announce")
+assert '"enabled": False' in main, "/presence says nothing at all until presence is on"
+# scoped to /presence's own body: cell_to_parent also appears in the distance helper, so a bare
+# substring check passed even with the coarsening taken out of the thing that announces
+_pres = main[main.index('@app.get("/presence")'):main.index("def _cell(")]
+assert "cell_to_parent" in _pres and "_presence_res()" in _pres, \
+    "the announced cell is a COARSE parent of this node's own cell, never the cell itself"
+assert "register_announce_handler" in _bridge, \
+    "the bridge has to listen as well as announce, or no node ever hears another"
+assert 'aspect_filter = "planetai.presence"' in _bridge, "on its own aspect, not on LXMF delivery"
+assert "/peers" in _bridge, "and hand what it heard to the node"
+assert "if h == RNS.hexrep(PRESENCE.hash" in _bridge, "a node must not list its own announce as a peer"
+print("presence: off by default, coarse by construction, and the bridge listens as well as announces")
+
 # the scripts each pack promises in its README
 for _p, _s in (("nearby", ("stations", "status", "verify", "backfill")),
                ("forecast", ("fetch", "status", "verify"))):
