@@ -1676,15 +1676,33 @@ function render(snap, view) {
   document.getElementById('nodename').textContent = h.node || 'node';
   document.getElementById('nodeplace').textContent =
     [h.city, h.kind, ctx.as_of ? `${ctx.w.asOf} ${ctx.hhmm(ctx.as_of)}` : ''].filter(Boolean).join(' · ');
+  // A refused page has no reading, so it makes no claim about one. The pill used to be computed from
+  // /health, which answers at every share level — so a page showing nothing wore the word `live`.
   document.getElementById('headprov').innerHTML =
-    ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
-                : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || '');
+    snap.refused ? ''
+    : ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
+                  : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || '');
 
-  // SHARE_LEVEL=off with no token: the shell, and the node's own sentence about why. Not a blank.
+  /* SHARE_LEVEL=off with no token: the shell, and the node's own sentence about why. Not a blank.
+   *
+   * The sentence goes into the mount THIS view draws into, not only into #hero. It used to return
+   * here after writing #hero alone, which `body.wallview` hides and which the Network view never
+   * shows — so at the DEFAULT share level the wall was 1920x1080 of nothing and Network was a header
+   * over an empty page. Those are the two surfaces nobody is standing at to work out why, and a
+   * blank screen reads as a dead node, which is the thing the comment above has always forbidden.
+   *
+   * #hero is written in every case, not only the Now case: a node whose SHARE_LEVEL is changed while
+   * a page is open would otherwise keep the last populated hero underneath the wall.
+   */
   if (snap.refused) {
-    document.getElementById('hero').outerHTML =
-      `<div class="hero" id="hero"><div><p class="big">${esc(ctx.w.refused)}</p>`
-      + `<p class="why">${esc(snap.refused)}</p></div></div>`;
+    const said = `<p class="big">${esc(ctx.w.refused)}</p><p class="why">${esc(snap.refused)}</p>`;
+    document.getElementById('hero').outerHTML = `<div class="hero" id="hero"><div>${said}</div></div>`;
+    // .wall's own type, so the sentence is legible at three metres rather than at reading distance.
+    if (view === 'wall') document.getElementById('wallbox').innerHTML = `<div class="row2"><div>${said}</div></div>`;
+    if (view === 'network') {
+      const box = document.getElementById('netbody');
+      if (box) box.innerHTML = `<div class="card">${said}</div>`;
+    }
     ['index', 'bands', 'place', 'loop', 'figures'].forEach(id => {
       const el = document.getElementById(id); if (el) el.innerHTML = '';
     });

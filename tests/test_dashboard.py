@@ -61,4 +61,27 @@ _js = re.sub(r"(?m)^\s*//.*$", " ", _js)
 for _word in ("mad", "fence"):
     assert not re.search(rf"\b{_word}\s*=", _js), f"dashboard.js computes a {_word} again — it belongs in the engine"
 
-print("test_dashboard: the engine's fence holds at three stations, and the page has none of its own")
+# And a refused page must say so on whichever surface is being drawn.
+#
+# At SHARE_LEVEL=off — the default, and what every beta tester has — render()'s refused branch wrote
+# the node's sentence into #hero and returned. body.wallview hides #hero, and the Network view never
+# shows it, so the wall came up as 1920x1080 of nothing and Network as a header over an empty page.
+# Both are surfaces nobody is standing at to work out why. A household reads a black shelf screen as
+# a dead node, which is the exact thing the renderer's own comment has always forbidden: "a blank page
+# would be the node lying about being broken".
+#
+# This is a static proxy for a rendered check. The real test drives a browser against a node at `off`
+# and asserts each view carries the sentence; the suite has no browser and is not getting one for
+# this, so it asserts the branch names all three mounts. If the branch is ever rewritten, write the
+# rendered version rather than deleting this.
+_refused = _js[_js.index("if (snap.refused)"):]
+_refused = _refused[:_refused.index("\n  }") + 4]
+for _mount in ("hero", "wallbox", "netbody"):
+    assert f"'{_mount}'" in _refused or f'"{_mount}"' in _refused, \
+        f"the refused branch does not draw into #{_mount} — that view renders blank at SHARE_LEVEL=off"
+# and it must not claim a reading it does not have
+assert re.search(r"snap\.refused\s*\?\s*''", _js), \
+    "the header's provenance pill is computed without asking whether the page was refused; it said `live` over nothing"
+
+print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
+      "and a refused page says so on the wall and the network view as well as the hero")
