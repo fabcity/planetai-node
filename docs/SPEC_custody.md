@@ -16,11 +16,21 @@ correct. They point at the same column from opposite sides.
   display-only — out of every Index cell, structurally rather than by convention. `/nearby` already stores
   other people's stations that way.
 
-> **Provenance note.** Neither docs/proposals/peer-visibility.md nor the FCI ingestion map is in this
-> repository, on any branch of it, or anywhere else under the FAB CITY project directory as of
-> 12 September 2026. Their claims are restated above from the brief that commissioned this spec, not read
-> from the files. Everything below §1 is read from the tree at `f5fd456`. If those two documents surface and
-> contradict §1, the tree wins and this spec has a bug.
+> **Provenance note** (rewritten 13 September, after searching properly).
+>
+> **`docs/proposals/peer-visibility.md` exists and is now in this repository.** It was written on
+> 10 September into a *session scratchpad* — `/private/tmp/.../scratchpad/peer-visibility.md` — never into
+> the repo, which is why the first version of this note said it was nowhere. I had searched the project
+> tree and every git branch, and not `/private/tmp`. Recovered and committed unchanged, with an editor's
+> note; its §3 and §9.4 say what this spec attributes to them.
+>
+> **The FCI ingestion map was not found, anywhere.** Not in any repo or branch, any scratchpad, any of the
+> 28 session transcripts on this machine, or the home directory. The only file here that mentions an
+> "ingestion map" is the transcript of the session that wrote this spec — i.e. the brief quoting it. So
+> gap 1 is restated from the brief, not read from a document. It was nonetheless correct in every detail
+> the code could check, which says nothing about the other four gaps.
+>
+> Everything below §1 is read from the tree, and §8's node #1 figures from node #1.
 
 ---
 
@@ -93,7 +103,7 @@ category name — there is no `'own'` kind and there is no `'peer'`, `'external'
 | `mahon1/sc-19874` — a child's hourly mean | `main.py:1625` (`receive_aggregates`) | `child` | **FALSE** | **yes** | **yes — and this is what is broken** |
 | `bad-46949` — a Bali Air Dispatch station, 300 m away | `sources.baliairdispatch` (`sources.py:243`) | `sensor` | FALSE | no | `partial` only, as `Environmental\|City` |
 | a stranger's node, heard over Reticulum today | `main.py:554` — **in memory only, no `sensors` row** | — | — | no | **never** |
-| a stranger's node, once peer-visibility §9.4 lands | not written yet | `peer` | FALSE | no | **never** |
+| a stranger's node, once `docs/proposals/peer-visibility.md` §9.4 lands | not written yet | `peer` | FALSE | no | **never** |
 | `openmeteo-point`, `marine-point`, `earth-point`, `ee-point` | `sources.py:379,426`, `bootstrap.py:62` | `model` | FALSE | no | `partial` only, never `live` |
 | a CKAN dataset row | `sources.py:404` | `portal` | FALSE | no | `partial` only |
 | `place-point` — OSM footprints around the node | `packs/place/adapter.py:268` | `map` | FALSE | no | `partial` only |
