@@ -201,9 +201,15 @@ CREATE TABLE IF NOT EXISTS events (
   responded_at  TIMESTAMPTZ,             -- decide   (first 'acknowledged')
   acted_at      TIMESTAMPTZ,             -- deploy   (first 'acted')
   measured_at   TIMESTAMPTZ,             -- measure  (first 'measured')
-  cleared_at    TIMESTAMPTZ,             -- the condition stopped holding: an alert that resolved itself is not acted on
   received_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (child, alert_id)          -- re-pushing the same alert updates it, so a child may push an open alert for days
 );
 CREATE INDEX IF NOT EXISTS events_window ON events (raised_at DESC);
 INSERT INTO schema_version (version) VALUES ('0.50') ON CONFLICT DO NOTHING;
+
+-- v0.50 shipped this table with a `cleared_at` column and nothing to put in it. A node has no notion of an
+-- alert clearing, only of cooldowns, so no child could ever have sent one and push_events never did. A column
+-- that is always NULL is a promise the schema cannot keep. Dropped rather than left as scaffolding.
+-- It comes back the day an alert learns it has stopped holding, and on that day it arrives with a writer.
+ALTER TABLE events DROP COLUMN IF EXISTS cleared_at;
+INSERT INTO schema_version (version) VALUES ('0.51') ON CONFLICT DO NOTHING;

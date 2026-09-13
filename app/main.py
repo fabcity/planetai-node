@@ -1675,16 +1675,14 @@ def receive_events(body: dict, authorization: str = Header("")):
             if not r.get("alert_id") or not r.get("raised_at"):
                 continue                      # a row with no identity or no detect time cannot measure latency
             cur.execute("""INSERT INTO events (child, alert_id, rule, level, kind, scale, raised_at,
-                                               responded_at, acted_at, measured_at, cleared_at)
-                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                               responded_at, acted_at, measured_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                            ON CONFLICT (child, alert_id) DO UPDATE SET
                              rule=EXCLUDED.rule, level=EXCLUDED.level, kind=EXCLUDED.kind, scale=EXCLUDED.scale,
                              responded_at=EXCLUDED.responded_at, acted_at=EXCLUDED.acted_at,
-                             measured_at=EXCLUDED.measured_at, cleared_at=EXCLUDED.cleared_at,
-                             received_at=now()""",
+                             measured_at=EXCLUDED.measured_at, received_at=now()""",
                         (child, str(r["alert_id"]), r.get("rule"), r.get("level"), r.get("kind"), scale,
-                         r["raised_at"], r.get("responded_at"), r.get("acted_at"), r.get("measured_at"),
-                         r.get("cleared_at")))
+                         r["raised_at"], r.get("responded_at"), r.get("acted_at"), r.get("measured_at")))
             kept += 1
     return {"accepted": kept}
 
