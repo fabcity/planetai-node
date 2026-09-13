@@ -96,11 +96,22 @@ category name — there is no `'own'` kind and there is no `'peer'`, `'external'
 | a stranger's node, once peer-visibility §9.4 lands | not written yet | `peer` | FALSE | no | **never** |
 | `openmeteo-point`, `marine-point`, `earth-point`, `ee-point` | `sources.py:379,426`, `bootstrap.py:62` | `model` | FALSE | no | `partial` only, never `live` |
 | a CKAN dataset row | `sources.py:404` | `portal` | FALSE | no | `partial` only |
+| `place-point` — OSM footprints around the node | `packs/place/adapter.py:268` | `map` | FALSE | no | `partial` only |
 | a survey response | declared in `init.sql:15`, **never written** | `survey` | — | (yes, when it exists) | `partial` |
 
 Read the two bold rows together and the whole argument is there: **`child` is the only in-custody row that is
 not `local`, and that is the only reason `_buckets` is wrong.** Everything else the table holds is already
 classified correctly by `local` alone.
+
+> **This table was wrong when it was written, and the correction is worth more than the table.** It was built by
+> reading `app/` and `init.sql`, and it missed `kind='map'` — written by a *pack*, `packs/place/adapter.py`, and
+> present on node #1 the whole time. `kind` is not a closed set the core owns: any code pack can invent one.
+>
+> So the rule cannot rest on enumerating kinds, and this is the invariant that actually carries it:
+> **`local=TRUE` is only ever written alongside `kind='sensor'`** — `sources.py:127,271,297,492`, `main.py:181`.
+> Every other kind a pack or an adapter writes, `map` and `model` and `portal` included, sets `local=False`.
+> That is why `s.local AND kind <> 'peer'` is safe against kinds nobody has invented yet, and why a table of
+> today's kinds was never the load-bearing part.
 
 ---
 
@@ -454,9 +465,9 @@ SELECT s.sensor_id, s.source, s.kind, s.local, s.scale,
        count(r.*) AS readings_24h, max(r.ts) AS last_seen
 FROM sensors s LEFT JOIN readings r
   ON r.sensor_id = s.sensor_id AND r.ts > now() - interval '24 hours'
-WHERE (s.kind = 'child' OR (s.local AND s.kind <> 'peer'))   -- the new custody rule
-  AND NOT s.local                                             -- the old one
-  AND s.kind <> 'child'                                       -- the intended change
+WHERE s.custody                 -- the new rule, as the generated column computes it
+  AND NOT s.local               -- the old one
+  AND s.kind <> 'child'         -- the intended change
 GROUP BY 1,2,3,4,5;
 ```
 
@@ -464,14 +475,29 @@ And its mirror, which must also return zero — nothing that was in custody fell
 
 ```sql
 SELECT sensor_id, source, kind, local FROM sensors
-WHERE s.local AND NOT (kind = 'child' OR (local AND kind <> 'peer'));
+WHERE local AND NOT custody;
 ```
 
-**What a node on v0.30 needs** — node #1 today. `update.sh` applies `init.sql` to the live database on every
-update, so the schema arrives on its own; v0.30's database already has `kind`, `scale` and `cadence` (added
-in v0.4.3, before it). Nothing to do by hand. The one thing that changes under node #1 is *nothing*: it has no
-children and no peers, all five of its kits are `local=TRUE`, and `_buckets` returns the same 192 it returns
-today. Verified in `tests/test_custody.py`, which replays node #1's own 7 September dump.
+**What an older node needs.** `update.sh` applies `init.sql` to the live database on every update, so the
+schema arrives on its own; any database from v0.4.3 onward already has `kind`, `scale` and `cadence`. Nothing
+to do by hand.
+
+**What node #1 actually did** — checked on the node, 13 September 2026, after it updated to `v0.51-1-gb8ec752`
+(schema 0.51):
+
+| | |
+|---|---|
+| own kits | 6, `local=TRUE`, `custody=TRUE` |
+| ring stations (Bali Air Dispatch) | 14, `local=FALSE`, `custody=FALSE` |
+| model points | 5, `custody=FALSE` |
+| `place-point` (`kind='map'`) | 1, `custody=FALSE` |
+| children, peers | none |
+| hourly buckets in 24h, **by custody vs by local** | **1080 vs 1080** |
+
+A genuine no-op, which is what it should be for a node with no children. Earlier drafts of this section said
+node #1 was on v0.30 and had five kits: the first came from the brief and was never checked, the second from
+`tests/data/node1-sensors.tsv`, a dump taken on 7 September. Neither was a reading from the node. The DuckDB
+replay and the `pai-clean` rehearsal prove the change; only the node proves the node.
 
 ---
 
