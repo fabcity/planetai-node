@@ -124,10 +124,12 @@ broken("lifted blue on paper", prepend(".x{color:#7FA5E8}"),
        r"#7FA5E8.*(outside the dark register|does not declare)")
 
 # 8. an asset the node does not serve, and one that is not under static/ at all
-# the ground is written by the renderer now, not by the document
-broken("unserved asset", sub('src="static/node-ground.svg"', 'src="node-ground.svg"'),
+# the ground is written by the renderer now, not by the document, and it carries a query string —
+# `?variant=${ctx.register}` — so these anchor on the path and leave the query where it is.
+GROUND = 'src="static/node-ground.svg?variant='
+broken("unserved asset", sub(GROUND, 'src="node-ground.svg?variant='),
        r"loads node-ground\.svg, which is not under static/", where="dashboard.js")
-broken("asset off the allowlist", sub('src="static/node-ground.svg"', 'src="static/ground2.svg"'),
+broken("asset off the allowlist", sub(GROUND, 'src="static/ground2.svg?variant='),
        r"COMPANIONS allowlist does not serve", where="dashboard.js")
 # and the document's own stylesheet links, which nothing checked before
 broken("stylesheet off the allowlist",

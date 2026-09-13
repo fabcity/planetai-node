@@ -173,6 +173,15 @@ for (const f of LIVE ? [] : readdirSync(BUNDLES).filter(n => n.endsWith('.json')
         if (url.pathname.startsWith('/static/')) {
           const p = companion(url.pathname.slice('/static/'.length));
           if (!p) { missed.push(url.pathname); return route.fulfill({ status: 404, body: 'not a name this node serves' }); }
+          // The ground follows the page's register, as app/main.py's static_file() does it. A node
+          // draws it from NODE_LAT/NODE_LON; there are no coordinates here, so this is the shipped
+          // file with its root attribute swapped — the same branch a node takes before setup.
+          // Without this the fixture shots show a dark ground on the paper page, which is the bug
+          // the variant exists to fix, and a design round would be looking at a stale picture.
+          if (p.endsWith('node-ground.svg') && url.searchParams.get('variant') === 'paper') {
+            return route.fulfill({ contentType: 'image/svg+xml',
+              body: readFileSync(p, 'utf8').replace('data-variant="dark"', 'data-variant="paper"') });
+          }
           return route.fulfill({ contentType: TYPES[extname(p)] || 'application/octet-stream', body: readFileSync(p) });
         }
         // Everything else is a request the fixture path is not supposed to make. Record it: a

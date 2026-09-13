@@ -256,8 +256,13 @@ _refs |= set(re.findall(r'<link[^>]+href="(?!https?:|data:|#)([^"]+)"', h))
 # not assets; they are excluded by the character class.
 _refs |= set(re.findall(r'src="([^"${}]+)"', js))
 _refs |= {m.split("#")[0] for m in re.findall(r'href="([^"${}]+)"', js) if "/" in m}
+# A src whose PATH is literal and whose query is a template: the ground asks for its register with
+# `?variant=${ctx.register}`. Without this the whole reference drops out of the check, because the
+# character class above excludes `${}` — which is the same way a reference dropping its prefix
+# dropped out, two comments up. The asset is the path; the query is not part of the allowlist.
+_refs |= set(re.findall(r'src="([^"${}?]+)\?[^"]*"', js))
 for ref in sorted(_refs):
-    ref = ref.strip("'\"")
+    ref = ref.strip("'\"").split("?")[0]
     if not ref.startswith("static/"):
         errs.append(f"the page loads {ref}, which is not under static/ — app/main.py serves nothing else")
     elif ref[len("static/"):] not in served:

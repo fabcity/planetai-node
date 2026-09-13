@@ -120,3 +120,27 @@ print("  every element binds its colour to a variant token; the dark register's 
 assert not set(paths(here)) & set(paths(drawn)), "no path survives a change of place"
 assert ground.svg(*BARCELONA) is here, "one point is drawn once and kept"
 print("  a different node draws a different ground")
+
+# 6. the ground follows the page's register. It is an <img>, so it is a document of its own and no
+#    CSS on the page reaches it: without this it drew #7FA5E8 on the paper hero at 2.29:1, which is
+#    the one thing planetai-design's guards say may never happen. The page asks in the URL instead.
+paper = ground.svg(*BALI, "paper")
+assert 'data-variant="paper"' in paper, "?variant=paper must reach the root attribute"
+assert 'data-variant="dark"' in drawn, "the default is still the dark register"
+assert paths(paper) == paths(drawn), "the register changes the palette, never the geometry"
+
+_main = open("app/main.py").read()
+# The variant is interpolated into data-variant="..." inside the SVG, so the route may never pass a
+# caller's string through. Two literals, chosen by comparison — that is what makes it uninjectable.
+assert '_ground_svg("paper" if variant == "paper" else "dark")' in _main, (
+    "the route must coerce ?variant= to one of two literals, not validate-and-forward it")
+assert 'src="static/node-ground.svg?variant=${ctx.register}"' in open("app/static/dashboard.js").read(), (
+    "the renderer must ask for the register it is in")
+
+# The shipped fallback is drawn dark, so a node with no coordinates yet needs the attribute swapped
+# or it puts the lifted blue on the paper hero — the same bug, one branch over.
+assert 'data-variant="dark"' in shipped, "the shipped file is the dark register"
+assert 'data-variant="paper"' in shipped.replace('data-variant="dark"', 'data-variant="paper"', 1)
+assert "#20388D" in shipped and "#7FA5E8" in shipped, (
+    "the fallback carries both registers in its own <style>, or swapping the attribute changes nothing")
+print("  the ground follows the register: paper on the page, dark on the wall, geometry unchanged")

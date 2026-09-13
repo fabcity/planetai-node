@@ -1042,7 +1042,7 @@ const COMPONENTS = {
         : d.status ? `Could not read the map from this node (${d.status}). Trying again on the next refresh.`
                    : '';
       return `<div class="plan" data-component="planCard">`
-        + `<img src="static/node-ground.svg" alt="The node's own kilometre, drawn from its coordinates">`
+        + `<img src="static/node-ground.svg?variant=${ctx.register}" alt="The node's own kilometre, drawn from its coordinates">`
         + (why ? `<p class="note">${esc(why)}</p>` : '')
         + `<div class="cap mono">${esc(d.caption || '')}</div></div>`;
     }
@@ -1319,7 +1319,7 @@ function bandFor(id, snap, ctx) {
     // looks for a node that is no longer there. index.html calls these mount points; they have to
     // survive being rendered into.
     return `<div class="hero" id="hero" data-band="hero">`
-      + `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg" alt=""></div>`
+      + `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg?variant=${ctx.register}" alt=""></div>`
       + `<div>${piece('kicker', d, ctx)}${piece('sentence', d, ctx)}${piece('why', d, ctx)}`
       + `${piece('chips', d, ctx)}${piece('miniStack', d, ctx)}</div>`
       + `<div class="side">${piece('askStrip', d, ctx)}`
@@ -1376,7 +1376,7 @@ function wallView(snap, ctx) {
     empty: '',
   }, ctx);
   const stale = (snap.health || {}).last_poll && ctx.staleFor(snap.health.last_poll);
-  return `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg" alt=""></div>`
+  return `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg?variant=${ctx.register}" alt=""></div>`
     // The only control on the wall, and it acts on the view rather than on anything the node knows.
     // Without it a laptop that reached the wall from the nav has no way back, because the header is
     // gone; a kiosk never shows a pointer and nobody presses it.

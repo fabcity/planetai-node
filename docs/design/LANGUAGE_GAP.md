@@ -43,7 +43,7 @@ moves, the ρ row will not follow, and nothing will say so.
 | 2 | projection | **pass** |
 | 3 | signs — lifted or built on a grid, legible at the floor | **fail** |
 | 4 | counted, not sized | **fail** |
-| 5 | colour as argument | **fail** |
+| 5 | colour as argument | **fail** — (a) fixed, (b) and (c) stand |
 | 6 | provenance ink-only | **pass** |
 | 7 | the stranger | **pass, with one hole** |
 | 8 | solid / dashed / hairline for state | **fail** |
@@ -115,29 +115,45 @@ pillar with nineteen draw the identical 87° sweep. The arc reads as "this pilla
 answered" and means "this pillar has at least one cell, none of them live". The honest number is
 already sitting in the middle of the ring: `hit.length`, at `dashboard.js:1478`.
 
-### 5. Colour as argument — fail
+### 5. Colour as argument — fail (one of three fixed)
 
 Three findings, in descending order.
 
-**(a) The hero's ground is the dark export, shown on paper.** `node-ground.svg` carries
-`data-variant="dark"` on its root element and its own `<style>` block, and it is loaded as
+**(a) The hero's ground was the dark export, shown on paper — FIXED, see below.** `node-ground.svg`
+carried `data-variant="dark"` on its root element, and the page loaded it as
 `<img src="static/node-ground.svg">` at `dashboard.js:1322` (the Now hero) and `:1379` (the wall).
 
-An `<img>` is an independent document. Page custom properties do not cross into it — so the file's
-own `svg[data-variant="dark"]` rule wins on **both** registers, and its cells draw at `#7FA5E8`
-whether the page is paper or ink.
-
-The layer's Guards section is explicit about this exact colour:
+An `<img>` is an independent document, so page custom properties do not cross into it and the
+file's own `svg[data-variant="dark"]` rule won on **both** registers. Its cells drew at `#7FA5E8`
+whether the page was paper or ink. The layer's Guards section is explicit about this exact colour:
 
 > `#7FA5E8` measures **2.29:1** on paper `#F9F5F2`. It may appear only inside the
 > `[data-theme="dark"]` block.
 
-Measured here: 2.29:1, the same number. The hero ground on the Now view is a guard violation on
-every node, every day, in daylight. It is not a stale asset — `check_theme.py` would catch that —
-it is the right asset in the wrong register, reached through an element that cannot carry one.
+Two things about the original diagnosis were wrong, and both matter:
 
-The file paints no `class="ground"` rect, so the page's background is not overpainted; it is the
-cells, the neighbours and the children that are wrong.
+- **The `<img>` is deliberate, not an oversight.** `app/main.py:1459` says an inlined ground would
+  leak its own `:root` paper variables into the page. Isolation is the point; the consequence — it
+  cannot inherit a register — was the cost.
+- **The file on disk was not the artifact at fault on most nodes.** Since v0.37,
+  `GET /static/node-ground.svg` never reaches disk on a configured node: `app/main.py:1503`
+  intercepts it and returns `ground.svg(lat, lon)`, drawn from `NODE_LAT`/`NODE_LON`. That
+  generator's signature was `svg(lat, lon, variant="dark")` and the route called it with no
+  variant. So the live path was hard-coded dark too, in the same way and for the same reason.
+
+**The fix.** The register is now a query parameter — the only channel an `<img>` has. The three
+call sites ask for the register they are in (`?variant=${ctx.register}`), the route coerces the
+value to one of two literals before it reaches `data-variant="..."`, and the shipped fallback gets
+its root attribute swapped for a node that has no coordinates yet. Geometry is untouched; only the
+palette moves. `tests/test_ground.py` §6 holds it, and `tools/shots.mjs` mirrors the route so a
+design round does not look at a stale picture.
+
+What this changed is not only a contrast number. On the paper register most of the A4 drawing was
+not visible at all — the six neighbours and seven res-9 children rendered at 2.29:1 on paper and
+disappeared, leaving one ghost outline. The Fab Blue brings back the drawing that was specified.
+
+The file paints no `class="ground"` rect, so the page's background was never overpainted; it was
+the cells, the neighbours and the children that were wrong.
 
 **(b) The wall takes the orange off the one thing that earns it.** `dashboard.css:245` sets
 `.sat-bar .yr{color:var(--satellite-only)}` — the Sentinel frame's year, which the CSS comment
@@ -243,5 +259,24 @@ elements and keeping `hit.length` fixes all three and removes code.
 
 Then, in order: the 11 px pill glyph (`dashboard.css:80`, one number); the two `#fff`
 (`dashboard.css:124`, `:275`, one token each); the wall's ink year (`dashboard.css:256`, delete the
-rule). The hero ground needs `node-ground.svg` inlined rather than `<img>`-ed, or exported in both
-variants — that one is a design-repo conversation, not a one-line fix.
+rule).
+
+**The hero ground is done** — it was the one finding here that did not need a design-repo
+conversation after all, only a register the `<img>` could be told about.
+
+## What the guards could not see
+
+Worth recording, because it is why this document had to be written by reading rather than by
+running something. Both node-side gates were green the whole time 5(a) was true:
+
+- **`tools/check_ui.py`** enforces the register rule — "the dark register's blue is the one that can
+  be seen" — but opens exactly three files: `index.html`, `dashboard.js`, `dashboard.css`. It never
+  opened `node-ground.svg`, and it cannot open `ground.py`, which draws the real one.
+- **`tools/check_theme.py`** holds three frozen files byte-identical to the design repo.
+  `node-ground.svg` is not one of them, and **cannot be**: the node's copy is a deliberately
+  generalised placeholder (53 lines) and the design repo's names node #1's cell and stamps it
+  (67 lines). Freezing it would ship `8895a4c86bfffff · THE CELL THIS NODE STANDS IN` to every node
+  as a claim about where that node stands. `tests/test_ground.py` already asserts the opposite.
+
+So "lint is green" and "the page obeys the language" are not yet the same statement. Checks 3, 4, 6
+and 8 above are all outside what either gate reads.
