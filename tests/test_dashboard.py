@@ -14,8 +14,11 @@ this suite lifted it out of the page with a regular expression and ran it in nod
 node as `issues.engine.fenced_median`, where every issue's ring column reads it, so this runs the real function
 instead of a copy of the page's copy. The page no longer has a fence and must not grow one back.
 """
+import json
 import re
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -61,6 +64,38 @@ _js = re.sub(r"(?m)^\s*//.*$", " ", _js)
 for _word in ("mad", "fence"):
     assert not re.search(rf"\b{_word}\s*=", _js), f"dashboard.js computes a {_word} again — it belongs in the engine"
 
+# A hole in a series must be a hole in the line.
+#
+# Both charts used to drop the nulls and join what was left, so a sensor that was off from 08:00 to 15:00 was drawn
+# as one straight segment bridging the hole. Rendered against the committed fixture with seven hours nulled, the room
+# trace ramped for six hours, CROSSED the WHO line the page judges against, and came back down: a threshold crossing
+# that never happened, on the chart a household reads to decide whether to open a window. 17 real points were drawn
+# as a 17-point line over 24 hours and nothing said which six were invented.
+#
+# Where a line breaks is drawing, not arithmetic, so `runs` lives in the page — and this lifts it out and runs it,
+# the way this suite ran the fence before the fence moved to the engine.
+if shutil.which("node"):
+    _runs = re.search(r"const runs = \(vals, at\) => \{.*?\n\};", _js, re.S)
+    assert _runs, "dashboard.js no longer defines runs() — the charts are joining across nulls again"
+    _cases = {
+        "a hole in the middle":   [1, 2, None, None, 5, 6],
+        "the fixture's own case": [*range(8), *([None] * 7), *range(15, 24)],
+        "no hole at all":         [1, 2, 3, 4],
+        "one reading alone":      [None, 5, None],
+        "nothing at all":         [None, None],
+    }
+    _prog = (_runs.group(0) + "\nconst at = (v, i) => [i, v];\n"
+             + "console.log(JSON.stringify(Object.fromEntries(Object.entries("
+             + json.dumps(_cases) + ").map(([k, v]) => [k, runs(v, at).map(r => r.length)]))))")
+    _out = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True, check=True).stdout)
+    assert _out["a hole in the middle"] == [2, 2], f"one hole must give two lines, not one: {_out}"
+    assert _out["the fixture's own case"] == [8, 9], \
+        f"the seven nulled hours must split the day into 8 points and 9, not bridge into 17: {_out}"
+    assert _out["no hole at all"] == [4], f"an unbroken day is still one line: {_out}"
+    assert _out["one reading alone"] == [1], \
+        f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
+    assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
+
 # And a refused page must say so on whichever surface is being drawn.
 #
 # At SHARE_LEVEL=off — the default, and what every beta tester has — render()'s refused branch wrote
@@ -84,4 +119,4 @@ assert re.search(r"snap\.refused\s*\?\s*''", _js), \
     "the header's provenance pill is computed without asking whether the page was refused; it said `live` over nothing"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
-      "and a refused page says so on the wall and the network view as well as the hero")
+      "a hole in a series is a hole in the line, and a refused page says so on the wall and the network view")

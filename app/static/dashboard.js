@@ -614,21 +614,47 @@ const crossed_ = (d, cell) => !!(d.line && cell && cell.value != null && cell.va
  * last reading carries a dot so the eye finds `now` without a label — at 26 px a label is five
  * pixels tall and is not read.
  */
+/* A series with a hole in it is two lines, not one.
+ *
+ * Both charts used to drop the nulls and join what was left, so a sensor that was off from 08:00 to
+ * 15:00 was drawn as one straight segment bridging the hole. Rendered against the committed fixture
+ * with seven hours nulled, the room trace ramped for six hours, CROSSED the WHO line the page judges
+ * against, and came back down — a threshold crossing that never happened, on the one chart a
+ * household reads to decide whether to do something about the air. A gap is a fact about the day and
+ * it gets to look like one.
+ *
+ * Geometry only: where a line breaks is drawing, not arithmetic, so it stays in this file. A run of
+ * one reading is a dot rather than nothing — dropping it would lose a datum silently, which is the
+ * same dishonesty one level down.
+ */
+const runs = (vals, at) => {
+  const out = [];
+  let cur = [];
+  (vals || []).forEach((v, i) => {
+    if (v == null) { if (cur.length) { out.push(cur); cur = []; } return; }
+    cur.push(at(v, i));
+  });
+  if (cur.length) out.push(cur);
+  return out;
+};
+
 function spark(vals, ctx, opt = {}) {
   const v = (vals || []).filter(x => x != null);
   if (v.length < 2) return '';
   const W = 132, H = 26, hi = Math.max(...v), lo = Math.min(...v), span = hi - lo || 1;
   const n = vals.length;
   const at = (x, i) => [(i / (n - 1)) * W, H - 2 - ((x - lo) / span) * (H - 4)];
-  const pts = vals.map((x, i) => (x == null ? null : at(x, i).join(','))).filter(Boolean).join(' ');
+  const segs = runs(vals, (x, i) => at(x, i));
   let last = null;
   for (let i = n - 1; i >= 0; i--) if (vals[i] != null) { last = at(vals[i], i); break; }
   const dp = opt.dp || 0;
   return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
     + ` aria-label="the last ${n} hours, ${esc(ctx.fmt(lo, dp))} to ${esc(ctx.fmt(hi, dp))}`
     + `${opt.unit ? ' ' + esc(opt.unit) : ''}">`
-    + `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.4"`
-    + ` vector-effect="non-scaling-stroke" stroke-opacity=".7"/>`
+    + segs.map(r => r.length > 1
+        ? `<polyline points="${r.map(pt => pt.join(',')).join(' ')}" fill="none" stroke="var(--ink)"`
+          + ` stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-opacity=".7"/>`
+        : `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="1.2" fill="var(--ink)" fill-opacity=".7"/>`).join('')
     + (last ? `<circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="var(--ink)"/>` : '')
     + `</svg>`;
 }
@@ -818,19 +844,24 @@ const COMPONENTS = {
     const X = i => pad.l + (i / Math.max(1, n - 1)) * (W - pad.l - pad.r);
     const Y = v => H - pad.b - ((v - lo) / (hi - lo || 1)) * (H - pad.t - pad.b);
     const dash = { room: '', yard: '4 3', ring: '1 5', region: '6 4' };
+    // A break is now visible, so say it to a reader who cannot see it.
+    const broken = sets.some(k => runs(ser[k], () => 0).length > 1);
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
-      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours">`;
+      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours`
+      + `${broken ? ', broken where nothing was recorded' : ''}">`;
     if (line != null) {
       s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
         + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
     }
     sets.forEach(k => {
-      const pts = ser[k].map((v, i) => (v == null ? null : `${X(i)},${Y(v)}`)).filter(Boolean).join(' ');
-      if (pts) {
-        s += `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.6"`
-          + ` vector-effect="non-scaling-stroke"${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''}`
-          + ` stroke-opacity="${k === 'room' ? 1 : .55}"/>`;
-      }
+      const op = k === 'room' ? 1 : .55;
+      runs(ser[k], (v, i) => [X(i), Y(v)]).forEach(r => {
+        s += r.length > 1
+          ? `<polyline points="${r.map(pt => pt.join(',')).join(' ')}" fill="none" stroke="var(--ink)"`
+            + ` stroke-width="1.6" vector-effect="non-scaling-stroke"`
+            + `${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''} stroke-opacity="${op}"/>`
+          : `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="1.8" fill="var(--ink)" fill-opacity="${op}"/>`;
+      });
     });
     s += `</svg>`;
     const legend = sets.map(k =>
