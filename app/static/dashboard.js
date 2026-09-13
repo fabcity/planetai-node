@@ -685,7 +685,8 @@ const COMPONENTS = {
     return `<div class="k" data-component="kicker">`
       + `<span class="issue">${esc(d.name ? d.name[ctx.locale] : '')}</span>`
       + `<span class="state${d.state === 'act' ? ' act' : ''}">${esc(d.state || '')}</span>`
-      + (why ? `<span>· ${esc(why)}</span>` : '') + `</div>`;
+      // .said: the node's own prose, which the page must not uppercase — see dashboard.css.
+      + (why ? `<span class="said">· ${esc(why)}</span>` : '') + `</div>`;
   },
 
   sentence(d, ctx) {
@@ -716,7 +717,8 @@ const COMPONENTS = {
   chips(d, ctx) {
     const st = d.stack || {};
     const bits = DISTANCES.filter(x => st[x]).map(x =>
-      `<span class="chip">${esc((ctx.issues_labels || {})[x] || x)} · ${esc(st[x].source)}</span>`);
+      // The distance label is the page's word and stays shouted; the source is the node's and does not.
+      `<span class="chip">${esc((ctx.issues_labels || {})[x] || x)} · <span class="said">${esc(st[x].source)}</span></span>`);
     return `<div class="chips" data-component="chips">${bits.join('')}</div>`;
   },
 

@@ -63,6 +63,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .wrap{max-width:1280px;margin:0 auto;padding-inline:clamp(18px,3.5vw,48px)}
 /* type roles */
 .k{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+/* A sentence the NODE wrote, inside a label the page shouts. The page may uppercase its own words;
+   it may never uppercase the node's, because `µ` uppercases to `M` and the hero read `17 MG/M³`
+   where the node had written `17 µg/m³` — milligrams for micrograms, a factor of a thousand, two
+   lines above a sentence that had the unit right. Every interpolation of reason_text, sentence or a
+   stack cell's source belongs in here; tools/check_ui.py fails the page if one is left outside. */
+.said{text-transform:none}
 .num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .num{font-weight:700;letter-spacing:-.02em;line-height:1}
 .t{font:800 clamp(1.35rem,2.1vw,1.85rem)/1.12 var(--fc-font-display);letter-spacing:-.03em}

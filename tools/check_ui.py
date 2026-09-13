@@ -301,6 +301,36 @@ for css_path in sorted(_glob.glob("app/static/*.css")):
         elif imp not in served:
             errs.append(f"{name} @imports {imp}, which COMPANIONS does not serve")
 
+# --- the page may shout its own words, never the node's ------------------------------------------------------------
+# `text-transform:uppercase` is a rendering, and on one character it is a translation: `µ` uppercases to `M`, so a
+# reason the node wrote as "the day's high was 17 µg/m³" was drawn as "17 MG/M³" — milligrams for micrograms, a
+# thousandfold, on the hero and on the wall, two lines above a sentence that had the unit right. A household cannot
+# tell which of the two numbers to believe and nothing on the page says.
+#
+# So: every interpolation of the node's own prose — a reason, a sentence, a stack cell's source — must sit inside
+# `.said`, which sets text-transform:none, whenever its element is one the stylesheet shouts.
+# The two places the node's prose is drawn inside a shouted label, each of which must carry .said. These are
+# asserted by shape rather than by walking the markup: template literals are not a DOM, and the first version of
+# this rule proved it — looking backwards from the prose it found a SIBLING's class="state" and passed the exact
+# markup that put MG/M3 on the wall, and looking forwards it read one component's prose as the next one's. A
+# parser here would be a bigger thing than the bug. The tripwire below is what covers the sites not listed here.
+PROSE_IN_A_SHOUT = [
+    (r'class="said">·\s*\$\{esc\(why\)\}', "the kicker's reason (.k uppercases it)"),
+    (r'<span class="said">\$\{esc\(st\[x\]\.source\)\}', "a stack cell's source in the hero chips (.chip uppercases it)"),
+]
+for _pat, _what in PROSE_IN_A_SHOUT:
+    if not re.search(_pat, JS_SRC):
+        errs.append(f"{_what} is no longer wrapped in .said, so the page prints MG/M3 where the node wrote ug/m3")
+
+# And if a new uppercasing rule appears, somebody has to look at it against the check above rather than find out on
+# a wall. This list is the recorded set, dated 14 September 2026; it may shrink and it may not grow silently.
+UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
+                   ".tag", ".netnode .note", ".wall .wi .st", ".wall .exit"}
+_shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
+for _new in sorted(_shouting - UPPERCASE_KNOWN):
+    errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "
+                f".said — see PROSE_IN_A_SHOUT in this file. Then add it to UPPERCASE_KNOWN.")
+
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"
       "       no decorative hexagon, no website palette, no gradient, no rounded verdict, orange only on the\n"
