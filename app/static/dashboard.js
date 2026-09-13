@@ -1471,18 +1471,22 @@ function netMap(d, ctx) {
 function cellRings(d, ctx) {
   const w = ctx.w.net;
   const cells = d.cells || [];
-  const ring = p => {
+  /* The count, and nothing sized to it. This was a donut gauge whose sweep was 0, 87 or 198 against
+   * a circumference of 264 — three constants chosen by a boolean, so a pillar with one source and a
+   * pillar with nineteen drew the same 33% arc. The number was already in the middle of it.
+   *
+   * The arc's other job was `live` (198 rather than 87), and that is deliberately not carried over:
+   * nobody could read it, so no reader loses anything, and putting it back needs a mark a stranger
+   * can decode, which needs a legend in three languages. Per-cell provenance is on the page already,
+   * with its word, in the Figures band. Speaking the settled live/quiet vocabulary here is a design
+   * round — the layer's --state-* tokens are weights and dashes for H3 cells on a map, and borrowing
+   * them for a rule under a numeral would invent a dialect rather than speak the language. */
+  const pillar = p => {
     const hit = cells.filter(c => String(c.cell).startsWith(p.key + '|'));
-    const live = hit.filter(c => c.state === 'live').length;
-    const dash = hit.length ? (live ? 198 : 87) : 0;
-    return `<div class="pillar"><div class="dial"><span class="mono">${hit.length || '–'}</span>`
-      + `<svg viewBox="0 0 100 100" aria-hidden="true">`
-      + `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--hair)" stroke-width="9"/>`
-      + `<circle cx="50" cy="50" r="42" fill="none" stroke="var(--cells)" stroke-width="9"`
-      + ` stroke-linecap="round" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/>`
-      + `</svg></div><div class="l">${esc(p.label)}</div></div>`;
+    return `<div class="pillar"><span class="num tally">${hit.length || '–'}</span>`
+      + `<div class="l">${esc(p.label)}</div></div>`;
   };
-  return `<div class="cellrow" data-component="cellRings">${w.pillars.map(ring).join('')}</div>`
+  return `<div class="cellrow" data-component="cellRings">${w.pillars.map(pillar).join('')}</div>`
     + `<p class="note mt">${t(esc(w.cellsK), { n: cells.length })}</p>`;
 }
 

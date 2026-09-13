@@ -374,9 +374,11 @@ svg.net .halo{transform-origin:675px 180px;animation:nethalo 5s ease-out infinit
    as .ring its box plot inherited a green stroke it never asked for. */
 .cellrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(10px,1.4vw,20px)}
 .cellrow .pillar{text-align:center}
-.cellrow .dial{position:relative;width:clamp(64px,7vw,92px);margin:0 auto}
-.cellrow .dial svg{width:100%;height:auto;display:block}
-.cellrow .dial span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 17px var(--mono);color:var(--ink)}
+/* `.tally` and not `.dial`: there is no dial left, and a name that describes a gauge is how the
+   gauge comes back. The count is the mark now, so it is a `.num` like every other number on the
+   page — that role already carries the mono, the tabular figures, the weight and the tracking, and
+   all this adds is the size the old numeral could not have inside a 92px ring. */
+.cellrow .tally{display:block;font-size:clamp(26px,3.2vw,34px)}
 .cellrow .l{font:500 11px var(--mono);letter-spacing:.06em;color:var(--mute);margin-top:8px}
 .peers{display:flex;flex-direction:column}
 [data-component="radios"] .k{margin-top:16px}
