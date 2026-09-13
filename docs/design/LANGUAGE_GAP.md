@@ -14,9 +14,9 @@ a wall screen. `signs.svg` and `kilometre-cells.json` are held the same way. All
 
 The gap is not in the values. It is in what the page reaches for.
 
-**12 of the 34 tokens are referenced. 22 are not.** Nine of those 22 are the landing hero's global
+**13 of the 34 tokens are referenced. 21 are not.** Nine of those 21 are the landing hero's global
 grid (`--state-*`, `--cell-water-opacity`, `--cell-land-opacity`) and are not this surface's
-business. The other **13 are**, and each one is a place the page hard-codes what the layer already
+business. The other **12 are**, and each one is a place the page hard-codes what the layer already
 names:
 
 | token | what it names | what the dashboard does instead |
@@ -26,7 +26,7 @@ names:
 | `--loop-closed` | the same green, named after its meaning | `--rings` everywhere |
 | `--wall-line-opacity` | "the two credit lines under a satellite frame" | `dashboard.css:254` uses the page-local `--mute` |
 | `--hair-res9-opacity` `--cell-res8-weight` | the kilometre's mesh and its outlined cell | the plan card draws its own |
-| `--motion-reading-fade` `--motion-reading-pulse` `--motion-day-curve-step` `--motion-ring-closed` | four motions R6 bound to four datums | not implemented at all — see check 8 |
+| `--motion-reading-fade` `--motion-day-curve-step` `--motion-ring-closed` | three motions R6 bound to three datums | one needs a feature, two carry OPEN items — see check 8 |
 
 Today most of these resolve to the same pixel, because `--rho-closed` *is* `var(--rings)` and the
 baked opacities *are* the token values. That is the danger: when O8 settles and `--rho-closed`
@@ -45,7 +45,7 @@ moves, the ρ row will not follow, and nothing will say so.
 | 5 | colour as argument | **pass** — all three fixed |
 | 6 | provenance ink-only | **pass** |
 | 7 | the stranger | **pass** — the hole was the gauge |
-| 8 | solid / dashed / hairline for state | **fail** — motion only, now |
+| 8 | solid / dashed / hairline for state | **fail** — the state vocabulary; motion is accounted for |
 
 ### 1. Hexagons — pass
 
@@ -240,24 +240,46 @@ round's decision, not a bug**: the dashboard still does not speak the state voca
 draws a 1.5 px rule, `.legend i.dash` a dashed one and `.legend i.dot` a dotted one, for the day chart. It is the four-state cell
 row, the place the vocabulary was written for, that ignores it.
 
-**Motion, which R6 folded into the same rule, is inverted.** Five motion tokens name five datums.
-One is bound: `--motion-satellite-year`, read properly through `getComputedStyle` at
-`dashboard.js:40` rather than retyped. Four are not implemented at all — there is no reading fade,
-no reading pulse, no hourly day-curve step, no ring-closing event; `dashboard.css` contains no
-`transition` rule of any kind.
+**Motion, which R6 folded into the same rule.** Six motion tokens name six datums. This section used
+to say four were simply unimplemented and three animations were simply undatum'd. Both halves were
+too simple, and the real picture decides what is a bug and what is a design round.
 
-Meanwhile the three animations that do exist are the three with no datum behind them — all in the
-Network view, all hard-coded (`dashboard.css:368–370`):
+**Two are bound.** `--motion-satellite-year`, read through `getComputedStyle` at `dashboard.js:40`,
+and now `--motion-reading-pulse`, which the Network figure's halo reads. That second one closes a
+circle the layer records: O4 says the token's 3 s "is lifted from the shipped dashboard's halo
+keyframe" — this keyframe — so the value came from here, drifted to 5 s on this side, and now comes
+back from the file that records it. Measured on node #1: the halo ran 5 s against a token saying 3 s,
+and runs 3 s now.
 
-```css
-svg.net .wire{...animation:netflow 3.4s linear infinite}
-svg.net .dot{offset-distance:0;animation:netdot 9s linear infinite}
-svg.net .halo{transform-origin:675px 180px;animation:nethalo 5s ease-out infinite}
-```
+**`--motion-land-change-yoy` is 0 s by definition** — "the datum changes once a year, so it does not
+animate". Nothing to bind; unreferenced is correct.
 
-3.4 s, 9 s and 5 s are not the cadence of anything the node measures. R6: "If a motion has no datum
-behind it, it is deleted." The reduced-motion block at `dashboard.css:437` does stop all three, so
-the frozen-reading requirement holds.
+**The remaining three are not one problem.**
+
+- `--motion-reading-fade` (120 ms, R6-settled, no OPEN) **cannot be a transition here.** `render()`
+  replaces its mount points with `innerHTML`/`outerHTML` every twenty seconds, so the elements a
+  transition would run on are destroyed and rebuilt. A fade-in on the new element would fire on
+  every refresh whether or not a reading landed — motion with no datum, which is the thing this
+  check forbids. Binding it honestly means the renderer knowing *which* values changed since the
+  last render. That is a feature, not a token binding, and what fades — the numeral, the card, the
+  band — is a design question.
+- `--motion-day-curve-step` carries **O11**: nothing records whether the day curve steps on the hour
+  or on arrival.
+- `--motion-ring-closed` carries **O5**: no round records a duration for a ring closing at all.
+
+Two unsettled values and one unbuilt feature. None of them is a fix.
+
+**And the wire and the dot are not an oversight.** `dashboard.js:1400` records that the four flowing
+wires and the pulsing halo are back **by Tomas's call** — "the figure is of a thing at work, and
+drawn still it read as a diagram of one". R6's "if a motion has no datum behind it, it is deleted"
+and that decision point in opposite directions, and the tension is the design side's to settle, not
+this document's to resolve by deleting. The halo had a token waiting for it and now uses it. The
+wire and dot do not: no token names them, and the datum they would answer to is the poll cadence —
+300 s on node #1, which would read as a frozen figure rather than a slow one. Binding those needs
+somebody to look at it moving.
+
+The reduced-motion block stops all of it, and the token goes to 0 s under the same query, so both
+mechanisms fire — verified: `animation-duration: 0s` and `animation-name: none` together.
 
 ---
 
@@ -289,7 +311,7 @@ embedded.
 
 **What is left is not a bug list.** Check 8 stands because the dashboard does not speak the state
 vocabulary at all, and giving it one is a design round — a mark a stranger can read, in three
-languages, not a token borrowed from a map and pointed at a numeral. The 22 tokens this surface
+languages, not a token borrowed from a map and pointed at a numeral. The 21 tokens this surface
 still does not name are in the table at the top; nine are the landing hero's and not this surface's
 business, but `--rho-closed`, `--loop-closed`, `--wall-line-opacity` and the four unimplemented
 motion tokens are.

@@ -384,7 +384,15 @@ svg.net{width:100%;height:auto;display:block;margin-top:clamp(12px,1.6vw,20px)}
 @keyframes nethalo{from{transform:scale(.92);opacity:.5}to{transform:scale(1.55);opacity:0}}
 svg.net .wire{stroke-dasharray:3 9;stroke-linecap:round;animation:netflow 3.4s linear infinite}
 svg.net .dot{offset-distance:0;animation:netdot 9s linear infinite}
-svg.net .halo{transform-origin:675px 180px;animation:nethalo 5s ease-out infinite}
+/* The halo IS the reading pulse, so it reads the layer's token for one instead of a number typed
+   here. The layer's own O4 says the 3s in --motion-reading-pulse "is lifted from the shipped
+   dashboard's halo keyframe" — this keyframe — so the value came from here, drifted to 5s on this
+   side, and now comes back from the file that records it. The period changes 5s -> 3s.
+
+   The wire and dot above keep their numbers on purpose. No token names them, and the datum they
+   would answer to is the poll cadence — 300s on node #1, which would read as a frozen figure, not
+   a slow one. Binding them is a design round's call, with a look at it, not a rename here. */
+svg.net .halo{transform-origin:675px 180px;animation:nethalo var(--motion-reading-pulse) ease-out infinite}
 /* NOT .cell and NOT .ring: those are the frozen layer's binding classes and they bind on any
    element, not only inside an SVG — .ring sets color:var(--rings), which turned these four
    numbers green, and .cell sets stroke:var(--cells). Same reason the ring card is .ringcard:
