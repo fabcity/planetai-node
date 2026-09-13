@@ -19,6 +19,9 @@ DEPLOY=1; CHECK=0
 for a in "$@"; do case "$a" in --no-deploy) DEPLOY=0;; --check) CHECK=1;; *) die "unknown flag $a";; esac; done
 
 HERE="$(git describe --tags --always)"
+# Absolute, resolved before the fast-forward can rewrite anything, so the re-exec below does not depend on
+# the cwd and cannot pick up a different file than the one that started.
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 [[ -d "$SITE/.git" ]] || die "no site repo at $SITE. Clone fabcity/planetai beside this one, or set PLANETAI_SITE_REPO."
 
 live_version() { curl -fsSL "https://planetai.fab.city/node0/get/VERSION?cb=$RANDOM.$$" 2>/dev/null || echo unreachable; }
@@ -70,8 +73,33 @@ elif [[ "$BEHIND" != 0 ]]; then
   # NOT backticks: inside a double-quoted string they run the command and paste its output, so this
   # message used to execute `git pull` a second time while building itself and then print a hole where
   # the command name should be.
+  WAS="$(cksum < "$SELF")"
   git pull -q --ff-only || die "the fast-forward failed. Run this and read what it says:
      git pull"
+
+  # That pull just rewrote this worktree, and one of the files in it is THIS script.
+  #
+  # bash does not slurp a script: it reads it incrementally and remembers a byte offset. Replace the file
+  # underneath a running shell and it carries on reading at that offset into different content — which is
+  # usually a syntax error, and can be a line of some other command. In the middle of a release.
+  #
+  # It is also why a fix to anything below this line cannot govern the release that introduces it. v0.50
+  # committed a correct tarball as "tester tarball at v0.49"; the fix for that shipped in v0.51, and v0.51
+  # was still labelled v0.50, because the running script was the pre-fix one the pull had just replaced.
+  #
+  # So: if the pull changed this file, start it again. The second run finds itself in sync, does not pull,
+  # and reads every line from the version it is actually building.
+  if [[ "$(cksum < "$SELF")" != "$WAS" ]]; then
+    if [[ "${PLANETAI_SHIP_REEXEC:-0}" == 1 ]]; then
+      # Only ever once. A second change means somebody pushed again while this was running, and looping
+      # on that would be worse than carrying on: HERE is re-read below, so the release is still labelled
+      # correctly, and the lines below this point are whatever bash has already buffered.
+      say "ship.sh changed again during the release — not restarting a second time"
+    else
+      say "the fast-forward replaced ship.sh itself — restarting so this release is built by the new one"
+      PLANETAI_SHIP_REEXEC=1 exec "$SELF" "$@"
+    fi
+  fi
 fi
 
 # HERE was read at the top, which is what the --check path above wants: it answers about the branch you
