@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.51 — 2026-09-13 — `events.cleared_at` was a promise the schema could not keep
+
+v0.50 shipped the `events` table with a `cleared_at` column and nothing to put in it. A node has no
+notion of an alert clearing — only of cooldowns — so no child could ever have sent one, and
+`push_events()` never did. It was specified, built, and always NULL.
+
+Dropped, with `ALTER TABLE events DROP COLUMN IF EXISTS cleared_at`, which is idempotent and safe on a
+node that already applied v0.50: rehearsed on Postgres 16 over a populated v0.50 database, applied twice,
+zero errors, the existing row untouched. It comes back the day an alert learns it has stopped holding,
+and on that day it arrives with the code that writes it.
+
+`tools/check_sql.py` reported that `ALTER` as non-idempotent. Its own comment has said "DROP … IF EXISTS
+is idempotent on its own" since it was written, but only the `CONSTRAINT` spelling was ever matched.
+`DROP COLUMN IF EXISTS` carries the same guarantee and is now accepted — and a genuinely bare
+`ALTER TABLE … ADD COLUMN` is still refused, checked both ways.
+
 ## v0.50 — 2026-09-13 — custody: the roll-up path can say `live`, and ρ comes up with it
 
 **`local` was doing two jobs and failing one of them.** It was written on 2 September for a node that was a

@@ -17,8 +17,10 @@ for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
         errs.append(f"not idempotent: {head}")
     if head.startswith(("ALTER TABLE", "CREATE INDEX")) and "IF NOT EXISTS" not in up:
         # ADD CONSTRAINT has no IF NOT EXISTS in Postgres; it is idempotent when the same constraint is dropped
-        # with IF EXISTS just before. DROP ... IF EXISTS is idempotent on its own.
-        if "DROP CONSTRAINT IF EXISTS" in up:
+        # with IF EXISTS just before. DROP ... IF EXISTS is idempotent on its own — which the comment has said
+        # since it was written, though only the CONSTRAINT spelling was ever matched. DROP COLUMN IF EXISTS is
+        # the same guarantee and was reported as non-idempotent until v0.51 needed one.
+        if re.search(r"DROP (CONSTRAINT|COLUMN) IF EXISTS", up):
             pass
         elif "ADD CONSTRAINT" in up:
             name = re.search(r"ADD CONSTRAINT\s+(\w+)", up)

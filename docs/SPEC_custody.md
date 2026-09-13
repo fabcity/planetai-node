@@ -298,7 +298,7 @@ One row per alert, with exactly these fields:
 | `responded_at` | `min(actions.ts) WHERE stage='acknowledged'` | decide |
 | `acted_at` | `min(actions.ts) WHERE stage='acted'` | deploy |
 | `measured_at` | `min(actions.ts) WHERE stage='measured'` | measure |
-| `cleared_at` | when the condition stopped holding | so an alert that resolved itself is not counted as acted on |
+| ~~`cleared_at`~~ | ~~when the condition stopped holding~~ | **cut in v0.51.** Specified here, built in v0.50, and never written: a node has no notion of an alert clearing, only of cooldowns, so no child could send one. A column that is always NULL is a promise the schema cannot keep. It returns the day an alert learns it has stopped holding, together with the code that writes it. |
 
 **And nothing else. No `text`, no `note`, no `actor`, no `sensor_id`.**
 
