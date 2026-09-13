@@ -42,7 +42,7 @@ moves, the ρ row will not follow, and nothing will say so.
 | 2 | projection | **pass** |
 | 3 | signs — lifted or built on a grid, legible at the floor | **pass** — the pill meets the floor |
 | 4 | counted, not sized | **pass** — the Index gauges are gone |
-| 5 | colour as argument | **fail** — (a) fixed, (b) and (c) stand |
+| 5 | colour as argument | **pass** — all three fixed |
 | 6 | provenance ink-only | **pass** |
 | 7 | the stranger | **pass** — the hole was the gauge |
 | 8 | solid / dashed / hairline for state | **fail** — motion only, now |
@@ -118,7 +118,7 @@ Fixed by deleting the two `<circle>` elements and keeping `hit.length`, which is
 size the old numeral could not have inside a 92 px ring. The `live` half of the arc is deliberately
 not carried over — see check 8.
 
-### 5. Colour as argument — fail (one of three fixed)
+### 5. Colour as argument — pass (was a fail; all three fixed)
 
 Three findings, in descending order.
 
@@ -158,23 +158,40 @@ disappeared, leaving one ghost outline. The Fab Blue brings back the drawing tha
 The file paints no `class="ground"` rect, so the page's background was never overpainted; it was
 the cells, the neighbours and the children that were wrong.
 
-**(b) The wall takes the orange off the one thing that earns it.** `dashboard.css:245` sets
-`.sat-bar .yr{color:var(--satellite-only)}` — the Sentinel frame's year, which the CSS comment
-correctly calls "what only the satellite knows". Then `dashboard.css:256` overrides it:
+**(b) The wall took the orange off the one thing that earns it — FIXED.** `.sat-bar .yr` is
+`var(--satellite-only)`, the Sentinel frame's year, which the CSS comment correctly calls "what only
+the satellite knows". A later rule overrode it on the wall:
 
 ```css
 .wall .sat-bar .yr{color:var(--ink)}
 ```
 
-On the wall — the surface R6 settled as *the* place the satellite data lives — the satellite year is
-ink. The register already has an orange for this (`--satellite-only` is `#FF931E` under
-`[data-theme="dark"]`, 8.06:1 on ink and well inside its guard). Orange is otherwise confined
-correctly: `.unit .row svg.sat` and `.plan-legend i.sat` are the only other users, both satellite.
+So on the wall — the surface R6 settled as *the* place the satellite data lives — the satellite year
+was ink. The override buys contrast (16.54:1 against 8.06:1) and spends meaning, and there was no
+legibility case to make: 8.06:1 is far above the floor and the year is set at
+`clamp(1.4rem,2vw,1.9rem)`. Rule deleted. Measured on node #1 at `?theme=dark`, the wall's year goes
+`rgb(249,245,242)` → `rgb(255,147,30)`, and the Now view's years are untouched.
 
-**(c) Two bare `#fff` literals on the green.** `dashboard.css:124` (`.askstrip button.go`) and
-`:275` (`.ledger .do button`) set `color:#fff` on a `--rings` background. The file's own header says
-"there is no colour literal below", and these are two. White on `#00A057` measures **3.41:1** —
-below AA for 13 px text. `var(--ink)` on the same green measures 5.26:1 and follows the register.
+Orange is otherwise confined correctly: `.unit .row svg.sat` and `.plan-legend i.sat` are the only
+other users, both satellite.
+
+**(c) Two bare `#fff` literals on the green — FIXED, and not the way this document first said.**
+`.askstrip button.go` and `.ledger .do button` set `color:#fff` on a `--rings` background: **3.41:1**,
+under AA for 13 px text, in both registers.
+
+The obvious repair does not work, and the first version of this section was wrong to suggest it.
+`var(--ink)` measures 5.26:1 on the green **on paper and 3.14:1 on the wall** — because `--rings` is
+`#00A057` in *both* registers and does not flip, while `--ink` does. `var(--ground)` is the exact
+mirror (3.14 paper, 5.26 wall). A register-following token is right in one register and wrong in the
+other, always.
+
+The thing a label on that green must contrast with is constant, so the label has to be constant too.
+A fifth page-local token — `--on-rings: #171717`, declared once and never redefined under
+`[data-theme="dark"]` — gives **5.26:1 in both**. That is the same footing as the four page-local
+tokens already in the file, which exist because a layout needs something the layer does not name.
+
+Reachable on the wall, incidentally: `?theme=dark` boots to the wall view, but pressing Now from
+there keeps the dark register while showing the buttons.
 
 ### 6. Provenance ink-only — pass
 
@@ -258,23 +275,24 @@ embedded.
 
 ## What to fix first
 
-**The two bare `#fff` on the green buttons** (`dashboard.css:124` and `:275`). White on `#00A057`
-measures 3.41:1, under AA for 13 px text; `var(--ink)` on the same green is 5.26:1 and follows the
-register. The file's own header says "there is no colour literal below", and these are the two.
+**Nothing, on this list.** All five findings are closed.
 
-Then the wall's ink satellite year (`dashboard.css:256`) — delete the rule and let
-`--satellite-only` stand, so the one thing only the satellite knows keeps saying so on the surface
-R6 settled as the satellite's own.
+- The `.dial` arcs are gone — the only one that made the page state something false to a reader
+  reading it correctly, and removing them took code out.
+- The hero ground follows its register, which needed a query parameter rather than the design-repo
+  conversation it looked like it needed.
+- The 11 px provenance glyph names `--sign-floor` instead of a number, so it follows the redraw O7
+  and O12 are waiting on.
+- The two `#fff` on the green are a constant `--on-rings`, because the green does not flip and so
+  its label must not either.
+- The wall keeps the satellite's orange on the satellite's year.
 
-**Three are done.** The `.dial` arcs are gone — they were the only finding that made the page state
-something false to a reader reading it correctly, and removing them took code out. The hero ground
-is done too; it needed only a register the `<img>` could be told about, not the design-repo
-conversation it looked like it needed. And the 11 px provenance glyph now names `--sign-floor`
-instead of a number, so it follows the redraw O7 and O12 are waiting on.
-
-**What is left after those two is not a bug list.** Check 8 stands because the dashboard does not
-speak the state vocabulary at all, and giving it one is a design round — a mark a stranger can read,
-in three languages, not a token borrowed from a map and pointed at a numeral.
+**What is left is not a bug list.** Check 8 stands because the dashboard does not speak the state
+vocabulary at all, and giving it one is a design round — a mark a stranger can read, in three
+languages, not a token borrowed from a map and pointed at a numeral. The 22 tokens this surface
+still does not name are in the table at the top; nine are the landing hero's and not this surface's
+business, but `--rho-closed`, `--loop-closed`, `--wall-line-opacity` and the four unimplemented
+motion tokens are.
 
 ## What the guards could not see
 

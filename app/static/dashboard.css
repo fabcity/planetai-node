@@ -19,6 +19,13 @@
   --dim:  #7C766F;
   --hair: var(--fc-grid-line);
   --raise: rgba(23, 23, 23, .035);
+  /* The label on a green fill. It does NOT flip, and that is the whole point: --rings is #00A057 in
+     both registers, so the thing a label on it must contrast with is constant, and a label that
+     followed the register would be right in one and wrong in the other. Measured: #171717 on the
+     green is 5.26:1 either way. var(--ink) gives 5.26 on paper but 3.14 on the wall, var(--ground)
+     the mirror of that, and the #fff this replaces was 3.41 in both — under AA for 13px text
+     everywhere it appeared. */
+  --on-rings: #171717;
 }
 :root[data-theme="dark"] {
   --mute: #A3A19F;
@@ -127,7 +134,7 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .askstrip{border:1px solid var(--ink);padding:14px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;align-items:center;background:var(--ground)}
 .askstrip .what{font:600 15px/1.4 var(--fc-font-body)}
 .askstrip .what small{display:block;font-weight:400;color:var(--mute);font-size:13px;margin-top:2px}
-.askstrip button.go{background:var(--rings);border-color:var(--rings);color:#fff;font-weight:600;padding:10px 16px}
+.askstrip button.go{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;padding:10px 16px}
 .askstrip .done{display:flex;align-items:center;gap:8px;color:var(--rings);font:600 13px var(--fc-font-body)}
 .askstrip[hidden]{display:none}
 /* hidden must beat display:grid; this bug shipped twice */
@@ -259,7 +266,11 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .sat-ctl input[type=range]{accent-color:var(--ink);width:120px}
 .sat-credit{font:500 10.5px/1.5 var(--mono);letter-spacing:.04em;color:var(--mute);margin-top:8px}
 .wall .satwrap{border:1px solid var(--hair);padding:0;max-width:min(38vw,560px);width:100%}
-.wall .sat-bar .yr{color:var(--ink)}
+/* The wall does NOT take the orange off the year. It was `color:var(--ink)` here, which is more
+   contrast (16.54:1 against 8.06:1) and less meaning: orange is what only the satellite knows,
+   and the year of a Sentinel frame is exactly that, on the surface R6 settled as the satellite's
+   own. 8.06:1 is far above the floor, and the year is set at clamp(1.4rem,2vw,1.9rem), so there
+   was no legibility case to trade the meaning for. */
 /* loop */
 .rho{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .rhocap{margin-top:8px}
@@ -278,7 +289,7 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
    "...at K ROOM - BAYU HOLES.heat/night_no_relief" with the rule welded to the full stop. */
 .ledger .txt .meta{display:block;font:500 11px var(--mono);color:var(--dim);margin-top:4px;letter-spacing:.02em}
 .ledger .do{white-space:nowrap}
-.ledger .do button{background:var(--rings);border-color:var(--rings);color:#fff;font-weight:600;font-size:13px;padding:7px 12px}
+.ledger .do button{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;font-size:13px;padding:7px 12px}
 .ledger .do .done{color:var(--rings);font:600 12.5px var(--fc-font-body)}
 @media(max-width:640px){.ledger .al{grid-template-columns:52px 1fr}
 .ledger .do{grid-column:2}
