@@ -1488,7 +1488,7 @@ NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 
 
 @app.get("/static/{name}", include_in_schema=False)
-def static_file(name: str):
+def static_file(name: str, variant: str = "dark"):
     """The dashboard's ground and its data face.
 
     Same `no-cache, must-revalidate` as index.html, and for the same reason: a wall screen that keeps the
@@ -1498,10 +1498,19 @@ def static_file(name: str):
     The ground is drawn here from NODE_LAT / NODE_LON rather than served from disk, so it is this
     node's own cell and the caption naming that cell is true. The file on disk is what a node with
     no coordinates yet gets: node #1's cell, with no caption, standing in for a place the node has
-    not been told about."""
+    not been told about.
+
+    `?variant=` is the page saying which register it is in. The ground is an `<img>` — deliberately,
+    see COMPANIONS above — so it is a document of its own and no CSS on the page can reach into it;
+    asking for the register in the URL is the only way it can follow one. Without the parameter it
+    is the dark register, which is what every caller got before this existed.
+
+    The value is coerced to one of two literals rather than validated, because it is interpolated
+    into `data-variant="..."` inside the SVG: anything that is not "paper" is "dark", so nothing a
+    caller invents can reach the markup."""
     from fastapi.responses import FileResponse, Response
     if name == "node-ground.svg":
-        svg = _ground_svg()
+        svg = _ground_svg("paper" if variant == "paper" else "dark")
         if svg:
             return Response(svg, media_type="image/svg+xml", headers=NO_CACHE)
     hit = COMPANIONS.get(name)
@@ -1510,18 +1519,28 @@ def static_file(name: str):
     return FileResponse(hit[0], media_type=hit[1], headers=NO_CACHE)
 
 
-def _ground_svg() -> str | None:
-    """This node's ground, or None to fall back to the file: before setup there are no coordinates
-    to draw, and an image built before h3 was a dependency has no h3. Neither is a reason to serve
-    an empty hero."""
+def _ground_svg(variant: str = "dark") -> str | None:
+    """This node's ground, or None to fall back to the file on disk: before setup there are no
+    coordinates to draw, and an image built before h3 was a dependency has no h3. Neither is a
+    reason to serve an empty hero.
+
+    The shipped file is drawn in the dark register, so a node with no coordinates yet would put the
+    lifted blue #7FA5E8 on the paper hero, where it measures 2.29:1 — the one thing the layer's
+    guards say may never happen. Its <style> carries both registers and the root attribute picks
+    one, so for paper the attribute is swapped and the text served. Dark still returns None and is
+    served by FileResponse with its ETag, which is the common case."""
     lat, lon = os.getenv("NODE_LAT", ""), os.getenv("NODE_LON", "")
-    if not lat or not lon:
+    if lat and lon:
+        try:
+            return ground.svg(float(lat), float(lon), variant)
+        except Exception as e:  # noqa: BLE001
+            log.warning("node-ground: %s: %s — serving the shipped file", type(e).__name__, e)
+    if variant == "dark":
         return None
-    try:
-        return ground.svg(float(lat), float(lon))
-    except Exception as e:  # noqa: BLE001
-        log.warning("node-ground: %s: %s — serving the shipped file", type(e).__name__, e)
+    shipped = STATIC / "node-ground.svg"
+    if not shipped.exists():
         return None
+    return shipped.read_text().replace('data-variant="dark"', f'data-variant="{variant}"', 1)
 
 
 def _admin(authorization: str) -> None:
