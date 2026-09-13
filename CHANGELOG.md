@@ -1,5 +1,60 @@
 # Changelog
 
+## v0.52 — 2026-09-13 — the drawings stop arguing with the numbers beside them
+
+The September design audit's evidence moved out of this repo and its findings were closed one at a time.
+When the release opened the dashboard answered three of the eight checks a design round is judged by
+cleanly, with a fourth passing except for one hole. It answers **seven of eight** now, and the eighth is
+a design round rather than a bug. `docs/design/LANGUAGE_GAP.md` is the whole reading, written against
+`planetai-design`'s 34 tokens and 12 OPEN items.
+
+**The Fab City Index drew four gauges, and on node #1's own numbers they were inverted.** Each pillar's
+arc was `stroke-dasharray` of 0, 87 or 198 against a circumference of 263.9 — three constants chosen by a
+boolean, not a measurement. Environmental has **5** sources and drew the 87 arc; Social and Governance have
+**1** each and drew 198. Anyone comparing the rings read the best-covered pillar as the worst served, while
+the number contradicting the ring sat inside it. Both `<circle>` elements are gone and the count is the
+mark, which is what "counted, not sized" has meant since R1's ρ row.
+
+**The hero's ground was the dark export, shown on paper.** `node-ground.svg` carried `data-variant="dark"`
+and is loaded as an `<img>` — deliberately, since inlining leaks its `:root` into the page — so no CSS on
+the page could reach it and its cells drew `#7FA5E8` on both registers. The layer's guard is explicit: that
+blue is 2.29:1 on paper and may appear only in the dark block. It was not a stale asset. `ground.svg()`
+already took a `variant` and defaulted to `"dark"`, and `GET /static/node-ground.svg` called it without one,
+so the live path and the pre-setup fallback were both dark everywhere. The register is now a query parameter,
+coerced to one of two literals before it reaches markup. What came back is not only a contrast number: at
+2.29:1 the six neighbours and seven res-9 children had been invisible, and A4's ground was one ghost outline.
+
+**No register-following token can label that green.** `--rings` is `#00A057` in both registers and does not
+flip, so `var(--ink)` measures 5.26:1 on paper and 3.14:1 on the wall, and `var(--ground)` is the exact
+mirror. The `#fff` on the two act buttons was 3.41:1 in both — under AA for 13px text. The label is now a
+fifth page-local token, `--on-rings`, declared once and never redefined: **5.26:1 either way.**
+
+**Smaller, and each one measured rather than read off the stylesheet:** the provenance glyph was the only
+sign anywhere under `--sign-floor` (11px against 12, on the pair O7 and O12 record as 93.7–93.9% identical
+*at* 12) and now names the token; the wall stopped taking the orange off the satellite's own year, which
+bought 16.54:1 against 8.06:1 and spent the one thing orange means; and the network halo, which *is* the
+reading pulse — O4 says the token's 3s was lifted from this very keyframe — had drifted to 5s and now reads
+`--motion-reading-pulse`. 13 of the 34 layer tokens are referenced, up from 11.
+
+**`tools/shots.py` asserted a refusal an open node can never give.** Its no-token pass tested that the page
+says the node is not sharing. That is what `SHARE_LEVEL=off` promises; node #1 is `open`, set in the GUI and
+overriding its own `.env`, and `open` promises the opposite. The pass printed ✗ on every live render of a node
+behaving exactly as configured. It reads the level from `/settings` now, and forgives exactly one refusal —
+`/place/geojson`, which needs a token at every level because it is the shape of a household's buildings.
+
+**The release script was being rewritten while bash was running it.** `ship.sh` fast-forwards main, and that
+pull replaces `tools/ship.sh` under the shell executing it; bash reads incrementally and resumes at a byte
+offset inside different content. It is also why the label fix in v0.51 could not govern its own release.
+
+**Two documents claimed things that were never read from the node they described.** `SPEC_custody.md` reported
+node #1's version from a different machine's `VERSION` file and enumerated a `kind` set that a pack had already
+added to; the invariant that actually carries the rule is written down now. And `peer-visibility.md` was not
+lost — it was written into a session scratchpad under `/private/tmp` and recovered byte-identical.
+
+**The audit's 207 files of evidence left this repo.** 135 MB of design-review PNG in a repo households install
+from is 135 MB every node pulls to run a dashboard. They live in `planetai-design` at `design/audit/2026-09/`;
+`git rm --cached` and a `.gitignore` line, no history rewrite, so every old link still resolves.
+
 ## v0.51 — 2026-09-13 — `events.cleared_at` was a promise the schema could not keep
 
 v0.50 shipped the `events` table with a `cleared_at` column and nothing to put in it. A node has no
