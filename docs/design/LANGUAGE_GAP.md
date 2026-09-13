@@ -42,11 +42,11 @@ moves, the ρ row will not follow, and nothing will say so.
 | 1 | hexagons — projected, never tiled | **pass** |
 | 2 | projection | **pass** |
 | 3 | signs — lifted or built on a grid, legible at the floor | **fail** |
-| 4 | counted, not sized | **fail** |
+| 4 | counted, not sized | **pass** — the Index gauges are gone |
 | 5 | colour as argument | **fail** — (a) fixed, (b) and (c) stand |
 | 6 | provenance ink-only | **pass** |
-| 7 | the stranger | **pass, with one hole** |
-| 8 | solid / dashed / hairline for state | **fail** |
+| 7 | the stranger | **pass** — the hole was the gauge |
+| 8 | solid / dashed / hairline for state | **fail** — motion only, now |
 
 ### 1. Hexagons — pass
 
@@ -84,36 +84,38 @@ from "this number is an example" at a size the design repo has never tested.
 
 `.rho.small svg.sg` at 13 px (`dashboard.css:262`) is the next closest and is fine.
 
-### 4. Counted, not sized — fail
+### 4. Counted, not sized — pass (was a fail; fixed)
 
-**ρ is not the offender.** `dashboard.js:863` draws one sign per ask, answered first:
+**ρ was never the offender.** `dashboard.js` draws one sign per ask, answered first:
 
 ```js
 for (let i = 0; i < Math.min(total, 120); i++)
   s += ctx.sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
 ```
 
-That is the rule, kept. The unit row at `dashboard.js:847` is the same shape — one house per unit up
-to 200, with a partial glyph for a remainder ≥ 0.25. Both pass.
+That is the rule, kept. The unit row is the same shape — one house per unit up to 200, with a
+partial glyph for a remainder ≥ 0.25. Both pass.
 
-**The offender is the Fab City Index row.** `dashboard.js:1470–1486`, `cellRings()`, draws four
-arc gauges:
+**The offender was the Fab City Index row**, `cellRings()`, which drew four donut gauges:
 
 ```js
 const dash = hit.length ? (live ? 198 : 87) : 0;
 ...
-<circle cx="50" cy="50" r="42" fill="none" stroke="var(--cells)" stroke-width="9"
-        stroke-linecap="round" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/>
+<circle ... stroke="var(--cells)" stroke-dasharray="${dash} 264" transform="rotate(-90 50 50)"/>
 ```
 
-A proportion drawn as arc length on a circle — a donut gauge, which check 4 forbids outright. Its
-CSS class is literally `.dial` (`dashboard.css:378`).
+A proportion drawn as arc length, which check 4 forbids outright; the CSS class was literally
+`.dial`. And the arc measured nothing — `dash` was one of three constants (0, 87, 198 against a
+circumference of 263.9) chosen by a boolean.
 
-It is worse than a gauge, because **the arc measures nothing.** `dash` is one of three constants —
-0, 87 or 198 against a circumference of 263.9 (33 %, 75 %) — chosen by a boolean. A pillar with one cell and a
-pillar with nineteen draw the identical 87° sweep. The arc reads as "this pillar is about a third
-answered" and means "this pillar has at least one cell, none of them live". The honest number is
-already sitting in the middle of the ring: `hit.length`, at `dashboard.js:1478`.
+**On node #1's own numbers it was not merely uninformative, it was inverted.** Environmental had
+**5** sources and drew the 87 arc; Social and Governance had **1** each and drew 198. A reader
+comparing the four rings would conclude the pillar with five times the coverage was the worst
+served. The number contradicting the ring was sitting inside it the whole time.
+
+Fixed by deleting the two `<circle>` elements and keeping `hit.length`, which is now a `.num` at the
+size the old numeral could not have inside a 92 px ring. The `live` half of the arc is deliberately
+not carried over — see check 8.
 
 ### 5. Colour as argument — fail (one of three fixed)
 
@@ -197,10 +199,10 @@ The `live` word is honest: `dashboard.js:1677` calls `staleFor(h.last_poll)`, an
 says `cached` past that, and a fixture render says `cached` unconditionally. Nothing wears `live`
 that was not read in the last poll.
 
-**The hole is check 4's gauge.** A stranger reads four dials, sees one a third full and one
-three-quarters full, and concludes the pillars differ in how well they are answered. They do not — the
-arc is a boolean. This is the one place on the page where a reader who trusts the drawing is
-misled, and it is the same class of finding as the five the September audit led with.
+**The hole was check 4's gauge**, and it is closed. A stranger read four dials, saw one a third
+full and one three-quarters full, and concluded the pillars differed in how well they were
+answered — while the ring drawn smallest sat around the largest number. That was the one place on
+the page where a reader who trusted the drawing was misled, and the drawing is gone.
 
 ### 8. Solid / dashed / hairline for state — fail
 
@@ -208,10 +210,13 @@ The state vocabulary is settled: `live` · `quiet` · `registered` · `pilot`, c
 weight, fill and dash — never by hue**, "so it survives the ink ground". The layer carries seven
 tokens for it.
 
-The dashboard references **none of them**, and the one place it draws state, it draws it as hue and
-arc: `cellRings()` again, where `live` picks both the longer sweep and `var(--cells)`. There is no
-weight change, no dash, no fill difference. On a node whose cells are all quiet the row is
-indistinguishable from one where they are all live except by blue arc length.
+The dashboard references **none of them**. It used to draw state in the forbidden way — `cellRings()`
+picked a longer blue sweep when any cell in a pillar was `live` — and that is now gone rather than
+translated. Nobody could read 198-against-264 as a state, so removing it costs a reader nothing;
+putting it back properly needs a mark a stranger can decode, which needs a legend in three
+languages, and the layer's `--state-*` tokens are stroke weights and dashes for H3 cells on a map,
+not rules under a numeral. Borrowing them here would invent a dialect. **That makes this a design
+round's decision, not a bug**: the dashboard still does not speak the state vocabulary anywhere.
 
 `dashboard.css:159–161` shows the page *has* the vocabulary where it does not need it — `.legend i`
 draws a 1.5 px rule, `.legend i.dash` a dashed one and `.legend i.dot` a dotted one, for the day chart. It is the four-state cell
@@ -252,17 +257,24 @@ embedded.
 
 ## What to fix first
 
-**The `.dial` arc, at `dashboard.js:1477`.** It is the only finding that makes the page state
-something false to a reader who is reading it correctly, it fails three checks at once (4, 5 and 8),
-and the honest value is already rendered in the middle of the ring. Deleting the two `<circle>`
-elements and keeping `hit.length` fixes all three and removes code.
+**The 11 px pill glyph** (`dashboard.css:80`, one number). It is the most-repeated sign on the page
+— every figure in the Figures band carries one — it is the only sign under the 12 px `--sign-floor`,
+and it lands on the one pair the layer already knows is fragile: O7 and O12 record `prov-cached`,
+`prov-example` and `cell` as 93.7–93.9 % identical **at 12 px**. At 11 the page asks a reader to
+tell "measured" from "example" at a size the design repo has never tested.
 
-Then, in order: the 11 px pill glyph (`dashboard.css:80`, one number); the two `#fff`
-(`dashboard.css:124`, `:275`, one token each); the wall's ink year (`dashboard.css:256`, delete the
-rule).
+Then: the two bare `#fff` on the green buttons (`dashboard.css:124`, `:275` — white on `#00A057` is
+3.41:1, under AA for 13 px text; `var(--ink)` is 5.26:1 and follows the register), and the wall's
+ink satellite year (`dashboard.css:256`, delete the rule).
 
-**The hero ground is done** — it was the one finding here that did not need a design-repo
-conversation after all, only a register the `<img>` could be told about.
+**Two are done.** The `.dial` arcs are gone — they were the only finding that made the page state
+something false to a reader reading it correctly, and removing them took code out. The hero ground
+is done too; it needed only a register the `<img>` could be told about, not the design-repo
+conversation it looked like it needed.
+
+**What is left after those three is not a bug list.** Check 8 stands because the dashboard does not
+speak the state vocabulary at all, and giving it one is a design round — a mark a stranger can read,
+in three languages, not a token borrowed from a map and pointed at a numeral.
 
 ## What the guards could not see
 
