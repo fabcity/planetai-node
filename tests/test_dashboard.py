@@ -96,6 +96,10 @@ if shutil.which("node"):
         f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
     assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
 
+# And the page must read the household's language rather than pinning itself to English.
+assert "(snap.health || {}).locale" in _js, \
+    "mkCtx no longer reads the locale off /health — the page is back to English on every node"
+
 # And a refused page must say so on whichever surface is being drawn.
 #
 # At SHARE_LEVEL=off — the default, and what every beta tester has — render()'s refused branch wrote

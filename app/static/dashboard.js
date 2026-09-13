@@ -412,7 +412,11 @@ const t = (s, v) => String(s || '').replace(/\{(\w+)\}/g, (_, k) => (v[k] == nul
 
 // ctx.fmt formats; it does not decide. The decimal places are the issue's own, from the node.
 const mkCtx = (snap, view) => {
-  const locale = LOCALES.includes(snap.locale) ? snap.locale : 'en';
+  // From /health, which answers at every share level — including a refused page, whose one sentence
+  // is the thing a household most needs in its own language. `snap.locale` was read here and set by
+  // nothing, so this fell through to 'en' on every node while the node was sending all three.
+  const want = snap.locale || (snap.health || {}).locale;
+  const locale = LOCALES.includes(want) ? want : 'en';
   return {
     locale,
     w: WORDS[locale],

@@ -777,6 +777,15 @@ def health():
     # them at once, which is a different change.
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
             "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3), "city": os.getenv("NODE_CITY", ""), **state,
+            # The household's own language, so the page can be written in it. /issues carries every
+            # sentence in all three and carries no way to choose — `snap.locale` was read by the
+            # dashboard and set by nothing, so the test fell through to 'en' on every node, in every
+            # view, whatever the household had set. It goes here rather than on /issues because
+            # /health is the one read that answers at EVERY share level: a node at the default
+            # SHARE_LEVEL=off refuses /issues and reduces /settings to two keys, and the page that a
+            # refused household actually sees is the one that most needs to be in their language.
+            # Not a secret: ALERT_LOCALE is already in settings.PUBLIC and /settings hands out its value.
+            "locale": settings.get("ALERT_LOCALE", "en"),
             "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
 
