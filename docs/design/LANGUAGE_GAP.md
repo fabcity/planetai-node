@@ -14,9 +14,9 @@ a wall screen. `signs.svg` and `kilometre-cells.json` are held the same way. All
 
 The gap is not in the values. It is in what the page reaches for.
 
-**11 of the 34 tokens are referenced. 23 are not.** Nine of those 23 are the landing hero's global
+**12 of the 34 tokens are referenced. 22 are not.** Nine of those 22 are the landing hero's global
 grid (`--state-*`, `--cell-water-opacity`, `--cell-land-opacity`) and are not this surface's
-business. The other **14 are**, and each one is a place the page hard-codes what the layer already
+business. The other **13 are**, and each one is a place the page hard-codes what the layer already
 names:
 
 | token | what it names | what the dashboard does instead |
@@ -24,7 +24,6 @@ names:
 | `--ground-cell-fill` `--ground-neighbour-opacity` `--ground-child-opacity` | A4: "the dashboard hero's ground" | baked into `node-ground.svg`, which is loaded as `<img>` — see check 5 |
 | `--rho-closed` | a closed ring in the ρ row | `dashboard.css:261` reaches past it to `--rings` |
 | `--loop-closed` | the same green, named after its meaning | `--rings` everywhere |
-| `--sign-floor` | 12 px, the size every sign must still read at | `dashboard.css:80` draws the pill glyph at 11 px |
 | `--wall-line-opacity` | "the two credit lines under a satellite frame" | `dashboard.css:254` uses the page-local `--mute` |
 | `--hair-res9-opacity` `--cell-res8-weight` | the kilometre's mesh and its outlined cell | the plan card draws its own |
 | `--motion-reading-fade` `--motion-reading-pulse` `--motion-day-curve-step` `--motion-ring-closed` | four motions R6 bound to four datums | not implemented at all — see check 8 |
@@ -41,7 +40,7 @@ moves, the ρ row will not follow, and nothing will say so.
 |---|---|---|
 | 1 | hexagons — projected, never tiled | **pass** |
 | 2 | projection | **pass** |
-| 3 | signs — lifted or built on a grid, legible at the floor | **fail** |
+| 3 | signs — lifted or built on a grid, legible at the floor | **pass** — the pill meets the floor |
 | 4 | counted, not sized | **pass** — the Index gauges are gone |
 | 5 | colour as argument | **fail** — (a) fixed, (b) and (c) stand |
 | 6 | provenance ink-only | **pass** |
@@ -68,21 +67,23 @@ The `cos(lat)` on longitude is the correction that keeps the plan from squashing
 named local exception at kilometre scale, done right. The res-8 ground it sits on is Equal Earth
 from the design repo.
 
-### 3. Signs — fail
+### 3. Signs — pass (was a fail; fixed)
 
-**`dashboard.css:80` — `.pill svg.sg{width:11px;height:11px}`.**
+`.pill svg.sg` drew the provenance glyph at **11 px** against a `--sign-floor` of 12 — "the size
+every sign must still read at". It was the most-repeated sign on the page and the only one anywhere
+below the floor. Measured on the rendered page rather than read off the stylesheet, across all four
+views: 39 pill glyphs at 11 px on Now alone, and every other sign at 13, 14, 18 or 20. Nothing uses
+the bare `1em` base rule, so the pill was the whole of it.
 
-`--sign-floor` is 12 px: "the size every sign must still read at". The provenance glyph inside a
-pill is drawn at 11. It is the most-repeated sign on the page — every figure in the Figures band
-carries one — and it is the only sign below the floor. The other six sizes (`13`, `14`, `18`, `20`,
-`20`, `1em`) are at or above it.
+It was also the worst possible pixel to lose. O7 records `prov-cached` as 93.7 % identical to
+`prov-example` **at 12 px** — the square inside the ring fills in and what is left is the ring — and
+O12 records `cell` against `prov-example` at 93.9 %. At 11 the page was asking a reader to tell
+"this number was measured" from "this number is an example" below the size those numbers describe.
+Magnified before and after, the centre is a blob at 11 and separates from the ring at 12.
 
-This lands on the one pair the layer already knows is fragile. O7 records that `prov-cached` is
-93.7 % identical to `prov-example` **at 12 px**; O12 records `cell` against `prov-example` at
-93.9 %. At 11 px both are worse, and the page is asking a reader to tell "this number was measured"
-from "this number is an example" at a size the design repo has never tested.
-
-`.rho.small svg.sg` at 13 px (`dashboard.css:262`) is the next closest and is fine.
+Fixed as `width:var(--sign-floor)` rather than a 12 typed in here, so the pill follows when the
+redraw O7 and O12 are waiting on settles the floor. Page height is unchanged at 1440 and 375: the
+pill had the room already.
 
 ### 4. Counted, not sized — pass (was a fail; fixed)
 
@@ -257,22 +258,21 @@ embedded.
 
 ## What to fix first
 
-**The 11 px pill glyph** (`dashboard.css:80`, one number). It is the most-repeated sign on the page
-— every figure in the Figures band carries one — it is the only sign under the 12 px `--sign-floor`,
-and it lands on the one pair the layer already knows is fragile: O7 and O12 record `prov-cached`,
-`prov-example` and `cell` as 93.7–93.9 % identical **at 12 px**. At 11 the page asks a reader to
-tell "measured" from "example" at a size the design repo has never tested.
+**The two bare `#fff` on the green buttons** (`dashboard.css:124` and `:275`). White on `#00A057`
+measures 3.41:1, under AA for 13 px text; `var(--ink)` on the same green is 5.26:1 and follows the
+register. The file's own header says "there is no colour literal below", and these are the two.
 
-Then: the two bare `#fff` on the green buttons (`dashboard.css:124`, `:275` — white on `#00A057` is
-3.41:1, under AA for 13 px text; `var(--ink)` is 5.26:1 and follows the register), and the wall's
-ink satellite year (`dashboard.css:256`, delete the rule).
+Then the wall's ink satellite year (`dashboard.css:256`) — delete the rule and let
+`--satellite-only` stand, so the one thing only the satellite knows keeps saying so on the surface
+R6 settled as the satellite's own.
 
-**Two are done.** The `.dial` arcs are gone — they were the only finding that made the page state
+**Three are done.** The `.dial` arcs are gone — they were the only finding that made the page state
 something false to a reader reading it correctly, and removing them took code out. The hero ground
 is done too; it needed only a register the `<img>` could be told about, not the design-repo
-conversation it looked like it needed.
+conversation it looked like it needed. And the 11 px provenance glyph now names `--sign-floor`
+instead of a number, so it follows the redraw O7 and O12 are waiting on.
 
-**What is left after those three is not a bug list.** Check 8 stands because the dashboard does not
+**What is left after those two is not a bug list.** Check 8 stands because the dashboard does not
 speak the state vocabulary at all, and giving it one is a design round — a mark a stranger can read,
 in three languages, not a token borrowed from a map and pointed at a numeral.
 

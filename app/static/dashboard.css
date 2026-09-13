@@ -77,7 +77,13 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 /* provenance pill: ink only, square, glyph + word. No colour token may ever land on it. */
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle}
-.pill svg.sg{width:11px;height:11px}
+/* --sign-floor, not 11px and not a 12 typed in here. It is "the size every sign must still read at",
+   and this glyph was the only sign on any view below it: 39 of them on Now alone, against 13px for
+   the small ρ ring and 20px everywhere else. It is also the worst place to lose a pixel — the layer's
+   O7 and O12 record prov-cached, prov-example and cell as 93.7-93.9% identical AT 12px, so at 11 the
+   page was asking a reader to tell "measured" from "example" below the size those numbers describe.
+   Naming the token means the pill follows when that redraw settles the floor. */
+.pill svg.sg{width:var(--sign-floor);height:var(--sign-floor)}
 .pill.soft{border-color:var(--hair)}
 .chip{display:inline-block;border:1px solid var(--hair);padding:2px 8px;font:500 11px/1.3 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 /* cards and bands */
