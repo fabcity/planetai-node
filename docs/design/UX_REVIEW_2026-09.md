@@ -4,6 +4,13 @@
 against the `ui-ux-pro-max` Quick Reference, as the five people who open it. It changes nothing.
 Every finding below has a screenshot and a rule.
 
+**One correction, made after the first pass.** R1 was first filed as a P0 saying `/health` leaks the
+node's res-8 cell. Measured, that is wrong: the cell is 0.716 km² and the 3-decimal coordinates
+published beside it are 0.0093 km² — **77× finer**, so the cell adds nothing the coordinates have not
+already given. `app/main.py:772` says exactly this and is right. What survives is a narrower point
+about two settings disagreeing, and it is a decision rather than a defect; it has moved to Decisions
+to revisit. **Four P0s, not five.**
+
 ## Header
 
 | | |
@@ -42,10 +49,11 @@ re-opens that reading.
    `render()`'s refused branch writes `#hero` and returns before it reaches `#wallbox` or `#netbody`.
    The surface that nobody is standing at is the one that goes blank. Household member, stranger ·
    §8 `error-recovery`, §10 `error-state-chart`. **P0**
-5. **`/health` hands a stranger with no token the node's res-8 cell — 525 m — captioned "THE CELL THIS
-   NODE STANDS IN", at the level called `off`.** The same product refuses to *announce* anything finer
-   than res 6 over radio, by policy, in `settings.py`. Stranger · no skill rule; check written here.
-   **P0**
+5. **At `SHARE_LEVEL=off` a tokenless stranger gets the node's position to ~110 m from `/health`, while
+   the same node refuses to announce anything finer than ~35 km² over radio.** Measured: the 3-decimal
+   coordinates localise to 0.0093 km²; the presence floor is 35.1 km². This is a **decision, not a
+   bug** — `app/main.py:772` argues the rounding deliberately — so it is filed under Decisions to
+   revisit, not as a finding. Stranger · no skill rule; check written here.
 6. **Arrange has no way out and no instructions.** `.arrbar` carries no CSS rule, so the instruction
    line and the **Done** button sit at y≈3,746 on a 3,789 px page. Leaving by the nav does not end the
    mode. Keeper · §9 `modal-escape`, §1 `escape-routes`. **P1**
@@ -286,7 +294,7 @@ treats as remote):
 
 | id | P | skill | rule | reader | what happens | evidence | fix in one line | collides |
 |---|---|---|---|---|---|---|---|---|
-| **R1** | **P0** | — | no rule; check written here | stranger | `/health` publishes the node's **res-8 cell** (525 m to an edge, and an H3 id resolves to an exact centre) plus 3-decimal coordinates (~111 m) to anyone on the WiFi with no token, at the level named `off`. The same product's `RETICULUM_PRESENCE_RES` **refuses anything finer than res 6** with the reasoning that *"a node announcing its street to an open radio network is not a thing to do by typing a number."* The two settings disagree about what a location is. | `curl /health` from a non-local address; `app/settings.py:82`, `app/main.py:691` | Round the cell the way presence rounds it. | no |
+| R1 | — | — | no rule; check written here | stranger | **Moved to Decisions to revisit, item 7, with a corrected mechanism.** The cell is not the leak — it is 77× coarser than the coordinates beside it — and the coordinate precision is deliberate. | see Decisions to revisit | — | **yes — A12** |
 | **R2** | **P0** | High | §8 `error-recovery` | household, stranger | The wall is black and Network is blank — L1 and W1, filed there. | `refused_wall_1920.jpg`, `refused_network_1440.jpg` | | no |
 | R3 | P1 | High | §8 `error-clarity`, §1 `consistent-help` | household, stranger | The refusal is written for a developer: *"this node is set to SHARE_LEVEL=off, so /issues answers only this machine or a request carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view…"* It names an environment variable, a route path and an action the reader — who by definition has no token — cannot take. `WORDS.refused` above it is the household sentence, and it is the only one of the two that is translated. | `refused_now_390.jpg` | Tell the reader to ask the keeper. | no |
 | R4 | P2 | Minor | §1 `aria-prohibited-attr` | screen reader | axe `aria-prohibited-attr` serious ×1 on the refused Now view only. | axe `refused_now_390` | | no |
@@ -401,7 +409,7 @@ in the appendix.
 | §5 Layout & Responsive | 1 (H4) | 1 (N13) | clean | clean | clean | 1 (A6) | clean |
 | §6 Typography & Colour | 1 (H9) | 1 (N1) | clean | clean | 1 (L4) | clean | clean |
 | §7 Animation | clean | clean | 1 (W3) | clean | clean | clean | clean |
-| §8 Forms & Feedback | clean | 3 (N9,N10,N11) | 1 (W1) | 8 (S3,S4,S5,S6,S8,S9,S10,S13) | 2 (L1,L5) | 4 (A1,A2,A3,A4) | 2 (R2,R3) |
+| §8 Forms & Feedback | clean | 3 (N9,N10,N11) | 1 (W1) | 8 (S3,S4,S5,S6,S8,S9,S10,S13) | 2 (L1,L5) | 4 (A1,A2,A3,A4) | 2 (R2,R3) |  <!-- R1 withdrawn -->
 | §9 Navigation | 4 (H1,H5,H6,H4) | clean | 1 (W7) | 1 (S4) | clean | 2 (A1,A5) | clean |
 | §10 Charts & Data | clean | 5 (N2,N4,N7,N8,N16) | 1 (W5) | clean | 1 (L2) | clean | clean |
 
@@ -520,8 +528,20 @@ Not bugs. Each is a place where the walk found a real cost attached to a settled
    empty on both test nodes, so the claim could not be seen in place. Not a finding; a gap in
    evidence. Evidence: `wall_populated_1920_base.jpg` (`no frames yet`).
 6. **The wall shows the cell caption.** `stamp` is in `ANATOMY.wall` by R5's anatomy. On a screen
-   visible from outside the house it publishes a 525 m location. Evidence:
-   `wall_empty_1920_base.jpg`.
+   visible from outside the house it publishes a 0.72 km² location — coarser than the street, and
+   coarser than what `/health` already answers. Evidence: `wall_empty_1920_base.jpg`.
+7. **A12 — "3 decimals, for every caller at every level" — against `RETICULUM_PRESENCE_RES`'s floor of
+   res 6.** Measured at node lat 41.3874: `/health`'s rounded point is **0.0093 km²** (111 × 84 m);
+   the res-8 cell published beside it is **0.716 km²**, so the cell adds nothing — `app/main.py:772`
+   is right about that, and about 5 decimals being the doorway. What it does not address is that the
+   *same node* refuses to **announce** a cell finer than res 6 — **35.1 km²** — because *"a node
+   announcing its street to an open radio network is not a thing anyone should be able to do by
+   typing a number"* (`app/main.py:786`). So the node answers a tokenless caller on the WiFi with a
+   position ~3,800× more precise than the finest thing it will say about itself over radio, at the
+   share level named `off`. Both behaviours are deliberate and neither is a bug; whether they should
+   agree is Tomas's. The counter-argument is on the record too: `/export` has always published 3 dp
+   under CC BY, so lowering `/health` alone would not make the position private. Evidence: `curl
+   /health` from a non-local address; `app/main.py:772`, `:786`, `app/settings.py:82`.
 
 ---
 
