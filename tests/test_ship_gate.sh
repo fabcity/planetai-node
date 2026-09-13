@@ -102,4 +102,51 @@ grep -q RESULT_OK <<<"$out" && bad "a diverged tree was allowed to build a relea
 grep -q "diverged" <<<"$out" && ok "and says so" || bad "does not say diverged"
 cd /; rm -rf "$D"
 
+# The fast-forward rewrites the worktree, and one of the files in it is ship.sh itself. bash reads a script
+# incrementally by byte offset, so replacing it mid-run can resume inside different content — and it is why
+# a fix below the pull cannot govern the release that introduces it (v0.51 shipped the label fix and was
+# still labelled v0.50). The script must notice and restart. Proving that needs the script to live INSIDE
+# the repository being pulled, which is the one thing the lifted-block harness above cannot do.
+reexec_block="$(sed -n "${fetch_line},$(awk -v s="$here_line" 'NR>s && /^fi$/ {print NR; exit}' "$SHIP")p" "$SHIP")"
+
+setup
+mkdir -p "$D/work/tools"
+{ echo '#!/usr/bin/env bash'
+  echo 'set -uo pipefail'
+  echo 'say(){ printf ">> %s\n" "$*"; }'
+  echo 'die(){ printf "xx %s\n" "$*"; exit 1; }'
+  echo 'SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"'
+  echo 'echo "I AM version-one"'
+  printf '%s\n' "$reexec_block"
+  echo 'echo "BUILDING-AS ${HERE:-<never set>}"'
+} > "$D/work/tools/s.sh"
+chmod +x "$D/work/tools/s.sh"
+git -C "$D/work" add tools/s.sh && git -C "$D/work" commit -q -m "the script, version one"
+git -C "$D/work" tag -a v1 -m v1
+git -C "$D/work" push -q origin main 2>/dev/null
+
+# origin moves ahead AND edits the script, exactly as a merged release does
+git clone -q "$D/origin.git" "$D/other" 2>/dev/null
+git -C "$D/other" config user.email t@t; git -C "$D/other" config user.name t
+sed -i.bak 's/I AM version-one/I AM version-two/' "$D/other/tools/s.sh" && rm -f "$D/other/tools/s.sh.bak"
+git -C "$D/other" commit -q -am "the script, version two"
+git -C "$D/other" tag -a v2 -m v2
+git -C "$D/other" push -q origin main 2>/dev/null && git -C "$D/other" push -q origin v2 2>/dev/null
+git -C "$D/work" fetch -q --tags origin
+
+out="$(cd "$D/work" && bash tools/s.sh 2>&1)"
+grep -q "restarting so this release is built by the new one" <<<"$out" \
+  && ok "a fast-forward that replaces ship.sh restarts it" \
+  || bad "ship.sh was replaced mid-run and carried on reading the old file: $out"
+grep -q "I AM version-two" <<<"$out" \
+  && ok "and the second run is the NEW script, not the one that started" \
+  || bad "it restarted but ran the old script again: $out"
+[[ "$(grep -c 'I AM version' <<<"$out")" == 2 ]] \
+  && ok "exactly twice — once before the pull, once after, no loop" \
+  || bad "expected exactly two runs, got $(grep -c 'I AM version' <<<"$out"): $out"
+[[ "$(sed -n 's/^BUILDING-AS //p' <<<"$out" | tail -1)" == v2 ]] \
+  && ok "and it builds as v2, the version it actually contains" \
+  || bad "labelled '$(sed -n 's/^BUILDING-AS //p' <<<"$out" | tail -1)', not v2: $out"
+cd /; rm -rf "$D"
+
 [[ $fails -eq 0 ]] && { echo "ship gate tests pass"; exit 0; } || { echo "$fails failed"; exit 1; }
