@@ -116,15 +116,47 @@ async function pass(label, { url, token, width, route, view }) {
   return { name, seen, errors, missed };
 }
 
-// A node with no token at SHARE_LEVEL=off refuses nine endpoints, and the browser logs each refusal
-// as a console error. A refusal is an answer: the page draws the node's own sentence about it. So
-// this pass is judged on the sentence and on nothing else.
+/* What a reader with no token gets — judged by what THIS node's SHARE_LEVEL actually promises.
+ *
+ * At `off` a node refuses nine endpoints, the browser logs each refusal as a console error, and the
+ * page draws the node's own sentence about it. A refusal is an answer, so that pass is judged on the
+ * sentence and nothing else.
+ *
+ * At `open` there is no refusal to find: a wall screen on the house WiFi is supposed to work with no
+ * token, which is the whole point of the level. Asserting the refusal anyway is how this printed ✗
+ * against node #1 — which has been `open` since somebody set it in Set up — on every live render,
+ * for a page that was behaving exactly as configured. A check that cannot pass is not a check.
+ *
+ * The level is read from the node rather than assumed: `/settings` is on the `off` allowlist, so it
+ * answers without a token at every level, and a value set in the GUI overrides the one in .env —
+ * which is why reading the .env would have given the wrong answer here too.
+ */
+async function shareLevel(base) {
+  try {
+    const d = await fetch(`${base}/settings`).then(r => r.json());
+    const row = (d.runtime || []).find(k => k.key === 'SHARE_LEVEL');
+    return String(row?.value ?? d.SHARE_LEVEL ?? 'off').trim().toLowerCase() || 'off';
+  } catch { return 'off'; }   // unreachable node: the pass below will fail on its own terms
+}
+
 if (LIVE) {
+  const level = await shareLevel(LIVE);
   const r = await pass('live-refused-1440', { url: LIVE, token: '', width: 1440 });
-  const said = /not sharing/i.test(r.seen.hero);
+  /* `off` promises a sentence; anything else promises a working page, so judge it like the rest —
+   * with one refusal allowed, and only one. `/place/geojson` needs a token at EVERY level: it is the
+   * exact shape of the buildings around a household, the one thing SHARE_LEVEL never hands out. The
+   * plan card is built for that and draws its ground with a line saying which, so the 403 is the
+   * design working. The browser still logs it, so it has to be named here or an `open` node can
+   * never pass. Anything else refused at `open` is a finding. */
+  const expected = m => m.endsWith('/place/geojson');
+  const said = level === 'off'
+    ? /not sharing/i.test(r.seen.hero)
+    : r.errors.filter(e => !/\b403\b/.test(e)).length === 0 && r.missed.every(expected)
+      && !r.seen.broken.length && !r.seen.sideways && !r.seen.mounts.length;
   if (!said) bad++;
   rows.push({ ...r, ok: said });
-  console.log(`  ${said ? '✓' : '✗'} ${'live-refused-1440.jpg'.padEnd(34)} no token, and the page says why`);
+  console.log(`  ${said ? '✓' : '✗'} ${'live-refused-1440.jpg'.padEnd(34)} no token at SHARE_LEVEL=${level}, and the page `
+    + (level === 'off' ? 'says why' : 'works — that is what open means'));
   for (const view of ['now', 'wall', 'network']) {
     for (const width of WIDTHS) {
       const r2 = await pass(`live-${view}-${width}`, {
