@@ -17,6 +17,14 @@ no button on them does anything.
 **Everything below was seen in a render.** Where a direction does not show something, this document
 says so rather than describing what it would look like.
 
+**One correction, made before this was written.** The first set of renders fell back to system-ui for
+both Funnel Sans and Figtree: the node serves its three faces by flat name from an allowlist, and the
+rig was serving the directory they live in, so `/static/FunnelSans-VariableFont_wght.ttf` 404'd and
+the page said nothing. Measured: `document.fonts.check` false for both, and every cap height in the
+first pass belonged to a face the layer does not name. Every number below is from a re-render with
+all three faces loading and nothing 404ing. The shipped baseline was unaffected — its faces came from
+the container — and re-measuring it returned the same numbers to the decimal.
+
 ---
 
 ## What the three share, and why
@@ -65,7 +73,7 @@ won, grown large.
 |---|---|
 | the household member, phone, five seconds | the kicker, the sentence with its numeral, the line, then "Nothing has been asked", then the time. All five are on the first screen at 390 — measured. |
 | the keeper at 1440 | the same, and then a column they can scroll rather than a layout they have to parse. Two issues are named with a number on the first screen; the other three are one scroll down. |
-| the wall at three metres | the same rows, larger. Four issue lines at 10.2 mm cap height, over the 9 mm floor, and the whole wall fits one screen. |
+| the wall at three metres | the same rows, larger. Four issue lines at 10.1 mm cap height, the only direction over the 9 mm floor. But the wall is **1,142 px on a 1,080 px screen**, so the node name, **`stale`** and "Answer on Telegram, not here" are below a fold that does not scroll — the shipped page's own S-01, reproduced. |
 | the tester on an empty node | the rows survive: every issue is still a row, and each says what it has no source for. The page is 2.0 screens instead of 8.4. |
 | the stranger at `SHARE_LEVEL=off` | the shell, the household sentence, the node's own sentence, and what to do. One screen. |
 
@@ -82,10 +90,11 @@ row like any other, and its `band.gauge` contribution is an `unplaced` readout w
 on it in the same band. A hazard row or a child would be another row. The stranger's water pack
 needed no new shape at all — that is A's strongest claim.
 
-**What it costs.** The column is long: **8.4 screens at 390**, the worst of the three, and only two
-issues are named with a number on the first screen at 1440, because the lead takes the whole fold.
-A is the direction that answers "what is happening" fastest and "is it me or is it everywhere"
-slowest — the comparison is inside a row you have to open.
+**What it costs.** The column is long: **8.4 screens at 390**, the worst of the three; only two
+issues are named with a number on the first screen at 1440 and **one** at 390, because the lead takes
+the whole fold; and the wall overflows by 62 px, which is a composition to shorten rather than a size
+to tune. A is the direction that answers "what is happening" fastest and "is it me or is it
+everywhere" slowest — the comparison is inside a row you have to open.
 
 ---
 
@@ -102,7 +111,7 @@ matrix and marked `leads` inside it.
 |---|---|
 | the household member, phone, five seconds | the sentence and the ask, then the matrix transposed — one block per issue with its four distances as a 2×2. Two issues are named with a number on the first screen. |
 | the keeper at 1440 | **four of the five issues, at all four distances, on the first screen.** The best answer of the three to "show me everything at once". |
-| the wall at three metres | the matrix, dark. It does **not fit**: 1.4 screens at 1920, so the ρ row and the footer carrying `stale` are below a fold that does not scroll. That is the shipped page's own S-01 failure, reproduced by a composition that wants one more row than the wall has. |
+| the wall at three metres | the matrix, dark. It does **not fit, by 470 px**: 1,550 px on a 1,080 px screen, so the last issue row, the ρ row and the footer carrying `stale` are all below a fold that does not scroll. A composition that wants one more row than a wall has. |
 | the tester on an empty node | a matrix of dashes, each saying why. Honest, and bleak: 74.5 % of the first screen is empty at 1440. |
 | the stranger at `SHARE_LEVEL=off` | as A. |
 
@@ -136,7 +145,7 @@ air problem and a heat problem; it has a room, a wall outside, a street and a mo
 |---|---|
 | the household member, phone, five seconds | the sentence, the ask, the time, then **The room** with air, heat and water in it. Three issues named with a number on the first screen at 390 — the most of the three on a phone. |
 | the keeper at 1440 | the same, and the plan of the kilometre beside the ring, the satellite beside the region. The shortest page of the three: **3.1 screens** at 1440 and 5.5 at 390. |
-| the wall at three metres | the best wall of the three, and it fits exactly one screen: four columns, every issue at every distance, `stale` legible, the ρ row and its caption on it. |
+| the wall at three metres | **the only wall of the three that fits — 1,080 px on a 1,080 px screen, nothing below the fold.** Four columns, every issue at every distance, `stale` on it, the ρ row and its caption on it. |
 | the tester on an empty node | four zones, each saying what it has no instrument for — *No kit is on the wall outside.* It is the only direction whose empty state reads as a **map of what to buy next**. |
 | the stranger at `SHARE_LEVEL=off` | as A. |
 
@@ -174,26 +183,27 @@ readings differ, and the thing between them is its hero's ground drawing.
 |---|---|---|---|---|---|
 | **T1** @ 390 · sentence · numeral · state · ask · as-of | all five | ✓ ✓ ✓ **✗** ✓ | ✓✓✓✓✓ | ✓✓✓✓✓ | ✓✓✓✓✓ |
 | **T1** @ 1440 · the same + index + mini stack | all seven | ✓✓✓**✗**✓ · idx 4 ✓ | ✓✓✓✓✓ · idx 1 **✗** | ✓✓✓✓✓ · idx 0 **✗** | ✓✓✓✓✓ · idx 0 **✗** |
-| **T1b** issues named with a number on the first screen @ 1440 | all five | — (marks none) | air water | air coast heat water | air heat water |
-| **T1b** the same @ 390 | | — | air water | air water | air heat water |
-| **T2** empty @ 1440, as written / discounted | ≤ 30 % | 35.3 / 64.4 % | 69.0 / 69.0 % | 71.9 / 71.9 % | 71.1 / 71.4 % |
-| **T2** empty @ 390, as written / discounted | ≤ 20 % | 21.4 / 46.8 % | 45.5 / 45.5 % | 51.6 / 51.6 % | 43.3 / 43.3 % |
-| **T2** page height @ 1440, in viewports | ≤ 4 | 5.7 | 5.1 | **4.1** | **3.1** |
-| **T2** page height @ 390 | ≤ 8 | 8.9 | 8.4 | **7.0** | **5.5** |
+| **T1b** issues named with a number on the first screen @ 1440 | all five | — (marks none) | air water | **air coast heat water** | air heat water |
+| **T1b** the same @ 390 | | — | water | air water | **air heat water** |
+| **T2** empty @ 1440, as written / discounted | ≤ 30 % | 35.3 / 64.4 % | 69.3 / 69.3 % | 71.8 / 71.8 % | 70.5 / 70.8 % |
+| **T2** empty @ 390, as written / discounted | ≤ 20 % | 21.4 / 46.8 % | 46.5 % | 52.5 % | **43.2 %** |
+| **T2** page height @ 1440, in viewports | ≤ 4 | 5.7 | 5.2 | 4.2 | **3.1** |
+| **T2** page height @ 390 | ≤ 8 | 8.9 | 8.4 | **6.9** | **5.5** |
 | **T3** card kinds declared | 4 | 0 (24 grammars, undeclared) | **4** | 3 | 2 |
 | **T4** numerals with no comparison | 0 | 0 of 0 declared (26 drawn) | **0 of 70** | **0 of 47** | **0 of 26** |
-| **T5** components with no link in or out | 0 | 47 of 47 | 2 of 52 | 1 of 31 | 2 of 25 |
-| **T6** reading-order swaps in the first viewport @ 1440 / 390 | 0 | 3 / 3 | 11 / 5 | 7 / 7 | 8 / 2 |
+| **T5** components with no link in or out | 0 | 47 of 47 | 2 of 52 | **1 of 31** | 2 of 25 |
+| **T6** reading-order swaps in the first viewport @ 1440 / 390 | 0 | 3 / 3 | 10 / 5 | 7 / 7 | 8 / **2** |
 
 ### The wall, 1920 dark
 
 | | target | shipped | A | B | C |
 |---|---|---|---|---|---|
-| fits one screen | 1.0 | 1.0 (**1.2 at 1440**) | **1.0** | **1.4** | **1.0** |
-| the sentence | ≥ 9 mm | 34.0 | 31.2 | 28.4 | 29.1 |
+| document height on a 1,080 px screen | 1,080 | 1,080 (**1,052 on the 900 px screen at 1440**) | **1,142 — over by 62** | **1,550 — over by 470** | **1,080 — exactly** |
+| what falls below the fold | nothing | nothing at 1920; at 1440 the ρ caption, the node name, `As of`, **`stale`** and "Answer on Telegram" | the node name, **`stale`**, "Answer on Telegram" | the last issue row, the ρ row, the whole footer | **nothing** |
+| the sentence, cap height | ≥ 9 mm | 34.0 | 29.9 | 27.2 | 27.9 |
 | the numeral | ≥ 9 mm | 80.9 | 73.6 | 66.2 | 69.2 |
-| every issue line | ≥ 9 mm | **7.5** | **10.2** | **8.4** | **8.4** |
-| the ρ row's caption | ≥ 9 mm | **5.7** | **8.9** | **8.9** | **8.9** |
+| every issue line | ≥ 9 mm | **7.5** | **10.1** | **8.4** | **8.4** |
+| the ρ row's caption | ≥ 9 mm | **5.7** | **8.8** | **8.8** | **8.8** |
 | issues named with a number | all | — | all four | all four | all four |
 
 ### Empty and refused
@@ -201,7 +211,8 @@ readings differ, and the thing between them is its hero's ground drawing.
 | | shipped | A | B | C |
 |---|---|---|---|---|
 | empty @ 390, page height in viewports | — | 2.0 | 3.8 | **1.7** |
-| empty @ 1440, empty share | — | 67.6 % | 74.5 % | 75.8 % |
+| empty @ 1440, empty share | — | 68.3 % | 74.9 % | 77.2 % |
+| issues named with a number on an empty node @ 1440 | — | air | air coast heat land | none |
 | refused @ 390 | the shell + two sentences | the shell + three: what, why, and what to do | same | same |
 
 ---
@@ -234,7 +245,7 @@ to ask. A and B teach *which issue is loud*; C teaches *which part of my place i
 own cost is the mirror of its claim: one issue is scattered across three zones.
 
 **2 · Whether T2's 30 % and 20 % survive, or the measure does.** **No direction comes close**: the
-best first screen measured is 43.3 % empty, against a target of 20 %. The shipped page appears to
+best first screen measured is 43.2 % empty, against a target of 20 %. The shipped page appears to
 pass at 21.4 % only because a decorative full-bleed drawing counts as a mark — discount it and it is
 46.8 %, which is the same neighbourhood as all three drawings. So one of three things is true, and
 only Tomas can say which: the targets should be restated against the measure that discounts
@@ -243,9 +254,16 @@ should be materially denser than any of these three; or the hero's ground drawin
 first screen is filled by a picture rather than by readings. The third is what the shipped page does
 today, and it is what the complaint calls too much empty space.
 
-**3 · Whether the wall carries a table.** B's wall is the only one that does not fit its screen, and
-the reason is structural rather than a size to tune. A's wall and C's wall both fit at 1920 and both
-put every issue's provenance on it. If the matrix is the pick, the wall is not the matrix.
+**3 · The wall is C's, and the other two have to give something up to get it.** Measured at 1920
+dark: C is 1,080 px on a 1,080 px screen with nothing below the fold; A is over by 62 px and loses
+the node name, `stale` and "Answer on Telegram"; B is over by 470 px and loses a whole issue row as
+well. A wall does not scroll, so a household reads a number and is never shown the word saying it is
+old — which is exactly the P0 the September skeleton review filed as **S-01** and which v0.53 closed
+at 1920 and left open at 1440. If A or B is the pick, its wall is a separate composition rather than
+the same page at a larger size, and that is work Phase 2 has to plan for.
+
+All three do put a provenance word on every wall number, which closes **L2**, the one P0 still open
+from the September walk — so the wall's other failing is answered by the pick whichever way it goes.
 
 ### Two smaller things that are decisions, not findings
 

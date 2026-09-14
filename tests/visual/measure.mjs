@@ -182,7 +182,13 @@ async function open(job) {
       else if (u.pathname.startsWith('/static/')) file = u.pathname.slice(8);
     }
     if (file) {
-      const p = path.join(STATIC, file);
+      /* The node serves /static/<NAME> from an allowlist that takes a name and not a path, so the
+       * three faces live under app/static/fonts/ and are asked for flat. Serving the directory
+       * layout instead 404s them and the page silently falls back: measured, Funnel Sans and
+       * Figtree both `document.fonts.check` false, and every cap height then belongs to
+       * system-ui rather than to the face the layer names. */
+      const p = fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
+        : path.join(STATIC, 'fonts', file);
       if (fs.existsSync(p)) return route.fulfill({
         status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
