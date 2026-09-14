@@ -51,6 +51,10 @@ ids = dict(re.findall(r"const\s+(\w+)\s*=\s*\$\('#([a-zA-Z0-9_-]+)'\)", js))
 ids.update(dict(re.findall(r"(\w+)\s*=\s*\$\('#([a-zA-Z0-9_-]+)'\)", js)))
 hidden_ids = {ids[v] for v in re.findall(r"(\w+)\.hidden\s*=", js) if v in ids}
 hidden_ids |= set(re.findall(r"\$\('#([a-zA-Z0-9_-]+)'\)\.hidden\s*=", js))
+# …and the way the renderer actually writes it. The rule was blind to `getElementById('x').hidden =`,
+# which is every hide in dashboard.js, so it passed a stylesheet that gave #arrbar `display:flex` and
+# un-hid the Arrange bar on every view — the exact failure this check exists for, shipped past it.
+hidden_ids |= set(re.findall(r"getElementById\('([a-zA-Z0-9_-]+)'\)\.hidden\s*=", js))
 for i in sorted(hidden_ids):
     tag = re.search(rf'<(\w+)([^>]*\bid="{re.escape(i)}"[^>]*)>', h)
     if not tag:

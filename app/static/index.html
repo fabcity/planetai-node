@@ -27,10 +27,10 @@
   <div class="wrap">
     <div class="brand">
       <svg viewBox="0 0 22 25" width="22" height="25" aria-hidden="true"><path d="M11 0 22 6.25v12.5L11 25 0 18.75V6.25Z" fill="currentColor"/><circle cx="11" cy="12.5" r="3.5" fill="var(--ground)"/></svg>
-      <b id="nodename">node</b>
+      <h1 id="nodename">node</h1>
       <span class="s" id="nodeplace"></span>
     </div>
-    <nav class="views" id="views">
+    <nav class="views" id="views" aria-label="Views">
       <button class="on" data-view="now">Now</button>
       <button data-view="network">Network</button>
       <button data-view="setup">Set up</button>
@@ -90,6 +90,7 @@
       <nav class="tabs" id="tabs"></nav>
       <h3 class="t" id="ptitle"></h3>
       <p class="sub" id="pblurb"></p>
+      <p class="sub addr" id="paddr" hidden></p>
       <div id="pane"></div>
       <div class="savebar"><button class="btn" id="btn-save">Save changes</button><span class="sub" id="savenote">Live within about twenty seconds.</span></div>
     </div>
@@ -103,8 +104,9 @@
 </main>
 
 <!-- Arrange: order and hide bands, saved on the node as UI_LAYOUT -->
-<div class="arrbar" id="arrbar" hidden>
+<div class="arrbar" id="arrbar" hidden role="region" aria-label="Arrange">
   <span>Arrange: ← and → move a band, ✕ hides it.</span>
+  <label class="vh" for="arr-restore">Put a hidden band back</label>
   <select id="arr-restore"><option value="">Restore a hidden band…</option></select>
   <button class="btn ghost" id="btn-arr-reset">Default</button>
   <button class="btn" id="btn-arr-done">Done</button>

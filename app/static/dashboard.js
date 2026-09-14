@@ -104,10 +104,10 @@ async function snapshot() {
  * The id and es are ASSISTANT-WRITTEN and have not been read by a native speaker — see CHANGELOG.
  */
 const WORDS = {
-  en: { now: 'Now', watches: 'What this place watches', notWatched: 'not watched here',
-        theDay: 'The day it just had', whereItStands: 'Where it stands', sources: 'Sources',
+  en: { now: 'Now', watches: 'What this place watches', notWatched: 'nothing here yet', leavesMachine: 'leaves this machine', openOnAnotherScreen: 'Open this on another screen in the house:',
+        theDay: 'The day it just had', dayStart: '24 h ago', dayEnd: 'now', whereItStands: 'Where it stands', sources: 'Sources',
         thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
-        source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
+        source: 'Source', asOf: 'As of', word: 'Word', value: 'Value', answerOn: 'Answer on Telegram, not here.',
         stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', whatDidYouDo: 'What did you do? (a few words)', ringCloses: 'the ring closes', noted: 'noted', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
@@ -202,10 +202,10 @@ const WORDS = {
           step: 'wind from {dir} {kmh} km/h \u00b7 {sky}',
           stepDry: 'dry', stepRain: '{mm} mm rain', stepCloud: ' \u00b7 {n}% cloud',
           notPredict: 'The node fetches this; it does not predict.' } },
-  id: { now: 'Sekarang', watches: 'Yang dipantau di sini', notWatched: 'tidak dipantau di sini',
-        theDay: 'Hari yang baru lewat', whereItStands: 'Posisinya', sources: 'Sumber',
+  id: { now: 'Sekarang', watches: 'Yang dipantau di sini', notWatched: 'belum ada di sini', leavesMachine: 'keluar dari mesin ini', openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
+        theDay: 'Hari yang baru lewat', dayStart: '24 jam lalu', dayEnd: 'sekarang', whereItStands: 'Posisinya', sources: 'Sumber',
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
-        source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
+        source: 'Sumber', asOf: 'Per', word: 'Kata', value: 'Nilai', answerOn: 'Jawab di Telegram, bukan di sini.',
         stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', whatDidYouDo: 'Apa yang Anda lakukan? (beberapa kata)', ringCloses: 'lingkarnya tertutup', noted: 'dicatat', theLine: 'batas',
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
@@ -300,10 +300,10 @@ const WORDS = {
           step: 'angin dari {dir} {kmh} km/jam \u00b7 {sky}',
           stepDry: 'kering', stepRain: 'hujan {mm} mm', stepCloud: ' \u00b7 awan {n}%',
           notPredict: 'Node mengambil data ini; ia tidak meramal.' } },
-  es: { now: 'Ahora', watches: 'Lo que vigila este lugar', notWatched: 'no se vigila aquí',
-        theDay: 'El día que acaba de pasar', whereItStands: 'Dónde está', sources: 'Fuentes',
+  es: { now: 'Ahora', watches: 'Lo que vigila este lugar', notWatched: 'aquí todavía no hay nada', leavesMachine: 'sale de esta máquina', openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
+        theDay: 'El día que acaba de pasar', dayStart: 'hace 24 h', dayEnd: 'ahora', whereItStands: 'Dónde está', sources: 'Fuentes',
         thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
-        source: 'Fuente', asOf: 'A las', word: 'Palabra', answerOn: 'Responde en Telegram, no aquí.',
+        source: 'Fuente', asOf: 'A las', word: 'Palabra', value: 'Valor', answerOn: 'Responde en Telegram, no aquí.',
         stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', whatDidYouDo: '¿Qué hiciste? (unas palabras)', ringCloses: 'el anillo se cierra', noted: 'anotado', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
@@ -874,14 +874,34 @@ const COMPONENTS = {
     const X = i => pad.l + (i / Math.max(1, n - 1)) * (W - pad.l - pad.r);
     const Y = v => H - pad.b - ((v - lo) / (hi - lo || 1)) * (H - pad.t - pad.b);
     const dash = { room: '', yard: '4 3', ring: '1 5', region: '6 4' };
-    // A break is now visible, so say it to a reader who cannot see it.
+    /* A break is now visible, so say it to a reader who cannot see it — and say what the traces are
+     * worth. The chart carried NO text at all: no axis, no unit, no hour, no tick. Two lines and a
+     * dashed red rule, and the only way to learn what the red meant was to read a sentence in another
+     * part of the band. The numbers below are the node's own, formatted by ctx.fmt; nothing here is
+     * computed but the position of a label. */
     const broken = sets.some(k => runs(ser[k], () => 0).length > 1);
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
-      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours`
+    const unit = d.unit ? ' ' + d.unit : '';
+    let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"`
+      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours, `
+      + `${esc(ctx.fmt(lo, d.dp))} to ${esc(ctx.fmt(hi, d.dp))}${esc(unit)}`
+      + `${line != null ? `, ${esc(ctx.w.theLine)} ${esc(ctx.fmt(line, d.dp))}` : ''}`
       + `${broken ? ', broken where nothing was recorded' : ''}">`;
+    // The scale: what the top of this box is worth, and what the bottom is. Same mono, same 10px and
+    // same opacity the Stack's own scale already uses, so the two charts read as one system.
+    const ax = (x, y, t, anchor = 'start') => `<text x="${x}" y="${y}" text-anchor="${anchor}"`
+      + ` class="mono" font-size="10" letter-spacing=".06em" fill="var(--ink)" fill-opacity=".7">${esc(t)}</text>`;
+    s += ax(2, pad.t + 3, ctx.fmt(hi, d.dp) + unit)
+      + ax(2, H - pad.b, ctx.fmt(lo, d.dp))
+      // The time origin. "24 hours" was asserted by an aria-label and shown by nothing.
+      + ax(pad.l, H - 4, ctx.w.dayStart)
+      + ax(W - pad.r, H - 4, ctx.w.dayEnd, 'end');
     if (line != null) {
       s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
-        + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
+        + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`
+        // and it says what it is. The red rule was drawn and never named; the only way to learn it was
+        // the WHO line was to read the `why` sentence elsewhere in the band.
+        + `<text x="${W - pad.r}" y="${Y(line) - 4}" text-anchor="end" class="mono" font-size="10"`
+        + ` letter-spacing=".06em" fill="var(--signal-worse)">${esc(ctx.w.theLine)} ${esc(ctx.fmt(line, d.dp))}</text>`;
     }
     sets.forEach(k => {
       const op = k === 'room' ? 1 : .55;
@@ -1186,8 +1206,10 @@ const COMPONENTS = {
       + `<td>${ctx.pill(r.provenance)}</td></tr>`).join('');
     // Figures is the one wide thing on this page, and a table that will not fit narrows to nothing
     // or pushes the whole page sideways. It scrolls inside its own box instead.
-    return `<div class="figwrap"><table class="figs" data-component="figures">`
-      + `<thead><tr><th>${esc(ctx.w.figure)}</th><th></th><th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
+    return `<div class="figwrap" tabindex="0" role="region" aria-label="${esc(ctx.w.figures)}">`
+      + `<table class="figs" data-component="figures">`
+      + `<thead><tr><th>${esc(ctx.w.figure)}</th><th>${esc(ctx.w.value)}</th>`
+      + `<th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
       + `<tbody>${rows || `<tr><td colspan="4" class="note">nothing to show yet</td></tr>`}</tbody></table></div>`;
   },
 };
@@ -1439,7 +1461,15 @@ function wallView(snap, ctx) {
     empty: '',
   }, ctx);
   const stale = (snap.health || {}).last_poll && ctx.staleFor(snap.health.last_poll);
-  return `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg?variant=${ctx.register}" alt=""></div>`
+  // The wall said whether it was stale and never said when. A room reading a number across three
+  // metres has no other way to ask. How LOUD `stale` should be at that distance is a size decision
+  // and it is Claude Design's, not this file's; that it is said at all is not.
+  const asOf = ctx.as_of || (snap.health || {}).last_poll;
+  /* The wall's own heading. The header — and with it the page's h1 — is display:none here by R6, and
+   * leaving it visually hidden instead would keep five nav buttons in the tab order of a screen
+   * nobody is standing at. So the wall carries its own, for a reader who is not looking at it. */
+  return `<h1 class="vh">${esc((snap.health || {}).node || 'node')}</h1>`
+    + `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg?variant=${ctx.register}" alt=""></div>`
     // The only control on the wall, and it acts on the view rather than on anything the node knows.
     // Without it a laptop that reached the wall from the nav has no way back, because the header is
     // gone; a kiosk never shows a pointer and nobody presses it.
@@ -1450,6 +1480,7 @@ function wallView(snap, ctx) {
     + piece('rhoRow', snap.rho || {}, ctx)
     + `<div class="foot"><span>${esc((snap.health || {}).node || '')}</span>`
     + `<span>${esc((snap.health || {}).cell ? snap.health.cell.caption : '')}</span>`
+    + (asOf ? `<span>${esc(ctx.w.asOf)} ${esc(ctx.hhmm(asOf))}</span>` : '')
     + (stale ? `<span class="st">${esc(ctx.w.stale)}</span>` : '')
     + `<span>${esc(ctx.w.answerOn)}</span></div>`;
 }
@@ -1745,8 +1776,9 @@ function render(snap, view) {
 
   const h = snap.health || {};
   document.getElementById('nodename').textContent = h.node || 'node';
-  document.getElementById('nodeplace').textContent =
-    [h.city, h.kind, ctx.as_of ? `${ctx.w.asOf} ${ctx.hhmm(ctx.as_of)}` : ''].filter(Boolean).join(' · ');
+  // The place, not the time: the time moved next to the provenance word, which is where the question
+  // "how old is this, and how sure are you" gets answered in one place instead of two.
+  document.getElementById('nodeplace').textContent = [h.city, h.kind].filter(Boolean).join(' · ');
   // A refused page has no reading, so it makes no claim about one. The pill used to be computed from
   // /health, which answers at every share level — so a page showing nothing wore the word `live`.
   /* The word, and when. The timestamp used to live only in `title=`, which is a hover — unreachable on
@@ -2229,6 +2261,15 @@ async function loadSetup() {
     + `<span class="acts"><button type="button" class="btn ghost" data-lock="1">Lock</button></span>`;
   document.getElementById('ptitle').textContent = groupTitle(GROUP);
   document.getElementById('pblurb').textContent = groupBlurb(GROUP);
+  // The address another screen in the house should open. `planetai ui` prints it in a terminal; the
+  // interface the keeper is already looking at never did, so the path to a wall screen ran through
+  // the CLI. location.host is the address THIS reader used, which is the one that works.
+  const addr = document.getElementById('paddr');
+  if (addr) {
+    const show = GROUP === 'node';
+    addr.hidden = !show;
+    if (show) addr.textContent = `${mkCtx(LAST || {}, 'now').w.openOnAnotherScreen} http://${location.host}/`;
+  }
 
   const pane = document.getElementById('pane');
   if (GROUP === 'bootstrap') {
@@ -2261,11 +2302,16 @@ async function loadSetup() {
    * somebody type a value the node had already decided to reject. The node knows; the node says;
    * the page draws the answer.
    */
+  const ctx_ = mkCtx(LAST || {}, 'now');
   const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
   pane.innerHTML = rows.map(r => {
     const id = 'set-' + r.key, lbl = 'lbl-' + r.key;
     const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
-    const left = `<div><label id="${lbl}" for="${id}">${esc(r.label)}${src}</label>`
+    // The node says which settings change what leaves this machine (settings.OUTWARD). They were in
+    // the same box as "Coast: max distance to sea, km": the one that decides whether the whole read
+    // API answers a stranger on the WiFi looked exactly like the one that says how far the sea is.
+    const out = r.outward ? `<span class="tag out">${esc(ctx_.w.leavesMachine)}</span>` : '';
+    const left = `<div><label id="${lbl}" for="${id}">${esc(r.label)}${out}${src}</label>`
       + `<div class="help" id="help-${r.key}">${esc(r.help)}</div></div>`;
     // Where the node's refusal is written when it refuses. Empty until then, and aria-live so a
     // reader who is not looking at this field still hears why the save did not take.

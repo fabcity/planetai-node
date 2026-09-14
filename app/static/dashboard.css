@@ -79,7 +79,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--hair)}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
 .brand svg{width:18px;height:20px;flex:none;color:var(--ink)}
-.brand b{font:800 17px var(--fc-font-display);letter-spacing:-.02em}
+/* The node's name is the page's h1. It was a <b>, so axe reported page-has-heading-one on every view
+   in every state and a screen reader had no top of the document to jump to. Same type as before —
+   the margin reset is all that changes, because h1 carries a UA margin and b does not. */
+.brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0}
 .brand .s{font-size:13px;color:var(--mute)}
 @media(max-width:560px){.brand .s{display:none}
 }
@@ -141,7 +144,11 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .askstrip .what{font:600 15px/1.4 var(--fc-font-body)}
 .askstrip .what small{display:block;font-weight:400;color:var(--mute);font-size:13px;margin-top:2px}
 .askstrip button.go{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;padding:10px 16px}
-.askstrip .done{display:flex;align-items:center;gap:8px;color:var(--rings);font:600 13px var(--fc-font-body)}
+/* The green belongs to the ring beside these words, not to the words. --rings is #00A057 in both
+   registers and measures about 3.1:1 on paper — right for a mark, under AA for 13px type. The sign
+   still carries the colour and the meaning; the sentence is ink. */
+.askstrip .done{display:flex;align-items:center;gap:8px;color:var(--ink);font:600 13px var(--fc-font-body)}
+.askstrip .done .sg.closed{color:var(--loop-closed)}
 .askstrip[hidden]{display:none}
 /* hidden must beat display:grid; this bug shipped twice */
 @media(max-width:560px){.askstrip{grid-template-columns:1fr}
@@ -221,8 +228,12 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .sensor .story{font-size:12.5px;color:var(--mute);margin-top:6px;line-height:1.45}
 .sensor .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .sensor .spark{width:100%;height:26px;display:block;margin-top:8px;overflow:visible}
-.sensor .kits{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font:500 11px var(--mono);letter-spacing:.02em;color:var(--dim)}
-.sensor .kits .more{opacity:.7}
+/* --dim measures about 4:1 on paper; axe called these thirty-seven times on one render. They are the
+   names of the kits behind a number — which instrument said this — and they were the least legible
+   text on the page. --mute is the measured 6.30:1 solid already in this file; no new colour. */
+.sensor .kits{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font:500 11px var(--mono);letter-spacing:.02em;color:var(--mute)}
+/* .7 of --mute lands back under 4.5:1; the count of what is not listed is not decoration. */
+.sensor .kits .more{color:var(--mute)}
 /* the ring's shape, and the rows the node doubts. Both are two-column lines, not tables: a table
    with two cells is a table nobody can read on a phone. */
 .ringstrip{width:100%;height:64px;display:block;margin:12px 0 10px;overflow:visible}
@@ -293,16 +304,23 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .ledger .txt small{color:var(--mute)}
 /* block, not inline: it had a margin-top and no display, so every ledger row read
    "...at K ROOM - BAYU HOLES.heat/night_no_relief" with the rule welded to the full stop. */
-.ledger .txt .meta{display:block;font:500 11px var(--mono);color:var(--dim);margin-top:4px;letter-spacing:.02em}
+/* The rule that fired, under the alert it fired for — eighteen of these on one render, all under
+   4.5:1 on --dim. It is how a keeper tells which rule to change. --mute, the measured solid. */
+.ledger .txt .meta{display:block;font:500 11px var(--mono);color:var(--mute);margin-top:4px;letter-spacing:.02em}
 .ledger .do{white-space:nowrap}
 .ledger .do button{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;font-size:13px;padding:7px 12px}
-.ledger .do .done{color:var(--rings);font:600 12.5px var(--fc-font-body)}
+.ledger .do .done{color:var(--ink);font:600 12.5px var(--fc-font-body)}
+.ledger .do .done .sg.closed{color:var(--loop-closed)}
 @media(max-width:640px){.ledger .al{grid-template-columns:52px 1fr}
 .ledger .do{grid-column:2}
 }
 .rep{font-size:16px;line-height:1.6;max-width:62ch}
 /* figures table */
+/* The one wide thing on the page scrolls inside its own box, which axe rightly calls a keyboard trap
+   in reverse: at 390 the table is 435px in a 390 box and arrow keys could not reach it. It is
+   focusable now, and says what it is when focus lands. */
 .figwrap{overflow-x:auto}
+.figwrap:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 table.figs{width:100%;min-width:420px;border-collapse:collapse;font-size:12.5px}
 table.figs th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:8px 10px 8px 0;border-bottom:1px solid var(--ink)}
 table.figs td{padding:7px 10px 7px 0;border-bottom:1px solid var(--hair);vertical-align:top}
@@ -353,6 +371,14 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
    and a rejected setting is not a reading. It sits under its own field and nowhere else. */
 /* The age of what the page is showing, beside the word that says how sure it is. It used to be a
    title= — a hover, which a phone and a wall do not have. */
+/* Visible to a screen reader, not to the eye: the label a control needs when the design has already
+   said the same thing another way. */
+/* The node's own mark on a setting that changes what leaves this machine. The .tag element the packs
+   pane already uses, so nothing new was drawn; only the word is new. */
+.tag.out{border-color:var(--ink);color:var(--ink)}
+.addr{font-family:var(--mono);font-size:12.5px}
+.addr[hidden]{display:none}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .asof{margin-left:10px;font:500 11px var(--mono);letter-spacing:.06em;color:var(--mute)}
 .field .err{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ink);border-left:2px solid var(--signal-worse);padding-left:10px}
 .field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:52ch;line-height:1.55}
@@ -375,6 +401,13 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .arrbar select{background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:8px 10px;
   color:var(--ink);font:500 13px var(--fc-font-body)}
 .arrbar select:disabled{color:var(--mute)}
+/* `hidden` is an attribute the UA styles as display:none and ANY display rule of ours beats it. Both
+   of these were found by tools/check_ui.py the moment its rule was widened to see how this renderer
+   actually hides things — #arrbar by me, giving the Arrange bar a display and un-hiding it on every
+   view; #setup-body from before, which is why the locked Set up screen still put its empty heading,
+   its blurb and its save bar into the accessibility tree behind the unlock card. */
+.arrbar[hidden]{display:none}
+.setup[hidden],#setup-body[hidden]{display:none}
 .savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:20px;margin-top:8px;position:sticky;bottom:0;background:var(--ground);border-top:1px solid var(--hair)}
 .savebar .sub{margin:0}
 .pack{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
@@ -448,6 +481,9 @@ svg.net .halo{transform-origin:675px 180px;animation:nethalo var(--motion-readin
 section.view{display:none}
 section.view.on{display:block}
 /* the wall: dark register, instruction not control, nothing to press */
+/* R6: the wall carries no chrome. The header goes entirely — leaving it visually hidden would keep
+   five nav buttons in the tab order of a screen nobody is standing at. The wall grows its own h1
+   instead, in wallView(), so the document still has a heading. */
 body.wallview header{display:none}
 .wall{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:clamp(28px,4vw,64px);overflow:hidden}
 .wall .row2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:clamp(24px,4vw,64px);align-items:center}

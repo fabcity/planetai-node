@@ -96,6 +96,22 @@ if shutil.which("node"):
         f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
     assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
 
+# axe found nothing on any view or state, and these are the four that had to be true for that.
+#
+# Every one of these was a finding: the page had no h1 at all (a <b> carried the node's name, so
+# page-has-heading-one fired on every view in every state, and the wall has no header so it needed its
+# own); the Figures table scrolls inside its own box at 390 and could not be reached by keyboard; and
+# --dim, at about 4:1 on paper, carried the kit names, the rule ids, the .env markers and the source
+# line — fifty-seven serious contrast findings across one render, all on the small text that says
+# where a number came from.
+assert "<h1" in (ROOT / "app/static/index.html").read_text(), "the node's name is not the page's h1 again"
+assert re.search(r'<h1 class="vh">', _js), "the wall has no heading of its own; its header is display:none"
+assert 'class="figwrap" tabindex="0"' in _js, "the Figures table cannot be scrolled from a keyboard again"
+_css = (ROOT / "app/static/dashboard.css").read_text()
+for _sel in (".sensor .kits{", ".ledger .txt .meta{", ".field .src{"):
+    _rule = _css[_css.index(_sel):_css.index("}", _css.index(_sel))]
+    assert "--dim" not in _rule, f"{_sel.strip('{')} is back on --dim, which is about 4:1 on paper"
+
 # Arrange must actually arrange, and the view must be in the URL.
 #
 # Four of these shipped together and each was invisible until somebody tried the mode: the ✕ silently
