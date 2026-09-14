@@ -108,7 +108,7 @@ const WORDS = {
         theDay: 'The day it just had', whereItStands: 'Where it stands', sources: 'Sources',
         thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
         source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
-        stale: 'stale', didThis: 'I did this', noted: 'noted', theLine: 'the line',
+        stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', noted: 'noted', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         rho: '{closed} of {total} asks answered',
@@ -206,7 +206,7 @@ const WORDS = {
         theDay: 'Hari yang baru lewat', whereItStands: 'Posisinya', sources: 'Sumber',
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
         source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
-        stale: 'basi', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
+        stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         rho: '{closed} dari {total} permintaan dijawab',
@@ -304,7 +304,7 @@ const WORDS = {
         theDay: 'El día que acaba de pasar', whereItStands: 'Dónde está', sources: 'Fuentes',
         thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
         source: 'Fuente', asOf: 'A las', word: 'Palabra', answerOn: 'Responde en Telegram, no aquí.',
-        stale: 'viejo', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
+        stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
         rho: '{closed} de {total} peticiones respondidas',
@@ -420,7 +420,11 @@ const mkCtx = (snap, view) => {
   return {
     locale,
     w: WORDS[locale],
-    register: view === 'wall' || QS.get('theme') === 'dark' || KIOSK ? 'dark' : 'paper',
+    // The view decides the register. `?theme=dark` boots the wall (see boot()) and a kiosk is a wall,
+    // but neither makes the OTHER views dark: reading the parameter here meant that pressing Now from
+    // a dark wall rendered the whole paper view — buttons, forms and all — on ink, for the rest of the
+    // session, because the parameter never changes. Decision 15 is paper by day, dark on the wall.
+    register: view === 'wall' || KIOSK ? 'dark' : 'paper',
     as_of: (snap.issues && snap.issues.as_of) || snap.as_of || null,
     fixture: snap.fixture || null,
     fmt: (v, dp = 0) => (v == null || isNaN(v) ? '—' : Number(v).toFixed(dp)),
@@ -1686,6 +1690,8 @@ function networkView(snap, ctx) {
  * page rather than a blank one — a typo in a URL should not look like a broken node.
  */
 let LAST = null;
+// The mount points index.html provides. The other bands live inside #bands and are rebuilt each render.
+const MOUNTS = ['hero', 'index', 'place', 'loop', 'figures'];
 
 function render(snap, view) {
   const ctx = mkCtx(snap, view);
@@ -1759,6 +1765,19 @@ function render(snap, view) {
 
   const order = layout(snap);
   const want = ONLY && order.includes(ONLY) ? [ONLY] : order;
+  /* A band hidden in Arrange has to actually go. The five below are mount points index.html provides,
+   * and the loop under this used to SKIP a hidden id — which left the mount holding its last render,
+   * so pressing the hide button on the place, the loop, the figures, the index or the hero did
+   * nothing at all, silently, on five of the nine bands. Only the issue bands, which live inside
+   * #bands and are rebuilt from empty every render, ever disappeared. */
+  MOUNTS.filter(id => !want.includes(id)).forEach(id => {
+    const el = document.getElementById(id);
+    // Emptied is not hidden: a <section class="band"> with nothing in it still draws its rule and its
+    // padding, so the first version of this left a blank gap where the band had been. The mount is
+    // replaced by a bare div that keeps the id for the next render and carries no class, so no
+    // display rule can fight `hidden` — which is the trap tools/check_ui.py exists to catch.
+    if (el) el.outerHTML = `<div id="${id}" hidden></div>`;
+  });
   const bands = document.getElementById('bands');
   bands.innerHTML = '';
   const note = document.getElementById('index-note');
@@ -1769,7 +1788,7 @@ function render(snap, view) {
     // Each of these five replaces a mount point from index.html, and the markup carries that mount's
     // id so the next render finds it again. A mount that is missing is skipped rather than thrown
     // on: Arrange can hide a band, and a hidden band is not an error.
-    if (['hero', 'index', 'place', 'loop', 'figures'].includes(id)) {
+    if (MOUNTS.includes(id)) {
       const el = document.getElementById(id);
       if (el) el.outerHTML = html;
       if (id === 'index' && note) note.textContent = ctx.w.headlineRule;
@@ -1911,6 +1930,32 @@ async function loadLayout() {
   } catch (e) { LAYOUT = { order: [], hidden: [] }; }
   return LAYOUT;
 }
+/* What a band is called, for the restore menu. The issues name themselves in the household's own
+ * language; the five fixed bands take the words the page already uses for them. */
+function bandName(id, ctx) {
+  const iss = ((LAST || {}).issues || {}).issues || {};
+  if (id.startsWith('issue:')) {
+    const k = id.slice(6);
+    return (iss[k] && iss[k].name && iss[k].name[ctx.locale]) || k;
+  }
+  return { hero: ctx.w.now, index: ctx.w.watches, place: ctx.w.thePlace,
+           loop: ctx.w.theLoop, figures: ctx.w.figures }[id] || id;
+}
+
+/* The menu that puts a hidden band back. It was markup and nothing else: `#arr-restore` appeared once
+ * in index.html and was never referenced in this file, so it never held anything but its placeholder
+ * and the only way back from a hidden band was Default, which discards every other choice too. */
+function fillRestore() {
+  const sel = document.getElementById('arr-restore');
+  if (!sel) return;
+  const ctx = mkCtx(LAST || {}, 'now');
+  ctx.issues_labels = (((LAST || {}).issues || {}).labels || {})[ctx.locale] || {};
+  const hidden = (LAYOUT && LAYOUT.hidden) || [];
+  sel.innerHTML = `<option value="">${esc(ctx.w.restoreOne)}</option>`
+    + hidden.map(id => `<option value="${esc(id)}">${esc(bandName(id, ctx))}</option>`).join('');
+  sel.disabled = !hidden.length;
+}
+
 function arrangeControls() {
   document.querySelectorAll('[data-band]').forEach(el => {
     if (el.querySelector(':scope > .arr')) return;
@@ -1923,14 +1968,21 @@ function arrangeControls() {
     bar.onclick = ev => {
       const b = ev.target.closest('button'); if (!b) return;
       const order = layout(LAST);
-      if (b.dataset.hide) { LAYOUT.hidden = [...(LAYOUT.hidden || []), id]; }
-      else {
+      const ctx = mkCtx(LAST || {}, 'now');
+      const name = bandName(id, ctx);
+      if (b.dataset.hide) {
+        LAYOUT.hidden = [...(LAYOUT.hidden || []), id];
+        toast(`${name} hidden. Put it back from the menu at the foot of the page.`);
+      } else {
         const i = order.indexOf(id), j = i + Number(b.dataset.move);
-        if (j < 0 || j >= order.length) return;
+        // Nothing happened, and saying so beats a button that looks broken at the ends of the list.
+        if (j < 0 || j >= order.length) { toast(`${name} is already ${j < 0 ? 'first' : 'last'}.`); return; }
         const next = [...order]; next.splice(j, 0, next.splice(i, 1)[0]);
         LAYOUT.order = next;
+        toast(`${name} moved ${Number(b.dataset.move) < 0 ? 'up' : 'down'}.`);
       }
       render(LAST, 'now');
+      fillRestore();
     };
     el.prepend(bar);
   });
@@ -1956,19 +2008,72 @@ async function layoutSave(reset) {
 }
 
 // ------------------------------------------------------------------------------------------ views
-function show(v) {
+/* Which view is on, in the URL, so refresh and back and a link all land where the reader was.
+ *
+ * The hash and not a path: this page is one document served from `/`, it has no router and no build
+ * step, and a path would need the node to serve every view's URL back as the same file. The hash is
+ * what a static page has.
+ *
+ * `arrange` is a mode over `now` rather than a view of its own, so it is not a hash value; leaving
+ * `now` ends it (below), which is the behaviour it should always have had.
+ */
+const VIEWS = ['now', 'network', 'setup', 'wall'];
+const SCROLL = {};                                   // where the reader was in each view
+
+function show(v, opts = {}) {
   if (v === 'arrange') {
     ARRANGING = true;
     document.getElementById('arrbar').hidden = false;
-    show('now');
+    // Say it in the nav. Pressing Arrange used to leave `Now` filled in and nothing anywhere said a
+    // mode had started: the only signal was three small buttons appearing beside every band.
+    document.querySelectorAll('nav.views button').forEach(b => b.classList.toggle('on', b.dataset.view === 'arrange'));
+    document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === 'now'));
+    if (LAST) render(LAST, 'now');
+    fillRestore();
     return;
+  }
+  const from = [...document.querySelectorAll('section.view')].find(s => s.classList.contains('on'));
+  if (from) SCROLL[from.id] = window.scrollY;
+  // Leaving Now ends Arrange rather than leaving its controls scattered over a page nobody is
+  // arranging any more. The layout is not saved — Done saves — so say that rather than lose it quietly.
+  if (ARRANGING) {
+    ARRANGING = false;
+    document.getElementById('arrbar').hidden = true;
+    document.querySelectorAll('.arr').forEach(el => el.remove());
+    toast('Arranging stopped. Nothing was saved — press Done next time to keep an arrangement.');
   }
   document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === v));
   document.querySelectorAll('nav.views button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
   if (LAST) render(LAST, v);
   if (v === 'setup') loadSetup();
-  window.scrollTo(0, 0);
+  // pushState and not `location.hash =`: assigning the hash makes the browser jump to the element with
+  // that id, which landed the reader at the top of the view they had just scrolled away from and ate
+  // the scroll restore two lines below. pushState changes the URL and moves nothing.
+  if (!opts.fromHash) {
+    const url = v === 'now' ? location.pathname + location.search : '#' + v;
+    history.pushState({ view: v }, '', url);
+  }
+  /* Back where this reader was, not the top of a nine-screen page. A view they have not opened yet
+   * starts at the top, which is the only time scrollTo(0, 0) was the right answer.
+   *
+   * After a frame, not now: the view was rendered a line ago and the browser has not laid it out yet,
+   * so the document is still as tall as the view being left — a jump to 2,000 px clamps to 0 on the
+   * way back from Network, which is exactly the bug this is meant to fix. */
+  requestAnimationFrame(() => window.scrollTo(0, SCROLL[v] || 0));
+  // The view changed under a keyboard reader with no announcement and no focus move.
+  const sec = document.getElementById(v);
+  if (sec && !opts.quiet) { sec.setAttribute('tabindex', '-1'); sec.focus({ preventScroll: true }); }
 }
+
+const viewFromHash = () => {
+  const h = (location.hash || '').replace('#', '');
+  return VIEWS.includes(h) ? h : null;
+};
+addEventListener('popstate', () => {
+  const v = viewFromHash() || 'now';
+  const on = [...document.querySelectorAll('section.view')].find(s => s.classList.contains('on'));
+  if (!on || on.id !== v) show(v, { fromHash: true });
+});
 
 // ------------------------------------------------------------------------------------------- boot
 async function refresh() {
@@ -1993,7 +2098,10 @@ document.addEventListener('click', ev => {
   if (KIOSK) document.body.classList.add('kiosk');
   await loadLayout();
   await refresh();
-  if (KIOSK || QS.get('theme') === 'dark') show('wall');
+  // ?kiosk=1 and ?theme=dark still boot the wall; a hash beats them, so a link to a view wins.
+  const booted = viewFromHash();
+  if (booted) show(booted, { fromHash: true });
+  else if (KIOSK || QS.get('theme') === 'dark') show('wall');
   setInterval(refresh, 20000);
 })();
 
@@ -2195,6 +2303,16 @@ async function saveSettings() {
 }
 
 document.addEventListener('input', ev => { if (ev.target.closest('#pane')) DIRTY = true; });
+
+document.addEventListener('change', ev => {
+  if (ev.target.id !== 'arr-restore' || !ev.target.value) return;
+  const id = ev.target.value;
+  LAYOUT.hidden = (LAYOUT.hidden || []).filter(x => x !== id);
+  const ctx = mkCtx(LAST || {}, 'now');
+  toast(`${bandName(id, ctx)} is back.`);
+  render(LAST, 'now');
+  fillRestore();
+});
 
 // the Set up pane's own clicks: tabs, switches, lock
 document.addEventListener('click', ev => {

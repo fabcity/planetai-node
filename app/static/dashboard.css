@@ -361,6 +361,17 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;background:var(--dim)}
 .switch.on .tr{border-color:var(--ink)}
 .switch.on .tr::after{background:var(--ink);transform:translateX(18px)}
+/* Arrange's own bar. It had no rule at all, so it was position:static at the end of <body> — measured
+   at y 3,746 on a 3,789 px page. The mode's instructions, its Default and its Done, the only thing
+   that saves an arrangement, all sat nine screens below the fold, and the keeper who pressed Arrange
+   saw three unexplained buttons appear beside every band and no way to finish. Same sticky footing
+   as .savebar, which is the pattern this file already uses for a bar that must stay reachable. */
+.arrbar{position:sticky;bottom:0;z-index:3;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  padding:12px clamp(16px,4vw,32px);background:var(--ground);border-top:1px solid var(--ink);
+  font:500 13px var(--fc-font-body)}
+.arrbar select{background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:8px 10px;
+  color:var(--ink);font:500 13px var(--fc-font-body)}
+.arrbar select:disabled{color:var(--mute)}
 .savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:20px;margin-top:8px;position:sticky;bottom:0;background:var(--ground);border-top:1px solid var(--hair)}
 .savebar .sub{margin:0}
 .pack{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}

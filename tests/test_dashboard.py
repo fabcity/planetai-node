@@ -96,6 +96,22 @@ if shutil.which("node"):
         f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
     assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
 
+# Arrange must actually arrange, and the view must be in the URL.
+#
+# Four of these shipped together and each was invisible until somebody tried the mode: the ✕ silently
+# did nothing on five of the nine bands (render() skipped a hidden id and left index.html's mount
+# holding its last content); the restore menu was markup only — `#arr-restore` appeared once in
+# index.html and was never referenced here, so a hidden band could only come back via Default, which
+# discards every other choice; nothing said what a move or a hide had done; and leaving by the nav
+# left the mode running with its controls scattered over a page nobody was arranging any more.
+assert "MOUNTS.filter(id => !want.includes(id))" in _js, \
+    "a band hidden in Arrange is skipped rather than cleared again — ✕ does nothing on the five mounts"
+assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden band cannot come back"
+assert "history.pushState" in _js, "the view is not in the URL: refresh, back and a shared link all land on Now"
+# and assigning location.hash instead would scroll to the element and undo the scroll restore
+assert not re.search(r"location\.hash\s*=", _js), \
+    "assigning location.hash jumps to that element, which eats the scroll restore — use pushState"
+
 # And the page must read the household's language rather than pinning itself to English.
 assert "(snap.health || {}).locale" in _js, \
     "mkCtx no longer reads the locale off /health — the page is back to English on every node"
