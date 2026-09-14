@@ -326,6 +326,38 @@ for _pat, _what in PROSE_IN_A_SHOUT:
     if not re.search(_pat, JS_SRC):
         errs.append(f"{_what} is no longer wrapped in .said, so the page prints MG/M3 where the node wrote ug/m3")
 
+# --- a box that fills the screen may not contain another one -----------------------------------------------------
+# `.wall` sets min-height:100vh and a padding, and index.html carried it on the section AND on the mount inside it.
+# Both applied, so the wall was one viewport plus two paddings: 1208px on a 1080px screen, 1167 on a 900px one. A
+# wall does not scroll, so at 1440 the node's name, `As of HH:MM` and the word `stale` were not on the screen at
+# all — a household read a number and was never shown the word saying it was old.
+#
+# The check is structural and index.html is small enough to walk: no class whose rule sets min-height (or height)
+# in viewport units may sit on an element and on one of its own ancestors.
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+_fills = {sel.strip().lstrip(".") for sel, body in RULES
+          if re.fullmatch(r"\.[A-Za-z0-9_-]+", sel.strip())
+          and re.search(r"\b(?:min-)?height\s*:\s*\d+(?:\.\d+)?(?:d|s|l)?vh\b", body)}
+if _fills:
+    _stack, _line = [], 1
+    for _m in re.finditer(r"<(/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(/?)>", BODY):
+        _line = BODY.count("\n", 0, _m.start()) + 1
+        _close, _tag, _attrs, _self = _m.group(1), _m.group(2).lower(), _m.group(3), _m.group(4)
+        if _close:
+            while _stack and _stack.pop()[0] != _tag:
+                pass
+            continue
+        _cls = re.search(r'class="([^"]*)"', _attrs)
+        _cls = set(_cls.group(1).split()) if _cls else set()
+        for _c in sorted(_cls & _fills):
+            for _atag, _acls, _aline in _stack:
+                if _c in _acls:
+                    errs.append(f".{_c} sets a viewport height and is on <{_tag}> at index.html line {_line} inside "
+                                f"<{_atag}> at line {_aline}, which also carries it. The height and the padding "
+                                f"both apply twice and the page is taller than the screen it is for.")
+        if _tag not in VOID and not _self:
+            _stack.append((_tag, _cls, _line))
+
 # And if a new uppercasing rule appears, somebody has to look at it against the check above rather than find out on
 # a wall. This list is the recorded set, dated 14 September 2026; it may shrink and it may not grow silently.
 UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",

@@ -105,8 +105,13 @@
 
 <!-- ============================================================ WALL -->
 <!-- R6: the wall is an instruction, not a control. Nothing on it can be pressed; the loop is closed
-     on Telegram, which is where ρ is recorded. -->
-<section class="view wall" id="wall"><div class="wall" id="wallbox"></div></section>
+     on Telegram, which is where ρ is recorded.
+
+     The class `wall` is on the MOUNT and not on the section. It used to be on both, and .wall sets
+     min-height:100vh and a padding, so a wall was one viewport plus two paddings: 1208px on a
+     1080px screen and 1167 on a 900px one. A wall does not scroll, so at 1440 the footer — the
+     node's name, `As of HH:MM` and the word `stale` — was simply not on it. -->
+<section class="view" id="wall"><div class="wall" id="wallbox"></div></section>
 </main>
 
 <!-- Arrange: order and hide bands, saved on the node as UI_LAYOUT -->

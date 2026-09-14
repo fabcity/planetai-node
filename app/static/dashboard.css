@@ -73,24 +73,71 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .num{font-weight:700;letter-spacing:-.02em;line-height:1}
 .t{font:800 clamp(1.35rem,2.1vw,1.85rem)/1.12 var(--fc-font-display);letter-spacing:-.03em}
 .sub{font-size:14px;color:var(--mute);max-width:56ch;line-height:1.55}
-.note{font-size:13px;color:var(--mute);line-height:1.5}
+/* The measure. Every other prose class on this page declares one — .sub 56ch, .hero .why 52ch,
+   .field .help 52ch, .rep 62ch — and .note, which carries every empty state, every instruction and
+   every source line, declared none. So it filled whatever box it was in: 141 characters a line in
+   the Network band at 1440, 120 in a satellite card at 768, against the 60-75 a reader can follow.
+   52ch is not a new number; it is what .field .help already uses at this same 13px. */
+.note{font-size:13px;color:var(--mute);max-width:52ch;line-height:1.5}
 .hr{border:0;border-top:1px solid var(--hair);margin:0}
 /* header */
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--hair)}
-.brand{display:flex;align-items:center;gap:12px;min-width:0}
+/* The header's three children get fixed slots, so the row's shape is a function of the WIDTH and
+   nothing else. Before this it was a function of the node's config: .brand grew with NODE_NAME and
+   NODE_CITY and .status with which of the five provenance words applied, so the row reflowed
+   wherever the content stopped fitting — measured across six node shapes, at 500 730 on one and at
+   570 590 660 1070 1260 on another, growing taller as the viewport widened on four of them. Capping
+   the two strings bounded that; it did not fix it, because a slot that is sometimes narrower than
+   its cap is still a variable.
+   460px holds the widest brand that leaves room for the nav (362) and the status slot (255) inside
+   .wrap at 1200. 255px is .status at its widest: `example` or `partial` plus `As of HH:MM`.
+   This reserves WIDTH and not height, so it does not touch S-12: at 390 the three rows stack and
+   the status row still goes from nothing to 25px when /health lands, taking the page with it.
+   The two widths the row reflows at are declared below rather than left to emerge from these three
+   numbers, so the file says what happens. Measured after: 800 and 1210 on every node shape, three
+   heights, and it never grows as the viewport widens. */
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 460px;max-width:100%}
 .brand svg{width:18px;height:20px;flex:none;color:var(--ink)}
 /* The node's name is the page's h1. It was a <b>, so axe reported page-has-heading-one on every view
    in every state and a screen reader had no top of the document to jump to. Same type as before —
    the margin reset is all that changes, because h1 carries a UA margin and b does not. */
-.brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0}
-.brand .s{font-size:13px;color:var(--mute)}
+/* Bounded for the same reason .brand .s below it is: NODE_NAME is a bootstrap setting, free text a
+   keeper types into .env at setup, and an unbounded string in a wrapping flex row makes the
+   header's shape a function of the node's config. 24ch is not a new number — it is .hero p.big's
+   measure. Node #1 is 5.7ch and node #2 6.8ch; a descriptive `ungasan-rooftop` is 14.0ch, so this
+   clips nothing anyone has typed. The clip is visual only: the h1 keeps its full text, so the
+   document's heading and the accessible name are unchanged. */
+.brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0;max-width:24ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The one unbounded string in the header. It is [city, kind] from /health — free text a keeper
+   types into .env — and everything else in this row is bounded: the name is a slug reviewed in a
+   pull request, the five nav labels are the product's own words, the pill is one of five. An
+   unbounded string in a wrapping flex row makes the header's shape a function of the node's config
+   rather than of the width: measured, the row reflowed at 500 and 730 on node #1 and at 570, 590,
+   660, 1070 and 1260 on a node with a longer name and place, growing taller as the viewport
+   widened. 38ch is not a new number; it is .bandhead's second column. Node #1's real string
+   measures 27.8ch, so this never truncates it — it bounds the pathological case only. */
+.brand .s{font-size:13px;color:var(--mute);max-width:38ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:560px){.brand .s{display:none}
 }
 nav.views{display:flex;gap:0;border:1px solid var(--ink);max-width:100%;overflow-x:auto;scrollbar-width:none}
 nav.views button{border:0;border-right:1px solid var(--ink);padding:8px 16px;font:500 13.5px var(--fc-font-body);color:var(--mute);white-space:nowrap}
 nav.views button:last-child{border-right:0}
 nav.views button.on{background:var(--ink);color:var(--ground)}
-.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* min-height reserves the row this fills, so the header does not grow when /health answers. #headprov
+   is empty in the skeleton and the renderer writes the pill and `As of HH:MM` into it, which below
+   1200 is a row of its own: measured, .status went 0 -> 24.8px and the header 124 -> 148.8, taking
+   the nav and every band under it down 25px after first paint. 1.55em is one line of what arrives —
+   .status inherits the body's 16px/1.55 — so it follows the type rather than pinning a number. At
+   1200 and above the row is the nav's 34px and this never applies. */
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:255px;min-height:1.55em;justify-content:flex-end}
+/* The row's two reflows, named. Above 1200 all three sit on one line; below it the nav takes its
+   own; below 790 the status does too. */
+@media(max-width:1200px){nav.views{order:2;flex-basis:100%}
+.status{order:1}
+}
+@media(max-width:790px){.brand{flex-basis:100%}
+.status{order:1;flex-basis:100%;justify-content:flex-start}
+}
 /* provenance pill: ink only, square, glyph + word. No colour token may ever land on it. */
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle}
 /* --sign-floor, not 11px and not a 12 typed in here. It is "the size every sign must still read at",
@@ -311,7 +358,13 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .ledger .do button{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;font-size:13px;padding:7px 12px}
 .ledger .do .done{color:var(--ink);font:600 12.5px var(--fc-font-body)}
 .ledger .do .done .sg.closed{color:var(--loop-closed)}
+/* Two columns here, and FOUR children: .when, .iss, .txt, .do. Only the last was placed, so
+   auto-placement put the message — the one thing in the row a household reads — into the 52px time
+   column: 52px of text beside a 288px button, nine lines of six to twelve characters, fourteen rows
+   of it. That alone made the loop band 34.6% of the phone page. Column two, not 1/-1: the time and
+   the issue are a left rail at every width and the message hangs beside them. */
 @media(max-width:640px){.ledger .al{grid-template-columns:52px 1fr}
+.ledger .txt{grid-column:2}
 .ledger .do{grid-column:2}
 }
 .rep{font-size:16px;line-height:1.6;max-width:62ch}

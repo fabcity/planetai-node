@@ -157,4 +157,12 @@ broken("a new uppercasing rule nobody looked at",
        prepend(".newshout{text-transform:uppercase}"),
        r"is a new text-transform:uppercase rule")
 
+# 11. a box that fills the screen, inside another one
+# `.wall` sets min-height:100vh and a padding, and index.html carried it on the section and on the mount inside
+# it. Both applied, so the wall was one viewport plus two paddings — 1208px on a 1080px screen. A wall does not
+# scroll, so the footer carrying `As of HH:MM` and the word `stale` was off the bottom of it at 1440.
+broken("a viewport-height class on an element and its own ancestor",
+       sub('<section class="view" id="wall">', '<section class="view wall" id="wall">'),
+       r"\.wall sets a viewport height and is on <div>.*inside <section>", where="index.html")
+
 print("check_ui: every visual-language gate fails when the page breaks its rule")
