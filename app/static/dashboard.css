@@ -73,7 +73,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .num{font-weight:700;letter-spacing:-.02em;line-height:1}
 .t{font:800 clamp(1.35rem,2.1vw,1.85rem)/1.12 var(--fc-font-display);letter-spacing:-.03em}
 .sub{font-size:14px;color:var(--mute);max-width:56ch;line-height:1.55}
-.note{font-size:13px;color:var(--mute);line-height:1.5}
+/* The measure. Every other prose class on this page declares one — .sub 56ch, .hero .why 52ch,
+   .field .help 52ch, .rep 62ch — and .note, which carries every empty state, every instruction and
+   every source line, declared none. So it filled whatever box it was in: 141 characters a line in
+   the Network band at 1440, 120 in a satellite card at 768, against the 60-75 a reader can follow.
+   52ch is not a new number; it is what .field .help already uses at this same 13px. */
+.note{font-size:13px;color:var(--mute);max-width:52ch;line-height:1.5}
 .hr{border:0;border-top:1px solid var(--hair);margin:0}
 /* header */
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--hair)}
