@@ -51,6 +51,10 @@ ids = dict(re.findall(r"const\s+(\w+)\s*=\s*\$\('#([a-zA-Z0-9_-]+)'\)", js))
 ids.update(dict(re.findall(r"(\w+)\s*=\s*\$\('#([a-zA-Z0-9_-]+)'\)", js)))
 hidden_ids = {ids[v] for v in re.findall(r"(\w+)\.hidden\s*=", js) if v in ids}
 hidden_ids |= set(re.findall(r"\$\('#([a-zA-Z0-9_-]+)'\)\.hidden\s*=", js))
+# …and the way the renderer actually writes it. The rule was blind to `getElementById('x').hidden =`,
+# which is every hide in dashboard.js, so it passed a stylesheet that gave #arrbar `display:flex` and
+# un-hid the Arrange bar on every view — the exact failure this check exists for, shipped past it.
+hidden_ids |= set(re.findall(r"getElementById\('([a-zA-Z0-9_-]+)'\)\.hidden\s*=", js))
 for i in sorted(hidden_ids):
     tag = re.search(rf'<(\w+)([^>]*\bid="{re.escape(i)}"[^>]*)>', h)
     if not tag:
@@ -300,6 +304,68 @@ for css_path in sorted(_glob.glob("app/static/*.css")):
             errs.append(f"{name} @imports {imp[:60]} from the network — same reason.")
         elif imp not in served:
             errs.append(f"{name} @imports {imp}, which COMPANIONS does not serve")
+
+# --- the page may shout its own words, never the node's ------------------------------------------------------------
+# `text-transform:uppercase` is a rendering, and on one character it is a translation: `µ` uppercases to `M`, so a
+# reason the node wrote as "the day's high was 17 µg/m³" was drawn as "17 MG/M³" — milligrams for micrograms, a
+# thousandfold, on the hero and on the wall, two lines above a sentence that had the unit right. A household cannot
+# tell which of the two numbers to believe and nothing on the page says.
+#
+# So: every interpolation of the node's own prose — a reason, a sentence, a stack cell's source — must sit inside
+# `.said`, which sets text-transform:none, whenever its element is one the stylesheet shouts.
+# The two places the node's prose is drawn inside a shouted label, each of which must carry .said. These are
+# asserted by shape rather than by walking the markup: template literals are not a DOM, and the first version of
+# this rule proved it — looking backwards from the prose it found a SIBLING's class="state" and passed the exact
+# markup that put MG/M3 on the wall, and looking forwards it read one component's prose as the next one's. A
+# parser here would be a bigger thing than the bug. The tripwire below is what covers the sites not listed here.
+PROSE_IN_A_SHOUT = [
+    (r'class="said">·\s*\$\{esc\(why\)\}', "the kicker's reason (.k uppercases it)"),
+    (r'<span class="said">\$\{esc\(st\[x\]\.source\)\}', "a stack cell's source in the hero chips (.chip uppercases it)"),
+]
+for _pat, _what in PROSE_IN_A_SHOUT:
+    if not re.search(_pat, JS_SRC):
+        errs.append(f"{_what} is no longer wrapped in .said, so the page prints MG/M3 where the node wrote ug/m3")
+
+# --- a box that fills the screen may not contain another one -----------------------------------------------------
+# `.wall` sets min-height:100vh and a padding, and index.html carried it on the section AND on the mount inside it.
+# Both applied, so the wall was one viewport plus two paddings: 1208px on a 1080px screen, 1167 on a 900px one. A
+# wall does not scroll, so at 1440 the node's name, `As of HH:MM` and the word `stale` were not on the screen at
+# all — a household read a number and was never shown the word saying it was old.
+#
+# The check is structural and index.html is small enough to walk: no class whose rule sets min-height (or height)
+# in viewport units may sit on an element and on one of its own ancestors.
+VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+_fills = {sel.strip().lstrip(".") for sel, body in RULES
+          if re.fullmatch(r"\.[A-Za-z0-9_-]+", sel.strip())
+          and re.search(r"\b(?:min-)?height\s*:\s*\d+(?:\.\d+)?(?:d|s|l)?vh\b", body)}
+if _fills:
+    _stack, _line = [], 1
+    for _m in re.finditer(r"<(/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(/?)>", BODY):
+        _line = BODY.count("\n", 0, _m.start()) + 1
+        _close, _tag, _attrs, _self = _m.group(1), _m.group(2).lower(), _m.group(3), _m.group(4)
+        if _close:
+            while _stack and _stack.pop()[0] != _tag:
+                pass
+            continue
+        _cls = re.search(r'class="([^"]*)"', _attrs)
+        _cls = set(_cls.group(1).split()) if _cls else set()
+        for _c in sorted(_cls & _fills):
+            for _atag, _acls, _aline in _stack:
+                if _c in _acls:
+                    errs.append(f".{_c} sets a viewport height and is on <{_tag}> at index.html line {_line} inside "
+                                f"<{_atag}> at line {_aline}, which also carries it. The height and the padding "
+                                f"both apply twice and the page is taller than the screen it is for.")
+        if _tag not in VOID and not _self:
+            _stack.append((_tag, _cls, _line))
+
+# And if a new uppercasing rule appears, somebody has to look at it against the check above rather than find out on
+# a wall. This list is the recorded set, dated 14 September 2026; it may shrink and it may not grow silently.
+UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
+                   ".tag", ".netnode .note", ".wall .wi .st", ".wall .exit"}
+_shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
+for _new in sorted(_shouting - UPPERCASE_KNOWN):
+    errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "
+                f".said — see PROSE_IN_A_SHOUT in this file. Then add it to UPPERCASE_KNOWN.")
 
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"

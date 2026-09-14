@@ -190,7 +190,14 @@ for lv in ("off", "open"):
     assert h["node"] == "bayu-2", f"{lv}: /health keeps the node name"
     assert lan.get("/place/geojson").status_code == 403, f"{lv}: the building's shape needs a token"
     assert lan.get("/settings/raw").status_code == 403, f"{lv}: the unmasked keys need a token"
-print("every level: 3 decimals in /health, the plan and the raw settings refused")
+    # The household's language, at every level, which is the whole reason it is on /health and not on
+    # /issues. The dashboard read `snap.locale`, nothing ever set it, and the page pinned itself to
+    # English on every node while the node sent every sentence in all three. At `off` /issues is
+    # refused outright and /settings is reduced to two keys, so a refused page — the one screen a
+    # household most needs in its own language — had nowhere else to read it from.
+    assert h.get("locale") in ("en", "id", "es"), \
+        f"{lv}: /health must carry the household's language, or the dashboard falls back to English: {h.get('locale')!r}"
+print("every level: 3 decimals in /health, the household's language, the plan and the raw settings refused")
 
 level("open")
 r = lan.get("/sensors")

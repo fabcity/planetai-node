@@ -104,11 +104,11 @@ async function snapshot() {
  * The id and es are ASSISTANT-WRITTEN and have not been read by a native speaker — see CHANGELOG.
  */
 const WORDS = {
-  en: { now: 'Now', watches: 'What this place watches', notWatched: 'not watched here',
-        theDay: 'The day it just had', whereItStands: 'Where it stands', sources: 'Sources',
+  en: { now: 'Now', watches: 'What this place watches', notWatched: 'nothing here yet', leavesMachine: 'leaves this machine', openOnAnotherScreen: 'Open this on another screen in the house:',
+        theDay: 'The day it just had', dayStart: '24 h ago', dayEnd: 'now', whereItStands: 'Where it stands', sources: 'Sources',
         thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
-        source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
-        stale: 'stale', didThis: 'I did this', noted: 'noted', theLine: 'the line',
+        source: 'Source', asOf: 'As of', word: 'Word', value: 'Value', answerOn: 'Answer on Telegram, not here.',
+        stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', whatDidYouDo: 'What did you do? (a few words)', ringCloses: 'the ring closes', noted: 'noted', noAsks: 'no asks yet', nothingYet: 'nothing yet', noReport: 'no report yet', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         rho: '{closed} of {total} asks answered',
@@ -202,11 +202,11 @@ const WORDS = {
           step: 'wind from {dir} {kmh} km/h \u00b7 {sky}',
           stepDry: 'dry', stepRain: '{mm} mm rain', stepCloud: ' \u00b7 {n}% cloud',
           notPredict: 'The node fetches this; it does not predict.' } },
-  id: { now: 'Sekarang', watches: 'Yang dipantau di sini', notWatched: 'tidak dipantau di sini',
-        theDay: 'Hari yang baru lewat', whereItStands: 'Posisinya', sources: 'Sumber',
+  id: { now: 'Sekarang', watches: 'Yang dipantau di sini', notWatched: 'belum ada di sini', leavesMachine: 'keluar dari mesin ini', openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
+        theDay: 'Hari yang baru lewat', dayStart: '24 jam lalu', dayEnd: 'sekarang', whereItStands: 'Posisinya', sources: 'Sumber',
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
-        source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
-        stale: 'basi', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
+        source: 'Sumber', asOf: 'Per', word: 'Kata', value: 'Nilai', answerOn: 'Jawab di Telegram, bukan di sini.',
+        stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', whatDidYouDo: 'Apa yang Anda lakukan? (beberapa kata)', ringCloses: 'lingkarnya tertutup', noted: 'dicatat', noAsks: 'belum ada permintaan', nothingYet: 'belum ada apa-apa', noReport: 'belum ada laporan', theLine: 'batas',
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         rho: '{closed} dari {total} permintaan dijawab',
@@ -300,11 +300,11 @@ const WORDS = {
           step: 'angin dari {dir} {kmh} km/jam \u00b7 {sky}',
           stepDry: 'kering', stepRain: 'hujan {mm} mm', stepCloud: ' \u00b7 awan {n}%',
           notPredict: 'Node mengambil data ini; ia tidak meramal.' } },
-  es: { now: 'Ahora', watches: 'Lo que vigila este lugar', notWatched: 'no se vigila aquí',
-        theDay: 'El día que acaba de pasar', whereItStands: 'Dónde está', sources: 'Fuentes',
+  es: { now: 'Ahora', watches: 'Lo que vigila este lugar', notWatched: 'aquí todavía no hay nada', leavesMachine: 'sale de esta máquina', openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
+        theDay: 'El día que acaba de pasar', dayStart: 'hace 24 h', dayEnd: 'ahora', whereItStands: 'Dónde está', sources: 'Fuentes',
         thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
-        source: 'Fuente', asOf: 'A las', word: 'Palabra', answerOn: 'Responde en Telegram, no aquí.',
-        stale: 'viejo', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
+        source: 'Fuente', asOf: 'A las', word: 'Palabra', value: 'Valor', answerOn: 'Responde en Telegram, no aquí.',
+        stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', whatDidYouDo: '¿Qué hiciste? (unas palabras)', ringCloses: 'el anillo se cierra', noted: 'anotado', noAsks: 'aún no hay peticiones', nothingYet: 'aún no hay nada', noReport: 'aún no hay informe', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
         rho: '{closed} de {total} peticiones respondidas',
@@ -412,22 +412,52 @@ const t = (s, v) => String(s || '').replace(/\{(\w+)\}/g, (_, k) => (v[k] == nul
 
 // ctx.fmt formats; it does not decide. The decimal places are the issue's own, from the node.
 const mkCtx = (snap, view) => {
-  const locale = LOCALES.includes(snap.locale) ? snap.locale : 'en';
+  // From /health, which answers at every share level — including a refused page, whose one sentence
+  // is the thing a household most needs in its own language. `snap.locale` was read here and set by
+  // nothing, so this fell through to 'en' on every node while the node was sending all three.
+  const want = snap.locale || (snap.health || {}).locale;
+  const locale = LOCALES.includes(want) ? want : 'en';
   return {
     locale,
     w: WORDS[locale],
-    register: view === 'wall' || QS.get('theme') === 'dark' || KIOSK ? 'dark' : 'paper',
+    // The view decides the register. `?theme=dark` boots the wall (see boot()) and a kiosk is a wall,
+    // but neither makes the OTHER views dark: reading the parameter here meant that pressing Now from
+    // a dark wall rendered the whole paper view — buttons, forms and all — on ink, for the rest of the
+    // session, because the parameter never changes. Decision 15 is paper by day, dark on the wall.
+    register: view === 'wall' || KIOSK ? 'dark' : 'paper',
     as_of: (snap.issues && snap.issues.as_of) || snap.as_of || null,
     fixture: snap.fixture || null,
     fmt: (v, dp = 0) => (v == null || isNaN(v) ? '—' : Number(v).toFixed(dp)),
-    hhmm: ts => { try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } },
+    /* The NODE's clock and the node's own 24-hour reading of it.
+     *
+     * `toLocaleTimeString([])` is the VIEWER's locale and the viewer's timezone: a node in Madrid
+     * polling at 17:35 read `As of 11:40 PM` on a laptop in Bali, and nothing on the page named a
+     * zone. A reading belongs to the place it was taken in, and this page is about one place.
+     * `timeZone` comes from /health so the node stays the authority on where it is; a browser that
+     * does not know the zone falls back rather than throwing the whole header away. */
+    hhmm: ts => {
+      if (!ts) return '';
+      const opt = { hour: '2-digit', minute: '2-digit', hour12: false };
+      const tz = (snap.health || {}).tz;
+      try { return new Date(ts).toLocaleTimeString('en-GB', tz ? { ...opt, timeZone: tz } : opt); }
+      catch (e) { try { return new Date(ts).toLocaleTimeString('en-GB', opt); } catch (e2) { return ''; } }
+    },
     sign: (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use href="static/signs.svg#sign-${id}"/></svg>`,
     // `prov` is in the class on purpose: tools/check_ui.py's ink-only rule keys on that word, and a
     // pill called anything else is a pill the gate does not guard. Provenance is a glyph and a
     // word, never a colour — a coloured pill reads as a verdict on the number beside it.
-    pill: (word, note = '') => word
-      ? `<span class="pill prov" title="${esc(note)}"><svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(word)}"/></svg>${esc(word)}</span>`
-      : '',
+    /* A fixture is a committed snapshot, so nothing on it was measured just now. The header pill was
+     * coerced to `cached` and the twelve figure pills inside the page were not — they carried the
+     * provenance captured on node #1 on 6 September, so a page explicitly rendered from a week-old
+     * file said `live` beside its numbers. LANGUAGE_GAP.md §7 claimed "nothing wears `live` that was
+     * not read in the last poll"; that held for the header pill only. It holds for all of them now. */
+    pill: (word, note = '') => {
+      const w = FIXTURE && word === 'live' ? 'cached' : word;
+      return w
+        ? `<span class="pill prov" title="${esc(FIXTURE && word === 'live' ? 'a committed snapshot; this figure was live when it was captured' : note)}">`
+          + `<svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(w)}"/></svg>${esc(w)}</span>`
+        : '';
+    },
   };
 };
 
@@ -614,21 +644,47 @@ const crossed_ = (d, cell) => !!(d.line && cell && cell.value != null && cell.va
  * last reading carries a dot so the eye finds `now` without a label — at 26 px a label is five
  * pixels tall and is not read.
  */
+/* A series with a hole in it is two lines, not one.
+ *
+ * Both charts used to drop the nulls and join what was left, so a sensor that was off from 08:00 to
+ * 15:00 was drawn as one straight segment bridging the hole. Rendered against the committed fixture
+ * with seven hours nulled, the room trace ramped for six hours, CROSSED the WHO line the page judges
+ * against, and came back down — a threshold crossing that never happened, on the one chart a
+ * household reads to decide whether to do something about the air. A gap is a fact about the day and
+ * it gets to look like one.
+ *
+ * Geometry only: where a line breaks is drawing, not arithmetic, so it stays in this file. A run of
+ * one reading is a dot rather than nothing — dropping it would lose a datum silently, which is the
+ * same dishonesty one level down.
+ */
+const runs = (vals, at) => {
+  const out = [];
+  let cur = [];
+  (vals || []).forEach((v, i) => {
+    if (v == null) { if (cur.length) { out.push(cur); cur = []; } return; }
+    cur.push(at(v, i));
+  });
+  if (cur.length) out.push(cur);
+  return out;
+};
+
 function spark(vals, ctx, opt = {}) {
   const v = (vals || []).filter(x => x != null);
   if (v.length < 2) return '';
   const W = 132, H = 26, hi = Math.max(...v), lo = Math.min(...v), span = hi - lo || 1;
   const n = vals.length;
   const at = (x, i) => [(i / (n - 1)) * W, H - 2 - ((x - lo) / span) * (H - 4)];
-  const pts = vals.map((x, i) => (x == null ? null : at(x, i).join(','))).filter(Boolean).join(' ');
+  const segs = runs(vals, (x, i) => at(x, i));
   let last = null;
   for (let i = n - 1; i >= 0; i--) if (vals[i] != null) { last = at(vals[i], i); break; }
   const dp = opt.dp || 0;
   return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
     + ` aria-label="the last ${n} hours, ${esc(ctx.fmt(lo, dp))} to ${esc(ctx.fmt(hi, dp))}`
     + `${opt.unit ? ' ' + esc(opt.unit) : ''}">`
-    + `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.4"`
-    + ` vector-effect="non-scaling-stroke" stroke-opacity=".7"/>`
+    + segs.map(r => r.length > 1
+        ? `<polyline points="${r.map(pt => pt.join(',')).join(' ')}" fill="none" stroke="var(--ink)"`
+          + ` stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-opacity=".7"/>`
+        : `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="1.2" fill="var(--ink)" fill-opacity=".7"/>`).join('')
     + (last ? `<circle cx="${last[0]}" cy="${last[1]}" r="2.4" fill="var(--ink)"/>` : '')
     + `</svg>`;
 }
@@ -685,7 +741,8 @@ const COMPONENTS = {
     return `<div class="k" data-component="kicker">`
       + `<span class="issue">${esc(d.name ? d.name[ctx.locale] : '')}</span>`
       + `<span class="state${d.state === 'act' ? ' act' : ''}">${esc(d.state || '')}</span>`
-      + (why ? `<span>· ${esc(why)}</span>` : '') + `</div>`;
+      // .said: the node's own prose, which the page must not uppercase — see dashboard.css.
+      + (why ? `<span class="said">· ${esc(why)}</span>` : '') + `</div>`;
   },
 
   sentence(d, ctx) {
@@ -716,7 +773,8 @@ const COMPONENTS = {
   chips(d, ctx) {
     const st = d.stack || {};
     const bits = DISTANCES.filter(x => st[x]).map(x =>
-      `<span class="chip">${esc((ctx.issues_labels || {})[x] || x)} · ${esc(st[x].source)}</span>`);
+      // The distance label is the page's word and stays shouted; the source is the node's and does not.
+      `<span class="chip">${esc((ctx.issues_labels || {})[x] || x)} · <span class="said">${esc(st[x].source)}</span></span>`);
     return `<div class="chips" data-component="chips">${bits.join('')}</div>`;
   },
 
@@ -816,25 +874,49 @@ const COMPONENTS = {
     const X = i => pad.l + (i / Math.max(1, n - 1)) * (W - pad.l - pad.r);
     const Y = v => H - pad.b - ((v - lo) / (hi - lo || 1)) * (H - pad.t - pad.b);
     const dash = { room: '', yard: '4 3', ring: '1 5', region: '6 4' };
-    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" preserveAspectRatio="none"`
-      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours">`;
+    /* A break is now visible, so say it to a reader who cannot see it — and say what the traces are
+     * worth. The chart carried NO text at all: no axis, no unit, no hour, no tick. Two lines and a
+     * dashed red rule, and the only way to learn what the red meant was to read a sentence in another
+     * part of the band. The numbers below are the node's own, formatted by ctx.fmt; nothing here is
+     * computed but the position of a label. */
+    const broken = sets.some(k => runs(ser[k], () => 0).length > 1);
+    const unit = d.unit ? ' ' + d.unit : '';
+    let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"`
+      + ` aria-label="${esc(ctx.w.theDay)}: ${sets.length} traces over 24 hours, `
+      + `${esc(ctx.fmt(lo, d.dp))} to ${esc(ctx.fmt(hi, d.dp))}${esc(unit)}`
+      + `${line != null ? `, ${esc(ctx.w.theLine)} ${esc(ctx.fmt(line, d.dp))}` : ''}`
+      + `${broken ? ', broken where nothing was recorded' : ''}">`;
+
     if (line != null) {
       s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
         + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
     }
     sets.forEach(k => {
-      const pts = ser[k].map((v, i) => (v == null ? null : `${X(i)},${Y(v)}`)).filter(Boolean).join(' ');
-      if (pts) {
-        s += `<polyline points="${pts}" fill="none" stroke="var(--ink)" stroke-width="1.6"`
-          + ` vector-effect="non-scaling-stroke"${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''}`
-          + ` stroke-opacity="${k === 'room' ? 1 : .55}"/>`;
-      }
+      const op = k === 'room' ? 1 : .55;
+      runs(ser[k], (v, i) => [X(i), Y(v)]).forEach(r => {
+        s += r.length > 1
+          ? `<polyline points="${r.map(pt => pt.join(',')).join(' ')}" fill="none" stroke="var(--ink)"`
+            + ` stroke-width="1.6" vector-effect="non-scaling-stroke"`
+            + `${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''} stroke-opacity="${op}"/>`
+          : `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="1.8" fill="var(--ink)" fill-opacity="${op}"/>`;
+      });
     });
     s += `</svg>`;
     const legend = sets.map(k =>
       `<span><i class="${k === 'room' ? '' : k === 'ring' ? 'dot' : 'dash'}"></i>`
       + `${esc((ctx.issues_labels || {})[k] || k)}</span>`).join('');
-    return `<div class="day" data-component="day"><div class="trace">${s}</div>`
+    /* The scale, the day's two ends and the line's own name — in HTML, beside the drawing rather than
+     * inside it. They started inside the SVG, which carries preserveAspectRatio="none" and a 720-unit
+     * viewBox: at 390 that is a 0.49 horizontal scale, so a 10px label rendered at about five real
+     * pixels. A chart that has to be read on a phone cannot keep its only text in the part that
+     * shrinks. The red rule is still drawn where the number is; what it means is said up here. */
+    const axis = (cls, bits) => `<div class="ax ${cls}">`
+      + bits.filter(Boolean).map(([t, c]) => `<span${c ? ` class="${c}"` : ''}>${esc(t)}</span>`).join('')
+      + `</div>`;
+    return `<div class="day" data-component="day">`
+      + axis('top', [[ctx.fmt(hi, d.dp) + unit], line != null && [`${ctx.w.theLine} ${ctx.fmt(line, d.dp)}`, 'line']])
+      + `<div class="trace">${s}</div>`
+      + axis('bot', [[ctx.w.dayStart], [ctx.w.dayEnd]])
       + `<div class="legend">${legend}</div></div>`;
   },
 
@@ -864,7 +946,7 @@ const COMPONENTS = {
     const total = d.alerts_act || 0, closed = d.acted || 0;
     if (!total) {
       return `<div class="rho${d.small ? ' small' : ''}" data-component="rhoRow" role="img"`
-        + ` aria-label="no asks yet"><span class="note">no asks yet</span></div>`;
+        + ` aria-label="${esc(ctx.w.noAsks)}"><span class="note">${esc(ctx.w.noAsks)}</span></div>`;
     }
     let s = '';
     for (let i = 0; i < Math.min(total, 120); i++) s += ctx.sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
@@ -974,11 +1056,11 @@ const COMPONENTS = {
             : a.level === 'act'
               ? `<button type="button" data-act="${esc(String(a.id))}">${esc(ctx.w.didThis)}</button>` : ''}</span></div>`;
     }).join('');
-    return `<div class="ledger" data-component="ledger">${rows || `<p class="note">nothing yet</p>`}</div>`;
+    return `<div class="ledger" data-component="ledger">${rows || `<p class="note">${esc(ctx.w.nothingYet)}</p>`}</div>`;
   },
 
   report(d, ctx) {
-    if (!d || !d.text) return `<div class="rep" data-component="report"><p class="note">no report yet</p></div>`;
+    if (!d || !d.text) return `<div class="rep" data-component="report"><p class="note">${esc(ctx.w.noReport)}</p></div>`;
     return `<div class="rep" data-component="report">`
       + `<div class="k">${esc(ctx.hhmm(d.ts))}${d.sent === false ? ' · held for quiet hours' : ''}</div>`
       // the report is the message Telegram received, and it arrives wearing Telegram's punctuation
@@ -1123,9 +1205,11 @@ const COMPONENTS = {
       + `<td>${ctx.pill(r.provenance)}</td></tr>`).join('');
     // Figures is the one wide thing on this page, and a table that will not fit narrows to nothing
     // or pushes the whole page sideways. It scrolls inside its own box instead.
-    return `<div class="figwrap"><table class="figs" data-component="figures">`
-      + `<thead><tr><th>${esc(ctx.w.figure)}</th><th></th><th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
-      + `<tbody>${rows || `<tr><td colspan="4" class="note">nothing to show yet</td></tr>`}</tbody></table></div>`;
+    return `<div class="figwrap" tabindex="0" role="region" aria-label="${esc(ctx.w.figures)}">`
+      + `<table class="figs" data-component="figures">`
+      + `<thead><tr><th>${esc(ctx.w.figure)}</th><th>${esc(ctx.w.value)}</th>`
+      + `<th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
+      + `<tbody>${rows || `<tr><td colspan="4" class="note">${esc(ctx.w.nothingYet)}</td></tr>`}</tbody></table></div>`;
   },
 };
 
@@ -1376,7 +1460,15 @@ function wallView(snap, ctx) {
     empty: '',
   }, ctx);
   const stale = (snap.health || {}).last_poll && ctx.staleFor(snap.health.last_poll);
-  return `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg?variant=${ctx.register}" alt=""></div>`
+  // The wall said whether it was stale and never said when. A room reading a number across three
+  // metres has no other way to ask. How LOUD `stale` should be at that distance is a size decision
+  // and it is Claude Design's, not this file's; that it is said at all is not.
+  const asOf = ctx.as_of || (snap.health || {}).last_poll;
+  /* The wall's own heading. The header — and with it the page's h1 — is display:none here by R6, and
+   * leaving it visually hidden instead would keep five nav buttons in the tab order of a screen
+   * nobody is standing at. So the wall carries its own, for a reader who is not looking at it. */
+  return `<h1 class="vh">${esc((snap.health || {}).node || 'node')}</h1>`
+    + `<div class="bg" aria-hidden="true"><img src="static/node-ground.svg?variant=${ctx.register}" alt=""></div>`
     // The only control on the wall, and it acts on the view rather than on anything the node knows.
     // Without it a laptop that reached the wall from the nav has no way back, because the header is
     // gone; a kiosk never shows a pointer and nobody presses it.
@@ -1387,6 +1479,7 @@ function wallView(snap, ctx) {
     + piece('rhoRow', snap.rho || {}, ctx)
     + `<div class="foot"><span>${esc((snap.health || {}).node || '')}</span>`
     + `<span>${esc((snap.health || {}).cell ? snap.health.cell.caption : '')}</span>`
+    + (asOf ? `<span>${esc(ctx.w.asOf)} ${esc(ctx.hhmm(asOf))}</span>` : '')
     + (stale ? `<span class="st">${esc(ctx.w.stale)}</span>` : '')
     + `<span>${esc(ctx.w.answerOn)}</span></div>`;
 }
@@ -1408,12 +1501,17 @@ function netMap(d, ctx) {
   const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
   // The six facts, once. The figure and the list below it are two renderings of this and nothing
   // else, so they cannot come to disagree.
-  const IN = [[w.yours, n(d.own, w.sensor, w.sensors)],
-              [w.street, n(d.ring, w.station, w.stations)],
-              [w.models, n(d.models, w.model, w.models_)]];
-  const OUT = [[w.means, d.parentName || w.parentNowhere],
-               [w.cellsOut, t(w.cellsN, { n: (d.cells || []).length })],
-               [w.rhoOut, t(w.rhoN, { closed: d.acted, total: d.asks })]];
+  // The third element is whether anything actually travels this way. R6: a motion with no datum behind
+  // it is deleted — and `rows()` drew a wire AND a travelling dot for every row unconditionally, so a
+  // fresh node with `0 sensors` and `0 public stations` animated data moving along two links that
+  // carry nothing, outward to `nowhere yet`. docs/GUI.md has always said "flows animate along real
+  // links only". The wire stays either way: the link exists, it is the traffic that does not.
+  const IN = [[w.yours, n(d.own, w.sensor, w.sensors), d.own > 0],
+              [w.street, n(d.ring, w.station, w.stations), d.ring > 0],
+              [w.models, n(d.models, w.model, w.models_), d.models > 0]];
+  const OUT = [[w.means, d.parentName || w.parentNowhere, !!d.parentName],
+               [w.cellsOut, t(w.cellsN, { n: (d.cells || []).length }), (d.cells || []).length > 0],
+               [w.rhoOut, t(w.rhoN, { closed: d.acted, total: d.asks }), d.asks > 0]];
   const kept = t(w.kept, { n: (h.ingested || 0).toLocaleString() });
 
   // A wire per row: in-wires run label -> node, out-wires node -> label, so the dash march and the
@@ -1427,7 +1525,7 @@ function netMap(d, ctx) {
                          : `M${675 + dx} ${ey} C 800 ${ey} 800 ${y} 858 ${y}`;
   };
 
-  const rows = (side, items) => items.map(([label, value], i) => {
+  const rows = (side, items) => items.map(([label, value, flowing], i) => {
     const y = 96 + i * 84;
     const x = side === 'in' ? 430 : 872;
     const d = wire(side, y), ink = side === 'in' ? 'var(--ink)' : 'var(--cells)';
@@ -1435,9 +1533,10 @@ function netMap(d, ctx) {
       + ` font-size="11" letter-spacing=".1em" fill-opacity=".65">${esc(label.toUpperCase())}</text>`
       + `<text x="${x}" y="${y + 14}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="fig"`
       + ` font-size="15" font-family="var(--fc-font-body)">${esc(value)}</text>`
-      + `<path class="wire" d="${d}" fill="none" stroke="${ink}" stroke-width="1.6" stroke-opacity=".55"/>`
-      + `<circle class="dot" r="3.5" fill="${ink}"`
-      + ` style="offset-path:path('${d}');animation-duration:${7 + i * 2.5}s"/>`;
+      + `<path class="wire" d="${d}" fill="none" stroke="${ink}" stroke-width="1.6"`
+      + ` stroke-opacity="${flowing ? '.55' : '.22'}"${flowing ? '' : ' stroke-dasharray="3 5"'}/>`
+      + (flowing ? `<circle class="dot" r="3.5" fill="${ink}"`
+                   + ` style="offset-path:path('${d}');animation-duration:${7 + i * 2.5}s"/>` : '');
   }).join('');
 
   const svg = `<svg class="net" viewBox="0 0 1200 380" role="img" aria-label="${esc(w.title)}">`
@@ -1649,6 +1748,8 @@ function networkView(snap, ctx) {
  * page rather than a blank one — a typo in a URL should not look like a broken node.
  */
 let LAST = null;
+// The mount points index.html provides. The other bands live inside #bands and are rebuilt each render.
+const MOUNTS = ['hero', 'index', 'place', 'loop', 'figures'];
 
 function render(snap, view) {
   const ctx = mkCtx(snap, view);
@@ -1673,18 +1774,59 @@ function render(snap, view) {
   document.body.classList.toggle('wallview', view === 'wall');
 
   const h = snap.health || {};
-  document.getElementById('nodename').textContent = h.node || 'node';
-  document.getElementById('nodeplace').textContent =
-    [h.city, h.kind, ctx.as_of ? `${ctx.w.asOf} ${ctx.hhmm(ctx.as_of)}` : ''].filter(Boolean).join(' · ');
+  const _name = document.getElementById('nodename');
+  _name.textContent = h.node || 'node';
+  // as with the place line: the attribute only when the name is actually clipped
+  if (_name.scrollWidth > _name.clientWidth) _name.title = _name.textContent;
+  else _name.removeAttribute('title');
+  // The place, not the time: the time moved next to the provenance word, which is where the question
+  // "how old is this, and how sure are you" gets answered in one place instead of two.
+  // .brand .s bounds this at 38ch and ellipsises past it, so the full string needs somewhere to go.
+  // title is hover-only and a phone cannot reach it — the same limitation H7 records for the
+  // freshness pill's timestamp — so it is set ONLY when the line is actually clipped, which keeps
+  // the attribute off the 27.8ch string node #1 really has and off every screen reader that would
+  // otherwise announce the place twice.
+  const _place = document.getElementById('nodeplace');
+  _place.textContent = [h.city, h.kind].filter(Boolean).join(' · ');
+  if (_place.scrollWidth > _place.clientWidth) _place.title = _place.textContent;
+  else _place.removeAttribute('title');   // `.title = ''` leaves an empty attribute on the element
+  // A refused page has no reading, so it makes no claim about one. The pill used to be computed from
+  // /health, which answers at every share level — so a page showing nothing wore the word `live`.
+  /* The word, and when. The timestamp used to live only in `title=`, which is a hover — unreachable on
+   * a phone, unreachable by touch, and unreachable on the wall. "How old is this?" is the second
+   * question anybody asks of a number and the answer was behind a mouse. */
+  const when = ctx.as_of || h.last_poll;
   document.getElementById('headprov').innerHTML =
-    ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
-                : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || '');
+    snap.refused ? ''
+    : (ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
+                   : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || ''))
+      + (when ? `<span class="asof">${esc(ctx.w.asOf)} ${esc(ctx.hhmm(when))}</span>` : '');
 
-  // SHARE_LEVEL=off with no token: the shell, and the node's own sentence about why. Not a blank.
+  /* SHARE_LEVEL=off with no token: the shell, and the node's own sentence about why. Not a blank.
+   *
+   * The sentence goes into the mount THIS view draws into, not only into #hero. It used to return
+   * here after writing #hero alone, which `body.wallview` hides and which the Network view never
+   * shows — so at the DEFAULT share level the wall was 1920x1080 of nothing and Network was a header
+   * over an empty page. Those are the two surfaces nobody is standing at to work out why, and a
+   * blank screen reads as a dead node, which is the thing the comment above has always forbidden.
+   *
+   * #hero is written in every case, not only the Now case: a node whose SHARE_LEVEL is changed while
+   * a page is open would otherwise keep the last populated hero underneath the wall.
+   */
   if (snap.refused) {
-    document.getElementById('hero').outerHTML =
-      `<div class="hero" id="hero"><div><p class="big">${esc(ctx.w.refused)}</p>`
-      + `<p class="why">${esc(snap.refused)}</p></div></div>`;
+    const said = `<p class="big">${esc(ctx.w.refused)}</p><p class="why">${esc(snap.refused)}</p>`;
+    document.getElementById('hero').outerHTML = `<div class="hero" id="hero"><div>${said}</div></div>`;
+    // .wall's own type, so the sentence is legible at three metres rather than at reading distance.
+    // The wall's own h1 as well: its header is display:none, and wallView() — which normally supplies
+    // one — is not reached on a refused render, so this was the one state left without a heading.
+    if (view === 'wall') {
+      document.getElementById('wallbox').innerHTML =
+        `<h1 class="vh">${esc(h.node || 'node')}</h1><div class="row2"><div>${said}</div></div>`;
+    }
+    if (view === 'network') {
+      const box = document.getElementById('netbody');
+      if (box) box.innerHTML = `<div class="card">${said}</div>`;
+    }
     ['index', 'bands', 'place', 'loop', 'figures'].forEach(id => {
       const el = document.getElementById(id); if (el) el.innerHTML = '';
     });
@@ -1704,6 +1846,19 @@ function render(snap, view) {
 
   const order = layout(snap);
   const want = ONLY && order.includes(ONLY) ? [ONLY] : order;
+  /* A band hidden in Arrange has to actually go. The five below are mount points index.html provides,
+   * and the loop under this used to SKIP a hidden id — which left the mount holding its last render,
+   * so pressing the hide button on the place, the loop, the figures, the index or the hero did
+   * nothing at all, silently, on five of the nine bands. Only the issue bands, which live inside
+   * #bands and are rebuilt from empty every render, ever disappeared. */
+  MOUNTS.filter(id => !want.includes(id)).forEach(id => {
+    const el = document.getElementById(id);
+    // Emptied is not hidden: a <section class="band"> with nothing in it still draws its rule and its
+    // padding, so the first version of this left a blank gap where the band had been. The mount is
+    // replaced by a bare div that keeps the id for the next render and carries no class, so no
+    // display rule can fight `hidden` — which is the trap tools/check_ui.py exists to catch.
+    if (el) el.outerHTML = `<div id="${id}" hidden></div>`;
+  });
   const bands = document.getElementById('bands');
   bands.innerHTML = '';
   const note = document.getElementById('index-note');
@@ -1714,7 +1869,7 @@ function render(snap, view) {
     // Each of these five replaces a mount point from index.html, and the markup carries that mount's
     // id so the next render finds it again. A mount that is missing is skipped rather than thrown
     // on: Arrange can hide a band, and a hidden band is not an error.
-    if (['hero', 'index', 'place', 'loop', 'figures'].includes(id)) {
+    if (MOUNTS.includes(id)) {
       const el = document.getElementById(id);
       if (el) el.outerHTML = html;
       if (id === 'index' && note) note.textContent = ctx.w.headlineRule;
@@ -1811,25 +1966,38 @@ function wireSatellites(root) {
  * produce — went up for a dismissed dialog. Cancel now means cancel.
  */
 async function act(id, btn) {
-  const note = prompt('What did you do? (a few words)');
-  if (note === null) return;                                    // Cancel means cancel
+  // The words this function says, in the household's language. act() runs outside render() and had no
+  // ctx, so its visible strings were English on a page now written in three.
+  const w = mkCtx(LAST || {}, 'now').w;
+  // The token check came AFTER the dialog, so somebody with no token typed what they had done and was
+  // only then told the screen could not record it. Their words went nowhere. Ask nothing you cannot use.
   const tok = tok_();
   if (!tok) {
     toast('This screen has no token, so it cannot record that. Reply /act ' + id + ' on Telegram, '
       + 'or run planetai ui on the node for a token that only closes loops.', true);
     return;
   }
+  const note = prompt(w.whatDidYouDo);
+  if (note === null) return;                                    // Cancel means cancel
   try {
     const r = await fetch('/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'X-Agent': 'dashboard', ...auth_() },
       body: JSON.stringify({ alert_id: Number(id), stage: 'acted', note: note || 'acted' }),
     });
-    if (!r.ok) throw new Error(String(r.status));
+    if (!r.ok) {
+      // "try again in a moment" was wrong, and it was the advice most likely to be taken: a 404 here is
+      // `no such alert`, and trying again never works. The node says which it is; say that instead.
+      const said = await r.json().then(j => j && j.detail).catch(() => null);
+      toast(typeof said === 'string' && said
+        ? `The node did not record that: ${said}`
+        : `The node did not record that (${r.status}). Nothing was written.`, true);
+      return;
+    }
     if (btn) btn.replaceWith(Object.assign(document.createElement('span'),
-      { className: 'done', textContent: 'noted · the ring closes' }));
+      { className: 'done', textContent: `${w.noted} · ${w.ringCloses}` }));
   } catch (e) {
-    toast('The node did not record that. Nothing was written; try again in a moment.', true);
+    toast('The node could not be reached. Nothing was written; try again in a moment.', true);
   }
 }
 
@@ -1856,6 +2024,32 @@ async function loadLayout() {
   } catch (e) { LAYOUT = { order: [], hidden: [] }; }
   return LAYOUT;
 }
+/* What a band is called, for the restore menu. The issues name themselves in the household's own
+ * language; the five fixed bands take the words the page already uses for them. */
+function bandName(id, ctx) {
+  const iss = ((LAST || {}).issues || {}).issues || {};
+  if (id.startsWith('issue:')) {
+    const k = id.slice(6);
+    return (iss[k] && iss[k].name && iss[k].name[ctx.locale]) || k;
+  }
+  return { hero: ctx.w.now, index: ctx.w.watches, place: ctx.w.thePlace,
+           loop: ctx.w.theLoop, figures: ctx.w.figures }[id] || id;
+}
+
+/* The menu that puts a hidden band back. It was markup and nothing else: `#arr-restore` appeared once
+ * in index.html and was never referenced in this file, so it never held anything but its placeholder
+ * and the only way back from a hidden band was Default, which discards every other choice too. */
+function fillRestore() {
+  const sel = document.getElementById('arr-restore');
+  if (!sel) return;
+  const ctx = mkCtx(LAST || {}, 'now');
+  ctx.issues_labels = (((LAST || {}).issues || {}).labels || {})[ctx.locale] || {};
+  const hidden = (LAYOUT && LAYOUT.hidden) || [];
+  sel.innerHTML = `<option value="">${esc(ctx.w.restoreOne)}</option>`
+    + hidden.map(id => `<option value="${esc(id)}">${esc(bandName(id, ctx))}</option>`).join('');
+  sel.disabled = !hidden.length;
+}
+
 function arrangeControls() {
   document.querySelectorAll('[data-band]').forEach(el => {
     if (el.querySelector(':scope > .arr')) return;
@@ -1868,14 +2062,21 @@ function arrangeControls() {
     bar.onclick = ev => {
       const b = ev.target.closest('button'); if (!b) return;
       const order = layout(LAST);
-      if (b.dataset.hide) { LAYOUT.hidden = [...(LAYOUT.hidden || []), id]; }
-      else {
+      const ctx = mkCtx(LAST || {}, 'now');
+      const name = bandName(id, ctx);
+      if (b.dataset.hide) {
+        LAYOUT.hidden = [...(LAYOUT.hidden || []), id];
+        toast(`${name} hidden. Put it back from the menu at the foot of the page.`);
+      } else {
         const i = order.indexOf(id), j = i + Number(b.dataset.move);
-        if (j < 0 || j >= order.length) return;
+        // Nothing happened, and saying so beats a button that looks broken at the ends of the list.
+        if (j < 0 || j >= order.length) { toast(`${name} is already ${j < 0 ? 'first' : 'last'}.`); return; }
         const next = [...order]; next.splice(j, 0, next.splice(i, 1)[0]);
         LAYOUT.order = next;
+        toast(`${name} moved ${Number(b.dataset.move) < 0 ? 'up' : 'down'}.`);
       }
       render(LAST, 'now');
+      fillRestore();
     };
     el.prepend(bar);
   });
@@ -1901,19 +2102,72 @@ async function layoutSave(reset) {
 }
 
 // ------------------------------------------------------------------------------------------ views
-function show(v) {
+/* Which view is on, in the URL, so refresh and back and a link all land where the reader was.
+ *
+ * The hash and not a path: this page is one document served from `/`, it has no router and no build
+ * step, and a path would need the node to serve every view's URL back as the same file. The hash is
+ * what a static page has.
+ *
+ * `arrange` is a mode over `now` rather than a view of its own, so it is not a hash value; leaving
+ * `now` ends it (below), which is the behaviour it should always have had.
+ */
+const VIEWS = ['now', 'network', 'setup', 'wall'];
+const SCROLL = {};                                   // where the reader was in each view
+
+function show(v, opts = {}) {
   if (v === 'arrange') {
     ARRANGING = true;
     document.getElementById('arrbar').hidden = false;
-    show('now');
+    // Say it in the nav. Pressing Arrange used to leave `Now` filled in and nothing anywhere said a
+    // mode had started: the only signal was three small buttons appearing beside every band.
+    document.querySelectorAll('nav.views button').forEach(b => b.classList.toggle('on', b.dataset.view === 'arrange'));
+    document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === 'now'));
+    if (LAST) render(LAST, 'now');
+    fillRestore();
     return;
+  }
+  const from = [...document.querySelectorAll('section.view')].find(s => s.classList.contains('on'));
+  if (from) SCROLL[from.id] = window.scrollY;
+  // Leaving Now ends Arrange rather than leaving its controls scattered over a page nobody is
+  // arranging any more. The layout is not saved — Done saves — so say that rather than lose it quietly.
+  if (ARRANGING) {
+    ARRANGING = false;
+    document.getElementById('arrbar').hidden = true;
+    document.querySelectorAll('.arr').forEach(el => el.remove());
+    toast('Arranging stopped. Nothing was saved — press Done next time to keep an arrangement.');
   }
   document.querySelectorAll('section.view').forEach(s => s.classList.toggle('on', s.id === v));
   document.querySelectorAll('nav.views button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
   if (LAST) render(LAST, v);
   if (v === 'setup') loadSetup();
-  window.scrollTo(0, 0);
+  // pushState and not `location.hash =`: assigning the hash makes the browser jump to the element with
+  // that id, which landed the reader at the top of the view they had just scrolled away from and ate
+  // the scroll restore two lines below. pushState changes the URL and moves nothing.
+  if (!opts.fromHash) {
+    const url = v === 'now' ? location.pathname + location.search : '#' + v;
+    history.pushState({ view: v }, '', url);
+  }
+  /* Back where this reader was, not the top of a nine-screen page. A view they have not opened yet
+   * starts at the top, which is the only time scrollTo(0, 0) was the right answer.
+   *
+   * After a frame, not now: the view was rendered a line ago and the browser has not laid it out yet,
+   * so the document is still as tall as the view being left — a jump to 2,000 px clamps to 0 on the
+   * way back from Network, which is exactly the bug this is meant to fix. */
+  requestAnimationFrame(() => window.scrollTo(0, SCROLL[v] || 0));
+  // The view changed under a keyboard reader with no announcement and no focus move.
+  const sec = document.getElementById(v);
+  if (sec && !opts.quiet) { sec.setAttribute('tabindex', '-1'); sec.focus({ preventScroll: true }); }
 }
+
+const viewFromHash = () => {
+  const h = (location.hash || '').replace('#', '');
+  return VIEWS.includes(h) ? h : null;
+};
+addEventListener('popstate', () => {
+  const v = viewFromHash() || 'now';
+  const on = [...document.querySelectorAll('section.view')].find(s => s.classList.contains('on'));
+  if (!on || on.id !== v) show(v, { fromHash: true });
+});
 
 // ------------------------------------------------------------------------------------------- boot
 async function refresh() {
@@ -1930,6 +2184,17 @@ document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
   if (ev.target.id === 'btn-arr-done') return layoutSave(false);
   if (ev.target.id === 'btn-back') return show('now');
+  /* A token is long, typed once, and often on a phone. Without this there is no way to check what
+   * you typed before submitting it, and a wrong one only says so after a round trip. */
+  const rev = ev.target.closest('[data-reveal]');
+  if (rev) {
+    const f = document.getElementById(rev.dataset.reveal);
+    const shown = f.type === 'text';
+    f.type = shown ? 'password' : 'text';
+    rev.setAttribute('aria-pressed', String(!shown));
+    rev.textContent = shown ? 'Show' : 'Hide';
+    return;
+  }
   if (ev.target.id === 'btn-unlock') return unlock();
   if (ev.target.id === 'btn-save') return saveSettings();
 });
@@ -1938,7 +2203,10 @@ document.addEventListener('click', ev => {
   if (KIOSK) document.body.classList.add('kiosk');
   await loadLayout();
   await refresh();
-  if (KIOSK || QS.get('theme') === 'dark') show('wall');
+  // ?kiosk=1 and ?theme=dark still boot the wall; a hash beats them, so a link to a view wins.
+  const booted = viewFromHash();
+  if (booted) show(booted, { fromHash: true });
+  else if (KIOSK || QS.get('theme') === 'dark') show('wall');
   setInterval(refresh, 20000);
 })();
 
@@ -1967,6 +2235,9 @@ const GROUPS = {
   bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
 };
 let GROUP = null, DESC = null, PACKS = [];
+// Whether this pane holds an edit nobody has saved. Changing tab used to re-render the pane from the
+// last describe(), so a typed value vanished with no warning and no way back.
+let DIRTY = false;
 
 /* The groups this node has, in the order it declares them, with bootstrap last because it is the
  * one that is read at start and cannot be changed from here. */
@@ -2017,45 +2288,87 @@ async function loadSetup() {
     + `<span class="acts"><button type="button" class="btn ghost" data-lock="1">Lock</button></span>`;
   document.getElementById('ptitle').textContent = groupTitle(GROUP);
   document.getElementById('pblurb').textContent = groupBlurb(GROUP);
+  // The address another screen in the house should open. `planetai ui` prints it in a terminal; the
+  // interface the keeper is already looking at never did, so the path to a wall screen ran through
+  // the CLI. location.host is the address THIS reader used, which is the one that works.
+  const addr = document.getElementById('paddr');
+  if (addr) {
+    const show = GROUP === 'node';
+    addr.hidden = !show;
+    if (show) addr.textContent = `${mkCtx(LAST || {}, 'now').w.openOnAnotherScreen} http://${location.host}/`;
+  }
 
   const pane = document.getElementById('pane');
   if (GROUP === 'bootstrap') {
     pane.innerHTML = (DESC.bootstrap || []).map(b =>
-      `<div class="field"><div><label>${esc(b.label)}</label><div class="help">${esc(b.key)}</div></div>`
-      + `<div><input type="text" readonly value="${esc(b.value || '')}" placeholder="not set"></div></div>`).join('');
+      `<div class="field"><div><label for="set-${esc(b.key)}">${esc(b.label)}</label>`
+      + `<div class="help">${esc(b.key)}</div></div>`
+      + `<div><input id="set-${esc(b.key)}" type="text" readonly value="${esc(b.value || '')}"`
+      + ` placeholder="not set"></div></div>`).join('');
     return;
   }
   if (GROUP === 'packs') {
     const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
     const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
     pane.innerHTML = PACKS.map(p =>
-      `<div class="pack"><button type="button" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
+      `<div class="pack"><button type="button" role="switch" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
+      + ` aria-checked="${!only || only.includes(p.id)}" aria-labelledby="pack-${esc(p.id)}"`
       + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>`
-      + `<div><b>${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
+      + `<div><b id="pack-${esc(p.id)}">${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
       + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
       + `<div class="help">${esc(p.description || '')}</div></div></div>`).join('');
     return;
   }
+  /* One field. Every control here carries a name a screen reader can read and a label a pointer can
+   * hit, which none of them did: axe found `label` critical eight times in the alerts group alone,
+   * `button-name` critical on every toggle and `select-name` on the one select. A household keeper
+   * setting up a node by voice or by keyboard heard "button" and could not tell on from off.
+   *
+   * A key that declares CHOICES gets them. app/settings.py has always refused a value outside them —
+   * that is where `'5' is not a value REPORT_EVERY accepts` comes from — so the page was letting
+   * somebody type a value the node had already decided to reject. The node knows; the node says;
+   * the page draws the answer.
+   */
+  const ctx_ = mkCtx(LAST || {}, 'now');
   const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
   pane.innerHTML = rows.map(r => {
+    const id = 'set-' + r.key, lbl = 'lbl-' + r.key;
     const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
-    const left = `<div><label>${esc(r.label)}${src}</label><div class="help">${esc(r.help)}</div></div>`;
+    // The node says which settings change what leaves this machine (settings.OUTWARD). They were in
+    // the same box as "Coast: max distance to sea, km": the one that decides whether the whole read
+    // API answers a stranger on the WiFi looked exactly like the one that says how far the sea is.
+    const out = r.outward ? `<span class="tag out">${esc(ctx_.w.leavesMachine)}</span>` : '';
+    const left = `<div><label id="${lbl}" for="${id}">${esc(r.label)}${out}${src}</label>`
+      + `<div class="help" id="help-${r.key}">${esc(r.help)}</div></div>`;
+    // Where the node's refusal is written when it refuses. Empty until then, and aria-live so a
+    // reader who is not looking at this field still hears why the save did not take.
+    const err = `<p class="err" id="err-${r.key}" role="alert" hidden></p>`;
     if (BOOLS.test(r.key)) {
-      return `<div class="field">${left}<div><button type="button" class="switch ${r.value === '1' ? 'on' : ''}"`
-        + ` data-key="${esc(r.key)}" data-bool="1"><span class="tr"></span></button></div></div>`;
+      const on = r.value === '1';
+      return `<div class="field">${left}<div><button type="button" role="switch" aria-checked="${on}"`
+        + ` aria-labelledby="${lbl}" aria-describedby="help-${r.key}" id="${id}" class="switch ${on ? 'on' : ''}"`
+        + ` data-key="${esc(r.key)}" data-bool="1"><span class="tr"></span></button>${err}</div></div>`;
     }
-    if (r.key === 'ALERT_LOCALE') {
-      return `<div class="field">${left}<div><select data-key="${esc(r.key)}">`
-        + [['en', 'English'], ['id', 'Bahasa Indonesia'], ['es', 'Español']].map(([v, l]) =>
-          `<option value="${v}"${r.value === v ? ' selected' : ''}>${l}</option>`).join('')
-        + `</select></div></div>`;
+    const opts = r.key === 'ALERT_LOCALE'
+      ? [['en', 'English'], ['id', 'Bahasa Indonesia'], ['es', 'Español']]
+      : (r.choices || []).map(v => [v, v]);
+    if (opts.length) {
+      // A key at its own default has chosen nothing, and saying "6" here would be the page inventing
+      // a fact it does not have: the defaults live at the call sites, not in RUNTIME. So it offers
+      // the values and says plainly that none of them is set.
+      const unset = !r.set;
+      return `<div class="field">${left}<div><select id="${id}" aria-describedby="help-${r.key}" data-key="${esc(r.key)}">`
+        + (unset ? `<option value=""${' selected'}>— not set; the node's own default applies —</option>` : '')
+        + opts.map(([v, l]) => `<option value="${esc(v)}"${r.value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')
+        + `</select>${err}</div></div>`;
     }
-    return `<div class="field">${left}<div><input data-key="${esc(r.key)}"`
+    return `<div class="field">${left}<div><input id="${id}" aria-describedby="help-${r.key}" data-key="${esc(r.key)}"`
       + (r.secret
         ? ` type="password" placeholder="${r.set ? 'Set — type to replace' : 'Not set'}"`
-        : ` type="text" value="${esc(r.value)}"`)
-      + ` autocomplete="off"></div></div>`;
+        : ` type="text" value="${esc(r.value)}" placeholder="${r.source === 'default' ? "not set; the node's own default applies" : ''}"`)
+      + ` autocomplete="off">${err}</div></div>`;
   }).join('') || `<div class="empty">Nothing to set in this group.</div>`;
+  DIRTY = false;
 }
 
 async function saveSettings() {
@@ -2080,17 +2393,61 @@ async function saveSettings() {
   });
   if (r.status === 401) { toast('That token is not right.', true); lock(); return; }
   if (r.status === 403) { toast('The node has no admin token yet. Run planetai ui.', true); return; }
-  toast(r.ok ? 'Saved. Live within about twenty seconds.' : 'Could not save (' + r.status + ').', !r.ok);
-  if (r.ok) { loadSetup(); refresh(); }
+  /* The node writes a sentence and the page used to throw it away. A keeper who typed 5 into "Report
+   * every" got `Could not save (400).` — a status code, no field named, nothing marked, and the bad
+   * value still sitting there — while the node had answered "'5' is not a value REPORT_EVERY accepts.
+   * Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day." app/settings.py
+   * writes that refusal by quoting the key's own help text rather than keeping a second copy of it,
+   * so it is the best sentence anybody has; it belongs beside the field it is about. */
+  document.querySelectorAll('#pane .err').forEach(e => { e.textContent = ''; e.hidden = true; });
+  if (!r.ok) {
+    const detail = await r.json().then(j => j && j.detail).catch(() => null);
+    const said = typeof detail === 'string' ? detail : '';
+    const which = Object.keys(body).find(k => said.includes(k));
+    const box = which && document.getElementById('err-' + which);
+    if (box) {
+      box.textContent = said;
+      box.hidden = false;
+      const field = document.getElementById('set-' + which);
+      if (field) field.focus();
+      toast('Nothing was saved. The node said why, next to the setting.', true);
+    } else {
+      toast(said || ('Could not save (' + r.status + ').'), true);
+    }
+    return;
+  }
+  toast('Saved. Live within about twenty seconds.');
+  DIRTY = false;
+  loadSetup(); refresh();
 }
+
+document.addEventListener('input', ev => { if (ev.target.closest('#pane')) DIRTY = true; });
+
+document.addEventListener('change', ev => {
+  if (ev.target.id !== 'arr-restore' || !ev.target.value) return;
+  const id = ev.target.value;
+  LAYOUT.hidden = (LAYOUT.hidden || []).filter(x => x !== id);
+  const ctx = mkCtx(LAST || {}, 'now');
+  toast(`${bandName(id, ctx)} is back.`);
+  render(LAST, 'now');
+  fillRestore();
+});
 
 // the Set up pane's own clicks: tabs, switches, lock
 document.addEventListener('click', ev => {
   const g = ev.target.closest('[data-group]');
-  if (g) { GROUP = g.dataset.group; return loadSetup(); }
+  if (g) {
+    // An unsaved edit is the keeper's work. It used to go without a word.
+    if (DIRTY && !confirm('This group has a change you have not saved. Leave it and lose the change?')) return;
+    GROUP = g.dataset.group; return loadSetup();
+  }
   if (ev.target.closest('[data-lock]')) return lock();
   const sw = ev.target.closest('.switch');
-  if (sw) sw.classList.toggle('on');
+  if (sw) {
+    sw.classList.toggle('on');
+    sw.setAttribute('aria-checked', String(sw.classList.contains('on')));   // the state, not just the paint
+    DIRTY = true;
+  }
   const ly = ev.target.closest('[data-layer]');
   if (ly) {
     const k = ly.dataset.layer;

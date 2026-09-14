@@ -142,4 +142,27 @@ broken("font off the allowlist", prepend('@font-face{font-family:"Z";src:url("No
 broken("a CDN in a stylesheet", prepend("@import url('https://fonts.googleapis.com/css2?family=X');"),
        r"from the network")
 
+# 10. the node's own words, shouted into a different unit
+# `text-transform:uppercase` on one character is a translation: `µ` uppercases to `M`, so the hero and the wall
+# drew "17 MG/M³" where the node had written "17 µg/m³" — milligrams for micrograms — two lines above a sentence
+# that had the unit right. Both prose sites must stay inside .said, and a new uppercasing rule must be looked at
+# by a person rather than discovered on a shelf screen.
+broken("the kicker's reason unwrapped",
+       sub('<span class="said">\u00b7 ${esc(why)}</span>', '<span>\u00b7 ${esc(why)}</span>'),
+       r"kicker's reason.*no longer wrapped in \.said", where="dashboard.js")
+broken("a stack cell's source unwrapped",
+       sub('\u00b7 <span class="said">${esc(st[x].source)}</span>', '\u00b7 ${esc(st[x].source)}'),
+       r"source in the hero chips.*no longer wrapped in \.said", where="dashboard.js")
+broken("a new uppercasing rule nobody looked at",
+       prepend(".newshout{text-transform:uppercase}"),
+       r"is a new text-transform:uppercase rule")
+
+# 11. a box that fills the screen, inside another one
+# `.wall` sets min-height:100vh and a padding, and index.html carried it on the section and on the mount inside
+# it. Both applied, so the wall was one viewport plus two paddings — 1208px on a 1080px screen. A wall does not
+# scroll, so the footer carrying `As of HH:MM` and the word `stale` was off the bottom of it at 1440.
+broken("a viewport-height class on an element and its own ancestor",
+       sub('<section class="view" id="wall">', '<section class="view wall" id="wall">'),
+       r"\.wall sets a viewport height and is on <div>.*inside <section>", where="index.html")
+
 print("check_ui: every visual-language gate fails when the page breaks its rule")

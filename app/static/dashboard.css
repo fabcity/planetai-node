@@ -63,25 +63,81 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .wrap{max-width:1280px;margin:0 auto;padding-inline:clamp(18px,3.5vw,48px)}
 /* type roles */
 .k{font:500 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+/* A sentence the NODE wrote, inside a label the page shouts. The page may uppercase its own words;
+   it may never uppercase the node's, because `µ` uppercases to `M` and the hero read `17 MG/M³`
+   where the node had written `17 µg/m³` — milligrams for micrograms, a factor of a thousand, two
+   lines above a sentence that had the unit right. Every interpolation of reason_text, sentence or a
+   stack cell's source belongs in here; tools/check_ui.py fails the page if one is left outside. */
+.said{text-transform:none}
 .num,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .num{font-weight:700;letter-spacing:-.02em;line-height:1}
 .t{font:800 clamp(1.35rem,2.1vw,1.85rem)/1.12 var(--fc-font-display);letter-spacing:-.03em}
 .sub{font-size:14px;color:var(--mute);max-width:56ch;line-height:1.55}
-.note{font-size:13px;color:var(--mute);line-height:1.5}
+/* The measure. Every other prose class on this page declares one — .sub 56ch, .hero .why 52ch,
+   .field .help 52ch, .rep 62ch — and .note, which carries every empty state, every instruction and
+   every source line, declared none. So it filled whatever box it was in: 141 characters a line in
+   the Network band at 1440, 120 in a satellite card at 768, against the 60-75 a reader can follow.
+   52ch is not a new number; it is what .field .help already uses at this same 13px. */
+.note{font-size:13px;color:var(--mute);max-width:52ch;line-height:1.5}
 .hr{border:0;border-top:1px solid var(--hair);margin:0}
 /* header */
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--hair)}
-.brand{display:flex;align-items:center;gap:12px;min-width:0}
+/* The header's three children get fixed slots, so the row's shape is a function of the WIDTH and
+   nothing else. Before this it was a function of the node's config: .brand grew with NODE_NAME and
+   NODE_CITY and .status with which of the five provenance words applied, so the row reflowed
+   wherever the content stopped fitting — measured across six node shapes, at 500 730 on one and at
+   570 590 660 1070 1260 on another, growing taller as the viewport widened on four of them. Capping
+   the two strings bounded that; it did not fix it, because a slot that is sometimes narrower than
+   its cap is still a variable.
+   460px holds the widest brand that leaves room for the nav (362) and the status slot (255) inside
+   .wrap at 1200. 255px is .status at its widest: `example` or `partial` plus `As of HH:MM`.
+   This reserves WIDTH and not height, so it does not touch S-12: at 390 the three rows stack and
+   the status row still goes from nothing to 25px when /health lands, taking the page with it.
+   The two widths the row reflows at are declared below rather than left to emerge from these three
+   numbers, so the file says what happens. Measured after: 800 and 1210 on every node shape, three
+   heights, and it never grows as the viewport widens. */
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 460px;max-width:100%}
 .brand svg{width:18px;height:20px;flex:none;color:var(--ink)}
-.brand b{font:800 17px var(--fc-font-display);letter-spacing:-.02em}
-.brand .s{font-size:13px;color:var(--mute)}
+/* The node's name is the page's h1. It was a <b>, so axe reported page-has-heading-one on every view
+   in every state and a screen reader had no top of the document to jump to. Same type as before —
+   the margin reset is all that changes, because h1 carries a UA margin and b does not. */
+/* Bounded for the same reason .brand .s below it is: NODE_NAME is a bootstrap setting, free text a
+   keeper types into .env at setup, and an unbounded string in a wrapping flex row makes the
+   header's shape a function of the node's config. 24ch is not a new number — it is .hero p.big's
+   measure. Node #1 is 5.7ch and node #2 6.8ch; a descriptive `ungasan-rooftop` is 14.0ch, so this
+   clips nothing anyone has typed. The clip is visual only: the h1 keeps its full text, so the
+   document's heading and the accessible name are unchanged. */
+.brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0;max-width:24ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The one unbounded string in the header. It is [city, kind] from /health — free text a keeper
+   types into .env — and everything else in this row is bounded: the name is a slug reviewed in a
+   pull request, the five nav labels are the product's own words, the pill is one of five. An
+   unbounded string in a wrapping flex row makes the header's shape a function of the node's config
+   rather than of the width: measured, the row reflowed at 500 and 730 on node #1 and at 570, 590,
+   660, 1070 and 1260 on a node with a longer name and place, growing taller as the viewport
+   widened. 38ch is not a new number; it is .bandhead's second column. Node #1's real string
+   measures 27.8ch, so this never truncates it — it bounds the pathological case only. */
+.brand .s{font-size:13px;color:var(--mute);max-width:38ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:560px){.brand .s{display:none}
 }
 nav.views{display:flex;gap:0;border:1px solid var(--ink);max-width:100%;overflow-x:auto;scrollbar-width:none}
 nav.views button{border:0;border-right:1px solid var(--ink);padding:8px 16px;font:500 13.5px var(--fc-font-body);color:var(--mute);white-space:nowrap}
 nav.views button:last-child{border-right:0}
 nav.views button.on{background:var(--ink);color:var(--ground)}
-.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* min-height reserves the row this fills, so the header does not grow when /health answers. #headprov
+   is empty in the skeleton and the renderer writes the pill and `As of HH:MM` into it, which below
+   1200 is a row of its own: measured, .status went 0 -> 24.8px and the header 124 -> 148.8, taking
+   the nav and every band under it down 25px after first paint. 1.55em is one line of what arrives —
+   .status inherits the body's 16px/1.55 — so it follows the type rather than pinning a number. At
+   1200 and above the row is the nav's 34px and this never applies. */
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:255px;min-height:1.55em;justify-content:flex-end}
+/* The row's two reflows, named. Above 1200 all three sit on one line; below it the nav takes its
+   own; below 790 the status does too. */
+@media(max-width:1200px){nav.views{order:2;flex-basis:100%}
+.status{order:1}
+}
+@media(max-width:790px){.brand{flex-basis:100%}
+.status{order:1;flex-basis:100%;justify-content:flex-start}
+}
 /* provenance pill: ink only, square, glyph + word. No colour token may ever land on it. */
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle}
 /* --sign-floor, not 11px and not a 12 typed in here. It is "the size every sign must still read at",
@@ -135,7 +191,11 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .askstrip .what{font:600 15px/1.4 var(--fc-font-body)}
 .askstrip .what small{display:block;font-weight:400;color:var(--mute);font-size:13px;margin-top:2px}
 .askstrip button.go{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;padding:10px 16px}
-.askstrip .done{display:flex;align-items:center;gap:8px;color:var(--rings);font:600 13px var(--fc-font-body)}
+/* The green belongs to the ring beside these words, not to the words. --rings is #00A057 in both
+   registers and measures about 3.1:1 on paper — right for a mark, under AA for 13px type. The sign
+   still carries the colour and the meaning; the sentence is ink. */
+.askstrip .done{display:flex;align-items:center;gap:8px;color:var(--ink);font:600 13px var(--fc-font-body)}
+.askstrip .done .sg.closed{color:var(--loop-closed)}
 .askstrip[hidden]{display:none}
 /* hidden must beat display:grid; this bug shipped twice */
 @media(max-width:560px){.askstrip{grid-template-columns:1fr}
@@ -215,8 +275,12 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .sensor .story{font-size:12.5px;color:var(--mute);margin-top:6px;line-height:1.45}
 .sensor .row{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .sensor .spark{width:100%;height:26px;display:block;margin-top:8px;overflow:visible}
-.sensor .kits{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font:500 11px var(--mono);letter-spacing:.02em;color:var(--dim)}
-.sensor .kits .more{opacity:.7}
+/* --dim measures about 4:1 on paper; axe called these thirty-seven times on one render. They are the
+   names of the kits behind a number — which instrument said this — and they were the least legible
+   text on the page. --mute is the measured 6.30:1 solid already in this file; no new colour. */
+.sensor .kits{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font:500 11px var(--mono);letter-spacing:.02em;color:var(--mute)}
+/* .7 of --mute lands back under 4.5:1; the count of what is not listed is not decoration. */
+.sensor .kits .more{color:var(--mute)}
 /* the ring's shape, and the rows the node doubts. Both are two-column lines, not tables: a table
    with two cells is a table nobody can read on a phone. */
 .ringstrip{width:100%;height:64px;display:block;margin:12px 0 10px;overflow:visible}
@@ -287,16 +351,29 @@ nav.views button.on{background:var(--ink);color:var(--ground)}
 .ledger .txt small{color:var(--mute)}
 /* block, not inline: it had a margin-top and no display, so every ledger row read
    "...at K ROOM - BAYU HOLES.heat/night_no_relief" with the rule welded to the full stop. */
-.ledger .txt .meta{display:block;font:500 11px var(--mono);color:var(--dim);margin-top:4px;letter-spacing:.02em}
+/* The rule that fired, under the alert it fired for — eighteen of these on one render, all under
+   4.5:1 on --dim. It is how a keeper tells which rule to change. --mute, the measured solid. */
+.ledger .txt .meta{display:block;font:500 11px var(--mono);color:var(--mute);margin-top:4px;letter-spacing:.02em}
 .ledger .do{white-space:nowrap}
 .ledger .do button{background:var(--rings);border-color:var(--rings);color:var(--on-rings);font-weight:600;font-size:13px;padding:7px 12px}
-.ledger .do .done{color:var(--rings);font:600 12.5px var(--fc-font-body)}
+.ledger .do .done{color:var(--ink);font:600 12.5px var(--fc-font-body)}
+.ledger .do .done .sg.closed{color:var(--loop-closed)}
+/* Two columns here, and FOUR children: .when, .iss, .txt, .do. Only the last was placed, so
+   auto-placement put the message — the one thing in the row a household reads — into the 52px time
+   column: 52px of text beside a 288px button, nine lines of six to twelve characters, fourteen rows
+   of it. That alone made the loop band 34.6% of the phone page. Column two, not 1/-1: the time and
+   the issue are a left rail at every width and the message hangs beside them. */
 @media(max-width:640px){.ledger .al{grid-template-columns:52px 1fr}
+.ledger .txt{grid-column:2}
 .ledger .do{grid-column:2}
 }
 .rep{font-size:16px;line-height:1.6;max-width:62ch}
 /* figures table */
+/* The one wide thing on the page scrolls inside its own box, which axe rightly calls a keyboard trap
+   in reverse: at 390 the table is 435px in a 390 box and arrow keys could not reach it. It is
+   focusable now, and says what it is when focus lands. */
 .figwrap{overflow-x:auto}
+.figwrap:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 table.figs{width:100%;min-width:420px;border-collapse:collapse;font-size:12.5px}
 table.figs th{text-align:left;font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);padding:8px 10px 8px 0;border-bottom:1px solid var(--ink)}
 table.figs td{padding:7px 10px 7px 0;border-bottom:1px solid var(--hair);vertical-align:top}
@@ -338,7 +415,38 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 #pblurb{margin:8px 0 4px}
 .field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:10px 24px;align-items:start;padding:16px 0;border-top:1px solid var(--hair)}
 .field label{display:block;font:600 15px var(--fc-font-body)}
-.field .src{display:block;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+/* --dim measures about 4:1 on paper and axe called it twelve times in one group. This is the marker
+   that tells a keeper whether a value came from .env, from here, or from nothing — the least legible
+   thing in the row was the one that said where the row's value came from. --mute is the measured
+   solid already in this file at 6.30:1; no new colour was chosen. */
+.field .src{display:block;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-top:3px}
+/* Where the node's refusal lands. Ink, not a colour: red on this page means a reading crossed a line,
+   and a rejected setting is not a reading. It sits under its own field and nowhere else. */
+/* The age of what the page is showing, beside the word that says how sure it is. It used to be a
+   title= — a hover, which a phone and a wall do not have. */
+/* Visible to a screen reader, not to the eye: the label a control needs when the design has already
+   said the same thing another way. */
+/* The node's own mark on a setting that changes what leaves this machine. The .tag element the packs
+   pane already uses, so nothing new was drawn; only the word is new. */
+.tag.out{border-color:var(--ink);color:var(--ink)}
+.addr{font-family:var(--mono);font-size:12.5px}
+.addr[hidden]{display:none}
+/* The chart's scale and the day's two ends, outside the SVG that stretches. Real pixels at any width. */
+.day .ax{display:flex;justify-content:space-between;gap:12px;font:500 11px var(--mono);
+  letter-spacing:.06em;color:var(--mute)}
+.day .ax.top{margin-bottom:2px}
+.day .ax.bot{margin-top:2px}
+/* The label is ink; the dashed rule it names is the red one. --signal-worse is #E62038, about 4:1 on
+   paper — the floor for a graphical object and under it for 11px type. Exactly the mistake the two
+   `.done` marks made in green, made again in red an hour later. */
+.day .ax .line{color:var(--mute)}
+.reveal{display:flex;gap:8px;align-items:stretch}
+.reveal input{flex:1;min-width:0}
+.reveal button{border:1px solid var(--hair);background:none;color:var(--mute);padding:0 12px;
+  font:500 12px var(--mono);letter-spacing:.06em}
+.vh{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.asof{margin-left:10px;font:500 11px var(--mono);letter-spacing:.06em;color:var(--mute)}
+.field .err{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ink);border-left:2px solid var(--signal-worse);padding-left:10px}
 .field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:52ch;line-height:1.55}
 .field input,.field select{width:100%;background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:10px 12px;color:var(--ink);font:500 14px var(--fc-font-body)}
 .field input:focus,.field select:focus{outline:none;border-color:var(--ink)}
@@ -348,6 +456,24 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .switch .tr::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;background:var(--dim)}
 .switch.on .tr{border-color:var(--ink)}
 .switch.on .tr::after{background:var(--ink);transform:translateX(18px)}
+/* Arrange's own bar. It had no rule at all, so it was position:static at the end of <body> — measured
+   at y 3,746 on a 3,789 px page. The mode's instructions, its Default and its Done, the only thing
+   that saves an arrangement, all sat nine screens below the fold, and the keeper who pressed Arrange
+   saw three unexplained buttons appear beside every band and no way to finish. Same sticky footing
+   as .savebar, which is the pattern this file already uses for a bar that must stay reachable. */
+.arrbar{position:sticky;bottom:0;z-index:3;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  padding:12px clamp(16px,4vw,32px);background:var(--ground);border-top:1px solid var(--ink);
+  font:500 13px var(--fc-font-body)}
+.arrbar select{background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:8px 10px;
+  color:var(--ink);font:500 13px var(--fc-font-body)}
+.arrbar select:disabled{color:var(--mute)}
+/* `hidden` is an attribute the UA styles as display:none and ANY display rule of ours beats it. Both
+   of these were found by tools/check_ui.py the moment its rule was widened to see how this renderer
+   actually hides things — #arrbar by me, giving the Arrange bar a display and un-hiding it on every
+   view; #setup-body from before, which is why the locked Set up screen still put its empty heading,
+   its blurb and its save bar into the accessibility tree behind the unlock card. */
+.arrbar[hidden]{display:none}
+.setup[hidden],#setup-body[hidden]{display:none}
 .savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:20px;margin-top:8px;position:sticky;bottom:0;background:var(--ground);border-top:1px solid var(--hair)}
 .savebar .sub{margin:0}
 .pack{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
@@ -421,6 +547,9 @@ svg.net .halo{transform-origin:675px 180px;animation:nethalo var(--motion-readin
 section.view{display:none}
 section.view.on{display:block}
 /* the wall: dark register, instruction not control, nothing to press */
+/* R6: the wall carries no chrome. The header goes entirely — leaving it visually hidden would keep
+   five nav buttons in the tab order of a screen nobody is standing at. The wall grows its own h1
+   instead, in wallView(), so the document still has a heading. */
 body.wallview header{display:none}
 .wall{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:clamp(28px,4vw,64px);overflow:hidden}
 .wall .row2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:clamp(24px,4vw,64px);align-items:center}

@@ -134,6 +134,27 @@ CHOICES = {
     "SHARE_LEVEL":   ("off", "open"),                        # cell and means are named in the help and refused here, so a node cannot sit at a level that does nothing
 }
 
+# Keys that change what leaves this machine, as opposed to what it does with what it keeps.
+#
+# Every surface renders these in the same box as COAST_MAX_KM today, so the setting that decides
+# whether the whole read API answers a stranger on the WiFi looks exactly like the one that says how
+# far the sea is. A household deciding what to share should be able to see which decisions those are.
+# The node declares the set because the node is the one that acts on it; a surface can mark them or
+# not, but it should not have to guess which they are.
+OUTWARD = {
+    "SHARE_LEVEL",          # what a reader with no token may read from this node
+    "PARENT_API_URL",       # where hourly means are posted
+    "CKAN_PORTALS",         # open-data portals this node reads from and publishes cells for
+    "RETICULUM_PRESENCE",   # the node announcing its existence and a coarse cell over radio
+    "RETICULUM_PRESENCE_RES",  # how precisely it does so
+    "RETICULUM_ALERT_DESTINATIONS",  # where act-level alerts are sent
+    "MESH_ALERTS",          # alerts over the LoRa mesh, which is not this household's network
+    "HA_DISCOVERY",         # sensors and alerts published to the MQTT broker
+    "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY",  # the one path off the network
+    "AGENT_PREFER",         # which decides whether the online path is used at all
+    "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks
+}
+
 # Keys the reports release retired. Rows for them are left in `settings` and in .env, and nothing reads them: a
 # household that updates does not have a value it chose deleted out from under it. BRIEF_HOUR was the agent
 # container's own third clock and is gone from the compose file.
@@ -226,7 +247,12 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
         v = get(k, "")
         hide = secret or (not unlocked and k not in public)
         out["runtime"].append({"key": k, "group": group, "label": label, "secret": secret, "restart": restart, "help": help_,
-                               "value": _mask(v) if hide else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default")})
+                               "value": _mask(v) if hide else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default"),
+                               # What this key will accept, so a surface can offer the values instead of letting
+                               # somebody type one it will refuse. CHOICES is already the authority for the refusal;
+                               # publishing it means the dashboard's widget and the node's validation cannot disagree.
+                               "choices": list(CHOICES[k]) if k in CHOICES else None,
+                               "outward": k in OUTWARD})
     for k, label in BOOTSTRAP.items():
         out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, "")})
     return out
