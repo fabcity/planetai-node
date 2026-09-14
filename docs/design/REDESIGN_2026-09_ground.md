@@ -126,14 +126,14 @@ Screenshots: `now_populated_{390,1440}`, `wall_populated_{390,1440,1920_dark}`, 
 |---|---|---|---|
 | **T1** @ 390 | sentence · numeral · state word · the ask **or "nothing to do"** · as-of, all without scrolling | ✓ ✓ ✓ **✗** ✓ | `dashboard.js:965` — with no open ask `askStrip` returns a `hidden` div. The page has no words for "nothing to do"; `WORDS` has `noAsks` and it is only ever the ρ row's empty state |
 | **T1** @ 1440 | the same, plus every declared issue's row and the mini stack | ✓ ✓ ✓ **✗** ✓ · 4 of 4 rows ✓ mini ✓ | same |
-| **T2** empty @ 1440 | ≤ 30 % | **36.2 %** as written · **69.5 %** discounting the page's own decoration | `dashboard.js:1406` puts a full-bleed `node-ground.svg` behind the hero inside `aria-hidden`; `dashboard.css:173` gives the hero a 1.5fr/1fr grid whose right column holds only the ρ row |
-| **T2** empty @ 390 | ≤ 20 % | **21.3 %** · **56.3 %** discounted | same |
+| **T2** empty @ 1440 | ≤ 30 % | **35.3 %** as written · **64.4 %** discounting the page's own decoration | `dashboard.js:1406` puts a full-bleed `node-ground.svg` behind the hero inside `aria-hidden`; `dashboard.css:173` gives the hero a 1.5fr/1fr grid whose right column holds only the ρ row |
+| **T2** empty @ 390 | ≤ 20 % | **21.4 %** · **46.8 %** discounted | same |
 | **T2** height @ 1440 | ≤ 4 viewports | **5.7** (5,115 px / 900) | loop 22.4 % and figures 11.4 % of the page |
 | **T2** height @ 390 | ≤ 8 viewports | **8.9** (7,978 px / 900) | loop 23.9 %, air 21.5 %, figures 17.3 % |
 | **T3** | four card kinds, named and counted by `check_ui` | **0 declared.** No `data-kind` anywhere. Counted from the code, the interface has **24 distinct grammars** (below) | `dashboard.js:737` — `COMPONENTS` names parts, not kinds |
 | **T4** | every numeral carries unit, source, age and a comparison, or the pack's stated reason | **0 of 0 declared**, against **26 numerals drawn** at 1440 | no `data-num` / `data-cmp` exists. The Stack does carry source + pill per column (`:788`); `readout` carries source and pill (`:936`); nothing carries a *comparison* except the sentence's `{cmp}` |
 | **T5** | every `[data-component]` except header and hero links in or out | **47 of 47 orphaned** at 1440, 5 of 5 on the wall | no `data-ref` exists anywhere. `indexRow` is the one real link on the page and it is an `href="#band-…"` (`:1040`), which no gate can read as a link |
-| **T6** | reading order = DOM order in the first viewport | **19** elements at 1440, **14** at 390, out of rank | `dashboard.css:173` — the two-column hero puts the ρ row 13th by position and 28th in the DOM (the skeleton's own reading) |
+| **T6** | reading order = DOM order in the first viewport | **3** swaps at 1440, **3** at 390 | `dashboard.css:173` — the two-column hero puts the ρ row 13th by position and 28th in the DOM (the skeleton's own reading) |
 | **T7** | sentence, numeral, every issue line and the ρ row ≥ 9 mm at 1920 | sentence 34.0 ✓ · numeral 80.9 ✓ · **issue line 7.5** ✗ · **ρ caption 5.7** ✗ | `dashboard.css:571–572` (`.wall .wi .st`, `.wall .wi .ln` clamp to 12/17 px) and `:340` (`.rhocap` inherits `.note`'s 13 px) |
 | **T9** weight | under 60 kB per refresh | **28.3 kB / 16 requests** live · **79.4 kB / 3** under `?fixture=` | the fixture path refetches the whole 75 kB snapshot every twenty seconds. On the live path `/settings` is 15 kB of the 28 and `/static/node-ground.svg` is 4 kB, re-sent every render because the route builds the SVG and sends no ETag (`app/main.py:1526`) |
 | **T9** axe | zero serious/critical | **0** on Now at 390 and 1440 and on the wall at 1920 dark | — |
@@ -144,8 +144,23 @@ Screenshots: `now_populated_{390,1440}`, `wall_populated_{390,1440,1920_dark}`, 
 carrying "text, a mark, a sign, an image or a control", and a decorative full-bleed background *is*
 an image — so a page can pass T2 by putting a picture behind everything and saying nothing. The
 second reading drops what the page itself marked `aria-hidden`, which is the page's own statement
-that a mark carries no reading. On this page the two readings are 36.2 % and 69.5 % at 1440, and the
+that a mark carries no reading. On this page the two readings are 35.3 % and 64.4 % at 1440, and the
 thing between them is the hero's ground. **Phase 2 must beat the target as written and report both.**
+
+**How it is computed, exactly, because the verdict rests on it.** An element is marked over its
+whole box — padding included, which is what the target's own parenthesis asks for — when it
+*carries* text (a direct text child; `<body>` contains every word on the page and carries none of
+them), or is an image, a drawing or a control. The gaps between such elements are empty. This is
+**not** the September skeleton review's "unmarked ground", which rasterises glyph line boxes and
+media alone: that measure answers how much ink is on the screen, and this one answers how much of
+the screen is occupied by things, which is the question the complaint asks. The first pass of this
+document used the skeleton's measure and reported 36.2 % / 69.5 %; the numbers above are the target
+as written.
+
+**T6 counts swaps, not ranks.** One element moved ten places up makes twenty ranks differ, so the
+first pass reported 19 divergences at 1440 for what is two or three actual swaps — the number the
+skeleton review found by eye. It counts adjacent inversions now: zero exactly when the two orders
+agree, and one per place they actually disagree.
 
 **The card grammars, counted again from the code.** The review found six on the page this replaces.
 Today, counting distinct root containers that hold a value and its explanation: `stack` (and its
