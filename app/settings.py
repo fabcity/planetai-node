@@ -226,7 +226,11 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
         v = get(k, "")
         hide = secret or (not unlocked and k not in public)
         out["runtime"].append({"key": k, "group": group, "label": label, "secret": secret, "restart": restart, "help": help_,
-                               "value": _mask(v) if hide else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default")})
+                               "value": _mask(v) if hide else v, "set": bool(v), "source": "gui" if k in db else ("env" if os.getenv(k) else "default"),
+                               # What this key will accept, so a surface can offer the values instead of letting
+                               # somebody type one it will refuse. CHOICES is already the authority for the refusal;
+                               # publishing it means the dashboard's widget and the node's validation cannot disagree.
+                               "choices": list(CHOICES[k]) if k in CHOICES else None})
     for k, label in BOOTSTRAP.items():
         out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, "")})
     return out

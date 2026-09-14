@@ -77,10 +77,13 @@
       <h3 class="t">Unlock</h3>
       <p class="sub">Changing settings needs the admin token. <code>planetai ui</code> on the node prints
         it, and the weaker one below it.</p>
+      <label class="sub" for="tok">Admin token</label>
       <input type="password" id="tok" placeholder="admin token" autocomplete="off">
-      <p class="sub">Or the token for closing a loop only — it records that someone acted, and reads the
+      <p class="sub" id="acttok-help">Or the token for closing a loop only — it records that someone acted, and reads the
         sensors, but cannot change a setting or read a secret.</p>
-      <input type="password" id="acttok" placeholder="token for closing a loop" autocomplete="off">
+      <label class="sub" for="acttok">Token for closing a loop</label>
+      <input type="password" id="acttok" placeholder="token for closing a loop" autocomplete="off"
+             aria-describedby="acttok-help">
       <div class="row mt"><button class="btn" id="btn-unlock">Unlock</button><button class="btn ghost" id="btn-back">Back</button></div>
     </div>
     <div class="setup" id="setup-body" hidden>

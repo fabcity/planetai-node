@@ -2022,6 +2022,9 @@ const GROUPS = {
   bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
 };
 let GROUP = null, DESC = null, PACKS = [];
+// Whether this pane holds an edit nobody has saved. Changing tab used to re-render the pane from the
+// last describe(), so a typed value vanished with no warning and no way back.
+let DIRTY = false;
 
 /* The groups this node has, in the order it declares them, with bootstrap last because it is the
  * one that is read at start and cannot be changed from here. */
@@ -2076,41 +2079,69 @@ async function loadSetup() {
   const pane = document.getElementById('pane');
   if (GROUP === 'bootstrap') {
     pane.innerHTML = (DESC.bootstrap || []).map(b =>
-      `<div class="field"><div><label>${esc(b.label)}</label><div class="help">${esc(b.key)}</div></div>`
-      + `<div><input type="text" readonly value="${esc(b.value || '')}" placeholder="not set"></div></div>`).join('');
+      `<div class="field"><div><label for="set-${esc(b.key)}">${esc(b.label)}</label>`
+      + `<div class="help">${esc(b.key)}</div></div>`
+      + `<div><input id="set-${esc(b.key)}" type="text" readonly value="${esc(b.value || '')}"`
+      + ` placeholder="not set"></div></div>`).join('');
     return;
   }
   if (GROUP === 'packs') {
     const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
     const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
     pane.innerHTML = PACKS.map(p =>
-      `<div class="pack"><button type="button" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
+      `<div class="pack"><button type="button" role="switch" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
+      + ` aria-checked="${!only || only.includes(p.id)}" aria-labelledby="pack-${esc(p.id)}"`
       + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>`
-      + `<div><b>${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
+      + `<div><b id="pack-${esc(p.id)}">${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
       + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
       + `<div class="help">${esc(p.description || '')}</div></div></div>`).join('');
     return;
   }
+  /* One field. Every control here carries a name a screen reader can read and a label a pointer can
+   * hit, which none of them did: axe found `label` critical eight times in the alerts group alone,
+   * `button-name` critical on every toggle and `select-name` on the one select. A household keeper
+   * setting up a node by voice or by keyboard heard "button" and could not tell on from off.
+   *
+   * A key that declares CHOICES gets them. app/settings.py has always refused a value outside them —
+   * that is where `'5' is not a value REPORT_EVERY accepts` comes from — so the page was letting
+   * somebody type a value the node had already decided to reject. The node knows; the node says;
+   * the page draws the answer.
+   */
   const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
   pane.innerHTML = rows.map(r => {
+    const id = 'set-' + r.key, lbl = 'lbl-' + r.key;
     const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
-    const left = `<div><label>${esc(r.label)}${src}</label><div class="help">${esc(r.help)}</div></div>`;
+    const left = `<div><label id="${lbl}" for="${id}">${esc(r.label)}${src}</label>`
+      + `<div class="help" id="help-${r.key}">${esc(r.help)}</div></div>`;
+    // Where the node's refusal is written when it refuses. Empty until then, and aria-live so a
+    // reader who is not looking at this field still hears why the save did not take.
+    const err = `<p class="err" id="err-${r.key}" role="alert" hidden></p>`;
     if (BOOLS.test(r.key)) {
-      return `<div class="field">${left}<div><button type="button" class="switch ${r.value === '1' ? 'on' : ''}"`
-        + ` data-key="${esc(r.key)}" data-bool="1"><span class="tr"></span></button></div></div>`;
+      const on = r.value === '1';
+      return `<div class="field">${left}<div><button type="button" role="switch" aria-checked="${on}"`
+        + ` aria-labelledby="${lbl}" aria-describedby="help-${r.key}" id="${id}" class="switch ${on ? 'on' : ''}"`
+        + ` data-key="${esc(r.key)}" data-bool="1"><span class="tr"></span></button>${err}</div></div>`;
     }
-    if (r.key === 'ALERT_LOCALE') {
-      return `<div class="field">${left}<div><select data-key="${esc(r.key)}">`
-        + [['en', 'English'], ['id', 'Bahasa Indonesia'], ['es', 'Español']].map(([v, l]) =>
-          `<option value="${v}"${r.value === v ? ' selected' : ''}>${l}</option>`).join('')
-        + `</select></div></div>`;
+    const opts = r.key === 'ALERT_LOCALE'
+      ? [['en', 'English'], ['id', 'Bahasa Indonesia'], ['es', 'Español']]
+      : (r.choices || []).map(v => [v, v]);
+    if (opts.length) {
+      // A key at its own default has chosen nothing, and saying "6" here would be the page inventing
+      // a fact it does not have: the defaults live at the call sites, not in RUNTIME. So it offers
+      // the values and says plainly that none of them is set.
+      const unset = !r.set;
+      return `<div class="field">${left}<div><select id="${id}" aria-describedby="help-${r.key}" data-key="${esc(r.key)}">`
+        + (unset ? `<option value=""${' selected'}>— not set; the node's own default applies —</option>` : '')
+        + opts.map(([v, l]) => `<option value="${esc(v)}"${r.value === v ? ' selected' : ''}>${esc(l)}</option>`).join('')
+        + `</select>${err}</div></div>`;
     }
-    return `<div class="field">${left}<div><input data-key="${esc(r.key)}"`
+    return `<div class="field">${left}<div><input id="${id}" aria-describedby="help-${r.key}" data-key="${esc(r.key)}"`
       + (r.secret
         ? ` type="password" placeholder="${r.set ? 'Set — type to replace' : 'Not set'}"`
-        : ` type="text" value="${esc(r.value)}"`)
-      + ` autocomplete="off"></div></div>`;
+        : ` type="text" value="${esc(r.value)}" placeholder="${r.source === 'default' ? "not set; the node's own default applies" : ''}"`)
+      + ` autocomplete="off">${err}</div></div>`;
   }).join('') || `<div class="empty">Nothing to set in this group.</div>`;
+  DIRTY = false;
 }
 
 async function saveSettings() {
@@ -2135,17 +2166,51 @@ async function saveSettings() {
   });
   if (r.status === 401) { toast('That token is not right.', true); lock(); return; }
   if (r.status === 403) { toast('The node has no admin token yet. Run planetai ui.', true); return; }
-  toast(r.ok ? 'Saved. Live within about twenty seconds.' : 'Could not save (' + r.status + ').', !r.ok);
-  if (r.ok) { loadSetup(); refresh(); }
+  /* The node writes a sentence and the page used to throw it away. A keeper who typed 5 into "Report
+   * every" got `Could not save (400).` — a status code, no field named, nothing marked, and the bad
+   * value still sitting there — while the node had answered "'5' is not a value REPORT_EVERY accepts.
+   * Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day." app/settings.py
+   * writes that refusal by quoting the key's own help text rather than keeping a second copy of it,
+   * so it is the best sentence anybody has; it belongs beside the field it is about. */
+  document.querySelectorAll('#pane .err').forEach(e => { e.textContent = ''; e.hidden = true; });
+  if (!r.ok) {
+    const detail = await r.json().then(j => j && j.detail).catch(() => null);
+    const said = typeof detail === 'string' ? detail : '';
+    const which = Object.keys(body).find(k => said.includes(k));
+    const box = which && document.getElementById('err-' + which);
+    if (box) {
+      box.textContent = said;
+      box.hidden = false;
+      const field = document.getElementById('set-' + which);
+      if (field) field.focus();
+      toast('Nothing was saved. The node said why, next to the setting.', true);
+    } else {
+      toast(said || ('Could not save (' + r.status + ').'), true);
+    }
+    return;
+  }
+  toast('Saved. Live within about twenty seconds.');
+  DIRTY = false;
+  loadSetup(); refresh();
 }
+
+document.addEventListener('input', ev => { if (ev.target.closest('#pane')) DIRTY = true; });
 
 // the Set up pane's own clicks: tabs, switches, lock
 document.addEventListener('click', ev => {
   const g = ev.target.closest('[data-group]');
-  if (g) { GROUP = g.dataset.group; return loadSetup(); }
+  if (g) {
+    // An unsaved edit is the keeper's work. It used to go without a word.
+    if (DIRTY && !confirm('This group has a change you have not saved. Leave it and lose the change?')) return;
+    GROUP = g.dataset.group; return loadSetup();
+  }
   if (ev.target.closest('[data-lock]')) return lock();
   const sw = ev.target.closest('.switch');
-  if (sw) sw.classList.toggle('on');
+  if (sw) {
+    sw.classList.toggle('on');
+    sw.setAttribute('aria-checked', String(sw.classList.contains('on')));   // the state, not just the paint
+    DIRTY = true;
+  }
   const ly = ev.target.closest('[data-layer]');
   if (ly) {
     const k = ly.dataset.layer;

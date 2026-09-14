@@ -344,7 +344,14 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 #pblurb{margin:8px 0 4px}
 .field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,300px);gap:10px 24px;align-items:start;padding:16px 0;border-top:1px solid var(--hair)}
 .field label{display:block;font:600 15px var(--fc-font-body)}
-.field .src{display:block;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+/* --dim measures about 4:1 on paper and axe called it twelve times in one group. This is the marker
+   that tells a keeper whether a value came from .env, from here, or from nothing — the least legible
+   thing in the row was the one that said where the row's value came from. --mute is the measured
+   solid already in this file at 6.30:1; no new colour was chosen. */
+.field .src{display:block;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-top:3px}
+/* Where the node's refusal lands. Ink, not a colour: red on this page means a reading crossed a line,
+   and a rejected setting is not a reading. It sits under its own field and nowhere else. */
+.field .err{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ink);border-left:2px solid var(--signal-worse);padding-left:10px}
 .field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:52ch;line-height:1.55}
 .field input,.field select{width:100%;background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:10px 12px;color:var(--ink);font:500 14px var(--fc-font-body)}
 .field input:focus,.field select:focus{outline:none;border-color:var(--ink)}
