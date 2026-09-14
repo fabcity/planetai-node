@@ -29,7 +29,15 @@ grep -q 'route get' "$d/lan_ip.sh" || { echo "  FAIL could not lift lan_ip() out
 run() {   # run <hostname stub> [--no-ip]
   local b="$d/b"; rm -rf "$b"; mkdir -p "$b"
   cp "$1" "$b/hostname"; chmod +x "$b/hostname"
-  [[ "${2:-}" == "--no-ip" ]] || { cp "$d/ip" "$b/ip"; chmod +x "$b/ip"; }
+  # "no iproute2" has to be a stub that fails, not an absent file: the function still needs sed, awk and grep
+  # from /usr/bin, and on a Linux box `ip` is reachable there too — so leaving it out of $b removed nothing,
+  # and both fallback cases quietly read the CI runner's real address instead of the stub's.
+  if [[ "${2:-}" == "--no-ip" ]]; then
+    printf '%s\n' '#!/bin/sh' 'echo "sh: ip: command not found" >&2; exit 127' > "$b/ip"
+  else
+    cp "$d/ip" "$b/ip"
+  fi
+  chmod +x "$b/ip"
   printf '%s\n' '#!/bin/sh' 'echo Linux' > "$b/uname"; chmod +x "$b/uname"
   PATH="$b:/usr/bin:/bin" bash -c '. "$1"; lan_ip' _ "$d/lan_ip.sh" 2>/dev/null
 }
