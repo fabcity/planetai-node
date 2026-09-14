@@ -886,22 +886,10 @@ const COMPONENTS = {
       + `${esc(ctx.fmt(lo, d.dp))} to ${esc(ctx.fmt(hi, d.dp))}${esc(unit)}`
       + `${line != null ? `, ${esc(ctx.w.theLine)} ${esc(ctx.fmt(line, d.dp))}` : ''}`
       + `${broken ? ', broken where nothing was recorded' : ''}">`;
-    // The scale: what the top of this box is worth, and what the bottom is. Same mono, same 10px and
-    // same opacity the Stack's own scale already uses, so the two charts read as one system.
-    const ax = (x, y, t, anchor = 'start') => `<text x="${x}" y="${y}" text-anchor="${anchor}"`
-      + ` class="mono" font-size="10" letter-spacing=".06em" fill="var(--ink)" fill-opacity=".7">${esc(t)}</text>`;
-    s += ax(2, pad.t + 3, ctx.fmt(hi, d.dp) + unit)
-      + ax(2, H - pad.b, ctx.fmt(lo, d.dp))
-      // The time origin. "24 hours" was asserted by an aria-label and shown by nothing.
-      + ax(pad.l, H - 4, ctx.w.dayStart)
-      + ax(W - pad.r, H - 4, ctx.w.dayEnd, 'end');
+
     if (line != null) {
       s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
-        + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`
-        // and it says what it is. The red rule was drawn and never named; the only way to learn it was
-        // the WHO line was to read the `why` sentence elsewhere in the band.
-        + `<text x="${W - pad.r}" y="${Y(line) - 4}" text-anchor="end" class="mono" font-size="10"`
-        + ` letter-spacing=".06em" fill="var(--signal-worse)">${esc(ctx.w.theLine)} ${esc(ctx.fmt(line, d.dp))}</text>`;
+        + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
     }
     sets.forEach(k => {
       const op = k === 'room' ? 1 : .55;
@@ -917,7 +905,18 @@ const COMPONENTS = {
     const legend = sets.map(k =>
       `<span><i class="${k === 'room' ? '' : k === 'ring' ? 'dot' : 'dash'}"></i>`
       + `${esc((ctx.issues_labels || {})[k] || k)}</span>`).join('');
-    return `<div class="day" data-component="day"><div class="trace">${s}</div>`
+    /* The scale, the day's two ends and the line's own name — in HTML, beside the drawing rather than
+     * inside it. They started inside the SVG, which carries preserveAspectRatio="none" and a 720-unit
+     * viewBox: at 390 that is a 0.49 horizontal scale, so a 10px label rendered at about five real
+     * pixels. A chart that has to be read on a phone cannot keep its only text in the part that
+     * shrinks. The red rule is still drawn where the number is; what it means is said up here. */
+    const axis = (cls, bits) => `<div class="ax ${cls}">`
+      + bits.filter(Boolean).map(([t, c]) => `<span${c ? ` class="${c}"` : ''}>${esc(t)}</span>`).join('')
+      + `</div>`;
+    return `<div class="day" data-component="day">`
+      + axis('top', [[ctx.fmt(hi, d.dp) + unit], line != null && [`${ctx.w.theLine} ${ctx.fmt(line, d.dp)}`, 'line']])
+      + `<div class="trace">${s}</div>`
+      + axis('bot', [[ctx.w.dayStart], [ctx.w.dayEnd]])
       + `<div class="legend">${legend}</div></div>`;
   },
 

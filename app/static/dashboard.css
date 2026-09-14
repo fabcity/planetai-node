@@ -378,6 +378,15 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .tag.out{border-color:var(--ink);color:var(--ink)}
 .addr{font-family:var(--mono);font-size:12.5px}
 .addr[hidden]{display:none}
+/* The chart's scale and the day's two ends, outside the SVG that stretches. Real pixels at any width. */
+.day .ax{display:flex;justify-content:space-between;gap:12px;font:500 11px var(--mono);
+  letter-spacing:.06em;color:var(--mute)}
+.day .ax.top{margin-bottom:2px}
+.day .ax.bot{margin-top:2px}
+/* The label is ink; the dashed rule it names is the red one. --signal-worse is #E62038, about 4:1 on
+   paper — the floor for a graphical object and under it for 11px type. Exactly the mistake the two
+   `.done` marks made in green, made again in red an hour later. */
+.day .ax .line{color:var(--mute)}
 .reveal{display:flex;gap:8px;align-items:stretch}
 .reveal input{flex:1;min-width:0}
 .reveal button{border:1px solid var(--hair);background:none;color:var(--mute);padding:0 12px;
