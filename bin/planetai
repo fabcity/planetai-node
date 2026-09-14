@@ -764,7 +764,17 @@ cmd_mesh() {
 
 
 # ---------------------------------------------------------------- meshtastic: LoRa sensors and alerts, via the gateway's MQTT
-lan_ip() { case "$(uname -s)" in Darwin) ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null;; *) hostname -I 2>/dev/null | awk '{print $1}';; esac; }
+# `hostname -I` is net-tools, which is Debian/Ubuntu. Arch ships inetutils, whose hostname has no -I at all,
+# so on an Omarchy node this returned nothing and every caller printed a blank where the address goes —
+# including the one line that tells you where to point Sideband. iproute2's `ip route get` is on every Linux
+# that can run Docker; the old path stays as the fallback for a box that somehow lacks it.
+lan_ip() {
+  case "$(uname -s)" in
+    Darwin) ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null;;
+    *) ip -4 route get 1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | grep . \
+         || hostname -I 2>/dev/null | awk '{print $1}';;
+  esac
+}
 profiles_add() { local cur; cur="$(envget COMPOSE_PROFILES)"; case ",$cur," in *",$1,"*) ;; *) envset COMPOSE_PROFILES "${cur:+$cur,}$1";; esac; }
 cmd_meshtastic() {
   step "Meshtastic"
@@ -842,7 +852,11 @@ cmd_reticulum() {
   say "this node's LXMF address:  ${B}${addr}${N}"
   echo
   echo "  In Sideband (phone or desktop):"
-  echo "    Connectivity → add a TCP Client interface → host $(lan_ip) (or $(envget MESH_NAME)) port 4242"
+  # Both halves could be empty — a node that never ran `planetai tailscale` has no MESH_NAME, and lan_ip
+  # returned nothing on Arch until it was fixed — which printed "host  (or ) port 4242" and named nowhere.
+  local host; host="$(lan_ip)"; host="${host:-<this machine LAN IP>}"
+  local dns; dns="$(envget MESH_NAME)"; [[ -n "$dns" ]] && host="$host (or $dns)"
+  echo "    Connectivity → add a TCP Client interface → host $host port 4242"
   echo "    Conversations → new → paste the address above. Send:  act 3   to record you acted on alert #3."
   echo
   echo "  To receive alerts in Sideband: copy your own LXMF address from Sideband's settings into .env as"
