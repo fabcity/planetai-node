@@ -18,7 +18,9 @@ of its ids it is added to that id in **Measured, against Part 1's ids** and no n
 | Data states | Populated is measured. Empty and refused get one wireframe each at 390 and 1440 and no measurements, as the brief asks. |
 | Widths | 375 / 390 / 768 / 1440, and the wall also at 1920 in the dark register. The breakpoint walk steps 320 → 1920 in 20 px steps. |
 | **The spacing measure** | **The skill's 4 pt/8 dp scale.** Part 1 settled this in *Where the skill and the language disagree*: the layer names no spacing scale — "spacing comes from the programme layer and `clamp()`, not from a modular scale" — and the HANDOFF records that layout, spacing and the type scale were deliberately left alone. Read against the layer itself, `references/planetai-layer.md`'s token table carries colour, opacity, weight, dash, sign and motion tokens and **not one spacing or grid token**. The layer is silent, so by Part 1's precedence the skill's rule stands. §5 `spacing-scale`. The measure is not re-argued here; it is applied. |
-| The script | `planetai-design/design/audit/2026-09/ux-review/skeleton/measure.mjs`, branch `ux-review-2026-09`, commit `3405b02` |
+| The script | `planetai-design/design/audit/2026-09/ux-review/skeleton/measure.mjs`, branch `ux-review-2026-09` |
+| **Fixed since** | branch **`ux-skeleton-fixes-2026-09`** off `ux-p0-fixes-2026-09`, four commits, `5770bd2` at the head. **S-01, S-02, S-04 and S-07 closed; S-11 bounded, not closed.** Touched: `app/static/index.html`, `app/static/dashboard.css`, `app/static/dashboard.js`, `tools/check_ui.py`, `tests/test_check_ui.py`. `make lint` and 32/32 after every commit. The numbers in this document are v0.52's and are not rewritten; where a fix changed what a finding says, the finding carries a dated correction. |
+| **One correction** | **S-11's mechanism is wrong as first filed** and is corrected in place, under its finding in Phase 1 and in the ranked table. It was filed as three undeclared widths on one node; it is a header whose shape is set by the node's own name and place string, and the correction was found by trying the fix the row recommended and watching it work on one node out of six. |
 | The sheets | the same folder: **29 wireframes, 25 guide overlays, 6 contact sheets, 25 element tables** (`.json`), the breakpoint walk (`steps.json`) and the stall test |
 | Browser | Playwright + the Chromium in `planetai-design/node_modules`, one device pixel, `prefers-reduced-motion: reduce` so the geometry is stable. Part 1 measured zero running animations under that flag, so nothing is hidden by it. |
 | Cap height | measured from the rasterised face, not assumed from a ratio: `actualBoundingBoxAscent` of "H" on a canvas set to the element's own computed font shorthand. |
@@ -55,9 +57,11 @@ of its ids it is added to that id in **Measured, against Part 1's ids** and no n
 8. **The type scale is 72 distinct size × weight × line-height × family combinations, and sixteen
    sizes carry more than one meaning.** 14 px carries six; 15, 13, 12.5, 12 and 11 carry three each.
    §6 `font-scale`. **S-09, P1**
-9. **The header reflows at 500, 640 and 740 px and no media query names any of them** — and between
-   580 and 740 it gets *taller* as the viewport widens, 108 → 112 px. §5 `breakpoint-consistency`.
-   **S-11, P1**
+9. **The header's shape is set by the node's own name and place string, not by the width.** It is a
+   wrapping flex row with no query of its own, so it reflows where the content stops fitting: twice
+   on the fixture, **five times** on the same node with its registry place line, and at **1,260 px**
+   on a node whose name and place are both long. On three of six node shapes it gets *taller* as the
+   viewport widens. §5 `breakpoint-consistency`. **S-11, P1**
 10. **28 of the 41 distinct spacing values are off the 4 pt measure, and they are 60 % of all
     8,764 instances.** The largest offenders are 7 px (1,100), 6 px (1,044), 10 px (1,000) and
     14 px (708). §5 `spacing-scale`. **S-13, P1**
@@ -194,7 +198,8 @@ value has changed, so a query at `max-width:560` shows as 580.
 What fails is the other direction. **Three of the seven widths at which the skeleton changes are
 named by nothing**, and all three are the header, which is a wrapping flex row (`:73`) with no query
 of its own. §5 `breakpoint-consistency` asks for systematic breakpoints; the page has five good ones
-and three accidents. **S-11, P1.**
+and three accidents. **S-11, P1** — and the three widths above are only this node's three: see the
+correction under S-11 in the findings below, which measures six node shapes and finds up to seven.
 
 The declared set — 560 / 640 / 700 / 820 / 900 — is also not the set the rule names (375 / 768 /
 1024 / 1440), but it is internally consistent and derived from content, which is the better reason.
@@ -234,11 +239,56 @@ word, off the screen.
 Fix in one sentence: see S-02 — one box, and the footer comes back.
 Evidence: `wall_populated_1440.json` (`doc.h 1168`, `doc.vh 900`), `wall_contact.png`.
 
-**S-11 · P1 · Medium · §5 `breakpoint-consistency` · header · 500, 640, 740.**
+**S-11 · P1 · Medium · §5 `breakpoint-consistency` · header · content-dependent.**
 See the table in 1.3. The header is the one piece of chrome present on four of six views and it
-changes shape at three widths nothing declares, including one where it grows as the viewport widens.
-Fix in one sentence: give the header a breakpoint instead of letting it wrap.
-Evidence: `steps.json`, `steps.txt`; `dashboard.css:73`.
+changes shape at widths nothing declares.
+
+**Corrected on 14 September, after an attempt to fix it.** As filed above this reads as three
+undeclared widths — 500, 640 and 740 — and that is what one node measures. It is the wrong
+mechanism. `header .wrap` is a wrapping flex row (`dashboard.css:73`) with three children, so it
+reflows where the **content** stops fitting, and two of the three children are strings the node's
+own config supplies. Stepping 320 → 1400 in 10 px steps across six node shapes
+(`measure.mjs header`):
+
+| node | place chars | place px | the header reflows at | and grows at |
+|---|---|---|---|---|
+| node #1, as the fixture ships it | 4 | 20 | 500 730 | — |
+| node #1's registry place | 37 | 222 | 500 570 590 750 940 | **570 750** |
+| a long place line | 51 | 316 | 500 570 590 850 1050 | **570 850** |
+| a very long place line | 78 | 317, clipped | 500 570 590 850 1050 | **570 850** |
+| a longer node name | 37 | 222 | 590 910 1110 | **910** |
+| both long | 51 | 316 | 570 590 660 1070 1260 | **570 1070** |
+
+Three things follow, and none of them is in the row as filed.
+
+**The widths are not a property of the page.** They move from 500/730 to 1,260 with the node's own
+data. No media query can name them, because they are not the same number on two nodes. The fix in
+the row above — "give the header a breakpoint" — was tried, at 900, an existing breakpoint: it gave
+node #1 exactly one declared reflow and left the other five shapes with two to seven. It was
+reverted rather than shipped.
+
+**The growth is worse than filed, not better.** The 108 → 112 step at 640 is gone on
+`ux-p0-fixes-2026-09` — `47beab1` made the node name an `<h1>` and changed the brand's height — so
+on node #1 the header now never grows. It only looks fixed because `bayu-2` is a short name against
+an empty place line. On the same node with its registry place string the growth returns at 570 and
+750, and on a longer-named node at 910.
+
+**One of the two unbounded inputs is now bounded.** `.brand .s` is `[city, kind]` from `/health`,
+free text from `.env`, and it was the only thing in that row with no upper bound; the name is a slug
+reviewed in a pull request, the five nav labels are the product's own words, the pill is one of
+five. It is capped at 38ch — `.bandhead`'s second column, not a new number — which is 316.57 px
+against node #1's 222, so nothing on a real node truncates today. The 78-character row above shows
+what it buys: before the bound that case reflowed at **500 570 590 620 1030 1220** and grew at 570
+and 1030; it now reflows exactly where the 51-character case does. No `.env` value can reshape the
+header past that point again.
+
+**S-11 stays open.** Closing it means bounding the node's name as well — which is the page's `<h1>`
+— or restructuring the header's markup so `.brand` and `.status` cannot wrap against each other.
+Both are the header's own round.
+
+Fix in one sentence: bound the name too, or give `.brand` and `.status` one row that cannot break.
+Evidence: `an_header.txt`, `steps.json`; `dashboard.css:73`, `:91`; `dashboard.js:1780`.
+Fixed in part: `5770bd2` on `ux-skeleton-fixes-2026-09`.
 
 **S-14 · P1 · Medium · §5 `container-width` · all · 1440.**
 Six views, five left edges. Now and Arrange start at 128, Network and locked Set up at 153, unlocked
@@ -554,8 +604,8 @@ No finding.
 ### 4.1 The type scale in use
 
 **72 distinct size × weight × line-height × family combinations across the six views and four
-widths**; 50 at 375 and 390, 53 at 768, 57 at 1440. The count is inflated by `clamp()` — fifteen of
-the 30 clamps in the file are type — but the sizes below are what a reader actually meets.
+widths**; 50 at 375 and 390, 53 at 768, 57 at 1440. The count is inflated by `clamp()` — fourteen of
+the 30 distinct clamps in the file set a type size — but the sizes below are what a reader actually meets.
 
 | px | weight | line-height | family | instances | on (first few) |
 |---|---|---|---|---|---|
@@ -1156,8 +1206,8 @@ place line arrives with `/health`, the header's wrapping flex row (`dashboard.cs
 and **the chrome the reader is already looking at grows 26 px under them** — the nav shifts 1 px and
 the hero and everything below it shift 26. On a phone that lands mid-tap. Above 560 px the place
 line is hidden (`:78`) and the header does not move, so this is a phone-only effect.
-Fix in one sentence: reserve the place line's row, or keep the header one row at every width — which
-is also S-11's fix.
+Fix in one sentence: reserve the place line's row, or keep the header one row at every width — the
+same cause as S-11, and see the correction there for why a width alone will not do it.
 Evidence: `stall_now_populated_390.json`, `stall_now_populated_1440.json`.
 
 **S-25 · P2 · — · no rule; check written here · Now, Set up.**
@@ -1186,8 +1236,8 @@ means no rule fits and the check is written here.
 | **S-08** | **P1** | Medium | §5 `visual-hierarchy`, `content-priority` | Now | all | the hero's ground drawing is **53.3 %** of the phone's first screen (187,197 px²); the headline sentence is 11.4 % | `now_populated_390_wire.png`, `an_order.txt`; `dashboard.css:120` | The ground is a background; give it the weight of one. | no |
 | **S-09** | **P1** | Medium | §6 `font-scale` | all | all | **72 distinct type combinations**; 16 sizes carry more than one weight-and-family; 14 px carries six | `an_type.txt`; `dashboard.css:65`, `:81`, `:153`, `:193`, `:286`, `:433` | Name the levels, and make each exception say which level it departs from. | no |
 | **S-10** | **P1** | Medium | §1 `heading-hierarchy` | Now, Network, Wall | all | Now's outline is four sibling h2s with the page's largest type (40 px `<p>`, 89.6 px numeral) outside it; the wall has no heading of any level | `an_headings.txt` | Make the hero sentence the page's heading and the band sentences the level under it. | no — P1-H2 covers the missing `<h1>` |
-| **S-11** | **P1** | Medium | §5 `breakpoint-consistency` | header | 500, 640, 740 | header 149 → 112 → 108 → **112** → 71 px across four undeclared reflows; it grows as the viewport widens at 640 | `steps.json`, `steps.txt`; `dashboard.css:73` | Give the header a breakpoint instead of letting it wrap. | no |
-| **S-12** | **P1** | High | §3 `content-jumping` | Now | 375, 390 | the header grows **26 px** when `/health` lands; the nav moves 1 px and everything under it moves 26 | `stall_now_populated_390.json`; `dashboard.css:73`, `:78` | Reserve the place line's row — the same fix as S-11. | no |
+| **S-11** | **P1** | Medium | §5 `breakpoint-consistency` | header | content-dependent | **corrected 14 Sep** — the reflow widths are set by the node's name and place string, not by the page: 500/730 on the fixture, five widths on the same node with its registry place, 1,260 on a long-named one, and the header grows as the viewport widens on three of six node shapes | `an_header.txt` (`measure.mjs header`); `dashboard.css:73` | Bound the name too, or give `.brand` and `.status` one row that cannot break. | no — and see the note in Phase 1 |
+| **S-12** | **P1** | High | §3 `content-jumping` | Now | 375, 390 | the header grows **26 px** when `/health` lands; the nav moves 1 px and everything under it moves 26 | `stall_now_populated_390.json`; `dashboard.css:73`, `:78` | Reserve the place line's row — the same cause as S-11. | no |
 | **S-13** | **P1** | Medium | §5 `spacing-scale` | all | all | **41 distinct values, 28 off the 4 pt measure, 5,265 of 8,764 instances (60 %)**; the largest are 7 px (1,100), 6 px (1,044), 10 px (1,000) | the histogram in 2.1; `dashboard.css:86`, `:145`, `:154`, `:176`, `:302` | Name a scale in the layer, or say in the CSS that spacing is interpolated and not stepped. | no — the layer names no scale |
 | **S-14** | **P1** | Medium | §5 `container-width` | all | all | six views, five left edges at 1440 (128 / 153 / 358 / 115); Network and locked Set up start 17–25 px right of the header's own inner edge | the guide overlays; `dashboard.css:97`, `:324` | Do not let a card's padding stand in for a page margin; keep a view's heading in its content's column. | no |
 | **S-15** | **P1** | Medium | §10 `data-density` | wall | 1920 | **262 words** on the wall's only screen against Now's 272; **12.2 % unmarked ground**, the least of any surface; density 2.9× Now's, not an order of magnitude | `an_dist.txt`, `wall_contact.png` | Decide what the other 250 words are for at three metres, and cut what has no answer. | no |
@@ -1283,6 +1333,7 @@ node measure.mjs render all          25 populated renders + 4 wireframe-only (em
 node measure.mjs steps               320 -> 1920 in 20 px steps on Now and Wall
 node measure.mjs stall <job>         layout with the API stalled, then released
 node measure.mjs sheets              one contact sheet per view, all widths at one scale
+node measure.mjs header              the header's shape against the node's own name and place
 node measure.mjs analyse <table>     grid spacing rhythm lines align type headings order
                                      dist wall dom anatomy components stack
 node measure.mjs list                the job table
