@@ -1777,7 +1777,15 @@ function render(snap, view) {
   document.getElementById('nodename').textContent = h.node || 'node';
   // The place, not the time: the time moved next to the provenance word, which is where the question
   // "how old is this, and how sure are you" gets answered in one place instead of two.
-  document.getElementById('nodeplace').textContent = [h.city, h.kind].filter(Boolean).join(' · ');
+  // .brand .s bounds this at 38ch and ellipsises past it, so the full string needs somewhere to go.
+  // title is hover-only and a phone cannot reach it — the same limitation H7 records for the
+  // freshness pill's timestamp — so it is set ONLY when the line is actually clipped, which keeps
+  // the attribute off the 27.8ch string node #1 really has and off every screen reader that would
+  // otherwise announce the place twice.
+  const _place = document.getElementById('nodeplace');
+  _place.textContent = [h.city, h.kind].filter(Boolean).join(' · ');
+  if (_place.scrollWidth > _place.clientWidth) _place.title = _place.textContent;
+  else _place.removeAttribute('title');   // `.title = ''` leaves an empty attribute on the element
   // A refused page has no reading, so it makes no claim about one. The pill used to be computed from
   // /health, which answers at every share level — so a page showing nothing wore the word `live`.
   /* The word, and when. The timestamp used to live only in `title=`, which is a hover — unreachable on

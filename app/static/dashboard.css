@@ -88,7 +88,15 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1
    in every state and a screen reader had no top of the document to jump to. Same type as before —
    the margin reset is all that changes, because h1 carries a UA margin and b does not. */
 .brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0}
-.brand .s{font-size:13px;color:var(--mute)}
+/* The one unbounded string in the header. It is [city, kind] from /health — free text a keeper
+   types into .env — and everything else in this row is bounded: the name is a slug reviewed in a
+   pull request, the five nav labels are the product's own words, the pill is one of five. An
+   unbounded string in a wrapping flex row makes the header's shape a function of the node's config
+   rather than of the width: measured, the row reflowed at 500 and 730 on node #1 and at 570, 590,
+   660, 1070 and 1260 on a node with a longer name and place, growing taller as the viewport
+   widened. 38ch is not a new number; it is .bandhead's second column. Node #1's real string
+   measures 27.8ch, so this never truncates it — it bounds the pathological case only. */
+.brand .s{font-size:13px;color:var(--mute);max-width:38ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:560px){.brand .s{display:none}
 }
 nav.views{display:flex;gap:0;border:1px solid var(--ink);max-width:100%;overflow-x:auto;scrollbar-width:none}
