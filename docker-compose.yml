@@ -94,7 +94,10 @@ services:
     environment:
       NODE_API_URL: http://app:8080
       RETICULUM_CONFIGDIR: /etc/reticulum
-    ports: ["4242:4242"]                 # TCPServerInterface: Sideband/NomadNet/other nodes connect here (LAN or tailnet)
+    # 4242: TCPServerInterface — Sideband/NomadNet/other nodes connect here (LAN or tailnet).
+    # 4243: the bridge's own health/API port, loopback only — `planetai reticulum` and the doctor poll it from
+    # the host, and without this line they never could, so a clean start still reported "the bridge did not come up".
+    ports: ["4242:4242", "127.0.0.1:4243:4243"]
     volumes:
       - ./config/reticulum:/etc/reticulum:ro
       - reticulum:/data                  # identity + LXMF storage. Deleting it gives the node a new address.
