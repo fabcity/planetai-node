@@ -108,7 +108,7 @@ const WORDS = {
         theDay: 'The day it just had', dayStart: '24 h ago', dayEnd: 'now', whereItStands: 'Where it stands', sources: 'Sources',
         thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
         source: 'Source', asOf: 'As of', word: 'Word', value: 'Value', answerOn: 'Answer on Telegram, not here.',
-        stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', whatDidYouDo: 'What did you do? (a few words)', ringCloses: 'the ring closes', noted: 'noted', theLine: 'the line',
+        stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', whatDidYouDo: 'What did you do? (a few words)', ringCloses: 'the ring closes', noted: 'noted', noAsks: 'no asks yet', nothingYet: 'nothing yet', noReport: 'no report yet', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         rho: '{closed} of {total} asks answered',
@@ -206,7 +206,7 @@ const WORDS = {
         theDay: 'Hari yang baru lewat', dayStart: '24 jam lalu', dayEnd: 'sekarang', whereItStands: 'Posisinya', sources: 'Sumber',
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
         source: 'Sumber', asOf: 'Per', word: 'Kata', value: 'Nilai', answerOn: 'Jawab di Telegram, bukan di sini.',
-        stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', whatDidYouDo: 'Apa yang Anda lakukan? (beberapa kata)', ringCloses: 'lingkarnya tertutup', noted: 'dicatat', theLine: 'batas',
+        stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', whatDidYouDo: 'Apa yang Anda lakukan? (beberapa kata)', ringCloses: 'lingkarnya tertutup', noted: 'dicatat', noAsks: 'belum ada permintaan', nothingYet: 'belum ada apa-apa', noReport: 'belum ada laporan', theLine: 'batas',
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         rho: '{closed} dari {total} permintaan dijawab',
@@ -304,7 +304,7 @@ const WORDS = {
         theDay: 'El día que acaba de pasar', dayStart: 'hace 24 h', dayEnd: 'ahora', whereItStands: 'Dónde está', sources: 'Fuentes',
         thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
         source: 'Fuente', asOf: 'A las', word: 'Palabra', value: 'Valor', answerOn: 'Responde en Telegram, no aquí.',
-        stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', whatDidYouDo: '¿Qué hiciste? (unas palabras)', ringCloses: 'el anillo se cierra', noted: 'anotado', theLine: 'el límite',
+        stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', whatDidYouDo: '¿Qué hiciste? (unas palabras)', ringCloses: 'el anillo se cierra', noted: 'anotado', noAsks: 'aún no hay peticiones', nothingYet: 'aún no hay nada', noReport: 'aún no hay informe', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
         rho: '{closed} de {total} peticiones respondidas',
@@ -947,7 +947,7 @@ const COMPONENTS = {
     const total = d.alerts_act || 0, closed = d.acted || 0;
     if (!total) {
       return `<div class="rho${d.small ? ' small' : ''}" data-component="rhoRow" role="img"`
-        + ` aria-label="no asks yet"><span class="note">no asks yet</span></div>`;
+        + ` aria-label="${esc(ctx.w.noAsks)}"><span class="note">${esc(ctx.w.noAsks)}</span></div>`;
     }
     let s = '';
     for (let i = 0; i < Math.min(total, 120); i++) s += ctx.sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
@@ -1057,11 +1057,11 @@ const COMPONENTS = {
             : a.level === 'act'
               ? `<button type="button" data-act="${esc(String(a.id))}">${esc(ctx.w.didThis)}</button>` : ''}</span></div>`;
     }).join('');
-    return `<div class="ledger" data-component="ledger">${rows || `<p class="note">nothing yet</p>`}</div>`;
+    return `<div class="ledger" data-component="ledger">${rows || `<p class="note">${esc(ctx.w.nothingYet)}</p>`}</div>`;
   },
 
   report(d, ctx) {
-    if (!d || !d.text) return `<div class="rep" data-component="report"><p class="note">no report yet</p></div>`;
+    if (!d || !d.text) return `<div class="rep" data-component="report"><p class="note">${esc(ctx.w.noReport)}</p></div>`;
     return `<div class="rep" data-component="report">`
       + `<div class="k">${esc(ctx.hhmm(d.ts))}${d.sent === false ? ' · held for quiet hours' : ''}</div>`
       // the report is the message Telegram received, and it arrives wearing Telegram's punctuation
@@ -1210,7 +1210,7 @@ const COMPONENTS = {
       + `<table class="figs" data-component="figures">`
       + `<thead><tr><th>${esc(ctx.w.figure)}</th><th>${esc(ctx.w.value)}</th>`
       + `<th>${esc(ctx.w.source)}</th><th>${esc(ctx.w.word)}</th></tr></thead>`
-      + `<tbody>${rows || `<tr><td colspan="4" class="note">nothing to show yet</td></tr>`}</tbody></table></div>`;
+      + `<tbody>${rows || `<tr><td colspan="4" class="note">${esc(ctx.w.nothingYet)}</td></tr>`}</tbody></table></div>`;
   },
 };
 
@@ -2168,6 +2168,17 @@ document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
   if (ev.target.id === 'btn-arr-done') return layoutSave(false);
   if (ev.target.id === 'btn-back') return show('now');
+  /* A token is long, typed once, and often on a phone. Without this there is no way to check what
+   * you typed before submitting it, and a wrong one only says so after a round trip. */
+  const rev = ev.target.closest('[data-reveal]');
+  if (rev) {
+    const f = document.getElementById(rev.dataset.reveal);
+    const shown = f.type === 'text';
+    f.type = shown ? 'password' : 'text';
+    rev.setAttribute('aria-pressed', String(!shown));
+    rev.textContent = shown ? 'Show' : 'Hide';
+    return;
+  }
   if (ev.target.id === 'btn-unlock') return unlock();
   if (ev.target.id === 'btn-save') return saveSettings();
 });

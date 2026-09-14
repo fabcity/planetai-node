@@ -78,12 +78,14 @@
       <p class="sub">Changing settings needs the admin token. <code>planetai ui</code> on the node prints
         it, and the weaker one below it.</p>
       <label class="sub" for="tok">Admin token</label>
-      <input type="password" id="tok" placeholder="admin token" autocomplete="off">
+      <div class="reveal"><input type="password" id="tok" placeholder="admin token" autocomplete="off">
+        <button type="button" data-reveal="tok" aria-pressed="false">Show</button></div>
       <p class="sub" id="acttok-help">Or the token for closing a loop only — it records that someone acted, and reads the
         sensors, but cannot change a setting or read a secret.</p>
       <label class="sub" for="acttok">Token for closing a loop</label>
-      <input type="password" id="acttok" placeholder="token for closing a loop" autocomplete="off"
-             aria-describedby="acttok-help">
+      <div class="reveal"><input type="password" id="acttok" placeholder="token for closing a loop"
+             autocomplete="off" aria-describedby="acttok-help">
+        <button type="button" data-reveal="acttok" aria-pressed="false">Show</button></div>
       <div class="row mt"><button class="btn" id="btn-unlock">Unlock</button><button class="btn ghost" id="btn-back">Back</button></div>
     </div>
     <div class="setup" id="setup-body" hidden>
