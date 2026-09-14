@@ -90,7 +90,23 @@ for _a in ("hero", "wall"):
     assert _anat and "'stamp'" in _anat.group(1), f"ANATOMY.{_a} must carry the cell stamp"
 assert "d.cell ? d.cell.caption" in gui and "(snap.health || {}).cell" in gui, (
     "the hero and the wall print the caption from /health")
-assert '"cell": _cell()' in open("app/main.py").read(), "/health carries the cell"
+_main_src = open("app/main.py").read()
+assert '"cell": _cell()' in _main_src, "/health carries the cell"
+
+# /presence coarsens the node's own cell before announcing it, and it reads that cell out of the dict
+# ground.facts() returns. It read `here["cell"]`; facts() has no "cell" key — it is "id" — so the guard
+# was always false, the coarsening never ran, the `except` never fired, and EVERY node announced
+# cell: null while test_shipped's "cell_to_parent is in /presence" assertion passed on the dead call.
+# Checked on node #1 (bayu-ungasan, res-8 cell 8895a4c843fffff): /presence answered "cell": null.
+# So: whatever key /presence reads off `here` must be a key facts() actually returns.
+_facts_keys = set(ground.facts(*BALI))
+_pres_src = _main_src[_main_src.index('@app.get("/presence")'):_main_src.index("def _cell(")]
+_reads = set(_re.findall(r'here(?:\.get\(|\[)["\'](\w+)["\']', _pres_src))
+assert _reads, "/presence no longer reads anything off ground.facts() — did the cell stop being announced?"
+assert _reads <= _facts_keys, (
+    f"/presence reads {sorted(_reads - _facts_keys)} off ground.facts(), which returns "
+    f"{sorted(_facts_keys)}. The announce would carry cell: null on every node.")
+print(f"  /presence reads {sorted(_reads)} from facts(), which returns {sorted(_facts_keys)}")
 assert "THE CELL THIS NODE STANDS IN" not in shipped, (
     "app/static/node-ground.svg is the fallback for a node with no coordinates yet. It is node #1's "
     "cell and must claim nothing")

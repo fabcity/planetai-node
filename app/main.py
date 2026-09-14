@@ -827,12 +827,12 @@ def presence():
     here = _cell()
     res = _presence_res()
     cell = None
-    if here and here.get("cell"):
+    if here and here.get("id"):
         try:
             import h3  # noqa: PLC0415 — only this path needs it
-            cell = h3.cell_to_parent(here["cell"], res)
+            cell = h3.cell_to_parent(here["id"], res)
         except Exception as e:  # noqa: BLE001
-            log.warning("presence: could not coarsen %s to res %d (%s)", here.get("cell"), res, e)
+            log.warning("presence: could not coarsen %s to res %d (%s)", here.get("id"), res, e)
     return {"enabled": True, "node": NODE, "cell": cell, "res": res,
             "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
 
