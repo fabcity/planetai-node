@@ -530,3 +530,16 @@ for _i, _line in enumerate(cli.split("\n"), 1):
 assert not _leaks, "a token is printed outside cmd_ui: " + "; ".join(_leaks)
 
 print("v0.44: /export carries its provenance columns, and only planetai ui prints a token")
+
+# S5: a host-side `localhost:<port>` only works if compose publishes that port. The reticulum bridge's health
+# poll used 4243 while compose published only 4242, so `planetai reticulum` and the doctor's "reticulum bridge
+# up" row reported failure on every clean, successful start (#51). HOST_PORTS names what is deliberately not a
+# container.
+HOST_PORTS = {"11434"}          # Ollama, which runs on the host by design
+_published = {_m.group(1) for _d in compose["services"].values() for _p in (_d.get("ports") or [])
+              for _m in [re.search(r"(\d+):\d+$", _p)] if _m}
+for _port in sorted(set(re.findall(r"localhost:(\d+)", cli)) - HOST_PORTS):
+    assert _port in _published, \
+        f"bin/planetai talks to localhost:{_port}, which docker-compose.yml publishes on no service"
+
+print("every localhost port the CLI uses is published by a compose service")
