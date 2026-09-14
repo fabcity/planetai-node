@@ -118,6 +118,12 @@ function jobs() {
   return j;
 }
 
+/* One name per render. PAI_LIVE measures different code; PAI_TAG captures the same drawing in a
+ * different state. Either way it must never land on another render's filename. */
+const tagged = j => ({ ...j,
+  name: j.name + (process.env.PAI_LIVE === '1' ? '_live' : '')
+    + (process.env.PAI_TAG ? '_' + process.env.PAI_TAG : '') });
+
 /* ------------------------------------------------------------------ the browser */
 async function open(job) {
   const base = job.state === 'empty' ? EMPTY : POP;
@@ -127,15 +133,40 @@ async function open(job) {
     deviceScaleFactor: 1, colorScheme: 'light', reducedMotion: 'reduce',
   });
 
-  /* A drawing that happens to be HTML: one file, no fetch, no views to switch between. It is
-   * opened from disk and measured by exactly the same COLLECT as a node page, which is the only
-   * reason a direction's numbers can be set beside the shipped page's. */
+  /* A drawing that happens to be HTML: one file, no fetch, no views to switch between. Measured by
+   * exactly the same COLLECT as a node page, which is the only reason a direction's numbers can be
+   * set beside the shipped page's.
+   *
+   * SERVED, not opened. From a file:// document Chromium refuses an external `<use href>` outright
+   * ("Unsafe attempt to load URL"), so every sign is a 0x0 box, and tokens.css's faces fail their
+   * CORS check, so Figtree and Funnel Sans fall back silently — measured: `document.fonts.check`
+   * false for both, and the sign sprite's bounding box 0x0. A drawing judged on type size and signs
+   * cannot be measured with neither. So the document is fulfilled at the node's own origin and
+   * `/static/*` comes from STATIC, which means the drawing's markup carries the same paths the
+   * node's page carries and is on the same frozen layer, byte for byte. */
   if (PAGE) {
+    /* The whole prototype folder is served as a static site and the drawing is opened at its own
+     * path inside it, so the same relative hrefs work here and under a plain
+     * `python3 -m http.server` in that folder — which is how a person reads these. */
+    const dir = path.dirname(PAGE);
+    const root = path.dirname(dir);
+    const at = '/' + path.basename(dir) + '/';
+    await ctx.route('**/*', route => {
+      const u = new URL(route.request().url());
+      if (u.origin !== POP) return route.continue();
+      const rel = u.pathname === at || u.pathname === at + 'index.html'
+        ? PAGE : path.join(root, decodeURIComponent(u.pathname).slice(1));
+      if (rel.startsWith(root) && fs.existsSync(rel) && fs.statSync(rel).isFile()) {
+        return route.fulfill({ status: 200, body: fs.readFileSync(rel),
+          headers: { 'content-type': MIME[path.extname(rel)] || 'application/octet-stream' } });
+      }
+      return route.fulfill({ status: 404, body: 'not part of this drawing' });
+    });
     const page = await ctx.newPage();
-    if (job.dark) await page.emulateMedia({ colorScheme: 'dark' });
-    await page.goto('file://' + PAGE, { waitUntil: 'load' });
+    await page.goto(POP + at + (process.env.PAI_Q || ''), { waitUntil: 'load' });
     if (job.dark) await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
-    await page.waitForTimeout(500);
+    await page.evaluate(() => document.fonts && document.fonts.ready);
+    await page.waitForTimeout(600);
     return { browser, page };
   }
 
@@ -372,8 +403,9 @@ async function render(names) {
   const want = names[0] === 'all' ? all : all.filter(j => names.includes(j.name));
   if (!want.length) { console.error('no such job:', names.join(' ')); process.exit(2); }
   for (const j0 of want) {
-    // A live render measures different code, so it must never land on a v0.52 filename.
-    const job = process.env.PAI_LIVE === '1' ? { ...j0, name: j0.name + '_live' } : j0;
+    // A live render measures different code, so it must never land on the same filename.
+    // PAI_TAG does the same for a drawing captured in more than one state.
+    const job = tagged(j0);
     let h;
     try {
       h = await open(job);
@@ -1084,7 +1116,9 @@ function aStack() {
  */
 const ROLES = {
   sentence: ['[data-component="sentence"]', '[data-role="sentence"]', '.hero p.big', '.wall p.big'],
-  numeral: ['[data-component="sentence"] b.mono', '[data-role="numeral"]', '.hero p.big b', '.wall p.big b'],
+  /* The monument numeral. `b.mono` and not `p.big b`: ancestors are not checked, so a descendant
+   * selector ending in a bare tag matched the header's own <b>. */
+  numeral: ['[data-role="numeral"]', 'b.mono'],
   state: ['[data-component="kicker"] .state', '[data-role="state"]', '.hero .k .state', '.wall .k .state'],
   ask: ['[data-component="askStrip"]', '[data-role="ask"]', '.askstrip'],
   asof: ['[data-role="asof"]', '.asof', '#headprov .asof', '.wall .foot'],
@@ -1114,6 +1148,11 @@ function matches(e, sel) {
   const last = parts[parts.length - 1];
   const bits = last.match(/^([a-z0-9]+)?((?:[.#][A-Za-z0-9_-]+)*)$/i);
   if (!bits) throw new Error('measure.mjs: ROLES selector not supported: ' + sel);
+  /* Ancestors are not checked — COLLECT records elements, not a tree — so a descendant selector
+   * whose last part is a bare tag would match that tag ANYWHERE. `.hero p.big b` reported the
+   * header's own <b> as the hero's monument numeral, and a refused page with no numeral at all
+   * passed T1's numeral leg. A descendant selector has to end in something distinctive. */
+  if (parts.length > 1 && !bits[2]) return false;
   if (bits[1] && e.tag !== bits[1].toUpperCase()) return false;
   for (const b of (bits[2] || '').match(/[.#][A-Za-z0-9_-]+/g) || []) {
     if (b[0] === '#' && e.id !== b.slice(1)) return false;
@@ -1155,6 +1194,30 @@ function aTargets() {
       t1.index = role(d, 'indexRow').els.filter(e => inFold(e, d)).length;
       t1.mini = role(d, 'miniStack').els.some(e => inFold(e, d));
     }
+    /* T1b — what the index and the mini stack are FOR: the whole environmental picture on the first
+     * screen. The literal legs above name the shipped page's own composition, and a direction that
+     * dissolves the index into the page answers the question without carrying an index. Both are
+     * reported: the legs, and the thing they exist to deliver.
+     *
+     * An issue is "named with a number" when a numeral in the fold is keyed `<issue>.<something>`.
+     * That is how every direction marks them, and it needs no index. */
+    const NOT_ISSUE = ['funnel', 'peer', 'rho', 'place', 'satellite'];
+    const issueOf = e => String(e.dnum).split('.')[0];
+    const named = new Set(d.els.filter(e => e.dnum && inFold(e, d))
+      .map(issueOf).filter(k => !NOT_ISSUE.includes(k)));
+    /* The denominator is every issue the PAGE names, not every issue a band declares: a direction
+     * that dissolves the index into the page carries no `data-band="issue:*"` outside its lead, and
+     * counting those reported three issues out of one. */
+    const allIssues = new Set(d.els.filter(e => e.dnum)
+      .map(issueOf).filter(k => !NOT_ISSUE.includes(k)));
+    /* A page that declares no numerals at all cannot be asked this question: the shipped page shows
+     * four issues with numbers and marks none of them, and reporting "0 of 4" would read as a
+     * failure of composition where it is an absence of declaration. */
+    /* The LIST, not a ratio. A denominator derived from the page's own keys counts a readout's
+     * metric as an issue, and "2 of 9" reads as a failure where "water air" is a fact anybody can
+     * check against the screenshot. */
+    const anyNum = d.els.some(e => e.dnum !== null);
+    const t1b = !anyNum ? '— (no data-num)' : ([...named].sort().join(' ') || 'none');
 
     /* T2 — the empty share of the first viewport, and the whole page in viewports.
      * Marked ground is the UNION of what is drawn, rasterised on a 4 px grid: a line of text
@@ -1167,9 +1230,17 @@ function aTargets() {
           for (let gx = Math.max(0, Math.floor(x / G)); gx < Math.min(gw, Math.ceil((x + ww) / G)); gx++)
             grid[gy * gw + gx] = 1;
       };
-      for (const l of d.lines) if (l.y < vh) mark(l.x, l.y, l.w, l.h);
+      /* T2 as written: a pixel is full when it is inside an element that CARRIES text, a mark, a
+       * sign, an image or a control — and "padding inside such an element counts as full". So the
+       * whole box of such an element is marked, not only its glyphs. `hasText` is a DIRECT text
+       * child, which is what "carries" means: <body> contains every word on the page and carries
+       * none of them.
+       *
+       * This is NOT the skeleton review's "unmarked ground", which rasterises line boxes and media
+       * alone. That measure answers "how much ink is on the screen"; this one answers "how much of
+       * the screen is occupied by things", which is the question the complaint asks. */
       for (const e of d.els) {
-        if (e.y >= vh || !(e.kind === 'media' || e.kind === 'control')) continue;
+        if (e.y >= vh || !(e.hasText || e.kind === 'media' || e.kind === 'control')) continue;
         /* Two readings, because the literal target has a loophole worth naming. T2 counts a pixel
          * as full if it sits inside anything carrying "text, a mark, a sign, an image or a
          * control", and a decorative full-bleed background IS an image — so a page can pass T2 by
@@ -1180,7 +1251,9 @@ function aTargets() {
         if (which === 'read' && e.hidden) continue;
         mark(e.x, e.y, e.w, e.h);
       }
-      grids[which] = 100 * (1 - grid.reduce((a, b) => a + b, 0) * 16 / (w * vh));
+      /* Against the grid's own area, not the viewport's: at 390 the 4 px grid is 98 cells wide,
+       * which is 392 px, and dividing by 390 reported a page as -0.5 % empty. */
+      grids[which] = 100 * (1 - grid.reduce((a, b) => a + b, 0) / (gw * gh));
     }
     const empty = grids.lit, emptyRead = grids.read;
     const screens = d.doc.h / vh;
@@ -1213,9 +1286,13 @@ function aTargets() {
      * a row; eight pixels of difference in y is the same line, not an order. */
     const fold = d.els.filter(e => inFold(e, d) && e.w * e.h > 400)
       .filter(e => e.hasText || e.kind !== 'box' || e.dc);
-    const byDom = [...fold].sort((a, b) => a.dom - b.dom);
     const byPos = [...fold].sort((a, b) => (Math.abs(a.y - b.y) <= 8 ? a.x - b.x : a.y - b.y));
-    const diverge = byPos.filter((e, i) => byDom[i] !== e).length;
+    /* Adjacent inversions, not rank differences. One element moved ten places up makes twenty ranks
+     * differ, so a single swap was reporting as forty divergences and a page with one two-column
+     * block looked catastrophic beside a page with ten. This counts the swaps: it is zero exactly
+     * when reading order and DOM order agree, and it grows by one per place they actually disagree. */
+    let diverge = 0;
+    for (let i = 0; i + 1 < byPos.length; i++) if (byPos[i].dom > byPos[i + 1].dom) diverge++;
 
     /* T7 — the wall at three metres. 1 px = 0.63 mm at 1920 on a 55-inch 16:9 panel; the floor is
      * about 3 mm of cap height per metre, so 9 mm. */
@@ -1238,6 +1315,7 @@ function aTargets() {
     rows.push([n, w,
       `${yes(t1.sentence)}${yes(t1.numeral)}${yes(t1.state)}${yes(t1.ask)}${yes(t1.asof)}`
         + (t1.index === undefined ? '' : ` · idx ${t1.index} ${yes(t1.mini)}`),
+      t1b,
       empty.toFixed(1) + ' / ' + emptyRead.toFixed(1) + ' %', screens.toFixed(1),
       kinds.length ? `${kinds.length}: ${kinds.join(' ')}` : '**0**',
       `${orphanNums.length} / ${nums.length} (${drawn} drawn)`,
@@ -1250,7 +1328,7 @@ function aTargets() {
     + 'decoration (read). T3 is distinct data-kind. T4 is [data-num] with no [data-cmp]. T5 is '
     + '[data-component] with no [data-ref] in or out. T6 is position-order divergences from DOM '
     + 'order. T7 is cap height at 1920 dark.\n');
-  console.log(tbl(['render', 'w', 'T1', 'T2 empty lit/read', 'T2 screens', 'T3 kinds', 'T4 orphan nums',
+  console.log(tbl(['render', 'w', 'T1', 'T1b issues named', 'T2 empty lit/read', 'T2 screens', 'T3 kinds', 'T4 orphan nums',
     'T5 orphan comps', 'T6 diverge', 'T7 wall'], rows));
 }
 
@@ -1266,7 +1344,8 @@ async function shots(names) {
   const all = jobs();
   const want = names[0] === 'all' ? all : all.filter(j => names.includes(j.name));
   if (!want.length) { console.error('no such job:', names.join(' ')); process.exit(2); }
-  for (const job of want) {
+  for (const j0 of want) {
+    const job = tagged(j0);
     let h;
     try {
       h = await open(job);
