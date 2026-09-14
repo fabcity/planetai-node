@@ -1,5 +1,90 @@
 # Changelog
 
+## v0.53 — 2026-09-14 — the page stops telling a household things the node never said
+
+The dashboard was walked as the five people who open it and then measured as a drawing. Both readings
+are in this repo: `docs/design/UX_REVIEW_2026-09.md` is the walk, 64 findings each with a screenshot
+and a rule; `docs/design/UX_REVIEW_2026-09_skeleton.md` is the geometry, 26 more, every number out of
+one committed script. The four P0s below are one fault in four shapes — the page asserting something
+the node had not written — and they were all on screens a household reads without a keeper beside it.
+
+**The hero and the wall printed `17 MG/M³` where the node had written `17 µg/m³`.** `.k` carries
+`text-transform:uppercase`, and on one character an uppercase is a translation: `µ` becomes `M`.
+Milligrams for micrograms, a factor of a thousand, on the Now hero, on every issue band head and on
+the wall at 1920 where nobody can walk over and check — two lines above a sentence that had the unit
+right. A household had two numbers and nothing on the page said which to believe. The page may shout
+its own words and never the node's: the node's prose now sits in a class that opts out, and
+`check_ui.py` fails if a new uppercasing rule appears without someone looking at it.
+
+**A gap in the day was drawn as a line through it.** Two places filtered nulls out of a series and
+joined what was left, so a sensor offline from 08:00 to 15:00 became a six-hour ramp that rose across
+the WHO line the page judges against and came back. The polyline carried 17 points where the series
+had 24, and the `aria-label` still said "2 traces over 24 hours". The chart stated a reading nobody
+took, and the reading it stated was a threshold crossing. A hole in a series is a hole in the line now.
+
+**The dashboard was English-only on every node, including the ones speaking Bahasa and Spanish.**
+`/issues` carried no `locale` key at any level, so `mkCtx`'s check was always false and the page
+pinned to `en` — with `ALERT_LOCALE=es` set on the node and every sentence being delivered in three
+languages everywhere else. The node publishes the household's language now and the page reads it. The
+first render in Bahasa and Spanish then showed several hundred lines of `WORDS` that had never been
+drawn at all.
+
+**At `SHARE_LEVEL=off` the wall was a black 1920×1080 screen and the Network view a blank white one.**
+`render()`'s refused branch wrote `#hero` and returned before it reached `#wallbox` or `#netbody`, and
+`body.wallview` hides `#hero`. The surface nobody is standing at is the one that went dark: a household
+walking past read a dead node where the node had a sentence explaining itself. Every view's mount draws
+the refusal now, and the header pill stopped saying `live` over readings that were all refused.
+
+**The wall was one viewport plus two paddings, so the word `stale` fell off the bottom of it.**
+`index.html` carried `class="wall"` on the section *and* on the mount inside it, and `.wall` sets
+`min-height:100vh` and a padding, so both applied: the document measured **1,208 px on a 1,080 px
+screen** and 1,167 on a 900 px one. A wall does not scroll. At 1440 — a laptop on a shelf, the
+commonest wall in the field — the ρ caption, the node name, `As of HH:MM` and **`stale`** were all
+below the fold, so a household read a number and was never shown the word saying it was old. The class
+is on the mount alone now: 1,080 at 1920, the viewport exactly. A structural rule in `check_ui.py`
+fails if a viewport-height class ever lands on an element and its own ancestor again.
+
+**The ledger's message column was 52 pixels wide on a phone.** Below 640 px the row drops to two
+columns and only the last of its four children was placed, so the message — the sentence the node
+wrote — auto-placed into the 52 px *timestamp* column while the button answering it got 288. Fourteen
+rows, 94 line boxes of six to twelve characters. It is also why the page was the length it was: the
+loop band was **34.6 % of the whole phone page**, the tallest band on it, against the headline air
+band's 17.7 %. One declaration moved the message to the column it belongs in: 288 px, worst line 47
+characters, and the page fell from 9,290 px to 7,978.
+
+**Smaller, and each one measured rather than read off the stylesheet:** `.note` was the one prose class
+with no measure and ran to **141 characters a line** in the Network band, against the 60–75 a reader can
+follow, and now takes the 52ch `.field .help` already used at the same size; the header's shape was a
+function of `NODE_NAME` and `NODE_CITY` rather than of the width, reflowing at 500 and 730 px on one
+node and at 590, 1040 and 1230 on another and growing taller as the viewport widened on four of six
+node shapes, and now reflows at 800 and 1210 on every one of them and never grows; and the header
+stopped moving 25 px under the reader when `/health` answered, because `#headprov` ships empty and the
+row it fills is reserved. **axe reports zero violations** on every view, every state and every width,
+against 57 serious and 11 critical when the review was written.
+
+**A node on Arch could not say where it is, so Sideband was told to connect to nowhere.** `lan_ip()`
+read `hostname -I`, which is net-tools and therefore Debian and Ubuntu; Arch ships inetutils, whose
+`hostname` rejects the flag outright. Five callers printed a blank where the address goes, and the one
+that matters — the only instruction the reticulum command gives — has no placeholder. `ip route get` is
+iproute2, which is on every Linux that can run Docker.
+
+**A working reticulum start said it had failed.** `cmd_reticulum()` and the doctor both poll
+`localhost:4243/health`, and compose published only 4242 — so the poll could never succeed, every clean
+start ended in "the bridge did not come up", and the LXMF address and the Sideband instructions, which
+are the whole point of the command, were never printed. One line publishes 4243 on loopback only. The
+guard is general: every `localhost:<port>` the CLI talks to must be published by some compose service.
+
+**The make pack is specified, not built.** `docs/proposals/make-pack.md` — what can be made near a node
+and who nearby can make it. The endpoint, the storage, the coordinates and the one real OKH id were read
+live from the hosted OHM instance on 12 September rather than inferred.
+
+**Two things this release does not fix, and says so rather than closing them quietly.** The wall still
+shows a model estimate in 120 px type and never names a source or says `model`, because `ANATOMY.wall`
+carries no `chips`. And at 1440 the wall's content needs 1,052 px on a 900 px screen, so its footer is
+still off the bottom there — the double padding is gone, the composition is not. Both are decisions
+about the most designed surface in the product and belong to a design round rather than to a fix.
+Sixteen P2s from the walk stay open and are listed in the review.
+
 ## v0.52 — 2026-09-13 — the drawings stop arguing with the numbers beside them
 
 The September design audit's evidence moved out of this repo and its findings were closed one at a time.
