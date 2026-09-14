@@ -351,6 +351,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
 .field .src{display:block;font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-top:3px}
 /* Where the node's refusal lands. Ink, not a colour: red on this page means a reading crossed a line,
    and a rejected setting is not a reading. It sits under its own field and nowhere else. */
+/* The age of what the page is showing, beside the word that says how sure it is. It used to be a
+   title= — a hover, which a phone and a wall do not have. */
+.asof{margin-left:10px;font:500 11px var(--mono);letter-spacing:.06em;color:var(--mute)}
 .field .err{margin:8px 0 0;font-size:13px;line-height:1.5;color:var(--ink);border-left:2px solid var(--signal-worse);padding-left:10px}
 .field .help{font-size:13px;color:var(--mute);margin-top:6px;max-width:52ch;line-height:1.55}
 .field input,.field select{width:100%;background:var(--raise);border:1px solid var(--hair);border-radius:0;padding:10px 12px;color:var(--ink);font:500 14px var(--fc-font-body)}

@@ -786,6 +786,10 @@ def health():
             # refused household actually sees is the one that most needs to be in their language.
             # Not a secret: ALERT_LOCALE is already in settings.PUBLIC and /settings hands out its value.
             "locale": settings.get("ALERT_LOCALE", "en"),
+            # And the clock the readings were taken on. The dashboard formatted every timestamp in the
+            # VIEWER's timezone, so a Madrid node polling at 17:35 read "As of 11:40 PM" on a laptop in
+            # Bali and nothing on the page named a zone. A reading belongs to the place it was taken in.
+            "tz": os.getenv("NODE_TZ", ""),
             "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
 

@@ -108,7 +108,7 @@ const WORDS = {
         theDay: 'The day it just had', whereItStands: 'Where it stands', sources: 'Sources',
         thePlace: 'The place', theLoop: 'The loop', figures: 'Figures', figure: 'Figure',
         source: 'Source', asOf: 'As of', word: 'Word', answerOn: 'Answer on Telegram, not here.',
-        stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', noted: 'noted', theLine: 'the line',
+        stale: 'stale', restoreOne: 'Put a hidden band back…', didThis: 'I did this', whatDidYouDo: 'What did you do? (a few words)', ringCloses: 'the ring closes', noted: 'noted', theLine: 'the line',
         headlineRule: 'The issue with most to say leads. Ties go to the order this place chose, under Set up → Issues.',
         refused: 'This node is not sharing its readings with the network.',
         rho: '{closed} of {total} asks answered',
@@ -206,7 +206,7 @@ const WORDS = {
         theDay: 'Hari yang baru lewat', whereItStands: 'Posisinya', sources: 'Sumber',
         thePlace: 'Tempat', theLoop: 'Lingkar', figures: 'Angka', figure: 'Angka',
         source: 'Sumber', asOf: 'Per', word: 'Kata', answerOn: 'Jawab di Telegram, bukan di sini.',
-        stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', noted: 'dicatat', theLine: 'batas',
+        stale: 'basi', restoreOne: 'Kembalikan bagian yang disembunyikan…', didThis: 'Saya sudah', whatDidYouDo: 'Apa yang Anda lakukan? (beberapa kata)', ringCloses: 'lingkarnya tertutup', noted: 'dicatat', theLine: 'batas',
         headlineRule: 'Isu yang paling banyak bicara tampil lebih dulu. Jika seri, urutannya mengikuti pilihan tempat ini, di Set up → Issues.',
         refused: 'Node ini tidak membagikan bacaannya ke jaringan.',
         rho: '{closed} dari {total} permintaan dijawab',
@@ -304,7 +304,7 @@ const WORDS = {
         theDay: 'El día que acaba de pasar', whereItStands: 'Dónde está', sources: 'Fuentes',
         thePlace: 'El lugar', theLoop: 'El bucle', figures: 'Cifras', figure: 'Cifra',
         source: 'Fuente', asOf: 'A las', word: 'Palabra', answerOn: 'Responde en Telegram, no aquí.',
-        stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', noted: 'anotado', theLine: 'el límite',
+        stale: 'viejo', restoreOne: 'Devuelve una banda oculta…', didThis: 'Hice esto', whatDidYouDo: '¿Qué hiciste? (unas palabras)', ringCloses: 'el anillo se cierra', noted: 'anotado', theLine: 'el límite',
         headlineRule: 'La cuestión con más que decir va primero. Los empates siguen el orden que eligió este lugar, en Set up → Issues.',
         refused: 'Este nodo no comparte sus lecturas con la red.',
         rho: '{closed} de {total} peticiones respondidas',
@@ -428,14 +428,36 @@ const mkCtx = (snap, view) => {
     as_of: (snap.issues && snap.issues.as_of) || snap.as_of || null,
     fixture: snap.fixture || null,
     fmt: (v, dp = 0) => (v == null || isNaN(v) ? '—' : Number(v).toFixed(dp)),
-    hhmm: ts => { try { return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } },
+    /* The NODE's clock and the node's own 24-hour reading of it.
+     *
+     * `toLocaleTimeString([])` is the VIEWER's locale and the viewer's timezone: a node in Madrid
+     * polling at 17:35 read `As of 11:40 PM` on a laptop in Bali, and nothing on the page named a
+     * zone. A reading belongs to the place it was taken in, and this page is about one place.
+     * `timeZone` comes from /health so the node stays the authority on where it is; a browser that
+     * does not know the zone falls back rather than throwing the whole header away. */
+    hhmm: ts => {
+      if (!ts) return '';
+      const opt = { hour: '2-digit', minute: '2-digit', hour12: false };
+      const tz = (snap.health || {}).tz;
+      try { return new Date(ts).toLocaleTimeString('en-GB', tz ? { ...opt, timeZone: tz } : opt); }
+      catch (e) { try { return new Date(ts).toLocaleTimeString('en-GB', opt); } catch (e2) { return ''; } }
+    },
     sign: (id, cls = '') => `<svg class="sg ${cls}" aria-hidden="true"><use href="static/signs.svg#sign-${id}"/></svg>`,
     // `prov` is in the class on purpose: tools/check_ui.py's ink-only rule keys on that word, and a
     // pill called anything else is a pill the gate does not guard. Provenance is a glyph and a
     // word, never a colour — a coloured pill reads as a verdict on the number beside it.
-    pill: (word, note = '') => word
-      ? `<span class="pill prov" title="${esc(note)}"><svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(word)}"/></svg>${esc(word)}</span>`
-      : '',
+    /* A fixture is a committed snapshot, so nothing on it was measured just now. The header pill was
+     * coerced to `cached` and the twelve figure pills inside the page were not — they carried the
+     * provenance captured on node #1 on 6 September, so a page explicitly rendered from a week-old
+     * file said `live` beside its numbers. LANGUAGE_GAP.md §7 claimed "nothing wears `live` that was
+     * not read in the last poll"; that held for the header pill only. It holds for all of them now. */
+    pill: (word, note = '') => {
+      const w = FIXTURE && word === 'live' ? 'cached' : word;
+      return w
+        ? `<span class="pill prov" title="${esc(FIXTURE && word === 'live' ? 'a committed snapshot; this figure was live when it was captured' : note)}">`
+          + `<svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(w)}"/></svg>${esc(w)}</span>`
+        : '';
+    },
   };
 };
 
@@ -1449,12 +1471,17 @@ function netMap(d, ctx) {
   const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
   // The six facts, once. The figure and the list below it are two renderings of this and nothing
   // else, so they cannot come to disagree.
-  const IN = [[w.yours, n(d.own, w.sensor, w.sensors)],
-              [w.street, n(d.ring, w.station, w.stations)],
-              [w.models, n(d.models, w.model, w.models_)]];
-  const OUT = [[w.means, d.parentName || w.parentNowhere],
-               [w.cellsOut, t(w.cellsN, { n: (d.cells || []).length })],
-               [w.rhoOut, t(w.rhoN, { closed: d.acted, total: d.asks })]];
+  // The third element is whether anything actually travels this way. R6: a motion with no datum behind
+  // it is deleted — and `rows()` drew a wire AND a travelling dot for every row unconditionally, so a
+  // fresh node with `0 sensors` and `0 public stations` animated data moving along two links that
+  // carry nothing, outward to `nowhere yet`. docs/GUI.md has always said "flows animate along real
+  // links only". The wire stays either way: the link exists, it is the traffic that does not.
+  const IN = [[w.yours, n(d.own, w.sensor, w.sensors), d.own > 0],
+              [w.street, n(d.ring, w.station, w.stations), d.ring > 0],
+              [w.models, n(d.models, w.model, w.models_), d.models > 0]];
+  const OUT = [[w.means, d.parentName || w.parentNowhere, !!d.parentName],
+               [w.cellsOut, t(w.cellsN, { n: (d.cells || []).length }), (d.cells || []).length > 0],
+               [w.rhoOut, t(w.rhoN, { closed: d.acted, total: d.asks }), d.asks > 0]];
   const kept = t(w.kept, { n: (h.ingested || 0).toLocaleString() });
 
   // A wire per row: in-wires run label -> node, out-wires node -> label, so the dash march and the
@@ -1468,7 +1495,7 @@ function netMap(d, ctx) {
                          : `M${675 + dx} ${ey} C 800 ${ey} 800 ${y} 858 ${y}`;
   };
 
-  const rows = (side, items) => items.map(([label, value], i) => {
+  const rows = (side, items) => items.map(([label, value, flowing], i) => {
     const y = 96 + i * 84;
     const x = side === 'in' ? 430 : 872;
     const d = wire(side, y), ink = side === 'in' ? 'var(--ink)' : 'var(--cells)';
@@ -1476,9 +1503,10 @@ function netMap(d, ctx) {
       + ` font-size="11" letter-spacing=".1em" fill-opacity=".65">${esc(label.toUpperCase())}</text>`
       + `<text x="${x}" y="${y + 14}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="fig"`
       + ` font-size="15" font-family="var(--fc-font-body)">${esc(value)}</text>`
-      + `<path class="wire" d="${d}" fill="none" stroke="${ink}" stroke-width="1.6" stroke-opacity=".55"/>`
-      + `<circle class="dot" r="3.5" fill="${ink}"`
-      + ` style="offset-path:path('${d}');animation-duration:${7 + i * 2.5}s"/>`;
+      + `<path class="wire" d="${d}" fill="none" stroke="${ink}" stroke-width="1.6"`
+      + ` stroke-opacity="${flowing ? '.55' : '.22'}"${flowing ? '' : ' stroke-dasharray="3 5"'}/>`
+      + (flowing ? `<circle class="dot" r="3.5" fill="${ink}"`
+                   + ` style="offset-path:path('${d}');animation-duration:${7 + i * 2.5}s"/>` : '');
   }).join('');
 
   const svg = `<svg class="net" viewBox="0 0 1200 380" role="img" aria-label="${esc(w.title)}">`
@@ -1721,10 +1749,15 @@ function render(snap, view) {
     [h.city, h.kind, ctx.as_of ? `${ctx.w.asOf} ${ctx.hhmm(ctx.as_of)}` : ''].filter(Boolean).join(' · ');
   // A refused page has no reading, so it makes no claim about one. The pill used to be computed from
   // /health, which answers at every share level — so a page showing nothing wore the word `live`.
+  /* The word, and when. The timestamp used to live only in `title=`, which is a hover — unreachable on
+   * a phone, unreachable by touch, and unreachable on the wall. "How old is this?" is the second
+   * question anybody asks of a number and the answer was behind a mouse. */
+  const when = ctx.as_of || h.last_poll;
   document.getElementById('headprov').innerHTML =
     snap.refused ? ''
-    : ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
-                  : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || '');
+    : (ctx.fixture ? ctx.pill('cached', 'rendered from a committed snapshot, not from live readings')
+                   : ctx.pill(ctx.staleFor(h.last_poll) ? 'cached' : 'live', h.last_poll || ''))
+      + (when ? `<span class="asof">${esc(ctx.w.asOf)} ${esc(ctx.hhmm(when))}</span>` : '');
 
   /* SHARE_LEVEL=off with no token: the shell, and the node's own sentence about why. Not a blank.
    *
@@ -1885,25 +1918,38 @@ function wireSatellites(root) {
  * produce — went up for a dismissed dialog. Cancel now means cancel.
  */
 async function act(id, btn) {
-  const note = prompt('What did you do? (a few words)');
-  if (note === null) return;                                    // Cancel means cancel
+  // The words this function says, in the household's language. act() runs outside render() and had no
+  // ctx, so its visible strings were English on a page now written in three.
+  const w = mkCtx(LAST || {}, 'now').w;
+  // The token check came AFTER the dialog, so somebody with no token typed what they had done and was
+  // only then told the screen could not record it. Their words went nowhere. Ask nothing you cannot use.
   const tok = tok_();
   if (!tok) {
     toast('This screen has no token, so it cannot record that. Reply /act ' + id + ' on Telegram, '
       + 'or run planetai ui on the node for a token that only closes loops.', true);
     return;
   }
+  const note = prompt(w.whatDidYouDo);
+  if (note === null) return;                                    // Cancel means cancel
   try {
     const r = await fetch('/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'X-Agent': 'dashboard', ...auth_() },
       body: JSON.stringify({ alert_id: Number(id), stage: 'acted', note: note || 'acted' }),
     });
-    if (!r.ok) throw new Error(String(r.status));
+    if (!r.ok) {
+      // "try again in a moment" was wrong, and it was the advice most likely to be taken: a 404 here is
+      // `no such alert`, and trying again never works. The node says which it is; say that instead.
+      const said = await r.json().then(j => j && j.detail).catch(() => null);
+      toast(typeof said === 'string' && said
+        ? `The node did not record that: ${said}`
+        : `The node did not record that (${r.status}). Nothing was written.`, true);
+      return;
+    }
     if (btn) btn.replaceWith(Object.assign(document.createElement('span'),
-      { className: 'done', textContent: 'noted · the ring closes' }));
+      { className: 'done', textContent: `${w.noted} · ${w.ringCloses}` }));
   } catch (e) {
-    toast('The node did not record that. Nothing was written; try again in a moment.', true);
+    toast('The node could not be reached. Nothing was written; try again in a moment.', true);
   }
 }
 
