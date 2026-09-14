@@ -84,6 +84,7 @@ test_sudo_prompt|bash tests/test_sudo_prompt.sh
 test_running_state|bash tests/test_running_state.sh
 test_preflight|bash tests/test_preflight.sh
 test_geocode|bash tests/test_geocode.sh
+test_lan_ip|bash tests/test_lan_ip.sh
 test_sources|PYTHONPATH=/tmp/stub:app python3 tests/test_sources.py
 test_nearby|PYTHONPATH=/tmp/stub:app python3 tests/test_nearby.py
 test_forecast|PYTHONPATH=/tmp/stub:app python3 tests/test_forecast.py
@@ -115,10 +116,10 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Thirty-two is the number of suites in the list above. If the list and this number disagree, one of them
+# Thirty-three is the number of suites in the list above. If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
-if [ "$total" -ne 32 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 32 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 33 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 33 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1
