@@ -87,7 +87,13 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;gap:1
 /* The node's name is the page's h1. It was a <b>, so axe reported page-has-heading-one on every view
    in every state and a screen reader had no top of the document to jump to. Same type as before —
    the margin reset is all that changes, because h1 carries a UA margin and b does not. */
-.brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0}
+/* Bounded for the same reason .brand .s below it is: NODE_NAME is a bootstrap setting, free text a
+   keeper types into .env at setup, and an unbounded string in a wrapping flex row makes the
+   header's shape a function of the node's config. 24ch is not a new number — it is .hero p.big's
+   measure. Node #1 is 5.7ch and node #2 6.8ch; a descriptive `ungasan-rooftop` is 14.0ch, so this
+   clips nothing anyone has typed. The clip is visual only: the h1 keeps its full text, so the
+   document's heading and the accessible name are unchanged. */
+.brand h1{font:800 17px var(--fc-font-display);letter-spacing:-.02em;margin:0;max-width:24ch;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* The one unbounded string in the header. It is [city, kind] from /health — free text a keeper
    types into .env — and everything else in this row is bounded: the name is a slug reviewed in a
    pull request, the five nav labels are the product's own words, the pill is one of five. An

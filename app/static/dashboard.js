@@ -1774,7 +1774,11 @@ function render(snap, view) {
   document.body.classList.toggle('wallview', view === 'wall');
 
   const h = snap.health || {};
-  document.getElementById('nodename').textContent = h.node || 'node';
+  const _name = document.getElementById('nodename');
+  _name.textContent = h.node || 'node';
+  // as with the place line: the attribute only when the name is actually clipped
+  if (_name.scrollWidth > _name.clientWidth) _name.title = _name.textContent;
+  else _name.removeAttribute('title');
   // The place, not the time: the time moved next to the provenance word, which is where the question
   // "how old is this, and how sure are you" gets answered in one place instead of two.
   // .brand .s bounds this at 38ch and ellipsises past it, so the full string needs somewhere to go.
