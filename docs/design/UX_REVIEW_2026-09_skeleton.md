@@ -19,7 +19,7 @@ of its ids it is added to that id in **Measured, against Part 1's ids** and no n
 | Widths | 375 / 390 / 768 / 1440, and the wall also at 1920 in the dark register. The breakpoint walk steps 320 → 1920 in 20 px steps. |
 | **The spacing measure** | **The skill's 4 pt/8 dp scale.** Part 1 settled this in *Where the skill and the language disagree*: the layer names no spacing scale — "spacing comes from the programme layer and `clamp()`, not from a modular scale" — and the HANDOFF records that layout, spacing and the type scale were deliberately left alone. Read against the layer itself, `references/planetai-layer.md`'s token table carries colour, opacity, weight, dash, sign and motion tokens and **not one spacing or grid token**. The layer is silent, so by Part 1's precedence the skill's rule stands. §5 `spacing-scale`. The measure is not re-argued here; it is applied. |
 | The script | `planetai-design/design/audit/2026-09/ux-review/skeleton/measure.mjs`, branch `ux-review-2026-09` |
-| **Fixed since** | branch **`ux-skeleton-fixes-2026-09`** off `ux-p0-fixes-2026-09`, six commits, `0441653` at the head. **S-01, S-02, S-04, S-07 and S-11 closed.** S-12 is not, and S-01 closes at 1920 and 390 but not at 1440 — both are marked at their findings. Touched: `app/static/index.html`, `app/static/dashboard.css`, `app/static/dashboard.js`, `tools/check_ui.py`, `tests/test_check_ui.py`. `make lint` and 32/32 after every commit. The numbers in this document are v0.52's and are not rewritten; where a fix changed what a finding says, the finding carries a dated correction. |
+| **Fixed since** | branch **`ux-skeleton-fixes-2026-09`** off `ux-p0-fixes-2026-09`, seven commits, `5943e0c` at the head. **S-01, S-02, S-04, S-07, S-11 and S-12 closed.** S-01 closes at 1920 and 390 but not at 1440, which is marked at its finding. Touched: `app/static/index.html`, `app/static/dashboard.css`, `app/static/dashboard.js`, `tools/check_ui.py`, `tests/test_check_ui.py`. `make lint` and 32/32 after every commit. The numbers in this document are v0.52's and are not rewritten; where a fix changed what a finding says, the finding carries a dated correction. |
 | **One correction** | **S-11's mechanism is wrong as first filed** and is corrected in place, under its finding in Phase 1 and in the ranked table. It was filed as three undeclared widths on one node; it is a header whose shape is set by the node's own name and place string, and the correction was found by trying the fix the row recommended and watching it work on one node out of six. |
 | The sheets | the same folder: **29 wireframes, 25 guide overlays, 6 contact sheets, 25 element tables** (`.json`), the breakpoint walk (`steps.json`) and the stall test |
 | Browser | Playwright + the Chromium in `planetai-design/node_modules`, one device pixel, `prefers-reduced-motion: reduce` so the geometry is stable. Part 1 measured zero running animations under that flag, so nothing is hidden by it. |
@@ -325,9 +325,10 @@ the fixed slot instead of widening the header — the place clips at 219 px rath
 25-character name — and both strings keep their full text in `title`. And the 460 px slot is mostly
 empty on node #1, whose brand needs 113 px.
 
-**This does not touch S-12.** The slots reserve width, not height: at 390 the three rows stack and
-the status row still goes from nothing to 25 px when `/health` lands, taking the page with it. That
-was briefly written into the CSS as a claim that this closed S-12; it was measured and it does not.
+**This did not touch S-12.** The slots reserve width, not height, so the status row still went from
+nothing to 25 px when `/health` landed. That was briefly written into the CSS as a claim that this
+closed S-12; it was measured and it did not. S-12 is closed separately, by reserving the row's
+height — see its own finding.
 
 Fix in one sentence: done — `.brand` 460 px, `.status` 255 px, the two reflows declared.
 Evidence: `an_header.txt` (`measure.mjs header`); `dashboard.css:91`, `:99`, `:113`.
@@ -1242,15 +1243,34 @@ Rendered with every API call stalled, then released.
 | **the header** | no change | **+26 px** — `main`, `#now` and `#hero` all move from y 139 to y 165 |
 | `nav#views` | no change | **+1 px** |
 
-**S-12 · P1 · High · §3 `content-jumping` · Now · 375, 390.**
+**S-12 · P1 · High · §3 `content-jumping` · Now · 375, 390 — closed.**
 The mounts moving is by design: `index.html` ships empty boxes and the renderer fills them, and
-nothing above the fold depends on what arrives below it. The header is different. At 390 the node's
-place line arrives with `/health`, the header's wrapping flex row (`dashboard.css:73`) gains a row,
-and **the chrome the reader is already looking at grows 26 px under them** — the nav shifts 1 px and
-the hero and everything below it shift 26. On a phone that lands mid-tap. Above 560 px the place
-line is hidden (`:78`) and the header does not move, so this is a phone-only effect.
-Fix in one sentence: reserve the place line's row, or keep the header one row at every width — the
-same cause as S-11, and see the correction there for why a width alone will not do it.
+nothing above the fold depends on what arrives below it. The header is different. **The chrome the
+reader is already looking at grew 26 px under them** after first paint. On a phone that lands
+mid-tap.
+
+**The cause as filed is not quite the cause.** This row blamed the place line arriving and the
+header gaining a row, and said the effect was phone-only because the place line is hidden above
+560 px. Measured with the API stalled and then released: the element that grows is `#headprov`,
+which `index.html` ships **empty** and the renderer fills with the provenance pill and `As of HH:MM`
+when `/health` answers. `.status` goes **0 → 24.8 px** and the header **124 → 148.8**, which is
+every width below 1200, not only the phone. Above it the row is the nav's 34 px and nothing moves.
+
+**Closed** (`5943e0c`) by reserving the row: `min-height:1.55em` on `.status`, which is one line of
+what arrives — `.status` inherits the body's 16 px/1.55 — so it follows the type rather than pinning
+24.8 into the file.
+
+| | 375 | 390 | 768 | 1440 | 1920 |
+|---|---|---|---|---|---|
+| header, before → after the first response | 148.8 → 148.8 | 148.8 → 148.8 | 148.8 → 148.8 | 71 → 71 | 71 → 71 |
+| nav y | 96 → 96 | 96 → 96 | 96 → 96 | 18 → 18 | 18 → 18 |
+| `main` y | 165 → 165 | 165 → 165 | 165 → 165 | 99 → 99 | 99 → 99 |
+
+The band mounts still move, by design. The chrome does not.
+
+Fix in one sentence: done — reserve the row `#headprov` fills.
+Evidence: `stall_now_populated_390_live.json`, `stall_now_populated_1440_live.json`
+(`PAI_LIVE=1 measure.mjs stall`); `dashboard.css:99`.
 Evidence: `stall_now_populated_390.json`, `stall_now_populated_1440.json`.
 
 **S-25 · P2 · — · no rule; check written here · Now, Set up.**
@@ -1280,7 +1300,7 @@ means no rule fits and the check is written here.
 | **S-09** | **P1** | Medium | §6 `font-scale` | all | all | **72 distinct type combinations**; 16 sizes carry more than one weight-and-family; 14 px carries six | `an_type.txt`; `dashboard.css:65`, `:81`, `:153`, `:193`, `:286`, `:433` | Name the levels, and make each exception say which level it departs from. | no |
 | **S-10** | **P1** | Medium | §1 `heading-hierarchy` | Now, Network, Wall | all | Now's outline is four sibling h2s with the page's largest type (40 px `<p>`, 89.6 px numeral) outside it; the wall has no heading of any level | `an_headings.txt` | Make the hero sentence the page's heading and the band sentences the level under it. | no — P1-H2 covers the missing `<h1>` |
 | **S-11** | **P1** | Medium | §5 `breakpoint-consistency` | header | content-dependent | **corrected 14 Sep, then closed** — the reflow widths were set by the node's name and place string, not by the page: 500/730 on the fixture, 590/1040/1230 on a long-named node, growing as the viewport widened on four of six shapes. Fixed slots make it **800 and 1210 on every shape, never growing** | `an_header.txt` (`measure.mjs header`); `dashboard.css:91`, `:99`, `:113` | done — `.brand` 460 px, `.status` 255 px, both reflows declared | no — and see the note in Phase 1 |
-| **S-12** | **P1** | High | §3 `content-jumping` | Now | 375, 390 | the header grows **26 px** when `/health` lands; the nav moves 1 px and everything under it moves 26 | `stall_now_populated_390.json`; `dashboard.css:73`, `:78` | Reserve the place line's row — the same cause as S-11. | no |
+| **S-12** | **P1** | High | §3 `content-jumping` | Now | every width below 1200 | **closed** — `#headprov` ships empty and fills when `/health` answers: `.status` 0 → 24.8 px and the header 124 → 148.8, moving the nav, `main` and every band 25 px after first paint. The filed cause (the place line) and the filed scope (phone-only) were both wrong. Reserved: header, nav and `main` measure identical before and after at 375/390/768/1440/1920 | `stall_*_live.json` (`PAI_LIVE=1 measure.mjs stall`); `dashboard.css:99` | done — `min-height:1.55em` on `.status` | no |
 | **S-13** | **P1** | Medium | §5 `spacing-scale` | all | all | **41 distinct values, 28 off the 4 pt measure, 5,265 of 8,764 instances (60 %)**; the largest are 7 px (1,100), 6 px (1,044), 10 px (1,000) | the histogram in 2.1; `dashboard.css:86`, `:145`, `:154`, `:176`, `:302` | Name a scale in the layer, or say in the CSS that spacing is interpolated and not stepped. | no — the layer names no scale |
 | **S-14** | **P1** | Medium | §5 `container-width` | all | all | six views, five left edges at 1440 (128 / 153 / 358 / 115); Network and locked Set up start 17–25 px right of the header's own inner edge | the guide overlays; `dashboard.css:97`, `:324` | Do not let a card's padding stand in for a page margin; keep a view's heading in its content's column. | no |
 | **S-15** | **P1** | Medium | §10 `data-density` | wall | 1920 | **262 words** on the wall's only screen against Now's 272; **12.2 % unmarked ground**, the least of any surface; density 2.9× Now's, not an order of magnitude | `an_dist.txt`, `wall_contact.png` | Decide what the other 250 words are for at three metres, and cut what has no answer. | no |
