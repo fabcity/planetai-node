@@ -82,7 +82,21 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .hr{border:0;border-top:1px solid var(--hair);margin:0}
 /* header */
 header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:18px;border-bottom:1px solid var(--hair)}
-.brand{display:flex;align-items:center;gap:12px;min-width:0}
+/* The header's three children get fixed slots, so the row's shape is a function of the WIDTH and
+   nothing else. Before this it was a function of the node's config: .brand grew with NODE_NAME and
+   NODE_CITY and .status with which of the five provenance words applied, so the row reflowed
+   wherever the content stopped fitting — measured across six node shapes, at 500 730 on one and at
+   570 590 660 1070 1260 on another, growing taller as the viewport widened on four of them. Capping
+   the two strings bounded that; it did not fix it, because a slot that is sometimes narrower than
+   its cap is still a variable.
+   460px holds the widest brand that leaves room for the nav (362) and the status slot (255) inside
+   .wrap at 1200. 255px is .status at its widest: `example` or `partial` plus `As of HH:MM`.
+   This reserves WIDTH and not height, so it does not touch S-12: at 390 the three rows stack and
+   the status row still goes from nothing to 25px when /health lands, taking the page with it.
+   The two widths the row reflows at are declared below rather than left to emerge from these three
+   numbers, so the file says what happens. Measured after: 800 and 1210 on every node shape, three
+   heights, and it never grows as the viewport widens. */
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:0 0 460px;max-width:100%}
 .brand svg{width:18px;height:20px;flex:none;color:var(--ink)}
 /* The node's name is the page's h1. It was a <b>, so axe reported page-has-heading-one on every view
    in every state and a screen reader had no top of the document to jump to. Same type as before —
@@ -109,7 +123,15 @@ nav.views{display:flex;gap:0;border:1px solid var(--ink);max-width:100%;overflow
 nav.views button{border:0;border-right:1px solid var(--ink);padding:8px 16px;font:500 13.5px var(--fc-font-body);color:var(--mute);white-space:nowrap}
 nav.views button:last-child{border-right:0}
 nav.views button.on{background:var(--ink);color:var(--ground)}
-.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:255px;justify-content:flex-end}
+/* The row's two reflows, named. Above 1200 all three sit on one line; below it the nav takes its
+   own; below 790 the status does too. */
+@media(max-width:1200px){nav.views{order:2;flex-basis:100%}
+.status{order:1}
+}
+@media(max-width:790px){.brand{flex-basis:100%}
+.status{order:1;flex-basis:100%;justify-content:flex-start}
+}
 /* provenance pill: ink only, square, glyph + word. No colour token may ever land on it. */
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle}
 /* --sign-floor, not 11px and not a 12 typed in here. It is "the size every sign must still read at",
