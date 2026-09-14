@@ -19,7 +19,7 @@ of its ids it is added to that id in **Measured, against Part 1's ids** and no n
 | Widths | 375 / 390 / 768 / 1440, and the wall also at 1920 in the dark register. The breakpoint walk steps 320 → 1920 in 20 px steps. |
 | **The spacing measure** | **The skill's 4 pt/8 dp scale.** Part 1 settled this in *Where the skill and the language disagree*: the layer names no spacing scale — "spacing comes from the programme layer and `clamp()`, not from a modular scale" — and the HANDOFF records that layout, spacing and the type scale were deliberately left alone. Read against the layer itself, `references/planetai-layer.md`'s token table carries colour, opacity, weight, dash, sign and motion tokens and **not one spacing or grid token**. The layer is silent, so by Part 1's precedence the skill's rule stands. §5 `spacing-scale`. The measure is not re-argued here; it is applied. |
 | The script | `planetai-design/design/audit/2026-09/ux-review/skeleton/measure.mjs`, branch `ux-review-2026-09` |
-| **Fixed since** | branch **`ux-skeleton-fixes-2026-09`** off `ux-p0-fixes-2026-09`, four commits, `5770bd2` at the head. **S-01, S-02, S-04 and S-07 closed; S-11 bounded, not closed.** Touched: `app/static/index.html`, `app/static/dashboard.css`, `app/static/dashboard.js`, `tools/check_ui.py`, `tests/test_check_ui.py`. `make lint` and 32/32 after every commit. The numbers in this document are v0.52's and are not rewritten; where a fix changed what a finding says, the finding carries a dated correction. |
+| **Fixed since** | branch **`ux-skeleton-fixes-2026-09`** off `ux-p0-fixes-2026-09`, five commits, `a555c5f` at the head. **S-01, S-02, S-04 and S-07 closed; S-11 bounded on both its unbounded inputs, not closed.** Touched: `app/static/index.html`, `app/static/dashboard.css`, `app/static/dashboard.js`, `tools/check_ui.py`, `tests/test_check_ui.py`. `make lint` and 32/32 after every commit. The numbers in this document are v0.52's and are not rewritten; where a fix changed what a finding says, the finding carries a dated correction. |
 | **One correction** | **S-11's mechanism is wrong as first filed** and is corrected in place, under its finding in Phase 1 and in the ranked table. It was filed as three undeclared widths on one node; it is a header whose shape is set by the node's own name and place string, and the correction was found by trying the fix the row recommended and watching it work on one node out of six. |
 | The sheets | the same folder: **29 wireframes, 25 guide overlays, 6 contact sheets, 25 element tables** (`.json`), the breakpoint walk (`steps.json`) and the stall test |
 | Browser | Playwright + the Chromium in `planetai-design/node_modules`, one device pixel, `prefers-reduced-motion: reduce` so the geometry is stable. Part 1 measured zero running animations under that flag, so nothing is hidden by it. |
@@ -259,6 +259,9 @@ own config supplies. Stepping 320 → 1400 in 10 px steps across six node shapes
 | a longer node name | 37 | 222 | 590 910 1110 | **910** |
 | both long | 51 | 316 | 570 590 660 1070 1260 | **570 1070** |
 
+(That is the table before either cap. With both in place the last row reads **590 1040 1230**,
+growing at 1040; every other row is unchanged.)
+
 Three things follow, and none of them is in the row as filed.
 
 **The widths are not a property of the page.** They move from 500/730 to 1,260 with the node's own
@@ -273,22 +276,40 @@ on node #1 the header now never grows. It only looks fixed because `bayu-2` is a
 an empty place line. On the same node with its registry place string the growth returns at 570 and
 750, and on a longer-named node at 910.
 
-**One of the two unbounded inputs is now bounded.** `.brand .s` is `[city, kind]` from `/health`,
-free text from `.env`, and it was the only thing in that row with no upper bound; the name is a slug
-reviewed in a pull request, the five nav labels are the product's own words, the pill is one of
-five. It is capped at 38ch — `.bandhead`'s second column, not a new number — which is 316.57 px
-against node #1's 222, so nothing on a real node truncates today. The 78-character row above shows
-what it buys: before the bound that case reflowed at **500 570 590 620 1030 1220** and grew at 570
-and 1030; it now reflows exactly where the 51-character case does. No `.env` value can reshape the
-header past that point again.
+**Both unbounded inputs are now bounded.** Two of the header's three children are strings a keeper
+types into `.env` at setup: `.brand .s` is `[city, kind]` from `/health`, and the `<h1>` is
+`NODE_NAME`. (A first pass bounded only the place line, on the claim that the name was "a slug
+reviewed in a pull request" — that describes `registry.json`, not what the header renders, and it
+was wrong. `NODE_NAME` is a bootstrap setting like `NODE_CITY`.) The other two children are bounded
+already: the five nav labels are the product's own words and the pill is one of five.
 
-**S-11 stays open.** Closing it means bounding the node's name as well — which is the page's `<h1>`
-— or restructuring the header's markup so `.brand` and `.status` cannot wrap against each other.
-Both are the header's own round.
+The place line is capped at 38ch — `.bandhead`'s second column — which is 316.57 px against node
+#1's 222. The name is capped at 24ch — `.hero p.big`'s measure — which is 223 px against node #1's
+5.7ch and node #2's 6.8ch; a descriptive `ungasan-rooftop` is 14.0ch. Neither cap clips anything
+anyone has typed, and the name's clip is visual only: checked against the accessibility tree with a
+31-character name, the box clips to 224 px and the heading still reads in full.
 
-Fix in one sentence: bound the name too, or give `.brand` and `.status` one row that cannot break.
-Evidence: `an_header.txt`, `steps.json`; `dashboard.css:73`, `:91`; `dashboard.js:1780`.
-Fixed in part: `5770bd2` on `ux-skeleton-fixes-2026-09`.
+What the two caps buy, measured on the same six shapes:
+
+| node | before both caps | after |
+|---|---|---|
+| a very long place line | 500 570 590 620 1030 1220, grows at 570 1030 | 500 570 590 850 1050, grows at 570 850 |
+| both long | 570 590 660 1070 1260, grows at 570 1070 | 590 1040 1230, grows at 1040 |
+
+Every other shape is unchanged, because nothing realistic reaches either cap. That is the point of a
+bound rather than a fix: no `.env` value can reshape the header past 1230 again.
+
+**S-11 stays open.** The reflow widths are now *bounded*, not fixed — `.brand` sits anywhere between
+its intrinsic width and its cap, so the row still reflows at 500 and 730 on a short name and at 590,
+1040 and 1230 on a long one, and it still grows as the viewport widens on four of the six shapes.
+Closing it means giving `.brand` a fixed width and living with the whitespace on short names, or
+restructuring the header so `.brand` and `.status` cannot wrap against each other. Both are the
+header's own round.
+
+Fix in one sentence: give `.brand` a fixed width, or give it and `.status` one row that cannot break.
+Evidence: `an_header.txt` (`measure.mjs header`); `dashboard.css:73`, `:91`, `:99`;
+`dashboard.js:1777`, `:1785`.
+Bounded, not closed: `5770bd2` and `a555c5f` on `ux-skeleton-fixes-2026-09`.
 
 **S-14 · P1 · Medium · §5 `container-width` · all · 1440.**
 Six views, five left edges. Now and Arrange start at 128, Network and locked Set up at 153, unlocked
