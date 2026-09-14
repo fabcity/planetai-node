@@ -1805,7 +1805,12 @@ function render(snap, view) {
     const said = `<p class="big">${esc(ctx.w.refused)}</p><p class="why">${esc(snap.refused)}</p>`;
     document.getElementById('hero').outerHTML = `<div class="hero" id="hero"><div>${said}</div></div>`;
     // .wall's own type, so the sentence is legible at three metres rather than at reading distance.
-    if (view === 'wall') document.getElementById('wallbox').innerHTML = `<div class="row2"><div>${said}</div></div>`;
+    // The wall's own h1 as well: its header is display:none, and wallView() — which normally supplies
+    // one — is not reached on a refused render, so this was the one state left without a heading.
+    if (view === 'wall') {
+      document.getElementById('wallbox').innerHTML =
+        `<h1 class="vh">${esc(h.node || 'node')}</h1><div class="row2"><div>${said}</div></div>`;
+    }
     if (view === 'network') {
       const box = document.getElementById('netbody');
       if (box) box.innerHTML = `<div class="card">${said}</div>`;
