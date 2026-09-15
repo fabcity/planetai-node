@@ -125,6 +125,67 @@ assert "<style" not in _js and "createElement('style')" not in _js, \
 assert "tile.openstreetmap.org" not in _js or "MAP_TILES" in _js, \
     "live tiles are no longer gated on the MAP_TILES setting"
 
+# ...and the page must be able to READ that setting. The line above is a string-proximity check: it
+# passed for the whole of the branch while `window.SETTINGS.MAP_TILES` was undefined on every load,
+# because GET /settings is describe() — {unlocked, runtime: [{key, value, …}], bootstrap: [...]} —
+# and never a flat map. So the predicate was permanently false: no tile was ever requested at any
+# setting, the two live bases were never offered, and the page printed "live tiles are off on this
+# node" to a keeper who had just turned them on. This runs the page's own two functions against the
+# real body of that endpoint, which is the only thing that could have caught it.
+if shutil.which("node"):
+    import settings as _settings          # the same module app/main.py serves GET /settings from
+
+    def _lift(pattern, what):
+        m = re.search(pattern, _js, re.S)
+        assert m, f"dashboard.js no longer defines {what}"
+        return m.group(0)
+
+    _tiles_js = "\n".join((
+        _lift(r"const PLAN_FROM = \d+;", "PLAN_FROM"),
+        _lift(r"const tilesAllowed = \(res, settings\) =>.*?;", "tilesAllowed()"),
+        _lift(r"const MASKED = '[^']*';", "MASKED"),
+        _lift(r"function flatSettings\(d\) \{.*?\n\}", "flatSettings()"),
+    ))
+    _os_backup = {k: os.environ.get(k) for k in ("MAP_TILES", "TELEGRAM_BOT_TOKEN")}
+    _bodies = {}
+    for _tiles, _unlocked in (("on", False), ("on", True), ("off", False), (None, False)):
+        if _tiles is None:
+            os.environ.pop("MAP_TILES", None)
+        else:
+            os.environ["MAP_TILES"] = _tiles
+        os.environ["TELEGRAM_BOT_TOKEN"] = "never-printed"   # a secret must stay masked either way
+        _settings._cache["at"] = 0.0
+        _bodies[f"{_tiles}-{'unlocked' if _unlocked else 'anonymous'}"] = \
+            _settings.describe(unlocked=_unlocked, public=_settings.PUBLIC)
+    for _k, _v in _os_backup.items():
+        os.environ.pop(_k, None) if _v is None else os.environ.__setitem__(_k, _v)
+    _settings._cache["at"] = 0.0
+
+    _prog = (_tiles_js + "\nconst B = " + json.dumps(_bodies) + ";\n"
+             + "const out = {};\nfor (const [k, body] of Object.entries(B)) {\n"
+             + "  const flat = flatSettings(body);\n"
+             + "  out[k] = { at8: tilesAllowed(8, flat), at9: tilesAllowed(9, flat),\n"
+             + "             value: flat.MAP_TILES === undefined ? null : flat.MAP_TILES,\n"
+             + "             secretLeaked: 'TELEGRAM_BOT_TOKEN' in flat,\n"
+             + "             rowsKept: Array.isArray(flat.runtime) };\n}\n"
+             + "console.log(JSON.stringify(out))")
+    _t = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True, check=True).stdout)
+
+    assert _t["on-anonymous"]["value"] == "on", \
+        f"MAP_TILES=on must reach window.SETTINGS unmasked for a reader with no token: {_t['on-anonymous']}"
+    assert _t["on-anonymous"]["at8"] is True, \
+        f"with MAP_TILES=on the page must offer and fetch tiles at resolution 8: {_t['on-anonymous']}"
+    assert _t["on-anonymous"]["at9"] is False, \
+        f"from resolution 9 inward the node's own plan fills the frame and sends nothing: {_t['on-anonymous']}"
+    assert _t["on-unlocked"]["at8"] is True, "the same must hold with the admin token presented"
+    assert _t["off-anonymous"]["at8"] is False and _t["None-anonymous"]["at8"] is False, \
+        f"off, and unset, must both refuse a tile at every resolution: {_t}"
+    # A masked value is not a value. Reading "•••• set" as a setting is how a secret becomes a switch.
+    assert not any(v["secretLeaked"] for v in _t.values()), \
+        f"a masked or secret key must not be flattened onto window.SETTINGS: {_t}"
+    assert all(v["rowsKept"] for v in _t.values()), \
+        "the runtime rows themselves must survive: the Set up pane and readLayout() read them"
+
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
 # The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every

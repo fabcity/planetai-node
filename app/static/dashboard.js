@@ -28,6 +28,39 @@
  */
 const PAI_LOAD = [];
 
+/* THE TEN GLOBALS, AND THE SHAPE OF EACH. Nothing else on this page is global.
+ *
+ * They exist because every module below was ported from a prototype that read its data off disk
+ * before the first line ran (see the note above), and they are written here in one place because a
+ * global whose shape is only discoverable by reading the code that writes it is how the page came
+ * to assert, for a week, that live tiles were off on a node whose keeper had turned them on.
+ *
+ *   window.SNAP      what boot() fetched, normalised: { issues, health, base:{captured_utc}, rho,
+ *                    funnel, peer, fixture }. `issues` is GET /issues' whole body.
+ *   window.H3        the geometry and the readings the sections draw, assembled in boot() from that
+ *                    body: { publication, ladder, nav:{chain,cells,plates}, grain_table, claims,
+ *                    radio, settings, source, sensors:[station], metrics, asks,
+ *                    node:{lat,lon,name} }. `geometry: null` from the node leaves only the last
+ *                    four, and every section that needs the rest says so.
+ *   window.SETTINGS  GET /settings — describe()'s { unlocked, runtime:[row], bootstrap:[row] } —
+ *                    WITH every unmasked runtime key flattened onto it as KEY: value, so
+ *                    window.SETTINGS.MAP_TILES is the string the keeper set. flatSettings() does it,
+ *                    in boot(), and it is the only place that knows the endpoint's shape.
+ *   window.EARTH     GET /earth, or null. window.TRUST, window.FORECAST: the same, from /trust and
+ *                    /forecast.
+ *   window.PLAN      GET /place/geojson projected to metres by plan(), or null.
+ *   window.PAI       the section contract: { STAGES, register, render, wall, sections, problems,
+ *                    has }. docs/PACKS.md is its documentation.
+ *   window.K         kit.js: the four card kinds, the signs, esc/fmt, and — after initKit() — the
+ *                    bound data S, ISS, ORDER, DIST, LAB, LOC, VIEW, STATE.
+ *   window.KH        kit-h3.js: { H, address, grid, km2, edge, sited }. H is window.H3.
+ *   window.KN        kit-nav.js: a position and the moves out of it ({ N, where, link, … }).
+ *   window.KMAP      kit-map.js: the offline plan ({ map, caption, frameOf, MAX_SPAN_M }).
+ *   window.GROUND    the ground module's own frame maths, for the sections that reuse it
+ *                    ({ figure, frame, BASES, SIZE }); window.WALL is the wall's ({ render, start,
+ *                    field, dial, grain }).
+ */
+
 /* ================================================================= kit.js — the four card kinds, the signs, and the two attributes ==== */
 /* The four card kinds, the signs, and the attributes the targets are written in terms of.
  *
@@ -657,7 +690,7 @@ function grid(draw, opts = {}) {
     `<circle cx="${p.x}" cy="${p.y}" r="${p.local ? 5.5 : 3.5}"`
     + ` fill="${p.local ? 'var(--cells)' : 'var(--ground)'}" stroke="var(--ink)"`
     + ` stroke-width="${p.local ? 2 : 1.4}"><title>${esc(p.name || p.sensor_id)} · `
-    + `${esc(String(p.km))} km</title></circle>`).join('');
+    + `${p.km == null ? 'distance unknown' : `${esc(String(p.km))} km`}</title></circle>`).join('');
   return `<svg class="hexgrid" viewBox="0 0 ${box} ${box}" role="img"`
     + ` aria-label="${esc(opts.label || 'the grid around this node')}">`
     + `<g class="cells">${cells}</g><g class="pts">${pts}</g></svg>`;
@@ -668,7 +701,18 @@ function grid(draw, opts = {}) {
  * /issues does not publish, and nothing on this page called them. Code that reads a field the node
  * never sends is a trap, not a spare part.
  */
-window.KH = { H, address, grid, km2, edge };
+/* Has this node been sited? /health publishes lat and lon as float(os.getenv("NODE_LAT", 0) or 0),
+ * so absent and unset both arrive as exactly 0 — the test is "both falsy", and the only place it
+ * misreads is within about 55 m of where the equator meets the prime meridian, which is open water.
+ *
+ * It lives here, on the kit every module already reads, because it was private to the ground module
+ * and the other three surfaces that draw a distance did not have it: the stations printed each
+ * neighbour's distance from the Gulf of Guinea as fact, the grain line counted stations in a cell in
+ * that water, the wall drew nineteen cells of it, and the claims were centred on it. One predicate,
+ * read by all four. */
+const sited = () => !!(H.node.lat || H.node.lon);
+
+window.KH = { H, address, grid, km2, edge, sited };
 
 });
 
@@ -1145,20 +1189,29 @@ const has = path => path.split('.').reduce((o, k) => (o == null ? o : o[k]), win
 function bandFor(ctx, s) {
   const { esc } = window.K;
   const absent = (s.needs || []).filter(n => !has(n));
-  let body;
+  let body, controls = '';
   if (absent.length) {
     body = `<p class="note" data-component="absent" id="${esc(s.id)}-absent" data-ref="${esc(s.id)}">`
       + `The ${esc(s.pack)} pack has nothing here yet: ${esc(absent.join(', '))} `
       + `${absent.length === 1 ? 'is' : 'are'} not on this node.</p>`;
   } else {
-    try { body = s.render(ctx) || ''; }
+    /* The control strip is inside the same try as the body. The contract promises a pack author
+       that one section cannot take the page down, and controls() is a section's code like any
+       other: thrown from here it escaped render() and route(), #page was never assigned, and the
+       whole Now view was blank paper. It is the last hook that was outside a guard. */
+    try {
+      controls = s.controls ? (s.controls(ctx) || '') : '';
+      body = s.render(ctx) || '';
+    }
     catch (e) {
+      /* And the strip goes with it: a control pointing at a body that did not render is a link to
+         an id that is not on the page, which is the thing T5 counts. */
+      controls = '';
       body = `<p class="note" data-component="failed" id="${esc(s.id)}-failed" data-ref="${esc(s.id)}">`
         + `${esc(s.pack)} · ${esc(s.id)} did not render: ${esc(e.message)}. A failure is not an `
         + `answer, so the rest of the page is still here.</p>`;
     }
   }
-  const controls = s.controls && !absent.length ? (s.controls(ctx) || '') : '';
   return `<section class="band" id="${esc(s.id)}" data-band="${esc(s.stage)}:${esc(s.id)}"`
     + ` data-pack="${esc(s.pack)}" data-stage="${esc(s.stage)}">`
     + `<div class="k"><span>${esc(s.title)}</span><span class="pack">${esc(s.pack)}</span></div>`
@@ -1430,7 +1483,7 @@ function figure(ctx, opts = {}) {
  * app/main.py's COMPANIONS and tools/check_ui.py names it as computed geometry. The register travels
  * in the URL because the drawing is an <img>, a document of its own that no stylesheet on this page
  * reaches: without it the ground drew the dark register's blue on the paper page at 2.29:1. */
-const sited = () => !!(H.node.lat || H.node.lon);
+const sited = window.KH.sited;
 
 function unsited(ctx) {
   return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="dial">`
@@ -1557,7 +1610,8 @@ function notes(ctx) {
       + `zoom, column and row, which is a square of ground ${edge(f.tile_m)} wide, and carries the `
       + `device's own address. The server does not learn that this is a PLANETAI node or where the `
       + `node itself stands beyond that square; it does learn that somebody at that address looks at `
-      + `this ${edge(f.across_m)} of Bali, and how often. The plan sends nothing.` },
+      + `this ${edge(f.across_m)}${S.health.city ? ` of ${S.health.city}` : ''}, and how often. The `
+      + `plan sends nothing.` },
     { id: 'ground-zoom', text: 'The zoom follows the dial because the frame is the cells, not the '
       + 'map. The dial sets the resolution, the resolution sets the nineteen cells of the plate, and '
       + 'the zoom is the largest of 0 to 19 at which their bounding box fits nine tenths of the '
@@ -1720,7 +1774,10 @@ function station(ctx, s, v, m, sc, L, ref) {
   const alt = ser && ser.length
     ? `<span class="alt">opened the day at ${esc(fmt(ser[0].mean, m.dp))}, closed at `
       + `${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)}</span>` : '';
-  const meta = `${s.local ? 'this house' : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'}`
+  /* km is null when the node has no coordinates: the engine publishes unknown rather than a distance
+     from (0, 0). Say unknown — a neighbour's distance from the Gulf of Guinea is not a fact. */
+  const meta = `${s.local ? 'this house' : s.km == null ? 'distance unknown'
+    : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'}`
     + ` · ${src}${silent}`;
   const key = `${m.issue || v}.${s.sensor_id}.${v}`;
   const crossed = r && L.line && r.value > L.line.value;
@@ -1750,13 +1807,18 @@ function groups(ctx) {
     by.get(c).push(s);
   }
   const own = ctx.N.chain[ctx.RES];
+  /* Unsited, every km is null: the groups keep the order the node sent and the header says the
+     distance is not known rather than ordering the neighbourhood by a number that is not one. */
+  const kms = ss => ss.map(s => s.km).filter(k => k != null);
   return [...by.entries()].map(([cell, ss]) => ({
-    cell, ss: ss.slice().sort((a, b) => a.km - b.km), own: cell === own,
-    km: Math.min(...ss.map(s => s.km)), kmMax: Math.max(...ss.map(s => s.km)),
-  })).sort((a, b) => (a.own ? -1 : b.own ? 1 : 0) || a.km - b.km);
+    cell, ss: ss.slice().sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity)), own: cell === own,
+    km: kms(ss).length ? Math.min(...kms(ss)) : null,
+    kmMax: kms(ss).length ? Math.max(...kms(ss)) : null,
+  })).sort((a, b) => (a.own ? -1 : b.own ? 1 : 0) || (a.km ?? Infinity) - (b.km ?? Infinity));
 }
 
 const KM = g => g.own ? 'this node’s own cell'
+  : g.km == null ? 'distance unknown — this node has no coordinates'
   : g.km === g.kmMax ? `${g.km} km` : `${g.km}–${g.kmMax} km`;
 const CELLHEAD = (ctx, g) => g.cell ? ctx.KH.address(g.cell, ctx.RES)
   : `<span class="addr mono">outside the ${ctx.N.steps} steps this node published at resolution `
@@ -1995,14 +2057,22 @@ window.PAI.register({
         line: `packs/earth/pack.yaml · fetched once on command, compared with arithmetic.`,
         qty: [{ num: 'claim.region.km2', value: `${region.area_km2} km²`,
           cmp: `against the ${H.claims[0].area_km2} km² the widest source here covers` }] })
-      + row({ id: 'sat-grain', component: 'satGrain', ref: 'sat-map',
-        cols: 'minmax(0,210px) minmax(0,1fr) auto',
-        left: `<span class="who"><b>At the grain its own data has</b>`
-          + `<span class="m">resolution ${region.native.res}</span></span>`,
-        line: `${region.native.cells.toLocaleString()} cells; compactCells leaves `
-          + `${region.native.compact.toLocaleString()} covering the same ground exactly.`,
-        qty: [{ num: 'claim.region.saving', value: `${region.native.saving}×`,
-          cmp: `smaller, for the same ground` }] })
+      /* `native` is null when the claim has no footprint: geometry.py's _claim() publishes an empty
+         covering for a radius of zero or less rather than inventing a metre nobody declared, and
+         EARTH_RADIUS_M=0 is a keeper's setting away. Dereferencing it turned this whole section into
+         its "did not render" line, so the row says what the setting says instead. */
+      + (region.native
+        ? row({ id: 'sat-grain', component: 'satGrain', ref: 'sat-map',
+          cols: 'minmax(0,210px) minmax(0,1fr) auto',
+          left: `<span class="who"><b>At the grain its own data has</b>`
+            + `<span class="m">resolution ${region.native.res}</span></span>`,
+          line: `${region.native.cells.toLocaleString()} cells; compactCells leaves `
+            + `${region.native.compact.toLocaleString()} covering the same ground exactly.`,
+          qty: [{ num: 'claim.region.saving', value: `${region.native.saving}×`,
+            cmp: `smaller, for the same ground` }] })
+        : `<p class="note" id="sat-grain" data-component="satGrain" data-ref="sat-map">`
+          + `${esc(region.declared)} covers no ground, so there is no covering to compact and no `
+          + `grain to state.</p>`)
       + `<p class="cap">${esc(land.state === 'none'
         ? `land: ${land.reason_text[ctx.LOC]} in this capture`
         : `land_change_yoy ${fmt((land.stack.room || {}).value, land.dp)} ${land.unit}`)}</p>`
@@ -2025,13 +2095,16 @@ window.PAI.register({
         + `knows. ${P().counts.sat.toLocaleString()} buildings on this ground are in a satellite pass `
         + `and not in OpenStreetMap, each with the confidence the pass gave it, drawn over the `
         + `hairline outlines of the ${P().counts.buildings.toLocaleString()} the map already had.` },
-      { id: 'sat-compaction', text: `EARTH_RADIUS_M=5000 at 10 m a pixel is resolution `
-        + `${region.native.res}. polygonToCells on that square returns `
-        + `${region.native.cells.toLocaleString()} cells and compactCells returns `
-        + `${region.native.compact.toLocaleString()} covering exactly the same ground — `
-        + `${region.native.saving} times smaller. This is the only place in three rounds where an H3 `
-        + 'operation does something the node could not already do by hand, and it is the answer to '
-        + 'how a covering this fine is ever published.' },
+      { id: 'sat-compaction', text: region.native
+        ? `EARTH_RADIUS_M=5000 at 10 m a pixel is resolution `
+          + `${region.native.res}. polygonToCells on that square returns `
+          + `${region.native.cells.toLocaleString()} cells and compactCells returns `
+          + `${region.native.compact.toLocaleString()} covering exactly the same ground — `
+          + `${region.native.saving} times smaller. This is the only place in three rounds where an H3 `
+          + 'operation does something the node could not already do by hand, and it is the answer to '
+          + 'how a covering this fine is ever published.'
+        : `${region.declared} declares no ground, so this node has no covering of the square to `
+          + 'compact and nothing to say about what compaction saves here.' },
       { id: 'sat-land', text: ctx.ISS.land.state === 'none'
         ? 'The earth pack has no reading in this capture. What is in the section is what the '
           + 'satellite has already said about this place — the passes, and the buildings it found — '
@@ -2372,6 +2445,16 @@ window.PAI.register({
   title: 'Whose word, over how much ground',
   needs: ['H3.claims'],
   render(ctx) {
+    /* Every footprint here is a circle or a square drawn around this node. With no coordinates they
+       are six coverings of the Gulf of Guinea, and the card that says how much ground a word covers
+       would be covering somebody else's water. The declarations are still true; where they sit is
+       not known. */
+    if (!ctx.KH.sited()) {
+      return `<p class="note" id="claims-unsited" data-component="absent" data-ref="claims">This `
+        + `node has no coordinates, so there is no ground for these claims to cover. The footprints `
+        + `are still declared — ${H.claims.map(c => c.declared).join(' · ')} — and each gets its `
+        + `covering as soon as NODE_LAT and NODE_LON are set.</p>`;
+    }
     return `<div class="claimgrid">${H.claims.map(c => claimCard(ctx, c)).join('')}</div>`;
   },
   wall(ctx) {
@@ -2927,6 +3010,14 @@ function centroid(d) {
  * layer's one accent and it means "this node's own". */
 function field(ctx, sel) {
   const { esc, fmt } = ctx.K, { address, km2, edge } = ctx.KH, N = ctx.N;
+  /* Unsited, the plate is nineteen cells of open water and the stations are placed in them. The wall
+     is the surface nobody is watching, so it says what it does not know rather than drawing the Gulf
+     of Guinea at three metres and labelling it this house. */
+  if (!ctx.KH.sited()) {
+    return `<p class="note">This node has no coordinates, so there is no ground to draw cells on. `
+      + `Setting NODE_LAT and NODE_LON — planetai setup, or the Set up view — gives this node a cell `
+      + `and puts its ${H.sensors.length} stations in the cells around it.</p>`;
+  }
   const res = ctx.RES, plate = H.nav.plates[res], v = VAR(ctx), M = H.metrics[v];
   const line = M.issue && ctx.ISS[M.issue] && ctx.ISS[M.issue].line ? ctx.ISS[M.issue].line : null;
   const cmpFor = () => line ? `against the line, ${fmt(line.value, M.dp)} ${ctx.ISS[M.issue].unit}`
@@ -2945,7 +3036,9 @@ function field(ctx, sel) {
   const dy = { top: -(cw * 0.19), base: cw * 0.10, bot: cw * 0.25 };
   const T = (x, y, cls, txt, extra = '') => `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle"`
     + ` class="${cls}" style="font-size:${F[cls]}px"${extra}>${txt}</text>`;
-  const kmRange = st => { const ks = st.map(s => s.km); const lo = Math.min(...ks), hi = Math.max(...ks);
+  const kmRange = st => { const ks = st.map(s => s.km).filter(k => k != null);
+    if (!ks.length) return 'distance unknown';
+    const lo = Math.min(...ks), hi = Math.max(...ks);
     return lo === hi ? `${lo} km` : `${lo}–${hi} km`; };
   /* Cells drawn back to front: empty, then read, then this node's own on top, so its stroke wins. */
   const order = d.cells.slice().sort((a, b) => {
@@ -2953,7 +3046,7 @@ function field(ctx, sel) {
     const rb = b.id === plate.centre ? 2 : (H.nav.cells[b.id].sensors.length ? 1 : 0);
     return ra - rb;
   });
-  let cells = '', labels = '';
+  let cells = '', labels = '', reading = 0;
   for (const c of order) {
     const info = H.nav.cells[c.id];
     const own = c.id === plate.centre, isSel = c.id === sel;
@@ -2967,6 +3060,7 @@ function field(ctx, sel) {
     if (!has) continue;
     const [x, y] = centroid(c.d);
     const vals = st.map(s => s.read[v] ? s.read[v].value : null).filter(x => x != null);
+    if (vals.length) reading++;   // cells with a reading OF THIS VARIABLE, which is what is drawn
     if (own) {
       /* this node's own cell: each of its own stations' values, in a row */
       const mine = st.filter(s => s.local), theirs = st.filter(s => !s.local);
@@ -2980,7 +3074,8 @@ function field(ctx, sel) {
       labels += T(x, y + dy.top, 'nm', esc((s1.name || s1.sensor_id).slice(0, 18)))
         + T(x, y + dy.base, 'big', r ? esc(fmt(r.value, M.dp)) : '—',
           ` data-num="wall.${esc(c.id)}.${esc(v)}" data-cmp="${esc(r ? cmpFor() : `does not measure ${M.label}`)}"`)
-        + T(x, y + dy.bot, 'unit', `${r ? esc(M.unit) : 'not measured'} · ${s1.km} km`);
+        + T(x, y + dy.bot, 'unit', `${r ? esc(M.unit) : 'not measured'} · `
+          + `${s1.km == null ? 'distance unknown' : `${s1.km} km`}`);
     } else {
       const lo = vals.length ? Math.min(...vals) : null, hi = vals.length ? Math.max(...vals) : null;
       labels += T(x, y + dy.top, 'sm', `${st.length} stations · ${kmRange(st)}`)
@@ -2998,8 +3093,11 @@ function field(ctx, sel) {
     .join('');
   const G = ctx.grain;
   const selInfo = sel && H.nav.cells[sel] ? H.nav.cells[sel] : null;
+  /* `reading` and not grain_table's `occupied`: occupied counts cells with any station at all, and
+     the label used to claim those cells were reading this variable where the drawing plainly says
+     they do not measure it. Count the thing that is drawn. */
   return `<svg viewBox="0 0 ${d.box} ${d.box}" role="img" aria-label="resolution ${res}: the nineteen cells `
-    + `this node published, ${G.occupied} of them with a station reading ${M.label}">`
+    + `this node published, ${reading} of them with a station reading ${M.label}">`
     + `<g class="cells">${cells}</g><g class="pts">${pts}</g><g class="labels">${labels}</g></svg>`
     + `<div class="cap"><span>${address(N.chain[res], res)}</span>`
     + `<span>one cell <b data-num="h3.res${res}.area" data-cmp="against ${esc(km2(H.ladder[res].own_area_m2))}, `
@@ -3044,6 +3142,17 @@ function dial(ctx) {
 function grain(ctx) {
   const { esc } = ctx.K, G = ctx.grain, n = H.sensors.length;
   const finest = H.grain_table[H.grain_table.length - 1];
+  /* The same three counts as the Now view's grain line, and unknown for the same reason: "in this
+     node's own cell" is a question about a cell this node does not have yet. */
+  if (!ctx.KH.sited()) {
+    return `<div class="col" data-ref="wall-dial"><h3 data-role="wall-issue">Cells with a station`
+      + `</h3><div class="line"><span class="num" data-num="grain.occupied" data-cmp="no comparison `
+      + `yet · this node has no coordinates, so no station has a cell">—</span>`
+      + `<small>of 19 drawn</small></div></div>`
+      + `<div class="col" data-ref="wall-dial"><h3 data-role="wall-issue">In this node’s cell</h3>`
+      + `<div class="line"><span class="num" data-num="grain.in_my_cell" data-cmp="no comparison yet `
+      + `· this node has no cell until it is sited">—</span><small>of ${n} stations</small></div></div>`;
+  }
   const num = (key, v, cmp) => `<span class="num" data-num="${esc(key)}" data-cmp="${esc(cmp)}">`
     + `${esc(String(v))}</span>`;
   return `<div class="col" data-ref="wall-dial"><h3 data-role="wall-issue">Cells with a station</h3>`
@@ -3181,8 +3290,23 @@ const auth_ = () => (tok_() ? { authorization: 'Bearer ' + tok_() } : {});
  * broken. Carried over from the page this replaces, which had it right. */
 function Refused(said) { const e = new Error(said); e.refused = said; return e; }
 
+/* A node whose database is wedged does not answer 500 — it holds the request open, which is the
+ * common unattended failure and the one that left a wall screen on blank paper indefinitely. Twenty
+ * seconds is longer than /issues has ever taken to compute on node #1 and short enough that a
+ * household gets a sentence instead of a blank page; the abort surfaces as the honest failure line
+ * the terminal catch draws, the same as any other refusal to answer. */
+const TIMEOUT_MS = 20000;
+
 async function api(path) {
-  const r = await fetch(path, { headers: auth_() });
+  let r;
+  try {
+    r = await fetch(path, { headers: auth_(), signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (e) {
+    /* A hang and a dropped network arrive here the same way, and neither is an answer. Say which. */
+    throw new Error(e && e.name === 'TimeoutError'
+      ? `${path} did not answer within ${TIMEOUT_MS / 1000} seconds`
+      : `${path} could not be reached: ${(e && e.message) || e}`);
+  }
   if (r.status === 403) throw Refused((await r.json().catch(() => ({}))).error || 'refused');
   if (!r.ok) throw new Error(`${path} answered ${r.status}`);
   return r.json();
@@ -3267,6 +3391,29 @@ async function plan(health) {
  * same body nested under `.issues`, and the snapshot's own `health`, `rho`, `stats` and `alerts`
  * beside it. Both are normalised here, before anything else reads either.
  */
+/* GET /settings answers with app/settings.py's describe(): { unlocked, runtime: [{key, value, secret,
+ * …}], bootstrap: [...] } — a list of rows, not a map of keys. Every predicate on this page asks for
+ * a key by name, so the rows are flattened onto the same object here, in the one place that knows
+ * the endpoint's shape. Without this `window.SETTINGS.MAP_TILES` was undefined on every load, the
+ * tiles feature could never be turned on, and two sentences told the keeper the opposite of the
+ * setting they had just saved.
+ *
+ * A value the node MASKED is not a value. describe() writes "•••• set" for every secret and, for a
+ * reader without the admin token, for every key outside PUBLIC — so a masked row is left off rather
+ * than compared against, and reads as unset. MAP_TILES is in PUBLIC and so arrives unmasked at every
+ * share level; unset is also the safe way round for the one setting that decides whether this
+ * household's kilometre is named to somebody else's machine.
+ *
+ * `runtime` and `bootstrap` stay on the object: the Set up pane and readLayout() read the rows. */
+const MASKED = '•••• set';
+function flatSettings(d) {
+  const flat = {};
+  for (const r of ((d || {}).runtime || [])) {
+    if (r && r.key && !r.secret && r.value !== MASKED) flat[r.key] = r.value;
+  }
+  return { ...(d || {}), ...flat };
+}
+
 async function boot() {
   const answered = await api(FIXTURE ? `/issues/fixtures/${encodeURIComponent(FIXTURE)}` : '/issues');
   const snapshot = FIXTURE ? answered : null;
@@ -3294,7 +3441,7 @@ async function boot() {
     radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
       mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
     node: { lat: health.lat, lon: health.lon, name: health.node } };
-  window.SETTINGS = settings;
+  window.SETTINGS = flatSettings(settings);
   readLayout(settings);
   window.EARTH = earth;
   window.TRUST = trust;
@@ -3569,7 +3716,12 @@ function main() {
       .map(s => { try { return s.lead(ctx) || ''; } catch { return ''; } }).join('');
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
       + kicker(hk, d) + sentence(hk, d, 'big') + why(hk, d) + ask(hk, d)
-      + `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="dial">`
+      + (!window.KH.sited()
+        ? `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="dial">`
+          + `At resolution ${RES} one cell is ${esc(km2(G.area_m2))}. Which cell this node stands in `
+          + `is not known: it has no NODE_LAT/NODE_LON, so none of its ${H.sensors.length} stations `
+          + `has a cell yet and the counts that would go here would be counts about open water.</p>`
+        : `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="dial">`
       + `At resolution ${RES} one cell is ${esc(km2(G.area_m2))} and this node's `
       + `${H.sensors.length} stations fall in `
       + `<span data-num="grain.occupied" data-cmp="against ${H.sensors.length} stations in `
@@ -3577,7 +3729,7 @@ function main() {
       + `${N.res_max}, the finest this node publishes">${G.occupied}</span> of them. `
       + `${G.in_my_cell} sit in this node's own cell, of which ${G.mine_in_my_cell} are its own.`
       + (flat.length > 1 ? ` Resolutions ${flat[0].res} to ${flat[flat.length - 1].res} answer this `
-        + `question identically.` : '') + `</p>`
+        + `question identically.` : '') + `</p>`)
       + `<div class="whenline">${asof()}${window.K.stamp()}`
       + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
         : pill('live', 'measured by this node')) + `</div>`
@@ -3804,9 +3956,25 @@ boot().then(() => { init(); route(); }).catch(async e => {
     drawRefused();
     return;
   }
-  document.getElementById('page').innerHTML = `<div class="wrap"><p class="note">This node did not `
-    + `answer: ${String((e && e.message) || e).replace(/[<>&]/g, '')}. A failure is not an answer, `
-    + `so nothing is cached; reload to try again.</p></div>`;
+  /* Through chrome() and the wall branch, the same two shapes drawRefused() draws and for the same
+     reason: a reader whose node did not answer has lost the whole page, and the nav is how they
+     reach Set up to do something about it. A bare paragraph took that away exactly when it was
+     needed. /health is asked separately because it answers at every share level and often answers
+     when nothing else does; when it does not, the header carries the product's own name. */
+  const said = `This node did not answer: ${String((e && e.message) || e).replace(/[<>&]/g, '')}. `
+    + `A failure is not an answer, so nothing is cached; reload to try again.`;
+  const h = await api('/health').catch(() => ({}));
+  const el = document.getElementById('page');
+  const v = (location.hash || '').replace(/^#/, '')
+    || new URLSearchParams(location.search).get('view') || 'now';
+  if (v === 'wall') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.body.className = 'wall wallview';
+    el.innerHTML = `<div class="wallbox"><h1 class="vh">${window.K.esc(h.node || 'PLANETAI')}`
+      + ` · no answer</h1><p class="note">${said}</p></div>`;
+  } else {
+    el.innerHTML = chrome(h.node, h.city, v) + `<div class="wrap"><p class="note">${said}</p></div>`;
+  }
 });
 
 })();

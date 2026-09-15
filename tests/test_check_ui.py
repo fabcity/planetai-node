@@ -109,7 +109,9 @@ broken("round card", prepend(".panel{border-radius:26px}"), r"rounds a card to 2
 # 5. provenance carrying a verdict — the layer's role tokens, which is what the page uses now
 broken("prov colour", prepend(".prov{color:var(--rings)}"), r"prov.*carries a colour")
 broken("prov inline colour",
-       sub('<div id="page"></div>', '<div id="page" class="prov" style="color:#00A057"></div>'),
+       # #page is no longer empty — it carries the "asking the node…" header until boot() answers —
+       # so the mutation goes on its opening tag rather than on a literal empty div.
+       sub('<div id="page">', '<div id="page" class="prov" style="color:#00A057">'),
        r"prov in its class or id carries an inline colour", where="index.html")
 
 # 6. orange away from the satellite, in both registers' oranges
@@ -165,7 +167,8 @@ broken("a new uppercasing rule nobody looked at",
 # it. Both applied, so the wall was one viewport plus two paddings — 1208px on a 1080px screen. A wall does not
 # scroll, so the footer carrying `As of HH:MM` and the word `stale` was off the bottom of it at 1440.
 broken("a viewport-height class on an element and its own ancestor",
-       sub('<div id="page"></div>', '<div id="page" class="wallbox"><div class="wallbox"></div></div>'),
+       sub('<div class="wrap"><p class="note">Asking',
+           '<div class="wallbox"><div class="wallbox"></div></div><div class="wrap"><p class="note">Asking'),
        r"\.wallbox sets a viewport height and is on <div>.*inside <div>", where="index.html")
 
 print("check_ui: every visual-language gate fails when the page breaks its rule")
