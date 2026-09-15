@@ -324,3 +324,187 @@ ask, so no drawing shows the green button in use. The funnel's 2×2 axes are inf
 `PLANETAI_Response_Funnel_Briefing_2026-09-10.md` and
 `PLANETAI_Models_by_Node_Class_2026-09-14.md` are in the PLANETAI project and on neither disk nor any
 branch here.
+
+---
+
+## Shipped, 15–16 September
+
+Direction H, revised, is in production. The dashboard is now a shell, a contract and twelve
+sections — six of the renderer's own (claims, grain, asks, measure, ground, sensors) and six from
+packs (forecast, satellite/earth, reticulum, meshtastic, hardware, trust) — registered against
+`window.PAI.register`, and rendered stage by stage in the order the loop runs: observe, decide,
+act, measure. The loop is the page's spine, not a decoration on it; see `docs/PACKS.md`'s new "A
+dashboard section" for the contract a pack author writes against.
+
+### The commits
+
+`git log --oneline f228bd9..HEAD`, oldest first:
+
+| commit | what it did |
+|---|---|
+| `0025d36` | publishes the H3 geometry the page now navigates by — the resolution ladder, the plates, the grain table (Task 1). |
+| `7e30fcb` | publishes what each declared source's footprint covers, and what the radio announces about where (Task 2). |
+| `f9fe0c8` | fixes a footprint of zero or less: it publishes an empty claim instead of crashing `/issues` (Task 2, fix round 1). |
+| `d91e7d8` | publishes each station, the issue's declared metrics, the open-asks ledger and the mesh state (Task 3). |
+| `9c9b078` | wires the geometry into `/issues`' own response — the numbers the dial turns on (Task 4). |
+| `5db22ba` | adds the `MAP_TILES` setting, off until a keeper turns it on (Task 5). |
+| `4669aad` | fixes the `MAP_TILES` test to check the setting's real default source, not a fallback the test supplied (Task 5 fix). |
+| `e08b749` | makes the measuring rig answer the node's own endpoints from this repo, offline, instead of falling through to a running container (Task 5b). |
+| `eed9e8d` | fixes the rig to replay the fixture and read settings under node #1's own environment, not code defaults (Task 5b fix). |
+| `685fe1a` | makes a broken rig child loud instead of a silent empty 200, and folds `/issues` + `/settings` into one child (Task 5b fix). |
+| `7df6276` | assembles the dashboard as a shell, a contract and ten sections, in the three files the node has always served — grown to twelve in review (Task 6). |
+| `709b3e5` | fixes the Set up pane (it was drawn but inert), stops a press from defeating `MAP_TILES`, and restores Arrange (Task 6, fix round 1). |
+| `46018b0` | fixes the asks wall fragment to survive a missing `/rho`, and fixes Default to restore the order sections registered with (Task 6, fix round 2). |
+| `f85a46c` | adds the visual gate (`tests/visual/gate.sh`), fixes three routes to be hermetic, and shows the four previously-unpopulated figures for the first time under `PAI_RICH=1` (Task 8). |
+
+Task 7 (the tiles switch) needed no commit of its own — it shipped inside Task 6's assembly and was
+verified by reading the code rather than building it again. Task 9 (proving on `pai-clean`) made no
+commit; see below.
+
+### The numbers this page measured when it shipped
+
+These are `tests/visual/gate.sh`'s own recorded baselines, at commit `f85a46c`, measured by its
+hermetic rig (`tests/visual/measure.mjs`'s `serveNodeAPI()` — no node, no container, no network) —
+and Task 6's report for the section count and the `/issues` body size:
+
+| what | 390 px | 1440 px |
+|---|---|---|
+| page height | 8,267 px (gate fails above 8,928, an 8% margin) | 5,261 px (gate fails above 5,682) |
+| empty share of the first screen (T2) | 37.7% (gate fails above 43.7%, a 6-point margin) | 61.3% (gate fails above 67.3%) |
+
+The wall, at 1920×1080 dark, is 1,080 px — it still fits the screen it is drawn for. Twelve sections
+are registered; none fails to render. `/issues`' body is 227.1 kB of a 400 kB budget — the claims'
+own compacted-cell boundaries (`cells_ll`, Task 6's ruling A2) cost 68 kB of that, which is what
+keeps the decide stage's claim cards drawing a picture instead of only a count.
+
+**These numbers are not comparable with Phase 1's**, in `docs/design/REDESIGN_2026-09_ground.md`
+above. Phase 1 was measured against a bootstrapped container on `pai-clean` that nobody can
+reconstruct (Task 5b's ruling found the offline rig drifts from it by about 2% in page height even
+once the rig replays the fixture under node #1's own settings). Phase 2's own thresholds are set
+from what this hermetic rig measures against this page, never against Phase 1's figures — which is
+exactly what `gate.sh`'s own comment says, and exactly why a future implementer whose page grows
+must move `gate.sh`'s baselines rather than reach for the older document.
+
+### The proving run that did not happen, and how to do it
+
+Task 9 was supposed to prove this branch on `pai-clean`, the VM used for the September UX review.
+The VM is healthy — `limactl list` shows it `Running`, four containers up, reachable — and the host
+worktree is mounted inside it, read-only. **The run did not happen because this session's own
+permission sandbox refused every action that would have deployed the branch**, not because the
+machine or the branch was unfit: `rsync` into `~/planetai` was classified "Irreversible Local
+Destruction", `mv`-ing the existing `app/` aside was "Modify Shared Resources", and so was
+`planetai backup` and `docker compose build`. None of that reflects a defect in the branch; it
+reflects an agent correctly declining to push a live deploy through a boundary meant to stop it.
+
+Run this from a terminal that is not sandboxed against it — the commands are the ones
+`task-9-report.md` worked out, unchanged:
+
+```bash
+limactl shell pai-clean -- bash -c '
+  cd ~/planetai
+  planetai backup
+  rsync -a --exclude=.git --exclude=.env --exclude=backups/ --exclude=data/ \
+    --exclude=out/ --exclude=exports/ --exclude=VERSION \
+    "/Users/tomasdiez/Documents/Claude/Projects/FAB CITY/planetai-node/" ./
+  docker compose up -d --build app
+  sleep 5
+  curl -fsS localhost:8080/health
+'
+```
+
+Then run `tests/visual/measure.mjs` from `planetai-design` with `PAI_LIVE=1` against the VM's
+forwarded port, with the node's `ADMIN_TOKEN` — read from `~/planetai/.env` on the VM, never echoed
+or pasted anywhere — and step through Task 9's Step 2/3 checklist. `init.sql`'s migrations are
+additive (`IF NOT EXISTS`, `ON CONFLICT DO NOTHING`), so applying them to the live schema should be
+safe, but the `planetai backup` above still comes first: this VM's database is two schema versions
+behind what this branch expects.
+
+**What is still unproven, because only this run proves it:**
+
+- the tile-request count on a live node — the hermetic rig counts requests it fulfils itself, not
+  requests a real tile server would see;
+- the `MAP_TILES` toggle at resolutions 8 and 9, where the rule that a press may only reduce what
+  leaves the house actually has a live tile server on the other end;
+- the wall stepping by itself, unattended, in a real browser rather than Playwright's `reduced-motion`
+  render;
+- **the first look at all four of the Sentinel strip, this node's own AlphaEarth record, the trust
+  card and the forecast card populated.** Nobody has ever seen any of the four with real data behind
+  it — the hermetic rig's `PAI_RICH=1` (Task 8) serves a hand-written stand-in, which is proof the
+  sections can draw populated content, not a look at what a real node actually has.
+
+### Decisions taken during the build that the owner has not seen
+
+Six rulings in `progress.md`, and two more worth carrying, changed what the product does rather
+than how the work got there:
+
+- **Tiles are off by default, and a press can only ever reduce what leaves the house.** The
+  prototype let a pressed `?base=sat` link win over the setting outright — one click could have sent
+  a household's own kilometre to a tile server against the keeper's own choice in Set up. The fixed
+  rule: `plan` (nothing sent) is always offered; `satellite`/`street map` are offered, and only then
+  pressable, when `MAP_TILES` is on and the resolution is coarser than 9. Cost: a keeper who wants
+  tiles has to turn them on in Set up first — which is the decision already taken, just now actually
+  enforced.
+- **The claims publish their boundaries, at a cost of 68 kB.** Without the compacted-cell shapes
+  (`cells_ll`) on each claim, the decide stage's claim cards would have counts and no picture, and
+  "resolution is provenance" — the argument this direction is built on — stops being visible. The
+  `/issues` body grew from 159 kB to 227.1 kB to buy that back, inside the 400 kB budget.
+- **`/rho` and `/trust` joined what the page reads.** Both are existing routes the page being
+  replaced already read; without them the measure stage (`/rho`) and the decide stage's trust card
+  would be empty on a live node. Cost: one more GET per page load for each.
+- **Trust, forecast, Arrange and the whole Set up pane were restored after the port dropped them.**
+  The prototype's drawing had none of the four — Set up was a wireframe, and trust/forecast/Arrange
+  were capabilities of the page being replaced that direction H's mock never carried. A port that
+  drops a working capability is the one thing a port may not do, so all four came back: trust as an
+  eleventh section, forecast as a twelfth, Arrange as a mode over Now, and Set up ported close to
+  verbatim (and then, in review, found silently inert — its buttons drawn but unwired to anything —
+  and fixed). Cost: four more surfaces to maintain that the node already maintained before this port.
+- **A node with no coordinates gets an honest fallback, not a hexagon grid over the Gulf of Guinea.**
+  `/health` reports `0, 0` for an unset `NODE_LAT`/`NODE_LON`, and H3 answers for `(0, 0)` as readily
+  as anywhere else, so a freshly-plugged-in node would have been shown a real-looking grid over open
+  ocean and told it was its own ground. The fix draws `static/node-ground.svg` and says the node has
+  not been sited yet. Cost: none identified; this closes a bug the previous page also had, unnoticed.
+- **The wall draws only the first five module fragments; the rest are counted, not shown.** This is
+  the prototype's own rule (`MAX_FRAGMENTS = 5` — at three metres, ten small columns are unreadable),
+  carried over unchanged. On this node the asks fragment registers eighth, so it never appears on the
+  wall itself, only in "+3 more in Now." ρ is already on the wall separately, so little is lost, but
+  nobody has decided whether five is the right number or whether fragments should be ordered by
+  importance instead of registration order — see the open questions below.
+- **A zero-or-negative declared footprint publishes an empty claim rather than crashing `/issues`.**
+  A keeper setting a radius-shaped setting to 0 to disable a source used to be able to take the whole
+  dashboard down with it. The fix does not invent a radius — the one thing a claim may never do — it
+  publishes a claim with an empty covering and a 0 km² footprint, which the page already knows how to
+  draw as nothing.
+- **The satellite strip draws from this node's own `/earth/frame.png`, never from the design repo's
+  copies.** The prototype loaded four PNGs out of the prototype's own folder; a live node has no
+  access to that folder and no reason to trust it. Cost: on a node whose earth pack has never run,
+  the strip is one honest line instead of a picture, until a keeper runs `planetai run earth fetch`.
+
+### What was deliberately not built
+
+- **A pack-served `dashboard.js`.** A pack's own dashboard contribution living as a file the node
+  loads, rather than code merged into the shared shell, needs a route the node does not have. STOP:
+  the node serves exactly three static files today (`dashboard.js`, `dashboard.css`, `index.html`)
+  and nothing else; a fourth file means a new route, which is the next phase's decision, not this
+  one's.
+- **The open hardware manager and local making.** Both are named in the prototype's drawing as
+  packs a node could run; neither pack exists. STOP: there is nothing to register a section for — the
+  hardware section already on the page shows the open-hardware-manager row honestly as "not
+  connected" rather than inventing one.
+- **Per-section switches in Set up.** A keeper can turn `MAP_TILES` on or off, and can hide or
+  reorder any section through Arrange, but cannot switch a whole section off from Set up the way a
+  setting is switched. STOP: Set up's ported pane is the generic settings form; wiring it to
+  section-level on/off is a design decision about where that control belongs (Set up vs. Arrange),
+  not a missing line of code.
+
+### Open questions
+
+- **Is five the right number of wall fragments, and should they be ordered by importance rather than
+  by registration?** On this node the order means the asks fragment never appears on the wall at all
+  — nobody has weighed that against readability at three metres, which is the reason the limit
+  exists in the first place.
+- **Do the emptiness targets move now that a tenth composition has measured against them?** T2's
+  30%/20% targets have now missed on every direction measured, including this one shipped at 61.3%
+  (1440) and 37.7% (390) — both inside `gate.sh`'s own margin around what this page happens to
+  measure, neither near the original target. `docs/design/DIRECTIONS_2026-09.md`'s own second
+  finding already asked whether the targets should move to the measure that discounts decoration;
+  this page is one more data point saying they have still not been met by anything built.

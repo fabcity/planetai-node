@@ -107,6 +107,48 @@ planetai run earth-engine timelapse --n 4 --gap 5
 They run inside the app container, where the dependencies are, and write to `out/`, the one writable path. `planetai run`
 alone lists them.
 
+## A dashboard section
+
+A pack can put a section on the dashboard. It registers one object with the page contract and the
+page renders it in the stage it belongs to — observe, decide, act, measure — in the order the loop
+runs, and folds its explanations at the foot:
+
+```js
+window.PAI.register({
+  id: 'meshtastic',        // required, unique; becomes the band's DOM id
+  pack: 'meshtastic',      // required; your pack's id
+  stage: 'observe',        // required; observe · decide · act · measure, nothing else
+  title: 'The mesh in this house',   // required; the band's kicker, in the house voice
+  render(ctx) { … },       // required; the body. Captions belong here, explanations do not
+  order: 41,               // optional (default 50); position within the stage, lower first
+  needs: ['H3.radio.mesh'],// optional (default none); globals this section reads off window
+  controls(ctx) { … },     // optional: a control strip (a toggle, a selector)
+  wall(ctx) { … },         // optional: what this section contributes to the wall at ctx.RES
+  notes(ctx) { … },        // optional: the explanations, as [{ id, text }]
+});
+```
+
+`id`, `pack`, `stage`, `title` and `render` are the ones the page actually checks for; leave one out,
+or misspell a stage, and the section is dropped with a line under "Registration problems" rather
+than drawn broken. `needs` is read against `window`: when what it names is not there, the band
+prints one honest line — *"The `<pack>` pack has nothing here yet: `<what>` is not on this
+node"* — never a blank and never a guess. When `render()` itself throws, the band prints *"`<pack>` ·
+`<id>` did not render: `<message>`. A failure is not an answer, so the rest of the page is still
+here"* and every other section still draws.
+
+What a section may not do: invent a fifth card kind (readout · stack · series · row are the four,
+and a drawing is a drawing inside a card); colour a state by hue; print a numeral without
+`data-num`/`data-cmp`; leave a component with no `data-ref` in or out; put its explanation in its
+body — that belongs in `notes()`, gathered at the bottom of the page where every note lives folded.
+None of this is enforced by the contract itself; all of it is measured by `tests/visual/gate.sh`.
+
+Today a section lives inline in `app/static/dashboard.js`, because the node serves exactly three
+static files and nothing else — `dashboard.js`, `dashboard.css`, `index.html`. The twelve sections
+shipped there are the reference for the shape above. Serving a pack's own `dashboard.js` — so a
+pack could carry its section as a file the node loads rather than code merged into the shell —
+needs a route the node does not have yet. That is the next phase, not this one. Proposing a section
+back today is sending the file with its `render()` and its `notes()`.
+
 ## What ships
 
 The `issue` column is which band of the dashboard a pack feeds. It comes from the pack's `domain:`,
