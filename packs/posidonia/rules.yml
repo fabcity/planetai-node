@@ -2,13 +2,9 @@
 # household can do about the temperature of the sea, and an alert that asks for nothing it can do is
 # an alert people learn to ignore.
 #
-# THE FIRST LINE IS THE WHOLE MESSAGE. The dashboard's alert log shows one line, so a first line that
-# reads "The sea has held 27.5 °C for a week" tells a reader nothing: not what is at stake, not which
-# number is the line, not why a temperature is being mentioned at all. Each first line below names
-# the plant, the reading and the threshold together, and survives being shown on its own.
-#
 # The es strings are ASSISTANT-WRITTEN and have not been read by a native speaker, the same caveat
-# app/issues/coast.yml carries. Menorca's own language is Catalan, which ALERT_LOCALE does not offer.
+# app/issues/coast.yml carries. Menorca's own language is Catalan, which ALERT_LOCALE does not offer
+# yet; see the README.
 - id: thermal_stress
   level: info
   cooldown_minutes: 1440
@@ -20,8 +16,8 @@
     SELECT 'marine-point' AS sensor_id, round(w.t::numeric, 1) AS sea
     FROM w WHERE w.hrs >= 24 AND w.t >= 28.4
   message:
-    en: "🌊🌱 Sea {sea} °C for three days — Posidonia loses shoots above 28.4 °C.\n\nPosidonia oceanica is the seagrass the Balearic coast is built on: it holds the sand in place, keeps the water clear, shelters the fish that breed here, and stores carbon in root mats that are centuries old. It grows about a centimetre a year, so what a hot summer takes is not given back soon.\n\nNothing to do from a house. It is the number to know if you dive, fish or run a boat here. Line: Marbà & Duarte 2010, measured at Cabrera, 90 km from here."
-    es: "🌊🌱 Mar a {sea} °C durante tres días — la posidonia pierde haces por encima de 28,4 °C.\n\nPosidonia oceanica es la planta sobre la que se sostiene la costa balear: fija la arena, mantiene el agua clara, refugia a los peces que se reproducen aquí y almacena carbono en matas de siglos. Crece alrededor de un centímetro al año, así que lo que se lleva un verano caluroso no vuelve pronto.\n\nNada que hacer desde casa. Es el dato que conviene conocer si buceas, pescas o llevas una barca aquí. Umbral: Marbà y Duarte 2010, medido en Cabrera, a 90 km."
+    en: "🌊🌱 The sea has averaged {sea} °C for three days.\n\nAbove 28.4 °C Posidonia begins losing shoots. It is the meadow that holds the sand down and the water clear, and it grows about a centimetre a year, so what a hot summer takes is not given back quickly.\n\nNothing to do from a house. It is the number to know if you dive, fish or run a boat here. Threshold: Marbà & Duarte 2010, measured at Cabrera."
+    es: "🌊🌱 El mar ha promediado {sea} °C durante tres días.\n\nPor encima de 28,4 °C la posidonia empieza a perder haces. Es la pradera que fija la arena y mantiene el agua clara, y crece alrededor de un centímetro al año, así que lo que se lleva un verano caluroso no vuelve pronto.\n\nNada que hacer desde casa. Es el dato que conviene conocer si buceas, pescas o llevas una barca aquí. Umbral: Marbà y Duarte 2010, medido en Cabrera."
 
 - id: warm_watch
   level: info
@@ -34,5 +30,5 @@
     SELECT 'marine-point' AS sensor_id, round(w.t::numeric, 1) AS sea
     FROM w WHERE w.hrs >= 48 AND w.t >= 27.0 AND w.t < 28.4
   message:
-    en: "🌡️🌱 Sea {sea} °C for a week — above 27 °C Posidonia stops growing well.\n\nPosidonia oceanica is the seagrass meadow this coast sits on, and above 27 °C its photosynthesis is inhibited: the plant is not dying, it is not gaining either. Shoots are lost above 28.4 °C, which is the line worth watching.\n\nNothing to do. Once a week at most."
-    es: "🌡️🌱 Mar a {sea} °C durante una semana — por encima de 27 °C la posidonia deja de crecer bien.\n\nPosidonia oceanica es la pradera sobre la que se asienta esta costa, y por encima de 27 °C su fotosíntesis se inhibe: la planta no muere, pero tampoco gana. Pierde haces por encima de 28,4 °C, que es la línea a vigilar.\n\nNada que hacer. Una vez por semana como máximo."
+    en: "🌡️🌱 The sea has held {sea} °C for a week.\n\nThat is the band where Posidonia photosynthesises less but is not yet dying. Worth watching rather than worrying about: the line that matters is 28.4 °C.\n\nOnce a week at most."
+    es: "🌡️🌱 El mar lleva una semana a {sea} °C.\n\nEs la franja en la que la posidonia fotosintetiza menos pero todavía no muere. Conviene vigilarlo, no alarmarse: la línea que importa es 28,4 °C.\n\nUna vez por semana como máximo."
