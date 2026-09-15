@@ -62,6 +62,8 @@ explained.
 | H | **What the stations read** → press **temperature** | fourteen stations regroup by cell as the dial turns; every source is a link |
 | H | `?view=wall` and wait eight seconds | the dial turns by itself; the map and every number re-derive per stop |
 | H | the **Notes** at the foot | every explanation on the page, folded per section |
+| H | `?view=setup` | the sections this node runs, by pack, from the real registry — on · move · **propose back** — drawn, not built |
+| H | **The hardware in this house** | the four devices on this ground, and the open-hardware-manager row honestly "not connected" |
 | I | the layer switch: **Air → Land → Coast** | four issues, four completely different geometries |
 | I | press any cell with a heavy outline | one station's own reading, which `/issues` does not publish today |
 
@@ -89,7 +91,7 @@ The argument, reader by reader, and every number:
 | orphan numerals · components | 0 · 0 | 0 · 2 | 0 · 4 | 0 · **0** | 0 · **0** | 0 · **0** |
 
 H's column is the revised page — the map, the radio and the satellite. It has since been rebuilt
-again as a **modular shell**: nine sections from five packs, registered against a contract
+again as a **modular shell**: ten sections from six packs, registered against a contract
 (`kit-page.js`), ordered by the loop *observe · decide · act · measure*, with a live tile map,
 the station list with a variable selector and source links, every explanation folded at the foot,
 and a wall whose dial turns by itself. Measured: empty share fell to **48.9 %** at 1440 (from 59.6)
@@ -256,9 +258,9 @@ containment is exact in the index and approximate on the ground.
 
 Then Phase 2 is the contract, not a page: `kit-page.js` becomes the node's renderer, a pack's
 `dashboard` contribution in its pack.yaml is one static file that calls `register`, and the shell
-is the only thing the node ships as its own. The nine sections in the prototype are the first nine
-contributions — the renderer's own four (claims, grain, asks, measure) and five from packs (place,
-air-quality, earth, reticulum, meshtastic). Two decisions ride with it: **live tiles or not** —
+is the only thing the node ships as its own. The ten sections in the prototype are the first ten
+contributions — the renderer's own four (claims, grain, asks, measure) and six from packs (place,
+air-quality, earth, reticulum, meshtastic, hardware). Two decisions ride with it: **live tiles or not** —
 the page sends a tile server the square being looked at; under the rule now in place the plan is
 the default from resolution 9 inward and the tiles show at 8 and coarser, so the dial as it opens
 sends twelve tile requests and one stop in sends nothing — and **which sections stay in Now**, because nine of them are twelve

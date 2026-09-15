@@ -735,7 +735,7 @@ file.** In Phase 2 this same shape is a pack's `dashboard` contribution in its p
 one more static file. Nothing here is a framework.
 
 **The loop is the spine.** Four stages, numbered, each a heading with the loop drawn beside it and
-the stage lit. Nine sections registered today, from five packs and the renderer's own:
+the stage lit. Ten sections registered today, from six packs and the renderer's own:
 
 | stage | section | pack | what it holds |
 |---|---|---|---|
@@ -744,6 +744,7 @@ the stage lit. Nine sections registered today, from five packs and the renderer'
 | | What the satellite says | earth | four Sentinel-2 passes, brightness matched; the 1,874 buildings only the satellite knows; the earth pack's numbers |
 | | What leaves this house by radio | reticulum | the announce cell at resolution 3, and the three cells the peer 61 km away could be in |
 | | The mesh in this house | meshtastic | the LoRa device, its gateway, its packets, its own readings |
+| | The hardware in this house | hardware | the four devices on this node's own ground — three Smart Citizen kits and the mesh node, both open hardware — and one honest row: the open hardware manager is not connected, and says what it would add |
 | 2 · decide | Whose word, over how much ground | core | six declared footprints and how many cells of this grain each covers |
 | | What each grain is worth | core | the flat run, and the eleven-row table folded under it |
 | 3 · act | What this node has asked | core | the open ask, the asks sent per rule with the first line of each, and the funnel |
@@ -775,6 +776,18 @@ at 9, it reads **0 requests** and 63.3 % — a drawing of buildings is emptier t
 them, and that is the trade. A dial that opened at 9 would send nothing; it opens at 8 because 8 is
 the cell `GET /health` already publishes, and that is a separate decision.
 
+**The two things Tomas named as next, and where their hooks are.** The open hardware manager and
+the capacity to make locally are packs that do not exist yet, and the page says so in the place they
+will appear rather than nowhere: the `hardware` section lists the four devices this house actually
+runs — every fact about them from the fixture — and carries one row, *Open hardware manager · not
+connected*, saying what it would add (design files, firmware, a bill of materials, where nearby a
+device could be made or mended) and that a pack registers it when it exists. **Propose back** has an
+affordance now too: H's Set up view draws the sections this node runs, by pack, from the real
+registry — ten rows — each with *on*, *move* and *propose back*, and a caption saying what a
+proposal is (the section's file, its notes and this node's renders, as one bundle for another node
+to try). Drawn, not built, like the rest of the wireframe; but drawn from the registry, so it is what
+this node has and not a sketch of one.
+
 **Explanations at the bottom.** Every section's paragraphs moved into its `notes()`. Printed open,
 they were a third of the page — about 3,000 px — so they fold per section: the title, the pack, the
 count, one press. Forty-odd notes and no section keeps a paragraph of its own.
@@ -795,19 +808,19 @@ wall says so in one line at its foot.
 | T1 @ 390 / 768 / 1440 | ✓ | ✓ | five legs |
 | T2 empty @ 1440 | 59.6 % | **48.7 %** at 8, tiles · 63.3 % at 9, plan | ≤ 30 |
 | T2 empty @ 390 · 768 | 33.7 · 36.3 | **28.1** · 37.8 | ≤ 20 |
-| page @ 1440 | 5.5 screens | **8.1** | ≤ 4 |
-| page @ 390 | 8.4 | **12.6** | ≤ 8 |
+| page @ 1440 | 5.5 screens | **8.6** | ≤ 4 |
+| page @ 390 | 8.4 | **13.8** | ≤ 8 |
 | T3 kinds | 3 | 3 | 4 |
-| T4 numerals with no comparison | 0 / 36 | 0 / 71 | 0 |
-| T5 components with no link | 0 / 32 | 0 / 77 | 0 |
+| T4 numerals with no comparison | 0 / 36 | 0 / 76 | 0 |
+| T5 components with no link | 0 / 32 | 0 / 83 | 0 |
 | T6 reading order against DOM @ 1440 | 5 | 6 | 0 |
 | wall on 1,080 px | 1,080 | **1,080** | 1,080 |
 
 Two things moved and both are what the additions cost. **T2 fell by eleven points at 1440** —
 48.7 % at the stop the dial opens on, the lowest of any page in three rounds bar I — because the
 live map fills the fold with a mark that is the instrument; one stop in, where the rule puts the
-node's own plan under the cells, it reads 63.3 %. **The page doubled in length**: 8.1 screens at 1440 and 12.6 at 390,
-against targets of 4 and 8. Nine sections, fourteen station rows, four satellite frames and a
+node's own plan under the cells, it reads 63.3 %. **The page doubled in length**: 8.6 screens at 1440 and 13.8 at 390,
+against targets of 4 and 8. Ten sections, fourteen station rows, four satellite frames and a
 folded notes block are not a four-screen page, and no amount of tightening makes them one. The
 lever is the contract's own: a section can move to another view (the Network view's wireframe
 already has "What leaves this house", which is the radio's title) or a node can register fewer. That
