@@ -62,6 +62,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -95,6 +96,120 @@ const REFUSAL = p => JSON.stringify({ error:
 
 const MIME = { '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml',
   '.json': 'application/json', '.html': 'text/html', '.ttf': 'font/ttf', '.woff2': 'font/woff2' };
+
+/* ------------------------------------------------------------------ the node, without a node
+ *
+ * `dashboard.js`'s own `snapshot()` reads `/issues` (or `/issues/fixtures/<name>` in fixture mode),
+ * `/health`, `/settings` and `/place/geojson` before it draws anything. Getting a real answer to
+ * those four used to mean a bootstrapped container was running at POP — heavy to stand up for a
+ * rendering task, and the wrong container besides: this branch's `/issues` is not built yet, and
+ * would not be in a container even if it were. So, when PAI_LIVE is not '1', this repo answers its
+ * own node's endpoints instead of asking one — a render becomes hermetic: no node, no container, no
+ * network. `PAI_LIVE=1` is unchanged: it still measures a running container with no interception at
+ * all, which is the whole point of that flag.
+ *
+ * Only these four are answered offline. Everything else `dashboard.js` fetches (`/alerts`, `/rho`,
+ * `/sensors`, `/nearby`, `/forecast`, `/trust`, `/earth`, `/cells`, `/sparks`, `/report/latest`) is
+ * never asked for in fixture mode: `snapshot()` takes a different branch entirely when `?fixture=`
+ * is set (dashboard.js, the `if (FIXTURE)` block) and calls only `/issues/fixtures/<name>` — see
+ * that file's own comment on why: "the page would stop being renderable from a fixture alone". A
+ * render driven by `?fixture=`, which is every `populated` job below, needs nothing else.
+ */
+
+// One shell-out per fixture name, per run of this script. `app/issues/api.py`'s `fixture()` route
+// does exactly this — load the committed snapshot, replay it through the node's own engine and its
+// own settings module — so this reproduces the real route rather than guessing its shape. Cached
+// because a `render` command asks for the same fixture on every job, and a fresh Python process to
+// recompute unchanged data would be the slow part of measuring four viewports.
+const _fixtureCache = new Map();
+function computeFixtureSnapshot(name) {
+  if (_fixtureCache.has(name)) return _fixtureCache.get(name);
+  const f = path.join(ROOT, 'app/issues/fixtures', `${name}.json`);
+  if (!fs.existsSync(f)) { _fixtureCache.set(name, null); return null; }
+  // Matches app/issues/api.py's fixture() route: load the snapshot, then
+  // snap["issues"] = engine.replay(snap, main.settings, load()). `main.settings` and the plain
+  // `settings` module are the same import — `main.py` does `import settings` — so importing it
+  // directly, without a running `main`, replays the same call.
+  const script = `import json, sys
+sys.path.insert(0, 'app')
+import settings
+from issues import load, engine
+snap = json.load(open(${JSON.stringify(`app/issues/fixtures/${name}.json`)}))
+snap['issues'] = engine.replay(snap, settings, load())
+print(json.dumps(snap))`;
+  let snap = null;
+  try {
+    const out = execFileSync('python3', ['-c', script],
+      { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app' } });
+    snap = JSON.parse(out.toString());
+  } catch (e) {
+    console.error(`measure.mjs: could not replay fixture ${name} (${e.message.split('\n')[0]})`);
+  }
+  _fixtureCache.set(name, snap);
+  return snap;
+}
+
+// The plan the `place` pack keeps, which this repo does not carry — it lives in the design repo,
+// the same 5,376-feature file the pack itself stores. A checkout without the design repo (or with
+// PAI_DESIGN_REPO pointed elsewhere) renders with no plan, which is a real, supported state: the
+// page's own place code treats an absent plan as an absence, not a failure (app/static/dashboard.js
+// checks `r.ok` and passes `null` on).
+const PLACE_GEOJSON = path.join(DESIGN, 'data/place.geojson');
+
+// What GET /settings answers with, for a page that only reads a handful of keys off it (PARENT_API_URL
+// for the Network tab, UI_LAYOUT for Arrange, PACKS_ENABLED and ALERT_LOCALE for Set up, MAP_TILES for
+// the plan). These are app/settings.py's own shipped defaults, typed here rather than run through
+// settings.describe() — this repo carries no database for that module to read, so "unlocked" and
+// "source" would be fiction. NOT a running node's settings: a node with the GUI touched would answer
+// differently, and nothing here claims otherwise.
+const SETTINGS_DEFAULTS = { unlocked: false, bootstrap: [], runtime: [
+  { key: 'UI_LAYOUT', value: '', set: false },
+  { key: 'SHARE_LEVEL', value: 'off', set: false },
+  { key: 'MAP_TILES', value: 'off', set: false },
+  { key: 'PARENT_API_URL', value: '', set: false },
+  { key: 'PACKS_ENABLED', value: '', set: false },
+  { key: 'ALERT_LOCALE', value: 'en', set: false },
+] };
+
+/* Answers the four endpoints above from this repo, offline. Returns true when it fulfilled the
+ * route — the caller must not also route.continue() it. Shared by `open()`'s render path and
+ * `stall()`'s stall path: both serve a page and both need the same four answers for the same
+ * reason, so there is one function rather than two copies that can drift. */
+async function serveNodeAPI(route, u) {
+  const fx = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
+  if (fx) {
+    const snap = computeFixtureSnapshot(decodeURIComponent(fx[1]));
+    await route.fulfill(snap
+      ? { status: 200, contentType: 'application/json', body: JSON.stringify(snap) }
+      : { status: 404, contentType: 'application/json',
+          body: JSON.stringify({ detail: 'no such fixture in this checkout' }) });
+    return true;
+  }
+  if (u.pathname === '/issues' || u.pathname === '/issues/') {
+    const snap = computeFixtureSnapshot(FIXTURE);
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify((snap && snap.issues) || {}) });
+    return true;
+  }
+  if (u.pathname === '/health') {
+    const snap = computeFixtureSnapshot(FIXTURE);
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify((snap && snap.health) || {}) });
+    return true;
+  }
+  if (u.pathname === '/settings') {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SETTINGS_DEFAULTS) });
+    return true;
+  }
+  if (u.pathname === '/place/geojson') {
+    await (fs.existsSync(PLACE_GEOJSON)
+      ? route.fulfill({ status: 200, contentType: 'application/geo+json', body: fs.readFileSync(PLACE_GEOJSON) })
+      : route.fulfill({ status: 404, contentType: 'application/json',
+          body: JSON.stringify({ detail: 'no place plan in this checkout' }) }));
+    return true;
+  }
+  return false;
+}
 
 const WIDTHS = [375, 390, 768, 1440];
 const VIEWS = ['now', 'network', 'setup', 'setup-unlocked', 'wall', 'arrange'];
@@ -195,6 +310,10 @@ async function open(job) {
     }
     if (job.state === 'refused' && !/^\/(static|health)/.test(u.pathname))
       return route.fulfill({ status: 403, contentType: 'application/json', body: REFUSAL(u.pathname) });
+    // Offline node endpoints — see "the node, without a node" above. Tried after the refusal check
+    // so a refused job still gets its 403 on /issues, /settings and /place/geojson exactly as
+    // before; /health is carved out of that check above and lands here instead of on the network.
+    if (process.env.PAI_LIVE !== '1' && await serveNodeAPI(route, u)) return;
     return route.continue();
   });
 
@@ -513,6 +632,10 @@ async function stall(name) {
     if (process.env.PAI_LIVE === '1' && (u.pathname === '/' || /^\/static\//.test(u.pathname)))
       return route.continue();
     await gate;                       // every API call waits
+    // Offline node endpoints — see "the node, without a node" above, and open()'s own call site.
+    // Served AFTER the gate, not before: stall measures what moves when these answers arrive late,
+    // and answering early from here would be a different experiment from answering early from POP.
+    if (process.env.PAI_LIVE !== '1' && await serveNodeAPI(route, u)) return;
     return route.continue();
   });
   const page = await ctx.newPage();
