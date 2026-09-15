@@ -58,6 +58,102 @@ NOTABLE_HOURS = 24
 # both untrue and a way to make the strip look busy when nothing is being asked of anyone.
 ASK_LEVEL = "act"
 
+# The metrics a station may show on the dashboard, with the unit, the places and the issue each belongs to. A
+# 15-minute mean is the coarsest thing a snapshot carries and the finest a page may show per station.
+METRICS = {
+    "pm25": {"unit": "µg/m³", "dp": 1, "issue": "air", "label": "PM2.5"},
+    "pm10": {"unit": "µg/m³", "dp": 1, "issue": "air", "label": "PM10"},
+    "pm1": {"unit": "µg/m³", "dp": 1, "issue": "air", "label": "PM1"},
+    "aqi": {"unit": "AQI", "dp": 0, "issue": "air", "label": "AQI"},
+    "temp": {"unit": "°C", "dp": 1, "issue": "heat", "label": "temperature"},
+    "humidity": {"unit": "%", "dp": 0, "issue": "heat", "label": "humidity"},
+    "pressure": {"unit": "hPa", "dp": 0, "issue": None, "label": "pressure"},
+    "noise": {"unit": "dB", "dp": 0, "issue": None, "label": "noise"},
+    "light": {"unit": "lux", "dp": 0, "issue": None, "label": "light"},
+    "gas_resistance": {"unit": "kΩ", "dp": 0, "issue": None, "label": "gas resistance"},
+    "battery_v": {"unit": "V", "dp": 2, "issue": None, "label": "battery"},
+}
+
+
+def _source_of(sensor_id: str) -> dict:
+    """Where a station's data comes from, read off its id the way app/sources.py assigns them."""
+    if sensor_id.startswith("sc-"):
+        return {"source": "smartcitizen", "url": f"https://smartcitizen.me/kits/{sensor_id[3:]}",
+                "attribution": "Smart Citizen, smartcitizen.me"}
+    if sensor_id.startswith("bad-"):
+        return {"source": "baliairdispatch", "url": "https://baliairdispatch.com",
+                "attribution": "Bali Air Dispatch, baliairdispatch.com"}
+    if sensor_id.startswith("msh-"):
+        return {"source": "meshtastic", "url": None, "attribution": None}
+    return {"source": "unknown", "url": None, "attribution": None}
+
+
+def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float) -> list[dict]:
+    """Every station with a coordinate, its own 15-minute means for the metrics the page may show, and the hourly
+    series the node has for it. Nothing here is averaged across stations: the street stays a fenced median in the
+    stack, and this is the thing the median hides, published beside it by decision of 15 September 2026."""
+    import h3  # noqa: PLC0415 — only this path needs it, and geometry.py already requires it
+    by: dict[str, dict] = {}
+    for r in stats:
+        if r.get("lat") is None or r.get("lon") is None:
+            continue
+        s = by.setdefault(r["sensor_id"], {
+            "sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
+            "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
+            **_source_of(r["sensor_id"]),
+            "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1),
+            "read": {}, "series": {}})
+        m = METRICS.get(r.get("metric"))
+        if m and r.get("mean_15m") is not None:
+            s["read"][r["metric"]] = {"value": round(float(r["mean_15m"]), 2), "unit": m["unit"], "dp": m["dp"],
+                                       "silent_minutes": None if r.get("silent_minutes") is None
+                                       else round(r["silent_minutes"])}
+    for h in hourly or []:
+        s = by.get(h.get("sensor_id"))
+        if s is None:
+            continue
+        s["series"].setdefault(h["metric"], []).append(
+            {"t": h["bucket"] if isinstance(h["bucket"], str) else h["bucket"].isoformat(),
+             "mean": h.get("mean"), "min": h.get("min"), "max": h.get("max"), "n": h.get("n")})
+    for s in by.values():
+        for k in s["series"]:
+            s["series"][k].sort(key=lambda x: x["t"])
+    return sorted(by.values(), key=lambda s: s["km"])
+
+
+def _asks_ledger(alerts: list[dict], actions: list[dict]) -> dict:
+    """The act stage's ledger: every alert that asked a person to do something, first line only, and every answer.
+
+    This is not `_asks()` above — that one is per-issue and only ever surfaces act-level alerts that are still
+    open. This one is the whole ledger, for the page's own act-stage view, and it is never averaged or filtered
+    by issue: a person reading the ledger wants every act, every answer, and the three counts."""
+    def first_line(t):
+        return str(t or "").split("\n")[0][:160]
+
+    return {
+        "acts": [{"id": a.get("id"), "ts": a["ts"] if isinstance(a.get("ts"), str) else a["ts"].isoformat(),
+                  "rule_id": a.get("rule_id"), "sensor_id": a.get("sensor_id"), "text": first_line(a.get("text"))}
+                 for a in alerts if a.get("level") == "act"],
+        "actions": [{"alert_id": x.get("alert_id"), "stage": x.get("stage"), "actor": x.get("actor"),
+                     "ts": x["ts"] if isinstance(x.get("ts"), str) else x["ts"].isoformat()} for x in actions],
+        "levels": {lvl: sum(1 for a in alerts if a.get("level") == lvl) for lvl in ("act", "warn", "info")},
+    }
+
+
+def _mesh(mesh: dict | None, stats: list[dict]) -> dict | None:
+    """The LoRa mesh in this house: the gateway `/health` already knows about (passed in, never fetched — see
+    Ruling P3: `/issues` makes no network call, and the mesh dict is `app/main.py`'s own `mesh_state`, a
+    module-level name it already keeps for `/health`), and the device's own 15-minute means from `stats`."""
+    if not mesh:
+        return None
+    dev = next((r for r in stats if str(r.get("sensor_id", "")).startswith("msh-")), None)
+    reads = [{"metric": r["metric"], "mean_15m": round(float(r["mean_15m"]), 2),
+              "silent_minutes": None if r.get("silent_minutes") is None else round(r["silent_minutes"])}
+             for r in stats if str(r.get("sensor_id", "")).startswith("msh-") and r.get("mean_15m") is not None]
+    return {**mesh, "device": None if dev is None else
+            {"sensor_id": dev["sensor_id"], "name": dev.get("name"), "indoor": bool(dev.get("indoor"))},
+            "reads": reads}
+
 
 # ---------------------------------------------------------------------------------------- arithmetic
 def apparent(t: float | None, rh: float | None) -> float | None:
@@ -575,9 +671,11 @@ def _read(cur) -> dict:
                              "ORDER BY ts DESC LIMIT 200"),
         "actions": _rows(cur, "SELECT ts, alert_id, stage, actor, note FROM actions "
                               "WHERE alert_id IS NOT NULL"),
-        "hourly": _rows(cur, "SELECT h.bucket, h.sensor_id, h.metric, h.mean, s.indoor, s.local, "
-                             "s.kind FROM readings_1h h JOIN sensors s USING (sensor_id) "
-                             "WHERE h.bucket > now() - interval '24 hours'"),
+        # min/max/n ride along for the station series' min-max band (Task 3); readings_1h already
+        # carries them, the same three columns app/main.py:452 and :1724 already select off it.
+        "hourly": _rows(cur, "SELECT h.bucket, h.sensor_id, h.metric, h.mean, h.min, h.max, h.n, "
+                             "s.indoor, s.local, s.kind FROM readings_1h h JOIN sensors s "
+                             "USING (sensor_id) WHERE h.bucket > now() - interval '24 hours'"),
     }
 
 
@@ -621,21 +719,39 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
 
     `now` comes from the snapshot: a stack computed against today's wall clock would report every
     figure in a week-old capture as hours stale, which is true of the clock and false of the data.
+
+    `place` and `mesh` also come from the snapshot rather than from `settings` or a live call: a
+    fixture is a fixed moment and may be replayed on a different node than the one that captured it.
+    Both ride in `health`, the same row `/health` itself was built from, so a snapshot missing
+    coordinates there falls back to `compute()`'s own default rather than crashing on it.
     """
     now = snapshot.get("as_of")
     if isinstance(now, str):
         now = datetime.fromisoformat(now)
-    return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now)
+    health = snapshot.get("health") or {}
+    place = (health["lat"], health["lon"]) if health.get("lat") is not None and health.get("lon") is not None \
+        else None
+    return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
+                   place=place, mesh=health.get("mesh"))
 
 
-def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None) -> dict:
+def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
+            place: tuple[float, float] | None = None, mesh: dict | None = None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
     exactly one reader in this repo. `now` is injectable so a fixture can be replayed at the hour it
     was captured; a stack computed against the wall clock of a different day is all `cached`.
+
+    `place` is the coordinate `stations` measures `km` from; it defaults to this node's own position.
+    `mesh` is `/health`'s mesh dict, passed in rather than read here — `/issues` makes no network call
+    and no query the live cursor cannot answer, so a live call hands it `app/main.py`'s own module-level
+    `mesh_state` (Ruling P3 in the Task 3 brief: neither `health` nor `presence` is a table to SELECT).
     """
     now = now or datetime.now(timezone.utc)
+    if place is None:
+        place = (float(settings.get("NODE_LAT", 0) or 0), float(settings.get("NODE_LON", 0) or 0))
+    lat, lon = place
     data = _read(cur)
     declared, dropped = order(settings.get("NODE_ISSUES", ""), decl)
     undeclared = [k for k in sorted(decl) if k not in declared]
@@ -704,7 +820,12 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "headline": headline_issue, "as_of": now.isoformat(),
             # the column headings, so the page and Telegram both take their words from the node
             "distances": list(DISTANCES), "labels": LABEL_WORDS,
-            "issues": out}
+            "issues": out,
+            # what the modular dashboard reads beside the issues — 15 September 2026's decisions
+            "stations": _stations(data["stats"], data.get("hourly"), lat, lon),
+            "metrics": METRICS,
+            "asks": _asks_ledger(data["alerts"], data["actions"]),
+            "mesh": _mesh(mesh, data["stats"])}
 
 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}

@@ -362,6 +362,53 @@ c = Counting(FIX)
 engine.compute(c, Settings(NODE_ISSUES="air"), DECL, earth=EARTH, now=NOW)
 check(c.n == 5, f"the engine ran {c.n} queries for one issue; the reads are not per-issue")
 
+# --- the keys the modular dashboard reads ---------------------------------------------------------
+body = engine.replay(FIX, Settings(), DECL)
+
+st = body.get("stations")
+if not st or len(st) != 14:
+    fails.append(f"stations: 14 with coordinates in the fixture, got {len(st or [])}")
+else:
+    sc = next(s for s in st if s["sensor_id"] == "sc-19849")
+    if sc["source"] != "smartcitizen" or sc["url"] != "https://smartcitizen.me/kits/19849":
+        fails.append(f"a Smart Citizen kit links to its page: {sc['source']} {sc['url']}")
+    if "pm25" not in sc["read"] or sc["read"]["pm25"]["unit"] != "µg/m³":
+        fails.append(f"a station's read carries the declared unit: {sc['read'].get('pm25')}")
+    bad = next(s for s in st if s["sensor_id"].startswith("bad-"))
+    if bad["attribution"] != "Bali Air Dispatch, baliairdispatch.com":
+        fails.append("Bali Air Dispatch rows carry the attribution the observatory requires")
+    traced = [s["sensor_id"] for s in st if s["series"]]
+    if sorted(traced) != ["bad-sc-19774", "sc-19880"]:
+        fails.append(f"the fixture has an hourly series for exactly two stations, got {traced}")
+    if st != sorted(st, key=lambda s: s["km"]):
+        fails.append("stations are ordered by distance")
+    band = next((v for s in st for v in s["series"].values() if v), None)
+    if not band or band[0].get("min") is None or band[0].get("max") is None or band[0].get("n") is None:
+        fails.append(f"readings_1h has min/max/n in the fixture, so a station's series must carry them: {band}")
+
+m = body.get("metrics", {})
+if m.get("pm25", {}).get("issue") != "air" or m.get("temp", {}).get("dp") != 1:
+    fails.append(f"metrics declare unit, places and issue: {m.get('pm25')} {m.get('temp')}")
+
+a = body.get("asks", {})
+if len(a.get("acts", [])) != 21 or len(a.get("actions", [])) != 11 or a.get("levels", {}).get("warn") != 9:
+    fails.append(f"asks: 21 acts, 11 actions, 9 warn in the fixture; got {len(a.get('acts', []))}, "
+                 f"{len(a.get('actions', []))}, {a.get('levels')}")
+if any("\n" in x["text"] or len(x["text"]) > 160 for x in a.get("acts", [])):
+    fails.append("an ask's text is its first line, at most 160 characters")
+
+mesh = body.get("mesh")
+if not mesh or mesh["gateway"] != "!8f491db0" or mesh["packets"] != 12:
+    fails.append(f"mesh: the gateway and its packets come from /health: {mesh}")
+if not mesh or not any(r["metric"] == "battery_v" for r in mesh["reads"]):
+    fails.append("mesh: the device's own 15-minute means ride with it")
+
+# a snapshot with no mesh and no coordinates in health must not crash — it falls back to place=(0, 0)
+# and mesh=None, same as a live node with MQTT_HOST unset
+bare = engine.replay({**FIX, "health": {}}, Settings(), DECL)
+check(bare.get("mesh") is None, "with no mesh in health, /issues publishes mesh: None, not a crash")
+check(bare.get("stations"), "with no coordinates in health, stations still publish, measured from (0, 0)")
+
 print("\n".join(f"  x {f}" for f in fails if f) or
       f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "
       f"attribution in six classes, and {len(OUT['issues']) * len(I.LOCALES)} sentences with every "
