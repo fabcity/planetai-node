@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT / "app"))
 
 import issues as I               # noqa: E402
 from issues import engine        # noqa: E402
+from issues import geometry      # noqa: E402
 
 logging.getLogger("planetai.issues").setLevel(logging.ERROR)
 
@@ -409,11 +410,35 @@ if not mesh or mesh["gateway"] != "!8f491db0" or mesh["packets"] != 12:
 if not mesh or not any(r["metric"] == "battery_v" for r in mesh["reads"]):
     fails.append("mesh: the device's own 15-minute means ride with it")
 
-# a snapshot with no mesh and no coordinates in health must not crash — it falls back to place=(0, 0)
-# and mesh=None, same as a live node with MQTT_HOST unset
+# a snapshot with no mesh and no coordinates in health must not crash — it falls back to mesh=None,
+# same as a live node with MQTT_HOST unset, and to a place it does not have
 bare = engine.replay({**FIX, "health": {}}, Settings(), DECL)
 check(bare.get("mesh") is None, "with no mesh in health, /issues publishes mesh: None, not a crash")
-check(bare.get("stations"), "with no coordinates in health, stations still publish, measured from (0, 0)")
+check(bare.get("stations"), "with no coordinates in health, stations still publish")
+
+# ...and every distance on them is UNKNOWN, not a distance from (0, 0).
+#
+# "did not crash" is all this asserted, and under it the node published every neighbour's distance
+# from the point where the equator meets the prime meridian — open water in the Gulf of Guinea — as a
+# number, which four surfaces of the dashboard then printed to a household as fact. An unsited node
+# knows how far away nothing is.
+check(all(st["km"] is None for st in bare["stations"]),
+      "unsited, every station's km is None: the node publishes unknown rather than a distance from (0, 0)")
+check(all(st.get("read") is not None for st in bare["stations"]),
+      "unsited, the readings themselves still publish — it is the distance that is unknown, not the air")
+sited_kms = [st["km"] for st in body["stations"]]
+check(all(k is not None for k in sited_kms) and sited_kms == sorted(sited_kms),
+      f"sited, every station still carries a distance and the list is still nearest first: {sited_kms[:4]}")
+
+# A negative RETICULUM_PRESENCE_RES is a number a keeper can type into Set up. h3.latlng_to_cell
+# raises H3ResDomainError on one, and geometry.radio() clamped only the top end — so one bad setting
+# took GET /issues down, and with it every surface of the page, over how coarsely this node announces
+# itself. app/main.py's own presence path has always clamped both ends.
+for _res, _want in ((-1, 0), (99, geometry.FLOOR_RES), (3, 3)):
+    g = engine.replay(FIX, Settings(RETICULUM_PRESENCE_RES=_res), DECL)["geometry"]
+    check(g is not None and g["radio"]["res"] == _want,
+          f"RETICULUM_PRESENCE_RES={_res} must clamp to {_want}, not fail the whole response: "
+          f"{None if g is None else g['radio']['res']}")
 
 # --- the geometry the dial turns on --------------------------------------------------------------
 g = body.get("geometry")

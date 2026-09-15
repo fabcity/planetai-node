@@ -45,6 +45,8 @@ from . import geometry
 from .schema import is_open, is_seen, place_of, stage_of
 
 log = logging.getLogger("planetai.issues")
+# Said once per process, not once per request: /issues is polled by every open page.
+_said_unsited = False
 
 # A device that has said nothing for two hours is not reporting. Same number as the rules and the
 # shipped page used, so the stack and the alerts cannot disagree about who is awake.
@@ -89,10 +91,14 @@ def _source_of(sensor_id: str) -> dict:
     return {"source": "unknown", "url": None, "attribution": None}
 
 
-def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float) -> list[dict]:
+def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sited: bool = True) -> list[dict]:
     """Every station with a coordinate, its own 15-minute means for the metrics the page may show, and the hourly
     series the node has for it. Nothing here is averaged across stations: the street stays a fenced median in the
-    stack, and this is the thing the median hides, published beside it by decision of 15 September 2026."""
+    stack, and this is the thing the median hides, published beside it by decision of 15 September 2026.
+
+    `sited` is False when this node has no NODE_LAT/NODE_LON. Then `km` is None on every station rather than a
+    distance from (0, 0) — a real point in the Gulf of Guinea that every surface drawing this list would otherwise
+    print as fact. An unknown distance is published as unknown; the surfaces say so in their own words."""
     import h3  # noqa: PLC0415 — only this path needs it, and geometry.py already requires it
     by: dict[str, dict] = {}
     for r in stats:
@@ -102,7 +108,7 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float) -> 
             "sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
             "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
             **_source_of(r["sensor_id"]),
-            "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1),
+            "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited else None,
             "read": {}, "series": {}})
         m = METRICS.get(r.get("metric"))
         if m and r.get("mean_15m") is not None:
@@ -119,7 +125,8 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float) -> 
     for s in by.values():
         for k in s["series"]:
             s["series"][k].sort(key=lambda x: x["t"])
-    return sorted(by.values(), key=lambda s: s["km"])
+    # Unsited, every km is None and this is the order they arrived in; the page does not present it as nearness.
+    return sorted(by.values(), key=lambda s: (s["km"] is None, s["km"] or 0))
 
 
 def _asks_ledger(alerts: list[dict], actions: list[dict]) -> dict:
@@ -774,6 +781,18 @@ def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> 
     }
 
 
+def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict | None:
+    """The geometry, or None. One bad number in a setting — a radius, a resolution — reaches h3 through _geometry
+    and an h3 exception would otherwise fail the whole /issues response, so the page that draws the air, the asks
+    and the stations goes blank over the map. The page's `needs` machinery already prints one honest line for a
+    section whose global is absent, which is the true thing to say here."""
+    try:
+        return _geometry(lat, lon, settings, stations, peers)
+    except Exception:  # noqa: BLE001 — whatever h3 raises, the rest of the body is still an answer
+        log.exception("geometry failed; /issues publishes geometry: null and the page says so")
+        return None
+
+
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
             peers=()) -> dict:
@@ -792,10 +811,18 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     fetching it costs an HTTP request and `/issues` makes no network call of its own. It only ever
     arrives here already in hand — from a snapshot's `peer`, when a replay has one.
     """
+    global _said_unsited
     now = now or datetime.now(timezone.utc)
     if place is None:
         place = (float(settings.get("NODE_LAT", 0) or 0), float(settings.get("NODE_LON", 0) or 0))
     lat, lon = place
+    # Both falsy is "unsited": /health publishes float(os.getenv("NODE_LAT", 0) or 0), so absent and unset arrive
+    # as exactly 0, and 0,0 is open water. Once a day of logs, not once a request: /issues is polled.
+    sited = bool(lat or lon)
+    if not sited and not _said_unsited:
+        log.warning("this node has no NODE_LAT/NODE_LON: station distances are published as unknown, "
+                    "not measured from (0, 0). `planetai setup` sites it.")
+        _said_unsited = True
     data = _read(cur)
     declared, dropped = order(settings.get("NODE_ISSUES", ""), decl)
     undeclared = [k for k in sorted(decl) if k not in declared]
@@ -860,7 +887,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         }
 
     headline_issue = _headline(out, declared)
-    stations = _stations(data["stats"], data.get("hourly"), lat, lon)
+    stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
     return {"order": declared, "undeclared": undeclared, "dropped": dropped,
             "headline": headline_issue, "as_of": now.isoformat(),
             # the column headings, so the page and Telegram both take their words from the node
@@ -871,7 +898,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "metrics": METRICS,
             "asks": _asks_ledger(data["alerts"], data["actions"]),
             "mesh": _mesh(mesh, data["stats"]),
-            "geometry": _geometry(lat, lon, settings, stations, peers)}
+            "geometry": _safe_geometry(lat, lon, settings, stations, peers)}
 
 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}

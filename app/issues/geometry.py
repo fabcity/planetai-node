@@ -247,7 +247,11 @@ def claims(lat: float, lon: float, settings) -> list[dict]:
 def radio(lat: float, lon: float, settings, peers: list[dict]) -> dict:
     """What the radio says about where: this node's announce cell, and for each peer either the cell it announced or
     — when only a distance survived — the cells around this one that distance could be in. Never a point."""
-    res = min(int(settings.num("RETICULUM_PRESENCE_RES", 3)), FLOOR_RES)
+    # Clamped at both ends, the way app/main.py's own presence path clamps it. A negative resolution
+    # is a number a keeper can type into Set up, and h3.latlng_to_cell raises H3ResDomainError on one
+    # — which would take GET /issues down, and with it the whole dashboard, over a setting that only
+    # ever decides how coarsely this node announces itself.
+    res = max(0, min(int(settings.num("RETICULUM_PRESENCE_RES", 3)), FLOOR_RES))
     mine = h3.latlng_to_cell(lat, lon, res)
     around = h3.grid_disk(mine, 2)
 
