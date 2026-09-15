@@ -659,6 +659,59 @@ household has no reason to understand, and the page has to work when nobody ever
 it does, but that makes the dial furniture for most readers. It is also 4.4 screens at 1440, the
 longest of the third round.
 
+### H, revised · the ground under the dial
+
+**15 September, same day.** Tomas read H and said the hexagons feel abstract: keep a map under the
+scales, with the cells over the place the node actually stands in — and add a section for the node's
+radio and one for the satellite. All three are in, and none of them needed anything the node does
+not already have on disk.
+
+**The map is the node's own plan, not a tile server.** `planetai-design/data/place.geojson` is the
+kilometre around node #1 as the `place` pack keeps it: **OpenStreetMap** (ODbL), 2,904 buildings,
+540 roads, 21 green, 37 uses, plus 1,874 buildings one satellite pass found that OSM does not have —
+26,311 vertices, the same data `drawPlan()` draws on the shipped page. `make-plan.mjs` projects it
+with the node dashboard's own formula, which `NODE_DASHBOARD_PLAN_SPEC.md` measured within
+**0.015 px on an 800 px frame** of `geoAzimuthalEqualArea` over these exact vertices, and `plan.js`
+is 346 kB with every vertex kept. The seven rules of that file are followed, including the two that
+matter most here: never resample, and the grid is drawn **over** the town, because the index is a
+thing laid on a place.
+
+No tiles, and that is not a shortcut. A slippy map means a node fetching tiles, and a household node
+that fetches tiles tells somebody else's machine where it is every time anybody opens the page —
+which is the single thing this product is built not to do. If photographic ground is wanted, it is
+already here: four Sentinel passes on the node's own disk.
+
+**The frame is the cells.** The dial picks the resolution, the resolution picks the cells, the cells
+pick how much ground is in view. Turning the dial zooms the map and nobody has to line up two
+pictures. Past 20 km across, the plan stops being drawn as buildings and becomes the rectangle it
+actually is — at resolution 4 the view is 237 km across and everything this node has ever mapped is
+a 3 km smudge in the middle, which is a true and useful thing for a page about grain to show.
+
+**The radio section draws what a radio actually says, which is a cell.** Two radios and neither
+sends a coordinate: Reticulum announces the cell this node is in at resolution 3 — 69 km to an edge,
+10,857 km² — and the LoRa mesh device in this house has no position at all. The fixture's peer,
+`ungasan-2`, kept its resolution and its distance and not the cell it announced, so the drawing shows
+**all three cells 61 km could be in**. A page that put a pin at 61 km on a bearing it was never sent
+would be inventing the one thing the scheme refuses to send.
+
+**The satellite section is four real passes and one orange fact.** Sentinel-2 at 10 m over about
+3 km, 2016 · 2019 · 2022 · 2025, brightness matched across years per Decision 2 of 8 September —
+stamped with the year, carrying `satellite` provenance, never interpolated, and with nothing coloured
+sitting on the photograph. Beside them, the 1,874 buildings only the satellite knows, drawn in
+`--satellite-only` over the hairline outlines of the ones OSM already has, and the earth pack's own
+numbers: `EARTH_RADIUS_M=5000` at 10 m a pixel, 100.42 km², 374,551 cells at that grain and 4,063
+compacted. The `land` issue itself has no reading in this capture and the section says so rather than
+implying one.
+
+**What it cost, measured.** 1440 went from 58.4 % empty and 4.4 screens to 59.6 % and 5.5; 390 went
+from 6.9 screens to **8.4, which is over T3's eight**. Three things bought most of it back and are
+worth recording: the eleven-row grain table folded into a `<details>` (−0.5 screens, and the finding
+it produced is printed in prose above it), the claim cards in two columns past 1040 px (−0.6 screens
+at 1440, T6 unchanged at 5), and the satellite strip at two columns on a phone rather than four
+(−0.8 screens). The honest summary is that a page carrying a map, a radio and a satellite section is
+not a four-screen page, and if eight screens on a phone is the real limit then one of the three
+belongs in the Network view, which already has a box called "What leaves this house".
+
 ## I · The surface
 
 **The idea.** One grid of 217 cells, wide enough to hold every station this node reads, and it never
@@ -689,16 +742,20 @@ second's.
 | | target | C | E disk | G address | H dial | I surface |
 |---|---|---|---|---|---|---|
 | T1 @ 390 | five legs | ✓ | ✓ | ✓ *(in this node's cell)* | ✓ | ✓ |
-| T2 empty @ 1440 | ≤ 30 % | 70.5 | 63.7 | 63.7 | 58.4 | **42.2** |
+| T2 empty @ 1440 | ≤ 30 % | 70.5 | 63.7 | 63.7 | 59.6 | **42.2** |
 | T2 empty @ 390 | ≤ 20 % | 43.2 | 34.9 | 33.9 | 33.7 | **33.2** |
 | T2 empty @ 768 | ≤ 20 % | 55.3 | 31.9 | 33.9 | 36.3 | 34.5 |
-| page @ 1440 | ≤ 4 screens | 3.1 | 3.4 | 4.1 | 4.4 | **2.4** |
-| page @ 390 | ≤ 8 screens | 5.5 | 4.9 | 5.5 | 6.9 | **3.1** |
-| T3 kinds | 4 | 3 | 2 | 3 | 2 | 2 *(3 with a cell selected)* |
-| T4 numerals with no comparison | 0 | 0 / 26 | 0 / 27 | 0 / 34 | 0 / 29 | 0 / 13 |
+| page @ 1440 | ≤ 4 screens | 3.1 | 3.4 | 4.1 | 5.5 | **2.4** |
+| page @ 390 | ≤ 8 screens | 5.5 | 4.9 | 5.5 | 8.4 | **3.1** |
+| T3 kinds | 4 | 3 | 2 | 3 | 3 | 2 *(3 with a cell selected)* |
+| T4 numerals with no comparison | 0 | 0 / 26 | 0 / 27 | 0 / 34 | 0 / 36 | 0 / 13 |
 | T5 components with no link | 0 | 2 | 4 | **0** | **0** | **0** |
 | T6 reading order against DOM @ 1440 | 0 | 8 | 4 | 5 | 5 | 3 |
 | wall on 1,080 px | 1,080 | 1,080 | 1,133 | **1,080** | **1,080** | **1,080** |
+
+H's column is the revised page — the one with the map, the radio and the satellite in it. Before
+that revision it measured 58.4 % and 4.4 screens at 1440, and 6.9 at 390; the three additions cost
+1.2 points of emptiness and 1.1 screens at 1440, and took it past T3's eight screens on a phone.
 
 **T2 moved, and it is the first time in three rounds that it has.** I is 28 points below C at 1440
 and 10 below A-to-F's best. It still misses the target — 42.2 against 30 — and the reason is the same
