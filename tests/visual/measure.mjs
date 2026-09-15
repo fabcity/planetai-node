@@ -155,62 +155,56 @@ function fixtureHealth(name) {
   } catch (e) { return {}; }
 }
 
-// One shell-out per fixture name, per run of this script. `app/issues/api.py`'s `fixture()` route
-// does exactly this — load the committed snapshot, replay it through the node's own engine and its
-// own settings module — so this reproduces the real route rather than guessing its shape. Cached
-// because a `render` command asks for the same fixture on every job, and a fresh Python process to
-// recompute unchanged data would be the slow part of measuring four viewports.
-const _fixtureCache = new Map();
-function computeFixtureSnapshot(name) {
-  if (_fixtureCache.has(name)) return _fixtureCache.get(name);
+// One shell-out per fixture name, per run of this script — ONE child does both jobs, because a
+// second subprocess that "receives the same env recipe" is not "the same child" (a review of round 1
+// correctly called that comment false). It replays the snapshot exactly as `app/issues/api.py`'s
+// `fixture()` route does, and reads GET /settings' own answer, in the one process, so a page reading
+// both never sees two different nodes and there are not two copies of the env-building expression to
+// drift apart. Cached per fixture name because a `render` command asks for the same fixture on every
+// job, and a fresh Python process to recompute unchanged data would be the slow part of measuring
+// four viewports.
+//
+// Returns `{ status: 200, snapshot, settings }` on success, or `{ status, error }` on failure — 404
+// when the fixture file itself is missing (a real, supported state: a checkout need not carry every
+// fixture), 500 when Python raised. There is no third shape that hands back an empty object: a
+// child that fails and a child that answers "no issues, no health" must never look the same to
+// whatever reads the response, or a broken rig measures a broken page and reports it as an empty one.
+const _nodeDataCache = new Map();
+function computeNodeData(name) {
+  if (_nodeDataCache.has(name)) return _nodeDataCache.get(name);
   const f = path.join(ROOT, 'app/issues/fixtures', `${name}.json`);
-  if (!fs.existsSync(f)) { _fixtureCache.set(name, null); return null; }
-  // Matches app/issues/api.py's fixture() route: load the snapshot, then
-  // snap["issues"] = engine.replay(snap, main.settings, load()). `main.settings` and the plain
-  // `settings` module are the same import — `main.py` does `import settings` — so importing it
-  // directly, without a running `main`, replays the same call.
-  const script = `import json, sys
+  let result;
+  if (!fs.existsSync(f)) {
+    result = { status: 404, error: `no such fixture in this checkout: app/issues/fixtures/${name}.json` };
+  } else {
+    // Matches app/issues/api.py's fixture() route: load the snapshot, then
+    // snap["issues"] = engine.replay(snap, main.settings, load()). `main.settings` and the plain
+    // `settings` module are the same import — `main.py` does `import settings` — so importing it
+    // directly, without a running `main`, replays the same call. `settings.describe()` alongside it
+    // is GET /settings' own body, for an anonymous or open-share reader (unlocked=False, the PUBLIC
+    // keys unmasked) — this is a CHECKOUT's settings, not a running node's: there is no database
+    // here for the GUI to have touched, so every value is settings.py's own shipped default under
+    // the environment below.
+    const script = `import json, sys
 sys.path.insert(0, 'app')
 import settings
 from issues import load, engine
 snap = json.load(open(${JSON.stringify(`app/issues/fixtures/${name}.json`)}))
 snap['issues'] = engine.replay(snap, settings, load())
-print(json.dumps(snap))`;
-  let snap = null;
-  try {
-    const out = execFileSync('python3', ['-c', script],
-      { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
-    snap = JSON.parse(out.toString());
-  } catch (e) {
-    console.error(`measure.mjs: could not replay fixture ${name} (${e.message.split('\n')[0]})`);
+desc = settings.describe(unlocked=False, public=settings.PUBLIC)
+print(json.dumps({'snapshot': snap, 'settings': desc}))`;
+    try {
+      const out = execFileSync('python3', ['-c', script],
+        { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
+      result = { status: 200, ...JSON.parse(out.toString()) };
+    } catch (e) {
+      const msg = `python3 failed replaying fixture ${name}: ${e.message.split('\n')[0]}`;
+      console.error(`measure.mjs: ${msg}`);
+      result = { status: 500, error: msg };
+    }
   }
-  _fixtureCache.set(name, snap);
-  return snap;
-}
-
-// GET /settings, the same way a real node would answer an anonymous or open-share reader: the public
-// keys, unmasked, from the module a running node actually uses — computed in the same bali-preset
-// child as the fixture above, so a page reading both never sees two different nodes. This is a
-// CHECKOUT's settings, not a running node's: there is no database here for the GUI to have touched,
-// so every value is settings.py's own shipped default under that environment, and `unlocked` is
-// always false — nothing here holds an admin token.
-const _settingsCache = new Map();
-function computePublicSettings(name) {
-  if (_settingsCache.has(name)) return _settingsCache.get(name);
-  const script = `import json, sys
-sys.path.insert(0, 'app')
-import settings
-print(json.dumps(settings.describe(unlocked=False, public=settings.PUBLIC)))`;
-  let desc = null;
-  try {
-    const out = execFileSync('python3', ['-c', script],
-      { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
-    desc = JSON.parse(out.toString());
-  } catch (e) {
-    console.error(`measure.mjs: could not read settings (${e.message.split('\n')[0]})`);
-  }
-  _settingsCache.set(name, desc);
-  return desc;
+  _nodeDataCache.set(name, result);
+  return result;
 }
 
 // The plan the `place` pack keeps, which this repo does not carry — it lives in the design repo,
@@ -220,6 +214,15 @@ print(json.dumps(settings.describe(unlocked=False, public=settings.PUBLIC)))`;
 // checks `r.ok` and passes `null` on).
 const PLACE_GEOJSON = path.join(DESIGN, 'data/place.geojson');
 
+// Fulfils a route with the ONE shape a broken or missing fixture answers with: a non-200 whose body
+// names the endpoint that asked and the error computeNodeData() recorded, so a Python failure reads
+// as a Python failure — never as a page rendered against an empty node. `data.status` is 404 (no
+// such fixture) or 500 (Python raised); either way the body says which endpoint and why.
+function failNodeAPI(route, endpoint, data) {
+  return route.fulfill({ status: data.status, contentType: 'application/json',
+    body: JSON.stringify({ detail: `measure.mjs: ${endpoint} has no data — ${data.error}` }) });
+}
+
 /* Answers the four endpoints above from this repo, offline. Returns true when it fulfilled the
  * route — the caller must not also route.continue() it. Shared by `open()`'s render path and
  * `stall()`'s stall path: both serve a page and both need the same four answers for the same
@@ -227,29 +230,28 @@ const PLACE_GEOJSON = path.join(DESIGN, 'data/place.geojson');
 async function serveNodeAPI(route, u) {
   const fx = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
   if (fx) {
-    const snap = computeFixtureSnapshot(decodeURIComponent(fx[1]));
-    await route.fulfill(snap
-      ? { status: 200, contentType: 'application/json', body: JSON.stringify(snap) }
-      : { status: 404, contentType: 'application/json',
-          body: JSON.stringify({ detail: 'no such fixture in this checkout' }) });
+    const name = decodeURIComponent(fx[1]);
+    const data = computeNodeData(name);
+    await (data.error ? failNodeAPI(route, `/issues/fixtures/${name}`, data)
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.snapshot) }));
     return true;
   }
   if (u.pathname === '/issues' || u.pathname === '/issues/') {
-    const snap = computeFixtureSnapshot(FIXTURE);
-    await route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify((snap && snap.issues) || {}) });
+    const data = computeNodeData(FIXTURE);
+    await (data.error ? failNodeAPI(route, '/issues', data)
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.snapshot.issues) }));
     return true;
   }
   if (u.pathname === '/health') {
-    const snap = computeFixtureSnapshot(FIXTURE);
-    await route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify((snap && snap.health) || {}) });
+    const data = computeNodeData(FIXTURE);
+    await (data.error ? failNodeAPI(route, '/health', data)
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.snapshot.health) }));
     return true;
   }
   if (u.pathname === '/settings') {
-    const desc = computePublicSettings(FIXTURE);
-    await route.fulfill({ status: 200, contentType: 'application/json',
-      body: JSON.stringify(desc || { unlocked: false, runtime: [], bootstrap: [] }) });
+    const data = computeNodeData(FIXTURE);
+    await (data.error ? failNodeAPI(route, '/settings', data)
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.settings) }));
     return true;
   }
   if (u.pathname === '/place/geojson') {
