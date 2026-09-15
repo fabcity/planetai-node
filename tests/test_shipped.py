@@ -462,6 +462,20 @@ assert '"enabled": False' in main, "/presence says nothing at all until presence
 # scoped to /presence's own body: cell_to_parent also appears in the distance helper, so a bare
 # substring check passed even with the coarsening taken out of the thing that announces
 _pres = main[main.index('@app.get("/presence")'):main.index("def _cell(")]
+
+# The Network view printed "It announces; it does not yet listen. Nothing here collects the announces
+# other Reticulum nodes make" on every node whose bridge was up — directly beneath the card listing the
+# nodes it had just heard, with a name and a distance in it. The bridge registers PresenceHandler at
+# import and unconditionally, so a node has always listened; RETICULUM_PRESENCE governs whether it
+# SPEAKS. The copy predated the handler and shipped in three languages. Seen on node #1, v0.53-2.
+_bridge = open("app/reticulum_bridge.py").read()
+assert "register_announce_handler" in _bridge, (
+    "the bridge no longer collects other nodes' announces — if that is deliberate, the dashboard has "
+    "to say so again, and this assertion is what stops it being said while the handler still runs")
+for _claim in ("does not yet listen", "belum mendengarkan", "todavía no escucha"):
+    assert _claim not in gui, (
+        f"dashboard.js still tells the household {_claim!r} while reticulum_bridge.py registers an "
+        "announce handler and the Network view lists heard peers above it")
 assert "cell_to_parent" in _pres and "_presence_res()" in _pres, \
     "the announced cell is a COARSE parent of this node's own cell, never the cell itself"
 assert "register_announce_handler" in _bridge, \
