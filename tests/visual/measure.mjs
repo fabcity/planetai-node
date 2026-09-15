@@ -1207,7 +1207,10 @@ function aTargets() {
      *
      * An issue is "named with a number" when a numeral in the fold is keyed `<issue>.<something>`.
      * That is how every direction marks them, and it needs no index. */
-    const NOT_ISSUE = ['funnel', 'peer', 'rho', 'place', 'satellite'];
+    /* Keys that are not issues. The H3-navigated directions key their geometry numerals `h3.*`,
+     * `cell.*` and `disk.*`; counting those as issues named on the first screen would report a page
+     * as answering for five issues when it is answering for two and a hexagon. */
+    const NOT_ISSUE = ['funnel', 'peer', 'rho', 'place', 'satellite', 'h3', 'cell', 'disk'];
     const issueOf = e => String(e.dnum).split('.')[0];
     const named = new Set(d.els.filter(e => e.dnum && inFold(e, d))
       .map(issueOf).filter(k => !NOT_ISSUE.includes(k)));
