@@ -626,8 +626,8 @@ def _with_distance(peers: list[dict]) -> list[dict]:
         row["km"] = None
         try:
             import h3  # noqa: PLC0415
-            if here and here.get("cell") and p.get("cell"):
-                a = h3.cell_to_latlng(h3.cell_to_parent(here["cell"], int(p["res"])))
+            if here and here.get("id") and p.get("cell"):
+                a = h3.cell_to_latlng(h3.cell_to_parent(here["id"], int(p["res"])))
                 b = h3.cell_to_latlng(p["cell"])
                 row["km"] = round(sources.km(a[0], a[1], b[0], b[1]))
         except Exception as e:  # noqa: BLE001 — a malformed cell from a stranger must not break the poll

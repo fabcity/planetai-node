@@ -93,20 +93,25 @@ assert "d.cell ? d.cell.caption" in gui and "(snap.health || {}).cell" in gui, (
 _main_src = open("app/main.py").read()
 assert '"cell": _cell()' in _main_src, "/health carries the cell"
 
-# /presence coarsens the node's own cell before announcing it, and it reads that cell out of the dict
-# ground.facts() returns. It read `here["cell"]`; facts() has no "cell" key — it is "id" — so the guard
-# was always false, the coarsening never ran, the `except` never fired, and EVERY node announced
-# cell: null while test_shipped's "cell_to_parent is in /presence" assertion passed on the dead call.
-# Checked on node #1 (bayu-ungasan, res-8 cell 8895a4c843fffff): /presence answered "cell": null.
-# So: whatever key /presence reads off `here` must be a key facts() actually returns.
+# `_cell()` returns ground.facts(): {"id", "res", "edge_m", "caption"}. TWO places read a cell out of
+# it — /presence, which coarsens before announcing, and poll_reticulum, which measures the distance to a
+# peer — and BOTH read `here["cell"]`, a key facts() has never had. Both guards were therefore always
+# false: every node announced cell: null (#59) and every peer showed km: null. The `except` in each sits
+# inside the dead branch, so neither ever logged. Checked on node #1: /presence answered "cell": null,
+# and after #59 fixed only the first site the Network tab still showed km: None beside a good cell.
+#
+# So this scans the WHOLE file rather than one function. #59's version looked only inside /presence's
+# body and could not see the sibling two hundred lines up, which is how the second site shipped.
 _facts_keys = set(ground.facts(*BALI))
-_pres_src = _main_src[_main_src.index('@app.get("/presence")'):_main_src.index("def _cell(")]
-_reads = set(_re.findall(r'here(?:\.get\(|\[)["\'](\w+)["\']', _pres_src))
-assert _reads, "/presence no longer reads anything off ground.facts() — did the cell stop being announced?"
+_reads = set(_re.findall(r'here(?:\.get\(|\[)["\'](\w+)["\']', _main_src))
+assert _reads, "nothing reads ground.facts() any more — did the cell stop being announced?"
 assert _reads <= _facts_keys, (
-    f"/presence reads {sorted(_reads - _facts_keys)} off ground.facts(), which returns "
-    f"{sorted(_facts_keys)}. The announce would carry cell: null on every node.")
-print(f"  /presence reads {sorted(_reads)} from facts(), which returns {sorted(_facts_keys)}")
+    f"app/main.py reads {sorted(_reads - _facts_keys)} off _cell(), which returns {sorted(_facts_keys)}. "
+    f"A node would announce cell: null, or show km: null for every peer.")
+assert _main_src.count("here = _cell()") == 2, (
+    f"{_main_src.count('here = _cell()')} places read _cell() — this guard assumes `here` is always "
+    "its result. If that changed, the scan above may be reading someone else's variable.")
+print(f"  both _cell() readers use {sorted(_reads)}; facts() returns {sorted(_facts_keys)}")
 assert "THE CELL THIS NODE STANDS IN" not in shipped, (
     "app/static/node-ground.svg is the fallback for a node with no coordinates yet. It is node #1's "
     "cell and must claim nothing")
