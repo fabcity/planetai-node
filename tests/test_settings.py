@@ -61,4 +61,14 @@ try:
     settings.set("APP_PORT", "9999"); raise AssertionError("bootstrap keys must not be writable")
 except KeyError:
     pass
+
+# --- MAP_TILES: live tiles leave the house, so they are off until a keeper says otherwise --------------------
+assert "MAP_TILES" in settings.PUBLIC, "MAP_TILES is a public setting, so the page can read it"
+try:
+    settings.set("MAP_TILES", "sometimes")
+    raise AssertionError("MAP_TILES accepted 'sometimes'; it is off or on")
+except (ValueError, KeyError):
+    pass
+assert settings.get("MAP_TILES", "off") == "off", "MAP_TILES defaults to off"
+
 print("all settings tests pass")
