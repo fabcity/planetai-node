@@ -2547,10 +2547,17 @@ window.PAI.register({
   },
   wall(ctx) {
     const acts = ACTS();
+    /* GET /rho is its own route and may be slow, refused or absent. The contract's per-section catch
+       would swallow a throw here and the fragment would simply vanish from the wall, which is the
+       silence this guard exists to remove: the count of asks is this section's own and is known
+       either way, so it is printed, and the comparison says plainly what is not on this node. */
+    const r = ctx.S.rho;
     return `<div class="col" data-component="asksCount" data-ref="wall-lead">`
       + `<h3 data-role="wall-issue">Asks sent</h3>`
-      + `<div class="line"><span class="num" data-num="asks.sent" data-cmp="against `
-      + `${ctx.S.rho.acted} answered">${acts.length}</span><small>in ${ctx.S.rho.window_days} days`
+      + `<div class="line"><span class="num" data-num="asks.sent" data-cmp="${r
+        ? `against ${r.acted} answered`
+        : 'how many were answered is not on this node right now: GET /rho did not come back'}">`
+      + `${acts.length}</span><small>${r ? `in ${r.window_days} days` : 'in the window'}`
       + `</small></div></div>`;
   },
   notes(ctx) {
@@ -3322,12 +3329,25 @@ function readLayout(settings) {
  * never emitted at all. */
 const want = view => view.filter(id => !(LAYOUT.hidden || []).includes(id));
 
-/* An arrangement is a position within a stage, which is what the registry already sorts by. */
+/* An arrangement is a position within a stage, which is what the registry already sorts by.
+ *
+ * `s.order` lives on the section object a pack registered, which is shared and long-lived, so this
+ * must RESTORE and not merely skip: a version that only overwrote the ids an arrangement names left
+ * every other section holding whatever an earlier press had given it, and Default — which empties
+ * the order — then changed nothing at all until a hard reload. The order each section registered
+ * with is captured once, before anything can have moved it. */
+const REGISTERED_ORDER = new Map();
+function rememberOrder() {
+  for (const s of window.PAI.sections) {
+    if (!REGISTERED_ORDER.has(s.id)) REGISTERED_ORDER.set(s.id, s.order);
+  }
+}
 function applyOrder() {
   const o = LAYOUT.order || [];
   for (const s of window.PAI.sections) {
     const i = o.indexOf(s.id);
-    if (i >= 0) s.order = i;
+    s.order = i >= 0 ? i
+      : REGISTERED_ORDER.has(s.id) ? REGISTERED_ORDER.get(s.id) : s.order;
   }
 }
 
@@ -3410,6 +3430,7 @@ function init() {
   initKit();
   initGeometry();
   for (const f of PAI_LOAD) f();
+  rememberOrder();
 }
 
 /* ------------------------------------------------------------------ writing a setting */
