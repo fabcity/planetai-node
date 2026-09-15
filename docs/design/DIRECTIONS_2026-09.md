@@ -712,6 +712,105 @@ at 1440, T6 unchanged at 5), and the satellite strip at two columns on a phone r
 not a four-screen page, and if eight screens on a phone is the real limit then one of the three
 belongs in the Network view, which already has a box called "What leaves this house".
 
+### H, revised again · the loop, the modules, the live map, the stations, the wall
+
+**15 September, later.** Tomas said the map was working better and asked for six more things at
+once, in his words: embed live OpenStreetMap with a satellite view that rescales with the dial; make
+the design modular so packs — Meshtastic, Reticulum, an open hardware manager, local making,
+community packs — can add features, and so a node can extend the page and propose back; embed the
+PLANETAI logic *observe, decide, act, measure* as a loop; put all explanatory text at the bottom;
+make the wall H3-based, interactive, and animated so it changes scale and updates by itself; and
+show the sensor list in Now, with graphics, a variable selector, and links to the sources. He asked
+for the work to be split across agents, and it was: three modules were written in parallel against
+a contract written first.
+
+**The page is a shell and the contract is a file.** `kit-page.js` is thirty lines of logic — an
+array, a sort, a join — and one comment that is the whole of the extension contract. A pack
+registers a section with `window.PAI.register({ id, pack, stage, title, order, needs, controls,
+render, wall, notes })`, and the shell renders whatever registered, stage by stage, in loop order.
+A section from a pack a node does not have is simply not there; a section whose data is missing
+prints one honest line instead of a blank (`needs`); a section that throws prints that it did and
+the rest of the page stands. **Adding a feature is adding a file. Proposing it back is sending the
+file.** In Phase 2 this same shape is a pack's `dashboard` contribution in its pack.yaml, served as
+one more static file. Nothing here is a framework.
+
+**The loop is the spine.** Four stages, numbered, each a heading with the loop drawn beside it and
+the stage lit. Nine sections registered today, from five packs and the renderer's own:
+
+| stage | section | pack | what it holds |
+|---|---|---|---|
+| 1 · observe | The ground | place | the live map — satellite · street map · offline plan — with the cells of the dial's resolution over it, and a row saying what each view sends out and to whom |
+| | What the stations read | air-quality | fourteen stations filed by the cell they fall in at the dial, a variable selector, one station's own 15-minute mean per row, a trace where the capture has one, and a link to every source |
+| | What the satellite says | earth | four Sentinel-2 passes, brightness matched; the 1,874 buildings only the satellite knows; the earth pack's numbers |
+| | What leaves this house by radio | reticulum | the announce cell at resolution 3, and the three cells the peer 61 km away could be in |
+| | The mesh in this house | meshtastic | the LoRa device, its gateway, its packets, its own readings |
+| 2 · decide | Whose word, over how much ground | core | six declared footprints and how many cells of this grain each covers |
+| | What each grain is worth | core | the flat run, and the eleven-row table folded under it |
+| 3 · act | What this node has asked | core | the open ask, the asks sent per rule with the first line of each, and the funnel |
+| 4 · measure | Whether it worked | core | ρ as a row of rings, the median, the day, and the pack slot nobody could place |
+| — | Notes | all | every `notes()` from every section, folded per section, each pointing back |
+
+**The live map, and its cost, said on the page.** Three bases, one control strip: Sentinel-2
+cloudless (EOX, a 2020 mosaic), OpenStreetMap's own tiles, and the offline plan. Web Mercator tile
+arithmetic in plain JavaScript, no library; the cells are projected into the same pixel frame so a
+hexagon lands on the street it is over. The zoom is the largest integer at which the plate's
+nineteen cells fit the square, so **turning the dial zooms the map** — resolution 8 is zoom 14,
+resolution 12 zoom 17, resolution 4 zoom 10. The ground section's own row prints what the view
+sent: twelve tile requests to `tiles.maps.eox.at`, each naming a 2.4 km square, so the server learns
+which 5.7 km of the planet is being looked at and from which address. The offline plan sends
+nothing, and is one press away. Measured on the way: OpenStreetMap's tiles return a 403 placeholder
+without a Referer, so the page must not set `referrerpolicy="no-referrer"`.
+
+**Explanations at the bottom.** Every section's paragraphs moved into its `notes()`. Printed open,
+they were a third of the page — about 3,000 px — so they fold per section: the title, the pack, the
+count, one press. Forty-odd notes and no section keeps a paragraph of its own.
+
+**The wall turns by itself.** The dial drawn as eleven hexagons, the current one filled; the live
+map with the cells at that stop; a row of numbers re-derived for that stop — the grain, this node's
+own stations' values, the widest claims' cells, the asks sent — ρ, and the foot. Every eight seconds
+it steps one stop, 2 to 12 and back, redrawing the figure and the numbers in place; nothing tweens
+between stops, because a resolution is a step and there is no place between 7 and 8. Under
+`prefers-reduced-motion` it stands still and the stops stay pressable. The design log's motion rule
+— motion bound to the cadence of its own datum — is met by making the dial itself the clock, and the
+wall says so in one line at its foot.
+
+**Measured, same fixture, same script.** The Now page against the H that came before it:
+
+| | H before | H, modular | target |
+|---|---|---|---|
+| T1 @ 390 / 768 / 1440 | ✓ | ✓ | five legs |
+| T2 empty @ 1440 | 59.6 % | **48.9 %** | ≤ 30 |
+| T2 empty @ 390 · 768 | 33.7 · 36.3 | **30.8 · 32.1** | ≤ 20 |
+| page @ 1440 | 5.5 screens | **8.1** | ≤ 4 |
+| page @ 390 | 8.4 | **12.6** | ≤ 8 |
+| T3 kinds | 3 | 3 | 4 |
+| T4 numerals with no comparison | 0 / 36 | 0 / 71 | 0 |
+| T5 components with no link | 0 / 32 | 0 / 77 | 0 |
+| T6 reading order against DOM @ 1440 | 5 | 6 | 0 |
+| wall on 1,080 px | 1,080 | **1,080** | 1,080 |
+
+Two things moved and both are what the additions cost. **T2 fell by eleven points at 1440** —
+48.9 % is the lowest of any page in three rounds bar I — because the live map fills the fold with
+a mark that is the instrument. **The page doubled in length**: 8.1 screens at 1440 and 12.6 at 390,
+against targets of 4 and 8. Nine sections, fourteen station rows, four satellite frames and a
+folded notes block are not a four-screen page, and no amount of tightening makes them one. The
+lever is the contract's own: a section can move to another view (the Network view's wireframe
+already has "What leaves this house", which is the radio's title) or a node can register fewer. That
+choice is Tomas's; the page is built to make it a one-line change.
+
+The wall regressed once on the way and was closed before this was written: with nine sections
+contributing columns its first render measured 1,182 px on a 1,080 px screen and the per-stop
+caption collided with the neighbouring stops' labels. Wider columns — five to a row, two rows — and
+the neighbours' labels stepping aside brought it to **1,080 px exactly**, with 36 px of slack; the
+wall's own comment names the ceiling (a third row of columns would pass 1,080, so a `wall()` is
+trimmed before one is added). Measured at 1920 dark: sentence 24.5 mm, numeral 57.4 mm, **issue line
+9.8 mm and ρ caption 9.3 mm** — the first wall in three rounds with both above the 9 mm floor, which
+took two type sizes nudged inside `.wallbox` only. One component with no link remains and it is the
+kit's, not the wall's: `rhoRow` points at `funnel`, which no wall carries. Driven headlessly with
+motion allowed: stop 8 became 9 after 8.7 s with the caption and every number re-derived; pressing 4
+held it at 4 through the next tick; under reduced motion it stood at 11 and the stops stayed
+pressable.
+
 ## I · The surface
 
 **The idea.** One grid of 217 cells, wide enough to hold every station this node reads, and it never
