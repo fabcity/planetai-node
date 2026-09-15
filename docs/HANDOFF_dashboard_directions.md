@@ -1,19 +1,25 @@
-# Handoff: three directions, and the question
+# Handoff: nine directions, and the question
 
-**14 September 2026, extended 15 September.** Phase 1 of the dashboard redesign is done and this
-session stops here. Phase 2 builds the one that is picked; it starts from this file, in this session
-if Tomas answers, else in a fresh one.
+**14 September 2026, extended 15 September (twice).** Phase 1 of the dashboard redesign is done and
+this session stops here. Phase 2 builds the one that is picked; it starts from this file, in this
+session if Tomas answers, else in a fresh one.
 
-**Six directions now, in two rounds.** A, B and C were the first. Tomas read them, leaned to C's
-logic — the page organised by *where* — and asked for three more with the
-[H3 grid](https://h3geo.org/) built into the navigation rather than used as a picture. D, E and F
-are those: all three keep C's claim that a household navigates by place, and differ in which H3
-relation does the navigating — up and down the resolution ladder (D), outward across the grid (E),
-or not at all, with the grid supplying each of C's four zones its picture, address and scale (F).
+**Nine directions now, in three rounds.**
+
+- **A, B, C** were the first. Tomas leaned to C's logic — the page organised by *where*.
+- **D, E, F** answered "put [H3](https://h3geo.org/) in the navigation, not in a picture". All
+  three keep C's claim that a household navigates by place and differ in which H3 relation does the
+  navigating: the resolution ladder (D), the disk outward (E), or none, with the grid supplying each
+  of C's four zones a picture, an address and a scale (F).
+- **G, H, I** answer "go more radical, and base *all* the navigation on it". These have no document
+  spine at all. G is one cell at a time and the URL is the place. H has one control and it is
+  resolution. I is one grid that never moves, with the issue as a layer over it. **In all three the
+  four distances leave the navigation** and come back as a word on a reading saying whose it is —
+  which is what round two measured them to be.
 
 Branch: `dashboard-redesign-2026-09`, cut from `main` at **v0.53** (`a06655a`). Nothing on the node's
-own surface has changed: the four commits on it are a measuring script, a Phase 0 reading, the three
-drawings and this. `make lint` and 33/33 after each.
+own surface has changed: the commits on it are a measuring script, a Phase 0 reading, the argument
+and this. `make lint` and 33/33 after each.
 
 ---
 
@@ -35,15 +41,29 @@ python3 -m http.server 8090
 | **D** the ladder — H3 | http://127.0.0.1:8090/d/ | http://127.0.0.1:8090/d/?view=wall |
 | **E** the disk — H3 | http://127.0.0.1:8090/e/ | http://127.0.0.1:8090/e/?view=wall |
 | **F** the ground, gridded — H3 | http://127.0.0.1:8090/f/ | http://127.0.0.1:8090/f/?view=wall |
+| **G** the address — H3 navigates | http://127.0.0.1:8090/g/ | http://127.0.0.1:8090/g/?view=wall |
+| **H** the dial — H3 navigates | http://127.0.0.1:8090/h/ | http://127.0.0.1:8090/h/?view=wall |
+| **I** the surface — H3 navigates | http://127.0.0.1:8090/i/ | http://127.0.0.1:8090/i/?view=wall |
 
-Narrow the window for 390. **Open E's wall first** — it is the one thing in either round that a
-stranger walking past would understand without being told anything.
+Narrow the window for 390. **Open I first, then E's wall.** I is the page the third round is really
+arguing for; E's wall is still the one thing a stranger walking past would understand with nothing
+explained.
+
+**G, H and I move, so press them.** They are the only three where a screenshot is not the drawing:
+
+| | try this | what it is meant to show |
+|---|---|---|
+| G | press **in** three times, then a neighbour with no number on it | most cells are empty, and the page has to say so |
+| G | `?cell=8495a4dffffffff` | standing above every source this node has |
+| H | the dial's **4**, then **11** | the same page, re-derived; the two marked lines are the product's own |
+| I | the layer switch: **Air → Land → Coast** | four issues, four completely different geometries |
+| I | press any cell with a heavy outline | one station's own reading, which `/issues` does not publish today |
 
 Add `?state=empty` for a fresh node and `?state=refused` for a phone with no token. The
 wireframes are `?view=network`, `?view=setup`, `?view=arrange`.
 
 Every render is also a JPEG, at one device pixel, in
-`planetai-design/prototypes/dashboard-directions/shots/<a|b|c>/` — `_fold.jpg` is the first screen
+`planetai-design/prototypes/dashboard-directions/shots/<a…i>/` — `_fold.jpg` is the first screen
 and `_full.jpg` the whole page. The shipped page, measured the same way on the same afternoon, is the
 baseline in [`docs/design/REDESIGN_2026-09_ground.md`](design/REDESIGN_2026-09_ground.md).
 
@@ -51,6 +71,39 @@ The argument, reader by reader, and every number:
 [`docs/design/DIRECTIONS_2026-09.md`](design/DIRECTIONS_2026-09.md).
 
 ---
+
+## The third round, short
+
+| | target | C | E disk | G address | H dial | I surface |
+|---|---|---|---|---|---|---|
+| first screen says everything @ 390 | five of five | ✓ | ✓ | ✓ *in this node's cell* | ✓ | ✓ |
+| empty share @ 1440 | ≤ 30 % | 70.5 | 63.7 | 63.7 | 58.4 | **42.2** |
+| empty share @ 390 / 768 | ≤ 20 % | 43.2 / 55.3 | 34.9 / 31.9 | 33.9 / 33.9 | 33.7 / 36.3 | **33.2** / 34.5 |
+| page @ 1440 / 390, screens | ≤ 4 / ≤ 8 | 3.1 / 5.5 | 3.4 / 4.9 | 4.1 / 5.5 | 4.4 / 6.9 | **2.4 / 3.1** |
+| orphan numerals · components | 0 · 0 | 0 · 2 | 0 · 4 | 0 · **0** | 0 · **0** | 0 · **0** |
+| wall on a 1,080 px screen | 1,080 | **1,080** | 1,133 | **1,080** | **1,080** | **1,080** |
+
+**I is the first page in three rounds to move T2 at 1440** — 42.2 % against C's 70.5 — and it does it
+with a drawing that is the instrument rather than a decoration behind the text. It is also the
+shortest page measured, at 2.4 screens. It still misses the 30 % target, and after nine compositions
+that is now a statement about the target.
+
+Five things the third round measured that the first two could not, because nothing in them varied
+the grain or put the issues on one ground:
+
+- **Between resolution 7 and resolution 10 nothing changes.** Four stops of the dial, 343 times
+  smaller by area, and the same nine cells hold the same fourteen stations. Past res 7, grain is
+  precision with no information in it.
+- **The satellite square is 374,551 cells at its own 10 m grain and 4,063 after `compactCells`** —
+  the same ground exactly, 92 times smaller. The only place in three rounds where H3 does something
+  the node could not already do by hand.
+- **Six of the seven footprints were already declared** in packs and presets. The one that is not
+  belongs to the model point, which covers 4,396 cells where a probe in this room covers 1.
+- **Four issues, four geometries** on one 217-cell grid: air 7, heat 7 — and heat's own declared
+  footprint is smaller than one cell of it, so 0 — land 15 with no station in any of them, coast all
+  217, water none. The shipped page draws all four as bands of equal height.
+- **Navigating away from your own cell costs the numeral.** G in an empty cell fails T1's second leg,
+  measured. That is the idea's cost, not the drawing's.
 
 ## The second round, short
 
@@ -95,10 +148,12 @@ ring reaches **14.7 km** where `presets/bali.env` declares 8; and two of seven c
 
 ## The three real choices
 
-**1 · Is the page read by issue, or by place?** A and B organise by issue; C organises by distance.
-It decides what a household is taught to ask — *which issue is loud*, or *which part of my place is
-the problem*. C's cost is the mirror of its claim: air appears in three zones, so reading one issue
-end to end means walking the page.
+**1 · Is the page read by issue, by place, or by grid?** A and B organise by issue; C, D, E and F by
+place; G, H and I by the grid itself, with the four distances demoted to a word on a reading. It
+decides what a household is taught to ask — *which issue is loud*, *which part of my place is the
+problem*, or *what is known about this ground, and how finely*. C's cost is the mirror of its claim:
+air appears in three zones, so reading one issue end to end means walking the page. The third
+round's cost is bigger and is stated with each of the three.
 
 **2 · T2's 30 % and 20 % do not survive contact with any composition.** The best first screen
 measured is 43.2 % empty against a target of 20 %. The shipped page reads 21.4 % only because a
@@ -109,7 +164,11 @@ materially denser than any of these, or put a picture back behind the first scre
 the page does today and what the complaint calls too much empty space. **This one needs answering
 before Phase 2 starts**, because it is the difference between building a page and building a table.
 
-**3 · The wall is C's.** Measured at 1920 dark, on a 1,080 px screen: C is 1,080 px with nothing
+**3 · The wall was C's, and now five pages fit it.** C, D, G, H and I are all 1,080 px on a 1,080 px
+screen; E and F overrun by 53 and 50; A by 62 and B by 470. The paragraph below is the first round's
+and still describes what a wall that does not fit actually loses.
+
+**3a · The wall is C's, of the first three.** Measured at 1920 dark, on a 1,080 px screen: C is 1,080 px with nothing
 below the fold; A is 1,142 and loses the node name, **`stale`** and "Answer on Telegram"; B is 1,550
 and loses a whole issue row as well. A wall does not scroll, so a household reads a number and is
 never shown the word saying it is old — the September skeleton review's **S-01**, which v0.53 closed
@@ -125,20 +184,19 @@ something in C**, where it is the ring's own drawing rather than a card in a ban
 
 ## The question, in one paragraph
 
-Six drawings of the same evening now, on the same frozen layer, from the same file. C organises the
-page by place and is the shortest and the only one of the first three whose wall fits. D keeps that
-and makes the resolution ladder the spine, which is the only composition in either round that puts
-the privacy argument — what is kept, what may leave, and the floor between them — where a household
-can see it. E makes the neighbourhood the spine and is the densest page measured, the best wall to
-look at, and the first to answer *is it me or is it everywhere* as something countable rather than
-as a sentence. F changes C as little as possible and gives each of its four zones a cell, an address
-and a scale, at the cost of being the longest page of the six. **Which one should be built** — and
-two things that decide with it: **does the grid navigate (D, E) or illustrate (F)**, and **do the
-emptiness targets move to the measure that discounts decoration, or does the page have to be as
-dense as E?** Name anything from the other five you want carried over; Phase 2 builds one page, not
-a merge.
-
----
+Nine drawings of the same evening now, on the same frozen layer, from the same file. The first fork
+is no longer which one: it is **whether the four distances stay in the navigation**. A to F keep them
+— C organises the page by place and is the shortest of the first three; D makes the resolution ladder
+the spine and is the only composition anywhere that puts the privacy argument where a household can
+see it; E makes the neighbourhood the spine and answers *is it me or is it everywhere* as something
+countable; F changes C as little as possible. G, H and I drop them: G is one cell at a time and makes
+a place sendable as a URL, H turns one dial and makes resolution into provenance, and I is one
+surface with the issue as a layer, which is the shortest, densest and best-measured page of the nine
+on every target except card kinds. **Which one should be built** — and three things that decide with
+it: **do the four distances navigate, or only label custody**; **does `/issues` publish a value per
+station**, which G and I need and which the fenced median exists to prevent; and **do the emptiness
+targets move to the measure that discounts decoration**, after nine compositions have missed them.
+Name anything from the other eight you want carried over; Phase 2 builds one page, not a merge.
 
 ## If the answer is A
 
@@ -179,6 +237,31 @@ And all three inherit the same three sentences, which are not optional: the grid
 from outdoors, it cannot tell mine from the street's at the grain the street is drawn at, and its
 containment is exact in the index and approximate on the ground.
 
+## If the answer is G, H or I
+
+These need two things from the node. The first is small and the second is not:
+
+1. **A plate per cell, on `/issues`** — the cell, the cells around it, each one's parent, area and
+   what is read in it. `app/ground.py` already calls `latlng_to_cell`, `grid_disk` and
+   `cell_to_children`; nothing has to be built, only published, and it measures **3.0 kB** for the
+   plate a reader is standing on. `make-h3.mjs` is the working reference for the shape. H also wants
+   each source's declared footprint as a compacted cell set — the numbers it is computed from are
+   already in the packs.
+2. **A value per station.** G and I show one station's own 15-minute mean. `/issues` publishes the
+   street as a single **fenced median** and never a value per station, and the fence is deliberate.
+   **This is a STOP.** Nothing gets built on G or I without an answer, and "no" is a real answer:
+   both still work showing that a station is there and how far away it is, which is what E does — it
+   costs G its numeral on most screens and costs I the reason to press a cell.
+
+**H needs neither.** Everything on its page is a count, an area or a footprint, and all of them come
+from what the node already declares. If the per-station question is a "no", H is the only one of the
+three that survives it intact.
+
+And all three inherit the same sentences, which are not optional: the grid cannot tell indoors from
+outdoors; it cannot tell mine from the street's at the grain the street is drawn at; its containment
+is exact in the index and approximate on the ground; and **the plate ends** — two steps out is what
+this node published, and a page that drew a door past it would be drawing the planet.
+
 ---
 
 ## What Phase 2 inherits whichever it is
@@ -191,7 +274,7 @@ and the line's source named once — are not part of the choice. Nor are the fou
 `tests/visual/measure.mjs` is the one measuring script and it already computes T1–T7 and T9. Phase
 2's gates read the same numbers.
 
-**Three things to fix in Phase 2 that all three drawings get wrong.** The ρ caption is 8.8 mm on
+**Three things to fix in Phase 2 that the drawings get wrong.** The ρ caption is 8.8 mm on
 every wall, just under the floor. `data-num` on a readout was a label before it
 was a key, and a gate that walks `[data-num]` has to be able to tell which issue a numeral belongs
 to. And the wireframe views carry one component and one link, so they pass T5 by being almost empty
