@@ -137,7 +137,6 @@ const WORDS = {
           meshIdle: 'Channels {chans}. Nothing heard since this node last started; the radios below are the ones it knows.',
           retOn: 'This node announces itself as planetai every {mins} minutes, at {addr}.',
           retDown: 'The bridge is configured and not answering.',
-          retDeaf: 'It announces; it does not yet listen. Nothing here collects the announces other Reticulum nodes make, so another PLANETAI node would have to be named under Set up \u2192 The tree to appear at all.',
           noRadios: 'No radio on this node. Meshtastic needs a gateway under Set up \u2192 Integrations; Reticulum needs its container.',
           leavesShort: 'what leaves', index: 'The Fab City Index',
           parentIs: 'this node reports to it, once an hour',
@@ -235,7 +234,6 @@ const WORDS = {
           meshIdle: 'Kanal {chans}. Belum ada yang terdengar sejak node ini terakhir dinyalakan; radio di bawah adalah yang sudah dikenalnya.',
           retOn: 'Node ini mengumumkan dirinya sebagai planetai setiap {mins} menit, di {addr}.',
           retDown: 'Bridge sudah diatur tetapi tidak menjawab.',
-          retDeaf: 'Ia mengumumkan, tetapi belum mendengarkan. Tidak ada yang mengumpulkan pengumuman node Reticulum lain di sini, jadi node PLANETAI lain harus disebut di Set up \u2192 The tree agar muncul.',
           noRadios: 'Tidak ada radio di node ini. Meshtastic perlu gateway di Set up \u2192 Integrations; Reticulum perlu kontainernya.',
           leavesShort: 'yang keluar', index: 'Fab City Index',
           parentIs: 'node ini melapor ke sana, sekali sejam',
@@ -333,7 +331,6 @@ const WORDS = {
           meshIdle: 'Canales {chans}. Nada o\u00eddo desde el \u00faltimo arranque de este nodo; las radios de abajo son las que ya conoce.',
           retOn: 'Este nodo se anuncia como planetai cada {mins} minutos, en {addr}.',
           retDown: 'El puente est\u00e1 configurado y no responde.',
-          retDeaf: 'Anuncia, pero todav\u00eda no escucha. Aqu\u00ed nada recoge los anuncios de otros nodos Reticulum, as\u00ed que otro nodo PLANETAI tendr\u00eda que nombrarse en Set up \u2192 The tree para aparecer.',
           noRadios: 'Sin radio en este nodo. Meshtastic necesita una pasarela en Set up \u2192 Integrations; Reticulum necesita su contenedor.',
           leavesShort: 'lo que sale', index: 'El Fab City Index',
           parentIs: 'este nodo le informa, una vez por hora',
@@ -1669,10 +1666,6 @@ function radios(d, ctx) {
     out.push(`<p class="note">${esc(r.ok && r.address
       ? t(w.retOn, { addr: r.address, mins: Math.round((r.announce_s || 1800) / 60) })
       : w.retDown)}</p>`);
-    // The half that does not exist yet, said plainly rather than left as an absence somebody has to
-    // notice. Every node with this bridge already shouts "I am here"; none of them is listening.
-    // Only when it IS announcing: a bridge that is down is not announcing and not deaf either.
-    if (r.ok) out.push(`<p class="note">${esc(w.retDeaf)}</p>`);
   }
   if (!out.length) out.push(`<p class="note">${esc(w.noRadios)}</p>`);
   return `<div data-component="radios">${out.join('')}</div>`;
