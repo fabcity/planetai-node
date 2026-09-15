@@ -58,7 +58,7 @@ explained.
 | H | the dial's **4**, then **11** | the map zooms with the dial; at 4 the 3 km this node has mapped is a smudge inside a 237 km cell |
 | H | scroll to **What leaves this house by radio** | a peer is a cell and a rough distance, never a pin |
 | H | scroll to **What the satellite says** | four real Sentinel passes, and the 1,874 buildings only the satellite knows |
-| H | the base strip on the map: **satellite → street map → plan, offline** | live tiles rescale with the dial; the third sends nothing. From resolution 9 inward the plan is the default (Tomas's rule) — the dial opens at 8 on the tiles; turn it in one stop and the ground is the node's own drawing |
+| H | the base strip on the map: **satellite → street map → plan, offline** | with `MAP_TILES=on`, live tiles rescale with the dial and the third sends nothing. From resolution 9 inward the plan is the default (Tomas's rule) — at 8 the ground is the tiles; turn it in one stop and it is the node's own drawing. **With `MAP_TILES` at its shipped `off` the strip is the plan alone at every stop, no live base is offered, and the page requests no tile at all** |
 | H | **What the stations read** → press **temperature** | fourteen stations regroup by cell as the dial turns; every source is a link |
 | H | `?view=wall` and wait eight seconds | the wall is the grid: nineteen cells with what is read in each, re-filling as the dial turns — at 4 one cell holds everything, at 6 five, from 7 to 10 the same picture |
 | H | the **Notes** at the foot | every explanation on the page, folded per section |
@@ -262,8 +262,13 @@ is the only thing the node ships as its own. The ten sections in the prototype a
 contributions — the renderer's own four (claims, grain, asks, measure) and six from packs (place,
 air-quality, earth, reticulum, meshtastic, hardware). Two decisions ride with it: **live tiles or not** —
 the page sends a tile server the square being looked at; under the rule now in place the plan is
-the default from resolution 9 inward and the tiles show at 8 and coarser, so the dial as it opens
-sends twelve tile requests and one stop in sends nothing — and **which sections stay in Now**, because nine of them are twelve
+the default from resolution 9 inward and the tiles show at 8 and coarser. What that costs depends
+on `MAP_TILES`, which ships `off`: **off, the dial as it opens sends no tile request at all and no
+live base is even offered**; turned on by a keeper in Set up, the dial as it opens sends twelve tile
+requests at resolution 8, and one stop in sends nothing. (The twelve was measured on 15 September
+against a page session where the setting happened to be readable; until the whole-branch fixes the
+page could not read `MAP_TILES` at all, so no node ever sent the twelve.) — and **which sections
+stay in Now**, because nine of them are twelve
 screens on a phone and the Network view already has a home for the radio.
 
 ## If the answer is G, H or I
@@ -356,6 +361,26 @@ dashboard section" for the contract a pack author writes against.
 | `709b3e5` | fixes the Set up pane (it was drawn but inert), stops a press from defeating `MAP_TILES`, and restores Arrange (Task 6, fix round 1). |
 | `46018b0` | fixes the asks wall fragment to survive a missing `/rho`, and fixes Default to restore the order sections registered with (Task 6, fix round 2). |
 | `f85a46c` | adds the visual gate (`tests/visual/gate.sh`), fixes three routes to be hermetic, and shows the four previously-unpopulated figures for the first time under `PAI_RICH=1` (Task 8). |
+
+### What the whole-branch review found, and the fixes that answer it
+
+Per-task review could not see these; reading the finished branch end to end could.
+
+- **Live tiles could never be turned on.** `GET /settings` is `describe()` — `{unlocked, runtime: [...],
+  bootstrap: [...]}`, a list of rows — and the page read `SETTINGS.MAP_TILES` off it as if it were a
+  flat map, so the key was never there. No tile was ever requested at any setting, the satellite and
+  street-map links were never offered, and the page told a keeper who had just turned tiles on that
+  they were off. `boot()` now flattens the unmasked runtime rows onto `window.SETTINGS`, and
+  `tests/test_dashboard.py` runs the page's own predicate against the real body of that endpoint.
+- **An unsited node was told things that were not true.** With no `NODE_LAT`/`NODE_LON` the engine
+  measured every station from (0, 0) — open water — and four surfaces printed it as fact. `/issues`
+  now publishes `stations[].km` as `null` when the node has no coordinates, and the stations, the
+  grain line, the wall and the claims each say the distance or the cell is not known.
+- **Smaller:** a negative `RETICULUM_PRESENCE_RES` no longer takes `/issues` down; a failed geometry
+  publishes `geometry: null` instead of failing the whole response; a wedged endpoint now draws the
+  header, the nav and one honest line after twenty seconds instead of blank paper; the note that
+  says what leaves this house names this node's own city rather than Bali's; a section's control
+  strip is inside the same guard as its body.
 
 Task 7 (the tiles switch) needed no commit of its own — it shipped inside Task 6's assembly and was
 verified by reading the code rather than building it again. Task 9 (proving on `pai-clean`) made no

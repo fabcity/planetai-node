@@ -130,7 +130,11 @@ window.PAI.register({
 
 `id`, `pack`, `stage`, `title` and `render` are the ones the page actually checks for; leave one out,
 or misspell a stage, and the section is dropped with a line under "Registration problems" rather
-than drawn broken. `needs` is read against `window`: when what it names is not there, the band
+than drawn broken. `needs` is read against `window`: each string is a DOTTED PATH resolved from `window` one key at a
+time, so `'H3.radio.mesh'` is `window.H3 && window.H3.radio && window.H3.radio.mesh`, and the test is
+`!= null` — a path that resolves to `null` or `undefined` at any step counts as absent, and `0`,
+`''` and `[]` do not. (A node whose geometry failed publishes `geometry: null`, so `'H3.nav'` is
+absent there and the ground band says so.) When what a path names is not there, the band
 prints one honest line — *"The `<pack>` pack has nothing here yet: `<what>` is not on this
 node"* — never a blank and never a guess. When `render()` itself throws, the band prints *"`<pack>` ·
 `<id>` did not render: `<message>`. A failure is not an answer, so the rest of the page is still

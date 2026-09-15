@@ -283,7 +283,14 @@ function emptyEarth(health) {
  * Sentinel strip, the AlphaEarth record, the trust card and the forecast card populated at once,
  * because nothing before this served /earth, /trust or /forecast at all. tests/visual/rich-fixture
  * .json is a hand-written stand-in — see its own "_what_this_is" — read once and cached, same
- * reason computeNodeData() caches: a render command asks for the same fixture on every job. The
+ * reason computeNodeData() caches: a render command asks for the same fixture on every job.
+ *
+ * WHAT PAI_RICH DOES NOT SERVE, and a reader of a rich shot has to know it: three JSON bodies, and
+ * no image bytes. The Sentinel strip's frames are <img src="/earth/frame.png?source=sentinel&year=…">,
+ * which is not one of the routes above, so a rich render shows the strip POPULATED WITH YEARS AND EMPTY OF
+ * PICTURES — every frame is the figure that says its image is missing, counted in the caption. That
+ * is the rig being honest about what it has, not a regression in the page; a shot of the real strip
+ * needs PAI_LIVE=1 against a node that has run `planetai run earth fetch`. The
  * forecast's hours are stored as offsets from render time, not baked-in timestamps, because
  * dashboard.js filters hours to `>= now - 1h` — a fixture with a fixed past date would silently
  * stop rendering any forecast the day after it was written. */
