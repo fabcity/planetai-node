@@ -97,6 +97,44 @@ if pub["decimals"] != 3 or pub["metres"] != 110 or pub["res"] != 10:
 if G.contains(110) != 10 or G.contains(10) != 12:
     fails.append(f"contains(110)={G.contains(110)} contains(10)={G.contains(10)}; want 10 and 12")
 
+# --- the claims: every footprint a number the product already declares ----------------------------------------
+class S:  # the settings module's two readers, over the preset node #1 was captured under
+    _v = {"LOCAL_RADIUS_M": 500, "BAD_RADIUS_KM": 8, "COAST_MAX_KM": 30, "EARTH_RADIUS_M": 5000,
+          "PLACE_RADIUS_M": 1000, "RETICULUM_PRESENCE_RES": 3}
+    @staticmethod
+    def num(k, d):
+        return S._v.get(k, d)
+    @staticmethod
+    def get(k, d=""):
+        return str(S._v.get(k, d))
+
+C = {c["key"]: c for c in G.claims(LAT, LON, S)}
+if list(c["key"] for c in G.claims(LAT, LON, S)) != ["coast", "ring", "region", "place", "yard", "room"]:
+    fails.append("claims are ordered widest first: coast, ring, region, place, yard, room")
+if not (2800 < C["coast"]["area_km2"] < 2830) or not (195 < C["ring"]["area_km2"] < 205):
+    fails.append(f"coast ≈ 2,813 km² and ring ≈ 200 km²; got {C['coast']['area_km2']}, {C['ring']['area_km2']}")
+reg = C["region"]
+if reg["native"] is None or reg["native"]["res"] != 12:
+    fails.append("the earth pack's square is 10 m a pixel, which is resolution 12")
+elif not (370000 < reg["native"]["cells"] < 380000) or reg["native"]["saving"] < 80:
+    fails.append(f"374,551 cells at res 12 should compact about 92×; got {reg['native']}")
+if C["room"]["native"]["res"] != 10:
+    fails.append("the room's grain is the publication grain, resolution 10")
+if C["coast"]["cells_at"][8] < 4000 or C["room"]["cells_at"][8] != 1:
+    fails.append(f"at res 8 the sea's word covers ~4,396 cells and a probe covers 1; got {C['coast']['cells_at'][8]}, {C['room']['cells_at'][8]}")
+if any(len(c["cells"]) > 140 for c in C.values()):
+    fails.append("a drawn covering is at most 140 cells")
+
+# --- the radio: a peer is a cell and a distance, never a point -------------------------------------------------
+R = G.radio(LAT, LON, S, peers=[{"cell": None, "res": 3, "km": 61}])
+if R["res"] != 3 or R["mine"] != L[3]["id"]:
+    fails.append("the node announces its res-3 cell")
+if not (1 <= len(R["candidates"]) <= 6) or R["mine"] in R["candidates"]:
+    fails.append(f"61 km from a res-3 cell is one of its neighbours, not itself: {R['candidates']}")
+R2 = G.radio(LAT, LON, S, peers=[{"cell": R["candidates"][0], "res": 3, "km": 61}])
+if R2["candidates"] != [R["candidates"][0]]:
+    fails.append("a peer whose cell is known is drawn in that cell and no other")
+
 for f in fails:
     print("FAIL", f)
 print("ok" if not fails else f"{len(fails)} failure(s)")

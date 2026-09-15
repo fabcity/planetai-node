@@ -129,3 +129,127 @@ def metres(cid: str, lat: float, lon: float) -> list[float]:
     for plat, plng in h3.cell_to_boundary(cid):
         out += [round((plng - lon) * k, 1), round(-(plat - lat) * 111320, 1)]
     return out
+
+
+FLOOR_RES = 6            # PRESENCE_RES_FLOOR in app/main.py: the finest any node may announce
+
+
+def _circle(lat: float, lon: float, r_m: float, n: int = 90) -> list[list[float]]:
+    d_lat = lambda m: m / 111320  # noqa: E731
+    d_lon = lambda m: m / (111320 * math.cos(math.radians(lat)))  # noqa: E731
+    ring = [[lat + d_lat(r_m * math.cos(a)), lon + d_lon(r_m * math.sin(a))]
+            for a in (2 * math.pi * i / n for i in range(n))]
+    return ring + [ring[0]]
+
+
+def _square(lat: float, lon: float, half_m: float) -> list[list[float]]:
+    dl, dn = half_m / 111320, half_m / (111320 * math.cos(math.radians(lat)))
+    c = [[lat - dl, lon - dn], [lat - dl, lon + dn], [lat + dl, lon + dn], [lat + dl, lon - dn]]
+    return c + [c[0]]
+
+
+def _by_res(cells) -> dict:
+    out: dict = {}
+    for c in cells:
+        out[h3.get_resolution(c)] = out.get(h3.get_resolution(c), 0) + 1
+    return out
+
+
+def cells_at(cells: list[str], res: int) -> int:
+    """How many cells of `res` a compacted covering amounts to. Exact in the index: seven children per step down,
+    distinct ancestors going up."""
+    n, up = 0, set()
+    for c in cells:
+        r = h3.get_resolution(c)
+        if res >= r:
+            n += 7 ** (res - r)
+        else:
+            up.add(h3.cell_to_parent(c, res))
+    return n + len(up)
+
+
+def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, note, native_res, base_res) -> dict:
+    poly = _square(lat, lon, footprint_m) if shape == "square" else _circle(lat, lon, footprint_m)
+    shape_ = h3.LatLngPoly(poly)
+    out = {"key": key, "name": name, "what": what, "footprint_m": footprint_m, "shape": shape,
+           "declared": declared, "where": where, "note": note, "native": None}
+    if native_res is not None:
+        native = h3.polygon_to_cells(shape_, native_res)
+        comp = h3.compact_cells(native)
+        out["native"] = {"res": native_res, "cells": len(native), "compact": len(comp),
+                         "by_res": _by_res(comp), "saving": round(len(native) / max(1, len(comp)))}
+    # the set the page can draw: step the base grain back until the compacted covering fits in one drawing
+    base = native_res if native_res is not None else base_res
+    cells, comp = [], []
+    for r in range(min(base, 11), -1, -1):
+        cells = h3.polygon_to_cells(shape_, r)
+        comp = h3.compact_cells(cells)
+        if 0 < len(comp) <= 140:
+            base = r
+            break
+    out["drawn"] = {"base_res": base, "cells": len(cells), "compact": len(comp), "by_res": _by_res(comp)}
+    out["area_km2"] = round(sum(h3.cell_area(c, unit="m^2") for c in comp) / 1e4) / 100
+    out["cells"] = sorted(comp)
+    out["cells_at"] = {res: cells_at(out["cells"], res) for res in range(NAV_MIN, NAV_MAX + 1)}
+    return out
+
+
+def claims(lat: float, lon: float, settings) -> list[dict]:
+    """What each source's word covers, as the compacted cell set that covers it. Every footprint is a number a pack or
+    a preset already declares; each names the file it came from. Ordered widest first."""
+    pub = publication()
+    out = [
+        _claim(lat, lon, key="coast", name="The sea", what="waves and sea-surface temperature at the nearest ocean cell",
+               footprint_m=settings.num("COAST_MAX_KM", 30) * 1000, shape="circle", native_res=None, base_res=7,
+               declared=f"COAST_MAX_KM={settings.num('COAST_MAX_KM', 30)}", where="packs/coast/pack.yaml",
+               note="the pack refuses if the nearest ocean cell is further than this; the model cell it reads is not "
+                    "declared anywhere, so the refusal radius is the only footprint there is"),
+        _claim(lat, lon, key="ring", name="The street", what="public stations this node is allowed to read",
+               footprint_m=settings.num("BAD_RADIUS_KM", 15) * 1000, shape="circle", native_res=None, base_res=8,
+               declared=f"BAD_RADIUS_KM={settings.num('BAD_RADIUS_KM', 15)}", where=".env / presets",
+               note=""),
+        _claim(lat, lon, key="region", name="The square this node keeps", what="AlphaEarth satellite embeddings, year against year",
+               footprint_m=settings.num("EARTH_RADIUS_M", 5000), shape="square", native_res=contains(10), base_res=9,
+               declared=f"EARTH_RADIUS_M={settings.num('EARTH_RADIUS_M', 5000)}, at 10 m a pixel", where="packs/earth/pack.yaml",
+               note="the only source whose own grain is finer than a household sensor, and the only one whose footprint is a square"),
+        _claim(lat, lon, key="place", name="The kilometre it draws", what="the plan: buildings, water, green, from OpenStreetMap",
+               footprint_m=settings.num("PLACE_RADIUS_M", 1000), shape="circle", native_res=None, base_res=10,
+               declared=f"PLACE_RADIUS_M={settings.num('PLACE_RADIUS_M', 1000)}", where="packs/place/pack.yaml", note=""),
+        _claim(lat, lon, key="yard", name="The wall outside", what="this node's own ground",
+               footprint_m=settings.num("LOCAL_RADIUS_M", 500), shape="circle", native_res=None, base_res=11,
+               declared=f"LOCAL_RADIUS_M={settings.num('LOCAL_RADIUS_M', 500)}", where=".env", note=""),
+        _claim(lat, lon, key="room", name="This room", what="the probes in this house",
+               footprint_m=pub["metres"], shape="circle", native_res=pub["res"], base_res=pub["res"],
+               declared="lat and lon rounded to three decimals", where="app/main.py, GET /health",
+               note="not a radius anybody chose: it is how precisely this node is willing to say where it is, and no "
+                    "reading from it may be drawn finer"),
+    ]
+    return sorted(out, key=lambda c: -c["area_km2"])
+
+
+def radio(lat: float, lon: float, settings, peers: list[dict]) -> dict:
+    """What the radio says about where: this node's announce cell, and for each peer either the cell it announced or
+    — when only a distance survived — the cells around this one that distance could be in. Never a point."""
+    res = min(int(settings.num("RETICULUM_PRESENCE_RES", 3)), FLOOR_RES)
+    mine = h3.latlng_to_cell(lat, lon, res)
+    around = h3.grid_disk(mine, 2)
+
+    def rng(cid):
+        ds = [h3.great_circle_distance((lat, lon), pt, unit="km") for pt in h3.cell_to_boundary(cid)]
+        return min(ds), max(ds)
+
+    cands: list[str] = []
+    km = None
+    for p in peers or []:
+        km = p.get("km", km)
+        if p.get("cell"):
+            if p["cell"] not in cands:
+                cands.append(p["cell"])
+        elif p.get("km") is not None:
+            for cid in around:
+                lo, hi = rng(cid)
+                if cid != mine and lo <= p["km"] <= hi and cid not in cands:
+                    cands.append(cid)
+    return {"res": res, "mine": mine, "candidates": cands, "peer_km": km,
+            "edge_m": round(h3.average_hexagon_edge_length(res, unit="m")),
+            "area_m2": round(h3.cell_area(mine, unit="m^2")), "cells": around}
