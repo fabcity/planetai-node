@@ -761,6 +761,19 @@ which 5.7 km of the planet is being looked at and from which address. The offlin
 nothing, and is one press away. Measured on the way: OpenStreetMap's tiles return a 403 placeholder
 without a Referer, so the page must not set `referrerpolicy="no-referrer"`.
 
+**Tomas's rule for the ground, added the same evening: from resolution 8 inward, the node's own
+plan.** He asked whether the generated drawing from the map fetch could be used from stop 8; it can,
+and it is the default there. The plan is about 3 km across and the resolution-8 plate is 4.2 km, so
+from 8 the plan covers the frame and from 9 it fills it — every vertex the node's own, and nothing
+sent. Coarser than 8 the frame is wider than anything the node has mapped, the plan is a rectangle,
+and the tiles take over. A pressed base always wins over the rule; pressing the base the rule would
+have chosen clears the press, so a stale choice does not outlive the dial. The wall follows the same
+rule stop by stop. Measured: on a dial that opens at 8 the ground row now reads **0 requests**, and
+the first screen's empty share at 1440 went back up from 48.9 % to **63.3 %** — a drawing of
+buildings is emptier than a photograph of them — while at resolution 4, where the tiles still show,
+it is 49.2 %. That is the trade the rule makes and it is the right one: the photograph was
+filling the fold at the cost of telling a server where the house is.
+
 **Explanations at the bottom.** Every section's paragraphs moved into its `notes()`. Printed open,
 they were a third of the page — about 3,000 px — so they fold per section: the title, the pack, the
 count, one press. Forty-odd notes and no section keeps a paragraph of its own.
@@ -779,8 +792,8 @@ wall says so in one line at its foot.
 | | H before | H, modular | target |
 |---|---|---|---|
 | T1 @ 390 / 768 / 1440 | ✓ | ✓ | five legs |
-| T2 empty @ 1440 | 59.6 % | **48.9 %** | ≤ 30 |
-| T2 empty @ 390 · 768 | 33.7 · 36.3 | **30.8 · 32.1** | ≤ 20 |
+| T2 empty @ 1440 | 59.6 % | **63.3 %** *(49.2 with tiles, at 4)* | ≤ 30 |
+| T2 empty @ 390 · 768 | 33.7 · 36.3 | **31.0 · 37.8** | ≤ 20 |
 | page @ 1440 | 5.5 screens | **8.1** | ≤ 4 |
 | page @ 390 | 8.4 | **12.6** | ≤ 8 |
 | T3 kinds | 3 | 3 | 4 |
@@ -789,9 +802,10 @@ wall says so in one line at its foot.
 | T6 reading order against DOM @ 1440 | 5 | 6 | 0 |
 | wall on 1,080 px | 1,080 | **1,080** | 1,080 |
 
-Two things moved and both are what the additions cost. **T2 fell by eleven points at 1440** —
-48.9 % is the lowest of any page in three rounds bar I — because the live map fills the fold with
-a mark that is the instrument. **The page doubled in length**: 8.1 screens at 1440 and 12.6 at 390,
+Two things moved and both are what the additions cost. **T2 fell by eleven points at 1440 while
+the tiles were the default** — 48.9 %, the lowest of any page in three rounds bar I — because the
+live map filled the fold with a mark that is the instrument; under Tomas's rule the fold at
+resolution 8 is the plan again and reads 63.3 %, with the tiles' number still there at 4. **The page doubled in length**: 8.1 screens at 1440 and 12.6 at 390,
 against targets of 4 and 8. Nine sections, fourteen station rows, four satellite frames and a
 folded notes block are not a four-screen page, and no amount of tightening makes them one. The
 lever is the contract's own: a section can move to another view (the Network view's wireframe
