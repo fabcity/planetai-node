@@ -508,3 +508,221 @@ uses it without teaching it, F mentions it. A household that never learns what r
 still reads E's drawing correctly — the centre cell is where I am, the filled ones are where
 somebody else is reading, the dashed ones are empty — and that is an argument for E over D that has
 nothing to do with the measurements.
+
+---
+
+# Part three · three that navigate by nothing but the grid
+
+**15 September 2026.** Tomas read D, E and F and asked to *go more radical on the use of the H3 grid,
+and base all the navigation on it*. These are those three. They are G, H and I; A to F stand
+unchanged above.
+
+D, E and F put H3 into a page that was still a document: a spine of sections, read top to bottom.
+These three do not have one. Each takes a different H3 operation and makes it the **only** thing a
+reader can do:
+
+| | what the reader moves through | H3's own words for it |
+|---|---|---|
+| **G · the address** | one cell at a time. The page *is* a cell; out, in, across and home are the whole interface, and the URL is `?cell=8895a4c86bfffff` | `cellToParent` · `cellToChildren` · `gridDisk` · `latLngToCell` |
+| **H · the dial** | one control, and it is resolution. Everything on the page re-derives from where the dial stands, 2 to 12 | `getResolution` · `cellToParent` · `cellArea` |
+| **I · the surface** | one grid that never moves, and the issue is a layer over it. Every cell is a control | `polygonToCells` · `compactCells` · `gridDisk` |
+
+## What "all the navigation" actually costs, and what it buys
+
+**The four distances leave the navigation.** In all three, room · yard · ring · region are no longer
+where anything lives. They come back as what Part Two measured them to be — a word on a reading
+saying whose custody it is. This is the one decision in this document that reverses something from
+10 September, and it is deliberate: finding 1 above says the four words are custody and not scale,
+and a page cannot navigate by custody and by geometry at the same time without lying about one of
+them.
+
+**The URL becomes a place.** `?cell=8895a4c86bfffff` is fifteen characters that resolve to the same
+0.64 km² on every node on the planet. "What did your street read" becomes a link somebody in Menorca
+can open against their own node. *My room* is not portable; a cell is. That is the whole argument for
+navigating this way, and it is worth more than any of the drawings.
+
+**Two things the node would have to publish.** Neither is a new endpoint; both are shapes on
+`/issues`, and the second is a product decision rather than a drawing one — it is in the handoff as
+a question and is **not** assumed here:
+
+1. **A plate per cell** — the cell, the cells around it, each one's parent, area and contents.
+   `app/ground.py` already calls `latlng_to_cell`, `grid_disk` and `cell_to_children`; it does not
+   publish them per cell. Measured: **3.0 kB** for the plate a reader is standing on.
+2. **A value per station.** G and I show one station's own 15-minute mean. `/issues` publishes the
+   street as a single **fenced median** and never a value per station. The fence exists for a reason.
+   Asking for it to come down is a decision about what a node says about its neighbours, and it is
+   Tomas's, not this document's.
+
+## Where the third round's geometry comes from
+
+The same generator, `make-h3.mjs`, extended. Three new objects, all computed with h3-js 4.2.1 from
+the committed fixture:
+
+| | what it is | size |
+|---|---|---|
+| `nav` | eleven plates, resolutions 2 to 12, two steps published around this node at each — 209 cells, with every cell's parent, neighbours, area, contents and which claims cover it | **3.0 kB** per plate |
+| `claims` | what each source's word covers, as the cell set that covers it, compacted | six claims |
+| `surface` | 217 cells at resolution 7, wide enough to hold every station, with each issue's evidence placed on it | one plate |
+
+**Not one radius on these pages was chosen by them.** Every footprint is a number the product
+already declares: `COAST_MAX_KM=30` (packs/coast), `BAD_RADIUS_KM=8` (presets/bali.env),
+`EARTH_RADIUS_M=5000` at 10 m a pixel (packs/earth), `PLACE_RADIUS_M=1000` (packs/place),
+`LOCAL_RADIUS_M=500` (.env.example), and the three decimals `GET /health` rounds a coordinate to —
+about **110 m**, which is the finest grain anything from this node may honestly be drawn at.
+
+`h3.js` is now **245 kB**, up from 61. That is the prototype's convenience, not a shipping shape: it
+carries eleven plates at once so the drawings can be walked with no server behind them, and a node
+would publish one. Two things were measured on the way there and are worth keeping: spreading the
+whole sensor object into every drawing cost 180 kB for the same object thirty times over, and one
+space of JSON indentation cost 150 kB.
+
+## What building the navigation found
+
+Findings 1 to 5 are in Part Two and all five still hold. These are new, and each is printed on the
+pages rather than reconciled away.
+
+**6 · Between resolution 7 and resolution 10, nothing changes.** Four stops of the dial, each seven
+times finer than the last — 343 times smaller by area — and the answer to *who is near me* is
+identical at every one: nine cells hold something, three sensors sit in this node's own cell. Past
+resolution 7, on this node on this day, grain is precision with no information in it. Nothing in
+rounds one or two could have shown this, because nothing in them varied the grain.
+
+**7 · The satellite square is 374,551 cells at the grain its own data has, and 4,063 after
+compaction.** `EARTH_RADIUS_M=5000` at 10 m a pixel is resolution 12; `polygonToCells` on that square
+returns 374,551 cells and `compactCells` returns 4,063 covering exactly the same ground — **92 times
+smaller**. This is the only place in three rounds where an H3 operation does something the node could
+not already do by hand, and it is the answer to "how would you ever publish a covering that fine".
+
+**8 · Six of the seven footprints were already declared; the one that is not belongs to the source
+that speaks for the most ground.** Every pack that keeps a distance states it in its own `env` block.
+The exception is the model point — CAMS — whose sample covers, at the grain a sensor is drawn at,
+**4,396 cells**, against the **one** cell a probe in this room covers. Nothing in the product says how
+big a model point's word is.
+
+**9 · Four issues, four completely different geometries, and the shipped page draws them as four
+bands of the same height.** On one grid of 217 cells at resolution 7: air is 11 stations in **7**
+cells; heat is 10 stations in the same 7, and *its* declared footprint — `LOCAL_RADIUS_M`, the wall
+outside — is **smaller than one cell of this grid**, so it draws **0**; land is **15** solid cells
+with no station anywhere in them; coast is **all 217**, one model's word over the whole screen; water
+is **0**, a reading with no ground under it at all. Four equal bands is the flattest possible lie
+about what is known.
+
+**10 · Navigating away from your own cell costs the numeral.** G standing in a published but empty
+cell fails T1's second leg, measured: there is no number, because nothing is read there. That is a
+property of place-first navigation and not of the drawing — and it is the strongest argument against
+G as the household's default screen.
+
+---
+
+## G · The address
+
+**The idea.** One cell at a time. The address bar carries the H3 index, and out, in, across and home
+are the only moves. Under it: what is read in this cell, whose word reaches it, and the seven
+children as seven doors. Seven and six are not numbers this page chose — they are H3's arity, and
+the page can therefore show every option it has at once.
+
+**What only G does.** It makes a place *sendable*. It is also the only direction where the privacy
+argument is a position you can stand on rather than a paragraph: the plate ends two steps out
+because that is what this node published, and everything finer than resolution 6 is what the machine
+keeps.
+
+**The five readers.** The household gets all five T1 legs at 390 — *when standing in this node's own
+cell*, and not otherwise. The keeper gets the one thing no other direction offers: a walk through
+what a stranger can and cannot resolve. The wall gets one cell and its readings and **fits 1,080 px
+exactly**. The tester on an empty node gets a plate with nothing in it and a page that says so. The
+stranger gets the refused page.
+
+**What it costs.** Most cells are empty, and a page that navigates by cell spends most of its life
+saying "nothing reads here". T1's numeral leg fails at every such position (finding 10). And it is
+the direction most dependent on the node publishing a value per station.
+
+## H · The dial
+
+**The idea.** One control: resolution, 2 to 12. Which sources count as speaking about here, how much
+ground each one's word covers, how many cells fourteen stations fall into, and whether what you are
+looking at may leave this machine — all of it re-derives from where the dial stands.
+
+**What only H does.** It makes **resolution into provenance**. A model that samples one point and a
+probe on a shelf both produce one number, and every page in rounds one and two draws them the same
+size. Here they are 4,396 cells and 1. It also puts the product's two existing lines — the announce
+floor at resolution 6 and the 110 m the node is willing to say it is at — on the same control, where
+a household can see which side of both it is standing on.
+
+**The five readers.** The household gets the node's own headline unchanged, with one line under it
+saying what the dial is currently letting the page say. The keeper gets the grain table, which is
+where finding 6 came from. The wall drops the dial — nobody presses a wall — and keeps the
+comparison; it **fits 1,080 px exactly**. The tester gets a dial over an empty node, which still
+answers "how coarse must I be to say anything". The stranger gets the refused page.
+
+**What it costs.** It is the most abstract of the nine. A dial marked 2 to 12 is a control a
+household has no reason to understand, and the page has to work when nobody ever touches it — which
+it does, but that makes the dial furniture for most readers. It is also 4.4 screens at 1440, the
+longest of the third round.
+
+## I · The surface
+
+**The idea.** One grid of 217 cells, wide enough to hold every station this node reads, and it never
+moves. The issue is a layer over it. Every cell is a control; pressing one asks what is read there.
+There are no sections, no scroll position that means anything, and no order to argue about.
+
+**What only I does.** It puts every issue's evidence on one ground, at one grain, and lets a reader
+see that the four are not comparable (finding 9). It is also the only direction in three rounds that
+makes the drawing the instrument rather than an illustration beside one — which is the honest version
+of what the shipped page does with a decorative full-bleed map.
+
+**The five readers.** The household gets all five T1 legs at 390 with the surface capped at 36vh —
+measured; 44vh pushed the as-of below the fold. The keeper gets the layer counts. The wall is the
+same surface, and **fits 1,080 px exactly**. The tester gets an empty grid, which is the most honest
+empty state of the nine: the ground is still there, nothing is on it. The stranger gets the refused
+page.
+
+**What it costs.** It is the least like a document of the nine, and everything below the surface is
+secondary by construction — the loop, ρ and the funnel end up as a footer. A reader who wants to
+compare two issues must press twice and remember. And it asks the node for a value per station just
+as hard as G does.
+
+## The measurements, G H I beside C and E
+
+Same fixture, same script, real faces, one device pixel. C is the first round's strongest and E the
+second's.
+
+| | target | C | E disk | G address | H dial | I surface |
+|---|---|---|---|---|---|---|
+| T1 @ 390 | five legs | ✓ | ✓ | ✓ *(in this node's cell)* | ✓ | ✓ |
+| T2 empty @ 1440 | ≤ 30 % | 70.5 | 63.7 | 63.7 | 58.4 | **42.2** |
+| T2 empty @ 390 | ≤ 20 % | 43.2 | 34.9 | 33.9 | 33.7 | **33.2** |
+| T2 empty @ 768 | ≤ 20 % | 55.3 | 31.9 | 33.9 | 36.3 | 34.5 |
+| page @ 1440 | ≤ 4 screens | 3.1 | 3.4 | 4.1 | 4.4 | **2.4** |
+| page @ 390 | ≤ 8 screens | 5.5 | 4.9 | 5.5 | 6.9 | **3.1** |
+| T3 kinds | 4 | 3 | 2 | 3 | 2 | 2 *(3 with a cell selected)* |
+| T4 numerals with no comparison | 0 | 0 / 26 | 0 / 27 | 0 / 34 | 0 / 29 | 0 / 13 |
+| T5 components with no link | 0 | 2 | 4 | **0** | **0** | **0** |
+| T6 reading order against DOM @ 1440 | 0 | 8 | 4 | 5 | 5 | 3 |
+| wall on 1,080 px | 1,080 | 1,080 | 1,133 | **1,080** | **1,080** | **1,080** |
+
+**T2 moved, and it is the first time in three rounds that it has.** I is 28 points below C at 1440
+and 10 below A-to-F's best. It still misses the target — 42.2 against 30 — and the reason is the same
+one raised at the end of Part One: on this fixture, at this width, 30 % is not reachable by a page
+that keeps a 24-character measure column and a 60-character comparison under every numeral. Nine
+compositions have now been measured against it. **The target is the thing that should move, and only
+Tomas can move it.**
+
+Two smaller measured notes. Side-by-side bands were tried on G and rejected on the numbers: they took
+1440's empty share from 68.4 % to 66.4 % and took T6 from 3 to 14 — two points of emptiness is not
+worth eleven places where the page reads in a different order than it is written. And H's page
+measures identically at resolutions 4, 8 and 11: the layout does not move when the dial does, which
+is a property worth having and was not designed for.
+
+## What the third round changes about the decision
+
+Nothing in Part Two's list is withdrawn. Three things are added:
+
+1. **Whether the four distances stay in the navigation.** A to F keep them; G, H and I do not. This
+   is now the first fork, and it is ahead of the choice between the nine.
+2. **Whether `/issues` publishes a value per station.** G and I need it. The street is a fenced
+   median today and the fence is deliberate. **This is a STOP: nothing will be built on either
+   without an answer.**
+3. **Whether the node publishes a plate per cell.** Cheap — `app/ground.py` computes all of it
+   already, 3.0 kB a move — and needed by G and H.
+
+Everything else stands: the pick is one of nine, and Phase 2 does not start without it.
