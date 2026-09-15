@@ -297,12 +297,14 @@ assert '"cell": _cell()' in main and "ground.facts(" in main and "ground.svg(" i
 # hero's anatomy and in the wall's, so it is drawn in both places from one piece of code. Asserting
 # the anatomy is the same guarantee the two ids gave and a stronger one — an id can exist in the
 # markup while nothing writes to it.
+# Rewritten with the modular page, which has no ANATOMY object. Same three guarantees, read off the
+# code that draws today: the stamp is a component, it is drawn on both surfaces from one piece of
+# code, and its caption is /health's own cell rather than anything the page worked out.
 assert 'data-component="stamp"' in gui, "gui: the cell stamp"
-for _a in ("hero", "wall"):
-    _anat = re.search(rf"^\s*{_a}:\s*\[([^\]]*)\]", gui, re.M)
-    assert _anat and "'stamp'" in _anat.group(1), f"gui: ANATOMY.{_a} must carry the cell stamp"
-assert "d.cell ? d.cell.caption" in gui, "gui: the caption is the cell's own, not the drawing's"
-assert "(snap.health || {}).cell" in gui, "gui: and the cell comes from /health"
+assert "${asof()}${window.K.stamp()}" in gui, "gui: the lead no longer draws the cell stamp"
+assert "${K.asof()}${K.stamp()}" in gui, "gui: the wall no longer draws the cell stamp"
+assert "const c = (S.health || {}).cell;" in gui, "gui: the caption is the cell's own, from /health"
+assert "const said = c ? c.caption : '';" in gui, "gui: and a node with no cell prints nothing"
 assert "THE CELL THIS NODE STANDS IN" not in open("app/static/node-ground.svg").read(), (
     "the shipped file is the fallback for a node with no coordinates; it must name no cell")
 print("the ground is drawn from the node's own coordinates and the caption is on the page")
@@ -434,18 +436,40 @@ for _k in ("BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR"):
 assert re.search(r"^BAD_RADIUS_KM=15$", env, re.M), \
     ".env.example: 15 km, which is 6 real neighbours at node #1 against 3 at 10 km and 1 at 5"
 
-# both endpoints and all three cards
+# both endpoints, and the two surfaces they reach
+#
+# Repointed 15 September 2026 with the modular page. The nearby ring and the nearby stations were two
+# cards; in this direction they are one section — `sensors`, which draws every station with a
+# coordinate, grouped by the cell it falls in, with its own distance and its own 15-minute mean. Two
+# station lists on one page would be the design error, so each assertion below is the finding the old
+# card carried, read off the section that carries it now. Each still goes red if the capability goes.
 assert "def nearby(" in main and "def forecast(" in main, "main.py: /nearby and /forecast"
-for _c in ("nearby-ring", "nearby-stations", "forecast"):
-    assert f'data-card="{_c}"' in gui, f"the dashboard: the {_c} card"
-assert "function drawRing(" in gui and "function drawForecast(" in gui
-assert re.search(r"^function drawRing\(", gui, re.M), \
-    "drawRing must be top level: defined inside drawDay's body it still parses, and check_ui.py cannot see it"
-# every card says where its numbers came from, on the card
-assert "baliairdispatch.com" in gui and "api.bmkg.go.id" in gui and "open-meteo.com" in gui, \
-    "the dashboard: both archives credited on the cards themselves"
-# a link only where the sensor has a page of its own — account kits, never a public station
-assert "s.meta&&s.meta.url" in gui, "the dashboard: account kits link to their own page; public stations never do"
+assert 'data-card="forecast"' in gui, "the dashboard: the forecast card"
+assert re.search(r"^function drawForecast\(", gui, re.M), \
+    "drawForecast must be top level: defined inside another body it still parses, and check_ui.py cannot see it"
+# the ring is on the page: every station around this node, one row each, never one number.
+# Protects what `nearby-ring` protected — that the neighbours are shown at all. Red if the section
+# stops being registered or stops drawing a row per station.
+assert "id: 'sensors'" in gui, "the dashboard: the section that draws the stations around this node"
+assert 'data-component="station"' in gui, "the dashboard: one row per station, which is the ring"
+# and each says how far away it is. Protects what `nearby-stations` protected: a reading from 12 km
+# away must never be drawn as if it were from here.
+assert "${esc(String(s.km))} km" in gui, "the dashboard: a station must say how far away it is"
+# and the page says what the ring's single number hides, which is the reason to draw the stations
+# at all. Red if that sentence goes.
+assert "single fenced median and never a value per station" in gui, \
+    "the dashboard: the page must say that the street is published as one median and this is what it hides"
+# every card says where its numbers came from, on the card. The forecast names both archives in its
+# own fallback credit; the stations name theirs from each station's own `attribution`, which is the
+# stronger form — a required attribution line cannot drift from what the node actually sent.
+assert "api.bmkg.go.id" in gui and "open-meteo.com" in gui, \
+    "the dashboard: both forecast archives credited on the card itself"
+assert "s.attribution" in gui and "sources: ${attrib" in gui, \
+    "the dashboard: each station's own attribution line is printed under the list, as its source requires"
+# a link only where the sensor has a page of its own — account kits, never a public station.
+# `/issues` publishes `url` per station and only fills it where the source gives one.
+assert 'esc(s.url)}" target="_blank" rel="noopener"' in gui, \
+    "the dashboard: account kits link to their own page; a station with no page gets no link"
 
 # v0.48 — presence. A node announcing "I am here" on Reticulum is the node speaking unprompted, so it is
 # its own setting and it is off until somebody turns it on; SHARE_LEVEL governs what a node ANSWERS.

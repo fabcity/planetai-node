@@ -96,63 +96,75 @@ if shutil.which("node"):
         f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
     assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
 
-# axe found nothing on any view or state, and these are the four that had to be true for that.
+# --- the modular page: three files, one contract, ten sections -------------------------------------------------
 #
-# Every one of these was a finding: the page had no h1 at all (a <b> carried the node's name, so
-# page-has-heading-one fired on every view in every state, and the wall has no header so it needed its
-# own); the Figures table scrolls inside its own box at 390 and could not be reached by keyboard; and
-# --dim, at about 4:1 on paper, carried the kit names, the rule ids, the .env markers and the source
-# line — fifty-seven serious contrast findings across one render, all on the small text that says
-# where a number came from.
-assert "<h1" in (ROOT / "app/static/index.html").read_text(), "the node's name is not the page's h1 again"
-assert re.search(r'<h1 class="vh">', _js), "the wall has no heading of its own; its header is display:none"
-assert 'class="figwrap" tabindex="0"' in _js, "the Figures table cannot be scrolled from a keyboard again"
+# Rewritten 15 September 2026 with the page. Everything below used to assert the structure of the
+# single-renderer page — its #hero, its Figures table, its Arrange mounts — and that page is gone.
+# Each finding it was written from is re-made against the page that draws today; nothing was dropped
+# because it was inconvenient to re-express.
+_h = (ROOT / "app/static/index.html").read_text()
 _css = (ROOT / "app/static/dashboard.css").read_text()
-for _sel in (".sensor .kits{", ".ledger .txt .meta{", ".field .src{"):
-    _rule = _css[_css.index(_sel):_css.index("}", _css.index(_sel))]
-    assert "--dim" not in _rule, f"{_sel.strip('{')} is back on --dim, which is about 4:1 on paper"
 
-# Arrange must actually arrange, and the view must be in the URL.
+for _must in ('src="static/dashboard.js"', 'href="static/dashboard.css"', 'id="page"'):
+    assert _must in _h, f"index.html lacks {_must}"
+assert "<style" not in _h and "<script>" not in _h, \
+    "index.html carries an inline style or script again — the page is three files, not one"
+
+assert "window.PAI = { STAGES, register, render, wall, sections, problems, has }" in _js, \
+    "dashboard.js no longer carries the page contract (kit-page.js) verbatim"
+for _sec in ("'ground'", "'sensors'", "'satellite'", "'reticulum'", "'meshtastic'", "'hardware'",
+             "'claims'", "'grain'", "'asks'", "'measure'"):
+    assert f"id: {_sec}" in _js, f"dashboard.js no longer registers the section {_sec}"
+assert "async function boot()" in _js and "/issues/fixtures/" in _js, \
+    "dashboard.js boots from /issues and can replay a fixture with ?fixture="
+# A style written from JavaScript cannot be read without running the page, and two sections used to.
+assert "<style" not in _js and "createElement('style')" not in _js, \
+    "no JS-injected styles in production: every module's CSS is in dashboard.css"
+# Live tiles tell a tile server which square of the planet is being looked at. They are off unless a
+# keeper turns them on, and the setting that turns them on is the only thing that may.
+assert "tile.openstreetmap.org" not in _js or "MAP_TILES" in _js, \
+    "live tiles are no longer gated on the MAP_TILES setting"
+
+# axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
-# Four of these shipped together and each was invisible until somebody tried the mode: the ✕ silently
-# did nothing on five of the nine bands (render() skipped a hidden id and left index.html's mount
-# holding its last content); the restore menu was markup only — `#arr-restore` appeared once in
-# index.html and was never referenced here, so a hidden band could only come back via Default, which
-# discards every other choice; nothing said what a move or a hide had done; and leaving by the nav
-# left the mode running with its controls scattered over a page nobody was arranging any more.
-assert "MOUNTS.filter(id => !want.includes(id))" in _js, \
-    "a band hidden in Arrange is skipped rather than cleared again — ✕ does nothing on the five mounts"
-assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden band cannot come back"
+# The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every
+# view in every state, and the wall has no header so it needed its own); a table that scrolls inside
+# its own box could not be reached by keyboard; and --dim, at about 4:1 on paper, carried the small
+# text that says where a number came from.
+assert re.search(r'<h1 class="brand">', _js), "the node's name is not the page's h1 again"
+assert re.search(r'<h1 class="vh">', _js), "the wall has no heading of its own; its header is display:none"
+assert 'class="tblwrap" tabindex="0"' in _js, "the grain table cannot be scrolled from a keyboard again"
+for _sel in (".readrow .who .m {", ".cellhead .n {", "[data-kind=\"readout\"] .src {"):
+    _rule = _css[_css.index(_sel):_css.index("}", _css.index(_sel))]
+    assert "--dim" not in _rule, f"{_sel.strip(' {')} is back on --dim, which is about 4:1 on paper"
+
+# The view must be in the URL, and it must get there without scrolling the page to an element.
 assert "history.pushState" in _js, "the view is not in the URL: refresh, back and a shared link all land on Now"
-# and assigning location.hash instead would scroll to the element and undo the scroll restore
 assert not re.search(r"location\.hash\s*=", _js), \
     "assigning location.hash jumps to that element, which eats the scroll restore — use pushState"
 
 # And the page must read the household's language rather than pinning itself to English.
-assert "(snap.health || {}).locale" in _js, \
-    "mkCtx no longer reads the locale off /health — the page is back to English on every node"
+assert "(S.health || {}).locale" in _js, \
+    "initKit no longer reads the locale off /health — the page is back to English on every node"
 
 # And a refused page must say so on whichever surface is being drawn.
 #
-# At SHARE_LEVEL=off — the default, and what every beta tester has — render()'s refused branch wrote
-# the node's sentence into #hero and returned. body.wallview hides #hero, and the Network view never
-# shows it, so the wall came up as 1920x1080 of nothing and Network as a header over an empty page.
-# Both are surfaces nobody is standing at to work out why. A household reads a black shelf screen as
-# a dead node, which is the exact thing the renderer's own comment has always forbidden: "a blank page
-# would be the node lying about being broken".
-#
-# This is a static proxy for a rendered check. The real test drives a browser against a node at `off`
-# and asserts each view carries the sentence; the suite has no browser and is not getting one for
-# this, so it asserts the branch names all three mounts. If the branch is ever rewritten, write the
-# rendered version rather than deleting this.
-_refused = _js[_js.index("if (snap.refused)"):]
-_refused = _refused[:_refused.index("\n  }") + 4]
-for _mount in ("hero", "wallbox", "netbody"):
-    assert f"'{_mount}'" in _refused or f'"{_mount}"' in _refused, \
-        f"the refused branch does not draw into #{_mount} — that view renders blank at SHARE_LEVEL=off"
-# and it must not claim a reading it does not have
-assert re.search(r"snap\.refused\s*\?\s*''", _js), \
-    "the header's provenance pill is computed without asking whether the page was refused; it said `live` over nothing"
+# At SHARE_LEVEL=off — the default, and what every beta tester has — the page gets 403 on /issues and
+# nothing else. /health still answers, so the node's name and the nav are still there and the
+# household's own sentence about why is drawn on the view they are standing on, the WALL included: a
+# black shelf screen is read as a dead node, and "a blank page would be the node lying about being
+# broken" is the renderer's own rule.
+_refused = _js[_js.index("function drawRefused()"):]
+_refused = _refused[:_refused.index("\n}") + 2]
+for _mount in ("wallbox", "wrap"):
+    assert f'"{_mount}' in _refused or f"class=\"{_mount}" in _refused, \
+        f"the refused branch does not draw into .{_mount} — that view renders blank at SHARE_LEVEL=off"
+assert "chrome(" in _refused, "a refused reader cannot reach the other views: the nav is not drawn"
+# and the page must not claim a reading it does not have: the provenance word follows the fixture,
+# and a refused page never reaches the lead at all.
+assert re.search(r"S\.fixture \? pill\('cached'", _js), \
+    "the lead's provenance pill no longer follows whether this is a fixture; it said `live` over a snapshot"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
-      "a hole in a series is a hole in the line, and a refused page says so on the wall and the network view")
+      "a hole in a series is a hole in the line, the page is three files carrying one contract and "
+      "ten sections, and a refused page says so on the wall and in the nav")

@@ -318,9 +318,15 @@ for css_path in sorted(_glob.glob("app/static/*.css")):
 # this rule proved it — looking backwards from the prose it found a SIBLING's class="state" and passed the exact
 # markup that put MG/M3 on the wall, and looking forwards it read one component's prose as the next one's. A
 # parser here would be a bigger thing than the bug. The tripwire below is what covers the sites not listed here.
+# Repointed 15 September 2026: both patterns named markup that only the page before the modular
+# rewrite had — the hero chips and its own `why` local are gone with it. The rule is unchanged and
+# so is what it guards; these are the two sites on the page that draws today where the node's or a
+# pack's own prose lands inside an element the stylesheet shouts.
 PROSE_IN_A_SHOUT = [
-    (r'class="said">·\s*\$\{esc\(why\)\}', "the kicker's reason (.k uppercases it)"),
-    (r'<span class="said">\$\{esc\(st\[x\]\.source\)\}', "a stack cell's source in the hero chips (.chip uppercases it)"),
+    (r'class="said">·\s*\$\{esc\(d\.reason_text\[LOC\]\)\}',
+     "the kicker's reason, which the node writes (.k uppercases it)"),
+    (r'<div class="lab"><span class="said">\$\{esc\(o\.title\)\}',
+     "a readout's title, which a pack may supply ([data-kind=\"readout\"] .lab uppercases it)"),
 ]
 for _pat, _what in PROSE_IN_A_SHOUT:
     if not re.search(_pat, JS_SRC):
@@ -361,7 +367,22 @@ if _fills:
 # And if a new uppercasing rule appears, somebody has to look at it against the check above rather than find out on
 # a wall. This list is the recorded set, dated 14 September 2026; it may shrink and it may not grow silently.
 UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
-                   ".tag", ".netnode .note", ".wall .wi .st", ".wall .exit"}
+                   ".tag", ".netnode .note", ".wall .wi .st", ".wall .exit",
+                   # Added 15 September 2026 with the modular page. Each one was read against the rule
+                   # above: every one of these carries the PAGE's own words, or a fixed vocabulary of
+                   # the node's that is a word and not prose, and the two places where prose does
+                   # reach a shouted element are in .said and are PROSE_IN_A_SHOUT's two patterns.
+                   ".claim .fact .k",            # "covers", "cells at resolution N", "its own grain"
+                   ".funnel .m2 .h",             # "the reading came back", "answered"
+                   ".mv .cap",                   # "out", "in"
+                   ".navbar .across .cap",       # "across"
+                   ".row.station .silent",       # the literal word "silent", written by the page
+                   ".state",                     # the node's five state words — act, notable, quiet,
+                                                 # context, none — a closed vocabulary, never a sentence
+                   ".wf .cap",                   # the wireframe's captions and a pack's own id
+                   '[data-kind="readout"] .lab',  # guarded: the title itself is in .said
+                   "details.fold > summary",     # "All eleven grains, and what each is worth"
+                   "table.tbl th"}               # the grain table's column headings
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "

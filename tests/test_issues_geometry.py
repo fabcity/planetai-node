@@ -124,6 +124,17 @@ if C["coast"]["cells_at"][8] < 4000 or C["room"]["cells_at"][8] != 1:
     fails.append(f"at res 8 the sea's word covers ~4,396 cells and a probe covers 1; got {C['coast']['cells_at'][8]}, {C['room']['cells_at'][8]}")
 if any(len(c["cells"]) > 140 for c in C.values()):
     fails.append("a drawn covering is at most 140 cells")
+# The dashboard draws a claim as the cells that cover it, and the browser has no h3 to turn an id into a ring.
+# So every claim carries its own boundaries, in the same shape and to the same six decimals plates() uses:
+# one row per compacted cell, its id first, then lat, lng, lat, lng round the ring.
+for _k, _c in C.items():
+    if len(_c["cells_ll"]) != len(_c["cells"]):
+        fails.append(f"{_k}: one boundary per compacted cell; got {len(_c['cells_ll'])} for {len(_c['cells'])}")
+    elif _c["cells"] and ([r[0] for r in _c["cells_ll"]] != _c["cells"]
+                          or len(_c["cells_ll"][0]) not in (13, 15)     # id + 6 or 7 vertices as lat, lng
+                          or abs(_c["cells_ll"][0][1]) > 90 or abs(_c["cells_ll"][0][2]) > 180):
+        fails.append(f"{_k}: cells_ll rows are [id, lat, lng, ...] in the order cells declares; got "
+                     f"{_c['cells_ll'][0][:5]}")
 
 # --- the radio: a peer is a cell and a distance, never a point -------------------------------------------------
 R = G.radio(LAT, LON, S, peers=[{"cell": None, "res": 3, "km": 61}])

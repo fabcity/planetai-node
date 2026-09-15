@@ -84,12 +84,23 @@ assert 11500 < _d < 13500, f"Bali to Menorca from two coarse cells is {_d:.0f} k
 print(f"  the announced cell blurs this node by {_blur[3]:.0f} km at res 3, and Menorca reads {_d:.0f} km away")
 
 gui = open("app/static/dashboard.js").read()
+# Rewritten 15 September 2026 with the modular page, which has no ANATOMY object: the shell draws the
+# lead and wall.js draws the wall, and there is no band table between them. Each of the three findings
+# below is the one the ANATOMY assertions carried, re-expressed against the code that draws today —
+# and each still goes red if what it protects stops being true.
+#
+#   1  the stamp is a component a gate can find      — unchanged
+#   2  it is drawn on BOTH surfaces, from one piece  — was ANATOMY.hero/.wall; now the two call sites
+#   3  the caption is /health's own, never derived   — was the old renderer's names; now stamp()'s
 assert 'data-component="stamp"' in gui, "the cell stamp is a component"
-for _a in ("hero", "wall"):
-    _anat = _re.search(rf"^\s*{_a}:\s*\[([^\]]*)\]", gui, _re.M)
-    assert _anat and "'stamp'" in _anat.group(1), f"ANATOMY.{_a} must carry the cell stamp"
-assert "d.cell ? d.cell.caption" in gui and "(snap.health || {}).cell" in gui, (
-    "the hero and the wall print the caption from /health")
+# 2 — one stamp(), called from the lead and from the wall's foot. Delete either call and this is red;
+# it is the same guarantee the two anatomy entries gave, read off the call sites instead of a table.
+assert "${asof()}${window.K.stamp()}" in gui, "the lead no longer draws the cell stamp"
+assert "${K.asof()}${K.stamp()}" in gui, "the wall no longer draws the cell stamp, and it has no header"
+# 3 — the caption is the cell's own, off /health, and a node with no cell prints nothing rather than
+# a caption the page made up. Change either half and this is red.
+assert "const c = (S.health || {}).cell;" in gui and "const said = c ? c.caption : '';" in gui, (
+    "the stamp no longer takes its caption from /health's own cell")
 assert '"cell": _cell()' in open("app/main.py").read(), "/health carries the cell"
 assert "THE CELL THIS NODE STANDS IN" not in shipped, (
     "app/static/node-ground.svg is the fallback for a node with no coordinates yet. It is node #1's "

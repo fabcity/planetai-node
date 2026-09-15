@@ -179,6 +179,7 @@ def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, no
         out["drawn"] = {"base_res": base_res, "cells": 0, "compact": 0, "by_res": {}}
         out["area_km2"] = 0
         out["cells"] = []
+        out["cells_ll"] = []
         out["cells_at"] = {res: 0 for res in range(NAV_MIN, NAV_MAX + 1)}
         return out
     poly = _square(lat, lon, footprint_m) if shape == "square" else _circle(lat, lon, footprint_m)
@@ -200,6 +201,12 @@ def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, no
     out["drawn"] = {"base_res": base, "cells": len(cells), "compact": len(comp), "by_res": _by_res(comp)}
     out["area_km2"] = round(sum(h3.cell_area(c, unit="m^2") for c in comp) / 1e4) / 100
     out["cells"] = sorted(comp)
+    # The boundaries of that covering, same shape and same six decimals as plates() publishes, because the
+    # dashboard draws a claim as the cells that cover it and a browser here has no h3 to turn an id into a
+    # ring. Counts alone would make "resolution is provenance" a sentence instead of a picture. The covering
+    # is capped at 140 cells above, so this is bounded: six claims, at most 140 rings of six or seven points.
+    out["cells_ll"] = [[cid] + [round(v, 6) for pt in h3.cell_to_boundary(cid) for v in pt]
+                       for cid in out["cells"]]
     out["cells_at"] = {res: cells_at(out["cells"], res) for res in range(NAV_MIN, NAV_MAX + 1)}
     return out
 
