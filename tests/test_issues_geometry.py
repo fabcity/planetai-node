@@ -135,6 +135,29 @@ R2 = G.radio(LAT, LON, S, peers=[{"cell": R["candidates"][0], "res": 3, "km": 61
 if R2["candidates"] != [R["candidates"][0]]:
     fails.append("a peer whose cell is known is drawn in that cell and no other")
 
+# --- a footprint of zero is a source declaring no ground, not a crash --------------------------------------------
+class S0:  # a copy of S with BAD_RADIUS_KM set to 0 — S's own methods close over S._v by name, not by class, so
+           # this cannot be a subclass of S with an overridden _v
+    _v = dict(S._v, BAD_RADIUS_KM=0)
+    @staticmethod
+    def num(k, d):
+        return S0._v.get(k, d)
+    @staticmethod
+    def get(k, d=""):
+        return str(S0._v.get(k, d))
+
+try:
+    C0 = {c["key"]: c for c in G.claims(LAT, LON, S0)}
+except Exception as e:  # noqa: BLE001 — the assertion is that nothing raises
+    fails.append(f"a zero radius must not raise: {e!r}")
+else:
+    z = C0["ring"]
+    if z["cells"] != [] or z["area_km2"] != 0 or z["native"] is not None or z["cells_at"][8] != 0:
+        fails.append(f"BAD_RADIUS_KM=0 should draw nothing for ring; got {z}")
+    for key in ("coast", "region", "place", "yard", "room"):
+        if C0[key] != C[key]:
+            fails.append(f"a zero radius on ring must not change the {key} claim")
+
 for f in fails:
     print("FAIL", f)
 print("ok" if not fails else f"{len(fails)} failure(s)")

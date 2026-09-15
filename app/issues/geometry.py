@@ -156,8 +156,9 @@ def _by_res(cells) -> dict:
 
 
 def cells_at(cells: list[str], res: int) -> int:
-    """How many cells of `res` a compacted covering amounts to. Exact in the index: seven children per step down,
-    distinct ancestors going up."""
+    """How many cells of `res` a compacted covering amounts to. Exact for hexagons: seven children per step down,
+    distinct ancestors going up. A covering that contains one of the twelve pentagons, or one of its descendants,
+    is overcounted — a pentagon has six children, not seven — but no place this node knows is near one."""
     n, up = 0, set()
     for c in cells:
         r = h3.get_resolution(c)
@@ -169,10 +170,19 @@ def cells_at(cells: list[str], res: int) -> int:
 
 
 def _claim(lat, lon, *, key, name, what, footprint_m, shape, declared, where, note, native_res, base_res) -> dict:
-    poly = _square(lat, lon, footprint_m) if shape == "square" else _circle(lat, lon, footprint_m)
-    shape_ = h3.LatLngPoly(poly)
     out = {"key": key, "name": name, "what": what, "footprint_m": footprint_m, "shape": shape,
            "declared": declared, "where": where, "note": note, "native": None}
+    if footprint_m <= 0:
+        # not a floor: a radius of zero or less is a source declaring no ground, not a typo to round up. Publish
+        # the claim with an empty covering rather than invent a metre nobody declared — h3.polygon_to_cells raises
+        # on a degenerate polygon, so this is caught before it ever builds one.
+        out["drawn"] = {"base_res": base_res, "cells": 0, "compact": 0, "by_res": {}}
+        out["area_km2"] = 0
+        out["cells"] = []
+        out["cells_at"] = {res: 0 for res in range(NAV_MIN, NAV_MAX + 1)}
+        return out
+    poly = _square(lat, lon, footprint_m) if shape == "square" else _circle(lat, lon, footprint_m)
+    shape_ = h3.LatLngPoly(poly)
     if native_res is not None:
         native = h3.polygon_to_cells(shape_, native_res)
         comp = h3.compact_cells(native)
