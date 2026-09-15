@@ -1,8 +1,15 @@
 # Handoff: three directions, and the question
 
-**14 September 2026.** Phase 1 of the dashboard redesign is done and this session stops here. Phase 2
-builds the one that is picked; it starts from this file, in this session if Tomas answers, else in a
-fresh one.
+**14 September 2026, extended 15 September.** Phase 1 of the dashboard redesign is done and this
+session stops here. Phase 2 builds the one that is picked; it starts from this file, in this session
+if Tomas answers, else in a fresh one.
+
+**Six directions now, in two rounds.** A, B and C were the first. Tomas read them, leaned to C's
+logic — the page organised by *where* — and asked for three more with the
+[H3 grid](https://h3geo.org/) built into the navigation rather than used as a picture. D, E and F
+are those: all three keep C's claim that a household navigates by place, and differ in which H3
+relation does the navigating — up and down the resolution ladder (D), outward across the grid (E),
+or not at all, with the grid supplying each of C's four zones its picture, address and scale (F).
 
 Branch: `dashboard-redesign-2026-09`, cut from `main` at **v0.53** (`a06655a`). Nothing on the node's
 own surface has changed: the four commits on it are a measuring script, a Phase 0 reading, the three
@@ -20,11 +27,17 @@ cd ~/Documents/Claude/Projects/FAB\ CITY/planetai-design/prototypes/dashboard-di
 python3 -m http.server 8090
 ```
 
-| | at 1440 | at 390 | the wall |
-|---|---|---|---|
-| **A** the index is the page | http://127.0.0.1:8090/a/ | same, narrow the window | http://127.0.0.1:8090/a/?view=wall |
-| **B** the matrix | http://127.0.0.1:8090/b/ | | http://127.0.0.1:8090/b/?view=wall |
-| **C** the ground | http://127.0.0.1:8090/c/ | | http://127.0.0.1:8090/c/?view=wall |
+| | | the wall |
+|---|---|---|
+| **A** the index is the page | http://127.0.0.1:8090/a/ | http://127.0.0.1:8090/a/?view=wall |
+| **B** the matrix | http://127.0.0.1:8090/b/ | http://127.0.0.1:8090/b/?view=wall |
+| **C** the ground | http://127.0.0.1:8090/c/ | http://127.0.0.1:8090/c/?view=wall |
+| **D** the ladder — H3 | http://127.0.0.1:8090/d/ | http://127.0.0.1:8090/d/?view=wall |
+| **E** the disk — H3 | http://127.0.0.1:8090/e/ | http://127.0.0.1:8090/e/?view=wall |
+| **F** the ground, gridded — H3 | http://127.0.0.1:8090/f/ | http://127.0.0.1:8090/f/?view=wall |
+
+Narrow the window for 390. **Open E's wall first** — it is the one thing in either round that a
+stranger walking past would understand without being told anything.
 
 Add `?state=empty` for a fresh node and `?state=refused` for a phone with no token. The
 wireframes are `?view=network`, `?view=setup`, `?view=arrange`.
@@ -39,7 +52,30 @@ The argument, reader by reader, and every number:
 
 ---
 
-## The table, short
+## The second round, short
+
+| | target | C | D ladder | E disk | F gridded |
+|---|---|---|---|---|---|
+| first screen says everything @ 390 | five of five | ✓ | ✓ | ✓ | ✓ |
+| empty share @ 390 / 768 | ≤ 20 % | 43.2 / 55.3 | 42.8 / 60.2 | **34.9 / 31.9** | 43.7 / 55.8 |
+| page @ 1440 / 390, screens | ≤ 4 / ≤ 8 | **3.1** / 5.5 | 4.3 / 5.7 | 3.4 / **4.9** | 5.4 / **8.6** |
+| orphan numerals · components | 0 · 0 | 0 · 2 | 0 · **2** | 0 · 4 | 0 · 5 |
+| wall on a 1,080 px screen | 1,080 | **1,080** | **1,080** | 1,133 | 1,130 |
+
+**E is the only page in either round to pass T2's 30 % at any width** (31.9 % at 768), and the thing
+filling its fold is a drawing that carries readings rather than a decorative map. C and D are the
+only two whose wall fits; E's and F's are 53 and 50 px too tall and lose `stale`, which is a line to
+trim rather than a composition to rebuild.
+
+Five things the grid measured that nothing else had, all printed on the three pages rather than
+reconciled away: **the ring's cell is bigger than the region's** (res 4, 26 km against res 5,
+9.9 km — two of the four distances are the wrong way round as scales); at the grain the street is
+drawn at, **this house's own cell also holds two of somebody else's sensors**; the grid **cannot tell
+the room from the wall outside at all**, because this node's three sensors carry one coordinate; the
+ring reaches **14.7 km** where `presets/bali.env` declares 8; and two of seven child cells reach
+**6 m** outside their own parent while indexing to it exactly.
+
+## The first round, short
 
 | | target | shipped | A | B | C |
 |---|---|---|---|---|---|
@@ -89,17 +125,18 @@ something in C**, where it is the ring's own drawing rather than a card in a ban
 
 ## The question, in one paragraph
 
-Three drawings of the same evening, on the same frozen layer, from the same file: A makes the page
-one column of rows and the hero the row that won; B makes it a table of issues against distances and
-answers *is it me or is it everywhere* before anybody reads a sentence; C makes it four places —
-room, wall outside, street, model — and hangs every issue off the distance its evidence lives at. All
-three put a comparison beside every number and a link on every component, which the shipped page does
-for none; all three fit the first screen at 390, which the shipped page does not; and none of them
-comes near the 20 % empty-space target, which the shipped page only appears to meet because a
-decorative map counts as a mark. **Which one should be built** — and, whichever it is, **do the
-emptiness targets move to the measure that discounts decoration (45 % at 390, 65 % at 1440), or does
-the page have to get denser than any of these three?** Name anything from the other two you want
-carried over; Phase 2 builds one page, not a merge of three.
+Six drawings of the same evening now, on the same frozen layer, from the same file. C organises the
+page by place and is the shortest and the only one of the first three whose wall fits. D keeps that
+and makes the resolution ladder the spine, which is the only composition in either round that puts
+the privacy argument — what is kept, what may leave, and the floor between them — where a household
+can see it. E makes the neighbourhood the spine and is the densest page measured, the best wall to
+look at, and the first to answer *is it me or is it everywhere* as something countable rather than
+as a sentence. F changes C as little as possible and gives each of its four zones a cell, an address
+and a scale, at the cost of being the longest page of the six. **Which one should be built** — and
+two things that decide with it: **does the grid navigate (D, E) or illustrate (F)**, and **do the
+emptiness targets move to the measure that discounts decoration, or does the page have to be as
+dense as E?** Name anything from the other five you want carried over; Phase 2 builds one page, not
+a merge.
 
 ---
 
@@ -123,6 +160,24 @@ renderer's own shape rather than its lists; the plan gets drawn from `/place/geo
 mesh and the res-8 outline rather than being an artboard; every reading keeps its link to the same
 issue at the next distance, which is C's answer to the scatter; and `check_ui`'s card-kind count
 becomes two unless the row and the stack come back somewhere.
+
+## If the answer is D, E or F
+
+All three need one thing from the node and it is small: **`/issues` carries the cell id and the
+resolution per distance**, so the page can show the scale without inventing it. That is a field on a
+stack cell, not an endpoint, and `app/ground.py` already calls `latlng_to_cell`, `grid_disk` and
+`cell_to_children`, so nothing has to be built — only published. `make-h3.mjs` is the working
+reference for what to publish.
+
+**D** also wants `PRESENCE_RES_FLOOR` and `RETICULUM_PRESENCE_RES` on the same read, because the line
+across the ladder is drawn from them. **E** wants per-station coordinates, which `/sensors` already
+answers, and it wants somebody to decide whether a cell may show a value — today it can only show
+that a station is there, because the node publishes the ring as one fenced median and a number per
+cell would be the page computing. **F** wants nothing beyond the cell ids.
+
+And all three inherit the same three sentences, which are not optional: the grid cannot tell indoors
+from outdoors, it cannot tell mine from the street's at the grain the street is drawn at, and its
+containment is exact in the index and approximate on the ground.
 
 ---
 
