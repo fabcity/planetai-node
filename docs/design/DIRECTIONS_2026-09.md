@@ -295,3 +295,216 @@ from the September walk — so the wall's other failing is answered by the pick 
   reachable from this machine. The axes drawn — was it answered, did the reading come back — are the
   pair a node can compute from `alerts` and `actions`. If the briefing names a different pair, this
   is the thing to re-read against it.
+
+---
+---
+
+# Part two · three iterations on C, navigated by H3
+
+**15 September 2026.** Tomas read A, B and C and leaned to C's logic — the page organised by *where*
+— and asked for three more with the H3 grid built into the navigation rather than used as a
+picture. These are those three. They are D, E and F; A, B and C stand unchanged above.
+
+All three keep C's claim that a household navigates by place. What differs is **which H3 relation
+does the navigating**:
+
+| | the relation | H3's own word for it |
+|---|---|---|
+| **D · the ladder** | up and down: the page is the resolution ladder, and the four distances are rungs on it | `cellToParent` / `cellToChildren` |
+| **E · the disk** | outward: the page is the cells around this one, and every sensor is drawn in the cell it is actually in | `gridDisk(cell, k)` |
+| **F · the ground, gridded** | none — C's four zones are kept exactly, and the grid supplies each zone's picture, address and scale | `latLngToCell` per zone |
+
+## Where the geometry comes from
+
+`make-h3.mjs` computes everything with **h3-js 4.2.1** from the committed fixture's own `/health`
+coordinates, and writes `h3.js` — 61 kB of cell ids, edges, areas and projected path strings.
+Nothing in any browser knows what a hexagon is, which is the division the node's own dashboard
+already keeps with `kilometre-cells.json` and the rule R0 settled: *geometry is computed, signs are
+lifted or built on a grid.*
+
+Two checks, because a drawing of a grid is worthless if the grid is wrong:
+
+| | | |
+|---|---|---|
+| against the design repo's own committed geometry | res 7 `8795a4c86ffffff` · res 8 `8895a4c86bfffff` · res 9 `8995a4c86a7ffff` | **all three match `assets/h3/kilometre-cells.json`** |
+| against [h3geo.org's resolution table](https://h3geo.org/docs/core-library/restable/) | res 2 edge 182.5130 km against 182.5129565 · 5,882 cells against 5,882 · res 8 area 0.737328 km² against 0.737327598 | **match** |
+
+**The node can already do all of this.** `app/ground.py` calls `latlng_to_cell`, `grid_disk` and
+`cell_to_children` today. Nothing in these three is a capability the node would have to gain — only
+a shape it would have to publish.
+
+**One method note, because it cost a render.** The first grid drew as a solid disc: `d3.geoPath`
+applies spherical polygon semantics, and a ring wound the other way is read as *the whole planet
+minus the cell*, so thirty-seven cells were each filled as everything-but-themselves. The fix is the
+rule `NODE_DASHBOARD_PLAN_SPEC.md` already settles for the plan — **project every vertex, never
+resample** — and it cut `h3.js` from 274 kB to 61 kB on the way.
+
+## What drawing the grid found, before any of the three was composed
+
+These are measurements, not opinions, and every one of them is printed on all three pages rather
+than reconciled away.
+
+**1 · Two of the four distances are the wrong way round.** The cell that contains the ring is
+resolution 4, 26 km to an edge. The cell that contains *the region* is resolution 5, 9.9 km. **The
+ring is the bigger of the two.** The four words are custody and provenance, not scale, and nothing
+had made that visible before the grid was drawn beside them.
+
+**2 · At the grain the street is drawn at, the grid cannot tell mine from theirs.** The cell this
+house stands in at resolution 6 holds three of this node's own sensors *and two that are not* —
+`Ungasan Kit - TEST` and `BAYU NEW ENCLOSURE`, 1.3 km away. A cell is a place; "ours" is not a
+place, it is custody, and only the node knows it.
+
+**3 · The grid cannot tell the room from the wall outside at all.** All three of node #1's own
+sensors carry one coordinate, so they are in one cell at every resolution down to 15. H3 answers
+*where*; it does not answer *indoors*.
+
+**4 · The ring is wider than the setting that declares it.** `presets/bali.env` sets
+`BAD_RADIUS_KM=8`. The furthest station in this capture is **14.7 km** away. All three grids are
+drawn from the data, and say so.
+
+**5 · Containment is exact in the index and approximate on the ground.** Two of the seven resolution-9
+children of this node's cell reach **6 m** past their own parent's furthest vertex, and all seven
+index to that parent exactly — h3geo.org's own "approximate containment only applies when truncating
+the precision of an H3 index", measured on this node.
+
+---
+
+## D · The ladder
+
+**The idea.** The page is the resolution ladder, finest first. Moving down it is `cellToParent`,
+moving up is `cellToChildren`, and each rung carries the cell this node actually stands in there,
+what a cell is worth on the ground at that grain, and what is read at it. The four distances sit on
+the rungs they belong to, named.
+
+**What only D does.** It has a **line across it**. Everything finer than resolution 6 is what this
+machine keeps; resolution 6 is `PRESENCE_RES_FLOOR`, the finest any node may announce; everything
+coarser is what may leave. `SHARE_LEVEL`, the radio announce and `/health`'s published cell stop
+being three paragraphs in Set up and become three positions on one page. No other direction in
+either round puts the privacy argument where a household can see it.
+
+**The five readers.** The household member gets the same first screen as C — all five T1 legs at 390.
+The keeper gets the ladder and the line. The wall gets four columns, not the ladder, because nine
+rungs of fifteen-character cell ids at three metres is the opposite of a wall; **it fits 1,080 px on
+a 1,080 px screen exactly.** The tester on an empty node still gets every rung, each saying what it
+has no instrument for. The stranger gets the refused page.
+
+**What it costs.** The ladder is a teaching object, and a household does not need to be taught the
+aperture-7 hierarchy to shut a window. Two of its rungs — resolutions 4 and 5 — exist only because
+the geometry demanded them, not because anybody reads anything there. And it is 5.7 screens at 390,
+longer than C.
+
+## E · The disk
+
+**The idea.** `gridDisk(cell, k)`. k = 0 is the cell this house stands in, k = 1 the six around it,
+k = 3 as far as any station reporting here. Every sensor is placed in the cell it is actually in,
+computed from coordinates the node already stores. The grain is not a taste: the page prints the
+table it was chosen from — resolution 6, k = 3, 37 cells, 7 of them with a sensor — and the row
+above and below say why one is a single hexagon and the other is 217 cells with eight things in them.
+
+**What only E does.** It answers *is it me or is it everywhere* as a **count** rather than a
+sentence. Seven of thirty-seven cells have anything reading in them, and they are not evenly spread —
+two at 1.3 km, three at about 4 km, two at 6.3, and three singletons at 14 km and beyond. A ring
+reported as one fenced median has already thrown that shape away. E is also **the densest page
+measured in either round: 34.9 % empty at 390 and 31.9 % at 768**, against a target of 20 % and
+against the shipped page's honest 46.8 %.
+
+**The five readers.** The household member gets the sentence, the ask and the grid on the first
+screen. The keeper gets the neighbourhood. **The wall is the best of the six**: at three metres the
+grid reads as a constellation of where the readings are, which no list does. The tester on an empty
+node gets thirty-seven dashed outlines and a sentence per step — the clearest "you have no
+neighbours yet" in either round. The stranger gets the refused page.
+
+**What it costs.** Two things, and the first is serious. **A cell is not a house**: at resolution 6
+this house's own cell also holds two of somebody else's sensors, so the drawing's centre cell is not
+"mine" — it is "here", and the page has to say so in a sentence rather than in the drawing. And E
+shows *where* a station is but not *what it read*: the node publishes the ring as one fenced median,
+not a value per station, so a number per cell would be the page computing something the node has not
+said. E draws the shape of the ring and still cannot colour it.
+
+## F · The ground, gridded
+
+**The idea.** C, kept. The four zones stay in order, the issues stay hung off the distance their
+evidence lives at, the reading order is untouched. H3 supplies the three things C had to assert: each
+zone's **picture** (its cell among its six neighbours, at that zone's grain), its **address** (the
+cell id in full), and its **scale** (what a cell is worth there).
+
+**What only F does.** It is the smallest change of the three and the only one that does not re-spine
+the page. If the answer to "does the grid help a household?" turns out to be "a little", F is the
+version that costs a fortnight instead of a quarter.
+
+**The five readers.** Identical to C everywhere except that each zone now carries a drawing, an
+address and a scale.
+
+**What it costs.** Height. **8.6 screens at 390 and 9.6 at 768**, against C's 5.5 and 5.2 — four
+grids, four addresses and four scale lines added to a page that was already the shortest of the
+first three. At 768 the two-column zone collapses and every aside goes full width, which is why 768
+is worse than 390. F buys the grid and pays for it in scrolling.
+
+---
+
+## The measurements, D E F beside C
+
+Same script, same fixture, same afternoon. C is repeated from Part One so the comparison is direct.
+
+| | target | C | D ladder | E disk | F gridded |
+|---|---|---|---|---|---|
+| **T1** @ 390, five legs | all five | ✓✓✓✓✓ | ✓✓✓✓✓ | ✓✓✓✓✓ | ✓✓✓✓✓ |
+| **T1b** issues named, first screen @ 1440 | all five | air heat water | air heat water | **water only** | air heat water |
+| **T2** empty @ 1440 | ≤ 30 % | 70.5 % | 72.1 % | **63.7 %** | 66.2 % |
+| **T2** empty @ 390 | ≤ 20 % | 43.2 % | 42.8 % | **34.9 %** | 43.7 % |
+| **T2** empty @ 768 | — | 55.3 % | 60.2 % | **31.9 %** | 55.8 % |
+| **T2** page @ 1440, screens | ≤ 4 | **3.1** | 4.3 | 3.4 | 5.4 |
+| **T2** page @ 390 | ≤ 8 | 5.5 | 5.7 | **4.9** | **8.6** |
+| **T3** card kinds | 4 | 2 | 2 | 2 | 3 |
+| **T4** orphan numerals | 0 | **0 of 26** | **0 of 39** | **0 of 27** | **0 of 33** |
+| **T5** orphan components | 0 | 2 of 25 | **2 of 30** | 4 of 25 | 5 of 32 |
+| **T6** swaps @ 1440 / 390 | 0 | 8 / 2 | 6 / **2** | **4 / 2** | 7 / **2** |
+| **wall** on a 1,080 px screen | 1,080 | **1,080** | **1,080** | 1,133 | 1,130 |
+| **wall**, what falls off | nothing | **nothing** | **nothing** | node name, `stale`, "Answer on Telegram" | the same, plus the announce address |
+| **wall** issue line, cap height | ≥ 9 mm | 8.4 | 8.4 | **7.5** | 8.4 |
+
+**E and F lose `stale` off the wall by 53 and 50 px.** That is a line to trim, not a composition to
+rebuild — unlike B's 470 px in Part One — but it is the same S-01 failure and it is not fixed here.
+
+**None of the six reaches T2's 20 % at 390.** E gets closest at 34.9 %, and it is the only one of
+the six to pass 30 % at any width. The question from Part One stands and E is the first evidence
+that a denser page is achievable at all: the thing that fills E's fold is a drawing that carries
+readings, which is exactly what the complaint asked for and what the hero's decorative ground is not.
+
+---
+
+## What the six agree on now
+
+Part One's four shared findings hold unchanged. Three more come out of the H3 round, and they are
+not part of the choice either:
+
+**5 · The four distances are custody, and the grid is scale, and the page needs both.** Every one of
+D, E and F ended up printing the disagreement rather than resolving it. Whatever is picked, `/issues`
+should carry the cell id and resolution per distance, so the page can show the scale without
+inventing it — that is a field on a stack cell, not a new endpoint.
+
+**6 · A cell id belongs on the page, once per object, in full.** It is the only thing that makes a
+reading citable by anybody else, and truncating it makes a different id.
+
+**7 · The grid's limits have to be said out loud.** It cannot tell indoors from outdoors, it cannot
+tell mine from the street's at the grain the street is drawn at, and its containment is exact in the
+index and approximate on the ground. All three directions carry those as sentences, because a reader
+who believes a hexagon means "my house" has been misled by the page.
+
+## What the pick now decides, restated
+
+**1 · Does the grid navigate, or illustrate?** D and E navigate by it; F illustrates with it. F is a
+fortnight, D and E are a re-spine.
+
+**2 · T2 still.** E is the only page in either round to pass 30 % anywhere. If the targets stand as
+written, E is the only direction with a path to them; if they move to the honest measure, all six
+already clear it.
+
+**3 · The wall.** C and D fit it exactly. E's wall is the best of the six to look at and is 53 px
+too tall. F's is the same. B's, from Part One, is 470 px too tall.
+
+**4 · New, and only H3 raises it: whether the page should teach the grid at all.** D teaches it, E
+uses it without teaching it, F mentions it. A household that never learns what resolution 6 means
+still reads E's drawing correctly — the centre cell is where I am, the filled ones are where
+somebody else is reading, the dashed ones are empty — and that is an argument for E over D that has
+nothing to do with the measurements.
