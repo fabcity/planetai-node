@@ -41,6 +41,7 @@ import packs
 
 from . import (CMP_WORDS, DISTANCES, JOIN_WORDS, LABEL_WORDS, LOCALES, NOUN_WORDS, REASON_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
+from . import geometry
 from .schema import is_open, is_seen, place_of, stage_of
 
 log = logging.getLogger("planetai.issues")
@@ -724,6 +725,11 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     fixture is a fixed moment and may be replayed on a different node than the one that captured it.
     Both ride in `health`, the same row `/health` itself was built from, so a snapshot missing
     coordinates there falls back to `compute()`'s own default rather than crashing on it.
+
+    `peers` comes from the snapshot's own top-level `peer`, when one is there. The committed fixture
+    (node1-2026-09-06.json) has none — its peer was synthetic, added by a design-repo script for the
+    Phase 1 drawings — so a replay of it publishes an empty radio candidate list, correctly: no other
+    node has been heard from that capture.
     """
     now = snapshot.get("as_of")
     if isinstance(now, str):
@@ -731,12 +737,46 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     health = snapshot.get("health") or {}
     place = (health["lat"], health["lon"]) if health.get("lat") is not None and health.get("lon") is not None \
         else None
+    peer = snapshot.get("peer")
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
-                   place=place, mesh=health.get("mesh"))
+                   place=place, mesh=health.get("mesh"), peers=[peer] if peer else [])
+
+
+def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
+    """The H3 shapes the dashboard's one control — the resolution dial — turns on, computed here so
+    the page never has to. The plates alone are a few kB per resolution; the whole object is published
+    in one shot because the page turns a dial across eleven resolutions, and asking per stop would be
+    eleven round trips to draw one thing.
+
+    Published under the names planetai-design's `h3.js` used (`nav.chain`, `nav.cells`, `nav.plates`,
+    `grain_table`, `claims[i].cells_at`, `ladder`, `publication.res`, `radio.mine/candidates/res`,
+    `settings.PRESENCE_RES_FLOOR`, `settings.RETICULUM_PRESENCE_RES`) so the prototype's kits port
+    without a rename.
+
+    A distance — room, yard, ring, region — is custody, not scale: nothing here maps a custody word to
+    a resolution. This publishes the grid; the page says which custody a reading carries.
+    """
+    import h3  # noqa: PLC0415 — only this path needs it, same lazy import _stations already uses
+    floor = geometry.FLOOR_RES
+    pub = geometry.publication()
+    peer_rows = [{"cell": p.get("cell"), "res": p.get("res"), "km": p.get("km")} for p in (peers or [])]
+    return {
+        "publication": pub,
+        "ladder": geometry.ladder(lat, lon),
+        "nav": geometry.plates(lat, lon, stations),
+        "grain_table": geometry.grain_table(lat, lon, stations, floor_res=floor, publication_res=pub["res"]),
+        "claims": geometry.claims(lat, lon, settings),
+        "radio": geometry.radio(lat, lon, settings, peer_rows),
+        "settings": {k: settings.num(k, d) for k, d in (
+            ("LOCAL_RADIUS_M", 500), ("BAD_RADIUS_KM", 15), ("EARTH_RADIUS_M", 5000),
+            ("PLACE_RADIUS_M", 1000), ("RETICULUM_PRESENCE_RES", 3))} | {"PRESENCE_RES_FLOOR": floor},
+        "source": f"h3 {h3.__version__}, computed by this node",
+    }
 
 
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
-            place: tuple[float, float] | None = None, mesh: dict | None = None) -> dict:
+            place: tuple[float, float] | None = None, mesh: dict | None = None,
+            peers=()) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -747,6 +787,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     `mesh` is `/health`'s mesh dict, passed in rather than read here — `/issues` makes no network call
     and no query the live cursor cannot answer, so a live call hands it `app/main.py`'s own module-level
     `mesh_state` (Ruling P3 in the Task 3 brief: neither `health` nor `presence` is a table to SELECT).
+
+    `peers` is the Reticulum bridge's peer list, in the same spirit: a live call passes none, because
+    fetching it costs an HTTP request and `/issues` makes no network call of its own. It only ever
+    arrives here already in hand — from a snapshot's `peer`, when a replay has one.
     """
     now = now or datetime.now(timezone.utc)
     if place is None:
@@ -816,16 +860,18 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         }
 
     headline_issue = _headline(out, declared)
+    stations = _stations(data["stats"], data.get("hourly"), lat, lon)
     return {"order": declared, "undeclared": undeclared, "dropped": dropped,
             "headline": headline_issue, "as_of": now.isoformat(),
             # the column headings, so the page and Telegram both take their words from the node
             "distances": list(DISTANCES), "labels": LABEL_WORDS,
             "issues": out,
             # what the modular dashboard reads beside the issues — 15 September 2026's decisions
-            "stations": _stations(data["stats"], data.get("hourly"), lat, lon),
+            "stations": stations,
             "metrics": METRICS,
             "asks": _asks_ledger(data["alerts"], data["actions"]),
-            "mesh": _mesh(mesh, data["stats"])}
+            "mesh": _mesh(mesh, data["stats"]),
+            "geometry": _geometry(lat, lon, settings, stations, peers)}
 
 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}

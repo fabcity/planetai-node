@@ -52,6 +52,12 @@ class Settings:
     def get(self, key, default=""):
         return self.kw.get(key, default)
 
+    def num(self, key, default):
+        # production's app/settings.py:num() reads a string and falls back on anything not a plain
+        # digit string; the stub only ever holds ints in tests, so a straight int() is enough here.
+        v = self.kw.get(key)
+        return int(v) if v is not None else default
+
 
 def run(data=None, declared="air,heat,land,coast", earth=None, now=NOW):
     return engine.compute(Cur(data if data is not None else FIX), Settings(NODE_ISSUES=declared),
@@ -408,6 +414,23 @@ if not mesh or not any(r["metric"] == "battery_v" for r in mesh["reads"]):
 bare = engine.replay({**FIX, "health": {}}, Settings(), DECL)
 check(bare.get("mesh") is None, "with no mesh in health, /issues publishes mesh: None, not a crash")
 check(bare.get("stations"), "with no coordinates in health, stations still publish, measured from (0, 0)")
+
+# --- the geometry the dial turns on --------------------------------------------------------------
+g = body.get("geometry")
+if not g:
+    fails.append("geometry is on the body")
+else:
+    if g["nav"]["chain"][8] != "8895a4c86bfffff" or g["nav"]["cell_count"] != 209:
+        fails.append(f"geometry.nav: node #1's res-8 cell and 209 published cells; got {g['nav']['chain'].get(8)}, {g['nav']['cell_count']}")
+    if [c["key"] for c in g["claims"]][0] != "coast":
+        fails.append("geometry.claims are widest first")
+    if g["radio"]["res"] != 3:
+        fails.append("geometry.radio announces at RETICULUM_PRESENCE_RES, 3 under the fixture's settings")
+    if g["publication"]["res"] != 10 or g["settings"]["PRESENCE_RES_FLOOR"] != 6:
+        fails.append(f"geometry carries the two lines: {g['publication']} {g['settings']}")
+    own_cell = g["nav"]["cells"][g["nav"]["chain"][8]]
+    if [body["stations"][i]["sensor_id"] for i in own_cell["sensors"]] != ["sc-19849", "sc-19880", "sc-19897"]:
+        fails.append("the plate's sensor indices index into the published stations")
 
 print("\n".join(f"  x {f}" for f in fails if f) or
       f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "
