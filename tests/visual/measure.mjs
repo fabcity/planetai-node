@@ -1213,7 +1213,9 @@ function aTargets() {
      * screen would report a page as answering for five issues when it is answering for two and a
      * hexagon. */
     const NOT_ISSUE = ['funnel', 'peer', 'rho', 'place', 'satellite', 'h3', 'cell', 'disk',
-      'grain', 'claim', 'nav', 'surface'];
+      'grain', 'claim', 'nav', 'surface',
+      /* the modular H: a section's own numerals are keyed by the section */
+      'ground', 'mesh', 'asks', 'sensors', 'wall', 'view'];
     const issueOf = e => String(e.dnum).split('.')[0];
     const named = new Set(d.els.filter(e => e.dnum && inFold(e, d))
       .map(issueOf).filter(k => !NOT_ISSUE.includes(k)));
