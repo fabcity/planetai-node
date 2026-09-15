@@ -376,6 +376,12 @@ const asof = () => {
 /* PORTED: `ref` is new, for the same reason the ask strip's is. The row's link out was always the
  * funnel, and the wall has no funnel on it. */
 function rhoRow(small, ref) {
+  /* GET /rho may be slow, refused or absent, and this is called from the wall, which nobody is
+   * standing at. A dereference here took the whole wall down before innerHTML was ever assigned. */
+  if (!S.rho) {
+    return `<p class="note" data-component="rhoRow" id="rho" data-ref="${esc(ref || 'header')}">`
+      + `This node has not said how many of its asks were answered: GET /rho did not come back.</p>`;
+  }
   const r = S.rho, total = r.alerts_act, closed = r.acted;
   let s = '';
   for (let i = 0; i < total; i++) s += sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
@@ -1294,9 +1300,18 @@ const BASES = {
  * only at resolution 8 and coarser, because from 9 inward the node's own plan fills the frame and
  * sends nothing. A pressed base still wins for that page view. */
 const PLAN_FROM = 9;
-const autoBase = (res, settings) =>
-  ((settings || {}).MAP_TILES === 'on' && res < PLAN_FROM) ? 'sat' : 'plan';
-const baseOf = (q, res) => (q in BASES ? q : autoBase(res, window.SETTINGS));
+/* ONE predicate, read in both places, so the strip can never offer what baseOf would refuse. */
+const tilesAllowed = (res, settings) =>
+  (settings || {}).MAP_TILES === 'on' && res < PLAN_FROM;
+const autoBase = (res, settings) => tilesAllowed(res, settings) ? 'sat' : 'plan';
+/* A PRESS MAY ONLY EVER REDUCE WHAT LEAVES THE HOUSE. The prototype's comment said the opposite —
+ * "a pressed base always wins over the rule" — and it was written for a drawing, before MAP_TILES
+ * existed. On a node it is not a preference: a link in a page cannot be allowed to override the
+ * keeper's setting, because following it sends this household's own kilometre to somebody else's
+ * machine. So `plan` is always pressable and the two live bases are honoured only where they are
+ * also offered. */
+const baseOf = (q, res) =>
+  (q in BASES && (q === 'plan' || tilesAllowed(res, window.SETTINGS))) ? q : autoBase(res, window.SETTINGS);
 
 /* ------------------------------------------------------------------ Web Mercator, in pixels */
 /* World pixel coordinates at zoom z: the whole planet is 256·2^z px across. */
@@ -1434,13 +1449,20 @@ function lead(ctx) {
   const base = baseOf(ctx.Q.get('base'), res);
   /* Pressing the base the rule would have chosen anyway clears the choice, so the rule is back in
    * charge the next time the dial turns rather than a stale press outliving it. */
+  /* Only what may be pressed is drawn. A link to a live base while tiles are off would be one click
+     between a keeper's setting and this household's kilometre reaching a tile server, and the page
+     offering it is the page arguing with the node. */
+  const allowed = tilesAllowed(res, window.SETTINGS);
   const strip = `<div class="ctlstrip" role="group" aria-label="the ground under the cells">`
-    + Object.entries(BASES).map(([k, b]) =>
+    + Object.entries(BASES).filter(([k]) => k === 'plan' || allowed).map(([k, b]) =>
       `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">`
       + `${esc(b.name)}</a>`).join('')
-    + `<span class="auto">${(window.SETTINGS || {}).MAP_TILES === 'on'
+    + `<span class="auto">${allowed
       ? `plan from resolution ${PLAN_FROM} · tiles coarser`
-      : 'tiles are off on this node · the plan at every stop'}</span></div>`;
+      : (window.SETTINGS || {}).MAP_TILES === 'on'
+        ? `the plan fills the frame from resolution ${PLAN_FROM} in, and sends nothing`
+        : 'live tiles are off on this node · turn MAP_TILES on under Set up to offer them'
+      }</span></div>`;
 
   let key, cap;
   if (base === 'plan') {
@@ -1930,9 +1952,14 @@ window.PAI.register({
     const years = YEARS();
     const frames = years.map(y =>
       `<figure class="frame" data-component="satFrame" id="sat-${y}" data-ref="sat-map">`
-      + `<img src="${frameUrl(y)}" loading="lazy" onerror="this.closest('figure').remove()"`
+      /* A frame that 404s must not delete its own figure: the caption two lines down still counts
+         it, and a count with nothing under it is presence fabricated from absence. The figure stays
+         and says what is missing. */
+      + `<img src="${frameUrl(y)}" loading="lazy"`
+      + ` onerror="this.hidden=true;this.parentNode.classList.add('missing')"`
       + ` alt="Sentinel-2 annual median, ${y}, the square this node keeps; brightness matched `
       + `across the years so only structure differs between them">`
+      + `<p class="note miss">This node no longer has the ${y} pass on disk.</p>`
       + `<figcaption><span class="yr">${y}</span>${pill('partial', 'an annual median from '
         + 'somebody else’s cluster, not a pass this node made')}</figcaption></figure>`).join('');
     const strip = years.length
@@ -3261,10 +3288,47 @@ async function boot() {
       mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
     node: { lat: health.lat, lon: health.lon, name: health.node } };
   window.SETTINGS = settings;
+  readLayout(settings);
   window.EARTH = earth;
   window.TRUST = trust;
   window.FORECAST = forecast;
   window.PLAN = await plan(health).catch(() => null);
+}
+
+/* ------------------------------------------------------------------ Arrange */
+/* Ported from the page this replaces. `UI_LAYOUT` is still what app/settings.py says it is —
+ * "Managed by the dashboard's Arrange mode" — and Arrange is still a mode over Now rather than a
+ * view of its own: leaving Now ends it, which is the behaviour it should always have had.
+ *
+ * What moved: the old page arranged five fixed band mounts, and this one arranges the sections a
+ * pack registered, so an order is a list of section ids and a hide is an id taken out of the view's
+ * own list before anything is drawn. */
+let LAYOUT = { order: [], hidden: [] };
+let ARRANGING = false;
+
+function readLayout(settings) {
+  /* A fixture is a file, not a node: there is nowhere a saved arrangement could have come from, and
+     reading one is what would stop `?fixture=` being renderable from the fixture alone. */
+  if (FIXTURE) return;
+  try {
+    const r = ((settings || {}).runtime || []).find(x => x.key === 'UI_LAYOUT');
+    if (r && r.value) LAYOUT = { order: [], hidden: [], ...JSON.parse(r.value) };
+  } catch { /* an unreadable arrangement is no arrangement */ }
+}
+
+/* A band hidden in Arrange must actually be gone, not left holding its last content. The page this
+ * replaces cleared five fixed mounts by hand and got it wrong on all five — the ✕ silently did
+ * nothing — so here the view's own list is filtered before anything is drawn and a hidden section is
+ * never emitted at all. */
+const want = view => view.filter(id => !(LAYOUT.hidden || []).includes(id));
+
+/* An arrangement is a position within a stage, which is what the registry already sorts by. */
+function applyOrder() {
+  const o = LAYOUT.order || [];
+  for (const s of window.PAI.sections) {
+    const i = o.indexOf(s.id);
+    if (i >= 0) s.order = i;
+  }
 }
 
 /* ------------------------------------------------------------------ the projection */
@@ -3504,21 +3568,39 @@ function main() {
      registry serves both, and the notes band follows each view's own sections. */
   const NOW = ['ground', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
   const NETWORK = ['satellite', 'reticulum', 'meshtastic', 'hardware', 'trust'];
+  applyOrder();
 
   const el = document.getElementById('page');
   document.body.classList.toggle('wallview', VIEW === 'wall');
   if (VIEW === 'wall') {
     document.documentElement.setAttribute('data-theme', 'dark');
     document.body.classList.add('wall');
-    el.innerHTML = STATE === 'refused' ? `<div class="wallbox">${refusedPage()}</div>`
-      : (window.WALL ? window.WALL.render(ctx) : `<div class="wallbox">${PAI.wall(ctx)}</div>`);
-    if (window.WALL && window.WALL.start && STATE !== 'refused') window.WALL.start(ctx);
+    /* PAI.render() wraps every section so one that throws prints that it did and the rest of the
+       page stands. The wall had no such guard, and it is the one surface nobody is watching: a throw
+       before innerHTML was assigned showed a black shelf screen and said nothing. */
+    let box;
+    if (STATE === 'refused') box = `<div class="wallbox">${refusedPage()}</div>`;
+    else {
+      try { box = window.WALL ? window.WALL.render(ctx) : `<div class="wallbox">${PAI.wall(ctx)}</div>`; }
+      catch (e) {
+        box = `<div class="wallbox"><h1 class="vh">${esc(S.health.node || 'this node')} · the wall</h1>`
+          + `<p class="note" data-component="failed" id="wall-failed" data-ref="header">The wall did `
+          + `not render: ${esc(String((e && e.message) || e))}. A failure is not an answer, so this `
+          + `screen says so rather than going black.</p></div>`;
+      }
+    }
+    el.innerHTML = box;
+    if (window.WALL && window.WALL.start && STATE !== 'refused'
+        && el.querySelector('#wall-lead')) window.WALL.start(ctx);
   } else if (STATE === 'refused') {
     el.innerHTML = head() + `<div class="wrap">${refusedPage()}</div>`;
-  } else if (VIEW === 'now') {
-    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, lead(), { only: NOW })}</div>`;
+  } else if (VIEW === 'now' || VIEW === 'arrange') {
+    ARRANGING = VIEW === 'arrange';
+    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, lead(), { only: want(NOW) })}</div>`
+      + (ARRANGING ? arrbar() : '');
+    if (ARRANGING) { arrangeControls(); fillRestore(); }
   } else if (VIEW === 'network') {
-    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: NETWORK })}</div>`;
+    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(NETWORK) })}</div>`;
   } else {
     /* Set up, in the modular page, gains one box the drawings did not have: the sections this node
        runs, by pack, with the two moves a keeper actually makes — turn one off, and propose one
@@ -3530,6 +3612,71 @@ function main() {
       + `<div class="k">` + esc(VIEW) + `</div>` + setup + sections + wireframe(VIEW) + `</section></div>`;
     /* The pane draws itself locked, then asks the node what this reader may see. */
     if (VIEW === 'setup' && window.PAI_SETUP) window.PAI_SETUP.load();
+  }
+
+  /* The bar. Sticky at the foot, because the mode's instructions, its Default and its Done all sat
+     nine screens below the fold on the page this replaces and a keeper who pressed Arrange saw three
+     unexplained buttons appear beside every band and no way to finish. */
+  function arrbar() {
+    return `<div class="arrbar" id="arrbar" role="region" aria-label="Arrange">`
+      + `<span>Arrange: ← and → move a section within its stage, ✕ hides it.</span>`
+      + `<label class="vh" for="arr-restore">Put a hidden section back</label>`
+      + `<select id="arr-restore"><option value="">Restore a hidden section…</option></select>`
+      + `<button type="button" class="btn ghost" id="btn-arr-reset">Default</button>`
+      + `<button type="button" class="btn" id="btn-arr-done">Done</button></div>`;
+  }
+
+  /* The menu that puts a hidden section back. It was markup and nothing else on the page this
+     replaces — `#arr-restore` appeared once and was never referenced — so the only way back from a
+     hidden band was Default, which discards every other choice too. */
+  function fillRestore() {
+    const sel = document.querySelector('#page #arr-restore');
+    if (!sel) return;
+    const hidden = LAYOUT.hidden || [];
+    const name = id => (PAI.sections.find(s => s.id === id) || {}).title || id;
+    sel.innerHTML = `<option value="">Restore a hidden section…</option>`
+      + hidden.map(id => `<option value="${esc(id)}">${esc(name(id))}</option>`).join('');
+    sel.disabled = !hidden.length;
+  }
+
+  /* Three controls on every section, and a sentence after each press saying what happened. */
+  function arrangeControls() {
+    const bands = [...document.querySelectorAll('#page section.band[data-band]')]
+      .filter(el => el.dataset.band.includes(':'));
+    const ids = bands.map(el => el.dataset.band.split(':')[1]);
+    const stageOf = id => (PAI.sections.find(s => s.id === id) || {}).stage;
+    bands.forEach((el, i) => {
+      if (el.querySelector(':scope > .arr')) return;
+      const id = ids[i];
+      const bar = document.createElement('div');
+      bar.className = 'arr';
+      bar.innerHTML = `<button type="button" data-move="-1" aria-label="Move up">←</button>`
+        + `<button type="button" data-move="1" aria-label="Move down">→</button>`
+        + `<button type="button" data-hide="1" aria-label="Hide">✕</button>`;
+      bar.onclick = ev => {
+        const b = ev.target.closest('button');
+        if (!b) return;
+        const title = (PAI.sections.find(s => s.id === id) || {}).title || id;
+        if (b.dataset.hide) {
+          LAYOUT.hidden = [...(LAYOUT.hidden || []), id];
+          say(`${title} hidden. Put it back from the menu at the foot of the page.`);
+        } else {
+          const from = ids.indexOf(id), to = from + Number(b.dataset.move);
+          /* Across a stage boundary is not a move: the loop's order is the page's argument, not a
+             preference. Saying so beats a button that looks broken. */
+          if (to < 0 || to >= ids.length || stageOf(ids[to]) !== stageOf(id)) {
+            say(`${title} is already ${Number(b.dataset.move) < 0 ? 'first' : 'last'} in its stage.`);
+            return;
+          }
+          const next = [...ids];
+          next.splice(to, 0, next.splice(from, 1)[0]);
+          LAYOUT.order = next;
+          say(`${title} moved ${Number(b.dataset.move) < 0 ? 'up' : 'down'}.`);
+        }
+        route();
+      };
+      el.prepend(bar);
+    });
   }
 
   function sectionsBox() {
@@ -3568,6 +3715,39 @@ function route() {
   main();
   window.scrollTo(0, 0);
 }
+
+/* Saying something, wherever the pane that says things is. */
+function say(msg, bad) {
+  if (window.PAI_SETUP) window.PAI_SETUP.toast(msg, bad);
+}
+
+/* Reset writes the same empty UI_LAYOUT that Done writes, so it survives a reload instead of coming
+ * back from the node on the next read. */
+async function layoutSave(reset) {
+  if (reset) LAYOUT = { order: [], hidden: [] };
+  const body = (LAYOUT.order.length || LAYOUT.hidden.length) ? JSON.stringify(LAYOUT) : '';
+  try {
+    await setSetting('UI_LAYOUT', body);
+    say(reset ? 'Back to the default order.' : 'Saved on the node.');
+  } catch (e) {
+    say(String((e && e.message) || e), true);
+  }
+  history.pushState({ view: 'now' }, '', location.pathname + location.search);
+  route();
+}
+
+document.addEventListener('click', ev => {
+  if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
+  if (ev.target.id === 'btn-arr-done') return layoutSave(false);
+});
+document.addEventListener('change', ev => {
+  if (ev.target.id !== 'arr-restore' || !ev.target.value) return;
+  const id = ev.target.value;
+  LAYOUT.hidden = (LAYOUT.hidden || []).filter(x => x !== id);
+  const s = window.PAI.sections.find(x => x.id === id);
+  say(`${(s && s.title) || id} is back.`);
+  route();
+});
 
 addEventListener('hashchange', route);
 addEventListener('popstate', route);
@@ -3891,8 +4071,27 @@ async function saveSettings() {
 
 document.addEventListener('input', ev => { if (ev.target.closest('#pane')) DIRTY = true; });
 
-// the Set up pane's own clicks: tabs, switches, lock
+// the Set up pane's own clicks: unlock, save, reveal, tabs, switches, lock
+//
+// RESTORED. The first three of these lived in the shell's global click listener on the page this
+// replaces, and carrying the pane across without them left every entry point into the token path
+// drawn and dead: unlock() and saveSettings() were defined and unreachable, the gate never opened,
+// and PAI_SETTINGS.set() could only ever throw for want of a token nothing could store.
 document.addEventListener('click', ev => {
+  if (ev.target.id === 'btn-unlock') return unlock();
+  if (ev.target.id === 'btn-save') return saveSettings();
+  /* A token is long, typed once, and often on a phone. Without this there is no way to check what
+   * you typed before submitting it, and a wrong one only says so after a round trip. */
+  const rev = ev.target.closest('[data-reveal]');
+  if (rev) {
+    const f = q('#' + rev.dataset.reveal);
+    if (!f) return;
+    const shown = f.type === 'text';
+    f.type = shown ? 'password' : 'text';
+    rev.setAttribute('aria-pressed', String(!shown));
+    rev.textContent = shown ? 'Show' : 'Hide';
+    return;
+  }
   const g = ev.target.closest('[data-group]');
   if (g) {
     // An unsaved edit is the keeper's work. It used to go without a word.

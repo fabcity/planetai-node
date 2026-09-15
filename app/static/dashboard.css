@@ -686,3 +686,21 @@ h1.brand { font: inherit }
  * on one line. Measured at 390: the document came back 660 px wide and the page scrolled sideways.
  * A definite 1fr track is what makes that max-width mean something. */
 @media (max-width: 899px) { .lead { grid-template-columns: minmax(0, 1fr) } }
+
+/* Arrange's bar and its per-section controls. The bar is sticky at the foot for the reason the save
+ * bar is: on the page this replaces it had no rule at all, so the mode's Default and its Done sat
+ * nine screens below the fold and a keeper who pressed Arrange had no way to finish. */
+.arrbar { position: sticky; bottom: 0; z-index: 3; display: flex; gap: 16px; align-items: center;
+  flex-wrap: wrap; padding: 12px clamp(16px, 4vw, 32px); background: var(--ground);
+  border-top: 1px solid var(--ink); font: 500 13px var(--fc-font-body) }
+.arrbar select { background: var(--raise); border: 1px solid var(--hair); border-radius: 0;
+  padding: 8px 10px; color: var(--ink); font: 500 13px var(--fc-font-body) }
+.arrbar select:disabled { color: var(--mute) }
+.arr { display: flex; gap: 6px; margin-bottom: 8px }
+.arr button { padding: 4px 10px; font: 500 12px var(--mono) }
+
+/* A satellite frame the node no longer has on disk. The image hides itself and the figure says what
+ * is missing: a caption that counts four years over three pictures is presence made out of an
+ * absence, which is the one thing this page may not draw. */
+.satstrip .frame .miss { display: none }
+.satstrip .frame.missing .miss { display: block }

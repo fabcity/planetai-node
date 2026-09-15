@@ -138,10 +138,39 @@ for _sel in (".readrow .who .m {", ".cellhead .n {", "[data-kind=\"readout\"] .s
     _rule = _css[_css.index(_sel):_css.index("}", _css.index(_sel))]
     assert "--dim" not in _rule, f"{_sel.strip(' {')} is back on --dim, which is about 4:1 on paper"
 
+# Arrange must actually arrange, and the view must be in the URL.
+#
+# Two of these shipped together on the page this replaces and each was invisible until somebody tried
+# the mode: the ✕ silently did nothing on five of the nine bands, because render() skipped a hidden
+# id and left the mount holding its last content; and the restore menu was markup only — `#arr-restore`
+# appeared once in index.html and was never referenced, so a hidden band could only come back via
+# Default, which discards every other choice. Both assertions point at the ported code.
+#
+# `want()` is where a hidden section goes: the view's own list is filtered before anything is drawn,
+# so a hidden section is never emitted at all and cannot be left holding anything. Red if the filter
+# goes, or if the view stops going through it.
+assert "view.filter(id => !(LAYOUT.hidden || []).includes(id))" in _js, \
+    "a section hidden in Arrange is no longer filtered out before the page is drawn — ✕ does nothing"
+assert "only: want(NOW)" in _js and "only: want(NETWORK)" in _js, \
+    "a view no longer goes through want(), so hiding a section has no effect on it"
+# and the restore menu must be read, not just drawn. Red if fillRestore stops filling it or the
+# change handler stops putting the section back.
+assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden section cannot come back"
+assert "function fillRestore()" in _js and "LAYOUT.hidden = (LAYOUT.hidden || []).filter(x => x !== id)" in _js, \
+    "the restore menu no longer puts a hidden section back"
+
 # The view must be in the URL, and it must get there without scrolling the page to an element.
 assert "history.pushState" in _js, "the view is not in the URL: refresh, back and a shared link all land on Now"
 assert not re.search(r"location\.hash\s*=", _js), \
     "assigning location.hash jumps to that element, which eats the scroll restore — use pushState"
+
+# Every entry point into the token path must be listened for. They were drawn and dead once: the
+# three cases below lived in the old page's global click listener, and the pane came across without
+# them — so unlock() and saveSettings() were defined and unreachable, the gate never opened, and
+# PAI_SETTINGS.set() could only ever throw for want of a token nothing could store.
+for _case in ("ev.target.id === 'btn-unlock'", "ev.target.id === 'btn-save'",
+              "ev.target.closest('[data-reveal]')"):
+    assert _case in _js, f"the Set up pane has no handler for {_case} — the button is drawn and dead"
 
 # And the page must read the household's language rather than pinning itself to English.
 assert "(S.health || {}).locale" in _js, \
