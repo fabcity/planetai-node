@@ -66,7 +66,12 @@ import { execFileSync } from 'node:child_process';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
-const DESIGN = process.env.PAI_DESIGN_REPO || path.resolve(ROOT, '../planetai-design');
+// path.resolve's second argument wins outright when it is already absolute, and is joined onto
+// the first when it is not — so a caller who exports a relative PAI_DESIGN_REPO (gate.sh's own
+// default, `../planetai-design`, relative to nothing in particular) still gets an absolute path,
+// which is what createRequire() below demands; it throws ("must be a file URL or absolute path")
+// rather than resolving a relative one itself, and that throw used to be gate.sh's whole failure.
+const DESIGN = path.resolve(ROOT, process.env.PAI_DESIGN_REPO || '../planetai-design');
 let chromium;
 try {
   chromium = createRequire(path.join(DESIGN, 'package.json'))('playwright').chromium;
@@ -108,12 +113,19 @@ const MIME = { '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+
  * network. `PAI_LIVE=1` is unchanged: it still measures a running container with no interception at
  * all, which is the whole point of that flag.
  *
- * Only these four are answered offline. Everything else `dashboard.js` fetches (`/alerts`, `/rho`,
- * `/sensors`, `/nearby`, `/forecast`, `/trust`, `/earth`, `/cells`, `/sparks`, `/report/latest`) is
- * never asked for in fixture mode: `snapshot()` takes a different branch entirely when `?fixture=`
- * is set (dashboard.js, the `if (FIXTURE)` block) and calls only `/issues/fixtures/<name>` — see
- * that file's own comment on why: "the page would stop being renderable from a fixture alone". A
- * render driven by `?fixture=`, which is every `populated` job below, needs nothing else.
+ * These seven are answered offline: the original four, plus `/earth`, `/trust` and `/forecast`,
+ * which dashboard.js's `snapshot()` calls unconditionally AFTER the `if (FIXTURE)` branch — they
+ * are not part of "the page would stop being renderable from a fixture alone" (that comment is
+ * about `/issues` alone) and a fixture-mode render still asks for all three. Before these three
+ * were intercepted, that request fell through `route.continue()` to whatever was listening at the
+ * render origin: on the machine this file was written on, a local node, which answered them empty;
+ * on a machine with nothing listening there, a connection that never gets accepted, caught by
+ * dashboard.js's own `.catch(() => null)` into the same empty state — slower, and not hermetic,
+ * but the same empty state either way, which is why the Sentinel strip, the AlphaEarth record, the
+ * trust card and the forecast card have only ever been seen empty. Everything else `dashboard.js`
+ * fetches (`/alerts`, `/rho`, `/sensors`, `/nearby`, `/cells`, `/sparks`, `/report/latest`) really
+ * is never asked for in fixture mode: `snapshot()` takes a different branch entirely when
+ * `?fixture=` is set and calls only `/issues/fixtures/<name>` for the snapshot itself.
  */
 
 // The environment `settings` reads the fixture under. `app/settings.py`'s `get()` falls back straight
@@ -223,6 +235,73 @@ function failNodeAPI(route, endpoint, data) {
     body: JSON.stringify({ detail: `measure.mjs: ${endpoint} has no data — ${data.error}` }) });
 }
 
+/* /earth, /trust and /forecast used to fall through `route.continue()` to whatever happened to be
+ * listening at the render origin — a local node, on the machine this file was written on, which
+ * answered them empty. On a machine (or a CI runner) with nothing listening there, the same
+ * `route.continue()` hangs on a connection that will never be accepted and then rejects, and
+ * dashboard.js's own `.catch(() => null)` around each of the three (see snapshot(), further down
+ * this file) turns that into the same empty state anyway — so every render anyone has looked at
+ * has shown these three empty, by accident, slowly, and only because nothing crashed loudly enough
+ * to notice. That is not hermetic (it still reaches out to the network, even if nothing answers)
+ * and it is not fast. These three routes answer instead, deterministically and offline, so a
+ * render never depends on what else happens to be running.
+ *
+ * The empty bodies below are not copied off a running node — the invariants in AGENTS.md say never
+ * to touch app/ for this task, so `q()`'s SQL cannot be re-run, and main.py imports psycopg,
+ * bootstrap and paho-mqtt at module scope, none of which this checkout may need installed just to
+ * measure a page. Each is instead the shape main.py's own route hands back when there is nothing
+ * in the database to find, read off that route's source rather than executed:
+ *   /trust     (main.py:896)  one row per local sensor — with none, an empty list.
+ *   /forecast  (main.py:1024) point + two empty lists + fixed attribution + far_from_node: null.
+ *   /earth     (main.py:1193) the earth pack IS enabled in this checkout (packs/earth/pack.yaml
+ *              exists and nothing in presets/bali.env restricts PACKS_ENABLED — verified by running
+ *              app/packs.py's own manifests() against this repo's packs/ directory), so `enabled`
+ *              is true and the honest empty state is "no years cached yet", not "pack missing". */
+function emptyTrust() { return []; }
+
+function emptyForecast(health) {
+  return { point: { lat: (health || {}).lat ?? 0, lon: (health || {}).lon ?? 0 }, sources: [], hours: [],
+    attribution: ["BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id",
+      "Open-Meteo, open-meteo.com, CC-BY 4.0 (free tier: non-commercial use only)"],
+    far_from_node: null };
+}
+
+function emptyEarth(health) {
+  const node = (health || {}).node || 'node';
+  return { node, enabled: true, years: [], bytes: 0, latest: null, changes: [], frames: [],
+    dir: `/app/out/earth/${node}`,
+    imagery: { sentinel: [], landsat: [],
+      credit: ["Contains modified Copernicus Sentinel data, processed by Google Earth Engine.",
+        "Landsat courtesy of the U.S. Geological Survey."] },
+    png: null, lat: (health || {}).lat ?? 0, lon: (health || {}).lon ?? 0, radius_m: 5000,
+    attribution: "The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and "
+      + "Google DeepMind. CC BY 4.0.",
+    hint: "no satellite record yet: planetai run earth fetch" };
+}
+
+/* The one populated case, gated behind PAI_RICH=1 rather than always on: nobody has ever seen the
+ * Sentinel strip, the AlphaEarth record, the trust card and the forecast card populated at once,
+ * because nothing before this served /earth, /trust or /forecast at all. tests/visual/rich-fixture
+ * .json is a hand-written stand-in — see its own "_what_this_is" — read once and cached, same
+ * reason computeNodeData() caches: a render command asks for the same fixture on every job. The
+ * forecast's hours are stored as offsets from render time, not baked-in timestamps, because
+ * dashboard.js filters hours to `>= now - 1h` — a fixture with a fixed past date would silently
+ * stop rendering any forecast the day after it was written. */
+let _richFixture;
+function richFixture() {
+  if (_richFixture === undefined) {
+    try {
+      _richFixture = JSON.parse(fs.readFileSync(path.join(HERE, 'rich-fixture.json'), 'utf8'));
+    } catch (e) { _richFixture = null; }
+  }
+  return _richFixture;
+}
+function richForecast() {
+  const f = richFixture().forecast;
+  const now = Date.now();
+  return { ...f, hours: f.hour_offsets.map(h => ({ ...h, ts: new Date(now + h.offset_h * 3.6e6).toISOString() })) };
+}
+
 /* Answers the four endpoints above from this repo, offline. Returns true when it fulfilled the
  * route — the caller must not also route.continue() it. Shared by `open()`'s render path and
  * `stall()`'s stall path: both serve a page and both need the same four answers for the same
@@ -252,6 +331,23 @@ async function serveNodeAPI(route, u) {
     const data = computeNodeData(FIXTURE);
     await (data.error ? failNodeAPI(route, '/settings', data)
       : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.settings) }));
+    return true;
+  }
+  if (u.pathname === '/earth') {
+    const health = computeNodeData(FIXTURE).snapshot?.health;
+    const body = process.env.PAI_RICH === '1' ? richFixture().earth : emptyEarth(health);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    return true;
+  }
+  if (u.pathname === '/trust') {
+    const body = process.env.PAI_RICH === '1' ? richFixture().trust : emptyTrust();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    return true;
+  }
+  if (u.pathname === '/forecast') {
+    const health = computeNodeData(FIXTURE).snapshot?.health;
+    const body = process.env.PAI_RICH === '1' ? richForecast() : emptyForecast(health);
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     return true;
   }
   if (u.pathname === '/place/geojson') {
