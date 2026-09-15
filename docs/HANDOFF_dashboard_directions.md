@@ -58,7 +58,7 @@ explained.
 | H | the dial's **4**, then **11** | the map zooms with the dial; at 4 the 3 km this node has mapped is a smudge inside a 237 km cell |
 | H | scroll to **What leaves this house by radio** | a peer is a cell and a rough distance, never a pin |
 | H | scroll to **What the satellite says** | four real Sentinel passes, and the 1,874 buildings only the satellite knows |
-| H | the base strip on the map: **satellite → street map → plan, offline** | live tiles rescale with the dial; the third sends nothing. From resolution 8 inward the plan is the default (Tomas's rule) — turn the dial to 4 to see the tiles take over |
+| H | the base strip on the map: **satellite → street map → plan, offline** | live tiles rescale with the dial; the third sends nothing. From resolution 9 inward the plan is the default (Tomas's rule) — the dial opens at 8 on the tiles; turn it in one stop and the ground is the node's own drawing |
 | H | **What the stations read** → press **temperature** | fourteen stations regroup by cell as the dial turns; every source is a link |
 | H | `?view=wall` and wait eight seconds | the dial turns by itself; the map and every number re-derive per stop |
 | H | the **Notes** at the foot | every explanation on the page, folded per section |
@@ -260,8 +260,8 @@ is the only thing the node ships as its own. The nine sections in the prototype 
 contributions — the renderer's own four (claims, grain, asks, measure) and five from packs (place,
 air-quality, earth, reticulum, meshtastic). Two decisions ride with it: **live tiles or not** —
 the page sends a tile server the square being looked at; under the rule now in place the plan is
-the default from resolution 8 inward and the tiles only show coarser, so a dial that opens at 8
-sends nothing until it is turned out — and **which sections stay in Now**, because nine of them are twelve
+the default from resolution 9 inward and the tiles show at 8 and coarser, so the dial as it opens
+sends twelve tile requests and one stop in sends nothing — and **which sections stay in Now**, because nine of them are twelve
 screens on a phone and the Network view already has a home for the radio.
 
 ## If the answer is G, H or I
