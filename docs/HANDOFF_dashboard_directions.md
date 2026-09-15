@@ -55,7 +55,9 @@ explained.
 |---|---|---|
 | G | press **in** three times, then a neighbour with no number on it | most cells are empty, and the page has to say so |
 | G | `?cell=8495a4dffffffff` | standing above every source this node has |
-| H | the dial's **4**, then **11** | the same page, re-derived; the two marked lines are the product's own |
+| H | the dial's **4**, then **11** | the map zooms with the dial; at 4 the 3 km this node has mapped is a smudge inside a 237 km cell |
+| H | scroll to **What leaves this house by radio** | a peer is a cell and a rough distance, never a pin |
+| H | scroll to **What the satellite says** | four real Sentinel passes, and the 1,874 buildings only the satellite knows |
 | I | the layer switch: **Air → Land → Coast** | four issues, four completely different geometries |
 | I | press any cell with a heavy outline | one station's own reading, which `/issues` does not publish today |
 
@@ -77,10 +79,14 @@ The argument, reader by reader, and every number:
 | | target | C | E disk | G address | H dial | I surface |
 |---|---|---|---|---|---|---|
 | first screen says everything @ 390 | five of five | ✓ | ✓ | ✓ *in this node's cell* | ✓ | ✓ |
-| empty share @ 1440 | ≤ 30 % | 70.5 | 63.7 | 63.7 | 58.4 | **42.2** |
+| empty share @ 1440 | ≤ 30 % | 70.5 | 63.7 | 63.7 | 59.6 | **42.2** |
 | empty share @ 390 / 768 | ≤ 20 % | 43.2 / 55.3 | 34.9 / 31.9 | 33.9 / 33.9 | 33.7 / 36.3 | **33.2** / 34.5 |
-| page @ 1440 / 390, screens | ≤ 4 / ≤ 8 | 3.1 / 5.5 | 3.4 / 4.9 | 4.1 / 5.5 | 4.4 / 6.9 | **2.4 / 3.1** |
+| page @ 1440 / 390, screens | ≤ 4 / ≤ 8 | 3.1 / 5.5 | 3.4 / 4.9 | 4.1 / 5.5 | 5.5 / **8.4** | **2.4 / 3.1** |
 | orphan numerals · components | 0 · 0 | 0 · 2 | 0 · 4 | 0 · **0** | 0 · **0** | 0 · **0** |
+
+H's column is the revised page — Tomas asked for a map under the scales, a radio section and a
+satellite section, and all three are in it. They cost 1.2 points of emptiness and 1.1 screens at
+1440, and took the phone past eight screens.
 | wall on a 1,080 px screen | 1,080 | **1,080** | 1,133 | **1,080** | **1,080** | **1,080** |
 
 **I is the first page in three rounds to move T2 at 1440** — 42.2 % against C's 70.5 — and it does it
