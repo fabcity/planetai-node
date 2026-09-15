@@ -58,6 +58,10 @@ explained.
 | H | the dial's **4**, then **11** | the map zooms with the dial; at 4 the 3 km this node has mapped is a smudge inside a 237 km cell |
 | H | scroll to **What leaves this house by radio** | a peer is a cell and a rough distance, never a pin |
 | H | scroll to **What the satellite says** | four real Sentinel passes, and the 1,874 buildings only the satellite knows |
+| H | the base strip on the map: **satellite → street map → plan, offline** | live tiles rescale with the dial; the third sends nothing |
+| H | **What the stations read** → press **temperature** | fourteen stations regroup by cell as the dial turns; every source is a link |
+| H | `?view=wall` and wait eight seconds | the dial turns by itself; the map and every number re-derive per stop |
+| H | the **Notes** at the foot | every explanation on the page, folded per section |
 | I | the layer switch: **Air → Land → Coast** | four issues, four completely different geometries |
 | I | press any cell with a heavy outline | one station's own reading, which `/issues` does not publish today |
 
@@ -84,9 +88,14 @@ The argument, reader by reader, and every number:
 | page @ 1440 / 390, screens | ≤ 4 / ≤ 8 | 3.1 / 5.5 | 3.4 / 4.9 | 4.1 / 5.5 | 5.5 / **8.4** | **2.4 / 3.1** |
 | orphan numerals · components | 0 · 0 | 0 · 2 | 0 · 4 | 0 · **0** | 0 · **0** | 0 · **0** |
 
-H's column is the revised page — Tomas asked for a map under the scales, a radio section and a
-satellite section, and all three are in it. They cost 1.2 points of emptiness and 1.1 screens at
-1440, and took the phone past eight screens.
+H's column is the revised page — the map, the radio and the satellite. It has since been rebuilt
+again as a **modular shell**: nine sections from five packs, registered against a contract
+(`kit-page.js`), ordered by the loop *observe · decide · act · measure*, with a live tile map,
+the station list with a variable selector and source links, every explanation folded at the foot,
+and a wall whose dial turns by itself. Measured: empty share fell to **48.9 %** at 1440 (from 59.6)
+and the page grew to **8.1 screens** at 1440 and **12.6** at 390. The argument for that version is
+in the directions document under *H, revised again*; the lever for its length is the contract's own
+— a section is a file, and a file can move to the Network view.
 | wall on a 1,080 px screen | 1,080 | **1,080** | 1,133 | **1,080** | **1,080** | **1,080** |
 
 **I is the first page in three rounds to move T2 at 1440** — 42.2 % against C's 70.5 — and it does it
@@ -242,6 +251,17 @@ cell would be the page computing. **F** wants nothing beyond the cell ids.
 And all three inherit the same three sentences, which are not optional: the grid cannot tell indoors
 from outdoors, it cannot tell mine from the street's at the grain the street is drawn at, and its
 containment is exact in the index and approximate on the ground.
+
+## If the answer is H, the modular one
+
+Then Phase 2 is the contract, not a page: `kit-page.js` becomes the node's renderer, a pack's
+`dashboard` contribution in its pack.yaml is one static file that calls `register`, and the shell
+is the only thing the node ships as its own. The nine sections in the prototype are the first nine
+contributions — the renderer's own four (claims, grain, asks, measure) and five from packs (place,
+air-quality, earth, reticulum, meshtastic). Two decisions ride with it: **live tiles or not** —
+the page sends a tile server the square being looked at, and the offline plan is the honest
+default if that is a no — and **which sections stay in Now**, because nine of them are twelve
+screens on a phone and the Network view already has a home for the radio.
 
 ## If the answer is G, H or I
 
