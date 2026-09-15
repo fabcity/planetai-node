@@ -69,6 +69,7 @@ try:
     raise AssertionError("MAP_TILES accepted 'sometimes'; it is off or on")
 except (ValueError, KeyError):
     pass
-assert settings.get("MAP_TILES", "off") == "off", "MAP_TILES defaults to off"
+# get() with a fallback proves nothing: assert the shipped default is in .env.example, the real source
+assert "MAP_TILES=off" in open(".env.example").read(), "MAP_TILES defaults to off in the shipped .env.example"
 
 print("all settings tests pass")
