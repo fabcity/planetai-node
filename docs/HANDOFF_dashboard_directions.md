@@ -60,7 +60,7 @@ explained.
 | H | scroll to **What the satellite says** | four real Sentinel passes, and the 1,874 buildings only the satellite knows |
 | H | the base strip on the map: **satellite → street map → plan, offline** | live tiles rescale with the dial; the third sends nothing. From resolution 9 inward the plan is the default (Tomas's rule) — the dial opens at 8 on the tiles; turn it in one stop and the ground is the node's own drawing |
 | H | **What the stations read** → press **temperature** | fourteen stations regroup by cell as the dial turns; every source is a link |
-| H | `?view=wall` and wait eight seconds | the dial turns by itself; the map and every number re-derive per stop |
+| H | `?view=wall` and wait eight seconds | the wall is the grid: nineteen cells with what is read in each, re-filling as the dial turns — at 4 one cell holds everything, at 6 five, from 7 to 10 the same picture |
 | H | the **Notes** at the foot | every explanation on the page, folded per section |
 | H | `?view=setup` | the sections this node runs, by pack, from the real registry — on · move · **propose back** — drawn, not built |
 | H | **The hardware in this house** | the four devices on this ground, and the open-hardware-manager row honestly "not connected" |

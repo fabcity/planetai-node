@@ -792,14 +792,23 @@ this node has and not a sketch of one.
 they were a third of the page — about 3,000 px — so they fold per section: the title, the pack, the
 count, one press. Forty-odd notes and no section keeps a paragraph of its own.
 
-**The wall turns by itself.** The dial drawn as eleven hexagons, the current one filled; the live
-map with the cells at that stop; a row of numbers re-derived for that stop — the grain, this node's
-own stations' values, the widest claims' cells, the asks sent — ρ, and the foot. Every eight seconds
-it steps one stop, 2 to 12 and back, redrawing the figure and the numbers in place; nothing tweens
-between stops, because a resolution is a step and there is no place between 7 and 8. Under
-`prefers-reduced-motion` it stands still and the stops stay pressable. The design log's motion rule
-— motion bound to the cadence of its own datum — is met by making the dial itself the clock, and the
-wall says so in one line at its foot.
+**The wall is the grid, and it turns by itself.** Tomas's words were "fully based in the hexagon
+system", and the first wall — a strip of hexagon stops over columns of text — was not that. The
+second is: the wall's field is the nineteen cells this node published at the dial's resolution,
+drawn large enough that a number sits inside each one, and every number is what is actually read in
+that cell. One station in a cell: its own 15-minute mean of the variable the wall is set to, and
+its name. Several: how many, and the range low to high — never a mean, because the reason to draw
+cells is that they are not one number. This node's own cell: its own three values, each one. Empty
+cells are drawn and left empty. No map under them: at three metres a photograph behind a numeral is
+noise, and the hexagon is the module the whole design system is built on. Every eight seconds the
+dial steps one stop and the field re-fills — at 4 every station this node hears is in one cell, "14
+stations · 11 not ours"; at 6 they spread into five cells; from 7 to 10 the picture does not change,
+which is finding 6 made into something a household can watch happen. Nothing tweens between stops,
+because a resolution is a step and there is no place between 7 and 8; under `prefers-reduced-motion`
+it stands still; a pressed stop or a pressed cell holds it for half a minute. The design log's motion
+rule — motion bound to the cadence of its own datum — is met by making the dial itself the clock.
+Type inside a cell is sized to the cell: a numeral a third of a cell's width fits with its caption,
+and a numeral of fixed size ran across three cells, measured once.
 
 **Measured, same fixture, same script.** The Now page against the H that came before it:
 
@@ -826,18 +835,14 @@ lever is the contract's own: a section can move to another view (the Network vie
 already has "What leaves this house", which is the radio's title) or a node can register fewer. That
 choice is Tomas's; the page is built to make it a one-line change.
 
-The wall regressed once on the way and was closed before this was written: with nine sections
-contributing columns its first render measured 1,182 px on a 1,080 px screen and the per-stop
-caption collided with the neighbouring stops' labels. Wider columns — five to a row, two rows — and
-the neighbours' labels stepping aside brought it to **1,080 px exactly**, with 36 px of slack; the
-wall's own comment names the ceiling (a third row of columns would pass 1,080, so a `wall()` is
-trimmed before one is added). Measured at 1920 dark: sentence 24.5 mm, numeral 57.4 mm, **issue line
-9.8 mm and ρ caption 9.3 mm** — the first wall in three rounds with both above the 9 mm floor, which
-took two type sizes nudged inside `.wallbox` only. One component with no link remains and it is the
-kit's, not the wall's: `rhoRow` points at `funnel`, which no wall carries. Driven headlessly with
-motion allowed: stop 8 became 9 after 8.7 s with the caption and every number re-derived; pressing 4
-held it at 4 through the next tick; under reduced motion it stood at 11 and the stops stayed
-pressable.
+The wall, measured at 1920 dark across four stops (4, 6, 8, 9): **1,080 px at every one**;
+sentence 18.4 mm, numeral 39.7 mm, **issue line 10.2 mm and ρ caption 10.1 mm** — the highest both
+have measured in three rounds, with the sentence smaller than before because the field takes the
+wider column; 0 orphan numerals of 22; the one component with no link is the kit's `rhoRow` pointing
+at a funnel no wall carries. The field's own numerals are SVG text and the measurer does not count
+them, which is a gap in the measurer and not in the wall. Driven headlessly with motion allowed the
+earlier wall stepped 8 → 9 after 8.7 s with every number re-derived; this one keeps that clock, that
+hold and those keys unchanged.
 
 ## I · The surface
 
