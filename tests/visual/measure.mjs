@@ -116,6 +116,45 @@ const MIME = { '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+
  * render driven by `?fixture=`, which is every `populated` job below, needs nothing else.
  */
 
+// The environment `settings` reads the fixture under. `app/settings.py`'s `get()` falls back straight
+// to `os.environ` with no `.env` and no reachable database — checked directly (`settings.get(
+// 'BAD_RADIUS_KM', '<none>')` prints `<none>` in a bare child) — and an empty environment is not a
+// neutral one, it is a DIFFERENT node: BAD_RADIUS_KM defaults to 15 instead of node #1's own 8
+// (presets/bali.env), NODE_ISSUES defaults to every issue in file order instead of the declared
+// air/heat/land/coast, and NODE_LAT/NODE_LON default to 0. The fixture is node #1 — `bayu-2`, city
+// `bali` — and is only a meaningful replay under the settings it was captured with, so the child gets
+// the bali preset plus the coordinates and names the fixture's own `health` object carries (which
+// win over the preset: they are the specific node, the preset is only the island it sits on). Nothing
+// here writes a `.env` file or touches production code; it is one object handed to `execFileSync`.
+function nodeEnv(health) {
+  const env = {};
+  const preset = path.join(ROOT, 'presets/bali.env');
+  if (fs.existsSync(preset)) {
+    for (const line of fs.readFileSync(preset, 'utf8').split('\n')) {
+      const l = line.trim();
+      if (!l || l.startsWith('#')) continue;
+      const i = l.indexOf('=');
+      if (i > 0) env[l.slice(0, i)] = l.slice(i + 1);
+    }
+  }
+  const h = health || {};
+  if (h.lat != null) env.NODE_LAT = String(h.lat);
+  if (h.lon != null) env.NODE_LON = String(h.lon);
+  if (h.city) env.NODE_CITY = h.city;
+  if (h.node) env.NODE_NAME = h.node;
+  return env;
+}
+
+// The fixture's own health object, read without the full replay below — nodeEnv() needs it before
+// settings is even imported, so this is a second, cheap read of the same file rather than a chicken
+// looking for its egg.
+function fixtureHealth(name) {
+  try {
+    return JSON.parse(fs.readFileSync(
+      path.join(ROOT, 'app/issues/fixtures', `${name}.json`), 'utf8')).health || {};
+  } catch (e) { return {}; }
+}
+
 // One shell-out per fixture name, per run of this script. `app/issues/api.py`'s `fixture()` route
 // does exactly this — load the committed snapshot, replay it through the node's own engine and its
 // own settings module — so this reproduces the real route rather than guessing its shape. Cached
@@ -140,7 +179,7 @@ print(json.dumps(snap))`;
   let snap = null;
   try {
     const out = execFileSync('python3', ['-c', script],
-      { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app' } });
+      { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
     snap = JSON.parse(out.toString());
   } catch (e) {
     console.error(`measure.mjs: could not replay fixture ${name} (${e.message.split('\n')[0]})`);
@@ -149,27 +188,37 @@ print(json.dumps(snap))`;
   return snap;
 }
 
+// GET /settings, the same way a real node would answer an anonymous or open-share reader: the public
+// keys, unmasked, from the module a running node actually uses — computed in the same bali-preset
+// child as the fixture above, so a page reading both never sees two different nodes. This is a
+// CHECKOUT's settings, not a running node's: there is no database here for the GUI to have touched,
+// so every value is settings.py's own shipped default under that environment, and `unlocked` is
+// always false — nothing here holds an admin token.
+const _settingsCache = new Map();
+function computePublicSettings(name) {
+  if (_settingsCache.has(name)) return _settingsCache.get(name);
+  const script = `import json, sys
+sys.path.insert(0, 'app')
+import settings
+print(json.dumps(settings.describe(unlocked=False, public=settings.PUBLIC)))`;
+  let desc = null;
+  try {
+    const out = execFileSync('python3', ['-c', script],
+      { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
+    desc = JSON.parse(out.toString());
+  } catch (e) {
+    console.error(`measure.mjs: could not read settings (${e.message.split('\n')[0]})`);
+  }
+  _settingsCache.set(name, desc);
+  return desc;
+}
+
 // The plan the `place` pack keeps, which this repo does not carry — it lives in the design repo,
 // the same 5,376-feature file the pack itself stores. A checkout without the design repo (or with
 // PAI_DESIGN_REPO pointed elsewhere) renders with no plan, which is a real, supported state: the
 // page's own place code treats an absent plan as an absence, not a failure (app/static/dashboard.js
 // checks `r.ok` and passes `null` on).
 const PLACE_GEOJSON = path.join(DESIGN, 'data/place.geojson');
-
-// What GET /settings answers with, for a page that only reads a handful of keys off it (PARENT_API_URL
-// for the Network tab, UI_LAYOUT for Arrange, PACKS_ENABLED and ALERT_LOCALE for Set up, MAP_TILES for
-// the plan). These are app/settings.py's own shipped defaults, typed here rather than run through
-// settings.describe() — this repo carries no database for that module to read, so "unlocked" and
-// "source" would be fiction. NOT a running node's settings: a node with the GUI touched would answer
-// differently, and nothing here claims otherwise.
-const SETTINGS_DEFAULTS = { unlocked: false, bootstrap: [], runtime: [
-  { key: 'UI_LAYOUT', value: '', set: false },
-  { key: 'SHARE_LEVEL', value: 'off', set: false },
-  { key: 'MAP_TILES', value: 'off', set: false },
-  { key: 'PARENT_API_URL', value: '', set: false },
-  { key: 'PACKS_ENABLED', value: '', set: false },
-  { key: 'ALERT_LOCALE', value: 'en', set: false },
-] };
 
 /* Answers the four endpoints above from this repo, offline. Returns true when it fulfilled the
  * route — the caller must not also route.continue() it. Shared by `open()`'s render path and
@@ -198,7 +247,9 @@ async function serveNodeAPI(route, u) {
     return true;
   }
   if (u.pathname === '/settings') {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(SETTINGS_DEFAULTS) });
+    const desc = computePublicSettings(FIXTURE);
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify(desc || { unlocked: false, runtime: [], bootstrap: [] }) });
     return true;
   }
   if (u.pathname === '/place/geojson') {
