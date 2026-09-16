@@ -430,6 +430,14 @@ body.wall header, body.wall .dialwrap, body.wall .band { display: none }
   border: 1px solid var(--hair); color: var(--mute); cursor: pointer; padding: 6px 12px;
   font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; opacity: .55 }
 .wall .exit:hover, .wall .exit:focus-visible { opacity: 1; color: var(--ink); border-color: var(--ink) }
+/* What the cells show, on the wall itself. Read at three metres like everything else here, and
+   pressed from a keyboard or a phone at the wall — so the stops are large, and the one in use is
+   the only thing at full contrast. */
+.wall .wvars { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline }
+.wall .wvars a { font: 500 clamp(11px, .9vw, 16px) var(--mono); letter-spacing: .06em;
+  color: var(--mute); text-decoration: none; padding: 4px 9px; border: 1px solid var(--hair) }
+.wall .wvars a.on { color: var(--ink); border-color: var(--ink) }
+.wall .wvars a:hover, .wall .wvars a:focus-visible { color: var(--ink) }
 .wallbox { position: relative; min-height: 100vh; padding: clamp(26px, 2.6vw, 46px); display: flex; flex-direction: column;
   justify-content: center; gap: clamp(14px, 1.8vw, 26px) }
 .wallbox .k { font-size: clamp(13px, 1.05vw, 20px) }

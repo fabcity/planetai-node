@@ -34,7 +34,7 @@ assert "agent" in compose["services"] and compose["services"]["agent"]["command"
 for k in ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY", "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY"):
     assert f'"{k}"' in settings, f"settings.py: {k}"
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
-assert "agent: ['Model'" in gui, "gui: Model tab"
+assert re.search(r"^\s*agent: \['", gui, re.M), "gui: a tab for the agent group"
 assert "cmd_agent_local()" in cli and "local) cmd_agent_local" in cli
 assert "def refresh_ladder" in open("app/agent_loop.py").read()
 print("all shipped claims present")

@@ -726,12 +726,30 @@ const { address, km2, edge } = window.KH;
 const N = H.nav;
 
 /* ------------------------------------------------------------------ where the reader is */
-const Q = new URLSearchParams(location.search);
+/* READ AT CALL TIME, NEVER CAPTURED AT LOAD.
+ *
+ * This was `const Q = new URLSearchParams(location.search)` at module scope, and where() read the
+ * cell and the resolution out of it. That was correct for as long as every press reloaded the
+ * document — the module ran again, and the capture was the new URL. The moment presses became
+ * re-renders (v0.55) it became a snapshot of the query the page was FIRST opened with, so the dial
+ * and every cell link changed the URL and nothing else: same resolution, same cell, same grain
+ * line, same groups. Reported from node #1 the same day, and it is the whole of that fault.
+ *
+ * ctx.Q is rebuilt inside main() on every render, which is why the variable selector, the base
+ * layer and "show all" all kept working and only the dial and the cells looked dead — a difference
+ * that made the bug look like a map problem rather than a stale-read problem.
+ *
+ * The rule this leaves behind: nothing in this file may read location at module scope. FIXTURE is
+ * the one exception and is marked where it is declared — it is answered once, at boot, and a
+ * re-render cannot change which snapshot the node replayed.
+ */
+const query = () => new URLSearchParams(location.search);
 
 /* A direction names the resolution it opens at; the reader's own position wins over it. An id in
  * the query that this node never published is not an error to hide — it is the honest answer "that
  * is not a place I was told about", and the page says so. */
 function where(defaultRes) {
+  const Q = query();
   const asked = Q.get('cell');
   const res = Math.max(N.res_min, Math.min(N.res_max, +(Q.get('res') || defaultRes || 8)));
   const id = asked || N.chain[res];
@@ -3091,6 +3109,31 @@ const at = (ctx, res) => ({ ...ctx, RES: res,
 
 const VAR = ctx => (ctx.Q.get('var') && H.metrics[ctx.Q.get('var')] ? ctx.Q.get('var') : 'pm25');
 
+/* WHAT THE WALL MAY SHOW. The field has always drawn whatever `?var=` named and defaulted to PM2.5;
+ * what it never had was a way to say so from the wall itself, so a wall was an air-quality wall and
+ * nothing else — reported from node #1.
+ *
+ * The strip offers every variable at least one station on this node actually carries, in the order
+ * the node declares them. It is not a list of air-quality variables and there is nothing here that
+ * knows the word "air": when a water pack or a soil pack publishes a metric and a station reads it,
+ * it appears in this strip because it appears in H.metrics, with no change to this file. That is the
+ * whole of what "and eventually other categories" needs from the wall.
+ *
+ * A variable no station reads is not offered. A control that draws an empty field is a control that
+ * lies about what this node measures. */
+const carried = () => Object.keys(H.metrics).filter(v => (H.sensors || []).some(s => s.read && s.read[v]));
+
+function vars(ctx) {
+  const { esc } = ctx.K;
+  const list = carried(), v = VAR(ctx);
+  if (list.length < 2) return '';
+  return `<div class="wvars" id="wall-vars" data-component="wallVars" data-ref="wall-field"`
+    + ` role="group" aria-label="what the cells show">`
+    + list.map(k => `<a class="${k === v ? 'on' : ''}" href="${esc(ctx.qlink({ var: k }))}"`
+      + `${k === v ? ' aria-current="true"' : ''}>${esc(H.metrics[k].label)}</a>`).join('')
+    + `</div>`;
+}
+
 /* The centre of a projected cell: the mean of its path's vertices. make-h3.mjs wrote the path;
  * this reads it back rather than asking for a second field it would then have to ship. */
 function centroid(d) {
@@ -3298,6 +3341,7 @@ function render(ctx, sel) {
     + `<div id="band-${esc(hk)}">${K.kicker(hk, d)}${K.sentence(hk, d, 'big')}${K.why(hk, d)}${K.ask(hk, d)}</div>`
     + `<div class="wdial" id="wall-dial" data-component="dial" data-ref="wall-field" role="group"`
     + ` aria-label="the dial">${dial(ctx)}</div>`
+    + vars(ctx)
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
     + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
     + `</div></div>`
@@ -3381,6 +3425,9 @@ window.WALL = { render, start, field, dial, grain };
 (function () {
 'use strict';
 
+/* The one load-time read of the URL that is allowed to be one: which snapshot the node replayed is
+   answered once, at boot, and no re-render can change it. Everything else reads at call time — see
+   query() and the note above where(). */
 const FIXTURE = new URLSearchParams(location.search).get('fixture');
 
 /* ------------------------------------------------------------------ the one thing that fetches */
@@ -3710,8 +3757,8 @@ window.PAI_ROUTE = () => route();
 /* The header, shared by the page and by the refused page, because a household with no token still
  * has to be able to reach the other views. The node's name is an <h1>: the page had none at all
  * before that was found by looking, and page-has-heading-one fired on every view in every state. */
-const VIEWS = [['now', 'Now'], ['network', 'Network'], ['setup', 'Set up'], ['wall', 'Wall'],
-  ['arrange', 'Arrange']];
+const VIEWS = [['now', 'Now'], ['network', 'Network'], ['historical', 'Historical'],
+  ['setup', 'Set up'], ['wall', 'Wall'], ['arrange', 'Arrange']];
 function chrome(node, city, view) {
   const esc = window.K.esc;
   return `<header id="header"><div class="wrap">`
@@ -3843,7 +3890,15 @@ function main() {
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
   const NOW = ['ground', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
-  const NETWORK = ['satellite', 'reticulum', 'meshtastic', 'hardware', 'trust'];
+  /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
+     hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
+     out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a
+     record of this ground in past years, and it belongs with the other things that have a date on
+     them rather than at the top of the page about the network.
+     Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
+     it last spoke are a history of that sensor, not a fact about now. */
+  const NETWORK = ['reticulum', 'meshtastic', 'hardware'];
+  const HISTORICAL = ['satellite', 'trust'];
   applyOrder();
 
   const el = document.getElementById('page');
@@ -3877,6 +3932,8 @@ function main() {
     if (ARRANGING) { arrangeControls(); fillRestore(); }
   } else if (VIEW === 'network') {
     el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(NETWORK) })}</div>`;
+  } else if (VIEW === 'historical') {
+    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(HISTORICAL) })}</div>`;
   } else {
     /* Set up, in the modular page, gains one box the drawings did not have: the sections this node
        runs, by pack, drawn from the real registry — so the list is what this node has and not a
@@ -4209,8 +4266,8 @@ const GROUPS = {
   packs: ['Packs', 'Which packs load. Code packs stay off until you allow them; read one before you do.'],
   integrations: ['Integrations', 'Home Assistant over MQTT, and the Reticulum bridge.'],
   keys: ['Keys', 'What packs need to reach outside services. Secrets are never shown again once saved.'],
-  agent: ['Model', 'Which model answers on Telegram. The strongest one the node can reach is used.'],
-  node: ['The tree', 'Who this node reports upward to, and who may report to it. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
+  agent: ['Agent', 'Which model answers on Telegram. The strongest one the node can reach is used.'],
+  node: ['Node', 'Who this node reports upward to, and who may report to it \u2014 the tree. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
   bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
 };
 let GROUP = null, DESC = null, PACKS = [];
@@ -4286,17 +4343,22 @@ async function loadSetup() {
       + ` placeholder="not set"></div></div>`).join('');
     return;
   }
+  /* The pack switches are an EXTRA, never a replacement. This branch used to render them and return,
+     so PACKS_ENABLED and PACKS_ALLOW_CODE — the two settings the group actually declares, and the
+     two `planetai config` offers under `packs` — could not be reached from the dashboard at all. A
+     keeper who read the CLI and then went looking for them in Set up did not find them. Every group
+     now renders every key the node declares, and the switches sit above the two they write. */
+  let extra = '';
   if (GROUP === 'packs') {
     const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
     const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
-    pane.innerHTML = PACKS.map(p =>
+    extra = PACKS.map(p =>
       `<div class="pack"><button type="button" role="switch" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
       + ` aria-checked="${!only || only.includes(p.id)}" aria-labelledby="pack-${esc(p.id)}"`
       + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>`
       + `<div><b id="pack-${esc(p.id)}">${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
       + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
       + `<div class="help">${esc(p.description || '')}</div></div></div>`).join('');
-    return;
   }
   /* One field. Every control here carries a name a screen reader can read and a label a pointer can
    * hit, which none of them did: axe found `label` critical eight times in the alerts group alone,
@@ -4309,7 +4371,7 @@ async function loadSetup() {
    * the page draws the answer.
    */
   const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
-  pane.innerHTML = rows.map(r => {
+  pane.innerHTML = extra + rows.map(r => {
     const id = 'set-' + r.key, lbl = 'lbl-' + r.key;
     const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
     // The node says which settings change what leaves this machine (settings.OUTWARD). They were in

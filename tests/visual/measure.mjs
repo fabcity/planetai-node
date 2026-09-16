@@ -1738,10 +1738,54 @@ const A = { grid: aGrid, spacing: () => aSpacing(true), rhythm: aRhythm, lines: 
   dom: aDom, anatomy: aAnatomy, components: aComponents, stack: aStack,
   targets: aTargets };
 
+/* DOES A PRESS ACTUALLY REDRAW?
+ *
+ * Every other check in this file measures ONE render. The page's controls are query links, and
+ * since v0.55 a press is a re-render rather than a document load — which means a control can now
+ * change the URL and nothing else, and every static measurement here would still pass. It did:
+ * v0.55 shipped with the dial dead, because where() read the query captured at module scope when
+ * the page first loaded, so the resolution never moved. The URL changed, the request count was
+ * zero, and the page said exactly what it had said before.
+ *
+ * So this presses the dial and compares what the page SAYS, not where it thinks it is. Red if the
+ * grain line, the dial's own on-stop, or the grouping of stations into cells comes back unchanged.
+ */
+async function press() {
+  const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+  const h = await open(job);
+  const read = () => h.page.evaluate(() => ({
+    url: location.search,
+    dialOn: (document.querySelector('#dial a.on') || {}).textContent || null,
+    grain: (document.getElementById('grain-line') || {}).textContent || null,
+    heads: [...document.querySelectorAll('[data-component="cellGroup"]')].map(e => e.textContent.trim()),
+  }));
+  const before = await read();
+  const moved = await h.page.evaluate(() => {
+    const a = document.querySelector('#dial a:not(.on)');
+    if (!a) return false;
+    a.click();
+    return true;
+  });
+  if (!moved) { console.log('FAIL press: the dial has no stop to press'); await h.browser.close(); process.exit(1); }
+  await h.page.waitForTimeout(700);
+  const after = await read();
+  const same = k => JSON.stringify(before[k]) === JSON.stringify(after[k]);
+  const dead = ['dialOn', 'grain', 'heads'].filter(same);
+  const fails = [];
+  if (before.url === after.url) fails.push('the URL did not change');
+  if (dead.length) fails.push(`the press changed the URL and nothing else: ${dead.join(', ')} identical`);
+  for (const f of fails) console.log('FAIL press:', f);
+  if (!fails.length) console.log(`  press: ${before.dialOn} -> ${after.dialOn}, `
+    + `${before.heads.length} cell group(s) -> ${after.heads.length}, and the grain line moved`);
+  await h.browser.close();
+  process.exit(fails.length ? 1 : 0);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
 else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
+else if (cmd === 'press') await press();
 else if (cmd === 'sheets') await sheets();
 else if (cmd === 'header') await header();
 else if (cmd === 'targets') aTargets();
@@ -1749,5 +1793,5 @@ else if (cmd === 'audit') await audit(rest.length ? rest : ['all']);
 else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|steps|stall|sheets|header|targets|audit|analyse|list');
+else { console.error('usage: measure.mjs render|shots|steps|stall|press|sheets|header|targets|audit|analyse|list');
   process.exit(2); }

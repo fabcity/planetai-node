@@ -252,6 +252,53 @@ if shutil.which("node"):
     assert _f["empty"] == [], f"every row zero is an empty node, not a finding about grain: {_f}"
     assert _f["busy"] == [], f"a count still changing at the finest stop has no flat run: {_f}"
 
+# NOTHING READS THE URL AT MODULE SCOPE, EXCEPT THE FIXTURE.
+#
+# `const Q = new URLSearchParams(location.search)` at the top level of the nav module was correct for
+# as long as every press reloaded the document: the module ran again and the capture was the new URL.
+# When v0.55 made a press a re-render, that line became a snapshot of the query the page was FIRST
+# opened with, and where() kept answering with the opening cell and resolution — so the dial and every
+# cell link changed the URL and nothing else. Zero requests, five milliseconds, and the same page.
+#
+# No static check saw it and neither did the visual gate, which measures one render. tests/visual/
+# measure.mjs gained a `press` command for the behaviour; this is the rule, which needs no browser.
+_load_reads = re.findall(r'^(?:const|let|var)\s+(\w+)\s*=\s*new URLSearchParams\(location\.search\)', _js, re.M)
+assert set(_load_reads) <= {"FIXTURE"}, (
+    f"{sorted(set(_load_reads) - {'FIXTURE'})} capture(s) location.search at module scope. A press is a "
+    "re-render now, so a load-time capture is frozen at whatever the page was opened with and the "
+    "control it feeds goes dead. Read it at call time — see query() in dashboard.js.")
+assert "const query = () => new URLSearchParams(location.search)" in _js, \
+    "query() is gone — where() is reading the URL from somewhere that may be stale"
+
+# SET UP OFFERS WHAT `planetai config` OFFERS — every group, every key, the node's own words.
+#
+# Both read settings.describe(); the CLI walks its groups and prints every key in each. The pane
+# filters the same rows by group — except the packs branch, which rendered a list of pack switches
+# and returned, so PACKS_ENABLED and PACKS_ALLOW_CODE existed in the CLI and nowhere in the
+# dashboard. A keeper who read one and went looking in the other did not find them.
+#
+# The group tab is also the node's own word for the group, because that is the word `planetai config`
+# prints and a keeper moves between the two surfaces.
+import settings as _s                                     # the module both surfaces read
+_groups = []
+for _r in _s.describe(unlocked=False, public=_s.PUBLIC)["runtime"]:
+    if _r["group"] not in _groups:
+        _groups.append(_r["group"])
+_gm = re.search(r"const GROUPS = \{(.*?)\n\};", _js, re.S)
+assert _gm, "the Set up pane no longer declares GROUPS"
+_titled = dict(re.findall(r"^\s*(\w+):\s*\['([^']*)'", _gm.group(1), re.M))
+for _g in _groups:
+    assert _g in _titled, f"the node declares the settings group {_g!r} and the Set up pane has no tab for it"
+    assert _titled[_g].lower() == _g.lower(), (
+        f"the {_g!r} tab is labelled {_titled[_g]!r}; `planetai config` prints {_g!r}, and the two "
+        "menus are meant to read alike")
+# No group may render instead of its keys. One early return is allowed and is bootstrap, which is
+# read-only by nature; everything else falls through to the row loop.
+assert "extra = PACKS.map" in _js and "pane.innerHTML = PACKS.map" not in _js, \
+    "the packs group renders switches instead of its own two settings again"
+assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
+    "a group's keys are no longer rendered after whatever extra that group adds"
+
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
 # The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every
