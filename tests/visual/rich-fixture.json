@@ -1,0 +1,49 @@
+{
+  "_what_this_is": "A stand-in for GET /earth, /trust and /forecast, written by hand for tests/visual/gate.sh. It is NOT a capture from any node — no node has ever had all three populated at once for a script to capture. It exists only so measure.mjs has something plausible to serve when PAI_RICH=1, so the satellite strip, the AlphaEarth record, the trust card and the forecast card can be looked at populated at least once. Keep it small: this is a fixture for a rendering test, not sample data.",
+
+  "earth": {
+    "node": "bayu-2", "enabled": true, "years": [2019, 2022, 2025], "bytes": 201326592,
+    "latest": null, "changes": [], "frames": [2019, 2022, 2025],
+    "dir": "out/earth/bayu-2",
+    "imagery": { "sentinel": [2019, 2022, 2025], "landsat": [],
+      "credit": ["Contains modified Copernicus Sentinel data, processed by Google Earth Engine.",
+        "Landsat courtesy of the U.S. Geological Survey."] },
+    "png": null, "lat": -8.8271, "lon": 115.15709, "radius_m": 5000,
+    "attribution": "The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and Google DeepMind. CC BY 4.0.",
+    "hint": "3 year(s) cached, nothing compared yet: planetai run earth change"
+  },
+
+  "trust": [
+    { "sensor_id": "sc-1234", "name": "Front porch", "coverage_7d": 42, "frozen_channels": 0, "age_hours": 900 },
+    { "sensor_id": "ag-9021", "name": "Garden mast", "coverage_7d": 88, "frozen_channels": 2, "age_hours": 2210 },
+    { "sensor_id": "sc-5150", "name": "Back kitchen", "coverage_7d": 100, "frozen_channels": 0, "age_hours": 3400 }
+  ],
+
+  "forecast": {
+    "point": { "lat": -8.8271, "lon": 115.15709 },
+    "sources": [
+      { "sensor_id": "forecast-bmkg", "name": "BMKG", "lat": -8.83, "lon": 115.16,
+        "issued": "2026-09-15T00:00:00+00:00", "fetched": "2026-09-15T06:00:00+00:00", "km_from_node": 1.1 },
+      { "sensor_id": "forecast-om", "name": "Open-Meteo", "lat": -8.8271, "lon": 115.15709,
+        "issued": "2026-09-15T06:00:00+00:00", "fetched": "2026-09-15T06:05:00+00:00", "km_from_node": 0 }
+    ],
+    "attribution": ["BMKG (Badan Meteorologi, Klimatologi, dan Geofisika), api.bmkg.go.id",
+      "Open-Meteo, open-meteo.com, CC-BY 4.0 (free tier: non-commercial use only)"],
+    "far_from_node": null,
+    "_comment_hours": "hour_offsets are hours from render time, not absolute timestamps — a fixture with a baked-in past date would render as an all-past forecast the moment the file got old. measure.mjs turns each offset into Date.now() + offset*3600000 when PAI_RICH is set.",
+    "hour_offsets": [
+      { "offset_h": 0,  "source": "forecast-bmkg", "fc_temp": 29, "fc_wind_speed": 12, "fc_wind_direction": 135, "fc_rain": 0,   "fc_cloud": 40 },
+      { "offset_h": 1,  "source": "forecast-bmkg", "fc_temp": 30, "fc_wind_speed": 14, "fc_wind_direction": 140, "fc_rain": 0,   "fc_cloud": 55 },
+      { "offset_h": 2,  "source": "forecast-bmkg", "fc_temp": 30, "fc_wind_speed": 15, "fc_wind_direction": 150, "fc_rain": 0.4, "fc_cloud": 70 },
+      { "offset_h": 3,  "source": "forecast-bmkg", "fc_temp": 28, "fc_wind_speed": 13, "fc_wind_direction": 155, "fc_rain": 1.8, "fc_cloud": 85 },
+      { "offset_h": 4,  "source": "forecast-bmkg", "fc_temp": 27, "fc_wind_speed": 11, "fc_wind_direction": 160, "fc_rain": 0.6, "fc_cloud": 65 },
+      { "offset_h": 5,  "source": "forecast-bmkg", "fc_temp": 27, "fc_wind_speed": 10, "fc_wind_direction": 150, "fc_rain": 0,   "fc_cloud": 50 },
+      { "offset_h": 6,  "source": "forecast-bmkg", "fc_temp": 26, "fc_wind_speed": 9,  "fc_wind_direction": 145, "fc_rain": 0,   "fc_cloud": 40 },
+      { "offset_h": 7,  "source": "forecast-bmkg", "fc_temp": 26, "fc_wind_speed": 8,  "fc_wind_direction": 140, "fc_rain": 0,   "fc_cloud": 35 },
+      { "offset_h": 0,  "source": "forecast-om",   "fc_temp": 29.5, "fc_wind_speed": 11, "fc_wind_direction": 130, "fc_rain": 0 },
+      { "offset_h": 3,  "source": "forecast-om",   "fc_temp": 29.4, "fc_wind_speed": 12, "fc_wind_direction": 150, "fc_rain": 1.2 },
+      { "offset_h": -1, "source": "forecast-gap",  "fc_temp_gap": 1.6 },
+      { "offset_h": 3,  "source": "forecast-gap",  "fc_temp_gap": 1.4 }
+    ]
+  }
+}

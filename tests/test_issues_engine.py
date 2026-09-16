@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT / "app"))
 
 import issues as I               # noqa: E402
 from issues import engine        # noqa: E402
+from issues import geometry      # noqa: E402
 
 logging.getLogger("planetai.issues").setLevel(logging.ERROR)
 
@@ -51,6 +52,12 @@ class Settings:
 
     def get(self, key, default=""):
         return self.kw.get(key, default)
+
+    def num(self, key, default):
+        # production's app/settings.py:num() reads a string and falls back on anything not a plain
+        # digit string; the stub only ever holds ints in tests, so a straight int() is enough here.
+        v = self.kw.get(key)
+        return int(v) if v is not None else default
 
 
 def run(data=None, declared="air,heat,land,coast", earth=None, now=NOW):
@@ -361,6 +368,94 @@ check(c.n == 5, f"the engine ran {c.n} queries for four issues; it must read eac
 c = Counting(FIX)
 engine.compute(c, Settings(NODE_ISSUES="air"), DECL, earth=EARTH, now=NOW)
 check(c.n == 5, f"the engine ran {c.n} queries for one issue; the reads are not per-issue")
+
+# --- the keys the modular dashboard reads ---------------------------------------------------------
+body = engine.replay(FIX, Settings(), DECL)
+
+st = body.get("stations")
+if not st or len(st) != 14:
+    fails.append(f"stations: 14 with coordinates in the fixture, got {len(st or [])}")
+else:
+    sc = next(s for s in st if s["sensor_id"] == "sc-19849")
+    if sc["source"] != "smartcitizen" or sc["url"] != "https://smartcitizen.me/kits/19849":
+        fails.append(f"a Smart Citizen kit links to its page: {sc['source']} {sc['url']}")
+    if "pm25" not in sc["read"] or sc["read"]["pm25"]["unit"] != "µg/m³":
+        fails.append(f"a station's read carries the declared unit: {sc['read'].get('pm25')}")
+    bad = next(s for s in st if s["sensor_id"].startswith("bad-"))
+    if bad["attribution"] != "Bali Air Dispatch, baliairdispatch.com":
+        fails.append("Bali Air Dispatch rows carry the attribution the observatory requires")
+    traced = [s["sensor_id"] for s in st if s["series"]]
+    if sorted(traced) != ["bad-sc-19774", "sc-19880"]:
+        fails.append(f"the fixture has an hourly series for exactly two stations, got {traced}")
+    if st != sorted(st, key=lambda s: s["km"]):
+        fails.append("stations are ordered by distance")
+    band = next((v for s in st for v in s["series"].values() if v), None)
+    if not band or band[0].get("min") is None or band[0].get("max") is None or band[0].get("n") is None:
+        fails.append(f"readings_1h has min/max/n in the fixture, so a station's series must carry them: {band}")
+
+m = body.get("metrics", {})
+if m.get("pm25", {}).get("issue") != "air" or m.get("temp", {}).get("dp") != 1:
+    fails.append(f"metrics declare unit, places and issue: {m.get('pm25')} {m.get('temp')}")
+
+a = body.get("asks", {})
+if len(a.get("acts", [])) != 21 or len(a.get("actions", [])) != 11 or a.get("levels", {}).get("warn") != 9:
+    fails.append(f"asks: 21 acts, 11 actions, 9 warn in the fixture; got {len(a.get('acts', []))}, "
+                 f"{len(a.get('actions', []))}, {a.get('levels')}")
+if any("\n" in x["text"] or len(x["text"]) > 160 for x in a.get("acts", [])):
+    fails.append("an ask's text is its first line, at most 160 characters")
+
+mesh = body.get("mesh")
+if not mesh or mesh["gateway"] != "!8f491db0" or mesh["packets"] != 12:
+    fails.append(f"mesh: the gateway and its packets come from /health: {mesh}")
+if not mesh or not any(r["metric"] == "battery_v" for r in mesh["reads"]):
+    fails.append("mesh: the device's own 15-minute means ride with it")
+
+# a snapshot with no mesh and no coordinates in health must not crash — it falls back to mesh=None,
+# same as a live node with MQTT_HOST unset, and to a place it does not have
+bare = engine.replay({**FIX, "health": {}}, Settings(), DECL)
+check(bare.get("mesh") is None, "with no mesh in health, /issues publishes mesh: None, not a crash")
+check(bare.get("stations"), "with no coordinates in health, stations still publish")
+
+# ...and every distance on them is UNKNOWN, not a distance from (0, 0).
+#
+# "did not crash" is all this asserted, and under it the node published every neighbour's distance
+# from the point where the equator meets the prime meridian — open water in the Gulf of Guinea — as a
+# number, which four surfaces of the dashboard then printed to a household as fact. An unsited node
+# knows how far away nothing is.
+check(all(st["km"] is None for st in bare["stations"]),
+      "unsited, every station's km is None: the node publishes unknown rather than a distance from (0, 0)")
+check(all(st.get("read") is not None for st in bare["stations"]),
+      "unsited, the readings themselves still publish — it is the distance that is unknown, not the air")
+sited_kms = [st["km"] for st in body["stations"]]
+check(all(k is not None for k in sited_kms) and sited_kms == sorted(sited_kms),
+      f"sited, every station still carries a distance and the list is still nearest first: {sited_kms[:4]}")
+
+# A negative RETICULUM_PRESENCE_RES is a number a keeper can type into Set up. h3.latlng_to_cell
+# raises H3ResDomainError on one, and geometry.radio() clamped only the top end — so one bad setting
+# took GET /issues down, and with it every surface of the page, over how coarsely this node announces
+# itself. app/main.py's own presence path has always clamped both ends.
+for _res, _want in ((-1, 0), (99, geometry.FLOOR_RES), (3, 3)):
+    g = engine.replay(FIX, Settings(RETICULUM_PRESENCE_RES=_res), DECL)["geometry"]
+    check(g is not None and g["radio"]["res"] == _want,
+          f"RETICULUM_PRESENCE_RES={_res} must clamp to {_want}, not fail the whole response: "
+          f"{None if g is None else g['radio']['res']}")
+
+# --- the geometry the dial turns on --------------------------------------------------------------
+g = body.get("geometry")
+if not g:
+    fails.append("geometry is on the body")
+else:
+    if g["nav"]["chain"][8] != "8895a4c86bfffff" or g["nav"]["cell_count"] != 209:
+        fails.append(f"geometry.nav: node #1's res-8 cell and 209 published cells; got {g['nav']['chain'].get(8)}, {g['nav']['cell_count']}")
+    if [c["key"] for c in g["claims"]][0] != "coast":
+        fails.append("geometry.claims are widest first")
+    if g["radio"]["res"] != 3:
+        fails.append("geometry.radio announces at RETICULUM_PRESENCE_RES, 3 under the fixture's settings")
+    if g["publication"]["res"] != 10 or g["settings"]["PRESENCE_RES_FLOOR"] != 6:
+        fails.append(f"geometry carries the two lines: {g['publication']} {g['settings']}")
+    own_cell = g["nav"]["cells"][g["nav"]["chain"][8]]
+    if [body["stations"][i]["sensor_id"] for i in own_cell["sensors"]] != ["sc-19849", "sc-19880", "sc-19897"]:
+        fails.append("the plate's sensor indices index into the published stations")
 
 print("\n".join(f"  x {f}" for f in fails if f) or
       f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "

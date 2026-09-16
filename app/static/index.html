@@ -3,127 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PLANETAI node</title>
-<!-- Three stylesheets, in this order, each owning one thing. tokens.css is the Fab City foundation
-     (--fc-*); planetai-theme.css is the PLANETAI programme layer, generated from the design repo's
-     references/planetai-layer.md and copied here byte for byte; dashboard.css is how this page is
-     arranged. None of them is fetched from a network: a node serves this on a LAN that may have no
-     route out, and every file below is on the COMPANIONS allowlist in app/main.py. -->
+<title>PLANETAI</title>
+<!-- The shell, and nothing else. The frozen layer first, then this page's own stylesheet; the
+     renderer writes every element below #page. No inline style and no inline script: both are
+     things a reader cannot diff and a gate cannot read without running the page. -->
 <link rel="stylesheet" href="static/tokens.css">
 <link rel="stylesheet" href="static/planetai-theme.css">
 <link rel="stylesheet" href="static/dashboard.css">
 </head>
 <body>
-<!-- This file is a skeleton and nothing else. Every sentence, number and mark on the page is written
-     by app/static/dashboard.js from what GET /issues answered, and the node worked all of it out:
-     the page draws, it does not compute. The mount points below are empty on purpose — if you are
-     looking at this file to find out what the page says, you are in the wrong file. -->
-
-<!-- The sign sprite, from planetai-design/assets/signs/signs.svg. Referenced rather than inlined, so
-     it is one cached request instead of 5 kB in every document. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><use href="static/signs.svg#sign-house"></use></svg>
-
-<header>
-  <div class="wrap">
-    <div class="brand">
-      <svg viewBox="0 0 22 25" width="22" height="25" aria-hidden="true"><path d="M11 0 22 6.25v12.5L11 25 0 18.75V6.25Z" fill="currentColor"/><circle cx="11" cy="12.5" r="3.5" fill="var(--ground)"/></svg>
-      <h1 id="nodename">node</h1>
-      <span class="s" id="nodeplace"></span>
-    </div>
-    <nav class="views" id="views" aria-label="Views">
-      <button class="on" data-view="now">Now</button>
-      <button data-view="network">Network</button>
-      <button data-view="setup">Set up</button>
-      <button data-view="wall">Wall</button>
-      <button data-view="arrange" title="Move, hide and restore cards">Arrange</button>
-    </nav>
-    <div class="status"><span id="headprov"></span></div>
-  </div>
-</header>
-
-<main>
-<!-- ============================================================ NOW -->
-<section class="view on" id="now">
-  <div class="wrap">
-    <!-- the headline issue: R5's anatomy, and the mini stack under the why line -->
-    <div class="hero" id="hero"></div>
-
-    <!-- one row per issue in the declared order, then the ones this node does not watch -->
-    <!-- The label that was here described an empty mount and nothing else: bandFor('index') replaces
-         this div with its own, which carries no aria-label, so the only render that ever showed it was
-         a refused one — where a plain <div> carrying aria-label is a prohibited attribute and axe said
-         so. The rows name themselves. -->
-    <div class="index" id="index"></div>
-    <p class="note" id="index-note"></p>
-
-    <!-- one band per declared issue, in that same order -->
-    <div id="bands"></div>
-
-    <!-- the ground everything else sits on, then the loop, then every figure on the page -->
-    <section class="band" id="place"></section>
-    <section class="band" id="loop"></section>
-    <section class="band" id="figures"></section>
-  </div>
-</section>
-
-<!-- ============================================================ NETWORK -->
-<!-- A mount, like the wall. It used to hold four hard-coded cards that nothing ever filled: the
-     renderer draws Now and the wall, so every box in here was empty on every node since v0.45. -->
-<section class="view" id="network"><div class="wrap" id="netbody"></div></section>
-
-<!-- ============================================================ SET UP -->
-<section class="view" id="setup">
-  <div class="wrap">
-    <h2 class="t">How this node was told to behave.</h2>
-    <p class="sub">Everything here is live within about twenty seconds; nothing needs a restart. A blank
-      field hands the setting back to <code>.env</code>. A value set here overrides the same key in it.</p>
-    <div class="gate card" id="gate">
-      <h3 class="t">Unlock</h3>
-      <p class="sub">Changing settings needs the admin token. <code>planetai ui</code> on the node prints
-        it, and the weaker one below it.</p>
-      <label class="sub" for="tok">Admin token</label>
-      <div class="reveal"><input type="password" id="tok" placeholder="admin token" autocomplete="off">
-        <button type="button" data-reveal="tok" aria-pressed="false">Show</button></div>
-      <p class="sub" id="acttok-help">Or the token for closing a loop only — it records that someone acted, and reads the
-        sensors, but cannot change a setting or read a secret.</p>
-      <label class="sub" for="acttok">Token for closing a loop</label>
-      <div class="reveal"><input type="password" id="acttok" placeholder="token for closing a loop"
-             autocomplete="off" aria-describedby="acttok-help">
-        <button type="button" data-reveal="acttok" aria-pressed="false">Show</button></div>
-      <div class="row mt"><button class="btn" id="btn-unlock">Unlock</button><button class="btn ghost" id="btn-back">Back</button></div>
-    </div>
-    <div class="setup" id="setup-body" hidden>
-      <nav class="tabs" id="tabs"></nav>
-      <h3 class="t" id="ptitle"></h3>
-      <p class="sub" id="pblurb"></p>
-      <p class="sub addr" id="paddr" hidden></p>
-      <div id="pane"></div>
-      <div class="savebar"><button class="btn" id="btn-save">Save changes</button><span class="sub" id="savenote">Live within about twenty seconds.</span></div>
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================ WALL -->
-<!-- R6: the wall is an instruction, not a control. Nothing on it can be pressed; the loop is closed
-     on Telegram, which is where ρ is recorded.
-
-     The class `wall` is on the MOUNT and not on the section. It used to be on both, and .wall sets
-     min-height:100vh and a padding, so a wall was one viewport plus two paddings: 1208px on a
-     1080px screen and 1167 on a 900px one. A wall does not scroll, so at 1440 the footer — the
-     node's name, `As of HH:MM` and the word `stale` — was simply not on it. -->
-<section class="view" id="wall"><div class="wall" id="wallbox"></div></section>
-</main>
-
-<!-- Arrange: order and hide bands, saved on the node as UI_LAYOUT -->
-<div class="arrbar" id="arrbar" hidden role="region" aria-label="Arrange">
-  <span>Arrange: ← and → move a band, ✕ hides it.</span>
-  <label class="vh" for="arr-restore">Put a hidden band back</label>
-  <select id="arr-restore"><option value="">Restore a hidden band…</option></select>
-  <button class="btn ghost" id="btn-arr-reset">Default</button>
-  <button class="btn" id="btn-arr-done">Done</button>
+<!-- What a reader sees between opening the page and boot() answering, and the whole of it. The
+     renderer overwrites #page the moment it has an answer; until then this is the page. It is here
+     because #page shipped empty: a node whose database is wedged holds GET /issues open rather than
+     erroring, and a household — or a wall screen nobody is watching — was left on blank paper with
+     nothing to read. Classes only, no ids, all of them already in dashboard.css. -->
+<div id="page">
+  <header><div class="wrap"><h1 class="brand"><b>PLANETAI</b></h1></div></header>
+  <div class="wrap"><p class="note">Asking the node&hellip;</p></div>
 </div>
+<!-- What the Set up pane says back. Chrome, not content: the renderer writes only #page. -->
 <div class="toast" id="toast"></div>
-
 <script src="static/dashboard.js"></script>
 </body>
 </html>

@@ -109,7 +109,9 @@ broken("round card", prepend(".panel{border-radius:26px}"), r"rounds a card to 2
 # 5. provenance carrying a verdict — the layer's role tokens, which is what the page uses now
 broken("prov colour", prepend(".prov{color:var(--rings)}"), r"prov.*carries a colour")
 broken("prov inline colour",
-       sub('<div class="status">', '<div class="status prov" style="color:#00A057">'),
+       # #page is no longer empty — it carries the "asking the node…" header until boot() answers —
+       # so the mutation goes on its opening tag rather than on a literal empty div.
+       sub('<div id="page">', '<div id="page" class="prov" style="color:#00A057">'),
        r"prov in its class or id carries an inline colour", where="index.html")
 
 # 6. orange away from the satellite, in both registers' oranges
@@ -124,14 +126,15 @@ broken("lifted blue on paper", prepend(".x{color:#7FA5E8}"),
        r"#7FA5E8.*(outside the dark register|does not declare)")
 
 # 8. an asset the node does not serve, and one that is not under static/ at all
-# the ground is written by the renderer now, not by the document, and it carries a query string —
-# `?variant=${ctx.register}` — so these anchor on the path and leave the query where it is.
-GROUND = 'src="static/node-ground.svg?variant='
-broken("unserved asset", sub(GROUND, 'src="node-ground.svg?variant='),
-       r"loads node-ground\.svg, which is not under static/", where="dashboard.js")
-broken("asset off the allowlist", sub(GROUND, 'src="static/ground2.svg?variant='),
-       r"COMPANIONS allowlist does not serve", where="dashboard.js")
-# and the document's own stylesheet links, which nothing checked before
+# These used to break a src the RENDERER wrote — the hero's ground, at `static/node-ground.svg`. The
+# modular page has no literal asset reference in dashboard.js at all: its one companion is the sign
+# sprite, written as `static/signs.svg#sign-${id}`, and a reference carrying a template expression is
+# excluded by rule 8's own character class because those are routes and not assets. So both cases
+# break the document's own three links instead, which is where every asset this page loads now is.
+broken("unserved asset", sub('href="static/tokens.css"', 'href="tokens.css"'),
+       r"loads tokens\.css, which is not under static/", where="index.html")
+broken("asset off the allowlist", sub('href="static/tokens.css"', 'href="static/tokens2.css"'),
+       r"COMPANIONS allowlist does not serve", where="index.html")
 broken("stylesheet off the allowlist",
        sub('href="static/dashboard.css"', 'href="static/theme2.css"'),
        r"COMPANIONS allowlist does not serve", where="index.html")
@@ -148,11 +151,13 @@ broken("a CDN in a stylesheet", prepend("@import url('https://fonts.googleapis.c
 # that had the unit right. Both prose sites must stay inside .said, and a new uppercasing rule must be looked at
 # by a person rather than discovered on a shelf screen.
 broken("the kicker's reason unwrapped",
-       sub('<span class="said">\u00b7 ${esc(why)}</span>', '<span>\u00b7 ${esc(why)}</span>'),
+       sub('<span class="said">\u00b7 ${esc(d.reason_text[LOC])}</span>',
+           '<span>\u00b7 ${esc(d.reason_text[LOC])}</span>'),
        r"kicker's reason.*no longer wrapped in \.said", where="dashboard.js")
-broken("a stack cell's source unwrapped",
-       sub('\u00b7 <span class="said">${esc(st[x].source)}</span>', '\u00b7 ${esc(st[x].source)}'),
-       r"source in the hero chips.*no longer wrapped in \.said", where="dashboard.js")
+broken("a readout's title unwrapped",
+       sub('<div class="lab"><span class="said">${esc(o.title)}</span>',
+           '<div class="lab">${esc(o.title)}'),
+       r"readout's title.*no longer wrapped in \.said", where="dashboard.js")
 broken("a new uppercasing rule nobody looked at",
        prepend(".newshout{text-transform:uppercase}"),
        r"is a new text-transform:uppercase rule")
@@ -162,7 +167,8 @@ broken("a new uppercasing rule nobody looked at",
 # it. Both applied, so the wall was one viewport plus two paddings — 1208px on a 1080px screen. A wall does not
 # scroll, so the footer carrying `As of HH:MM` and the word `stale` was off the bottom of it at 1440.
 broken("a viewport-height class on an element and its own ancestor",
-       sub('<section class="view" id="wall">', '<section class="view wall" id="wall">'),
-       r"\.wall sets a viewport height and is on <div>.*inside <section>", where="index.html")
+       sub('<div class="wrap"><p class="note">Asking',
+           '<div class="wallbox"><div class="wallbox"></div></div><div class="wrap"><p class="note">Asking'),
+       r"\.wallbox sets a viewport height and is on <div>.*inside <div>", where="index.html")
 
 print("check_ui: every visual-language gate fails when the page breaks its rule")
