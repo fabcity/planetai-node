@@ -4266,8 +4266,8 @@ const GROUPS = {
   packs: ['Packs', 'Which packs load. Code packs stay off until you allow them; read one before you do.'],
   integrations: ['Integrations', 'Home Assistant over MQTT, and the Reticulum bridge.'],
   keys: ['Keys', 'What packs need to reach outside services. Secrets are never shown again once saved.'],
-  agent: ['Model', 'Which model answers on Telegram. The strongest one the node can reach is used.'],
-  node: ['The tree', 'Who this node reports upward to, and who may report to it. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
+  agent: ['Agent', 'Which model answers on Telegram. The strongest one the node can reach is used.'],
+  node: ['Node', 'Who this node reports upward to, and who may report to it \u2014 the tree. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
   bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
 };
 let GROUP = null, DESC = null, PACKS = [];
@@ -4343,17 +4343,22 @@ async function loadSetup() {
       + ` placeholder="not set"></div></div>`).join('');
     return;
   }
+  /* The pack switches are an EXTRA, never a replacement. This branch used to render them and return,
+     so PACKS_ENABLED and PACKS_ALLOW_CODE — the two settings the group actually declares, and the
+     two `planetai config` offers under `packs` — could not be reached from the dashboard at all. A
+     keeper who read the CLI and then went looking for them in Set up did not find them. Every group
+     now renders every key the node declares, and the switches sit above the two they write. */
+  let extra = '';
   if (GROUP === 'packs') {
     const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
     const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
-    pane.innerHTML = PACKS.map(p =>
+    extra = PACKS.map(p =>
       `<div class="pack"><button type="button" role="switch" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
       + ` aria-checked="${!only || only.includes(p.id)}" aria-labelledby="pack-${esc(p.id)}"`
       + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>`
       + `<div><b id="pack-${esc(p.id)}">${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
       + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
       + `<div class="help">${esc(p.description || '')}</div></div></div>`).join('');
-    return;
   }
   /* One field. Every control here carries a name a screen reader can read and a label a pointer can
    * hit, which none of them did: axe found `label` critical eight times in the alerts group alone,
@@ -4366,7 +4371,7 @@ async function loadSetup() {
    * the page draws the answer.
    */
   const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
-  pane.innerHTML = rows.map(r => {
+  pane.innerHTML = extra + rows.map(r => {
     const id = 'set-' + r.key, lbl = 'lbl-' + r.key;
     const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
     // The node says which settings change what leaves this machine (settings.OUTWARD). They were in
