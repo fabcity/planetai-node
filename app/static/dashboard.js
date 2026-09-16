@@ -494,48 +494,17 @@ function contribution(c, key) {
   });
 }
 
-/* --------------------------------------------------------------------- the wireframe views */
-const WF = {
-  network: [
-    ['What leaves this house', ['t', 's', 'box:figure', 'cap:six facts, in and out', 'bar', 'bar']],
-    ['Other nodes', ['t', 'bar', 'bar', 'cap:the peer, display-only', 'bar']],
-    ['The machine in the corner', ['t', 'bar', 'bar', 'bar', 'bar']],
-    ['The Fab City Index', ['t', 'cols:4', 'bar']],
-  ],
-  setup: [
-    ['How this node was told to behave', ['t', 's']],
-    ['Issues, in order', ['cap:drag order, saved as NODE_ISSUES', 'ctl', 'ctl', 'ctl', 'ctl', 'ctl', 'bar']],
-    ['Sources · Alerts · Packs · Keys · The tree', ['bar', 'ctl', 'bar', 'ctl', 'bar', 'ctl']],
-    ['Open this on another screen', ['cap:http://<node>:8080/', 'bar']],
-  ],
-  arrange: [
-    ['Arrange', ['cap:a way out that loses nothing', 'ctl']],
-    ['The bands, in order', ['bar:ctl', 'bar:ctl', 'bar:ctl', 'bar:ctl', 'bar:ctl']],
-    ['Hidden', ['cap:findable, and reset asks', 'ctl']],
-  ],
-};
-
-function wireframe(view) {
-  const spec = WF[view] || [];
-  return `<div class="wf" data-component="wireframe" id="wf-${esc(view)}" data-ref="wf-note">`
-    + spec.map(([title, parts]) => `<div class="box"><div class="cap">${esc(title)}</div>`
-      + parts.map(p => {
-        const [k, arg] = p.split(':');
-        if (k === 'cap') return `<div class="cap">${esc(arg)}</div>`;
-        if (k === 'cols') return `<div class="cols">`
-          + Array.from({ length: +arg }, () => `<div class="ctl"></div>`).join('') + `</div>`;
-        if (k === 'ctl') return `<div class="ctl"></div>`;
-        if (k === 'box') return `<div class="ctl" style="height:120px"></div>`;
-        if (k === 'bar' && arg === 'ctl') return `<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center">`
-          + `<div class="bar"></div><div class="ctl" style="width:34px;height:30px"></div>`
-          + `<div class="ctl" style="width:34px;height:30px"></div>`
-          + `<div class="ctl" style="width:34px;height:30px"></div></div>`;
-        return `<div class="bar ${k === 'bar' ? '' : k}"></div>`;
-      }).join('') + `</div>`).join('')
-    + `<p class="note" id="wf-note" data-ref="wf-${esc(view)}">Drawn, not built. Grey is where text `
-    + `goes, an outline is where a control goes. This view is Phase 2's; the drawing says where it `
-    + `lives and how it reads.</p></div>`;
-}
+/* The Phase 1 wireframes are gone from the shipped page.
+ *
+ * They were grey bars standing in for text and outlined boxes standing in for controls, with a note
+ * reading "Drawn, not built" — a drawing of a view, printed underneath the built version of that
+ * same view. On a prototype that was the whole point. In production it is a keeper scrolling past
+ * their own settings into a sketch of their own settings, which is what Tomas found at the bottom
+ * of Set up and could not work out the purpose of. There was none: it shipped by being ported.
+ *
+ * tests/visual/measure.mjs still renders wireframes, and that is a different thing entirely — it
+ * draws one FROM the page, as a measurement. Nothing draws one INTO the page any more.
+ */
 
 /* --------------------------------------------------------------------- the page's own state */
 /* PORTED: a direction captured its views with ?view=, because a drawing is captured and never
@@ -599,7 +568,7 @@ function refusedPage() {
  * initKit() once boot() has answered, because until then there is nothing to bind. */
 window.K = { esc, fmt, sign, pill, age, uid, cmpText,
   readout, stack, series, row, kicker, sentence, why, ask, stamp, asof, rhoRow, funnel,
-  peerRow, unplaced, contribution, wireframe, refusedPage, noLine, reasonFor, REFUSED };
+  peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, REFUSED };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -1502,14 +1471,23 @@ function lead(ctx) {
   const base = baseOf(ctx.Q.get('base'), res);
   /* Pressing the base the rule would have chosen anyway clears the choice, so the rule is back in
    * charge the next time the dial turns rather than a stale press outliving it. */
-  /* Only what may be pressed is drawn. A link to a live base while tiles are off would be one click
+  /* Only what may be PRESSED is a link — a live base offered while tiles are off would be one click
      between a keeper's setting and this household's kilometre reaching a tile server, and the page
-     offering it is the page arguing with the node. */
+     offering it is the page arguing with the node.
+     But a base that may not be pressed is still drawn, disabled, saying which of the two reasons it
+     is: the setting, or the resolution. Hiding them made a keeper who had seen satellite and street
+     in the prototype think production had lost them — reported 16 September. The whole cost of the
+     rule is one setting away and a reader should be able to see what the rule is costing them. */
   const allowed = tilesAllowed(res, window.SETTINGS);
+  const tilesOn = (window.SETTINGS || {}).MAP_TILES === 'on';
+  const why = tilesOn
+    ? `the plan fills the frame from resolution ${PLAN_FROM} in — turn the dial out to offer this`
+    : 'live tiles are off on this node — turn MAP_TILES on under Set up';
   const strip = `<div class="ctlstrip" role="group" aria-label="the ground under the cells">`
-    + Object.entries(BASES).filter(([k]) => k === 'plan' || allowed).map(([k, b]) =>
-      `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">`
-      + `${esc(b.name)}</a>`).join('')
+    + Object.entries(BASES).map(([k, b]) => (k === 'plan' || allowed)
+      ? `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">`
+        + `${esc(b.name)}</a>`
+      : `<span class="off" aria-disabled="true" title="${esc(why)}">${esc(b.name)}</span>`).join('')
     + `<span class="auto">${allowed
       ? `plan from resolution ${PLAN_FROM} · tiles coarser`
       : (window.SETTINGS || {}).MAP_TILES === 'on'
@@ -3303,8 +3281,16 @@ function render(ctx, sel) {
   /* PORTED: body.wall hides the header, so the wall has no heading at all and axe's
      page-has-heading-one fires on it. The node's name is the page's heading on every other view and
      it is the wall's too — read out, not drawn, because the wall already says it in the foot. */
+  /* THE WAY BACK. The click handler at the foot of this file has always listened for `.wall .exit`
+     and nothing ever drew one, so a wall was a room with the door painted on: the nav is hidden on
+     this view (body.wall), the browser chrome is usually hidden too on the screen this is for, and
+     a reader who pressed Wall had no way out but the keyboard. It is a button rather than a link
+     because it changes the view and does not go anywhere, and it is drawn first so it is the first
+     thing the keyboard reaches. */
   return `<div class="wallbox" id="wall-lead" data-band="wall">`
     + `<h1 class="vh">${esc(ctx.S.health.node)} · the wall</h1>`
+    + `<button type="button" class="exit" data-view="now" data-component="wallExit"`
+    + ` data-ref="wall-field" id="wall-exit">back</button>`
     + `<div class="wgrid">`
     + `<figure class="wfield" id="wall-field" data-component="wallField" data-ref="wall-dial">`
     + field(ctx, sel) + `</figure>`
@@ -3758,7 +3744,7 @@ function drawRefused() {
 }
 function main() {
   const { S, ISS, ORDER, DIST, LAB, LOC, esc, fmt, pill, kicker, sentence, why, ask, asof,
-    wireframe, refusedPage, VIEW, STATE } = window.K;
+    refusedPage, VIEW, STATE } = window.K;
   const { H, km2, edge } = window.KH;
   const { N, where, link } = window.KN;
   const PAI = window.PAI;
@@ -3893,13 +3879,12 @@ function main() {
     el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(NETWORK) })}</div>`;
   } else {
     /* Set up, in the modular page, gains one box the drawings did not have: the sections this node
-       runs, by pack, with the two moves a keeper actually makes — turn one off, and propose one
-       back. Drawn, not built, like the rest of the wireframe; but drawn from the real registry, so
-       the list is what this node has and not a sketch of one. */
+       runs, by pack, drawn from the real registry — so the list is what this node has and not a
+       sketch of one, and each row says whether that section is drawing or has nothing here yet. */
     const setup = VIEW === 'setup' && window.PAI_SETUP ? window.PAI_SETUP.markup() : '';
     const sections = VIEW === 'setup' ? sectionsBox() : '';
     el.innerHTML = head() + `<div class="wrap"><section class="band" id="view-${esc(VIEW)}">`
-      + `<div class="k">` + esc(VIEW) + `</div>` + setup + sections + wireframe(VIEW) + `</section></div>`;
+      + `<div class="k">` + esc(VIEW) + `</div>` + setup + sections + `</section></div>`;
     /* The pane draws itself locked, then asks the node what this reader may see. */
     if (VIEW === 'setup' && window.PAI_SETUP) window.PAI_SETUP.load();
   }
@@ -3973,23 +3958,24 @@ function main() {
     const byPack = {};
     for (const s of PAI.sections) (byPack[s.pack] = byPack[s.pack] || []).push(s);
     const packs = Object.entries(byPack).sort(([a], [b]) => (a === 'core') - (b === 'core') || a.localeCompare(b));
-    return `<div class="wf" data-component="sectionsBox" id="wf-sections" data-ref="wf-note">`
+    return `<div class="wf" data-component="sectionsBox" id="wf-sections" data-ref="view-setup">`
       + `<div class="box"><div class="cap">Sections on this node, by pack · ${PAI.sections.length} `
       + `registered · drag to reorder within a stage, switch off to hide, propose to send</div>`
       + packs.map(([pack, list]) =>
         `<div class="cap">${esc(pack)}${pack === 'core' ? ' · the renderer’s own' : ''}</div>`
-        + list.map(s => `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;`
+        + list.map(s => `<div style="display:grid;grid-template-columns:minmax(0,1fr) auto;`
           + `gap:8px;align-items:center;padding:4px 0" data-component="sectionRow" id="wfs-${esc(s.id)}"`
           + ` data-ref="wf-sections"><span class="said" style="font-size:12.5px">${esc(s.title)}`
           + ` <span class="mono" style="color:var(--mute);font-size:10.5px">· ${esc(s.stage)}`
           + `${(s.needs || []).length ? ` · needs ${esc(s.needs.join(', '))}` : ''}</span></span>`
-          + `<div class="ctl" style="width:34px;height:26px" title="on"></div>`
-          + `<div class="ctl" style="width:34px;height:26px" title="move"></div>`
-          + `<div class="ctl" style="width:78px;height:26px" title="propose back"></div></div>`).join(''))
+          + `<span class="mono" style="font-size:10.5px;color:var(--mute)">`
+          + `${(s.needs || []).every(PAI.has) ? 'drawing' : 'nothing here yet'}</span></div>`).join(''))
         .join('')
-      + `<div class="cap">Propose back: the section’s file, its notes and this node’s renders, sent `
-      + `as one bundle for another node to try. A pack a node does not have shows here as one line `
-      + `saying what it needs — never as a blank.</div></div></div>`;
+      + `<div class="cap">Reordering and hiding a section is Arrange, on its own view. Proposing one `
+      + `back — the section’s file, its notes and this node’s renders, sent as one bundle for `
+      + `another node to try — is not built on this node yet, and this line is the whole of what `
+      + `exists. A pack a node does not have shows above as one line saying what it needs, never as `
+      + `a blank.</div></div></div>`;
   }
 }
 
@@ -4041,6 +4027,44 @@ document.addEventListener('change', ev => {
 
 addEventListener('hashchange', route);
 addEventListener('popstate', route);
+
+/* EVERY CONTROL ON THIS PAGE IS A QUERY LINK, AND EVERY ONE OF THEM RELOADED THE DOCUMENT.
+ *
+ * The dial, a cell, the variable selector, the base layer, "show all" — all of them are
+ * `<a href="?…">`, which the browser answers by throwing the page away and fetching index.html,
+ * dashboard.js, dashboard.css, the frozen layer, the ground, and then /issues, /health, /settings,
+ * /rho, /trust, /forecast and /earth all over again. Seconds of waiting, on a LAN, to be handed
+ * the same readings and re-file them under different cells.
+ *
+ * Nothing about that was necessary. route() has always re-rendered from globals already in memory
+ * and fetched nothing — it is how the view buttons have worked all along — and main() rebuilds its
+ * ctx from location.search on every call. So a press only ever needed to put the new query in the
+ * URL and call route(). That is this handler, and turning the dial is now a render.
+ *
+ * What is deliberately NOT intercepted, because each is a different intention: a modified click
+ * (cmd, ctrl, shift, alt, or the middle button) which the reader is asking to open elsewhere; a
+ * link with a target, which says where it wants to go; and any href that is not a query on this
+ * same document — a station's link to its own public page must leave, and does.
+ */
+document.addEventListener('click', ev => {
+  if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+  const a = ev.target.closest && ev.target.closest('a[href]');
+  if (!a || a.target || a.hasAttribute('download')) return;
+  const href = a.getAttribute('href') || '';
+  if (!href.startsWith('?')) return;
+  ev.preventDefault();
+  /* The hash carries the view, and a query link keeps whichever view it was pressed in — pressing
+     the dial on Network must not land on Now. qlink() already appends the current hash; a bare
+     '?…' from link() does not, so it is kept here rather than dropped. */
+  const url = href.includes('#') ? href : href + (location.hash || '');
+  if (url === location.search + location.hash) return;   // the stop already under the finger
+  /* route() scrolls to the top, which is right for a view change and wrong for a control: a reader
+     who presses "show all" half way down the station list wants to still be looking at it. */
+  const y = window.scrollY;
+  history.pushState({ view: VIEW }, '', url);
+  route();
+  window.scrollTo(0, y);
+});
 document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-back') {
     history.pushState({ view: 'now' }, '', location.pathname + location.search);
@@ -4100,7 +4124,7 @@ boot().then(() => { init(); route(); }).catch(async e => {
 /* the Set up pane: lifted from the page this replaces, at 685fe1a, with as few edits as the move
  * requires.
  *
- * WHY IT IS HERE. The modular shell's Set up view is the section registry and a wireframe; this is
+ * WHY IT IS HERE. The modular shell's Set up view is the section registry; this is
  * the working surface the page before it carried. Without it a keeper cannot put a token into the
  * page, so nothing can be written — the tiles switch included. It is ported, not rewritten:
  * tests/test_settings.py, test_config.py, test_shipped.py and test_share.py read this code out of
