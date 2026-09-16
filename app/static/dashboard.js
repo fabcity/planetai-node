@@ -2576,7 +2576,7 @@ const { esc } = window.K;
 const { H, km2, edge } = window.KH;
 
 function table(ctx) {
-  const flat = new Set(H.grain_table.filter(g => g.occupied === 9).map(g => g.res));
+  const flat = new Set(flatRun(H).map(g => g.res));
   /* PORTED: the table is wider than 390 px and scrolls inside its own box. A box that scrolls and
      cannot be focused cannot be scrolled from a keyboard — the finding that put tabindex on the
      page before this one, re-made here. */
@@ -2595,30 +2595,77 @@ function table(ctx) {
     + `<p class="cap">Grey rows are the flat run. The row in bold is where the dial stands.</p>`;
 }
 
+/* THE FLAT RUN, read off the table instead of written down.
+ *
+ * This was `H.grain_table.filter(g => g.occupied === 9)` — node #1's own flat run as a literal.
+ * On that node, on 6 September, nine cells held something from one resolution inward and never
+ * changed again. On any other node the filter matched nothing, `flat[0].res` threw, and the whole
+ * decide stage printed "grain did not render". That is not a guess: it happened on a live node on
+ * 16 September 2026, where the contract's try/catch caught it and the section was lost.
+ *
+ * What the sentence is about is the tail of the table where turning the dial finer stops telling
+ * you anything — the run of rows at the fine end that all report the same number of occupied
+ * cells. That is a property of the table, so it is read from the table.
+ *
+ * Two nodes have no flat run to speak of and each says so rather than being given one: a node whose
+ * count is still changing at the finest resolution, and a node with no stations at all, where every
+ * row is zero and "the answer never changes" would be true of an empty page. `occupied > 0` is what
+ * separates the second from a real finding.
+ */
+function flatRun(H) {
+  const t = (H && H.grain_table) || [];
+  if (t.length < 2) return [];
+  const last = t[t.length - 1];
+  if (!last.occupied) return [];
+  let i = t.length - 1;
+  while (i > 0 && t[i - 1].occupied === last.occupied) i--;
+  const run = t.slice(i);
+  return run.length > 1 ? run : [];
+}
+
 window.PAI.register({
   id: 'grain', pack: 'core', stage: 'decide', order: 20,
   title: 'What each grain is worth',
   needs: ['H3.grain_table'],
   render(ctx) {
-    const flat = H.grain_table.filter(g => g.occupied === 9);
-    return `<p class="honest" id="flat-run" data-component="finding" data-ref="dial">Resolutions `
-      + `${flat[0].res} to ${flat[flat.length - 1].res} are one row repeated ${flat.length} times. `
-      + `Each is seven times finer than the one above it — `
-      + `<span data-num="grain.flat.ratio" data-cmp="the area ratio across ${flat.length - 1} steps `
-      + `of seven">${Math.pow(7, flat.length - 1).toLocaleString()}</span> times smaller by area over `
-      + `the ${flat.length} — and every one of them answers "who is near me" with the same `
-      + `${flat[0].occupied} cells and the same ${flat[0].mine_in_my_cell} sensors.</p>`
+    const flat = flatRun(H);
+    const rows = (H.grain_table || []).length;
+    const finding = flat.length
+      ? `<p class="honest" id="flat-run" data-component="finding" data-ref="dial">Resolutions `
+        + `${flat[0].res} to ${flat[flat.length - 1].res} are one row repeated ${flat.length} times. `
+        + `Each is seven times finer than the one above it — `
+        + `<span data-num="grain.flat.ratio" data-cmp="the area ratio across ${flat.length - 1} steps `
+        + `of seven">${Math.pow(7, flat.length - 1).toLocaleString()}</span> times smaller by area over `
+        + `the ${flat.length} — and every one of them answers "who is near me" with the same `
+        + `${flat[0].occupied} cells and the same ${flat[0].mine_in_my_cell} sensors.</p>`
+      /* No flat run is not a failure and not a blank: it is a different node, and the table below is
+         still worth reading. The two cases are named apart because they mean opposite things —
+         nothing to file, against a grain that is still earning its precision at the finest stop. */
+      : `<p class="honest" id="flat-run" data-component="finding" data-ref="dial">`
+        + (H.sensors && H.sensors.length
+          ? `On this node on this day the count of occupied cells is still changing at the finest `
+            + `resolution in the table, so there is no flat run to report: every stop of the dial is `
+            + `still earning its precision. The table below is the whole of it.`
+          : `No station on this node carries a coordinate, so every resolution files the same nothing `
+            + `and there is no grain to compare. The table below is still this node's own arithmetic: `
+            + `what one cell is worth at each of the ${rows} stops.`)
+        + `</p>`;
+    return finding
       + `<details class="fold"><summary>All eleven grains, and what each is worth</summary>`
       + table(ctx) + `</details>`;
   },
   notes() {
-    const flat = H.grain_table.filter(g => g.occupied === 9);
+    const flat = flatRun(H);
     return [
-      { id: 'grain-flat', text: `Past resolution ${flat[0].res}, on this node on this day, grain is `
-        + 'precision with no information in it. Four stops of the dial, each seven times finer than '
-        + 'the last, and the answer to "who is near me" does not change: the same nine cells hold '
-        + 'something and the same three sensors sit in this node’s own cell. Nothing in the first two '
-        + 'rounds of drawings could have shown this, because nothing in them varied the grain.' },
+      /* Every number in this note was node #1's, spelled out in words — "four stops", "the same
+         nine cells", "the same three sensors". They are this node's now, and the note is only made
+         at all where there is a flat run to make it about. */
+      ...(flat.length ? [{ id: 'grain-flat', text: `Past resolution ${flat[0].res}, on this node on `
+        + `this day, grain is precision with no information in it. ${flat.length} stops of the dial, `
+        + 'each seven times finer than the last, and the answer to "who is near me" does not change: '
+        + `the same ${flat[0].occupied} cells hold something and the same ${flat[0].mine_in_my_cell} `
+        + 'sensors sit in this node’s own cell. Nothing in the first two rounds of drawings could '
+        + 'have shown this, because nothing in them varied the grain.' }] : []),
       { id: 'grain-lines', text: `The two marks on the dial are the product’s own lines, not this `
         + `page’s. Resolution ${H.settings.PRESENCE_RES_FLOOR} and coarser may leave this machine — `
         + `it is PRESENCE_RES_FLOOR in app/main.py, the finest any node may announce. Past resolution `

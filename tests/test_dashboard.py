@@ -224,6 +224,34 @@ if shutil.which("node"):
     assert _c["unset"] == 3, f"a node that never set it lists three, not all fourteen: {_c}"
     assert _c["nine"] == 3, f"an unreadable value is the default, never an empty neighbourhood: {_c}"
 
+# The grain section's flat run is READ OFF the table, never written down.
+#
+# It shipped as `filter(g => g.occupied === 9)` -- node #1's own flat run as a literal -- and on the
+# live node proved on 16 September 2026 (no stations, every row zero) `flat[0].res` threw and the
+# whole decide stage printed "grain did not render". A literal that happens to be true of one node
+# is the thing this assertion exists to keep out.
+assert "g.occupied === 9" not in _js, \
+    "the grain section is back on node #1's own occupied count as a literal; it must read the table"
+assert "function flatRun(H)" in _js, "the grain section no longer derives its flat run"
+if shutil.which("node"):
+    _run = _lift(r"function flatRun\(H\) \{.*?\n\}", "flatRun()")
+    _tables = {
+        # node #1, 6 September: nine cells from resolution 9 inward and never again
+        "node1": [{"res": r, "occupied": 1 if r < 4 else 9 if r >= 9 else r} for r in range(2, 13)],
+        # a node with no station that carries a coordinate: every row zero, and no finding to make
+        "empty": [{"res": r, "occupied": 0} for r in range(2, 13)],
+        # a node still splitting cells at the finest stop: no flat run either, for the other reason
+        "busy": [{"res": r, "occupied": r} for r in range(2, 13)],
+    }
+    _f = json.loads(subprocess.run(
+        ["node", "-e", _run + "\nconst T = " + json.dumps(_tables) + ";\nconst out = {};\n"
+         + "for (const [k, grain_table] of Object.entries(T)) "
+         + "out[k] = flatRun({ grain_table }).map(r => r.res);\nconsole.log(JSON.stringify(out))"],
+        capture_output=True, text=True, check=True).stdout)
+    assert _f["node1"] == [9, 10, 11, 12], f"the flat run must be the tail that stops changing: {_f}"
+    assert _f["empty"] == [], f"every row zero is an empty node, not a finding about grain: {_f}"
+    assert _f["busy"] == [], f"a count still changing at the finest stop has no flat run: {_f}"
+
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
 # The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every
