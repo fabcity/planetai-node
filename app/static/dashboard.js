@@ -566,7 +566,12 @@ function refusedPage() {
 
 /* Every module reads these. The functions are bound now; the data and the view are bound by
  * initKit() once boot() has answered, because until then there is nothing to bind. */
-window.K = { esc, fmt, sign, pill, age, uid, cmpText,
+/* Fill a {placeholder} sentence from the words table. Restored with the network figure, which
+   is the only thing on this page whose copy is interpolated rather than assembled. */
+const interp = (str, vals) => String(str || '')
+  .replace(/\{(\w+)\}/g, (_, k) => (vals[k] == null ? '' : vals[k]));
+
+window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp,
   readout, stack, series, row, kicker, sentence, why, ask, stamp, asof, rhoRow, funnel,
   peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, REFUSED };
 
@@ -1249,9 +1254,15 @@ function notesBand(ctx, ordered) {
    * which fold holds what without opening all of them. Measured with every note open, the notes
    * were a third of the page — about 3,000 px of prose under a page meant to be read in a minute.
    * Folded they are one line each, still at the bottom, still one press from the answer. */
+  const n = groups.reduce((a, g) => a + g.notes.length, 0);
   return `<section class="band notes" id="notes" data-band="notes"><div class="k">`
-    + `<span>Notes</span><span class="pack">why the page says what it says · `
-    + `${groups.reduce((a, g) => a + g.notes.length, 0)} notes</span></div>`
+    + `<span>Where these numbers come from</span>`
+    + `<span class="pack">${n} ${n === 1 ? 'note' : 'notes'}</span></div>`
+    + `<p class="sub" id="notes-lead" data-component="notesLead" data-ref="notes">`
+    + `Everything above, explained: one fold for each part of the page, in the order you just read `
+    + `them. Open one to see what that part measured, where the figure came from, and what it does `
+    + `not say. Nothing here is needed to read the page — it is here for when you want to check `
+    + `it.</p>`
     + groups.map(g => `<details class="fold notefold" id="notes-${esc(g.section.id)}"`
       + ` data-component="notes" data-ref="${esc(g.section.id)}">`
       + `<summary><span class="t">${esc(g.section.title)}</span>`
@@ -2177,6 +2188,153 @@ window.PAI.register({
           + 'and not a year-over-year number it has not produced here.'
         : 'The land_change_yoy figure is the earth pack’s own, computed on this node from the '
           + 'embeddings it keeps.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= mods/netmap.js ==== */
+/* netmap · core · observe
+ *
+ * THE FIGURE OF A NODE AT WORK, AND WHY IT MOVES.
+ *
+ * This is the old page's network map, brought back at Tomas's word on 16 September: three things
+ * the node reads flowing IN along their wires, three things that leave flowing OUT along theirs,
+ * and the node breathing in the middle. It was dropped by the Phase 2 rewrite, which is the second
+ * time it has been lost and restored — the first was v0.53, for the same reason both times: drawn
+ * still, it reads as a diagram of a thing; drawn moving, it reads as a thing at work.
+ *
+ * TWO RULES THE MOTION OBEYS, and they are the whole of why it is allowed to move at all.
+ *
+ * A motion with no datum behind it is deleted. `flowing` is the third element of every row, and it
+ * is false when nothing actually travels that way — no parent, no Index cells, no asks. A wire with
+ * nothing on it is still drawn, dashed and faint, because the LINK exists; what does not exist is
+ * the traffic. A fresh node used to animate data moving outward to "nowhere yet", which is a page
+ * telling a household something the node never said.
+ *
+ * The motion is CSS and never SMIL. `@media (prefers-reduced-motion: reduce)` at the foot of
+ * dashboard.css turns every animation on this page off; it cannot touch an <animate> element, and
+ * that is the other half of why the original SMIL version was removed.
+ *
+ * The figure and the list under it are two renderings of the same six facts and nothing else, so
+ * they cannot come to disagree — and the list is what a phone gets, because a 1200-unit viewBox
+ * scaled to 375 px renders an 11 px label at about three pixels.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, interp } = window.K;
+
+/* The six facts, once. /sensors carries every kind the node knows (sensor, model, map, child) and
+ * /issues does not — it publishes only what has a coordinate — which is why this reads the sensor
+ * table rather than H3.sensors. */
+function facts(ctx) {
+  const all = window.SENSORS || [];
+  const cells = window.CELLS || [];
+  const rho = ctx.S.rho || {};
+  const parent = ((window.SETTINGS_RAW || {}).runtime || []).find(r => r.key === 'PARENT_API_URL') || {};
+  return {
+    health: ctx.S.health || {},
+    own: all.filter(s => s.local && s.kind === 'sensor').length,
+    ring: all.filter(s => !s.local && s.kind === 'sensor').length,
+    models: all.filter(s => s.kind === 'model').length,
+    cells,
+    /* `set` is truthful at every share level even when the value is masked, so a screen with no
+       token can say a parent exists without being told where it is. */
+    parentName: parent.set && parent.value && !/^\u2022+/.test(parent.value) ? parent.value : '',
+    acted: rho.acted || 0,
+    asks: rho.alerts_act || 0,
+  };
+}
+
+/* Each wire meets the node on its own point of the circle rather than all six on one: converging on
+ * a single point pinched the figure into a bowtie and the top and bottom wires crossed. */
+function wire(side, y) {
+  const k = (y - 180) * 0.3, ey = 180 + k, dx = Math.sqrt(74 * 74 - k * k);
+  return side === 'in' ? `M450 ${y} C 516 ${y} 548 ${ey} ${675 - dx} ${ey}`
+                       : `M${675 + dx} ${ey} C 800 ${ey} 800 ${y} 858 ${y}`;
+}
+
+/* In-wires run label -> node and out-wires node -> label, so the dash march and the travelling dot
+ * both go the way the data goes. Ink for what arrives, --cells for what leaves. */
+function rows(side, items) {
+  return items.map(([label, value, flowing], i) => {
+    const y = 96 + i * 84;
+    const x = side === 'in' ? 430 : 872;
+    const d = wire(side, y), ink = side === 'in' ? 'var(--ink)' : 'var(--cells)';
+    return `<text x="${x}" y="${y - 8}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="mono label"`
+      + ` font-size="11" letter-spacing=".1em" fill-opacity=".65">${esc(String(label).toUpperCase())}</text>`
+      + `<text x="${x}" y="${y + 14}" text-anchor="${side === 'in' ? 'end' : 'start'}" class="fig"`
+      + ` font-size="15" font-family="var(--fc-font-body)">${esc(value)}</text>`
+      + `<path class="wire" d="${d}" fill="none" stroke="${ink}" stroke-width="1.6"`
+      + ` stroke-opacity="${flowing ? '.55' : '.22'}"${flowing ? '' : ' stroke-dasharray="3 5"'}/>`
+      + (flowing ? `<circle class="dot" r="3.5" fill="${ink}"`
+                   + ` style="offset-path:path('${d}');animation-duration:${7 + i * 2.5}s"/>` : '');
+  }).join('');
+}
+
+window.PAI.register({
+  id: 'netmap', pack: 'core', stage: 'observe', order: 0,
+  title: 'This node, and what moves through it',
+  needs: ['SENSORS'],
+  render(ctx) {
+    const w = (window.W ? window.W() : {}).net || {};
+    const d = facts(ctx), h = d.health;
+    const n = (v, one, many) => `${v} ${v === 1 ? one : many}`;
+    const IN = [[w.yours, n(d.own, w.sensor, w.sensors), d.own > 0],
+                [w.street, n(d.ring, w.station, w.stations), d.ring > 0],
+                [w.models, n(d.models, w.model, w.models_), d.models > 0]];
+    const OUT = [[w.means, d.parentName || w.parentNowhere, !!d.parentName],
+                 [w.cellsOut, interp(w.cellsN, { n: d.cells.length }), d.cells.length > 0],
+                 [w.rhoOut, interp(w.rhoN, { closed: d.acted, total: d.asks }), d.asks > 0]];
+    const kept = interp(w.kept, { n: (h.ingested || 0).toLocaleString() });
+
+    const svg = `<svg class="net" viewBox="0 0 1200 380" role="img" aria-label="${esc(w.title || '')}">`
+      + `<text x="430" y="36" text-anchor="end" class="mono label" font-size="11" letter-spacing=".12em">`
+      + `${esc(String(w.reads || '').toUpperCase())}</text>`
+      + `<text x="872" y="36" class="mono label" font-size="11" letter-spacing=".12em">`
+      + `${esc(String(w.leavesShort || '').toUpperCase())}</text>`
+      + rows('in', IN) + rows('out', OUT)
+      + `<circle class="halo" cx="675" cy="180" r="74" fill="none" stroke="var(--ink)" stroke-opacity=".4"/>`
+      + `<circle cx="675" cy="180" r="74" fill="var(--ground)" stroke="var(--ink)"/>`
+      + `<text x="675" y="172" text-anchor="middle" class="fig" font-size="17"`
+      + ` font-family="var(--fc-font-display)" font-weight="700">${esc(h.node || 'node')}</text>`
+      + `<text x="675" y="196" text-anchor="middle" class="mono label" font-size="10.5"`
+      + ` letter-spacing=".1em" fill-opacity=".65">${esc(String(h.kind || w.home || '').toUpperCase())}</text>`
+      + `<text x="675" y="330" text-anchor="middle" class="mono label" font-size="11" fill-opacity=".65">`
+      + `${esc(kept)}</text></svg>`;
+
+    const list = side => side.map(([label, value]) =>
+      `<div class="vit"><span>${esc(label)}</span><span>${esc(value)}</span></div>`).join('');
+    const text = `<div class="netlist">`
+      + `<div class="k">${esc(w.reads || '')}</div>${list(IN)}`
+      + `<div class="netnode">${esc(h.node || 'node')} <span class="note">${esc(h.kind || w.home || '')}</span></div>`
+      + `<div class="k">${esc(w.leaves || '')}</div>${list(OUT)}`
+      + `<p class="note mt">${esc(kept)}</p></div>`;
+
+    return `<div data-component="netMap" id="netmap-fig" data-ref="netmap">${svg}${text}`
+      + `<p class="cap" id="netmap-cap" data-ref="netmap-fig">`
+      + `<span data-num="netmap.kept" data-cmp="readings this node has taken and kept; none of them `
+      + `leave it">${esc(String((h.ingested || 0).toLocaleString()))}</span> \u00b7 ${esc(w.sub || '')}</p></div>`;
+  },
+  notes(ctx) {
+    const d = facts(ctx);
+    const still = [['a parent', !!d.parentName], ['Index cells', d.cells.length > 0],
+                   ['answered asks', d.asks > 0]].filter(([, on]) => !on).map(([k]) => k);
+    return [
+      { id: 'netmap-motion', text: 'The wires carry a moving dot only where something actually '
+        + 'travels. A dashed, faint wire is a link that exists with no traffic on it'
+        + (still.length ? `, which on this node is ${still.join(' and ')}.` : ', of which this node '
+          + 'has none right now \u2014 all six are carrying.')
+        + ' A motion with no datum behind it would be the page telling this house something the node '
+        + 'never said.' },
+      { id: 'netmap-still', text: 'Every animation here is CSS, so the operating system\u2019s '
+        + '"reduce motion" setting stops all of it. The original figure used SVG\u2019s own <animate>, '
+        + 'which ignores that setting, and that is why it was rewritten rather than restored as it was.' },
+      { id: 'netmap-what', text: `Readings stay on this machine \u2014 ${(d.health.ingested || 0)
+        .toLocaleString()} of them so far, and not one leaves. What travels up to a community node is `
+        + 'hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.' },
     ];
   },
 });
@@ -3579,8 +3737,14 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast] = await Promise.all([
+  const [trust, forecast, sensors, cells] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
+    /* The network figure's own two reads, restored with it. /issues publishes only stations that
+       carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
+       the whole sensor table, kinds and all, which is what /sensors has always been. /cells is the
+       Index, and is what "Index cells" out of this node actually means. Both are routes the node
+       already serves and the page this replaces already read; neither is new. */
+    api('/sensors').catch(() => null), api('/cells').catch(() => null),
   ]);
 
   window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
@@ -3592,8 +3756,14 @@ async function boot() {
       mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
     node: { lat: health.lat, lon: health.lon, name: health.node } };
   window.SETTINGS = flatSettings(settings);
+  /* describe()'s own body as well as the flat map: `set` is true for a key whose value is masked,
+     which is the only way a screen with no token can say a parent exists without being told where
+     it is. flatSettings() drops masked rows by design and cannot answer that. */
+  window.SETTINGS_RAW = settings;
   readLayout(settings);
   window.EARTH = earth;
+  window.SENSORS = sensors;
+  window.CELLS = cells;
   window.TRUST = trust;
   window.FORECAST = forecast;
   window.PLAN = await plan(health).catch(() => null);
@@ -3897,7 +4067,7 @@ function main() {
      them rather than at the top of the page about the network.
      Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
      it last spoke are a history of that sensor, not a fact about now. */
-  const NETWORK = ['reticulum', 'meshtastic', 'hardware'];
+  const NETWORK = ['netmap', 'reticulum', 'meshtastic', 'hardware'];
   const HISTORICAL = ['satellite', 'trust'];
   applyOrder();
 
@@ -4208,15 +4378,23 @@ const route = () => window.PAI_ROUTE();
 
 /* The two words this pane took from the old renderer's language table. Three languages, as before;
  * the household's own comes off GET /health and window.K.LOC carries it. */
+/* NET carries the words the network figure speaks. They lived in this table until the modular page
+ * replaced it, and are lifted back from v0.53 unchanged, in the three languages the node delivers
+ * every sentence in. A figure that is English-only on a node answering in Indonesian is the S-01
+ * fault the September review closed; re-writing this copy here would have re-opened it. */
 const WORDS = {
   en: { leavesMachine: 'leaves this machine',
-    openOnAnotherScreen: 'Open this on another screen in the house:' },
+    openOnAnotherScreen: 'Open this on another screen in the house:',
+    net: { cellsN: '{n} of 20', cellsOut: 'Index cells', home: 'home', kept: '{n} readings kept, none of them leave', leaves: 'What leaves this house', leavesShort: 'what leaves', means: 'hourly means', model: 'model', models: 'the models', models_: 'models', parentNowhere: 'nowhere yet', reads: 'What this node reads', rhoN: '{closed} of {total}', rhoOut: 'answered asks', sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations', street: 'the street', sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.', title: 'This house is one node of a much larger instrument.', yours: 'your sensors' }, },
   id: { leavesMachine: 'keluar dari mesin ini',
-    openOnAnotherScreen: 'Buka ini di layar lain di rumah:' },
+    openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
+    net: { cellsN: '{n} dari 20', cellsOut: 'sel Indeks', home: 'rumah', kept: '{n} bacaan disimpan, tidak satu pun keluar', leaves: 'Yang keluar dari rumah ini', leavesShort: 'yang keluar', means: 'rata-rata per jam', model: 'model', models: 'model', models_: 'model', parentNowhere: 'belum ke mana-mana', reads: 'Yang dibaca node ini', rhoN: '{closed} dari {total}', rhoOut: 'permintaan dijawab', sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik', street: 'jalan', sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.', title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.', yours: 'sensor Anda' }, },
   es: { leavesMachine: 'sale de esta máquina',
-    openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:' },
+    openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
+    net: { cellsN: '{n} de 20', cellsOut: 'celdas del \u00cdndice', home: 'casa', kept: '{n} lecturas guardadas, ninguna sale', leaves: 'Lo que sale de esta casa', leavesShort: 'lo que sale', means: 'medias horarias', model: 'modelo', models: 'los modelos', models_: 'modelos', parentNowhere: 'a ning\u00fan sitio todav\u00eda', reads: 'Lo que lee este nodo', rhoN: '{closed} de {total}', rhoOut: 'peticiones respondidas', sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas', street: 'la calle', sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.', title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.', yours: 'tus sensores' }, },
 };
 const W = () => WORDS[(window.K || {}).LOC] || WORDS.en;
+window.W = W;
 
 /* The skeleton, verbatim from the page this replaces (app/static/index.html at 685fe1a) minus its
  * own <section class="view"> and .wrap, which the shell draws. Every id the measuring rig and the
