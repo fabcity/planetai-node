@@ -1,0 +1,11 @@
+# Reads `observations` (slow sources), not `stats` (24h rolling, sensors only).
+- id: repair_commons_quiet
+  level: warn
+  cooldown_minutes: 10080          # weekly at most
+  long_cooldown_ok: true
+  sql: |
+    SELECT sensor_id, name, round(value)::int AS pct FROM observations
+    WHERE kind = 'portal' AND metric = 'knowledge_fresh_90d_pct' AND value < 10
+  message:
+    en: "🛠️ The repair commons has gone quiet.\n\nBarely any of what {name} holds has been written or revised in the last three months ({pct}%). Repair knowledge ages: a guide for a model nobody still owns helps nobody, and the things people are throwing away this year are undocumented.\n\n👉 Worth a repair café, or an afternoon writing up what you fixed."
+    id: "🛠️ Lumbung pengetahuan perbaikan sedang sepi.\n\nHampir tidak ada isi {name} yang ditulis atau diperbarui dalam tiga bulan terakhir ({pct}%). Pengetahuan perbaikan ikut menua: panduan untuk model yang sudah tak dipakai tidak menolong siapa pun, dan barang yang dibuang tahun ini belum terdokumentasi.\n\n👉 Layak diangkat di repair café, atau satu sore menulis apa yang sudah kamu perbaiki."

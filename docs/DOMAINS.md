@@ -12,7 +12,8 @@ issue is something a place can be better or worse at, that somebody living there
 Not every domain is an issue. *Weather* feeds air and heat — wind for working out where a smell came
 from, the forecast for the day ahead — but nobody asks how the weather is doing as a quality of their
 place. *Place* is the ground everything else sits on. *Governance* is the loop and the Index. *Trust*
-is the node's own instruments, not the place at all.
+is the node's own instruments, not the place at all. *Repair* is a catalogue of what can be
+fixed, kept by people, not a measurement of the ground.
 
 | issue | packs | kind | the line, and where it comes from |
 |---|---|---|---|
@@ -23,6 +24,7 @@ is the node's own instruments, not the place at all.
 | — | `forecast` (weather) | | feeds air and heat |
 | — | `place` | | the ground, its own band on the dashboard |
 | — | `open-data-health` (governance) | | the loop and the Index |
+| — | `thingdata` (repair) | | a catalogue of repair knowledge somebody maintains, not a quality of this place |
 | — | `trust` | | the instruments |
 | — | `insight`, `cold-start` (cross-domain) | | each rule belongs to the issue it names |
 

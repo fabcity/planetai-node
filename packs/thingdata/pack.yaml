@@ -1,0 +1,21 @@
+id: thingdata
+name: ThingData
+description: >-
+  Reads a ThingData server — the reuse-city repair-knowledge protocol — and turns its catalogue into
+  observations: how many things are described, how many have a repair guide, and whether anyone is
+  still writing. A repair commons nobody adds to is an archive, not a commons.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.10.0" }
+kind: code
+domain: repair
+metrics: [things_total, guides_total, stories_total, things_documented_pct, knowledge_fresh_90d_pct]
+scales: [city, region]
+env:
+  - "# thingdata: the servers to read, slug=url, comma separated. Leave blank and the pack idles."
+  - "THINGDATA_INSTANCES="
+  - "# thingdata: scale of what those servers cover — city or region"
+  - "THINGDATA_SCALE=city"
+  - "# thingdata: refuse to count a collection larger than this (one page is 100 rows)"
+  - "THINGDATA_MAX=5000"
+attribution: "ThingData Protocol server (reuse-city), https://github.com/reuse-city/thingdata-server"
