@@ -726,12 +726,30 @@ const { address, km2, edge } = window.KH;
 const N = H.nav;
 
 /* ------------------------------------------------------------------ where the reader is */
-const Q = new URLSearchParams(location.search);
+/* READ AT CALL TIME, NEVER CAPTURED AT LOAD.
+ *
+ * This was `const Q = new URLSearchParams(location.search)` at module scope, and where() read the
+ * cell and the resolution out of it. That was correct for as long as every press reloaded the
+ * document — the module ran again, and the capture was the new URL. The moment presses became
+ * re-renders (v0.55) it became a snapshot of the query the page was FIRST opened with, so the dial
+ * and every cell link changed the URL and nothing else: same resolution, same cell, same grain
+ * line, same groups. Reported from node #1 the same day, and it is the whole of that fault.
+ *
+ * ctx.Q is rebuilt inside main() on every render, which is why the variable selector, the base
+ * layer and "show all" all kept working and only the dial and the cells looked dead — a difference
+ * that made the bug look like a map problem rather than a stale-read problem.
+ *
+ * The rule this leaves behind: nothing in this file may read location at module scope. FIXTURE is
+ * the one exception and is marked where it is declared — it is answered once, at boot, and a
+ * re-render cannot change which snapshot the node replayed.
+ */
+const query = () => new URLSearchParams(location.search);
 
 /* A direction names the resolution it opens at; the reader's own position wins over it. An id in
  * the query that this node never published is not an error to hide — it is the honest answer "that
  * is not a place I was told about", and the page says so. */
 function where(defaultRes) {
+  const Q = query();
   const asked = Q.get('cell');
   const res = Math.max(N.res_min, Math.min(N.res_max, +(Q.get('res') || defaultRes || 8)));
   const id = asked || N.chain[res];
@@ -3381,6 +3399,9 @@ window.WALL = { render, start, field, dial, grain };
 (function () {
 'use strict';
 
+/* The one load-time read of the URL that is allowed to be one: which snapshot the node replayed is
+   answered once, at boot, and no re-render can change it. Everything else reads at call time — see
+   query() and the note above where(). */
 const FIXTURE = new URLSearchParams(location.search).get('fixture');
 
 /* ------------------------------------------------------------------ the one thing that fetches */

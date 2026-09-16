@@ -29,6 +29,12 @@ node tests/visual/measure.mjs render now_populated_1440 now_populated_390 >/dev/
 PAI_Q="?fixture=node1-2026-09-06&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
 node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_populated_1920_dark >/dev/null
 
+# A press must redraw. Every check below this line measures one render, and since v0.55 a control
+# is a re-render rather than a document load — so a dead control changes the URL, fires no request,
+# and leaves every static number here exactly as it was. That is not hypothetical: v0.55 shipped
+# with the dial dead and this gate was green. This presses it.
+node tests/visual/measure.mjs press
+
 node - <<'JS'
 const fs = require('fs'), out = process.env.PAI_OUT;
 const j = n => JSON.parse(fs.readFileSync(`${out}/${n}.json`, 'utf8'));
