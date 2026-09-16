@@ -3109,6 +3109,31 @@ const at = (ctx, res) => ({ ...ctx, RES: res,
 
 const VAR = ctx => (ctx.Q.get('var') && H.metrics[ctx.Q.get('var')] ? ctx.Q.get('var') : 'pm25');
 
+/* WHAT THE WALL MAY SHOW. The field has always drawn whatever `?var=` named and defaulted to PM2.5;
+ * what it never had was a way to say so from the wall itself, so a wall was an air-quality wall and
+ * nothing else — reported from node #1.
+ *
+ * The strip offers every variable at least one station on this node actually carries, in the order
+ * the node declares them. It is not a list of air-quality variables and there is nothing here that
+ * knows the word "air": when a water pack or a soil pack publishes a metric and a station reads it,
+ * it appears in this strip because it appears in H.metrics, with no change to this file. That is the
+ * whole of what "and eventually other categories" needs from the wall.
+ *
+ * A variable no station reads is not offered. A control that draws an empty field is a control that
+ * lies about what this node measures. */
+const carried = () => Object.keys(H.metrics).filter(v => (H.sensors || []).some(s => s.read && s.read[v]));
+
+function vars(ctx) {
+  const { esc } = ctx.K;
+  const list = carried(), v = VAR(ctx);
+  if (list.length < 2) return '';
+  return `<div class="wvars" id="wall-vars" data-component="wallVars" data-ref="wall-field"`
+    + ` role="group" aria-label="what the cells show">`
+    + list.map(k => `<a class="${k === v ? 'on' : ''}" href="${esc(ctx.qlink({ var: k }))}"`
+      + `${k === v ? ' aria-current="true"' : ''}>${esc(H.metrics[k].label)}</a>`).join('')
+    + `</div>`;
+}
+
 /* The centre of a projected cell: the mean of its path's vertices. make-h3.mjs wrote the path;
  * this reads it back rather than asking for a second field it would then have to ship. */
 function centroid(d) {
@@ -3316,6 +3341,7 @@ function render(ctx, sel) {
     + `<div id="band-${esc(hk)}">${K.kicker(hk, d)}${K.sentence(hk, d, 'big')}${K.why(hk, d)}${K.ask(hk, d)}</div>`
     + `<div class="wdial" id="wall-dial" data-component="dial" data-ref="wall-field" role="group"`
     + ` aria-label="the dial">${dial(ctx)}</div>`
+    + vars(ctx)
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
     + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
     + `</div></div>`
@@ -3731,8 +3757,8 @@ window.PAI_ROUTE = () => route();
 /* The header, shared by the page and by the refused page, because a household with no token still
  * has to be able to reach the other views. The node's name is an <h1>: the page had none at all
  * before that was found by looking, and page-has-heading-one fired on every view in every state. */
-const VIEWS = [['now', 'Now'], ['network', 'Network'], ['setup', 'Set up'], ['wall', 'Wall'],
-  ['arrange', 'Arrange']];
+const VIEWS = [['now', 'Now'], ['network', 'Network'], ['historical', 'Historical'],
+  ['setup', 'Set up'], ['wall', 'Wall'], ['arrange', 'Arrange']];
 function chrome(node, city, view) {
   const esc = window.K.esc;
   return `<header id="header"><div class="wrap">`
@@ -3864,7 +3890,15 @@ function main() {
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
   const NOW = ['ground', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
-  const NETWORK = ['satellite', 'reticulum', 'meshtastic', 'hardware', 'trust'];
+  /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
+     hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
+     out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a
+     record of this ground in past years, and it belongs with the other things that have a date on
+     them rather than at the top of the page about the network.
+     Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
+     it last spoke are a history of that sensor, not a fact about now. */
+  const NETWORK = ['reticulum', 'meshtastic', 'hardware'];
+  const HISTORICAL = ['satellite', 'trust'];
   applyOrder();
 
   const el = document.getElementById('page');
@@ -3898,6 +3932,8 @@ function main() {
     if (ARRANGING) { arrangeControls(); fillRestore(); }
   } else if (VIEW === 'network') {
     el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(NETWORK) })}</div>`;
+  } else if (VIEW === 'historical') {
+    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(HISTORICAL) })}</div>`;
   } else {
     /* Set up, in the modular page, gains one box the drawings did not have: the sections this node
        runs, by pack, drawn from the real registry — so the list is what this node has and not a
