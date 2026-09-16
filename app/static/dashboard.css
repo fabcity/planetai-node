@@ -394,6 +394,10 @@ details.notefold[open] > summary .n::after { content: ' · open' }
 .noteitem dd { margin: 0; font-size: 13.5px; line-height: 1.5; max-width: 72ch; color: var(--ink) }
 
 /* a control strip inside a section: square, ink, and the only place a border means press me */
+/* A base this node will not send for, drawn rather than hidden: a reader can see that satellite and
+   street exist and that one setting stands between them and the map. Not a link, not pressable, and
+   struck through so it cannot be mistaken for one. */
+.ctlstrip .off { color: var(--mute); opacity: .5; text-decoration: line-through; cursor: not-allowed }
 .ctlstrip { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--ink); width: max-content;
   max-width: 100%; margin-bottom: 10px }
 .ctlstrip a { padding: 6px 12px; font: 500 12px var(--fc-font-body); color: var(--mute);
@@ -418,7 +422,15 @@ table.tbl tr.picked td { font-weight: 700 }
 table.tbl tr.flat td { color: var(--mute) }
 
 body.wall header, body.wall .dialwrap, body.wall .band { display: none }
-.wallbox { min-height: 100vh; padding: clamp(26px, 2.6vw, 46px); display: flex; flex-direction: column;
+/* The way out of the wall. Quiet until it is wanted: a wall is looked at from three metres and
+   read by nobody standing at the keyboard, so the control sits in the corner at low contrast and
+   comes up to full on hover and on focus. Never hidden — a door that only appears once you know
+   it is there is the bug this fixes. */
+.wall .exit { position: absolute; top: 18px; right: 22px; z-index: 3; background: none;
+  border: 1px solid var(--hair); color: var(--mute); cursor: pointer; padding: 6px 12px;
+  font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; opacity: .55 }
+.wall .exit:hover, .wall .exit:focus-visible { opacity: 1; color: var(--ink); border-color: var(--ink) }
+.wallbox { position: relative; min-height: 100vh; padding: clamp(26px, 2.6vw, 46px); display: flex; flex-direction: column;
   justify-content: center; gap: clamp(14px, 1.8vw, 26px) }
 .wallbox .k { font-size: clamp(13px, 1.05vw, 20px) }
 .wallbox .big { font: 700 clamp(1.9rem, 3.8vw, 3.6rem)/1.1 var(--fc-font-display);
