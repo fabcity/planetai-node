@@ -534,6 +534,44 @@ details.fold[open] > summary { border-bottom: 1px solid var(--hair); margin-bott
   animation: wall-tick 8000ms linear forwards }
 .wallbox .clock.held i { animation-play-state: paused }
 @keyframes wall-tick { from { width: 0 } to { width: 100% } }
+/* ---------------------------------------------------------------- the network figure
+   Lifted from v0.53 with the figure itself. The wires march their dashes and carry one dot each,
+   and a halo breathes around the node.
+
+   CSS animations, never SMIL: the reduced-motion rule below can switch a CSS animation off and
+   cannot touch an <animate> element, which is why the original SVG-animated version was dropped
+   rather than kept. */
+svg.net { width: 100%; height: auto; display: block; margin-top: clamp(12px, 1.6vw, 20px) }
+.netlist { display: none }
+.netnode { font: 700 15px var(--fc-font-display); padding: 12px 0;
+  border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); margin: 4px 0 }
+.netnode .note { font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; margin-left: 8px }
+.netlist .k { margin-top: 14px }
+.vit { display: flex; justify-content: space-between; gap: 6px 14px; flex-wrap: wrap; padding: 8px 0;
+  border-top: 1px solid var(--hair); font-size: 13.5px }
+.vit:first-of-type { border-top: 0 }
+.vit span:first-child { min-width: 0; overflow-wrap: anywhere }
+.vit span:last-child { font: 500 12px var(--mono); color: var(--mute); text-align: right; white-space: nowrap }
+/* A 1200-unit viewBox scaled to 375 px renders an 11 px label at about three pixels: the figure
+   would be there and unreadable, so a narrow screen gets the same six facts as text instead. */
+@media (max-width: 700px) { svg.net { display: none } .netlist { display: block } }
+@keyframes netflow { to { stroke-dashoffset: -96 } }
+@keyframes netdot { to { offset-distance: 100% } }
+@keyframes nethalo { from { transform: scale(.92); opacity: .5 } to { transform: scale(1.55); opacity: 0 } }
+svg.net .wire { stroke-dasharray: 3 9; stroke-linecap: round; animation: netflow 3.4s linear infinite }
+svg.net .dot { offset-distance: 0; animation: netdot 9s linear infinite }
+/* The halo IS the reading pulse, so it reads the frozen layer's token for one rather than a number
+   typed here — and that token is already 0s under reduced motion. The wire and the dot keep
+   their own numbers on purpose: no token names them, and the datum they would answer to is the poll
+   cadence, 300s on node #1, which would read as a frozen figure rather than a slow one. */
+svg.net .halo { transform-origin: 675px 180px; animation: nethalo var(--motion-reading-pulse) ease-out infinite }
+
+/* THE GUARD THAT MAKES ALL OF THE ABOVE ALLOWED. The frozen layer zeroes its own motion tokens
+   under reduced motion, which covers the halo; the wire and the dot carry literal durations and
+   would keep moving without this. A household that has asked its machine to stop animating things
+   has asked this page too. */
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after {
+  animation: none !important; transition: none !important } }
 @media (prefers-reduced-motion: reduce) { .wallbox .clock { visibility: hidden } }
 /* the grain, as three numbers, and the modules' row under the field */
 .wallbox .wgrain { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 16px }
