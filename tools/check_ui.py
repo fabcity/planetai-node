@@ -382,7 +382,9 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    ".wf .cap",                   # the wireframe's captions and a pack's own id
                    '[data-kind="readout"] .lab',  # guarded: the title itself is in .said
                    "details.fold > summary",     # "All eleven grains, and what each is worth"
-                   "table.tbl th"}               # the grain table's column headings
+                   "table.tbl th",               # the grain table's column headings
+                   # Added 16 September 2026 with the station list's display cap.
+                   ".stations .more a"}          # "show all" and "show N" — the page's own two words
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "

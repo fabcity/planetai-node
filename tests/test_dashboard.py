@@ -186,6 +186,44 @@ if shutil.which("node"):
     assert all(v["rowsKept"] for v in _t.values()), \
         "the runtime rows themselves must survive: the Set up pane and readLayout() read them"
 
+    # STATIONS_SHOWN, read the same way and for the same reason. The list draws this node's own
+    # hardware plus the nearest N of everybody else's, so the keeper's number has to survive the
+    # same trip MAP_TILES did not: GET /settings is describe(), never a flat map, and this runs the
+    # page's own capOf() against that endpoint's real body rather than against a map written here.
+    #
+    # The two that are not about plumbing: a blank value is the default, not "no cap" (a node that
+    # has never touched the setting must not get a fourteen-row list), and an unreadable one is the
+    # default, not zero and not an empty neighbourhood (a typo in a settings box may not blank the
+    # section). 0 alone means every station.
+    _cap_js = "\n".join((
+        _lift(r"const STATIONS_DEFAULT = \d+;", "STATIONS_DEFAULT"),
+        _lift(r"const capOf = \(settings\) =>.*?\n\};", "capOf()"),
+        _lift(r"const MASKED = '[^']*';", "MASKED"),
+        _lift(r"function flatSettings\(d\) \{.*?\n\}", "flatSettings()"),
+    ))
+    _sb = os.environ.get("STATIONS_SHOWN")
+    _caps = {}
+    for _v in ("3", "7", "0", "", "nine"):
+        if _v == "":
+            os.environ.pop("STATIONS_SHOWN", None)
+        else:
+            os.environ["STATIONS_SHOWN"] = _v
+        _settings._cache["at"] = 0.0
+        _caps[_v or "unset"] = _settings.describe(unlocked=False, public=_settings.PUBLIC)
+    os.environ.pop("STATIONS_SHOWN", None) if _sb is None else os.environ.__setitem__("STATIONS_SHOWN", _sb)
+    _settings._cache["at"] = 0.0
+
+    _c = json.loads(subprocess.run(
+        ["node", "-e", _cap_js + "\nconst B = " + json.dumps(_caps) + ";\n"
+         + "const out = {};\nfor (const [k, body] of Object.entries(B)) "
+         + "out[k] = capOf(flatSettings(body));\nconsole.log(JSON.stringify(out))"],
+        capture_output=True, text=True, check=True).stdout)
+
+    assert _c["3"] == 3 and _c["7"] == 7, f"the keeper's number must reach the page: {_c}"
+    assert _c["0"] is None, f"0 lists every station: {_c}"
+    assert _c["unset"] == 3, f"a node that never set it lists three, not all fourteen: {_c}"
+    assert _c["nine"] == 3, f"an unreadable value is the default, never an empty neighbourhood: {_c}"
+
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
 # The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every

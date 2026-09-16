@@ -1693,6 +1693,67 @@ const chosen = (ctx, metrics) => {
  * that offered battery voltage when nothing here reports it would be a control that does nothing. */
 const carried = H => Object.keys(H.metrics).filter(v => H.sensors.some(s => s.read[v]));
 
+/* THE CAP. Fourteen stations is a list nobody reads to the end; three is a neighbourhood.
+ * STATIONS_SHOWN (Set up → node, default 3) says how many of OTHER PEOPLE'S stations the list
+ * draws, nearest first. This node's own hardware is never counted against it and never hidden: a
+ * house putting its own sensors behind a press would be concealing the one thing it certainly may
+ * show.
+ *
+ * Nothing is dropped from the capture and nothing stops being collected — the setting that
+ * collects fewer stations is BAD_RADIUS_KM, and that is a different decision taken in a different
+ * box. The list also never goes quiet about what it left out: the line under it counts the stations
+ * it is not drawing, says how far out they reach, and one press draws them all. A page that
+ * shortened itself silently would be doing the very thing the fenced median was built not to do.
+ *
+ * `0` means no cap. An unreadable value means the default rather than an empty list: a typo in a
+ * settings box must not be able to empty the neighbourhood off the page.
+ */
+const STATIONS_DEFAULT = 3;
+const capOf = (settings) => {
+  const raw = String(((settings || {}).STATIONS_SHOWN) ?? '').trim();
+  if (raw === '') return STATIONS_DEFAULT;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) return STATIONS_DEFAULT;
+  return n === 0 ? null : n;          // null = every station, no cap
+};
+
+/* Which stations the list draws, and which it is holding back. `?stations=all` lifts the cap and is
+ * a query key like every other control here, so the dial's position and the chosen variable survive
+ * the press. H.sensors arrives sorted by distance with the unknowns last (engine.py's _stations),
+ * so "nearest first" is simply the order it came in — and unsited, where every km is null, that
+ * is publication order, and the line below says so rather than calling it nearness. */
+function shown(ctx) {
+  const all = ctx.H.sensors;
+  const mine = all.filter(s => s.local), theirs = all.filter(s => !s.local);
+  const n = capOf(window.SETTINGS);
+  const lifted = ctx.Q.get('stations') === 'all';
+  if (lifted || n == null || theirs.length <= n) return { ids: null, hidden: [], theirs, n, lifted };
+  return { ids: new Set([...mine, ...theirs.slice(0, n)].map(s => s.sensor_id)),
+           hidden: theirs.slice(n), theirs, n, lifted };
+}
+
+/* The cap's own line: what is not on the page, and the press that puts it there. Nothing at all
+ * when the node has fewer stations than the cap — a page need not announce a limit that never
+ * bit. */
+function moreLine(ctx, cap) {
+  const capped = cap.n != null && cap.theirs.length > cap.n;
+  if (!cap.hidden.length && !(cap.lifted && capped)) return '';
+  const press = (q, t) => `<a href="${esc(ctx.qlink({ stations: q }))}">${esc(t)}</a>`;
+  const head = `<p class="more" id="sensors-more" data-component="stationsCap" data-ref="sensors-list">`;
+  if (!cap.hidden.length) {
+    return head + `<b data-num="sensors.shown" data-cmp="every station in this capture that is not `
+      + `this node's own">all ${cap.theirs.length}</b> <span>of the neighbourhood’s stations `
+      + `are listed</span> ${press(null, `show ${cap.n}`)}</p>`;
+  }
+  const kms = cap.hidden.map(s => s.km).filter(k => k != null);
+  return head + `<b data-num="sensors.hidden" data-cmp="of ${cap.theirs.length} stations in this `
+    + `capture that are not this node’s own">${cap.hidden.length} more</b> <span>`
+    + (kms.length
+      ? `${esc(fmt(Math.min(...kms), 1))}–${esc(fmt(Math.max(...kms), 1))} km out`
+      : `distance unknown, this node has no coordinates`)
+    + ` · still read, still inside the median, not drawn here</span> ${press('all', 'show all')}</p>`;
+}
+
 /* The line a variable may be measured against: the issue's line, and only when the issue's own
  * metric IS this variable. Fifteen micrograms is a PM2.5 line; printing it under PM10 would be a
  * comparison nobody declared. */
@@ -1797,7 +1858,7 @@ function station(ctx, s, v, m, sc, L, ref) {
 /* Stations by the cell they fall in at the dial's resolution: this node's own cell first, then by
  * distance. Two stations in one cell are two rows — the whole reason to draw cells is that they
  * are not one number. */
-function groups(ctx) {
+function groups(ctx, ids) {
   const by = new Map();
   for (const s of ctx.H.sensors) {
     /* '' is a station outside the two steps this node published at this resolution — not an error
@@ -1810,11 +1871,18 @@ function groups(ctx) {
   /* Unsited, every km is null: the groups keep the order the node sent and the header says the
      distance is not known rather than ordering the neighbourhood by a number that is not one. */
   const kms = ss => ss.map(s => s.km).filter(k => k != null);
+  /* `n` is how many stations this node knows of in the cell; `ss` is how many the cap lets the list
+     draw. The header prints both when they differ, so a shortened cell says that it is short. The
+     distance range stays the whole cell's: that is a fact about the cell, not about how much of it
+     is on the page. */
   return [...by.entries()].map(([cell, ss]) => ({
-    cell, ss: ss.slice().sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity)), own: cell === own,
+    cell, n: ss.length, own: cell === own,
+    ss: ss.slice().sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
+      .filter(s => !ids || ids.has(s.sensor_id)),
     km: kms(ss).length ? Math.min(...kms(ss)) : null,
     kmMax: kms(ss).length ? Math.max(...kms(ss)) : null,
-  })).sort((a, b) => (a.own ? -1 : b.own ? 1 : 0) || (a.km ?? Infinity) - (b.km ?? Infinity));
+  })).filter(g => g.ss.length)
+    .sort((a, b) => (a.own ? -1 : b.own ? 1 : 0) || (a.km ?? Infinity) - (b.km ?? Infinity));
 }
 
 const KM = g => g.own ? 'this node’s own cell'
@@ -1845,18 +1913,20 @@ window.PAI.register({
     const v = chosen(ctx, H.metrics), m = H.metrics[v];
     const L = lineFor(ctx, v);
     const sc = scaleFor(H, v, L.line);
-    const gs = groups(ctx);
+    const cap = shown(ctx);
+    const gs = groups(ctx, cap.ids);
     let html = `<div class="stations" id="sensors-list">`;
     for (const g of gs) {
       const id = `sensors-cell-${g.cell || 'outside'}`;
       html += `<div class="cellhead" id="${id}" data-component="cellGroup" data-ref="dial">`
         + CELLHEAD(ctx, g)
         + `<span class="n"><b data-num="sensors.cell.${esc(g.cell || 'outside')}.n" data-cmp="against `
-        + `${H.sensors.length} stations with a coordinate in this capture">${g.ss.length}</b> `
-        + `${g.ss.length === 1 ? 'station' : 'stations'} · ${KM(g)}</span></div>`
+        + `${H.sensors.length} stations with a coordinate in this capture">${g.ss.length}`
+        + `${g.n > g.ss.length ? ` of ${g.n}` : ''}</b> `
+        + `${g.n === 1 ? 'station' : 'stations'} · ${KM(g)}</span></div>`
         + g.ss.map(s => station(ctx, s, v, m, sc, L, id)).join('');
     }
-    html += `</div>`;
+    html += moreLine(ctx, cap) + `</div>`;
     const carry = H.sensors.filter(s => s.read[v]).length;
     const traced = H.sensors.filter(s => (s.series[v] || []).length).length;
     const attrib = [...new Set(H.sensors.map(s => s.attribution).filter(Boolean))];

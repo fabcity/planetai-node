@@ -72,4 +72,12 @@ except (ValueError, KeyError):
 # get() with a fallback proves nothing: assert the shipped default is in .env.example, the real source
 assert "MAP_TILES=off" in open(".env.example").read(), "MAP_TILES defaults to off in the shipped .env.example"
 
+# --- STATIONS_SHOWN: the list's display cap. Nothing here changes what the node collects ---------------------
+assert "STATIONS_SHOWN" in settings.PUBLIC, \
+    "STATIONS_SHOWN is a public setting, or a reader with no token gets the default and the keeper's choice is lost"
+assert "STATIONS_SHOWN" not in settings.OUTWARD, \
+    "a display cap decides what this house looks at, never what leaves it; BAD_RADIUS_KM is the one that collects"
+assert "STATIONS_SHOWN=3" in open(".env.example").read(), \
+    "STATIONS_SHOWN defaults to 3 in the shipped .env.example"
+
 print("all settings tests pass")
