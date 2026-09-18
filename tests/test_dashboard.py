@@ -349,6 +349,15 @@ _rd = _js[_js.index("function redraw(opts)"):]
 _rd = _rd[:_rd.index("\n}") + 2]
 assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditionally — a press would not redraw the map"
 
+# THE DIAL IS NOW'S CONTROL. Drawn under every view's header until 18 September, where on Network,
+# Historical and Set up nothing on the page answered to it. Arrange keeps it: it draws Now's own
+# sections through want(NOW), so taking it away there left seven of them — the ground, the station
+# groups, the claims, the grain and the grain line — pointing at a control that was not on the page.
+assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="dialwrap"' in _js, \
+    "the dial is no longer drawn for Now and Arrange, or is drawn for every view again"
+assert re.search(r"const ref = 'grain-line';", _js), \
+    "the dial's link out is back to being chosen per view; only Now draws it now"
+
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
 # The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every
