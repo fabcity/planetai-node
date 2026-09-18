@@ -384,7 +384,9 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    "details.fold > summary",     # "All eleven grains, and what each is worth"
                    "table.tbl th",               # the grain table's column headings
                    # Added 16 September 2026 with the station list's display cap.
-                   ".stations .more a"}          # "show all" and "show N" — the page's own two words
+                   ".stations .more a",          # "show all" and "show N" — the page's own two words
+                   # Added 18 September 2026 with the year player.
+                   ".satplay .satctl button"}    # "Play", "Pause", "Motion off", "one year"
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "

@@ -160,11 +160,23 @@ assert '"view"' in open("packs/earth/frames.py").read(), "the projection must be
 assert '@app.get("/earth/year.png")' in main and 'f"year_{year}.png"' in main, \
     "main.py: a frame is addressed by an integer year, never by a name from the request"
 assert '"frames": frames' in main and '"dir": str(d)' in main
-# The satellite card's controls are hooked by data-sat= now rather than by seven ids: the same
-# component is drawn more than once on a page (the node's own record and the imagery), and an id
-# cannot be. The play/pause, the year slider and the years-or-change toggle are all still there.
-for _hook in ('data-sat="play"', 'data-sat="slider"', 'data-sat="mode"', 'data-sat="year"'):
+# The satellite card's controls are hooked by data-sat= rather than by ids: the same component is
+# drawn more than once on a page (the node's own record and the imagery), and an id cannot be.
+#
+# `mode` is gone as of 18 September, and deliberately. It toggled to a "what changed" composite
+# frame; v0.53 emitted an image with data-i="change" for it to show, the modular page never did, and
+# no route serves one — /earth/frame.png takes sentinel or landsat and /earth/year.png takes a year.
+# So it had nothing to toggle to for five releases, on top of having no handler at all. A control
+# that does nothing is worse than no control. `year` became `frame` on the images and `label` on the
+# year readout when both records became one player; the capability is what is asserted here, not the
+# spelling.
+for _hook in ('data-sat="play"', 'data-sat="slider"', 'data-sat="frame"', 'data-sat="label"'):
     assert _hook in gui, f"gui: the satellite card lost {_hook}"
+# And the controls are live. They were markup with no listener from v0.54 to v0.59: Play did nothing.
+assert "function wireSat(root)" in gui and "play.onclick" in gui and "slider.oninput" in gui, \
+    "gui: the year player's controls are not wired again"
+assert "--motion-satellite-year" in gui, \
+    "gui: the player no longer takes its cadence from the frozen layer, so reduced motion cannot stop it"
 for _id in ():
     assert f'id="{_id}"' in gui, f"gui: #{_id}"
 assert "not a photograph" in gui.lower() or "Not a photograph" in gui, \
