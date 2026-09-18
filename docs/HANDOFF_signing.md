@@ -1,6 +1,6 @@
 # Handoff: the release signing key
 
-Since v0.59 a node refuses an update it cannot attribute. The key that makes that work does not exist
+Since v0.60 a node refuses an update it cannot attribute. The key that makes that work does not exist
 yet, and this session could not make it: a private key that an agent generated is a private key that
 was in a transcript. This is the half only you can do, and until it is done every signed release path
 refuses — which is the safe direction, and why nothing is blocked by the order of these steps.
@@ -50,7 +50,7 @@ one — if a job ever needs the real key, something has been designed wrong.
 
 ```bash
 ssh-add ~/.planetai/release_key
-PLANETAI_SIGNING_KEY=~/.planetai/release_key tools/release.sh 0.59
+PLANETAI_SIGNING_KEY=~/.planetai/release_key tools/release.sh 0.60
 ```
 
 It refuses before it tags if the key is missing, is inside the repository, or is not the key
@@ -87,7 +87,7 @@ release also goes to a GitHub Release, with the same bytes and the same signatur
 that instead with one variable:
 
 ```bash
-PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/v0.59 \
+PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/v0.60 \
   bash -c "$(curl -fsSL planetai.fab.city/install)"
 ```
 

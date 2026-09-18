@@ -44,7 +44,7 @@ find one in yours, revoke it with @BotFather `/revoke` before pasting anything.
 
 ## What a node will run
 
-Since v0.59 an update has to be signed. `install` and `update.sh` download the tarball, check its
+Since v0.60 an update has to be signed. `install` and `update.sh` download the tarball, check its
 published checksum, and then check an `ssh-keygen -Y` signature made by one key. A node that cannot
 verify the signature does not install the download and says so; that refusal is the node doing its job,
 not a bug.

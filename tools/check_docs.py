@@ -59,6 +59,8 @@ ENV_IN_MCP = set(re.findall(r"\$\{([A-Z][A-Z0-9_]+)", open(".mcp.json").read()))
 ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | ENV_IN_MCP | {
     "FCI_PUBLISHER",   # the Index's write flag; it lives with cells-ingest, not here
     "PATH", "HOME", "EDITOR", "TS_AUTHKEY", "PLANETAI_HOME", "PLANETAI_REPO", "PLANETAI_REF",
+    # read by install / update.sh / tools/ship.sh, which are shell: the scan above only finds Python
+    "PLANETAI_SITE", "PLANETAI_GET", "PLANETAI_UNSIGNED", "PLANETAI_SIGNING_KEY", "PLANETAI_SITE_REPO",
     "COMPOSE_PROFILES", "PGTZ", "TZ", "DATABASE_URL", "CI", "PACK_OUT", "LOG_LEVEL", "SSID", "MQTT_ADDR",
     "MQTT_USER", "MQTT_PASS", "WIFI_SSID", "WIFI_PSK", "GATEWAY", "CHNAME", "MAP_KEY", "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID", "POSTGRES_USER", "POSTGRES_DB", "POSTGRES_PASSWORD", "NODE_VERSION", "APP_PORT"}
