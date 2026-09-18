@@ -1014,7 +1014,7 @@ cmd_ui() {
   echo "  On this machine:      http://localhost:${p}/"
   [[ -n "$ip" ]] && echo "  On your network:      http://${ip}:${p}/"
   [[ -n "$(envget MESH_NAME)" ]] && echo "  On the tailnet:       http://$(envget MESH_NAME):${p}/"
-  echo "  On a small display:   add  ?kiosk=1  — big numbers only, refreshes every 30 s"
+  echo "  On a wall screen:     add  #wall  — the dark register, turns its own dial; needs SHARE_LEVEL=open"
   echo
   local lvl; lvl="$(setting SHARE_LEVEL)"; lvl="${lvl:-off}"
   if [[ "$lvl" == "off" ]]; then

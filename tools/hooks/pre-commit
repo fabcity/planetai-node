@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installed by `make dev-setup`. Blocks the three things that have actually gone wrong on this project.
+# Installed by `cp tools/hooks/pre-commit .git/hooks/`. Blocks the three things that have actually gone wrong on this project.
 # Every check must FAIL LOUDLY if it cannot run — a security check that errors silently is worse than none.
 set -euo pipefail
 fail(){ printf '\033[1;31mpre-commit: %s\033[0m\n' "$*" >&2; exit 1; }

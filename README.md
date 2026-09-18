@@ -58,6 +58,9 @@ Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
 
 ## Read next
 
+The documentation site is **[planetai.fab.city/docs](https://planetai.fab.city/docs/)** — the same pages, with a
+sidebar, search and the API reference, built from this repository by `tools/build_docs.py`. The files themselves:
+
 ```
 docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
           when it goes wrong       TROUBLESHOOTING
