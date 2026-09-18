@@ -475,6 +475,25 @@ svg.planmap { width: 100%; height: auto; display: block; aspect-ratio: 1 / 1 }
 .gridkey i.sat-only { background: var(--satellite-only); border-color: var(--satellite-only) }
 
 /* four passes of the same 3 km, brightness matched. Nothing coloured sits on a photograph. */
+/* THE YEAR PLAYER. One frame at a time, which is the whole reason it exists: the records were a
+   column of every year at full width, and nothing hid the ones that were not current because
+   nothing styled .frames at all. Eight near-identical squares a screen apart is the worst way to
+   see what changed between them.
+
+   display:none and not opacity: a hidden frame must not be reachable by a screen reader or by tab,
+   and it must not cost layout. The box keeps its height from the frame that is showing. */
+.satplay { margin: 0; display: grid; gap: 8px }
+.satplay .frames { display: grid; border: 1px solid var(--ink) }
+.satplay .frames img { display: none; width: 100%; height: auto; grid-area: 1 / 1 }
+.satplay .frames img.on { display: block }
+.satplay .satctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap }
+.satplay .satctl button { font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  background: none; border: 1px solid var(--ink); color: var(--ink); padding: 5px 11px; cursor: pointer }
+.satplay .satctl button[disabled] { color: var(--mute); border-color: var(--hair); cursor: default }
+.satplay .satctl input[type="range"] { flex: 1 1 120px; min-width: 90px; accent-color: var(--ink) }
+.satplay .satctl .yr { font: 700 13px var(--mono); color: var(--ink) }
+@media (max-width: 560px) { .satplay .satctl input[type="range"] { order: 3; flex-basis: 100% } }
+
 .satstrip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: clamp(8px, 1.2vw, 16px) }
 @media (min-width: 760px) { .satstrip { grid-template-columns: repeat(4, minmax(0, 1fr)) } }

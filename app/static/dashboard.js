@@ -2065,6 +2065,40 @@ const { map, caption } = window.KMAP;
  * they are `partial`, which is the word the route's own docstring uses. A node that has fetched
  * none says so in one line rather than showing four broken frames. */
 const IMAGERY = () => ((window.EARTH || {}).imagery || {});
+/* THE YEARS, AS ONE FRAME AT A TIME.
+ *
+ * Both records used to be a column of large stills — every Sentinel year at full width, and every
+ * AlphaEarth year under it, because nothing styled .frames and so nothing hid the ones that were
+ * not current. Historical was a very long scroll of near-identical squares, which is the worst way
+ * to see what changed between them: the eye cannot hold two pictures a screen apart. Asked for
+ * 18 September: keep the animation, drop the sequence.
+ *
+ * The controls were already in the markup and had been dead since the Phase 2 rewrite — Play, the
+ * slider and the mode button were rendered and nothing listened to any of them. wireSat() below is
+ * that wiring, restored from v0.53 against the markup this page actually draws.
+ *
+ * Hooked by `data-sat=` and never by id, because this component is drawn twice on the same page.
+ */
+function player(o) {
+  const last = o.years[o.years.length - 1];
+  return `<figure class="satplay" data-component="${esc(o.component)}" id="${esc(o.id)}"`
+    + ` data-ref="${esc(o.ref)}" data-years="${o.years.join(',')}">`
+    + `<div class="frames">` + o.years.map((y, i) =>
+      `<img src="${o.url(y)}" data-sat="frame" data-i="${i}"${y === last ? ' class="on"' : ''}`
+      + `${i === o.years.length - 1 ? '' : ' loading="lazy"'}`
+      /* A frame that 404s must not delete its own figure: the caption still counts it, and a count
+         with nothing under it is presence fabricated from absence. */
+      + ` onerror="this.dataset.gone=1"`
+      + ` alt="${esc(o.alt(y))}">`).join('') + `</div>`
+    + `<div class="satctl">`
+    + `<button type="button" data-sat="play" aria-pressed="false">Play</button>`
+    + `<input type="range" data-sat="slider" min="0" max="${o.years.length - 1}"`
+    + ` value="${o.years.length - 1}" aria-label="year">`
+    + `<span class="yr" data-sat="label">${last}</span>`
+    + (o.pill || '') + `</div>`
+    + `<figcaption class="cap">${o.cap}</figcaption></figure>`;
+}
+
 const frameUrl = y => `/earth/frame.png?source=sentinel&year=${y}`;
 const yearUrl = y => `/earth/year.png?year=${y}`;
 const YEARS = () => (IMAGERY().sentinel || []);
@@ -2088,23 +2122,19 @@ function record(ctx) {
       + `embeddings on command — <code>planetai run earth fetch</code>`
       + `${hint ? ` · ${esc(hint)}` : ''}</figcaption></figure>`;
   }
-  const last = years[years.length - 1];
-  return `<figure class="satown" data-component="satellite" id="sat-own" data-ref="sat-map">`
-    + `<div class="frames">` + years.map(y =>
-      `<img src="${yearUrl(y)}" data-sat="year" data-year="${y}"`
-      + `${y === last ? ' class="on"' : ''} alt="this node's own AlphaEarth layer for ${y}, drawn in `
-      + `grey: a model's description of every 10 m pixel, not a photograph">`).join('') + `</div>`
-    + `<div class="satctl">`
-    + `<button type="button" data-sat="play" aria-pressed="false">Play</button>`
-    + `<input type="range" data-sat="slider" min="0" max="${years.length - 1}"`
-    + ` value="${years.length - 1}" aria-label="year">`
-    + `<button type="button" data-sat="mode" data-mode="years">Years</button>`
-    + `<span class="yr" data-sat="label">${last}</span>`
-    + pill('model', 'a model’s description of every 10 m pixel, drawn in grey')
-    + `</div>`
-    + `<figcaption class="cap">This node’s own AlphaEarth record, ${years.length} `
-    + `${years.length === 1 ? 'year' : 'years'} · a rendering of a model, not a photograph · `
-    + `<code>planetai run earth fetch</code> adds a year</figcaption></figure>`;
+  /* The Years/change mode button is not carried over. v0.53's mode toggled to a "what changed"
+     frame that this node does not compute, so it was a control with nothing behind it — and a
+     control that does nothing is worse than no control. */
+  return player({
+    id: 'sat-own', component: 'satellite', ref: 'sat-map', years,
+    url: yearUrl,
+    alt: y => `this node's own AlphaEarth layer for ${y}, drawn in grey: a model's description of `
+      + `every 10 m pixel, not a photograph`,
+    pill: pill('model', 'a model’s description of every 10 m pixel, drawn in grey'),
+    cap: `This node’s own AlphaEarth record, ${years.length} `
+      + `${years.length === 1 ? 'year' : 'years'} · a rendering of a model, not a photograph · `
+      + `<code>planetai run earth fetch</code> adds a year`,
+  });
 }
 
 window.PAI.register({
@@ -2128,6 +2158,10 @@ window.PAI.register({
       + `<p class="note miss">This node no longer has the ${y} pass on disk.</p>`
       + `<figcaption><span class="yr">${y}</span>${pill('partial', 'an annual median from '
         + 'somebody else’s cluster, not a pass this node made')}</figcaption></figure>`).join('');
+    /* The Sentinel years stay a strip, by Tomas's call on 18 September: four squares side by side
+       are compared without moving the eye, which is what a strip is for and what a player takes
+       away. The record below it is the one that animates — it had no CSS to hide the frames that
+       were not current, so it stacked every year at full width, and that was the wall. */
     const strip = years.length
       ? `<div class="satstrip" id="sat-strip" data-component="satStrip" data-ref="sat-map">`
         + frames + `</div>`
@@ -4282,6 +4316,10 @@ function route() {
   document.documentElement.removeAttribute('data-theme');
   document.body.className = '';
   main();
+  /* main() has just replaced the page, so any player on it is fresh markup with no listeners and
+     any timer from the last render is pointing at elements that are gone. */
+  const page = document.getElementById('page');
+  if (page) wireSat(page);
   window.scrollTo(0, 0);
 }
 
@@ -4439,6 +4477,57 @@ async function refresh() {
   initKit();
   initGeometry();
   redraw({ keepGround: true });
+}
+
+/* ---------------------------------------------------------------- the year players
+ *
+ * Restored from v0.53, which the Phase 2 rewrite dropped: the Play button, the slider and the year
+ * label were rendered on every satellite record and nothing had listened to any of them since
+ * v0.54. Dead controls, for five releases.
+ *
+ * The cadence is the frozen layer's own --motion-satellite-year, which is 4s and goes to 0s under
+ * prefers-reduced-motion. So reduced motion is not a second code path here: the token says zero,
+ * the loop does not start, the record stands on its most recent year and the button says so.
+ *
+ * One timer per player, cleared before it is replaced, so a re-render — and this page re-renders on
+ * every poll — cannot leave a second loop running behind the first. That is how a page ends up
+ * flickering between two years at once.
+ */
+const SAT_LOOPS = new Map();
+
+function wireSat(root) {
+  const secs = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--motion-satellite-year')) || 0;
+  for (const [el, t] of SAT_LOOPS) { if (!root.contains(el)) { clearInterval(t); SAT_LOOPS.delete(el); } }
+  root.querySelectorAll('.satplay[data-years]').forEach(el => {
+    if (SAT_LOOPS.has(el)) { clearInterval(SAT_LOOPS.get(el)); SAT_LOOPS.delete(el); }
+    const years = (el.dataset.years || '').split(',').filter(Boolean);
+    const imgs = [...el.querySelectorAll('[data-sat="frame"]')];
+    const label = el.querySelector('[data-sat="label"]');
+    const slider = el.querySelector('[data-sat="slider"]');
+    const play = el.querySelector('[data-sat="play"]');
+    if (years.length < 2) { if (play) { play.disabled = true; play.textContent = 'one year'; } return; }
+    let i = years.length - 1;
+    const show = () => {
+      imgs.forEach((im, n) => im.classList.toggle('on', n === i));
+      if (label) label.textContent = years[i];
+      if (slider) slider.value = String(i);
+    };
+    const stop = () => {
+      const t = SAT_LOOPS.get(el);
+      if (t) { clearInterval(t); SAT_LOOPS.delete(el); }
+      if (play) { play.textContent = secs ? 'Play' : 'Motion off'; play.setAttribute('aria-pressed', 'false'); }
+    };
+    const run = () => {
+      if (!secs) return;                       // reduced motion: stands on the most recent year
+      SAT_LOOPS.set(el, setInterval(() => { i = (i + 1) % years.length; show(); }, secs * 1000));
+      if (play) { play.textContent = 'Pause'; play.setAttribute('aria-pressed', 'true'); }
+    };
+    if (play) play.onclick = () => (SAT_LOOPS.has(el) ? stop() : run());
+    if (slider) slider.oninput = () => { stop(); i = +slider.value; show(); };
+    show();
+    if (secs) run(); else stop();
+  });
 }
 
 /* Re-render without throwing the reader out of their place: the scroll position and every open fold
