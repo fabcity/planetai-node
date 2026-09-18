@@ -228,6 +228,52 @@ else
   say "the site repo already has this tarball"
 fi
 
+# A second copy of the same bytes, somewhere with a provenance trail. planetai.fab.city is one Cloudflare
+# bucket: it has no history a reader can check, and whoever can write to it can replace the tarball, the
+# checksum and the signature together. A GitHub Release records who published it, when, and from which
+# commit, and none of that can be quietly rewritten. The signature is what makes the two copies the same
+# artefact rather than two things that look alike.
+#
+# A node can be pointed at it — PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/<tag>
+# — so this is a route out if the site is unreachable or not trusted, not only an audit trail.
+# install-smoke.yml proves the stub reads it unchanged.
+if [[ "$HERE" == v*  && "$HERE" != *-g* ]]; then
+  if command -v gh >/dev/null 2>&1; then
+    G="$SITE/node0/get"
+    # VERSION goes too: the stub reads $GET/VERSION for the line under the logo, so a mirror without it
+    # is a mirror that installs a node which cannot say what it is.
+    FILES=("$G/planetai-node.tar.gz" "$G/SHA256" "$G/planetai-node.tar.gz.sig" "$G/VERSION")
+    [[ "${PLANETAI_UNSIGNED:-0}" == 1 ]] && FILES=("$G/planetai-node.tar.gz" "$G/SHA256" "$G/VERSION")
+    if gh release view "$HERE" >/dev/null 2>&1; then
+      say "GitHub Release $HERE is already there — replacing its files"
+      gh release upload "$HERE" "${FILES[@]}" --clobber \
+        || die "could not upload to the GitHub Release $HERE. The site has the tarball; the mirror does not."
+    else
+      say "publishing the GitHub Release $HERE"
+      gh release create "$HERE" --title "$HERE" \
+        --notes "The node at ${HERE}. Verify before installing:
+
+    ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city \\
+      -n planetai-node -s planetai-node.tar.gz.sig < planetai-node.tar.gz
+
+Install from here rather than the site:
+
+    PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/${HERE} \\
+      bash -c \"\$(curl -fsSL planetai.fab.city/install)\"
+
+SECURITY.md has the signer fingerprint and how to report something." \
+        "${FILES[@]}" \
+        || die "could not create the GitHub Release $HERE. The site has the tarball; the mirror does not."
+    fi
+    say "mirrored: https://github.com/fabcity/planetai-node/releases/tag/${HERE}"
+  else
+    printf '\033[1;33m!!\033[0m no gh here, so the GitHub Release was not published. The site is the only copy.\n' >&2
+    printf '   When you have gh:  gh release create %s <the three files in %s>\n' "$HERE" "$SITE/node0/get" >&2
+  fi
+else
+  say "${HERE} is not a tag, so no GitHub Release — only a tagged release is mirrored"
+fi
+
 if [[ $DEPLOY -eq 1 ]]; then
   say "deploying the site — this publishes planetai.fab.city (npx wrangler@4 deploy)"
   make -C "$SITE" deploy

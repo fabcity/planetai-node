@@ -30,6 +30,15 @@ jobs:
         run: |
           mkdir -p /tmp/site/get
           bash tools/bundle.sh /tmp/site/get
+          # The stub now refuses a tarball nobody signed, which is the whole point of it. CI has no
+          # release key and must never have one, so this signs with a throwaway and puts its public
+          # half into a copy of the stub. The signer line is the only byte that differs from the
+          # committed file — every URL, fetch and check below is the real one.
+          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C release@planetai.fab.city
+          ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/site/get/planetai-node.tar.gz
+          blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
+          sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > install.signed
+          cmp -s install install.signed && { echo "no placeholder in install — CI has stopped testing the signed path"; exit 1; } || true
           ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
           for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
           curl -fsS http://127.0.0.1:8099/get/SHA256
@@ -52,9 +61,9 @@ jobs:
           cat > /tmp/node.json <<'JSON'
           {"name": "ci-node", "lat": 39.57, "lon": 2.65, "kind": "home", "sensor": {}}
           JSON
-          # `cat install | bash -s --` is what the pipe does. </dev/null and no tty: a question here hangs,
+          # `cat install | bash -s --` is what the pipe does (CI signs its own tarball, so it pipes install.signed). </dev/null and no tty: a question here hangs,
           # and the timeout turns a hang into a red job instead of a twenty-minute wait.
-          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null \
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install.signed | bash -s -- --answers /tmp/node.json' </dev/null \
             2>&1 | tee /tmp/TRANSCRIPT_ok.txt
           echo "installer exit: ${PIPESTATUS[0]}"
           # The feedback contract, asserted rather than admired: named steps, elapsed times, a summary.
@@ -89,7 +98,7 @@ jobs:
           PLANETAI_HOME: /home/runner/planetai
           PLANETAI_REF: ${{ github.sha }}     # so the raw fallback resolves too, not only the local copy
         run: |
-          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install.signed | bash -s -- --answers /tmp/node.json' </dev/null
           [ -s /tmp/forbidden ] && { cat /tmp/forbidden; exit 1; } || true
           cd /home/runner/planetai && make health
 
@@ -123,7 +132,7 @@ jobs:
           # and now the part that actually bit somebody: install again, into the same folder, and check
           # that what comes up is a NEW node rather than the old one wearing a new name.
           sed 's/"name": *"[^"]*"/"name": "ci-second"/' /tmp/node.json > /tmp/node2.json
-          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node2.json' </dev/null
+          PATH="/tmp/notools:$PATH" timeout 900 bash -c 'cat install.signed | bash -s -- --answers /tmp/node2.json' </dev/null
           cd /home/runner/planetai
           got=$(grep '^NODE_NAME=' .env | cut -d= -f2 | tr -d ' ')
           [ "$got" = "ci-second" ] || { echo "the second install came up as '$got', not 'ci-second' — it adopted the old node"; exit 1; }
@@ -189,7 +198,7 @@ jobs:
             project: pai_ubuntu
             port: 8131
             image: ubuntu:22.04
-            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 >/dev/null
+            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 openssh-client >/dev/null
           # Lucas's actual machine. There is no official Mint image, so this is Ubuntu 24.04 wearing Mint's
           # os-release and lsb_release: ID=linuxmint with an Ubuntu upstream, which is what our platform
           # detection reads and what get.docker.com resolves through `lsb_release -a -u`.
@@ -198,14 +207,14 @@ jobs:
             port: 8133
             image: ubuntu:24.04
             prep: >-
-              apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 lsb-release >/dev/null &&
+              apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 lsb-release openssh-client >/dev/null &&
               printf 'NAME="Linux Mint"\nVERSION="22.3 (Zara)"\nID=linuxmint\nID_LIKE="ubuntu debian"\nPRETTY_NAME="Linux Mint 22.3"\nVERSION_ID="22.3"\nVERSION_CODENAME=zara\nUBUNTU_CODENAME=noble\n' > /etc/os-release &&
               printf '#!/bin/sh\nif [ "$1$2" = "-a-u" ]; then exit 1; fi\nprintf "Distributor ID:\\tLinuxmint\\nCodename:\\tzara\\n"\n' > /usr/bin/lsb_release && chmod +x /usr/bin/lsb_release
           - name: Arch (what Omarchy is built on)
             project: pai_arch
             port: 8132
             image: archlinux:latest
-            prep: pacman -Sy --noconfirm --quiet curl sudo tar python >/dev/null
+            prep: pacman -Sy --noconfirm --quiet curl sudo tar python openssh >/dev/null
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
@@ -213,6 +222,15 @@ jobs:
       - name: build the tarball this commit would ship, and serve it
         run: |
           mkdir -p /tmp/site/get && bash tools/bundle.sh /tmp/site/get
+          # The stub now refuses a tarball nobody signed, which is the whole point of it. CI has no
+          # release key and must never have one, so this signs with a throwaway and puts its public
+          # half into a copy of the stub. The signer line is the only byte that differs from the
+          # committed file — every URL, fetch and check below is the real one.
+          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C release@planetai.fab.city
+          ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/site/get/planetai-node.tar.gz
+          blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
+          sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > install.signed
+          cmp -s install install.signed && { echo "no placeholder in install — CI has stopped testing the signed path"; exit 1; } || true
           ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
           for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
       - name: the stranger's command, on a clean ${{ matrix.name }}
@@ -240,7 +258,7 @@ jobs:
           chown tester /home/tester/node.json
           su tester -c 'cd /home/tester && PATH=/opt/notools:$PATH PLANETAI_SITE=http://172.17.0.1:8099 PLANETAI_HOME=/home/tester/planetai \
             COMPOSE_PROJECT_NAME=PROJECT_PLACEHOLDER APP_PORT=PORT_PLACEHOLDER \
-            timeout 1500 bash -c "cat /work/install | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
+            timeout 1500 bash -c "cat /work/install.signed | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
           echo "installer exit: ${PIPESTATUS[0]}"
           [ -s /tmp/forbidden ] && { echo "it called:"; cat /tmp/forbidden; exit 1; } || true
           grep -q "^\[1/7\] making sure a container runtime" /tmp/T.txt || { echo "the runtime phase is not step 1"; exit 1; }
@@ -287,6 +305,118 @@ jobs:
       - name: what a tester would paste into an issue
         if: always()
         run: bash tools/preflight.sh --json || true
+
+
+  # The site is one Cloudflare bucket with one writer. `tools/ship.sh` puts the same three files in a
+  # GitHub Release as well, and a node reads either with nothing but PLANETAI_GET changed — the site
+  # serves them under /get, a Release serves them flat, because a release asset name cannot hold a
+  # slash. A mirror nobody has installed from is a claim, not a route, so this installs from one.
+  #
+  # Two steps, because the second cannot run until a signed release exists and the plumbing has to be
+  # proved before that and not during it:
+  #   · a flat layout served locally, signed with a throwaway key — every push, from today
+  #   · the real https://github.com/.../releases/download/<tag>/ — once ship.sh has published one
+  release-url:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: a flat mirror, signed, served with no /get segment
+        run: |
+          set -e
+          mkdir -p /tmp/flat
+          bash tools/bundle.sh /tmp/flat                       # tarball, SHA256 and VERSION, side by side
+          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C release@planetai.fab.city
+          ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/flat/planetai-node.tar.gz
+          ls -la /tmp/flat
+          ( cd /tmp/flat && python3 -m http.server 8098 >/tmp/flat.log 2>&1 & )
+          for i in $(seq 20); do curl -fsS http://127.0.0.1:8098/SHA256 >/dev/null 2>&1 && break; sleep 1; done
+          # The stub is used as it is, with one substitution the release key makes unnecessary: the
+          # committed signer is a placeholder until Tomas issues the key, and this leg has to exercise
+          # the path that SUCCEEDS. Everything else — the URLs, the fetch, the verify — is the real file.
+          blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
+          sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > /tmp/install.flat
+          cmp -s install /tmp/install.flat && { echo "the placeholder is gone from install — this leg no longer tests anything"; exit 1; }
+
+      - name: install from the flat mirror, with only PLANETAI_GET changed
+        env:
+          PLANETAI_GET: http://127.0.0.1:8098
+          PLANETAI_HOME: /home/runner/planetai-flat
+          PLANETAI_REF: ${{ github.sha }}
+        run: |
+          cat > /tmp/node.json <<'JSON'
+          {"name": "ci-mirror", "lat": 39.57, "lon": 2.65, "kind": "home", "sensor": {}}
+          JSON
+          timeout 900 bash -c 'cat /tmp/install.flat | bash -s -- --answers /tmp/node.json' </dev/null \
+            2>&1 | tee /tmp/TRANSCRIPT_mirror.txt
+          echo "installer exit: ${PIPESTATUS[0]}"
+          grep -q "checksum verified"  /tmp/TRANSCRIPT_mirror.txt || { echo "no checksum check"; exit 1; }
+          grep -q "signature verified" /tmp/TRANSCRIPT_mirror.txt || { echo "the install did not check the signature"; exit 1; }
+          grep -q "^install OK — ci-mirror," /tmp/TRANSCRIPT_mirror.txt || { echo "the flat layout did not install"; exit 1; }
+
+      - name: and it refuses the same mirror with one byte changed
+        env:
+          PLANETAI_GET: http://127.0.0.1:8098
+          PLANETAI_HOME: /home/runner/planetai-bad
+          PLANETAI_REF: ${{ github.sha }}
+        run: |
+          # Replace the tarball but keep BOTH published files consistent with it — a corrupted download
+          # is not the threat. This is the threat: somebody who can write to the origin writes the
+          # tarball and its checksum together, and the checksum agrees because they wrote it.
+          printf 'not the node you asked for' >> /tmp/flat/planetai-node.tar.gz
+          sha256sum /tmp/flat/planetai-node.tar.gz | awk '{print $1}' > /tmp/flat/SHA256
+          set +e
+          timeout 900 bash -c 'cat /tmp/install.flat | bash -s -- --answers /tmp/node.json' </dev/null \
+            > /tmp/TRANSCRIPT_tampered.txt 2>&1
+          rc=$?; set -e
+          cat /tmp/TRANSCRIPT_tampered.txt
+          [ "$rc" -eq 0 ] && { echo "it installed a tarball the release key never signed"; exit 1; } || true
+          grep -q "checksum verified" /tmp/TRANSCRIPT_tampered.txt || { echo "fixture problem: the checksum should still match"; exit 1; }
+          grep -q "not signed by the PLANETAI release key" /tmp/TRANSCRIPT_tampered.txt \
+            || { echo "it refused, but not for the right reason"; exit 1; }
+          [ -d /home/runner/planetai-bad ] && { echo "it unpacked something before refusing"; exit 1; } || true
+          echo "the checksum agreed and the signature did not, which is the whole point"
+
+      - name: the real GitHub Release, once one has been published
+        id: rel
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          tag=""
+          for t in $(gh release list --limit 20 --json tagName -q '.[].tagName' 2>/dev/null); do
+            if gh release view "$t" --json assets -q '.assets[].name' 2>/dev/null \
+                 | grep -qx 'planetai-node.tar.gz.sig'; then tag="$t"; break; fi
+          done
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          [ -n "$tag" ] && echo "newest signed release: $tag" \
+            || echo "no signed release published yet — the step below starts running at the first one"
+
+      - name: install from the release URL, with the stub exactly as committed
+        if: steps.rel.outputs.tag != ''
+        env:
+          PLANETAI_GET: https://github.com/${{ github.repository }}/releases/download/${{ steps.rel.outputs.tag }}
+          PLANETAI_HOME: /home/runner/planetai-gh
+          PLANETAI_REF: ${{ steps.rel.outputs.tag }}
+        run: |
+          # No substitution here: this is the committed stub, the committed tools/allowed_signers, and a
+          # tarball signed with the Foundation's own key. If this goes red, a tester's install is red too.
+          timeout 900 bash -c 'cat install | bash -s -- --answers /tmp/node.json' </dev/null \
+            2>&1 | tee /tmp/TRANSCRIPT_gh.txt
+          echo "installer exit: ${PIPESTATUS[0]}"
+          grep -q "signature verified" /tmp/TRANSCRIPT_gh.txt || { echo "the release URL installed without a signature check"; exit 1; }
+          grep -q "^install OK — " /tmp/TRANSCRIPT_gh.txt || { echo "the release URL did not install"; exit 1; }
+
+      - name: keep the transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-url-transcripts
+          path: |
+            /tmp/TRANSCRIPT_mirror.txt
+            /tmp/TRANSCRIPT_tampered.txt
+            /tmp/TRANSCRIPT_gh.txt
+          if-no-files-found: warn
 
   intel-mac:
     # A real Intel Mac, verified available: GitHub offers macos-15-intel and macos-26-intel. The oldest
