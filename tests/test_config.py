@@ -97,7 +97,9 @@ assert "a Fab City project" in stub, "install: the logo must say whose project t
 assert "version()" in cli and "$(version)" in cli, "bin/planetai: the logo and `planetai version` share one resolver"
 assert cli.count("git describe --tags --always") == 1, (
     "there is a second copy of the version resolver; they drift — one version() and everything calls it")
-assert "$SITE/get/VERSION" in stub, "install: show the version this install is about to fetch"
+assert "$GET/VERSION" in stub, "install: show the version this install is about to fetch"
+assert 'GET="${PLANETAI_GET:-$SITE/get}"' in stub, (
+    "install: the three files must come from one place, so PLANETAI_GET can point at a GitHub Release")
 assert "--max-time" in stub[stub.index("a Fab City project") - 400:stub.index("a Fab City project")], (
     "install: the version fetch needs a timeout, or an offline machine waits at a banner")
 
