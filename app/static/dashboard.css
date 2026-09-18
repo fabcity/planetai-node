@@ -152,6 +152,7 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .stamp { font: 500 10.5px/1.5 var(--mono); letter-spacing: .08em; color: var(--mute);
   overflow-wrap: anywhere }
 .asof { font: 500 11px var(--mono); letter-spacing: .06em; color: var(--mute) }
+.asof.stale { color: var(--ink); border-bottom: 1px solid var(--hair) }
 
 .rho { display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
 .rho svg.sg { width: 13px; height: 13px; color: var(--ink) }

@@ -401,7 +401,17 @@ const asof = () => {
         hour12: false }).format(t);
     } catch { /* a zone this browser does not know: UTC, said as UTC */ }
   }
-  return `<span class="asof" data-role="asof" id="asof">As of ${esc(when)} · `
+  /* A poll that did not come back does not blank the page — the figures were true when they were
+     read — but it stops the stamp saying "as of" as though it had just heard. It says how long it
+     has been since the node last answered, which is the one thing a reader needs in order to know
+     whether to believe the number above it. */
+  const st = window.STALE;
+  if (st) {
+    const mins = Math.max(1, Math.round((Date.now() - st.since) / 60000));
+    return `<span class="asof stale" data-role="asof" id="asof">Read at ${esc(when)} \u00b7 `
+      + `the node has not answered for ${mins} min</span>`;
+  }
+  return `<span class="asof" data-role="asof" id="asof">As of ${esc(when)} \u00b7 `
     + `${esc(String(S.base.captured_utc || '').slice(0, 10))}</span>`;
 };
 
@@ -1420,7 +1430,24 @@ const d1 = v => Math.round(v * 10) / 10;
  * The tiles load eagerly. Every tile of the mosaic is on screen whenever the figure is, so lazy
  * loading defers them and saves nothing — measured: with loading="lazy" not one of twelve tiles
  * had arrived 600 ms after the load event, and the rendered page showed cells over bare paper. */
+/* THE TILES A DATA POLL MUST NOT ASK FOR AGAIN.
+ *
+ * Assigning innerHTML queues an <img> load the instant the markup exists, before any code can put
+ * an already-loaded element back — so a redraw goes to the network even for a tile the browser has
+ * cached. Measured over CDP: twelve requests to tiles.maps.eox.at on every redraw, none served from
+ * cache, though the tiles carry max-age of a week. At one poll per 300 s that is about 3,500 a day
+ * from every open page, each one telling that server which square of the planet this house is
+ * looking at. The Phase 2 rule is that a press may only ever REDUCE what leaves the house; a poll
+ * multiplying it by three hundred breaks the same rule from the other side.
+ *
+ * `window.KEEP_GROUND` is up only across the route() inside a data redraw. The drawing is a
+ * function of the cell, the resolution, the base and the register — all of them in the URL, none of
+ * them touched by a poll — so there is nothing for a poll to redraw, and redraw() swaps the living
+ * figure back into the hollow one this returns. A press changes the URL, sets no flag, and draws a
+ * fresh ground.
+ */
 function figure(ctx, opts = {}) {
+  if (window.KEEP_GROUND) return '';
   const res = opts.res || ctx.RES;
   const base = baseOf(opts.base || ctx.Q.get('base'), res);
   if (base === 'plan') return ctx.KMAP.map(res);
@@ -3722,6 +3749,19 @@ function flatSettings(d) {
   return { ...(d || {}), ...flat };
 }
 
+/* The three answers, turned into the globals every section reads. boot() calls it once and
+ * refresh() calls it again on every poll, so there is one shape and not two that drift. */
+function bind(issues, health, rho) {
+  window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
+    rho, funnel: issues.funnel || null, peer: issues.peer || null, fixture: FIXTURE || null };
+  const geo = issues.geometry || {};
+  window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
+    asks: issues.asks || null,
+    radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
+      mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
+    node: { lat: health.lat, lon: health.lon, name: health.node } };
+}
+
 async function boot() {
   const answered = await api(FIXTURE ? `/issues/fixtures/${encodeURIComponent(FIXTURE)}` : '/issues');
   const snapshot = FIXTURE ? answered : null;
@@ -3747,14 +3787,7 @@ async function boot() {
     api('/sensors').catch(() => null), api('/cells').catch(() => null),
   ]);
 
-  window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
-    rho, funnel: issues.funnel || null, peer: issues.peer || null, fixture: FIXTURE || null };
-  const geo = issues.geometry || {};
-  window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
-    asks: issues.asks || null,
-    radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
-      mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
-    node: { lat: health.lat, lon: health.lon, name: health.node } };
+  bind(issues, health, rho);
   window.SETTINGS = flatSettings(settings);
   /* describe()'s own body as well as the flat map: `set` is true for a key whose value is masked,
      which is the only way a screen with no token can say a parent exists without being told where
@@ -4052,7 +4085,8 @@ function main() {
         + `question identically.` : '') + `</p>`)
       + `<div class="whenline">${asof()}${window.K.stamp()}`
       + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
-        : pill('live', 'measured by this node')) + `</div>`
+        : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
+        : pill('live', 'measured by this node, and kept up to date')) + `</div>`
       + fig + `</section>`;
   }
 
@@ -4308,7 +4342,123 @@ document.addEventListener('click', ev => {
 });
 
 /* ------------------------------------------------------------------ and go */
-boot().then(() => { init(); route(); }).catch(async e => {
+/* ---------------------------------------------------------------- the readings keep up
+ *
+ * THE PAGE STOPPED UPDATING IN THE PHASE 2 REWRITE. v0.53 ended its boot with
+ * `setInterval(refresh, 20000)` and the rewrite did not carry it, so from v0.54 to v0.57 the only
+ * repeating timer in this file was the wall stepping its own dial. boot() fetched nine routes once
+ * and never again — while the page went on showing its `live` pill and its "as of" stamp over
+ * figures that had stopped moving the moment the tab opened. An unattended wall screen was not
+ * merely stale; it was asserting freshness it did not have. Reported 18 September 2026.
+ *
+ * WHAT IS RE-FETCHED, AND WHAT IS NOT. /issues, /health and /rho move on the node's own poll.
+ * /settings, /place/geojson, /earth, /sensors and /cells do not move on that cadence — a keeper
+ * changing a setting or a pack fetching a new satellite year is a reload's business, not a poll's —
+ * and fetching them every cycle would be three quarters of the traffic for none of the change. The
+ * old page refreshed everything; this does not.
+ *
+ * THE CADENCE IS THE NODE'S. POLL_SECONDS, read from GET /settings, is how often the node itself
+ * goes and looks: 300 s on node #1. Asking more often than that fetches the same answer again, so
+ * the page asks at the node's own rate and not at a number typed here. Clamped either side because
+ * a node with POLL_SECONDS=1 must not turn every open page into a load generator.
+ *
+ * A RE-RENDER IS NOT A RE-FETCH. route() redraws from globals and asks the node nothing — that is
+ * v0.56's whole dial fix. So this fetches first, re-binds through the same bind() and initKit()
+ * boot uses, and only then re-renders. PAI_LOAD is deliberately NOT re-run: the sections are
+ * already registered and the contract rejects a second registration of the same id.
+ *
+ * AND IT DOES NOT FIGHT THE READER. It holds off while a tab is hidden, while a Set up group has an
+ * edit nobody has saved, and on the synthetic ?state= pages. A committed fixture is never
+ * refreshed at all: it cannot change, and the measuring rig replays one.
+ */
+const REFRESH_FLOOR_S = 20, REFRESH_CEIL_S = 600, REFRESH_DEFAULT_S = 60;
+let REFRESH_TIMER = null;
+
+function refreshEvery() {
+  const rows = ((window.SETTINGS_RAW || {}).bootstrap) || [];
+  const n = Number(((rows.find(r => r.key === 'POLL_SECONDS') || {}).value) || '');
+  const secs = Number.isFinite(n) && n > 0 ? n : REFRESH_DEFAULT_S;
+  return Math.min(REFRESH_CEIL_S, Math.max(REFRESH_FLOOR_S, Math.round(secs))) * 1000;
+}
+
+/* What the page says when a poll does not come back. The figures on screen stay — they were true
+ * when they were read, and blanking them would lose the last thing the node actually said — but the
+ * stamp stops calling them live and says how long ago they were read instead. */
+window.STALE = null;
+
+async function refresh() {
+  if (FIXTURE || STATE !== 'populated') return;         // a snapshot cannot change
+  if (document.hidden) return;                          // nobody is looking
+  if (VIEW === 'setup' && window.PAI_SETUP && window.PAI_SETUP.dirty && window.PAI_SETUP.dirty()) return;
+  let issues, health, rho;
+  try {
+    [issues, health] = await Promise.all([api('/issues'), api('/health')]);
+  } catch (e) {
+    window.STALE = { since: (window.STALE && window.STALE.since) || Date.now(),
+      why: String((e && e.message) || e) };
+    redraw({ keepGround: true });                       // the stamp has something new to say
+    return;
+  }
+  /* ρ is the node measuring itself and is the slowest of the three. It failing is not a reason to
+     throw away a good reading of the air, so the last one stands and the page says nothing new. */
+  rho = await api('/rho').catch(() => (window.SNAP || {}).rho || null);
+  window.STALE = null;
+  bind(issues, health, rho);
+  initKit();
+  initGeometry();
+  redraw({ keepGround: true });
+}
+
+/* Re-render without throwing the reader out of their place: the scroll position and every open fold
+ * survive, because a poll arriving while somebody is reading a note must not close it.
+ *
+ * AND WITHOUT ASKING A TILE SERVER ANYTHING. `keepGround` carries the whole of that. The ground is a
+ * grid of <img> elements, and innerHTML replacement destroys and recreates them, which Chromium
+ * answers by going back to the network — measured over CDP, twelve requests to tiles.maps.eox.at on
+ * every redraw, none of them served from cache, despite the tiles being cacheable for a week. Before
+ * the refresh loop that cost twelve requests per page load. With a poll every 300 s it would have
+ * been about 3,500 a day from every open page, each one telling that server which square of the
+ * planet this house is looking at. The Phase 2 rule is that a press may only ever REDUCE what leaves
+ * the house; a poll quietly multiplying it by three hundred is the same rule broken from the other
+ * side.
+ *
+ * So a data refresh keeps the ground it already has. It is allowed to, and only it is: the drawing
+ * is a function of the cell, the resolution, the base and the register, every one of which lives in
+ * the URL — and a poll does not touch the URL. A press does, and a press passes nothing here and
+ * gets a fresh ground, which is exactly right. */
+function redraw(opts) {
+  const y = window.scrollY;
+  const open = [...document.querySelectorAll('details[open]')].map(d => d.id).filter(Boolean);
+  const ground = (opts && opts.keepGround) ? document.querySelector('#ground-figure') : null;
+  /* The flag is up only across route(), so nothing else can ever see a hollow ground: the section
+     reads it, draws the empty figure, and it is down again before the swap. */
+  if (ground) window.KEEP_GROUND = true;
+  try { route(); } finally { window.KEEP_GROUND = false; }
+  if (ground) {
+    const fresh = document.querySelector('#ground-figure');
+    if (fresh && fresh !== ground) fresh.replaceWith(ground);
+  }
+  for (const id of open) { const d = document.getElementById(id); if (d) d.open = true; }
+  window.scrollTo(0, y);
+}
+
+/* The loop's own handle, in the idiom this file already uses for PAI_SETUP, PAI_SETTINGS and WALL.
+ * A poll that only ever fires on a 300-second timer cannot be tested, and untested is exactly how
+ * the last one was lost for four releases — tests/visual/measure.mjs drives `now()` and watches what
+ * the page asks the node for. It is also the honest way for a wall to force a read after somebody
+ * has fixed whatever was wrong with the node. */
+window.PAI_REFRESH = { now: () => refresh(), every: () => refreshEvery(), stale: () => window.STALE };
+
+function startRefresh() {
+  if (REFRESH_TIMER) clearInterval(REFRESH_TIMER);
+  if (FIXTURE || STATE !== 'populated') return;
+  REFRESH_TIMER = setInterval(refresh, refreshEvery());
+  /* A tab that was hidden for an hour comes back to an hour-old page and should not have to wait
+     out another full interval to be told so. */
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+}
+
+boot().then(() => { init(); route(); startRefresh(); }).catch(async e => {
   if (e && e.refused) {
     const h = await api('/health').catch(() => ({}));
     window.NODE_NAME = h.node; window.NODE_CITY = h.city;
@@ -4677,6 +4827,7 @@ document.addEventListener('click', ev => {
   }
 });
 
-window.PAI_SETUP = { markup, load: loadSetup, toast };
+/* `dirty` is read by refresh(): a poll must never re-render a group with a typed value in it. */
+window.PAI_SETUP = { markup, load: loadSetup, toast, dirty: () => DIRTY };
 
 })();
