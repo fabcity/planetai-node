@@ -4109,6 +4109,12 @@ function main() {
       + `${G.in_my_cell} sit in this node's own cell, of which ${G.mine_in_my_cell} are its own.`
       + (flat.length > 1 ? ` Resolutions ${flat[0].res} to ${flat[flat.length - 1].res} answer this `
         + `question identically.` : '') + `</p>`)
+      /* WHY THIS ONE IS AT THE TOP. The page stopped saying it in the Phase 2 rewrite — v0.53 had
+         the sentence and the modular page carried neither the words nor a place to put them — and
+         on 18 September the rule itself changed, so it has to be sayable again. A ranking a reader
+         cannot check is the one thing this page does not do. */
+      + `<p class="why rule" id="headline-rule" data-component="headlineRule" data-ref="grain-line">`
+      + `${esc((window.W ? window.W() : {}).headlineRule || '')}</p>`
       + `<div class="whenline">${asof()}${window.K.stamp()}`
       + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
         : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
@@ -4561,12 +4567,15 @@ const route = () => window.PAI_ROUTE();
 const WORDS = {
   en: { leavesMachine: 'leaves this machine',
     openOnAnotherScreen: 'Open this on another screen in the house:',
+    headlineRule: 'The issue with most to say leads \u2014 and where two have as much to say, the one that has moved most in the last three hours. An even tie goes to the order this place chose, under Set up \u2192 Issues.',
     net: { cellsN: '{n} of 20', cellsOut: 'Index cells', home: 'home', kept: '{n} readings kept, none of them leave', leaves: 'What leaves this house', leavesShort: 'what leaves', means: 'hourly means', model: 'model', models: 'the models', models_: 'models', parentNowhere: 'nowhere yet', reads: 'What this node reads', rhoN: '{closed} of {total}', rhoOut: 'answered asks', sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations', street: 'the street', sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.', title: 'This house is one node of a much larger instrument.', yours: 'your sensors' }, },
   id: { leavesMachine: 'keluar dari mesin ini',
     openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
+    headlineRule: 'Isu yang paling banyak bicara memimpin \u2014 dan bila dua sama banyaknya, yang paling berubah dalam tiga jam terakhir. Bila tetap seri, urutannya mengikuti pilihan tempat ini, di Set up \u2192 Issues.',
     net: { cellsN: '{n} dari 20', cellsOut: 'sel Indeks', home: 'rumah', kept: '{n} bacaan disimpan, tidak satu pun keluar', leaves: 'Yang keluar dari rumah ini', leavesShort: 'yang keluar', means: 'rata-rata per jam', model: 'model', models: 'model', models_: 'model', parentNowhere: 'belum ke mana-mana', reads: 'Yang dibaca node ini', rhoN: '{closed} dari {total}', rhoOut: 'permintaan dijawab', sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik', street: 'jalan', sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.', title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.', yours: 'sensor Anda' }, },
   es: { leavesMachine: 'sale de esta máquina',
     openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
+    headlineRule: 'Lidera el asunto que m\u00e1s tiene que decir \u2014 y si dos dicen otro tanto, el que m\u00e1s se ha movido en las \u00faltimas tres horas. Si hay empate exacto, manda el orden que eligi\u00f3 este lugar, en Set up \u2192 Issues.',
     net: { cellsN: '{n} de 20', cellsOut: 'celdas del \u00cdndice', home: 'casa', kept: '{n} lecturas guardadas, ninguna sale', leaves: 'Lo que sale de esta casa', leavesShort: 'lo que sale', means: 'medias horarias', model: 'modelo', models: 'los modelos', models_: 'modelos', parentNowhere: 'a ning\u00fan sitio todav\u00eda', reads: 'Lo que lee este nodo', rhoN: '{closed} de {total}', rhoOut: 'peticiones respondidas', sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas', street: 'la calle', sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.', title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.', yours: 'tus sensores' }, },
 };
 const W = () => WORDS[(window.K || {}).LOC] || WORDS.en;
