@@ -79,9 +79,10 @@ signer_line() { grep '^release@planetai\.fab\.city ' "$1" | head -1; }
 want_signer="$(signer_line tools/allowed_signers)"
 [[ -n "$want_signer" ]] && ok "tools/allowed_signers publishes one signer line" \
   || no "tools/allowed_signers has no release@planetai.fab.city line"
-for f in install update.sh; do
+for f in install update.sh bin/planetai; do
   is "$f embeds the same signer line, byte for byte" "$(signer_line "$f")" "$want_signer"
 done
+has "$(./bin/planetai version)" "release@planetai.fab.city" "planetai version names the key this node trusts"
 has "$(cat install)"    'ssh-keygen -Y verify' "install checks the signature, not only the checksum"
 has "$(cat update.sh)"  'ssh-keygen -Y verify' "update.sh checks the signature, not only the checksum"
 # The old path has to keep working through this release: a v0.57 node knows nothing about signatures and

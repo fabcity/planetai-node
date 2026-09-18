@@ -133,6 +133,10 @@ if [[ $PULL -eq 1 ]] && [[ ! -d .git ]] && [[ -f VERSION ]]; then
     verify_signature "$tmp/n.tar.gz"
     tar xzf "$tmp/n.tar.gz" -C "$tmp" || { rm -rf "$tmp"; die "the download is not a readable archive, so nothing was installed. Try again; if it repeats, tell us."; }
     ( cd "$tmp/planetai-node" && tar cf - . ) | tar xf - --exclude=.env
+    # What `planetai doctor` reads months from now: whether the code this node is running was signed by
+    # the key it publishes. A node that cannot answer that has to be asked, and nobody asks.
+    printf '%s %s\n' "$([[ "${PLANETAI_UNSIGNED:-0}" == 1 ]] && echo unsigned || echo signed)" \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .planetai-release
     say "now $(cat VERSION 2>/dev/null || echo '?')"
   else
     warn "could not reach the site; keeping the version you have"

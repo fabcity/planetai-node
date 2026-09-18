@@ -138,6 +138,10 @@ fetch_tarball() {
   tar xzf "$tmp/n.tar.gz" -C "$tmp"
   # keep anything of the operator's: .env, backups, out, packs they added
   ( cd "$tmp/planetai-node" && tar cf - . ) | ( cd "$DIR" && tar xf - --exclude=.env )
+  # What `planetai doctor` reads months from now: whether the code this node is running was signed by
+  # the key it publishes. A node that cannot answer that has to be asked, and nobody asks.
+  printf '%s %s\n' "$([[ "${PLANETAI_UNSIGNED:-0}" == 1 ]] && echo unsigned || echo signed)" \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$DIR/.planetai-release"
   rm -rf "$tmp"
 }
 
