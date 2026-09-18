@@ -2589,7 +2589,10 @@ window.PAI.register({
   render(ctx) {
     const list = devices();
     const cols = 'minmax(0,210px) minmax(0,1fr) auto';
-    return `<div class="reads" id="hardware-rows" data-ref="sensors">`
+    /* `sensors` lives on Now and this section on Network, so the link named a section the reader
+       cannot see. It points at its own absent-manager row instead, which is on this page and is
+       the thing the list is actually about. */
+    return `<div class="reads" id="hardware-rows" data-ref="hw-manager">`
       + list.map(d => row({
         id: `hw-${esc(d.id)}`, component: 'device', ref: 'hardware-rows', cols,
         /* The link lives in the left-hand block, which row() places as HTML; the line is text and
@@ -3073,8 +3076,11 @@ window.PAI.register({
     const rows = (T() || {}).rows || T() || [];
     const all = Array.isArray(rows) ? rows : [];
     if (!all.length) {
+      /* hardware-rows is on Network; trust has been on Historical since v0.56. Its own band is the
+         one id guaranteed to be on the page with it — sat-map is not, because the satellite draws
+         nothing without a plan and /place/geojson is refused at every share level. */
       return `<p class="note" data-component="trustCard" data-card="trust" id="trust-rows"`
-        + ` data-ref="hardware-rows">No local sensor yet, so there is nothing to doubt.</p>`;
+        + ` data-ref="trust">No local sensor yet, so there is nothing to doubt.</p>`;
     }
     /* The node's own three conditions, read off the row rather than recomputed here. */
     const doubt = all.filter(r => r.age_hours < 168 || r.coverage_7d < 60 || r.frozen_channels > 0);
@@ -3103,7 +3109,7 @@ window.PAI.register({
       ? `${doubt.length} of ${all.length} sensors need a look.`
       : `${all.length} local sensors, seven-day coverage.`;
     return `<div class="reads" data-component="trustCard" data-card="trust" id="trust-rows"`
-      + ` data-ref="hardware-rows"><p class="note">${esc(sub)}</p>${body}</div>`;
+      + ` data-ref="trust"><p class="note">${esc(sub)}</p>${body}</div>`;
   },
 
   notes() {
@@ -4032,8 +4038,25 @@ function main() {
 
   /* The views are buttons and the URL is the hash, the way the page this replaces routed: one
      document served from /, no router, no build step. A span is a drawing; a button is a control. */
+  /* THE DIAL IS NOW'S CONTROL AND NOBODY ELSE'S.
+   *
+   * It was drawn under the header of every view. On Now it is the control the page is built around
+   * — the ground, the station groups, the claims and the grain all re-file when it turns. On
+   * Network, Historical, Set up and Arrange nothing on the page answers to it, so it was a control
+   * that looked live and did nothing: redundant, and distracting for being redundant. Reported
+   * 16 September.
+   *
+   * The resolution still lives in the URL, so a link into any view at a given grain keeps that
+   * grain — it simply cannot be changed from a page that does not vary by it. The wall keeps its
+   * own dial, which is a different control on a different surface: it re-fills the wall's field as
+   * it turns, which is what a wall is for. */
   const head = () => chrome(S.health.node, S.health.city, VIEW)
-    + `<div class="dialwrap"><div class="wrap">${dial()}</div></div>`;
+    + (VIEW === 'now' || VIEW === 'arrange'
+      /* Arrange draws Now's own sections — same registry, same want(NOW) — so it is Now in another
+         mode and keeps the dial with them. Taking it away there left the ground, the station
+         groups, the claims, the grain and the grain line all pointing at a control that was not on
+         the page. */
+      ? `<div class="dialwrap"><div class="wrap">${dial()}</div></div>` : '');
 
   /* One control. Each stop says what one cell of it is worth on the ground, the two lines the
      product already draws are drawn across it, and pressing a stop re-derives the whole page. */
@@ -4049,7 +4072,10 @@ function main() {
     /* The dial's link out is the sentence it re-derives. On Now that is the grain line; on the
        other views it is the view's own band, because the grain line is the lead's and the lead is
        Now's. A component pointing at an id that is not on the page is what T5 counts. */
-    const ref = VIEW === 'now' ? 'grain-line' : VIEW === 'network' ? 'satellite' : `view-${VIEW}`;
+    /* The sentence the dial re-derives, and the only one left: Now is the only view that draws it.
+       The arm that pointed at `satellite` died when the satellite moved to Historical in v0.56 —
+       it had been naming an id that was not on the page for two releases. */
+    const ref = 'grain-line';
     return `<div class="dial" id="dial" data-component="dial" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
