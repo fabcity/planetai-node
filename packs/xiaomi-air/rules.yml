@@ -11,3 +11,4 @@
   message:
     en: "The {name} filter is at {mean_15m:.0f}%. Order a replacement this week."
     id: "Filter {name} tersisa {mean_15m:.0f}%. Pesan penggantinya minggu ini."
+    es: "El filtro de {name} está al {mean_15m:.0f}%. Pide un recambio esta semana."

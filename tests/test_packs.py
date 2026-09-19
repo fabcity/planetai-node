@@ -165,3 +165,26 @@ assert _by[("smartcitizen", "pm25")]["declared_by"] == "core"
 assert all(c["role"] in ("ambient", "enclosure", "device_health", "derived", "index") for c in _ch)
 assert len({(c["source"], c["metric"]) for c in _ch}) == len(_ch), "one declaration per source and metric"
 print(f"{len(_ch)} channel roles declared")
+
+
+# ---------------------------------------------------------------- every alert template speaks every language the node offers
+# A Santiago or Menorca tester read English until v0.32. A rule added with only `en` would silently fall back for
+# everyone else, so the set is checked as a set: same keys, same placeholders, in every rules.yml.
+import glob, re, yaml
+LOCALES = {"en", "id", "es"}
+for f in ["config/rules.yml"] + sorted(glob.glob("packs/*/rules.yml")):
+    for r in yaml.safe_load(open(f)) or []:
+        m = r.get("message")
+        if not isinstance(m, dict):
+            continue
+        assert set(m) == LOCALES, f"{f} {r['id']}: message has {sorted(m)}, needs {sorted(LOCALES)}"
+        ph = {k: set(re.findall(r"\{(\w+)", v)) for k, v in m.items()}
+        assert len(set(map(frozenset, ph.values()))) == 1, f"{f} {r['id']}: placeholders differ between languages: {ph}"
+        for k, v in m.items():
+            assert v.strip() and len(v) < 700, f"{f} {r['id']}.{k}: empty or too long for a phone"
+assert "es" in open("app/settings.py").read().split('"ALERT_LOCALE"')[1].split("\n")[0], "settings.py: ALERT_LOCALE help must name es"
+# the language select is built in the dashboard's own script, not typed into index.html, since v0.54
+assert "'es', 'Espa\u00f1ol'" in open("app/static/dashboard.js").read(), "dashboard: language select needs Espa\u00f1ol"
+for pre in ("santiago", "barcelona", "menorca"):
+    assert "ALERT_LOCALE=es" in open(f"presets/{pre}.env").read(), f"presets/{pre}.env: Spanish-first pilots speak Spanish"
+print("every template speaks en, id and es")
