@@ -46,6 +46,49 @@ fi
 [[ -f "$(git rev-parse --git-common-dir)/index.lock" ]] && warn "a stale .git/index.lock is present; check ps for a live git before deleting it"
 [[ -n "$(git stash list 2>/dev/null)" ]] && warn "the stash is not empty. It is shared across every worktree; do not pop what you did not push."
 
+# ---------------------------------------------------------------- the neighbours, which origin cannot see
+# Two sessions fixed the same one-line bug in check_theme.py within three minutes of each other on
+# 19 September 2026. The second one had checked `gh pr list` and the origin branches and found nothing,
+# because the first one's branch was local and unpushed — in a worktree, on the same disk, invisible to
+# every remote question. That is the shape this section closes: a branch nobody can see is a branch two
+# people can write.
+#
+# It reports and never acts. Somebody else's worktree is theirs.
+if [[ "$MODE" == preflight ]]; then
+  echo "neighbours"
+  seen_any=0
+  while read -r wt; do
+    [[ "$wt" == "$ROOT" ]] && continue
+    b="$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null)" || continue
+    [[ "$b" == HEAD ]] && b="(detached)"
+    dirty="$(git -C "$wt" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+    ahead="$(git rev-list --count origin/main.."$b" 2>/dev/null || echo 0)"
+    # Unpushed is the one that matters: a branch with no upstream, or ahead of the one it has, exists
+    # on this disk and nowhere else — so `gh pr list` and every origin branch listing will miss it.
+    up="$(git -C "$wt" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null || true)"
+    if [[ -z "$up" ]]; then unpushed="$ahead"; else unpushed="$(git rev-list --count "$up".."$b" 2>/dev/null || echo 0)"; fi
+    line="$(basename "$wt") [$b] — $ahead ahead of main, $dirty uncommitted"
+    seen_any=1
+    if [[ "${unpushed:-0}" -gt 0 ]]; then
+      warn "$line, ${unpushed} commit(s) ON THIS DISK ONLY. Nothing on origin shows this; check before you start on the same thing."
+    elif [[ "$dirty" -gt 0 ]]; then
+      warn "$line — uncommitted work in somebody else's tree. Leave it alone, and do not assume it is abandoned."
+    else
+      ok "$line"
+    fi
+  done < <(git worktree list --porcelain | awk '/^worktree /{print substr($0,10)}')
+  # A local branch with no worktree and no upstream is the same blind spot without the directory.
+  while read -r b; do
+    git -C "$ROOT" rev-parse --abbrev-ref "$b@{upstream}" >/dev/null 2>&1 && continue
+    n="$(git rev-list --count origin/main.."$b" 2>/dev/null || echo 0)"
+    [[ "${n:-0}" -gt 0 ]] || continue
+    git worktree list --porcelain | grep -q "^branch refs/heads/$b$" && continue
+    warn "$b — $n commit(s), no worktree and no upstream. On this disk only."
+    seen_any=1
+  done < <(git for-each-ref --format='%(refname:short)' refs/heads)
+  [[ "$seen_any" == 0 ]] && ok "no other worktree or unpushed branch"
+fi
+
 # ---------------------------------------------------------------- the suite count, which git merges silently
 echo "tests/all"
 LISTED="$(grep -c '^test_' tests/all)"
