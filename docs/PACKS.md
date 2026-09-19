@@ -109,6 +109,14 @@ alone lists them.
 
 ## A dashboard section
 
+**What the page draws is `GET /issues`, and that document is `issues-v0`.** Every section reads off
+globals bound from one fetch of it, so its top level is the contract a section is written against. It
+carries `"schema": "issues-v0"`; `tools/check_wire.py` holds the top-level key list in
+`tests/data/wire/issues-v0.json`, and a key cannot appear or vanish under a section without somebody
+editing that file. If a node ever answers a version the page does not know, the page says one sentence
+and draws what it recognises — it does not blank. A version bumps only on a breaking change, and the
+bump is a `docs/decisions/` entry.
+
 A pack can put a section on the dashboard. It registers one object with the page contract and the
 page renders it in the stage it belongs to — observe, decide, act, measure — in the order the loop
 runs, and folds its explanations at the foot:

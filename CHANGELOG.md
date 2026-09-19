@@ -1,5 +1,22 @@
 # Changelog
 
+- 2026-09-19 — **five of the node's documents now say which document they are**, and nothing you will
+  see changes. `GET /issues` (what your page draws), `GET /export` (the nightly open-data file that is
+  pinned to IPFS forever), `GET /report/latest`, and the two hourly pushes a child node sends its parent
+  each gain one key: `"schema": "issues-v0"`, `"export-v0"`, `"report-v0"`, `"aggregates-v0"`,
+  `"events-v0"`. Until now only the Index cells carried a version and the rest were implicit.
+
+  **Nothing stops working, in either direction.** A parent that has updated still accepts every push
+  from a child that has not; a child that has updated still pushes to a parent that has not. A node
+  reading a version it does not know processes the fields it recognises and writes one line in its log —
+  it never refuses, because a parent one release behind refusing its children would stop a district's
+  numbers and tell nobody. The same rule holds for your page: if it ever meets a version it does not
+  know it prints one sentence and draws what it recognises, instead of going blank.
+
+  One small fix alongside: `GET /report/latest` used to answer five keys when the node had no report yet
+  and ten when it did, so anything reading it had to know which case it was in. It now answers the same
+  keys either way, null until there is a report.
+
 - 2026-09-19 — **a node that has never chosen a model preference now keeps everything on the network.**
   `AGENT_PREFER` shipped as `strongest`, which sends every question — and the 64 kB report bundle that
   goes with it: your numbers, your room names, your own sentences — to Anthropic's or OpenAI's API first
