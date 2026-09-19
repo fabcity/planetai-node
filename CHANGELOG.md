@@ -10,6 +10,11 @@ cannot be separated out now without reverting it. Tomas called it, knowing that.
 something odd after this update, that question has two candidates and not one — the dashboard change
 is confined to the satellite section, which is where to look first.
 
+- 2026-09-19 — the key your node checks an update against is published under the name `fabcity`, not
+  an email address. `planetai version` prints it, and a refused update names it. v0.60's notes below
+  say `release@planetai.fab.city`; that release never reached the site, and the name was settled
+  before any key was issued, so `fabcity` is the only one that has ever signed anything.
+
 - 2026-09-19 — your node now carries the network's registry of 209 data sources. `planetai sources`
   shows what is registered for your place and which of it your node already reads; a source with no
   `wired` beside it is one nobody has written an adapter for yet. `planetai doctor` says which

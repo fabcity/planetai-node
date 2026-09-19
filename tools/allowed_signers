@@ -10,4 +10,4 @@
 #
 # NOT YET ISSUED. `tools/release.sh` refuses to sign while this line reads PLACEHOLDER, so no release
 # can be cut against a key that does not exist.
-release@planetai.fab.city ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET release@planetai.fab.city
+fabcity ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET fabcity

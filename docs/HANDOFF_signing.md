@@ -10,7 +10,7 @@ refuses — which is the safe direction, and why nothing is blocked by the order
 On your own machine, once:
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.planetai/release_key -C release@planetai.fab.city
+ssh-keygen -t ed25519 -f ~/.planetai/release_key -C fabcity
 ```
 
 Give it a passphrase. `tools/release.sh` reads the key through `ssh-agent`, so `ssh-add
@@ -19,7 +19,7 @@ Give it a passphrase. `tools/release.sh` reads the key through `ssh-agent`, so `
 ## 2. Publish the public half
 
 ```bash
-printf 'release@planetai.fab.city %s release@planetai.fab.city\n' \
+printf 'fabcity %s fabcity\n' \
   "$(ssh-keygen -y -f ~/.planetai/release_key | awk '{print $1" "$2}')"
 ```
 
@@ -65,7 +65,7 @@ at both ends.
 Two releases, never one.
 
 1. **Add** the new public line to `tools/allowed_signers` and the three embedded copies, *beside* the
-   old one, both with the principal `release@planetai.fab.city`. Ship a release signed with the **old**
+   old one, both with the principal `fabcity`. Ship a release signed with the **old**
    key. Every node now accepts either.
 2. Wait until nodes have taken that release — `planetai doctor` shows the row, and the fleet is small
    enough to ask. Then ship a release signed with the **new** key.
