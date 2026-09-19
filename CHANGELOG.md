@@ -1,5 +1,9 @@
 # Changelog
 
+- 2026-09-17 — new pack `xiaomi-air`: Xiaomi / Mi Home air purifiers read on the LAN (miio/MIoT) as indoor
+  sensors — PM2.5, temp, humidity and filter life — plus a filter-low warning. Ships with MIoT mappings for
+  the Elite (zhimi.airp.meb1) and 4 Compact (xiaomi.airp.cpa4), verified live on node #1.
+
 ## v0.60 — 2026-09-18 — an update has to say who built it, and a node that refuses one is doing its job
 
 Every node in this network has been taking code from one Cloudflare bucket on trust. `install` and
