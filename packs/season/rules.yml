@@ -1,0 +1,90 @@
+# The record. `nearby` asks where the bad air is coming from, right now, across space. This asks the other
+# question a household actually has in August: is this week worse than the weeks before it, or is this just
+# what the air here does?
+#
+# PAIRED, ALWAYS. The comparison is per station — each ring station's last 7 days against its OWN preceding
+# 60 — and the rule reports the median of those differences. Never two island medians subtracted. Measured
+# 16 Sep 2026 against the archive: it held 2 stations in Jan 2025 and 79 in Sep 2026, so an unpaired median
+# would have read the archive's own growth as a change in the air. Every station in both windows or it is
+# not in the comparison.
+#
+# THRESHOLDS, measured over the archive's daily record (Jan 2025 – 16 Sep 2026, 177 days where three or more
+# stations paired):
+#   +8 µg/m³   the step. The paired delta's own p90 across that record is +8.2 all-Bali and +6.3 on node #1's
+#              15 km ring; its full range on that ring is −3.7 to +9.4. So this is the top of what the record
+#              calls an ordinary week, not a number chosen for roundness.
+#   20 µg/m³   the floor for the week itself. A step of 8 from 6 to 14 is clean air getting less clean and
+#              changes nobody's afternoon; the same step from 18 to 26 is the season turning.
+#   3 stations the floor for saying anything. Two paired stations is a coincidence with a witness.
+#   4 / 20 d   how many days each station must actually hold in its window. A station with one day in the
+#              week and three in the baseline has no median worth differencing.
+# Replayed over the archive with those numbers: it fires on 19 of 177 days all-Bali — some eight episodes,
+# late July 2025, late April and early June 2026 — and on 3 consecutive days on node #1's own ring (1–3 June
+# 2026, 21 µg/m³ against a baseline of 12), which the cooldown collapses into one alert. About one episode a
+# season, which is what a seasonal rule should cost a household.
+#
+# DEPTH. Both rules need 68 days of the ring in this node's own database. A node that has not been running
+# that long holds less, and `record` says so instead of guessing. `planetai run nearby backfill 90` fetches
+# it from the archive once.
+
+# ---------------------------------------------------------------- the year has turned
+- id: turning
+  level: info
+  cooldown_minutes: 4320        # 3 days. A season does not turn twice in a week.
+  sql: |
+    WITH station_day AS (
+      SELECT r.sensor_id, date_trunc('day', r.ts) AS d, avg(r.value) AS pm
+      FROM readings r JOIN sensors s USING (sensor_id)
+      WHERE s.source = 'baliairdispatch' AND NOT s.local AND NOT s.indoor
+        AND r.metric = 'pm25' AND r.ts > now() - interval '68 days'
+      GROUP BY 1, 2),
+    wk AS (
+      SELECT sensor_id, percentile_cont(0.5) WITHIN GROUP (ORDER BY pm) AS pm, count(*) AS n
+      FROM station_day WHERE d > now() - interval '7 days' GROUP BY 1),
+    base AS (
+      SELECT sensor_id, percentile_cont(0.5) WITHIN GROUP (ORDER BY pm) AS pm, count(*) AS n
+      FROM station_day WHERE d <= now() - interval '8 days' GROUP BY 1),
+    paired AS (
+      SELECT wk.pm AS week, base.pm AS usual FROM wk JOIN base USING (sensor_id)
+      WHERE wk.n >= 4 AND base.n >= 20)
+    SELECT count(*) AS stations,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY week)::numeric)          AS week,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY usual)::numeric)         AS usual,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY week - usual)::numeric)  AS step
+    FROM paired
+    HAVING count(*) >= 3
+       AND percentile_cont(0.5) WITHIN GROUP (ORDER BY week - usual) >= 8
+       AND percentile_cont(0.5) WITHIN GROUP (ORDER BY week) >= 20
+  message:
+    en: "\U0001F342 The air around here has got worse over the past week, and stayed that way.\n\n{stations} stations nearby are each running about {step} µg/m³ above their own last two months — {week} µg/m³ this week against {usual} before. This is not one bad afternoon. It is the kind of change that comes with the burning season and lasts weeks.\n\n\U0001F449 Nothing to do today. Worth knowing if you were planning to leave windows open at night, or if someone at home has asthma."
+    id: "\U0001F342 Udara di sekitar sini memburuk selama sepekan terakhir, dan bertahan begitu.\n\n{stations} stasiun di dekat sini masing-masing berada sekitar {step} µg/m³ di atas dua bulan terakhirnya sendiri — {week} µg/m³ pekan ini dibanding {usual} sebelumnya. Ini bukan satu sore yang buruk. Ini perubahan yang datang bersama musim pembakaran dan berlangsung berpekan-pekan.\n\n\U0001F449 Tidak ada yang perlu dilakukan hari ini. Baik diketahui kalau Anda berencana membuka jendela semalaman, atau ada anggota keluarga yang asma."
+    es: "\U0001F342 El aire de por aquí ha empeorado durante la última semana, y se ha quedado así.\n\n{stations} estaciones cercanas están cada una unos {step} µg/m³ por encima de sus propios dos últimos meses — {week} µg/m³ esta semana frente a {usual} antes. Esto no es una mala tarde. Es el tipo de cambio que llega con la temporada de quemas y dura semanas.\n\n\U0001F449 Nada que hacer hoy. Conviene saberlo si pensaba dejar ventanas abiertas de noche, o si alguien en casa tiene asma."
+
+# ---------------------------------------------------------------- what the record actually holds
+# No message, never sent. It puts the comparison in the report whether or not it crossed a threshold, with the
+# station count, so a week described as normal can be checked against how much record there was to say it with.
+- id: record
+  contributes: report
+  sql: |
+    WITH station_day AS (
+      SELECT r.sensor_id, date_trunc('day', r.ts) AS d, avg(r.value) AS pm
+      FROM readings r JOIN sensors s USING (sensor_id)
+      WHERE s.source = 'baliairdispatch' AND NOT s.local AND NOT s.indoor
+        AND r.metric = 'pm25' AND r.ts > now() - interval '68 days'
+      GROUP BY 1, 2),
+    wk AS (
+      SELECT sensor_id, percentile_cont(0.5) WITHIN GROUP (ORDER BY pm) AS pm, count(*) AS n
+      FROM station_day WHERE d > now() - interval '7 days' GROUP BY 1),
+    base AS (
+      SELECT sensor_id, percentile_cont(0.5) WITHIN GROUP (ORDER BY pm) AS pm, count(*) AS n
+      FROM station_day WHERE d <= now() - interval '8 days' GROUP BY 1),
+    paired AS (
+      SELECT wk.pm AS week, base.pm AS usual, base.n AS days FROM wk JOIN base USING (sensor_id)
+      WHERE wk.n >= 4 AND base.n >= 20)
+    SELECT count(*) AS stations,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY week)::numeric, 1)         AS week,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY usual)::numeric, 1)        AS usual,
+           round(percentile_cont(0.5) WITHIN GROUP (ORDER BY week - usual)::numeric, 1) AS step,
+           max(days) AS baseline_days
+    FROM paired
+    HAVING count(*) > 0
