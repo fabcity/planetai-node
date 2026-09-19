@@ -91,10 +91,22 @@ services:
     build: { context: ./app, dockerfile: Dockerfile.reticulum }
     profiles: [reticulum]
     restart: unless-stopped
-    env_file: .env
+    # No env_file here, on purpose (F2 of the 18 September design review). `env_file: .env` handed this
+    # container every secret the node holds — the Telegram bot token, the online model key, the admin
+    # token, the database password — to a process whose whole job is to speak to a public radio mesh.
+    # It reads eight variables and this is all eight; `grep getenv app/reticulum_bridge.py` is the list.
+    # A new one has to be added here, which is the point: it is a decision, not a default.
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      NODE_NAME: ${NODE_NAME:-node}
       NODE_API_URL: http://app:8080
       RETICULUM_CONFIGDIR: /etc/reticulum
+      RETICULUM_DATA: /data
+      RETICULUM_ALERT_DESTINATIONS: ${RETICULUM_ALERT_DESTINATIONS:-}
+      RETICULUM_ANNOUNCE_S: ${RETICULUM_ANNOUNCE_S:-1800}
+      # The bridge POSTs /actions when somebody on the mesh answers an alert. The weaker token on
+      # purpose: it closes a loop, it cannot read a setting or a reading.
+      ACT_TOKEN: ${ACT_TOKEN:-}
     # 4242: TCPServerInterface — Sideband/NomadNet/other nodes connect here (LAN or tailnet).
     # 4243: the bridge's own health/API port, loopback only — `planetai reticulum` and the doctor poll it from
     # the host, and without this line they never could, so a clean start still reported "the bridge did not come up".

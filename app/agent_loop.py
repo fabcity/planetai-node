@@ -4,10 +4,11 @@
   remote   a bigger local model elsewhere on your tailnet: a laptop's Ollama, an exo cluster. Private, no key.
   local    Ollama on this machine, qwen3:4b. Always there.
 
-AGENT_PREFER=strongest tries online, remote, local in that order. =fallback tries your own remote model first, then
-online, then local — online above local because a rung is skipped only when it *fails*, and a 4B model never fails,
-it answers badly. =private never uses online at all. A rung that is unreachable, unauthorised or erroring is
-skipped for five minutes. `/model` in Telegram shows the ladder and which
+AGENT_PREFER=private never uses online at all, and is what a node does when nobody has chosen: the household's own
+sentences stay on the machine that recorded them until somebody says otherwise. =fallback tries your own remote model
+first, then online, then local — online above local because a rung is skipped only when it *fails*, and a 4B model
+never fails, it answers badly. =strongest tries online, remote, local in that order. A rung that is unreachable,
+unauthorised or erroring is skipped for five minutes. `/model` in Telegram shows the ladder and which
 rung answered; `/model local` pins one for the conversation.
 
 All three speak the OpenAI-compatible chat protocol with tools, which Ollama, exo, OpenAI and Anthropic all serve.
@@ -90,7 +91,7 @@ def ladder(cfg: dict) -> list[Rung]:
     if g("AGENT_REMOTE_URL") and url_ok("remote", g("AGENT_REMOTE_URL")):
         rungs.append(Rung("remote", g("AGENT_REMOTE_URL"), g("AGENT_REMOTE_MODEL", "gpt-oss-120b"), g("AGENT_REMOTE_KEY")))
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
-    prefer = g("AGENT_PREFER", "strongest")
+    prefer = g("AGENT_PREFER", "private")
     if prefer == "private":
         rungs = [r for r in rungs if r.name != "online"]
     elif prefer == "fallback":
@@ -321,7 +322,7 @@ def ladder_text(pins: dict, chat: str) -> str:
     lines = [f"{'→' if pins.get(chat) == r.name else ' '} {r.name:7} {r.model} @ {r.url.replace('http://','').replace('https://','')[:40]}" + ("  (skipped, retry soon)" if r.skip_until > now else "") for r in RUNGS]
     # cfg(), not os.getenv(): the Model page writes AGENT_PREFER to the database, and reading only the environment
     # told every household that changed it there that it was still on 'strongest'.
-    prefer = cfg("AGENT_PREFER", "strongest")
+    prefer = cfg("AGENT_PREFER", "private")
     order = {"private": "the node's own machines only, nothing leaves the network",
              "fallback": "your remote model first, then online, then the small local one as the offline floor",
              "strongest": "strongest first, so online answers whenever it is configured"}

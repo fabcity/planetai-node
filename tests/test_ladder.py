@@ -36,6 +36,20 @@ assert names(AGENT_PREFER="strongest") == ["online", "remote", "local"], names(A
 assert names(AGENT_PREFER="fallback") == ["remote", "online", "local"], names(AGENT_PREFER="fallback")
 assert names(AGENT_PREFER="private") == ["remote", "local"], names(AGENT_PREFER="private")
 
+# The key absent from .env AND from the settings table is the case this whole file is about. Until v0.63 the two
+# call sites defaulted to "strongest", so a household that pasted an API key into the Model page and never opened
+# the preference sent its 64 kB report bundle — its numbers, its room names, its own sentences — to somebody
+# else's API first and to the model on the box last. BOTH is fully configured here and online must still be absent.
+assert names() == ["remote", "local"], names()
+# and the value, wherever it was set, still decides
+assert names(AGENT_PREFER="strongest") == ["online", "remote", "local"], "an explicit choice is not overridden"
+
+# The second default: what /model prints. It reads through cfg(), which is CFG then os.environ then the default —
+# so with neither, the household is told the truth about where its sentences go.
+A.CFG = {}
+os = __import__("os"); os.environ.pop("AGENT_PREFER", None)
+assert "Prefer: private" in A.ladder_text({}, "chat"), A.ladder_text({}, "chat")
+
 # fallback with nothing online configured is just the local ladder, not an empty one
 assert names(AGENT_PREFER="fallback", AGENT_ONLINE_KEY="") == ["remote", "local"]
 # local is always last-resort present, even with nothing else set at all
@@ -50,7 +64,9 @@ assert "remote" not in names(AGENT_PREFER="fallback", AGENT_REMOTE_URL="100.64.0
 # the one setting where a typo must be refused rather than tolerated: not-"private" sends data off the network
 sys.path.insert(0, "app")
 import settings as S  # noqa: E402
-assert S.CHOICES["AGENT_PREFER"] == ("strongest", "fallback", "private"), S.CHOICES.get("AGENT_PREFER")
+# private first: describe() publishes this tuple and every surface offers the values in the order it gives them.
+assert S.CHOICES["AGENT_PREFER"] == ("private", "fallback", "strongest"), S.CHOICES.get("AGENT_PREFER")
+assert set(S.CHOICES["AGENT_PREFER"]) == {"private", "fallback", "strongest"}, "the three values themselves do not change"
 
 print("the ladder: strongest online-first, fallback remote-online-local, private online-never, and a non-URL is not a rung")
 
