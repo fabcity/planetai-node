@@ -51,6 +51,8 @@ make test
 | `check_ui.py` | an element id the script referenced that was not in the markup; a network `url()` in a stylesheet; Fab Blue in the dark register |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved |
 | `check_sources.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed |
+| `tools/session.sh preflight` / `land` | not a lint gate — the two ends of a session. Four PRs unmerged for two weeks; the redesign on one laptop; two branches moving the suite count and git keeping one; CI red on main for a day. `skills/preflight/` and `skills/land/` |
+| `tools/sweep.py` | the same, once a day, into one pinned issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60 |
 | `check_requirements.sh` | `uvicorn` pinned against `mcp`; the image failed to build on the node |
 | `extract_strings.py --check` | the installer's and the preflight's human-readable sentences out of step with `data/strings/en.yml` |
 | `py_compile`, pyflakes, the import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |

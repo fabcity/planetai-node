@@ -10,6 +10,8 @@ for an agent already inside a running node.
 | "it stopped working", "no alerts since Tuesday", here is a log | `skills/troubleshoot-node/SKILL.md` | Ask for `planetai doctor --json`, `status --json` and twenty lines of logs. Never `.env`. |
 | "connect this to Claude / Codex / my agent", "how do I reach it from outside?" | `skills/connect-agent/SKILL.md` | Get the URL and token from `planetai agent`. Tailscale, never a port forward. |
 | "put our city on the Fab City Index", "how do we publish cells?" | `skills/publish-to-index/SKILL.md` | Establish the tier first. One node per pilot writes; a home node never does. |
+| you are about to change this repository — any task, any size | `skills/preflight/SKILL.md` | `tools/session.sh preflight` first. Your own worktree, your own branch; never the one holding `main`. |
+| you are about to end a session that changed this repository | `skills/land/SKILL.md` | `tools/session.sh land`. Nothing exists only on this machine, and the gates ran, not were assumed. |
 
 The skills order the documents; they do not replace them. Everything below is what an agent operating a
 node needs to know, and it is the authority.
