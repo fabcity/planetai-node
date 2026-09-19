@@ -338,7 +338,9 @@ jobs:
           # the path that SUCCEEDS. Everything else — the URLs, the fetch, the verify — is the real file.
           blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
           sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > /tmp/install.flat
-          cmp -s install /tmp/install.flat && { echo "the placeholder is gone from install — this leg no longer tests anything"; exit 1; }
+          if cmp -s install /tmp/install.flat; then
+            echo "the placeholder is gone from install — this leg no longer tests anything"; exit 1
+          fi
 
       - name: install from the flat mirror, with only PLANETAI_GET changed
         env:
