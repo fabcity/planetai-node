@@ -65,8 +65,27 @@ ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | ENV_IN_MCP | 
     "MQTT_USER", "MQTT_PASS", "WIFI_SSID", "WIFI_PSK", "GATEWAY", "CHNAME", "MAP_KEY", "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID", "POSTGRES_USER", "POSTGRES_DB", "POSTGRES_PASSWORD", "NODE_VERSION", "APP_PORT"}
 
+# A spec proposes things that do not exist yet — that is what a spec is for, and this gate otherwise makes
+# one impossible to commit. Each entry names the document that owns the promise, in the shape
+# tests/test_settings.py's NO_PANE_YET uses: an entry needs a reason, and the release that BUILDS the thing
+# deletes the entry. The two assertions under the loop are what force that deletion — an entry for a
+# document that is gone, or for something that now exists, fails the gate.
+PROPOSED = {
+    # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
+    # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
+    "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},
+}
+for _doc, _names in PROPOSED.items():
+    if not os.path.exists(_doc):
+        errs.append(f"check_docs.py: PROPOSED names {_doc}, which is gone — delete the entry")
+for _doc, _names in PROPOSED.items():
+    for _n in _names:
+        if "/" in _n and os.path.exists(_n):
+            errs.append(f"check_docs.py: PROPOSED lets {_doc} name `{_n}`, which now exists — delete it from the entry")
+
 for doc in DOCS:
     text = open(doc).read()
+    proposed = PROPOSED.get(doc, set())
     body = re.sub(r"```.*?```", lambda m: m.group(0) if "planetai " in m.group(0) or "docs/" in m.group(0) else "", text, flags=re.S)
 
     # `planetai <cmd>` at a command position: after a backtick, a prompt, or the start of a line — not
@@ -74,7 +93,7 @@ for doc in DOCS:
     for cmd in set(re.findall(r"(?:^|`|\$ |\n)planetai ([a-z][a-z-]+)", text, re.M)):
         if cmd in ("node",):        # "planetai-node", the repo name, not a command
             continue
-        if cmd not in CMDS:
+        if cmd not in CMDS and cmd not in proposed:
             errs.append(f"{doc}: mentions `planetai {cmd}`, which the CLI does not dispatch")
 
     for link in set(re.findall(r"\]\((?!https?:|#|mailto:)([^)#]+)", text)):
@@ -91,6 +110,8 @@ for doc in DOCS:
     for path in set(re.findall(r"`((?:docs|packs|app|config|data|tools|tests|presets|out|skills)/[A-Za-z0-9_./-]+)`", text)):
         p = path.rstrip("/.")
         if p in RUNTIME or path in RUNTIME or p.startswith("out/") or doc == "CHANGELOG.md":   # out/ holds runtime artifacts     # the changelog is a record; files move
+            continue
+        if p in proposed or path in proposed:
             continue
         if not os.path.exists(p) and not glob.glob(p):
             errs.append(f"{doc}: names `{path}`, which does not exist")
