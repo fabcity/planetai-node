@@ -320,6 +320,31 @@ if [[ "$PLATFORM" == "macos" ]]; then
   docker info >/dev/null 2>&1 || die "no container runtime on this Mac. Run 'planetai preflight' — it names the one that installs on this macOS version."
 elif [[ "$PLATFORM" == wsl-* ]] && ! need docker; then
   die "Docker not visible inside WSL. Install Docker Desktop for Windows, enable 'Use the WSL 2 based engine' and turn on WSL integration for this distro (Settings → Resources → WSL integration), then re-run."
+elif ! need docker && need podman; then
+  # Podman is here and Docker is not, and that is almost always deliberate — a Fedora or RHEL machine, or
+  # somebody who does not want a root daemon. Installing Docker over the top of it would be this script
+  # deciding something the person already decided, and on a Pi it would also mean two runtimes fighting
+  # over cgroups.
+  #
+  # What the node needs is not Docker specifically; it is a `docker` command and a socket. Podman ships
+  # both: `podman-docker` provides /usr/bin/docker, and the user socket is what DOCKER_HOST points at.
+  # With those two in place every one of this repository's 99 `docker` call sites — 57 in bin/planetai
+  # alone — works unchanged, which is why this is two lines of instruction and not a refactor.
+  #
+  # NOT TESTED ON A NODE. No CI leg runs under Podman and nobody has carried a node on it, so this says
+  # what to do and stops rather than installing something and claiming it works. docs/HANDOFF_arm64.md
+  # carries what proving it would take.
+  warn "Podman is installed here and Docker is not. Not installing Docker over it."
+  echo "     The node drives a runtime through the 'docker' command, and Podman can provide one:"
+  echo
+  echo "       sudo <package manager> install podman-docker        provides /usr/bin/docker"
+  echo "       systemctl --user enable --now podman.socket         and a socket for it to talk to"
+  echo "       export DOCKER_HOST=unix://\$XDG_RUNTIME_DIR/podman/podman.sock"
+  echo
+  echo "     Then run this same line again; it will find 'docker' and carry on."
+  echo "     No node has been run on Podman and no CI leg covers it, so you would be the first. If you"
+  echo "     would rather not be:  curl -fsSL https://get.docker.com | sh"
+  die "Podman is here, Docker is not, and the node needs a 'docker' command. The three lines above give it one."
 elif ! need docker; then
   say "there is no container runtime on this machine, and the node is two containers. Installing Docker."
   sudo_first "installing Docker"

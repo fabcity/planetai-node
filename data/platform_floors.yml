@@ -176,6 +176,23 @@ linux:
     checked: 2026-09-08
     says: "you need a maintained version of one of the following Fedora versions: Fedora 44, Fedora 43"
 
+  # Raspberry Pi OS 64-bit, which is the machine the arm64 work is actually for. Docker's own
+  # Raspberry Pi OS page is for 32-bit ONLY and sends 64-bit users to the Debian instructions, so the
+  # floor here IS docker_engine_debian's — the row exists because a reader looking for "Raspberry Pi"
+  # otherwise lands on a page about armhf and concludes the wrong thing.
+  docker_engine_raspberry_pi_os:
+    name: Docker Engine on Raspberry Pi OS 64-bit
+    min_os: "12"
+    arch: [arm64]
+    source: https://docs.docker.com/engine/install/raspberry-pi-os/
+    checked: 2026-09-19
+    says: >
+      The page lists "32-bit Raspberry Pi OS Bookworm 12 (stable)" and "32-bit Raspberry Pi OS
+      Bullseye 11 (oldstable)" only, and tells 64-bit users to follow the Debian instructions — so
+      64-bit takes docker_engine_debian's floor of Debian 11. Raspberry Pi's own downloads page
+      (checked the same day) ships Raspberry Pi OS 64-bit on Debian Trixie 13, released 15 Sep 2026,
+      for the 3B/3B+/3A+/4B/400/5/500/500+, the CM3 through CM5 and the Zero 2 W.
+
   docker_arch:
     name: Docker on Arch
     min_os: rolling
@@ -244,9 +261,12 @@ assets:
 node:
   min_ram_gb: 4              # the container runtime's floor; the node measures 229 MiB across both containers
   min_free_disk_gb: 3        # 645 MB of images + a database volume that starts at 114 MB
-  measured_on: amd64
+  measured_on: amd64         # and ONLY amd64 — see `says`
   checked: 2026-09-08
   says: >
     Measured, not estimated: app 150.0 MiB and database 79.2 MiB at rest, under 5% of a core between
     polls, a report in 1.5 s, and 114 MB in the volume after the 4,476-row bootstrap. The floor is
-    the runtime's, not the node's.
+    the runtime's, not the node's. Every one of those numbers was taken on amd64. arm64 became a
+    supported architecture in v0.63 and nothing has been measured on it: a Pi 5 has a slower disk
+    and a quarter of the cores, so the memory figures should carry and the timings should not.
+    docs/HANDOFF_arm64.md is the plan that would replace this paragraph with arm64 numbers.
