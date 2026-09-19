@@ -70,6 +70,21 @@ if DISPLAY=:0 SSH_ASKPASS="$T/ask.sh" SSH_ASKPASS_REQUIRE=force ssh-add "$K" </d
     ssh-keygen -Y verify -f tools/allowed_signers -I fabcity -n planetai-node -s fake.tar.gz.sig < bad.tar.gz >/dev/null 2>&1 \
       && bad "a tampered tarball verified" \
       || ok "and refuses the same signature over different bytes"
+    # --- 4. SIGNING A SECOND TIME, which is every release after the first ----------------------
+    # ssh-keygen -Y sign prompts "…already exists. Overwrite (y/n)?" when the .sig is there, then
+    # with nothing on stdin it leaves the old signature in place and EXITS 0 — so `|| die` cannot
+    # see it. v0.62 signed nothing and would have shipped v0.61's signature over a new tarball.
+    cp fake.tar.gz.sig first.sig
+    printf 'a different pretend tarball\n' > fake.tar.gz
+    out="$(cd "$T/repo" && PLANETAI_SIGNING_KEY="$K" bash d3.sh fake.tar.gz </dev/null 2>&1)"
+    if cmp -s first.sig fake.tar.gz.sig; then
+      bad "signing a second time left the FIRST signature in place: $out"
+    else
+      ok "signing over an existing .sig replaces it"
+      ssh-keygen -Y verify -f tools/allowed_signers -I fabcity -n planetai-node -s fake.tar.gz.sig < fake.tar.gz >/dev/null 2>&1 \
+        && ok "and the second signature verifies against the new bytes" \
+        || bad "the second signature does not verify"
+    fi
   else
     bad "sign_tarball wrote no signature with the key in the agent: $out"
   fi
