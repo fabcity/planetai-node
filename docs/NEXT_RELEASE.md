@@ -51,6 +51,9 @@ resolve to the same pixel today. That is what makes it quiet: when a token moves
 **The staging, in the order it has to happen:**
 
 - **1a · Push `dashboard-directions-2026-09`.** One command, and it is the only irreplaceable step here.
+- **1a½ · The scale spike, before the redrawing.** `docs/design/SCALE_SPIKE_2026-09.md` names three sources —
+  a city budget, a region's waste series, the planet's material footprint — and the five things about the page
+  that each of them breaks. One fixture, four rungs, one place. The drawing is judged against it.
 - **1b · Close the 12 hard-coded tokens first, before any redrawing.** Each is a one-line change from a
   literal to `var(--token)`, no visual change today, and `python3 tools/shots.py` proves it: the fixtures
   render identically at four widths or the change was not what it claimed. This is what turns the
