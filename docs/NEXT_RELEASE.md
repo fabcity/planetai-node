@@ -15,7 +15,7 @@ and **new data sources**. They are staged differently on purpose, because they f
 source that is wrong is one pack saying something false and can be switched off with a blank `.env` key;
 a page that is wrong is every household reading it, on a wall, with no way back but an update.
 
-Three rules for the queue while both are in flight:
+Four rules for the queue while both are in flight:
 
 1. **Only one branch at a time may change the suite count in `tests/all`.** That number is written by
    hand, git merges two bumps of it without a conflict and keeps one, and the result is a tree where
@@ -24,6 +24,29 @@ Three rules for the queue while both are in flight:
    comes back wrong, the question "was it the page or the data" has to have one answer.
 3. **A release ships one of the two, not both.** The tarball reaches Menorca and Bali before anyone here
    sees a screen; two large changes in one hop cannot be bisected by the person who has to report it.
+4. **Sync the registry, then tag — in that order, every release.**
+
+   ```bash
+   git -C ../awesome-fabcity-data fetch -q origin
+   tools/sync_registry.sh "$(git -C ../awesome-fabcity-data rev-parse origin/main)"
+   ```
+
+   Commit the diff with a CHANGELOG line, and only then tag. `data/sources/` is a pinned snapshot and
+   **nothing checks that the pin is current** — `tools/check_registry.py` asks whether the snapshot is
+   internally consistent, which is a different question and the right one: a node offline for a month
+   must still pass its own lint. So the pin goes stale silently, and the only thing that catches it is
+   somebody reading `data/sources/REGISTRY_VERSION` against upstream's sha.
+
+   v0.62 is how this rule was learned. It shipped the registry at `5333ffa` — current when it was
+   vendored that morning, three merges stale by the time the tarball was signed six hours later. A node
+   on v0.62 reports six Seoul datasets as `live` that Seoul's own portal answers with a termination
+   notice, and sends anyone following four sources to addresses that have moved. Nothing was broken and
+   no reading was wrong; the node was simply repeating something that had stopped being true. Fixed in
+   v0.62-2 by `tools/sync_registry.sh c2d33f7`.
+
+   The pin is a sha because the script refuses a branch or a tag, which is the right refusal — a
+   floating pin is a node whose answers change under it. That is also why this cannot be automated into
+   the tag: vendoring is a commit somebody reviewed, not a fetch that happens during a release.
 
 ---
 
