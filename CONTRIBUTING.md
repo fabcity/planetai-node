@@ -25,7 +25,7 @@ column in the same PR. A rule should end in something a person does.
 ## Before your first commit
 
 ```bash
-make dev-setup
+cp tools/hooks/pre-commit .git/hooks/
 ```
 
 Installs the pre-commit hook: blocks `.env`, credentials and `.git` contents, and runs `make lint`. See

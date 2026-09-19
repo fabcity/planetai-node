@@ -31,7 +31,8 @@ acting, and do not undo what the person's local model did without asking.
 ## Two ways in
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
-`Authorization: Bearer <ADMIN_TOKEN>`, and `X-Agent: <your name>` so the audit trail knows who acted. Twenty tools:
+`Authorization: Bearer <ADMIN_TOKEN>`. Pass your name in every write tool's `agent` argument so the audit trail knows
+who acted (the tools forward it to the API as `X-Agent`; the header on `/mcp` itself is not read). Twenty tools:
 `status`, `health_check`, `issues` (how the place is doing, in the household's own words), `sensors`,
 `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
 `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,

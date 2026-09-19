@@ -58,7 +58,7 @@ retyping hid the bug.
 ## Releasing
 
 ```bash
-tools/release.sh v0.19     # lint, tag, push. Needs a CHANGELOG section.
+tools/release.sh 0.19      # lint, tag v0.19, push. Needs a `## v0.19` section in CHANGELOG.md.
 tools/bundle.sh            # the tarball the website serves to testers without repo access
 cd ../planetai && make deploy
 ```

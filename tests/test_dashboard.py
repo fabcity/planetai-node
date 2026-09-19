@@ -96,63 +96,337 @@ if shutil.which("node"):
         f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
     assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
 
-# axe found nothing on any view or state, and these are the four that had to be true for that.
+# --- the modular page: three files, one contract, ten sections -------------------------------------------------
 #
-# Every one of these was a finding: the page had no h1 at all (a <b> carried the node's name, so
-# page-has-heading-one fired on every view in every state, and the wall has no header so it needed its
-# own); the Figures table scrolls inside its own box at 390 and could not be reached by keyboard; and
-# --dim, at about 4:1 on paper, carried the kit names, the rule ids, the .env markers and the source
-# line — fifty-seven serious contrast findings across one render, all on the small text that says
-# where a number came from.
-assert "<h1" in (ROOT / "app/static/index.html").read_text(), "the node's name is not the page's h1 again"
-assert re.search(r'<h1 class="vh">', _js), "the wall has no heading of its own; its header is display:none"
-assert 'class="figwrap" tabindex="0"' in _js, "the Figures table cannot be scrolled from a keyboard again"
+# Rewritten 15 September 2026 with the page. Everything below used to assert the structure of the
+# single-renderer page — its #hero, its Figures table, its Arrange mounts — and that page is gone.
+# Each finding it was written from is re-made against the page that draws today; nothing was dropped
+# because it was inconvenient to re-express.
+_h = (ROOT / "app/static/index.html").read_text()
 _css = (ROOT / "app/static/dashboard.css").read_text()
-for _sel in (".sensor .kits{", ".ledger .txt .meta{", ".field .src{"):
+
+for _must in ('src="static/dashboard.js"', 'href="static/dashboard.css"', 'id="page"'):
+    assert _must in _h, f"index.html lacks {_must}"
+assert "<style" not in _h and "<script>" not in _h, \
+    "index.html carries an inline style or script again — the page is three files, not one"
+
+assert "window.PAI = { STAGES, register, render, wall, sections, problems, has }" in _js, \
+    "dashboard.js no longer carries the page contract (kit-page.js) verbatim"
+for _sec in ("'ground'", "'sensors'", "'satellite'", "'reticulum'", "'meshtastic'", "'hardware'",
+             "'claims'", "'grain'", "'asks'", "'measure'"):
+    assert f"id: {_sec}" in _js, f"dashboard.js no longer registers the section {_sec}"
+assert "async function boot()" in _js and "/issues/fixtures/" in _js, \
+    "dashboard.js boots from /issues and can replay a fixture with ?fixture="
+# A style written from JavaScript cannot be read without running the page, and two sections used to.
+assert "<style" not in _js and "createElement('style')" not in _js, \
+    "no JS-injected styles in production: every module's CSS is in dashboard.css"
+# Live tiles tell a tile server which square of the planet is being looked at. They are off unless a
+# keeper turns them on, and the setting that turns them on is the only thing that may.
+assert "tile.openstreetmap.org" not in _js or "MAP_TILES" in _js, \
+    "live tiles are no longer gated on the MAP_TILES setting"
+
+# ...and the page must be able to READ that setting. The line above is a string-proximity check: it
+# passed for the whole of the branch while `window.SETTINGS.MAP_TILES` was undefined on every load,
+# because GET /settings is describe() — {unlocked, runtime: [{key, value, …}], bootstrap: [...]} —
+# and never a flat map. So the predicate was permanently false: no tile was ever requested at any
+# setting, the two live bases were never offered, and the page printed "live tiles are off on this
+# node" to a keeper who had just turned them on. This runs the page's own two functions against the
+# real body of that endpoint, which is the only thing that could have caught it.
+if shutil.which("node"):
+    import settings as _settings          # the same module app/main.py serves GET /settings from
+
+    def _lift(pattern, what):
+        m = re.search(pattern, _js, re.S)
+        assert m, f"dashboard.js no longer defines {what}"
+        return m.group(0)
+
+    _tiles_js = "\n".join((
+        _lift(r"const PLAN_FROM = \d+;", "PLAN_FROM"),
+        _lift(r"const tilesAllowed = \(res, settings\) =>.*?;", "tilesAllowed()"),
+        _lift(r"const MASKED = '[^']*';", "MASKED"),
+        _lift(r"function flatSettings\(d\) \{.*?\n\}", "flatSettings()"),
+    ))
+    _os_backup = {k: os.environ.get(k) for k in ("MAP_TILES", "TELEGRAM_BOT_TOKEN")}
+    _bodies = {}
+    for _tiles, _unlocked in (("on", False), ("on", True), ("off", False), (None, False)):
+        if _tiles is None:
+            os.environ.pop("MAP_TILES", None)
+        else:
+            os.environ["MAP_TILES"] = _tiles
+        os.environ["TELEGRAM_BOT_TOKEN"] = "never-printed"   # a secret must stay masked either way
+        _settings._cache["at"] = 0.0
+        _bodies[f"{_tiles}-{'unlocked' if _unlocked else 'anonymous'}"] = \
+            _settings.describe(unlocked=_unlocked, public=_settings.PUBLIC)
+    for _k, _v in _os_backup.items():
+        os.environ.pop(_k, None) if _v is None else os.environ.__setitem__(_k, _v)
+    _settings._cache["at"] = 0.0
+
+    _prog = (_tiles_js + "\nconst B = " + json.dumps(_bodies) + ";\n"
+             + "const out = {};\nfor (const [k, body] of Object.entries(B)) {\n"
+             + "  const flat = flatSettings(body);\n"
+             + "  out[k] = { at8: tilesAllowed(8, flat), at9: tilesAllowed(9, flat),\n"
+             + "             value: flat.MAP_TILES === undefined ? null : flat.MAP_TILES,\n"
+             + "             secretLeaked: 'TELEGRAM_BOT_TOKEN' in flat,\n"
+             + "             rowsKept: Array.isArray(flat.runtime) };\n}\n"
+             + "console.log(JSON.stringify(out))")
+    _t = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True, check=True).stdout)
+
+    assert _t["on-anonymous"]["value"] == "on", \
+        f"MAP_TILES=on must reach window.SETTINGS unmasked for a reader with no token: {_t['on-anonymous']}"
+    assert _t["on-anonymous"]["at8"] is True, \
+        f"with MAP_TILES=on the page must offer and fetch tiles at resolution 8: {_t['on-anonymous']}"
+    assert _t["on-anonymous"]["at9"] is False, \
+        f"from resolution 9 inward the node's own plan fills the frame and sends nothing: {_t['on-anonymous']}"
+    assert _t["on-unlocked"]["at8"] is True, "the same must hold with the admin token presented"
+    assert _t["off-anonymous"]["at8"] is False and _t["None-anonymous"]["at8"] is False, \
+        f"off, and unset, must both refuse a tile at every resolution: {_t}"
+    # A masked value is not a value. Reading "•••• set" as a setting is how a secret becomes a switch.
+    assert not any(v["secretLeaked"] for v in _t.values()), \
+        f"a masked or secret key must not be flattened onto window.SETTINGS: {_t}"
+    assert all(v["rowsKept"] for v in _t.values()), \
+        "the runtime rows themselves must survive: the Set up pane and readLayout() read them"
+
+    # STATIONS_SHOWN, read the same way and for the same reason. The list draws this node's own
+    # hardware plus the nearest N of everybody else's, so the keeper's number has to survive the
+    # same trip MAP_TILES did not: GET /settings is describe(), never a flat map, and this runs the
+    # page's own capOf() against that endpoint's real body rather than against a map written here.
+    #
+    # The two that are not about plumbing: a blank value is the default, not "no cap" (a node that
+    # has never touched the setting must not get a fourteen-row list), and an unreadable one is the
+    # default, not zero and not an empty neighbourhood (a typo in a settings box may not blank the
+    # section). 0 alone means every station.
+    _cap_js = "\n".join((
+        _lift(r"const STATIONS_DEFAULT = \d+;", "STATIONS_DEFAULT"),
+        _lift(r"const capOf = \(settings\) =>.*?\n\};", "capOf()"),
+        _lift(r"const MASKED = '[^']*';", "MASKED"),
+        _lift(r"function flatSettings\(d\) \{.*?\n\}", "flatSettings()"),
+    ))
+    _sb = os.environ.get("STATIONS_SHOWN")
+    _caps = {}
+    for _v in ("3", "7", "0", "", "nine"):
+        if _v == "":
+            os.environ.pop("STATIONS_SHOWN", None)
+        else:
+            os.environ["STATIONS_SHOWN"] = _v
+        _settings._cache["at"] = 0.0
+        _caps[_v or "unset"] = _settings.describe(unlocked=False, public=_settings.PUBLIC)
+    os.environ.pop("STATIONS_SHOWN", None) if _sb is None else os.environ.__setitem__("STATIONS_SHOWN", _sb)
+    _settings._cache["at"] = 0.0
+
+    _c = json.loads(subprocess.run(
+        ["node", "-e", _cap_js + "\nconst B = " + json.dumps(_caps) + ";\n"
+         + "const out = {};\nfor (const [k, body] of Object.entries(B)) "
+         + "out[k] = capOf(flatSettings(body));\nconsole.log(JSON.stringify(out))"],
+        capture_output=True, text=True, check=True).stdout)
+
+    assert _c["3"] == 3 and _c["7"] == 7, f"the keeper's number must reach the page: {_c}"
+    assert _c["0"] is None, f"0 lists every station: {_c}"
+    assert _c["unset"] == 3, f"a node that never set it lists three, not all fourteen: {_c}"
+    assert _c["nine"] == 3, f"an unreadable value is the default, never an empty neighbourhood: {_c}"
+
+# The grain section's flat run is READ OFF the table, never written down.
+#
+# It shipped as `filter(g => g.occupied === 9)` -- node #1's own flat run as a literal -- and on the
+# live node proved on 16 September 2026 (no stations, every row zero) `flat[0].res` threw and the
+# whole decide stage printed "grain did not render". A literal that happens to be true of one node
+# is the thing this assertion exists to keep out.
+assert "g.occupied === 9" not in _js, \
+    "the grain section is back on node #1's own occupied count as a literal; it must read the table"
+assert "function flatRun(H)" in _js, "the grain section no longer derives its flat run"
+if shutil.which("node"):
+    _run = _lift(r"function flatRun\(H\) \{.*?\n\}", "flatRun()")
+    _tables = {
+        # node #1, 6 September: nine cells from resolution 9 inward and never again
+        "node1": [{"res": r, "occupied": 1 if r < 4 else 9 if r >= 9 else r} for r in range(2, 13)],
+        # a node with no station that carries a coordinate: every row zero, and no finding to make
+        "empty": [{"res": r, "occupied": 0} for r in range(2, 13)],
+        # a node still splitting cells at the finest stop: no flat run either, for the other reason
+        "busy": [{"res": r, "occupied": r} for r in range(2, 13)],
+    }
+    _f = json.loads(subprocess.run(
+        ["node", "-e", _run + "\nconst T = " + json.dumps(_tables) + ";\nconst out = {};\n"
+         + "for (const [k, grain_table] of Object.entries(T)) "
+         + "out[k] = flatRun({ grain_table }).map(r => r.res);\nconsole.log(JSON.stringify(out))"],
+        capture_output=True, text=True, check=True).stdout)
+    assert _f["node1"] == [9, 10, 11, 12], f"the flat run must be the tail that stops changing: {_f}"
+    assert _f["empty"] == [], f"every row zero is an empty node, not a finding about grain: {_f}"
+    assert _f["busy"] == [], f"a count still changing at the finest stop has no flat run: {_f}"
+
+# NOTHING READS THE URL AT MODULE SCOPE, EXCEPT THE FIXTURE.
+#
+# `const Q = new URLSearchParams(location.search)` at the top level of the nav module was correct for
+# as long as every press reloaded the document: the module ran again and the capture was the new URL.
+# When v0.55 made a press a re-render, that line became a snapshot of the query the page was FIRST
+# opened with, and where() kept answering with the opening cell and resolution — so the dial and every
+# cell link changed the URL and nothing else. Zero requests, five milliseconds, and the same page.
+#
+# No static check saw it and neither did the visual gate, which measures one render. tests/visual/
+# measure.mjs gained a `press` command for the behaviour; this is the rule, which needs no browser.
+_load_reads = re.findall(r'^(?:const|let|var)\s+(\w+)\s*=\s*new URLSearchParams\(location\.search\)', _js, re.M)
+assert set(_load_reads) <= {"FIXTURE"}, (
+    f"{sorted(set(_load_reads) - {'FIXTURE'})} capture(s) location.search at module scope. A press is a "
+    "re-render now, so a load-time capture is frozen at whatever the page was opened with and the "
+    "control it feeds goes dead. Read it at call time — see query() in dashboard.js.")
+assert "const query = () => new URLSearchParams(location.search)" in _js, \
+    "query() is gone — where() is reading the URL from somewhere that may be stale"
+
+# SET UP OFFERS WHAT `planetai config` OFFERS — every group, every key, the node's own words.
+#
+# Both read settings.describe(); the CLI walks its groups and prints every key in each. The pane
+# filters the same rows by group — except the packs branch, which rendered a list of pack switches
+# and returned, so PACKS_ENABLED and PACKS_ALLOW_CODE existed in the CLI and nowhere in the
+# dashboard. A keeper who read one and went looking in the other did not find them.
+#
+# The group tab is also the node's own word for the group, because that is the word `planetai config`
+# prints and a keeper moves between the two surfaces.
+import settings as _s                                     # the module both surfaces read
+_groups = []
+for _r in _s.describe(unlocked=False, public=_s.PUBLIC)["runtime"]:
+    if _r["group"] not in _groups:
+        _groups.append(_r["group"])
+_gm = re.search(r"const GROUPS = \{(.*?)\n\};", _js, re.S)
+assert _gm, "the Set up pane no longer declares GROUPS"
+_titled = dict(re.findall(r"^\s*(\w+):\s*\['([^']*)'", _gm.group(1), re.M))
+for _g in _groups:
+    assert _g in _titled, f"the node declares the settings group {_g!r} and the Set up pane has no tab for it"
+    assert _titled[_g].lower() == _g.lower(), (
+        f"the {_g!r} tab is labelled {_titled[_g]!r}; `planetai config` prints {_g!r}, and the two "
+        "menus are meant to read alike")
+# No group may render instead of its keys. One early return is allowed and is bootstrap, which is
+# read-only by nature; everything else falls through to the row loop.
+assert "extra = PACKS.map" in _js and "pane.innerHTML = PACKS.map" not in _js, \
+    "the packs group renders switches instead of its own two settings again"
+assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
+    "a group's keys are no longer rendered after whatever extra that group adds"
+
+# THE PAGE KEEPS UP WITH THE NODE, AND SAYS SO WHEN IT CANNOT.
+#
+# v0.53 ended its boot with `setInterval(refresh, 20000)`. The Phase 2 rewrite did not carry it, and
+# for four releases the only repeating timer in this file was the wall stepping its own dial: boot()
+# fetched once and the page then showed a `live` pill over figures that had stopped moving when the
+# tab opened. Nothing caught it — every check here measures one render, and one render of a frozen
+# page looks exactly like one render of a fresh one. These are the assertions that would have.
+assert "function refresh()" in _js and "setInterval(refresh, refreshEvery())" in _js, \
+    "the page no longer re-fetches on a timer — it will show the readings it booted with, forever"
+assert "boot().then(() => { init(); route(); startRefresh(); })" in _js, \
+    "boot no longer starts the refresh loop"
+# What it may and may not ask for again. /settings, /earth, /sensors, /cells and the plan do not move
+# on the node's poll; re-fetching them every cycle is traffic for no change.
+_ref = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
+for _route in ("'/issues'", "'/health'"):
+    assert _route in _ref, f"refresh() no longer re-reads {_route}"
+for _route in ("'/settings'", "'/earth'", "'/sensors'", "'/cells'", "'/place/geojson'"):
+    assert _route not in _ref, \
+        f"refresh() re-reads {_route} on every poll; it does not change on the node's cadence"
+# A fixture is a committed snapshot and cannot change. The measuring rig replays one, so a refresh
+# here would also re-fetch underneath a running measurement.
+assert "if (FIXTURE || STATE !== 'populated') return;" in _ref, \
+    "refresh() no longer refuses to poll a replayed fixture or a synthetic state"
+# The cadence is the node's own, not a number typed into the page.
+assert "POLL_SECONDS" in _js, "the refresh cadence is no longer read from the node's own poll interval"
+# And the one that matters: a failed poll must reach the stamp. Saying `live` over figures nothing is
+# refreshing is the fault this whole block exists for.
+assert "window.STALE" in _js and "pill('stale'" in _js, \
+    "a failed poll no longer reaches the page — the live pill would sit over stale figures again"
+assert "the node has not answered for" in _js, \
+    "the as-of stamp no longer says how long the node has been silent"
+
+# A POLL DOES NOT ASK A TILE SERVER ANYTHING.
+#
+# Assigning innerHTML queues an <img> load the instant the markup exists, so a redraw goes to the
+# network even for a tile the browser has cached. Measured over CDP while building the refresh loop:
+# twelve requests to tiles.maps.eox.at per redraw, none from cache, though the tiles carry max-age of
+# a week. At one poll per 300 s that is ~3,500 a day from every open page, each telling that server
+# which square of the planet this house is looking at. The rule since Phase 2 is that a press may
+# only ever REDUCE what leaves the house; a poll multiplying it by three hundred breaks it from the
+# other side. After the gate: 12 on first load, 0 on every poll after.
+assert "if (window.KEEP_GROUND) return '';" in _js, \
+    "the tile figure no longer refuses to redraw for a data poll — every poll will re-ask the tile server"
+assert "if (ground) window.KEEP_GROUND = true;" in _js and "finally { window.KEEP_GROUND = false; }" in _js, \
+    "redraw() no longer raises the keep-ground flag across route(), or no longer lowers it after"
+# Only a data poll may set it. A press changes the cell or the resolution and MUST draw a new map.
+_rd = _js[_js.index("function redraw(opts)"):]
+_rd = _rd[:_rd.index("\n}") + 2]
+assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditionally — a press would not redraw the map"
+
+# THE DIAL IS NOW'S CONTROL. Drawn under every view's header until 18 September, where on Network,
+# Historical and Set up nothing on the page answered to it. Arrange keeps it: it draws Now's own
+# sections through want(NOW), so taking it away there left seven of them — the ground, the station
+# groups, the claims, the grain and the grain line — pointing at a control that was not on the page.
+assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="dialwrap"' in _js, \
+    "the dial is no longer drawn for Now and Arrange, or is drawn for every view again"
+assert re.search(r"const ref = 'grain-line';", _js), \
+    "the dial's link out is back to being chosen per view; only Now draws it now"
+
+# axe found nothing on any view or state, and these are the findings that had to hold for that.
+#
+# The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every
+# view in every state, and the wall has no header so it needed its own); a table that scrolls inside
+# its own box could not be reached by keyboard; and --dim, at about 4:1 on paper, carried the small
+# text that says where a number came from.
+assert re.search(r'<h1 class="brand">', _js), "the node's name is not the page's h1 again"
+assert re.search(r'<h1 class="vh">', _js), "the wall has no heading of its own; its header is display:none"
+assert 'class="tblwrap" tabindex="0"' in _js, "the grain table cannot be scrolled from a keyboard again"
+for _sel in (".readrow .who .m {", ".cellhead .n {", "[data-kind=\"readout\"] .src {"):
     _rule = _css[_css.index(_sel):_css.index("}", _css.index(_sel))]
-    assert "--dim" not in _rule, f"{_sel.strip('{')} is back on --dim, which is about 4:1 on paper"
+    assert "--dim" not in _rule, f"{_sel.strip(' {')} is back on --dim, which is about 4:1 on paper"
 
 # Arrange must actually arrange, and the view must be in the URL.
 #
-# Four of these shipped together and each was invisible until somebody tried the mode: the ✕ silently
-# did nothing on five of the nine bands (render() skipped a hidden id and left index.html's mount
-# holding its last content); the restore menu was markup only — `#arr-restore` appeared once in
-# index.html and was never referenced here, so a hidden band could only come back via Default, which
-# discards every other choice; nothing said what a move or a hide had done; and leaving by the nav
-# left the mode running with its controls scattered over a page nobody was arranging any more.
-assert "MOUNTS.filter(id => !want.includes(id))" in _js, \
-    "a band hidden in Arrange is skipped rather than cleared again — ✕ does nothing on the five mounts"
-assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden band cannot come back"
+# Two of these shipped together on the page this replaces and each was invisible until somebody tried
+# the mode: the ✕ silently did nothing on five of the nine bands, because render() skipped a hidden
+# id and left the mount holding its last content; and the restore menu was markup only — `#arr-restore`
+# appeared once in index.html and was never referenced, so a hidden band could only come back via
+# Default, which discards every other choice. Both assertions point at the ported code.
+#
+# `want()` is where a hidden section goes: the view's own list is filtered before anything is drawn,
+# so a hidden section is never emitted at all and cannot be left holding anything. Red if the filter
+# goes, or if the view stops going through it.
+assert "view.filter(id => !(LAYOUT.hidden || []).includes(id))" in _js, \
+    "a section hidden in Arrange is no longer filtered out before the page is drawn — ✕ does nothing"
+assert "only: want(NOW)" in _js and "only: want(NETWORK)" in _js, \
+    "a view no longer goes through want(), so hiding a section has no effect on it"
+# and the restore menu must be read, not just drawn. Red if fillRestore stops filling it or the
+# change handler stops putting the section back.
+assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden section cannot come back"
+assert "function fillRestore()" in _js and "LAYOUT.hidden = (LAYOUT.hidden || []).filter(x => x !== id)" in _js, \
+    "the restore menu no longer puts a hidden section back"
+
+# The view must be in the URL, and it must get there without scrolling the page to an element.
 assert "history.pushState" in _js, "the view is not in the URL: refresh, back and a shared link all land on Now"
-# and assigning location.hash instead would scroll to the element and undo the scroll restore
 assert not re.search(r"location\.hash\s*=", _js), \
     "assigning location.hash jumps to that element, which eats the scroll restore — use pushState"
 
+# Every entry point into the token path must be listened for. They were drawn and dead once: the
+# three cases below lived in the old page's global click listener, and the pane came across without
+# them — so unlock() and saveSettings() were defined and unreachable, the gate never opened, and
+# PAI_SETTINGS.set() could only ever throw for want of a token nothing could store.
+for _case in ("ev.target.id === 'btn-unlock'", "ev.target.id === 'btn-save'",
+              "ev.target.closest('[data-reveal]')"):
+    assert _case in _js, f"the Set up pane has no handler for {_case} — the button is drawn and dead"
+
 # And the page must read the household's language rather than pinning itself to English.
-assert "(snap.health || {}).locale" in _js, \
-    "mkCtx no longer reads the locale off /health — the page is back to English on every node"
+assert "(S.health || {}).locale" in _js, \
+    "initKit no longer reads the locale off /health — the page is back to English on every node"
 
 # And a refused page must say so on whichever surface is being drawn.
 #
-# At SHARE_LEVEL=off — the default, and what every beta tester has — render()'s refused branch wrote
-# the node's sentence into #hero and returned. body.wallview hides #hero, and the Network view never
-# shows it, so the wall came up as 1920x1080 of nothing and Network as a header over an empty page.
-# Both are surfaces nobody is standing at to work out why. A household reads a black shelf screen as
-# a dead node, which is the exact thing the renderer's own comment has always forbidden: "a blank page
-# would be the node lying about being broken".
-#
-# This is a static proxy for a rendered check. The real test drives a browser against a node at `off`
-# and asserts each view carries the sentence; the suite has no browser and is not getting one for
-# this, so it asserts the branch names all three mounts. If the branch is ever rewritten, write the
-# rendered version rather than deleting this.
-_refused = _js[_js.index("if (snap.refused)"):]
-_refused = _refused[:_refused.index("\n  }") + 4]
-for _mount in ("hero", "wallbox", "netbody"):
-    assert f"'{_mount}'" in _refused or f'"{_mount}"' in _refused, \
-        f"the refused branch does not draw into #{_mount} — that view renders blank at SHARE_LEVEL=off"
-# and it must not claim a reading it does not have
-assert re.search(r"snap\.refused\s*\?\s*''", _js), \
-    "the header's provenance pill is computed without asking whether the page was refused; it said `live` over nothing"
+# At SHARE_LEVEL=off — the default, and what every beta tester has — the page gets 403 on /issues and
+# nothing else. /health still answers, so the node's name and the nav are still there and the
+# household's own sentence about why is drawn on the view they are standing on, the WALL included: a
+# black shelf screen is read as a dead node, and "a blank page would be the node lying about being
+# broken" is the renderer's own rule.
+_refused = _js[_js.index("function drawRefused()"):]
+_refused = _refused[:_refused.index("\n}") + 2]
+for _mount in ("wallbox", "wrap"):
+    assert f'"{_mount}' in _refused or f"class=\"{_mount}" in _refused, \
+        f"the refused branch does not draw into .{_mount} — that view renders blank at SHARE_LEVEL=off"
+assert "chrome(" in _refused, "a refused reader cannot reach the other views: the nav is not drawn"
+# and the page must not claim a reading it does not have: the provenance word follows the fixture,
+# and a refused page never reaches the lead at all.
+assert re.search(r"S\.fixture \? pill\('cached'", _js), \
+    "the lead's provenance pill no longer follows whether this is a fixture; it said `live` over a snapshot"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
-      "a hole in a series is a hole in the line, and a refused page says so on the wall and the network view")
+      "a hole in a series is a hole in the line, the page is three files carrying one contract and "
+      "ten sections, and a refused page says so on the wall and in the nav")

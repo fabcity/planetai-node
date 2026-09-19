@@ -14,15 +14,82 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 say(){ printf '\033[1;32m>>\033[0m %s\n' "$*"; }
 die(){ printf '\033[1;31mxx\033[0m %s\n' "$*" >&2; exit 1; }
 
+# ---------------------------------------------------------------- signing
+#
+# The checksum next to the tarball proves the bytes did not rot in transit. It proves nothing about who
+# built them: anybody who can write to planetai.fab.city/node0/get writes the tarball AND the SHA256, and
+# every node takes it on its next `planetai update` with the checksum matching, because they wrote both.
+#
+# So the tarball is signed with a key that is not on the web server, and `tools/allowed_signers` publishes
+# the public half that nodes check against. `--check-key` answers the question without building anything,
+# which is what release.sh asks before it cuts a tag.
+signing_key() {
+  local key="${PLANETAI_SIGNING_KEY:-}"
+  [[ -n "$key" ]] || die "PLANETAI_SIGNING_KEY is not set, so this build could not be signed and every node
+   would refuse it. Point it at the release key:
+     PLANETAI_SIGNING_KEY=~/.planetai/release_key make ship
+   docs/HANDOFF_signing.md says where that key lives and the one command that makes one.
+   A dev tarball nobody will install:  PLANETAI_UNSIGNED=1 make ship"
+  key="${key/#\~/$HOME}"
+  [[ -f "$key" ]] || die "PLANETAI_SIGNING_KEY points at $key, which is not a file."
+  # A key inside the repository is one `git add .` from being public. Compare resolved directories.
+  local keydir; keydir="$(cd "$(dirname "$key")" && pwd)"
+  case "$keydir/" in "$PWD"/*) die "the signing key is inside the repository ($keydir). Move it out —
+   ~/.planetai/release_key is the place. A key here is one commit from being published.";; esac
+  command -v ssh-keygen >/dev/null || die "no ssh-keygen on this machine, so nothing can be signed."
+  grep -q PLACEHOLDER tools/allowed_signers && die "tools/allowed_signers still carries the placeholder, so no
+   release key has been issued yet. docs/HANDOFF_signing.md has the command that makes it and the four
+   places the public line is pasted."
+  # The key that signs must be the key the committed line publishes, or nodes verify against a stranger.
+  local pub want
+  pub="$(ssh-keygen -y -f "$key" 2>/dev/null | awk '{print $1" "$2}')" \
+    || die "could not read a public key out of $key (a passphrase-protected key needs ssh-agent: ssh-add $key)."
+  want="$(grep -v '^[[:space:]]*\(#\|$\)' tools/allowed_signers | head -1 | awk '{print $2" "$3}')"
+  [[ "$pub" == "$want" ]] || die "the key in PLANETAI_SIGNING_KEY is not the one tools/allowed_signers publishes.
+   signing with  $pub
+   nodes trust   $want
+   Either this is the wrong key, or a rotation was never committed. Do not ship past this."
+  printf '%s' "$key"
+}
+
+# Sign the tarball in place, beside its checksum. `-n planetai-node` is the namespace: a signature made
+# for anything else — a git commit, an email — will not verify as a release, however valid it is.
+sign_tarball() {
+  local tgz="$1" key
+  if [[ "${PLANETAI_UNSIGNED:-0}" == 1 ]]; then
+    printf '\033[1;31m!! PLANETAI_UNSIGNED=1 — this tarball is NOT signed. Every node will refuse it.\033[0m\n' >&2
+    rm -f "$tgz.sig"
+    return 0
+  fi
+  key="$(signing_key)" || exit 1
+  ssh-keygen -Y sign -f "$key" -n planetai-node "$tgz" >/dev/null \
+    || die "ssh-keygen could not sign $tgz with $key."
+  # Verify what was just written, against the same file a node will use. A signature nobody checked here
+  # is a signature discovered to be wrong by a tester in Menorca.
+  ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city -n planetai-node \
+    -s "$tgz.sig" < "$tgz" >/dev/null \
+    || die "the signature just written does not verify against tools/allowed_signers. Nothing was shipped."
+  say "signed, and the signature verifies against tools/allowed_signers"
+}
+
 SITE="${PLANETAI_SITE_REPO:-../planetai}"
-DEPLOY=1; CHECK=0
-for a in "$@"; do case "$a" in --no-deploy) DEPLOY=0;; --check) CHECK=1;; *) die "unknown flag $a";; esac; done
+DEPLOY=1; CHECK=0; KEYCHECK=0
+for a in "$@"; do case "$a" in --no-deploy) DEPLOY=0;; --check) CHECK=1;; --check-key) KEYCHECK=1;; *) die "unknown flag $a";; esac; done
 
 HERE="$(git describe --tags --always)"
 # Absolute, resolved before the fast-forward can rewrite anything, so the re-exec below does not depend on
 # the cwd and cannot pick up a different file than the one that started.
 SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 [[ -d "$SITE/.git" ]] || die "no site repo at $SITE. Clone fabcity/planetai beside this one, or set PLANETAI_SITE_REPO."
+
+if [[ $KEYCHECK -eq 1 ]]; then
+  if [[ "${PLANETAI_UNSIGNED:-0}" == 1 ]]; then
+    printf '\033[1;31m!! PLANETAI_UNSIGNED=1 — this release will not be signed. Nodes will refuse it.\033[0m\n' >&2
+    exit 0
+  fi
+  signing_key >/dev/null && say "signing key present, and it matches tools/allowed_signers"
+  exit 0
+fi
 
 live_version() { curl -fsSL "https://planetai.fab.city/node0/get/VERSION?cb=$RANDOM.$$" 2>/dev/null || echo unreachable; }
 
@@ -147,6 +214,7 @@ fi
 
 say "building the tarball at ${HERE}"
 tools/bundle.sh "$SITE/node0/get"
+sign_tarball "$SITE/node0/get/planetai-node.tar.gz"
 
 # The site repo may hold work of its own. Only ever touch node0/get, and refuse if anything else is dirty.
 OTHER="$(git -C "$SITE" status --porcelain -- . ':(exclude)node0/get' | head -5)"
@@ -158,6 +226,52 @@ if [[ -n "$(git -C "$SITE" status --porcelain -- node0/get)" ]]; then
   git -C "$SITE" push -q origin HEAD
 else
   say "the site repo already has this tarball"
+fi
+
+# A second copy of the same bytes, somewhere with a provenance trail. planetai.fab.city is one Cloudflare
+# bucket: it has no history a reader can check, and whoever can write to it can replace the tarball, the
+# checksum and the signature together. A GitHub Release records who published it, when, and from which
+# commit, and none of that can be quietly rewritten. The signature is what makes the two copies the same
+# artefact rather than two things that look alike.
+#
+# A node can be pointed at it — PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/<tag>
+# — so this is a route out if the site is unreachable or not trusted, not only an audit trail.
+# install-smoke.yml proves the stub reads it unchanged.
+if [[ "$HERE" == v*  && "$HERE" != *-g* ]]; then
+  if command -v gh >/dev/null 2>&1; then
+    G="$SITE/node0/get"
+    # VERSION goes too: the stub reads $GET/VERSION for the line under the logo, so a mirror without it
+    # is a mirror that installs a node which cannot say what it is.
+    FILES=("$G/planetai-node.tar.gz" "$G/SHA256" "$G/planetai-node.tar.gz.sig" "$G/VERSION")
+    [[ "${PLANETAI_UNSIGNED:-0}" == 1 ]] && FILES=("$G/planetai-node.tar.gz" "$G/SHA256" "$G/VERSION")
+    if gh release view "$HERE" >/dev/null 2>&1; then
+      say "GitHub Release $HERE is already there — replacing its files"
+      gh release upload "$HERE" "${FILES[@]}" --clobber \
+        || die "could not upload to the GitHub Release $HERE. The site has the tarball; the mirror does not."
+    else
+      say "publishing the GitHub Release $HERE"
+      gh release create "$HERE" --title "$HERE" \
+        --notes "The node at ${HERE}. Verify before installing:
+
+    ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city \\
+      -n planetai-node -s planetai-node.tar.gz.sig < planetai-node.tar.gz
+
+Install from here rather than the site:
+
+    PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/${HERE} \\
+      bash -c \"\$(curl -fsSL planetai.fab.city/install)\"
+
+SECURITY.md has the signer fingerprint and how to report something." \
+        "${FILES[@]}" \
+        || die "could not create the GitHub Release $HERE. The site has the tarball; the mirror does not."
+    fi
+    say "mirrored: https://github.com/fabcity/planetai-node/releases/tag/${HERE}"
+  else
+    printf '\033[1;33m!!\033[0m no gh here, so the GitHub Release was not published. The site is the only copy.\n' >&2
+    printf '   When you have gh:  gh release create %s <the three files in %s>\n' "$HERE" "$SITE/node0/get" >&2
+  fi
+else
+  say "${HERE} is not a tag, so no GitHub Release — only a tagged release is mirrored"
 fi
 
 if [[ $DEPLOY -eq 1 ]]; then

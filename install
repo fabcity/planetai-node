@@ -13,6 +13,10 @@ REPO="${PLANETAI_REPO:-https://github.com/fabcity/planetai-node}"
 REF="${PLANETAI_REF:-main}"
 DIR="${PLANETAI_HOME:-$HOME/planetai}"
 SITE="${PLANETAI_SITE:-https://planetai.fab.city/node0}"
+# Where the three files live. The site serves them under /get; a GitHub Release serves them flat, at
+# .../releases/download/<tag>/, because a release asset name cannot contain a slash. One variable, so the
+# stub reads either without a second code path — see docs/UPDATING.md.
+GET="${PLANETAI_GET:-$SITE/get}"
 
 say()  { printf '\033[1;32m>>\033[0m %s\n' "$*"; }
 die()  { printf '\n\033[1;31mxx %s\033[0m\n' "$*" >&2; exit 1; }
@@ -31,7 +35,7 @@ printf '\033[0m'
 echo "  node · observe here, decide here, act here"
 # The version this install is about to fetch. Three seconds, and no version rather than a wait if the site
 # is slow or this machine is offline — the preflight below is what should report that, with a fix attached.
-_v="$(curl -fsSL --max-time 3 "$SITE/get/VERSION" 2>/dev/null || true)"
+_v="$(curl -fsSL --max-time 3 "$GET/VERSION" 2>/dev/null || true)"
 printf '\033[2m  a Fab City project%s\033[0m\n' "${_v:+ · ${_v}}"
 echo
 
@@ -83,8 +87,41 @@ fi
 
 # Two ways to get the code. The tarball is the one beta testers use: it needs no GitHub account and the site
 # serves it. A git checkout is for people with repository access, and gives them `planetai update` over git.
+# The signer this node trusts, as one line of ssh-keygen's allowed_signers format. A heredoc and not a
+# file: this runs before there is a node to read a file from, and reading it out of the tarball would be
+# asking the download to vouch for itself. `tools/allowed_signers` carries the same line, and
+# tests/test_release_consistency.sh fails if the copies drift.
+read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
+release@planetai.fab.city ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET release@planetai.fab.city
+SIGNERS
+
+# Who built this tarball — which the checksum does not answer. SHA256 is served from the same origin as
+# the tarball, so whoever can write one writes the other and the two agree: it catches a download that
+# arrived corrupted, and nothing else. Every node takes what that origin serves on its next update.
+# This is the half that names the sender, with a key that is not on the web server.
+verify_signature() {
+  local tgz="$1" d; d="$(dirname "$tgz")"
+  if [[ "${PLANETAI_UNSIGNED:-0}" == 1 ]]; then
+    printf '\033[1;31m!! PLANETAI_UNSIGNED=1 — installing a tarball nobody signed. Not for a node you rely on.\033[0m\n' >&2
+    return 0
+  fi
+  command -v ssh-keygen >/dev/null || { rm -rf "$d"; die "no ssh-keygen on this machine, so it cannot be checked who built this download.
+   Debian/Ubuntu:  sudo apt-get install -y openssh-client
+   Arch:           sudo pacman -S openssh
+   Then run the same line again. (macOS already has it.)"; }
+  curl -fsSL "${GET}/planetai-node.tar.gz.sig" -o "$d/n.sig" \
+    || { rm -rf "$d"; die "could not fetch ${GET}/planetai-node.tar.gz.sig, so it is not known who built this download. Nothing was installed."; }
+  printf '%s\n' "$ALLOWED_SIGNERS" > "$d/allowed_signers"
+  # -n planetai-node is the namespace: a valid signature made for anything else does not verify here.
+  ssh-keygen -Y verify -f "$d/allowed_signers" -I release@planetai.fab.city -n planetai-node \
+    -s "$d/n.sig" < "$tgz" >/dev/null 2>&1 \
+    || { rm -rf "$d"; die "this download is not signed by the PLANETAI release key. Nothing was installed and nothing on this machine changed.
+   Try again on a network you trust. If it says this twice, do not run it — tell us instead."; }
+  say "signature verified"
+}
+
 fetch_tarball() {
-  local url="${SITE}/get/planetai-node.tar.gz" tmp
+  local url="${GET}/planetai-node.tar.gz" tmp
   tmp="$(mktemp -d)"
   say "downloading the node from ${SITE}"
   curl -fsSL "$url" -o "$tmp/n.tar.gz" || { rm -rf "$tmp"; die "could not download $url"; }
@@ -92,14 +129,19 @@ fetch_tarball() {
   # Debian ships `sha256sum`), so on some machines the tarball was simply trusted. It is the only path now.
   local sum=""; command -v shasum >/dev/null && sum="shasum -a 256"; [[ -n "$sum" ]] || { command -v sha256sum >/dev/null && sum="sha256sum"; }
   [[ -n "$sum" ]] || { rm -rf "$tmp"; die "no shasum or sha256sum on this machine, so the download cannot be verified. Install one, then run this again."; }
-  curl -fsSL "${SITE}/get/SHA256" -o "$tmp/sha" || { rm -rf "$tmp"; die "could not fetch ${SITE}/get/SHA256, so the download cannot be verified."; }
+  curl -fsSL "${GET}/SHA256" -o "$tmp/sha" || { rm -rf "$tmp"; die "could not fetch ${GET}/SHA256, so the download cannot be verified."; }
   local want got; want="$(tr -d '[:space:]' < "$tmp/sha")"; got="$($sum "$tmp/n.tar.gz" | awk '{print $1}')"
   [[ "$want" == "$got" ]] || { rm -rf "$tmp"; die "the download does not match its published checksum. Try again; if it repeats, tell us."; }
   say "checksum verified"
+  verify_signature "$tmp/n.tar.gz"
   mkdir -p "$DIR"
   tar xzf "$tmp/n.tar.gz" -C "$tmp"
   # keep anything of the operator's: .env, backups, out, packs they added
   ( cd "$tmp/planetai-node" && tar cf - . ) | ( cd "$DIR" && tar xf - --exclude=.env )
+  # What `planetai doctor` reads months from now: whether the code this node is running was signed by
+  # the key it publishes. A node that cannot answer that has to be asked, and nobody asks.
+  printf '%s %s\n' "$([[ "${PLANETAI_UNSIGNED:-0}" == 1 ]] && echo unsigned || echo signed)" \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$DIR/.planetai-release"
   rm -rf "$tmp"
 }
 

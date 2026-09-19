@@ -1,5 +1,5 @@
 PORT := $(or $(shell grep "^APP_PORT=" .env 2>/dev/null | cut -d= -f2),8080)
-.PHONY: up update bootstrap down restart logs health stats alerts cells rho backup lint test ship released check-floors
+.PHONY: up update bootstrap down restart logs health stats alerts cells rho backup lint test ship released check-floors docs
 up:      ; ./install.sh
 update:  ; ./update.sh
 bootstrap: ; docker compose exec -T app python -c "import os,main,bootstrap,httpx; print(bootstrap.run(main.db(), httpx.Client(timeout=60), float(os.environ['NODE_LAT']), float(os.environ['NODE_LON'])))"
@@ -18,6 +18,9 @@ backup:  ; ./backup.sh
 # Every version floor the installer asserts, with the vendor URL and the date somebody read it.
 # Fails when an entry is older than 180 days: a moved floor should be a red build, not a wasted evening.
 check-floors: ; @python3 tools/check_floors.py
+# The documentation site: docs/site/*.md plus the docs/ pages the sidebar lists, rendered on the dashboard's own tokens
+# into the site repo. Needs `pip install markdown` on the dev machine; a node never runs this.
+docs:    ; python3 tools/build_docs.py --out ../planetai/docs
 released: ; @tools/ship.sh --check
 ship:    ; tools/ship.sh
 # Import the app the way uvicorn does. Catches module-level errors that pass every static check —

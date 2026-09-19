@@ -61,4 +61,23 @@ try:
     settings.set("APP_PORT", "9999"); raise AssertionError("bootstrap keys must not be writable")
 except KeyError:
     pass
+
+# --- MAP_TILES: live tiles leave the house, so they are off until a keeper says otherwise --------------------
+assert "MAP_TILES" in settings.PUBLIC, "MAP_TILES is a public setting, so the page can read it"
+try:
+    settings.set("MAP_TILES", "sometimes")
+    raise AssertionError("MAP_TILES accepted 'sometimes'; it is off or on")
+except (ValueError, KeyError):
+    pass
+# get() with a fallback proves nothing: assert the shipped default is in .env.example, the real source
+assert "MAP_TILES=off" in open(".env.example").read(), "MAP_TILES defaults to off in the shipped .env.example"
+
+# --- STATIONS_SHOWN: the list's display cap. Nothing here changes what the node collects ---------------------
+assert "STATIONS_SHOWN" in settings.PUBLIC, \
+    "STATIONS_SHOWN is a public setting, or a reader with no token gets the default and the keeper's choice is lost"
+assert "STATIONS_SHOWN" not in settings.OUTWARD, \
+    "a display cap decides what this house looks at, never what leaves it; BAD_RADIUS_KM is the one that collects"
+assert "STATIONS_SHOWN=3" in open(".env.example").read(), \
+    "STATIONS_SHOWN defaults to 3 in the shipped .env.example"
+
 print("all settings tests pass")

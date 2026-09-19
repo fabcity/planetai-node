@@ -42,7 +42,12 @@ def issues_now():
     """
     import main                    # noqa: PLC0415 — main imports this module at the bottom of itself
     with main.db() as con, con.cursor() as cur:
-        return engine.compute(cur, main.settings, load(), earth=_earth())
+        # `mesh_state` and `MQTT_HOST` are `app/main.py`'s own module-level names, already used by its
+        # `/health` route — reading them here costs no query and no network call (Ruling P3: /issues
+        # never makes a network call, so the Reticulum bridge's peer list is Task 4's problem, not this
+        # one's). `place` is left to default to the node's own coordinates.
+        return engine.compute(cur, main.settings, load(), earth=_earth(),
+                               mesh=main.mesh_state if main.MQTT_HOST else None)
 
 
 def _earth():

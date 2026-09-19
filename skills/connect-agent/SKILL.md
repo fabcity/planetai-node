@@ -1,6 +1,6 @@
 ---
 name: connect-agent
-description: Give a person's own agent the node's nineteen MCP tools, over their tailnet, without opening a port to the internet.
+description: Give a person's own agent the node's twenty MCP tools, over their tailnet, without opening a port to the internet.
 ---
 
 # Connecting an agent to a node
@@ -19,7 +19,7 @@ the node's own name in it. Those three facts are the whole configuration. Never 
 one into a file you will commit.
 
 Read `AGENTS.md` before the first call. It is the operating manual for whatever you connect, and it lists
-the nineteen tools.
+the twenty tools.
 
 ## The answer is Tailscale, not a port forward
 
@@ -57,11 +57,14 @@ claude mcp add --transport http planetai "$PLANETAI_MCP_URL" \
 Code does, so `.mcp.json` here will not work for it. Use the snippet `planetai agent` prints, with the
 values already filled in.
 
-## Always send X-Agent
+## Name yourself in every write
 
-Every write is recorded in the audit trail against the name in `X-Agent`. A node may have a local model
-on it already, appearing as `local-model`; if you connect without a name of your own, the trail cannot
-tell you apart. Pick a name a person would recognise a month from now.
+Every write — `act`, `settings_set`, `report_now`, `run_pack_script` — takes an `agent` argument, and that
+is the name the audit trail records; the tools pass it on to the node's API as `X-Agent`. The default is
+`agent`, which tells nobody anything. Pass your own name in that argument on every write (the `X-Agent`
+header you send on `/mcp` itself is not read by the tools in this version). A node may have a local model on
+it already, appearing as `local-model/<rung>`; without a name of your own, the trail cannot tell you apart.
+Pick a name a person would recognise a month from now.
 
 ## Call health_check first
 
