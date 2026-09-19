@@ -59,6 +59,51 @@ try:
         "--update rewrote the pin when it should have refused"
     print("  --update refuses to bless it, and left the pin alone")
 
+    # --update has to move the pin FORWARD. It checked the copy against the commit currently
+    # pinned, which a copy taken from a newer design main differs from by definition — so the
+    # first real re-pin (PR #83) could not be made at all: "Copy it again", and copying it again
+    # gave the same file and the same refusal. Driven here against a throwaway design repo with
+    # two commits, because that is the smallest thing that has a "before" and an "after".
+    design = pathlib.Path(tmp) / "design"
+    design.mkdir()
+    def git(*a):
+        return subprocess.run(["git", "-C", str(design), *a], capture_output=True, text=True)
+    git("init", "-q", "-b", "main")
+    git("config", "user.email", "t@t"); git("config", "user.name", "t")
+    theme = design / "planetai-theme.css"
+    (design / "assets" / "signs").mkdir(parents=True)
+    (design / "assets" / "h3").mkdir(parents=True)
+    shutil.copy(ROOT / "app/static/signs.svg", design / "assets/signs/signs.svg")
+    shutil.copy(ROOT / "app/static/kilometre-cells.json", design / "assets/h3/kilometre-cells.json")
+    shutil.copy(ROOT / "app/static/planetai-theme.css", theme)
+    git("add", "-A"); git("commit", "-qm", "the layer as it was")
+    old_sha = git("rev-parse", "HEAD").stdout.strip()
+    theme.write_text(theme.read_text().replace("/* ", "/* moved: ", 1))   # the layer moves
+    git("add", "-A"); git("commit", "-qm", "the layer moves")
+    new_sha = git("rev-parse", "HEAD").stdout.strip()
+    git("branch", "-f", "origin/main", "HEAD")          # what origin/main resolves to, without a remote
+
+    for rel in FROZEN:                                   # start from the OLD pin, cleanly
+        shutil.copy(ROOT / rel, fx / rel)
+    shutil.copy(ROOT / "data" / "frozen_layer.txt", fx / "data" / "frozen_layer.txt")
+    pin = fx / "data/frozen_layer.txt"
+    pin.write_text(pin.read_text().replace(
+        [l for l in pin.read_text().splitlines() if l.startswith("design_sha=")][0],
+        f"design_sha={old_sha}"))
+    r = run(fx, design=str(design))
+    assert r.returncode == 0, f"a clean tree at the old pin should pass:\n{r.stdout}"
+
+    # now copy the moved file over, as a re-pin does, and update
+    (fx / "app/static/planetai-theme.css").write_text(theme.read_text())
+    r = run(fx, design=str(design))
+    assert r.returncode == 1, "a copy that does not match the pin must fail before --update"
+    r = run(fx, "--update", design=str(design))
+    assert r.returncode == 0, f"--update must be able to move the pin forward:\n{r.stdout}"
+    assert new_sha[:7] in r.stdout, f"--update pinned to the wrong commit:\n{r.stdout}"
+    r = run(fx, design=str(design))
+    assert r.returncode == 0, f"and the tree is green at the new pin:\n{r.stdout}"
+    print("  --update moves the pin forward when the layer has moved")
+
     # a missing pin is a failure, not a skip: it is the half that runs everywhere
     shutil.copy(ROOT / "app/static/planetai-theme.css", css)
     (fx / "data/frozen_layer.txt").unlink()
