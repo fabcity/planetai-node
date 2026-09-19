@@ -157,7 +157,7 @@ is what the "adapter not written; registry entry exists" lines above are, as a q
 sentence somebody wrote once.
 
 A source entry is upstream's to change. Add one by PR to `awesome-fabcity-data`, wait for the merge,
-then re-pin here with `tools/sync_registry.sh <merge sha>` and commit the diff.
+then re-pin here with `tools/sync_registry.sh <merge sha>` and commit the diff — `docs/SOURCES.md`.
 Nothing in this repo edits an entry, and `make lint` fails if anything did. The Airtable mirror follows
 upstream, not this snapshot.
 

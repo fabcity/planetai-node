@@ -1,5 +1,11 @@
 # Changelog
 
+- 2026-09-19 — your node now carries the network's registry of 209 data sources. `planetai sources`
+  shows what is registered for your place and which of it your node already reads; a source with no
+  `wired` beside it is one nobody has written an adapter for yet. `planetai doctor` says which
+  snapshot you have. The list comes from `awesome-fabcity-data`, the whole network's, and it works
+  with the node stopped and with the uplink down — it ships inside the node rather than being fetched.
+
 - 2026-09-17 — new pack `xiaomi-air`: Xiaomi / Mi Home air purifiers read on the LAN (miio/MIoT) as indoor
   sensors — PM2.5, temp, humidity and filter life — plus a filter-low warning. Ships with MIoT mappings for
   the Elite (zhimi.airp.meb1) and 4 Compact (xiaomi.airp.cpa4), verified live on node #1.

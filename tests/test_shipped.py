@@ -593,3 +593,21 @@ for _port in sorted(set(re.findall(r"localhost:(\d+)", cli)) - HOST_PORTS):
         f"bin/planetai talks to localhost:{_port}, which docker-compose.yml publishes on no service"
 
 print("every localhost port the CLI uses is published by a compose service")
+
+# v0.61 the vendored source registry. A tarball that carries the code and not the snapshot gives a
+# tester `planetai sources` that answers nothing and a doctor row that is red on arrival — and lint
+# cannot see it, because lint runs in a checkout where data/sources is right there.
+import pathlib as _pl
+import subprocess as _sp
+_tracked = set(_sp.run(["git", "ls-files"], capture_output=True, text=True).stdout.split())
+for _f in ("data/sources/REGISTRY_VERSION", "data/sources/index.json"):
+    assert _f in _tracked, f"{_f} is not tracked, so tools/bundle.sh will not ship it"
+_ver = dict(l.split("=", 1) for l in _pl.Path("data/sources/REGISTRY_VERSION").read_text().split() if "=" in l)
+assert len(_ver.get("sha", "")) == 40, "REGISTRY_VERSION: sha is not a full commit"
+# The snapshot is mounted, not baked: app/Dockerfile COPYs *.py, issues/ and static/ and never data/,
+# so without this line the container's /app/data does not exist and /sources 503s on a working node.
+assert "./data:/app/data:ro" in compose["services"]["app"]["volumes"], "compose: the data mount"
+assert "cmd_sources()" in cli and "sources) shift; cmd_sources" in cli, "bin/planetai: sources command"
+assert "def sources_(" in main and "import registry" in main, "main.py: GET /sources"
+
+print("v0.61: the tarball carries the source registry, and the app mounts it")

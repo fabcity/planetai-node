@@ -113,6 +113,7 @@ test_ground|python3 tests/test_ground.py
 test_briefing|PYTHONPATH=/tmp/stub:app python3 tests/test_briefing.py
 test_earth|PYTHONPATH=/tmp/stub:app python3 tests/test_earth.py
 test_custody|PYTHONPATH=app python3 tests/test_custody.py
+test_registry|python3 tests/test_registry.py
 SUITES
 
 total=$((pass + fail))
@@ -121,10 +122,10 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Thirty-five is the number of suites in the list above. If the list and this number disagree, one of them
+# Thirty-eight is the number of suites in the list above. If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
-if [ "$total" -ne 37 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 37 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 38 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 38 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1
