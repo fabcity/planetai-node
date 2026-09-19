@@ -56,8 +56,9 @@ leaves the house and the machine in the corner.
 
 ## Wall
 
-`?kiosk=1`, or the Wall button: the sentence and the three numbers, for a shelf or a tablet, refreshing every thirty
-seconds.
+`#wall`, or the Wall button: the dark register for a screen nobody is standing at — the nineteen cells around the
+node at the current resolution, the headline sentence, the ρ row, and a dial that turns itself every eight
+seconds. It needs `SHARE_LEVEL=open`, because a wall carries no token.
 
 ## Set up
 

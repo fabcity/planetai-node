@@ -66,6 +66,112 @@ done
 hasnt "$(cat update.sh)" 'tar xzf "$tmp/n.tar.gz" -C "$tmp" &&' "update.sh does not leave the extract as the left operand of &&, where set -e cannot see it fail"
 has "$(cat update.sh)" 'so the download cannot be verified' "update.sh says why it refused"
 
+# --- an update is signed, and a node checks who signed it ----------------------------------------
+# The checksum above is served from the same origin as the tarball, so whoever can write one writes the
+# other and the two agree: it catches a download that rotted in transit and nothing else. Anybody with
+# write access to node0/get reaches every node on its next `planetai update`. The signature is the half
+# that names the builder, with a key that is not on the web server.
+#
+# The signer line lives in four places and must be one line: tools/allowed_signers, and a heredoc in each
+# of the two stubs, which run before there is a tarball to read a file out of. A stub that drifted from
+# the file would refuse every real release, or accept one nobody signed.
+signer_line() { grep '^release@planetai\.fab\.city ' "$1" | head -1; }
+want_signer="$(signer_line tools/allowed_signers)"
+[[ -n "$want_signer" ]] && ok "tools/allowed_signers publishes one signer line" \
+  || no "tools/allowed_signers has no release@planetai.fab.city line"
+for f in install update.sh bin/planetai; do
+  is "$f embeds the same signer line, byte for byte" "$(signer_line "$f")" "$want_signer"
+done
+has "$(./bin/planetai version)" "release@planetai.fab.city" "planetai version names the key this node trusts"
+has "$(cat install)"    'ssh-keygen -Y verify' "install checks the signature, not only the checksum"
+has "$(cat update.sh)"  'ssh-keygen -Y verify' "update.sh checks the signature, not only the checksum"
+# The old path has to keep working through this release: a v0.57 node knows nothing about signatures and
+# updates by checksum alone, so the first signed release still publishes SHA256.
+has "$(cat tools/bundle.sh)" 'SHA256' "bundle.sh still publishes SHA256, so nodes older than this release still update"
+
+# --- and it refuses one it cannot attribute, before it touches the node ---------------------------
+if command -v ssh-keygen >/dev/null; then
+  sk="$(mktemp -d)"; mkdir -p "$sk/get"
+  ssh-keygen -q -t ed25519 -f "$sk/key" -N '' -C release@planetai.fab.city
+  printf 'a tarball\n' > "$sk/get/planetai-node.tar.gz"
+  ssh-keygen -Y sign -f "$sk/key" -n planetai-node "$sk/get/planetai-node.tar.gz" >/dev/null 2>&1
+  blob="$(ssh-keygen -y -f "$sk/key" | awk '{print $2}')"
+
+  # verify_signature and its heredoc, lifted verbatim out of update.sh: the file itself is under test,
+  # not a copy typed in here. `real` keeps the committed signer; `ours` swaps in the throwaway key, which
+  # is the only way to exercise the path that SUCCEEDS without the Foundation's private key being here.
+  lift() {
+    { echo 'set -euo pipefail'
+      echo 'say(){ printf ">> %s\n" "$*"; }'
+      echo 'die(){ printf "xx %s\n" "$*" >&2; exit 1; }'
+      echo "GET=\"file://$sk/get\""
+      sed -n "/^read -r -d '' ALLOWED_SIGNERS/,/^SIGNERS\$/p;/^verify_signature() {/,/^}\$/p" update.sh
+      echo 'verify_signature "$1"'
+    } > "$sk/$1.sh"
+    [[ "$1" == ours ]] && { sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" "$sk/ours.sh" > "$sk/o" && mv "$sk/o" "$sk/ours.sh"; }
+    grep -q verify_signature "$sk/$1.sh"
+  }
+  lift real && lift ours || no "could not lift verify_signature out of update.sh"
+
+  # the caller owns the directory, so it can look at what was left in it afterwards
+  run_on() {   # run_on <which> <dir> <contents> ; echoes the exit code
+    printf '%s' "$3" > "$2/n.tar.gz"
+    local rc=0; bash "$sk/$1.sh" "$2/n.tar.gz" >/dev/null 2>&1 || rc=$?
+    echo "$rc"
+  }
+
+  d="$(mktemp -d)"
+  is "a tarball signed by the key the node trusts is accepted" "$(run_on ours "$d" 'a tarball
+')" "0"
+  rm -rf "$d"
+
+  d="$(mktemp -d)"
+  rc="$(run_on ours "$d" 'a tarbalL
+')"
+  [[ "$rc" != 0 ]] && ok "one flipped byte and the node refuses it, before the extract" \
+    || no "a modified tarball verified — the signature is not being checked"
+  [[ -d "$d" ]] && { no "the refused download was left on disk at $d"; rm -rf "$d"; } \
+    || ok "and the refused download is not left behind"
+
+  # No key has been issued yet, so the committed line is a placeholder. A node carrying it must refuse
+  # everything rather than accept anything: a placeholder that verified would be worse than no check.
+  d="$(mktemp -d)"; rc="$(run_on real "$d" 'a tarball
+')"; rm -rf "$d"
+  [[ "$rc" != 0 ]] && ok "the committed signer refuses a tarball it did not sign" \
+    || no "update.sh accepted a tarball the committed signer did not sign"
+
+  mv "$sk/get/planetai-node.tar.gz.sig" "$sk/away"
+  d="$(mktemp -d)"; rc="$(run_on ours "$d" 'a tarball
+')"; rm -rf "$d"
+  [[ "$rc" != 0 ]] && ok "no signature published at the origin is a refusal, not a pass" \
+    || no "update.sh installed a tarball whose signature it could not fetch"
+  mv "$sk/away" "$sk/get/planetai-node.tar.gz.sig"
+
+  rc=0; PLANETAI_UNSIGNED=1 bash "$sk/ours.sh" "$sk/get/planetai-node.tar.gz" >/dev/null 2>&1 || rc=$?
+  is "PLANETAI_UNSIGNED=1 lets a dev tarball through" "$rc" "0"
+  hasnt "$(cat install)" 'PLANETAI_UNSIGNED:-1' "and it is never the default in install"
+  hasnt "$(cat update.sh)" 'PLANETAI_UNSIGNED:-1' "and it is never the default in update.sh"
+  rm -rf "$sk"
+else
+  printf '  --   signature checks not run (no ssh-keygen on this machine)\n'
+fi
+
+# --- what a release publishes ---------------------------------------------------------------------
+GETDIR="$SITE_REPO/node0/get"
+if [[ -f "$GETDIR/planetai-node.tar.gz.sig" ]]; then
+  for f in planetai-node.tar.gz SHA256 planetai-node.tar.gz.sig; do
+    [[ -s "$GETDIR/$f" ]] && ok "the site serves $f" || no "$GETDIR/$f is missing or empty"
+  done
+  if ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city -n planetai-node \
+       -s "$GETDIR/planetai-node.tar.gz.sig" < "$GETDIR/planetai-node.tar.gz" >/dev/null 2>&1; then
+    ok "and its signature verifies against tools/allowed_signers"
+  else
+    no "the published tarball does NOT verify against tools/allowed_signers — no node will install it"
+  fi
+else
+  printf '  --   no signed build in %s yet; this starts asserting at the first signed release\n' "$GETDIR"
+fi
+
 printf '\n'
 [[ $fail -eq 0 ]] && { echo "release consistency tests pass"; exit 0; }
 echo "$fail failed"; exit 1

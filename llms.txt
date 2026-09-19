@@ -5,7 +5,7 @@
 > the city's open data, the satellite overhead — into one picture sharp enough to act on, tells the people
 > there in plain sentences on Telegram, and keeps the raw readings on the machine. Apache-2.0, alpha.
 
-The node is also an MCP server with nineteen tools. If you are an agent working for somebody, start with
+The node is also an MCP server with twenty tools. If you are an agent working for somebody, start with
 AGENTS.md: its first section routes you to the skill for what they are actually asking. Raw URLs below are
 the files themselves.
 

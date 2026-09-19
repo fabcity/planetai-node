@@ -243,15 +243,26 @@ for key in ("air", "heat", "land", "coast"):
     check(e["issues"][key]["sentence"]["en"], f"{key} must still have a sentence with no source")
 check(e["order"] == ["air", "heat", "land", "coast"], "an empty node keeps the declared order")
 
-# 7: a tie goes to the declared order
+# 7: level on state, the one that MOVED leads; an exact tie goes to the declared order
+#
+# This asserted "a tie goes to the declared order" for both orders, and on 18 September it started
+# failing for the right reason: change became the tie-break inside a state, and in this capture the
+# two issues are not actually tied. air moved 0.0714 of its own recent level over the last three
+# hours against the three before; heat moved 0.0. So air leads whichever order the household typed,
+# which is the whole of what was asked for. The declared order still breaks an EXACT tie, and the
+# unit cases at the foot of this file hold it to that with issues built to be equal on both counts.
 quiet = json.loads(json.dumps(FIX))
 quiet["alerts"], quiet["actions"] = [], []
-for declared, want in (("air,heat", "air"), ("heat,air", "heat")):
+for declared in ("air,heat", "heat,air"):
     t = run(quiet, declared=declared, earth=EARTH)
     check(t["issues"]["air"]["state"] == t["issues"]["heat"]["state"],
           "this case only tests the tie-break while air and heat are in the same state")
-    check(t["headline"] == want,
-          f"with NODE_ISSUES={declared} and a tie, the headline is {t['headline']}, expected {want}")
+    check(t["issues"]["air"]["moved"] > t["issues"]["heat"]["moved"],
+          f"this case needs air to be the one that moved: air {t['issues']['air']['moved']}, "
+          f"heat {t['issues']['heat']['moved']}")
+    check(t["headline"] == "air",
+          f"with NODE_ISSUES={declared}, level on state, the headline is the one that moved: "
+          f"got {t['headline']}, expected air")
 
 # 8: an undeclared issue is still shown, greyed, as not watched here
 part = run(declared="air,heat", earth=EARTH)
@@ -462,3 +473,46 @@ print("\n".join(f"  x {f}" for f in fails if f) or
       f"attribution in six classes, and {len(OUT['issues']) * len(I.LOCALES)} sentences with every "
       f"placeholder filled — replayed against node #1, 6 Sep 14:08 UTC")
 sys.exit(1 if [f for f in fails if f] else 0)
+
+
+# ---------------------------------------------------------------- the headline, and what moved
+# Asked 18 September 2026: lead with the data showing the most significant change. The rule was
+# state alone — act, notable, quiet, context, none — with the household's declared order as the only
+# tie-break, so two issues saying equally much were separated by alphabet.
+#
+# State still wins outright. That is the load-bearing half: something that needs doing cannot be
+# pushed down the page by something that merely moved a lot. Change is the tie-break INSIDE a state.
+from issues.engine import _headline, _moved            # noqa: E402
+
+_DECLARED = ["air", "heat", "land", "coast"]
+
+
+def _iss(state, moved):
+    return {"state": state, "moved": moved}
+
+
+for _name, _out, _want in [
+    ("an act is never demoted by something that merely moved",
+     {"air": _iss("notable", 0.90), "heat": _iss("act", 0.0),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat"),
+    ("among equals, the one that moved most leads",
+     {"air": _iss("notable", 0.02), "heat": _iss("notable", 0.40),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat"),
+    ("an exact tie still goes to the order this place chose",
+     {"air": _iss("notable", 0.20), "heat": _iss("notable", 0.20),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air"),
+    ("a big move in a lower state does not outrank a quiet higher one",
+     {"air": _iss("notable", 0.0), "heat": _iss("context", 0.99),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air"),
+]:
+    assert _headline(_out, _DECLARED) == _want, f"headline: {_name}"
+
+# The size is read off the same six buckets the trend verb already uses, relative to the issue's own
+# recent level — micrograms and degrees are not comparable quantities, and ranking them against each
+# other by absolute magnitude would be arithmetic on a category error.
+assert _moved([1, 1, 1, 2, 2, 2]) == 1.0, "a doubling is a move of one"
+assert _moved([2, 2, 2, 1, 1, 1]) == 0.5, "a halving is as much news as a doubling, and unsigned"
+assert _moved([5] * 6) == 0.0, "a flat run has not moved"
+assert _moved([1, 2, 3]) == 0.0, "fewer than six buckets is not a small move, it is no evidence"
+assert _moved([]) == 0.0 and _moved(None) == 0.0, "no series at all is not an error here"
+print("  the headline leads on state, then on what moved, then on the order this place chose")

@@ -4,6 +4,51 @@
   sensors — PM2.5, temp, humidity and filter life — plus a filter-low warning. Ships with MIoT mappings for
   the Elite (zhimi.airp.meb1) and 4 Compact (xiaomi.airp.cpa4), verified live on node #1.
 
+## v0.60 — 2026-09-18 — an update has to say who built it, and a node that refuses one is doing its job
+
+Every node in this network has been taking code from one Cloudflare bucket on trust. `install` and
+`update.sh` did check the tarball against a `SHA256` file — and that file is served from the same
+place as the tarball. Whoever can write one writes the other, so the two agree because the same
+person wrote both. What the check proved was that the download had not rotted in transit. What it
+could not say, and printed "checksum verified" without saying, was who had put it there. One write
+to `planetai.fab.city/node0/get` and every node takes it on its next `planetai update`.
+
+**Updates are now signed.** The tarball is signed on the release machine with a key that is not on
+the web server and has never been on it — `ssh-keygen -Y sign -n planetai-node`, an ed25519 key held
+by the Foundation. Both stubs fetch `planetai-node.tar.gz.sig` after the checksum and verify it with
+`ssh-keygen -Y verify` against one published signer, `release@planetai.fab.city`. That is OpenSSH
+8.2, which macOS 13 and Debian 11 both ship; a machine without `ssh-keygen` is refused with the
+`apt-get` and `pacman` line that installs it, the way a machine without `shasum` already was.
+
+**If a node refuses an update, that is the node doing its job.** It means the download was not signed
+by the key that node trusts, and nothing on the machine changed — the check sits in front of the
+extract, which is the first thing there that touches anything. The right response is to stop and say
+so, not to look for a way past it. `docs/UPDATING.md` has the four things it can print and what each
+one means; `SECURITY.md` is where to say it.
+
+**The public key is public on purpose.** `tools/allowed_signers` carries it, and so do `install`,
+`update.sh` and `bin/planetai` — four copies, gated byte-identical by the test, because the first two
+run before there is a tarball to read a file out of, and reading the key from the tarball is the
+download vouching for itself. `planetai version` now prints the fingerprint the node trusts, so it
+can be compared against `SECURITY.md` from a machine that is not the node. `planetai doctor` gets a
+row saying whether the last update was verified.
+
+**And the site is now a mirror rather than the source.** Every release also goes to a GitHub Release,
+the same bytes with the same signature, where who published it and when is recorded and cannot be
+quietly rewritten. A node reads either with one variable — `PLANETAI_GET`, because the site serves
+the three files under `/get` and a release serves them flat. `install-smoke.yml` installs from a
+mirror on every push, then tampers with that mirror the way somebody with write access actually
+would — changing the tarball *and* rewriting its checksum to agree — and asserts the install refuses
+and unpacks nothing.
+
+Nodes older than this release update through it untouched: the first signed release still publishes
+`SHA256`, and a v0.59 node knows nothing about signatures and does not need to.
+
+The key does not exist yet, and could not be made here — a private key an agent generated is a
+private key that was in a transcript. Until it is issued, the four copies carry a placeholder,
+`tools/release.sh` refuses to sign against it, and a node carrying it refuses every tarball. That is
+the safe direction to fail in. `docs/HANDOFF_signing.md` is the one screen that ends it.
+
 ## v0.53 — 2026-09-14 — the page stops telling a household things the node never said
 
 The dashboard was walked as the five people who open it and then measured as a drawing. Both readings

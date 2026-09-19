@@ -550,6 +550,29 @@ def _trend(series: list[float | None], compare: dict) -> str:
     return {"over": "rising", "under": "falling"}.get(rel, "steady")
 
 
+def _moved(series: list[float | None]) -> float:
+    """How far the room's last three hours moved against the three before them, as a proportion.
+
+    The same two means `_trend` computes and then throws away: it keeps the direction and loses the
+    size, and the size is what decides which of two issues has more to say today. No new query, no
+    new arithmetic, and the same six buckets — an issue with fewer than six is not moving as far as
+    this node knows, which is 0.0 and not a small number that would outrank a real one by accident.
+
+    Relative and not absolute, because the issues are not in the same unit: 2 ug/m3 of PM2.5 and
+    2 degrees are not comparable quantities and ranking them against each other by magnitude would
+    be arithmetic on a category error. A proportion of each issue's own recent level is comparable.
+    Unsigned: a reading halving is as much news as a reading doubling, and which way it went is
+    already said by `trend`.
+    """
+    v = [x for x in (series or []) if x is not None]
+    if len(v) < 6:
+        return 0.0
+    a, b = statistics.fmean(v[-3:]), statistics.fmean(v[-6:-3])
+    if not b:
+        return 0.0
+    return abs(a - b) / abs(b)
+
+
 def _where(d: dict, dist: str, loc: str) -> str:
     override = ((d.get("where") or {}).get(loc) or {}).get(dist)
     return override or WHERE_WORDS.get(loc, WHERE_WORDS["en"]).get(dist, dist)
@@ -878,6 +901,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "name": d["name"], "kind": d["kind"], "metric": d["metric"], "unit": d["unit"], "dp": d["dp"],
             "headline": headline, "stack": stack, "line": line, "attribution": attribution,
             "trend": verb_key,
+            # How far it moved, beside which way it went. The page shows it; _headline ranks on it.
+            "moved": round(_moved(series.get("room") or series.get(headline)), 4),
             "open_asks": open_asks,
             "series": series, "buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
             "readouts": [{k: v for k, v in r.items() if k != "_text"} for r in d["_readouts"]],
@@ -905,14 +930,31 @@ STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}
 
 
 def _headline(out: dict, declared: list[str]) -> str | None:
-    """The issue with the highest state present; ties go to the declared order.
+    """The issue with the highest state; among equals, the one that has moved most; then declared order.
 
-    Deterministic, and printable under the index in one sentence, which is the point of it.
+    STATE STILL WINS OUTRIGHT, and that is the whole shape of this. Something that needs doing cannot
+    be pushed down the page by something that merely moved a lot — an `act` outranks every `notable`
+    however dramatic. Change is the tie-break INSIDE a state, where the old rule had nothing but the
+    order the household typed and two issues saying the same thing were separated by alphabet.
+
+    Asked for 18 September: lead with the data showing the most significant change. `moved` is that,
+    per issue, relative to its own recent level so that micrograms and degrees can be compared at all.
+
+    Deterministic: `moved` is a rounded float off the same six buckets every time, and the declared
+    order still breaks an exact tie, so the same capture always produces the same headline. And still
+    printable in one sentence, which is the reason the old rule was worth keeping the shape of.
     """
     best = None
-    for key in declared:                                   # declared order IS the tie-break
-        rank = STATE_RANK.get(out[key]["state"], 0)
-        if best is None or rank > STATE_RANK.get(out[best]["state"], 0):
+    for key in declared:                                   # declared order IS the final tie-break
+        if best is None:
+            best = key
+            continue
+        rank, top = STATE_RANK.get(out[key]["state"], 0), STATE_RANK.get(out[best]["state"], 0)
+        if rank != top:
+            if rank > top:
+                best = key
+            continue
+        if out[key].get("moved", 0.0) > out[best].get("moved", 0.0):
             best = key
     return best
 

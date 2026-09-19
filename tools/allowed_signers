@@ -1,0 +1,13 @@
+# The public half of the PLANETAI release signing key, in ssh-keygen's allowed_signers format.
+#
+# Public on purpose: this is the line every node checks an update against, and it is copied verbatim
+# into the heredocs in `install`, `update.sh` and `bin/planetai` — those three run before or without a
+# tarball, so they cannot read this file. `tests/test_release_consistency.sh` fails if the four drift.
+#
+# The private half is the Foundation's. It is generated once, on Tomas's machine, lives in the
+# Foundation's password manager with one copy on the ship machine, and never enters this repository,
+# the tarball or a log. docs/HANDOFF_signing.md has the command that makes it and the rotation.
+#
+# NOT YET ISSUED. `tools/release.sh` refuses to sign while this line reads PLACEHOLDER, so no release
+# can be cut against a key that does not exist.
+release@planetai.fab.city ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET release@planetai.fab.city

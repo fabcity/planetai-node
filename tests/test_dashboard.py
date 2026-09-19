@@ -299,6 +299,65 @@ assert "extra = PACKS.map" in _js and "pane.innerHTML = PACKS.map" not in _js, \
 assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
     "a group's keys are no longer rendered after whatever extra that group adds"
 
+# THE PAGE KEEPS UP WITH THE NODE, AND SAYS SO WHEN IT CANNOT.
+#
+# v0.53 ended its boot with `setInterval(refresh, 20000)`. The Phase 2 rewrite did not carry it, and
+# for four releases the only repeating timer in this file was the wall stepping its own dial: boot()
+# fetched once and the page then showed a `live` pill over figures that had stopped moving when the
+# tab opened. Nothing caught it — every check here measures one render, and one render of a frozen
+# page looks exactly like one render of a fresh one. These are the assertions that would have.
+assert "function refresh()" in _js and "setInterval(refresh, refreshEvery())" in _js, \
+    "the page no longer re-fetches on a timer — it will show the readings it booted with, forever"
+assert "boot().then(() => { init(); route(); startRefresh(); })" in _js, \
+    "boot no longer starts the refresh loop"
+# What it may and may not ask for again. /settings, /earth, /sensors, /cells and the plan do not move
+# on the node's poll; re-fetching them every cycle is traffic for no change.
+_ref = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
+for _route in ("'/issues'", "'/health'"):
+    assert _route in _ref, f"refresh() no longer re-reads {_route}"
+for _route in ("'/settings'", "'/earth'", "'/sensors'", "'/cells'", "'/place/geojson'"):
+    assert _route not in _ref, \
+        f"refresh() re-reads {_route} on every poll; it does not change on the node's cadence"
+# A fixture is a committed snapshot and cannot change. The measuring rig replays one, so a refresh
+# here would also re-fetch underneath a running measurement.
+assert "if (FIXTURE || STATE !== 'populated') return;" in _ref, \
+    "refresh() no longer refuses to poll a replayed fixture or a synthetic state"
+# The cadence is the node's own, not a number typed into the page.
+assert "POLL_SECONDS" in _js, "the refresh cadence is no longer read from the node's own poll interval"
+# And the one that matters: a failed poll must reach the stamp. Saying `live` over figures nothing is
+# refreshing is the fault this whole block exists for.
+assert "window.STALE" in _js and "pill('stale'" in _js, \
+    "a failed poll no longer reaches the page — the live pill would sit over stale figures again"
+assert "the node has not answered for" in _js, \
+    "the as-of stamp no longer says how long the node has been silent"
+
+# A POLL DOES NOT ASK A TILE SERVER ANYTHING.
+#
+# Assigning innerHTML queues an <img> load the instant the markup exists, so a redraw goes to the
+# network even for a tile the browser has cached. Measured over CDP while building the refresh loop:
+# twelve requests to tiles.maps.eox.at per redraw, none from cache, though the tiles carry max-age of
+# a week. At one poll per 300 s that is ~3,500 a day from every open page, each telling that server
+# which square of the planet this house is looking at. The rule since Phase 2 is that a press may
+# only ever REDUCE what leaves the house; a poll multiplying it by three hundred breaks it from the
+# other side. After the gate: 12 on first load, 0 on every poll after.
+assert "if (window.KEEP_GROUND) return '';" in _js, \
+    "the tile figure no longer refuses to redraw for a data poll — every poll will re-ask the tile server"
+assert "if (ground) window.KEEP_GROUND = true;" in _js and "finally { window.KEEP_GROUND = false; }" in _js, \
+    "redraw() no longer raises the keep-ground flag across route(), or no longer lowers it after"
+# Only a data poll may set it. A press changes the cell or the resolution and MUST draw a new map.
+_rd = _js[_js.index("function redraw(opts)"):]
+_rd = _rd[:_rd.index("\n}") + 2]
+assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditionally — a press would not redraw the map"
+
+# THE DIAL IS NOW'S CONTROL. Drawn under every view's header until 18 September, where on Network,
+# Historical and Set up nothing on the page answered to it. Arrange keeps it: it draws Now's own
+# sections through want(NOW), so taking it away there left seven of them — the ground, the station
+# groups, the claims, the grain and the grain line — pointing at a control that was not on the page.
+assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="dialwrap"' in _js, \
+    "the dial is no longer drawn for Now and Arrange, or is drawn for every view again"
+assert re.search(r"const ref = 'grain-line';", _js), \
+    "the dial's link out is back to being chosen per view; only Now draws it now"
+
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
 # The page had no h1 at all (a <b> carried the node's name, so page-has-heading-one fired on every

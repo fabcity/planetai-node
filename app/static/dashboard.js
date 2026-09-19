@@ -401,7 +401,17 @@ const asof = () => {
         hour12: false }).format(t);
     } catch { /* a zone this browser does not know: UTC, said as UTC */ }
   }
-  return `<span class="asof" data-role="asof" id="asof">As of ${esc(when)} · `
+  /* A poll that did not come back does not blank the page — the figures were true when they were
+     read — but it stops the stamp saying "as of" as though it had just heard. It says how long it
+     has been since the node last answered, which is the one thing a reader needs in order to know
+     whether to believe the number above it. */
+  const st = window.STALE;
+  if (st) {
+    const mins = Math.max(1, Math.round((Date.now() - st.since) / 60000));
+    return `<span class="asof stale" data-role="asof" id="asof">Read at ${esc(when)} \u00b7 `
+      + `the node has not answered for ${mins} min</span>`;
+  }
+  return `<span class="asof" data-role="asof" id="asof">As of ${esc(when)} \u00b7 `
     + `${esc(String(S.base.captured_utc || '').slice(0, 10))}</span>`;
 };
 
@@ -1420,7 +1430,24 @@ const d1 = v => Math.round(v * 10) / 10;
  * The tiles load eagerly. Every tile of the mosaic is on screen whenever the figure is, so lazy
  * loading defers them and saves nothing — measured: with loading="lazy" not one of twelve tiles
  * had arrived 600 ms after the load event, and the rendered page showed cells over bare paper. */
+/* THE TILES A DATA POLL MUST NOT ASK FOR AGAIN.
+ *
+ * Assigning innerHTML queues an <img> load the instant the markup exists, before any code can put
+ * an already-loaded element back — so a redraw goes to the network even for a tile the browser has
+ * cached. Measured over CDP: twelve requests to tiles.maps.eox.at on every redraw, none served from
+ * cache, though the tiles carry max-age of a week. At one poll per 300 s that is about 3,500 a day
+ * from every open page, each one telling that server which square of the planet this house is
+ * looking at. The Phase 2 rule is that a press may only ever REDUCE what leaves the house; a poll
+ * multiplying it by three hundred breaks the same rule from the other side.
+ *
+ * `window.KEEP_GROUND` is up only across the route() inside a data redraw. The drawing is a
+ * function of the cell, the resolution, the base and the register — all of them in the URL, none of
+ * them touched by a poll — so there is nothing for a poll to redraw, and redraw() swaps the living
+ * figure back into the hollow one this returns. A press changes the URL, sets no flag, and draws a
+ * fresh ground.
+ */
 function figure(ctx, opts = {}) {
+  if (window.KEEP_GROUND) return '';
   const res = opts.res || ctx.RES;
   const base = baseOf(opts.base || ctx.Q.get('base'), res);
   if (base === 'plan') return ctx.KMAP.map(res);
@@ -2038,6 +2065,40 @@ const { map, caption } = window.KMAP;
  * they are `partial`, which is the word the route's own docstring uses. A node that has fetched
  * none says so in one line rather than showing four broken frames. */
 const IMAGERY = () => ((window.EARTH || {}).imagery || {});
+/* THE YEARS, AS ONE FRAME AT A TIME.
+ *
+ * Both records used to be a column of large stills — every Sentinel year at full width, and every
+ * AlphaEarth year under it, because nothing styled .frames and so nothing hid the ones that were
+ * not current. Historical was a very long scroll of near-identical squares, which is the worst way
+ * to see what changed between them: the eye cannot hold two pictures a screen apart. Asked for
+ * 18 September: keep the animation, drop the sequence.
+ *
+ * The controls were already in the markup and had been dead since the Phase 2 rewrite — Play, the
+ * slider and the mode button were rendered and nothing listened to any of them. wireSat() below is
+ * that wiring, restored from v0.53 against the markup this page actually draws.
+ *
+ * Hooked by `data-sat=` and never by id, because this component is drawn twice on the same page.
+ */
+function player(o) {
+  const last = o.years[o.years.length - 1];
+  return `<figure class="satplay" data-component="${esc(o.component)}" id="${esc(o.id)}"`
+    + ` data-ref="${esc(o.ref)}" data-years="${o.years.join(',')}">`
+    + `<div class="frames">` + o.years.map((y, i) =>
+      `<img src="${o.url(y)}" data-sat="frame" data-i="${i}"${y === last ? ' class="on"' : ''}`
+      + `${i === o.years.length - 1 ? '' : ' loading="lazy"'}`
+      /* A frame that 404s must not delete its own figure: the caption still counts it, and a count
+         with nothing under it is presence fabricated from absence. */
+      + ` onerror="this.dataset.gone=1"`
+      + ` alt="${esc(o.alt(y))}">`).join('') + `</div>`
+    + `<div class="satctl">`
+    + `<button type="button" data-sat="play" aria-pressed="false">Play</button>`
+    + `<input type="range" data-sat="slider" min="0" max="${o.years.length - 1}"`
+    + ` value="${o.years.length - 1}" aria-label="year">`
+    + `<span class="yr" data-sat="label">${last}</span>`
+    + (o.pill || '') + `</div>`
+    + `<figcaption class="cap">${o.cap}</figcaption></figure>`;
+}
+
 const frameUrl = y => `/earth/frame.png?source=sentinel&year=${y}`;
 const yearUrl = y => `/earth/year.png?year=${y}`;
 const YEARS = () => (IMAGERY().sentinel || []);
@@ -2061,23 +2122,19 @@ function record(ctx) {
       + `embeddings on command — <code>planetai run earth fetch</code>`
       + `${hint ? ` · ${esc(hint)}` : ''}</figcaption></figure>`;
   }
-  const last = years[years.length - 1];
-  return `<figure class="satown" data-component="satellite" id="sat-own" data-ref="sat-map">`
-    + `<div class="frames">` + years.map(y =>
-      `<img src="${yearUrl(y)}" data-sat="year" data-year="${y}"`
-      + `${y === last ? ' class="on"' : ''} alt="this node's own AlphaEarth layer for ${y}, drawn in `
-      + `grey: a model's description of every 10 m pixel, not a photograph">`).join('') + `</div>`
-    + `<div class="satctl">`
-    + `<button type="button" data-sat="play" aria-pressed="false">Play</button>`
-    + `<input type="range" data-sat="slider" min="0" max="${years.length - 1}"`
-    + ` value="${years.length - 1}" aria-label="year">`
-    + `<button type="button" data-sat="mode" data-mode="years">Years</button>`
-    + `<span class="yr" data-sat="label">${last}</span>`
-    + pill('model', 'a model’s description of every 10 m pixel, drawn in grey')
-    + `</div>`
-    + `<figcaption class="cap">This node’s own AlphaEarth record, ${years.length} `
-    + `${years.length === 1 ? 'year' : 'years'} · a rendering of a model, not a photograph · `
-    + `<code>planetai run earth fetch</code> adds a year</figcaption></figure>`;
+  /* The Years/change mode button is not carried over. v0.53's mode toggled to a "what changed"
+     frame that this node does not compute, so it was a control with nothing behind it — and a
+     control that does nothing is worse than no control. */
+  return player({
+    id: 'sat-own', component: 'satellite', ref: 'sat-map', years,
+    url: yearUrl,
+    alt: y => `this node's own AlphaEarth layer for ${y}, drawn in grey: a model's description of `
+      + `every 10 m pixel, not a photograph`,
+    pill: pill('model', 'a model’s description of every 10 m pixel, drawn in grey'),
+    cap: `This node’s own AlphaEarth record, ${years.length} `
+      + `${years.length === 1 ? 'year' : 'years'} · a rendering of a model, not a photograph · `
+      + `<code>planetai run earth fetch</code> adds a year`,
+  });
 }
 
 window.PAI.register({
@@ -2101,6 +2158,10 @@ window.PAI.register({
       + `<p class="note miss">This node no longer has the ${y} pass on disk.</p>`
       + `<figcaption><span class="yr">${y}</span>${pill('partial', 'an annual median from '
         + 'somebody else’s cluster, not a pass this node made')}</figcaption></figure>`).join('');
+    /* The Sentinel years stay a strip, by Tomas's call on 18 September: four squares side by side
+       are compared without moving the eye, which is what a strip is for and what a player takes
+       away. The record below it is the one that animates — it had no CSS to hide the frames that
+       were not current, so it stacked every year at full width, and that was the wall. */
     const strip = years.length
       ? `<div class="satstrip" id="sat-strip" data-component="satStrip" data-ref="sat-map">`
         + frames + `</div>`
@@ -2562,7 +2623,10 @@ window.PAI.register({
   render(ctx) {
     const list = devices();
     const cols = 'minmax(0,210px) minmax(0,1fr) auto';
-    return `<div class="reads" id="hardware-rows" data-ref="sensors">`
+    /* `sensors` lives on Now and this section on Network, so the link named a section the reader
+       cannot see. It points at its own absent-manager row instead, which is on this page and is
+       the thing the list is actually about. */
+    return `<div class="reads" id="hardware-rows" data-ref="hw-manager">`
       + list.map(d => row({
         id: `hw-${esc(d.id)}`, component: 'device', ref: 'hardware-rows', cols,
         /* The link lives in the left-hand block, which row() places as HTML; the line is text and
@@ -3046,8 +3110,11 @@ window.PAI.register({
     const rows = (T() || {}).rows || T() || [];
     const all = Array.isArray(rows) ? rows : [];
     if (!all.length) {
+      /* hardware-rows is on Network; trust has been on Historical since v0.56. Its own band is the
+         one id guaranteed to be on the page with it — sat-map is not, because the satellite draws
+         nothing without a plan and /place/geojson is refused at every share level. */
       return `<p class="note" data-component="trustCard" data-card="trust" id="trust-rows"`
-        + ` data-ref="hardware-rows">No local sensor yet, so there is nothing to doubt.</p>`;
+        + ` data-ref="trust">No local sensor yet, so there is nothing to doubt.</p>`;
     }
     /* The node's own three conditions, read off the row rather than recomputed here. */
     const doubt = all.filter(r => r.age_hours < 168 || r.coverage_7d < 60 || r.frozen_channels > 0);
@@ -3076,7 +3143,7 @@ window.PAI.register({
       ? `${doubt.length} of ${all.length} sensors need a look.`
       : `${all.length} local sensors, seven-day coverage.`;
     return `<div class="reads" data-component="trustCard" data-card="trust" id="trust-rows"`
-      + ` data-ref="hardware-rows"><p class="note">${esc(sub)}</p>${body}</div>`;
+      + ` data-ref="trust"><p class="note">${esc(sub)}</p>${body}</div>`;
   },
 
   notes() {
@@ -3722,6 +3789,19 @@ function flatSettings(d) {
   return { ...(d || {}), ...flat };
 }
 
+/* The three answers, turned into the globals every section reads. boot() calls it once and
+ * refresh() calls it again on every poll, so there is one shape and not two that drift. */
+function bind(issues, health, rho) {
+  window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
+    rho, funnel: issues.funnel || null, peer: issues.peer || null, fixture: FIXTURE || null };
+  const geo = issues.geometry || {};
+  window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
+    asks: issues.asks || null,
+    radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
+      mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
+    node: { lat: health.lat, lon: health.lon, name: health.node } };
+}
+
 async function boot() {
   const answered = await api(FIXTURE ? `/issues/fixtures/${encodeURIComponent(FIXTURE)}` : '/issues');
   const snapshot = FIXTURE ? answered : null;
@@ -3747,14 +3827,7 @@ async function boot() {
     api('/sensors').catch(() => null), api('/cells').catch(() => null),
   ]);
 
-  window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
-    rho, funnel: issues.funnel || null, peer: issues.peer || null, fixture: FIXTURE || null };
-  const geo = issues.geometry || {};
-  window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
-    asks: issues.asks || null,
-    radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
-      mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
-    node: { lat: health.lat, lon: health.lon, name: health.node } };
+  bind(issues, health, rho);
   window.SETTINGS = flatSettings(settings);
   /* describe()'s own body as well as the flat map: `set` is true for a key whose value is masked,
      which is the only way a screen with no token can say a parent exists without being told where
@@ -3999,8 +4072,25 @@ function main() {
 
   /* The views are buttons and the URL is the hash, the way the page this replaces routed: one
      document served from /, no router, no build step. A span is a drawing; a button is a control. */
+  /* THE DIAL IS NOW'S CONTROL AND NOBODY ELSE'S.
+   *
+   * It was drawn under the header of every view. On Now it is the control the page is built around
+   * — the ground, the station groups, the claims and the grain all re-file when it turns. On
+   * Network, Historical, Set up and Arrange nothing on the page answers to it, so it was a control
+   * that looked live and did nothing: redundant, and distracting for being redundant. Reported
+   * 16 September.
+   *
+   * The resolution still lives in the URL, so a link into any view at a given grain keeps that
+   * grain — it simply cannot be changed from a page that does not vary by it. The wall keeps its
+   * own dial, which is a different control on a different surface: it re-fills the wall's field as
+   * it turns, which is what a wall is for. */
   const head = () => chrome(S.health.node, S.health.city, VIEW)
-    + `<div class="dialwrap"><div class="wrap">${dial()}</div></div>`;
+    + (VIEW === 'now' || VIEW === 'arrange'
+      /* Arrange draws Now's own sections — same registry, same want(NOW) — so it is Now in another
+         mode and keeps the dial with them. Taking it away there left the ground, the station
+         groups, the claims, the grain and the grain line all pointing at a control that was not on
+         the page. */
+      ? `<div class="dialwrap"><div class="wrap">${dial()}</div></div>` : '');
 
   /* One control. Each stop says what one cell of it is worth on the ground, the two lines the
      product already draws are drawn across it, and pressing a stop re-derives the whole page. */
@@ -4016,7 +4106,10 @@ function main() {
     /* The dial's link out is the sentence it re-derives. On Now that is the grain line; on the
        other views it is the view's own band, because the grain line is the lead's and the lead is
        Now's. A component pointing at an id that is not on the page is what T5 counts. */
-    const ref = VIEW === 'now' ? 'grain-line' : VIEW === 'network' ? 'satellite' : `view-${VIEW}`;
+    /* The sentence the dial re-derives, and the only one left: Now is the only view that draws it.
+       The arm that pointed at `satellite` died when the satellite moved to Historical in v0.56 —
+       it had been naming an id that was not on the page for two releases. */
+    const ref = 'grain-line';
     return `<div class="dial" id="dial" data-component="dial" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
@@ -4050,9 +4143,16 @@ function main() {
       + `${G.in_my_cell} sit in this node's own cell, of which ${G.mine_in_my_cell} are its own.`
       + (flat.length > 1 ? ` Resolutions ${flat[0].res} to ${flat[flat.length - 1].res} answer this `
         + `question identically.` : '') + `</p>`)
+      /* WHY THIS ONE IS AT THE TOP. The page stopped saying it in the Phase 2 rewrite — v0.53 had
+         the sentence and the modular page carried neither the words nor a place to put them — and
+         on 18 September the rule itself changed, so it has to be sayable again. A ranking a reader
+         cannot check is the one thing this page does not do. */
+      + `<p class="why rule" id="headline-rule" data-component="headlineRule" data-ref="grain-line">`
+      + `${esc((window.W ? window.W() : {}).headlineRule || '')}</p>`
       + `<div class="whenline">${asof()}${window.K.stamp()}`
       + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
-        : pill('live', 'measured by this node')) + `</div>`
+        : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
+        : pill('live', 'measured by this node, and kept up to date')) + `</div>`
       + fig + `</section>`;
   }
 
@@ -4216,6 +4316,10 @@ function route() {
   document.documentElement.removeAttribute('data-theme');
   document.body.className = '';
   main();
+  /* main() has just replaced the page, so any player on it is fresh markup with no listeners and
+     any timer from the last render is pointing at elements that are gone. */
+  const page = document.getElementById('page');
+  if (page) wireSat(page);
   window.scrollTo(0, 0);
 }
 
@@ -4308,7 +4412,174 @@ document.addEventListener('click', ev => {
 });
 
 /* ------------------------------------------------------------------ and go */
-boot().then(() => { init(); route(); }).catch(async e => {
+/* ---------------------------------------------------------------- the readings keep up
+ *
+ * THE PAGE STOPPED UPDATING IN THE PHASE 2 REWRITE. v0.53 ended its boot with
+ * `setInterval(refresh, 20000)` and the rewrite did not carry it, so from v0.54 to v0.57 the only
+ * repeating timer in this file was the wall stepping its own dial. boot() fetched nine routes once
+ * and never again — while the page went on showing its `live` pill and its "as of" stamp over
+ * figures that had stopped moving the moment the tab opened. An unattended wall screen was not
+ * merely stale; it was asserting freshness it did not have. Reported 18 September 2026.
+ *
+ * WHAT IS RE-FETCHED, AND WHAT IS NOT. /issues, /health and /rho move on the node's own poll.
+ * /settings, /place/geojson, /earth, /sensors and /cells do not move on that cadence — a keeper
+ * changing a setting or a pack fetching a new satellite year is a reload's business, not a poll's —
+ * and fetching them every cycle would be three quarters of the traffic for none of the change. The
+ * old page refreshed everything; this does not.
+ *
+ * THE CADENCE IS THE NODE'S. POLL_SECONDS, read from GET /settings, is how often the node itself
+ * goes and looks: 300 s on node #1. Asking more often than that fetches the same answer again, so
+ * the page asks at the node's own rate and not at a number typed here. Clamped either side because
+ * a node with POLL_SECONDS=1 must not turn every open page into a load generator.
+ *
+ * A RE-RENDER IS NOT A RE-FETCH. route() redraws from globals and asks the node nothing — that is
+ * v0.56's whole dial fix. So this fetches first, re-binds through the same bind() and initKit()
+ * boot uses, and only then re-renders. PAI_LOAD is deliberately NOT re-run: the sections are
+ * already registered and the contract rejects a second registration of the same id.
+ *
+ * AND IT DOES NOT FIGHT THE READER. It holds off while a tab is hidden, while a Set up group has an
+ * edit nobody has saved, and on the synthetic ?state= pages. A committed fixture is never
+ * refreshed at all: it cannot change, and the measuring rig replays one.
+ */
+const REFRESH_FLOOR_S = 20, REFRESH_CEIL_S = 600, REFRESH_DEFAULT_S = 60;
+let REFRESH_TIMER = null;
+
+function refreshEvery() {
+  const rows = ((window.SETTINGS_RAW || {}).bootstrap) || [];
+  const n = Number(((rows.find(r => r.key === 'POLL_SECONDS') || {}).value) || '');
+  const secs = Number.isFinite(n) && n > 0 ? n : REFRESH_DEFAULT_S;
+  return Math.min(REFRESH_CEIL_S, Math.max(REFRESH_FLOOR_S, Math.round(secs))) * 1000;
+}
+
+/* What the page says when a poll does not come back. The figures on screen stay — they were true
+ * when they were read, and blanking them would lose the last thing the node actually said — but the
+ * stamp stops calling them live and says how long ago they were read instead. */
+window.STALE = null;
+
+async function refresh() {
+  if (FIXTURE || STATE !== 'populated') return;         // a snapshot cannot change
+  if (document.hidden) return;                          // nobody is looking
+  if (VIEW === 'setup' && window.PAI_SETUP && window.PAI_SETUP.dirty && window.PAI_SETUP.dirty()) return;
+  let issues, health, rho;
+  try {
+    [issues, health] = await Promise.all([api('/issues'), api('/health')]);
+  } catch (e) {
+    window.STALE = { since: (window.STALE && window.STALE.since) || Date.now(),
+      why: String((e && e.message) || e) };
+    redraw({ keepGround: true });                       // the stamp has something new to say
+    return;
+  }
+  /* ρ is the node measuring itself and is the slowest of the three. It failing is not a reason to
+     throw away a good reading of the air, so the last one stands and the page says nothing new. */
+  rho = await api('/rho').catch(() => (window.SNAP || {}).rho || null);
+  window.STALE = null;
+  bind(issues, health, rho);
+  initKit();
+  initGeometry();
+  redraw({ keepGround: true });
+}
+
+/* ---------------------------------------------------------------- the year players
+ *
+ * Restored from v0.53, which the Phase 2 rewrite dropped: the Play button, the slider and the year
+ * label were rendered on every satellite record and nothing had listened to any of them since
+ * v0.54. Dead controls, for five releases.
+ *
+ * The cadence is the frozen layer's own --motion-satellite-year, which is 4s and goes to 0s under
+ * prefers-reduced-motion. So reduced motion is not a second code path here: the token says zero,
+ * the loop does not start, the record stands on its most recent year and the button says so.
+ *
+ * One timer per player, cleared before it is replaced, so a re-render — and this page re-renders on
+ * every poll — cannot leave a second loop running behind the first. That is how a page ends up
+ * flickering between two years at once.
+ */
+const SAT_LOOPS = new Map();
+
+function wireSat(root) {
+  const secs = parseFloat(getComputedStyle(document.documentElement)
+    .getPropertyValue('--motion-satellite-year')) || 0;
+  for (const [el, t] of SAT_LOOPS) { if (!root.contains(el)) { clearInterval(t); SAT_LOOPS.delete(el); } }
+  root.querySelectorAll('.satplay[data-years]').forEach(el => {
+    if (SAT_LOOPS.has(el)) { clearInterval(SAT_LOOPS.get(el)); SAT_LOOPS.delete(el); }
+    const years = (el.dataset.years || '').split(',').filter(Boolean);
+    const imgs = [...el.querySelectorAll('[data-sat="frame"]')];
+    const label = el.querySelector('[data-sat="label"]');
+    const slider = el.querySelector('[data-sat="slider"]');
+    const play = el.querySelector('[data-sat="play"]');
+    if (years.length < 2) { if (play) { play.disabled = true; play.textContent = 'one year'; } return; }
+    let i = years.length - 1;
+    const show = () => {
+      imgs.forEach((im, n) => im.classList.toggle('on', n === i));
+      if (label) label.textContent = years[i];
+      if (slider) slider.value = String(i);
+    };
+    const stop = () => {
+      const t = SAT_LOOPS.get(el);
+      if (t) { clearInterval(t); SAT_LOOPS.delete(el); }
+      if (play) { play.textContent = secs ? 'Play' : 'Motion off'; play.setAttribute('aria-pressed', 'false'); }
+    };
+    const run = () => {
+      if (!secs) return;                       // reduced motion: stands on the most recent year
+      SAT_LOOPS.set(el, setInterval(() => { i = (i + 1) % years.length; show(); }, secs * 1000));
+      if (play) { play.textContent = 'Pause'; play.setAttribute('aria-pressed', 'true'); }
+    };
+    if (play) play.onclick = () => (SAT_LOOPS.has(el) ? stop() : run());
+    if (slider) slider.oninput = () => { stop(); i = +slider.value; show(); };
+    show();
+    if (secs) run(); else stop();
+  });
+}
+
+/* Re-render without throwing the reader out of their place: the scroll position and every open fold
+ * survive, because a poll arriving while somebody is reading a note must not close it.
+ *
+ * AND WITHOUT ASKING A TILE SERVER ANYTHING. `keepGround` carries the whole of that. The ground is a
+ * grid of <img> elements, and innerHTML replacement destroys and recreates them, which Chromium
+ * answers by going back to the network — measured over CDP, twelve requests to tiles.maps.eox.at on
+ * every redraw, none of them served from cache, despite the tiles being cacheable for a week. Before
+ * the refresh loop that cost twelve requests per page load. With a poll every 300 s it would have
+ * been about 3,500 a day from every open page, each one telling that server which square of the
+ * planet this house is looking at. The Phase 2 rule is that a press may only ever REDUCE what leaves
+ * the house; a poll quietly multiplying it by three hundred is the same rule broken from the other
+ * side.
+ *
+ * So a data refresh keeps the ground it already has. It is allowed to, and only it is: the drawing
+ * is a function of the cell, the resolution, the base and the register, every one of which lives in
+ * the URL — and a poll does not touch the URL. A press does, and a press passes nothing here and
+ * gets a fresh ground, which is exactly right. */
+function redraw(opts) {
+  const y = window.scrollY;
+  const open = [...document.querySelectorAll('details[open]')].map(d => d.id).filter(Boolean);
+  const ground = (opts && opts.keepGround) ? document.querySelector('#ground-figure') : null;
+  /* The flag is up only across route(), so nothing else can ever see a hollow ground: the section
+     reads it, draws the empty figure, and it is down again before the swap. */
+  if (ground) window.KEEP_GROUND = true;
+  try { route(); } finally { window.KEEP_GROUND = false; }
+  if (ground) {
+    const fresh = document.querySelector('#ground-figure');
+    if (fresh && fresh !== ground) fresh.replaceWith(ground);
+  }
+  for (const id of open) { const d = document.getElementById(id); if (d) d.open = true; }
+  window.scrollTo(0, y);
+}
+
+/* The loop's own handle, in the idiom this file already uses for PAI_SETUP, PAI_SETTINGS and WALL.
+ * A poll that only ever fires on a 300-second timer cannot be tested, and untested is exactly how
+ * the last one was lost for four releases — tests/visual/measure.mjs drives `now()` and watches what
+ * the page asks the node for. It is also the honest way for a wall to force a read after somebody
+ * has fixed whatever was wrong with the node. */
+window.PAI_REFRESH = { now: () => refresh(), every: () => refreshEvery(), stale: () => window.STALE };
+
+function startRefresh() {
+  if (REFRESH_TIMER) clearInterval(REFRESH_TIMER);
+  if (FIXTURE || STATE !== 'populated') return;
+  REFRESH_TIMER = setInterval(refresh, refreshEvery());
+  /* A tab that was hidden for an hour comes back to an hour-old page and should not have to wait
+     out another full interval to be told so. */
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+}
+
+boot().then(() => { init(); route(); startRefresh(); }).catch(async e => {
   if (e && e.refused) {
     const h = await api('/health').catch(() => ({}));
     window.NODE_NAME = h.node; window.NODE_CITY = h.city;
@@ -4385,12 +4656,15 @@ const route = () => window.PAI_ROUTE();
 const WORDS = {
   en: { leavesMachine: 'leaves this machine',
     openOnAnotherScreen: 'Open this on another screen in the house:',
+    headlineRule: 'The issue with most to say leads \u2014 and where two have as much to say, the one that has moved most in the last three hours. An even tie goes to the order this place chose, under Set up \u2192 Issues.',
     net: { cellsN: '{n} of 20', cellsOut: 'Index cells', home: 'home', kept: '{n} readings kept, none of them leave', leaves: 'What leaves this house', leavesShort: 'what leaves', means: 'hourly means', model: 'model', models: 'the models', models_: 'models', parentNowhere: 'nowhere yet', reads: 'What this node reads', rhoN: '{closed} of {total}', rhoOut: 'answered asks', sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations', street: 'the street', sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.', title: 'This house is one node of a much larger instrument.', yours: 'your sensors' }, },
   id: { leavesMachine: 'keluar dari mesin ini',
     openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
+    headlineRule: 'Isu yang paling banyak bicara memimpin \u2014 dan bila dua sama banyaknya, yang paling berubah dalam tiga jam terakhir. Bila tetap seri, urutannya mengikuti pilihan tempat ini, di Set up \u2192 Issues.',
     net: { cellsN: '{n} dari 20', cellsOut: 'sel Indeks', home: 'rumah', kept: '{n} bacaan disimpan, tidak satu pun keluar', leaves: 'Yang keluar dari rumah ini', leavesShort: 'yang keluar', means: 'rata-rata per jam', model: 'model', models: 'model', models_: 'model', parentNowhere: 'belum ke mana-mana', reads: 'Yang dibaca node ini', rhoN: '{closed} dari {total}', rhoOut: 'permintaan dijawab', sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik', street: 'jalan', sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.', title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.', yours: 'sensor Anda' }, },
   es: { leavesMachine: 'sale de esta máquina',
     openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
+    headlineRule: 'Lidera el asunto que m\u00e1s tiene que decir \u2014 y si dos dicen otro tanto, el que m\u00e1s se ha movido en las \u00faltimas tres horas. Si hay empate exacto, manda el orden que eligi\u00f3 este lugar, en Set up \u2192 Issues.',
     net: { cellsN: '{n} de 20', cellsOut: 'celdas del \u00cdndice', home: 'casa', kept: '{n} lecturas guardadas, ninguna sale', leaves: 'Lo que sale de esta casa', leavesShort: 'lo que sale', means: 'medias horarias', model: 'modelo', models: 'los modelos', models_: 'modelos', parentNowhere: 'a ning\u00fan sitio todav\u00eda', reads: 'Lo que lee este nodo', rhoN: '{closed} de {total}', rhoOut: 'peticiones respondidas', sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas', street: 'la calle', sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.', title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.', yours: 'tus sensores' }, },
 };
 const W = () => WORDS[(window.K || {}).LOC] || WORDS.en;
@@ -4677,6 +4951,7 @@ document.addEventListener('click', ev => {
   }
 });
 
-window.PAI_SETUP = { markup, load: loadSetup, toast };
+/* `dirty` is read by refresh(): a poll must never re-render a group with a typed value in it. */
+window.PAI_SETUP = { markup, load: loadSetup, toast, dirty: () => DIRTY };
 
 })();
