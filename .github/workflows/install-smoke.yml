@@ -34,7 +34,7 @@ jobs:
           # release key and must never have one, so this signs with a throwaway and puts its public
           # half into a copy of the stub. The signer line is the only byte that differs from the
           # committed file — every URL, fetch and check below is the real one.
-          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C release@planetai.fab.city
+          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C fabcity
           ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/site/get/planetai-node.tar.gz
           blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
           sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > install.signed
@@ -226,7 +226,7 @@ jobs:
           # release key and must never have one, so this signs with a throwaway and puts its public
           # half into a copy of the stub. The signer line is the only byte that differs from the
           # committed file — every URL, fetch and check below is the real one.
-          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C release@planetai.fab.city
+          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C fabcity
           ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/site/get/planetai-node.tar.gz
           blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
           sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > install.signed
@@ -328,7 +328,7 @@ jobs:
           set -e
           mkdir -p /tmp/flat
           bash tools/bundle.sh /tmp/flat                       # tarball, SHA256 and VERSION, side by side
-          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C release@planetai.fab.city
+          ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C fabcity
           ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/flat/planetai-node.tar.gz
           ls -la /tmp/flat
           ( cd /tmp/flat && python3 -m http.server 8098 >/tmp/flat.log 2>&1 & )

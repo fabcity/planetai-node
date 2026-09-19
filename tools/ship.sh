@@ -66,7 +66,7 @@ sign_tarball() {
     || die "ssh-keygen could not sign $tgz with $key."
   # Verify what was just written, against the same file a node will use. A signature nobody checked here
   # is a signature discovered to be wrong by a tester in Menorca.
-  ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city -n planetai-node \
+  ssh-keygen -Y verify -f tools/allowed_signers -I fabcity -n planetai-node \
     -s "$tgz.sig" < "$tgz" >/dev/null \
     || die "the signature just written does not verify against tools/allowed_signers. Nothing was shipped."
   say "signed, and the signature verifies against tools/allowed_signers"
@@ -253,7 +253,7 @@ if [[ "$HERE" == v*  && "$HERE" != *-g* ]]; then
       gh release create "$HERE" --title "$HERE" \
         --notes "The node at ${HERE}. Verify before installing:
 
-    ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city \\
+    ssh-keygen -Y verify -f tools/allowed_signers -I fabcity \\
       -n planetai-node -s planetai-node.tar.gz.sig < planetai-node.tar.gz
 
 Install from here rather than the site:
