@@ -461,7 +461,7 @@ step_ok
 # case a tester pastes into an issue, and the reason the heartbeat had nothing to show. `docker pull`
 # does print one line per layer, piped or not, so pull the image by name. Same result, visible progress.
 DB_IMAGE="$(docker compose config --images 2>/dev/null | grep -E '[a-z0-9._-]+/[a-z0-9._-]+' | head -1)"
-DB_IMAGE="${DB_IMAGE:-postgis/postgis:16-3.4-alpine}"
+DB_IMAGE="${DB_IMAGE:-imresamu/postgis:16-3.4-alpine}"
 step "downloading the database image ${DB_IMAGE} (about 162 MB)"
 watch_run "the database image did not arrive. The log has the reason; the resume command retries." \
   docker pull "$DB_IMAGE"

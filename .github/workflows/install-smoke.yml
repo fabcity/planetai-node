@@ -150,7 +150,7 @@ jobs:
           # installer rightly refuses to start a node whose new .env cannot log in to an old volume.
           docker volume rm -f planetai_db >/dev/null 2>&1 || true
           cp -r . /tmp/failrun && cd /tmp/failrun
-          sed -i 's|postgis/postgis:16-3.4-alpine|postgis/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
+          sed -i 's|imresamu/postgis:16-3.4-alpine|imresamu/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
           cp .env.example .env && sed -i 's|^APP_PORT=.*|APP_PORT=8123|' .env
           set +e
           COMPOSE_PROJECT_NAME=planetai_fail timeout 600 ./install.sh --name ci-fail --lat 39.57 --lon 2.65 --no-bad \
@@ -187,14 +187,15 @@ jobs:
   # Lucas was on 8 September. The host's docker socket is mounted, so the engine the script installs has
   # something to talk to; what is under test is the platform branch, not nested virtualisation.
   clean-linux:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
-      max-parallel: 1          # one machine at a time: both legs drive the SAME host daemon
+      max-parallel: 1          # one machine at a time: the x86 legs drive the SAME host daemon
       matrix:
         include:
           - name: Ubuntu Server 22.04
+            runner: ubuntu-22.04
             project: pai_ubuntu
             port: 8131
             image: ubuntu:22.04
@@ -203,6 +204,7 @@ jobs:
           # os-release and lsb_release: ID=linuxmint with an Ubuntu upstream, which is what our platform
           # detection reads and what get.docker.com resolves through `lsb_release -a -u`.
           - name: Linux Mint 22.3 (Lucas's machine)
+            runner: ubuntu-22.04
             project: pai_mint
             port: 8133
             image: ubuntu:24.04
@@ -211,10 +213,23 @@ jobs:
               printf 'NAME="Linux Mint"\nVERSION="22.3 (Zara)"\nID=linuxmint\nID_LIKE="ubuntu debian"\nPRETTY_NAME="Linux Mint 22.3"\nVERSION_ID="22.3"\nVERSION_CODENAME=zara\nUBUNTU_CODENAME=noble\n' > /etc/os-release &&
               printf '#!/bin/sh\nif [ "$1$2" = "-a-u" ]; then exit 1; fi\nprintf "Distributor ID:\\tLinuxmint\\nCodename:\\tzara\\n"\n' > /usr/bin/lsb_release && chmod +x /usr/bin/lsb_release
           - name: Arch (what Omarchy is built on)
+            runner: ubuntu-22.04
             project: pai_arch
             port: 8132
             image: archlinux:latest
             prep: pacman -Sy --noconfirm --quiet curl sudo tar python openssh >/dev/null
+          # The wall, from the other side. Raspberry Pi OS 64-bit is Debian (the Pi's own download page,
+          # 15 Sep 2026, is Trixie), and Docker's Raspberry Pi OS install page covers 32-bit only and sends
+          # 64-bit users to the Debian instructions — so a Debian container on an arm64 runner is the
+          # nearest honest stand-in for a Pi that CI can hold. It is NOT a Pi: no SD card, no thermal
+          # throttling, no 4 GB ceiling. What it proves is the one thing that blocked the Pi for a year —
+          # that every image the node pulls exists for linux/arm64 and the database comes up on it.
+          - name: Debian on arm64 (the Pi's userland, not the Pi)
+            runner: ubuntu-24.04-arm
+            project: pai_arm64
+            port: 8134
+            image: debian:13
+            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 openssh-client >/dev/null
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
