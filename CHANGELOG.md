@@ -1,5 +1,16 @@
 # Changelog
 
+- 2026-09-19 — **a node that has never chosen a model preference now keeps everything on the network.**
+  `AGENT_PREFER` shipped as `strongest`, which sends every question — and the 64 kB report bundle that
+  goes with it: your numbers, your room names, your own sentences — to Anthropic's or OpenAI's API first
+  and to the model on your own box last. It now ships as `private`, and a node with no value at all
+  reads `private`. **Your node is unaffected if you ever chose one**, on the Model page or in `.env`; an
+  update adds new keys and never rewrites one you hold. If you never chose, your node is now private and
+  your morning brief comes from the local model — say `/model` to the bot to see the ladder, and set
+  `strongest` or `fallback` on the Model page if that is what you want. Separately, the Reticulum bridge
+  container is no longer handed the whole of `.env`: it reads eight variables and now receives eight,
+  not every token and password the node holds.
+
 - 2026-09-19 — the source registry is re-pinned to `c2d33f7`, still 209 entries. Six Seoul datasets
   that the city's portal now answers with a termination notice go from `live` to `deprecated`, and
   four sources that moved get their new addresses: the Atlas of Economic Complexity (Harvard moved
