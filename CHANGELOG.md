@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.62 — 2026-09-19 — nothing you will see, and the reasons it exists anyway
+
+**There is no change to your node's page, numbers or alerts in this release.** The one file in it
+that a screen reads, `planetai-theme.css`, changed by two comment lines: the design repository closed
+an open question about the rho row, so the header counts eleven open items instead of twelve. No
+colour, size or rule moved. If your node looks different after this update, that is worth reporting,
+because nothing here should have done it.
+
+It exists because the site was eight commits behind `main` and a tester downloading in that state
+gets an older node than the one the work is being done against. The eight are gates, tests and
+documentation:
+
+- The frozen design layer can be re-pinned again. The check that holds this repository's copy
+  byte-identical to the design repository's could refuse a stale copy but could not accept a new one —
+  it measured the new file against the pin it was replacing, which is the one comparison that cannot
+  pass. Found within an hour of v0.61 by the first person who tried it.
+- `tools/session.sh preflight` now lists the neighbouring worktrees on the same disk. Two sessions
+  fixed that same one-line bug three minutes apart, each having checked every open pull request and
+  every branch on the server and found nothing: the other's work was local and unpushed. Every
+  question asked was a remote question about work that was not remote yet.
+- `docs/NEXT_RELEASE.md` no longer asks anyone to rescue the September design work from one laptop.
+  It was merged upstream days ago; the file had not been told.
+
 ## v0.61 — 2026-09-19 — the node carries the network's list of what can be measured, and four packs more to measure it with
 
 
