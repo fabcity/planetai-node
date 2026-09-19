@@ -1,0 +1,14 @@
+# The frozen layer: three files under app/static/ that this repository does not own, and the
+# planetai-design commit they were copied from. tools/check_theme.py holds the files to these
+# hashes on EVERY lint — including CI, where the design repo is not checked out and the byte
+# comparison cannot run. Do not edit this by hand: copy the file from planetai-design,
+# then run `python3 tools/check_theme.py --update`, which refuses unless the copy really matches.
+#
+# The hashes are of the files as they are HERE. Where a line differs from the original by
+# decision (the mono's path — see tools/check_theme.py), this records what this repo serves.
+design_repo=https://github.com/fabcity/planetai-design.git
+design_sha=8d79bf2af8d63b44e15c155e04037ecda91ab1c1
+copied=2026-09-19
+sha256 app/static/planetai-theme.css e9608943964f25d2b570ed71c2982d13ca7328a8409c9f924a4da4220515d503
+sha256 app/static/signs.svg edf7e2451cea357b222d60f3689014b4c704476f83df7b9c0936e65696842af9
+sha256 app/static/kilometre-cells.json 6b4488d50271b5d050c0b94d8ec01d41cc001e28cba89ddd7d3f70ef73bb8316
