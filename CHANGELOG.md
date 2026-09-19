@@ -1,5 +1,12 @@
 # Changelog
 
+- 2026-09-19 — the source registry is re-pinned to `c2d33f7`, still 209 entries. Six Seoul datasets
+  that the city's portal now answers with a termination notice go from `live` to `deprecated`, and
+  four sources that moved get their new addresses: the Atlas of Economic Complexity (Harvard moved
+  it from CID to the Kennedy School, and its old API host no longer resolves at all), both Open
+  Canada entries, and IHME GBD. `planetai sources` and `GET /sources` answer from this, so a node
+  stops describing six dead datasets as live.
+
 ## v0.62 — 2026-09-19 — nothing you will see, and the reasons it exists anyway
 
 **There is no change to your node's page, numbers or alerts in this release.** The one file in it

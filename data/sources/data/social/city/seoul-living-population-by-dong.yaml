@@ -5,7 +5,7 @@ description: Hourly estimates of the population actually present in each Seoul a
   to the present.
 pillar: social
 scale: city
-status: live
+status: deprecated
 license: '공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1'
 api: null
 pilot_relevance: []
@@ -17,10 +17,12 @@ tags:
 - korea
 - seoul
 added: '2026-09-11'
-updated: '2026-09-11'
+updated: '2026-09-19'
 wired_in_planetai: false
 upstream_listed_in: []
-notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Years 2017-2026,
+notes: 'DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, "this data is a terminated service". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.
+
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Years 2017-2026,
 
   current to August 2026. Cadence 정기(매일).
 
