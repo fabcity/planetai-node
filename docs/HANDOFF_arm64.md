@@ -92,10 +92,16 @@ cryptography 44.0.3   from cryptography.hazmat.bindings import _rust   →  ok
 
 Reproduced on a clean `python:3.12-slim` with nothing else installed. That machine is Docker Desktop 23.0.5,
 whose LinuxKit kernel is **5.15.49** — from 2022. Raspberry Pi OS Trixie ships 6.12 and Ubuntu 24.04 arm64
-ships 6.8, so the most likely reading is an old-kernel artifact and not a Pi problem, **and the arm64 CI leg
-is what decides it**: it installs the whole node, app container included, on a modern arm64 kernel. If that
-leg is green, this paragraph is about one laptop. If it is red, `cryptography` is the next wall and it is a
-pinned transitive dependency of `mcp`, which is nobody's favourite place to find one.
+ships 6.8, so the reading was an old-kernel artifact rather than a Pi problem — **and the arm64 CI leg has
+since said so.** It installs the whole node on `ubuntu-24.04-arm`: Docker in, `imresamu/postgis` pulled,
+both images built, `db healthy`, `install OK — ci-clean, 7 steps in 53s`, and `/health` answering. So
+`cryptography` is not the next wall, and `app/requirements.txt` needs no pin.
+
+What it leaves behind is a gap worth keeping: `install OK` means seven steps finished and the database went
+healthy, not that the app container is still alive — `docker compose up -d` returns when a container starts,
+not when it works. An app image that builds and starts on a new architecture and then dies on its first
+import would have passed. Every `clean-linux` leg now reads `/health` after the install for exactly that
+reason, which is the check that would have caught the SIGILL had it been real.
 
 It also bears on the node-identity spec (PR #93, not merged as this is written), which proposes adding
 `cryptography` to `app/requirements.txt` directly. That spec's own stop condition asks whether it installs

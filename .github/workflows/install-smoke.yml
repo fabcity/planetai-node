@@ -295,6 +295,17 @@ jobs:
           fi
           grep -q "^install OK — ci-clean," /tmp/T.txt || { echo "the answers file was ignored: $(grep '^install OK' /tmp/T.txt)"; exit 1; }
           grep -qi "Something went wrong" /tmp/T.txt && { echo "still says Something went wrong"; exit 1; } || true
+          # And the node ANSWERS. "install OK" means seven steps finished and the database went healthy; it
+          # does not mean the app container is still up, because `docker compose up -d` returns when a
+          # container starts and not when it works. That gap is the whole difference on a new architecture:
+          # an app image can build and start on arm64 and then die on its first import. It was measured
+          # doing exactly that on a 2022 LinuxKit kernel — SIGILL out of cryptography's Rust bindings, by
+          # way of mcp -> pyjwt — so the one check that would have caught it belongs here on every leg.
+          for i in $(seq 40); do curl -fsS "http://127.0.0.1:PORT_PLACEHOLDER/health" >/dev/null 2>&1 && break; sleep 3; done
+          curl -fsS "http://127.0.0.1:PORT_PLACEHOLDER/health" > /tmp/H.json \
+            || { echo "the installer said OK and /health does not answer"; docker logs "$(docker ps -aq --filter name=app | head -1)" 2>&1 | tail -30; exit 1; }
+          python3 -c "import json;d=json.load(open('/tmp/H.json'));print('  /health:', d['node'], d['version'], 'schema', d['schema']);assert 'schema' in d" \
+            || { echo "/health answered something that is not a node"; cat /tmp/H.json; exit 1; }
           echo "ok on this userland"
           INNER
           # the matrix's prep line, spliced in without YAML fighting the shell
