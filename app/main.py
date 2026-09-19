@@ -32,6 +32,7 @@ import ground
 import index
 import issues.api
 import packs
+import registry
 import report
 import settings
 import sources
@@ -683,6 +684,10 @@ async def _mcp_auth(request, call_next):
 # (`grep -oE "(api|fetch)\('/[a-z0-9/._{}-]+" app/static/index.html`), less the three writes and /place/geojson, plus
 # the two <img> routes that grep does not see (/earth/year.png at index.html:904, /earth/change.png from /earth's
 # png_url) and the other-consumer reads /readings, /exports and /export.
+# /sources is on the `open` list and named on purpose rather than left to default-private: it is a
+# byte-identical copy of a public registry of public datasets, the same 209 rows on every node in a
+# release. It says nothing about this house — not a sensor, not a reading, not a coordinate. /packs,
+# already here, describes this node's own configuration and is more revealing than it is.
 # /presence is here and not on the `open` list because the RETICULUM BRIDGE reads it, and the bridge
 # is another container with no token: on the default SHARE_LEVEL=off it would be refused and presence
 # would silently never announce. It is safe at every level by construction — it answers `{"enabled":
@@ -693,8 +698,8 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
     "/report/latest", "/readings",
-    "/history", "/exports",
-}), ("/static/", "/exports/", "/issues"))
+    "/history", "/exports", "/sources",
+}), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
@@ -1646,6 +1651,35 @@ def cells():
     """Index cells this node can honestly compute. Same row shape as the FCI Observations base."""
     with db() as con, con.cursor() as cur:
         return index.cells(cur)
+
+
+@app.get("/sources")
+def sources_(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
+             wired: bool | None = None):
+    """The network's registry of what can be measured, as this node carries it (app/registry.py).
+
+    `/cells` says what this node computes. This says what the network has registered — including for
+    the cells no adapter fills yet, which have no `/cells` row at all. `?cell=Social|City` is the
+    query the 5 September report did by hand.
+
+    Not to be confused with `app/sources.py`, which is the node's own sensor adapters. This serves
+    rows somebody filed upstream; that reads instruments."""
+    entries, ver = registry.load()
+    if not entries:
+        raise HTTPException(503, f"no source registry on this node: {registry.SOURCES_DIR} is empty or "
+                                 "unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.")
+    rows = registry.find(pillar=pillar, scale=scale, pilot=pilot, cell=cell, wired=wired)
+    return {"registry": {k: ver.get(k) for k in ("sha", "short", "synced", "entries")},
+            "count": len(rows), "sources": rows}
+
+
+@app.get("/sources/{pillar}/{scale}/{slug}")
+def source_(pillar: str, scale: str, slug: str):
+    e = registry.one(f"{pillar}/{scale}/{slug}")
+    if not e:
+        raise HTTPException(404, f"{pillar}/{scale}/{slug} is not in the registry this node carries "
+                                 f"({registry.load()[1].get('short', 'none')}). Ask /sources for the list.")
+    return e
 
 
 @app.get("/packs")
