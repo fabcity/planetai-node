@@ -298,3 +298,50 @@ recorded its point (4,860 Santiago features became 8,803 Poblenou ones); an 11 m
    `server closed the connection unexpectedly`, this is the first place to look.
 2. **A move plus an unreachable Overpass means a retry every poll** until it lands (Overpass was 504-ing during the
    rehearsal). That is how the age-based path has always behaved; it is not new, and the node keeps serving.
+
+---
+
+## Addendum, 11 September 2026 — the cache was keyed on the node's name
+
+Node #1 was renamed `bayu-2` → `bayu-ungasan`. `out/earth/<NODE_NAME>/` is the cache directory, so `fetch`
+found an empty one and re-read all nine years. Measured read-only on the node (`ssh mini`,
+`~/planetai/planetai-node`):
+
+| | |
+|---|---|
+| `out/earth/bayu-2/` | 555 MB — 2017…2025, every `change_*.json`/`.png` pair, `meta.json`. Nothing reads it |
+| `out/earth/bayu-ungasan/` | 562 MB — the same nine years, re-downloaded, plus the `year_*.png` frames |
+
+About 930 MB pulled for data the machine already had, and 555 MB of disk held indefinitely.
+
+**The key was wrong, not the name.** The embeddings describe a *place*. The same square of the planet is the
+same square whatever the operator calls the machine, and the pack already knows what square a directory holds:
+`meta.json` records the point and the radius, and `fetch` and `verify` already test a cache against them.
+
+**What changed.** `packs/earth/adapter.py:cache()` and `app/main.py:_earth_dir()` now pick the directory whose
+`meta.json` says it holds this square — this point within the move tolerance, this radius — preferring the one
+named for the node when more than one does. The name is still what a *new* directory is called; it is no
+longer what is looked up.
+
+The alternative was keying the directory on the rounded position, `out/earth/<lat>_<lon>_<radius>/`. It was
+rejected: rounding is not tolerance-stable. At three decimals a 20 m correction that the pack deliberately
+treats as no move at all can still cross a rounding boundary and change the key, which is this same bug in a
+new costume — and it needs a real migration on a live node, where adoption needs none.
+
+**Why it is safe on node #1 as it stands.** Both directories exist there and both describe the square;
+`bayu-ungasan` is named for the node, so it wins and the live cache is the live cache. `bayu-2` is untouched.
+A node that had been renamed but not yet re-fetched adopts its old directory and downloads nothing. Pinned in
+both directions by `tests/test_earth.py` and `tests/test_earth_frames.py`, each watched to fail with the old
+keying first.
+
+**Nothing deletes a stale directory, deliberately.** `planetai run earth status` now lists every directory
+under `out/earth/` that is not this node's square, with its size and the point it was read around, and says
+nothing else. 64 MB a year is an expensive download, the data is the household's, and `AGENTS.md` has no rule
+that lets a node quietly remove half a gigabyte of it. Node #1's 555 MB is Tomas's call, one `rm -rf` away.
+
+**Core carries its own copy of the rule.** `app/main.py` does not import a pack — the same reason
+`app/sources.py` has the second copy of `metres()`. The two copies are two short blocks with the same three
+tests in them; the pack's is the one a script runs, core's is the one `/earth`, `/earth/change.png` and
+`/earth/year.png` read through.
+
+Not addressed: `out/earth/bayu-2/` on node #1 still exists. `planetai run earth status` will name it.

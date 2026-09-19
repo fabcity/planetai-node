@@ -7,6 +7,7 @@ the pack's settings too. The year is the only part of that filename this node ca
 
 Run: PYTHONPATH=app python3 tests/test_earth_frames.py   (needs the app's own deps, like import-check)
 """
+import json
 import os
 import sys
 import tempfile
@@ -78,7 +79,37 @@ except main.HTTPException as e:
     if "earth-engine timelapse" not in str(e.detail):
         fails.append(f"the empty 404 must name the command: {e.detail}")
 
+# ---------------------------------------------------------------- and the AlphaEarth cache, same rename
+# out/earth/<node>/ was keyed on NODE_NAME too, which cost node #1 a 930 MB re-download of its own square and
+# left 555 MB nothing reads. The embeddings describe a place: a directory whose meta.json was written around
+# this point, at this radius, is this node's square whatever it is called. core keeps its own copy of that rule
+# because it does not import a pack — so it is checked here, against the app, not against the pack.
+earth = out / "earth"
+(earth / "bayu-2").mkdir(parents=True)
+(earth / "bayu-2" / "meta.json").write_text(json.dumps({"lat": -8.8, "lon": 115.1, "radius_m": 5000}))
+if main._earth_dir() != earth / "bayu-2":
+    fails.append(f"/earth must read the square the node fetched under its old name, got {main._earth_dir()}")
+(earth / "bayu-2" / "change_2024_2025.json").write_text(json.dumps(
+    {"year_a": 2024, "year_b": 2025, "mean": 0.041, "png": "change_2024_2025.png"}))
+if [c["year_b"] for c in main._earth_changes()] != [2025]:
+    fails.append("the comparisons under the old name must reach /earth")
+
+(earth / "bayu-ungasan").mkdir()
+(earth / "bayu-ungasan" / "meta.json").write_text(json.dumps({"lat": -8.8, "lon": 115.1, "radius_m": 5000}))
+if main._earth_dir() != earth / "bayu-ungasan":
+    fails.append("with both on disk — node #1 today — the node's own name must win, so nothing switches under it")
+
+# a square read around somewhere else is never adopted, whatever it is called
+for d in (earth / "bayu-2", earth / "bayu-ungasan"):
+    for f in d.glob("*"):
+        f.unlink()
+    d.rmdir()
+(earth / "santiago").mkdir()
+(earth / "santiago" / "meta.json").write_text(json.dumps({"lat": -33.431, "lon": -70.6045, "radius_m": 5000}))
+if main._earth_dir() != earth / "bayu-ungasan":
+    fails.append(f"another city's square must never answer for this node: {main._earth_dir()}")
+
 print("\n".join(f"  x {f}" for f in fails) or
-      "  earth frames: the glob finds a renamed node's frames, keeps the two records apart, and "
-      "both 404s say what to do")
+      "  earth frames: the glob finds a renamed node's frames and its cache, keeps the two records "
+      "apart, and both 404s say what to do")
 sys.exit(1 if fails else 0)
