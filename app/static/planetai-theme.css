@@ -10,7 +10,7 @@
    #20388D on ink #171717 = 1.72:1 — it may NEVER appear inside it.
    #F9F5F2 at 62% over ink #171717 composites to #A3A19F = 6.96:1, which is the wall credit lines.
 
-   12 OPEN items are carried as comments at the token each one affects. */
+   11 OPEN items are carried as comments at the token each one affects. */
 
 @import "tokens.css";
 
@@ -113,7 +113,6 @@
   --wall-line-opacity: 0.62;
 
   /* a closed ring in the rho row · rho-row.svg · R1 */
-  /* OPEN: the shipped rho row reads 27 alerts, 14 closed, median 41 min, which is the brief's caption. Node #1 was unreachable on 8 September, so it is still unread — using var(--rings) until settled */
   --rho-closed: var(--rings);
 
   /* the size every sign must still read at · signs-contact.png · A */
