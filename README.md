@@ -66,6 +66,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           when it goes wrong       TROUBLESHOOTING
           what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
           extending it             PACKS · PACK_IDEAS · DEVELOPING
+          what is still owed       NEXT_RELEASE
           radios and reachability  NETWORKING · MESHTASTIC
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
           the earth pack           HANDOFF_earth_pack
