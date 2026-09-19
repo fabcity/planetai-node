@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.61 — 2026-09-19 — the node carries the network's list of what can be measured, and four packs more to measure it with
+
+
+*Staged together on purpose.* `docs/NEXT_RELEASE.md` asks that `app/static/*` and `packs/*` reach a
+node in separate releases, so that "was it the page or the data" has one answer when something comes
+back wrong. This release carries both: the satellite fix landed before the four packs did, and it
+cannot be separated out now without reverting it. Tomas called it, knowing that. If a node reports
+something odd after this update, that question has two candidates and not one — the dashboard change
+is confined to the satellite section, which is where to look first.
+
 - 2026-09-19 — your node now carries the network's registry of 209 data sources. `planetai sources`
   shows what is registered for your place and which of it your node already reads; a source with no
   `wired` beside it is one nobody has written an adapter for yet. `planetai doctor` says which
@@ -30,6 +40,17 @@ one named for the node wins, so nothing shifts under a live node. A real move st
 Nothing is deleted. `planetai run earth status` lists any directory under `out/earth/` that is not this
 node's square, with its size and the point it was read around, and leaves it alone: nine years is an
 expensive download, and removing half a gigabyte of a household's data is not the node's call.
+
+- 2026-09-18 — the dashboard's satellite record plays again. The AlphaEarth years had no CSS of their
+  own, so every year stacked at full width under the Sentinel strip instead of one at a time — a wall
+  of squares — and the player's button and slider had been dead markup since the Phase 2 rewrite, five
+  releases of controls that did nothing. The Sentinel strip is unchanged, byte for byte: four annual
+  medians side by side are compared without moving the eye, which is what a strip is for.
+
+- 2026-09-16 — new pack `thingdata`: a repair commons read as observations. It pages a
+  thingdata-server's public API — things, guides, stories, relationships — and publishes five metrics
+  as portal observations, two `Economic|City` cells, and one rule that fires when nothing has been
+  written for a quarter. Idle unless `THINGDATA_INSTANCES` names one.
 
 ## v0.60 — 2026-09-18 — an update has to say who built it, and a node that refuses one is doing its job
 
