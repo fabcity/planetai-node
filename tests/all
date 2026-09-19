@@ -79,6 +79,7 @@ while IFS='|' read -r name cmd; do
 done <<'SUITES'
 test_release_consistency|bash tests/test_release_consistency.sh
 test_ship_gate|bash tests/test_ship_gate.sh
+test_ship_signing|bash tests/test_ship_signing.sh
 test_daemon_state|bash tests/test_daemon_state.sh
 test_diagnose|bash tests/test_diagnose.sh
 test_remove|bash tests/test_remove.sh
@@ -128,8 +129,8 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 
 # Forty-one is the number of suites in the list above. If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
-if [ "$total" -ne 41 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 41 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 42 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 42 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1
