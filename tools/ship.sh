@@ -72,6 +72,12 @@ sign_tarball() {
     return 0
   fi
   key="$(signing_key)" || exit 1
+  # `ssh-keygen -Y sign` PROMPTS when <file>.sig is already there — "…already exists. Overwrite
+  # (y/n)?" — and with nothing on stdin it answers itself, leaves the old signature untouched, and
+  # EXITS 0. So the `|| die` below cannot see it. The first release had no .sig to collide with; the
+  # second, v0.62, signed nothing and would have published v0.61's signature over a new tarball. The
+  # verify at the end of this function is what caught it. Give it nothing to overwrite.
+  rm -f "$tgz.sig"
   # Sign through the agent where there is one. `-f <public key>` is what makes ssh-keygen ask the agent
   # for the private half; `-f <private key>` reads the file and prompts, which cannot work unattended and
   # is what stopped the first real release. Falls back to the private key when the agent has nothing, so
