@@ -24,6 +24,15 @@ checkout (`planetai-design`, `awesome-fabcity-data`) is on and how far behind *i
 
 A red `x` is a stop. Do not start on top of it.
 
+**Read the `neighbours` block before you choose what to work on.** It lists every other worktree on this
+disk — its branch, how far ahead of main it is, whether anything is uncommitted, and whether its commits
+exist **only here**. Nothing remote can see an unpushed branch: `gh pr list` misses it, so does every
+listing of origin's branches. On 19 September 2026 two sessions fixed the same one-line bug in
+`check_theme.py` three minutes apart, and the second one had checked both of those things first.
+
+If a neighbour is on what you were about to start, go and look at it before you write a line. If it is
+dirty, leave it alone — uncommitted work in somebody else's tree is not abandoned, it is in progress.
+
 ## Then, before writing
 
 1. **Work in your own worktree, on a branch, never in the checkout that holds `main`.** Several
