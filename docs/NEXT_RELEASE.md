@@ -33,31 +33,53 @@ Three rules for the queue while both are in flight:
 measure`, one dial, every section a module — was chosen out of nine drawings and its shell shipped in
 v0.54. What has not landed is the drawing itself: the graphic language the prototypes are in.
 
-**Where the work already is.** `planetai-design`, branch `dashboard-directions-2026-09`, is **39 commits
-ahead of its own `origin/main` and unpushed**. That is the whole of the redesign — H as a shell,
-`h/mods/` registered against `kit-page.js`, the wall as the grid, the ground rule at resolution 9, the
-hardware section, and every state re-rendered. It exists on one laptop. **Push it before anything else
-on this item**: nothing below matters if that disk fails.
+**Where the work already is — it is no longer on one laptop.** `dashboard-directions-2026-09` was
+merged into `planetai-design`'s `main` as its PR #4 (`10b15fa`), and main has moved past it since. The
+branch is gone locally and on origin, and its old head is an ancestor of main. That is the whole of
+the redesign — H as a shell, `h/mods/` registered against `kit-page.js`, the wall as the grid, the
+ground rule at resolution 9, the hardware section, and every state re-rendered — and it is safe.
 
 **What holds the two repos together, and what it does not hold.** `tools/check_theme.py` is in
-`make lint` and it *fails* rather than reports: `app/static/planetai-theme.css`, `signs.svg` and
-`kilometre-cells.json` are byte-identical to `planetai-design`'s copies, so a token cannot drift onto
-a wall screen. What it does not hold is what the page *reaches for*.
-`docs/design/LANGUAGE_GAP.md` is that reading: **13 of the layer's 34 tokens are referenced, 12 more are
-this surface's business and hard-coded instead** — `--rho-closed` reached past to `--rings`, the ground's
-opacities baked into `node-ground.svg`, the wall's credit lines using the page-local `--mute`. They
-resolve to the same pixel today. That is what makes it quiet: when a token moves, the page will not.
+`make lint` and it *fails* rather than reports. Since 19 Sep it asks in two halves: the three frozen
+files must hash to `data/frozen_layer.txt`, which runs everywhere including CI, and where
+`planetai-design` is checked out they are also compared line by line against **the pinned commit**.
+Before that it only did the second half, against whatever branch the sibling was on — so it answered
+nothing in CI, which is the one place every pull request is checked. A token cannot drift onto a wall
+screen now. What it does not hold is what the page *reaches for*.
+
+**Re-pinning the frozen layer, when the layer moves.** Copy the three files from `planetai-design`
+and run `python3 tools/check_theme.py --update`, which rewrites `data/frozen_layer.txt` and refuses
+unless the design repo is present and agrees — so it can record a copy that was really made and never
+bless a local edit. The gate warns when the pin falls behind, and that warning is the signal to do
+this. It is an `app/static/*` change, so by rule 2 above it ships in a release of its own, never
+alongside a pack.
+
+*As of 19 September, straight after v0.61:* the pin was `8d79bf2` and `planetai-design` was 45 commits
+past it, with `planetai-theme.css` differing by exactly one comment — its PR #5 closed OPEN item O8,
+the rho row, so the header reads 11 OPEN instead of 12 and the `--rho-closed` note is gone. No token
+value had moved, so that particular re-copy was a visual no-op. They will not all be.
+
+`docs/design/LANGUAGE_GAP.md` is the reading of what the page reaches for: **13 of the layer's 34
+tokens are referenced, 12 more are this surface's business and hard-coded instead** — `--rho-closed`
+reached past to `--rings`, the ground's opacities baked into `node-ground.svg`, the wall's credit
+lines using the page-local `--mute`. They resolve to the same pixel today. That is what makes it
+quiet: when a token moves, the page will not. **Those counts are from 12 September, read against
+`planetai-design` at `82e0f62`.** Main is far past that and O8 is one of the twelve, so re-read it
+before trusting the list — starting 1b from stale numbers is how a re-tokening misses one.
 
 **The staging, in the order it has to happen:**
 
-- **1a · Push `dashboard-directions-2026-09`.** One command, and it is the only irreplaceable step here.
-- **1a½ · The scale spike, before the redrawing.** `docs/design/SCALE_SPIKE_2026-09.md` names three sources —
-  a city budget, a region's waste series, the planet's material footprint — and the five things about the page
-  that each of them breaks. One fixture, four rungs, one place. The drawing is judged against it.
-- **1b · Close the 12 hard-coded tokens first, before any redrawing.** Each is a one-line change from a
-  literal to `var(--token)`, no visual change today, and `python3 tools/shots.py` proves it: the fixtures
-  render identically at four widths or the change was not what it claimed. This is what turns the
-  redesign from a rewrite into a re-tokening — after it, moving the language moves the page.
+- ~~**1a · Push `dashboard-directions-2026-09`.**~~ **Done** — merged as `planetai-design` PR #4,
+  `10b15fa`. This was the only irreplaceable step on this item and it is no longer owed.
+- ~~**1a½ · The scale spike, before the redrawing.**~~ **Written**, and it landed here as `81e3d45`
+  (PR #73). `docs/design/SCALE_SPIKE_2026-09.md` names three sources — a city budget, a region's waste
+  series, the planet's material footprint — and the five things about the page that each of them
+  breaks. One fixture, four rungs, one place. Not a step any more; it is the thing the drawing is
+  judged against, so read it before 1c and not after.
+- **1b · Close the hard-coded tokens first, before any redrawing** (LANGUAGE_GAP says twelve; re-read
+  it first, see above). Each is a one-line change from a literal to `var(--token)`, no visual change
+  today, and `python3 tools/shots.py` proves it: the fixtures render identically at four widths or the
+  change was not what it claimed. This is what turns the redesign from a rewrite into a re-tokening — after it, moving the language moves the page.
 - **1c · Port the modules, one section per PR, against the existing gates.** `tools/check_ui.py` and
   `check_theme.py` stay in `make lint`; `docs/design/UX_REVIEW_2026-09.md` (64 findings) and
   `_skeleton.md` (26 more) are the acceptance list, and the four P0s v0.53 fixed are the regressions to
