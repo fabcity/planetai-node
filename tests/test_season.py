@@ -8,6 +8,11 @@ with now() replaced by the instant being replayed.
 A daily mean enters the node as one reading on that day: the rule takes a per-station daily average, so one
 reading a day reproduces the archive's own day means exactly. What is synthetic is the sampling, not a value.
 
+The replay is pinned to node #1's own zone by trustdb, and this suite is why. `date_trunc('day', ts)` buckets
+by the session's time zone, so the episode below begins on 31 May in WITA and on 1 June in UTC — it passed on
+the author's laptop in Bali and failed in CI. 31 May clears both thresholds by under half a microgram, which
+is what made this the suite that noticed.
+
 Run: PYTHONPATH=/tmp/stub:app python3 tests/test_season.py
 """
 import datetime as dt
@@ -29,6 +34,7 @@ except ImportError:
 
 RULES = trustdb.rules("season")
 UTC = dt.timezone.utc
+assert trustdb.NODE_TZ == "Asia/Makassar", "the replay must be pinned to node #1's zone; see the header"
 
 WHO = [(f"bad-{sid}", "baliairdispatch", s["name"], s["latitude"], s["longitude"], False, False, "sensor")
        for sid, s in FIX["stations"].items()]
@@ -55,6 +61,8 @@ days = sorted({d for _, d, _ in FIX["daily"]})
 fired = [d for d in days if d >= "2026-01-01" and run("turning", at(d))]
 assert fired == ["2026-05-31", "2026-06-01", "2026-06-02", "2026-06-03"], \
     f"one episode in 2026, the end of May into June, and nothing else: {fired}"
+# 31 May is the boundary: 20.4 ug/m3 against a floor of 20, a step of 8.3 against a floor of 8. It is in
+# the episode because a day here is a WITA day. Do not widen the thresholds to make this line comfortable.
 # four days, but one alert: `turning` holds a three-day cooldown precisely so an episode is not four messages.
 
 # ---- the floor for the week itself. The same +9 step in clean air changes nobody's afternoon, and the

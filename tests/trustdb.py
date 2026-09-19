@@ -6,6 +6,14 @@ comes from init.sql (the `readings_1h` view verbatim), the channel roles from co
 from tests/data/node1-*.tsv — the real series out of node #1's 7 September dump, not numbers typed into a test.
 
 Needs duckdb, dev only: pip install duckdb. A test that cannot import it says so and skips.
+
+**The session time zone is pinned, and it has to be.** `date_trunc('day', ts)` on a timestamptz
+buckets by the SESSION's zone, in Postgres and here alike — so a rule that compares days answers
+differently on a laptop in Bali and a runner in UTC. That is right on a node, where a household's
+day is its own; it is intolerable in a replay, where the same fixture must give the same answer
+everywhere. `season`'s suite found it: its episode began on 31 May in WITA and on 1 June in UTC,
+so it passed on the author's machine and failed in CI. Every fixture here is node #1's, so the
+zone is node #1's. A suite replaying somewhere else passes its own.
 """
 from __future__ import annotations
 
@@ -21,6 +29,8 @@ UTC = dt.timezone.utc
 # the last reading in tests/data/node1-readings.tsv: 7 September 2026, 13:14:22 UTC = 21:14 WITA, three minutes
 # before the trust pack sent its three wrong warnings.
 FIXTURE_NOW = dt.datetime(2026, 9, 7, 13, 14, 22, tzinfo=UTC)
+# node #1 is in Ungasan. WITA, +08, and every day a rule buckets is a day as that house lives it.
+NODE_TZ = "Asia/Makassar"
 
 
 def _schema() -> str:
@@ -104,8 +114,9 @@ def flat(sensor: str, metric: str, value: float, hours: int, at: dt.datetime, ev
 class Node:
     """A node holding one set of readings, which a rule can be run against at any instant."""
 
-    def __init__(self, rows: list[tuple], who: list[tuple] | None = None):
+    def __init__(self, rows: list[tuple], who: list[tuple] | None = None, tz: str = NODE_TZ):
         self.con = duckdb.connect()
+        self.con.execute(f"SET TimeZone='{tz}'")   # before the schema: the views carry timestamps too
         self.con.execute(_init_sql())
         self.con.executemany(
             "INSERT INTO sensors (sensor_id, source, name, lat, lon, indoor, local, kind) VALUES (?,?,?,?,?,?,?,?)",
