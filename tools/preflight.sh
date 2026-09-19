@@ -241,11 +241,15 @@ else
   row os "$OSNAME" 0 "the node runs on macOS, Linux, or Windows through WSL2"
 fi
 
+# Until v0.63 arm64 Linux FAILED here, because the database image was published for amd64 only. It is not
+# any more (`imresamu/postgis:16-3.4-alpine`, see docker-compose.yml), so a Pi, a Jetson and a reComputer
+# pass the architecture check. Passing it is not the same as having been run on one: docs/KIT.md says which
+# arm64 machines have actually carried a node, and on 19 Sep 2026 that list is empty.
 case "$ARCH" in
   x86_64) row arch "x86_64" 1;;
-  arm64)  if [[ "$PLATFORM" == macos ]]; then row arch "arm64 (amd64 images emulated)" 1
-          else row arch "arm64" 0 "the node's database image (postgis/postgis:16-3.4-alpine) is published for linux/amd64 only. Not a Raspberry Pi yet: docs/PLATFORMS.md"; fi;;
-  *)      row arch "$ARCH" 0 "unsupported architecture; a 64-bit x86 or Apple Silicon machine is needed";;
+  arm64)  if [[ "$PLATFORM" == macos ]]; then row arch "arm64 (native database image since v0.63)" 1
+          else row arch "arm64 (untested on hardware — docs/KIT.md)" 1; fi;;
+  *)      row arch "$ARCH" 0 "unsupported architecture; the node needs 64-bit x86 or arm64";;
 esac
 
 # ---------------------------------------------------------------- memory
@@ -432,7 +436,10 @@ fi
 # Did the machine itself pass, and only its system fail? That decides whether the verdict opens by
 # saying what this computer is, or stays quiet about it.
 HW_OK=0
-[[ $MEMGB -ge $MEMNEED && $FREEGB -ge $NODE_min_free_disk_gb && "$ARCH" == x86_64 ]] && HW_OK=1
+# arm64 counts as hardware that passed from v0.63. While the database image was amd64-only, an arm64
+# machine with 32 GB and a terabyte free was still not a node, so the architecture belonged in this
+# test; now the only architectures that fail are the ones the case above rejects outright.
+[[ $MEMGB -ge $MEMNEED && $FREEGB -ge $NODE_min_free_disk_gb && ( "$ARCH" == x86_64 || "$ARCH" == arm64 ) ]] && HW_OK=1
 
 if [[ $JSON -eq 1 ]]; then
   verdict=ok; [[ $fails -gt 0 ]] && verdict=fixable; [[ $floor -eq 1 ]] && verdict=below-floor

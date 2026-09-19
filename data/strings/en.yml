@@ -12,131 +12,131 @@
 strings:
   - key: tools_preflight:234
     en: "preflight no questions, no changes, nothing installed"
-  - key: tools_preflight:287
+  - key: tools_preflight:291
     en: "no container runtime installs on macOS — see the verdict below"
-  - key: tools_preflight:288
+  - key: tools_preflight:292
     en: "install Docker Desktop for Windows, turn on 'Use the WSL 2 based engine' and WSL integration for this distro, then run this again"
-  - key: tools_preflight:337
+  - key: tools_preflight:341
     en: "the install starts it and waits up to 5 minutes ( )"
-  - key: tools_preflight:352
-    en: "see what the kernel says about the disk"
-  - key: tools_preflight:353
-    en: "mount | grep \" / \""
-  - key: tools_preflight:355
-    en: "Linux remounts a filesystem read-only when it finds errors on the drive."
   - key: tools_preflight:356
-    en: "A reboot usually brings it back and runs a check; if it returns, the drive"
+    en: "see what the kernel says about the disk"
   - key: tools_preflight:357
+    en: "mount | grep \" / \""
+  - key: tools_preflight:359
+    en: "Linux remounts a filesystem read-only when it finds errors on the drive."
+  - key: tools_preflight:360
+    en: "A reboot usually brings it back and runs a check; if it returns, the drive"
+  - key: tools_preflight:361
     en: "is failing and this machine should not be a node until it is replaced."
-  - key: tools_preflight:368
+  - key: tools_preflight:372
     en: "python3 comes with the Xcode Command Line Tools: xcode-select --install"
-  - key: tools_preflight:375
+  - key: tools_preflight:379
     en: "install python3 (the standard library is enough; nothing here runs pip)"
-  - key: tools_preflight:394
+  - key: tools_preflight:398
     en: "site, github, registry, open-meteo"
-  - key: tools_preflight:394
+  - key: tools_preflight:398
     en: "cannot reach"
-  - key: tools_preflight:405
+  - key: tools_preflight:409
     en: "8080, 5432 free"
-  - key: tools_preflight:413
+  - key: tools_preflight:417
     en: "This is a laptop. Three things, none of them failures"
-  - key: tools_preflight:416
+  - key: tools_preflight:420
     en: "sleep a sleeping machine is a stopped node. Closing the lid counts."
-  - key: tools_preflight:418
+  - key: tools_preflight:422
     en: "battery a laptop left plugged in for years is worth a look before you rely on it"
-  - key: tools_preflight:419
+  - key: tools_preflight:423
     en: "system_profiler SPPowerDataType | grep -E \"Cycle Count|Condition\""
-  - key: tools_preflight:421
-    en: "sleep a sleeping machine is a stopped node. Closing the lid counts."
-  - key: tools_preflight:424
-    en: "battery a laptop left plugged in for years is worth a look before you rely on it"
   - key: tools_preflight:425
-    en: "cat /sys/class/power_supply/BAT0/health /sys/class/power_supply/BAT0/cycle_count"
-  - key: tools_preflight:427
-    en: "ethernet no wired port here. For a node that stays on, a USB gigabit adapter"
+    en: "sleep a sleeping machine is a stopped node. Closing the lid counts."
   - key: tools_preflight:428
+    en: "battery a laptop left plugged in for years is worth a look before you rely on it"
+  - key: tools_preflight:429
+    en: "cat /sys/class/power_supply/BAT0/health /sys/class/power_supply/BAT0/cycle_count"
+  - key: tools_preflight:431
+    en: "ethernet no wired port here. For a node that stays on, a USB gigabit adapter"
+  - key: tools_preflight:432
     en: "is the wired path; WiFi drops and a node notices."
-  - key: tools_preflight:451
+  - key: tools_preflight:458
     en: "This hardware is a capable node — cores, GB, GB free. The OS is the only blocker."
-  - key: tools_preflight:454
+  - key: tools_preflight:461
     en: "No container runtime can be installed on ."
-  - key: tools_preflight:455
-    en: "needs , needs , needs here."
   - key: tools_preflight:462
+    en: "needs , needs , needs here."
+  - key: tools_preflight:469
     en: "Is upgrading a route?"
-  - key: tools_preflight:464
-    en: "I do not have a last-supported macOS for , so I will not guess."
-  - key: tools_preflight:466
-    en: "If this Mac can reach macOS , upgrade and run this again."
-  - key: tools_preflight:468
-    en: "Yes. can run macOS — upgrade, then run this again."
-  - key: tools_preflight:470
-    en: "No. This model cannot go past macOS — upgrading is not a route."
   - key: tools_preflight:471
-    en: ", and Apple ships nothing newer for it."
+    en: "I do not have a last-supported macOS for , so I will not guess."
+  - key: tools_preflight:473
+    en: "If this Mac can reach macOS , upgrade and run this again."
   - key: tools_preflight:475
-    en: "Two routes that work on this machine"
-  - key: tools_preflight:476
-    en: "1. Linux in a virtual machine, on this Mac. UTM is free, needs no account, and on Intel"
+    en: "Yes. can run macOS — upgrade, then run this again."
   - key: tools_preflight:477
-    en: "it uses Apple"
+    en: "No. This model cannot go past macOS — upgrading is not a route."
   - key: tools_preflight:478
-    en: "UTM supports macOS — this Mac included."
-  - key: tools_preflight:480
-    en: "open ~/Downloads/UTM.dmg"
+    en: ", and Apple ships nothing newer for it."
   - key: tools_preflight:482
-    en: "Then in UTM: Create a New Virtual Machine → Virtualize → Linux → that .iso."
+    en: "Two routes that work on this machine"
   - key: tools_preflight:483
-    en: "Give it 2 CPUs, 4096 MB, 25 GB. Install Ubuntu Server, then inside the VM run"
+    en: "1. Linux in a virtual machine, on this Mac. UTM is free, needs no account, and on Intel"
   - key: tools_preflight:484
-    en: "the same line you ran here."
+    en: "it uses Apple"
   - key: tools_preflight:485
-    en: "2. Linux on the metal, and this laptop becomes the node. The better end state: no"
-  - key: tools_preflight:486
-    en: "macOS underneath, nothing to keep awake, and the floor stops moving. Two choices,"
+    en: "UTM supports macOS — this Mac included."
   - key: tools_preflight:487
-    en: "depending on whether anyone still uses this machine day to day"
-  - key: tools_preflight:488
-    en: "Ubuntu Server — nobody uses it, it just runs. No desktop, ssh in, lowest upkeep."
+    en: "open ~/Downloads/UTM.dmg"
+  - key: tools_preflight:489
+    en: "Then in UTM: Create a New Virtual Machine → Virtualize → Linux → that .iso."
   - key: tools_preflight:490
-    en: "Omarchy — a laptop somebody uses AND a node. Arch underneath, a finished desktop,"
+    en: "Give it 2 CPUs, 4096 MB, 25 GB. Install Ubuntu Server, then inside the VM run"
   - key: tools_preflight:491
-    en: "five questions from stick to working machine."
+    en: "the same line you ran here."
+  - key: tools_preflight:492
+    en: "2. Linux on the metal, and this laptop becomes the node. The better end state: no"
   - key: tools_preflight:493
-    en: "The walk-through for either: docs/REVIVE_A_LAPTOP.md — a USB stick and about an hour."
+    en: "macOS underneath, nothing to keep awake, and the floor stops moving. Two choices,"
   - key: tools_preflight:494
-    en: "Nothing was installed and nothing was changed. Floors: data/platform_floors.yml"
+    en: "depending on whether anyone still uses this machine day to day"
+  - key: tools_preflight:495
+    en: "Ubuntu Server — nobody uses it, it just runs. No desktop, ssh in, lowest upkeep."
+  - key: tools_preflight:497
+    en: "Omarchy — a laptop somebody uses AND a node. Arch underneath, a finished desktop,"
   - key: tools_preflight:498
-    en: "This machine cannot run a node yet, and the reason is its disk."
-  - key: tools_preflight:499
-    en: "The filesystem is mounted read-only, so nothing can be installed or written anywhere"
+    en: "five questions from stick to working machine."
   - key: tools_preflight:500
-    en: "not a node, not a log, not a settings file. Everything else above may be fine."
+    en: "The walk-through for either: docs/REVIVE_A_LAPTOP.md — a USB stick and about an hour."
   - key: tools_preflight:501
-    en: "Do this before anything else"
-  - key: tools_preflight:502
-    en: "mount | grep \" / \" is it ro?"
+    en: "Nothing was installed and nothing was changed. Floors: data/platform_floors.yml"
   - key: tools_preflight:505
-    en: "If it goes read-only again after a reboot, the drive is failing. Copy anything you want off"
+    en: "This machine cannot run a node yet, and the reason is its disk."
   - key: tools_preflight:506
-    en: "it first. A node writes to its disk every few minutes, so a failing drive is the one piece of"
+    en: "The filesystem is mounted read-only, so nothing can be installed or written anywhere"
   - key: tools_preflight:507
-    en: "hardware it cannot tolerate."
+    en: "not a node, not a log, not a settings file. Everything else above may be fine."
   - key: tools_preflight:508
-    en: "Nothing was installed and nothing was changed."
+    en: "Do this before anything else"
+  - key: tools_preflight:509
+    en: "mount | grep \" / \" is it ro?"
   - key: tools_preflight:512
-    en: "This machine can run a node."
-  - key: tools_preflight:517
-    en: "Worth knowing, while it is working: this is an Intel Mac, and every container runtime"
-  - key: tools_preflight:518
-    en: "for macOS has raised its floor in the last two years. Linux on this machine does not have"
+    en: "If it goes read-only again after a reboot, the drive is failing. Copy anything you want off"
+  - key: tools_preflight:513
+    en: "it first. A node writes to its disk every few minutes, so a failing drive is the one piece of"
+  - key: tools_preflight:514
+    en: "hardware it cannot tolerate."
+  - key: tools_preflight:515
+    en: "Nothing was installed and nothing was changed."
   - key: tools_preflight:519
+    en: "This machine can run a node."
+  - key: tools_preflight:524
+    en: "Worth knowing, while it is working: this is an Intel Mac, and every container runtime"
+  - key: tools_preflight:525
+    en: "for macOS has raised its floor in the last two years. Linux on this machine does not have"
+  - key: tools_preflight:526
     en: "that problem, and it is a better node — nothing to keep awake, and the floor stops moving."
-  - key: tools_preflight:520
-    en: "Ubuntu Server nobody uses it, it just runs"
-  - key: tools_preflight:521
-    en: "Omarchy a laptop somebody uses, and a node"
   - key: tools_preflight:527
+    en: "Ubuntu Server nobody uses it, it just runs"
+  - key: tools_preflight:528
+    en: "Omarchy a laptop somebody uses, and a node"
+  - key: tools_preflight:534
     en: "check failed. Each line above carries the fix. Nothing was installed."
   - key: install:72
     en: "the download arrived but could not be written. This is the disk."
