@@ -12,7 +12,7 @@ kind: code
 domain: land
 metrics: [land_change_yoy, land_change_since_2017, years_cached]
 scales: [city]
-sources: [environmental/city/alphaearth]
+sources: [environmental/city/alphaearth-satellite-embedding]
 pip: [rasterio, numpy]
 env:
   # No padding after `=`: a value pasted after spaces makes the line `VAR= value`, which shell reads as a command.
