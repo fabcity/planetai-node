@@ -1346,9 +1346,11 @@ def report_latest():
            "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
            "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
            "text": r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
-           "fallback_reason": r.get("fallback_reason")}
-    if not rows:
-        out["note"] = "no report yet; the first one lands at the next due hour"
+           "fallback_reason": r.get("fallback_reason"),
+           # in the literal, None when there is a report: a key added by subscript is a key of the
+           # document that does not appear in it, which tools/check_wire.py refuses for the same
+           # reason it refuses `**`.
+           "note": None if rows else "no report yet; the first one lands at the next due hour"}
     return out
 
 
