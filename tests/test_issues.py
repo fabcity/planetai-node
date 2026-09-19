@@ -72,8 +72,9 @@ for name, break_it in BREAKS.items():
 # --- every pack reaches an issue, or is named as not one ------------------------------------------
 # A pack domain that is deliberately outside the environmental picture. Weather feeds air and heat
 # (wind for attribution, the forecast for the day ahead) but is not itself something a place is
-# better or worse at; place is the ground everything sits on; governance is the loop and the Index.
-NOT_ISSUES = {"weather", "place", "governance"}
+# better or worse at; place is the ground everything sits on; governance is the loop and the Index;
+# repair is a catalogue somebody maintains, not a quality of the air, water or land here.
+NOT_ISSUES = {"weather", "place", "governance", "repair"}
 # Alert rules from cross-domain packs, or from packs with no domain at all, that belong to no issue.
 # trust is the node's own instruments: whether they are frozen, missing hours, or disagreeing.
 UNMAPPED_RULES = {
