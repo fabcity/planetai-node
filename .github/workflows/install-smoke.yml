@@ -271,7 +271,16 @@ jobs:
           {"name": "ci-clean", "lat": 39.95, "lon": 4.05, "kind": "home", "sensor": {}}
           JSON
           chown tester /home/tester/node.json
+          # PLANETAI_REF, and it is load-bearing. The stub arrives on stdin here, exactly as a tester runs
+          # it, so BASH_SOURCE is unset and `./tools/preflight.sh` is not next to it — which sends the stub
+          # down its fetch branch and pulls tools/preflight.sh from raw.githubusercontent at REF, whose
+          # default is `main`. So every leg of this job has been checking the preflight on main rather than
+          # the one in the commit under test, and it went unnoticed because main's preflight agreed with
+          # the branch's on x86. It stopped agreeing the moment a branch changed the arm64 row: CI reported
+          # `arch arm64 x the database image is published for linux/amd64 only` from a file the commit had
+          # already rewritten. Pin it to this commit and the stub fetches what is actually being tested.
           su tester -c 'cd /home/tester && PATH=/opt/notools:$PATH PLANETAI_SITE=http://172.17.0.1:8099 PLANETAI_HOME=/home/tester/planetai \
+            PLANETAI_REF=REF_PLACEHOLDER \
             COMPOSE_PROJECT_NAME=PROJECT_PLACEHOLDER APP_PORT=PORT_PLACEHOLDER \
             timeout 1500 bash -c "cat /work/install.signed | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
           echo "installer exit: ${PIPESTATUS[0]}"
@@ -295,6 +304,7 @@ jobs:
           s = s.replace('PREP_PLACEHOLDER', os.environ['PREP'])
           s = s.replace('PROJECT_PLACEHOLDER', os.environ['PROJECT'])
           s = s.replace('PORT_PLACEHOLDER', os.environ['PORT'])
+          s = s.replace('REF_PLACEHOLDER', os.environ['REF'])
           open('/tmp/run.sh','w').write(s)
           PYP
           # The daemon is the HOST's, so every bind mount in docker-compose.yml — ./init.sql, ./config,
@@ -312,6 +322,9 @@ jobs:
           PREP: ${{ matrix.prep }}
           PROJECT: ${{ matrix.project }}
           PORT: ${{ matrix.port }}
+          # For a pull request GITHUB_SHA is the merge commit, which raw.githubusercontent does not serve.
+          # The head sha is the one that is really pushed to this repository.
+          REF: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: leave the daemon as we found it
         if: always()
         run: |
