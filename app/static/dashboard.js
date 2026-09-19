@@ -3791,7 +3791,22 @@ function flatSettings(d) {
 
 /* The three answers, turned into the globals every section reads. boot() calls it once and
  * refresh() calls it again on every poll, so there is one shape and not two that drift. */
+/* The one document this page draws is `issues-v0` (ARCHITECTURE.md §3). A node answering a version
+   this page does not know is NOT a reason to draw nothing: the fields this page reads are almost
+   certainly still there, and a blank screen on a wall tells a household less than a wrong number
+   would. So it says one sentence and carries on — the same posture the node's own receivers take,
+   for the same reason. A node with no `schema` at all predates the key and is read as issues-v0. */
+const ISSUES_WIRE = 'issues-v0';
+function wireNote(issues) {
+  const said = (issues && issues.schema) || '';
+  if (!said || said === ISSUES_WIRE) return null;
+  return `This node answers ${said}, and this page draws ${ISSUES_WIRE}. It is showing what it `
+    + `recognises; a number that is missing may be one this page has not learned to read yet. `
+    + `Updating the page (planetai update) is the fix.`;
+}
+
 function bind(issues, health, rho) {
+  window.WIRE_NOTE = wireNote(issues);
   window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
     rho, funnel: issues.funnel || null, peer: issues.peer || null, fixture: FIXTURE || null };
   const geo = issues.geometry || {};
@@ -4085,6 +4100,10 @@ function main() {
    * own dial, which is a different control on a different surface: it re-fills the wall's field as
    * it turns, which is what a wall is for. */
   const head = () => chrome(S.health.node, S.health.city, VIEW)
+    + (window.WIRE_NOTE
+      ? `<p class="note" data-component="wireNote" id="wire-note" data-ref="header">`
+        + `${esc(window.WIRE_NOTE)}</p>`
+      : '')
     + (VIEW === 'now' || VIEW === 'arrange'
       /* Arrange draws Now's own sections — same registry, same want(NOW) — so it is Now in another
          mode and keeps the dial with them. Taking it away there left the ground, the station
