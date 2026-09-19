@@ -1,0 +1,16 @@
+# The scale is fixed at City because a ThingData server is a catalogue somebody runs for a place, and a cell key
+# is a literal. A node whose server covers a region should edit these two keys to Economic|Region.
+- cell: "Economic|City"
+  unit: "% of catalogued things with a repair guide or story"
+  state: partial
+  notes: "ThingData coverage — how much of what a place owns anyone has written down how to fix"
+  sql: |
+    SELECT avg(value) AS value FROM observations
+    WHERE kind = 'portal' AND metric = 'things_documented_pct' AND ts > now() - interval '7 days'
+
+- cell: "Economic|City"
+  unit: "repair guides and stories published"
+  state: partial
+  sql: |
+    SELECT sum(value) AS value FROM observations
+    WHERE kind = 'portal' AND metric IN ('guides_total', 'stories_total') AND ts > now() - interval '7 days'

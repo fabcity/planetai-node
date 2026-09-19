@@ -94,6 +94,7 @@ test_xiaomi_air|PYTHONPATH=/tmp/stub:app python3 tests/test_xiaomi_air.py
 test_meshtastic|PYTHONPATH=/tmp/stub:app python3 tests/test_meshtastic.py
 test_logic|PYTHONPATH=/tmp/stub:app python3 tests/test_logic.py
 test_packs|PYTHONPATH=/tmp/stub:app python3 tests/test_packs.py
+test_thingdata|PYTHONPATH=/tmp/stub:app python3 tests/test_thingdata.py
 test_settings|PYTHONPATH=/tmp/stub:app python3 tests/test_settings.py
 test_ladder|PYTHONPATH=app python3 tests/test_ladder.py
 test_report_schedule|PYTHONPATH=/tmp/stub:app python3 tests/test_report_schedule.py
@@ -122,8 +123,8 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 
 # Thirty-five is the number of suites in the list above. If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
-if [ "$total" -ne 36 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 36 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 37 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 37 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

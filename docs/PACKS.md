@@ -174,6 +174,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | earth-engine | code | — Dynamic World, Sentinel-2, VIIRS | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
+| thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
 | example-cooking-hours | data | air | a worked example |
 
 Land's number is `earth`'s and only `earth`'s: the change this node computed itself, from embeddings
