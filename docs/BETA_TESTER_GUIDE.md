@@ -6,11 +6,11 @@
 This is the path two testers follow in September 2026, rehearsed on a clean Ubuntu machine on 6 September with the
 Santiago (Providencia) and Barcelona (Poblenou) presets. It is written for someone who is not a developer.
 
-**Language.** The alerts, the dashboard, the terminal and the Telegram bot are in English or Bahasa Indonesia
-(`ALERT_LOCALE=en` or `id`). **The report is also in Spanish** (`ALERT_LOCALE=es`) — the first Spanish anything on the
-node. The Spanish and the Bahasa Indonesia report templates were written by an assistant and no native reader has been
-through them yet, so treat them as a draft and tell us which sentences are wrong or strange. Everything else is still
-English only.
+**Language.** What the node sends you is in Spanish on a Santiago, Barcelona or Menorca node: the alerts, the
+reports, the test alert and the bot's own replies (`/act`). The Spanish and the Bahasa Indonesia were written by an
+assistant and no native reader has been through the whole set, so treat them as a draft and tell us which sentences
+are wrong or strange. The dashboard, the terminal and these documents are still in English. To switch: Set up →
+Alerts → Alert language, or `ALERT_LOCALE=es` in `.env`.
 
 ## 1. What you need
 
