@@ -1,5 +1,11 @@
 # Changelog
 
+- 2026-09-16 — new pack `season`: the other half of `nearby`. That one asks where the bad air is, across
+  space; this asks whether the year has turned — the ring's last seven days against its own preceding
+  sixty, paired per station so the archive's own growth from 2 stations to 79 cannot read as a change in
+  the air. Thresholds measured over 177 days of the record, replayed in the test suite: one episode a
+  season, not a weekly weather report. A data pack — two SQL rules and a script, no fetch.
+
 - 2026-09-17 — new pack `xiaomi-air`: Xiaomi / Mi Home air purifiers read on the LAN (miio/MIoT) as indoor
   sensors — PM2.5, temp, humidity and filter life — plus a filter-low warning. Ships with MIoT mappings for
   the Elite (zhimi.airp.meb1) and 4 Compact (xiaomi.airp.cpa4), verified live on node #1.
