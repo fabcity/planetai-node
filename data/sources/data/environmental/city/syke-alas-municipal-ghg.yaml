@@ -1,0 +1,41 @@
+name: SYKE municipal and regional greenhouse gas emissions (ALas)
+url: https://paastot.hiilineutraalisuomi.fi/
+description: |
+  Per-municipality and per-region GHG emissions by sector for Finland
+  under the ALas/Hinku model - electricity, heating, transport, industry,
+  agriculture, waste - downloadable as Excel tables. Run by SYKE.
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [ghg, emissions, alas, hinku, syke, finland, municipal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Oulu). Covers
+  Oulu at city scale and Pohjois-Pohjanmaa at region scale in the same
+  service.
+
+  NOT GPC. This is the Finnish national ALas/Hinku method, with three
+  calculation variants (Hinku calculation, Hinku without credits, all
+  emissions). GPC scope 1/2/3 mapping is not provided and is not
+  trivially derivable. Any FCI GHG indicator built on this is not
+  directly comparable with a GPC city like Montreal, which publishes
+  GPC reference numbers per row.
+
+  API IS NULL DELIBERATELY. The page offers "Lataa tiedot
+  Excel-taulukkoina" but the municipality selector is JavaScript-driven
+  and no direct download URL was exposed in the rendered content. Do not
+  infer one. The download path has to be recovered from a browser
+  session before a connector can be built.
+
+  LICENCE IS ONE STEP OF INFERENCE, FLAGGED. The paastot page states no
+  licence. SYKE's institutional page
+  (syke.fi/en/environmental-data/open-web-services) states verbatim:
+  "Syke applies Creative Commons By 4.0 International license for open
+  datasets and map services." The institutional licence is carried
+  across to this service. Re-verify before any redistribution.

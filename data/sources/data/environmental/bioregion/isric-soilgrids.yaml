@@ -1,0 +1,30 @@
+name: ISRIC SoilGrids 2.0
+url: https://www.isric.org/explore/soilgrids
+description: |
+  ISRIC World Soil Information's global digital soil mapping system.
+  Machine-learned predictions of pH, organic carbon, bulk density,
+  nitrogen, CEC and texture at 250 m across six standard depths.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [soil, soilgrids, wcs, raster-250m, modelled, geospatial]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. REST API IS DEGRADED - do not rely on it. Three
+  calls to rest.isric.org/soilgrids/v2.0/properties/query with different
+  coordinates all returned well-formed JSON with values.mean = null, and
+  ISRIC's own site carries a notice that the REST API is unavailable due
+  to technical issues. Use the file services instead: WCS at
+  maps.isric.org (designed for bounding-box subsetting and the recommended
+  path for modelling pipelines) or WebDAV/VRT at
+  files.isric.org/soilgrids/latest/data/. Full downloads are ~5 GB per map
+  and ~120 GB per property, so WCS subsetting is not optional.
+  METHODOLOGICAL CAVEAT: these are model predictions, not measurements,
+  with no time dimension. The framework's 'soil health index' implies
+  observed condition and trend; SoilGrids gives a static modelled property
+  surface. It is a proxy and the index should say so.

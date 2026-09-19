@@ -1,0 +1,55 @@
+name: Korea National Revenue/Expenditure Settlement by Account (회계별 세입/세출결산 현황)
+url: https://www.data.go.kr/data/15056702/openapi.do
+description: Korean central-government revenue and expenditure settlement by accounting type,
+  alongside national bond status, tax revenue, tax burden ratio and supplementary budget trends.
+  The national rung of the Korean budget ladder.
+pillar: economic
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- national-budget
+- settlement
+- fiscal
+- korea
+- moef
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Provider 기획예산처
+
+  (the budget ministry as renamed in the 2025-26 machinery-of-government
+
+  reorganisation). Registered 2015-08-18, last modified 2025-08-29. XML,
+
+  cadence 실시간.
+
+
+  THE API FIELD IS NULL DELIBERATELY. This is a LINK-type registration: the
+
+  endpoint it advertises is
+
+  https://www.openfiscaldata.go.kr/op/ko/sd/UOPKOSDA01?odtId=N880E0VQS7023U1RHI206WC2F
+
+  and openfiscaldata.go.kr (열린재정) is ROBOTS-DISALLOWED in its entirety - the
+
+  fetch returned ROBOTS_DISALLOWED. The data.go.kr catalogue record is verified
+
+  live; the payload behind it is NOT. Treat the payload as unverified.
+
+
+  This is the single biggest hole in the Korean national rung: 열린재정 is where
+
+  the 부처별 세출예산/결산 detail lives and it cannot be reached by a
+
+  robots-respecting client.
+
+
+  Granularity is aggregate / by accounting type (회계별), not programme or line
+
+  item. Korean national chart of accounts; no COFOG crosswalk. FY = calendar year;
+
+  KRW nominal.'

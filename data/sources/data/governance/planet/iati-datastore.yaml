@@ -1,0 +1,32 @@
+name: IATI Datastore API
+url: https://docs.datastore.iatistandard.org/en/latest/api/
+description: |
+  Solr-backed query layer over all published IATI activity, transaction
+  and budget data - the largest machine-readable register of aid and
+  development finance flows, including climate-tagged spend, published by
+  donors and implementers themselves.
+pillar: governance
+scale: planet
+status: live
+license: Per-publisher — IATI publisher data is generally released openly but the licence is set by each publisher and was NOT verified here
+api: https://api.iatistandard.org/datastore
+pilot_relevance: [global]
+tags: [aid-transparency, iati, climate-finance, api-key-required, solr]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09:
+  https://api.iatistandard.org/datastore/activity/select returned HTTP 401
+  on an unauthenticated query, confirming the endpoint exists and is
+  subscription-key gated. Free registration at developer.iatistandard.org.
+  Three collections: Activity, Transaction, Budget; the fl parameter
+  controls output (iati_xml, iati_json, or flattened fields). Coverage
+  roughly 2011-present, continuous, re-indexed daily. SLICING: country
+  table filtered on recipient country and region fields. A minority of
+  activities carry location elements with point coordinates, which could
+  be clipped to a bioregion polygon, but coverage is sparse and
+  inconsistent - do not build a bioregional indicator on it. RELEVANT TO
+  REGIME 1: because activities carry recipient-country and sometimes sub-
+  national location data, this is also a candidate source for tracing
+  external finance into a specific Fab City territory.

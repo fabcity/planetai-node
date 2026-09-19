@@ -1,0 +1,34 @@
+name: Cambridge - Capital budget
+url: https://data.cambridgema.gov/d/9chi-2ed3
+description: |
+  City of Cambridge capital budget project funding by fiscal year, FY2020 to
+  FY2031, with per-project latitude and longitude for each funded capital
+  project.
+pillar: economic
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: https://data.cambridgema.gov/resource/9chi-2ed3.json
+pilot_relevance: [boston]
+tags: [budget, capital-investment, municipal-finance, geospatial, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+  data_updated_at 2026-05-05. Twelve-year forward window FY2020-FY2031.
+
+  GEOCODED PER PROJECT. Columns: approved_amount, fiscal_year, department,
+  project_name, project_id, fund, city_location, latitude, longitude,
+  map_location. This is the only capital plan in wave 7 with per-project
+  coordinates, and it is materially better than Boston's, which is geo-tagged
+  "Boston (all)" with no breakdown.
+
+  WHY THAT MATTERS FOR THE INDEX: coordinates make this the one wave-7 source
+  that can be aggregated to a sub-city rung without an admin-code crosswalk.
+  Spatial join to census tract or neighbourhood is possible directly. If the
+  FCI wants a community-scale public-finance signal for a US locality, this is
+  the prototype - not the budget files, which have no geography at all.
+
+  Fiscal year 1 Jul - 30 Jun. USD nominal. Approved/planned amounts only, no
+  execution against them.

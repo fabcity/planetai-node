@@ -1,0 +1,22 @@
+name: Sensor.Community
+url: https://sensor.community/
+description: |
+  Citizen-science air quality sensor network rooted in Germany,
+  active across the EU. ~30k SDS011-based PM sensors with public API
+  and bulk archive download.
+pillar: environmental
+scale: city
+status: live
+license: DbCL-1.0
+api: https://data.sensor.community/airrohr/v1/
+pilot_relevance: [barcelona, global]
+tags: [air-quality, citizen-science, particulate-matter, eu]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Formerly known as luftdaten.info. Coverage densest in Germany,
+  Belgium, Netherlands, Poland; non-trivial in Spain (especially
+  Barcelona). Bulk archive available at archive.sensor.community.
+  Complements Smart Citizen well: SDS011 sensors are cheaper and
+  more numerous; Smart Citizen kits carry more parameters.

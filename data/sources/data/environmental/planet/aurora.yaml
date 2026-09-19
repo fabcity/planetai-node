@@ -1,0 +1,22 @@
+name: Microsoft Aurora
+url: https://microsoft.github.io/aurora/
+description: |
+  Earth-system foundation model from Microsoft Research. Hourly
+  forecasts to 14 days for atmosphere, ocean wave, and air quality
+  state. Model weights released under MIT.
+pillar: environmental
+scale: planet
+status: live
+license: MIT (model weights); CDS license for ERA5 training inputs
+api: null
+pilot_relevance: [global]
+tags: [foundation-model, earth-ai, atmospheric, deep-learning]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Not an API but a model checkpoint. PLANETAI uses pre-computed
+  Aurora forecasts as the C0-C3 planet-tier panels. Compute cost
+  for inference is non-trivial — published forecasts via partners
+  like Climate Engine or running on Azure HPC are the typical path.
+  Compare with GraphCast (Google DeepMind) and GenCast (Google DeepMind).

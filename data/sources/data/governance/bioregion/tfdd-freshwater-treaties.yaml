@@ -1,0 +1,30 @@
+name: TFDD International Freshwater Treaties Database
+url: https://transboundarywaters.ceoas.oregonstate.edu/international-freshwater-treaties-database
+description: |
+  Over 800 international freshwater agreements from 1820 to 2021, coded by
+  basin, signatory countries, date, topic, allocation measures, conflict-
+  resolution mechanisms and non-water linkages. The canonical dataset for
+  water-sharing agreements between jurisdictions.
+pillar: governance
+scale: bioregion
+status: stale
+license: None stated — OSU copyright applies; translations described as unofficial and for informational and academic purposes only
+api: null
+pilot_relevance: [global]
+tags: [water-treaties, transboundary-water, excel, basin-id-join, cross-jurisdictional, no-licence-stated]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Filed as STALE: the most recent Excel is version
+  2.19.24 (February 2024) and the page states an update to bring coverage
+  current is underway. Excel download plus a searchable CGI interface at
+  gis.nacse.org/tfdd/treaties.php; treaty PDFs via Oregon Digital.
+  SLICING: join treaty records to the TFDD basin polygons by basin name or
+  ID, then clip to your bioregion. COVERAGE LIMIT WORTH STATING IN THE
+  INDEX: this covers water only. Air-basin compacts, shared-forest
+  agreements, coastal management compacts and cross-border energy or
+  transport authorities have no equivalent global register - water is
+  exceptionally well served because of a thirty-year academic programme at
+  Oregon State, and that is an artefact of scholarship rather than of how
+  governance actually distributes.

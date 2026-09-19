@@ -1,0 +1,51 @@
+name: Seoul Participatory Budget - Project Execution (서울시 시민참여예산사업 예산집행 정보)
+url: https://data.seoul.go.kr/dataList/OA-15413/S/1/datasetView.do
+description: Links each citizen-proposed Seoul project to its allocated amount, its actual
+  expenditure and its execution date, with plan documents and result reports attached. Covers
+  proposal through allocation to spend in one table.
+pillar: governance
+scale: city
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- participatory-budget
+- civic-participation
+- expenditure
+- execution
+- korea
+- seoul
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Public since
+
+  2018-11-05; last updated 2026-09-11. Cadence 수시. Source system yesan.seoul.go.kr.
+
+  Owner 서울특별시 기획조정실 재정기획관 재정담당관.
+
+
+  Programme size verified at yesan.seoul.go.kr/intro/yesanIntro.do: 지정제안형
+
+  300억원 + 자유제안형 200억원 per year.
+
+
+  JOIN LIMIT: project location is a FREE-TEXT STRING, not a dong code - no clean
+
+  spatial join is possible.
+
+
+  Companion datasets on the same portal: OA-15412 (intake), OA-15414 (final
+
+  selection), OA-15716 (field codes, verified same licence).
+
+
+  NOTE ON THE COMMUNITY RUNG: this is the closest Seoul comes to a sub-city
+
+  budget, and it is not one. Seoul''s participatory budget is CITY-level; the 25 gu
+
+  run separate schemes. No dong-tier budget is published - 행정동 appears in
+
+  Seoul''s data as a statistical geography, never a fiscal one.'

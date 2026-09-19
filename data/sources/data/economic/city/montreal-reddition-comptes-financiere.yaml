@@ -1,0 +1,35 @@
+name: Reddition de comptes financiere - Ville de Montreal
+url: https://donnees.montreal.ca/dataset/reddition-comptes-financiere
+description: |
+  Budget-versus-actual financial accountability reporting for Montreal,
+  allowing comparison of fiscal and budgetary data for the same year.
+  Eight annual XLSX files covering 2018-2025.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [budget-execution, accountability, municipal-finance, montreal, quebec, xlsx]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal).
+
+  THIS IS THE EXECUTION HALF OF THE PAIR and the more valuable of the
+  two. Its own description says it enables "comparaison entre les
+  donnees fiscales et budgetaires pour une meme annee" - budget versus
+  actual in one artefact, which most cities in this harvest do not
+  publish at all.
+
+  Eight XLSX files, 271 KB to 3.9 MB, most recent updated around July
+  2026. GRANULARITY IS UNCONFIRMED: arrondissement and function
+  breakdown are not stated on the landing page and no XLSX was opened
+  this pass. The 3.9 MB file size suggests real depth. Next Canada touch
+  should open one and record the actual column set - that single act
+  would settle whether Montreal has a usable sub-municipal expenditure
+  rung, which the budget datasets say it does not.
+
+  Same portal licence inference as montreal-budget-fonctionnement.

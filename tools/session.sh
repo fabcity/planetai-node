@@ -91,7 +91,7 @@ if [[ "$MODE" == preflight ]]; then
   echo "siblings"
   BESIDE="$(dirname "${MAIN_WT:-$ROOT}")"
   for sib in planetai-design awesome-fabcity-data; do
-    d="$BESIDE/$sib"; [[ -d "$d/.git" ]] || { warn "$sib is not checked out beside this repo (check_theme / check_sources will skip)"; continue; }
+    d="$BESIDE/$sib"; [[ -d "$d/.git" ]] || { warn "$sib is not checked out beside this repo (check_theme skips without it; the registry gate does not — it reads the pin in data/sources)"; continue; }
     sb="$(git -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)"; git -C "$d" fetch -q origin 2>/dev/null
     beh="$(git -C "$d" rev-list --count HEAD..origin/main 2>/dev/null || echo '?')"
     unt="$(git -C "$d" status --porcelain 2>/dev/null | grep -c '^??')"

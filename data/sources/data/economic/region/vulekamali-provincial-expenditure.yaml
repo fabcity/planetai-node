@@ -1,0 +1,48 @@
+name: vulekamali - South African Budget Data Portal
+url: https://vulekamali.gov.za/datasets
+description: |
+  National Treasury and Imali Yethu budget portal carrying national and
+  provincial estimates of revenue and expenditure, budgeted-versus-actual
+  spending, division of revenue and appropriation acts.
+pillar: economic
+scale: region
+status: live
+license: National Treasury Terms and Conditions - use, download, copy, publish, distribute and transmit freely including commercially; attribution to National Treasury plus date of publication and disclosure of modifications required
+api: null
+pilot_relevance: []
+tags: [budget, public-finance, south-africa, provincial, expenditure]
+added: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 11, South Africa). This
+  is the REGION and NATIONAL rung of the SA budget ladder; the city rung is
+  municipal-money-za.
+
+  COLLECTIONS read from /datasets: estimates-of-national-expenditure,
+  budgeted-and-actual-national-expenditure,
+  budgeted-and-actual-provincial-expenditure,
+  estimates-of-provincial-revenue-and-expenditure, consolidated-expenditure,
+  estimates-of-national-revenue, division-of-revenue-bills, appropriation-acts,
+  public-entities, national-infrastructure-projects, cpi-inflation. The
+  budgeted-and-actual collections are the execution series.
+
+  CLASSIFICATION: SA national/provincial chart - economic classification plus
+  programme and sub-programme. No COFOG crosswalk. Fiscal year 1 April -
+  31 March. ZAR, nominal.
+
+  ADMIN IDENTIFIER: province name and department, not a code - ISO 3166-2
+  codes (ZA-WC, ZA-GP) must be attached downstream. Weaker federation key than
+  Municipal Money's MDB codes.
+
+  API CAVEAT: the site advertises a datastore at data.vulekamali.gov.za. That
+  host did not resolve from this harvest (DNS failure, twice), so api is null
+  rather than a URL recorded on the strength of the advertisement. Verified
+  access tier today is HTML landing pages plus per-dataset downloads.
+
+  LICENCE: /terms-and-conditions states you "may use, download, copy, publish,
+  distribute and transmit the data published by NT ... freely and flexibly,
+  including for commercial and non-commercial purposes", conditional on
+  acknowledging National Treasury and the date of publication and documenting
+  modifications. Third-party contributed data carries heavier attribution and
+  is explicitly not verified or endorsed by Treasury - check provenance.

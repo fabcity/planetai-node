@@ -1,0 +1,59 @@
+name: Seoul Expenditure Operations - Projects and Budget (서울시 세출운용 사업 및 예산 정보)
+url: https://data.seoul.go.kr/dataList/OA-13269/S/1/datasetView.do
+description: Project-level Seoul metropolitan expenditure showing current available budget,
+  amount spent and unexecuted balance side by side, classified by 분야/부문 (functional field
+  and sector) and by department. Updated daily.
+pillar: economic
+scale: city
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- budget
+- expenditure
+- execution
+- fiscal-transparency
+- daily
+- korea
+- seoul
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). First published
+
+  2016-06-10; data current to 2026-08-12 at time of check. Cadence 정기(매일) - daily,
+
+  which makes this one of the highest-cadence executed-budget feeds in the index.
+
+
+  Planned and executed in the SAME ROW: 예산현액 (current budget available),
+
+  지출액 (expenditure), 집행잔액 (unexecuted balance).
+
+
+  STATED COVERAGE LIMIT: excludes the 25 자치구 and subordinate institutions
+
+  (자치구 및 산하기관 제외). Expenditure reflects through the previous day only.
+
+  For the gu tier use economic/region/lofin365-local-finance-yearbook-budget.
+
+
+  Classification is the Korean 분야/부문 structure. NO published COFOG crosswalk
+
+  at any of the four Korean rungs - 분야/부문 is COFOG-adjacent by design but no
+
+  official mapping table was found. Building it is unavoidable work, not a lookup.
+
+
+  Korea FY = calendar year; KRW nominal. Paired revenue dataset is OA-13268
+
+  (not individually verified in this pass).
+
+
+  Seoul API pattern: http://openapi.seoul.go.kr:8088/{KEY}/{TYPE}/{SERVICE}/{START}/{END}/
+
+  Max 1,000 records per request. Service name not captured - resolve from the
+
+  dataset page. robots.txt is "User-agent: * / Allow: /" - nothing disallowed.'

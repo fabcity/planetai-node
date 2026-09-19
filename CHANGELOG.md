@@ -1,5 +1,11 @@
 # Changelog
 
+- 2026-09-19 — your node now carries the network's registry of 209 data sources. `planetai sources`
+  shows what is registered for your place and which of it your node already reads; a source with no
+  `wired` beside it is one nobody has written an adapter for yet. `planetai doctor` says which
+  snapshot you have. The list comes from `awesome-fabcity-data`, the whole network's, and it works
+  with the node stopped and with the uplink down — it ships inside the node rather than being fetched.
+
 - 2026-09-16 — new pack `season`: the other half of `nearby`. That one asks where the bad air is, across
   space; this asks whether the year has turned — the ring's last seven days against its own preceding
   sixty, paired per station so the archive's own growth from 2 stations to 79 cannot read as a change in

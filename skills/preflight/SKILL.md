@@ -33,12 +33,15 @@ A red `x` is a stop. Do not start on top of it.
    your task is on it, it says what it touches and what not to touch. If your task moves the suite
    count in `tests/all`, check no open PR does too — one at a time, that is the rule.
 3. **Read the gates before you read the code.** `make lint` is the list, and `docs/DEVELOPING.md`
-   says what each one has caught. If you are about to add a pack, `tools/check_sources.py` and the
+   says what each one has caught. If you are about to add a pack, `tools/check_registry.py` and the
    locale gate in `tests/test_packs.py` are the ones that will fail you; if you are about to touch
    `app/static/`, `check_ui.py` and `check_theme.py` are.
-4. **The sibling checkouts are not the registry.** `check_sources.py` and `wired.py` read the other
-   repo's `origin/main` on purpose. If preflight says `awesome-fabcity-data` is on a harvest branch
-   thirty files dirty, believe the gate and not the directory.
+4. **The sibling checkouts are not the registry.** Since 19 September the registry gate reads
+   neither: `check_registry.py` reads `data/sources/`, a snapshot of `awesome-fabcity-data` pinned to
+   one commit and committed here, so it gives the same answer in CI, on a node and on a laptop whose
+   sibling is on a harvest branch thirty files dirty. `wired.py` in the other repo still reads its
+   own `origin/main`. What a pack may name is what the pin carries — `docs/SOURCES.md`, and
+   `tools/sync_registry.sh <sha>` to move it.
 
 ## What preflight does not do
 

@@ -1,0 +1,26 @@
+name: Bali Air Dispatch
+url: https://baliairdispatch.com/
+description: |
+  Island-wide PM2.5 archive for Bali aggregating eight sensor networks
+  (Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen, Airly)
+  into one key-free, read-only API with raw and humidity-corrected values.
+pillar: environmental
+scale: community
+status: live
+license: Public-interest archive; redistribution encouraged with attribution to Bali Air Dispatch and to the originating network named in each row. Upstream readings remain under their networks' terms.
+api: https://baliairdispatch.com/api/v1
+pilot_relevance: [bali]
+tags: [air-quality, pm25, aggregator, peer-observatory, humidity-corrected, bali]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  A peer observatory, not a sensor network: credit both the archive and the
+  row's network. Endpoints: /stations, /latest, /measurements (raw, hourly,
+  daily; JSON or CSV). Applies the US EPA 2021 humidity correction to
+  Plantower-based networks and stores raw alongside corrected; flags
+  suspected-indoor stations and stale readings. Collaborators: Fab Lab Bali,
+  CAST Foundation, Bali Net Zero Coalition, Meaningful Design Group.
+  PLANETAI: read by `app/sources.py::baliairdispatch()` as reference context
+  (local=false) on Bali nodes and by `packs/nearby`. Nodes with outdoor
+  hardware should also publish to a network BAD reads so the map densifies.

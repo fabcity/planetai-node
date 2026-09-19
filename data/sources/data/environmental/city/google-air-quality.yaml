@@ -1,0 +1,20 @@
+name: Google Air Quality API
+url: https://developers.google.com/maps/documentation/air-quality
+description: |
+  500m-resolution PM2.5 + AQI grid derived from regulatory stations,
+  satellite, and modelling. Global coverage with hourly updates.
+pillar: environmental
+scale: city
+status: paywalled
+license: Google Maps Platform terms (free quota tier available)
+api: https://airquality.googleapis.com/v1
+pilot_relevance: [global]
+tags: [air-quality, gridded, google, paywalled-tier]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Free quota of 10k requests/month per project; sufficient for
+  per-pilot panel rendering but not for bulk historical analysis.
+  Wired in PLANETAI observatory as the C4 mini-panel replacing
+  Aurora's AQ output.

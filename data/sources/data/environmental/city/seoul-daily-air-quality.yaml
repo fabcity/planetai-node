@@ -1,0 +1,48 @@
+name: Seoul Daily Average Air Environment Information (서울시 기간별 일평균 대기환경 정보)
+url: https://data.seoul.go.kr/dataList/OA-2220/S/1/datasetView.do
+description: Daily-average air quality index, PM10, ozone, NO2, CO and SO2 for Seoul, with
+  a series running from 1987 to 2025. The ~38-year depth is exceptional for an urban air-quality
+  record.
+pillar: environmental
+scale: city
+status: live
+license: '공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1'
+api: null
+pilot_relevance: []
+tags:
+- air-quality
+- pm10
+- ozone
+- timeseries
+- korea
+- seoul
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Cadence 비정기(수시).
+
+
+  ACCESS LIMIT: the sheet and Open API return ONLY the most recent 1 year. The
+
+  historic series needs the file route.
+
+
+  PM2.5 and per-자치구 breakdown are NOT in this dataset - they live in siblings
+
+  OA-1200 (실시간 자치구별), OA-2221, OA-2275, OA-15526, OA-2218, OA-2219, whose
+
+  IDs were seen but which were NOT fetched in this pass.
+
+
+  WHY THE CITY SOURCE AND NOT THE NATIONAL ONE: the national AirKorea API
+
+  (data.go.kr/data/15073861) does expose PM2.5 and is richer, but it is licensed
+
+  공공저작물 : 출처표시, 변경금지 (제 3유형) - KOGL Type 3, NO DERIVATIVES - which
+
+  makes it unusable for an index that computes derived indicators. Seoul''s own
+
+  family is KOGL Type 1. This is the clearest case in the wave where the national
+
+  source is restricted and the city source is not.'

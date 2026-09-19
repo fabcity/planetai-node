@@ -1,0 +1,42 @@
+name: Kota Denpasar - APBD (Ringkasan dan konsistensi RKPD-APBD)
+url: https://satudata.denpasarkota.go.id/dataset?q=APBD
+description: |
+  Kota Denpasar publishes its annual budget summaries and RKPD-to-APBD
+  consistency documents as CKAN datasets, mostly from BPKAD, in CSV with a
+  public-domain licence.
+pillar: economic
+scale: city
+status: live
+license: Lainnya (Domain Publik)
+api: https://satudata.denpasarkota.go.id/api/3
+pilot_relevance: [bali]
+tags: [public-budget, municipal-finance, apbd, indonesia]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Query "APBD"
+  returned 29 datasets, publisher mostly BPKAD (22 of them), 26 in CSV and 2
+  PDF, fiscal years 2022-2025.
+
+  THE ONLY OPENLY LICENSED INDONESIAN FISCAL SOURCE FOUND. Licence verbatim
+  "Lainnya (Domain Publik)" on all 29. Every other route to Indonesian public
+  finance carries a bare copyright notice and no grant - see the coverage
+  tracker's restricted-licence list, which includes the DJPK SIKD portal that
+  holds anggaran and realisasi for all 546 pemda and is therefore the single
+  most valuable Indonesian fiscal source and unusable under CONTRIBUTING
+  criterion 1.
+
+  SUMMARIES, NOT EXECUTION. These are Ringkasan APBD - budget summaries. For
+  anggaran against realisasi you need DJPK, which is the unlicensed source
+  above. So Denpasar is openly licensed and coarse, while the fine-grained
+  execution data exists and cannot be used. That trade is the finding.
+
+  ADMIN CODE: Kota Denpasar is Kemendagri 51.71 (BPS 5171), Provinsi Bali 51,
+  ISO 3166-2 ID-BA. Note that DJPK uses its own "kode pemda" which was NOT
+  confirmed identical to the Kemendagri code - resolve before joining
+  Indonesian fiscal data across sources.
+
+  The CKAN action API is documented in the portal footer but package_search was
+  blocked by robots.txt in this pass, so the dataset counts above come from
+  rendered facets. CKAN 2.8.3.

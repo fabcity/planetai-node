@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+"""Hold the vendored source registry to its pin, and every pack's `sources:` id to an entry in it.
+
+    python3 tools/check_registry.py          # in `make lint`
+
+`data/sources/` is a snapshot of `awesome-fabcity-data` at one commit (tools/sync_registry.sh). Five
+things have to stay true about it, and one is only a warning.
+
+  · REGISTRY_VERSION is there and parses — without it nothing downstream can say what it is serving.
+  · Its `entries` count, the YAML file count and index.json's length are the same number. They come
+    apart when a sync is interrupted, and the symptom is a node quietly serving a short list.
+  · index.json is exactly what the YAML folds to. Nothing here edits a source entry: the registry's
+    source of truth is upstream, and a hand edit that survives is a fork nobody declared.
+  · Every entry sits in the directory its own `pillar`/`scale` name, because `slug` and `cell` are
+    both derived from the path and a mismatch makes them lie.
+  · Every `sources:` id in every packs/*/pack.yaml resolves to an entry.
+
+**This replaced tools/check_sources.py, which asked the last question of a sibling checkout of the
+registry — and so answered it only on a laptop that had one.** In CI and on a node it printed a line
+and exited 0, which meant a pack could name a slug that does not exist and the build stayed green all
+the way to a tarball. It also let a pack name a slug that is on upstream main but not in the pin,
+which 404s on every node that installs it. The snapshot is here, so now the check is too.
+
+`synced` older than 180 days WARNS and does not fail — the convention data/platform_floors.yml set.
+A stale pin is a conversation about a sync, not a broken build.
+"""
+from __future__ import annotations
+
+import datetime
+import json
+import re
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_registry_index import build, render  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+SOURCES = ROOT / "data" / "sources"
+STALE_DAYS = 180
+
+ID = re.compile(r"^([a-z]+)/([a-z]+)/([a-z0-9-]+)$")
+
+
+def declared() -> list[tuple[Path, str]]:
+    """Every (pack.yaml, id) pair. Parsed with a regex rather than yaml, because a pack.yaml that does
+    not parse is already somebody else's failure in this same lint."""
+    out = []
+    for p in sorted(ROOT.glob("packs/*/pack.yaml")):
+        m = re.search(r"^sources:\s*\[(.*?)\]", p.read_text(), re.M | re.S)
+        if m:
+            out += [(p, s.strip()) for s in m.group(1).split(",") if s.strip()]
+    return out
+
+
+def main() -> int:
+    errs: list[str] = []
+    warns: list[str] = []
+    ver_path = SOURCES / "REGISTRY_VERSION"
+    if not ver_path.is_file():
+        print(f"  x {ver_path.relative_to(ROOT)} is missing — the node ships no registry.")
+        print("    Vendor one:  tools/sync_registry.sh <commit sha of awesome-fabcity-data>")
+        return 1
+
+    ver = dict(l.split("=", 1) for l in ver_path.read_text().split() if "=" in l)
+    for k in ("sha", "short", "synced", "entries", "source"):
+        if not ver.get(k):
+            errs.append(f"REGISTRY_VERSION has no `{k}=` line")
+    if errs:
+        print(f"  x {ver_path.relative_to(ROOT)} does not parse: " + "; ".join(errs))
+        return 1
+
+    try:
+        entries = build()
+    except Exception as e:  # noqa: BLE001
+        print(f"  x the vendored YAML does not fold: {e}")
+        return 1
+    yaml_n = len(list((SOURCES / "data").rglob("*.yaml")))
+    index_path = SOURCES / "index.json"
+    index = json.loads(index_path.read_text()) if index_path.is_file() else []
+
+    if not (int(ver["entries"]) == yaml_n == len(index)):
+        errs.append(f"REGISTRY_VERSION says {ver['entries']} entries, the YAML has {yaml_n}, "
+                    f"index.json has {len(index)} — a sync stopped half-way")
+
+    if index_path.is_file() and index_path.read_text() != render(entries):
+        errs.append("index.json is not what the YAML folds to: it was hand-edited, or a sync was left "
+                    "half-done. It is generated — regenerate it: python3 tools/build_registry_index.py")
+
+    for e in entries:
+        pillar, scale, _ = e["slug"].split("/")
+        if e.get("pillar") != pillar or e.get("scale") != scale:
+            errs.append(f"{e['slug']}: filed under {pillar}/{scale} but says "
+                        f"{e.get('pillar')}/{e.get('scale')} — `slug` and `cell` come off the path")
+
+    ids = {e["slug"] for e in entries}
+    pairs = declared()
+    for path, sid in pairs:
+        if not ID.match(sid):
+            errs.append(f"{path.relative_to(ROOT)}: `{sid}` is not a <pillar>/<scale>/<slug> id")
+        elif sid not in ids:
+            slug = sid.rsplit("/", 1)[1]
+            near = sorted(i for i in ids if slug in i or i.rsplit("/", 1)[1] in slug)
+            hint = f"did you mean `{near[0]}`?" if near else "no entry in the registry"
+            errs.append(f"{path.relative_to(ROOT)}: `{sid}` does not resolve — {hint}")
+
+    try:
+        age = (datetime.date.today() - datetime.date.fromisoformat(ver["synced"])).days
+        if age > STALE_DAYS:
+            warns.append(f"the pin is {age} days old (synced {ver['synced']}, limit {STALE_DAYS}): "
+                         f"tools/sync_registry.sh <sha> to catch up")
+    except ValueError:
+        errs.append(f"REGISTRY_VERSION: `synced={ver['synced']}` is not an ISO date")
+
+    if errs:
+        print(f"  x the vendored registry does not hold ({len(errs)}):")
+        for e in errs:
+            print(f"      {e}")
+        print("    A source entry is upstream's to change, not this repo's: PR it to "
+              f"{ver['source']}, then re-pin with tools/sync_registry.sh <merge sha>.")
+        return 1
+
+    print(f"  {len(index)} registry entries @ {ver['short']}, {len(pairs)} pack source ids resolve")
+    for w in warns:
+        print(f"  ! {w}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

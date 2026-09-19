@@ -1,0 +1,44 @@
+name: e-Gov Data Portal (e-Govデータポータル), Japan national open data catalogue
+url: https://data.e-gov.go.jp/data/api/3/action/package_list
+description: Japan's national CKAN open data catalogue, successor to data.go.jp, exposing
+  roughly 2,800 government datasets through a working CKAN Action API under the Public Data
+  License 1.0.
+pillar: governance
+scale: region
+status: live
+license: 公共データ利用規約（第1.0版）PDL1.0 - explicitly CC BY 4.0 compatible
+api: https://data.e-gov.go.jp/data/api/3/action/package_list
+pilot_relevance: []
+tags:
+- catalogue
+- ckan
+- national-portal
+- api
+- japan
+- open-data
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). The API endpoint was
+
+  fetched and returned valid CKAN JSON with "success": true and ~2,800 package ids.
+
+
+  CRITICAL PATH DETAIL, tested not inferred: the CKAN API lives under
+
+  /data/api/3/action/, NOT /api/3/action/. The latter returns 404, as does the
+
+  entire legacy www.data.go.jp API. Anyone porting old Japan harvest code will
+
+  hit this.
+
+
+  Scale recorded as region for schema compatibility; it is in fact national -
+
+  same convention as data-gov-hr, data-overheid-nl and datos-gob-ar.
+
+
+  Terms verbatim (data.e-gov.go.jp/info/terms): 「本コンテンツを利用する際は出典を
+
+  記載してください。」 「編集・加工等を行ったこと及びその主体を記載してください。」'

@@ -1,0 +1,22 @@
+name: materialflows.net (UN International Resource Panel)
+url: https://www.materialflows.net/
+description: |
+  Economy-wide material flow accounts published by the UN
+  International Resource Panel. National-level material extraction,
+  imports, exports, consumption by category.
+pillar: economic
+scale: bioregion
+status: live
+license: custom open (UN IRP terms)
+api: null
+pilot_relevance: [global]
+tags: [material-flow, mfa, un, resource-extraction, circular-economy]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Methodologically aligned with Eurostat EW-MFA. Used as the
+  baseline for the PLANETAI HS->material crosswalk (Wave 16).
+  No API; bulk Excel + CSV downloads. Updated annually.
+  The most globally consistent MFA dataset; combine with
+  Eurostat for higher EU resolution.

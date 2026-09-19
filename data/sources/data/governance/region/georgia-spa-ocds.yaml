@@ -1,0 +1,45 @@
+name: Georgia State Procurement Agency OCDS feed
+url: https://data.open-contracting.org/en/publication/24
+description: |
+  Open Contracting Data Standard release of Georgia's unified
+  e-procurement system - 275,439 tender records across planning, tender,
+  award and contract stages, CC0 licensed, but frozen at June 2019.
+pillar: governance
+scale: region
+status: deprecated
+license: CC0-1.0
+api: https://odapi.spa.ge/api/swagger.ui
+pilot_relevance: []
+tags: [georgia, procurement, ocds, open-contracting, stale]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: [Open Contracting Partnership Data Registry]
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Georgia).
+  Recorded as deprecated rather than omitted, per CONTRIBUTING: mark
+  decay, do not erase it.
+
+  WHY DEPRECATED AND NOT LIVE, STATED HONESTLY. Everything here -
+  record count, formats (JSON/JSONL, XLSX, CSV), CC0 licence, coverage
+  December 2010 to June 2019, and the statement that the dataset is NO
+  LONGER UPDATED - was read from the Open Contracting Partnership Data
+  Registry entry, which WAS fetched. odapi.spa.ge itself was NOT
+  reachable this pass (robots/TLS failure, then proxy 403). So
+  "deprecated" reflects the registry's own statement, not a direct
+  check of the endpoint. It is entirely possible the feed resumed and
+  merely stopped being registered with OCP. THE FIRST THING THE NEXT
+  GEORGIA TOUCH SHOULD DO IS SETTLE THIS - it is one successful request
+  away, and a live Georgian OCDS feed would be one of the better
+  procurement sources in the whole harvest.
+
+  Georgia's e-procurement system is well regarded internationally. A
+  CC0 OCDS feed that appears to have died in 2019 is exactly the kind of
+  decay the Index should be able to see and say out loud.
+
+  Note tenders.procurement.gov.ge is robots-disallowed and was not
+  fetched; this registry entry is the only verified route to the
+  publication's metadata.
+
+  Licence verbatim from the registry: "Creative Commons CC0 1.0
+  Universal Public Domain Dedication".

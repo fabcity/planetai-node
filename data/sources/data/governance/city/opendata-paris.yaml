@@ -1,0 +1,47 @@
+name: Open Data Paris
+url: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets
+description: |
+  The City of Paris open-data portal (OpenDataSoft), 476 datasets across eight
+  themes, every one of them under an open licence. Carries the city's budgets,
+  procurement, workforce, environment and mobility data.
+pillar: governance
+scale: city
+status: live
+license: Open Database License (ODbL)
+api: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets
+pilot_relevance: []
+tags: [open-data-portal, transparency, opendatasoft, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) by opening the
+  OpenDataSoft v2.1 catalogue and facets endpoints.
+
+  LICENCE REGIME IS 100% OPEN AND THAT IS THE HEADLINE. The licence facet returns
+  exactly two values and nothing else: Open Database License (ODbL) 434, Licence
+  Ouverte (Etalab) 42. No unstated, no restricted, no non-derivative. Cleanest
+  licence regime of any municipal catalogue in this wave, and cleaner than
+  Barcelona, Boston or Santiago from wave 1.
+
+  Total catalogue: 476 datasets. Theme facet, verbatim with counts:
+  Mobilite et Espace Public 102, Urbanisme et Logements 97, Citoyennete 91,
+  Administration et Finances Publiques 65, Equipements Services Social 53,
+  Environnement 50, Culture 13, Commerces et Tourisme 10.
+
+  MAPPING TO THE FCI CELLS (open-data availability is itself the governance
+  indicator, per the FCI framing):
+  - Governance city: this catalogue, plus the finance theme and the procurement
+    register (see paris-marches-publics).
+  - Economic city: the finance theme; see paris-budget-et-comptes-administratifs.
+  - Environmental city: Environnement (50).
+  - Social city: Citoyennete (91) and Equipements Services Social (53).
+  Region-scale cells are NOT served by this portal - Paris's region rung is
+  Ile-de-France (code 11), a different publisher.
+
+  Machine-readable catalogue: OpenDataSoft Explore API v2.1 at the url above;
+  /catalog/facets exposes licence and theme facets without paging.
+
+  Admin identifier: Paris is INSEE 75056, simultaneously commune and departement
+  75, inside Metropole du Grand Paris (SIREN 200054781) and region Ile-de-France
+  (11). Datasets are labelled "Ville-departement" where both tiers are mixed.

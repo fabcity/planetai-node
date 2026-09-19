@@ -1,0 +1,21 @@
+name: iNaturalist
+url: https://www.inaturalist.org/
+description: |
+  Community species observation platform. ~200M+ research-grade
+  observations globally with photo verification by community
+  identifiers. Used as the de facto biodiversity citizen-science layer.
+pillar: environmental
+scale: community
+status: live
+license: CC-BY-NC (default per-observation; varies by uploader)
+api: https://api.inaturalist.org/v1
+pilot_relevance: [global]
+tags: [biodiversity, citizen-science, species-observation]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Wired in PLANETAI observatory. Note: per-observation licenses vary;
+  ~50% of records are CC-BY-NC, ~25% CC0, rest restricted. Use the
+  /observations endpoint with `licensed=true` to filter to redistributable
+  records.

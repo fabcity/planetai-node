@@ -1,0 +1,29 @@
+name: WHO Global Health Observatory (GHO) OData API
+url: https://ghoapi.azureedge.net/api/WHOSIS_000001
+description: |
+  WHO's official global health statistics service exposed as an open OData
+  API. Indicator WHOSIS_000001 carries life expectancy at birth by
+  country, year and sex with confidence intervals; hundreds of other
+  indicators share the interface.
+pillar: social
+scale: planet
+status: live
+license: Not retrievable from the API endpoint — WHO GHO is generally CC-BY-NC-SA-3.0-IGO but this is UNVERIFIED
+api: https://ghoapi.azureedge.net/api
+pilot_relevance: [global]
+tags: [who, gho, life-expectancy, health, odata, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call returning OData JSON. Spatial codes
+  include ISO3 countries, WHO regions (EUR, AFR, AMR, WPR, EMR, SEAR),
+  GLOBAL, and World Bank income groups. Example verified: France female
+  life expectancy 2007 = 84.058 with a 83.999-84.117 interval. No key
+  required. IMPORTANT CURRENCY CAVEAT: the life expectancy series
+  retrieved runs 2000-2021 only, which is a four-year lag for an annually
+  refreshed index. UNDP HDR carries life expectancy through 2023 and is
+  the better source for currency; use GHO where you need sex
+  disaggregation and confidence intervals. SLICING: country, WHO region
+  and global aggregates only, no sub-national. LICENSE ACTION: flag as
+  unconfirmed rather than asserting the usual IGO terms.

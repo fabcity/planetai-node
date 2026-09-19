@@ -1,0 +1,24 @@
+name: Open-Meteo Air Quality API (Copernicus CAMS)
+url: https://open-meteo.com/en/docs/air-quality-api
+description: |
+  Key-free hourly air-quality forecasts and 92 days of history from the
+  Copernicus CAMS global (0.4 deg) and European (0.1 deg) models: PM2.5,
+  PM10, O3, NO2, SO2, CO, dust, aerosol optical depth, UV index, pollen (EU).
+pillar: environmental
+scale: planet
+status: live
+license: CC-BY-4.0 (Open-Meteo) with mandatory attribution to CAMS / Copernicus as data provider
+api: https://air-quality-api.open-meteo.com/v1/air-quality
+pilot_relevance: [global]
+tags: [air-quality, pm25, cams, copernicus, model, forecast, reanalysis]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Model output, not measurement: at a node this is the reference row, never
+  `live`. Free for non-commercial use; commercial use needs an Open-Meteo
+  subscription. PLANETAI: `app/sources.py::openmeteo_air()` samples it hourly
+  at the node's coordinates as sensor `cams-point` (kind=model, scale=planet)
+  and `app/bootstrap.py::cams_history()` pulls the 92-day history at first
+  start. Where no public sensor is within reach, the indoor/outdoor rule
+  compares against this and names it in the alert.

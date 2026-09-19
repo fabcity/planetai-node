@@ -1,0 +1,40 @@
+name: Data.overheid.nl
+url: https://data.overheid.nl/
+description: |
+  The Netherlands' national open data register, run by KOOP. CKAN-backed
+  DCAT catalogue indexing datasets from ministries, provinces, water boards
+  and municipalities, including ones with no portal of their own.
+pillar: governance
+scale: region
+status: live
+license: CC0-1.0
+api: null
+pilot_relevance: []
+tags: [open-data, netherlands, ckan, national-portal, dcat]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10).
+
+  LICENCE, verbatim from the portal's own API documentation page: "All
+  information on data.overheid.nl can be reused under the CC-0 license."
+  That covers the CATALOGUE METADATA. Individual datasets carry their own
+  licences and the register prints them per record - CC-0 (1.0) for Gemeente
+  Amsterdam, CC-BY (4.0) for the RIVM air quality series. Do not read the
+  portal licence onto the data it indexes.
+
+  THE API FIELD IS NULL BY ROBOTS. The documented CKAN base is
+  https://data.overheid.nl/data/api/3/ and it works, but robots.txt disallows
+  /data/ outright - which also covers the /data/dataset/* record pages. Human-
+  readable records live at /dataset/<slug> and /en/dataset/<slug>, which are
+  allowed, and that is where this harvest read licences. Same treatment as
+  Analyze Boston: an API that exists but that a well-behaved client may not
+  call is recorded as null, with the path written down here.
+
+  WHY THIS MATTERS FOR SMALL MEMBERS: Velsen, a Fab City member of about
+  68,000 people, publishes no portal of its own - its own open-data page says
+  the municipality does not duplicate what other channels already carry. Its
+  datasets surface here and on ckan.dataplatform.nl. For federating small
+  localities the national register is the primary, not the fallback.

@@ -1,0 +1,46 @@
+name: data.gv.at - Stadt Linz
+url: https://data.linz.gv.at/
+description: |
+  Linz publishes its open data as a publishing body on data.gv.at, Austria's
+  national open government data portal, rather than on a portal of its own:
+  823 datasets covering mobility, statistics, planning, tourism and procurement.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [open-data-portal, transparency, austria, procurement]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8). data.linz.gv.at
+  resolves to the data.gv.at catalogue pre-filtered to "Veroeffentlichende
+  Stelle: Stadt Linz", which reported 823 datasets that day. The portal as a
+  whole reported 73437 datasets, 835 applications and 2400 publishing bodies.
+
+  NO WORKING MACHINE-READABLE CATALOGUE ENDPOINT WAS FOUND. The historic CKAN
+  path /katalog/api/3/action/package_search now 404s, as does the locale-prefixed
+  variant and individual /katalog/dataset/{slug} URLs still being returned by
+  search engines. The portal has moved to the "data.cockpit" platform and the
+  querystring filters on /suche/ were ignored in testing. This is a regression
+  for federation: Austria's national catalogue is currently browsable but not
+  reliably harvestable by the route most clients expect. Flagged for a revisit
+  rather than guessed at - no endpoint has been recorded here by analogy.
+
+  Licence is the Cooperation OGD Oesterreich standard CC BY 4.0, in force since
+  2019-03-01 (before that CC BY 3.0 AT), read from data.gv.at's own Cooperation
+  OGD Austria page on 2026-09-10. Individual datasets may still carry the older
+  licence or a non-standard one; check per dataset.
+
+  Formats on the Linz records are mixed and honest about it - CSV and GeoJSON on
+  the sensor and mobility series (Radverkehrszaehlstellen Linz, hourly counts
+  2024-2025), but PDF for statistical tables such as the tourism origin series,
+  and a literal "UNKNOWN" format on several. Procurement notices for Linz appear
+  under the city's own companies (e.g. Seniorenzentren Linz GmbH) as separate
+  publishing bodies, so a complete Linz procurement view is a union of
+  publishers, not one.
+
+  Admin chain: Linz GKZ 40101, Statutarstadt and its own politischer Bezirk
+  (401), Land Oberoesterreich AT-4 / NUTS AT31, Austria AT.

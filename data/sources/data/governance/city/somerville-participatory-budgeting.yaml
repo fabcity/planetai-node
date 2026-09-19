@@ -1,0 +1,38 @@
+name: Somerville - Participatory budgeting
+url: https://data.somervillema.gov/d/brrj-v9a4
+description: |
+  Full record of the City of Somerville participatory budgeting cycle:
+  resident-submitted ideas with coordinates, voting results, and voter and
+  submitter demographics.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Open Database License (ODbL)
+api: https://data.somervillema.gov/resource/brrj-v9a4.json
+pilot_relevance: [boston]
+tags: [participatory-budgeting, participation, transparency, geospatial, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+  Four datasets, all ODbL: submissions /d/brrj-v9a4 (data_updated_at
+  2023-12-06), voting results /d/2tt6-zua8, voter demographics /d/pdjd-r9yq,
+  submission demographics /d/52dh-yc6q.
+
+  THE MOST COMPLETE PARTICIPATION RECORD IN THE LIST. Not just the outcome -
+  the submissions, who submitted, who voted, and where each idea was located.
+  Submission columns: latitude, longitude, idea, citywide, description,
+  category, theme, year, support_count, comment_count, near_address.
+
+  COORDINATES ON EVERY IDEA. With the demographics files alongside, this
+  supports asking whether participation is spatially and demographically even -
+  a governance-quality question, not just a governance-existence one. Cambridge
+  publishes PB too but without geography, so it cannot answer that.
+
+  ONE CYCLE ONLY: the 2023 inaugural round, one million dollars. Not yet a
+  time series, and not refreshed since Dec 2023. Status is live because the
+  data is current for the cycle it describes; re-check whether a second cycle
+  has been published before treating it as ongoing.
+
+  ODbL share-alike applies - see governance/city/data-somerville.

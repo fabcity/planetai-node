@@ -1,0 +1,31 @@
+name: Eurostat — Environmental Goods and Services Sector (EGSS)
+url: https://ec.europa.eu/eurostat/databrowser/view/env_ac_egss1/default/table?lang=en
+description: |
+  Eurostat's official green-jobs account: employment in full-time
+  equivalents, value added and output for the environmental goods and
+  services sector, split by NACE industry and CEPA/CReMA environmental
+  purpose, for EU and EFTA countries.
+pillar: economic
+scale: bioregion
+status: live
+license: Eurostat re-use policy (Commission Decision 2011/833/EU) — free re-use with attribution, equivalent to CC-BY-4.0
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/env_ac_egss1
+pilot_relevance: [barcelona, global]
+tags: [eurostat, egss, green-jobs, environmental-economy, europe-only, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call returning real values: Spain 2022,
+  nace_r2=TOTAL, ceparema=TOTAL, ty=TOT_EGSS gave 547,585 FTE; nace_r2=C
+  (Manufacturing), ceparema=TOT_CEPA gave 267,586 FTE. Dataset 'Employment
+  in the environmental goods and services sector (2000-2023)', 920,908
+  observations, updated 2025-06-05. The databrowser web page is a JS shell
+  and returns nothing - the API is the only usable path. GOTCHA: wrong
+  dimension codes return {"value":{}} silently with HTTP 200 rather than
+  an error. ceparema=TOTAL_CEPA_CREMA and na_item=EMP both returned empty.
+  Use ceparema=TOTAL, ty=TOT_EGSS, unit=FTE. SLICING: geo= country level,
+  EU27 plus EFTA and candidates, no NUTS2 in this table. EU-ONLY - no
+  coverage for the Boston, Santiago or Bali pilots. Also the best
+  available proxy for 'regenerative business growth' via EGSS output and
+  value added as a share of the economy.

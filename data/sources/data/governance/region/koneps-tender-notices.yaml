@@ -1,0 +1,35 @@
+name: KONEPS Tender Notice Information Service (나라장터 입찰공고정보서비스)
+url: https://www.data.go.kr/data/15129394/openapi.do
+description: Tender announcements across goods, services, construction and foreign procurement
+  in Korea, with base amounts, licence restrictions and eligible-region information. Regional
+  filtering is possible via 참가가능지역정보.
+pillar: governance
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use); 무료
+api: null
+pilot_relevance: []
+tags:
+- procurement
+- tenders
+- koneps
+- korea
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Provider 조달청.
+
+  JSON + XML, free.
+
+
+  Operations are SPLIT BY BUSINESS CATEGORY (goods / services / construction /
+
+  foreign) and calling the wrong operation for a business type returns nothing
+
+  useful. Scope stated as 전국; no Seoul-specific parameter is documented, though
+
+  참가가능지역정보 makes regional filtering possible in principle.
+
+
+  Endpoint base URL is not printed on the catalogue page.'

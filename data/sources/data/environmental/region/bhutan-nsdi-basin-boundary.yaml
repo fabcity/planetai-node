@@ -1,0 +1,57 @@
+name: Bhutan River Basin Boundaries (NSDI)
+url: https://nsdi.systems.gov.bt/portal/sharing/rest/content/items/547f76f1a5d54c5a9ddd6536baad7dd2?f=json
+description: River basin boundary polygons for Bhutan published by the Department of Water
+  on the national spatial data infrastructure. Provides the hydrological regional frame for
+  water-resource indicators.
+pillar: environmental
+scale: region
+status: live
+license: 'Open (Geo-Information Policy 2018 §6.3.1 open tier: "Open data shall be openly and
+  freely accessible")'
+api: null
+pilot_relevance: []
+tags:
+- water
+- basin
+- hydrology
+- arcgis
+- nsdi
+- bhutan
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Item id
+
+  547f76f1a5d54c5a9ddd6536baad7dd2, owner Department_of_Water, licenseInfo
+
+  verbatim "Open".
+
+
+  The item JSON was fetched; the underlying FeatureServer URL was NOT individually
+
+  tested, so the api field is null rather than guessed. Resolve it from the item
+
+  JSON before ingesting.
+
+
+  LICENCE CAVEAT, applies to every Bhutan NSDI entry in this list: the licenceInfo
+
+  field reads the literal word "Open", which maps to the Geo-Information Policy
+
+  2018 §6.3.1 open-access tier, verified at
+
+  https://web.nlcs.gov.bt/wp-content/uploads/2023/12/GI_Policy.pdf. That policy
+
+  grants free and open ACCESSIBILITY but §8.2.3 vests copyright in the producing
+
+  agency and grants no explicit redistribution or commercial-reuse right. This is
+
+  weaker than CC-BY and should be treated as pending clarification from NLCS.
+
+
+  WARNING: the "open" TAG is unreliable. Dzongkhag Boundary and Gewog Boundary are
+
+  both tagged open but their licenceInfo ends "(Common)" - a priced tier for
+
+  corporate users. Filter on licenseInfo, never on tags.'

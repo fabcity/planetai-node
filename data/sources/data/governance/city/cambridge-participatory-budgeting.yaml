@@ -1,0 +1,34 @@
+name: Cambridge - Participatory budgeting
+url: https://data.cambridgema.gov/d/54vd-wdqj
+description: |
+  Resident-submitted ideas and final ballot projects from the City of
+  Cambridge participatory budgeting cycles, published as open datasets on the
+  city Socrata portal.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: https://data.cambridgema.gov/resource/54vd-wdqj.json
+pilot_relevance: [boston]
+tags: [participatory-budgeting, participation, transparency, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+  Two datasets: ideas submitted by community members /d/54vd-wdqj and final
+  ballot projects /d/uhwd-9y6q. Both PDDL.
+
+  THIS IS THE CELL THE FCI KEEPS FAILING TO FILL. Wave 1 recorded
+  "checked-empty" for Boston's community-scale budget rung - no
+  neighbourhood or tract finance, no participatory-budgeting dataset. Cambridge
+  and Somerville both publish theirs. Two US localities inside the same metro
+  area, opposite answers on the same indicator.
+
+  It is a demand-side signal, not an allocation ledger: what residents asked
+  for, and what made the ballot. Treat it as participation evidence for the
+  governance pillar, not as a community budget line. The money itself is still
+  only visible at city scale.
+
+  Pair with governance/city/somerville-participatory-budgeting - Somerville's
+  set carries per-idea coordinates, Cambridge's does not.

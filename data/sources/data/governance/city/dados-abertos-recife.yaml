@@ -1,0 +1,46 @@
+name: Dados Abertos Recife
+url: http://dados.recife.pe.gov.br/dataset
+description: |
+  Recife's municipal open data portal, CKAN 2.11.5. 222 datasets, every one of
+  them under ODbL, weighted towards health, mobility and education, published by
+  named municipal secretariats.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Open Database License (ODbL)
+api: null
+pilot_relevance: []
+tags: [open-data, recife, brazil, ckan, municipal]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10 in the FCI Regime 1 harvest (wave 5, Brazil).
+
+  LICENCE is the cleanest of any portal in this wave: the facet breakdown shows a
+  single value, "Open Data Commons Open Database License (ODbL)", on 222 of 222
+  datasets. No unspecified remainder, unlike Belo Horizonte or Boston.
+
+  API FIELD IS NULL DELIBERATELY. CKAN 2.11.5 is running and the about page links
+  the action API docs, but /api/3/action/* on this host is disallowed by
+  robots.txt, so it is not available to a well-behaved client. Same call as the
+  Boston entry: catalogue enumeration has to come from rendered HTML. Ignoring
+  robots is a deliberate choice, not a default.
+
+  PUBLISHERS by volume: Secretaria de Saude 62, CTTU (transito e transporte) 30,
+  Secretaria de Educacao 26, Secretaria de Meio Ambiente e Sustentabilidade 12,
+  SEDUL 9, Secretaria de Infraestrutura 9, Secretaria de Financas 8, EMLURB
+  (limpeza urbana) 7, Administracao e Gestao de Pessoas 6, Seguranca 6.
+  GROUPS: saude 65, urbanismo 25, mobilidade 23, governo e politica 15, covid 11,
+  educacao 11, financas 11, turismo 10.
+
+  BUDGET GAP, recorded as a finding rather than a blank. The finance holdings are
+  IPTU and ITBI - property and transfer taxes, which are revenue instruments, not
+  a budget. No orcamento / despesas / receitas dataset surfaced in the catalogue
+  facets, and no licitacoes or contratos register either. Recife's budget rung is
+  therefore served by SICONFI (id_ente 2611606, 340 items on RREO Anexo 02, 2024),
+  not by its own portal.
+
+  EMLURB's 7 datasets are the most likely home for waste tonnage and are worth a
+  targeted second visit for the Environmental|City cell.

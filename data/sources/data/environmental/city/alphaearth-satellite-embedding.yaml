@@ -1,0 +1,25 @@
+name: AlphaEarth Foundations - Satellite Embedding V1 (Google DeepMind)
+url: https://developers.google.com/earth-engine/datasets/catalog/GOOGLE_SATELLITE_EMBEDDING_V1_ANNUAL
+description: |
+  Annual 10 m global embeddings (64 dimensions per pixel) learned from
+  Sentinel-1/2, Landsat, GEDI, ERA5 and more, 2017-2024. A general-purpose
+  land representation: change, similarity and classification without labels.
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0 (attribution required)
+api: gs://alphaearth_foundations
+pilot_relevance: [global]
+tags: [land, satellite, embeddings, earth-observation, remote-sensing, foundation-model, google-deepmind]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Available in Earth Engine (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL) and as
+  GeoTIFF tiles in the public GCS bucket gs://alphaearth_foundations; the
+  bucket moved to provider-pays in July 2026, so egress is billed to the
+  requester's project. PLANETAI: `packs/earth` fetches a square of
+  EARTH_RADIUS_M around the node (5 km = 10 km square, ~64 MB per year) and
+  tracks year-on-year change; `packs/earth-engine` is the EE variant.
+  Classified at city scale: 10 m pixels are far finer than a bioregion needs
+  and it is the land layer a municipality or a lab can actually use.

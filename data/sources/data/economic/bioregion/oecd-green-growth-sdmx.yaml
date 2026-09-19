@@ -1,0 +1,30 @@
+name: OECD Green Growth Indicators (SDMX)
+url: https://sdmx.oecd.org/public/rest/dataflow/OECD.ENV.EPI/all/latest
+description: |
+  OECD's green growth indicator set delivered over a public SDMX REST API
+  with no key. Carries green jobs, environmental goods and services trade,
+  environmental taxation, fossil-fuel support and resource productivity
+  for OECD and partner economies.
+pillar: economic
+scale: bioregion
+status: live
+license: OECD terms — CC-BY-4.0 for most OECD statistical data, not restated on the SDMX endpoint; verify per dataflow
+api: https://sdmx.oecd.org/public/rest
+pilot_relevance: [global]
+tags: [oecd, sdmx, green-growth, green-jobs, environmental-taxes, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call returning JSON observations for
+  Spain; dimension metadata exposes 157 measures including green jobs,
+  environmental goods trade, environmental taxes and subsidies, material
+  consumption, energy and GHG productivity, environmental R&D budgets and
+  protected areas. Dataflow discovery verified: 51 dataflows under
+  OECD.ENV.EPI. Documentation references an August 2026 release. Coverage
+  roughly 1990-2023 depending on measure. IMPORTANT: the older
+  www.oecd.org/en/data/datasets/green-growth-indicators*.html landing
+  pages 404'd on two spellings - use the SDMX endpoint, never the web
+  page. SLICING: SDMX key, first position is REF_AREA ISO3
+  (ESP.............. returns all measures for Spain). Country resolution
+  only.

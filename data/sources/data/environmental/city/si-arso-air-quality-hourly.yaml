@@ -1,0 +1,50 @@
+name: ARSO hourly air quality measurements (Slovenia)
+url: http://www.arso.gov.si/xml/zrak/ones_zrak_urni_podatki_zadnji.xml
+description: |
+  Hourly XML feed from Slovenia's national air quality network - 24
+  stations, three of them in Ljubljana, reporting PM10, PM2.5, NO2, O3,
+  SO2, benzene, CO and NOx with coordinates and elevation.
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0
+api: http://www.arso.gov.si/xml/zrak/ones_zrak_urni_podatki_zadnji.xml
+pilot_relevance: []
+tags: [air-quality, pm25, arso, ljubljana, slovenia, hourly, xml]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Ljubljana).
+
+  VERIFIED BY DIRECT FETCH. Root element arsopodatki, repeating postaja
+  elements each carrying merilno_mesto (station name), datum_od /
+  datum_do, D96 and WGS84 coordinates, elevation, and pollutant children
+  co, o3, no2, pm10, pm2.5, benzen, nox, so2. 24 stations nationally.
+  The three Ljubljana stations are LJ Bezigrad, LJ Celovska, LJ Vic.
+  PM2.5 is present on 20 of the 24 stations - absent on MB Vrbanski, CE
+  Ljubljanska, MS Cankarjeva and Krvavec, so do not assume full PM2.5
+  coverage of the network.
+
+  THREE TRAPS. (1) THE ELEMENT NAME IS <pm2.5> - A DOT IN THE TAG NAME.
+  That breaks naive XPath and several XML-to-dict libraries. This is the
+  single most likely thing to make a connector fail on day one.
+  (2) THE FEED IS "ZADNJI" - LAST HOURS ONLY. There is no history in it.
+  A connector must poll and accumulate or the series is lost. (3)
+  STATION NAMES ARE THE JOIN KEY, NOT CODES. Free-text names mean
+  entity-resolution work if you ever join to another source.
+
+  LICENCE IS PUBLISHER-LEVEL INFERENCE, FLAGGED. ARSO's OPSI publisher
+  page shows 75 datasets, of which 44 carry "Priznanje avtorstva (CC BY
+  4.0)" and 31 carry other terms which were not retrieved verbatim. The
+  air-quality dataset "Podatki o kakovosti zunanjega zraka in padavin"
+  is listed there but WHICH of the two regimes applies to THIS FEED was
+  not confirmed. Re-verify before redistribution. ARSO's format
+  distribution is poor by openness rating - 31 datasets at zero stars,
+  41 at one star - so do not read the CC BY share as a sign of a
+  well-run open data estate.
+
+  The feed fetched on 2026-09-11 carried a 2026-09-04 timestamp, i.e.
+  about a week stale at read time. Status remains live, but a connector
+  should check freshness rather than trusting the "urni" label.

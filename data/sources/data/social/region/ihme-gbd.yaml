@@ -1,0 +1,22 @@
+name: IHME Global Burden of Disease
+url: https://ghdx.healthdata.org/gbd-2021
+description: |
+  Mortality + morbidity by cause × geography × age × year for ~370
+  diseases and injuries across ~200 countries. The de facto global
+  health-burden time series.
+pillar: social
+scale: region
+status: live
+license: custom open (registration required)
+api: https://ghdx.healthdata.org/gbd-results-tool
+pilot_relevance: [global]
+tags: [health, mortality, morbidity, ihme, gbd]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Coverage uneven below national level — sub-national for some
+  countries, national-only for most. For Bali pilot, Indonesia
+  national-level data is available; sub-national needs fallback
+  to BPS health module. WHO Open Data is the lighter-weight
+  alternative if registration friction matters.

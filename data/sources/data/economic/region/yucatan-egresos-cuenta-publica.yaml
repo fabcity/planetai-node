@@ -1,0 +1,51 @@
+name: Yucatan Datos Abiertos - Egresos y Cuenta Publica del Estado
+url: https://transparencia.yucatan.gob.mx/datos_abiertos.php
+description: |
+  The State of Yucatan's expenditure data as open CSV: annual Cuenta Publica
+  2021-2024 and quarterly execution reports 2021-2025, each shipped with a
+  data dictionary. Published by the state transparency office.
+pillar: economic
+scale: region
+status: live
+license: Datos digitales puestos a disposicion de cualquier persona para ser usados, reutilizados y redistribuidos libremente
+api: null
+pilot_relevance: []
+tags: [budget, public-finance, yucatan, mexico, budget-execution, cuenta-publica, state-government]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10, FCI Regime 1 harvest (wave 6, Mexico). Budget|Region for
+  the Yucatan locality, and the only wave-6 rung where a subnational
+  government publishes its own budget as machine-readable open data rather
+  than as PDF.
+
+  VERIFIED at https://transparencia.yucatan.gob.mx/datos_abiertos.php. Two
+  series, both CSV: Cuenta Publica (annual, 2021-2024) and Egresos por
+  trimestre (quarterly, 2021-2025). Data dictionaries for both, as XLSX and
+  TXT. Files link directly off the state server; there is no catalogue index
+  and no API, so a connector has to scrape this page for the file list.
+
+  PLANNED VS EXECUTED: the quarterly series is execution and the Cuenta
+  Publica is closed-year accounts. The APPROVED budget (Presupuesto de
+  Egresos, the planned side) is not published here as CSV - that gap is a
+  finding, not an oversight of this harvest.
+
+  Fiscal year = calendar year. MXN, nominal. Classification is Mexico's
+  CONAC-harmonised chart of accounts; which of the CONAC classifiers
+  (administrativa / funcional / programatica / objeto del gasto) each file
+  carries was NOT established from the index page and needs one file opened
+  to settle. No COFOG crosswalk found.
+
+  ADMIN IDENTIFIER: the files are state-level, so the joining key is the INEGI
+  clave de entidad 31 (ISO 3166-2 MX-YUC). Municipal disaggregation within
+  Yucatan is not offered here; use INEGI EFIPEM for the municipal rung.
+
+  LICENCE: the page carries no formal licence instrument, only the open-data
+  declaration quoted verbatim in the `license` field above - "Datos digitales
+  puestos a disposicion cualquier persona para que puedan ser usados,
+  reutilizados y redistribuidos libremente". That is an unambiguous permission
+  to use, reuse and redistribute, which is why this entry passes CONTRIBUTING
+  criterion 1, but it is a declaration rather than a named licence and carries
+  no attribution or share-alike terms. Re-check on the next pass.

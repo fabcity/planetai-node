@@ -1,0 +1,43 @@
+name: Presupuesto Abierto Chile — Pagos municipales
+url: https://presupuestoabierto.gob.cl/municipalities
+description: |
+  Transaction-level payments made by every Chilean municipality, keyed on the
+  official comuna code (CUT). Run by DIPRES (Dirección de Presupuestos,
+  Ministerio de Hacienda). Served as filterable CSV over a public REST API.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-SA-4.0
+api: https://api.presupuestoabierto.gob.cl/api/v1/data/municipios.csv
+pilot_relevance: [santiago]
+tags: [public-finance, municipal-budget, expenditure, chile, comuna]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-10 against Renca (comuna 13128). A query with
+  where={"region":"13","comuna":"13128","periodo":2025} returns real rows.
+  Header: periodo, region, nombre_region, provincia, nombre_provincia, comuna,
+  nombre_comuna, nombre_municipalidad, municipalidad (RUT), cod_tipo_doc,
+  tipo_documento, fecha_documento, devengo, devengo_original, beneficiario,
+  nombre_beneficiario, rubro_economico, subrubro_economico, actividad_economica,
+  deuda_flotante, mini_glosa_tramo, glosa_tamano_segun_ventas,
+  glosa_tramo_completa.
+
+  FEDERATION VALUE: the file carries region / provincia / comuna codes inline,
+  so rows join to the Chilean CUT without a lookup table. This is the most
+  directly federatable municipal fiscal source found for Chile so far.
+
+  WHAT IT IS NOT: this is accrued payments (devengo) by beneficiary and
+  economic rubro — NOT the municipal budget law, and NOT execution by
+  programme. Planned-vs-executed comparison still needs SINIM, whose licence
+  is ambiguous (CC-BY 2.0 CL in the footer, non-commercial clause in the terms).
+
+  LICENCE (verbatim, from /about-data): "Los datos transaccionales ... están
+  disponibles bajo licencia Creative Commons Atribución-CompartirIgual 4.0
+  Internacional (CC BY-SA 4.0)." Attribution format requested: "Dirección de
+  Presupuestos (2019). Presupuesto Abierto. Santiago de Chile".
+
+  Cadence: monthly, published the following month; rows may be retroactively
+  adjusted. Currency CLP nominal. The site is a JS app — the root URL renders
+  a loading shell to crawlers; use the api. subdomain for anything programmatic.

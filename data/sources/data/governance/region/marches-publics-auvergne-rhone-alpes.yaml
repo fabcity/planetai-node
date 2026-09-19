@@ -1,0 +1,38 @@
+name: Région Auvergne-Rhône-Alpes — données essentielles de la commande publique
+url: https://www.data.gouv.fr/organizations/region-auvergne-rhone-alpes
+description: |
+  Auvergne-Rhône-Alpes' statutory public-procurement award register, published continuously
+  as one small JSON record per notified contract following the Etalab commande-publique
+  schema.
+pillar: governance
+scale: region
+status: live
+license: Licence Ouverte
+api: https://www.data.gouv.fr/api/1/datasets/?organization=60784425bed18cfaefe5e653
+pilot_relevance: []
+tags: [procurement, transparency, france, auvergne-rhone-alpes, region, commande-publique]
+added: 2026-09-09
+updated: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09: organisation API and the -1956 dataset page opened, HTTP 200, most
+  recent record timestamped the same day. Openly licensed (fr-lo / Licence Ouverte),
+  JSON, schema at github.com/etalab/format-commande-publique, statutory basis the décret of
+  14 April 2017 as amended 27 July 2018.
+  THE FINDING IS THE SHAPE, NOT THE EXISTENCE. 1,957 of this organisation's 1,973 data.gouv.fr
+  datasets are procurement award notices — 99.2%. Each is a separate dataset record carrying a
+  single ~1.2 KB JSON file. So the three questions this list keeps separate give three
+  different answers here: data exists YES; openly licensed YES; machine-readable per file yes,
+  but as a REGISTER no — reconstructing the award series means ~1,957 catalogue calls and a
+  merge, with no bulk export offered. Anyone wiring this needs to budget for that.
+  Cadence is effectively continuous: multiple new records per working day.
+  THE CONTRAST WORTH KEEPING: Auvergne-Rhône-Alpes publishes procurement and no budget
+  (a "budget" query against the organisation returns 0). Neighbouring Occitanie publishes
+  budgets and comptes administratifs and no procurement register (a "marchés publics" query
+  returns 0). Two adjacent French regions, each publishing precisely what the other withholds.
+  Neither is a transparency failure on its own; together they are the argument for federating
+  rather than surveying.
+  NOT CHECKED: whether award value, CPV code and titulaire SIRET are populated per record,
+  which is what decides whether local-sourcing share is computable. Open the schema against
+  live records before anyone builds on it.

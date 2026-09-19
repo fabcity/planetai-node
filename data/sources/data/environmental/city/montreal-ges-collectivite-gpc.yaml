@@ -1,0 +1,46 @@
+name: Emissions de GES de la collectivite montrealaise (GPC)
+url: https://donnees.montreal.ca/dataset/emissions-ges-collectivite-montrealaise
+description: |
+  Community-scale greenhouse gas inventory for Montreal built on the GPC
+  protocol, carrying GPC reference numbers and Scope 1/2/3 across
+  stationary energy, transport, waste, IPPU and AFOLU.
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [ghg-inventory, gpc, scope-1-2-3, climate, montreal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal).
+
+  THE BEST GHG SOURCE IN THIS WAVE AND POSSIBLY THE HARVEST. Verified
+  directly: the data dictionary includes a "GPC ref No." field and the
+  methodology describes GPC sectoring and scope classification. Five GPC
+  sectors - I Sources fixes/Stationary, II Transport, III Matieres
+  residuelles/Waste, IV PIUP/IPPU, V AFAT/AFOLU. Reported annually
+  through CDP. Baseline 1990; targets -30% by 2020, -55% by 2030.
+
+  Compare with the alternatives found in the same wave: Finland's SYKE
+  uses the national ALas/Hinku method with no GPC mapping, and the UK's
+  DESNZ series is territorial with aviation, shipping and F-gases
+  excluded. Montreal is the one that arrives already in the schema FCI
+  wants. Where a GPC-versus-national-method comparison has to be made,
+  use Montreal as the reference implementation.
+
+  TRAPS. (1) TEN CSVs - one per sector per language, FR and EN pairs
+  with DIFFERENT COLUMN HEADERS. A connector must union five files and
+  pick a language, not glob the directory. (2) Inventory years are
+  IRREGULAR - Montreal has historically published every 2-3 years
+  despite an "annual" cadence on the page; the actual year list was not
+  confirmed. (3) Baseline 1990 restatements are common in GPC
+  inventories; do not assume a fixed back-series.
+
+  Files last modified roughly two years before this harvest, so the
+  cadence caveat is not theoretical.
+
+  Same portal licence inference as montreal-budget-fonctionnement.

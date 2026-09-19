@@ -1,0 +1,33 @@
+name: LandMark — Global Platform of Indigenous and Community Lands
+url: https://www.landmarkmap.org/data-methods/access-data
+description: |
+  The only global georeferenced platform mapping Indigenous and community
+  lands, run by a WRI-originated steering group. Carries community-level
+  polygons plus national tenure-security scoring against ten legal
+  indicators.
+pillar: social
+scale: bioregion
+status: live
+license: CC-BY-SA-4.0 (plus assent to LandMark Terms of Service)
+api: null
+pilot_relevance: [global]
+tags: [indigenous-lands, land-tenure, indigenous-rights, polygon, subnational, registration-required]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Six datasets, most dated June 2026: Indigenous
+  Peoples' and Local Community Lands and Territories; Indicative Areas of
+  Indigenous and Community Land Rights; Percent of Country Held by IPs and
+  LCs; Indicators of Tenure Security in National Law; Indigenous
+  Population per Country; CBD Headline Indicator 22.1. Downloads are ZIP
+  packages behind a registration form. No API, WMS or web service is
+  documented. Community layers update roughly monthly, national layers
+  every 4-6 months. THIS IS THE ONLY GENUINELY OPEN-LICENSED SOURCE IN THE
+  SOCIAL BIOREGION ROW and the only one that slices to true sub-country
+  polygons: intersect the bioregion boundary with the community-lands
+  layer and compute area held or acknowledged. CRITICAL READING CAVEAT:
+  coverage is about 30% of global land area against an estimated 50%+
+  actually held by Indigenous Peoples and communities. A bioregion scoring
+  low may simply be unmapped. Absence of mapped land is not evidence of
+  absence of land rights and the index must say so.

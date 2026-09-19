@@ -1,0 +1,23 @@
+name: Asian KLEMS
+url: http://www.asiaklems.net/
+description: |
+  Sectoral productivity database for 12 Asian economies including
+  Indonesia. Capital, Labour, Energy, Materials, Services at the
+  industry level.
+pillar: economic
+scale: region
+status: live
+license: custom open
+api: null
+pilot_relevance: [bali]
+tags: [productivity, klems, sectoral, asia, indonesia]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Indonesia included since 2010. The single most relevant
+  productivity dataset for Bali Region-tier, since neither
+  Atlas of Economic Complexity (country-level only) nor
+  Metroverse (no Denpasar coverage) reaches the resolution
+  needed. Combined with Bali Satu Data this gives the Bali
+  pilot a coherent Region+City layer.

@@ -1,0 +1,46 @@
+name: open.bydata - Stadt Augsburg
+url: https://augsburg.bydata.de/
+description: |
+  Augsburg's open data, published as two sub-catalogues of open.bydata, the
+  Bavarian state open data portal: the city catalogue and the city statistics
+  office catalogue, together the largest municipal holding on that portal.
+pillar: governance
+scale: city
+status: live
+license: Declared per distribution in DCAT-AP.de; sampled distribution is CC0-1.0
+api: https://open.bydata.de/api/hub/search/search
+pilot_relevance: []
+tags: [open-data-portal, transparency, piveau, dcat-ap, germany]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8) against the portal's
+  own piveau API. Catalogue facet counts read that day: augsburg-subcatalog
+  ("Stadt Augsburg") 151 datasets and augsburg-statistik ("Stadt Augsburg,
+  Statistik") 238, summing to the super-catalogue "augsburg" at 389;
+  open_data_presence augsburg.bydata reads 394. Whole portal: 27253 datasets.
+
+  Software is piveau, not CKAN. Endpoints that work: /api/hub/search/search
+  for faceted search, /api/hub/repo/datasets/{id} for a dataset as JSON-LD, and
+  /api/hub/repo/distributions/{uuid} for a distribution. Two traps: the search
+  endpoint rejects the CKAN-style "limit" parameter with Bad Request on some
+  paths, and catalog / superCatalog passed as bare query parameters are ignored
+  rather than rejected, so a query that looks filtered may be portal-wide.
+  Check the returned count against the facet before trusting a filtered query.
+
+  LICENCE LIVES ON THE DISTRIBUTION, NOT THE DATASET. The dataset record carries
+  no dct:license; it is on each dcat:Distribution. The distribution sampled on
+  2026-09-10 (Schulen in Augsburg) declared dct:license
+  http://dcat-ap.de/def/licenses/cc-zero, i.e. CC0-1.0. Portal-wide licence
+  distribution was not enumerated in this pass - resolve per distribution before
+  redistributing.
+
+  BUDGET NOT FOUND ON THE PORTAL IN THIS PASS. Augsburg's own page states the
+  portal includes "Daten zu Finanzen und Haushalt", and the catalogue's featured
+  list names jahresergebnis-staedtischer-beteiligungen (annual results of
+  municipal shareholdings), but that id did not resolve at
+  /api/hub/repo/datasets/ and a search for Augsburg + Beteiligungen +
+  Jahresergebnis returned count 0. Note that "Haushalt" in German search hits
+  household statistics far more often than public budgets. For Augsburg's
+  municipal finance use the Regionaldatenbank at AGS 09761000.

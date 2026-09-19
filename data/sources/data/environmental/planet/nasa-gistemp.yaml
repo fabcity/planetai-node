@@ -1,0 +1,30 @@
+name: NASA GISTEMP v4 — surface temperature analysis
+url: https://data.giss.nasa.gov/gistemp/
+description: |
+  NASA GISS land-ocean surface temperature anomaly analysis. Global,
+  hemispheric and zonal CSV tables plus 2x2 degree gridded NetCDF and Zarr
+  anomaly fields relative to a 1951-1980 baseline.
+pillar: environmental
+scale: planet
+status: live
+license: No formal license — acknowledgement expected; credit NASA GISS/GISTEMP
+api: null
+pilot_relevance: [global]
+tags: [temperature-anomaly, climate, netcdf, zarr, gridded, nasa]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Updated around the 10th of every month, covering
+  1880-present. Verified file URLs: tabledata_v4/GLB.Ts+dSST.csv and
+  ZonAnn.Ts+dSST.csv; gridded gistemp1200_GHCNv4_ERSSTv5.nc.gz (2 degree,
+  1200 km smoothing) and gistemp250_GHCNv4.nc.gz (250 km); Zarr v3
+  directories under /pub/gistemp/. TWO SLICING PATHS: the CSV tables give
+  global, hemispheric and zonal bands only, with no bioregional path; the
+  gridded NetCDF/Zarr can be clipped to a bioregion polygon and area-
+  weighted. At 2 degrees (~220 km) a small bioregion falls inside one or
+  two cells, so the gridded route is good for a trend line and not for
+  intra-bioregion variation. Copernicus CDS
+  (cds.climate.copernicus.eu/api, token required, server-side bounding-box
+  subsetting) is the higher-resolution alternative if 2 degrees proves too
+  coarse.

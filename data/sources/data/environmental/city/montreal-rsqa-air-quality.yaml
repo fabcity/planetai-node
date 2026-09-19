@@ -1,0 +1,38 @@
+name: RSQA - Indice de la qualite de l'air, temps reel (Montreal)
+url: https://donnees.montreal.ca/dataset/rsqa-indice-qualite-air
+description: |
+  Hourly air quality index per monitoring station from Montreal's RSQA
+  network, covering SO2, CO, O3, NO2 and PM2.5. Published as a rolling
+  daily CSV, updated about ten minutes past each hour.
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [air-quality, pm25, monitoring-stations, real-time, montreal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal).
+  Publisher: Service de l'environnement et de la transition ecologique.
+  Resources showed "last updated 6 minutes ago" at fetch time.
+
+  THE PUBLISHED VALUE IS AN INDEX, NOT A CONCENTRATION. IQA is
+  (measurement / reference value) x 50, banded Bon 1-25, Acceptable
+  26-50, Mauvais 51+. If the FCI wants PM2.5 in ug/m3 you must invert
+  the formula using the reference values, or go to the separate
+  rsqa-bilans-annuels-qualite-air dataset. Do not plot IQA as if it were
+  a concentration.
+
+  THREE MORE TRAPS. (1) Station coordinates and sector live in a
+  SEPARATE dataset, donnees.montreal.ca/dataset/rsqa-liste-des-stations
+  - you must join. (2) Two near-identical CSVs are offered, "IQA
+  detaille par station" and "IQA par station"; pick deliberately.
+  (3) The file is a DAILY SNAPSHOT THAT ROLLS. There is no API and no
+  history in the resource - a connector must poll and accumulate or it
+  loses the series permanently.
+
+  Same portal licence inference as montreal-budget-fonctionnement.

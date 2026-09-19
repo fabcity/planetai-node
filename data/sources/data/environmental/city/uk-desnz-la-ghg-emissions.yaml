@@ -1,0 +1,52 @@
+name: UK local authority and regional greenhouse gas emissions statistics
+url: https://www.gov.uk/government/statistics/uk-local-authority-and-regional-greenhouse-gas-emissions-statistics-2005-to-2024
+description: |
+  Annual territorial GHG emissions for every UK local authority and
+  region, 2005-2024, as an 82.6 MB CSV plus Excel tables. Excludes
+  aviation, shipping, military transport and fluorinated gases.
+pillar: environmental
+scale: city
+status: live
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [ghg, emissions, territorial, climate, csv, annual, desnz, uk]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+
+  ONE FILE SERVES CITY AND REGION. The release is titled "local
+  authority AND regional" and publishes both levels together, so the
+  Environmental|City and Environmental|Region cells are one ingest, not
+  two. Not duplicated as a separate region entry for that reason. A
+  useful property of the England data estate and worth checking for in
+  other countries.
+
+  THE EXCLUSION LIST IS THE WHOLE STORY FOR A PORT CITY. Verbatim from
+  the page: "All emissions included in the national inventory are
+  covered except those from aviation, shipping and military transport,
+  for which there is no obvious basis for allocation to local areas, and
+  emissions of fluorinated gases, for which suitable data are not
+  available to estimate these emissions at a local level." PLYMOUTH IS A
+  MAJOR NAVAL AND FERRY PORT. Its GHG figure from this source is
+  systematically incomplete in precisely the sector where Plymouth is
+  atypical, and comparing it to an inland city compares unlike things.
+  Surface the exclusion in the indicator; do not bury it.
+
+  SECOND FRAMING PROBLEM: these are TERRITORIAL / PRODUCTION emissions,
+  not consumption-based. A Fab City framing that cares about material
+  and consumption footprints wants the opposite basis, and this dataset
+  cannot supply it. Compare
+  environmental/city/montreal-ges-collectivite-gpc, which at least
+  carries GPC scopes.
+
+  TRAPS. The 82.6 MB CSV is a flat long file across 2005-2024 x all UK
+  LAs x all sectors - server-side filtering is impossible, so a
+  connector must stream-filter on the GSS code. GSS keying is ASSERTED,
+  not verified; the page does not state it and the CSV was not opened.
+
+  Licence verbatim: "All content is available under the Open Government
+  Licence v3.0, except where otherwise stated".

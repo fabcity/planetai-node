@@ -1,0 +1,50 @@
+name: Rapport financier des organismes municipaux - MAMH Quebec
+url: https://www.donneesquebec.ca/recherche/dataset/rapport-financier-des-organismes-municipaux-et-autres-documents
+description: |
+  Annual financial returns filed by every Quebec municipality, MRC,
+  metropolitan community, transit body and regie, keyed on COD_GEO.
+  189 resources in XLSX and CSV covering 2015-2026.
+pillar: economic
+scale: region
+status: live
+license: Creative Commons 4.0 Attribution (CC-BY) licence - Quebec (qc-cc-by)
+api: null
+pilot_relevance: []
+tags: [municipal-finance, budget, mamh, cod-geo, quebec, all-municipalities]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal and
+  Bas-Saint-Laurent). THE HIGHEST-LEVERAGE CANADIAN SOURCE FOUND.
+
+  Bas-Saint-Laurent's ~114 municipalities do not each run a portal, and
+  do not need to. One connector built here serves every municipality and
+  MRC in BSL, and every Quebec locality FCI ever adds.
+
+  LICENCE VERIFIED, NOT INFERRED, via a detour worth recording. The
+  donneesquebec.ca page states no licence. It was read off the federated
+  record through the FEDERAL CKAN API - package_show on
+  20673c5c-f672-4387-ae9d-378ac6fa8be0 returns license_id "qc-cc-by",
+  license_title "Creative Commons 4.0 Attribution (CC-BY) licence -
+  Quebec". When a provincial portal blocks its own API, the national
+  portal that harvests it is the licence oracle. Reusable trick.
+
+  COD_GEO IS THE JOIN KEY for the whole Quebec municipal universe. It is
+  Quebec's code geographique (MAMH/ISQ), NOT the StatCan SGC code.
+  Confirmed as a field name; value format unconfirmed, no resource opened.
+
+  TRAPS. (1) THE DATA IS UNAUDITED - "non audite" throughout - and the
+  page disclaims, verbatim: "Les diffuseurs ne peuvent garantir
+  l'exactitude, la precision ou l'integralite des donnees." Carry that
+  qualification onto any derived indicator. (2) An "organismes absents"
+  resource lists entities that failed to file - COVERAGE IS INCOMPLETE
+  in any year; do not read a missing municipality as a zero. (3) 189
+  resources: discover via API, never hardcode URLs. (4) The simple- /
+  multi-occurrence split is a NORMALISED RELATIONAL DUMP, not a flat
+  table; multi-occurrence needs a join on COD_GEO plus an occurrence key.
+  (5) 2026 is donnees previsionnelles - forecast. Actuals end 2025.
+
+  Classification: Manuel de la presentation de l'information financiere
+  municipale. NO COFOG CROSSWALK. CAD, nominal, calendar year.

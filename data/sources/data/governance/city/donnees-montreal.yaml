@@ -1,0 +1,51 @@
+name: Donnees ouvertes - Ville de Montreal
+url: https://donnees.montreal.ca/dataset
+description: |
+  Montreal's CKAN 2.11.5 open data catalogue - 404 datasets, 394 under
+  CC BY 4.0 and 284 carrying a CSV. Hosts non-municipal publishers
+  alongside the city. Catalogue breadth and licence openness are
+  themselves governance indicators.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://donnees.montreal.ca/api/3/action/package_search
+pilot_relevance: []
+tags: [open-data-portal, ckan, transparency, catalogue, montreal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal). This
+  entry is THE CATALOGUE ITSELF, a legitimate Governance|City indicator:
+  dataset count and licence regime are the open-data-availability signal.
+
+  NUMBERS from the portal's own facet counts. 404 datasets. Licences: CC
+  BY 4.0 - 394; CC BY-NC-SA 4.0 - 8; OGL Canada - 2. A 97.5% fully-open
+  share, among the highest in the harvest. Formats: CSV 284, GeoJSON 121,
+  SHP 118, WEB 55, PDF 47 - ~70% carry a CSV. Publishers: Ville de
+  Montreal 389, STM 7, Agence de mobilite durable 3, Bixi 2, Coalition
+  des Eco-quartiers 2. Non-municipal publishers are hosted here, which
+  matters for attribution.
+
+  READ THE 97.5% WITH THIS: eight datasets are CC BY-NC-SA and WHICH
+  EIGHT WAS NOT ESTABLISHED. Read license_id per dataset from the API;
+  never rely on the portal default for a specific source.
+
+  API URL IS ASSERTED FROM THE VERIFIED CKAN VERSION STRING (2.11.5), NOT
+  FETCHED. robots.txt carries Disallow: /api/ with Crawl-Delay: 10, so
+  the counts above come from rendered HTML. Faceted search URLs (?tags=,
+  ?res_format=, ?organization=, ?license_id=) are also disallowed; plain
+  ?q= and canonical dataset pages are allowed. Same situation as
+  analyze-boston, same deliberate choice: ignoring robots is a decision,
+  not a default.
+
+  THE ARRONDISSEMENT BUDGET RUNG IS A VERIFIED DELIBERATE NEGATIVE. A
+  full budget-scoped catalogue query (14 results, all enumerated) found
+  exactly ONE arrondissement budget dataset across 19 arrondissements -
+  Rosemont-La Petite-Patrie, flagged Archive, 2015. Montreal does not
+  fail at open data; it does not publish sub-municipal budgets as data.
+  Meanwhile Quebec province publishes every municipality's full financial
+  return as CSV/XLSX. In Quebec the community budget rung is served from
+  above, not below.

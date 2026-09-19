@@ -1,0 +1,31 @@
+name: Korea Local Fiscal Independence Ratio, Final (지방재정365 재정자립도(최종))
+url: https://www.data.go.kr/data/15058102/openapi.do
+description: The share of each Korean local authority's budget it can fund from its own revenue
+  sources, computed on the year-end final budget. A direct fiscal-autonomy indicator comparable
+  across all Korean municipalities from FY2010.
+pillar: economic
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- fiscal-autonomy
+- local-finance
+- indicator
+- timeseries
+- korea
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Provider 행정안전부.
+
+  XML. FY2010 onward. Cadence not stated on the page.
+
+
+  THE JOIN KEY IS NOT DOCUMENTED. The page does not state which admin identifier
+
+  keys the response - verify before merging with the 법정동코드 register
+
+  (governance/region/mois-legal-dong-code-register).'

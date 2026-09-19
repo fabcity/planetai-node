@@ -1,0 +1,51 @@
+name: Barcelona - Pressupost municipal i execucio
+url: https://opendata-ajuntament.barcelona.cat/data/api/action/package_show?id=evolucio-despeses-per-capitols-i-articles
+description: |
+  Ajuntament de Barcelona publishes its municipal budget and its settled
+  execution as annual CSV series - revenue and expenditure, planned (inicial)
+  and liquidated, by chapter, article and programme.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
+pilot_relevance: [barcelona]
+tags: [public-budget, municipal-finance, budget-execution, open-budget, spain]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1) via the CKAN action
+  API. Every dataset fetched returned license_title "Creative Commons
+  Attribution 4.0".
+
+  BOTH SIDES OF THE LEDGER, BOTH STATES: verified dataset ids -
+  evolucio-resultat-ingressos-i-despeses, evolucio-ingressos-per-capitols,
+  evolucio-ingressos-per-capitols-i-articles, evolucio-despeses-per-capitols,
+  evolucio-despeses-per-capitols-i-articles,
+  evolucio-despeses-corrents-per-politiques,
+  evolucio-despeses-per-unitats-organiques, modificacions-credit-pressupost
+  (execution / credit modifications, 9 CSVs spanning 2017-2025), and
+  l01080193-presupuestos-consolidados-de-la-ciudad-de-barcelona-iniciales-segun-lgep-y-loepsf
+  (initial consolidated, 2016-2025).
+
+  CLASSIFICATION: Spanish local-entity chart of accounts - capitol / article /
+  concepte on the economic axis, politica / programa on the functional axis.
+  No COFOG crosswalk is stated on any dataset page. The politica/programa axis
+  is the crosswalkable one if a mapping is ever built.
+
+  GRANULARITY IS CHAPTER-LEVEL, NOT LINE-ITEM. Liquidated series are expressed
+  in millions of euros. Compare with Rennes in the France wave, which publishes
+  ~600 records per year at true line-item granularity - Barcelona is coarser.
+
+  Fiscal year = calendar year. Coverage 2008/2016-2025 depending on series.
+  EUR, nominal. Annual cadence; catalogue metadata_modified 2026-06-09.
+
+  FEDERATABLE: the INE municipality code is carried inside the catalogue
+  identifier itself - L01080193 = L01 (ayuntamiento) + 08019 (INE) + check
+  digit. That is the join key to the Ministerio de Hacienda aggregate local
+  series.
+
+  ACCESS CAVEAT: every human-facing HTML page on this portal sits behind a
+  BunkerWeb/hCaptcha bot challenge. Only /data/api/action/* JSON is machine
+  accessible. Do not build anything that scrapes the dataset pages.

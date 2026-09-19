@@ -1,0 +1,31 @@
+name: Seoul Employment Indicators (서울시 고용지표 통계)
+url: https://data.seoul.go.kr/dataList/OA-475/S/1/datasetView.do
+description: Monthly unemployment rate, employment rate and labour-force participation rate
+  for Seoul, broken out by sex. Sourced from KOSIS and republished by the city on its open
+  data portal.
+pillar: social
+scale: city
+status: live
+license: '공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1'
+api: null
+pilot_relevance: []
+tags:
+- employment
+- unemployment
+- labour-market
+- korea
+- seoul
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Cadence 정기(매월).
+
+  Sheet + CSV.
+
+
+  Years covered are NOT stated on the page. Breakdown by 자치구 is NOT confirmed -
+
+  the page describes only a sex split, so this fills the Social|City unemployment
+
+  sub-cell at city aggregate, not sub-city, resolution.'

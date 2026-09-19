@@ -1,0 +1,41 @@
+name: CBS Kerncijfers wijken en buurten
+url: https://www.cbs.nl/nl-nl/cijfers/detail/85984NED
+description: |
+  Statistics Netherlands' core indicators for every Dutch municipality,
+  district and neighbourhood - population, household composition, income,
+  housing, cars, energy use, distance to services - via the StatLine OData API.
+pillar: social
+scale: city
+status: live
+license: Verveelvoudiging is toegestaan, mits het CBS als bron wordt vermeld (CC-BY-4.0 site-wide)
+api: https://opendata.cbs.nl/ODataApi/odata/85984NED
+pilot_relevance: []
+tags: [social-indicators, netherlands, cbs, statline, odata, neighbourhood]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10) by querying the
+  OData endpoint directly, not by reading about it. The WijkenEnBuurten
+  dimension accepts $filter and $select and returned Key "GM0363" Amsterdam
+  and Key "GM0453" Velsen - the CBS gemeentecodes that anchor the Dutch admin
+  chain. Keys are prefixed GM (municipality), WK (district) and BU
+  (neighbourhood), so one table carries three rungs including the community
+  rung.
+
+  LICENCE, THREE ANSWERS KEPT APART. The per-table Copyright field returned by
+  the OData TableInfos endpoint reads, verbatim: "Verveelvoudiging is
+  toegestaan, mits het CBS als bron wordt vermeld." CBS's site-wide copyright
+  page says: "Tenzij anders vermeld, is op de inhoud van deze website de
+  Creative Commons Naamsvermelding (CC BY 4.0) van toepassing." The two agree
+  in substance - attribution, no further restriction - but CBS does not stamp
+  CC BY on the table record itself. Treated here as open-with-attribution.
+
+  Annual edition; 85984NED is the 2024 edition and CBS publishes a new table
+  identifier each year rather than extending one. A connector must resolve the
+  current year's identifier, not hard-code this one. The series index is at
+  cbs.nl/nl-nl/reeksen/publicatie/kerncijfers-wijken-en-buurten.
+
+  This is the single highest-value social source for any Dutch Fab City
+  member, and it covers members with no portal of their own.

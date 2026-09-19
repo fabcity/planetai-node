@@ -1,0 +1,27 @@
+name: ESA WorldCover
+url: https://esa-worldcover.org/en/data-access
+description: |
+  ESA's 10 m global land cover map from Sentinel-1/2 with 11 classes
+  including tree cover, shrubland, grassland, cropland and wetland.
+  Delivered as Cloud-Optimized GeoTIFFs on a 1-degree grid.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [land-cover, forest-cover, raster-10m, cog, sentinel, geospatial]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Effectively frozen: only 2020 (v100) and 2021
+  (v200) exist, no annual continuation announced. Treat as a high-
+  resolution snapshot, not a time series. Access via open S3 (s3://esa-
+  worldcover-s1, s3://esa-worldcover-s2), Terrascope, or Zenodo DOI.
+  Excellent slicing: COGs allow HTTP range requests so you can read only
+  the bytes covering a bioregion without downloading the tile; 10 m
+  resolves individual field boundaries, so this is usable at community
+  scale as well as bioregion. Attribution string: (c) ESA WorldCover
+  project [year] / Contains modified Copernicus Sentinel data ([year])
+  processed by ESA WorldCover consortium.

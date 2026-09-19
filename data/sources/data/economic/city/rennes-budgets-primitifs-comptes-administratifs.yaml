@@ -1,0 +1,45 @@
+name: Rennes - Budgets primitifs et comptes administratifs
+url: https://data.rennesmetropole.fr/api/explore/v2.1/catalog/datasets?where=search%28%22budget%22%29
+description: |
+  Ville de Rennes publishes its budget primitif (planned) and compte
+  administratif (executed) as separate yearly datasets from 2008 onward, split
+  into principal budget, annexes and grants to associations.
+pillar: economic
+scale: city
+status: live
+license: Open Database License (ODbL)
+api: https://data.rennesmetropole.fr/api/explore/v2.1/catalog/datasets?where=search%28%22budget%22%29
+pilot_relevance: []
+tags: [public-budget, municipal-finance, budget-execution, open-budget, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) via the
+  OpenDataSoft v2.1 catalogue endpoint, which returned the BP/CA series with
+  per-dataset licence and record counts.
+
+  LONGEST OPEN BUDGET SERIES IN THE FRENCH WAVE: matched BP and CA pairs
+  confirmed for 2008 through 2019 at least. Sample of verified ids and record
+  counts: ca-2008-budget-principal (639 records), ca-2010-budget-principal (636),
+  ca-2011-budget-principal (648), bp-2012-budget-principal (588),
+  bp-2018-ville-de-rennes-budgets-annexes (231),
+  bp-2019-ville-de-rennes-budgets-annexes (231). All ODbL.
+
+  ~600 records per year means LINE-ITEM granularity, not chapter aggregate - the
+  finest-grained municipal budget publication found in this wave.
+
+  FUNCTIONAL AXIS EXISTS: bp_2015_open_data_budget_principal_par_sousfonctioncsv
+  (557 records) breaks the principal budget down "par sous fonctions". The
+  sous-fonction axis is the nearest thing to a COFOG-crosswalkable classification
+  in French local accounts. It appears to be published for 2015 only, so the
+  functional view is a single-year snapshot, not a series.
+
+  Grants to associations are published as their own datasets and split three ways
+  - ordinaires, exceptionnelles, d'equipement - in both BP and CA form (e.g.
+  bp-2017-ville-de-rennes-subventions-aux-associations, 408 records). Useful as a
+  civil-society funding signal, and unusually legible.
+
+  SCOPE: these are Ville de Rennes (INSEE 35238) budgets. Rennes Metropole
+  (SIREN 243500139) is the portal operator but its own budget was not found as a
+  dataset in this pass - checked the budget/comptes/finances search, not present.

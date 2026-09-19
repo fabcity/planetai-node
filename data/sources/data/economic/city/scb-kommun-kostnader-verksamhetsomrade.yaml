@@ -1,0 +1,54 @@
+name: SCB Rakenskapssammandrag - municipal costs and revenues by function
+url: https://api.scb.se/OV0104/v1/doris/sv/ssd/OE/OE0107/OE0107B/KostnDR
+description: |
+  Costs and revenues for all 290 Swedish municipalities across 65
+  functional areas, 2011-2025, in thousands of SEK at current prices,
+  via Statistics Sweden's PxWeb API. Lund is kommunkod 1281.
+pillar: economic
+scale: city
+status: live
+license: CC0-1.0
+api: https://api.scb.se/OV0104/v1/doris/sv/ssd/OE/OE0107/OE0107B/KostnDR
+pilot_relevance: []
+tags: [budget, expenditure-by-function, municipal-finance, sweden, pxweb, scb]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Veberod/Lund).
+
+  VERIFIED BY DIRECT CALL. Four variables: Region, Verksomrkom,
+  ContentsCode, Tid. Region carries 290 values - every Swedish
+  municipality individually, not size classes. Updated 2026-08-28.
+
+  WHY THIS ENTRY EXISTS: Lunds kommun publishes its own budget and
+  arsredovisning as PDF only. The machine-readable version of Lund's
+  budget is produced by SCB, not by Lund. Same pattern as Quebec (MAMH)
+  and England (MHCLG): the city rung is served from above. Three
+  countries in this one wave - it should change where FCI builds
+  connectors.
+
+  THE TRAP THAT WILL SILENTLY CORRUPT YOUR DATA. PxWeb metadata stores
+  codes and labels as two PARALLEL ARRAYS (values, valueTexts) that must
+  be zipped POSITIONALLY. Two successive reads of this table during the
+  harvest returned contradictory pairings - once 1280 to Lund, once
+  1280/1281/1282 to Vasteras/Sala/Fagersta, a Vastmanland 19xx offset.
+  Parse by index and ASSERT a known pair (1281 -> Lund) before trusting
+  any row. A wrong kommunkod puts another city's money under Lund's name.
+
+  NOT COFOG. Swedish verksamhetsindelning (RS / kommun-Bas chart of
+  accounts), 65 areas, no crosswalk found. Sweden runs three unaligned
+  fiscal classifications across its three live rungs - kommun
+  verksamhetsomraden, region verksamhetsindelning, 27 statliga
+  utgiftsomraden. This is Sweden's largest blocker, bigger than any
+  missing endpoint.
+
+  Siblings in the folder: Driftredovisning, InvestKommun (investment by
+  function, 2015-2025), KopDr (purchased services - a direct
+  outsourcing / local-sourcing indicator), Lamnadebidrag. OE0107A is the
+  kommun income statement; OE0107C/D cover regions.
+
+  Licence verbatim: "We use the licence CC0 for this data, which means
+  that you may use and disseminate or provide such data without any
+  requirement to state the source."

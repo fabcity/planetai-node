@@ -1,0 +1,19 @@
+name: WHO Open Data Repository
+url: https://data.who.int/
+description: |
+  World Health Organization global health observatory + indicator
+  repository. ~2,000 indicators across countries, themes, time.
+pillar: social
+scale: region
+status: live
+license: CC-BY-NC-SA-3.0-IGO
+api: https://www.who.int/data/gho/info/gho-odata-api
+pilot_relevance: [global]
+tags: [health, who, indicators, odata]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Lighter-weight than IHME GBD; OData API is convenient for
+  programmatic pulls. Non-commercial license restriction is
+  the main caveat for downstream commercial use.

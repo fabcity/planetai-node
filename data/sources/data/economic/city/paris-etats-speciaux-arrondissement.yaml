@@ -1,0 +1,44 @@
+name: Paris - Etats speciaux d'arrondissement (sub-municipal budgets)
+url: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets?where=search%28%22etats%20speciaux%22%29
+description: |
+  Paris publishes the etats speciaux d'arrondissement - the budget delegated to
+  each of its arrondissements - as open data, both voted and executed. A rare
+  case of public finance published BELOW the municipal tier.
+pillar: economic
+scale: city
+status: live
+license: Open Database License (ODbL)
+api: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets?where=search%28%22etats%20speciaux%22%29
+pilot_relevance: []
+tags: [public-budget, sub-municipal, neighbourhood, participatory-governance, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France). Confirmed
+  dataset ids in the Paris catalogue, all ODbL:
+  budgets-votes-etats-speciaux-darrondissements (2009-2017),
+  budgets-votes-etats-speciaux-darrondissements-m57-ville (from 2018), and
+  comptes-administratifs-etats-speciaux-darrondissement (executed).
+
+  SCALE CAVEAT - READ THIS BEFORE USING. Filed at scale "city" to stay inside the
+  Regime 1 city/region convention, but the actual resolution is COMMUNITY: the
+  arrondissement is the quartier-equivalent rung. When the community tier is
+  opened up (Regime 3), this entry should be re-scaled to "community" rather than
+  duplicated.
+
+  WHY IT IS THE FIND OF THE FRENCH WAVE: the four-rung budget ladder asks for a
+  community rung, and across five French cities this is the ONLY one that exists
+  as open data. France has no APBDes equivalent - communes are the floor of
+  fiscal autonomy, and sub-communal bodies (conseils de quartier) generally have
+  no published budget line. Paris is the exception because the loi PML gives its
+  arrondissements a statutory delegated budget, so the etat special is a legal
+  document that must be voted and accounted for.
+
+  Consequence for the FCI: the community budget cell is structurally empty in
+  France except Paris, and that is a finding about French fiscal architecture,
+  not a gap in the harvest.
+
+  Covers the arrondissement's delegated spend only (local facilities,
+  neighbourhood upkeep) - a small fraction of what is spent in the
+  arrondissement's territory. Not a territorial spend total.

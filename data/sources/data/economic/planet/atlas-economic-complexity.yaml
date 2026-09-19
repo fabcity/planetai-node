@@ -1,0 +1,22 @@
+name: Atlas of Economic Complexity (Harvard Growth Lab)
+url: https://atlas.cid.harvard.edu/
+description: |
+  Global trade + economic-complexity indicators (ECI, product-space,
+  diversification metrics) for ~250 countries × ~6,000 products.
+  Bulk download via Dataverse; interactive web tool for exploration.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-4.0
+api: https://api-docs.atlas.cid.harvard.edu/
+pilot_relevance: [global]
+tags: [trade, economic-complexity, eci, harvard]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  CORS is unreliable from browser origins — pre-fetch and serve as a
+  static snapshot for production. Dataverse mirror at
+  dataverse.harvard.edu carries the full bulk dump.
+  The methodological predecessor of Metroverse (city scale) and
+  Boeing 2024 Fab City Index.

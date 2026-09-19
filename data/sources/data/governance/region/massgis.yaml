@@ -1,0 +1,22 @@
+name: MassGIS
+url: https://www.mass.gov/orgs/massgis-bureau-of-geographic-information
+description: |
+  Massachusetts state geospatial data: parcels, buildings, transit
+  network, hydrography, environmental constraints, election districts.
+  Bulk download via state portal + ArcGIS REST services.
+pillar: governance
+scale: region
+status: live
+license: public
+api: https://gis.massdot.state.ma.us/arcgis/rest/services/
+pilot_relevance: [boston]
+tags: [gis, massachusetts, geospatial, parcels, transit]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  The Boston pilot's deepest spatial-instrument layer. Replaces
+  five hypothetical bespoke connectors (parcels, buildings,
+  transit OD, hydrography, environmental zoning) with one
+  canonical state-published source. ArcGIS REST is the easiest
+  programmatic path; bulk shapefiles also available.

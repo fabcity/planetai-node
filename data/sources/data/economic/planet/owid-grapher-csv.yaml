@@ -1,0 +1,28 @@
+name: Our World in Data — grapher CSV endpoints
+url: https://ourworldindata.org/grapher/food-supply-kcal.csv
+description: |
+  OWID republishes FAOSTAT, World Bank and other series as clean, tidy,
+  versioned CSVs at a stable URL pattern. Useful as the machine-readable
+  escape hatch when an upstream agency's own API is unreachable.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-4.0 for OWID's processing; upstream licences still apply to underlying values
+api: https://ourworldindata.org/grapher/{slug}.csv?csvType=full&useColumnShortNames=true
+pilot_relevance: [global]
+tags: [owid, mirror, csv, food-supply, tidy-data]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call returning real CSV: header
+  entity,code,year,daily_calories with rows such as
+  Afghanistan,AFG,1961,2914.3484. Coverage 1940s-2023 for that series. WHY
+  THIS IS LISTED: FAOSTAT currently has no working public API - three
+  endpoints were tested and all failed (faostatservices 401, fenixservices
+  521, bulks datasets_en.json 403) and the replacement developer portal
+  requires sign-in with no public base URL. OWID is the pipeline-
+  resilience fallback for FAO-derived series. IT IS A MIRROR, NOT A
+  PRIMARY SOURCE: use it for resilience, cite upstream, and attribute
+  both. SLICING: country rows with ISO3 code column plus OWID regional and
+  World aggregates.

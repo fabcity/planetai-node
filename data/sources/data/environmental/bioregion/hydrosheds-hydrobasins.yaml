@@ -1,0 +1,28 @@
+name: HydroSHEDS — HydroBASINS
+url: https://www.hydrosheds.org/products/hydrobasins
+description: |
+  Global vector polygons of sub-basin boundaries, hierarchically nested
+  across 12 levels with Pfafstetter coding and upstream/downstream
+  topology. About 1.0 million sub-basin polygons covering 135 million
+  square kilometres.
+pillar: environmental
+scale: bioregion
+status: live
+license: HydroSHEDS license — free for scientific, educational and commercial use with attribution
+api: null
+pilot_relevance: [global]
+tags: [watershed, basin-boundaries, hydrosheds, pfafstetter, spatial-framework, geospatial]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. THIS IS THE SLICING INFRASTRUCTURE, NOT AN
+  INDICATOR. It is what makes 'bioregion' a computable object: pick a
+  Pfafstetter level (4-6 is typically bioregion-sized, 5-8 for a Fab City
+  catchment), take the polygon, and use it to clip every raster in the
+  environmental row and to spatially join every point dataset. Pairs
+  directly with Caravan (already listed), with Aqueduct's sub-basin units,
+  and with the TFDD transboundary basin layer in the governance row.
+  Commercial use is explicitly permitted, which is rare across this
+  harvest and makes it safe as the index's public boundary layer. Static
+  reference layer, v1, no update cadence.

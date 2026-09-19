@@ -1,0 +1,50 @@
+name: Open Data Toulouse Metropole
+url: https://data.toulouse-metropole.fr/api/explore/v2.1/catalog/datasets
+description: |
+  Toulouse Metropole's open-data portal (OpenDataSoft), 835 datasets and entirely
+  openly licensed. The largest municipal catalogue found in the French wave, with
+  a 218-dataset finance theme and a dedicated circular-economy theme.
+pillar: governance
+scale: city
+status: live
+license: Licence Ouverte v2.0 (Etalab)
+api: https://data.toulouse-metropole.fr/api/explore/v2.1/catalog/datasets
+pilot_relevance: []
+tags: [open-data-portal, transparency, opendatasoft, circular-economy, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) via the
+  OpenDataSoft v2.1 catalogue and facets endpoints.
+
+  835 datasets, 100% openly licensed. Licence facet verbatim: Licence Ouverte
+  v2.0 (Etalab) 667, Open Database License (ODbL) 164, Licence Ouverte (Etalab) 2,
+  Open License v1.0 1, Open License v2.0 1. No unstated, no restricted, no ND.
+  Largest AND cleanest municipal catalogue in this wave.
+
+  Theme facet, verbatim with counts: Finance 218, Environnement 174, Citoyennete
+  170, Statistiques 77, Transport 61, Territoire 37, Culture 35, Economie 30,
+  Amenagement 22, Services 21, Sport 21, Enfance 20, Patrimoine 17, "Dechets et
+  economie circulaire" 3, Tourisme 2.
+
+  TWO THINGS THAT SET IT APART:
+  1. Finance is the LARGEST theme (218 of 835). A city whose biggest open-data
+     category is its own money is a different governance posture from one whose
+     biggest category is bus timetables. Compare Paris, where finance is 65 of 476.
+  2. It carries an explicit "Dechets et economie circulaire" theme. Only 3
+     datasets, so treat it as a signal of intent rather than a data supply - but
+     it is the only French portal in this wave that names circular economy as a
+     category at all, which matters for the Fab City framing.
+
+  FCI CELL MAPPING: Economic city and Governance city are both strong (Finance
+  218, Economie 30, Citoyennete 170). Environmental city is strong (174).
+  Social city is thin and scattered - Statistiques 77 may carry INSEE-derived
+  social indicators but was not opened in this pass; Enfance 20 and Services 21
+  are service inventories, not social outcomes. Region-scale cells are not served
+  here: the region rung is Occitanie (76), a separate publisher.
+
+  Admin identifiers: Ville de Toulouse INSEE 31555, Toulouse Metropole SIREN
+  243100518 (published as "Grand Toulouse" before 2015 - the same body under its
+  old name, so pre-2015 datasets use that label), departement Haute-Garonne 31,
+  region Occitanie 76.

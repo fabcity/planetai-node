@@ -1,0 +1,22 @@
+name: LAKLEMS — Latin America KLEMS
+url: http://www.iadb.org/research/latin-american-klems-database
+description: |
+  Sectoral productivity database for 18 Latin American economies.
+  Capital, Labour, Energy, Materials, Services inputs at industry level.
+  Maintained by IDB and partner institutions.
+pillar: economic
+scale: region
+status: live
+license: custom open (IDB terms)
+api: null
+pilot_relevance: [santiago]
+tags: [productivity, klems, sectoral, latin-america, chile, idb]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Bulk download via the IDB research portal. Chile coverage is
+  detailed at NACE 2-digit. Combined with Atlas of Economic Complexity
+  this gives the Santiago pilot a coherent Region-tier productivity
+  + complexity layer that Metroverse alone cannot provide
+  (Metroverse is metro-area; LAKLEMS is national-by-sector).

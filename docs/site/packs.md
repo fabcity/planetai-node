@@ -24,7 +24,7 @@ only when `PACKS_ALLOW_CODE=1`, because it runs with the node's privileges: read
 deliberately dumb: a broken YAML or adapter is logged and skipped, there is no registry and no dependency
 resolution. Rule ids are namespaced `<pack>/<id>`; core rules keep bare ids.
 
-Fields in `pack.yaml`. The node reads `id`, `description`, `kind`, `domain`, `pip` and `env`; `requires`, `sources` and `needs` are documentation for people and are read by no code in this version:
+Fields in `pack.yaml`. The node reads `id`, `description`, `kind`, `domain`, `pip` and `env`; `requires` and `needs` are documentation for people and are read by no code in this version. `sources` is **validated**: every id in it has to resolve to an entry in the registry the node carries at `data/sources/`, or `make lint` fails and names the id — see `docs/SOURCES.md`.
 
 | field | used for |
 |---|---|
@@ -34,7 +34,7 @@ Fields in `pack.yaml`. The node reads `id`, `description`, `kind`, `domain`, `pi
 | `domain` | which dashboard issue the pack feeds (`air`, `heat`, `land`, `coast`, …). A cross-domain pack's rules are claimed one by one in `app/issues/*.yml`; a pack that reaches no issue and is not named as deliberately outside them fails `tests/test_issues.py` |
 | `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of every pack's list |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; comment lines travel with the key under them. No space after `=` |
-| `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources, from `awesome-fabcity-data` |
+| `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources, from `awesome-fabcity-data`. Checked by `tools/check_registry.py`; file the source upstream first, then name it here. `planetai sources` lists what is available |
 | `needs: [api.bmkg.go.id]` | hosts the pack reaches |
 
 ## Data packs: rules

@@ -149,9 +149,17 @@ named sources for whatever your place has, and where it has none, the global mod
 | `Environmental\|City` | Bali Air Dispatch ambient means (peer observatory) + OpenAQ | **partial** (reference, not ours) |
 | `Governance\|City` | Bali Satu Data open-data health | adapter not written; registry entry exists |
 
-`GET /cells` emits whatever the node can compute, each row carrying its `state`. The `Data Sources`
-registry (synced from `awesome-fabcity-data`) needs one new entry: `environmental/community/bali-air-dispatch` -
-proposed in `contrib/awesome-fabcity-data/`. Add the source via PR to that repo; the Airtable mirror follows.
+`GET /cells` emits whatever the node can compute, each row carrying its `state`. The rows it cannot
+compute are the more interesting half of the table, and the node carries the answer to them: a pinned
+snapshot of `awesome-fabcity-data` lives at `data/sources/` and is served at `GET /sources`, so a cell
+with no row can still say whether a source for it is registered and whether an adapter reads it. That
+is what the "adapter not written; registry entry exists" lines above are, as a query rather than as a
+sentence somebody wrote once.
+
+A source entry is upstream's to change. Add one by PR to `awesome-fabcity-data`, wait for the merge,
+then re-pin here with `tools/sync_registry.sh <merge sha>` and commit the diff — `docs/SOURCES.md`.
+Nothing in this repo edits an entry, and `make lint` fails if anything did. The Airtable mirror follows
+upstream, not this snapshot.
 
 **ρ is the brick nobody else has.** Two generations of the Index measured a snapshot with ρ implicit at 1. The node
 measures ρ for real, because it's the thing sending the alert and the thing receiving the acknowledgement. Every

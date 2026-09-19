@@ -1,0 +1,42 @@
+name: Systeme electronique d'appel d'offres (SEAO) - Quebec
+url: https://www.donneesquebec.ca/recherche/dataset/systeme-electronique-dappel-doffres-seao
+description: |
+  Quebec's public tender and awarded-contract register, covering
+  government, health, education and municipal bodies. Weekly and monthly
+  files, XML from 2009 and JSON from March 2021.
+pillar: governance
+scale: region
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [procurement, tenders, contracts, transparency, quebec, municipalities]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal and
+  Bas-Saint-Laurent).
+
+  ONE ENDPOINT SERVES BOTH LOCALITIES. Coverage explicitly includes
+  "municipalites et des autres organismes municipaux" alongside
+  ministeres, the education network and the health network - so
+  Montreal's contracts and every Bas-Saint-Laurent municipality's
+  contracts come from the same feed. It doubles as the Governance|Region
+  joint-procurement source, since there is no separate regional
+  procurement body in Quebec.
+
+  431 resources, most recent September 2026 - live.
+
+  TRAPS. (1) THIS IS AN APPEND-ONLY FEED, NOT A TABLE. 431 weekly and
+  monthly files; a connector must enumerate resources via the API and
+  accumulate. (2) TWO FORMATS COVERING DIFFERENT ERAS WITH DIFFERENT
+  SCHEMAS - XML from 2009, JSON from March 2021. A full history requires
+  implementing both parsers. Two specification documents are published
+  as resources; the XML spec is mandatory reading. (3) Contract amount
+  and supplier field names were NOT confirmed - the page describes
+  record types, not fields.
+
+  Licence is the portal default (CC-BY 4.0 Quebec), not stated on the
+  dataset page. Same inference as the MAMH entries.

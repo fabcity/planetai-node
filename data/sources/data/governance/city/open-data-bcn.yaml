@@ -1,0 +1,43 @@
+name: Open Data BCN
+url: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
+description: |
+  Barcelona municipal open data portal, CKAN-based. 555 datasets covering
+  mobility, environment, demographics, economy, governance and urban fabric,
+  entirely under CC-BY-4.0.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
+pilot_relevance: [barcelona]
+tags: [open-data, barcelona, ckan, municipal]
+added: 2026-05-04
+updated: 2026-09-09
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Corrections:
+
+  1. DATASET COUNT is 555, not ~600 - from package_search?rows=0, which
+     returned {"count":555,"success":true}.
+  2. THE API PATH WAS WRONG. The working action API is /data/api/action/*, not
+     /data/api/3/. The previous value would 404.
+  3. LICENCE CONFIRMED uniform: every dataset fetched returned license_title
+     "Creative Commons Attribution 4.0" with license_url pointing at
+     creativecommons.org/licenses/by/4.0/. Barcelona is the only pilot portal
+     in wave 1 with a single, uniform, unambiguous licence across the catalogue.
+
+  ACCESS CAVEAT, IMPORTANT: every human-facing HTML page on this portal -
+  the homepage, /en/api-cataleg, individual /data/*/dataset/* pages - sits
+  behind a BunkerWeb/hCaptcha bot challenge and cannot be fetched
+  automatically. Only the raw /data/api/action/* JSON responds. Anything built
+  against the HTML will break.
+
+  This entry is the CATALOGUE ITSELF as a Governance|City availability
+  indicator. Specific datasets are separate entries - see
+  barcelona-pressupost-execucio, barcelona-perfil-contractant,
+  barcelona-cens-activitat-economica and barcelona-eleccions-seccio-censal.
+
+  Crosswalks to the Generalitat de Catalunya Socrata portal for regional-tier
+  data (datasets yd9k-7jhw and 4g9s-gzp6), whose licence was NOT verified
+  verbatim in this pass and is therefore not yet in this registry.

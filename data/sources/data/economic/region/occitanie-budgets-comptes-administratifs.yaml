@@ -1,0 +1,44 @@
+name: Région Occitanie — budgets primitifs, supplémentaires et comptes administratifs
+url: https://www.data.gouv.fr/organizations/region-occitanie
+description: |
+  Occitanie's own voted budgets (primitif and supplémentaire) and executed comptes
+  administratifs, published as M57 line-item files split between payment credits and
+  multi-year programme authorisations.
+pillar: economic
+scale: region
+status: live
+license: Licence Ouverte / Open Licence version 2.0
+api: https://data.laregion.fr/api/explore/v2.1/catalog/datasets
+pilot_relevance: []
+tags: [public-finance, budget, occitanie, france, region, m57]
+added: 2026-09-09
+updated: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 via the data.gouv.fr organisation API (org id 5a153f5688ee3829e2fbf39f)
+  and the budget-primitif-2026 dataset page, both HTTP 200. Every budget dataset returned
+  carries licence lov2 — no mixed-licence trap here.
+  PLANNED AND EXECUTED BOTH PRESENT. Verified slugs: budget-primitif-2023-5,
+  budget-primitif-2024-de-la-region-occitanie,
+  budget-primitif-2025-de-la-region-occitanie-credits-de-paiement,
+  budget-primitif-2026-de-la-region-occitanie-credits-de-paiement,
+  budget-supplementaire-2026-de-la-region-occitanie-credits-de-paiement,
+  compte-administratif-2023-de-la-region-occitanie-1,
+  compte-administratif-2025-de-la-region-occitanie.
+  THE STRUCTURAL FIND: Occitanie splits every budget along a second axis that municipal
+  publishers do not — crédits de paiement (cash this year) versus autorisations de
+  programme / autorisations d'engagement (multi-year commitments). Verified as separate
+  datasets for BP 2026 and BS 2026. That axis is what makes multi-year investment
+  programming visible, and it is the regional analogue of the in-year reallocation that
+  Toulouse's three-way municipal split exposes. Between them, Occitanie and Toulouse cover
+  both time axes of public spend in the same territory (INSEE region 76).
+  Classification: cadre budgétaire et comptable M57, ventilated by chapitre, nature and
+  rubrique. NOT COFOG, no crosswalk. EUR, nominal. Fiscal year = calendar exercice.
+  Granularity: line item. Access tier: CSV and JSON download plus the portal's ODS Explore
+  API v2.1.
+  GAPS RECORDED, NOT CHASED: comptes administratifs found for 2023 and 2025 only — 2024 and
+  the pre-2023 series were not surfaced by the organisation search and may exist under other
+  titles on data.laregion.fr. The portal's own API is robots-disallowed to the harvester used
+  here, so the catalogue was enumerated through its data.gouv.fr federation (191 datasets;
+  the portal's own dataservice record reports 186).

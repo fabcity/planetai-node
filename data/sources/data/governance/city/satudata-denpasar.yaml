@@ -1,0 +1,41 @@
+name: Portal Satu Data Denpasar
+url: https://satudata.denpasarkota.go.id/dataset
+description: |
+  Kota Denpasar's municipal open data portal, CKAN 2.8.3, roughly 1,028
+  datasets across departmental organisations, published almost entirely under
+  a public-domain licence.
+pillar: governance
+scale: city
+status: live
+license: Lainnya (Domain Publik)
+api: https://satudata.denpasarkota.go.id/api/3
+pilot_relevance: [bali]
+tags: [open-data, denpasar, indonesia, ckan, municipal]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). CKAN 2.8.3
+  confirmed from the footer and meta-generator.
+
+  THE MOST OPENLY LICENSED MUNICIPAL CATALOGUE IN WAVE 1. Licence facet shows
+  1,027 datasets under "Lainnya (Domain Publik)" and 1 under "Lainnya (Open)".
+  For comparison: Barcelona 555 datasets under CC-BY-4.0, Boston 235 of which
+  219 PDDL and 14 unspecified, Santiago's national portal licence regime
+  unknown. On licence terms Denpasar leads the pilots, which is the opposite of
+  what the network generally assumes.
+
+  Organisations by dataset count: BKPSDM 77, DINKES 74, DISPAR 61, BPKAD 55,
+  DPMD 47, DPUPR 47. Tag "pemerintahan" carries 106.
+
+  DISTINCT FROM governance/city/bali-satu-data IN THIS REGISTRY. That entry is
+  the PROVINCIAL portal at balisatudata.baliprov.go.id, which returned an empty
+  search state when checked. This is the CITY portal and it is the one with the
+  data. Do not merge them.
+
+  Dataset count and licence split come from rendered facets, not package_search,
+  which robots.txt disallowed in this pass.
+
+  The catalogue's own size and licence regime are themselves the Governance|City
+  open-data-availability indicator - see packs/open-data-health in planetai-node,
+  which computes datasets_total and datasets_fresh_90d from any CKAN portal.

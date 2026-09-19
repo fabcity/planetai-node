@@ -1,0 +1,21 @@
+name: ChileCompra
+url: https://www.chilecompra.cl/
+description: |
+  Chilean national public-procurement portal. All government
+  procurement lifecycle: bases de licitacion, ofertas, adjudicaciones.
+  Public REST API + bulk download.
+pillar: governance
+scale: bioregion
+status: live
+license: public domain
+api: https://api.mercadopublico.cl/servicios/v1/publico
+pilot_relevance: [santiago]
+tags: [procurement, chile, action-latency, public-tender]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Santiago pilot's TED equivalent. Provides the H_0-A action-latency
+  baseline for Chile. API is rate-limited but generous; bulk dump
+  available via datos.gob.cl. Pairs with LAKLEMS for productivity-
+  per-procurement-cycle analysis.

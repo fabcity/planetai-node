@@ -1,0 +1,57 @@
+name: Municipal Settlement Status Survey, Japan (市町村別決算状況調)
+url: https://www.soumu.go.jp/iken/zaisei/r06_shichouson.html
+description: MIC's pre-tabulated annual settlement tables for all Japanese municipalities,
+  FY2002-FY2024, as ten Excel files per year split 市部/町村 covering summary, revenue breakdown,
+  expenditure by purpose and by nature, and outstanding local debt.
+pillar: economic
+scale: city
+status: live
+license: 公共データ利用規約（第1.0版）PDL1.0 - explicitly CC BY 4.0 compatible
+api: null
+pilot_relevance: []
+tags:
+- settlement
+- expenditure-by-function
+- cross-municipal
+- national-series
+- xlsx
+- japan
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Index of all years:
+
+  https://www.soumu.go.jp/iken/kessan_jokyo_2.html
+
+
+  Easier than 地方財政状況調査 for a single-year national cross-section; the
+
+  survey is better for long time series. Kamakura appears as a row in 市部.
+
+
+  団体コード presence in the files NOT confirmed - needs a file-level check before
+
+  relying on it as a join key.
+
+
+  LICENCE TRAP: the year page footer reads only "© 2009 Ministry of Internal
+
+  Affairs and Communications All Rights Reserved". That is SUPERSEDED by the
+
+  site-wide terms at soumu.go.jp/menu_kyotsuu/policy/tyosaku.html, verbatim:
+
+  「本ホームページで公開している情報のうち、著作権等法律で保護されないもの並びに
+
+  著作権等の帰属先が明示されている情報については、『公共データ利用規約（第1.0版）』
+
+  に定める範囲で利用可能です」. A naive footer-reading licence scraper would
+
+  wrongly mark this all-rights-reserved.
+
+
+  PDL1.0 compatibility verbatim (digital.go.jp/resources/open_data/public_data_license_v1.0):
+
+  「本利用ルールは、クリエイティブ・コモンズ・ライセンスの表示4.0 国際ライセンスに
+
+  規定される著作権利用許諾条件（以下「CC BY」といいます。）と互換性があります。」'

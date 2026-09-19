@@ -1,0 +1,40 @@
+name: Korea Administrative Standard Code - Legal Dong Code (행정표준코드 법정동코드)
+url: https://www.data.go.kr/data/15077871/openapi.do
+description: The authoritative Korean administrative code register, resolving the full chain
+  from 시도 through 시군구 to 읍면동. The canonical join key for every other Korean dataset in the
+  Fab City Index matrix.
+pillar: governance
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: https://apis.data.go.kr/1741000/StanReginCd/getStanReginCdList
+pilot_relevance: []
+tags:
+- admin-codes
+- geography
+- join-key
+- reference-data
+- korea
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Provider 행정안전부
+
+  (MOIS). REST, JSON + XML, last modified 2025-11-07.
+
+
+  The human-facing register at code.go.kr/stdcode/regCodeL.do is live and offers
+
+  bulk download of 240 code sets, but it is FORM-DRIVEN: no codes render without a
+
+  POST, so Seoul''s and the 25 gu''s individual code VALUES were not resolved in
+
+  this harvest and are not recorded anywhere. They were not guessed.
+
+
+  ISO 3166-2:KR could not be verified either - iso.org/obp is a Vaadin
+
+  JavaScript app that returns no content to a fetch. Do not assume KR-11 for
+
+  Seoul without checking.'

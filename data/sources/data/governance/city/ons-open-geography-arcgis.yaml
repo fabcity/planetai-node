@@ -1,0 +1,55 @@
+name: ONS Open Geography Portal - ArcGIS REST services
+url: https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services
+description: |
+  Queryable ArcGIS FeatureServers for UK statistical geography, serving
+  vintaged GSS codes and boundaries from output area to country. Around
+  600 vintage-suffixed services, no key, no authentication.
+pillar: governance
+scale: city
+status: live
+license: Open Government Licence v3.0
+api: https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Local_Authority_Districts_December_2024_Boundaries_UK_BFC/FeatureServer/0/query
+pilot_relevance: []
+tags: [admin-codes, gss-codes, arcgis, boundaries, geography, lsoa, uk]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+  THE CLEANEST ADMIN-CODE SPINE IN THE ENTIRE HARVEST. Why:
+
+  (1) MACHINE-READABLE AND QUERYABLE, not a PDF annex. One
+  unauthenticated call - FeatureServer/0/query filtered on LAD24NM -
+  returned one feature, LAD24CD E06000026. Verified, not asserted.
+  (2) VINTAGED, NOT SILENTLY MUTATED. The layer carries its vintage
+  (Local_Authority_Districts_December_2024) and so do its fields
+  (LAD24CD, not a bare CODE). When boundaries change ONS issues a NEW
+  code and a NEW layer rather than editing in place, so historic data
+  stays joinable. 600+ vintage-suffixed services in the directory.
+  (3) CODED ALL THE WAY DOWN BELOW THE CITY - OA, LSOA, MSOA, ward and
+  LAD share one namespace, so sub-city aggregation is a code join, not a
+  name match.
+
+  That third property is what most localities here lack, and it makes an
+  LSOA-level Fab City indicator TECHNICALLY POSSIBLE in the UK even where
+  the DATA does not exist - which, for budget, it does not. Compare
+  Slovenia and Georgia, where the admin codes themselves could not be
+  verified from a primary source at all.
+
+  THE GSS PREFIX IS ITSELF INFORMATION: E06 = English unitary authority,
+  E07 = non-metropolitan district, E08 = metropolitan borough, E09 =
+  London borough, E10 = county. Plymouth's E06 independently confirms it
+  is a unitary, so its budget is COMPLETE in one entity. A connector
+  assuming "English city = district, look up to the county" will
+  double-count for Plymouth and every other unitary, while being right
+  for Exeter, a district inside Devon County Council.
+
+  ASSERTED, NOT VERIFIED: E12000009 South West; Plymouth's ward and LSOA
+  codes; its ITL3 identity. All on this same server - the directory
+  response truncated before the layer names could be read, and no layer
+  name was guessed by analogy.
+
+  Licence verbatim: "All content is available under the Open Government
+  Licence v3.0, except where otherwise stated". For SPATIAL data the
+  Ordnance Survey OGL adds further conditions.
