@@ -84,6 +84,11 @@ AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
 
+## Who runs this
+
+One person maintains it today, with a second holding access and a proposed scope — `MAINTAINERS.md`.
+`GOVERNANCE.md` says who has to agree to what, and why the installer and `init.sql` need two people.
+
 ## Bring your own agent
 
 A node is a thing you operate, and most people who install one will do it with an agent beside them. This

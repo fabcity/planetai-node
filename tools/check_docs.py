@@ -74,6 +74,12 @@ PROPOSED = {
     # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
     # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
     "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},
+    # The governance draft points at two records that are their own sessions: the licence decision
+    # (prompt 8 of the 18 September review) and the rho spec (prompt 9). Each entry goes in the
+    # commit that writes the file it names.
+    "GOVERNANCE.md": {"docs/decisions/2026-09-18-licence.md"},
+    "MAINTAINERS.md": {"docs/SPEC_rho.md"},
+    "docs/decisions/2026-09-20-governance.md": {"docs/decisions/2026-09-18-licence.md"},
 }
 for _doc, _names in PROPOSED.items():
     if not os.path.exists(_doc):
