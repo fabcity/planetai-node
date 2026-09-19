@@ -28,7 +28,7 @@ Every gate is a bug that shipped.
 | `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved |
 | `check_ui.py` | an element id the script referenced that was not in the markup |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved |
-| `check_sources.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed |
+| `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
 | import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
 | `check_requirements.sh` | `uvicorn==0.30.*` pinned against `mcp`, which needs 0.31; the image failed to build on the node |
 

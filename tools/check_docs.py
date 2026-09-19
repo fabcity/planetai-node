@@ -88,7 +88,7 @@ for doc in DOCS:
                # a build artifact: present on any machine that has run the app, absent in a clean
                # checkout. `make lint` passed on every laptop and failed on every CI run since 5 Sep.
                "app/__pycache__"}
-    for path in set(re.findall(r"`((?:docs|packs|app|config|tools|tests|presets|out|skills)/[A-Za-z0-9_./-]+)`", text)):
+    for path in set(re.findall(r"`((?:docs|packs|app|config|data|tools|tests|presets|out|skills)/[A-Za-z0-9_./-]+)`", text)):
         p = path.rstrip("/.")
         if p in RUNTIME or path in RUNTIME or p.startswith("out/") or doc == "CHANGELOG.md":   # out/ holds runtime artifacts     # the changelog is a record; files move
             continue
