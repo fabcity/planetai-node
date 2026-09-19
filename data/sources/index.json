@@ -910,12 +910,12 @@
     "description": "Project-level Seoul metropolitan expenditure showing current available budget, amount spent and unexecuted balance side by side, classified by 분야/부문 (functional field and sector) and by department. Updated daily.",
     "license": "이용허락범위 제한 없음 (no restriction on scope of use)",
     "name": "Seoul Expenditure Operations - Projects and Budget (서울시 세출운용 사업 및 예산 정보)",
-    "notes": "Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). First published\n2016-06-10; data current to 2026-08-12 at time of check. Cadence 정기(매일) - daily,\nwhich makes this one of the highest-cadence executed-budget feeds in the index.\n\nPlanned and executed in the SAME ROW: 예산현액 (current budget available),\n지출액 (expenditure), 집행잔액 (unexecuted balance).\n\nSTATED COVERAGE LIMIT: excludes the 25 자치구 and subordinate institutions\n(자치구 및 산하기관 제외). Expenditure reflects through the previous day only.\nFor the gu tier use economic/region/lofin365-local-finance-yearbook-budget.\n\nClassification is the Korean 분야/부문 structure. NO published COFOG crosswalk\nat any of the four Korean rungs - 분야/부문 is COFOG-adjacent by design but no\nofficial mapping table was found. Building it is unavoidable work, not a lookup.\n\nKorea FY = calendar year; KRW nominal. Paired revenue dataset is OA-13268\n(not individually verified in this pass).\n\nSeoul API pattern: http://openapi.seoul.go.kr:8088/{KEY}/{TYPE}/{SERVICE}/{START}/{END}/\nMax 1,000 records per request. Service name not captured - resolve from the\ndataset page. robots.txt is \"User-agent: * / Allow: /\" - nothing disallowed.",
+    "notes": "DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, \"this data is a terminated service\". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.\nVerified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). First published\n2016-06-10; data current to 2026-08-12 at time of check. Cadence 정기(매일) - daily,\nwhich makes this one of the highest-cadence executed-budget feeds in the index.\n\nPlanned and executed in the SAME ROW: 예산현액 (current budget available),\n지출액 (expenditure), 집행잔액 (unexecuted balance).\n\nSTATED COVERAGE LIMIT: excludes the 25 자치구 and subordinate institutions\n(자치구 및 산하기관 제외). Expenditure reflects through the previous day only.\nFor the gu tier use economic/region/lofin365-local-finance-yearbook-budget.\n\nClassification is the Korean 분야/부문 structure. NO published COFOG crosswalk\nat any of the four Korean rungs - 분야/부문 is COFOG-adjacent by design but no\nofficial mapping table was found. Building it is unavoidable work, not a lookup.\n\nKorea FY = calendar year; KRW nominal. Paired revenue dataset is OA-13268\n(not individually verified in this pass).\n\nSeoul API pattern: http://openapi.seoul.go.kr:8088/{KEY}/{TYPE}/{SERVICE}/{START}/{END}/\nMax 1,000 records per request. Service name not captured - resolve from the\ndataset page. robots.txt is \"User-agent: * / Allow: /\" - nothing disallowed.",
     "pillar": "economic",
     "pilot_relevance": [],
     "scale": "city",
     "slug": "economic/city/seoul-expenditure-operations-budget",
-    "status": "live",
+    "status": "deprecated",
     "tags": [
       "budget",
       "expenditure",
@@ -925,7 +925,7 @@
       "korea",
       "seoul"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-13269/S/1/datasetView.do",
     "wired_in_planetai": false
@@ -1221,12 +1221,12 @@
   },
   {
     "added": "2026-05-04",
-    "api": "https://api-docs.atlas.cid.harvard.edu/",
+    "api": null,
     "cell": "Economic|Planet",
     "description": "Global trade + economic-complexity indicators (ECI, product-space,\ndiversification metrics) for ~250 countries × ~6,000 products.\nBulk download via Dataverse; interactive web tool for exploration.\n",
     "license": "CC-BY-4.0",
     "name": "Atlas of Economic Complexity (Harvard Growth Lab)",
-    "notes": "CORS is unreliable from browser origins — pre-fetch and serve as a\nstatic snapshot for production. Dataverse mirror at\ndataverse.harvard.edu carries the full bulk dump.\nThe methodological predecessor of Metroverse (city scale) and\nBoeing 2024 Fab City Index.\n",
+    "notes": "MOVED 2026-09-19. Harvard moved the Atlas from the Center for International Development to the Kennedy School: atlas.cid.harvard.edu now redirects to atlas.hks.harvard.edu, and the documented API host api-docs.atlas.cid.harvard.edu no longer resolves at all. The new host does not answer at api-docs.atlas.hks.harvard.edu either and the landing page links no API, so api is set to null rather than guessed. Somebody wiring this needs to find the endpoint and put it back. Flagged wired_in_planetai, though no pack declares it - see issue #3.\nCORS is unreliable from browser origins — pre-fetch and serve as a\nstatic snapshot for production. Dataverse mirror at\ndataverse.harvard.edu carries the full bulk dump.\nThe methodological predecessor of Metroverse (city scale) and\nBoeing 2024 Fab City Index.\n",
     "pillar": "economic",
     "pilot_relevance": [
       "global"
@@ -1240,10 +1240,11 @@
       "eci",
       "harvard"
     ],
+    "updated": "2026-09-19",
     "upstream_listed_in": [
       "awesome-public-datasets"
     ],
-    "url": "https://atlas.cid.harvard.edu/",
+    "url": "https://atlas.hks.harvard.edu/",
     "wired_in_planetai": true
   },
   {
@@ -1407,7 +1408,7 @@
     "description": "Canada's annual appropriation estimates by department and vote,\npublished as CSV per fiscal year running 1 April to 31 March. Each\nyear is a separate CKAN package, discoverable through the open API.\n",
     "license": "Open Government Licence - Canada",
     "name": "Main Estimates - Treasury Board of Canada Secretariat",
-    "notes": "Added 2026-09-11 in the FCI Regime 1 harvest (wave 13). Canada\nnational rung, done once for the country.\n\nTHE URL FIELD IS THE CATALOGUE, NOT A SINGLE DATASET, AND THAT IS\nDELIBERATE. The Main Estimates are published as ONE PACKAGE PER YEAR,\nnot one continuous series - a package_search on the phrase returns 237\nhits, each year with its own uuid. Worse, PUBLISHER AND FORMAT DRIFT\nBETWEEN YEARS: 2017-18 through 2019-20 are TBS and CSV, while 2020-21\nis published by NATIONAL DEFENCE and is HTML-ONLY. A connector must\nresolve each year's package independently through the API and cannot\nassume a stable publisher, format or URL. Pinning one dataset URL here\nwould have encoded exactly the wrong mental model.\n\nFISCAL YEAR CONFIRMED, not assumed: package temporal coverage shows\nMain Estimates 2019-20 spanning 2019-04-01 to 2020-03-31, and the same\npattern for 2018-19 and 2017-18. Canada runs 1 April - 31 March.\nLabels are hyphenated pairs; NEVER key on the leading year alone.\n\nClassification: departmental/vote structure, and from 2018 also Core\nResponsibilities (see\neconomic/region/canada-public-accounts-core-responsibilities). NO\nOFFICIAL COFOG CROSSWALK. Canada does report COFOG-classified general\ngovernment expenditure through StatCan's Canadian Government Finance\nStatistics, which is COFOG-compliant and covers federal, provincial\nAND local government - that was NOT tested this pass and is the\nobvious next target, because it would give FCI a COFOG crosswalk for\nall three Canadian budget rungs at once.\n\nLicence verbatim as returned by the API: license_title \"Open\nGovernment Licence - Canada\", license_id \"ca-ogl-lgo\". Note the API\nstring uses a hyphen, not the en-dash of the official \"Open Government\nLicence - Canada 2.0\"; match on the API string.\n",
+    "notes": "URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.\nAdded 2026-09-11 in the FCI Regime 1 harvest (wave 13). Canada\nnational rung, done once for the country.\n\nTHE URL FIELD IS THE CATALOGUE, NOT A SINGLE DATASET, AND THAT IS\nDELIBERATE. The Main Estimates are published as ONE PACKAGE PER YEAR,\nnot one continuous series - a package_search on the phrase returns 237\nhits, each year with its own uuid. Worse, PUBLISHER AND FORMAT DRIFT\nBETWEEN YEARS: 2017-18 through 2019-20 are TBS and CSV, while 2020-21\nis published by NATIONAL DEFENCE and is HTML-ONLY. A connector must\nresolve each year's package independently through the API and cannot\nassume a stable publisher, format or URL. Pinning one dataset URL here\nwould have encoded exactly the wrong mental model.\n\nFISCAL YEAR CONFIRMED, not assumed: package temporal coverage shows\nMain Estimates 2019-20 spanning 2019-04-01 to 2020-03-31, and the same\npattern for 2018-19 and 2017-18. Canada runs 1 April - 31 March.\nLabels are hyphenated pairs; NEVER key on the leading year alone.\n\nClassification: departmental/vote structure, and from 2018 also Core\nResponsibilities (see\neconomic/region/canada-public-accounts-core-responsibilities). NO\nOFFICIAL COFOG CROSSWALK. Canada does report COFOG-classified general\ngovernment expenditure through StatCan's Canadian Government Finance\nStatistics, which is COFOG-compliant and covers federal, provincial\nAND local government - that was NOT tested this pass and is the\nobvious next target, because it would give FCI a COFOG crosswalk for\nall three Canadian budget rungs at once.\n\nLicence verbatim as returned by the API: license_title \"Open\nGovernment Licence - Canada\", license_id \"ca-ogl-lgo\". Note the API\nstring uses a hyphen, not the en-dash of the official \"Open Government\nLicence - Canada 2.0\"; match on the API string.\n",
     "pillar": "economic",
     "pilot_relevance": [],
     "scale": "region",
@@ -1421,9 +1422,9 @@
       "csv",
       "fiscal-year"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
-    "url": "https://open.canada.ca/data/en/dataset",
+    "url": "https://search.open.canada.ca/opendata/",
     "wired_in_planetai": false
   },
   {
@@ -1616,14 +1617,14 @@
     "description": "Sectoral productivity database for 18 Latin American economies.\nCapital, Labour, Energy, Materials, Services inputs at industry level.\nMaintained by IDB and partner institutions.\n",
     "license": "custom open (IDB terms)",
     "name": "LAKLEMS — Latin America KLEMS",
-    "notes": "Bulk download via the IDB research portal. Chile coverage is\ndetailed at NACE 2-digit. Combined with Atlas of Economic Complexity\nthis gives the Santiago pilot a coherent Region-tier productivity\n+ complexity layer that Metroverse alone cannot provide\n(Metroverse is metro-area; LAKLEMS is national-by-sector).\n",
+    "notes": "2026-09-19: the recorded landing page 404s - iadb.org/research/latin-american-klems-database, read in a browser and not only by a link checker. No successor URL was found, and iadb.org answers 403 to a script, so the search has to be done by a person. Marked stale rather than deprecated: the database may well still exist under a different path. It is the only Latin American productivity source in the list and pilot_relevance names Santiago, so it is worth the ten minutes.\nBulk download via the IDB research portal. Chile coverage is\ndetailed at NACE 2-digit. Combined with Atlas of Economic Complexity\nthis gives the Santiago pilot a coherent Region-tier productivity\n+ complexity layer that Metroverse alone cannot provide\n(Metroverse is metro-area; LAKLEMS is national-by-sector).\n",
     "pillar": "economic",
     "pilot_relevance": [
       "santiago"
     ],
     "scale": "region",
     "slug": "economic/region/laklems",
-    "status": "live",
+    "status": "stale",
     "tags": [
       "productivity",
       "klems",
@@ -1632,6 +1633,7 @@
       "chile",
       "idb"
     ],
+    "updated": "2026-09-19",
     "upstream_listed_in": [
       "awesome-public-datasets"
     ],
@@ -2589,12 +2591,12 @@
     "description": "Daily-average air quality index, PM10, ozone, NO2, CO and SO2 for Seoul, with a series running from 1987 to 2025. The ~38-year depth is exceptional for an urban air-quality record.",
     "license": "공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1",
     "name": "Seoul Daily Average Air Environment Information (서울시 기간별 일평균 대기환경 정보)",
-    "notes": "Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Cadence 비정기(수시).\n\nACCESS LIMIT: the sheet and Open API return ONLY the most recent 1 year. The\nhistoric series needs the file route.\n\nPM2.5 and per-자치구 breakdown are NOT in this dataset - they live in siblings\nOA-1200 (실시간 자치구별), OA-2221, OA-2275, OA-15526, OA-2218, OA-2219, whose\nIDs were seen but which were NOT fetched in this pass.\n\nWHY THE CITY SOURCE AND NOT THE NATIONAL ONE: the national AirKorea API\n(data.go.kr/data/15073861) does expose PM2.5 and is richer, but it is licensed\n공공저작물 : 출처표시, 변경금지 (제 3유형) - KOGL Type 3, NO DERIVATIVES - which\nmakes it unusable for an index that computes derived indicators. Seoul's own\nfamily is KOGL Type 1. This is the clearest case in the wave where the national\nsource is restricted and the city source is not.",
+    "notes": "DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, \"this data is a terminated service\". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.\nVerified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Cadence 비정기(수시).\n\nACCESS LIMIT: the sheet and Open API return ONLY the most recent 1 year. The\nhistoric series needs the file route.\n\nPM2.5 and per-자치구 breakdown are NOT in this dataset - they live in siblings\nOA-1200 (실시간 자치구별), OA-2221, OA-2275, OA-15526, OA-2218, OA-2219, whose\nIDs were seen but which were NOT fetched in this pass.\n\nWHY THE CITY SOURCE AND NOT THE NATIONAL ONE: the national AirKorea API\n(data.go.kr/data/15073861) does expose PM2.5 and is richer, but it is licensed\n공공저작물 : 출처표시, 변경금지 (제 3유형) - KOGL Type 3, NO DERIVATIVES - which\nmakes it unusable for an index that computes derived indicators. Seoul's own\nfamily is KOGL Type 1. This is the clearest case in the wave where the national\nsource is restricted and the city source is not.",
     "pillar": "environmental",
     "pilot_relevance": [],
     "scale": "city",
     "slug": "environmental/city/seoul-daily-air-quality",
-    "status": "live",
+    "status": "deprecated",
     "tags": [
       "air-quality",
       "pm10",
@@ -2603,7 +2605,7 @@
       "korea",
       "seoul"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-2220/S/1/datasetView.do",
     "wired_in_planetai": false
@@ -2615,12 +2617,12 @@
     "description": "Seoul's annual greenhouse gas inventory split by direct and indirect emissions, published by the city's Climate and Environment Bureau. Companion dataset OA-21081 gives the same inventory broken out by sector.",
     "license": "공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1",
     "name": "Seoul GHG Inventory by Direct/Indirect (서울시 온실가스 인벤토리 직간접별 현황)",
-    "notes": "Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Owner 기후환경본부\n기후환경정책과. Cadence 년간. Sheet (1,000-row cap) + CSV + Open API.\n\nCAUTION: the dataset page displayed 「파일이 없습니다」 (no file present) at the\ntime of check. The metadata record is live and current, but the attachment may\nbe broken. Verify before depending on it. Recorded as live because the record\nitself was fetched and is current; flip to stale if the attachment stays absent.\n\nNO GPC AND NO IPCC PROTOCOL is referenced on the page, so GPC conformance\ncannot be claimed for this inventory. The Fab City Index Environmental|City GHG\ncell asks for a GPC inventory; this is an inventory of unstated protocol.\n\nSub-city granularity exists elsewhere but not openly: energyinfo.seoul.go.kr\npublishes GHG by 자치구 and energy source with an Excel download and NO licence,\ncarrying the disclaimer 「본 자료는 법적효력을 가지지 않으므로 참고용으로만\n활용하십시오」.",
+    "notes": "DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, \"this data is a terminated service\". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.\nVerified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Owner 기후환경본부\n기후환경정책과. Cadence 년간. Sheet (1,000-row cap) + CSV + Open API.\n\nCAUTION: the dataset page displayed 「파일이 없습니다」 (no file present) at the\ntime of check. The metadata record is live and current, but the attachment may\nbe broken. Verify before depending on it. Recorded as live because the record\nitself was fetched and is current; flip to stale if the attachment stays absent.\n\nNO GPC AND NO IPCC PROTOCOL is referenced on the page, so GPC conformance\ncannot be claimed for this inventory. The Fab City Index Environmental|City GHG\ncell asks for a GPC inventory; this is an inventory of unstated protocol.\n\nSub-city granularity exists elsewhere but not openly: energyinfo.seoul.go.kr\npublishes GHG by 자치구 and energy source with an Excel download and NO licence,\ncarrying the disclaimer 「본 자료는 법적효력을 가지지 않으므로 참고용으로만\n활용하십시오」.",
     "pillar": "environmental",
     "pilot_relevance": [],
     "scale": "city",
     "slug": "environmental/city/seoul-ghg-inventory-direct-indirect",
-    "status": "live",
+    "status": "deprecated",
     "tags": [
       "ghg",
       "emissions",
@@ -2629,7 +2631,7 @@
       "korea",
       "seoul"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-21082/S/1/datasetView.do",
     "wired_in_planetai": false
@@ -4169,12 +4171,12 @@
     "description": "Links each citizen-proposed Seoul project to its allocated amount, its actual expenditure and its execution date, with plan documents and result reports attached. Covers proposal through allocation to spend in one table.",
     "license": "이용허락범위 제한 없음 (no restriction on scope of use)",
     "name": "Seoul Participatory Budget - Project Execution (서울시 시민참여예산사업 예산집행 정보)",
-    "notes": "Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Public since\n2018-11-05; last updated 2026-09-11. Cadence 수시. Source system yesan.seoul.go.kr.\nOwner 서울특별시 기획조정실 재정기획관 재정담당관.\n\nProgramme size verified at yesan.seoul.go.kr/intro/yesanIntro.do: 지정제안형\n300억원 + 자유제안형 200억원 per year.\n\nJOIN LIMIT: project location is a FREE-TEXT STRING, not a dong code - no clean\nspatial join is possible.\n\nCompanion datasets on the same portal: OA-15412 (intake), OA-15414 (final\nselection), OA-15716 (field codes, verified same licence).\n\nNOTE ON THE COMMUNITY RUNG: this is the closest Seoul comes to a sub-city\nbudget, and it is not one. Seoul's participatory budget is CITY-level; the 25 gu\nrun separate schemes. No dong-tier budget is published - 행정동 appears in\nSeoul's data as a statistical geography, never a fiscal one.",
+    "notes": "DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, \"this data is a terminated service\". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.\nVerified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Public since\n2018-11-05; last updated 2026-09-11. Cadence 수시. Source system yesan.seoul.go.kr.\nOwner 서울특별시 기획조정실 재정기획관 재정담당관.\n\nProgramme size verified at yesan.seoul.go.kr/intro/yesanIntro.do: 지정제안형\n300억원 + 자유제안형 200억원 per year.\n\nJOIN LIMIT: project location is a FREE-TEXT STRING, not a dong code - no clean\nspatial join is possible.\n\nCompanion datasets on the same portal: OA-15412 (intake), OA-15414 (final\nselection), OA-15716 (field codes, verified same licence).\n\nNOTE ON THE COMMUNITY RUNG: this is the closest Seoul comes to a sub-city\nbudget, and it is not one. Seoul's participatory budget is CITY-level; the 25 gu\nrun separate schemes. No dong-tier budget is published - 행정동 appears in\nSeoul's data as a statistical geography, never a fiscal one.",
     "pillar": "governance",
     "pilot_relevance": [],
     "scale": "city",
     "slug": "governance/city/seoul-participatory-budget-execution",
-    "status": "live",
+    "status": "deprecated",
     "tags": [
       "participatory-budget",
       "civic-participation",
@@ -4183,7 +4185,7 @@
       "korea",
       "seoul"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-15413/S/1/datasetView.do",
     "wired_in_planetai": false
@@ -4885,7 +4887,7 @@
     "description": "Canada's federal CKAN catalogue, uniformly licensed under the Open\nGovernment Licence - Canada, with a fully open API. Over 1200\nbudget-related datasets and the reference source for federal fiscal\ndata.\n",
     "license": "Open Government Licence - Canada",
     "name": "Open Government Portal - Government of Canada",
-    "notes": "Added 2026-09-11 in the FCI Regime 1 harvest (wave 13).\n\nTHE ONLY CKAN API IN THIS ENTIRE WAVE THAT ACTUALLY ANSWERED. Both\n/api/3/action/package_search and /api/3/action/package_show returned\nclean JSON with no key and no robots obstruction. Verified counts:\nq=budget returns 1243 datasets; \"Public Accounts of Canada\" returns\n91; \"Main Estimates\" returns 237.\n\nThat matters beyond Canada. Montreal, Donnees Quebec, Plymouth,\ndata.gov.uk, avoindata.fi, data.ouka.fi and podatki.gov.si all block\nor refuse their CKAN APIs to a well-behaved fetcher, so their dataset\ncounts in this harvest come from rendered HTML. Canada is the control\ncase showing the difference is policy, not technology.\n\nIT IS ALSO A LICENCE ORACLE FOR OTHER PORTALS. Quebec datasets\nfederate into it, and package_show on a federated Quebec dataset\nreturns license_title \"Creative Commons 4.0 Attribution (CC-BY)\nlicence - Quebec\" / license_id \"qc-cc-by\" - which is how the MAMH\nmunicipal finance licences were verified when donneesquebec.ca's own\npages state none. When a provincial portal blocks its API, try the\nnational portal that harvests it.\n\nLicence is uniform across every federal dataset inspected:\nlicense_title \"Open Government Licence - Canada\", license_id\n\"ca-ogl-lgo\".\n",
+    "notes": "URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.\nAdded 2026-09-11 in the FCI Regime 1 harvest (wave 13).\n\nTHE ONLY CKAN API IN THIS ENTIRE WAVE THAT ACTUALLY ANSWERED. Both\n/api/3/action/package_search and /api/3/action/package_show returned\nclean JSON with no key and no robots obstruction. Verified counts:\nq=budget returns 1243 datasets; \"Public Accounts of Canada\" returns\n91; \"Main Estimates\" returns 237.\n\nThat matters beyond Canada. Montreal, Donnees Quebec, Plymouth,\ndata.gov.uk, avoindata.fi, data.ouka.fi and podatki.gov.si all block\nor refuse their CKAN APIs to a well-behaved fetcher, so their dataset\ncounts in this harvest come from rendered HTML. Canada is the control\ncase showing the difference is policy, not technology.\n\nIT IS ALSO A LICENCE ORACLE FOR OTHER PORTALS. Quebec datasets\nfederate into it, and package_show on a federated Quebec dataset\nreturns license_title \"Creative Commons 4.0 Attribution (CC-BY)\nlicence - Quebec\" / license_id \"qc-cc-by\" - which is how the MAMH\nmunicipal finance licences were verified when donneesquebec.ca's own\npages state none. When a provincial portal blocks its API, try the\nnational portal that harvests it.\n\nLicence is uniform across every federal dataset inspected:\nlicense_title \"Open Government Licence - Canada\", license_id\n\"ca-ogl-lgo\".\n",
     "pillar": "governance",
     "pilot_relevance": [],
     "scale": "region",
@@ -4898,9 +4900,9 @@
       "catalogue",
       "canada"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
-    "url": "https://open.canada.ca/data/en/dataset",
+    "url": "https://search.open.canada.ca/opendata/",
     "wired_in_planetai": false
   },
   {
@@ -5116,12 +5118,12 @@
     "description": "Monthly unemployment rate, employment rate and labour-force participation rate for Seoul, broken out by sex. Sourced from KOSIS and republished by the city on its open data portal.",
     "license": "공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1",
     "name": "Seoul Employment Indicators (서울시 고용지표 통계)",
-    "notes": "Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Cadence 정기(매월).\nSheet + CSV.\n\nYears covered are NOT stated on the page. Breakdown by 자치구 is NOT confirmed -\nthe page describes only a sex split, so this fills the Social|City unemployment\nsub-cell at city aggregate, not sub-city, resolution.",
+    "notes": "DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, \"this data is a terminated service\". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.\nVerified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Cadence 정기(매월).\nSheet + CSV.\n\nYears covered are NOT stated on the page. Breakdown by 자치구 is NOT confirmed -\nthe page describes only a sex split, so this fills the Social|City unemployment\nsub-cell at city aggregate, not sub-city, resolution.",
     "pillar": "social",
     "pilot_relevance": [],
     "scale": "city",
     "slug": "social/city/seoul-employment-indicators",
-    "status": "live",
+    "status": "deprecated",
     "tags": [
       "employment",
       "unemployment",
@@ -5129,7 +5131,7 @@
       "korea",
       "seoul"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-475/S/1/datasetView.do",
     "wired_in_planetai": false
@@ -5141,12 +5143,12 @@
     "description": "Hourly estimates of the population actually present in each Seoul administrative dong, built by fusing city administrative data with telecom data. Daily updates from 2017 to the present.",
     "license": "공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1",
     "name": "Seoul Living Population by Administrative Dong (행정동 단위 서울 생활인구)",
-    "notes": "Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Years 2017-2026,\ncurrent to August 2026. Cadence 정기(매일).\n\nJOIN HAZARD, stated on the page: the dataset uses 행정동 codes FROZEN AT THE\n2016 VINTAGE for time-series consistency, explicitly excluding 항동 (added 2020).\nIt will NOT cleanly join to the current 행정표준코드 register without a\ncrosswalk.\n\nACCESS LIMIT: CSV zip archives hold the history; the sheet and Open API expose\nonly the most recent 2 months.\n\nCensus-tract sibling OA-14979 (집계구 단위) exists and was not fetched.\n\nThis is the finest-grained social series verified for Seoul, and it is a\npresence measure, not a residence measure - do not use it as a denominator for\nper-capita indicators without care.",
+    "notes": "DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, \"this data is a terminated service\". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.\nVerified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Years 2017-2026,\ncurrent to August 2026. Cadence 정기(매일).\n\nJOIN HAZARD, stated on the page: the dataset uses 행정동 codes FROZEN AT THE\n2016 VINTAGE for time-series consistency, explicitly excluding 항동 (added 2020).\nIt will NOT cleanly join to the current 행정표준코드 register without a\ncrosswalk.\n\nACCESS LIMIT: CSV zip archives hold the history; the sheet and Open API expose\nonly the most recent 2 months.\n\nCensus-tract sibling OA-14979 (집계구 단위) exists and was not fetched.\n\nThis is the finest-grained social series verified for Seoul, and it is a\npresence measure, not a residence measure - do not use it as a denominator for\nper-capita indicators without care.",
     "pillar": "social",
     "pilot_relevance": [],
     "scale": "city",
     "slug": "social/city/seoul-living-population-by-dong",
-    "status": "live",
+    "status": "deprecated",
     "tags": [
       "population",
       "presence",
@@ -5155,7 +5157,7 @@
       "korea",
       "seoul"
     ],
-    "updated": "2026-09-11",
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-14991/S/1/datasetView.do",
     "wired_in_planetai": false
@@ -5351,12 +5353,12 @@
   },
   {
     "added": "2026-05-04",
-    "api": "https://ghdx.healthdata.org/gbd-results-tool",
+    "api": "https://vizhub.healthdata.org/gbd-results/",
     "cell": "Social|Region",
     "description": "Mortality + morbidity by cause × geography × age × year for ~370\ndiseases and injuries across ~200 countries. The de facto global\nhealth-burden time series.\n",
     "license": "custom open (registration required)",
     "name": "IHME Global Burden of Disease",
-    "notes": "Coverage uneven below national level — sub-national for some\ncountries, national-only for most. For Bali pilot, Indonesia\nnational-level data is available; sub-national needs fallback\nto BPS health module. WHO Open Data is the lighter-weight\nalternative if registration friction matters.\n",
+    "notes": "URL updated 2026-09-19: ghdx.healthdata.org/gbd-results-tool redirects to vizhub.healthdata.org/gbd-results/ - recorded over https, since the redirect lands on http.\nCoverage uneven below national level — sub-national for some\ncountries, national-only for most. For Bali pilot, Indonesia\nnational-level data is available; sub-national needs fallback\nto BPS health module. WHO Open Data is the lighter-weight\nalternative if registration friction matters.\n",
     "pillar": "social",
     "pilot_relevance": [
       "global"
@@ -5371,6 +5373,7 @@
       "ihme",
       "gbd"
     ],
+    "updated": "2026-09-19",
     "upstream_listed_in": [],
     "url": "https://ghdx.healthdata.org/gbd-2021",
     "wired_in_planetai": false

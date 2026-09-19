@@ -5,7 +5,7 @@ description: Project-level Seoul metropolitan expenditure showing current availa
   and sector) and by department. Updated daily.
 pillar: economic
 scale: city
-status: live
+status: deprecated
 license: 이용허락범위 제한 없음 (no restriction on scope of use)
 api: null
 pilot_relevance: []
@@ -18,10 +18,12 @@ tags:
 - korea
 - seoul
 added: '2026-09-11'
-updated: '2026-09-11'
+updated: '2026-09-19'
 wired_in_planetai: false
 upstream_listed_in: []
-notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). First published
+notes: 'DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, "this data is a terminated service". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.
+
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). First published
 
   2016-06-10; data current to 2026-08-12 at time of check. Cadence 정기(매일) - daily,
 

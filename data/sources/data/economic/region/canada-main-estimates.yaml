@@ -1,5 +1,5 @@
 name: Main Estimates - Treasury Board of Canada Secretariat
-url: https://open.canada.ca/data/en/dataset
+url: https://search.open.canada.ca/opendata/
 description: |
   Canada's annual appropriation estimates by department and vote,
   published as CSV per fiscal year running 1 April to 31 March. Each
@@ -12,10 +12,11 @@ api: https://open.canada.ca/data/api/3/action/package_search?q=%22Main%20Estimat
 pilot_relevance: []
 tags: [national-budget, estimates, appropriations, canada, csv, fiscal-year]
 added: 2026-09-11
-updated: 2026-09-11
+updated: '2026-09-19'
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |
+  URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13). Canada
   national rung, done once for the country.
 

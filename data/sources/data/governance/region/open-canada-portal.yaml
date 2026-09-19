@@ -1,5 +1,5 @@
 name: Open Government Portal - Government of Canada
-url: https://open.canada.ca/data/en/dataset
+url: https://search.open.canada.ca/opendata/
 description: |
   Canada's federal CKAN catalogue, uniformly licensed under the Open
   Government Licence - Canada, with a fully open API. Over 1200
@@ -13,10 +13,11 @@ api: https://open.canada.ca/data/api/3/action/package_search
 pilot_relevance: []
 tags: [open-data-portal, ckan, transparency, catalogue, canada]
 added: 2026-09-11
-updated: 2026-09-11
+updated: '2026-09-19'
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |
+  URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13).
 
   THE ONLY CKAN API IN THIS ENTIRE WAVE THAT ACTUALLY ANSWERED. Both

@@ -8,13 +8,15 @@ pillar: social
 scale: region
 status: live
 license: custom open (registration required)
-api: https://ghdx.healthdata.org/gbd-results-tool
+api: https://vizhub.healthdata.org/gbd-results/
 pilot_relevance: [global]
 tags: [health, mortality, morbidity, ihme, gbd]
 added: 2026-05-04
+updated: '2026-09-19'
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |
+  URL updated 2026-09-19: ghdx.healthdata.org/gbd-results-tool redirects to vizhub.healthdata.org/gbd-results/ - recorded over https, since the redirect lands on http.
   Coverage uneven below national level — sub-national for some
   countries, national-only for most. For Bali pilot, Indonesia
   national-level data is available; sub-national needs fallback
