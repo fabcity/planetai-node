@@ -1,0 +1,52 @@
+name: Odprti podatki Mestne obcine Ljubljana (ArcGIS Hub)
+url: https://mol-ljubljana.hub.arcgis.com/
+description: |
+  Ljubljana's municipal open data portal on ArcGIS Hub - geospatial
+  layers for roads, cycle paths, parking, sports, schools, health
+  network and heritage, downloadable as CSV, GeoJSON and KML.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [open-data-portal, arcgis-hub, geospatial, ljubljana, catalogue]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Ljubljana).
+  This entry is the catalogue itself, the Governance|City open-data
+  availability indicator.
+
+  WHAT THE CATALOGUE ACTUALLY CONTAINS IS THE FINDING, AND IT IS A
+  NEGATIVE ONE. MOL's eight nationally-catalogued datasets are
+  ENTIRELY PHYSICAL AND FACILITY LAYERS - municipal roads, cultural
+  heritage, educational institutions, car parks, cycle paths, LPP bus
+  stops, sports facilities, health network. No financial indicator, no
+  social indicator, no economic indicator, no waste or emissions data.
+  Ljubljana's open data estate is a facilities map. For a European
+  Green Capital, the absence of waste and recycling data is the
+  conspicuous gap.
+
+  DATASET COUNT NOT OBTAINED - the Hub site renders client-side.
+
+  THE BIGGEST TRAP IN THIS LOCALITY. The generic ArcGIS Hub API works:
+  https://hub.arcgis.com/api/v3/datasets?q=Ljubljana returned valid JSON
+  with totalCount 532. BUT THOSE 532 ARE GLOBAL ITEMS MATCHING THE
+  STRING "Ljubljana", owned by unrelated accounts - a Dutch
+  municipality, a US high school, private users - all with license
+  "none". A connector that queries Hub by keyword will SILENTLY INGEST
+  OTHER PEOPLE'S MAPS and attribute them to Ljubljana. The correct
+  approach is to filter by MOL's ArcGIS orgId, WHICH WAS NOT OBTAINED.
+  api is recorded as null rather than pointing at an endpoint that
+  returns the wrong city's data. Recover the orgId from the Hub site's
+  bootstrap JSON or /api/v3/sites before wiring anything.
+
+  LICENCE IS ONE STEP OF INFERENCE, FLAGGED. "Priznanje avtorstva (CC BY
+  4.0)" was verified on the eight MOL datasets mirrored to the national
+  OPSI portal, NOT on the Hub site, which states no terms of use at all.
+  The OPSI application record for the Hub
+  (podatki.gov.si/aplikacije/odprti-podatki-mestne-obcine-ljubljana,
+  published 2022-10-04) confirms the URL but also states no licence.

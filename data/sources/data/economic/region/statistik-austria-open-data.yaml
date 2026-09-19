@@ -1,0 +1,42 @@
+name: STATISTIK AUSTRIA open.data
+url: https://data.statistik.gv.at/web/catalog.jsp
+description: |
+  Statistics Austria's open data catalogue: national and regional statistics on
+  labour, prices, trade, regional and national accounts, tourism, transport,
+  demography, health and education, in CSV and JSON with some OGC services.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [official-statistics, regional-accounts, labour-market, austria]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8). This is the national
+  and regional statistical rung for Austria, shared by Linz and Suedburgenland
+  rather than resolved per member.
+
+  Licence read verbatim from the terms page: CC BY 4.0, with the required credit
+  "Datenquelle: Statistik Austria - data.statistik.gv.at".
+
+  Catalogue confirmed to carry regional and national accounts, unemployment and
+  employment rates, consumer/producer/construction price indices, import and
+  export by country and product classification, tourism, transport, demography,
+  health and education series. Data come as CSV and JSON with metadata exposed
+  as JSON; at least one dataset also offers OGC WMS/WFS. No single documented
+  bulk API endpoint was confirmed in this pass, so api is left null rather than
+  guessed; STATcube is the interactive route.
+
+  Suedburgenland is NOT an administrative unit - it is NUTS AT112, covering the
+  Bezirke Oberwart, Guessing and Jennersdorf within Land Burgenland (AT-1 /
+  NUTS AT11). Statistics Austria's NUTS-3 series is therefore the only rung at
+  which "Suedburgenland" is directly addressable; anything below it has to be
+  assembled from Gemeinde-level (GKZ) records.
+
+  Statistics Austria also supplies the annual autumn data delivery that
+  populates Offener Haushalt with every Austrian municipality's Voranschlag and
+  Rechnungsabschluss - see the wave 8 notes on offenerhaushalt.at, which was
+  not added to this list because no licence is stated on that platform.

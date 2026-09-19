@@ -1,0 +1,40 @@
+name: Amsterdam Open Data / DataPunt API
+url: https://data.amsterdam.nl/catalogus/
+description: |
+  Gemeente Amsterdam's data catalogue and its DataPunt REST API, which serves
+  roughly 100 versioned dataset collections (BAG, trees, ecology, waste,
+  gas-free zones) as JSON, plus WFS and MVT layers.
+pillar: governance
+scale: city
+status: live
+license: CC0-1.0
+api: https://api.data.amsterdam.nl/v1/
+pilot_relevance: []
+tags: [open-data, amsterdam, netherlands, rest-api, municipal, wfs]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10).
+  https://api.data.amsterdam.nl/v1/ returns a JSON service index: one entry
+  per dataset with versioned and unversioned endpoints, status "stabiel", and
+  an authorisation field that is "OPENBAAR" for most and restricted for a few.
+
+  LICENCE. The catalogue's own pages do not print a licence. Amsterdam's
+  records on the national portal do: data.overheid.nl shows CC-0 (1.0) for
+  Gemeente Amsterdam datasets (checked on /dataset/aiwltsev_igoxa). Recorded
+  as CC0-1.0 on that basis, which is one step of inference - if a specific
+  dataset matters, check its own record rather than trusting this header.
+
+  API KEYS ARE COMING. The v1 docs say key registration is optional now and
+  becomes mandatory at a later deadline. An unauthenticated connector built
+  today will break. Plan for a key.
+
+  THE DCAT ENDPOINT IS GONE. api.data.amsterdam.nl/dcatd/datasets - the path
+  the Amsterdam/dcatd repo documents - returns 404 as of 2026-09-11. Use the
+  v1 service index instead. Do not copy the dcatd URL out of older lists.
+
+  NO CITY BUDGET HERE. A catalogue search for "begroting" surfaced no budget
+  dataset. Amsterdam's municipal finances reach open data through the national
+  Iv3 route, not through this portal - see the coverage tracker.

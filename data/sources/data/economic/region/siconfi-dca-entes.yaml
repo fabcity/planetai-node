@@ -1,0 +1,42 @@
+name: SICONFI DCA - Declaracao de Contas Anuais (estados e municipios)
+url: https://www.tesourotransparente.gov.br/ckan/dataset/api-extrato-entes
+description: |
+  Brazil's National Treasury annual accounts declaration for states and
+  municipalities as a JSON API, keyed on the IBGE code. Gives the state-tier
+  budget rung - gross realised revenue, deductions and transfers down.
+pillar: economic
+scale: region
+status: live
+license: Open Data Commons Open Database License (ODbL)
+api: https://apidatalake.tesouro.gov.br/ords/siconfi/tt/dca
+pilot_relevance: []
+tags: [budget, public-finance, brazil, siconfi, regional-accounts, ibge]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10 in the FCI Regime 1 harvest (wave 5, Brazil). Companion to
+  siconfi-rreo-entes; this entry records the REGION rung of the budget ladder.
+
+  VERIFIED LIVE: /tt/dca with an_exercicio=2024, no_anexo=DCA-Anexo I-C,
+  co_esfera=E, id_ente=35 returned JSON for "Governo do Estado de Sao Paulo",
+  cod_ibge 35, including the column "Receitas Brutas Realizadas" against
+  "RECEITAS (EXCETO INTRA-ORCAMENTARIAS) (I)" and a "Deducoes - FUNDEB" column
+  that makes the transfer-down to municipalities legible.
+
+  The four state codes covering wave 5 were each confirmed from the API's own
+  "instituicao" response rather than assumed:
+    35 -> Governo do Estado de Sao Paulo
+    31 -> Governo do Estado de Minas Gerais
+    26 -> Governo do Estado de Pernambuco
+    41 -> Governo do Estado do Parana
+
+  Same chart of accounts, currency and fiscal-year convention as the RREO entry;
+  same absence of a COFOG crosswalk. DCA is annual where RREO is bimonthly, so
+  use RREO for within-year execution and DCA for closed-year accounts.
+
+  LICENCE: same CKAN registry evidence as siconfi-rreo-entes - the API endpoint
+  itself states nothing; tesourotransparente.gov.br/ckan carries the SICONFI API
+  datasets under "Licenca Aberta para Bases de Dados (ODbL) do Open Data
+  Commons", 7 of 7 on the siconfi query and 4 of 4 on the rreo query.

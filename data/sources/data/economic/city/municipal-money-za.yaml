@@ -1,0 +1,48 @@
+name: Municipal Money (South Africa National Treasury)
+url: https://municipaldata.treasury.gov.za/
+description: |
+  National Treasury's municipal finance API for all 292 South African
+  municipalities: budgeted and audited income, expenditure, cash flow, capital
+  and grants, 2008-09 to 2025-26. Built with OpenUp.
+pillar: economic
+scale: city
+status: live
+license: National Treasury Terms of Use - free commercial and non-commercial reuse, redistribution permitted, attribution to National Treasury plus date of publication required
+api: https://municipaldata.treasury.gov.za/api/cubes
+pilot_relevance: []
+tags: [budget, municipal-finance, south-africa, public-finance, api]
+added: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 11, South Africa).
+
+  ENDPOINT: /api/cubes returns {"status":"ok"} and enumerates 22 cubes. For the
+  budget ladder: incexp(_v2) Statement of Financial Performance, capital(_v2),
+  cflow(_v2), bsheet / financial_position_v2, conditional_grants / grants_v2,
+  repmaint(_v2), uifwexp (Unauthorised, Irregular, Fruitless and Wasteful
+  Expenditure), audit_opinions, aged_debtor(_v2), aged_creditor(_v2),
+  officials, municipalities, demarcation_changes.
+
+  CLASSIFICATION: mSCOA (Municipal Standard Chart of Accounts) from 2019-20 in
+  the _v2 cubes; pre-mSCOA national chart before that. No COFOG crosswalk is
+  published - mapping mSCOA function segments to COFOG is unfinished work.
+
+  FISCAL YEAR 1 July - 30 June. Both planned (budgeted, adjusted) and executed
+  (actual, audited) amounts per year, which makes this a full ladder source
+  rather than a budget-only one. ZAR, nominal. 2008-09 to 2025-26.
+
+  GRANULARITY: line item within cube, keyed on the Municipal Demarcation Board
+  code (CPT = City of Cape Town, EKU = City of Ekurhuleni). That code is the
+  federatable admin identifier - it resolves the city rung directly, no name
+  matching. JSON API, no key; docs at /docs. Landing page self-reports
+  85 161 366 facts across 292 municipalities (8 metros, 44 district, 240
+  local). Cadence: quarterly section-71 uploads plus annual audited outcomes.
+
+  LICENCE: terms at https://municipalmoney.gov.za/terms (the /terms path on the
+  data domain 302-redirects there). Permits "Download, copy, publish,
+  distribute and transmit the data" commercially and non-commercially; requires
+  you "Acknowledge and reference the source of the data as National Treasury
+  and the date of publication"; forbids implying Treasury endorsement and
+  forbids reuse of personal data. Attribution-only open terms, not an SPDX
+  licence - recorded as its substance rather than a false CC-BY label.

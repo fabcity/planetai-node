@@ -1,0 +1,39 @@
+name: Kanagawa Prefectural Economic Accounts (神奈川県県民経済計算)
+url: https://catalog.opendata.pref.kanagawa.jp/dataset/e73a198f6ebb90f4ef6c570a995fc8ff
+description: 'Kanagawa''s SNA-consistent regional accounts: gross prefectural product by economic
+  activity (nominal and real chain-linked), income distribution, expenditure-side GDP, integrated
+  accounts, and employment by economic activity.'
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags:
+- gdp
+- regional-accounts
+- sna
+- industry-composition
+- employment
+- xlsx
+- japan
+- kanagawa
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Latest edition
+
+  FY2023 (令和5年度), cadence 年1回, formats XLSX + PDF.
+
+
+  PREFECTURAL AGGREGATES ONLY - contains no municipal (市町村民経済計算)
+
+  disaggregation. Kanagawa appears not to publish a municipal GDP series, so
+
+  Economic|City GDP per capita is unavailable for Kamakura by this route.
+
+
+  Covers both the regional-GDP and the industry-composition sub-cells in one
+
+  object.'

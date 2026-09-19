@@ -1,0 +1,53 @@
+name: Catalogo de Datos Abiertos del Estado de Nuevo Leon
+url: http://catalogodatos.nl.gob.mx/dataset/
+description: |
+  Nuevo Leon's state open data catalogue, CKAN 2.10, 127 datasets published by
+  named state secretariats and agencies, every one of them under an open
+  licence. The region rung for Monterrey.
+pillar: governance
+scale: region
+status: live
+license: Open Data Commons Attribution License (105 datasets) / Creative Commons Attribution (19)
+api: null
+pilot_relevance: []
+tags: [open-data, nuevo-leon, monterrey, mexico, ckan, state-government]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10, FCI Regime 1 harvest (wave 6, Mexico). Governance|Region
+  for Monterrey.
+
+  TWO HOSTNAMES, AND THE OBVIOUS ONE IS THE WRONG ONE. The portal the state
+  advertises is https://datosabiertos.nl.gob.mx/ - a static front end whose
+  /dataset and /api/3/action/* paths both 404. The CKAN instance actually
+  lives at catalogodatos.nl.gob.mx, linked from that front end as "Catalogo de
+  datos". Record the catalogue host, not the marketing host.
+
+  VERIFIED: /dataset/ returned "127 conjuntos de datos encontrados".
+
+  LICENCE is clean and is the reason this entry exists at all. The licence
+  facet reads "Open Data Commons Attribution License" 105 and "Creative
+  Commons Attribution" 19 - 124 of 127, with no proprietary or unspecified
+  bucket surfaced. Note the CC BY-NC-SA 4.0 mark in the datosabiertos.nl.gob.mx
+  footer applies to the VIA design system of the Subsecretaria de Tecnologias,
+  not to the data; do not propagate it to the datasets.
+
+  PUBLISHERS by volume: Secretaria de Administracion 8, Secretaria de Igualdad
+  e Inclusion 7, Instituto de la Vivienda 6, Secretaria de Participacion
+  Ciudadana 5, Instituto de Movilidad y Accesibilidad 4, Oficina Ejecutiva del
+  Titular del Poder Ejecutivo 4, Secretaria de Educacion 4, Secretaria de Salud
+  4, Servicios de Agua y Drenaje de Monterrey 4, INDE 3.
+
+  BUDGET GAP, recorded as a finding. No presupuesto / egresos / finanzas
+  dataset surfaced in the visible catalogue listing. Nuevo Leon's budget rung
+  is therefore served by INEGI EFIPEM (clave de entidad 19), not by this
+  portal. Open contracting is published separately at
+  nl.gob.mx/es/datosabiertos-contrataciones-abiertas, linked from the front
+  end and NOT verified in this harvest - worth a bounded second visit for the
+  procurement half of Governance|Region.
+
+  Servicios de Agua y Drenaje de Monterrey's four datasets are the most likely
+  home for water-resource data and are worth a targeted visit for
+  Environmental|Region.

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fabcity/awesome-fabcity-data/blob/main/schema/dataset.schema.json",
+  "title": "Fab City Dataset Entry",
+  "description": "Canonical schema for a single dataset entry in the awesome-fabcity-data list. Each entry lives at data/{pillar}/{scale}/{slug}.yaml and is validated against this schema in CI.",
+  "type": "object",
+  "required": ["name", "url", "description", "pillar", "scale", "status", "license"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120,
+      "description": "Human-readable canonical name for the dataset / source."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Primary URL — landing page or registry entry."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 320,
+      "description": "One- to two-sentence summary. What is it; what does it carry; who runs it."
+    },
+    "pillar": {
+      "enum": ["environmental", "social", "economic", "governance"],
+      "description": "Which Full Stack Metrics Framework pillar this source primarily feeds."
+    },
+    "scale": {
+      "enum": ["planet", "bioregion", "region", "city", "community"],
+      "description": "The scale tier where the source publishes its strongest signal. Some sources span scales; pick the one where the resolution is highest."
+    },
+    "status": {
+      "enum": ["live", "stale", "paywalled", "deprecated", "planned"],
+      "description": "Operational status. live = current public read; stale = older than 12 months without update; paywalled = requires payment for full access; deprecated = officially retired; planned = upstream announced but not yet shipped."
+    },
+    "license": {
+      "type": "string",
+      "minLength": 2,
+      "description": "License of the data itself, not the codebase. Use SPDX where possible (CC-BY-4.0, ODbL-1.0, CC0-1.0, MIT). Free-text OK if the source is multi-license."
+    },
+    "api": {
+      "type": ["string", "null"],
+      "description": "Direct programmatic endpoint, if one exists. Null if download-only."
+    },
+    "pilot_relevance": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["barcelona", "boston", "santiago", "bali", "global"] },
+      "description": "Which PLANETAI pilots (or 'global') this source has meaningful coverage for. Empty array means relevant elsewhere but not in current pilots."
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+      "description": "Free-form lowercase-hyphenated tags. Examples: air-quality, citizen-science, open-hardware, material-flow, procurement."
+    },
+    "added": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date the entry was added to this list."
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date of the last review of this entry's status / metadata."
+    },
+    "wired_in_planetai": {
+      "type": "boolean",
+      "description": "True if a connector for this source is currently live in the PLANETAI observatory."
+    },
+    "upstream_listed_in": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string" },
+      "description": "Other awesome-style lists or registries that already index this source. Helps avoid duplication of curation labour."
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Longer-form notes: API quirks, rate limits, licensing edge cases, recommended usage patterns, citation requirements."
+    }
+  }
+}

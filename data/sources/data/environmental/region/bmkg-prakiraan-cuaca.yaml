@@ -1,0 +1,26 @@
+name: BMKG Prakiraan Cuaca (Indonesia public weather forecast API)
+url: https://data.bmkg.go.id/prakiraan-cuaca/
+description: |
+  Indonesia's meteorological agency publishes a three-day, 3-hourly forecast
+  for every kelurahan and desa in the country, keyed by the level-IV
+  administrative code, refreshed twice daily. Key-free JSON, 60 req/min/IP.
+pillar: environmental
+scale: region
+status: live
+license: 'BMKG terms of use; attribution "Sumber: BMKG" mandatory; repackaging into third-party applications and commercial use require written permission from BMKG (Ketentuan Penggunaan s.9.3)'
+api: https://api.bmkg.go.id/publik/prakiraan-cuaca
+pilot_relevance: [bali]
+tags: [weather, forecast, indonesia, bmkg, kelurahan, government]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Query: /publik/prakiraan-cuaca?adm4=<kode wilayah tingkat IV>. Returns
+  temperature, humidity, weather code, wind, cloud cover, visibility.
+  The finest official forecast for Indonesia, at a scale (desa) no global
+  model resolves. Licence caveat: the API page asks only for attribution,
+  but the agency-wide terms (s.9.3) say integration into third-party apps
+  needs written permission. PLANETAI's `packs/forecast` reads it on Bali
+  nodes; the Foundation should request that permission in writing before
+  the pack is promoted from beta. Automated scraping of bmkg.go.id pages is
+  prohibited; use this API only.

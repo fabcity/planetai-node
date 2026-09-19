@@ -1,0 +1,44 @@
+name: Poslovni register Slovenije (AJPES business register)
+url: https://podatki.gov.si/publisher/agencija_republike_slovenije_za_javnopravne_evidence_in_storitve
+description: |
+  Slovenia's national business register from AJPES - every registered
+  entity with its seat municipality, giving business density and sector
+  composition for Ljubljana. CSV, XML and a programmatic interface.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [business-registry, firms, municipality, ajpes, slovenia]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Ljubljana).
+
+  Licence read verbatim from the AJPES publisher page on OPSI:
+  "Priznanje avtorstva (CC BY 4.0)". AJPES publishes exactly THREE
+  datasets on OPSI; PRS is one of them, category Gospodarstvo, formats
+  CSV, XML and "Programski vmesnik" (API).
+
+  THE SPLIT THAT WILL CATCH PEOPLE OUT: the REGISTER is CC BY 4.0, but
+  company FINANCIALS (letna porocila, annual reports) are a SEPARATE
+  AJPES product, not among the three OPSI datasets, and AJPES has
+  historically charged for bulk and derived products. Business density
+  and sector composition are open; company accounts are probably not.
+  Confirm against AJPES's own terms page before building - the licence
+  above was verified on the OPSI catalogue listing, NOT on AJPES's own
+  terms.
+
+  API is recorded as null because the endpoint URL was not reached this
+  pass - OPSI lists "Programski vmesnik" as a format but the dataset
+  pages return HTTP 401 intermittently and the CKAN API is blocked. The
+  interface exists; its address is unverified and is not guessed here.
+
+  Contrast with the Netherlands (see the Amsterdam wave): the Dutch KvK
+  Handelsregister is a PAID register, which is a structural gap for any
+  Fab City economic indicator there. Slovenia's is open. Worth carrying
+  into the Index narrative - small country, better register policy than
+  its richer neighbour.

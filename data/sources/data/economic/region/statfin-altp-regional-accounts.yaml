@@ -1,0 +1,33 @@
+name: StatFin - Regional accounts (altp)
+url: https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/altp
+description: |
+  Finnish regional accounts - GDP, gross value added and industry
+  composition at maakunta level, including Pohjois-Pohjanmaa (code 17),
+  the region containing Oulu. Served via Statistics Finland's PxWeb API.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/altp
+pilot_relevance: []
+tags: [gdp, regional-accounts, pxweb, finland, pohjois-pohjanmaa]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Oulu).
+
+  THIS IS WHERE FINNISH SUB-NATIONAL GDP LIVES, AND IT STOPS AT THE
+  REGION. Finland does not publish municipal GDP as a standard series.
+  A city-level GDP per capita for Oulu would have to be DERIVED from
+  these regional accounts, not read off a published figure. The FCI
+  should say that rather than imply a city number exists.
+
+  Same verification caveat as statfin-jmete-cofog-expenditure: the
+  database id is copied from the fetched index at
+  https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/, but table-level ids
+  and the Alue dimension's offer of MK17 are NOT verified. Enumerate
+  before wiring.
+
+  Licence verbatim: see statfin-jmete-cofog-expenditure.

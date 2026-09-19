@@ -1,0 +1,46 @@
+name: Profil financier des municipalites locales - MAMH Quebec
+url: https://www.donneesquebec.ca/recherche/dataset/profil-financier-des-municipalites-locales
+description: |
+  Derived financial and fiscal profiles with computed ratios for Quebec
+  municipalities, pre-aggregated to municipality, MRC, administrative
+  region, population class and province. CSV and XLSX, 2018-2025.
+pillar: economic
+scale: region
+status: live
+license: Creative Commons 4.0 Attribution (CC-BY) licence - Quebec (qc-cc-by)
+api: null
+pilot_relevance: []
+tags: [municipal-finance, ratios, mrc, region-administrative, quebec, bas-saint-laurent]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13,
+  Bas-Saint-Laurent).
+
+  THIS IS WHY BAS-SAINT-LAURENT HAS A BUDGET AT ALL. BSL is a region
+  administrative, not a municipality - it has no city budget and no
+  portal of its own. This dataset pre-aggregates municipal finances TO
+  REGION ADMINISTRATIVE, which makes region 01 addressable as a real,
+  published financial unit rather than something FCI has to sum itself.
+  It is the analysis-ready layer over
+  economic/region/quebec-rapport-financier-municipal.
+
+  AN AMBIGUITY FCI MUST RESOLVE, not paper over: for a Quebec locality
+  "region" can mean the region administrative (01) or the province
+  (Quebec). They are different rungs and BOTH are populated - this
+  dataset for the first, economic/region/quebec-budget-de-depenses for
+  the second. Two different numbers will both be true.
+
+  TRAPS. (1) Files are organised in FISCAL-YEAR PAIRS (a 2024-2025 file
+  containing both years), so naive year-keyed ingestion double-counts.
+  (2) RATIOS ARE PRE-COMPUTED by MAMH using their own definitions - do
+  not mix them with ratios you compute from the Rapport financier or you
+  will get two different numbers for the same concept. (3) The
+  identifier is presumably COD_GEO but WAS NOT CONFIRMED on the page.
+  Verify before building. 215+ resources.
+
+  Licence established the same way as quebec-rapport-financier-municipal
+  - portal default CC-BY 4.0 Quebec, with the federal CKAN federation
+  as the oracle. Not printed on the dataset page itself.

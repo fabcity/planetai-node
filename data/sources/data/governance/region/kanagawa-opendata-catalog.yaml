@@ -1,0 +1,57 @@
+name: Kanagawa Open Data Catalogue (神奈川県オープンデータカタログサイト)
+url: https://catalog.opendata.pref.kanagawa.jp/dataset
+description: Kanagawa Prefecture's CKAN open data catalogue and the regional data-sharing
+  platform for the Kamakura administrative chain, holding 811 datasets of which 763 are CC-BY
+  and 24 are CC-BY-NC.
+pillar: governance
+scale: region
+status: live
+license: CC-BY-4.0 (763 datasets); CC-BY-NC (24 datasets)
+api: null
+pilot_relevance: []
+tags:
+- catalogue
+- ckan
+- open-data
+- japan
+- kanagawa
+- regional-platform
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Dataset count 811
+
+  read from the rendered catalogue facets on 2026-09-11.
+
+
+  This entry is the CATALOGUE ITSELF - a Governance indicator in its own right
+
+  (dataset count plus licence regime). Specific Kanagawa datasets are separate
+
+  entries: economic/region/kanagawa-expenditure-transactions and
+
+  economic/region/kanagawa-prefectural-accounts.
+
+
+  THE API FIELD IS NULL BY ROBOTS, NOT BY ABSENCE. robots.txt verbatim:
+
+  User-agent: * / Disallow: /dataset/rate/ / Disallow: /revision/ /
+
+  Disallow: /dataset/*/history / Disallow: /api/ / Crawl-Delay: 10.
+
+  The standard CKAN endpoint almost certainly works; it was NOT tested because
+
+  robots forbids it. Same treatment as Analyze Boston and data.zagreb.hr.
+
+
+  Terms verbatim (opendata.pref.kanagawa.jp/terms): 「「クリエイティブ・コモンズ・
+
+  ライセンス 表示 4.0 国際」のもとでライセンスされています。」 with a prescribed
+
+  attribution string.
+
+
+  24 datasets are CC-BY-NC and must be filtered out of any open-licence harvest.
+
+  Format skew: XLSX 331 vs CSV 11 - this is an Excel catalogue.'

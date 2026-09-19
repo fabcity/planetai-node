@@ -1,0 +1,35 @@
+name: Korea Local Finance Yearbook - Budget (지방재정365 지방재정연감(예산))
+url: https://www.data.go.kr/data/15138678/fileData.do
+description: Annual budget totals and itemised detail for every Korean local government, explicitly
+  including 특별·광역시도, 도, 시, 군 and 자치구, so Seoul and all 25 of its districts are in scope. The
+  bulk route to the gu tier.
+pillar: economic
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- local-finance
+- budget
+- municipal
+- bulk-download
+- korea
+- gu-tier
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Provider 행정안전부
+
+  (MOIS). Cadence 수시 (자동 갱신). File slug carries _20241011.
+
+
+  XLS ONLY - no API, no CSV. Years covered are not stated on the catalogue page
+
+  and granularity (chapter vs line item) is unconfirmed without opening the XLS.
+
+
+  This is the source that covers what Seoul''s own OA-13269 explicitly excludes:
+
+  the 25 자치구.'

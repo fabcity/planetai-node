@@ -1,0 +1,54 @@
+name: Data Place Plymouth
+url: https://plymouth.thedata.place/dataset
+description: |
+  Plymouth's CKAN open data portal - 174 datasets from 10 publishers
+  including the city council, public health, a CCG, the police and
+  Plymouth Marine Laboratory. 144 under OGL, the rest CC-BY and ODbL.
+pillar: governance
+scale: city
+status: live
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [open-data-portal, ckan, catalogue, transparency, plymouth]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth). This
+  entry is the catalogue itself, the Governance|City open-data
+  availability indicator.
+
+  NUMBERS from the portal's own faceted listing. 174 datasets across 10
+  publishing organisations: Plymouth City Council 107, Green Minds 16,
+  Public Health Plymouth 16, Admin 12, North East & West Devon CCG 8,
+  Public 6, i-DAT 4, Plymouth Marine Laboratory 3, Devon and Cornwall
+  Police 1, Plymouth Energy Community 1. Licences: 144 OGL, 13 CC-BY, 8
+  ODbL, rest other open. Roughly 83% OGL, effectively 100% open, with NO
+  PROPRIETARY TAIL.
+
+  THIS IS A CITY DATA COMMONS, NOT A COUNCIL PORTAL, and that is the
+  interesting part. A clinical commissioning group, a police force
+  spanning two counties, a marine research laboratory, a community energy
+  body and an arts-technology institute all publish here alongside the
+  council. Unusual in this harvest, and a Fab-City-shaped institution in
+  its own right - worth a look from the network as a model, not only as a
+  data source.
+
+  BUT DATASET COUNT IS NOT DATASET FRESHNESS, AND PLYMOUTH IS THE
+  CAUTIONARY CASE. The flagship transparency dataset, spend over 500
+  pounds, STOPS IN 2015 while the council publishes current versions
+  elsewhere as licence-unstated XLSX. An openness indicator built on
+  count alone will over-rate Plymouth. Freshness must be first-class in
+  the FCI open-data-health computation. See
+  governance/city/plymouth-spend-over-500.
+
+  api is null because the CKAN API could not be verified -
+  /api/3/action/package_search is robots-disallowed to a well-behaved
+  fetcher, and the counts above come from the HTML listing.
+
+  ONE MORE TRAP: plymouth.gov.uk/open-data points to
+  http://www.dataplymouth.co.uk/ as the portal - different hostname, HTTP
+  not HTTPS, NOT FETCHED. May redirect here, may be a dead legacy host.
+  Do not wire to it unverified.

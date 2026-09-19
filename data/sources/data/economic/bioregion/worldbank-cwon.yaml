@@ -1,0 +1,30 @@
+name: World Bank Changing Wealth of Nations (CWON)
+url: https://datacatalog.worldbank.org/search/dataset/0042066
+description: |
+  World Bank wealth accounts measuring produced, human and natural capital
+  as stocks per country. The only globally consistent open natural-capital
+  valuation series, machine-readable through the Data360 API.
+pillar: economic
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: https://data360api.worldbank.org/data360/data?DATABASE_ID=WB_CWON
+pilot_relevance: [global]
+tags: [world-bank, natural-capital, wealth-accounts, cwon, data360]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call:
+  ?DATABASE_ID=WB_CWON&REF_AREA=ESP&timePeriodFrom=2018&timePeriodTo=2020
+  returned 366 JSON records across indicators WB_CWON_NW_TOW (total
+  wealth), _NW_NFL (natural capital), _NW_HCA (human capital), _NW_PCA
+  (per capita) and _NW_NFA (net foreign assets), in real chained 2019 USD
+  and current USD, at both per-capita and total aggregation. CWON 2024
+  methodology, 1995-2020, 151 countries, annual, published roughly every
+  3-4 years (2018, 2021, 2024). API CAVEAT: data360.worldbank.org/en/api
+  returned only a beta shell page with no rendered documentation. The
+  endpoint works but is undocumented and in beta - pin your query shapes
+  and expect breakage. SLICING: country only, no sub-national; a bioregion
+  is an aggregation of country rows and sub-country natural capital would
+  require downscaling.

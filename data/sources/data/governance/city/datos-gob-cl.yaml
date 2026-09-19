@@ -1,0 +1,47 @@
+name: datos.gob.cl
+url: https://datos.gob.cl/
+description: |
+  Chile's national open data portal, CKAN 2.10.4, publishing 3,211 datasets
+  from 272 institutions including central government and many municipalities.
+  Used as the Santiago pilot's open-data substrate.
+pillar: governance
+scale: city
+status: live
+license: not stated
+api: null
+pilot_relevance: [santiago]
+tags: [open-data, chile, ckan, national]
+added: 2026-05-04
+updated: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Two corrections,
+  one of which matters a lot:
+
+  1. THE LICENCE CLAIM WAS UNSUPPORTED. This entry previously read "public
+     domain (Chilean government)". No such statement was found. The portal's
+     licence regime could not be established at all, because
+     /api/3/action/package_search is disallowed by the site's own robots.txt,
+     so per-dataset licence fields cannot be enumerated programmatically and
+     the homepage does not state a blanket licence. Recorded as "not stated",
+     which is honest and which means CONTRIBUTING criterion 1 is NOT satisfied
+     for anything pulled from here until a licence is confirmed per dataset.
+  2. API set to null for the same robots.txt reason.
+
+  Counts (3,211 datasets, 272 institutions, 9,615 registered users) are from
+  the homepage's own figures, not from the API.
+
+  SCALE IS ARGUABLE AND LEFT AS-IS. This is a national portal filed at city
+  scale because that is how the Santiago pilot uses it. Moving it to region or
+  planet would change its slug and break the Airtable sync key, so the
+  inconsistency is recorded here rather than fixed silently.
+
+  CHILE IS DATA-RICH AND LICENCE-POOR. Wave 1 produced ZERO YAML-eligible
+  sources for Santiago. SINIM (datos.sinim.gov.cl), the only comuna-level
+  municipal finance source in the country, claims "Creative Commons Atribucion
+  2.0 Chile" in its footer while its terms restrict use to "fines que estime
+  pertinentes, sin fines comerciales" - a non-commercial clause inside a CC-BY
+  claim. SINCA (sinca.mma.gob.cl), the only PM2.5 source for Santiago, is
+  "Todos los derechos reservados". Both are recorded as restricted-licence
+  candidates in the coverage tracker, deliberately without YAML files.

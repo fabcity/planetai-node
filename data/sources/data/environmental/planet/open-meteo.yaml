@@ -1,0 +1,22 @@
+name: Open-Meteo
+url: https://open-meteo.com/
+description: |
+  Free weather + climate API with no auth required. Backed by ECMWF +
+  GFS + DWD + KNMI. Hourly forecasts to 14 days, historical reanalysis,
+  climate projections, marine forecasts.
+pillar: environmental
+scale: planet
+status: live
+license: CC-BY-4.0
+api: https://api.open-meteo.com/v1
+pilot_relevance: [global]
+tags: [weather, climate, ecmwf, free-tier]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Most generous free tier in the weather-API space. Used for
+  geocoding (forward + reverse), climate projections, marine
+  forecasts, and as a fallback for several PLANETAI panels.
+  Reverse-geocoding via /v1/forecast carries city + country names
+  so it doubles as a geocoder.

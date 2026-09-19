@@ -1,0 +1,27 @@
+name: UNESCO Institute for Statistics (UIS) API
+url: https://api.uis.unesco.org/api/public/versions
+description: |
+  UNESCO's official statistics API for education, science, culture and
+  demographics. Indicator CR.3 gives upper-secondary completion rate and
+  CR.3.GPIA its gender parity index, matching the framework's education-
+  access and gender indicators directly.
+pillar: social
+scale: planet
+status: live
+license: Could not be verified — UNESCO data is commonly CC-BY-SA-3.0-IGO but neither the terms page nor the disclaimer carried licence text
+api: https://api.uis.unesco.org/api/public/data/indicators
+pilot_relevance: [global]
+tags: [unesco, uis, education, gender-parity, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with two live calls, no API key required. CR.3 for
+  Brazil 2015-2023 returned 9 records showing upper-secondary completion
+  rising from 63.3 to 73.7. CR.3.GPIA for Peru 2018-2024 returned 7
+  records, parity index 1.0044-1.0245. Latest data version
+  20260507-91260335 published 8 May 2026; release history back to
+  September 2024; cadence monthly to quarterly. Four themes: EDUCATION,
+  SCIENCE_TECHNOLOGY_INNOVATION, CULTURE, DEMOGRAPHIC_SOCIOECONOMIC.
+  SLICING: geoUnit is a country ISO3 code, no sub-national breakdown in
+  the public API. LICENSE ACTION: verify before redistributing.

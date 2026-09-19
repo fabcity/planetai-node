@@ -1,0 +1,40 @@
+name: Transparenzportal Hamburg
+url: https://suche.transparenz.hamburg.de/
+description: |
+  The Free and Hanseatic City of Hamburg's transparency portal: a CKAN catalogue
+  that publishes datasets and, unusually, the administrative documents the
+  Hamburgisches Transparenzgesetz compels the city and its bodies to disclose.
+pillar: governance
+scale: city
+status: live
+license: Datenlizenz Deutschland - Namensnennung - 2.0 (dl-de/by-2-0), declared per record
+api: https://suche.transparenz.hamburg.de/api/3/action/package_search
+pilot_relevance: []
+tags: [open-data-portal, transparency, ckan, public-budget, germany]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8) by calling
+  package_search directly. Hamburg is a Stadtstaat, so this single portal is
+  simultaneously the city and the Land rung - do not expect a separate regional
+  portal above it.
+
+  BUDGET IS HERE AS DOCUMENTS, NOT AS DATA. package_search for "haushaltsplan"
+  returned count 3707, but the records are of CKAN type "document" with a single
+  PDF resource each, and most belong to Hamburg's chambers, water cooperatives
+  and public bodies rather than to the city's own Haushaltsplan. A search for
+  the exact phrase "Haushaltsplan-Ist" returned 12; a search for
+  organization:finanzbehoerde returned 0. The machine-readable route to
+  Hamburg's own municipal finance is the Regionaldatenbank
+  (regionalstatistik-kommunale-kassenergebnisse), not this portal.
+
+  Licence is carried per record in both license_id and a terms_of_use extra.
+  Every record inspected on 2026-09-10 was dl-de-by-2.0 with is_free_to_use
+  true and an attribution_text naming the publishing body; note that CKAN's own
+  isopen flag reads false for dl-de-by-2.0 because it is not in CKAN's default
+  licence register, which is a metadata artefact and not a restriction.
+
+  Records carry offline_date extras - documents are published with a scheduled
+  removal date, typically ten years out. Anything harvested from here should
+  keep its own copy rather than assume the URL persists.

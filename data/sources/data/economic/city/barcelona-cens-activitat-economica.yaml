@@ -1,0 +1,34 @@
+name: Barcelona - Cens d'activitat economica i padro de l'IAE
+url: https://opendata-ajuntament.barcelona.cat/data/api/action/package_show?id=cens-locals-planta-baixa-act-economica
+description: |
+  Two complementary Barcelona business registers: a census of ground-floor
+  commercial premises by activity, and the padro of the economic activities
+  tax (IAE) by activity type. Together a business-density signal.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
+pilot_relevance: [barcelona]
+tags: [business-registry, local-economy, business-density, spain]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Dataset ids:
+  cens-locals-planta-baixa-act-economica and rebuts-quota-padro-iae. Both
+  CC-BY-4.0 via the CKAN action API.
+
+  TWO DIFFERENT REGISTERS, DELIBERATELY IN ONE ENTRY. The premises census
+  counts physical ground-floor units and what each is used for; the IAE padro
+  counts taxable economic activities. They answer "how much commerce is on the
+  street" and "how much activity is declared" respectively, and neither alone
+  is a business registry in the usual sense.
+
+  The premises dataset page carries its own methodology caveat - read it before
+  using counts as a time series.
+
+  WHAT THIS IS NOT: there is no GDP-per-capita, no R&D and no circular-economy
+  dataset at city scale on this portal. A combined CKAN query for those returned
+  nothing in the wave-1 pass, though single-term Catalan retries were not made,
+  so treat the cell as under-searched rather than proven empty.

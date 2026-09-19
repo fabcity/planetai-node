@@ -1,0 +1,51 @@
+name: INEGI EFIPEM - Estadistica de Finanzas Publicas Estatales y Municipales
+url: https://www.inegi.org.mx/programas/finanzas/
+description: |
+  INEGI's annual revenue-and-expenditure series for every Mexican state
+  government, municipality, Mexico City and its 16 demarcaciones, 1989-2025,
+  keyed on the INEGI state and municipality clave.
+pillar: economic
+scale: city
+status: live
+license: INEGI Terminos de Libre Uso de la Informacion
+api: null
+pilot_relevance: []
+tags: [budget, public-finance, mexico, inegi, efipem, municipal, ibge-equivalent, national-statistics]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10, FCI Regime 1 harvest (wave 6, Mexico). Mexico's budget
+  backbone and the counterpart to Brazil's SICONFI: one national series
+  covering the city AND region rungs for all five wave-6 localities, keyed on
+  the INEGI clave, with no per-city portal negotiation.
+
+  VERIFIED against INEGI's download ficha (app/descarga/ficha.html?tit=81671),
+  which returned the full card: "EFIPEM. 1989-2025, informacion anual, cifras
+  Preliminares 2025"; id MEX-INEGI.EEC6.03-EFIPEM-2025; last modified
+  2026-08-13; annual; coverage 1989-01-01 to 2025-12-31; 4.1 MB CSV;
+  distribution = the programme page recorded as `url`. That ficha is
+  JS-rendered - a plain client gets "El archivo que estas buscando no existe".
+  Read it with a browser, or use the programme page.
+
+  COVERAGE. The annual state file says "Cobertura geografica: Estatal ... 31
+  Gobiernos Estatales". The municipal rung is real but PARTIAL: RNM catalogue
+  1120 (2024 definitive) gives all 32 states plus municipalities, CDMX and its
+  demarcaciones, state coverage 100% and MUNICIPAL COVERAGE AVERAGING 80%.
+  Check the clave you need. Microdata are not public; aggregates only.
+
+  CLASSIFICATION is the national chart of accounts at capitulo level -
+  keywords "ingresos propios", "ingresos federales", "gasto corriente",
+  "gasto de capital". ECONOMIC, not functional: no expenditure-by-function
+  table and no COFOG crosswalk found. Function-level spend has to come from
+  the locality's own Cuenta Publica. Dictionary at
+  https://www.inegi.org.mx/rnm/index.php/catalog/1120/data-dictionary
+
+  Fiscal year = calendar year. MXN, nominal. Revenue and expenditure both
+  present, as realised accounts - execution, not the approved budget.
+
+  LICENCE verified at https://www.inegi.org.mx/inegi/terminos.html, linked
+  from the ficha as "Terminos de libre uso": copy, distribute, publish and
+  commercially exploit, attribution "Fuente: INEGI, [product]", no presenting
+  derived work as INEGI's position. CC-BY-equivalent; no SPDX id.

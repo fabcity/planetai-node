@@ -1,0 +1,32 @@
+name: World Bank Poverty and Inequality Platform (PIP)
+url: https://pip.worldbank.org/
+description: |
+  The World Bank's authoritative poverty and distributional statistics
+  engine, computed from harmonised household surveys. Serves headcount,
+  poverty gap, Gini, MLD and full income deciles per country-year with
+  survey provenance.
+pillar: social
+scale: planet
+status: live
+license: CC-BY-4.0 (World Bank dataset terms)
+api: https://api.worldbank.org/pip/v1/pip
+pilot_relevance: [global]
+tags: [world-bank, poverty, gini, inequality, household-survey, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call: ?country=BRA&year=2022&format=json
+  returned a full record from survey PNADC-E1 with headcount 0.0485,
+  poverty gap 0.0175, Gini, MLD, polarization, full decile breakdown, mean
+  and median welfare, population, GDP and methodology flags (welfare_type
+  income, distribution_type micro, is_interpolated false). No API key
+  required. Coverage roughly 1981-2024 depending on survey availability,
+  refreshed about twice yearly. FRAMEWORK ACTION: the World Bank rebased
+  the international poverty line in 2025. SI.POV.DDAY now returns 'poverty
+  headcount ratio at $3.00 a day (2021 PPP)'. The Full Stack Metrics
+  Framework's '% below $2.15/day' no longer corresponds to any live series
+  and must be redefined to $3.00/day (2021 PPP) or it will silently break.
+  SLICING: country-year only, with an urban/rural split via
+  reporting_level as the sole sub-national cut. This is the deepest global
+  poverty data that exists and it stops at the national border.

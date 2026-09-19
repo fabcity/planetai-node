@@ -1,0 +1,33 @@
+name: Datos Argentina (datos.gob.ar)
+url: https://datos.gob.ar/
+description: |
+  Argentina's national open data portal, running CKAN 2.11.5. Indexes roughly
+  1,285 datasets from about 45 national organisations, including the budget
+  classifiers and the geographic normalisation service.
+pillar: governance
+scale: region
+status: live
+license: "Los datos publicados acá son públicos y se pueden reutilizar libremente citando la fuente."
+api: null
+pilot_relevance: []
+tags: [open-data-portal, ckan, argentina, catalogue]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-10. Platform self-reports CKAN 2.11.5. Homepage counters
+  render 0 client-side; the ~1,285 datasets / ~45 organisations figure comes
+  from the rendered page, not from the API.
+
+  API BLOCKED: /api/3/action/* is disallowed by the site's own robots.txt, so
+  the catalogue could NOT be enumerated programmatically and per-dataset
+  licence fields could not be checked. `api` is null for that reason, not
+  because CKAN lacks one. Same failure mode as datos.gob.cl — worth raising
+  with both portals, since a robots.txt that blocks the machine-readable
+  catalogue defeats the point of running CKAN.
+
+  LICENCE: recorded verbatim rather than mapped to SPDX. "Público y
+  reutilizable libremente citando la fuente" is CC-BY in substance, but the
+  portal never names a licence instrument, so downstream reusers inherit that
+  ambiguity. Treat "data exists", "machine-readable" and "openly licensed" as
+  three separate answers here: yes, partly, and effectively-but-unnamed.

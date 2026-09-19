@@ -1,0 +1,29 @@
+name: WRI Aqueduct 4.0 — Global Water Risk Atlas
+url: https://www.wri.org/data/aqueduct-global-maps-40-data
+description: |
+  WRI's global water risk framework: 13 baseline annual and 3 baseline
+  monthly indicators covering water stress, depletion, variability and
+  quality, plus CMIP6-driven projections for 2030, 2050 and 2080.
+pillar: environmental
+scale: bioregion
+status: live
+license: Creative Commons (variant not specified on the source page - verify before publishing derived values)
+api: null
+pilot_relevance: [global]
+tags: [water-stress, water-risk, hydrological-basin, wri, geospatial]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Direct download:
+  https://files.wri.org/aqueduct/aqueduct-4-0-water-risk-data.zip.
+  Methodology DOI 10.46830/writn.23.00061. BEST BIOREGION JOIN IN THE
+  ENVIRONMENTAL ROW: Aqueduct is published on hydrological sub-basin units
+  plus country and province aggregates, so a bioregion defined as a
+  watershed maps almost directly onto Aqueduct polygons - join on basin ID
+  or spatial intersect. The native unit is already a hydrological unit,
+  which no other source in this row can say. Caveat on water quality:
+  Aqueduct's quality indicators are coefficient-of-variation and
+  untreated-wastewater proxies, not measured concentrations - pair with
+  GEMStat for actual measurements. Baseline period roughly 1979-2019;
+  major-version releases rather than continuous updates.

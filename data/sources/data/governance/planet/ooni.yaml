@@ -1,0 +1,25 @@
+name: OONI — Open Observatory of Network Interference
+url: https://ooni.org/
+description: |
+  Country-level measurement of internet censorship and traffic
+  interference. Open data archive of probes from ~30k volunteers
+  across 200+ countries. The empirical baseline for measuring
+  state-level interference with the data substrate a federation
+  runs on.
+pillar: governance
+scale: planet
+status: live
+license: CC-BY-NC-SA-4.0
+api: https://api.ooni.io/
+pilot_relevance: [global]
+tags: [internet-freedom, censorship, sovereignty, network-interference]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Direct relevance to PLANETAI's sovereignty-by-architecture frame.
+  PLANETAI claims CARE compliance + community-council veto +
+  bioregion-server boundary; OONI is the only dataset that
+  empirically measures whether those guarantees hold under
+  state pressure. Country pages exist for Indonesia, Chile,
+  Spain, US — all four pilot host states.

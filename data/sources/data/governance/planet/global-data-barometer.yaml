@@ -1,0 +1,30 @@
+name: Global Data Barometer (2nd edition, 2024)
+url: https://globaldatabarometer.org/open-data/
+description: |
+  Country-level assessment of data governance, capability and availability
+  across eight thematic clusters including public procurement, public
+  finance, land management and political integrity. Hosted by D4D.net and
+  ILDA with IDRC funding.
+pillar: governance
+scale: planet
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [data-governance, transparency-index, csv, download-only, partial-country-coverage]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. CSVs on Google Cloud Storage offered as one full
+  file (gdb-2024-full-data.csv), by cluster (8), by country (44) and by
+  region (2). Use the links on the page - a constructed direct GCS object
+  URL returned 404. 1st edition 2021, 2nd edition 2024, irregular roughly
+  three-yearly, so treat as a periodic snapshot rather than a live feed.
+  COVERAGE WARNING RELEVANT TO PLANETAI: 44 countries only, Africa and
+  Latin America plus a few others. It includes Chile, Brazil, Mexico,
+  Kenya and South Africa but DOES NOT include Spain, the United States or
+  Indonesia - so it covers the Santiago pilot and none of Barcelona,
+  Boston or Bali. Open Data Inventory (ODIN) would fill that gap but its
+  site is a JS SPA that returned no content to a fetcher and could not be
+  verified; it is worth a browser-based re-check.

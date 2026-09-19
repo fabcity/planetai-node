@@ -1,0 +1,63 @@
+name: Bhutan Education Centers - Schools (NSDI)
+url: https://nsdi.systems.gov.bt/portal/sharing/rest/content/items/4959d9acb1e141e0a363b8dd91ac803b?f=json
+description: Point locations of schools and colleges across Bhutan published by the National
+  Land Commission Secretariat. Supports education-access indicators when joined to gewog and
+  dzongkhag boundaries.
+pillar: social
+scale: region
+status: live
+license: 'Open (Geo-Information Policy 2018 §6.3.1 open tier: "Open data shall be openly and
+  freely accessible")'
+api: null
+pilot_relevance: []
+tags:
+- education
+- schools
+- facilities
+- access
+- arcgis
+- nsdi
+- bhutan
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Item id
+
+  4959d9acb1e141e0a363b8dd91ac803b.
+
+
+  FACILITY LOCATIONS ONLY - no enrolment, attainment or outcome attributes were
+
+  verified. This is an access proxy, not a social outcome indicator. Bhutan
+
+  publishes no city- or dzongkhag-level unemployment, Gini, life expectancy,
+
+  housing or broadband series that could be opened in this harvest.
+
+
+  The sibling Health Center layer (id 683c3729b47d47e28ca342e639eb2fd2) has an
+
+  EMPTY licenseInfo and is therefore not listed.
+
+
+  LICENCE CAVEAT, applies to every Bhutan NSDI entry in this list: the licenceInfo
+
+  field reads the literal word "Open", which maps to the Geo-Information Policy
+
+  2018 §6.3.1 open-access tier, verified at
+
+  https://web.nlcs.gov.bt/wp-content/uploads/2023/12/GI_Policy.pdf. That policy
+
+  grants free and open ACCESSIBILITY but §8.2.3 vests copyright in the producing
+
+  agency and grants no explicit redistribution or commercial-reuse right. This is
+
+  weaker than CC-BY and should be treated as pending clarification from NLCS.
+
+
+  WARNING: the "open" TAG is unreliable. Dzongkhag Boundary and Gewog Boundary are
+
+  both tagged open but their licenceInfo ends "(Common)" - a priced tier for
+
+  corporate users. Filter on licenseInfo, never on tags.'

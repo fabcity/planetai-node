@@ -1,0 +1,42 @@
+name: Portal otvorenih podataka Republike Hrvatske (data.gov.hr)
+url: https://data.gov.hr/ckan/dataset
+description: |
+  Croatia's national open data portal, CKAN-based, run by Sredisnji drzavni
+  ured za razvoj digitalnog drustva. 3,874 datasets from ministries, agencies,
+  counties, towns and municipalities.
+pillar: governance
+scale: region
+status: live
+license: Otvorena dozvola (OD)
+api: https://data.gov.hr/ckan/api/3/action/package_search
+pilot_relevance: []
+tags: [open-data, croatia, ckan, national-portal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). The CKAN API
+  lives under /ckan/, not at the domain root: data.gov.hr/api/3/action/*
+  silently redirects to the SPA shell, data.gov.hr/ckan/api/3/action/* returns
+  JSON. Do not infer the root path.
+
+  COUNT AND LICENCE REGIME, read from the license_id facet 2026-09-11:
+  3,874 datasets total - open-license 2,998, cc-by 312, other-pd 25,
+  other-open 18, notspecified 9, cc-by-sa 5, odc-by 1, other-closed 1.
+  So roughly 99.6% carry some open licence. That is a genuinely strong
+  Governance figure.
+
+  MACHINE-READABILITY IS A SEPARATE QUESTION AND THE ANSWER IS WEAKER.
+  res_format facet: XLSX 989, PDF 948, CSV 813, HTML 555, XLS 479, DOCX 226,
+  JSON 184, XML 175, GeoJSON 108, SHP 102. PDF is the second most common
+  format. A large share of the 428 datasets matching "proracun" are registry
+  stubs whose single resource is a link to a PDF or a web page on the
+  publishing municipality's own site - the portal indexes them rather than
+  hosting data. Keep "data exists", "data is machine-readable" and "data is
+  openly licensed" apart when reading this portal: Croatia scores high on the
+  third, middling on the second.
+
+  COVERAGE GAP FOUND IN WAVE 10: Grad Zadar is registered as an organisation
+  with package_count 0, and Zadarska zupanija is not registered at all. The
+  national portal therefore carries nothing for the Zadar territory.

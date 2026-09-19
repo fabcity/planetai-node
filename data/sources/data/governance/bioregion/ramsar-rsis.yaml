@@ -1,0 +1,30 @@
+name: Ramsar Sites Information Service (RSIS)
+url: https://rsis.ramsar.org/
+description: |
+  Convention on Wetlands database of 2,000+ internationally important
+  wetland sites across 160+ Contracting Parties, with wetland type,
+  ecology, land use, threats, hydrological values and a Ramsar Information
+  Sheet per site.
+pillar: governance
+scale: bioregion
+status: live
+license: Open access statement only — the Secretariat provides open access to promote conservation and wise use; no reuse terms, no SPDX identifier
+api: null
+pilot_relevance: [global]
+tags: [ramsar, wetlands, protected-areas, site-level, gis-boundaries, no-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Site records carry name, country, designation date,
+  site number and area in hectares; coverage 1974 to present, continuous
+  as Parties designate and update sites. The About page states RSIS
+  provides downloadable copies of Ramsar Information Sheets, digital GIS
+  boundaries where available, and exportable datasets - but NO API,
+  endpoint or bulk-download URL is documented, and a filtered search URL
+  returned 502, so the export path is unconfirmed. SLICING: polygon
+  dataset with GIS boundaries where available, otherwise site point plus
+  area; clip to a HydroBASINS watershed. Country filter available in the
+  UI. Feeds protected area coverage for wetlands specifically, and gives a
+  partial signal on watershed management plans because RIS records
+  reference site management planning status.

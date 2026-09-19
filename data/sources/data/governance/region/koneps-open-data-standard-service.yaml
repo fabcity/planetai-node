@@ -1,0 +1,37 @@
+name: KONEPS Open Data Standard Service (나라장터 공공데이터개방표준서비스)
+url: https://www.data.go.kr/data/15058815/openapi.do
+description: Bid, award and contract records from KONEPS, Korea's national e-procurement system,
+  structured to the Ministry of the Interior and Safety open-data standard. The spend-side
+  counterpart to the Korean budget ladder.
+pillar: governance
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- procurement
+- tenders
+- contracts
+- awards
+- koneps
+- korea
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Provider 조달청.
+
+  JSON + XML, keyed by announcement time, opening time and contract execution date.
+
+
+  LIVE OPERATIONAL CAVEAT stated on the page: the contract-information operation
+
+  has had its query window cut from one month to one week
+
+  (「조회기간을 축소운영(1개월 -> 1주일)」) because of response delays. Budget for
+
+  roughly 4x the call volume you would otherwise plan.
+
+
+  Endpoint base URL is not printed on the catalogue page.'

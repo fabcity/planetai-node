@@ -1,0 +1,30 @@
+name: Global Forest Watch Data API — Hansen/UMD tree cover
+url: https://data-api.globalforestwatch.org/datasets
+description: |
+  WRI's Global Forest Watch data API serving the Hansen/UMD 30 m global
+  forest change products - annual tree cover loss and 2000/2010 tree cover
+  density - plus a large catalogue of third-party layers.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0 (per-dataset; other catalogue layers vary, several are non-commercial)
+api: https://data-api.globalforestwatch.org
+pilot_relevance: [global]
+tags: [forest-cover, tree-cover-loss, hansen, raster-30m, geospatial]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. GET /datasets and GET /dataset/{id} return full
+  JSON with no key. Tree cover loss v1.13 carries data through 2025 at 30
+  m, CC BY 4.0 confirmed verbatim in the dataset JSON. IMPORTANT: the
+  /query endpoint (geometry-based analytics) returned 403 without an API
+  key - metadata is open, analytics is not. Three harvest routes: download
+  the 10x10 degree Hansen granules and clip locally (no key), the API
+  /query with a GeoJSON geometry (key required), or the Earth Engine
+  mirror. Best-in-class slicing: global 30 m raster clipped to any
+  polygon. /dataset/wwf_terrestrial_ecoregions also exists and is
+  downloadable but its source and license fields returned null - establish
+  provenance before using it as a bioregion boundary. The GFW website now
+  302-redirects to globalnaturewatch.org; the data-api host is still live
+  but the rebrand's effect on API continuity is unknown.

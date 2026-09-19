@@ -1,0 +1,44 @@
+name: DGFiP Comptes individuels des communes (fichier global)
+url: https://data.economie.gouv.fr/explore/dataset/comptes-individuels-des-communes-fichier-global-2023-2024/
+description: |
+  DGFiP annual individual accounts for every French commune, published as one
+  global file per year cohort on the Ministry of Finance open-data portal.
+  Carries revenue, expenditure, debt and balance-sheet aggregates per commune.
+pillar: economic
+scale: city
+status: live
+license: Licence Ouverte 2.0
+api: null
+pilot_relevance: []
+tags: [public-budget, municipal-finance, fiscal, france, dgfip]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France). Landing page
+  returned HTTP 200 and states producer "Ministere de l'Economie, des Finances et
+  de la Souverainete industrielle, energetique et numerique" and licence
+  "Licence Ouverte 2.0" verbatim.
+
+  WHY THIS MATTERS FOR FEDERATION: this is the single source that gives the city
+  budget rung for EVERY French Fab City member at once - Brest (INSEE 29019),
+  Montpellier (34172), Paris (75056), Rennes (35238), Toulouse (31555) - keyed on
+  the commune code. No per-city portal visit is required to fill the city budget
+  cell in France.
+
+  Published as year-cohort datasets (2023-2024, 2022, 2021, 2017 ... each a
+  separate dataset id), not one continuous series, so a time series requires
+  stitching cohorts.
+
+  Classification is the French national chart of accounts for local authorities
+  (M14/M52 up to 2017, M57 from 2018), NOT COFOG. No COFOG crosswalk is published
+  alongside; the functional ("fonction"/"sous-fonction") axis is the closest
+  bridge and exists only in some collectivites' own publications.
+
+  Granularity is aggregate-to-chapter per commune, not line item. For line-item
+  detail use the city's own portal (Paris, Rennes and Toulouse all publish it).
+
+  The data.gouv.fr copy titled "Comptes individuels des communes" is a
+  third-party reupload by an individual contributor, last updated 2018 and
+  flagged "Frequence de mise a jour non respectee" - treat that one as stale and
+  use this ministry-published cohort series instead.

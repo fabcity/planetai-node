@@ -1,0 +1,22 @@
+name: Google Flood Hub
+url: https://sites.research.google/floods/
+description: |
+  Riverine flood forecasts up to 7 days ahead for ~80 countries
+  including Indonesia, Spain, Chile. Inundation maps + alerts via
+  free public API (rate-limited).
+pillar: environmental
+scale: planet
+status: live
+license: Google Maps Platform terms (free tier)
+api: https://floodforecasting.googleapis.com/v1
+pilot_relevance: [bali, barcelona, santiago, global]
+tags: [flooding, forecasting, water, google]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Coverage is not uniform — basins included are listed in the
+  /gauges endpoint. Bali has limited but non-zero coverage;
+  Spain has good Mediterranean coverage; Chile coverage is
+  partial. Boston / NE US is excluded. Complement with Caravan
+  hydrology dataset for basin-scale modelling.

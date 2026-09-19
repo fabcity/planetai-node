@@ -1,0 +1,46 @@
+name: Cambridge - Operating budget, revenues and expenditures
+url: https://data.cambridgema.gov/d/ixyv-mje6
+description: |
+  City of Cambridge annual operating budget as two paired Socrata datasets -
+  budgeted revenues by source and budgeted expenditures by department and
+  division - covering FY2011 to FY2027.
+pillar: economic
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: https://data.cambridgema.gov/resource/ixyv-mje6.json
+pilot_relevance: [boston]
+tags: [budget, municipal-finance, revenue, expenditure, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+
+  TWO DATASETS, ONE SOURCE. Revenues: /d/ixyv-mje6, columns category,
+  service, fiscal_year, department_name, description, amount, fund.
+  Expenditures: /d/5bn4-5wey, same shape plus division_name. Both carried
+  data_updated_at 2026-09-08 at time of check - the freshest municipal budget
+  data found anywhere in wave 7. Both run FY2011-FY2027, a 17-year continuous
+  series.
+
+  LICENCE INCONSISTENCY WITHIN ONE SOURCE: the revenues dataset states
+  "Open Data Commons Public Domain Dedication and License"; the expenditures
+  dataset states plain "Public Domain". Both are open, but a harvester keying
+  on an exact licence string will split this pair.
+
+  PLANNED ONLY, NOT EXECUTED. These are appropriations. No liquidation /
+  outturn file was found, so unlike Boston's Checkbook Explorer there is no
+  executed-spend counterpart here. Budgeted salaries sit separately at
+  /d/ixg8-tyau (PDDL, per-FY views back to FY2024) and are the closest thing
+  to an actuals series.
+
+  SAME FEDERATION PROBLEM AS BOSTON: the files carry department, division,
+  service and fund codes and NO FIPS/GEOID. Cambridge place code 2511000
+  (verified on census.gov QuickFacts) appears nowhere in the data. Joining
+  this to the Commonwealth or federal rung requires a crosswalk that does not
+  exist yet.
+
+  Fiscal year 1 Jul - 30 Jun. USD nominal. Granularity: line item within
+  department/division. No COFOG crosswalk. Access tier: SODA API plus bulk
+  CSV - better than Boston, which is bulk CSV only.

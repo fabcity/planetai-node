@@ -1,0 +1,51 @@
+name: Kolada v3 - Swedish municipal and regional KPI database
+url: https://www.kolada.se/om-oss/api/
+description: |
+  Sweden's municipal KPI database - roughly 6000 indicators across
+  finance, schools, care, environment and governance for every kommun
+  and region, with an open JSON API. Lund is municipality_id 1281.
+pillar: governance
+scale: city
+status: live
+license: Free of charge, no agreement required, commercial use permitted; attribution "Kalla, Kolada" required unless the data has been substantially processed
+api: https://api.kolada.se/v3
+pilot_relevance: []
+tags: [kpi, municipal-benchmarking, sweden, api, kolada, attribution-required]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Veberod/Lund).
+
+  VERIFIED BY DIRECT CALL:
+  https://api.kolada.se/v3/data?kpi_id=N07402&municipality_id=1281&year=2024
+  returns a value for municipality 1281. A companion call
+  /v3/municipality?title=Lund returns {"id":"1281","title":"Lund"} and
+  ?title=Malm returns {"id":"1280","title":"Malmo"} - which is how
+  Lund=1281 was confirmed rather than assumed.
+
+  TWO BREAKING CHANGES THAT WILL SILENTLY KILL OLD CODE. (1) v2 IS GONE:
+  api.kolada.se/v2/* returns HTTP 410 Gone. Every tutorial, every
+  GitHub client and every older note pointing at v2 is dead. v3 base is
+  https://api.kolada.se/v3, docs at /v3/docs, released 2025-04-04.
+  (2) PARAMETER NAMES CHANGED: v2's ?kpi=&municipality= now returns
+  HTTP 422. You must use ?kpi_id= and ?municipality_id=. A 422 with no
+  readable message is the failure mode anyone porting old code will hit.
+
+  KPI ids are N or U plus five digits; unit-level ids use V prefixes
+  (V11 preschools, V15 grundskola). Publication is continuous through
+  the year, and Kolada states data may be revised without notice and
+  individual KPIs may be removed - so do not treat a Kolada value as
+  immutable or cache it as final.
+
+  Pillar is governance, not economic: this is municipal benchmarking
+  infrastructure, an indicator layer over many domains, not a budget.
+  The Swedish budget amounts live in
+  economic/city/scb-kommun-kostnader-verksamhetsomrade.
+
+  Licence is NOT a named standard licence. It is a custom permission
+  grant: free of charge, no agreement, commercial use explicitly
+  allowed, attribution required unless substantially processed. Judged
+  open and CC-BY-equivalent in substance; the terms are recorded in the
+  license field rather than an SPDX id so a reviewer sees them.

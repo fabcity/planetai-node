@@ -1,0 +1,29 @@
+name: GLODAP v2.2023 — Global Ocean Data Analysis Project
+url: https://glodap.info/index.php/merged-and-adjusted-data-product-v2-2023/
+description: |
+  Uniformly calibrated global open-ocean data product of inorganic carbon
+  variables including DIC, total alkalinity and pH, merged from research
+  cruises. Maintained by GEOMAR and the ICOS Ocean Thematic Centre,
+  archived at NOAA NCEI.
+pillar: environmental
+scale: planet
+status: live
+license: Website content CC-BY-4.0; the data product is gated behind a Data Use Statement — data license UNCONFIRMED
+api: null
+pilot_relevance: [global]
+tags: [ocean-acidification, ph, carbonate-chemistry, point-observations]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Regional and merged master files as zipped CSV via
+  NOAA NCEI OCADS and a GEOMAR mirror. Coverage roughly 1970s-2021
+  depending on basin; releases are irregular (roughly annual to biennial),
+  no fixed cadence stated. LICENSE ACTION REQUIRED: the site asks users to
+  review a separate Data Use Statement that was not fetched, so do not
+  assume CC BY for the data itself. SLICING: point observations with
+  lat/lon/depth, so filter by bounding box or clip to a marine polygon.
+  Basin-level slicing is reliable because Atlantic/Pacific/Indian/Arctic
+  files ship pre-split. Bioregion-level is NOT reliable: coverage is
+  cruise-based and spatially uneven, so many coastal bioregions will have
+  zero or sparse points. Report N alongside any derived value.

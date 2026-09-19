@@ -1,0 +1,21 @@
+name: Metroverse (Harvard Growth Lab)
+url: https://metroverse.hks.harvard.edu/
+description: |
+  City-level economic-complexity dashboard covering ~1,200 metro areas.
+  Industry employment, knowledge clusters, peer-city benchmarks,
+  growth predictions.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [barcelona, boston, santiago]
+tags: [economic-complexity, metro-area, harvard, urban-economics]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  No public API; bulk download via the site's research portal.
+  Crucially does NOT cover Denpasar / Bali — for the Bali pilot,
+  Asian KLEMS is the closest available substitute.
+  Direct successor to Atlas of Economic Complexity at the city scale.

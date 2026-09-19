@@ -1,0 +1,40 @@
+name: Proracun Grada Zagreba
+url: https://data.zagreb.hr/dataset/proracun-grada-zagreba-2026
+description: |
+  Consolidated City of Zagreb budget - planned revenue and expenditure by
+  year, published as XLSX and CSV on the city open data portal. Two datasets
+  cover 2026 (plus 2027-2028 projections) and 2022-2025.
+pillar: economic
+scale: city
+status: live
+license: Otvorena dozvola (OD)
+api: null
+pilot_relevance: []
+tags: [budget, public-finance, zagreb, croatia, municipal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Resource URLs
+  opened, not inferred. Example:
+  https://data.zagreb.hr/dataset/8e77f94c-863d-4053-a6c1-88b45a5f2d11/resource/d6e72ffa-52c5-4972-85cd-4c38a64fcf3e/download/konsolidirani-plan-prihodi-2026.xlsx
+
+  WHAT IT CARRIES: "konsolidirani plan" - the consolidated PLAN. Revenue
+  (prihodi) and expenditure (rashodi) are separate files, each in XLSX and
+  CSV, for 2026 with 2027 and 2028 projections; the companion dataset at
+  /dataset/proracun covers 2022-2025. Last modified 2026-01-21.
+
+  WHAT IT DOES NOT CARRY: execution. Izvrsenje / godisnji izvjestaj o
+  izvrsenju proracuna was not found as machine-readable open data on this
+  portal in this pass. Planned-vs-executed is therefore HALF ANSWERED for
+  Zagreb: plan yes, realisation no. Croatian budget execution for local units
+  is consolidated by Ministarstvo financija (mfin.gov.hr, Financijski
+  izvjestaji JLP(R)S) as XLSX with no stated reuse licence - see the coverage
+  tracker Notes for that restricted-licence candidate.
+
+  CLASSIFICATION: national chart of accounts (ekonomska klasifikacija under
+  the Pravilnik o proracunskom racunovodstvu), not COFOG. No COFOG crosswalk
+  is published with the files. Currency EUR (Croatia adopted the euro
+  2023-01-01; pre-2023 series in the 2022-2025 file are HRK). Nominal.
+  Fiscal year = calendar year.

@@ -1,0 +1,45 @@
+name: INEGI DENUE - Directorio Estadistico Nacional de Unidades Economicas
+url: https://www.inegi.org.mx/servicios/api_denue.html
+description: |
+  Mexico's national business register as a geocoded REST API: over five million
+  establishments with activity code, employee-size band, address and
+  coordinates. Run by INEGI, free token required.
+pillar: economic
+scale: city
+status: live
+license: INEGI Terminos de Libre Uso de la Informacion
+api: https://www.inegi.org.mx/app/api/denue/v1/consulta/
+pilot_relevance: []
+tags: [business-registry, mexico, inegi, denue, economic-census, geocoded, establishments]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10, FCI Regime 1 harvest (wave 6, Mexico). Fills the
+  Economic|City cell - business registry and density, employment by sector -
+  for every wave-6 locality at once, since DENUE is national and geocoded.
+
+  VERIFIED at https://www.inegi.org.mx/servicios/api_denue.html. Methods
+  documented there: Buscar, Ficha, Nombre, BuscarEntidad, BuscarAreaAct,
+  BuscarAreaActEstr, Cuantificar. Path form is
+  /app/api/denue/v1/consulta/{Metodo}/{parametros}/{token}, JSON response.
+  Per-record fields include establishment id, name, SCIAN activity class,
+  employee-size stratum, full address, lat/lon, phone, email, website.
+
+  TOKEN REQUIRED and not obtainable anonymously: the docs describe it as
+  "Numero unico que permite hacer consultas, el cual se puede obtener al
+  registrarse". Free registration, but a connector needs a credential, so
+  DENUE is not drop-in the way an open CKAN endpoint is. No live call was
+  made in this harvest for that reason - the API contract is verified from
+  the official documentation, not from a 200 response.
+
+  Employee counts are published as SIZE BANDS (estrato), not headcounts, so
+  employment-by-sector derived from DENUE is an interval estimate. Cuantificar
+  is the method to use for density and counts rather than paging Buscar.
+
+  LICENCE: same INEGI terms as the EFIPEM entry, verified at
+  https://www.inegi.org.mx/inegi/terminos.html - copy, distribute, publish and
+  commercially exploit with "Fuente: INEGI, [product]" attribution. The API
+  page itself states only "El INEGI se une a la iniciativa de datos de libre
+  acceso" and carries no licence text of its own; cite the terms page.

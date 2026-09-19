@@ -1,0 +1,36 @@
+name: Occitanie — lycées et offre de formation
+url: https://www.data.gouv.fr/organizations/region-occitanie
+description: |
+  Occitanie's open datasets on its upper-secondary schools and their training offer, including
+  the mapped school register, the 2025-26 school-year list and the evolution of vocational
+  course provision.
+pillar: social
+scale: region
+status: live
+license: Licence Ouverte / Open Licence version 2.0
+api: https://data.laregion.fr/api/explore/v2.1/catalog/datasets
+pilot_relevance: []
+tags: [education, vocational-training, occitanie, france, region, education-access]
+added: 2026-09-09
+updated: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 via the data.gouv.fr organisation API (org 5a153f5688ee3829e2fbf39f),
+  HTTP 200. Five datasets returned, all lov2: lycees-doccitanie-cartographie,
+  lycees-doccitanie-annee-scolaire-2025-2026,
+  offre-de-formations-dans-les-lycees-publics-et-prives-doccitanie,
+  lycees-evolution-de-loffre-de-formations-professionnelles, consultation-lycee-de-demain.
+  WHY THE VOCATIONAL SERIES IS THE INTERESTING ONE FOR FAB CITY: "évolution de l'offre de
+  formations professionnelles" tracks which technical and vocational courses a region opens
+  and closes over time. That is the closest openly published proxy for whether a territory is
+  building or losing the skills base that distributed manufacturing depends on. Most regions
+  publish a school list; publishing the CHANGE in vocational provision is less common and more
+  useful.
+  Upper-secondary education is a French regional competence, which is why these sit at region
+  scale rather than city.
+  The fifth dataset, consultation-lycee-de-demain, is a participation record rather than a
+  social indicator — it belongs to the governance cell and is noted in the FCI tracker there
+  rather than filed separately.
+  NOT VERIFIED: per-school enrolment or outcome fields. This is provision and location data,
+  not attainment data; it answers "what is offered where", not "who completes it".

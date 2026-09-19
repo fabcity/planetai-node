@@ -1,0 +1,28 @@
+name: NOAA Global Monitoring Laboratory — CO2 trends
+url: https://gml.noaa.gov/ccgg/trends/data.html
+description: |
+  NOAA GML's canonical atmospheric CO2 record: Mauna Loa daily, weekly and
+  monthly means plus the globally averaged marine surface annual mean,
+  from the NOAA cooperative air sampling network.
+pillar: environmental
+scale: planet
+status: live
+license: No formal license — freely available to the public and the scientific community; citation requested
+api: null
+pilot_relevance: [global]
+tags: [co2, ghg-concentration, atmospheric, flat-file, noaa]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 by fetching the data file itself:
+  https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_annmean_gl.txt returns
+  columns year, mean, unc, first row 1979 = 336.85 ppm, last row 2023 =
+  419.31 ppm, file stamped July 2024. The .csv variants are blocked by
+  robots.txt - use the .txt files, which are the reliable harvest path.
+  Stable flat-file URLs under /webdata/ccgg/trends/co2/:
+  co2_annmean_gl.txt, co2_mm_mlo.txt, co2_daily_mlo.txt, co2_gr_mlo.txt.
+  SLICING: none needed. This is a single global scalar per time step - a
+  planetary constant that every bioregion shares, which makes it the
+  cheapest cell in the whole matrix to fill. NOAA notes coauthorship for
+  data providers may be appropriate for research use.

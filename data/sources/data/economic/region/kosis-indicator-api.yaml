@@ -1,0 +1,51 @@
+name: KOSIS Indicator Information API (국가데이터처 KOSIS 지표정보 조회 서비스)
+url: https://www.data.go.kr/data/15127763/openapi.do
+description: REST access to the KOSIS 100 major national indicators spanning population, employment,
+  economic trends and prices, plus North Korea and G20 series. The general-purpose route into
+  Korea's national statistics database.
+pillar: economic
+scale: region
+status: live
+license: '공공저작물 : 출처표시 (제 1유형) - KOGL Type 1, attribution only'
+api: null
+pilot_relevance: []
+tags:
+- statistics
+- indicators
+- kosis
+- national-statistics
+- korea
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). JSON + XML, cadence
+
+  real-time. Publisher renamed 통계청 -> 국가데이터처 in the 2025-26
+
+  reorganisation, and the publisher field on data.go.kr already reflects it.
+
+
+  DEAD RECORD, TESTED: https://www.data.go.kr/data/15057519/openapi.do
+
+  (통계청_KOSIS 통계자료 조회) now returns 404 - retired in the same
+
+  reorganisation. Search engines still surface it. Any existing harvester config
+
+  pointing there is broken.
+
+
+  kosis.kr/serviceInfo/openAPIGuide.do (verified live) documents JSON / SDMX /
+
+  XML / XLS and a bulk-data service across seven service families; catalogue scale
+
+  is 통계자료 290,318 / 통계주요지표 1,473. But the kosis.kr route''s own
+
+  통계정보 활용약관 is NOT quoted on that page, so its licence is unverified -
+
+  prefer this data.go.kr record, which states one.
+
+
+  kosis.kr/statHtml/ table pages need a session and return
+
+  "Unspecified error.(null) - error code :: 9999" to a plain fetch. Use the API.'

@@ -1,0 +1,23 @@
+name: Generalitat de Catalunya — Dades Obertes
+url: https://analisi.transparenciacatalunya.cat/
+description: |
+  Catalan regional open data portal. Includes Estadistiques de
+  residus municipals (per-capita waste, all 947 Catalan municipalities),
+  Idescat IPC (consumer prices), Mercabarna figures, energy mix.
+pillar: governance
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://analisi.transparenciacatalunya.cat/resource/
+pilot_relevance: [barcelona]
+tags: [open-data, catalonia, regional, generalitat, waste]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Wired in PLANETAI Wave 21 + Wave 29. Socrata-powered API.
+  Dataset 69zu-w48s (residus municipals) is the canonical
+  Barcelona-bioregion waste signal; 8idm-becu carries
+  per-capita generation by waste stream. Crosswalks downward
+  to Open Data BCN for city-tier and upward to Eurostat EW-MFA
+  for EU-comparable material flow accounts.

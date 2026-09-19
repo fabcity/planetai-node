@@ -1,0 +1,39 @@
+name: GeoStat National Accounts (PxWeb) - Georgia
+url: https://pc-axis.geostat.ge/PXWeb/pxweb/en/Database/National%20Accounts
+description: |
+  Georgia's national accounts database, split by methodology into SNA
+  1993 and SNA 2008 branches, served through GeoStat's live PxWeb REST
+  API under an open attribution licence.
+pillar: economic
+scale: region
+status: live
+license: GeoStat open terms of use - download, use, adapt, modify, create derivative works, disseminate and share for any purpose including commercial, without prior permission; attribution to GEOSTAT required
+api: https://pc-axis.geostat.ge/PXWeb/api/v1/en/Database/National%20Accounts
+pilot_relevance: []
+tags: [georgia, geostat, pxweb, gdp, national-accounts, sna2008]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Georgia).
+
+  A STRUCTURAL DETAIL A CONNECTOR MUST KNOW: this node's children are
+  METHODOLOGY VERSIONS, NOT SUBJECTS. It resolves to exactly two
+  sub-nodes, "System of National Accounts 1993 (SNA 1993)" and "System
+  of National Accounts 2008 (SNA 2008)". Georgia versions its national
+  accounts by methodology first, subject second. Wire to SNA 2008 and
+  know that the 1993 branch is a different vintage of the same country,
+  not a different topic.
+
+  NO REGIONAL GDP NODE AT THIS LEVEL. Regional accounts, if published,
+  are nested deeper inside the SNA 2008 branch or live on the separate
+  sna.geostat.ge sub-portal, which was NOT fetched this pass. Recorded
+  as an open question, not an absence.
+
+  Same PX-Web 2015 Dec build caveats and same Abkhazia/South Ossetia
+  coverage gap as environmental/region/geostat-pxweb-environment - see
+  that entry's notes.
+
+  Licence verbatim: see
+  environmental/region/geostat-pxweb-environment.

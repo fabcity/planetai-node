@@ -1,0 +1,47 @@
+name: Offene Daten Wuppertal
+url: https://offenedaten-wuppertal.de/
+description: |
+  Wuppertal's municipal open data portal, run on DKAN and hosted for the city by
+  Stadt Koeln. Around 290 datasets across geodata, population, budget, mobility,
+  environment and elections for the largest city of the Bergisches Staedtedreieck.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://offenedaten-wuppertal.de/api/3/action/package_list
+pilot_relevance: []
+tags: [open-data-portal, transparency, dkan, public-budget, germany]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8) by calling
+  package_list and package_show. The portal is DKAN, not CKAN: package_list and
+  package_show work at /api/3/action/, but package_search does not and returns
+  the site's HTML 404. Anything written against a CKAN client needs that
+  exception.
+
+  Category counts read from the portal on 2026-09-10: Geo 88, Infrastruktur
+  Bauen und Wohnen 49, Transport und Verkehr 32, Umwelt und Klima 28,
+  Verwaltung Haushalt und Steuern 19, Kultur Freizeit Sport 19, Gesetze und
+  Justiz 13, Bildung und Wissenschaft 11, Bevoelkerung 8, Politik und Wahlen 8,
+  Gesundheit 7, Wirtschaft und Arbeit 4, Soziales 3, Verbraucherschutz 3.
+
+  BUDGET SERIES ENDS IN 2017. The only budget datasets are haushaltsplan-20122013,
+  haushaltsplan-20142015 and haushaltsplan-20162017. package_show on the last of
+  these returned license_id cc-by/4.0 and resources that are zipped volumes of
+  the NKF three-component plan (Gesamtergebnisplan, Gesamtfinanzplan). Useful as
+  a structural reference for North Rhine-Westphalian NKF accounting; not a
+  current fiscal signal. For current Wuppertal finance use the Regionaldatenbank
+  at AGS 05124000.
+
+  Also present and directly useful to FCI social and economic cells:
+  ein-und-auspendlerinnen-nach-bzw-aus-wuppertal (commuting flows),
+  sozialversicherungspflichtig-beschaeftigte-am-wohnort-wuppertal-nach-
+  altersgruppen (employment), gebaeude-und-wohnungsbestand-wuppertal-am-
+  jahresende (housing stock), and the Kommunalwahlbezirke / Stimmbezirke
+  electoral geographies.
+
+  Solingen and Remscheid, the other two cities of the Bergisches
+  Staedtedreieck, have no equivalent portal of their own that this harvest
+  found. "Bergisches" federates only as the union of three AGS codes.

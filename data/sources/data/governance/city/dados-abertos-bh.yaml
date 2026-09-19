@@ -1,0 +1,48 @@
+name: Dados Abertos Belo Horizonte
+url: https://dados.pbh.gov.br/dataset
+description: |
+  Belo Horizonte's municipal open data portal, CKAN 2.10.5. 606 datasets across
+  planning, finance, mobility, health, education and environment, with a working
+  CKAN action API and real-time consolidated revenue and expenditure feeds.
+pillar: governance
+scale: city
+status: live
+license: Creative Commons Attribution (564 of 606); Open Data Commons ODbL (23 of 606)
+api: https://dados.pbh.gov.br/api/3/action
+pilot_relevance: []
+tags: [open-data, belo-horizonte, brazil, ckan, municipal, budget-execution, procurement]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10, FCI Regime 1 harvest (wave 5, Brazil). The strongest
+  municipal portal in this wave by a wide margin, and the only wave-5 city whose
+  own portal answers the budget question without falling back to SICONFI.
+
+  VERIFIED: the CKAN action API responds - package_search?rows=0 returned
+  success:true, count 606. Catalogue facets read from /dataset.
+
+  THREE ANSWERS KEPT SEPARATE. Data exists: 606 datasets. Machine-readable: yes,
+  CKAN 2.10.5 action API reachable and not robots-disallowed, unlike Boston's or
+  Sao Paulo's. Openly licensed: mostly - facets are "Creative Commons
+  Attribution" on 564 and "Open Data Commons ODbL" on 23, leaving 19 of 606 with
+  neither, to be checked individually before reuse. The portal's terms page
+  deliberately names no licence: "Os dados abertos publicados no Portal estao
+  sujeitos a condicoes definidas em documento especifico disponivel em conjunto
+  com os dados a que se refere." Licence of record is per-dataset.
+
+  PUBLISHERS: Prodabel 142, SMPU 135, SMFA (fazenda) 66, SMPOG 31, SMASDH 26,
+  SMMA (meio ambiente) 25, Superintendencia de Mobilidade 25, BHTrans 24,
+  SMED 20, URBEL 13.
+
+  CELLS FED, datasets sighted. Governance|City: "Licitacoes publicadas -
+  SUCONT-SMALOG", plus the catalogue itself as the open-data-availability
+  indicator. Economic|City: "Receita Consolidada, em Tempo Real", "Despesa
+  Consolidada, em Tempo Real", "Despesas Orcamentarias", "Despesas
+  Extraorcamentarias", "Execucao Orcamentaria", "ITBI Relatorios".
+  Environmental|City: SMMA's 25 datasets, incl. "Autorizacoes Supressao de
+  Arvores".
+
+  NOT FOUND this pass, worth a targeted return: GHG inventory (GPC), waste
+  tonnage, PM2.5 stations. Absence from the facets is not proof of absence.

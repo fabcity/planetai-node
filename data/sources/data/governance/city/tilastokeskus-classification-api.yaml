@@ -1,0 +1,39 @@
+name: Statistics Finland Classification API
+url: https://data.stat.fi/api/classifications/v2/
+description: |
+  Authoritative register of Finnish administrative codes as a REST API,
+  versioned by year - kuntanumero (municipality), maakunta (region) and
+  their correspondence tables. Returns per-code items as JSON.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://data.stat.fi/api/classifications/v2/classifications/kunta_1_20260101/classificationItems
+pilot_relevance: []
+tags: [admin-codes, classification, crosswalk, finland, api]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Oulu).
+
+  VERIFIED BY DIRECT CALL, twice, and the second call was the useful one.
+  classificationItems/564 on kunta_1_20260101 returns code "564" name
+  "Oulu". classificationItems/17 on maakunta_1_20260101 returns code
+  "17" name "Pohjois-Pohjanmaa". A control query on maakunta code 19
+  returned "Lappi" - i.e. the endpoint returns per-code items faithfully
+  rather than echoing the query back. That control is why these codes
+  are recorded as verified and not asserted.
+
+  FINLAND HAS THREE IDENTIFIER SYSTEMS FOR ONE CITY AND THIS API ONLY
+  CARRIES TWO OF THEM. (1) kuntanumero 564, here. (2) PxWeb area codes
+  of the form KU564 / MK17, used in StatFin tables. (3) Y-tunnus, the
+  business ID - Oulu is 0187690-1 - which is the ONLY join key in the
+  Valtiokonttori municipal finance API. There is no 564 to 0187690-1
+  crosswalk in this classification service. A connector that needs
+  municipal budget data must carry that mapping itself.
+
+  The classifications are vintaged (kunta_1_20260101), so a historic
+  dataset stays joinable against its own year's classification. Good
+  design; use the vintage matching your data, not the newest one.

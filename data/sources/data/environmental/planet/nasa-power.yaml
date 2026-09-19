@@ -1,0 +1,24 @@
+name: NASA POWER
+url: https://power.larc.nasa.gov/
+description: |
+  NASA Langley's Prediction Of Worldwide Energy Resources: solar and
+  meteorological parameters from MERRA-2 and CERES, hourly to climatology,
+  for any point on Earth since 1981, via a key-free REST API.
+pillar: environmental
+scale: planet
+status: live
+license: US Government work (public domain); NASA POWER asks for citation
+api: https://power.larc.nasa.gov/api/temporal/
+pilot_relevance: [global]
+tags: [climate, solar, meteorology, reanalysis, climatology, nasa]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Temporal endpoints: hourly, daily, monthly, climatology, each as
+  /api/temporal/{level}/point?parameters=...&latitude=&longitude=&community=RE|AG|SB.
+  Resolution ~0.5 x 0.625 deg (MERRA-2); a point query returns the enclosing cell.
+  PLANETAI: `app/bootstrap.py::power_climatology()` pulls the 12 monthly
+  normals (temperature, humidity, solar, precipitation) for the node's
+  coordinates at first start; the `cold-start` pack cites this slug. It is
+  the reason a node needs coordinates, not a sensor, to have a baseline.

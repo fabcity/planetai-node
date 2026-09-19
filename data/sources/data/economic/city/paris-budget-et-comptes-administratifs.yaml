@@ -1,0 +1,46 @@
+name: Paris - Budgets votes et comptes administratifs
+url: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets?where=theme%3D%22Administration%20et%20Finances%20Publiques%22
+description: |
+  The City of Paris finance corpus on its own open-data portal - voted budgets
+  (planned) and comptes administratifs (executed) for principal and ancillary
+  budgets, plus debt, fixed assets, grants paid and the balance sheet.
+pillar: economic
+scale: city
+status: live
+license: Open Database License (ODbL)
+api: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets?where=theme%3D%22Administration%20et%20Finances%20Publiques%22
+pilot_relevance: []
+tags: [public-budget, municipal-finance, budget-execution, open-budget, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) by opening the
+  OpenDataSoft v2.1 catalogue endpoint above, which returned total_count 65 for
+  the theme "Administration et Finances Publiques", every entry licensed ODbL
+  except one Licence Ouverte (Etalab).
+
+  PLANNED AND EXECUTED ARE BOTH PUBLISHED, AS MATCHED PAIRS. Confirmed dataset
+  ids: budgets-votes-principaux-a-partir-de-2019-m57-ville-departement and
+  comptes-administratifs-budgets-principaux-a-partir-de-2019-m57-ville-departement
+  (M57 era); bugdet-votes-principaux and comptes-administratifs-principaux-ville-
+  departement (M14-M52, 2009-2017); plus budgets-votes-annexes /
+  comptes-administratifs-budgets-annexes for the annexes and
+  budget-votes-ap-autotrisations-de-programmes /
+  comptes-administratifs-autorisations-de-programmes-ap-ville-departement for
+  multi-year investment authorisations.
+
+  Series runs 2009 to present, split at the 2018 accounting-nomenclature change
+  (M14-M52 before, M57 after). Any Paris time series that crosses 2018 crosses a
+  chart-of-accounts break and must be stitched deliberately, not concatenated.
+
+  Paris is simultaneously commune and departement (INSEE 75056 / dept 75), so
+  these files are labelled "Ville-departement" and mix both tiers - do not read
+  them as a pure municipal budget.
+
+  Also in this theme and worth knowing: dette-propre and dette-garantie (debt),
+  bilan-comptable / bilan-comptable-synthetique (balance sheet), compte-de-resultat,
+  subventions-versees-annexe-compte-administratif-a-partir-de-2018 (grants
+  actually paid), and the CASVP social-action agency's own budget and accounts.
+
+  Classification: national chart of accounts (M57), not COFOG; no crosswalk published.

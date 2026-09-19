@@ -1,0 +1,53 @@
+name: Local authority revenue expenditure and financing England - Revenue Outturn multi-year data set
+url: https://www.gov.uk/government/statistics/local-authority-revenue-expenditure-and-financing-england-revenue-outturn-multi-year-data-set
+description: |
+  Per-authority English local government revenue expenditure and
+  financing from statutory RO returns, 2017-18 to 2024-25, as one CSV
+  time series on CIPFA SeRCOP service lines. Covers Plymouth.
+pillar: economic
+scale: city
+status: live
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [budget, outturn, local-government, sercop, csv, england, april-march]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+  THE STRONGEST CANDIDATE IN THIS WAVE.
+
+  ONE CSV, ~300 ENGLISH CITIES. It solves the Budget|city rung for every
+  English local authority at once, consistent classification, budget and
+  outturn together, openly licensed. Plymouth's machine-readable budget
+  problem is solved by going UP a level, not by parsing council PDFs.
+  That pattern - Sweden's SCB, Quebec's MAMH, England's MHCLG - holds in
+  three countries in this wave.
+
+  VERIFIED BY DIRECT FETCH: time series CSV 19.7 MB; metadata ODS 95 KB;
+  guidance HTML. 2017-18 to 2024-25 in one file. Updated 13 Aug 2026.
+
+  UK FISCAL YEAR IS 1 APRIL TO 31 MARCH, as hyphenated pairs. "2024-25"
+  overlaps calendar 2024 and 2025 and aligns with NEITHER. Comparison
+  against a calendar-year budget needs an explicit convention, never a
+  silent cast to the leading year.
+
+  Classification: CIPFA SeRCOP service lines plus financing lines
+  (council tax, business rates retention, grants). NOT COFOG. Line codes
+  are defined in the 95 KB ODS metadata file - read it. GBP, nominal,
+  thousands.
+
+  UNVERIFIED, WORTH ONE CALL: whether the CSV carries ONS GSS codes or
+  only MHCLG E-codes. Conventionally both, but the file was not opened.
+  It determines whether this joins to
+  governance/city/ons-open-geography-arcgis or needs a lookup table.
+
+  What this makes possible and what it does not: a South West figure is
+  a groupby over authorities whose GSS codes fall in E12000009 -
+  legitimate as DERIVED data, labelled derived. It is not a published
+  regional budget, because England has no regional government.
+
+  Licence verbatim: "All content is available under the Open Government
+  Licence v3.0, except where otherwise stated".

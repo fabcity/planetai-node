@@ -1,0 +1,29 @@
+name: UNEP GEMS/Water Global Freshwater Quality Archive
+url: https://zenodo.org/records/14230628
+description: |
+  UNEP GEMS/Water's global freshwater quality archive: over 20 million
+  measurements across 608 parameters from 13,660 monitoring stations.
+  Hosted by the International Centre for Water Resources and Global Change
+  at the German Federal Institute of Hydrology.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0 (open archive; additional data available under CC-BY-NC-4.0)
+api: null
+pilot_relevance: [global]
+tags: [water-quality, freshwater, gemstat, unep, zenodo, sparse-coverage]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. v2, 80 CSVs in a single 108.7 MB ZIP, Zenodo DOI
+  10.5281/zenodo.14230628, updated annually. Covers 1906-2023. Only data
+  contributed to GEMStat under CC BY 4.0 or equivalent reaches the open
+  Zenodo release. The interactive portal at portal.gemstat.org is capped
+  at 675 stations per request; larger extracts need a custom data request.
+  SLICING: station records carry coordinates, so point-in-polygon against
+  a bioregion or catchment works cleanly, and GEMStat natively supports
+  station, country and catchment queries. THE REAL CONSTRAINT IS COVERAGE,
+  NOT SLICING: 37 countries only. Most of the world has zero stations.
+  Check station presence per bioregion before promising this indicator
+  anywhere.

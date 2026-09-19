@@ -1,0 +1,30 @@
+name: OECD Material Flow Accounts (SDMX)
+url: https://sdmx.oecd.org/public/rest/dataflow/OECD.ENV.EPI/all/latest
+description: |
+  OECD economy-wide material flow accounts by material category covering
+  metals, non-metallic minerals, biomass and fossil energy carriers.
+  Includes domestic material consumption and material footprint, the
+  consumption-based measure needed for honest circularity accounting.
+pillar: economic
+scale: bioregion
+status: live
+license: OECD terms — CC-BY-4.0 for most OECD statistical data, not restated on the endpoint
+api: https://sdmx.oecd.org/public/rest
+pilot_relevance: [global]
+tags: [oecd, sdmx, material-flow, dmc, material-footprint, circular-economy]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call on
+  DSD_MATERIAL_RESOURCES@DF_MATERIAL_RESOURCES returning JSON for
+  2020-2025. Eight measures confirmed: domestic extraction used, imports,
+  exports, physical trade balance, direct material input, domestic
+  material consumption, material footprint, share in total DMC. Coverage
+  roughly 1990-2025 with recent years now-cast, annual. OVERLAP NOTE: this
+  partially duplicates materialflows.net (UN IRP), which is already in the
+  list. They are complements not duplicates - materialflows.net has longer
+  coverage (1970-2024) and more countries (200+), OECD has the API. Keep
+  both and prefer the IRP series for long time series, OECD for
+  programmatic access. SLICING: SDMX key first position is ISO3 country.
+  National only.

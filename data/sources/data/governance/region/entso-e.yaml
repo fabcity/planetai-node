@@ -1,0 +1,22 @@
+name: ENTSO-E Transparency Platform
+url: https://transparency.entsoe.eu/
+description: |
+  European electricity grid data: generation by source, consumption,
+  cross-border flows, balancing, day-ahead prices. Hourly resolution
+  for all EU + UK + Norway + Switzerland.
+pillar: governance
+scale: region
+status: live
+license: custom open (ENTSO-E terms; free for non-commercial)
+api: https://transparency.entsoe.eu/api
+pilot_relevance: [barcelona]
+tags: [electricity, grid, energy, eu, entso-e, renewable]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  The European equivalent of PUDL. Spain bidding zone (ES)
+  data covers generation mix, demand, prices for the Barcelona
+  pilot. Free API requires registration + token. Most useful
+  combined with Generalitat de Catalunya regional energy data
+  for sub-Spain disaggregation.

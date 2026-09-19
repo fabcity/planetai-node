@@ -1,0 +1,35 @@
+name: Cambridge - Housing stock, permits and code violations
+url: https://data.cambridgema.gov/Housing/Housing-Stock-and-Residential-Properties-by-Neighb/wiba-69ua
+description: |
+  City of Cambridge housing series: housing stock and residential properties
+  by neighbourhood, residential permits from 1996, housing code violations,
+  and foreclosure filings from 2003.
+pillar: social
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: https://data.cambridgema.gov/resource/wiba-69ua.json
+pilot_relevance: [boston]
+tags: [housing, neighborhood, permits, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+  Datasets checked, all PDDL: housing stock and residential properties by
+  neighbourhood /d/wiba-69ua (updated 2026-07-28); housing permits 1996-present
+  /d/6nxj-uqfe (2026-08-26); housing code violations /d/f8su-kv88 (2026-09-07);
+  housing foreclosures 2003-present /d/y82j-c2bw (2024-04-23).
+
+  NEIGHBOURHOOD-DISAGGREGATED AND CURRENT. That combination is rare in this
+  list - most city social data is either citywide-only or years stale. The
+  stock series is the usable one for an index; the violations feed is the
+  usable one for a live signal.
+
+  Housing Median Sales Prices /d/9nnq-4isb is deliberately EXCLUDED from this
+  entry: its licence returned "not specified" while its neighbours returned
+  PDDL. Same portal, same subject, different answer on criterion 1.
+
+  NOT AVAILABLE at city scale on this portal: unemployment, Gini, life
+  expectancy, broadband, education access. Those exist only at the federal
+  rung via ACS, which is a different scale tier.

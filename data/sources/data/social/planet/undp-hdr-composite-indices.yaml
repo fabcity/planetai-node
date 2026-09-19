@@ -1,0 +1,31 @@
+name: UNDP Human Development Report — composite indices time series
+url: https://hdr.undp.org/data-center/documentation-and-downloads
+description: |
+  UNDP Human Development Report Office composite indices as a single tidy
+  CSV covering 1990-2023: HDI, inequality-adjusted HDI, Gender Development
+  Index and Gender Inequality Index for around 193 countries.
+pillar: social
+scale: planet
+status: live
+license: Not formally stated — UNDP commits to free public accessibility of key statistics; licence UNCONFIRMED
+api: null
+pilot_relevance: [global]
+tags: [undp, hdr, hdi, gender-inequality-index, life-expectancy, csv]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 by fetching the file: https://hdr.undp.org/sites/def
+  ault/files/2025_HDR/HDR25_Composite_indices_complete_time_series.csv
+  downloads with columns iso3, country, hdicode, region, hdi_rank_2023
+  then year-suffixed indicators 1990-2023 including hdi, le (life
+  expectancy), eys, mys, gnipc, gdi, hdi_f/hdi_m, le_f/le_m, ihdi, gii,
+  mmr. hdrdata.org advertises a Human Development Data API 2.0 requiring a
+  subscription key but returned only a JavaScript loading shell, so no
+  endpoint is claimed here. FRAMEWORK ACTION: use GII as the gender-
+  equality indicator instead of the WEF Global Gender Gap Index. GGGI is
+  All Rights Reserved by the World Economic Forum (confirmed via the QoG
+  redistribution record) and the only openly licensed copy, on HDX, covers
+  2006-2013 and was last modified in 2019. HDR also carries the most
+  current life expectancy series of any source checked. SLICING: country
+  and UNDP regional groups only.

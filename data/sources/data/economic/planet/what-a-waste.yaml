@@ -1,0 +1,21 @@
+name: World Bank What a Waste 2.0
+url: https://datacatalog.worldbank.org/search/dataset/0039597
+description: |
+  National-level municipal solid waste accounts: per-capita generation,
+  composition, collection, treatment. Coverage for ~217 economies.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [waste, msw, world-bank, circular-economy]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Used in PLANETAI Wave 16 Sankey triptych as the right-hand panel
+  (national MSW composition by kg/cap). Static dataset — last full
+  update 2018, partial updates since. Combine with PLANETAI's
+  HS->material crosswalk to bridge imports (Atlas of Economic
+  Complexity) into waste outputs.

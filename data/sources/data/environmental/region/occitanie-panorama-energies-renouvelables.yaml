@@ -1,0 +1,30 @@
+name: Occitanie — Panorama des énergies renouvelables
+url: https://www.data.gouv.fr/datasets/panorama-des-energies-renouvelables
+description: |
+  Time series of renewable energy production in Occitanie, 2008-2024, compiled by the region
+  from RTE, SDeS and ENEDIS sources. Fills the regional energy-mix cell of the FCI
+  environmental pillar.
+pillar: environmental
+scale: region
+status: live
+license: Licence Ouverte / Open Licence version 2.0
+api: null
+pilot_relevance: []
+tags: [energy, renewables, occitanie, france, region, energy-mix]
+added: 2026-09-09
+updated: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09: dataset page opened, HTTP 200. Last update 2025-10-20. CSV (10.7 KB and
+  12.1 KB), JSON (26.6 KB), plus PDF companions. Sixteen-year series, 2008-2024.
+  PROVENANCE CAVEAT THE PAGE STATES ITSELF: the region compiles this from RTE, SDeS, ENEDIS
+  and other producers, and some figures are estimates. It is a regional aggregation of
+  national operator data, not a primary measurement, so it should be cited as Occitanie's
+  compilation rather than as an independent observation — and it will not always reconcile
+  against the operators' own published series.
+  Metadata quality self-rated 44%: update frequency, temporal coverage and spatial scope
+  undocumented. Cadence appears roughly annual from resource dates; treat as annual until
+  confirmed.
+  Related but separate: "Initiatives « Région à énergie positive »" (same publisher, lov2),
+  a project register rather than a production series — not entered here.

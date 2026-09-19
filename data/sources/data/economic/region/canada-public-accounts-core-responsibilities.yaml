@@ -1,0 +1,40 @@
+name: Core Responsibilities as per Public Accounts of Canada
+url: https://open.canada.ca/data/en/dataset/c9675417-100a-433a-92d4-79b710408def
+description: |
+  Canadian federal expenditure broken out by departmental core
+  responsibility in CSV and XML - the closest published analogue to a
+  functional or COFOG-style classification of federal spending.
+pillar: economic
+scale: region
+status: live
+license: Open Government Licence - Canada
+api: https://open.canada.ca/data/api/3/action/package_show?id=c9675417-100a-433a-92d4-79b710408def
+pilot_relevance: []
+tags: [expenditure-by-function, core-responsibilities, public-accounts, canada, csv]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13). Canada
+  national rung.
+
+  WHY THIS ONE AND NOT THE PARENT. The Public Accounts of Canada proper
+  (package 350b4f13-d84a-4e94-b221-1109dc00ab39, 30 resources covering
+  1995-2025) is HTML ONLY. The machine-readable value sits in its
+  siblings, and this is the sibling that carries the functional cut.
+  Departmental core responsibilities are Canada's nearest analogue to a
+  COFOG function - not a crosswalk, but the axis you would build one on.
+
+  Sibling worth knowing: Ministerial Revenues as per Public Accounts
+  (e5e419f8-7219-4faa-8b0d-22c006b5434f), CSV, 43 resources, 2015-2025,
+  revenue in thousands by department. Not added separately - revenue by
+  department is thin for FCI purposes, but it is there if the
+  revenue-side question comes up.
+
+  Execution side, not appropriation: pair with
+  economic/region/canada-main-estimates for the budget-versus-outturn
+  comparison. Published every autumn by the Receiver General.
+
+  Licence verbatim from the API: license_title "Open Government Licence
+  - Canada", license_id "ca-ogl-lgo".

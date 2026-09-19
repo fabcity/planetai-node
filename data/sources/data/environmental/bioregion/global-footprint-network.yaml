@@ -1,0 +1,30 @@
+name: Global Footprint Network — National Footprint & Biocapacity Accounts
+url: https://www.footprintnetwork.org/licenses/public-data-package-free/
+description: |
+  Free public data package of Ecological Footprint and biocapacity
+  accounts for 195+ countries, run by Global Footprint Network. Carries
+  per-capita gha footprint and biocapacity, land-type breakdown and data-
+  quality scores.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-SA-4.0 (registration and source acknowledgement required)
+api: null
+pilot_relevance: [global]
+tags: [ecological-footprint, biocapacity, country-level, registration-required]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Covers 1961-2023 results plus 2025 estimates,
+  annual release. data.footprintnetwork.org is a JS SPA and returns no
+  server-rendered content; api.footprintnetwork.org returned 403
+  unauthenticated, so no API contract could be confirmed - treat as
+  download-only. SLICING WEAKNESS: country resolution only, no sub-
+  national geometry. A bioregion that is not a country can only be
+  approximated by downscaling national per-capita values by population,
+  which is an assumption and not data. Ecological footprint and
+  biocapacity are two of the most Fab-City-native indicators in the
+  framework and this is the weakest slicing path in the environmental row
+  - the index should state the downscaling assumption explicitly rather
+  than carry it silently.

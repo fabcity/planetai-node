@@ -1,0 +1,22 @@
+name: Fab Lab Activity Index (Boeing 2024)
+url: https://link.springer.com/chapter/10.1007/978-3-658-44114-2_9
+description: |
+  Per-lab activity baseline derived from the Fab Lab Census and
+  fablabs.io registry. The first peer-reviewed quantitative index
+  of distributed-production capacity at the community tier.
+pillar: economic
+scale: community
+status: live
+license: CC-BY-4.0 (chapter, Open Access)
+api: null
+pilot_relevance: [global]
+tags: [fab-lab, distributed-production, boeing-2024, community-tier, fci]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Boeing 2024 chapter is the methodological predecessor of the
+  PLANETAI Production Constellation. Uses the Fab Lab Census to
+  derive per-lab capacity scores. Combine with fablabs.io registry
+  for live coverage; combine with PLANETAI's Tier-1 / Tier-2
+  deployment criteria for in-grant cohort selection.

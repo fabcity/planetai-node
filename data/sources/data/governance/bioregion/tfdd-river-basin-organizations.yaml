@@ -1,0 +1,32 @@
+name: TFDD International River Basin Organization Database
+url: https://transboundarywaters.ceoas.oregonstate.edu/international-river-basin-organization-database
+description: |
+  Institutional-design data for more than 120 river basin organisations
+  across more than 110 internationally shared watercourses, coded for
+  membership, functional scope, legal foundation, financing, decision-
+  making, data sharing, monitoring and dispute resolution.
+pillar: governance
+scale: bioregion
+status: stale
+license: None stated — OSU copyright applies
+api: null
+pilot_relevance: [global]
+tags: [river-basin-organisations, governance-body, institutional-design, stale, transboundary-water]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 and filed as STALE: the last substantive update was
+  15 October 2013 (page itself modified 2025-04-03) and the page describes
+  it as a work in progress. Excel download plus a searchable interface at
+  gis.nacse.org/tfdd/rbo_new.php. Builds on Schmeier's compilation. Note
+  the /...-rbo-database slug 404s; this is the working URL. WHY IT IS
+  LISTED DESPITE BEING TWELVE YEARS OLD: it is the closest thing on Earth
+  to the framework's 'bioregional governance body existence and
+  effectiveness' indicator, and its monitoring, compliance and dispute-
+  resolution codings are the only structured proxy for governance
+  effectiveness found anywhere in this harvest. STRUCTURAL LIMIT: it
+  covers river-basin bodies for internationally shared basins only. A
+  watershed inside one country, a coastal bioregion, a mountain range or
+  an ecoregion has nothing. There is no global register of bioregional
+  governance bodies.

@@ -1,0 +1,30 @@
+name: Sustainable Development Report / SDG Index (SDSN)
+url: https://dashboards.sdgindex.org/downloads
+description: |
+  SDSN and Bertelsmann's annual index scoring 193 UN member states on all
+  17 SDGs, with per-indicator values, goal scores and trend arrows
+  indicating whether a country is on track to meet each goal by 2030.
+pillar: governance
+scale: planet
+status: live
+license: Not stated on the downloads page — licensing questions directed to info@sdgindex.org; UNCONFIRMED
+api: null
+pilot_relevance: [global]
+tags: [sdg-index, sdsn, on-track-assessment, excel, indicators]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. SDR 2026 is current: full report PDF, Database 2026
+  (Excel), GES Survey 2026 (Excel), Country Profiles ZIP. An ArcGIS Hub
+  API is referenced on the downloads page for full database access but the
+  endpoint was not resolved or called - treat the API as documented-but-
+  unverified and use the Excel as the verified path. Annual since 2016,
+  193 states. WHY THIS IS THE ONE THAT MATTERS FOR THIS CELL: it is the
+  only source found that publishes an on-track / off-track assessment. The
+  UN SDG API gives raw indicator values; SDSN gives the verdict, which is
+  what the framework's 'percentage of targets on track' indicator actually
+  asks for. Citation: Sachs, J.D., Lafortune, G., Fuller, G., Iablonovski,
+  G. (2026), Implementing Sustainable Development: 2030 and Beyond,
+  Sustainable Development Report 2026. LICENCE ACTION: email
+  info@sdgindex.org before republishing.

@@ -1,0 +1,52 @@
+name: GeoStat Environment Statistics (PxWeb) - Georgia
+url: https://pc-axis.geostat.ge/PXWeb/pxweb/en/Database/Environment%20Statistics
+description: |
+  Georgia's national environment statistics - air pollution, waste,
+  water resources, forests, protected areas and environmental-economic
+  accounts - queryable through a live PxWeb REST API run by GeoStat.
+pillar: environmental
+scale: region
+status: live
+license: GeoStat open terms of use - download, use, adapt, modify, create derivative works, disseminate and share for any purpose including commercial, without prior permission; attribution to GEOSTAT required
+api: https://pc-axis.geostat.ge/PXWeb/api/v1/en/Database/Environment%20Statistics
+pilot_relevance: []
+tags: [georgia, geostat, pxweb, waste, water, air-pollution, seea, forests]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Georgia).
+
+  GEORGIA IS A TWO-ASSET COUNTRY AND THIS IS ONE OF THEM. Everything
+  machine-readable and openly licensed verified in Georgia flows through
+  GeoStat's PxWeb instance; the other asset, the procurement OCDS feed,
+  appears frozen since 2019. Not the budget, not air quality, not
+  elections, not the national open-data portal carries a verifiable open
+  licence.
+
+  VERIFIED BY DIRECT CALL on the root node: /PXWeb/api/v1/en/Database/
+  returns a JSON array of 17 database nodes. Environment Statistics
+  resolves to eight: Air Pollution, Environmental Indicators,
+  Environmental-Economic Accounts, Forest Resources, Natural Hazards and
+  Violations of Law, Protected Areas, Waste, Water Resources.
+
+  ENVIRONMENTAL-ECONOMIC ACCOUNTS is the nearest thing Georgia has to
+  material-flow accounting and implies SEEA implementation - first place
+  to look for DMC. There is NO node named material flow accounts.
+
+  TRAPS. (1) Build string is "PX-Web 2015 Dec" - old. Expect the /api/v1/
+  contract; do NOT assume JSON-stat2 or the /api/v2/ beta. (2) Expect a
+  per-query cell-count cap forcing chunked pulls. (3) ABKHAZIA AND SOUTH
+  OSSETIA ARE ABSENT FROM EVERY REGIONAL BREAKDOWN. GeoStat's statistical
+  universe excludes both, so a national figure is NOT the sum of its ISO
+  3166-2 parts, and treating a null GE-AB as zero produces wrong numbers.
+  South Ossetia has no ISO 3166-2 code at all and its de facto territory
+  comes mostly out of GE-SK Shida Kartli, so a code-keyed join folds it
+  in silently.
+
+  Licence verbatim: GEOSTAT "allows its users... the right to download,
+  use, adapt, modify, create derivative works of, disseminate, copy, and
+  share to the third parties, for any purpose, including commercial and
+  non-commercial use, without restriction... without prior permission."
+  Excludes logos and third-party photographs. Attribution required.

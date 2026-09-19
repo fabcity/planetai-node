@@ -1,0 +1,29 @@
+name: UNEP IRP Global Material Flows Database
+url: https://energydata.info/en/dataset/world-unep-irp-global-material-flows-database
+description: |
+  UNEP International Resource Panel material flow accounts: domestic
+  extraction, direct trade and material footprint in raw-material
+  equivalents by material category for 200+ countries. Compiled with CSIRO
+  and WU Vienna.
+pillar: environmental
+scale: planet
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [material-flow, material-footprint, resource-extraction, ckan, unep]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. The EnergyData.info CKAN mirror covers 1970-2019;
+  the IRP primary at resourcepanel.org covers 1970-2024, so the mirror is
+  stale relative to upstream - prefer the primary for current years.
+  Harvest via the CKAN resource URL, not the signed download URL: the
+  resource link 302s to a Linode object-storage URL with a one-hour
+  expiry. The host is CKAN so a /api/3/action/package_show route very
+  likely exists, but it was not tested and is not claimed here. SLICING:
+  country + year + material category + flow type table; global totals are
+  the sum; no sub-national resolution. WORTH NOTING: the circularity gap
+  indicator, which has no open source of its own, is in principle
+  derivable from this data rather than sourced from Circle Economy's PDFs.

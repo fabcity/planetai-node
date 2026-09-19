@@ -1,0 +1,21 @@
+name: TED — Tenders Electronic Daily
+url: https://ted.europa.eu/
+description: |
+  Every public-tender notice published in the EU. Full procurement
+  lifecycle: notice published, bid deadline, award, completion.
+  Bulk download via Open Data Portal of the EU; daily updates.
+pillar: governance
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: https://ted.europa.eu/api/v3.0/
+pilot_relevance: [barcelona]
+tags: [procurement, eu, public-tender, action-latency, open-data-portal-eu]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  The cleanest H_0-A action-latency baseline for the Barcelona pilot.
+  Time-stamped lifecycle gives "policy decision -> contracted action"
+  durations across tens of thousands of tenders per year for Spain
+  and Catalonia. Schema documented at the eForms standard.

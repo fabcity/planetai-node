@@ -1,0 +1,36 @@
+name: Cambridge Open Data
+url: https://data.cambridgema.gov/
+description: |
+  City of Cambridge, Massachusetts open data portal on Socrata, carrying 447
+  datasets across budget, housing, energy disclosure, inspections and
+  participatory budgeting, with a full SODA API and discovery catalogue.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: https://api.us.socrata.com/api/catalog/v1?domains=data.cambridgema.gov
+pilot_relevance: [boston]
+tags: [open-data-portal, socrata, transparency, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+  resultSetSize 447 via the Socrata Discovery API.
+
+  THE CATALOGUE IS ENUMERABLE, WHICH BOSTON'S IS NOT. Boston's CKAN Action
+  API is disallowed by its own robots.txt, so wave 1 had to count datasets
+  from rendered HTML. Cambridge answers the Discovery API directly. For a
+  federated index this is the difference between a source you can monitor and
+  one you have to scrape.
+
+  LICENCE IS NOT UNIFORM. PDDL is the portal default and holds on the budget,
+  housing and inspections datasets checked. It does NOT hold everywhere:
+  the BEUDO building energy and emissions datasets, the community greenhouse
+  gas inventory and Housing Median Sales Prices all returned "not specified".
+  Per-dataset licence must be re-confirmed before use; do not inherit from
+  this entry.
+
+  Query gotcha for anyone reusing the Discovery API: multi-word q values are
+  AND-matched, so q=unemployment+income+housing returns zero. Single terms
+  only. A zero result there is not evidence of absence.

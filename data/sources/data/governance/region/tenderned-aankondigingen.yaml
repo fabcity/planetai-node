@@ -1,0 +1,37 @@
+name: TenderNed - Aankondigingen van overheidsopdrachten
+url: https://data.overheid.nl/dataset/aankondigingen-van-overheidsopdrachten---tenderned
+description: |
+  Every Dutch public procurement notice - market consultations, contract
+  notices, awards, modifications and early terminations - published by PIANOo
+  via TenderNed, downloadable in bulk and available as feeds and a webservice.
+pillar: governance
+scale: region
+status: live
+license: CC0-1.0
+api: https://www.tenderned.nl/papi/tenderned-rs-tns/publicaties?page=0&size=20
+pilot_relevance: []
+tags: [procurement, netherlands, tenderned, open-contracting, public-sector]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Licence CC-0
+  (1.0), read from the national register record; publisher PIANOo (Rijk).
+
+  BULK FILES, opened at tenderned.nl/cms/nl/aanbesteden-in-cijfers/datasets-
+  aanbestedingen: Excel covering 2021 through 2026 Q2 (66.68 MB), 2016-2020
+  (52.24 MB) and 2010-2015 (17.32 MB); JSON one file per year 2016-2026,
+  55-110 MB each. Consolidated files refresh roughly twice a year; the live
+  feeds are continuous.
+
+  THE OPEN ROUTE AND THE KEYED ROUTE ARE DIFFERENT. Bulk downloads, the RSS
+  feed and the TNS publication webservice need no credentials. The XML API
+  does - TenderNed issues a username and password on request to
+  functioneelbeheer@tenderned.nl. Build on the open route.
+
+  WHY GOVERNANCE, NOT ECONOMIC: this list treats procurement as governance -
+  the signal is what the public sector chooses to buy. For a Fab City reading
+  it is the most direct available measure of whether local production is
+  actually reaching public demand, and it resolves to the contracting
+  authority, so Amsterdam and Velsen are both separable from the national file.

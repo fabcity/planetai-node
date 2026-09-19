@@ -1,0 +1,45 @@
+name: Budget de depenses du Quebec - Secretariat du Conseil du tresor
+url: https://www.donneesquebec.ca/recherche/dataset/budget-de-depenses
+description: |
+  Quebec's annual expenditure budget tabled at the Assemblee nationale,
+  as CSV - ministry credits, transfer credits by project and
+  beneficiary, special funds and non-budgetary bodies. 2021-22 to
+  2026-27.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [provincial-budget, expenditure, conseil-du-tresor, quebec, csv]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal and
+  Bas-Saint-Laurent). Serves the provincial rung for both.
+
+  UNUSUALLY, THIS ONE STATES ITS OWN LICENCE. The dataset page prints
+  "Attribution (CC-BY 4.0)" - unlike the two MAMH datasets, where the
+  licence had to be recovered from the federal federation. Worth noting
+  that the Conseil du tresor is more careful about this than MAMH is.
+
+  CRITICAL for crediting transfer flows: the dataset breaks CREDITS DE
+  TRANSFERT down to PROJECTS AND BENEFICIARIES. That is the rung at
+  which provincial money reaching a specific municipality or
+  organisation becomes traceable - more useful for a Fab City
+  "where does public money actually land" question than the aggregate
+  ministry totals.
+
+  TRAPS. (1) FOUR FILE FAMILIES PER YEAR WITH DIFFERENT SCHEMAS -
+  ministry credits, transfer credits, fonds speciaux, organismes autres
+  que budgetaires. A connector must handle them as four tables, not
+  one. (2) The only schema documentation is a PDF "description des
+  champs", which is not machine-readable. (3) Quebec's fiscal year runs
+  1 April - 31 March; this is ASSERTED from the hyphenated-pair
+  convention (2026-2027), NOT verified on the page. Do not cast a
+  hyphenated pair to its leading year.
+
+  Classification: Quebec portefeuille/programme structure. NO COFOG
+  CROSSWALK. CAD, nominal.

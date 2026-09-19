@@ -1,0 +1,27 @@
+name: Boston - Capital Plan
+url: https://data.boston.gov/dataset/capital-budget
+description: |
+  City of Boston five-year capital investment plan, FY27-31, roughly 4.4 billion
+  USD, published as bulk CSV with a PDF data dictionary and refreshed annually.
+pillar: economic
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: null
+pilot_relevance: [boston]
+tags: [public-budget, capital-investment, infrastructure, united-states]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1).
+
+  NOT SPATIALLY DISAGGREGATED. Every row is geo-tagged "Boston (all)" - there
+  is no neighbourhood or census-tract breakdown. That matters because the
+  capital plan is the one municipal dataset that would naturally answer
+  "where is money being spent", and here it cannot.
+
+  This is also why the community rung of the budget ladder is empty for Boston:
+  a search of the portal for tract or neighbourhood finance, including
+  participatory-budgeting allocations, found nothing. Recorded as checked-empty
+  in the coverage tracker, not as unchecked.

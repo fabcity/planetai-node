@@ -1,0 +1,50 @@
+name: Seoul GHG Inventory by Direct/Indirect (서울시 온실가스 인벤토리 직간접별 현황)
+url: https://data.seoul.go.kr/dataList/OA-21082/S/1/datasetView.do
+description: Seoul's annual greenhouse gas inventory split by direct and indirect emissions,
+  published by the city's Climate and Environment Bureau. Companion dataset OA-21081 gives
+  the same inventory broken out by sector.
+pillar: environmental
+scale: city
+status: live
+license: '공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1'
+api: null
+pilot_relevance: []
+tags:
+- ghg
+- emissions
+- climate
+- inventory
+- korea
+- seoul
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Owner 기후환경본부
+
+  기후환경정책과. Cadence 년간. Sheet (1,000-row cap) + CSV + Open API.
+
+
+  CAUTION: the dataset page displayed 「파일이 없습니다」 (no file present) at the
+
+  time of check. The metadata record is live and current, but the attachment may
+
+  be broken. Verify before depending on it. Recorded as live because the record
+
+  itself was fetched and is current; flip to stale if the attachment stays absent.
+
+
+  NO GPC AND NO IPCC PROTOCOL is referenced on the page, so GPC conformance
+
+  cannot be claimed for this inventory. The Fab City Index Environmental|City GHG
+
+  cell asks for a GPC inventory; this is an inventory of unstated protocol.
+
+
+  Sub-city granularity exists elsewhere but not openly: energyinfo.seoul.go.kr
+
+  publishes GHG by 자치구 and energy source with an Excel download and NO licence,
+
+  carrying the disclaimer 「본 자료는 법적효력을 가지지 않으므로 참고용으로만
+
+  활용하십시오」.'

@@ -1,0 +1,34 @@
+name: Somerville Open Data
+url: https://data.somervillema.gov/
+description: |
+  City of Somerville, Massachusetts open data portal on Socrata: a small,
+  52-dataset catalogue licensed ODbL, notable for participatory budgeting and
+  the long-running municipal wellbeing survey.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Open Database License (ODbL)
+api: https://api.us.socrata.com/api/catalog/v1?domains=data.somervillema.gov
+pilot_relevance: [boston]
+tags: [open-data-portal, socrata, transparency, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+  resultSetSize 52 via the Socrata Discovery API.
+
+  SMALL BUT LICENSED, which puts it ahead of three larger wave-7 portals.
+  Oakland publishes 739 datasets with no licence on anything checked; Detroit
+  and Sacramento publish empty licence fields across their whole catalogues.
+  Somerville publishes 52 and states ODbL. On CONTRIBUTING criterion 1, 52
+  beats 739.
+
+  ODbL, NOT PDDL - the opposite of its Massachusetts neighbours Boston and
+  Cambridge. ODbL carries share-alike and attribution obligations that public
+  domain dedication does not. Any derived FCI product mixing Somerville with
+  Boston or Cambridge data inherits the stricter terms. This is a real
+  licensing hazard inside a single metro area, not a footnote.
+
+  No operating budget on the portal. The capital plan is here but frozen since
+  2016 - see economic/city/somerville-capital-investment-plan.

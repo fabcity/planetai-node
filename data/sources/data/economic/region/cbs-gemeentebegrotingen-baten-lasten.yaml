@@ -1,0 +1,39 @@
+name: CBS Gemeentebegrotingen; baten en lasten naar regio en grootteklasse
+url: https://www.cbs.nl/nl-nl/cijfers/detail/83641NED
+description: |
+  Budgeted revenue and expenditure of Dutch municipalities per taakveld
+  (policy field), in millions of euro and euro per inhabitant, broken down by
+  province and municipality size class. 2017-2026, annual, via StatLine OData.
+pillar: economic
+scale: region
+status: live
+license: Verveelvoudiging is toegestaan, mits het CBS als bron wordt vermeld (CC-BY-4.0 site-wide)
+api: https://opendata.cbs.nl/ODataApi/odata/83641NED
+pilot_relevance: []
+tags: [budget, public-finance, netherlands, cbs, statline, odata, iv3]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10) via the OData
+  TableInfos endpoint. Period 2017-2026, Frequency "Perjaar", Modified
+  2026-03-25.
+
+  FILED AT REGION SCALE FOR A REASON. The breakdown is province and size
+  class, NOT individual municipality. You cannot get Amsterdam's or Velsen's
+  own budget line out of this table. Anyone who assumes "regio" means gemeente
+  here will build a wrong connector. The per-municipality equivalent is the
+  Iv3 return each municipality files with BZK; it is presented at findo.nl,
+  which states no reuse licence and is therefore recorded in the coverage
+  tracker as a restricted-licence candidate rather than listed here.
+
+  CLASSIFICATION is taakvelden - the Dutch policy-field chart of accounts set
+  by the BBV, plus the Iv3 economic categories. It is not COFOG and CBS
+  publishes no COFOG crosswalk with the table. Currency EUR, nominal. Fiscal
+  year = calendar year. This is the BUDGET side; the realisation twin is the
+  Gemeenterekeningen family of tables (taakvelden, grootteklasse, regio), same
+  caveat about regional aggregation.
+
+  Companion table 83642NED "Gemeentebegrotingen; heffingen per gemeente" IS
+  per municipality, but carries only levies and charges, not the full budget.

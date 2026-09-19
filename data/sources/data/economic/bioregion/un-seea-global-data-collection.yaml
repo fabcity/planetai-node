@@ -1,0 +1,30 @@
+name: UN SEEA Global Data Collection
+url: https://seea.un.org/en/data/global-data-collection
+description: |
+  UN Statistics Division's environmental-economic accounting programme.
+  Currently a country-implementation tracker plus an Excel questionnaire
+  collection; a compiled global account database is announced but not yet
+  published.
+pillar: economic
+scale: bioregion
+status: planned
+license: Not stated
+api: null
+pilot_relevance: [global]
+tags: [un, seea, unsd, environmental-accounts, planned]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 and deliberately filed as PLANNED, not live. It is a
+  data submission framework, not a data portal: Excel questionnaires with
+  macros for Physical Energy Flow Accounts and Air Emission Accounts, with
+  submissions due 30 September 2026. UNSD states that submitted data 'will
+  be validated and then disseminated through a database maintained by
+  UNSD' - that database does not exist yet. The 2025 Global Assessment
+  confirms 98 countries have implemented SEEA and 71 of them (72%) publish
+  at least one account regularly, published as per-country PDF reports
+  2020-2025. ACTION: set a re-check for Q1 2027. This is the source that
+  would eventually make SEEA-based natural capital and circularity
+  accounting official rather than improvised, and it would materially
+  improve the economic bioregion row.
