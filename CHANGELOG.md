@@ -4,6 +4,21 @@
   sensors — PM2.5, temp, humidity and filter life — plus a filter-low warning. Ships with MIoT mappings for
   the Elite (zhimi.airp.meb1) and 4 Compact (xiaomi.airp.cpa4), verified live on node #1.
 
+- 2026-09-11 — the earth pack's cache is keyed on the place, not on the node's name.
+
+**Renaming a node no longer re-downloads its square of the planet.** The earth pack's cache lives in
+`out/earth/<NODE_NAME>/`, so when node #1 became `bayu-ungasan` the pack found an empty directory and
+re-read all nine years of AlphaEarth embeddings: about 930 MB pulled for data already on the disk, and
+555 MB under the old name that nothing reads. The name was never the right key — the embeddings describe
+a *place*, and the same square is the same square whatever the machine is called. A directory is now
+matched on what its `meta.json` says it holds: this point, within the tolerance a move already uses, at
+this radius. A directory written under an earlier name is adopted as it stands; when several match, the
+one named for the node wins, so nothing shifts under a live node. A real move still re-reads everything.
+
+Nothing is deleted. `planetai run earth status` lists any directory under `out/earth/` that is not this
+node's square, with its size and the point it was read around, and leaves it alone: nine years is an
+expensive download, and removing half a gigabyte of a household's data is not the node's call.
+
 ## v0.60 — 2026-09-18 — an update has to say who built it, and a node that refuses one is doing its job
 
 Every node in this network has been taking code from one Cloudflare bucket on trust. `install` and
