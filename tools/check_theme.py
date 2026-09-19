@@ -181,7 +181,8 @@ def main(argv: list[str]) -> int:
         return 1
     # --update skips this: it is the thing --update rewrites, so requiring it to pass first would
     # mean a pin that is wrong — hand-edited, or a half-finished update — could never be repaired.
-    # What --update is held to is the comparison below, against the design repo itself.
+    # What --update is held to is the comparison below, against the design repo itself — at
+    # origin/main, not at the pin it is about to replace.
     if pin and not update and not errs:
         for rel in FROZEN:
             want = pin["sha256"].get(rel)
@@ -196,8 +197,14 @@ def main(argv: list[str]) -> int:
     # ---- the half that needs the sibling: what the pinned commit actually says, line by line.
     compared: set[str] = set()
     if DESIGN.exists() and not errs:
-        sha = pin.get("design_sha", "") if pin else ""
         head = git("rev-parse", "origin/main").stdout.strip()
+        # A plain run is held to the PIN: that is the commit these bytes were copied from, and the
+        # neighbour's branch is not evidence about it. `--update` is held to the design repo as it is
+        # NOW, because the copy being recorded came from now — measuring a new copy against the old
+        # pin is the one comparison that cannot pass whenever there is something to update, and that
+        # is what this line said until 19 September 2026. It made --update work only when the files
+        # already matched the pin, which is exactly when there is nothing to update.
+        sha = (head or "") if update else (pin.get("design_sha", "") if pin else "")
         for rel, sub in FROZEN.items():
             text, where = original(sha, sub) if sha else (
                 (DESIGN / sub).read_text() if (DESIGN / sub).is_file() else None, "working tree")
@@ -214,7 +221,7 @@ def main(argv: list[str]) -> int:
             warns.append(f"{sha[:7]} is not in the {DESIGN.name} checkout, so the comparison read its "
                          f"WORKING TREE instead — whatever branch it is on. git -C {DESIGN} fetch, "
                          f"then run this again.")
-        elif head and sha and head != sha:
+        elif head and sha and head != sha and not update:
             behind = git("rev-list", "--count", f"{sha}..origin/main").stdout.strip() or "some"
             warns.append(f"planetai-design is {behind} commit(s) past the pin ({sha[:7]}). If the layer "
                          f"moved, copy the files and --update; if it did not, nothing to do.")
