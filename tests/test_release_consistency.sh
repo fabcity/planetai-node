@@ -108,10 +108,17 @@ if command -v ssh-keygen >/dev/null; then
       sed -n "/^read -r -d '' ALLOWED_SIGNERS/,/^SIGNERS\$/p;/^verify_signature() {/,/^}\$/p" update.sh
       echo 'verify_signature "$1"'
     } > "$sk/$1.sh"
-    [[ "$1" == ours ]] && { sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" "$sk/ours.sh" > "$sk/o" && mv "$sk/o" "$sk/ours.sh"; }
+    [[ "$1" == ours ]] && { sed -E "s|^(fabcity ssh-ed25519 )[^ ]+|\1$blob|" "$sk/ours.sh" > "$sk/o" && mv "$sk/o" "$sk/ours.sh"; }
     grep -q verify_signature "$sk/$1.sh"
   }
   lift real && lift ours || no "could not lift verify_signature out of update.sh"
+  # If that sed stops matching — the signer line's shape changes, a key rotates oddly — `ours` would
+  # carry the REAL public key and be checked against a throwaway signature, and the success path would
+  # fail for a reason that has nothing to do with update.sh. CI has the same guard on its own copy.
+  cmp -s "$sk/real.sh" "$sk/ours.sh" \
+    && no "the throwaway key was not swapped in: this stopped testing the path that SUCCEEDS" \
+    || ok "the throwaway signer is swapped into the lifted copy"
+
 
   # the caller owns the directory, so it can look at what was left in it afterwards
   run_on() {   # run_on <which> <dir> <contents> ; echoes the exit code

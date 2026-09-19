@@ -37,7 +37,7 @@ jobs:
           ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C fabcity
           ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/site/get/planetai-node.tar.gz
           blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
-          sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > install.signed
+          sed -E "s|^(fabcity ssh-ed25519 )[^ ]+|\1$blob|" install > install.signed
           cmp -s install install.signed && { echo "no placeholder in install — CI has stopped testing the signed path"; exit 1; } || true
           ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
           for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
@@ -229,7 +229,7 @@ jobs:
           ssh-keygen -q -t ed25519 -f /tmp/ci_key -N '' -C fabcity
           ssh-keygen -Y sign -f /tmp/ci_key -n planetai-node /tmp/site/get/planetai-node.tar.gz
           blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
-          sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > install.signed
+          sed -E "s|^(fabcity ssh-ed25519 )[^ ]+|\1$blob|" install > install.signed
           cmp -s install install.signed && { echo "no placeholder in install — CI has stopped testing the signed path"; exit 1; } || true
           ( cd /tmp/site && python3 -m http.server 8099 >/tmp/site.log 2>&1 & )
           for i in $(seq 20); do curl -fsS http://127.0.0.1:8099/get/SHA256 >/dev/null 2>&1 && break; sleep 1; done
@@ -337,7 +337,7 @@ jobs:
           # committed signer is a placeholder until Tomas issues the key, and this leg has to exercise
           # the path that SUCCEEDS. Everything else — the URLs, the fetch, the verify — is the real file.
           blob=$(ssh-keygen -y -f /tmp/ci_key | awk '{print $2}')
-          sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" install > /tmp/install.flat
+          sed -E "s|^(fabcity ssh-ed25519 )[^ ]+|\1$blob|" install > /tmp/install.flat
           if cmp -s install /tmp/install.flat; then
             echo "the placeholder is gone from install — this leg no longer tests anything"; exit 1
           fi
