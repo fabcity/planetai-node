@@ -16,6 +16,8 @@ import logging
 import os
 from datetime import datetime, timezone
 
+import registry
+
 log = logging.getLogger("planetai.index")
 CITY = os.getenv("NODE_CITY", "unknown")
 SCALE = os.getenv("NODE_SCALE", "community").capitalize()
@@ -45,8 +47,26 @@ def run_ro(cur, sql: str, params=None) -> list:
 
 
 def _row(cell: str, value, unit: str, source: str, state: str, note: str = "") -> dict:
+    # `registered` and `adapter` are what the network knows about this cell, from the snapshot at
+    # data/sources (app/registry.py). Additive, and no new judgement: `state`, `value`, `unit` and
+    # `source` are untouched and still mean exactly what they meant. They answer, on a row that is
+    # already here, "is what I am showing the only thing there is" — 31 sources filed for
+    # Governance|City is a different sentence from 1.
+    #
+    # WHAT THIS DOES NOT DO: the rows below are only the ones this node can COMPUTE — a pack cell
+    # with a value, plus Governance|<scale>. A cell with a registered source and no adapter has no
+    # row here at all, and does not get one: `cells-ingest` upserts every row it is handed, and a
+    # node emitting twenty empty rows would write twenty empty rows into the Index. That question is
+    # `GET /sources?cell=Social|City` and `planetai sources --cell`, which is the half of the 5
+    # September table `/cells` structurally cannot answer.
+    #
+    # 2026-09-19: `adapter` reads `wired_in_planetai` off the entries. When the registry gains an
+    # `adapter` field of its own, read that and drop the boolean — one source of truth for whether
+    # anything here reads a thing, upstream where the rest of the entry lives.
+    n, wired = registry.counts_by_cell().get(cell, (0, False))
     return {"city": CITY, "cell": cell, "value": None if value is None else round(float(value), 3), "unit": unit,
-            "source": source, "observed_at": datetime.now(timezone.utc).isoformat(), "state": state, "notes": note}
+            "source": source, "observed_at": datetime.now(timezone.utc).isoformat(), "state": state, "notes": note,
+            "registered": n, "adapter": wired}
 
 
 def _buckets(cur) -> dict:
