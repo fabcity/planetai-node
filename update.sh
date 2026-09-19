@@ -42,7 +42,7 @@ GET="${PLANETAI_GET:-$SITE/get}"
 # asking the download to vouch for itself. `tools/allowed_signers` carries the same line, and
 # tests/test_release_consistency.sh fails if the copies drift.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
-fabcity ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET fabcity
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
 SIGNERS
 
 # Who built this tarball — which the checksum does not answer. SHA256 is served from the same origin as

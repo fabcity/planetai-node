@@ -10,8 +10,14 @@ refuses — which is the safe direction, and why nothing is blocked by the order
 On your own machine, once:
 
 ```bash
+mkdir -p -m 700 ~/.planetai
 ssh-keygen -t ed25519 -f ~/.planetai/release_key -C fabcity
 ```
+
+**The `mkdir` is not optional.** `ssh-keygen` does not create the parent directory, and on a machine
+that has never held this key there is none — it asks for the passphrase twice, then says `Saving key
+… failed: No such file or directory` and you type it again from the start. `700` because the private
+half lives there. (Cost this exact round trip on 19 Sep 2026, on the first machine that ever ran it.)
 
 Give it a passphrase. `tools/release.sh` reads the key through `ssh-agent`, so `ssh-add
 ~/.planetai/release_key` once per session is the whole cost of having one.
@@ -19,12 +25,18 @@ Give it a passphrase. `tools/release.sh` reads the key through `ssh-agent`, so `
 ## 2. Publish the public half
 
 ```bash
-printf 'fabcity %s fabcity\n' \
-  "$(ssh-keygen -y -f ~/.planetai/release_key | awk '{print $1" "$2}')"
+printf 'fabcity %s fabcity\n' "$(awk '{print $1" "$2}' ~/.planetai/release_key.pub)"
 ```
 
-That one line replaces the `PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET` line in **four** files.
-They must end up byte-identical; `tests/test_release_consistency.sh` fails if they do not.
+Read out of `release_key.pub`, which `ssh-keygen` wrote beside the private half. `ssh-keygen -y -f
+~/.planetai/release_key` gives the same bytes but asks for the passphrase to do it, and there is no
+reason to type a passphrase to read something public.
+
+That one line replaces the signer line in **four** files. They must end up byte-identical;
+`tests/test_release_consistency.sh` fails if they do not. **It was issued on 19 September 2026, so
+those files no longer carry a placeholder** — anything that keyed off that string had to be rekeyed
+to the signer line's shape instead, which is what `install-smoke.yml` and the consistency test now
+do. If you rotate the key, grep for `fabcity ssh-ed25519` rather than for a placeholder.
 
 | file | why it has its own copy |
 |---|---|

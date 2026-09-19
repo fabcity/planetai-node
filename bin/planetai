@@ -77,7 +77,7 @@ version() { git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null 
 # and `update.sh`; tests/test_release_consistency.sh fails if the four drift. A node should be able to
 # say what it trusts without anybody having to read a file on it — that is what `planetai version` is for.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
-fabcity ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET fabcity
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
 SIGNERS
 # Never fails: `planetai version` is what somebody runs when nothing else works.
 signer_fingerprint() {
