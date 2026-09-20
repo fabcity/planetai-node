@@ -141,7 +141,24 @@ def _last_fetch(con) -> datetime | None:
     return row[0] if row else None
 
 
+def enabled() -> bool:
+    """Off unless somebody said yes, and the reason is the licence rather than caution.
+
+    An empty PACKS_ENABLED means EVERY pack is enabled (app/packs.py), so on a node that already
+    had PACKS_ALLOW_CODE=1 this pack switched itself on at update and read 5.3 MB before anyone
+    chose it. v0.65's own release note had told keepers it was off until they turned it on. Found on
+    node #1, 2026-09-20, minutes after that release.
+
+    That gap matters here more than it would for a pack reading an open API: the Fab Lab Network
+    directory is not openly licensed, and the Foundation's decision to read it covers the Foundation
+    and not the operator of any other node. Nobody's node should start reading it by default.
+    """
+    return os.getenv("MAKE_ENABLED", "0").strip().lower() in ("1", "true", "yes", "on")
+
+
 def fetch(hc):
+    if not enabled():
+        return [], []
     lat, lon = float(os.environ["NODE_LAT"]), float(os.environ["NODE_LON"])
     radius = float(os.getenv("MAKE_RADIUS_KM", "50"))
     days = int(os.getenv("MAKE_REFRESH_DAYS", "30"))

@@ -4,6 +4,18 @@ The node reads the air, the sea, the heat, the portal. Then it says the air is b
 This pack is the other half of that sentence: the nearest active fab labs, with what each one
 can do, so an alert can end with somewhere to go instead of a number to worry about.
 
+## Turning it on
+
+```
+MAKE_ENABLED=1
+PACKS_ALLOW_CODE=1
+```
+
+**Both**, and `MAKE_ENABLED` ships as `0`. That is not caution about code — it is the licence below.
+An empty `PACKS_ENABLED` means every pack is enabled, so without its own switch this pack would
+start reading a directory nobody licensed the moment a node updated. It did exactly that on node #1
+on 2026-09-20, minutes after a release note saying it was off until you turned it on.
+
 ## What it stores
 
 One `sensors` row per lab inside `MAKE_RADIUS_KM` (default 50), `kind='facility'`,

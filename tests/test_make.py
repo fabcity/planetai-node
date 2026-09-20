@@ -128,6 +128,29 @@ check("an unknown capability is shown, not dropped",
       "telekinesis" in adapter.ask_line(
           [{"name": "L", "meta": {"distance_km": 1.0, "capabilities": ["telekinesis"]}}]))
 
+# ---------------------------------------------------------------- off unless somebody said yes
+#
+# An empty PACKS_ENABLED means EVERY pack is enabled (app/packs.py), so on a node that already had
+# PACKS_ALLOW_CODE=1 this pack switched itself on at update and read 5.3 MB before anyone chose it —
+# after v0.65's own release note had said it was off until they turned it on. Found on node #1.
+# It matters more than caution: the directory is not openly licensed, and the Foundation's decision
+# to read it does not cover another node's operator.
+
+_saved = os.environ.pop("MAKE_ENABLED", None)
+check("a pack nobody enabled is off", adapter.enabled() is False)
+for v in ("1", "true", "TRUE", "yes", "on"):
+    os.environ["MAKE_ENABLED"] = v
+    check(f"MAKE_ENABLED={v} turns it on", adapter.enabled() is True)
+for v in ("0", "", "false", "no", "maybe"):
+    os.environ["MAKE_ENABLED"] = v
+    check(f"MAKE_ENABLED={v!r} leaves it off", adapter.enabled() is False)
+os.environ.pop("MAKE_ENABLED", None)
+# fetch() must refuse before it touches the network OR the database — no DATABASE_URL is set here,
+# so this passing at all proves the guard comes first.
+check("fetch() reads nothing at all while off", adapter.fetch(None) == ([], []))
+if _saved is not None:
+    os.environ["MAKE_ENABLED"] = _saved
+
 # ---------------------------------------------------------------- what the pack promises about itself
 
 import yaml  # noqa: E402
@@ -140,6 +163,11 @@ check("the pack has no cells.yml, so it can never claim an Index cell",
       not (Path(__file__).resolve().parent.parent / "packs" / "make" / "cells.yml").exists())
 check("the attribution says the directory is not openly licensed",
       "NOT OPENLY LICENSED" in pack["attribution"])
+check("pack.yaml ships MAKE_ENABLED=0, so an update cannot switch it on",
+      any(e.strip() == "MAKE_ENABLED=0" for e in pack.get("env", [])))
+env_example = (Path(__file__).resolve().parent.parent / ".env.example").read_text()
+check(".env.example ships it off too — update.sh copies defaults from there",
+      "\nMAKE_ENABLED=0\n" in env_example)
 
 print()
 if fails:

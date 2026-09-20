@@ -604,6 +604,11 @@ print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' 
   # placed and would otherwise vanish into a smaller number without anyone noticing.
   if [[ -d packs/make ]] && grep -qE '^PACKS_ALLOW_CODE=1' .env 2>/dev/null; then
     local mline mn mfetched msnap
+    if ! grep -qiE '^MAKE_ENABLED=(1|true|yes|on)' .env 2>/dev/null; then
+      # Off is a different fact from "no lab nearby", and saying the wrong one would tell an operator
+      # their place has no fab lab when nothing has looked.
+      chk "make: off (MAKE_ENABLED=0 — the directory it reads is not openly licensed, see packs/make/README.md)" "true" "" ""
+    else
     mn="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE kind='facility' AND source='fablabs-io'" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || true)"
     if [[ -n "$mn" && "$mn" != "0" ]]; then
       mfetched="$(docker compose exec -T db psql -tAqU planetai -c "SELECT max((meta->>'fetched')::timestamptz)::date FROM sensors WHERE kind='facility' AND source='fablabs-io'" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || echo "?")"
@@ -613,6 +618,7 @@ print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' 
       mline="make: no fab lab within ${MAKE_RADIUS_KM:-50} km of this node yet"
     fi
     chk "$mline" "true" "" ""
+    fi
   fi
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"

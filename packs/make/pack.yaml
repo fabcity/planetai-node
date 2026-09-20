@@ -14,6 +14,10 @@ metrics: []
 scales: [community]
 sources: [economic/community/fablabs-io, economic/community/fablabs-network-data-archive]
 env:
+  - "# make: OFF by default, and deliberately. The Fab Lab Network directory this reads is NOT openly"
+  - "# licensed — each lab keeps copyright in its own record — and Fab City Foundation's decision to"
+  - "# read it covers the Foundation, not you. Read packs/make/README.md, then set this to 1."
+  - "MAKE_ENABLED=0"
   - "# make: how far to look for a fab lab, in km. 50 is a morning's travel in most places."
   - "MAKE_RADIUS_KM=50"
   - "# make: archive (dated monthly snapshots, the default and the one that can be pinned) or live"
