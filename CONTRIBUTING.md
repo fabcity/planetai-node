@@ -37,6 +37,24 @@ Installs the pre-commit hook: blocks `.env`, credentials and `.git` contents, an
 - Schema changes go in `init.sql` additively (`IF NOT EXISTS`, `CREATE OR REPLACE VIEW`). A v0.1 node must update in place.
 - One dated line in `CHANGELOG.md` per change, saying why.
 - Code Apache 2.0, docs CC-BY 4.0. By opening a PR you agree to those terms.
+- **Sign off your commits.** `git commit -s` adds one line:
+
+  ```
+  Signed-off-by: Your Name <your@email>
+  ```
+
+  That is the [Developer Certificate of Origin](https://developercertificate.org/) — you are saying you
+  wrote the change or have the right to contribute it, under the licences above. Not a CLA: nothing is
+  assigned to anybody, and there is no form. It exists because this repository already merges code
+  three quarters of which carries a `Co-Authored-By` trailer for a model, and the line that says a
+  *person* stands behind a commit is worth having written down rather than assumed.
+
+## Who decides
+
+`GOVERNANCE.md` says who merges what and how that list changes; `MAINTAINERS.md` is the list. Most
+changes need one maintainer. `init.sql`, `SPEC.md`'s contracts, `install`, `install.sh`, `update.sh`
+and `bin/planetai` need two, for one reason: a household updates by running `planetai update` and
+cannot review what arrives.
 
 ## Voice
 
