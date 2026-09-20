@@ -1,5 +1,28 @@
 # Changelog
 
+- 2026-09-20 — **`planetai agent local` no longer downloads a model, and the model on your node can no
+  longer change your settings.** Two changes, both in the same direction: the model is a guest on this
+  machine, not a part of it.
+
+  **Nothing is pulled unless you ask.** Setting up the local model used to fetch 2.5 GB — 5.2 GB on a
+  16 GB machine — as part of the same command that installed it. It now prints what it recommends for
+  your machine and its size, and stops: `planetai agent local pull qwen3.5:4b` does the downloading when
+  you want it. The recommended tags move to `qwen3.5:4b` (3.4 GB) and `qwen3.5:9b` (6.6 GB) — both
+  checked against Ollama's registry, both Apache-2.0. **Your node keeps the model it already has**; this
+  changes what a new install recommends, not what an existing one runs. `docs/MODELS.md` is the new
+  catalogue and its first line is that a node needs none of it.
+
+  **The local model gets read and act.** It can read everything about your node and record that you acted
+  on an alert. It can no longer change a setting, run a pack's code, or send you a report because it
+  decided to. An agent *you* are driving — Claude Desktop over your tailnet — still has all twenty tools;
+  the difference is that you are reading what it proposes. `planetai agent` prints every tool and which
+  class it is in.
+
+  **And it must use your words.** Recording that you acted used to accept the word "acted" as your
+  explanation. It now needs what you actually said, and `/act 23` with no words asks you for them rather
+  than inventing them. ρ — the share of alerts somebody answered — is built out of those sentences, and a
+  model filling them in is a model measuring itself.
+
 - 2026-09-19 — **a node that has never chosen a model preference now keeps everything on the network.**
   `AGENT_PREFER` shipped as `strongest`, which sends every question — and the 64 kB report bundle that
   goes with it: your numbers, your room names, your own sentences — to Anthropic's or OpenAI's API first
