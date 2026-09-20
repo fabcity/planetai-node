@@ -1,0 +1,10 @@
+{
+  "schema": "aggregates-v0",
+  "source": "app/main.py::push_aggregates",
+  "keys": [
+    "node",
+    "rows",
+    "scale",
+    "schema"
+  ]
+}

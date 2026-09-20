@@ -35,7 +35,19 @@ for k in ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOT
     assert f'"{k}"' in settings, f"settings.py: {k}"
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
 assert re.search(r"^\s*agent: \['", gui, re.M), "gui: a tab for the agent group"
-assert "cmd_agent_local()" in cli and "local) cmd_agent_local" in cli
+# v0.63: `local` dispatches to the setup OR to `pull`, which is the whole point of that release — the
+# setup no longer fetches weights. Both halves must exist and `local)` must reach both.
+assert "cmd_agent_local()" in cli and "cmd_agent_local_pull()" in cli
+assert "local) if" in cli and "cmd_agent_local_pull" in cli and "else cmd_agent_local" in cli, \
+    "`planetai agent local [pull]` no longer dispatches to both"
+# cmd_agent_local_pull() is defined ABOVE cmd_agent_local(), so splitting on it reads the wrong half —
+# which this assertion did until an injected `ollama pull` walked straight through it. Slice the setup
+# function's own body and look in there.
+_body = cli[cli.index("\ncmd_agent_local() {"):]
+_body = _body[:_body.index("\n}\n")]
+assert "ollama pull" not in _body, \
+    "`planetai agent local` fetches a model again; the setup must download nothing"
+assert "ollama pull" in cli, "`planetai agent local pull` must still be able to fetch one"
 assert "def refresh_ladder" in open("app/agent_loop.py").read()
 print("all shipped claims present")
 

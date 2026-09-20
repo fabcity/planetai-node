@@ -10,7 +10,9 @@ Open a private advisory:
 **https://github.com/fabcity/planetai-node/security/advisories/new** — the repository's *Security* tab,
 then *Report a vulnerability*.
 
-It is visible only to you and the maintainers until there is a fix to publish. There is deliberately no
+It is visible only to you and the maintainers until there is a fix to publish. `MAINTAINERS.md` says
+who those are — on 20 September 2026 that is one person, which you should know when you judge how long
+to wait for an answer. There is deliberately no
 mailbox: a security address is only as good as whoever remembers to read it, and this project is small
 enough that an unread inbox was the likelier failure.
 
