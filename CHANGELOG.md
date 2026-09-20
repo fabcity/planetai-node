@@ -1,5 +1,27 @@
 # Changelog
 
+- 2026-09-19 — **the node's database image is now published for arm64, so a Raspberry Pi is no longer
+  refused.** `postgis/postgis:16-3.4-alpine` is built for amd64 and nothing else, and that one fact is what
+  the docs used to turn into "a Pi cannot be a node". The `db` service moves to
+  `imresamu/postgis:16-3.4-alpine` — a docker-postgis co-maintainer's build of the same recipe, same Alpine
+  base, same PostGIS 3.4, published for amd64 **and** arm64. **Your node updates straight through this**:
+  same data directory, same Postgres 16, same libc, and it was tested both ways round — a database created
+  by the old image opens on the new one with its tables, its geometry, its indexes and its text ordering
+  intact. Nothing to do.
+
+  **If your node is an Apple Silicon Mac, its database stops being emulated.** It has been running an
+  x86 build under translation since the day it was installed. You may notice it is quicker; you should not
+  notice anything else.
+
+  Not yet true: nobody has run a node on a Pi, a Jetson or a reComputer. CI installs one end to end on
+  arm64 every push, which proves the images resolve and the database comes up, and proves nothing about an
+  SD card or a hot cupboard. `docs/HANDOFF_arm64.md` is the seven-day test for whoever goes first, and the
+  short version is: 8 GB, and an SSD — never an SD card, which Postgres will kill inside a year.
+
+  Also: `planetai preflight` stops failing on arm64 Linux, and the installer no longer installs Docker on
+  a machine that already runs Podman — it prints the two commands that let Podman answer to `docker` and
+  stops, because no node has been run on Podman and it would rather say so than pretend.
+
 - 2026-09-19 — **a node that has never chosen a model preference now keeps everything on the network.**
   `AGENT_PREFER` shipped as `strongest`, which sends every question — and the 64 kB report bundle that
   goes with it: your numbers, your room names, your own sentences — to Anthropic's or OpenAI's API first
