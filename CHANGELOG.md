@@ -1,23 +1,34 @@
 # Changelog
 
-- 2026-09-20 — **`planetai sources` now tells you which code reads a source, not just that something
-  does.** The registry your node carries is re-pinned to `9303adc` — same 209 entries, three new fields
-  on each. The one you will see is `adapter`: where a source is read, the last column of
-  `planetai sources` names the thing that reads it — `core:ckan`, `pack:coast` — instead of the word
-  "wired". Fourteen sources have one today; a blank column is still the list of what is worth building
-  next for your place.
+- 2026-09-20 — **`planetai sources` now names the code that reads a source, instead of the word
+  "wired".** v0.63 shipped the registry at `9303adc`, where `adapter` — a string like `core:ckan` or
+  `pack:coast` — replaced a boolean typed by hand in another repository. This is the node catching up
+  to it. The last column of `planetai sources` prints that string, which tells you where to start
+  reading rather than only that somebody got there first, and nothing here reads the old boolean any
+  more: not a `/cells` row, not `GET /sources?wired=`, not the CLI. The `wired` filter keeps its name,
+  so anything you scripted against it still works. A blank last column still means what it meant —
+  nobody has written an adapter for this one yet, and that is the list worth building from.
 
-  This replaces a boolean. `wired_in_planetai` was typed by hand in the registry repository to describe
-  what runs in this one, and it drifted exactly as you would expect: sixteen of thirty-two ticked at one
-  point, including a paid source no node can call. A pointer at a function or a pack can be checked
-  against this repository, and upstream's CI now does check it. Nothing here reads the boolean any more.
+## v0.63 — 2026-09-20 — a Raspberry Pi can be a node, nothing leaves your network unasked, and the bot speaks Spanish
 
-  Two fields you will not see yet, carried for what comes next: `auth` — what a node must hold to read a
-  source, set on 37 of the 209 where the entry says so — and `feeds_cells`, which Index cells a node
-  actually fills from it. That last one is worth one sentence: for four sources the node reads,
-  `feeds_cells` is **empty**, and correctly so. Open-Meteo, its air-quality feed and NASA POWER all land
-  on model point samples, and a model has never been allowed to make a cell say `live`. They are the
-  baseline your own measurement is read against, and your node has always treated them that way.
+**This release carries more than one large change, and `docs/NEXT_RELEASE.md` rule 3 says it should not.**
+Tomas shipped it knowing that. If your node comes back wrong after this update, the question "which one
+was it" has four candidates and not one, so please say what you saw and `planetai doctor --json` will say
+the rest. The four, in the order they are most likely to be noticed:
+
+1. **the database image changed** — if your node is an Apple Silicon Mac, its database stops running
+   under x86 translation for the first time;
+2. **three languages** in every alert;
+3. **the model on your node lost the ability to change your settings**, and `planetai agent local` stopped
+   downloading several gigabytes without being asked;
+4. **five documents gained a `schema` key**, which you will not see at all.
+
+Everything below is one of those four.
+
+- 2026-09-20 — the source registry is re-pinned to `9303adc`, still 209 entries. Upstream replaced a
+  boolean nobody could check with `adapter` and `feeds_cells`, read from the node's own code rather than
+  remembered, and the schema gained the fields to hold them. `planetai sources` and `GET /sources` answer
+  from this. Eleven pack source ids still resolve.
 
 - 2026-09-20 — **`planetai agent local` no longer downloads a model, and the model on your node can no
   longer change your settings.** Two changes, both in the same direction: the model is a guest on this
