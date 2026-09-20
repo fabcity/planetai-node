@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.63 — 2026-09-20 — a Raspberry Pi can be a node, nothing leaves your network unasked, and the bot speaks Spanish
+
+**This release carries more than one large change, and `docs/NEXT_RELEASE.md` rule 3 says it should not.**
+Tomas shipped it knowing that. If your node comes back wrong after this update, the question "which one
+was it" has four candidates and not one, so please say what you saw and `planetai doctor --json` will say
+the rest. The four, in the order they are most likely to be noticed:
+
+1. **the database image changed** — if your node is an Apple Silicon Mac, its database stops running
+   under x86 translation for the first time;
+2. **three languages** in every alert;
+3. **the model on your node lost the ability to change your settings**, and `planetai agent local` stopped
+   downloading several gigabytes without being asked;
+4. **five documents gained a `schema` key**, which you will not see at all.
+
+Everything below is one of those four.
+
 - 2026-09-20 — the source registry is re-pinned to `9303adc`, still 209 entries. Upstream replaced a
   boolean nobody could check with `adapter` and `feeds_cells`, read from the node's own code rather than
   remembered, and the schema gained the fields to hold them. `planetai sources` and `GET /sources` answer

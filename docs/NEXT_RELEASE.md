@@ -1,5 +1,10 @@
 # Next release — collecting
 
+> **v0.63 shipped 20 September 2026** and took with it: the arm64 database image, the wire-format version
+> strings, `AGENT_PREFER=private` by default, the local model's read-and-act surface, Spanish, and the
+> registry at `9303adc`. It broke rule 3 below — one large change per release — and said so in its own
+> CHANGELOG rather than quietly. What is left on this page is what is still owed.
+
 Changes asked for after v0.60 and not yet built. Tomas is collecting. Each item says what was asked,
 what it touches, and what somebody picking it up needs to know that is not obvious from the code.
 
