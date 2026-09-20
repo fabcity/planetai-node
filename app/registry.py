@@ -9,8 +9,8 @@ writing, against the fourteen sources a node actually reads.
 
 That gap is the point. `index.cells()` can only emit rows this node can compute, so the cell nobody
 has an adapter for is simply absent from `/cells`, and until now absent meant unanswerable. The
-registry answers it: `GET /sources?cell=Social|City` says what is filed for that cell, and
-`wired_in_planetai` says which of it anything reads yet.
+registry answers it: `GET /sources?cell=Social|City` says what is filed for that cell, and each
+entry's `adapter` — `core:openmeteo_air`, `pack:coast` — says which of it anything here reads yet.
 
 This module names no metric, no source and no pillar. It loads, filters and serves; every word of
 vocabulary in it came out of the registry's own schema. Adding a source is still a PR upstream and a
@@ -58,6 +58,10 @@ def find(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
          wired: bool | None = None) -> list[dict]:
     """Every filter is AND, and an empty one matches everything.
 
+    `wired` keeps its name on the wire — nothing that worked yesterday stops working — but reads the
+    registry's `adapter`, a string naming the code, rather than the `wired_in_planetai` boolean that
+    is deprecated upstream. Same question, asked of something that can be checked.
+
     `pilot` is the exception worth knowing: an entry relevant to `global` is relevant to every pilot,
     so asking for Bali returns Bali's sources AND the planet-wide ones. A node asking what it could
     measure wants both, and the registry's own `pilot_relevance` is where that word comes from."""
@@ -70,7 +74,7 @@ def find(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
             continue
         if cell and e.get("cell") != cell:
             continue
-        if wired is not None and bool(e.get("wired_in_planetai")) is not wired:
+        if wired is not None and bool(e.get("adapter")) is not wired:
             continue
         if pilot:
             rel = e.get("pilot_relevance") or []
@@ -86,10 +90,16 @@ def one(slug: str) -> dict | None:
 
 
 def counts_by_cell() -> dict[str, tuple[int, bool]]:
-    """{cell: (how many registered, does anything read any of them)} — what index.py puts on a row."""
+    """{cell: (how many registered, does anything read any of them)} — what index.py puts on a row.
+
+    `adapter` is a string naming the code that reads the entry — `core:openmeteo_air`, `pack:coast` —
+    and its presence is the answer. It replaced `wired_in_planetai`, a boolean typed upstream by hand
+    about this repository, which is why sixteen of thirty-two were once ticked including a paywalled
+    source no node can call. The string is checked against this repo in the registry's own CI; the
+    boolean never could be, and is deprecated there."""
     out: dict[str, tuple[int, bool]] = {}
     entries, _ = load()
     for e in entries:
-        n, wired = out.get(e.get("cell", ""), (0, False))
-        out[e.get("cell", "")] = (n + 1, wired or bool(e.get("wired_in_planetai")))
+        n, read = out.get(e.get("cell", ""), (0, False))
+        out[e.get("cell", "")] = (n + 1, read or bool(e.get("adapter")))
     return out

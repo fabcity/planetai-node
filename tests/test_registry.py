@@ -102,9 +102,9 @@ for cell in ("Governance|City", "Social|City", "Environmental|Community"):
     n = c.get("/sources", params={"cell": cell}).json()["count"]
     row = index_mod._row(cell, 1.0, "u", "src", "partial")
     assert row["registered"] == n, f"{cell}: /sources says {n}, a /cells row says {row['registered']}"
-    wired = any(e.get("wired_in_planetai")
-                for e in c.get("/sources", params={"cell": cell}).json()["sources"])
-    assert row["adapter"] is wired, f"{cell}: adapter {row['adapter']} but wired {wired}"
+    read = any(e.get("adapter")
+               for e in c.get("/sources", params={"cell": cell}).json()["sources"])
+    assert row["adapter"] is read, f"{cell}: /cells adapter {row['adapter']}, /sources says {read}"
     # additive: the row still carries everything it carried before
     assert {"city", "cell", "value", "unit", "source", "observed_at", "state", "notes"} <= set(row)
 print("  /cells `registered` and `adapter` agree with /sources for three cells")

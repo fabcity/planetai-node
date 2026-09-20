@@ -60,13 +60,18 @@ def _row(cell: str, value, unit: str, source: str, state: str, note: str = "") -
     # `GET /sources?cell=Social|City` and `planetai sources --cell`, which is the half of the 5
     # September table `/cells` structurally cannot answer.
     #
-    # 2026-09-19: `adapter` reads `wired_in_planetai` off the entries. When the registry gains an
-    # `adapter` field of its own, read that and drop the boolean — one source of truth for whether
-    # anything here reads a thing, upstream where the rest of the entry lives.
-    n, wired = registry.counts_by_cell().get(cell, (0, False))
+    # `adapter` reads the registry's own `adapter` field, which arrived upstream on 2026-09-20 and
+    # names the code — `core:openmeteo_air`, `pack:coast`. The `wired_in_planetai` boolean it
+    # replaced is gone from here. One thing worth knowing about the grouping: both numbers group by
+    # an entry's OWN pillar/scale, and the registry now also carries `feeds_cells`, the cells a node
+    # actually fills from it. They are not the same question — bali-air-dispatch is filed under
+    # Environmental|Community and feeds Environmental|City — so if this row should say "something
+    # reads a source that FILLS this cell" rather than "…that is FILED under it", the grouping is
+    # what changes, and that is a decision, not a fix.
+    n, has_adapter = registry.counts_by_cell().get(cell, (0, False))
     return {"city": CITY, "cell": cell, "value": None if value is None else round(float(value), 3), "unit": unit,
             "source": source, "observed_at": datetime.now(timezone.utc).isoformat(), "state": state, "notes": note,
-            "registered": n, "adapter": wired}
+            "registered": n, "adapter": has_adapter}
 
 
 def _buckets(cur) -> dict:

@@ -1,5 +1,21 @@
 # Changelog
 
+- 2026-09-20 — **`planetai sources` now names the code that reads a source, instead of the word
+  "wired".** v0.63 shipped the registry at `9303adc`, where `adapter` — a string like `core:ckan` or
+  `pack:coast` — replaced a boolean typed by hand in another repository. This is the node catching up
+  to it. The last column of `planetai sources` prints that string, which tells you where to start
+  reading rather than only that somebody got there first, and nothing here reads the old boolean any
+  more: not a `/cells` row, not `GET /sources?wired=`, not the CLI. The `wired` filter keeps its name,
+  so anything you scripted against it still works.
+
+  **Twelve rows change, and they change because the old answer was wrong.** 26 of the 209 entries were
+  ticked `wired_in_planetai` by hand; 14 carry an `adapter` read out of the node's actual code. The
+  twelve in between — the Atlas of Economic Complexity, GBIF, Metroverse, What a Waste and eight more —
+  said something reads them and nothing does. They now say so. `GET /sources?wired=1` returns twelve
+  fewer, and twelve `/cells` rows stop claiming an adapter they never had. That is the whole reason the
+  boolean was replaced with a string somebody can check: a blank last column still means nobody has
+  written an adapter for this one yet, and now it means it truthfully.
+
 ## v0.63 — 2026-09-20 — a Raspberry Pi can be a node, nothing leaves your network unasked, and the bot speaks Spanish
 
 **This release carries more than one large change, and `docs/NEXT_RELEASE.md` rule 3 says it should not.**

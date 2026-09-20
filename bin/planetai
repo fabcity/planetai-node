@@ -1770,9 +1770,9 @@ if f("FJSON") == "1":
     print(json.dumps(out, indent=2)); sys.exit(0)
 for e in out:
     pil = ",".join(e.get("pilot_relevance") or []) or "-"
-    print("  %-44s %-9s %-40s %-20s %s" % (e.get("slug", ""), e.get("status", ""), (e.get("license") or "")[:40], pil[:20], "wired" if e.get("wired_in_planetai") else ""))
+    print("  %-44s %-9s %-40s %-20s %s" % (e.get("slug", ""), e.get("status", ""), (e.get("license") or "")[:40], pil[:20], e.get("adapter") or ""))
 print("")
-print("  %d of %d entries. A cell with sources and no `wired` is one nobody has written an adapter for yet." % (len(out), len(rows)))'
+print("  %d of %d entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet." % (len(out), len(rows)))'
 }
 # One file holding every answer the node gives, so a screen that looks wrong can be looked at somewhere
 # else. It is what a design round renders against (the dashboard reads it back with ?fixture=<name>)
