@@ -1,5 +1,9 @@
 # Next release — collecting
 
+> **v0.65 shipped 20 September 2026**: the registry's first act sources, and `packs/make` — the nearest
+> fab lab as a place a person can go. Off until `PACKS_ALLOW_CODE=1`, and the directory it reads is not
+> openly licensed; the pack's README says whose decision covers whom. Nothing on this page was owed by it.
+>
 > **v0.64 shipped 20 September 2026**, hours after v0.63 and on purpose the opposite shape: one change,
 > the node reading the registry's `adapter` instead of a boolean it could not check. Nothing on this page
 > was owed by it.

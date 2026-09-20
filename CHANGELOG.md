@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.65 — 2026-09-20 — the node can say where to go, not only what is wrong
+
+Two changes, one idea. The registry your node carries gains its first **act** sources — places to go
+and designs to build, alongside the 209 that measure — and a new pack, `make`, turns the nearest of
+them into a sentence: where the closest fab lab is and what it can do.
+
+`make` is **off until you turn it on** (`PACKS_ALLOW_CODE=1`), and there is one thing to read before
+you do. The Fab Lab Network directory it reads is not openly licensed: each lab keeps copyright in
+its own record and no data licence is published. Fab City Foundation decided it may be read and took
+responsibility for that — but that decision covers the Foundation, not you. `packs/make/README.md`
+says so plainly, and if it matters where you are, leave the pack off. Everything else in this release
+is inert until you do.
+
 - 2026-09-20 — **your node can tell you where the nearest fab lab is.** A new pack, `make`, keeps the
   active fab labs within 50 km of you — their names, how far, and what each one can do — and the
   report ends with one line: "Nearest place to make or fix something: Fab Lab Bali, 17.2 km (laser
