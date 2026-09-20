@@ -74,6 +74,8 @@ PROPOSED = {
     # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
     # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
     "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},
+    # Phase 1 of prompt 9: the suite lands with the code, in Phase 2, and deletes this entry.
+    "docs/SPEC_rho.md": {"tests/test_rho.py"},
 }
 for _doc, _names in PROPOSED.items():
     if not os.path.exists(_doc):
