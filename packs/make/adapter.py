@@ -210,5 +210,11 @@ def ask_line(rows: list[dict], locale: str = "en") -> str | None:
     m = best.get("meta") or {}
     caps = [words.get(c, c) for c in (m.get("capabilities") or [])]
     what = ", ".join(caps[:3]) if caps else None
-    where = f"{best.get('name')}, {m.get('distance_km')} km"
+    # A node inside a fab lab is the deployment this pack most wants, and it rounds to "0.0 km",
+    # which reads like a broken number however true it is. Found on pai-clean 2026-09-20: the VM's
+    # Barcelona coordinates are three metres from Makers Zone BCN. `<0.1 km` is a numeral in all
+    # three languages, so saying it needs no fourth phrase in T.
+    d = m.get("distance_km")
+    near = isinstance(d, (int, float)) and d < 0.05
+    where = f"{best.get('name')}, {'<0.1' if near else d} km"
     return f"{where} ({what})" if what else where

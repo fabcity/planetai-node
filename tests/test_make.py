@@ -111,6 +111,14 @@ check("an unknown locale falls back to English rather than to nothing",
 check("a regional tag resolves to its language", adapter.ask_line(rows, "es-CL") == adapter.ask_line(rows, "es"))
 check("every locale covers the whole vocabulary",
       all(set(v) == set(adapter.CAPABILITY_WORDS["en"]) for v in adapter.CAPABILITY_WORDS.values()))
+# Found by running the pack on pai-clean, not by reading it: a node inside a fab lab is the
+# deployment this pack most wants, and "0.0 km" reads like a broken number however true it is.
+check("a lab at the node's own address reads as <0.1 km, not 0.0 km",
+      adapter.ask_line([{"name": "Here", "meta": {"distance_km": 0.0, "capabilities": []}}])
+      == "Here, <0.1 km")
+check("a lab 100 m away still gets its number",
+      adapter.ask_line([{"name": "There", "meta": {"distance_km": 0.1, "capabilities": []}}])
+      == "There, 0.1 km")
 check("no ask line when nothing is near", adapter.ask_line([]) is None)
 check("a lab with no capabilities still gets a line",
       adapter.ask_line([{"name": "Bare Lab", "meta": {"distance_km": 3.0, "capabilities": []}}])
