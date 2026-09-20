@@ -13,3 +13,4 @@
   message:
     en: "🍳 Today's indoor air was worst around cooking time at {name}.\n\nThat is normal in any kitchen. The fix is timing, not equipment: a window open while the pan is on clears it faster than a purifier running afterwards."
     id: "🍳 Udara dalam terburuk hari ini sekitar waktu memasak di {name}.\n\nItu normal di dapur mana pun. Solusinya soal waktu, bukan alat: jendela terbuka saat wajan di api lebih cepat membersihkan daripada pembersih udara sesudahnya."
+    es: "🍳 Hoy el aire de dentro estuvo peor a la hora de cocinar en {name}.\n\nEs normal en cualquier cocina. La solución es el momento, no el aparato: una ventana abierta mientras la sartén está al fuego lo despeja más rápido que un purificador encendido después."

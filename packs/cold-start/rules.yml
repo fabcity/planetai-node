@@ -10,6 +10,7 @@
   message:
     en: "🛰️ What the satellites think your air is like today.\n\nThis comes from a European atmosphere model, not from a sensor at your address, and it sees your whole district as one square. A sensor at your window will disagree with it, sometimes a lot.\n\nThat disagreement is exactly the reason to put one up."
     id: "🛰️ Perkiraan satelit tentang udara Anda hari ini.\n\nIni dari model atmosfer Eropa, bukan sensor di alamat Anda, dan model melihat seluruh kecamatan sebagai satu kotak. Sensor di jendela Anda akan berbeda, kadang jauh.\n\nPerbedaan itulah alasan memasang sensor."
+    es: "🛰️ Lo que los satélites creen de tu aire hoy.\n\nEsto viene de un modelo atmosférico europeo, no de un sensor en tu dirección, y ve todo tu distrito como un solo cuadro. Un sensor en tu ventana le llevará la contraria, a veces mucho.\n\nEsa diferencia es justo la razón para poner uno."
 
 - id: hotter_than_normal
   level: info
@@ -24,6 +25,7 @@
   message:
     en: "🌡️📅 This month is running away from normal here.\n\nCompared with forty years of records for this place, the temperature is well off its usual for the season. That matters for anything that minds heat: people, plants, a fridge, a server.\n\nAsk me for the numbers if you want them."
     id: "🌡️📅 Bulan ini menyimpang dari normal di sini.\n\nDibanding catatan empat puluh tahun untuk tempat ini, suhunya jauh dari biasanya untuk musim ini. Penting untuk apa pun yang peka panas: orang, tanaman, kulkas, server.\n\nTanya angkanya kalau mau."
+    es: "🌡️📅 Este mes se está saliendo de lo normal aquí.\n\nComparado con cuarenta años de registros de este lugar, la temperatura está muy lejos de lo habitual para la estación. Eso importa a todo lo que sufre el calor: personas, plantas, un refrigerador, un servidor.\n\nPídeme los números si los quieres."
 
 - id: sensor_vs_model
   level: info
@@ -37,3 +39,4 @@
   message:
     en: "📏 Your sensor and the satellites disagree about your air.\n\nThe model sees a whole district; your sensor sees your street. When they differ by this much, the model is missing something local: burning, traffic, a kitchen.\n\nThat gap is what a sensor at your address is for."
     id: "📏 Sensor Anda dan satelit tidak sepakat soal udara Anda.\n\nModel melihat satu kecamatan; sensor Anda melihat jalan Anda. Kalau bedanya sebesar ini, model melewatkan sesuatu yang lokal: pembakaran, lalu lintas, dapur.\n\nSelisih itulah gunanya sensor di alamat Anda."
+    es: "📏 Tu sensor y los satélites no se ponen de acuerdo sobre tu aire.\n\nEl modelo ve un distrito entero; tu sensor ve tu calle. Cuando difieren tanto, al modelo se le escapa algo local: quemas, tráfico, una cocina.\n\nPara eso sirve un sensor en tu dirección: para esa diferencia."

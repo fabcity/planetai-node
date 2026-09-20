@@ -49,6 +49,15 @@ def cfg(k, d=""): return (CFG.get(k) or os.getenv(k) or d)
 def TG_TOKEN(): return cfg("TELEGRAM_BOT_TOKEN")
 def CHATS(): return {c.strip() for c in cfg("TELEGRAM_CHAT_IDS").replace(" ", "").split(",") if c.strip()}
 LOCALE = os.getenv("ALERT_LOCALE", "en")
+
+
+LANG_NAME = {"id": "Bahasa Indonesia", "es": "Spanish"}.get(LOCALE, "English")
+
+
+def T(en: str, **other: str) -> str:
+    """The bot's own few sentences, in the node's language. Bahasa falls back to English here until a native reader
+    has been through the set; the model itself answers in whatever ALERT_LOCALE says."""
+    return other.get(LOCALE, en)
 MAX_ROUNDS = 8
 SKIP_FOR = 300
 
@@ -133,7 +142,7 @@ SYSTEM = f"""You run PLANETAI node '{NODE}', a small computer that connects ever
 the wall to satellites overhead, and tells the people there what to do about the air, the heat, the sea and the land. You have tools that read the node and act on it. You are talking to the people who live
 or work here, on Telegram.
 - Use tools to answer; never guess numbers. For "how is it" questions call health_check and status. For the sea, swell, surf, wind, rain, UV or the land, call `context`. For a sensor's history, `readings`.
-- Answer in {'Bahasa Indonesia' if LOCALE == 'id' else 'English'}. Explain, do not just report: say what is happening, what it means for them, and what to do.
+- Answer in {LANG_NAME}. Explain, do not just report: say what is happening, what it means for them, and what to do.
 - Start with an emoji that fits (🏠 inside, 🌳 outside, 🛰️ satellites, 🌊 sea, 🥵 heat, 📡 a sensor, ✅ fine, ⚠️ watch, 🚨 act). Use a few more where they help the eye. Short paragraphs, not lists.
 - Avoid statistics. No means, peaks, correlations, percentages or counts unless the person asks for numbers. One number is fine when it drives the advice (a PM2.5 level, a temperature).
 - When a person says they did something about an alert, record it with `act` as their note, and thank them. It is their note on what happened, not the node's measurement: the node measures that itself, from the sensors.
@@ -310,12 +319,14 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                             log.warning("[%s] tool %s failed: %s: %s", rung.name, fn, type(e).__name__, str(e)[:200])
                             text = f"tool error: {type(e).__name__}: {e}"
                         messages.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
-                return "I ran out of steps. Ask something narrower.", rung.name
+                return T("I ran out of steps. Ask something narrower.", es="Me quedé sin pasos. Pregunta algo más concreto."), rung.name
             except (httpx.HTTPError, KeyError, ValueError) as e:
                 last_err = e
                 rung.skip_until = time.time() + SKIP_FOR
                 log.warning("[%s] unavailable (%s: %s); trying the next rung", rung.name, type(e).__name__, str(e)[:100])
-    return f"No model answered ({type(last_err).__name__ if last_err else 'none configured'}). On the node: `ollama list`, and check AGENT_* in .env.", "none"
+    why = type(last_err).__name__ if last_err else 'none configured'
+    return T(f"No model answered ({why}). On the node: `ollama list`, and check AGENT_* in .env.",
+             es=f"Ningún modelo respondió ({why}). En el nodo: `ollama list`, y revisa AGENT_* en .env."), "none"
 
 
 class TelegramError(Exception):
@@ -400,16 +411,18 @@ async def main():
                     # where the person's own sentence belongs — and rho is built out of those sentences.
                     # Asking costs one message and gets something true.
                     await telegram("sendMessage", chat_id=chat,
-                                   text=f"What did you do about #{parts[1]}? Send it as:  /act {parts[1]} <what you did>")
+                                   text=T(f"What did you do about #{parts[1]}? Send it as:  /act {parts[1]} <what you did>",
+                                          es=f"¿Qué hiciste con la #{parts[1]}? Envíalo así:  /act {parts[1]} <lo que hiciste>"))
                     continue
                 if len(parts) >= 3 and parts[1].isdigit():
                     try:
                         async with node_session(hc) as (session, _t):
                             await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2], "agent": f"{NAME}/telegram"})
-                        said = f"Recorded: you acted on #{parts[1]}."
+                        said = T(f"Recorded: you acted on #{parts[1]}.", es=f"Anotado: actuaste sobre #{parts[1]}.")
                     except Exception as e:  # noqa: BLE001
                         log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])
-                        said = f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment."
+                        said = T(f"⚠️ I could not record that on the node ({type(e).__name__}). Nothing was written; try again in a moment.",
+                                 es=f"⚠️ No pude anotarlo en el nodo ({type(e).__name__}). No se escribió nada; inténtalo de nuevo en un momento.")
                     await telegram("sendMessage", chat_id=chat, text=said)
                     continue
             if text.startswith("/stack"):
@@ -424,7 +437,8 @@ async def main():
                     said = stack_text(_tool_json(res), arg)
                 except Exception as e:  # noqa: BLE001
                     log.warning("/stack failed: %s: %s", type(e).__name__, str(e)[:200])
-                    said = f"⚠️ I could not read the node ({type(e).__name__}). Nothing is wrong with your air; this is me."
+                    said = T(f"⚠️ I could not read the node ({type(e).__name__}). Nothing is wrong with your air; this is me.",
+                             es=f"⚠️ No pude leer el nodo ({type(e).__name__}). Tu aire está bien; el problema soy yo.")
                 await telegram("sendMessage", chat_id=chat, text=said)
                 continue
             if text.startswith("/model"):

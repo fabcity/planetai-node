@@ -1685,12 +1685,18 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
 def test_alert(authorization: str = Header("")):
     """Fire one act-level alert now, through every configured channel. Same as `planetai test-alert`."""
     _admin(authorization)
-    text = "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do."
+    es = LOCALE() == "es"
+    text = ("🔔 Una prueba de tu nodo.\n\nSi lees esto, todo el camino funciona: una regla se disparó, el nodo escribió un mensaje y te llegó aquí. Los avisos reales se verán así: qué pasa, qué significa y qué hacer."
+            if es else
+            "🔔 A test from your node.\n\nIf you can read this, the whole path works: a rule fired, the node wrote a message, and it reached you here. Real alerts will look like this, with what is happening, what it means, and what to do.")
     with db() as con, con.cursor() as cur:
         cur.execute("INSERT INTO alerts (ts, rule_id, sensor_id, level, text) VALUES (now(), 'gui/test', 'node', 'act', %s) RETURNING id", (text,))
         alert_id = cur.fetchone()["id"]
     how = act_hint(alert_id)
-    closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
+    if es:
+        closing = f"👉 Responde {how} para mostrarme cómo cierras el círculo." if how.startswith("/") else f"👉 En la terminal, {how} registra que cerraste el círculo."
+    else:
+        closing = f"👉 Reply {how} to show me how you close the loop." if how.startswith("/") else f"👉 In the terminal, {how} records that you closed the loop."
     notify("act", f"{text}\n\n{closing}")      # the hint already carries the number; a bare #id on the end taught nothing
     ha_alert("act", text, alert_id)
     return {"ok": True, "alert_id": alert_id}
