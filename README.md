@@ -79,7 +79,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           three directions, picked HANDOFF_dashboard_directions · design/DIRECTIONS_2026-09 · design/REDESIGN_2026-09_ground
           signing the releases     HANDOFF_signing
           arm64, and the Pi        HANDOFF_arm64
-          proposed, not decided   SPEC_custody · decisions/
+          proposed, not decided   SPEC_custody · SPEC_identity · decisions/
 SECURITY.md       reporting a vulnerability, and the key a node checks an update against
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
