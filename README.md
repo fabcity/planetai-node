@@ -76,6 +76,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           the ring and the forecast HANDOFF_nearby_forecast
           air, heat, land, coast   HANDOFF_issues · DOMAINS
           the dashboard renderer  HANDOFF_dashboard_renderer · GUI
+          a model on the node      MODELS
           three directions, picked HANDOFF_dashboard_directions · design/DIRECTIONS_2026-09 · design/REDESIGN_2026-09_ground
           signing the releases     HANDOFF_signing
           arm64, and the Pi        HANDOFF_arm64
