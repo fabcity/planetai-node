@@ -1,5 +1,8 @@
 # Next release — collecting
 
+> **v0.66 shipped 20 September 2026**: `MAKE_ENABLED`, because v0.65 said `make` was opt-in and it was
+> not — an empty `PACKS_ENABLED` enables every pack. A correction shipped the same day as the mistake.
+>
 > **v0.65 shipped 20 September 2026**: the registry's first act sources, and `packs/make` — the nearest
 > fab lab as a place a person can go. Off until `PACKS_ALLOW_CODE=1`, and the directory it reads is not
 > openly licensed; the pack's README says whose decision covers whom. Nothing on this page was owed by it.

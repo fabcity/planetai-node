@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.66 — 2026-09-20 — a correction, shipped the same day as the mistake
+
+One change, and it exists because v0.65 told you something untrue. That release said the fab-lab
+pack was off until you turned it on; on a node that already allowed code packs it turned itself on
+at update. We found it on our own node minutes after shipping, and this is the fix rather than a
+note explaining it away.
+
+If you updated to v0.65 and wanted the pack, set `MAKE_ENABLED=1` and `planetai restart`. If you did
+not, this turns it off for you and `planetai doctor` will say so. Nothing else changes.
+
 - 2026-09-20 — **`make` is now off until you say so, and v0.65's note about it was wrong.** That
   release said the fab-lab pack was off until you turned it on. On a node that already allowed code
   packs it turned itself on at update and read the directory before anyone chose it — because an
