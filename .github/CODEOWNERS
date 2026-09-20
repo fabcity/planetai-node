@@ -26,8 +26,7 @@
 # /SPEC.md              @tomasdiez @lucfabcity      # proposed
 
 # The wire formats' top-level shape. tools/check_wire.py fails when these and the code disagree; that
-# gate is what makes a change deliberate, and this is what makes it reviewed. The directory arrives
-# with PR #95; a CODEOWNERS path that does not exist yet is harmless and matches nothing until it does.
+# gate is what makes a change deliberate, and this is what makes it reviewed.
 /tests/data/wire/       @tomasdiez
 # /tests/data/wire/     @tomasdiez @lucfabcity      # proposed
 

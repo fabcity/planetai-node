@@ -58,7 +58,7 @@ is a fact and not a judgement, and moves back by asking.
 | change | who has to agree |
 |---|---|
 | a pack, a doc, a rule, a test, a CI job | **one maintainer** |
-| `init.sql`, `SPEC.md §1` contracts, the wire fixtures (PR #95, not merged as this is written), anything under `install`, `install.sh`, `update.sh`, `bin/planetai` | **two maintainers** |
+| `init.sql`, `SPEC.md §1` contracts, `tests/data/wire/*`, anything under `install`, `install.sh`, `update.sh`, `bin/planetai` | **two maintainers** |
 | the licence, the trademark, the release signing key, a new operator organisation | **the Fab City Foundation** |
 
 The middle row is the one with teeth and the reason is the same for every path in it: **a household
