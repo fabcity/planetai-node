@@ -76,6 +76,12 @@ Coordinates are the node's, to three decimals. No raw rows, no tokens, no chat i
 This is what a parent node, the Index, a researcher or the commons should receive. The node keeps the raw and gives
 away the aggregate.
 
+Its first key is `"schema": "export-v0"`. That matters more here than anywhere else on the node: an export is written
+once, added to IPFS and addressed by its content forever, so a reader opening one in 2031 cannot ask the node that
+wrote it what shape it was. The file says. `tools/check_wire.py` holds the top-level key list in
+`tests/data/wire/export-v0.json`, and a key cannot be added or dropped without editing that file in the same commit.
+A version bumps only on a breaking change, and the bump is a `docs/decisions/` entry.
+
 ## IPFS
 
 Content-addressed and public. So only the export goes, never the database or a dump. And nothing persists unless

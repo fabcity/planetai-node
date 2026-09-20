@@ -1320,10 +1320,16 @@ cmd_agent() {
   step "Agents"
   local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
   echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
-  echo "  with an MCP client) gets twenty tools: status, health_check, issues, sensors, context, readings,"
-  echo "  report_latest, report_now, report_bundle, history,"
-  echo "  alerts, act, settings_get, settings_set, packs, cells, series, export_day, run_pack_script, maintenance."
-  echo "  Writes record the agent's name (X-Agent)."
+  echo "  with an MCP client) gets twenty tools. Each one is read, act or admin — app/tool_classes.py is the authority:"
+  echo
+  echo "    read   status  health_check  sensors  context  readings  report_latest  report_bundle  history"
+  echo "           alerts  settings_get  packs  cells  issues  series  export_day"
+  echo "    act    act                          records that a PERSON acted, in their own words. `note` is required."
+  echo "    admin  settings_set  run_pack_script  maintenance  report_now"
+  echo
+  echo "  A person driving an agent gets all twenty. THE LOCAL MODEL RUNNING UNATTENDED ON THIS MACHINE GETS READ AND"
+  echo "  ACT ONLY — it cannot change a setting, run a pack'"'"'s code, or make the node message the household by itself."
+  echo "  Writes record the agent'"'"'s name (X-Agent)."
   echo
   echo "  Local (this machine):    http://localhost:${p}/mcp"
   [[ -n "$dns" ]] && echo "  From the tailnet:        http://${dns}:${p}/mcp"
@@ -1343,6 +1349,24 @@ JSON
 
 
 # ---------------------------------------------------------------- a model on this machine that runs the node
+cmd_agent_local_pull() {
+  local tag="${1:-}"
+  if [[ -z "$tag" ]]; then
+    local mem; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
+    if [[ $mem -ge 16 ]]; then echo "usage: planetai agent local pull qwen3.5:9b     (${mem} GB here; 6.6 GB on disk)"
+    else echo "usage: planetai agent local pull qwen3.5:4b     (${mem} GB here; 3.4 GB on disk)"; fi
+    echo "       docs/MODELS.md lists the tags, their sizes and what each one is for."
+    return 1
+  fi
+  command -v ollama >/dev/null || fail "no ollama on this machine. Run: planetai agent local"
+  curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434. Run: planetai agent local"
+  spin "pulling $tag (this is the large download; once)" ollama pull "$tag" || fail "ollama pull $tag failed; see $LOG"
+  # The tag the loop asks for and the tag on disk have to be the same one, or pulling changes nothing.
+  envset AGENT_MODEL "$tag"
+  say "$tag is on this machine and AGENT_MODEL now points at it"
+  docker compose ps agent >/dev/null 2>&1 && { spin "restarting the agent so it sees it" docker compose up -d --force-recreate agent || true; }
+}
+
 cmd_agent_local() {
   step "A model on this machine"
   echo "  Ollama here, a small tool-calling model, the node's tools, and your Telegram bot to talk to it. No cloud, no key."
@@ -1366,10 +1390,31 @@ cmd_agent_local() {
     for i in $(seq 1 15); do curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
   fi
   curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434 after 30 s. Try: brew services start ollama  (or open the Ollama app), then run this again"
+  # NOTHING IS PULLED HERE. Until v0.63 this line fetched 2.5 GB (or 5.2 GB on 16 GB+) as part of
+  # `planetai agent local`, which made "put a model on the node" and "download several gigabytes of
+  # weights" one command. The node is 230 MiB across both containers and under 5% of a core; a model is
+  # a different product and it is the thing that will fail first on the revived 2015 laptop that is the
+  # best hardware story this project has. So: the recommendation is PRINTED, with its size, and a person
+  # decides. `planetai agent local pull <tag>` or the Model page's button does the fetching.
   local mem model; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
-  model="$(envget AGENT_MODEL)"; [[ -n "$model" ]] || { model="qwen3:4b"; [[ $mem -ge 16 ]] && model="qwen3:8b"; envset AGENT_MODEL "$model"; }
-  say "machine has ${mem} GB; local model $model"
-  if ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then spin "pulling $model (a few minutes, once)" ollama pull "$model" || fail "ollama pull $model failed; see $LOG"; fi
+  model="$(envget AGENT_MODEL)"
+  say "machine has ${mem} GB"
+  if [[ -z "$model" ]] || ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then
+    local rec recsize
+    # Sizes measured against registry.ollama.ai on 20 September 2026, not estimated. docs/MODELS.md
+    # carries the table and says at the top that a node needs none of it.
+    if [[ $mem -ge 16 ]]; then rec="qwen3.5:9b"; recsize="6.6 GB"; else rec="qwen3.5:4b"; recsize="3.4 GB"; fi
+    echo
+    warn "no model is on this machine yet, and this command does not fetch one."
+    echo "     For ${mem} GB the recommendation is  ${rec}  (${recsize} on disk, Apache-2.0)"
+    echo "     Pull it when you want it:   planetai agent local pull ${rec}"
+    echo "     Other tags and what they are for:  docs/MODELS.md"
+    echo "     The loop below starts either way. Until a model is pulled it answers from the remote or"
+    echo "     online rung if you have configured one, and says so if you have not."
+    echo
+  else
+    say "local model $model"
+  fi
   [[ "$(uname -s)" == Linux ]] && { envset OLLAMA_URL "http://172.17.0.1:11434"; warn "Linux: the ollama service must listen on 0.0.0.0 (systemctl edit ollama, Environment=OLLAMA_HOST=0.0.0.0) so the container reaches it"; }
   [[ -n "$(setting TELEGRAM_BOT_TOKEN)" && -n "$(setting TELEGRAM_CHAT_IDS)" ]] || warn "no Telegram yet: run planetai telegram, or the model has nobody to talk to"
   profiles_add agent
@@ -1818,7 +1863,7 @@ case "${1:-help}" in
   ipfs) cmd_ipfs;;
   agent|agents|mcp)
     case "${2:-}" in
-      local) cmd_agent_local;;
+      local) if [[ "${3:-}" == pull ]]; then shift 3; cmd_agent_local_pull "$@"; else cmd_agent_local; fi;;
       stop)  docker compose stop agent >>"$LOG" 2>&1; say "local model stopped";;
       *)     cmd_agent;;
     esac;;

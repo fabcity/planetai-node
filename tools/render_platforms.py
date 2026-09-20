@@ -31,8 +31,8 @@ def rows(d: dict) -> str:
         f"| **Arch, and Omarchy on top of it (amd64)** | rolling | Docker from Arch's own repository, "
         f"installed by the script | {ram} GB | {disk} GB |",
         f"| **macOS, Apple Silicon (arm64)** | **{r['colima']['min_os']}** | OrbStack, Docker Desktop or "
-        f"Colima. Colima reaches {r['colima']['min_os']} here; the database image is amd64-only and runs "
-        f"emulated. | {ram} GB | {disk} GB |",
+        f"Colima. Colima reaches {r['colima']['min_os']} here; since v0.63 the database image is "
+        f"native arm64, not emulated. | {ram} GB | {disk} GB |",
         f"| **macOS, Intel (x86_64)** | **{colima_x86}** | ≥{orb}: all three · {colima_x86}–13.7: "
         f"**Colima only** (`--vm-type vz`) · **below {colima_x86}: none, and Linux is the route** | "
         f"{ram} GB | {disk} GB |",

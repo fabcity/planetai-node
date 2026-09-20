@@ -21,6 +21,7 @@ import httpx
 from mcp.server.mcpserver import MCPServer
 
 import settings
+from tool_classes import PLACEHOLDER_NOTES, TOOL_CLASS  # noqa: F401 — re-exported; `planetai agent` and the loop read them
 
 API = f"http://127.0.0.1:{os.getenv('PORT', '8080')}"
 NODE = os.getenv("NODE_NAME", "node")
@@ -181,9 +182,18 @@ def alerts(limit: int = 10) -> list:
 
 
 @mcp.tool()
-def act(alert_id: int, note: str = "acted", agent: str = "agent") -> dict:
-    """Record that a person acted on an alert. This is the node's own measurement: rho is the share of act-level alerts that
-    led to an action. Use the person's words in `note` when you have them."""
+def act(alert_id: int, note: str, agent: str = "agent") -> dict:
+    """Record that a PERSON acted on an alert, in their own words. `note` is required and must be what they said.
+
+    rho — the share of act-level alerts that led to an action — is the one number this project has that nobody can
+    measure from orbit, and this tool is how it is written. Do not call this because an alert looked handled, or
+    because you suggested something sensible. Call it when somebody told you they did a thing, and put what they
+    told you in `note`. If you do not have their words, ask for them."""
+    if not (note or "").strip() or (note or "").strip().lower() in PLACEHOLDER_NOTES:
+        raise ValueError(
+            "act() needs the person's own words in `note`, not a placeholder. rho is the share of alerts a HUMAN "
+            "answered; a row written without anything a human said is a model measuring itself. Ask them what they "
+            "did and call this again with their answer.")
     r = httpx.post(API + "/actions", json={"alert_id": alert_id, "stage": "acted", "actor": agent, "note": note}, timeout=30)
     r.raise_for_status()
     return {"recorded": True, "alert_id": alert_id, "by": agent}
@@ -289,6 +299,11 @@ def maintenance(task: str) -> dict:
         return {"error": f"unknown task; one of {sorted(cmds)}"}
     c, what = cmds[task]
     return {"run_on_the_node": c, "does": what, "where": "a shell on the node's machine (ssh, or the local agent). Not from here."}
+
+
+def tool_names() -> set:
+    """Every tool the server registers, for the test that TOOL_CLASS has not drifted from it."""
+    return {t.name for t in mcp._tool_manager.list_tools()} if hasattr(mcp, "_tool_manager") else set()
 
 
 def http_routes():
