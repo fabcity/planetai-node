@@ -12,6 +12,7 @@ api: https://transparency.entsoe.eu/api
 pilot_relevance: [barcelona]
 tags: [electricity, grid, energy, eu, entso-e, renewable]
 added: 2026-05-04
+auth: api-key
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

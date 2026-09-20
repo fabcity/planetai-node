@@ -12,6 +12,7 @@ api: https://satudata.denpasarkota.go.id/api/3
 pilot_relevance: [bali]
 tags: [public-budget, municipal-finance, apbd, indonesia]
 added: 2026-09-09
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

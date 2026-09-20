@@ -13,6 +13,7 @@ api: https://api.worldbank.org/v2
 pilot_relevance: [global]
 tags: [world-bank, gdp, wdi, macroeconomics, open-api]
 added: 2026-09-09
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

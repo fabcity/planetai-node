@@ -13,6 +13,8 @@ pilot_relevance: [bali]
 tags: [open-data, bali, indonesia, provincial]
 added: 2026-05-04
 updated: 2026-09-09
+adapter: core:ckan
+feeds_cells: [Governance|City]
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |
@@ -45,3 +47,7 @@ notes: |
   for Bali and Denpasar organisations - one query returned "0 datasets,
   curation underway", another failed DNS. The national Satu Data catalogue's
   live state for this province is genuinely unclear.
+
+  PLANETAI: `presets/bali.env` still points CKAN_PORTALS at this portal, which is why `adapter` is set.
+  The September 2026 harvest found it returning no usable packages. The adapter stays and reports what
+  it finds — a portal nobody maintains is not open data, and saying so is the DIDO signal.

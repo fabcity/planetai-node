@@ -13,6 +13,7 @@ api: https://sdmx.oecd.org/public/rest
 pilot_relevance: [global]
 tags: [oecd, sdmx, green-growth, green-jobs, environmental-taxes, open-api]
 added: 2026-09-09
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

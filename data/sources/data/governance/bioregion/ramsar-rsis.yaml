@@ -13,6 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [ramsar, wetlands, protected-areas, site-level, gis-boundaries, no-api]
 added: 2026-09-09
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

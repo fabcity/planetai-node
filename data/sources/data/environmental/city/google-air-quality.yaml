@@ -11,6 +11,7 @@ api: https://airquality.googleapis.com/v1
 pilot_relevance: [global]
 tags: [air-quality, gridded, google, paywalled-tier]
 added: 2026-05-04
+auth: paid
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |

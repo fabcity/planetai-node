@@ -12,6 +12,9 @@ api: https://baliairdispatch.com/api/v1
 pilot_relevance: [bali]
 tags: [air-quality, pm25, aggregator, peer-observatory, humidity-corrected, bali]
 added: 2026-09-18
+adapter: core:baliairdispatch
+feeds_cells: [Environmental|City]
+auth: none
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |
@@ -24,3 +27,8 @@ notes: |
   PLANETAI: read by `app/sources.py::baliairdispatch()` as reference context
   (local=false) on Bali nodes and by `packs/nearby`. Nodes with outdoor
   hardware should also publish to a network BAD reads so the map densifies.
+
+  PLANETAI: three readers, and `adapter` names one. `app/sources.py::baliairdispatch()` ingests the ring;
+  `packs/nearby` configures and verifies it; `packs/season` reads the same rows over a 68-day window.
+  Its stations are stored `local=False`, so they fill the public-reference-stations cell and never the
+  in-custody one — which is the whole point of the ring.

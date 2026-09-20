@@ -13,6 +13,7 @@ api: https://api.uis.unesco.org/api/public/data/indicators
 pilot_relevance: [global]
 tags: [unesco, uis, education, gender-parity, open-api]
 added: 2026-09-09
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

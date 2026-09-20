@@ -13,6 +13,7 @@ api: https://api.iatistandard.org/datastore
 pilot_relevance: [global]
 tags: [aid-transparency, iati, climate-finance, api-key-required, solr]
 added: 2026-09-09
+auth: api-key
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

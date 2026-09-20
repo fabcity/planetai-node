@@ -13,6 +13,7 @@ pilot_relevance: []
 tags: [business-registry, mexico, inegi, denue, economic-census, geocoded, establishments]
 added: 2026-09-10
 updated: 2026-09-10
+auth: api-key
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

@@ -13,6 +13,7 @@ api: https://ghoapi.azureedge.net/api
 pilot_relevance: [global]
 tags: [who, gho, life-expectancy, health, odata, open-api]
 added: 2026-09-09
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

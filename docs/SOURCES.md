@@ -34,9 +34,9 @@ Nothing in this repository edits a source entry. `make lint` fails if anything d
     planetai sources --pillar economic --scale community
     planetai sources --json
 
-One line per source: the slug a pack names, its status, its licence, which pilots it covers, and
-`wired` when something here already reads it. **A cell with sources and no `wired` is a cell nobody
-has written an adapter for yet** — which is the list of things worth building next, for this place,
+One line per source: the slug a pack names, its status, its licence, which pilots it covers, and the
+code that reads it — `core:openmeteo_air`, `pack:coast` — where anything does. **A cell with sources
+and a blank last column is a cell nobody has written an adapter for yet** — which is the list of things worth building next, for this place,
 sorted by somebody other than whoever is in the room.
 
 It reads the node over HTTP when the node is answering and `data/sources/index.json` off the disk

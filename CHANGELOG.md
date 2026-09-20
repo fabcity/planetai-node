@@ -1,5 +1,24 @@
 # Changelog
 
+- 2026-09-20 — **`planetai sources` now tells you which code reads a source, not just that something
+  does.** The registry your node carries is re-pinned to `9303adc` — same 209 entries, three new fields
+  on each. The one you will see is `adapter`: where a source is read, the last column of
+  `planetai sources` names the thing that reads it — `core:ckan`, `pack:coast` — instead of the word
+  "wired". Fourteen sources have one today; a blank column is still the list of what is worth building
+  next for your place.
+
+  This replaces a boolean. `wired_in_planetai` was typed by hand in the registry repository to describe
+  what runs in this one, and it drifted exactly as you would expect: sixteen of thirty-two ticked at one
+  point, including a paid source no node can call. A pointer at a function or a pack can be checked
+  against this repository, and upstream's CI now does check it. Nothing here reads the boolean any more.
+
+  Two fields you will not see yet, carried for what comes next: `auth` — what a node must hold to read a
+  source, set on 37 of the 209 where the entry says so — and `feeds_cells`, which Index cells a node
+  actually fills from it. That last one is worth one sentence: for four sources the node reads,
+  `feeds_cells` is **empty**, and correctly so. Open-Meteo, its air-quality feed and NASA POWER all land
+  on model point samples, and a model has never been allowed to make a cell say `live`. They are the
+  baseline your own measurement is read against, and your node has always treated them that way.
+
 - 2026-09-20 — **`planetai agent local` no longer downloads a model, and the model on your node can no
   longer change your settings.** Two changes, both in the same direction: the model is a guest on this
   machine, not a part of it.

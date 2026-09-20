@@ -69,7 +69,36 @@
     },
     "wired_in_planetai": {
       "type": "boolean",
-      "description": "True if a connector for this source is currently live in the PLANETAI observatory."
+      "description": "DEPRECATED, derived — read `adapter` instead. A hand-set boolean in this repository asserting runtime state in another one, which is why it drifted. The validator warns when this is true and `adapter` is absent. Kept only until the Airtable Data Sources mirror reads `adapter`; removed in the release after that."
+    },
+    "adapter": {
+      "type": "string",
+      "pattern": "^(core:[a-z_]+|pack:[a-z0-9-]+)$",
+      "description": "What in planetai-node reads this source. `core:<fn>` names a function in app/sources.py or app/bootstrap.py (core:openmeteo_air, core:ckan, core:power_climatology); `pack:<id>` names a pack directory (pack:coast, pack:earth). Absent means no adapter exists — the source is registered and unread. Single-valued on purpose: when more than one reader exists, name the primary one here and the rest in notes."
+    },
+    "feeds_cells": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(Environmental|Social|Economic|Governance)\\|(Planet|Bioregion|Region|City|Community)$"
+      },
+      "description": "The Index cells a node fills from this source, in the node's own key spelling (Pillar|Scale, capitalised). Not the same as this entry's own pillar/scale, which say where the source publishes its strongest signal; feeds_cells says what a node does with it."
+    },
+    "auth": {
+      "enum": ["none", "key-free-rate-limited", "api-key", "registration", "paid"],
+      "description": "What a node must hold to read this source. none = open call, no identification; key-free-rate-limited = open but throttled by IP; api-key = a key, issued without review; registration = an account or a signed agreement first; paid = money. Absent means unread from the entry's own licence/notes text, not none."
+    },
+    "role": {
+      "type": "array",
+      "uniqueItems": true,
+      "minItems": 1,
+      "items": { "enum": ["observe", "act"] },
+      "description": "Whether this source tells a node what is happening (observe) or tells a person where to go and do something (act). Some sources are both. Absent means [observe] — the validator does not fill it in, consumers treat absence as observe."
+    },
+    "act_kind": {
+      "enum": ["facility", "equipment", "design", "repair", "material", "match", "network"],
+      "description": "What kind of place or thing to act with. Required when role contains act, forbidden otherwise. build_readme.py renders a 🛠 badge from it. `equipment` is reserved for an OKW record of one facility's machines as an entry in its own right, and is not the right kind for a directory of facilities \u2014 that is `facility`."
     },
     "upstream_listed_in": {
       "type": "array",
@@ -82,5 +111,15 @@
       "maxLength": 2000,
       "description": "Longer-form notes: API quirks, rate limits, licensing edge cases, recommended usage patterns, citation requirements."
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["role"],
+        "properties": { "role": { "contains": { "const": "act" } } }
+      },
+      "then": { "required": ["act_kind"] },
+      "else": { "not": { "required": ["act_kind"] } }
+    }
+  ]
 }
