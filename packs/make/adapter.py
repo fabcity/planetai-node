@@ -42,16 +42,19 @@ ARCHIVE_FILE = ("https://gitlab.fabcloud.org/api/v4/projects/"
 LIVE_URL = "https://api.fablabs.io/0/labs.json"
 SOURCE = "fablabs-io"
 
-# The six tokens fablabs.io publishes, in the words a person would use. A token absent from this map
-# is shown as itself rather than dropped: if the vocabulary grows, an operator should see the new word
-# and not a silently shorter list.
+# The six tokens fablabs.io publishes, in the words a person would use, in the three languages the
+# node speaks. A token absent from the map is shown as ITSELF rather than dropped: if the vocabulary
+# grows, an operator should see an unfamiliar word and not a silently shorter list.
 CAPABILITY_WORDS = {
-    "three_d_printing": "3D printing",
-    "cnc_milling": "CNC milling",
-    "laser": "laser cutting",
-    "vinyl_cutting": "vinyl cutting",
-    "circuit_production": "circuit boards",
-    "precision_milling": "precision milling",
+    "en": {"three_d_printing": "3D printing", "cnc_milling": "CNC milling", "laser": "laser cutting",
+           "vinyl_cutting": "vinyl cutting", "circuit_production": "circuit boards",
+           "precision_milling": "precision milling"},
+    "id": {"three_d_printing": "pencetakan 3D", "cnc_milling": "frais CNC", "laser": "pemotongan laser",
+           "vinyl_cutting": "pemotongan vinil", "circuit_production": "papan sirkuit",
+           "precision_milling": "frais presisi"},
+    "es": {"three_d_printing": "impresión 3D", "cnc_milling": "fresado CNC", "laser": "corte láser",
+           "vinyl_cutting": "corte de vinilo", "circuit_production": "placas de circuito",
+           "precision_milling": "fresado de precisión"},
 }
 
 
@@ -193,17 +196,19 @@ def fetch(hc):
     return sensors, []
 
 
-def ask_line(rows: list[dict]) -> str | None:
+def ask_line(rows: list[dict], locale: str = "en") -> str | None:
     """One sentence for the report and the ask vocabulary, or None when there is nothing to say.
 
     Takes `sensors` rows as stored, so the report does not re-derive distance and cannot disagree
-    with what the database holds.
+    with what the database holds. The machine names are translated because everything else the node
+    says to a person is — a Spanish report that ends in "laser cutting" reads like a leak.
     """
     if not rows:
         return None
+    words = CAPABILITY_WORDS.get((locale or "en").split("-")[0], CAPABILITY_WORDS["en"])
     best = min(rows, key=lambda r: (r.get("meta") or {}).get("distance_km", 1e9))
     m = best.get("meta") or {}
-    caps = [CAPABILITY_WORDS.get(c, c) for c in (m.get("capabilities") or [])]
+    caps = [words.get(c, c) for c in (m.get("capabilities") or [])]
     what = ", ".join(caps[:3]) if caps else None
     where = f"{best.get('name')}, {m.get('distance_km')} km"
     return f"{where} ({what})" if what else where

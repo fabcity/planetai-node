@@ -1,5 +1,24 @@
 # Changelog
 
+- 2026-09-20 — **your node can tell you where the nearest fab lab is.** A new pack, `make`, keeps the
+  active fab labs within 50 km of you — their names, how far, and what each one can do — and the
+  report ends with one line: "Nearest place to make or fix something: Fab Lab Bali, 17.2 km (laser
+  cutting, 3D printing, CNC milling)." In English, Indonesian and Spanish, machine names included.
+
+  **It is off unless you turn it on.** `make` runs code, so it needs `PACKS_ALLOW_CODE=1` like `coast`
+  and `earth`. `planetai doctor` then shows how many labs are in your ring and which monthly snapshot
+  they came from.
+
+  **It stores places, not numbers.** No metric, no Index cell, no alert — a fab lab five kilometres
+  away is not your node's measurement of anything, and the pack is built so it could not claim
+  otherwise even by accident. It reads the Fab Foundation's own dated monthly snapshots by default,
+  which you can pin with `MAKE_SNAPSHOT` so every node in a fleet answers identically.
+
+  **Read `packs/make/README.md` before you enable it.** The Fab Lab Network directory is not openly
+  licensed: each lab keeps copyright in its own record and no data licence is published. Fab City
+  Foundation decided it may be read and took responsibility for that — but that decision covers the
+  Foundation, not you. If that matters where you are, leave this pack off.
+
 - 2026-09-20 — **your node now knows where people can go to make or fix something, not only
   what is wrong.** The registry it carries is re-pinned to `85a194c` and gains its first eight
   **act** sources — eight of 217, alongside the 209 that measure. `planetai sources` lists them

@@ -303,6 +303,18 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
         b["rules"] = []
         log.warning("pack rules unavailable for the report: %s", e)
 
+    # packs/make, when it is on. One row, the nearest, read straight out of what the pack stored so the
+    # report cannot disagree with the database about which lab is closest. Absent when no pack has run:
+    # the report then simply has nothing to say about where to go, which is honest.
+    try:
+        fac = index.run_ro(cur, """SELECT name, meta FROM sensors
+                                   WHERE kind = 'facility' AND source = 'fablabs-io'
+                                   ORDER BY (meta->>'distance_km')::float NULLS LAST LIMIT 1""", {})
+        b["facility"] = ({"name": fac[0]["name"], "meta": fac[0]["meta"]} if fac else None)
+    except Exception as e:  # noqa: BLE001
+        b["facility"] = None
+        log.warning("facilities unavailable for the report: %s", e)
+
     try:
         import agent
         b["health"] = agent.health_check()
@@ -364,6 +376,8 @@ T = {
         "beyond_swell": "Out at sea a big, long-period swell is arriving.",
         "beyond_satellite": "The satellite has the whole district above the line to act on.",
         "after": "After the alert: {clauses}.",
+        # packs/make. A report that ends on a number leaves nowhere to go; this ends on a place.
+        "make": "Nearest place to make or fix something: {where}.",
         "after_under": "{place} is back under {n}",
         "after_above": "{place} is still above {n}",
         "todo_above": "👉 {place} is the one to deal with before the next report.",
@@ -386,6 +400,7 @@ T = {
         "beyond_swell": "Di laut ombak besar berperiode panjang sedang datang.",
         "beyond_satellite": "Satelit melihat seluruh kecamatan di atas batas untuk bertindak.",
         "after": "Setelah peringatan: {clauses}.",
+        "make": "Tempat terdekat untuk membuat atau memperbaiki sesuatu: {where}.",
         "after_under": "{place} sudah di bawah {n}",
         "after_above": "{place} masih di atas {n}",
         "todo_above": "👉 {place} yang perlu diurus sebelum laporan berikutnya.",
@@ -408,6 +423,7 @@ T = {
         "beyond_swell": "Mar adentro llega un oleaje grande y de periodo largo.",
         "beyond_satellite": "El satélite ve toda la comuna por encima de la línea para actuar.",
         "after": "Después de la alerta: {clauses}.",
+        "make": "El lugar más cercano para fabricar o reparar algo: {where}.",
         "after_under": "{place} volvió por debajo de {n}",
         "after_above": "{place} sigue por encima de {n}",
         "todo_above": "👉 {place} es lo que hay que atender antes del próximo informe.",
@@ -496,6 +512,20 @@ def sheet(b: dict, locale: str = "en") -> str:
             break
     if outcomes:
         tail.append(t["after"].format(clauses=", ".join(outcomes)))
+
+    # Where to go, if this node knows. It is deliberately AFTER the outcomes: a person reads what
+    # happened first, and only then is told where somebody could do something about it.
+    fac = b.get("facility")
+    if fac:
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.join(os.getenv("PACKS_DIR", "../packs"), "make"))
+            from adapter import ask_line       # packs/make owns the wording of the place itself
+            where = ask_line([fac], locale)
+        except Exception:  # noqa: BLE001 — a missing or broken pack must not cost the report
+            where = None
+        if where:
+            tail.append(t["make"].format(where=where))
 
     quiet = (b.get("sensors_quiet") or [None])[0]
     bad_check = next((c for c in (b.get("health") or {}).get("checks") or [] if not c.get("ok") and c.get("fix")), None)

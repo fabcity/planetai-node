@@ -100,6 +100,17 @@ check("the ask line names the NEAREST lab", "Fab Lab Bali" in line, line)
 check("the ask line carries the distance", "17.2 km" in line, line)
 check("capability tokens become words a person uses",
       "laser cutting" in line and "3D printing" in line and "three_d_printing" not in line, line)
+# Everything else the node says to a person is translated; a Spanish report ending in "laser
+# cutting" reads like a leak. All three languages, because the report ships in all three.
+check("the machine names are Indonesian in an Indonesian report",
+      "pemotongan laser" in (adapter.ask_line(rows, "id") or ""), adapter.ask_line(rows, "id"))
+check("the machine names are Spanish in a Spanish report",
+      "corte láser" in (adapter.ask_line(rows, "es") or ""), adapter.ask_line(rows, "es"))
+check("an unknown locale falls back to English rather than to nothing",
+      "laser cutting" in (adapter.ask_line(rows, "pt") or ""), adapter.ask_line(rows, "pt"))
+check("a regional tag resolves to its language", adapter.ask_line(rows, "es-CL") == adapter.ask_line(rows, "es"))
+check("every locale covers the whole vocabulary",
+      all(set(v) == set(adapter.CAPABILITY_WORDS["en"]) for v in adapter.CAPABILITY_WORDS.values()))
 check("no ask line when nothing is near", adapter.ask_line([]) is None)
 check("a lab with no capabilities still gets a line",
       adapter.ask_line([{"name": "Bare Lab", "meta": {"distance_km": 3.0, "capabilities": []}}])
