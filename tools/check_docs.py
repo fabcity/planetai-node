@@ -74,10 +74,10 @@ PROPOSED = {
     # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
     # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
     "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},
-    # The governance draft points at records that are their own sessions. Each entry goes in the commit
-    # that writes the file it names — the licence record's two went with this one, which is the gate
-    # doing what it was built for: it failed the moment the file existed and named both documents.
-    "MAINTAINERS.md": {"docs/SPEC_rho.md"},
+    # MAINTAINERS.md's entry for docs/SPEC_rho.md goes here, because this commit writes that file — the
+    # same gate that fired for the licence record fires for this one. What replaces it is the promise
+    # the spec itself makes: tests/test_rho.py lands with Phase 2's code and deletes this line.
+    "docs/SPEC_rho.md": {"tests/test_rho.py"},
 }
 for _doc, _names in PROPOSED.items():
     if not os.path.exists(_doc):
