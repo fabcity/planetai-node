@@ -1,0 +1,37 @@
+id: make
+name: Make
+description: >-
+  Where somebody can go to make or fix something. The nearest active fab labs to this node, from the
+  Fab Lab Network directory, with what each one can do. Display-only: it is a list of places, never a
+  measurement, never a cell, never an alert. A node that says the air is bad and stops has done half
+  a job; this is the other half, and it is the only half a person can act on.
+author: PLANETAI core (official, prototype)
+version: 0.1.0
+requires: { node: ">=0.64.0" }
+kind: code
+domain: make
+metrics: []
+scales: [community]
+sources: [economic/community/fablabs-io, economic/community/fablabs-network-data-archive]
+env:
+  - "# make: how far to look for a fab lab, in km. 50 is a morning's travel in most places."
+  - "MAKE_RADIUS_KM=50"
+  - "# make: archive (dated monthly snapshots, the default and the one that can be pinned) or live"
+  - "# (api.fablabs.io, which its own root page says has been removed). See docs/PACKS.md."
+  - "MAKE_SOURCE=archive"
+  - "# make: which dated snapshot to read. Blank = the newest the archive has. Pin it to a filename"
+  - "# like 2026.07.31_labs.json and every node on this release answers the same question the same way."
+  - "MAKE_SNAPSHOT="
+  - "# make: how often to re-read. The archive is published monthly, so 30 is the publisher's cadence,"
+  - "# not a number this pack invented. One read is ~5.3 MB; there is no way to ask for less."
+  - "MAKE_REFRESH_DAYS=30"
+needs:
+  - gitlab.fabcloud.org
+  - api.fablabs.io
+attribution: >-
+  Fab Lab Network directory, fablabs.io, via the Fab Foundation's Fab Lab Network Data archive at
+  gitlab.fabcloud.org/fl-management/fablab-network-data. NOT OPENLY LICENSED: each lab retains
+  copyright in its own record (fablabs.io Terms of Use 8.1) and no data licence is published. Fab City
+  Foundation decided on 2026-09-20 that PLANETAI may read it and accepted responsibility, pending a
+  Terms of Use clause. That decision covers the Foundation and not each node's operator — see
+  data/sources/data/economic/community/fablabs-io.yaml before relying on this pack.

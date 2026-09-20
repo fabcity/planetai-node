@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS sensors (
   lon       DOUBLE PRECISION,
   indoor    BOOLEAN NOT NULL DEFAULT FALSE,
   local     BOOLEAN NOT NULL DEFAULT FALSE,   -- TRUE = this node's own instrument, here. Set by the adapter, narrowed by LOCAL_RADIUS_M.
-  kind      TEXT NOT NULL DEFAULT 'sensor',   -- sensor | portal | model | survey | child | peer   (how the number was produced)
+  kind      TEXT NOT NULL DEFAULT 'sensor',   -- sensor | portal | model | survey | child | peer | facility  (how the number was produced,
+                                        -- or, for 'facility', that there is no number: a place with a name and a point. packs/make)
   scale     TEXT NOT NULL DEFAULT 'community',-- community | city | region | bioregion | planet  (what the number describes)
   cadence   TEXT,                             -- 'PT5M' | 'P1D' | 'P1Y' — how often it can meaningfully change
   meta      JSONB
