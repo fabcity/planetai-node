@@ -1,0 +1,36 @@
+name: OSHWA Open Source Hardware Certification
+url: https://certification.oshwa.org/
+description: |
+  The register of hardware certified as open source by the Open Source Hardware
+  Association — each entry a project that has committed to publishing its design
+  files under an open licence, with a certification UID to cite.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-SA-4.0
+api: https://certificationapi.oshwa.org/api/v1/projects
+pilot_relevance: [global]
+tags: [open-design, open-hardware, certification, oshwa, registry, act]
+added: 2026-09-20
+auth: api-key
+role: [act]
+act_kind: design
+upstream_listed_in: []
+notes: |
+  LICENCE VERIFIED 2026-09-20 from the source's own pages: both
+  certification.oshwa.org and certificationapi.oshwa.org carry a Creative Commons
+  Attribution-ShareAlike 4.0 statement.
+
+  AUTH VERIFIED 2026-09-20 by making the call: GET /api/v1/projects without a
+  token returns 401. Registration is free and the token is issued without review,
+  which is why `auth: api-key` rather than `registration` — a node needs a
+  credential to hold, not a person to approve it.
+
+  WHY A CERTIFICATION REGISTER IS AN ACT SOURCE, and what it is not. It does not
+  host designs; it lists projects that have promised theirs are open, with a UID.
+  That makes it the verification layer under the other design sources rather than
+  a library — useful for answering "is this thing actually open" about a design
+  found elsewhere. Field Ready's catalogue, for one, carries OSHWA UIDs on 51 of
+  its 193 items.
+
+  No `adapter`: nothing in planetai-node reads it yet.

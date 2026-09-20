@@ -1,0 +1,45 @@
+name: Field Ready — humanitarian supply solutions
+url: https://www.fieldready.org/
+description: |
+  Designs for parts and tools made where they are needed instead of shipped:
+  medical fittings, water and sanitation parts, shelter hardware. Built for aid
+  contexts where the supply chain is the failure.
+pillar: economic
+scale: planet
+status: live
+license: "CERN-OHL variant per catalogue metadata on 156 of 193 items — the organisation's own site says All rights reserved. Confirmation pending, see notes."
+api: null
+pilot_relevance: [global]
+tags: [open-design, humanitarian, 3d-printing, supply-chain, repair, act]
+added: 2026-09-20
+role: [act]
+act_kind: design
+upstream_listed_in: [things-that-work]
+notes: |
+  LICENCE CONFIRMATION PENDING — Tomas Diez is confirming with Field Ready, and this
+  entry is carried in the meantime on that basis. CONTRIBUTING criterion 1 is not
+  yet met. What was actually checked, 2026-09-20:
+
+  THE CONTRADICTION. fieldready.org's own pages carry "All rights reserved" and no
+  licence statement about the designs. The catalogue harvested into
+  fabcity/things-that-work tells the opposite story: of 193 items, 156 carry
+  `licence: CERN` and 51 carry an OSHWA certification UID (US000174-US000233,
+  US000626), which is a public commitment to open hardware that cannot be made
+  accidentally. Those UIDs are checkable against
+  economic/planet/oshwa-certification. Both readings cannot be right.
+
+  NO DATA ENDPOINT. `api: null` is measured, not assumed: /solutions, /library and
+  /humanitarian-supply-solutions all 404, and no catalogue path was found. 38 of
+  the 193 items carry a download URL, all pointing at thingiverse.com. So the
+  designs are reachable one at a time through a third-party host, and the
+  catalogue itself is only reachable through the things-that-work harvest.
+
+  THIS ENTRY BENDS A RULE, DELIBERATELY AND ON RECORD. The contributing rule is to
+  stop before adding a source whose only evidence is a site with no data endpoint,
+  and list it in the PR body instead. It is added anyway because the OSHWA UIDs are
+  hard evidence of intent from the organisation itself, and because the licence
+  question is actively being resolved rather than merely unanswered. If the answer
+  comes back "all rights reserved", this entry should be deleted, not softened.
+
+  NO `adapter`: nothing in planetai-node reads it, and nothing can while the only
+  route to the catalogue is somebody else's harvest.

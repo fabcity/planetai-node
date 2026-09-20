@@ -1,0 +1,50 @@
+name: Things That Work (Fab City Foundation)
+url: https://ttw.fab.city/
+description: |
+  A curated index of solutions for when services fail — drinkable water when the
+  tap is cut, light in a blackout, a part to print when the supply chain is gone.
+  Tagged by what each one does and which scarcity it answers.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-SA-4.0 (content); MIT (code); third-party assets under their own terms
+api: https://ttw.fab.city/data.json
+pilot_relevance: [global]
+tags: [open-design, repair, resilience, appropriate-technology, fab-city, act]
+added: 2026-09-20
+auth: none
+role: [act]
+act_kind: design
+upstream_listed_in: []
+notes: |
+  LICENCE VERIFIED 2026-09-20 from the repository's own CONTENT-LICENSE.md: code
+  MIT, and "All content, data and documentation — the curated solutions in data/,
+  the translations ... are licensed under Creative Commons Attribution-ShareAlike
+  4.0 International". The same file names third-party assets that keep their own
+  terms, including the 3D-printable splint files by Ostec3D. This is one of the
+  few entries in this list whose licence needed no chasing.
+
+  API VERIFIED LIVE 2026-09-20: /data.json returns 200, 4,122,959 bytes,
+  `content-type: application/json` and `access-control-allow-origin: *`, so
+  browser-side readers are not blocked either. One document carries meta, the
+  taxonomy, 1,594 entries, 147 Whole Earth issues and 31 crisis records — the
+  taxonomy travelling with the entries is what makes them interpretable.
+
+  Published on the day this entry was written: the pages inline their data at
+  build time, so dist/data.json was rebuilt on every run and served on none, and
+  every candidate path 404'd until build.sh copied it into deploy/.
+
+  WHAT IT CARRIES, measured from the repo on 2026-09-20: 2,853 records across
+  Appropedia (2,565), Field Ready (193), OLIVE, MSF, the Cuban manuals and Whole
+  Earth. So it is partly an aggregator of sources filed separately here — which is
+  a feature, not duplication: it is the layer that has read them and said which
+  ones work.
+
+  TWO THINGS TO KNOW BEFORE BUILDING ON IT. The `domain` field is documented in
+  SCHEMA.md as an enum array; in the data 2,551 of 2,853 records store it as a
+  bare string and 224 omit it, so a reader must handle both. And there is no
+  air-quality domain: counted with word boundaries, 23 records touch air quality
+  against 499 for water and 260 for power. Strong where a node reads a portal or a
+  heat cell, thin on the thing a node measures best.
+
+  No `adapter`: nothing in planetai-node reads it yet. Nothing now stops one.

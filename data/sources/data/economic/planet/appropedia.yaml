@@ -1,0 +1,42 @@
+name: Appropedia
+url: https://www.appropedia.org/
+description: |
+  The wiki of appropriate technology and sustainable development: build
+  instructions, project pages and research for tools people make and repair
+  locally. The largest openly licensed body of practical how-to on the web.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-SA-4.0 (site default; proprietary licences allowed only on approval)
+api: https://www.appropedia.org/w/api.php
+pilot_relevance: [global]
+tags: [open-design, appropriate-technology, wiki, how-to, repair, act]
+added: 2026-09-20
+auth: none
+role: [act]
+act_kind: design
+upstream_listed_in: []
+notes: |
+  LICENCE VERIFIED 2026-09-20 from the source's own page. Appropedia:Copyrights
+  states verbatim: "Content on Appropedia defaults to a Creative Commons
+  Attribution-ShareAlike 4.0 license, which means that you can use as you wish,
+  but all derivaties must maintain the same license. Proprietary (non-open)
+  licenses are only allowed upon approval." That caveat is why the licence field
+  says "site default" — a given page may carry CERN-OHL-S or GPL for its hardware
+  and software parts, and the page itself names those as separate licence classes
+  for documentation, hardware and software.
+
+  API VERIFIED 2026-09-20: the MediaWiki endpoint answered
+  ?action=query&meta=siteinfo&format=json with 200 and JSON, no key. Standard
+  MediaWiki: search, category listing and page content are all reachable from it.
+
+  WHY THIS IS AN ACT SOURCE. The first 209 entries in this list answer "what is
+  happening here". This answers "what could somebody build about it". A node that
+  reports bad air and stops has done half a job; the other half is a link to
+  something buildable. `role: [act]` is how this list tells the two apart.
+
+  No `adapter`: nothing in planetai-node reads Appropedia yet. Do not set one
+  before the code exists — that is the claim `wired_in_planetai` was retired for.
+
+  SCALE JUDGEMENT: filed at planet because a design commons has no location. The
+  thing built from it is local; the library is not.

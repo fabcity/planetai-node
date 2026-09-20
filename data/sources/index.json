@@ -1196,6 +1196,70 @@
     "wired_in_planetai": true
   },
   {
+    "act_kind": "facility",
+    "added": "2026-09-20",
+    "api": "https://api.fablabs.io/0/labs.json",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "The Fab Foundation's directory of fab labs: name, coordinates, activity status\nand a six-token capability vocabulary, self-entered by the labs themselves. The\nclosest thing the network has to a census of where things can be made.\n",
+    "license": "NOT OPEN — no data licence published. Platform ToS §7.4 restricts mass harvesting, §7.5 restricts commercial use, §8.1 leaves copyright with each lab. See notes.",
+    "name": "fablabs.io — Fab Lab Network directory",
+    "notes": "NOT OPEN, and read anyway by decision. Criterion 1 is unmet; the basis is\nrecorded so it is auditable.\n\nDECISION 2026-09-20 — Tomas Diez, co-founder of fablabs.io and of Fab City\nFoundation, decided PLANETAI may read this directory and accepted\nresponsibility, pending the Terms of Use clause drafted the same day. That\ncovers the Foundation. It does NOT extend to every operator who installs a\nnode: each is a separate party to the ToS. Until the clause lands, a node\nreading this relies on one organisation's position, not on a licence.\n\nWHAT THE DOCUMENTS SAY. github.com/fablabbcn/fablabs.io is AGPL-3.0 — the Rails\napp; neither LICENSE, README nor /about mentions the records. The Terms of Use\nat https://fablabs.io/tos govern them, read live 2026-09-20: 7.4 forbids anyone\nto \"massively collect or harvest\" platform data unless they keep all generated\nanalysis sets open on the Platform; 7.5 forbids commercial use without written\napproval; 8.1 leaves copyright with each lab; 8.3 says content published as a\nfeed lets permitted users use and redistribute it. 8.3 and 7.4/7.5 pull\nopposite ways and nothing resolves them — the document has no open-data\nprovision at all.\n\n8.1 is why a footer edit cannot fix this. The fix needing nobody's consent is\nscoped to the directory FACTS — name, coordinates, capabilities, status — and\n7.4's own exception points there: a node network keeping its analysis open sits\ninside it, which is the ground the decision above stands on.\n\nENDPOINT: api.fablabs.io/ says \"Legacy API ... has now been removed. A new API\nwill soon be available\", and /0/labs.json returns 200 and 5.38 MB anyway. Both\ntrue 2026-09-20. Prefer economic/community/fablabs-network-data-archive: the\nsame records as dated monthly files that can be pinned.\n\nMEASURED: 2,864 records, 5.38 MB, 6.3 s; 1,998 active, 1,819 with coordinates.\nQuery parameters are ignored, so filtering is client-side. Contact details are\nin the payload (email 2,756, phone 2,608) — do not store them.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "observe",
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/fablabs-io",
+    "status": "live",
+    "tags": [
+      "fab-lab",
+      "directory",
+      "production-capacity",
+      "distributed-manufacturing",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.fablabs.io/",
+    "wired_in_planetai": false
+  },
+  {
+    "act_kind": "facility",
+    "added": "2026-09-20",
+    "api": "https://gitlab.fabcloud.org/api/v4/projects/fl-management%2Ffablab-network-data/repository/tree?path=archive/labs.json",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "Forty-eight dated freezes of the fablabs.io lab directory, monthly since 2025,\nkept in a public Fab Foundation repository. The same records as the live\nendpoint, but pinnable: a dated file instead of a moving target.\n",
+    "license": "No licence published — the repository has none, and the records are fablabs.io's, under its Terms of Use. See economic/community/fablabs-io.",
+    "name": "Fab Lab Network Data — the labs.json archive",
+    "notes": "WHY THIS IS FILED SEPARATELY FROM economic/community/fablabs-io: same records,\ndifferent access contract. fablabs.io serves a live endpoint that declares\nitself removed; this serves dated files in git. Verified 2026-09-20: 48\nsnapshots from 2018.12.04 to 2026.07.31, monthly since 2025-01, latest 2,828\nrecords and 5.3 MB. Repository actively maintained — commits 2026-09-01\n(\"monthly update\") and 2026-09-11, by Pieter van der Hijden.\n\nA PIN, WHICH IS THE POINT. Two nodes reading the same dated file answer\nidentically; two nodes polling a live endpoint on different days do not. This\nis the discipline planetai-node already applies to this very list —\ndata/sources/REGISTRY_VERSION pins a sha and tools/sync_registry.sh refuses a\nbranch name, because a floating pin is a node whose answers change under it.\nThe publisher's own monthly cadence replaces an invented poll interval.\n\nLICENCE — UNCHANGED, AND WORSE THAN IT LOOKS. All 100 paths in the repository\nwere checked: there is no LICENSE, COPYING or equivalent. The records remain\nfablabs.io's, under Terms of Use whose 7.4 forbids anyone \"to massively collect\nor harvest\" platform data. A public repository of 48 complete monthly copies is\nthat activity, performed by the Foundation's own working group for eight years.\nRecorded as fact, not accusation: it is the strongest argument for stating a\nlicence, because the clause would regularise something the network already\ndepends on rather than granting anything new.\n\nCARRIES CONTACT DETAILS, like the live endpoint: email on 2,720 of the 2026.07\nsnapshot, phone on 2,571. Do not store them.\n\nNAMING IS NOT UNIFORM — `2023.03.31 labs.json` uses a space where every other\nfile uses an underscore, and two files use a `YYYYMMDD_HHMM` form. Anything\nglobbing this directory must expect both.\n\nNo `adapter`: the node must not read this until the licence is settled. Reading\na frozen copy is no more permitted than reading the live one.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "observe",
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/fablabs-network-data-archive",
+    "status": "live",
+    "tags": [
+      "fab-lab",
+      "directory",
+      "archive",
+      "snapshot",
+      "distributed-manufacturing",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://gitlab.fabcloud.org/fl-management/fablab-network-data"
+  },
+  {
     "adapter": "pack:place",
     "added": "2026-09-18",
     "api": "https://overpass-api.de/api/interpreter",
@@ -1229,6 +1293,37 @@
     ],
     "url": "https://www.openstreetmap.org/",
     "wired_in_planetai": true
+  },
+  {
+    "act_kind": "design",
+    "added": "2026-09-20",
+    "api": "https://www.appropedia.org/w/api.php",
+    "auth": "none",
+    "cell": "Economic|Planet",
+    "description": "The wiki of appropriate technology and sustainable development: build\ninstructions, project pages and research for tools people make and repair\nlocally. The largest openly licensed body of practical how-to on the web.\n",
+    "license": "CC-BY-SA-4.0 (site default; proprietary licences allowed only on approval)",
+    "name": "Appropedia",
+    "notes": "LICENCE VERIFIED 2026-09-20 from the source's own page. Appropedia:Copyrights\nstates verbatim: \"Content on Appropedia defaults to a Creative Commons\nAttribution-ShareAlike 4.0 license, which means that you can use as you wish,\nbut all derivaties must maintain the same license. Proprietary (non-open)\nlicenses are only allowed upon approval.\" That caveat is why the licence field\nsays \"site default\" — a given page may carry CERN-OHL-S or GPL for its hardware\nand software parts, and the page itself names those as separate licence classes\nfor documentation, hardware and software.\n\nAPI VERIFIED 2026-09-20: the MediaWiki endpoint answered\n?action=query&meta=siteinfo&format=json with 200 and JSON, no key. Standard\nMediaWiki: search, category listing and page content are all reachable from it.\n\nWHY THIS IS AN ACT SOURCE. The first 209 entries in this list answer \"what is\nhappening here\". This answers \"what could somebody build about it\". A node that\nreports bad air and stops has done half a job; the other half is a link to\nsomething buildable. `role: [act]` is how this list tells the two apart.\n\nNo `adapter`: nothing in planetai-node reads Appropedia yet. Do not set one\nbefore the code exists — that is the claim `wired_in_planetai` was retired for.\n\nSCALE JUDGEMENT: filed at planet because a design commons has no location. The\nthing built from it is local; the library is not.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/appropedia",
+    "status": "live",
+    "tags": [
+      "open-design",
+      "appropriate-technology",
+      "wiki",
+      "how-to",
+      "repair",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.appropedia.org/"
   },
   {
     "added": "2026-05-04",
@@ -1285,6 +1380,100 @@
     "wired_in_planetai": false
   },
   {
+    "act_kind": "design",
+    "added": "2026-09-20",
+    "api": null,
+    "cell": "Economic|Planet",
+    "description": "Designs for parts and tools made where they are needed instead of shipped:\nmedical fittings, water and sanitation parts, shelter hardware. Built for aid\ncontexts where the supply chain is the failure.\n",
+    "license": "CERN-OHL variant per catalogue metadata on 156 of 193 items — the organisation's own site says All rights reserved. Confirmation pending, see notes.",
+    "name": "Field Ready — humanitarian supply solutions",
+    "notes": "LICENCE CONFIRMATION PENDING — Tomas Diez is confirming with Field Ready, and this\nentry is carried in the meantime on that basis. CONTRIBUTING criterion 1 is not\nyet met. What was actually checked, 2026-09-20:\n\nTHE CONTRADICTION. fieldready.org's own pages carry \"All rights reserved\" and no\nlicence statement about the designs. The catalogue harvested into\nfabcity/things-that-work tells the opposite story: of 193 items, 156 carry\n`licence: CERN` and 51 carry an OSHWA certification UID (US000174-US000233,\nUS000626), which is a public commitment to open hardware that cannot be made\naccidentally. Those UIDs are checkable against\neconomic/planet/oshwa-certification. Both readings cannot be right.\n\nNO DATA ENDPOINT. `api: null` is measured, not assumed: /solutions, /library and\n/humanitarian-supply-solutions all 404, and no catalogue path was found. 38 of\nthe 193 items carry a download URL, all pointing at thingiverse.com. So the\ndesigns are reachable one at a time through a third-party host, and the\ncatalogue itself is only reachable through the things-that-work harvest.\n\nTHIS ENTRY BENDS A RULE, DELIBERATELY AND ON RECORD. The contributing rule is to\nstop before adding a source whose only evidence is a site with no data endpoint,\nand list it in the PR body instead. It is added anyway because the OSHWA UIDs are\nhard evidence of intent from the organisation itself, and because the licence\nquestion is actively being resolved rather than merely unanswered. If the answer\ncomes back \"all rights reserved\", this entry should be deleted, not softened.\n\nNO `adapter`: nothing in planetai-node reads it, and nothing can while the only\nroute to the catalogue is somebody else's harvest.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/field-ready",
+    "status": "live",
+    "tags": [
+      "open-design",
+      "humanitarian",
+      "3d-printing",
+      "supply-chain",
+      "repair",
+      "act"
+    ],
+    "upstream_listed_in": [
+      "things-that-work"
+    ],
+    "url": "https://www.fieldready.org/"
+  },
+  {
+    "act_kind": "design",
+    "added": "2026-09-20",
+    "api": "https://search.openknowhow.org/manifests/list.json",
+    "auth": "none",
+    "cell": "Economic|Planet",
+    "description": "A federated index of Open Know-How manifests — machine-readable descriptions of\nhardware designs, each naming its own files, processes and licence. The closest\nthing open hardware has to a card catalogue.\n",
+    "license": "Creative Commons — version and variant not stated by the publisher (see notes)",
+    "name": "Open Know-How Search (Internet of Production Alliance)",
+    "notes": "LICENCE NOT FULLY READABLE — 2026-09-20. openknowhow.org's footer says only\n\"Content on this site is published under Creative Commons license\", with no\nversion and no variant. CC-BY and CC-BY-NC-SA are both \"a Creative Commons\nlicense\" and a node cannot act on the difference. CONTRIBUTING criterion 1 is\ntherefore NOT met by this entry and it is carried as licence-pending: one\nsentence from the Internet of Production Alliance naming the version would\nsettle it. No dedicated /licence, /terms or /about page exists — /about is 404.\n\nTWO LICENCES, NOT ONE. This matters more than the gap above. The index is a list\nof URLs; the designs are third-party and each manifest carries its OWN licence.\nVerified on a real manifest in this session — okh-flypi.yml declares a `license:`\nfield whose documented format is an SPDX identifier, and a `licensor:`. So a node\nfollowing this index must read the licence off the manifest it landed on and must\nnever assume the index's licence covers the design.\n\nAPI VERIFIED 2026-09-20: /manifests/list.json returned 200, 42 kB of JSON, a flat\nlist of 492 manifest URLs, no key. Sources include Appropedia, GOSH and Field\nReady feeds.\n\nNo `adapter`: nothing in planetai-node reads it yet.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/okh-search",
+    "status": "live",
+    "tags": [
+      "open-design",
+      "okh",
+      "open-hardware",
+      "manifest",
+      "index",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://search.openknowhow.org/"
+  },
+  {
+    "act_kind": "design",
+    "added": "2026-09-20",
+    "api": "https://certificationapi.oshwa.org/api/v1/projects",
+    "auth": "api-key",
+    "cell": "Economic|Planet",
+    "description": "The register of hardware certified as open source by the Open Source Hardware\nAssociation — each entry a project that has committed to publishing its design\nfiles under an open licence, with a certification UID to cite.\n",
+    "license": "CC-BY-SA-4.0",
+    "name": "OSHWA Open Source Hardware Certification",
+    "notes": "LICENCE VERIFIED 2026-09-20 from the source's own pages: both\ncertification.oshwa.org and certificationapi.oshwa.org carry a Creative Commons\nAttribution-ShareAlike 4.0 statement.\n\nAUTH VERIFIED 2026-09-20 by making the call: GET /api/v1/projects without a\ntoken returns 401. Registration is free and the token is issued without review,\nwhich is why `auth: api-key` rather than `registration` — a node needs a\ncredential to hold, not a person to approve it.\n\nWHY A CERTIFICATION REGISTER IS AN ACT SOURCE, and what it is not. It does not\nhost designs; it lists projects that have promised theirs are open, with a UID.\nThat makes it the verification layer under the other design sources rather than\na library — useful for answering \"is this thing actually open\" about a design\nfound elsewhere. Field Ready's catalogue, for one, carries OSHWA UIDs on 51 of\nits 193 items.\n\nNo `adapter`: nothing in planetai-node reads it yet.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/oshwa-certification",
+    "status": "live",
+    "tags": [
+      "open-design",
+      "open-hardware",
+      "certification",
+      "oshwa",
+      "registry",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://certification.oshwa.org/"
+  },
+  {
     "added": "2026-09-09",
     "api": "https://ourworldindata.org/grapher/{slug}.csv?csvType=full&useColumnShortNames=true",
     "auth": "none",
@@ -1310,6 +1499,37 @@
     "upstream_listed_in": [],
     "url": "https://ourworldindata.org/grapher/food-supply-kcal.csv",
     "wired_in_planetai": false
+  },
+  {
+    "act_kind": "design",
+    "added": "2026-09-20",
+    "api": "https://ttw.fab.city/data.json",
+    "auth": "none",
+    "cell": "Economic|Planet",
+    "description": "A curated index of solutions for when services fail — drinkable water when the\ntap is cut, light in a blackout, a part to print when the supply chain is gone.\nTagged by what each one does and which scarcity it answers.\n",
+    "license": "CC-BY-SA-4.0 (content); MIT (code); third-party assets under their own terms",
+    "name": "Things That Work (Fab City Foundation)",
+    "notes": "LICENCE VERIFIED 2026-09-20 from the repository's own CONTENT-LICENSE.md: code\nMIT, and \"All content, data and documentation — the curated solutions in data/,\nthe translations ... are licensed under Creative Commons Attribution-ShareAlike\n4.0 International\". The same file names third-party assets that keep their own\nterms, including the 3D-printable splint files by Ostec3D. This is one of the\nfew entries in this list whose licence needed no chasing.\n\nAPI VERIFIED LIVE 2026-09-20: /data.json returns 200, 4,122,959 bytes,\n`content-type: application/json` and `access-control-allow-origin: *`, so\nbrowser-side readers are not blocked either. One document carries meta, the\ntaxonomy, 1,594 entries, 147 Whole Earth issues and 31 crisis records — the\ntaxonomy travelling with the entries is what makes them interpretable.\n\nPublished on the day this entry was written: the pages inline their data at\nbuild time, so dist/data.json was rebuilt on every run and served on none, and\nevery candidate path 404'd until build.sh copied it into deploy/.\n\nWHAT IT CARRIES, measured from the repo on 2026-09-20: 2,853 records across\nAppropedia (2,565), Field Ready (193), OLIVE, MSF, the Cuban manuals and Whole\nEarth. So it is partly an aggregator of sources filed separately here — which is\na feature, not duplication: it is the layer that has read them and said which\nones work.\n\nTWO THINGS TO KNOW BEFORE BUILDING ON IT. The `domain` field is documented in\nSCHEMA.md as an enum array; in the data 2,551 of 2,853 records store it as a\nbare string and 224 omit it, so a reader must handle both. And there is no\nair-quality domain: counted with word boundaries, 23 records touch air quality\nagainst 499 for water and 260 for power. Strong where a node reads a portal or a\nheat cell, thin on the thing a node measures best.\n\nNo `adapter`: nothing in planetai-node reads it yet. Nothing now stops one.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/things-that-work",
+    "status": "live",
+    "tags": [
+      "open-design",
+      "repair",
+      "resilience",
+      "appropriate-technology",
+      "fab-city",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://ttw.fab.city/"
   },
   {
     "added": "2026-05-04",
@@ -3959,6 +4179,37 @@
     "upstream_listed_in": [],
     "url": "https://donnees.montreal.ca/dataset",
     "wired_in_planetai": false
+  },
+  {
+    "act_kind": "network",
+    "added": "2026-09-20",
+    "api": "https://gitlab.fabcloud.org/api/v4/projects/fl-management%2Ffablab-network-data/repository/files/data%2Ffabcity.xlsx/raw?ref=main",
+    "auth": "none",
+    "cell": "Governance|City",
+    "description": "The cities, regions and countries that have pledged to produce most of what they\nconsume by 2054, with the year each one signed. The Fab City commitment as a\nlist rather than a map on a website.\n",
+    "license": "No licence published — the repository carries none. The Foundation's own list, and the one source here it could license with a sentence.",
+    "name": "Fab City pledged cities",
+    "notes": "READ IN FULL 2026-09-20 from data/fabcity.xlsx in the public Fab Foundation\nrepository at gitlab.fabcloud.org/fl-management/fablab-network-data. 61 rows,\nsix columns: name, slug, country_code, level, pledge, city.\n\n  level    48 City, 11 Region, 2 Country\n  pledge   signature years 2014-2026\n  spread   27 countries\n  example  Bali, fc-bali, ID, Region, 2022, Denpasar\n\nWHY IT IS AN ACT SOURCE AND `act_kind: network`. It names no machine and hosts\nno design. It is a set of places bound by a commitment rather than by\ncapability — which is exactly what `network` is for, and what distinguishes it\nfrom the fab lab directory filed at economic/community/fablabs-io. A node can\nanswer \"is this place pledged, and since when\" from it, which is a governance\nquestion, hence the pillar.\n\nFORMAT: .xlsx, not JSON or CSV. Reachable programmatically through the GitLab\nraw-file API (the `api` field above, verified 200, 13,808 bytes), but a reader\nmust parse a spreadsheet. Six columns of flat text in one sheet, so the parse\nis trivial — but it is a spreadsheet, and anything depending on it should say\nso out loud rather than discover it.\n\nTHIS IS THE FOUNDATION'S OWN DATA, AND THE EASIEST LICENCE ON THIS LIST TO FIX.\nEvery other licence gap here needs somebody else to answer: fablabs.io needs a\nscoped statement, Open Know-How needs a version number, Field Ready needs to\nreconcile its site with its catalogue. This one needs a single sentence from the\npeople who compiled it. CC-BY-4.0 GeoJSON on fab.city would make it the\nnetwork's first unambiguously open act source; it has coordinates implied by\n`city` and nothing sensitive in it.\n\nNo `adapter`: nothing in planetai-node reads it yet.\n",
+    "pillar": "governance",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "city",
+    "slug": "governance/city/fab-city-pledged-cities",
+    "status": "live",
+    "tags": [
+      "fab-city",
+      "pledge",
+      "network",
+      "commitment",
+      "governance",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://gitlab.fabcloud.org/fl-management/fablab-network-data/-/blob/main/data/fabcity.xlsx"
   },
   {
     "added": "2026-09-11",

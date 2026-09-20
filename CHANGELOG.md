@@ -1,5 +1,17 @@
 # Changelog
 
+- 2026-09-20 — **your node now knows where people can go to make or fix something, not only
+  what is wrong.** The registry it carries is re-pinned to `85a194c` and gains its first eight
+  **act** sources — eight of 217, alongside the 209 that measure. `planetai sources` lists them
+  like any other: two directories of fab labs, five libraries of open designs, and the list of
+  pledged Fab Cities. Nothing here reads them yet, so nothing on your node changes today; this
+  is the shelf being stocked before anything is taken off it.
+
+  Worth knowing what they say about themselves, because the answers are uneven. Three carry a
+  clear open licence — Appropedia, OSHWA and Things That Work. Five do not, including the Fab
+  Lab Network directory itself, and each says so in its own entry rather than leaving a reader
+  to assume. `planetai sources --json` carries the licence text if you want to read it.
+
 ## v0.64 — 2026-09-20 — the node stops repeating a claim it could not check
 
 One change, and a small one. v0.63 went out this morning carrying four large ones at once and said so;

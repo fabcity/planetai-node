@@ -1,0 +1,39 @@
+name: Open Know-How Search (Internet of Production Alliance)
+url: https://search.openknowhow.org/
+description: |
+  A federated index of Open Know-How manifests — machine-readable descriptions of
+  hardware designs, each naming its own files, processes and licence. The closest
+  thing open hardware has to a card catalogue.
+pillar: economic
+scale: planet
+status: live
+license: "Creative Commons — version and variant not stated by the publisher (see notes)"
+api: https://search.openknowhow.org/manifests/list.json
+pilot_relevance: [global]
+tags: [open-design, okh, open-hardware, manifest, index, act]
+added: 2026-09-20
+auth: none
+role: [act]
+act_kind: design
+upstream_listed_in: []
+notes: |
+  LICENCE NOT FULLY READABLE — 2026-09-20. openknowhow.org's footer says only
+  "Content on this site is published under Creative Commons license", with no
+  version and no variant. CC-BY and CC-BY-NC-SA are both "a Creative Commons
+  license" and a node cannot act on the difference. CONTRIBUTING criterion 1 is
+  therefore NOT met by this entry and it is carried as licence-pending: one
+  sentence from the Internet of Production Alliance naming the version would
+  settle it. No dedicated /licence, /terms or /about page exists — /about is 404.
+
+  TWO LICENCES, NOT ONE. This matters more than the gap above. The index is a list
+  of URLs; the designs are third-party and each manifest carries its OWN licence.
+  Verified on a real manifest in this session — okh-flypi.yml declares a `license:`
+  field whose documented format is an SPDX identifier, and a `licensor:`. So a node
+  following this index must read the licence off the manifest it landed on and must
+  never assume the index's licence covers the design.
+
+  API VERIFIED 2026-09-20: /manifests/list.json returned 200, 42 kB of JSON, a flat
+  list of 492 manifest URLs, no key. Sources include Appropedia, GOSH and Field
+  Ready feeds.
+
+  No `adapter`: nothing in planetai-node reads it yet.
