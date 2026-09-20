@@ -1,0 +1,34 @@
+name: Boston - Checkbook Explorer
+url: https://data.boston.gov/dataset/checkbook-explorer
+description: |
+  Actual executed City of Boston expenditure by vendor and department,
+  transaction level, published as per-fiscal-year CSVs from FY2012 onward and
+  refreshed monthly.
+pillar: economic
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: null
+pilot_relevance: [boston]
+tags: [budget-execution, municipal-finance, spending, united-states]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Per-FY CSVs
+  FY2012-present, current through May 2025 at time of check. Monthly cadence.
+
+  TRANSACTION-LEVEL EXECUTED SPEND, MONTHLY. This is the best fiscal-execution
+  source found anywhere in wave 1 - finer and fresher than Barcelona's
+  chapter-level annual liquidation and than anything available for Bali or
+  Santiago. If the Index ever wants an executed-vs-planned ratio computed
+  honestly, Boston is where the method should be prototyped.
+
+  EXCLUDES PAYROLL by design. Pair with /dataset/employee-earnings-report
+  (individual-level earnings, CSV/XLSX, 2011-2025, annual) for the full
+  outturn. Neither is complete alone and the two do not overlap.
+
+  No consolidated ACFR/CAFR data file was found on the portal - the audited
+  statements exist as PDF volumes on boston.gov, not as open data.
+
+  Same FIPS/GEOID absence as the budget files: internal department codes only.

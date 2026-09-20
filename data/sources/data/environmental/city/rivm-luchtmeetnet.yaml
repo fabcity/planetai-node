@@ -1,0 +1,41 @@
+name: Luchtmeetnet / Landelijk Meetnet Luchtkwaliteit (RIVM)
+url: https://api-docs.luchtmeetnet.nl/
+description: |
+  The Dutch national air quality monitoring network, run by RIVM with regional
+  environment agencies. Open JSON API serving station metadata and hourly
+  concentrations for NO2, PM10, PM2.5, O3 and more.
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://api.luchtmeetnet.nl/open_api/stations
+pilot_relevance: []
+tags: [air-quality, netherlands, rivm, pm25, monitoring-stations, rest-api]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). The open API was
+  called, not just read about: /open_api/stations?page=1 returns a paginated
+  JSON list, 25 stations per page across 5 pages - roughly 125 stations
+  nationally, each with an "NL"-prefixed number and a location string.
+
+  LICENCE is CC-BY (4.0), read from the national register record for the
+  hourly series, data.overheid.nl/dataset/27136-meetwaarden-landelijk-meetnet-
+  luchtkwaliteit--rivm---uur, published by RIVM through CBS. The Luchtmeetnet
+  site's own open-data page does not print a licence, so the register record
+  is the authority here.
+
+  TWO DIFFERENT THINGS, DON'T CONFUSE THEM. api.luchtmeetnet.nl is the live
+  and recent-history API, no key needed. The VALIDATED annual series is a
+  separate product: RIVM StatLine table 50084NED, OData at
+  dataderden.cbs.nl/ODataCatalog/, published in Q2 for the previous year, data
+  from 2012 onward. Live for dashboards, validated for indicators.
+
+  Filed at city scale because stations sit in and report for individual
+  municipalities, which is where the atomic measurement happens - the same
+  rule this list applies to community-tier sensor networks.
+
+  /open_api (the bare path) returned HTTP 500 on 2026-09-11; the documented
+  entry point api-docs.luchtmeetnet.nl is what to use.

@@ -1,0 +1,21 @@
+name: Caravan — large-sample hydrology
+url: https://github.com/kratzert/Caravan
+description: |
+  Community-curated large-sample hydrology benchmark dataset.
+  Daily streamflow + meteorological forcing for ~7,000 catchments
+  globally. Underlies most modern deep-learning hydrology research.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [bali, barcelona, boston, santiago]
+tags: [hydrology, streamflow, watershed, benchmark, machine-learning]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Bulk download via Zenodo. Catchments include Tukad Badung
+  (Bali), Mapocho/Maipo (Santiago), Llobregat tributaries
+  (Barcelona). Charles River basin coverage limited.
+  Pairs with Google Flood Hub for runoff-vs-flooding analysis.

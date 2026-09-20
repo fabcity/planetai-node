@@ -1,0 +1,41 @@
+name: BMF Datenportal - Bundeshaushalt Gesamtuebersicht (S05)
+url: https://www.bundesfinanzministerium.de/Datenportal/Daten/offene-daten/haushalt-oeffentliche-finanzen/s05-bundeshaushalt-Gesamtuebersicht/s05-bundeshaushalt-Gesamtuebersicht.html
+description: |
+  The German federal budget overview as open data from the Federal Ministry of
+  Finance: revenue, expenditure and their development over time, released as
+  CSV and XLSX alongside the ministry's other fiscal series.
+pillar: economic
+scale: region
+status: live
+license: dl-de/by-2-0 (Datenlizenz Deutschland - Namensnennung - Version 2.0)
+api: null
+pilot_relevance: []
+tags: [public-budget, national-finance, open-budget, germany]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8). This is the national
+  rung of the budget ladder for Germany and is reused by Hamburg, Augsburg and
+  Bergisches rather than re-resolved per member.
+
+  Series runs January 2014 to present in overlapping releases (2014-2018 through
+  2020-2025), each published as both CSV and XLSX. Annual cadence; the page
+  recorded a last update of 2026-02-02.
+
+  Licence read verbatim from the dataset page: "Datenlizenz Deutschland -
+  Namensnennung - Version 2.0", attribution to the Bundesministerium der
+  Finanzen.
+
+  Filed at region scale because the schema has no national tier; the resolution
+  here is the federation as a whole, coarser than anything else in this file's
+  directory. Treat it as the ceiling of the ladder, not a regional signal.
+
+  Classification: Bundeshaushaltsordnung Einzelplan / Kapitel / Titel structure,
+  not COFOG. No crosswalk published on the portal. Currency EUR, nominal.
+  Fiscal year = calendar year.
+
+  Bundeshaushalt Digital (bundeshaushalt.de) presents the same budget as an
+  interactive visualisation and has a community-documented API at
+  github.com/bundesAPI/bundeshaushalt-api; its own open-data page 404ed on
+  2026-09-10 and it is therefore NOT recorded here as a live endpoint.

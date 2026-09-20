@@ -1,0 +1,29 @@
+name: TFDD Transboundary Freshwater Spatial Database — 313 international river basins
+url: https://transboundarywaters.ceoas.oregonstate.edu/spatial-datasets
+description: |
+  Shapefiles of the world's 313 international river basins plus basin
+  country units (basin by country intersections) with a codebook of
+  biophysical, social and political attributes. Maintained by Oregon State
+  University's Program in Water Conflict Management and Transformation.
+pillar: governance
+scale: bioregion
+status: live
+license: Not copyrighted; wide use encouraged with attribution to the Transboundary Freshwater Diplomacy Database, OSU CEOAS
+api: null
+pilot_relevance: [global]
+tags: [river-basins, transboundary-water, shapefile, bioregion-boundary, cross-jurisdictional]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Current release 2024-08-07: https://transboundarywa
+  ters.ceoas.oregonstate.edu/sites/transboundarywaters.ceoas.oregonstate.e
+  du/files/2024-08/TFDDSpatialDatabase_20240807.zip. Versions 2014, 2016,
+  2018, 2024 - irregular, roughly biennial. NOTE the old
+  transboundarywaters.science.oregonstate.edu host 302-redirects to ceoas;
+  update any stale references. THIS IS THE SLICING LAYER FOR TRANSBOUNDARY
+  BIOREGIONS: basin polygons carry basin IDs that join to the TFDD treaty
+  and river-basin-organisation tables, and basin country units let you
+  attribute a basin's governance to specific states. Use alongside
+  HydroBASINS, which gives finer nested sub-basins for bioregions that sit
+  inside a single country.

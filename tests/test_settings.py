@@ -80,4 +80,14 @@ assert "STATIONS_SHOWN" not in settings.OUTWARD, \
 assert "STATIONS_SHOWN=3" in open(".env.example").read(), \
     "STATIONS_SHOWN defaults to 3 in the shipped .env.example"
 
+# --- AGENT_PREFER: the household's own sentences stay home until somebody here says otherwise ----------------
+# get() with a fallback proves nothing about what ships; assert the shipped default, the way MAP_TILES does.
+assert "AGENT_PREFER=private" in open(".env.example").read(), \
+    "AGENT_PREFER ships as private: a fresh node sends nothing off the network before anyone has chosen"
+assert settings.CHOICES["AGENT_PREFER"][0] == "private", \
+    "private is offered first, on the Model page and in `planetai config` — both walk CHOICES as given"
+assert "AGENT_PREFER" in settings.OUTWARD, "it decides whether the online path is used at all"
+assert settings.RUNTIME["AGENT_PREFER"][4].startswith("private"), \
+    "the help is the one line each surface shows and the one the refusal quotes; the consequences are in it"
+
 print("all settings tests pass")

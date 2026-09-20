@@ -1,0 +1,47 @@
+name: Bali Satu Data (provincial)
+url: https://balisatudata.baliprov.go.id/search-data
+description: |
+  Provinsi Bali's Satu Data portal. Reachable and responding, but its search
+  returns an empty state with no datasets listed by default, so its actual
+  holdings could not be established.
+pillar: governance
+scale: city
+status: live
+license: not stated
+api: null
+pilot_relevance: [bali]
+tags: [open-data, bali, indonesia, provincial]
+added: 2026-05-04
+updated: 2026-09-09
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). This entry was
+  substantially wrong and is corrected here.
+
+  WHAT WAS CLAIMED: "cross-domain datasets ... demography, environment,
+  economy, public services, customary-village indicators", with "environmental
+  + demographic dense". WHAT WAS OBSERVED: HTTP 200, an empty search result
+  state, no datasets visible, no confirmed API, and portal type (CKAN or
+  custom) undeterminable from the page. The portal appears to be a shell. The
+  original description was not verified against the live site.
+
+  LICENCE was "public (Indonesian government)" with no source. Corrected to
+  "not stated".
+
+  THIS IS THE PROVINCIAL PORTAL, NOT THE CITY ONE. The Denpasar municipal
+  portal at satudata.denpasarkota.go.id is a different system entirely - CKAN
+  2.8.3, roughly 1,028 datasets, near-universal public-domain licence - and is
+  now its own entry, governance/city/satudata-denpasar. That is the one with
+  the data. Do not merge the two or treat this URL as Bali's open-data story.
+
+  wired_in_planetai is left at true because this registry cannot verify another
+  repo's runtime state, but it should be checked: a connector reporting live
+  against a portal with an empty search state is unlikely to be returning
+  anything useful. This is exactly the drift the FCI provenance proposal is
+  meant to end.
+
+  National context: katalog.data.go.id and data.go.id gave inconsistent results
+  for Bali and Denpasar organisations - one query returned "0 datasets,
+  curation underway", another failed DNS. The national Satu Data catalogue's
+  live state for this province is genuinely unclear.

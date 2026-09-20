@@ -1,0 +1,41 @@
+name: Korea Local Government Fiscal Disclosure Index (지방재정365 우리 지자체 재정공시)
+url: https://www.data.go.kr/data/15138709/openapi.do
+description: A machine-readable index of every Korean local authority's statutory fiscal disclosure,
+  covering revenue, expenditure, local bonds, funds and investment projects. It harmonises
+  where to look across municipalities rather than publishing the figures.
+pillar: governance
+scale: region
+status: live
+license: 이용허락범위 제한 없음 (no restriction on scope of use)
+api: null
+pilot_relevance: []
+tags:
+- fiscal-transparency
+- local-finance
+- disclosure
+- inter-municipal
+- korea
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). JSON + XML.
+
+  Cadence semi-annual: budget basis in February, settlement basis in August.
+
+
+  IT RETURNS LINKS, NOT VALUES - each response points at the municipality''s own
+
+  disclosure page. Treat it as an index, not a dataset.
+
+
+  It is the closest thing to a regional data-sharing / policy-harmonisation
+
+  instrument verified for the Seoul territory: it standardises WHERE each
+
+  authority discloses, not WHAT is there.
+
+
+  Seoul / 자치구 coverage is implied by the scope statement but not stated
+
+  explicitly on the page.'

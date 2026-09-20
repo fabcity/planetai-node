@@ -21,6 +21,8 @@ the files themselves.
 - [skills/troubleshoot-node/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/troubleshoot-node/SKILL.md): diagnosing a node that is broken, quiet, or lying — what to ask for, and what never to ask for.
 - [skills/connect-agent/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/connect-agent/SKILL.md): giving your own agent the node's MCP tools over a tailnet, without opening a port.
 - [skills/publish-to-index/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/publish-to-index/SKILL.md): the tier contract for writing cells to the Fab City Index, and why most nodes never do.
+- [skills/preflight/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/preflight/SKILL.md): the first minute of a session that will change this repository — where main is, what is open, what is red.
+- [skills/land/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/land/SKILL.md): the last minute — nothing exists only on this machine, and the gates ran rather than were assumed.
 
 ## Getting a node running
 

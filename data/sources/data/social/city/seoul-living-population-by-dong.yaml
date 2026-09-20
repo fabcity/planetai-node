@@ -1,0 +1,51 @@
+name: Seoul Living Population by Administrative Dong (행정동 단위 서울 생활인구)
+url: https://data.seoul.go.kr/dataList/OA-14991/S/1/datasetView.do
+description: Hourly estimates of the population actually present in each Seoul administrative
+  dong, built by fusing city administrative data with telecom data. Daily updates from 2017
+  to the present.
+pillar: social
+scale: city
+status: deprecated
+license: '공공누리 1유형 : 출처표시 (상업적 이용 및 변경 가능) - KOGL Type 1'
+api: null
+pilot_relevance: []
+tags:
+- population
+- presence
+- mobility
+- dong
+- korea
+- seoul
+added: '2026-09-11'
+updated: '2026-09-19'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'DEPRECATED 2026-09-19. The dataset page now returns the termination notice the portal itself renders — 서비스 종료 안내 / 해당 데이터는 종료된 서비스입니다, "this data is a terminated service". Read in a browser, not inferred from a status code: the page 404s to any client without Javascript, so a link checker cannot tell this apart from a portal that simply dislikes scripts. Marked rather than removed, per CONTRIBUTING: what this entry recorded was true when it was harvested on 2026-09-11, and the Korean city tier is thin enough that the gap should stay visible. A replacement should be found by searching 열린데이터광장 for a successor id, not by trusting this one.
+
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Years 2017-2026,
+
+  current to August 2026. Cadence 정기(매일).
+
+
+  JOIN HAZARD, stated on the page: the dataset uses 행정동 codes FROZEN AT THE
+
+  2016 VINTAGE for time-series consistency, explicitly excluding 항동 (added 2020).
+
+  It will NOT cleanly join to the current 행정표준코드 register without a
+
+  crosswalk.
+
+
+  ACCESS LIMIT: CSV zip archives hold the history; the sheet and Open API expose
+
+  only the most recent 2 months.
+
+
+  Census-tract sibling OA-14979 (집계구 단위) exists and was not fetched.
+
+
+  This is the finest-grained social series verified for Seoul, and it is a
+
+  presence measure, not a residence measure - do not use it as a denominator for
+
+  per-capita indicators without care.'

@@ -1,0 +1,34 @@
+name: Boston - Greenhouse Gas Emissions inventory
+url: https://data.boston.gov/dataset/greenhouse-gas-emissions
+description: |
+  Annual citywide greenhouse gas inventory for Boston covering 2005 to 2021,
+  published as three CSVs: community-wide emissions, local government
+  operations emissions, and local government fuels.
+pillar: environmental
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: null
+pilot_relevance: [boston]
+tags: [ghg-inventory, climate, emissions, united-states]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1); licence re-confirmed
+  verbatim on the dataset page rather than inherited from the portal facet.
+  Temporal range 2005-01-01 to 2021-12-31, annual cadence, three CSV resources.
+
+  THE ONLY REAL CITY GHG INVENTORY IN WAVE 1. Barcelona, Santiago and Denpasar
+  each returned nothing for this indicator. A sixteen-year annual series with
+  community-wide and municipal-operations split is exactly the shape the
+  Environmental|City cell wants, and no other pilot has one.
+
+  Not verified against the GPC protocol in this pass - the dataset page does
+  not state a protocol, so do not describe it as GPC-conformant without
+  checking the City's climate reporting.
+
+  Companion source: /dataset/building-emissions-reduction-and-disclosure-ordinance
+  (BERDO), large-building emissions disclosure, XLSX/HTML/CSV. Left out of this
+  registry as a separate entry for now because it measures a regulated subset
+  rather than the city, but it is the obvious second step.

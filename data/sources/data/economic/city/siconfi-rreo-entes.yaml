@@ -1,0 +1,50 @@
+name: SICONFI RREO - Relatorio Resumido da Execucao Orcamentaria (municipios)
+url: https://www.tesourotransparente.gov.br/ckan/dataset/api-rreo-entes
+description: |
+  Brazil's National Treasury bimonthly budget-execution report for every one of
+  the 5,570 municipalities, as a JSON API keyed on the IBGE municipality code.
+  Carries planned and executed revenue and expenditure-by-function in one schema.
+pillar: economic
+scale: city
+status: live
+license: Open Data Commons Open Database License (ODbL)
+api: https://apidatalake.tesouro.gov.br/ords/siconfi/tt/rreo
+pilot_relevance: []
+tags: [budget, public-finance, brazil, siconfi, budget-execution, cofog-adjacent, ibge]
+added: 2026-09-10
+updated: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-10, FCI Regime 1 harvest (wave 5, Brazil). The budget backbone
+  for every Brazilian locality in the network - one endpoint, one schema, all
+  five wave-5 cities, no per-city portal negotiation.
+
+  VERIFIED LIVE, five calls, each returning JSON. Each call confirmed the
+  locality's IBGE code from the API's own "instituicao" response, not from
+  memory: 3550308 Sao Paulo (232 items, Anexo 01), 3106200 Belo Horizonte,
+  2611606 Recife (340), 4106902 Curitiba (317), 3552205 Sorocaba (239).
+
+  PARAMETERS: an_exercicio, nr_periodo (bimester 1-6), co_tipo_demonstrativo,
+  no_anexo, co_esfera (M municipal / E state / U union), id_ente (IBGE code).
+  co_esfera=E with a two-digit id_ente returns the state rung from the same
+  endpoint - see siconfi-dca-entes.
+
+  PLANNED AND EXECUTED BOTH PRESENT, which most municipal portals cannot do.
+  Anexo 01 columns observed: "PREVISAO INICIAL", "PREVISAO ATUALIZADA (a)",
+  "No Bimestre (b)". Anexo 02 (expenditure by function): "DOTACAO INICIAL",
+  "DOTACAO ATUALIZADA".
+
+  CLASSIFICATION: Brazil's national chart of accounts (MCASP), functional-
+  programmatic. Anexo 02 accounts are functions - Saude, Educacao, Ensino
+  Fundamental - COFOG-adjacent but NOT COFOG, and no crosswalk was found in
+  this harvest. Fiscal year = calendar year. BRL, nominal only. Granularity is
+  aggregate-to-function, not line item.
+
+  LICENCE: the API itself publishes none - apidatalake.tesouro.gov.br root, its
+  /docs/siconfi navigation and siconfi.tesouro.gov.br were all checked and are
+  silent. The licence here comes from the canonical CKAN registry entry at
+  tesourotransparente.gov.br/ckan, which lists this API as its resource and
+  states "Open Data Commons Open Database License (ODbL)"; the facet reads
+  "Licenca Aberta para Bases de Dados (ODbL) do Open Data Commons". Publisher
+  CCONF, updated monthly. Cite the CKAN entry, not the bare API, for licence.

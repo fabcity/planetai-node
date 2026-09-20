@@ -1,0 +1,47 @@
+name: Donnees Quebec
+url: https://www.donneesquebec.ca/recherche/dataset
+description: |
+  Quebec's CKAN 2.11.3 provincial catalogue, federating state and
+  municipal publishers - 1609 datasets with 1549 under CC BY 4.0. Its
+  largest single publisher is a municipality, Ville de Montreal.
+pillar: governance
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://www.donneesquebec.ca/recherche/api/3/action/package_search
+pilot_relevance: []
+tags: [open-data-portal, ckan, federation, transparency, quebec]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13).
+
+  THE FEDERATION DIRECTION IS THE FINDING. The largest publisher on the
+  PROVINCIAL portal is Ville de Montreal with 389 datasets, followed by
+  Ville de Laval with 130, then the environment ministry MELCCFP with
+  129. Municipal data flows up into the province, and the same 389 count
+  appears on both donnees.montreal.ca and here - it is a harvest, not
+  two independent catalogues. Do not count Montreal's datasets twice
+  across the two portals.
+
+  That also makes Donnees Quebec a genuine inter-municipal
+  data-sharing platform in its own right, which is what fills the
+  Governance|Region cell for Bas-Saint-Laurent, a region with no portal
+  of its own.
+
+  Licence facets: Attribution CC-BY 4.0 - 1549; CC-BY-NC 4.0 - 18;
+  CC-BY-NC-SA 4.0 - 13. A 96% fully-open share. Licence verbatim from
+  donneesquebec.ca/fr/licence/: CC BY "est utilisee par defaut pour
+  chaque jeu de donnees", permitting others to "distribuer, remixer,
+  arranger et adapter votre oeuvre, meme a des fins commerciales, a
+  condition que vous soyez credite". CKAN's internal id for the Quebec
+  variant is qc-cc-by.
+
+  API URL IS ASSERTED FROM THE VERIFIED CKAN VERSION, NOT FETCHED.
+  robots.txt carries Disallow: /api/ and Disallow: /recherche/api/, and
+  additionally Disallow: /recherche/dataset/*? - so ALL query-string
+  catalogue searches are robots-blocked. The 1609 count comes from the
+  rendered HTML catalogue page ("1 609 jeux de donnees trouves"), not
+  from the API.

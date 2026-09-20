@@ -1,0 +1,32 @@
+name: Barcelona - Resultats electorals per seccio censal
+url: https://opendata-ajuntament.barcelona.cat/data/api/action/package_show?id=est-eleccions-locals-seccio-censal
+description: |
+  Historical results for municipal, autonomic and general elections in
+  Barcelona, published at census-section granularity - the finest official
+  spatial unit below the district.
+pillar: social
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
+pilot_relevance: [barcelona]
+tags: [elections, participation, census-section, spain]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Three dataset ids:
+  est-eleccions-locals-seccio-censal, est-eleccions-autonomiques-seccio-censal,
+  est-eleccions-generals-seccio-censal. All CC-BY-4.0.
+
+  CENSUS-SECTION GRANULARITY IS THE POINT. Most electoral open data stops at
+  the municipality. Sections are small enough to join against demographic and
+  income geographies, which makes participation usable as a Social|City
+  indicator rather than a headline number.
+
+  THIS IS THE ONLY SOCIAL|CITY SOURCE FOUND FOR BARCELONA. Direct CKAN searches
+  for unemployment (atur), income and Gini (renda), housing (habitatge) and
+  life expectancy (esperanca vida) each returned zero. Those indicators
+  plausibly exist under other Catalan terms not tried in this pass - the cell
+  is under-searched, not empty. Across the whole registry the Social column
+  remains the thinnest of the four.

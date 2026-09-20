@@ -25,7 +25,7 @@ drift from what the installer asserts.
 |---|---|---|---|---|
 | **Ubuntu / Debian (amd64)** — *the first choice* | Ubuntu 22.04 · Debian 11 | Docker Engine, installed by the script | 4 GB | 3 GB |
 | **Arch, and Omarchy on top of it (amd64)** | rolling | Docker from Arch's own repository, installed by the script | 4 GB | 3 GB |
-| **macOS, Apple Silicon (arm64)** | **13.0** | OrbStack, Docker Desktop or Colima. Colima reaches 13.0 here; the database image is amd64-only and runs emulated. | 4 GB | 3 GB |
+| **macOS, Apple Silicon (arm64)** | **13.0** | OrbStack, Docker Desktop or Colima. Colima reaches 13.0 here; since v0.63 the database image is native arm64, not emulated. | 4 GB | 3 GB |
 | **macOS, Intel (x86_64)** | **13.5** | ≥14.0: all three · 13.5–13.7: **Colima only** (`--vm-type vz`) · **below 13.5: none, and Linux is the route** | 4 GB | 3 GB |
 | **Windows via WSL2 (amd64)** | 10 22H2 (build 19045) | Docker Desktop, WSL2 backend | 8 GB | 3 GB |
 | **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no arm64 build.** | — | — |
@@ -47,6 +47,7 @@ Every floor below is the vendor's own current sentence, with the date it was rea
 | [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/) | 22.04 | "Ubuntu Resolute 26.04 (LTS), Ubuntu Noble 24.04 (LTS), Ubuntu Jammy 22.04 (LTS)" and "compatible with x86_64 (or amd64), armhf, arm64, s390x, and ppc… | 2026-09-08 |
 | [Docker Engine on Debian](https://docs.docker.com/engine/install/debian/) | 11 | "Debian Trixie 13 (stable), Debian Bookworm 12 (oldstable), Debian Bullseye 11 (oldoldstable)" and "compatible with x86_64 (or amd64), armhf (arm/v7),… | 2026-09-08 |
 | [Docker Engine on Fedora](https://docs.docker.com/engine/install/fedora/) | 43 | you need a maintained version of one of the following Fedora versions: Fedora 44, Fedora 43 | 2026-09-08 |
+| [Docker Engine on Raspberry Pi OS 64-bit](https://docs.docker.com/engine/install/raspberry-pi-os/) | 12 | The page lists "32-bit Raspberry Pi OS Bookworm 12 (stable)" and "32-bit Raspberry Pi OS Bullseye 11 (oldstable)" only, and tells 64-bit users to foll… | 2026-09-19 |
 | [Docker on Arch](https://wiki.archlinux.org/title/Docker) | rolling | Arch has no Docker Engine page at docs.docker.com; docker is packaged in Arch's own extra repository and the installer uses pacman. Rolling release, s… | 2026-09-08 |
 | [Docker Desktop with the WSL2 backend](https://docs.docker.com/desktop/setup/install/windows-install/) | 10 22H2 (build 19045) | "Windows 10 64-bit: Enterprise, Pro, or Education version 22H2 (build 19045). Windows 11 64-bit: Enterprise, Pro, or Education version 23H2 (build 226… | 2026-09-08 |
 
@@ -90,9 +91,12 @@ Two routes work on a Mac that cannot upgrade, and both are printed as commands:
 Not Multipass, whatever anything else in this repository says: its floor is macOS 14. Not VirtualBox
 either — its oldest supported host is Ventura.
 
-## Raspberry Pi 4 / 5 — untested, and here is what blocks it
+## Raspberry Pi 4 / 5 — the wall came down on 19 September 2026, and nobody has run one yet
 
-The database image the node uses publishes **one manifest, for `linux/amd64`, and nothing else**:
+Both of those are true and they are different sentences. Keep them apart.
+
+**What was true until v0.63.** `postgis/postgis:16-3.4-alpine` publishes one manifest and it is
+`linux/amd64`:
 
 ```
 $ docker buildx imagetools inspect postgis/postgis:16-3.4-alpine
@@ -101,16 +105,53 @@ MediaType: application/vnd.docker.distribution.manifest.v2+json
 Digest:    sha256:681931a625df344215e9b8998bf34daf146b6a395ceacee4439eb9c85869239f
 ```
 
-A single `manifest.v2` and no `Manifests:` list means no other architecture exists; the image config confirms
-`architecture: amd64, os: linux` (built 2024-10-14). On a Pi, or any arm64 Linux, the database container stops with
-`exec format error` — measured on a clean Ubuntu 24.04 arm64 VM, 6 September 2026. An Apple Silicon Mac is fine: its
-Docker runs the amd64 image emulated.
+A single `manifest.v2` with no `Manifests:` list means no other architecture exists, and the image config
+says `architecture: amd64`. Re-checked against the registry 19 September 2026: still one manifest, still
+amd64. On a Pi the database container stopped with `exec format error`, measured on a clean Ubuntu 24.04
+arm64 VM on 6 September 2026. That was never wrong. What was wrong was treating an upstream project's CI
+choice as a property of the hardware.
 
-The other three images the node can pull are multi-arch and all carry `linux/amd64`: `python:3.12-slim` (the app's
-base), `eclipse-mosquitto:2` (the `mqtt` profile), `ipfs/kubo:latest` (the `ipfs` profile).
+**What changed.** The node's `db` service is `imresamu/postgis:16-3.4-alpine` — a docker-postgis
+co-maintainer's build of the same recipe, publishing `linux/amd64` and `linux/arm64` for the same tag, on
+the same Alpine base. Measured on arm64 the day it was chosen: PostgreSQL 16.11 `aarch64-unknown-linux-musl`,
+`postgis_version()` = 3.4, `init.sql` applied clean (15 tables, `schema_version` 0.51, the `planetai_ro`
+role, the generated `custody` column). A data directory written by the amd64 image and then opened by the
+arm64 one kept all 16 tables, its geometry, its GiST index answers and its text ordering, and passed
+`bt_index_check`.
 
-When an arm64 database image is chosen: 64-bit Raspberry Pi OS, 4 GB, boot from an SSD; SD cards die under Postgres
-writes within a year.
+The other three images the node can pull were already multi-arch: `python:3.12-slim` (the app's base),
+`eclipse-mosquitto:2` (the `mqtt` profile), `ipfs/kubo:latest` (the `ipfs` profile).
+
+**Why not a Dockerfile of our own**, which would be better on every other count: `FROM postgres:16` plus
+PGDG's `postgresql-16-postgis-3` builds in two lines and runs — and it is Debian, so glibc, while the image
+we have been shipping is Alpine, so musl. A musl `initdb` records `datcollate='en_US.utf8'` and leaves
+`datcollversion` **blank**, because musl reports no collation version. Postgres therefore has nothing to
+compare and warns about nothing. Opening an existing node's data directory with the PGDG build was measured
+on 19 September 2026: it started, all 16 tables were there, every query answered — and
+
+```
+$ psql -c "SELECT bt_index_check('s_name')"
+ERROR:  item order invariant violated for index "s_name"
+```
+
+Every text index silently out of order, on every existing node, with the database's own mismatch detector
+unable to see it. The borrowed image keeps the libc; keeping the libc is what makes "an existing node just
+switches" true. The image we build comes back the day a node's data directory is created on glibc from the
+start, and that day carries a reindex.
+
+**What has not happened.** No Raspberry Pi, Jetson, reComputer or Spark has run a node. CI runs the real
+installer end to end on `ubuntu-24.04-arm` against a Debian 13 arm64 userland, which proves the images
+resolve and the database comes up — and proves nothing about an SD card, a 4 GB ceiling or a warm cupboard.
+The table below keeps the list of arm64 machines that have carried one — it is empty — and
+`docs/HANDOFF_arm64.md` is the test plan that would put the first name on it.
+
+| arm64 machine | has run a node | for how long | reported |
+|---|---|---|---|
+| *(none yet)* | — | — | — |
+
+When one is set up: 64-bit Raspberry Pi OS (Trixie, as of 15 September 2026), 8 GB, and boot from an NVMe
+hat or a USB SSD. Not an SD card — Postgres fsyncs on every commit and SD cards die under that within a
+year.
 
 ## Two machines to aim at, and which one to reach for first
 

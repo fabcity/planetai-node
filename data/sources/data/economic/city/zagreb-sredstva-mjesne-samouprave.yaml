@@ -1,0 +1,37 @@
+name: Sredstva mjesne samouprave Grada Zagreba
+url: https://data.zagreb.hr/dataset/sredstva-mjesne-samouprave-2001-2023
+description: |
+  Funds allocated to Zagreb's sub-municipal self-government units (gradske
+  cetvrti and mjesni odbori) for small communal works, 2001-2024, roughly
+  EUR 1.094 billion in total. CSV and XLSX.
+pillar: economic
+scale: city
+status: live
+license: Otvorena dozvola (OD)
+api: null
+pilot_relevance: []
+tags: [budget, public-finance, zagreb, croatia, participatory, neighbourhood]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Resource URLs
+  opened:
+  https://data.zagreb.hr/dataset/e07abb67-faba-412d-a610-0bfe24c71d5a/resource/edef0e1f-5ba7-4f8e-b8df-bf57c75b0e96/download/tablica-2001-2024-novo.csv
+  (XLSX twin at .../949663d5-da88-47e5-8ede-2302d90ed090/...xlsx).
+  Last modified 2024-03-12; publisher is the Gradski ured za mjesnu
+  samoupravu, civilnu zastitu i sigurnost.
+
+  WHY THIS ENTRY EXISTS: this is the COMMUNITY RUNG of the public budget
+  ladder, and it is rare. Most cities publish nothing below the municipal
+  line. Zagreb publishes a 24-year time series of allocations to its
+  sub-municipal tier, plus a companion annual dataset
+  /dataset/raspodjela-sredstava-ms-2023. Filed at city scale because the repo
+  scale for this harvest is city-or-region; the signal it carries is
+  sub-city.
+
+  CAVEAT: this is ALLOCATION, not a full sub-municipal budget. It does not
+  carry revenue at the mjesna samouprava tier, and it is not classified by
+  function. Treat it as "what the city devolved and where", not as a banjar-
+  or barri-equivalent account.

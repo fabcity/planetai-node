@@ -1,0 +1,27 @@
+name: OpenStreetMap (Overpass API)
+url: https://www.openstreetmap.org/
+description: |
+  The collaborative world map: buildings, roads, land use, shops, workshops,
+  amenities, with a free query API (Overpass). The densest open record of
+  what a neighbourhood physically contains, edited by the people who live in it.
+pillar: economic
+scale: community
+status: live
+license: ODbL-1.0
+api: https://overpass-api.de/api/interpreter
+pilot_relevance: [global]
+tags: [urban-form, buildings, amenities, land-use, premises, crowdsourced, odbl]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  ODbL: derived databases must be shared under ODbL; produced works need
+  attribution "(c) OpenStreetMap contributors". Public Overpass instances are
+  rate-limited and shared; a lab running many nodes should host its own.
+  Classified economic/community because the signal the network uses is
+  premises - workshops, shops, industrial land use, repair and making places
+  - around a node. It also carries social (schools, clinics, worship) and
+  environmental (green space, water) features; one entry, cited once.
+  PLANETAI: `packs/place` describes PLACE_RADIUS_M around the node and
+  refreshes every PLACE_REFRESH_DAYS; `app/bootstrap.py::place_name()` uses
+  Nominatim for the node's place name.

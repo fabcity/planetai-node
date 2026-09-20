@@ -1,0 +1,51 @@
+name: Main Estimates - Treasury Board of Canada Secretariat
+url: https://search.open.canada.ca/opendata/
+description: |
+  Canada's annual appropriation estimates by department and vote,
+  published as CSV per fiscal year running 1 April to 31 March. Each
+  year is a separate CKAN package, discoverable through the open API.
+pillar: economic
+scale: region
+status: live
+license: Open Government Licence - Canada
+api: https://open.canada.ca/data/api/3/action/package_search?q=%22Main%20Estimates%22
+pilot_relevance: []
+tags: [national-budget, estimates, appropriations, canada, csv, fiscal-year]
+added: 2026-09-11
+updated: '2026-09-19'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13). Canada
+  national rung, done once for the country.
+
+  THE URL FIELD IS THE CATALOGUE, NOT A SINGLE DATASET, AND THAT IS
+  DELIBERATE. The Main Estimates are published as ONE PACKAGE PER YEAR,
+  not one continuous series - a package_search on the phrase returns 237
+  hits, each year with its own uuid. Worse, PUBLISHER AND FORMAT DRIFT
+  BETWEEN YEARS: 2017-18 through 2019-20 are TBS and CSV, while 2020-21
+  is published by NATIONAL DEFENCE and is HTML-ONLY. A connector must
+  resolve each year's package independently through the API and cannot
+  assume a stable publisher, format or URL. Pinning one dataset URL here
+  would have encoded exactly the wrong mental model.
+
+  FISCAL YEAR CONFIRMED, not assumed: package temporal coverage shows
+  Main Estimates 2019-20 spanning 2019-04-01 to 2020-03-31, and the same
+  pattern for 2018-19 and 2017-18. Canada runs 1 April - 31 March.
+  Labels are hyphenated pairs; NEVER key on the leading year alone.
+
+  Classification: departmental/vote structure, and from 2018 also Core
+  Responsibilities (see
+  economic/region/canada-public-accounts-core-responsibilities). NO
+  OFFICIAL COFOG CROSSWALK. Canada does report COFOG-classified general
+  government expenditure through StatCan's Canadian Government Finance
+  Statistics, which is COFOG-compliant and covers federal, provincial
+  AND local government - that was NOT tested this pass and is the
+  obvious next target, because it would give FCI a COFOG crosswalk for
+  all three Canadian budget rungs at once.
+
+  Licence verbatim as returned by the API: license_title "Open
+  Government Licence - Canada", license_id "ca-ogl-lgo". Note the API
+  string uses a hyphen, not the en-dash of the official "Open Government
+  Licence - Canada 2.0"; match on the API string.

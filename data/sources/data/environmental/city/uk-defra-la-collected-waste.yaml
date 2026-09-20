@@ -1,0 +1,45 @@
+name: Local authority collected waste management - annual results (England)
+url: https://www.gov.uk/government/statistics/local-authority-collected-waste-management-annual-results
+description: |
+  Per-authority and regional waste tonnage, recycling rates and
+  household waste per person for England, 2024/25 with a back-series to
+  2012-13, published as ODS spreadsheets from WasteDataFlow returns.
+pillar: environmental
+scale: city
+status: live
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [waste, recycling, wastedataflow, ods, annual, defra, england]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+
+  Like the DESNZ GHG release, ONE FILE SERVES CITY AND REGION:
+  LA_and_Regional_Spreadsheet_2024-25.ods (2.04 MB) carries the regional
+  aggregation explicitly alongside per-authority rows. Companion
+  WFH_England_Data_202425.ods (49 KB) covers household waste. Includes
+  "Collected household waste per person (kg)".
+
+  FORMAT IS ODS, NOT CSV. OpenDocument Spreadsheet. Many CSV-first
+  pipelines and some pandas configurations will not read it without
+  odfpy. Budget for a conversion step across the whole DEFRA series.
+  Multi-sheet workbooks with header banners above the data rectangle -
+  THE FIRST ROW IS NOT THE HEADER ROW.
+
+  WASTE-AUTHORITY STRUCTURE VARIES ACROSS ENGLAND and this will bite a
+  generic connector. Two-tier areas split waste between a collection
+  authority and a disposal authority, so tonnage arrives in two rows
+  under two bodies. PLYMOUTH IS A UNITARY - it is both, so its row is
+  complete. Do not generalise Plymouth's completeness to other English
+  cities without checking their tier.
+
+  Financial-year labelled (2024/25 = April-March), consistent with the
+  budget rung. Underlying collection system is WasteDataFlow, which has
+  its own data.gov.uk record that was not fetched.
+
+  Licence verbatim: "All content is available under the Open Government
+  Licence v3.0, except where otherwise stated".

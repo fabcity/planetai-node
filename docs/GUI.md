@@ -70,6 +70,29 @@ same key in `.env`, and the page says so next to it; `planetai telegram` writes 
 Settings live in a `settings` table that overlays `.env`; the code reads them at the moment of use. Ports, the database
 and the extra containers stay in `.env` because they are read once at start.
 
+**Model.** Which model answers the household, and the one setting on this page that decides whether anything leaves
+your network at all. Three values, offered in this order:
+
+- **private** — nothing leaves your network. The node answers from the model on this machine, or from one you run
+  yourself elsewhere on your tailnet. **This is what a node does until somebody here chooses otherwise**, including a
+  node where an online key has been set: setting a key does not by itself start using it.
+- **fallback** — your own remote model first, then the online one, then the small local model as the floor that still
+  works with no internet. Online sits above local on purpose — a rung is skipped only when it *fails*, and a 4B model
+  never fails, it answers badly.
+- **strongest** — online first, so every question goes to the online model whenever a key is set. The report bundle
+  that goes with it is 64 kB of this house: its numbers, its room names, its own sentences.
+
+Changing this needs a restart of the agent container; the page says so.
+
+**The model on this machine.** The page shows which tag the node is pointing at, whether it is actually on the disk,
+and the recommendation for this machine's memory with its size. Pulling is a button, never automatic:
+`planetai agent local` installs the loop and downloads nothing. `docs/MODELS.md` is the catalogue, and a node with no
+local model still reads its sensors, writes its reports and sends its alerts — it just does not chat.
+
+**What that model may do.** `read` and `act`, and nothing else: it cannot change a setting on this page, run a pack's
+code, or send the household a report by itself. A person driving an agent over the tailnet has the full set;
+`planetai agent` prints every tool and its class.
+
 ## Access
 
 Reads are open on your network, like the API: a household display cannot need a login. Writes need the token. It is a

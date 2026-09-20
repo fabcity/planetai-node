@@ -1,0 +1,25 @@
+name: LKPP / SPSE — Indonesian National Procurement
+url: https://www.lkpp.go.id/
+description: |
+  Indonesian Lembaga Kebijakan Pengadaan Barang/Jasa Pemerintah
+  (LKPP) operates SPSE, the national e-procurement system. Public
+  tender data for central government and most regional bodies
+  including Bali province.
+pillar: governance
+scale: bioregion
+status: live
+license: public (Indonesian government)
+api: null
+pilot_relevance: [bali]
+tags: [procurement, indonesia, action-latency, public-tender]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Bali pilot's TED equivalent. SPSE portal exposes per-tender
+  pages with timestamps but no consistent bulk API yet — INA-Proc
+  research consortium has scraped + published periodic dumps.
+  Pairs with Bali Satu Data for cross-validation. Indonesian
+  procurement-transparency commitments under Open Government
+  Partnership commitments make this dataset structurally
+  important for the H_0-A baseline despite the API gap.

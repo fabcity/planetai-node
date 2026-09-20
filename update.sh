@@ -42,7 +42,7 @@ GET="${PLANETAI_GET:-$SITE/get}"
 # asking the download to vouch for itself. `tools/allowed_signers` carries the same line, and
 # tests/test_release_consistency.sh fails if the copies drift.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
-release@planetai.fab.city ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET release@planetai.fab.city
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
 SIGNERS
 
 # Who built this tarball — which the checksum does not answer. SHA256 is served from the same origin as
@@ -63,7 +63,7 @@ verify_signature() {
     || { rm -rf "$d"; die "could not fetch ${GET}/planetai-node.tar.gz.sig, so it is not known who built this download. Nothing was installed."; }
   printf '%s\n' "$ALLOWED_SIGNERS" > "$d/allowed_signers"
   # -n planetai-node is the namespace: a valid signature made for anything else does not verify here.
-  ssh-keygen -Y verify -f "$d/allowed_signers" -I release@planetai.fab.city -n planetai-node \
+  ssh-keygen -Y verify -f "$d/allowed_signers" -I fabcity -n planetai-node \
     -s "$d/n.sig" < "$tgz" >/dev/null 2>&1 \
     || { rm -rf "$d"; die "this download is not signed by the PLANETAI release key. Nothing was installed and nothing on this machine changed.
    Try again on a network you trust. If it says this twice, do not run it — tell us instead."; }

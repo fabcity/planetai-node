@@ -1,0 +1,30 @@
+name: Boston - Procurement and discretionary spending
+url: https://data.boston.gov/dataset/city-of-boston-contract-award
+description: |
+  City of Boston procurement transparency set: awarded contracts with equitable
+  procurement reporting, a forward-looking buying plan, and departmental
+  discretionary spending.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: null
+pilot_relevance: [boston]
+tags: [procurement, contracts, transparency, united-states]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Three datasets:
+  /dataset/city-of-boston-contract-award, /dataset/city-of-boston-buying-plan
+  and /dataset/city-of-boston-discretionary-spending.
+
+  THE BUYING PLAN IS FORWARD-LOOKING, which is unusual - most procurement open
+  data is retrospective award records. A published intention to buy is a
+  different and more actionable signal for local-sourcing work than a record of
+  what was already bought.
+
+  Contract Award carries equitable-procurement reporting, so it supports
+  supplier-diversity analysis directly rather than by inference.
+
+  Filed as governance per CONTRIBUTING, alongside Barcelona's perfil-contractant.

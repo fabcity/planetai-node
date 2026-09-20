@@ -1,8 +1,162 @@
 # Changelog
 
+- 2026-09-20 — **`planetai agent local` no longer downloads a model, and the model on your node can no
+  longer change your settings.** Two changes, both in the same direction: the model is a guest on this
+  machine, not a part of it.
+
+  **Nothing is pulled unless you ask.** Setting up the local model used to fetch 2.5 GB — 5.2 GB on a
+  16 GB machine — as part of the same command that installed it. It now prints what it recommends for
+  your machine and its size, and stops: `planetai agent local pull qwen3.5:4b` does the downloading when
+  you want it. The recommended tags move to `qwen3.5:4b` (3.4 GB) and `qwen3.5:9b` (6.6 GB) — both
+  checked against Ollama's registry, both Apache-2.0. **Your node keeps the model it already has**; this
+  changes what a new install recommends, not what an existing one runs. `docs/MODELS.md` is the new
+  catalogue and its first line is that a node needs none of it.
+
+  **The local model gets read and act.** It can read everything about your node and record that you acted
+  on an alert. It can no longer change a setting, run a pack's code, or send you a report because it
+  decided to. An agent *you* are driving — Claude Desktop over your tailnet — still has all twenty tools;
+  the difference is that you are reading what it proposes. `planetai agent` prints every tool and which
+  class it is in.
+
+  **And it must use your words.** Recording that you acted used to accept the word "acted" as your
+  explanation. It now needs what you actually said, and `/act 23` with no words asks you for them rather
+  than inventing them. ρ — the share of alerts somebody answered — is built out of those sentences, and a
+  model filling them in is a model measuring itself.
+- 2026-09-19 — **the node's database image is now published for arm64, so a Raspberry Pi is no longer
+  refused.** `postgis/postgis:16-3.4-alpine` is built for amd64 and nothing else, and that one fact is what
+  the docs used to turn into "a Pi cannot be a node". The `db` service moves to
+  `imresamu/postgis:16-3.4-alpine` — a docker-postgis co-maintainer's build of the same recipe, same Alpine
+  base, same PostGIS 3.4, published for amd64 **and** arm64. **Your node updates straight through this**:
+  same data directory, same Postgres 16, same libc, and it was tested both ways round — a database created
+  by the old image opens on the new one with its tables, its geometry, its indexes and its text ordering
+  intact. Nothing to do.
+
+  **If your node is an Apple Silicon Mac, its database stops being emulated.** It has been running an
+  x86 build under translation since the day it was installed. You may notice it is quicker; you should not
+  notice anything else.
+
+  Not yet true: nobody has run a node on a Pi, a Jetson or a reComputer. CI installs one end to end on
+  arm64 every push, which proves the images resolve and the database comes up, and proves nothing about an
+  SD card or a hot cupboard. `docs/HANDOFF_arm64.md` is the seven-day test for whoever goes first, and the
+  short version is: 8 GB, and an SSD — never an SD card, which Postgres will kill inside a year.
+
+  Also: `planetai preflight` stops failing on arm64 Linux, and the installer no longer installs Docker on
+  a machine that already runs Podman — it prints the two commands that let Podman answer to `docker` and
+  stops, because no node has been run on Podman and it would rather say so than pretend.
+- 2026-09-19 — **five of the node's documents now say which document they are**, and nothing you will
+  see changes. `GET /issues` (what your page draws), `GET /export` (the nightly open-data file that is
+  pinned to IPFS forever), `GET /report/latest`, and the two hourly pushes a child node sends its parent
+  each gain one key: `"schema": "issues-v0"`, `"export-v0"`, `"report-v0"`, `"aggregates-v0"`,
+  `"events-v0"`. Until now only the Index cells carried a version and the rest were implicit.
+
+  **Nothing stops working, in either direction.** A parent that has updated still accepts every push
+  from a child that has not; a child that has updated still pushes to a parent that has not. A node
+  reading a version it does not know processes the fields it recognises and writes one line in its log —
+  it never refuses, because a parent one release behind refusing its children would stop a district's
+  numbers and tell nobody. The same rule holds for your page: if it ever meets a version it does not
+  know it prints one sentence and draws what it recognises, instead of going blank.
+
+  One small fix alongside: `GET /report/latest` used to answer five keys when the node had no report yet
+  and ten when it did, so anything reading it had to know which case it was in. It now answers the same
+  keys either way, null until there is a report.
+
+- 2026-09-19 — **a node that has never chosen a model preference now keeps everything on the network.**
+  `AGENT_PREFER` shipped as `strongest`, which sends every question — and the 64 kB report bundle that
+  goes with it: your numbers, your room names, your own sentences — to Anthropic's or OpenAI's API first
+  and to the model on your own box last. It now ships as `private`, and a node with no value at all
+  reads `private`. **Your node is unaffected if you ever chose one**, on the Model page or in `.env`; an
+  update adds new keys and never rewrites one you hold. If you never chose, your node is now private and
+  your morning brief comes from the local model — say `/model` to the bot to see the ladder, and set
+  `strongest` or `fallback` on the Model page if that is what you want. Separately, the Reticulum bridge
+  container is no longer handed the whole of `.env`: it reads eight variables and now receives eight,
+  not every token and password the node holds.
+
+- 2026-09-19 — the source registry is re-pinned to `c2d33f7`, still 209 entries. Six Seoul datasets
+  that the city's portal now answers with a termination notice go from `live` to `deprecated`, and
+  four sources that moved get their new addresses: the Atlas of Economic Complexity (Harvard moved
+  it from CID to the Kennedy School, and its old API host no longer resolves at all), both Open
+  Canada entries, and IHME GBD. `planetai sources` and `GET /sources` answer from this, so a node
+  stops describing six dead datasets as live.
+
+## v0.62 — 2026-09-19 — nothing you will see, and the reasons it exists anyway
+
+**There is no change to your node's page, numbers or alerts in this release.** The one file in it
+that a screen reads, `planetai-theme.css`, changed by two comment lines: the design repository closed
+an open question about the rho row, so the header counts eleven open items instead of twelve. No
+colour, size or rule moved. If your node looks different after this update, that is worth reporting,
+because nothing here should have done it.
+
+It exists because the site was eight commits behind `main` and a tester downloading in that state
+gets an older node than the one the work is being done against. The eight are gates, tests and
+documentation:
+
+- The frozen design layer can be re-pinned again. The check that holds this repository's copy
+  byte-identical to the design repository's could refuse a stale copy but could not accept a new one —
+  it measured the new file against the pin it was replacing, which is the one comparison that cannot
+  pass. Found within an hour of v0.61 by the first person who tried it.
+- `tools/session.sh preflight` now lists the neighbouring worktrees on the same disk. Two sessions
+  fixed that same one-line bug three minutes apart, each having checked every open pull request and
+  every branch on the server and found nothing: the other's work was local and unpushed. Every
+  question asked was a remote question about work that was not remote yet.
+- `docs/NEXT_RELEASE.md` no longer asks anyone to rescue the September design work from one laptop.
+  It was merged upstream days ago; the file had not been told.
+
+## v0.61 — 2026-09-19 — the node carries the network's list of what can be measured, and four packs more to measure it with
+
+
+*Staged together on purpose.* `docs/NEXT_RELEASE.md` asks that `app/static/*` and `packs/*` reach a
+node in separate releases, so that "was it the page or the data" has one answer when something comes
+back wrong. This release carries both: the satellite fix landed before the four packs did, and it
+cannot be separated out now without reverting it. Tomas called it, knowing that. If a node reports
+something odd after this update, that question has two candidates and not one — the dashboard change
+is confined to the satellite section, which is where to look first.
+
+- 2026-09-19 — the key your node checks an update against is published under the name `fabcity`, not
+  an email address. `planetai version` prints it, and a refused update names it. v0.60's notes below
+  say `release@planetai.fab.city`; that release never reached the site, and the name was settled
+  before any key was issued, so `fabcity` is the only one that has ever signed anything.
+
+- 2026-09-19 — your node now carries the network's registry of 209 data sources. `planetai sources`
+  shows what is registered for your place and which of it your node already reads; a source with no
+  `wired` beside it is one nobody has written an adapter for yet. `planetai doctor` says which
+  snapshot you have. The list comes from `awesome-fabcity-data`, the whole network's, and it works
+  with the node stopped and with the uplink down — it ships inside the node rather than being fetched.
+
+- 2026-09-16 — new pack `season`: the other half of `nearby`. That one asks where the bad air is, across
+  space; this asks whether the year has turned — the ring's last seven days against its own preceding
+  sixty, paired per station so the archive's own growth from 2 stations to 79 cannot read as a change in
+  the air. Thresholds measured over 177 days of the record, replayed in the test suite: one episode a
+  season, not a weekly weather report. A data pack — two SQL rules and a script, no fetch.
+
 - 2026-09-17 — new pack `xiaomi-air`: Xiaomi / Mi Home air purifiers read on the LAN (miio/MIoT) as indoor
   sensors — PM2.5, temp, humidity and filter life — plus a filter-low warning. Ships with MIoT mappings for
   the Elite (zhimi.airp.meb1) and 4 Compact (xiaomi.airp.cpa4), verified live on node #1.
+
+- 2026-09-11 — the earth pack's cache is keyed on the place, not on the node's name.
+
+**Renaming a node no longer re-downloads its square of the planet.** The earth pack's cache lives in
+`out/earth/<NODE_NAME>/`, so when node #1 became `bayu-ungasan` the pack found an empty directory and
+re-read all nine years of AlphaEarth embeddings: about 930 MB pulled for data already on the disk, and
+555 MB under the old name that nothing reads. The name was never the right key — the embeddings describe
+a *place*, and the same square is the same square whatever the machine is called. A directory is now
+matched on what its `meta.json` says it holds: this point, within the tolerance a move already uses, at
+this radius. A directory written under an earlier name is adopted as it stands; when several match, the
+one named for the node wins, so nothing shifts under a live node. A real move still re-reads everything.
+
+Nothing is deleted. `planetai run earth status` lists any directory under `out/earth/` that is not this
+node's square, with its size and the point it was read around, and leaves it alone: nine years is an
+expensive download, and removing half a gigabyte of a household's data is not the node's call.
+
+- 2026-09-18 — the dashboard's satellite record plays again. The AlphaEarth years had no CSS of their
+  own, so every year stacked at full width under the Sentinel strip instead of one at a time — a wall
+  of squares — and the player's button and slider had been dead markup since the Phase 2 rewrite, five
+  releases of controls that did nothing. The Sentinel strip is unchanged, byte for byte: four annual
+  medians side by side are compared without moving the eye, which is what a strip is for.
+
+- 2026-09-16 — new pack `thingdata`: a repair commons read as observations. It pages a
+  thingdata-server's public API — things, guides, stories, relationships — and publishes five metrics
+  as portal observations, two `Economic|City` cells, and one rule that fires when nothing has been
+  written for a quarter. Idle unless `THINGDATA_INSTANCES` names one.
 
 ## v0.60 — 2026-09-18 — an update has to say who built it, and a node that refuses one is doing its job
 
@@ -48,6 +202,246 @@ The key does not exist yet, and could not be made here — a private key an agen
 private key that was in a transcript. Until it is issued, the four copies carry a placeholder,
 `tools/release.sh` refuses to sign against it, and a node carrying it refuses every tarball. That is
 the safe direction to fail in. `docs/HANDOFF_signing.md` is the one screen that ends it.
+
+## v0.59 — 2026-09-18 — the dial belongs to Now, and the hero leads with what moved
+
+*Written from the tag's own message; the tag is the record of what a tester received.*
+
+THE SCALE BAR was drawn under every view's header. On Now it is the control the page is built
+around — the ground, the station groups, the claims and the grain all re-file when it turns. On
+Network, Historical and Set up nothing answered to it: a control that looked live and did nothing.
+
+Arrange keeps it, and that is not an exception but the same rule: Arrange draws Now's own sections
+through the same list, so it is Now in another mode. Taking the dial off it left seven of those
+sections pointing at a control that was not on the page — found by walking every view and listing
+every link whose target was missing, which is also how the four dead ones below were found.
+
+Four links that named something not on the page go with it, three of them made by this year's own
+view splits: the dial's link out on Network still named the satellite, which moved to Historical two
+releases ago; hardware named the stations, which stayed on Now; trust named hardware, which stayed
+on Network. Six such links shipped in v0.58; two remain, and both are older.
+
+THE HERO ranked on state alone — act, notable, quiet, context, none — with the household's declared
+order as the only tie-break, so two issues saying equally much were separated by alphabet. It now
+leads with the one that has moved most.
+
+State still wins outright, and that is the load-bearing half: something that needs doing cannot be
+pushed down the page by something that merely moved a lot. Change is the tie-break inside a state,
+and an exact tie still goes to the order this place chose under Set up.
+
+The size was already being computed and thrown away — the room's last three hours against the three
+before, the same six buckets the trend word has always used. It is kept as a proportion of each
+issue's own recent level, because micrograms and degrees are not comparable quantities and ranking
+them by absolute magnitude would be arithmetic on a category error; and unsigned, because a reading
+halving is as much news as one doubling.
+
+A test failed on this, correctly: under the new rule the committed capture is not a tie at all — air
+moved seven per cent in three hours and heat did not move — so air leads whichever order is typed.
+That is the asked-for behaviour, measured rather than assumed, and the case now asserts it.
+
+And the page says the rule again, in all three languages, under the grain line. v0.53 printed it;
+the modular page carried neither the words nor a place for them, so for five releases a reader had
+no way to check why one issue was at the top. Changing a ranking without saying it would have been
+worse than leaving it alone.
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6sj9JsuGTUxul4FahlZkcY553E
+R6Y2R38tGoYPP33zkAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQEwLT7uS/P/Q/bIecrgitmwu00De/p6GNKgaqSztBAL6lVE+885D7Rgr0vAD1ChZsI
+ovEHrhFbPie1OKCNy8hAw=
+-----END SSH SIGNATURE-----
+
+## v0.58 — 2026-09-18 — the readings keep up with the node again
+
+*Written from the tag's own message; the tag is the record of what a tester received.*
+
+v0.53 ended its boot with `setInterval(refresh, 20000)`. The Phase 2 rewrite did not carry it, and
+from v0.54 to v0.57 the only repeating timer in the page was the wall stepping its own dial: the
+boot fetched its routes once and never again, while the page went on showing its `live` pill and
+its "as of" stamp over figures that had stopped moving the moment the tab opened. An unattended
+wall screen was not merely stale; it was asserting a freshness it did not have.
+
+The page asks again at the node's own rate — POLL_SECONDS, 300 s on node #1, clamped either side —
+and asks only for what moves on that rate: the issues, the health, and ρ. A keeper's setting, a
+satellite year and the plan are a reload's business, not a poll's.
+
+A re-render is not a re-fetch, which was v0.56's lesson: this fetches, re-binds through the same
+path the boot uses, and only then redraws. Scroll position and open folds survive, because a poll
+arriving while somebody is reading a note must not close it. It holds off while the tab is hidden,
+while an unsaved setting is being typed, and on a replayed fixture, which cannot change.
+
+And a poll that does not come back leaves the figures where they are — they were true when they
+were read — while the pill stops saying `live` and the stamp says how long the node has been
+silent. That is the whole of what was wrong: not that the numbers were old, but that the page
+claimed they were not.
+
+One thing this nearly shipped, and the reason the release took as long as it did: innerHTML queues
+an image load the instant the markup exists, so the first working version re-asked the tile server
+for all twelve tiles on every poll — none of them from cache, though they carry a week's max-age.
+At one poll per five minutes that is some three and a half thousand requests a day from every open
+page, each telling that server which square of the planet this house is looking at. The rule since
+Phase 2 is that a press may only ever reduce what leaves the house; a poll multiplying it by three
+hundred breaks the same rule from the other side. A poll now keeps the ground it already has: the
+drawing is a function of the cell, the resolution, the base and the register, and a poll touches
+none of them. Twelve tiles on first load, none on every poll after.
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6sj9JsuGTUxul4FahlZkcY553E
+R6Y2R38tGoYPP33zkAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQHCVMAmaRJbu4KJJI++tXphIuHh5BWRtRTO3tBzkh8wkLO92iAmale+PamimL9W+A1
+2y1qU0popCNDNrQ5FsiQ8=
+-----END SSH SIGNATURE-----
+
+## v0.57 — 2026-09-16 — the node is drawn at work again, and the notes say what they are for
+
+*Written from the tag's own message; the tag is the record of what a tester received.*
+
+THE NETWORK FIGURE IS BACK, at the top of the Network view where it belongs: three things this node
+reads flowing in along their wires, three things that leave flowing out along theirs, and the node
+breathing in the middle. This is the second time it has been lost to a rewrite and restored — v0.53
+was the first — and the reason is the same both times. Drawn still, it reads as a diagram of a
+thing. Drawn moving, it reads as a thing at work.
+
+Restored rather than rewritten. Three things had gone with it and all three come back from v0.53 as
+they were: the twenty-two strings of copy in the three languages this node answers in, because a
+figure that is English-only on a node delivering every sentence in Indonesian is the fault the
+September review closed; the /sensors and /cells reads, because GET /issues publishes only stations
+that carry a coordinate and "the models" therefore read zero on a node running five of them; and the
+blanket reduced-motion rule, because the frozen layer zeroes its own motion tokens but the wire and
+the dot carry literal durations and would have kept moving.
+
+The rule that lets any of it move is unchanged: a motion with no datum behind it is deleted. A wire
+with nothing travelling on it is drawn dashed and still — the link exists, the traffic does not. On
+a node with no parent, "hourly means → nowhere yet" sits quiet while the other five carry.
+
+Under prefers-reduced-motion every animation stops and the figure still draws. That is why this is
+CSS and never SMIL: SMIL ignores the setting, which is what retired the original.
+
+THE NOTES BAND said "Notes · why the page says what it says", in the same grey as a pack id, and
+nothing told a reader that those folds explained the page they had just scrolled through. It now has
+a title that names the thing and a sentence saying what it is for, that it follows the order of the
+page, and that nobody needs it in order to read the page.
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6sj9JsuGTUxul4FahlZkcY553E
+R6Y2R38tGoYPP33zkAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQJ32NgCqwBL39HgbWEqz/rjM95t+aVThXqX0ZaloEFXmT68+LzVF49lqim6irVUDai
+urbf4cxPzhZDqX5Fg6kA4=
+-----END SSH SIGNATURE-----
+
+## v0.56 — 2026-09-16 — the dial works, and the page has somewhere to put history
+
+*Written from the tag's own message; the tag is the record of what a tester received.*
+
+v0.55 made a press a re-render instead of a document load. It measured beautifully — no requests,
+five milliseconds — and it did nothing at all: pressing the dial or a cell moved the URL and left
+the page exactly as it was.
+
+`const Q = new URLSearchParams(location.search)` sat at module scope. That was right for as long as
+every press reloaded the document, because the module ran again and the capture WAS the new URL.
+Once presses stopped reloading, it froze at whatever the page was first opened with, and where()
+answered with the opening cell and the opening resolution for the rest of the session. ctx.Q is
+rebuilt on every render, which is why the variable selector, the base layer and "show all" kept
+working and only the dial and the cells looked dead.
+
+The verification was the worse fault. v0.55's press was proved by a script that compared the URL and
+counted requests and never once compared what the page said. Two guards now: measure.mjs gained a
+`press` command that opens the page, presses a stop and is red unless the grain line, the dial's own
+on-stop and the grouping of stations into cells all change — it fails against v0.55 as shipped — and
+a rule in the test suite forbids any module-scope read of location.search but the fixture's.
+
+NETWORK IS THE NETWORK AGAIN. Satellite was put at the top of it in v0.54 and is moved out: a
+Sentinel annual median is not a neighbour. Network is who this node hears over radio, who hears it,
+and the hardware doing the hearing.
+
+A HISTORICAL VIEW holds what has a date on it — the satellite record, and trust, because a sensor's
+coverage over seven days is a history of that sensor rather than a fact about now.
+
+THE WALL IS NO LONGER AIR-ONLY. It has always drawn whatever ?var= named; it never had a way to say
+so from the wall. Nine variables on node #1, and nothing in the strip knows the word "air": a water
+or soil pack's metric appears there as soon as a station reads it.
+
+SET UP OFFERS WHAT `planetai config` OFFERS. The packs tab rendered pack switches and returned, so
+PACKS_ENABLED and PACKS_ALLOW_CODE were in the CLI and nowhere in the dashboard. Every group now
+renders every key the node declares — 54 across 8 groups — and two tabs take the node's own word for
+their group, Model to Agent and The tree to Node, because that is the word the CLI prints.
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6sj9JsuGTUxul4FahlZkcY553E
+R6Y2R38tGoYPP33zkAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQIvlueaT+OiHWRidN0vXVmIcC/rydiif9BMW2Lmd1IFGi6fwYtQmK4V77soZlqQt4z
+D3t4wGUWZBGox20k+DuQE=
+-----END SSH SIGNATURE-----
+
+## v0.55 — 2026-09-16 — turning the dial stops reloading the page
+
+*Written from the tag's own message; the tag is the record of what a tester received.*
+
+Four things a keeper found on node #1 the day after v0.54, all four real.
+
+Every control on this page is a query link — the dial, a cell, the variable selector, the base
+layer, "show all" — and a browser answers `<a href="?…">` by throwing the page away: the document,
+the script, the stylesheets, the frozen layer, the ground, then /issues, /health, /settings, /rho,
+/trust, /forecast and /earth, all fetched again. Seconds of waiting on a LAN to be handed the same
+readings and re-file them under different cells. Turning the dial was the slowest thing the page
+did and it changed nothing but the filing.
+
+None of it was needed. route() has always re-rendered from memory and fetched nothing; it is how
+the view buttons already worked. Measured against node #1's own data: a dial press was 10 requests
+and a full reload, and is now 0 requests and 5 ms. Scroll position is kept.
+
+The wall had no way back. The click handler has listened for `.wall .exit` since the redesign was
+ported and nothing ever drew one, so the wall was a room with the door painted on — no nav, usually
+no browser chrome, and no way out but the keyboard.
+
+The Phase 1 wireframes shipped into Set up: grey bars for text and outlined boxes for controls,
+captioned "Drawn, not built", printed under the built version of the same view. Gone, with the three
+outlined boxes in the sections list that were never wired to anything. Each section now says whether
+it is drawing or has nothing here yet.
+
+Satellite and street map looked lost. They are gated on MAP_TILES, off by default, and the strip
+hid them rather than showing them refused. They are drawn now, struck through and not pressable,
+each saying which reason applies — the setting, or the resolution. Still no link and still no tile
+request: a press may only ever reduce what leaves the house.
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6sj9JsuGTUxul4FahlZkcY553E
+R6Y2R38tGoYPP33zkAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQIUk6LJ4XR3mfokoFje5KooBrMhLvDBdIDUiTyFGbbCT833N02qcxH6S67idxUBWhn
+2RY+hInPOsmou93hhtYg4=
+-----END SSH SIGNATURE-----
+
+## v0.54 — 2026-09-16 — the dashboard becomes a loop a pack can join
+
+*Written from the tag's own message; the tag is the record of what a tester received.*
+
+The page was one renderer that knew every card it would ever draw. It is now a shell, a contract
+and twelve sections, ordered by the logic the node actually runs: observe, decide, act, measure.
+A section declares its stage, what it needs and what it says; a pack that a node does not have is
+simply not there, and a section whose data is missing prints one honest line instead of a blank.
+Adding a feature is adding a file. Proposing it back is sending the file.
+
+What the node now publishes, and the page draws rather than computes: each station's own
+15-minute mean beside the fenced median, so the street's number and the thing that number hides
+are both on the page; the H3 geometry, 209 published cells across eleven resolutions, with the six
+declared footprints and their coverings; the asks ledger; and the mesh. GET /issues gained no
+endpoint and no dependency the image did not already declare.
+
+Live map tiles are off until a keeper turns them on in Set up, and a press may only ever reduce
+what leaves the house: the node's own plan is always available, live tiles never past resolution 8.
+A node that has not been sited says its distances are unknown instead of measuring them from a
+point in the Gulf of Guinea.
+
+The station list draws this node's own hardware and the nearest three of everybody else's, with a
+line saying how many it is not drawing and a press that draws them all. STATIONS_SHOWN sets the
+number; 0 lists every one.
+
+Proved on a live node before release, which is where the last defect was found: the grain section
+carried node #1's own flat run as a literal and crashed on every other node. It reads the table now.
+
+Still true and not fixed here: the mono webfont 404s on a live node, because the frozen theme names
+fonts/jetbrains-mono-latin.woff2 and the node serves it flat. That predates this release.
+-----BEGIN SSH SIGNATURE-----
+U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6sj9JsuGTUxul4FahlZkcY553E
+R6Y2R38tGoYPP33zkAAAADZ2l0AAAAAAAAAAZzaGE1MTIAAABTAAAAC3NzaC1lZDI1NTE5
+AAAAQFzenN5iyhmP7aLQvP/jXEJUgpX/lgntbxUrvb9po7FamYznGNH/HusJB4f9yE6Wr5
+Ahb9gQ1URKgqZGhGG0YQ8=
+-----END SSH SIGNATURE-----
 
 ## v0.53 — 2026-09-14 — the page stops telling a household things the node never said
 

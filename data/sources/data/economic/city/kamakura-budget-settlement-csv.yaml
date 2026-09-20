@@ -1,0 +1,62 @@
+name: Kamakura City Budget and Settlement Open Data (鎌倉市 予算・決算オープンデータ)
+url: https://www.city.kamakura.kanagawa.jp/zaisei/yosan.html
+description: Kamakura City publishes initial budget and final settlement, each split into
+  revenue and expenditure, as annual CSV files covering FY2004-FY2024 under CC BY 4.0. Classified
+  by the Japanese statutory 目的別 (purpose) and 性質別 (nature) schemes.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags:
+- budget
+- settlement
+- expenditure
+- revenue
+- csv
+- japan
+- kamakura
+- timeseries
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). Licence
+
+  verbatim on the portal and repeated on each data page:
+
+  「この作品はクリエイティブ・コモンズ表示4.0国際ライセンスの下に提供されています」.
+
+
+  ENCODING TRAP: the CSVs are Shift_JIS (cp932), not UTF-8 - confirmed by
+
+  opening r6saisyutsu_yosann.csv and getting mojibake headers. Numeric columns
+
+  parse; label columns need encoding=''cp932''.
+
+
+  Granularity is 款・項 (chapter/section), not line item. Unit 千円, JPY nominal.
+
+  Japan FY = April-March; files labelled in 和暦 (r6 = FY2024).
+
+
+  NO 団体コード column in the files - join externally on 142042 (Kamakura''s
+
+  6-digit local government code, verified verbatim at
+
+  city.kamakura.kanagawa.jp/qa/gyousei/gyousei0014.html).
+
+
+  NO COFOG crosswalk is published by the city, the prefecture or the nation.
+
+  目的別 maps to COFOG only approximately and the bridge must be built by hand.
+
+  This applies to every Japanese municipality, not just Kamakura.
+
+
+  Example file: https://www.city.kamakura.kanagawa.jp/zaisei/documents/r6saisyutsu_yosann.csv
+
+  Companion 財政状況資料集 (FY2012-FY2024 xlsx) carries NO licence notice and is
+
+  therefore NOT listed here.'

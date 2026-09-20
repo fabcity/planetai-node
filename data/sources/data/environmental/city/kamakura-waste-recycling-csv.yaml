@@ -1,0 +1,44 @@
+name: Kamakura Waste and Recycling Open Data (鎌倉市 ごみ・資源オープンデータ)
+url: https://www.city.kamakura.kanagawa.jp/gomi/shigen.html
+description: 'Four CSV series on Kamakura''s municipal waste system: incineration tonnage
+  and waste generation split household/commercial, recycling rate, and resource collection
+  volume. The recycling rate series runs FY2010-FY2024, rising 46.5% to 59.8%.'
+pillar: environmental
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags:
+- waste
+- recycling
+- circular-economy
+- tonnage
+- csv
+- japan
+- kamakura
+- timeseries
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). 03-recycle_fixed.csv
+
+  was opened directly and read: two columns (年度, リサイクル率%), H22-R6.
+
+
+  Files under /gomi/documents/: 01-shoukyakuryou_fixed.csv (incineration),
+
+  02-gomihasseiryou_fixed.csv (generation), 03-recycle_fixed.csv (recycling rate),
+
+  05-shigen-shushuryou_fixed.csv (resource collection). 1-2 KB each.
+
+
+  Shift_JIS (cp932) encoded like the budget CSVs.
+
+
+  Licence verbatim: 「この作品はクリエイティブ・コモンズ表示4.0国際ライセンスの下に
+
+  提供されています」. Kamakura''s open data guideline goes straight to Creative
+
+  Commons and makes no reference to 政府標準利用規約.'

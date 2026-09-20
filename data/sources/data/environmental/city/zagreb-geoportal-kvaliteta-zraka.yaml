@@ -1,0 +1,36 @@
+name: Geoportal Kvaliteta zraka Grada Zagreba
+url: https://data.gov.hr/ckan/dataset/geoportal-kvaliteta-zraka
+description: |
+  Inventory of Zagreb's urban air-quality monitoring stations - location,
+  substances measured, operating institution and competent authority - served
+  as CSV, GeoJSON, KML and SHP from the city's ArcGIS Hub.
+pillar: environmental
+scale: city
+status: live
+license: Otvorena dozvola (OD)
+api: https://opendata.arcgis.com/api/v3/datasets/ed9898e63ec94770a8fb37713c36f8ca_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1
+pilot_relevance: []
+tags: [air-quality, zagreb, croatia, arcgis-hub, monitoring-stations, geojson]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Last modified
+  2026-04-15. Update frequency: not scheduled.
+
+  READ THE SCOPE CAREFULLY. This is the STATION INVENTORY, not the
+  measurements. It answers "where does Zagreb measure air, and what does each
+  station measure" - which is the station-density half of the Environmental|
+  City air-quality indicator - and nothing about concentrations.
+
+  For actual Zagreb concentration values the closest open-licensed find in
+  this pass was data.gov.hr/ckan/dataset/cd4810c8-0888-4b78-b324-05185a4eb349
+  "Podaci o kvaliteti zraka u Gradu Zagrebu - Ksaver 2023", CC-BY, eight
+  monthly XLSX files - one station, one year. Croatia's national network is
+  published by the environment agency as INSPIRE WMS/WFS at
+  servisi.azo.hr/inspire/geos1/ with no licence stated on the catalogue
+  record, so it is not listed here.
+
+  Despite the data.gov.hr URL this is a Grad Zagreb dataset; the city
+  registers it nationally but hosts the files on ArcGIS Hub.

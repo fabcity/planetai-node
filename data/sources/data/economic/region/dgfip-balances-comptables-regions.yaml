@@ -1,0 +1,35 @@
+name: DGFiP — Balances comptables des régions depuis 2010
+url: https://www.data.gouv.fr/datasets/balances-comptables-des-regions-depuis-2010
+description: |
+  Accounting balances of every French region's principal and annexe budgets, 2010 onward,
+  published by DGFiP. Fills the region rung of the public-budget ladder for all French
+  Fab City members from one national file.
+pillar: economic
+scale: region
+status: live
+license: Licence Ouverte / Open Licence version 2.0
+api: https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-comptables-des-regions-/exports/json
+pilot_relevance: []
+tags: [public-finance, budget, dgfip, france, region]
+added: 2026-09-09
+updated: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09: dataset page and API metadata opened, HTTP 200. Last update 2026-07-13.
+  Covers budgets principaux AND budgets annexes — material in France, where regions push
+  transport, training and economic-development spend into annexes, so a principal-only read
+  understates regional spend.
+  Balances for 2020-2025 are offered as direct exports; all years back to 2010 are in the
+  "Balance_REG" attachments. 45 resources in total, including one ODS file-structure document
+  per year — the structure changes across years (2010-2015 ETALAB layout, 2016 OpenData layout,
+  2017/2018/2019 further variants), so a multi-year series must be stitched against those
+  documents, not concatenated.
+  Classification: French national chart of accounts (M71 for regions to 2020, M57 thereafter).
+  NOT COFOG, no crosswalk published. Currency EUR, nominal. Fiscal year = calendar exercice.
+  Granularity: balance line per accounting nature per collectivité — finer than chapter,
+  coarser than the region's own line-item budget files.
+  Portal rates its own metadata "unknown" for update frequency; cadence must be inferred from
+  resource dates rather than read off the page.
+  THE SAME PATTERN AS THE COMMUNE FILES (see dgfip-balances-comptables-communes): national in
+  scope, sub-national in granularity, so it fills a lower rung for every French member at once.

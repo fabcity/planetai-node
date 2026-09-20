@@ -27,7 +27,10 @@ Every gate is a bug that shipped.
 | `check_rules.py` | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned |
 | `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved |
 | `check_ui.py` | an element id the script referenced that was not in the markup |
-| `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved |
+| `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt` on every lint — including CI and a node, where planetai-design is not checked out and the byte comparison cannot run |
+| `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
+| `tools/session.sh preflight` / `land` | not a lint gate — the two ends of a session. Four PRs unmerged for two weeks; the redesign on one laptop; two branches moving the suite count and git keeping one; CI red on main for a day. `skills/preflight/` and `skills/land/` |
+| `tools/sweep.py` | the same, once a day, into one pinned issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60 |
 | import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
 | `check_requirements.sh` | `uvicorn==0.30.*` pinned against `mcp`, which needs 0.31; the image failed to build on the node |
 

@@ -1,0 +1,47 @@
+name: Public Expenditure Statistical Analyses (PESA) - HM Treasury
+url: https://www.gov.uk/government/statistics/public-expenditure-statistical-analyses-2026
+description: |
+  HM Treasury's annual analysis of UK public spending by function,
+  department and economic category, published as chapter and annex Excel
+  tables plus a 246-page report. The UK national budget rung.
+pillar: economic
+scale: region
+status: live
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [budget, national, treasury, public-expenditure, excel, april-march]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth). UK
+  national rung, done once for the country.
+
+  Verified on the page: PDF (3.51 MB, 246 pages), an accessible HTML
+  version, and Excel spreadsheets - chapter tables 1-10 as individual
+  files, Annex C, D and E tables, and Annex G (NHS and R&D). Bulk Excel
+  and PDF; no API. GBP, April-March fiscal year.
+
+  COFOG IS ASSERTED, NOT VERIFIED, AND THAT MATTERS. PESA is published
+  on COFOG in its functional chapters, and that is the basis on which UK
+  spend is internationally comparable - but it could not be confirmed
+  from the landing page, which carries only file listings. The
+  confirmation lives inside the Excel annexes or the PDF, neither of
+  which was opened. Same for nominal-versus-real: PESA conventionally
+  publishes both cash and GDP-deflated series, and the landing page does
+  not say so. DO NOT RECORD COFOG AS VERIFIED FOR THE UK until an annex
+  is opened.
+
+  THE COMPANION THAT WAS NOT FETCHED, and it is the highest-value
+  untested item on the UK national rung: the Country and Regional
+  Analysis (CRA). It is the one source that would put a SOUTH WEST
+  spending number on the board broken down by function, and it is where
+  the COFOG question gets settled. It was found in search, with
+  third-party mirrors (an OpenSpending package, os-data/gb-country-
+  regional-analysis on GitHub), but the gov.uk landing page was not
+  opened so nothing about it is recorded here.
+
+  Licence verbatim: "All content is available under the Open Government
+  Licence v3.0, except where otherwise stated".

@@ -1,0 +1,26 @@
+name: Smart Citizen
+url: https://smartcitizen.me/
+description: |
+  Open-hardware community sensor network from Fab Lab Barcelona / IAAC.
+  ~25k kits deployed globally measuring PM2.5, sound, temperature, humidity,
+  light, CO2. FOSS hardware + firmware, public REST API.
+pillar: environmental
+scale: community
+status: live
+license: CC-BY-SA-4.0 (data) + GPL-3.0 (firmware/hardware)
+api: https://api.smartcitizen.me/v0
+pilot_relevance: [barcelona, global]
+tags: [air-quality, citizen-science, open-hardware, fab-lab-bcn, iaac]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Originated at Fab Lab Barcelona / IAAC. Public devices endpoint:
+  /devices/world_map (returns ~50-100k device records).
+  Per-device readings: /devices/{id}/readings.
+  Used as the canonical Community-tier environmental signal in the
+  PLANETAI observatory. Note: BCN archive is ~98% dormant
+  (25 of 1,408 kits actively reporting as of April 2026).
+  Fab labs can deploy kits and contribute to the network with no
+  enrollment friction. Kit ID #19236 is the live anchor used in
+  the observatory's Local view.

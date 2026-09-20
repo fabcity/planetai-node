@@ -1,0 +1,57 @@
+name: Local Government Finance Survey, Japan (地方財政状況調査)
+url: https://www.e-stat.go.jp/stat-search/files?toukei=00200251&tstat=000001077755
+description: Japan's standardised annual fiscal survey of every local authority, FY1990-FY2025,
+  with 4,973 tables in the municipal section alone, keyed on 団体コード so municipalities are directly
+  comparable. The federatable cross-municipal fiscal series for Japan.
+pillar: economic
+scale: city
+status: live
+license: 政府標準利用規約（第2.0版）- explicitly CC BY 4.0 compatible
+api: https://api.e-stat.go.jp/rest/3.0/app/
+pilot_relevance: []
+tags:
+- budget
+- settlement
+- cross-municipal
+- federatable
+- national-series
+- csv
+- japan
+- e-stat
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). 政府統計コード
+
+  00200251; last updated 2026-03-31; formats CSV / Excel / PDF / DB.
+
+
+  THE JOIN KEY is 団体コード, which is what makes this federatable - contrast the
+
+  Kamakura city CSVs, which carry no code column. Kamakura = 142042.
+
+
+  API ACCESS TIER: e-Stat REST API v3.0 requires a free appId on EVERY call
+
+  (「アプリケーションIDを必ず指定する必要があります」). Not registered during this
+
+  harvest - recorded as an access-tier fact. Methods getStatsList / getMetaInfo /
+
+  getStatsData / getStatsDatas / getDataCatalog; output XML/JSON/JSONP/CSV.
+
+  Only DB-type tables carrying a statdisp_id are API-reachable (e.g. 0003172920
+
+  for 調査表00 団体の概況); FILE-type tables are bulk-download only.
+
+
+  Licence verbatim (e-stat.go.jp/terms-of-use): 「本利用ルールは、政府標準利用規約
+
+  （第2.0版）に準拠しています。」 「本利用ルールは、クリエイティブ・コモンズ・
+
+  ライセンスの表示 4.0 国際...と互換性があり」. Compatibility CONFIRMED on the
+
+  page, not assumed.
+
+
+  No COFOG crosswalk published.'

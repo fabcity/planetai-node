@@ -1,0 +1,54 @@
+name: Plymouth City Council spend over 500 pounds (2015 archive)
+url: https://www.data.gov.uk/dataset/9e9b0128-9095-4bde-b24b-d04e60789016/plymouth-spend-over-f500-2015
+description: |
+  Transaction-level council payments above 500 pounds for four months of
+  2015, as CSV. Statutory transparency data, but the open-data
+  publication stopped in 2015 while the council kept publishing
+  elsewhere.
+pillar: governance
+scale: city
+status: deprecated
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [spend-transparency, transactions, csv, stale, plymouth, england]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+  ADDED AS DEPRECATED, DELIBERATELY, AS A WARNING MARKER.
+
+  THE STALE-OPEN-DATA TRAP IN ONE ENTRY. A connector searching
+  data.gov.uk for Plymouth spend finds this, sees CSV plus OGL, wires it
+  up, and silently ingests four months of 2015 believing it has the
+  statutory series. Recording it as deprecated is more useful than
+  omitting it, because omission leaves the trap armed for the next person.
+
+  Four CSV resources on the Plymouth CKAN instance: spend500march2015,
+  spend500sept2015, spend500nov2015, spend500dec2015. Corroborated: a
+  ?q=spend query on plymouth.thedata.place returns only three matches -
+  this, an NHS trust spend-over-25k ZIP, and an Energy dataset. There is
+  no current council spend series on the portal.
+
+  WHERE THE LIVE DATA IS, AND WHY IT IS NOT LISTED HERE. Plymouth IS
+  meeting its statutory duty under the Local Government Transparency
+  Code: monthly payment records 2019-2026 as PDF and XLSX, plus quarterly
+  Government Procurement Card files 2017-2026, hung off
+  plymouth.gov.uk/publication-scheme with no catalogue entry, no API and
+  no stable resource identifiers. THOSE FILES CARRY NO LICENCE. The
+  council's only licence statement sits on a different page,
+  plymouth.gov.uk/open-data, scoped verbatim to "All of the data listed
+  on this page is licensed under the Open Government Licence and Ordnance
+  Survey Open Government Licence requirements" - and the spend files are
+  not listed on that page. So the current series fails CONTRIBUTING
+  criterion 1 and gets no entry.
+
+  The better route for English local authority spend is national:
+  governance/region/uk-find-a-tender-ocds carries a payments transparency
+  register under the Procurement Act 2023. Test that before building any
+  per-city scraper.
+
+  No GSS code column and no published classification - free-text
+  expense-type strings loosely following CIPFA SeRCOP. Treat as untyped.

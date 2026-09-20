@@ -1,0 +1,41 @@
+name: Portal otvorenih podataka Grada Zagreba
+url: https://data.zagreb.hr/dataset
+description: |
+  City of Zagreb open data portal, CKAN-based. 199 datasets covering city
+  budget, local self-government funding, transport, utilities, kindergartens,
+  air quality geodata and council composition.
+pillar: governance
+scale: city
+status: live
+license: Otvorena dozvola (OD)
+api: null
+pilot_relevance: []
+tags: [open-data, zagreb, croatia, ckan, municipal]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10, Croatia +
+  Netherlands). Dataset count 199 read from the rendered catalogue at
+  /dataset on 2026-09-11.
+
+  THE API FIELD IS NULL BY ROBOTS, NOT BY ABSENCE. The portal is CKAN and the
+  footer advertises "Takoder mozete pristupiti registru koristeci API (vidi
+  API Docs)". But data.zagreb.hr/robots.txt disallows /api/, so
+  /api/3/action/* is not available to a well-behaved client. Catalogue
+  enumeration here came from rendered HTML. Same treatment as Analyze Boston.
+
+  LICENCE is portal-wide "Otvorena dozvola (OD)", the Croatian national open
+  licence at http://data.gov.hr/otvorena-dozvola, shown on every dataset page
+  checked. It is not an SPDX identifier; it is an attribution licence.
+
+  This entry is the CATALOGUE ITSELF - a Governance|City indicator in its own
+  right (dataset count plus licence regime). Specific Zagreb datasets are
+  separate entries: economic/city/zagreb-proracun and
+  economic/city/zagreb-sredstva-mjesne-samouprave.
+
+  Zagreb is simultaneously a city and a county (zupanija) under Croatian law,
+  so this portal is the city AND the regional rung for the Zagreb territory.
+  Grad Zagreb does not appear as an organisation on the national portal
+  data.gov.hr - it publishes here instead.

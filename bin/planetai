@@ -77,7 +77,7 @@ version() { git describe --tags --always 2>/dev/null || cat VERSION 2>/dev/null 
 # and `update.sh`; tests/test_release_consistency.sh fails if the four drift. A node should be able to
 # say what it trusts without anybody having to read a file on it — that is what `planetai version` is for.
 read -r -d '' ALLOWED_SIGNERS <<'SIGNERS' || true
-release@planetai.fab.city ssh-ed25519 PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET release@planetai.fab.city
+fabcity ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbgbaRosyOEVk7c4iBHc5iXn9H7F1s9QGwhXBGt+qay fabcity
 SIGNERS
 # Never fails: `planetai version` is what somebody runs when nothing else works.
 signer_fingerprint() {
@@ -556,13 +556,18 @@ print(("  reference %d: " % len(ref)) + ", ".join(s["sensor_id"] for s in ref[:4
 cmd_doctor() {
   local quiet="${1:-}" ok=1 p; p="$(port)"; local JSON=0; [[ "$quiet" == "--json" ]] && { JSON=1; quiet=""; }
   local rows=""
+  # $4 = "warn": the row goes amber and does NOT fail the run. For a thing worth saying that is not
+  # worth a red doctor — a registry pin that is getting old is a sync to schedule, not a broken node.
   chk() {
     local pass=1; eval "$2" >/dev/null 2>&1 || pass=0
+    local soft=0; [[ "${4:-}" == "warn" ]] && soft=1
     if [[ $JSON -eq 1 ]]; then
       local fix="null"; [[ $pass -eq 1 ]] || fix="\"$(sed 's/"/\\"/g' <<< "$3")\""
-      rows+="$(printf '{"check":"%s","ok":%s,"fix":%s}' "$1" "$([[ $pass -eq 1 ]] && echo true || echo false)" "$fix"),"
-    elif [[ $pass -eq 1 ]]; then printf '  %s✓%s %s\n' "$G" "$N" "$1"; else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; fi
-    [[ $pass -eq 1 ]] || ok=0
+      rows+="$(printf '{"check":"%s","ok":%s,"warn":%s,"fix":%s}' "$1" "$([[ $pass -eq 1 ]] && echo true || echo false)" "$([[ $soft -eq 1 ]] && echo true || echo false)" "$fix"),"
+    elif [[ $pass -eq 1 ]]; then printf '  %s✓%s %s\n' "$G" "$N" "$1"
+    elif [[ $soft -eq 1 ]]; then printf '  %s!%s %s\n' "$Y" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"
+    else printf '  %s✗%s %s\n' "$R" "$N" "$1"; printf '      %s→ %s%s\n' "$D" "$3" "$N"; fi
+    [[ $pass -eq 1 || $soft -eq 1 ]] || ok=0
   }
   [[ -z "$quiet" && $JSON -eq 0 ]] && step "Doctor"
   chk "docker is running"        "docker info"                                          "start OrbStack / Docker Desktop, or on Linux: sudo systemctl start docker"
@@ -581,6 +586,19 @@ cmd_doctor() {
   # permanently red one about something that node does not do.
   [[ -d .git ]] || chk "release signature verified on last update" "grep -q '^signed ' .planetai-release" \
     "the last update did not check who built it — either it ran with PLANETAI_UNSIGNED=1, or it predates signed releases. Run: planetai update"
+  # What registry this node carries, as a fact rather than a check — the facts are in the label. Red
+  # when it is missing (a node that ships no registry cannot answer what its place could measure),
+  # amber when the pin is over 180 days old, which is data/platform_floors.yml's convention.
+  local rv="data/sources/REGISTRY_VERSION" rline="source registry: none" rsev="" rage=0
+  if [[ -f "$rv" ]]; then
+    rage="$(python3 -c 'import datetime, sys
+print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' "$(sed -n 's/^synced=//p' "$rv")" 2>/dev/null || echo 0)"
+    rline="source registry: $(sed -n 's/^entries=//p' "$rv") entries · awesome-fabcity-data @ $(sed -n 's/^short=//p' "$rv") · synced $(sed -n 's/^synced=//p' "$rv")"
+    [[ "$rage" -gt 180 ]] && rsev="warn"
+  fi
+  chk "$rline" "[ -f \"$rv\" ] && [ \"$rage\" -le 180 ]" \
+    "$([[ -f "$rv" ]] && echo "the pin is ${rage} days old: re-pin on a dev machine with tools/sync_registry.sh <sha>, then planetai update" \
+       || echo "this node ships no source registry, so planetai sources and GET /sources cannot answer. planetai update")" "$rsev"
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"
   chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"
@@ -1306,10 +1324,16 @@ cmd_agent() {
   step "Agents"
   local p; p="$(port)"; local tok; tok="$(envget ADMIN_TOKEN)"; local dns; dns="$(envget MESH_NAME)"
   echo "  The node is an MCP server at /mcp. Any agent that speaks MCP (Claude Desktop, Claude Code, Codex, a local model"
-  echo "  with an MCP client) gets twenty tools: status, health_check, issues, sensors, context, readings,"
-  echo "  report_latest, report_now, report_bundle, history,"
-  echo "  alerts, act, settings_get, settings_set, packs, cells, series, export_day, run_pack_script, maintenance."
-  echo "  Writes record the agent's name (X-Agent)."
+  echo "  with an MCP client) gets twenty tools. Each one is read, act or admin — app/tool_classes.py is the authority:"
+  echo
+  echo "    read   status  health_check  sensors  context  readings  report_latest  report_bundle  history"
+  echo "           alerts  settings_get  packs  cells  issues  series  export_day"
+  echo "    act    act                          records that a PERSON acted, in their own words. `note` is required."
+  echo "    admin  settings_set  run_pack_script  maintenance  report_now"
+  echo
+  echo "  A person driving an agent gets all twenty. THE LOCAL MODEL RUNNING UNATTENDED ON THIS MACHINE GETS READ AND"
+  echo "  ACT ONLY — it cannot change a setting, run a pack'"'"'s code, or make the node message the household by itself."
+  echo "  Writes record the agent'"'"'s name (X-Agent)."
   echo
   echo "  Local (this machine):    http://localhost:${p}/mcp"
   [[ -n "$dns" ]] && echo "  From the tailnet:        http://${dns}:${p}/mcp"
@@ -1329,6 +1353,24 @@ JSON
 
 
 # ---------------------------------------------------------------- a model on this machine that runs the node
+cmd_agent_local_pull() {
+  local tag="${1:-}"
+  if [[ -z "$tag" ]]; then
+    local mem; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
+    if [[ $mem -ge 16 ]]; then echo "usage: planetai agent local pull qwen3.5:9b     (${mem} GB here; 6.6 GB on disk)"
+    else echo "usage: planetai agent local pull qwen3.5:4b     (${mem} GB here; 3.4 GB on disk)"; fi
+    echo "       docs/MODELS.md lists the tags, their sizes and what each one is for."
+    return 1
+  fi
+  command -v ollama >/dev/null || fail "no ollama on this machine. Run: planetai agent local"
+  curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434. Run: planetai agent local"
+  spin "pulling $tag (this is the large download; once)" ollama pull "$tag" || fail "ollama pull $tag failed; see $LOG"
+  # The tag the loop asks for and the tag on disk have to be the same one, or pulling changes nothing.
+  envset AGENT_MODEL "$tag"
+  say "$tag is on this machine and AGENT_MODEL now points at it"
+  docker compose ps agent >/dev/null 2>&1 && { spin "restarting the agent so it sees it" docker compose up -d --force-recreate agent || true; }
+}
+
 cmd_agent_local() {
   step "A model on this machine"
   echo "  Ollama here, a small tool-calling model, the node's tools, and your Telegram bot to talk to it. No cloud, no key."
@@ -1352,10 +1394,31 @@ cmd_agent_local() {
     for i in $(seq 1 15); do curl -sf --max-time 3 http://127.0.0.1:11434/api/tags >/dev/null && break; sleep 2; done
   fi
   curl -sf --max-time 5 http://127.0.0.1:11434/api/tags >/dev/null || fail "Ollama is not answering on 11434 after 30 s. Try: brew services start ollama  (or open the Ollama app), then run this again"
+  # NOTHING IS PULLED HERE. Until v0.63 this line fetched 2.5 GB (or 5.2 GB on 16 GB+) as part of
+  # `planetai agent local`, which made "put a model on the node" and "download several gigabytes of
+  # weights" one command. The node is 230 MiB across both containers and under 5% of a core; a model is
+  # a different product and it is the thing that will fail first on the revived 2015 laptop that is the
+  # best hardware story this project has. So: the recommendation is PRINTED, with its size, and a person
+  # decides. `planetai agent local pull <tag>` or the Model page's button does the fetching.
   local mem model; mem="$(sysctl -n hw.memsize 2>/dev/null || awk '/MemTotal/{print $2*1024}' /proc/meminfo)"; mem=$((mem/1073741824))
-  model="$(envget AGENT_MODEL)"; [[ -n "$model" ]] || { model="qwen3:4b"; [[ $mem -ge 16 ]] && model="qwen3:8b"; envset AGENT_MODEL "$model"; }
-  say "machine has ${mem} GB; local model $model"
-  if ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then spin "pulling $model (a few minutes, once)" ollama pull "$model" || fail "ollama pull $model failed; see $LOG"; fi
+  model="$(envget AGENT_MODEL)"
+  say "machine has ${mem} GB"
+  if [[ -z "$model" ]] || ! grep -q "^${model}" <<< "$(ollama list 2>/dev/null)"; then
+    local rec recsize
+    # Sizes measured against registry.ollama.ai on 20 September 2026, not estimated. docs/MODELS.md
+    # carries the table and says at the top that a node needs none of it.
+    if [[ $mem -ge 16 ]]; then rec="qwen3.5:9b"; recsize="6.6 GB"; else rec="qwen3.5:4b"; recsize="3.4 GB"; fi
+    echo
+    warn "no model is on this machine yet, and this command does not fetch one."
+    echo "     For ${mem} GB the recommendation is  ${rec}  (${recsize} on disk, Apache-2.0)"
+    echo "     Pull it when you want it:   planetai agent local pull ${rec}"
+    echo "     Other tags and what they are for:  docs/MODELS.md"
+    echo "     The loop below starts either way. Until a model is pulled it answers from the remote or"
+    echo "     online rung if you have configured one, and says so if you have not."
+    echo
+  else
+    say "local model $model"
+  fi
   [[ "$(uname -s)" == Linux ]] && { envset OLLAMA_URL "http://172.17.0.1:11434"; warn "Linux: the ollama service must listen on 0.0.0.0 (systemctl edit ollama, Environment=OLLAMA_HOST=0.0.0.0) so the container reaches it"; }
   [[ -n "$(setting TELEGRAM_BOT_TOKEN)" && -n "$(setting TELEGRAM_CHAT_IDS)" ]] || warn "no Telegram yet: run planetai telegram, or the model has nobody to talk to"
   profiles_add agent
@@ -1649,6 +1712,68 @@ cmd_restart() { docker compose up -d --force-recreate app && say "restarted"; }
 cmd_sensors() { [[ "${1:-}" == "--json" ]] && { api /sensors; echo; return; }; api /sensors | json '
 for s in d: print("  %-22s %-7s %-9s %-7s  %s" % (s["sensor_id"], s["kind"], "yours" if s["local"] else "reference", "indoor" if s["indoor"] else "outdoor", s["name"]))'; }
 cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api /cells | json 'for c in d: print("  %-26s %8s  %-8s %s" % (c["cell"], c["value"], c["state"], c["unit"]))'; }
+
+# What this place could measure, and what it already does. `planetai cells` says what the node
+# computes; this says what the network has filed for it, from the snapshot at data/sources.
+#
+# It reads the node when the node is answering and the file when it is not, and the two are the same
+# 209 rows either way — the registry is a snapshot committed in the repo, not something the node works
+# out. That matters: "what could this place measure" is exactly the question somebody asks with the
+# containers down, and a command that needed the node up to answer it would be useless then.
+#
+# Default is this node's own pilot plus `global`, because an unfiltered 209 is a list nobody reads.
+# NODE_CITY that is not one of the registry's pilots leaves the global rows, which is the honest
+# answer: nothing has been filed for that place yet. `--all` for the whole list.
+cmd_sources() {
+  local pillar="" scale="" cell="" pilot="" jsonout=0
+  pilot="$(envget NODE_CITY)"
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --all)    pilot="";;
+      --pillar) pillar="${2:-}"; shift;;
+      --scale)  scale="${2:-}"; shift;;
+      --cell)   cell="${2:-}"; shift;;
+      --json)   jsonout=1;;
+      *) echo "usage: planetai sources [--all] [--pillar environmental] [--scale city] [--cell 'Environmental|City'] [--json]"; return 2;;
+    esac
+    shift
+  done
+
+  local raw where; raw="$(api /sources || true)"; where="the node"
+  if [[ -z "$raw" ]]; then
+    where="data/sources (the node is not answering)"
+    raw="$(cat data/sources/index.json 2>/dev/null || true)"
+  fi
+  if [[ -z "$raw" ]]; then
+    warn "no source registry here: data/sources/index.json is missing."
+    warn "on a dev machine: tools/sync_registry.sh <commit sha of awesome-fabcity-data>, then planetai update"
+    return 1
+  fi
+
+  [[ $jsonout -eq 1 ]] || { step "Sources"; echo "  registered in awesome-fabcity-data, read from ${where}:"; }
+  # Filtering happens here rather than in the query string so that the file path and the API path
+  # format one list one way. The API filters the same way; this is the half that has to work offline.
+  printf '%s' "$raw" | FPILLAR="$pillar" FSCALE="$scale" FCELL="$cell" FPILOT="$pilot" FJSON="$jsonout" python3 -c 'import json, os, sys
+d = json.load(sys.stdin)
+rows = d["sources"] if isinstance(d, dict) else d
+def f(k): return os.environ.get(k, "")
+out = []
+for e in rows:
+    if f("FPILLAR") and e.get("pillar") != f("FPILLAR"): continue
+    if f("FSCALE") and e.get("scale") != f("FSCALE"): continue
+    if f("FCELL") and e.get("cell") != f("FCELL"): continue
+    if f("FPILOT"):
+        rel = e.get("pilot_relevance") or []
+        if f("FPILOT") not in rel and "global" not in rel: continue
+    out.append(e)
+if f("FJSON") == "1":
+    print(json.dumps(out, indent=2)); sys.exit(0)
+for e in out:
+    pil = ",".join(e.get("pilot_relevance") or []) or "-"
+    print("  %-44s %-9s %-40s %-20s %s" % (e.get("slug", ""), e.get("status", ""), (e.get("license") or "")[:40], pil[:20], "wired" if e.get("wired_in_planetai") else ""))
+print("")
+print("  %d of %d entries. A cell with sources and no `wired` is one nobody has written an adapter for yet." % (len(out), len(rows)))'
+}
 # One file holding every answer the node gives, so a screen that looks wrong can be looked at somewhere
 # else. It is what a design round renders against (the dashboard reads it back with ?fixture=<name>)
 # and what a tester sends when something on the page is not what they expected.
@@ -1720,7 +1845,7 @@ cmd_version() {
   echo "planetai-node $(version)  ·  a Fab City project  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"
   # Who this node will take code from. SECURITY.md publishes the same fingerprint; if the two disagree,
   # something replaced bin/planetai and this line is the one that says so.
-  echo "  updates signed by  release@planetai.fab.city  $(signer_fingerprint)"
+  echo "  updates signed by  fabcity  $(signer_fingerprint)"
 }
 
 case "${1:-help}" in
@@ -1734,6 +1859,7 @@ case "${1:-help}" in
   meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
+  sources) shift; cmd_sources "$@";;
   ui|dashboard) cmd_ui;;
   storage) shift; cmd_storage "$@";;
   remove|uninstall) shift; cmd_remove "$@";;
@@ -1741,7 +1867,7 @@ case "${1:-help}" in
   ipfs) cmd_ipfs;;
   agent|agents|mcp)
     case "${2:-}" in
-      local) cmd_agent_local;;
+      local) if [[ "${3:-}" == pull ]]; then shift 3; cmd_agent_local_pull "$@"; else cmd_agent_local; fi;;
       stop)  docker compose stop agent >>"$LOG" 2>&1; say "local model stopped";;
       *)     cmd_agent;;
     esac;;

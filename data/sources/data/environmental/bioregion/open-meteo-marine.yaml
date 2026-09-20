@@ -1,0 +1,22 @@
+name: Open-Meteo Marine Weather API
+url: https://open-meteo.com/en/docs/marine-weather-api
+description: |
+  Key-free hourly marine forecasts to 16 days: wave height, period and
+  direction (wind, swell, secondary swell), sea surface temperature, sea
+  level with tides, ocean current. Backed by MFWAM, ECMWF WAM, GFS Wave, EWAM.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0 (Open-Meteo) with mandatory attribution to the model providers (DWD, ECMWF, Meteo-France, NCEP)
+api: https://marine-api.open-meteo.com/v1/marine
+pilot_relevance: [bali, barcelona, boston, santiago, global]
+tags: [marine, waves, sea-surface-temperature, coast, tides, model, forecast]
+added: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Resolution 5-50 km depending on model; a point query is snapped to the
+  nearest ocean cell, so inland nodes get a cell that may be far away.
+  PLANETAI: `packs/coast` reads it and refuses to report when the nearest
+  ocean cell is further than COAST_MAX_KM (default 30). Free for
+  non-commercial use; commercial use needs an Open-Meteo subscription.

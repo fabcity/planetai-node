@@ -75,14 +75,14 @@ has "$(cat update.sh)" 'so the download cannot be verified' "update.sh says why 
 # The signer line lives in four places and must be one line: tools/allowed_signers, and a heredoc in each
 # of the two stubs, which run before there is a tarball to read a file out of. A stub that drifted from
 # the file would refuse every real release, or accept one nobody signed.
-signer_line() { grep '^release@planetai\.fab\.city ' "$1" | head -1; }
+signer_line() { grep '^fabcity ' "$1" | head -1; }
 want_signer="$(signer_line tools/allowed_signers)"
 [[ -n "$want_signer" ]] && ok "tools/allowed_signers publishes one signer line" \
-  || no "tools/allowed_signers has no release@planetai.fab.city line"
+  || no "tools/allowed_signers has no fabcity line"
 for f in install update.sh bin/planetai; do
   is "$f embeds the same signer line, byte for byte" "$(signer_line "$f")" "$want_signer"
 done
-has "$(./bin/planetai version)" "release@planetai.fab.city" "planetai version names the key this node trusts"
+has "$(./bin/planetai version)" "fabcity" "planetai version names the key this node trusts"
 has "$(cat install)"    'ssh-keygen -Y verify' "install checks the signature, not only the checksum"
 has "$(cat update.sh)"  'ssh-keygen -Y verify' "update.sh checks the signature, not only the checksum"
 # The old path has to keep working through this release: a v0.57 node knows nothing about signatures and
@@ -92,7 +92,7 @@ has "$(cat tools/bundle.sh)" 'SHA256' "bundle.sh still publishes SHA256, so node
 # --- and it refuses one it cannot attribute, before it touches the node ---------------------------
 if command -v ssh-keygen >/dev/null; then
   sk="$(mktemp -d)"; mkdir -p "$sk/get"
-  ssh-keygen -q -t ed25519 -f "$sk/key" -N '' -C release@planetai.fab.city
+  ssh-keygen -q -t ed25519 -f "$sk/key" -N '' -C fabcity
   printf 'a tarball\n' > "$sk/get/planetai-node.tar.gz"
   ssh-keygen -Y sign -f "$sk/key" -n planetai-node "$sk/get/planetai-node.tar.gz" >/dev/null 2>&1
   blob="$(ssh-keygen -y -f "$sk/key" | awk '{print $2}')"
@@ -108,10 +108,17 @@ if command -v ssh-keygen >/dev/null; then
       sed -n "/^read -r -d '' ALLOWED_SIGNERS/,/^SIGNERS\$/p;/^verify_signature() {/,/^}\$/p" update.sh
       echo 'verify_signature "$1"'
     } > "$sk/$1.sh"
-    [[ "$1" == ours ]] && { sed "s|PLACEHOLDER-NO-RELEASE-KEY-HAS-BEEN-ISSUED-YET|$blob|" "$sk/ours.sh" > "$sk/o" && mv "$sk/o" "$sk/ours.sh"; }
+    [[ "$1" == ours ]] && { sed -E "s|^(fabcity ssh-ed25519 )[^ ]+|\1$blob|" "$sk/ours.sh" > "$sk/o" && mv "$sk/o" "$sk/ours.sh"; }
     grep -q verify_signature "$sk/$1.sh"
   }
   lift real && lift ours || no "could not lift verify_signature out of update.sh"
+  # If that sed stops matching — the signer line's shape changes, a key rotates oddly — `ours` would
+  # carry the REAL public key and be checked against a throwaway signature, and the success path would
+  # fail for a reason that has nothing to do with update.sh. CI has the same guard on its own copy.
+  cmp -s "$sk/real.sh" "$sk/ours.sh" \
+    && no "the throwaway key was not swapped in: this stopped testing the path that SUCCEEDS" \
+    || ok "the throwaway signer is swapped into the lifted copy"
+
 
   # the caller owns the directory, so it can look at what was left in it afterwards
   run_on() {   # run_on <which> <dir> <contents> ; echoes the exit code
@@ -162,7 +169,7 @@ if [[ -f "$GETDIR/planetai-node.tar.gz.sig" ]]; then
   for f in planetai-node.tar.gz SHA256 planetai-node.tar.gz.sig; do
     [[ -s "$GETDIR/$f" ]] && ok "the site serves $f" || no "$GETDIR/$f is missing or empty"
   done
-  if ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city -n planetai-node \
+  if ssh-keygen -Y verify -f tools/allowed_signers -I fabcity -n planetai-node \
        -s "$GETDIR/planetai-node.tar.gz.sig" < "$GETDIR/planetai-node.tar.gz" >/dev/null 2>&1; then
     ok "and its signature verifies against tools/allowed_signers"
   else

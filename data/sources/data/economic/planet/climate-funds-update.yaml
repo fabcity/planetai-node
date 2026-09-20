@@ -1,0 +1,30 @@
+name: Climate Funds Update
+url: https://climatefundsupdate.org/data-dashboard/
+description: |
+  Independent monitor of multilateral climate finance run by ODI and
+  Heinrich Boell Stiftung. Tracks money pledged, deposited and approved by
+  fund, contributor country and recipient country, downloadable as Excel.
+pillar: economic
+scale: planet
+status: live
+license: Not stated on the source page — freely downloadable, licence UNDECLARED
+api: null
+pilot_relevance: [global]
+tags: [climate-finance, odi, sustainable-finance, download-only, licence-undeclared]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Data current as of February 2026, covering
+  2003-2026, updated roughly twice a year. Excel download covering
+  pledges, deposits and project approvals, filterable by theme and region,
+  with contributor and recipient country breakdowns. THIS IS THE ONLY
+  OPENLY DOWNLOADABLE, COUNTRY-RESOLVED CLIMATE-FINANCE DATASET VERIFIED
+  IN THIS HARVEST. The alternatives all failed the openness test: GSIA
+  publishes a biennial PDF with a data annex of unclear format and no
+  repository; CPI's Global Landscape of Climate Finance is form-gated
+  behind name, organisation, country and email with no stated licence;
+  both OECD climate-finance landing pages 404'd. Covers multilateral funds
+  only, not total sustainable investment - do not present it as the
+  latter. LICENCE ACTION: contact ODI to establish reuse terms before
+  republishing values.

@@ -1,0 +1,51 @@
+name: Find a Tender Service - OCDS API (UK)
+url: https://www.find-tender.service.gov.uk/Developer/Documentation
+description: |
+  UK national procurement notice register under the Procurement Act
+  2023, from 24 February 2025, serving OCDS 1.1.5 JSON release and
+  record packages. Also carries a payments transparency register.
+pillar: governance
+scale: region
+status: live
+license: Open Government Licence v3.0
+api: https://www.find-tender.service.gov.uk/apidocumentation/1.0/ocdsReleasePackages
+pilot_relevance: []
+tags: [procurement, ocds, open-contracting, json, api, uk]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+
+  GET /ocdsReleasePackages and GET /ocdsRecordPackages, base
+  https://www.find-tender.service.gov.uk/apidocumentation/1.0/. JSON,
+  OCDS 1.1.5 with OCP profile extensions. Authentication is not specified
+  for the READ APIs; submission APIs are restricted to licensed eSenders.
+  Covers England, Wales, Northern Ireland and Scotland.
+
+  THE UNTESTED THING HERE IS THE MOST INTERESTING ITEM IN THE UK PASS:
+  the PAYMENTS TRANSPARENCY REGISTER. Under the Procurement Act 2023
+  contracting authorities must publish payment information to this
+  national register. If it carries local authority payments it replaces
+  the whole messy Plymouth spend-over-500 situation - stale 2015 CSVs on
+  one portal, current unlicensed XLSX on another - with one national,
+  structured, openly-licensed feed. TEST THIS FIRST next UK touch. It is
+  the difference between a per-city scraper and one national connector.
+
+  TWO REGISTERS, OVERLAPPING AND TIME-SPLIT. Contracts Finder covers the
+  pre-February-2025 regime and lower-value notices; Find a Tender covers
+  Procurement Act 2023 notices from 24/02/2025. A complete Plymouth
+  history needs BOTH, deduplicated on ocid, with the regime boundary at
+  24 February 2025. Contracts Finder is NOT listed here because its API
+  documentation page states no licence at all - see the tracker Notes.
+
+  FILTERING TO A CITY MEANS ENTITY RESOLUTION, NOT A CODE JOIN. Both
+  registers are national and buyer identity is free text - "Plymouth City
+  Council" vs "PLYMOUTH CITY COUNCIL" vs a subsidiary - with no GSS code.
+
+  Licence verbatim: "Notice data is available under the Open Government
+  Licence". Oddity recorded for completeness: the footer ALSO asserts
+  "Notices are based on TED XML schema. (c) European Union, 1998-2020" -
+  a residual EU copyright claim on the SCHEMA beside the OGL grant on the
+  DATA. Probably harmless; a licence reviewer will ask.

@@ -1,0 +1,37 @@
+name: Georef — Servicio de Normalización de Datos Geográficos (Argentina)
+url: https://datosgobar.github.io/georef-ar-api/
+description: |
+  Argentina's official API for resolving and normalising administrative units
+  — provincias, departamentos, municipios, localidades and addresses — to
+  their national identifier codes. Run by Datos Argentina on IGN base data.
+pillar: governance
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://apis.datos.gob.ar/georef/api
+pilot_relevance: []
+tags: [admin-boundaries, geocoding, identifiers, argentina, federation]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-10. A live query to
+  /georef/api/municipios?nombre=Cordoba&campos=completo returns municipio
+  Córdoba with id "140077", provincia id "14", and a centroide — confirming
+  the province-prefixed code structure. Endpoints: /provincias,
+  /departamentos, /municipios, /localidades, /ubicacion, /direcciones.
+  Version 0.5.3.
+
+  WHY IT MATTERS FOR FCI: this is the admin-code resolver that makes Argentine
+  city data federatable. Without it, a municipal dataset carrying only a place
+  name cannot be joined to anything. The equivalent rung for Chile is the CUT,
+  which Presupuesto Abierto embeds directly in its files.
+
+  LICENCE (from the Condiciones de uso page): Creative Commons Attribution
+  4.0, commercial use permitted, attribution required.
+
+  RATE LIMITS: self-described as alpha; per-IP quotas are stated as not yet
+  defined but coming. Public bodies can request a token for higher limits.
+  Bulk datasets are downloadable and the docs explicitly bless caching:
+  "al ser datos que no son modificados regularmente, es posible retener copias
+  de los mismos para ser reutilizados en el futuro". Cache rather than hammer.

@@ -1,0 +1,40 @@
+name: DGFiP Balances comptables des communes
+url: https://www.data.gouv.fr/datasets/balances-comptables-des-communes-en-2024/
+description: |
+  Full DGFiP accounting balances for every French commune, covering principal and
+  ancillary budgets (budgets principaux et budgets annexes), published yearly by
+  the French finance ministry as CSV, JSON and ZIP.
+pillar: economic
+scale: city
+status: live
+license: Licence Ouverte / Open Licence version 2.0
+api: null
+pilot_relevance: []
+tags: [public-budget, municipal-finance, budget-execution, france, dgfip]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France). Landing page
+  returned HTTP 200; publisher "Ministeres economiques et financiers" with DGFIP
+  as editor; licence "Licence Ouverte / Open Licence version 2.0" verbatim.
+  Formats offered: CSV, JSON, ZIP (95.8 Mo) and two ODF spreadsheets.
+
+  This is the EXECUTION side of the French city budget rung and the reason it is
+  a separate entry from the comptes individuels: balances comptables are the
+  account-by-account movements actually recorded, where comptes individuels are
+  the summarised annual accounts. Both are needed to answer "planned vs executed"
+  for a French commune.
+
+  Covers budgets annexes as well as the principal budget - important because
+  French cities push water, waste, transport and social action into annexes, so a
+  principal-budget-only reading understates municipal spend.
+
+  Classification is the national chart of accounts (M14/M52/M57 account numbers).
+  No COFOG crosswalk published.
+
+  Yearly datasets, one per exercice (2019 ... 2024 all confirmed present on the
+  portal). data.gouv.fr rates this dataset's own metadata quality "A ameliorer
+  (44 %)" - the data is fine, the metadata is thin, so fiscal-year convention and
+  update cadence have to be read off the file structure document rather than the
+  dataset page.

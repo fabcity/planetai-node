@@ -1,0 +1,45 @@
+name: Open Government Portal - Government of Canada
+url: https://search.open.canada.ca/opendata/
+description: |
+  Canada's federal CKAN catalogue, uniformly licensed under the Open
+  Government Licence - Canada, with a fully open API. Over 1200
+  budget-related datasets and the reference source for federal fiscal
+  data.
+pillar: governance
+scale: region
+status: live
+license: Open Government Licence - Canada
+api: https://open.canada.ca/data/api/3/action/package_search
+pilot_relevance: []
+tags: [open-data-portal, ckan, transparency, catalogue, canada]
+added: 2026-09-11
+updated: '2026-09-19'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13).
+
+  THE ONLY CKAN API IN THIS ENTIRE WAVE THAT ACTUALLY ANSWERED. Both
+  /api/3/action/package_search and /api/3/action/package_show returned
+  clean JSON with no key and no robots obstruction. Verified counts:
+  q=budget returns 1243 datasets; "Public Accounts of Canada" returns
+  91; "Main Estimates" returns 237.
+
+  That matters beyond Canada. Montreal, Donnees Quebec, Plymouth,
+  data.gov.uk, avoindata.fi, data.ouka.fi and podatki.gov.si all block
+  or refuse their CKAN APIs to a well-behaved fetcher, so their dataset
+  counts in this harvest come from rendered HTML. Canada is the control
+  case showing the difference is policy, not technology.
+
+  IT IS ALSO A LICENCE ORACLE FOR OTHER PORTALS. Quebec datasets
+  federate into it, and package_show on a federated Quebec dataset
+  returns license_title "Creative Commons 4.0 Attribution (CC-BY)
+  licence - Quebec" / license_id "qc-cc-by" - which is how the MAMH
+  municipal finance licences were verified when donneesquebec.ca's own
+  pages state none. When a provincial portal blocks its API, try the
+  national portal that harvests it.
+
+  Licence is uniform across every federal dataset inspected:
+  license_title "Open Government Licence - Canada", license_id
+  "ca-ogl-lgo".

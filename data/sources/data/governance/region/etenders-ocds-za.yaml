@@ -1,0 +1,36 @@
+name: South African eTenders OCDS API
+url: https://ocds-api.etenders.gov.za/
+description: |
+  National Treasury procurement releases for South African national and
+  provincial government in Open Contracting Data Standard format, drawn from
+  the eTender portal, BAS and the Central Supplier Database.
+pillar: governance
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://ocds-api.etenders.gov.za/
+pilot_relevance: []
+tags: [procurement, open-contracting, ocds, south-africa, transparency]
+added: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-11 in the FCI Regime 1 harvest (wave 11, South Africa).
+
+  COVERAGE: releases from May 2021 onward. Buyers, suppliers, contracts and
+  procurement categories, sourced from the eTender portal plus the Basic
+  Accounting System (BAS) and Central Supplier Database (CSD). National and
+  provincial government - NOT municipalities, so this does not close the
+  Governance | City procurement cell for Cape Town or Ekurhuleni.
+
+  ACCESS: JSON REST API with an OpenAPI/Swagger specification; OCDS-compliant
+  CSV, JSON and Excel exports. Procurement and payments dashboards sit on top.
+
+  LICENCE: the portal states the data is "licensed under Creative Commons
+  BY 4.0 License". This is the only named SPDX-mappable licence found across
+  the whole of wave 11 - South Africa, Ghana and Tanzania - which is itself
+  the finding.
+
+  OCDS is a real crosswalk target: it is the one standard in this wave that
+  makes a governance cell federatable across countries without bespoke
+  mapping.

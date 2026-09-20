@@ -65,7 +65,8 @@ sidebar, search and the API reference, built from this repository by `tools/buil
 docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
           when it goes wrong       TROUBLESHOOTING
           what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
-          extending it             PACKS · PACK_IDEAS · DEVELOPING
+          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES
+          what is still owed       NEXT_RELEASE
           radios and reachability  NETWORKING · MESHTASTIC
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
           the earth pack           HANDOFF_earth_pack
@@ -75,13 +76,20 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           the ring and the forecast HANDOFF_nearby_forecast
           air, heat, land, coast   HANDOFF_issues · DOMAINS
           the dashboard renderer  HANDOFF_dashboard_renderer · GUI
+          a model on the node      MODELS
           three directions, picked HANDOFF_dashboard_directions · design/DIRECTIONS_2026-09 · design/REDESIGN_2026-09_ground
           signing the releases     HANDOFF_signing
-          proposed, not decided   SPEC_custody · decisions/
+          arm64, and the Pi        HANDOFF_arm64
+          proposed, not decided   SPEC_custody · SPEC_identity · SPEC_rho · decisions/
 SECURITY.md       reporting a vulnerability, and the key a node checks an update against
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
 ```
+
+## Who runs this
+
+One person maintains it today, with a second holding access and a proposed scope — `MAINTAINERS.md`.
+`GOVERNANCE.md` says who has to agree to what, and why the installer and `init.sql` need two people.
 
 ## Bring your own agent
 

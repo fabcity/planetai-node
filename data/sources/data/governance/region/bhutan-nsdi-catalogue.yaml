@@ -1,0 +1,79 @@
+name: Bhutan NSDI Geospatial Catalogue (ArcGIS Portal API)
+url: https://nsdi.systems.gov.bt/portal/sharing/rest/search?q=type%3A%22Feature%20Service%22&f=json&num=25
+description: The anonymous ArcGIS Enterprise catalogue API for Bhutan's National Spatial Data
+  Infrastructure, returning 193 feature services with per-item licence category across 22
+  contributing agencies. The only machine-readable government data catalogue in Bhutan.
+pillar: governance
+scale: region
+status: live
+license: 'Open (Geo-Information Policy 2018 §6.3.1 open tier: "Open data shall be openly and
+  freely accessible")'
+api: https://nsdi.systems.gov.bt/portal/sharing/rest?f=json
+pilot_relevance: []
+tags:
+- catalogue
+- metadata
+- open-data
+- arcgis
+- nsdi
+- bhutan
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). ArcGIS
+
+  Enterprise 11.3.0 (build 51575), Portal API currentVersion 2024.1.
+
+  No robots.txt exists (404) - nothing disallowed, and the REST API answers
+
+  anonymously.
+
+
+  THERE IS NO NATIONAL OPEN-DATA PORTAL FOR BHUTAN. No data.gov.bt, no CKAN, no
+
+  Socrata, no OpenDataSoft catalogue was found. This ArcGIS portal is it.
+
+
+  This entry is the CATALOGUE ITSELF - a Governance indicator in its own right
+
+  (dataset count plus licence regime). Portal front page self-reports 115
+
+  datasets: 56 Open / 43 Common / 15 Restricted / 1 Uncategorised, from 22
+
+  contributor agencies. The API''s 193 feature services include Esri system items
+
+  and duplicates, hence the discrepancy - cite carefully.
+
+
+  The three-tier Open / Common / Restricted regime is itself defined by the
+
+  Geo-Information Policy 2018 §6.3.1, verbatim: "Open data shall be openly and
+
+  freely accessible; common data shall be shared among the government agencies
+
+  without cost and with the costs for corporate and business entities; and the
+
+  restricted data shall be used only by the authorized government agencies."
+
+
+  LICENCE CAVEAT, applies to every Bhutan NSDI entry in this list: the licenceInfo
+
+  field reads the literal word "Open", which maps to the Geo-Information Policy
+
+  2018 §6.3.1 open-access tier, verified at
+
+  https://web.nlcs.gov.bt/wp-content/uploads/2023/12/GI_Policy.pdf. That policy
+
+  grants free and open ACCESSIBILITY but §8.2.3 vests copyright in the producing
+
+  agency and grants no explicit redistribution or commercial-reuse right. This is
+
+  weaker than CC-BY and should be treated as pending clarification from NLCS.
+
+
+  WARNING: the "open" TAG is unreliable. Dzongkhag Boundary and Gewog Boundary are
+
+  both tagged open but their licenceInfo ends "(Common)" - a priced tier for
+
+  corporate users. Filter on licenseInfo, never on tags.'

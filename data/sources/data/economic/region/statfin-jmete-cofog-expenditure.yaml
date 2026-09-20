@@ -1,0 +1,40 @@
+name: StatFin - General government expenditure by function (COFOG)
+url: https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/jmete
+description: |
+  Finnish general government expenditure classified by COFOG function,
+  served through Statistics Finland's PxWeb REST API. The only verified
+  COFOG-coded public spending series for Finland.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/jmete
+pilot_relevance: []
+tags: [budget, cofog, expenditure, national, finland, pxweb]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Oulu).
+
+  THIS IS THE ONLY COFOG RUNG FINLAND HAS. The municipal budget data
+  (Valtiokonttori, see the tracker Notes for Oulu) uses a national XBRL
+  chart of accounts with versioned tunnusluku codes and NO published
+  COFOG crosswalk. COFOG exists only at general-government level, here.
+  So a Finnish city budget cannot be compared function-by-function
+  against a COFOG-coded city without someone building the crosswalk
+  first. Record that as a structural finding, not a to-do.
+
+  VERIFICATION STATE, stated precisely. The database index at
+  https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/ was fetched and
+  returned the full alphabetical listing; the id 'jmete' is copied from
+  that response. TABLE-LEVEL IDS WERE NOT VERIFIED. A descent attempt on
+  a guessed id returned HTTP 400. Before wiring, GET this database node
+  to enumerate real statfin_*_pxt_*.px table ids, then GET the table to
+  confirm its dimensions. Do not hard-code a table id from any list.
+
+  Licence verbatim from stat.fi/org/lainsaadanto/copyright_en.html:
+  "Statistics Finland's open data materials and public content of the web
+  service are covered by the Creative Commons Attribution 4.0
+  International licence." Attribution to Statistics Finland required.

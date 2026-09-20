@@ -1,0 +1,23 @@
+name: GDELT — Global Database of Events, Language & Tone
+url: https://www.gdeltproject.org/
+description: |
+  Real-time news event + tone time series in 100+ languages. Parses
+  global news media to extract entities, themes, sentiment. ~150M
+  events per year. Bulk download + BigQuery integration.
+pillar: social
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://api.gdeltproject.org/api/v2/
+pilot_relevance: [global]
+tags: [news, media, events, sentiment, attention]
+added: 2026-05-04
+wired_in_planetai: false
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  The cheapest H_0-A baseline-attention layer available.
+  Combines with TED, ChileCompra, LKPP, Analyze Boston for
+  "media-attention -> procurement-cycle latency" modelling.
+  BigQuery is the fastest interface for bulk; the public API
+  is friendlier for narrow-topic pulls (climate-narrative
+  filtered subset is canonical for PLANETAI).

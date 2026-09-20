@@ -1,0 +1,50 @@
+name: Toulouse Metropole - Budgets primitifs et comptes administratifs
+url: https://data.toulouse-metropole.fr/api/explore/v2.1/catalog/datasets?where=theme%3D%22Finance%22
+description: |
+  218 finance datasets on Toulouse Metropole's portal: budgets primitifs
+  (planned) and comptes administratifs both alloue and realise (executed), for
+  the city, the metropole and several member communes and their satellite budgets.
+pillar: economic
+scale: city
+status: live
+license: Licence Ouverte v2.0 (Etalab)
+api: https://data.toulouse-metropole.fr/api/explore/v2.1/catalog/datasets?where=theme%3D%22Finance%22
+pilot_relevance: []
+tags: [public-budget, municipal-finance, budget-execution, open-budget, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) via the
+  OpenDataSoft v2.1 catalogue endpoint, which returned total_count 218 for
+  theme "Finance".
+
+  LARGEST OPEN MUNICIPAL FINANCE CORPUS IN THE FRENCH WAVE (218 datasets, against
+  65 for Paris).
+
+  THREE-WAY PLANNED/EXECUTED SPLIT, which is finer than the usual French pair.
+  Confirmed ids: budget-primitif-2012-ville-de-toulouse (planned),
+  compte-administratif-2012-ville-de-toulouse titled "Compte administratif
+  alloue" (allocated), and compte-administratif-2012-ca-realise-ville-de-toulouse
+  titled "Compte administratif realise" (realised). Toulouse therefore
+  distinguishes voted / allocated / actually-spent, letting you measure
+  in-year reallocation, not just plan-vs-outcome.
+
+  Series confirmed from 2012, latest confirmed budget-primitif-2023-ville-de-
+  toulouse. Published for Ville de Toulouse (INSEE 31555) AND Toulouse Metropole
+  (SIREN 243100518) AND Grand Toulouse (the pre-2015 name of the same body).
+
+  MULTI-COMMUNE PUBLISHER - the federation pattern worth copying: the metropole
+  portal also carries member communes' budgets, e.g. budget-primitif-2014-blagnac
+  and its satellite budgets budget-primitif-2014-ccas-blagnac (social action),
+  -restauration-blagnac (school meals), -transports-blagnac, -aide-a-domicile-
+  blagnac and -aeroscopia-blagnac (museum). One portal, several communes, budget
+  annexes broken out by service. This is closer to what a Fab City fiscal
+  federation would need than anything else found in France.
+
+  MIXED LICENCE WITHIN ONE CORPUS: Ville de Toulouse and Toulouse Metropole
+  datasets are Licence Ouverte v2.0 (Etalab); the Blagnac member-commune datasets
+  are ODbL. Both are open, but a consumer merging them inherits ODbL's share-alike
+  on the merged product. Declared licence field here is the majority licence.
+
+  Classification: national chart of accounts; no COFOG crosswalk published.

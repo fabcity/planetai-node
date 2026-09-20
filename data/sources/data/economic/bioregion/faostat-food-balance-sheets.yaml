@@ -1,0 +1,33 @@
+name: FAOSTAT Food Balance Sheets
+url: https://www.fao.org/faostat/en/#data/FBS
+description: |
+  FAO Food Balance Sheets: production, imports, exports, stock change,
+  feed, seed, losses and food supply per commodity per country. The
+  canonical basis for any food self-sufficiency ratio.
+pillar: economic
+scale: bioregion
+status: live
+license: CC-BY-4.0 (FAO standard database licence — not confirmable from the pages fetched; verify at download)
+api: null
+pilot_relevance: [global]
+tags: [fao, faostat, food-balance-sheets, food-self-sufficiency, bulk-download]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 by existence: https://bulks-
+  faostat.fao.org/production/FoodBalanceSheets_E_All_Data_(Normalized).zip
+  returned a 413 response-too-large, which confirms the file serves. DO
+  NOT PROMISE AN API. Three endpoints were tested and all failed:
+  faostatservices.fao.org/api/v1 returned 401, fenixservices.fao.org
+  returned HTTP 521 (origin down), bulks-
+  faostat.fao.org/production/datasets_en.json returned 403. FAO announced
+  a new developer portal but it requires sign-in and publishes no public
+  base URL. Build the food self-sufficiency connector on bulk download
+  plus local parse, with Our World in Data as the fallback mirror. Self-
+  sufficiency ratio = production / (production + imports - exports) per
+  commodity. Coverage: FBS 2010-2023 under the new methodology, old series
+  1961-2013, annual release around December, roughly 245 countries and
+  territories. SLICING: country table, normalized long CSV, national only.
+  A bioregion crossing borders or smaller than a country needs
+  downscaling.

@@ -1,0 +1,41 @@
+name: Presupuesto Abierto Argentina
+url: https://www.presupuestoabierto.gob.ar/sici/datos-abiertos
+description: |
+  Argentina's national budget credit, revenue, physical execution and
+  cross-cutting financial analysis, published by the Secretaría de Hacienda.
+  Queryable through a documented v1 REST API and as bulk open data.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: https://www.presupuestoabierto.gob.ar/api/v1
+pilot_relevance: []
+tags: [public-finance, national-budget, budget-execution, argentina]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-10. Four documented POST endpoints: consulta de crédito,
+  consulta de recursos, programación y ejecución física, and análisis
+  transversal financiero. API docs at
+  https://presupuesto-abierto.argentina.apidocs.ar/ (v1.0.0).
+
+  ACCESS TIER: token required. "Para obtener un token de acceso, dirigete a
+  https://www.presupuestoabierto.gob.ar/sici/api-pac". Free, but not anonymous
+  — a connector needs credential handling, unlike Chile's open CSV endpoint.
+
+  LICENCE: the datos-abiertos page states "Los contenidos de Presupuesto
+  Abierto están licenciados bajo Creative Commons 4.0" without naming the
+  variant; recorded here as CC-BY-4.0, the standard reading. The API *client
+  code* is separately "Liberado bajo la Licencia MIT" — that covers the
+  software, not the data.
+
+  CLASSIFICATION: Argentine national chart of accounts — clasificador
+  económico, finalidad-función, geográfico, and programmatic dimensions. The
+  finalidad-función axis is the closest thing to a COFOG crosswalk; no
+  official COFOG mapping was found. Currency ARS nominal — with Argentine
+  inflation, nominal series across years are near-meaningless without
+  deflating, so any FCI use must state the deflator.
+
+  Scale is `region` because the schema has no national tier; same convention
+  as the German and Austrian federal budget entries.

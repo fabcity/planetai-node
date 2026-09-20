@@ -1,0 +1,50 @@
+name: Open Data Rennes Metropole
+url: https://data.rennesmetropole.fr/api/explore/v2.1/catalog/datasets
+description: |
+  Rennes and Rennes Metropole's open-data portal (OpenDataSoft), roughly 600
+  datasets, ODbL-dominant. One of the oldest French municipal open-data
+  programmes and the source of the city's 2008-onward open budget series.
+pillar: governance
+scale: city
+status: live
+license: Open Database License (ODbL)
+api: https://data.rennesmetropole.fr/api/explore/v2.1/catalog/datasets
+pilot_relevance: []
+tags: [open-data-portal, transparency, opendatasoft, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) via the
+  OpenDataSoft v2.1 catalogue and facets endpoints.
+
+  LICENCE REGIME IS OPEN BUT NOT CLEAN, and the mess is a federation problem.
+  The licence facet returns TEN distinct values for what are really three
+  licences: ODbL 295, "Licence ODbL 1.0" 259, the same string with a newline and
+  a URL glued on 17, Licence Ouverte v2.0 (Etalab) 10, CC BY-ND 5, Licence
+  Ouverte (Etalab) 4, "Licence Ouverte" plus etalab URL 4, Open License v1.0 2,
+  Open License v2.0 2, and one dataset whose licence field is literally
+  https://www.insee.fr/fr/information/2381861. Free-text licence fields with
+  embedded newlines and URLs cannot be machine-reconciled across cities; any Fab
+  City index aggregating licence status needs a normalisation layer, and Rennes
+  is the proof.
+
+  NOT ALL OF IT IS OPEN: 5 datasets are CC BY-ND, which fails this repo's
+  criterion 1 - no derivatives means no derived indicator. At least one dataset
+  returns license: null (part-des-vehicules-a-faibles-et-tres-faibles-emissions-
+  entres-dans-le-parc-20200). So "Rennes is open data" is true in aggregate and
+  false per-dataset.
+
+  Theme facet verbatim: Economie 143, Mobilite Transport 111, Urbanisme 90,
+  Citoyennete 88, Referentiels geographiques 60, Environnement 47, Espace public
+  39, Culture Sports Loisirs 21, Reseaux Energie 19, Sante Securite 16,
+  Education 11, Enfance 2, Logement 2, Social 1.
+
+  FCI CELLS: Economic city unusually strong (143, largest theme, holds the budget
+  series). Environmental city served by Environnement 47 + Reseaux Energie 19.
+  SOCIAL CITY IS THE WEAK CELL - Social 1, Logement 2, Enfance 2, Education 11:
+  almost nothing on unemployment, inequality, housing affordability or life
+  expectancy. A real gap, not a search failure.
+
+  Admin ids: Ville de Rennes INSEE 35238, Rennes Metropole SIREN 243500139,
+  dept Ille-et-Vilaine 35, region Bretagne 53.

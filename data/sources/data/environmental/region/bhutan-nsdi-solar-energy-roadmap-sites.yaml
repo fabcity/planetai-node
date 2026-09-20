@@ -1,0 +1,53 @@
+name: Bhutan National Solar Energy Roadmap Sites (NSDI)
+url: https://nsdi.systems.gov.bt/portal/sharing/rest/content/items/3fdb11bd00d645ea9cd92ffdf708d4ce?f=json
+description: Candidate and planned solar generation sites identified under Bhutan's National
+  Solar Energy Roadmap, published by the Department of Energy. Points, so this is a renewable-capacity
+  siting layer.
+pillar: environmental
+scale: region
+status: live
+license: 'Open (Geo-Information Policy 2018 §6.3.1 open tier: "Open data shall be openly and
+  freely accessible")'
+api: null
+pilot_relevance: []
+tags:
+- energy
+- solar
+- renewables
+- arcgis
+- nsdi
+- bhutan
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Item id
+
+  3fdb11bd00d645ea9cd92ffdf708d4ce, owner Department_of_Energy.
+
+
+  IT DOES NOT GIVE RENEWABLE SHARE of generation or consumption - it is a siting
+
+  layer. The Environmental|City renewable-share sub-cell for Bhutan remains empty.
+
+
+  LICENCE CAVEAT, applies to every Bhutan NSDI entry in this list: the licenceInfo
+
+  field reads the literal word "Open", which maps to the Geo-Information Policy
+
+  2018 §6.3.1 open-access tier, verified at
+
+  https://web.nlcs.gov.bt/wp-content/uploads/2023/12/GI_Policy.pdf. That policy
+
+  grants free and open ACCESSIBILITY but §8.2.3 vests copyright in the producing
+
+  agency and grants no explicit redistribution or commercial-reuse right. This is
+
+  weaker than CC-BY and should be treated as pending clarification from NLCS.
+
+
+  WARNING: the "open" TAG is unreliable. Dzongkhag Boundary and Gewog Boundary are
+
+  both tagged open but their licenceInfo ends "(Common)" - a priced tier for
+
+  corporate users. Filter on licenseInfo, never on tags.'

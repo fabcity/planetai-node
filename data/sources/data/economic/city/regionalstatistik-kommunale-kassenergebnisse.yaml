@@ -1,0 +1,51 @@
+name: Regionaldatenbank Deutschland - Kommunale Kassenergebnisse (71517)
+url: https://www.regionalstatistik.de/genesis/online?operation=statistic&code=71517
+description: |
+  Cash results for German municipal government: gross revenue and gross
+  expenditure of Gemeinden and Kreise, published at individual municipality
+  resolution by the Laender statistical offices via IT.NRW.
+pillar: economic
+scale: city
+status: live
+license: dl-de/by-2-0 (Datenlizenz Deutschland - Namensnennung - Version 2.0)
+api: https://www.regionalstatistik.de/genesis/online
+pilot_relevance: []
+tags: [public-budget, municipal-finance, budget-execution, open-budget, germany]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8, Germany + Austria).
+  Opened the statistic page for code 71517 "Vierteljaehrliche Kassenergebnisse,
+  Sektor Kommunen" and read the table list directly. Confirmed table codes:
+  71517-01-03-5 Bruttoeinnahmen der Gemeinden - Jahressumme - regionale Tiefe:
+  Gemeinden, and 71517-02-03-5 Bruttoausgaben der Gemeinden at the same depth;
+  71517-01-03-4 / 71517-02-03-4 at Kreise und kreisfreie Staedte; 71517-03-02-4
+  and 71517-04-02-4 for the Kreise' own revenue and expenditure.
+
+  THIS IS THE ONLY SOURCE FOUND IN WAVE 8 THAT CARRIES EXECUTED MUNICIPAL
+  FINANCE AT GEMEINDE RESOLUTION FOR EVERY GERMAN LOCALITY IN ONE PLACE. It
+  covers Hamburg (AGS 02000000), Augsburg (09761000) and the Bergisches
+  Staedtedreieck of Wuppertal (05124000), Solingen (05122000) and Remscheid
+  (05120000) without going to three separate city portals. Where a city's own
+  portal publishes only PDF budget volumes, this is the machine-readable
+  fallback.
+
+  EXECUTED, NOT PLANNED. Kassenergebnisse are cash outturns. The voted budget
+  (Haushaltsplan) is not here - it stays with each municipality, mostly as PDF.
+  Any planned-vs-executed comparison in Germany therefore crosses two sources
+  and two publishers.
+
+  Classification: German kommunale Haushaltssystematik (Gruppierungsplan under
+  kameral, or NKF/doppisch product accounts depending on Land), not COFOG. No
+  COFOG crosswalk is published at this granularity; the COFOG view of German
+  public finance exists only in the aggregated national accounts.
+
+  Currency EUR, nominal. Fiscal year = calendar year. Quarterly and annual sums.
+  Admin identifier in the files is the AGS (Amtlicher Gemeindeschluessel), which
+  is what makes this federatable.
+
+  Access tier: HTML table builder plus CSV/XLSX export without registration;
+  the GENESIS web service API and larger extracts need a free registration.
+  Terms of use page read 2026-09-10 and states dl-de/by-2-0 verbatim, operator
+  Information und Technik Nordrhein-Westfalen.

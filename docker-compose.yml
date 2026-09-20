@@ -1,7 +1,21 @@
 name: planetai
 services:
   db:
-    image: postgis/postgis:16-3.4-alpine   # Postgres 16 with PostGIS; same data directory as postgres:16, so an existing node just switches
+    # Postgres 16 + PostGIS 3.4, and the ONLY tag of it that exists for arm64. `postgis/postgis:16-3.4-alpine`
+    # publishes one manifest, linux/amd64 (checked 19 Sep 2026: a bare manifest.v2, no manifest list, config
+    # says architecture=amd64) — which is why docs/KIT.md disqualified every Pi, Jetson and reComputer as a
+    # node host. `imresamu/postgis` is a docker-postgis co-maintainer's build of the same recipe and publishes
+    # linux/amd64 AND linux/arm64 for the same tag. An upstream CI choice was never our physics.
+    #
+    # NOT a Dockerfile of our own on `FROM postgres:16` + PGDG's postgresql-16-postgis-3. That builds in two
+    # lines and works — and it is Debian, which is glibc, and the image we have been shipping is Alpine, which
+    # is musl. A musl initdb records datcollate='en_US.utf8' and leaves datcollversion BLANK, because musl
+    # reports no collation version; Postgres therefore has nothing to compare and issues NO warning. Opening
+    # that data directory with a glibc build was measured on 19 Sep 2026: the node started, all 16 tables were
+    # there, every query answered — and `bt_index_check('s_name')` failed with "item order invariant violated".
+    # Silent index corruption on every text column, on every existing node, with the database's own mismatch
+    # detector unable to see it. Staying on Alpine is what keeps "an existing node just switches" true.
+    image: imresamu/postgis:16-3.4-alpine   # same data directory as postgres:16, and the same libc as the tag it replaces
     restart: unless-stopped
     environment:
       POSTGRES_USER: planetai
@@ -33,6 +47,7 @@ services:
       - ./config:/app/config:ro      # a directory, not a file: editors that save-by-replace would break a single-file mount
       - ./packs:/app/packs:ro        # community packs — see docs/PACKS.md
       - ./presets:/app/presets:ro    # site presets: `planetai run earth similar` reads the pilots' coordinates from here
+      - ./data:/app/data:ro          # the vendored source registry (data/sources) and the platform floors — read, never written
       - ./out:/app/out               # the one writable path: artifacts a pack makes for you (images, charts, briefs)
       - ./backups:/app/backups:ro    # served at /backups (token) so a NAS can pull dumps without mounting anything
       - ./exports:/app/exports:ro    # served at /exports (public, CC BY 4.0)      # a directory, not a file: editors that save-by-replace would break a single-file mount
@@ -90,10 +105,22 @@ services:
     build: { context: ./app, dockerfile: Dockerfile.reticulum }
     profiles: [reticulum]
     restart: unless-stopped
-    env_file: .env
+    # No env_file here, on purpose (F2 of the 18 September design review). `env_file: .env` handed this
+    # container every secret the node holds — the Telegram bot token, the online model key, the admin
+    # token, the database password — to a process whose whole job is to speak to a public radio mesh.
+    # It reads eight variables and this is all eight; `grep getenv app/reticulum_bridge.py` is the list.
+    # A new one has to be added here, which is the point: it is a decision, not a default.
     environment:
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      NODE_NAME: ${NODE_NAME:-node}
       NODE_API_URL: http://app:8080
       RETICULUM_CONFIGDIR: /etc/reticulum
+      RETICULUM_DATA: /data
+      RETICULUM_ALERT_DESTINATIONS: ${RETICULUM_ALERT_DESTINATIONS:-}
+      RETICULUM_ANNOUNCE_S: ${RETICULUM_ANNOUNCE_S:-1800}
+      # The bridge POSTs /actions when somebody on the mesh answers an alert. The weaker token on
+      # purpose: it closes a loop, it cannot read a setting or a reading.
+      ACT_TOKEN: ${ACT_TOKEN:-}
     # 4242: TCPServerInterface — Sideband/NomadNet/other nodes connect here (LAN or tailnet).
     # 4243: the bridge's own health/API port, loopback only — `planetai reticulum` and the doctor poll it from
     # the host, and without this line they never could, so a clean start still reported "the bridge did not come up".

@@ -1,0 +1,32 @@
+name: Barcelona - Perfil del contractant i relacio de contractistes
+url: https://opendata-ajuntament.barcelona.cat/data/api/action/package_show?id=perfil-contractant
+description: |
+  Barcelona's public procurement register: tenders, bids, awards and contract
+  formalisations from the last five years, updated daily, plus a contractors
+  list with tax identifiers and amounts running back to 2012.
+pillar: governance
+scale: city
+status: live
+license: CC-BY-4.0
+api: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
+pilot_relevance: [barcelona]
+tags: [procurement, tenders, transparency, spain]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Dataset ids:
+  perfil-contractant (PSCP-era and pre-2016 resources) and relacio-contractistes.
+  Also verified: cataleg-bases-ajuts-subvencions-bcnroc, the grants and subsidies
+  catalogue, if a civil-society funding signal is wanted alongside.
+
+  DAILY CADENCE. This is the fastest-updating open dataset found for any pilot
+  in wave 1 - most municipal finance publishes annually. If procurement is to
+  be a live DIDO signal anywhere, Barcelona is where it can be.
+
+  Filed as governance, not economic, per CONTRIBUTING: procurement carries
+  "what the public sector is choosing to buy", which is a governance signal.
+
+  relacio-contractistes includes the contractor CIF, so it joins to Spanish
+  company registers. Standard caution applies about republishing identifiers
+  attached to small sole traders.

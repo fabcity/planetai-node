@@ -1,0 +1,43 @@
+name: Japan 2020 Census Workplace/School Location Tabulation (従業地・通学地集計)
+url: https://www.e-stat.go.jp/stat-search/files?page=1&layout=datalist&lid=000001296018
+description: The 2020 Census tabulation of population by place of residence cross-tabulated
+  against place of work or school at municipality level - a true municipality-to-municipality
+  origin-destination commuting matrix, plus daytime and night-time population.
+pillar: social
+scale: region
+status: live
+license: 政府標準利用規約（第2.0版）- explicitly CC BY 4.0 compatible
+api: https://api.e-stat.go.jp/rest/3.0/app/
+pilot_relevance: []
+tags:
+- commuting
+- origin-destination
+- daytime-population
+- census
+- mobility
+- japan
+- e-stat
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12).
+
+
+  Table 3 cross-tabulates employed persons and students by municipality of
+
+  residence x municipality of workplace/school. Tables 1-1/1-2/1-3 give
+
+  夜間人口/昼間人口 by 全国・都道府県・市区町村.
+
+
+  Directly material for Kamakura, a commuter city with a large daytime-population
+
+  deficit toward Yokohama and Tokyo - the Social|Region commuting-flows cell for
+
+  this locality is filled by this source and nothing else.
+
+
+  Formats Excel + DB. Time-series DB view: https://www.e-stat.go.jp/dbview?sid=0004003060
+
+  API requires a free e-Stat appId on every call.'

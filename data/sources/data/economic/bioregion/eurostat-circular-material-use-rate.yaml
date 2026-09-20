@@ -1,0 +1,30 @@
+name: Eurostat — Circular Material Use Rate (cei_srm030)
+url: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/cei_srm030
+description: |
+  Eurostat's circularity headline indicator: the share of material
+  recycled and fed back into the economy as a fraction of total material
+  use. The only officially compiled, openly licensed, machine-readable
+  circularity-share series in existence.
+pillar: economic
+scale: bioregion
+status: live
+license: Eurostat re-use policy (Commission Decision 2011/833/EU) — free re-use with attribution
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/cei_srm030
+pilot_relevance: [barcelona, global]
+tags: [eurostat, circular-economy, circular-material-use-rate, europe-only, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call:
+  ?format=JSON&lang=EN&time=2023&geo=ES returned Spain 2023 = 8.2%.
+  Coverage 2004-2023, annual, updated late in the year (last 2025-11-24).
+  WHY THIS MATTERS DISPROPORTIONATELY: the framework's 'circular economy
+  share' indicator has no global open source. The Circularity Gap Report
+  headline (7.2% circular) is a PDF number with no underlying dataset, no
+  licence and no methodology download, and the Ellen MacArthur Foundation
+  publishes frameworks and case studies rather than data. This Eurostat
+  series is the only real machine-readable circularity share anywhere -
+  and it is EU-only and material-based rather than GDP-based. For a global
+  figure the index must compute its own from OECD material flow accounts
+  or EXIOBASE and say so.

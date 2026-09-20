@@ -4,10 +4,11 @@
   remote   a bigger local model elsewhere on your tailnet: a laptop's Ollama, an exo cluster. Private, no key.
   local    Ollama on this machine, qwen3:4b. Always there.
 
-AGENT_PREFER=strongest tries online, remote, local in that order. =fallback tries your own remote model first, then
-online, then local — online above local because a rung is skipped only when it *fails*, and a 4B model never fails,
-it answers badly. =private never uses online at all. A rung that is unreachable, unauthorised or erroring is
-skipped for five minutes. `/model` in Telegram shows the ladder and which
+AGENT_PREFER=private never uses online at all, and is what a node does when nobody has chosen: the household's own
+sentences stay on the machine that recorded them until somebody says otherwise. =fallback tries your own remote model
+first, then online, then local — online above local because a rung is skipped only when it *fails*, and a 4B model
+never fails, it answers badly. =strongest tries online, remote, local in that order. A rung that is unreachable,
+unauthorised or erroring is skipped for five minutes. `/model` in Telegram shows the ladder and which
 rung answered; `/model local` pins one for the conversation.
 
 All three speak the OpenAI-compatible chat protocol with tools, which Ollama, exo, OpenAI and Anthropic all serve.
@@ -99,7 +100,7 @@ def ladder(cfg: dict) -> list[Rung]:
     if g("AGENT_REMOTE_URL") and url_ok("remote", g("AGENT_REMOTE_URL")):
         rungs.append(Rung("remote", g("AGENT_REMOTE_URL"), g("AGENT_REMOTE_MODEL", "gpt-oss-120b"), g("AGENT_REMOTE_KEY")))
     rungs.append(Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1", os.getenv("MODEL", "qwen3:4b"), small=True))
-    prefer = g("AGENT_PREFER", "strongest")
+    prefer = g("AGENT_PREFER", "private")
     if prefer == "private":
         rungs = [r for r in rungs if r.name != "online"]
     elif prefer == "fallback":
@@ -162,9 +163,29 @@ def clean(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", t).strip()
 
 
+# The local model is a CLIENT of this node, not a component of it. It may read the node and it may record
+# that a human acted; it may not change a setting, run a pack's code, or make the node speak to the
+# household unprompted. `app/agent.py::TOOL_CLASS` is the authority and this is the subset — imported
+# rather than retyped, so a tool added there cannot quietly appear in a model's menu here.
+#
+# NOTHING IS REMOVED FROM THE MCP SURFACE. A person operating an agent over the tailnet still has all
+# twenty. This is only what the model running unattended on the box is handed.
+from tool_classes import TOOL_CLASS  # noqa: E402 — a table and nothing else; see that module's docstring
+
+LOCAL_CLASSES = ("read", "act")
+LOCAL_TOOLS = frozenset(n for n, c in TOOL_CLASS.items() if c in LOCAL_CLASSES)
+
+
 def to_openai_tools(tools) -> list[dict]:
+    kept, dropped = [], []
+    for t in tools:
+        (kept if t.name in LOCAL_TOOLS else dropped).append(t)
+    if dropped:
+        log.info("tools withheld from the local model (%s): %s",
+                 ", ".join(sorted({TOOL_CLASS.get(t.name, "?") for t in dropped})),
+                 ", ".join(sorted(t.name for t in dropped)))
     return [{"type": "function", "function": {"name": t.name, "description": t.description or "",
-                                              "parameters": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None) or {"type": "object", "properties": {}}}} for t in tools]
+                                              "parameters": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None) or {"type": "object", "properties": {}}}} for t in kept]
 
 
 async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | None, final: bool = False) -> dict:
@@ -332,7 +353,7 @@ def ladder_text(pins: dict, chat: str) -> str:
     lines = [f"{'→' if pins.get(chat) == r.name else ' '} {r.name:7} {r.model} @ {r.url.replace('http://','').replace('https://','')[:40]}" + ("  (skipped, retry soon)" if r.skip_until > now else "") for r in RUNGS]
     # cfg(), not os.getenv(): the Model page writes AGENT_PREFER to the database, and reading only the environment
     # told every household that changed it there that it was still on 'strongest'.
-    prefer = cfg("AGENT_PREFER", "strongest")
+    prefer = cfg("AGENT_PREFER", "private")
     order = {"private": "the node's own machines only, nothing leaves the network",
              "fallback": "your remote model first, then online, then the small local one as the offline floor",
              "strongest": "strongest first, so online answers whenever it is configured"}
@@ -385,10 +406,18 @@ async def main():
                 continue
             if text.startswith("/act"):
                 parts = text.split(maxsplit=2)
-                if len(parts) >= 2 and parts[1].isdigit():
+                if len(parts) >= 2 and parts[1].isdigit() and len(parts) < 3:
+                    # No words, no row. `act` used to substitute "acted" here, which put a placeholder
+                    # where the person's own sentence belongs — and rho is built out of those sentences.
+                    # Asking costs one message and gets something true.
+                    await telegram("sendMessage", chat_id=chat,
+                                   text=T(f"What did you do about #{parts[1]}? Send it as:  /act {parts[1]} <what you did>",
+                                          es=f"¿Qué hiciste con la #{parts[1]}? Envíalo así:  /act {parts[1]} <lo que hiciste>"))
+                    continue
+                if len(parts) >= 3 and parts[1].isdigit():
                     try:
                         async with node_session(hc) as (session, _t):
-                            await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2] if len(parts) > 2 else "acted", "agent": f"{NAME}/telegram"})
+                            await session.call_tool("act", {"alert_id": int(parts[1]), "note": parts[2], "agent": f"{NAME}/telegram"})
                         said = T(f"Recorded: you acted on #{parts[1]}.", es=f"Anotado: actuaste sobre #{parts[1]}.")
                     except Exception as e:  # noqa: BLE001
                         log.warning("act on #%s failed: %s: %s", parts[1], type(e).__name__, str(e)[:200])

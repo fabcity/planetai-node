@@ -1,0 +1,50 @@
+name: Budget de fonctionnement - Ville de Montreal
+url: https://donnees.montreal.ca/dataset/budget
+description: |
+  Annual operating budget for the Ville de Montreal and the
+  agglomeration, tabled each autumn for the following calendar year.
+  XLSX series 2013-2026, published by the Service des finances.
+pillar: economic
+scale: city
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags: [budget, operating-expenditure, municipal-finance, montreal, quebec, xlsx]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal).
+
+  TWO FISCAL ENTITIES IN ONE FILE. The file covers the Ville AND the
+  Agglomeration. Agglomeration spend is shared across all 15 island
+  municipalities, not just Montreal. Summing the file gives you a number
+  that is not Montreal's budget. Separate the entities before computing
+  any per-capita indicator.
+
+  The budget is tabled in advance, so the file dated year N is a forward
+  projection for N, not an outturn. The execution side is
+  montreal-reddition-comptes-financiere.
+
+  Classification: Quebec's Manuel de la presentation de l'information
+  financiere municipale, shipped as a PDF resource on the dataset page.
+  Functions are administration generale, securite publique, transport,
+  hygiene du milieu, sante et bien-etre, amenagement/urbanisme, loisirs
+  et culture, frais de financement. They map loosely onto COFOG and NO
+  OFFICIAL CONCORDANCE EXISTS. CAD, nominal, calendar year.
+
+  Access is bulk XLSX/XLS/ZIP only - no CSV, no datastore, no API
+  resource. The XLSX was not opened this pass, so the internal column
+  set and whether it carries an arrondissement or function key is
+  UNVERIFIED.
+
+  Licence CC-BY-4.0 is the portal-wide default, read at
+  donnees.montreal.ca/pages/licence-d-utilisation (394 of Montreal's 404
+  datasets carry it); the dataset page itself links the licence rather
+  than printing it. One step of inference, flagged. Obligations
+  verbatim: "Vous devez crediter les donnees et les contenus que vous
+  utilisez", indicate modifications or interpretations, do not suggest
+  the Ville endorses your use, do not restrict access to the original
+  data by legal or technical means.

@@ -1,0 +1,22 @@
+name: GBIF — Global Biodiversity Information Facility
+url: https://www.gbif.org/
+description: |
+  Aggregated species occurrence records from 2,000+ data publishers.
+  ~3 billion records globally with a public REST API and bulk download
+  via DOI. The de facto biodiversity backbone.
+pillar: environmental
+scale: bioregion
+status: live
+license: CC-BY-4.0 (most records); some CC0; some CC-BY-NC
+api: https://api.gbif.org/v1
+pilot_relevance: [global]
+tags: [biodiversity, species-occurrence, ecology]
+added: 2026-05-04
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  Wired in PLANETAI observatory (rare-species panel).
+  Per-record license filtering via the /occurrence endpoint's
+  `license` parameter. Citation: each download generates a DOI
+  that should be cited. Aggregates iNaturalist research-grade
+  records as a downstream consumer.

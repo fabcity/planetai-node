@@ -32,6 +32,7 @@ import ground
 import index
 import issues.api
 import packs
+import registry
 import report
 import settings
 import sources
@@ -452,7 +453,7 @@ def push_aggregates() -> None:
         cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
-        httpx.post(f"{PARENT()}/aggregates", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+        httpx.post(f"{PARENT()}/aggregates", json={"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
                    headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d hourly rows to parent", len(rows))
@@ -500,7 +501,7 @@ def push_events() -> None:
     if not rows:
         return
     try:
-        httpx.post(f"{PARENT()}/events", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+        httpx.post(f"{PARENT()}/events", json={"schema": EVENTS_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
                    headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d alert events to parent", len(rows))
@@ -683,6 +684,10 @@ async def _mcp_auth(request, call_next):
 # (`grep -oE "(api|fetch)\('/[a-z0-9/._{}-]+" app/static/index.html`), less the three writes and /place/geojson, plus
 # the two <img> routes that grep does not see (/earth/year.png at index.html:904, /earth/change.png from /earth's
 # png_url) and the other-consumer reads /readings, /exports and /export.
+# /sources is on the `open` list and named on purpose rather than left to default-private: it is a
+# byte-identical copy of a public registry of public datasets, the same 209 rows on every node in a
+# release. It says nothing about this house — not a sensor, not a reading, not a coordinate. /packs,
+# already here, describes this node's own configuration and is more revealing than it is.
 # /presence is here and not on the `open` list because the RETICULUM BRIDGE reads it, and the bridge
 # is another container with no token: on the default SHARE_LEVEL=off it would be refused and presence
 # would silently never announce. It is safe at every level by construction — it answers `{"enabled":
@@ -693,8 +698,8 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
     "/report/latest", "/readings",
-    "/history", "/exports",
-}), ("/static/", "/exports/", "/issues"))
+    "/history", "/exports", "/sources",
+}), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
@@ -1107,7 +1112,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)
-    return {"node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
+    return {"schema": EXPORT_V0,
+            "node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
             "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3),
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
@@ -1163,7 +1169,31 @@ def place_geojson(kinds: str = "building,poi,green,road,sat", tolerance: float =
 
 
 def _earth_dir() -> Path:
-    return OUT / "earth" / NODE
+    """The directory holding this node's AlphaEarth square.
+
+    The pack names it for the node, but the embeddings describe a *place*, so the name is not the key: after
+    node #1 was renamed `bayu-2` → `bayu-ungasan` there were two directories of the same square and the
+    older one had stopped being readable by anything. A directory whose meta.json says it was read around
+    this point, at this radius, answers for this node whatever it is called — the node's own name preferred
+    when more than one does. `packs/earth/adapter.py:cache()` carries the same rule, because core does not
+    import a pack; `app/sources.py:metres()` is already the second copy of the distance for the same reason.
+    """
+    root = OUT / "earth"
+    mine = root / NODE
+    lat, lon = os.getenv("NODE_LAT"), os.getenv("NODE_LON")
+    if not (root.is_dir() and lat and lon):
+        return mine
+    radius = int(settings.get("EARTH_RADIUS_M", "5000") or 5000)
+    tol = max(radius * 0.01, 25.0)          # the pack's move tolerance: 1% of the radius, floor 25 m
+    for p in sorted(root.glob("*/meta.json"), key=lambda q: (q.parent != mine, q.parent.name)):
+        try:
+            m = json.loads(p.read_text())
+            if m.get("radius_m") in (None, radius) and \
+                    sources.metres(float(m["lat"]), float(m["lon"]), float(lat), float(lon)) <= tol:
+                return p.parent
+        except (OSError, ValueError, TypeError, KeyError):
+            continue
+    return mine
 
 
 def _earth_changes() -> list[dict]:
@@ -1307,8 +1337,21 @@ def report_latest():
     # in `planetai report last` — the button said "sent" and the page went on showing the one before it.
     rows = q("""SELECT id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason
                   FROM reports ORDER BY ts DESC LIMIT 1""")
-    return rows[0] if rows else {"text": None, "ts": None, "depth": None, "rung": None, "held_quiet": None,
-                                 "note": "no report yet; the first one lands at the next due hour"}
+    # One shape, whether or not a report exists. Until v0.63 the empty case answered five keys and the
+    # populated case answered ten, so a client that read `sent` had to know which case it was in — the
+    # exact implicitness this release is about. Every key is present and null when there is no report,
+    # and `note` is added rather than substituted.
+    r = rows[0] if rows else {}
+    out = {"schema": REPORT_V0,
+           "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
+           "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
+           "text": r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           "fallback_reason": r.get("fallback_reason"),
+           # in the literal, None when there is a report: a key added by subscript is a key of the
+           # document that does not appear in it, which tools/check_wire.py refuses for the same
+           # reason it refuses `**`.
+           "note": None if rows else "no report yet; the first one lands at the next due hour"}
+    return out
 
 
 @app.get("/report/bundle")
@@ -1381,6 +1424,43 @@ def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
 BACKUPS = Path("/app/backups")
 EXPORTS = Path("/app/exports")
 OUT = Path(os.getenv("PACK_OUT", "/app/out"))      # the one writable mount; packs put their artifacts here
+
+
+# ---------------------------------------------------------------- wire formats
+# ARCHITECTURE.md §3 names the contracts that must not change casually. One of them was versioned
+# (`fci-cells-v0`) and the rest were implicit: the nightly export is pinned to IPFS forever with a
+# licence and no schema version, GET /issues is the one document a client draws, and the two pushes
+# travel between nodes on different releases. Four nodes exist. The cost of saying which is a string.
+ISSUES_V0, EXPORT_V0, AGGREGATES_V0, EVENTS_V0, REPORT_V0 = (
+    "issues-v0", "export-v0", "aggregates-v0", "events-v0", "report-v0")
+
+_wire_said: set = set()
+
+
+def _wire_in(body: dict, expect: str) -> str:
+    """What a received document says it is. Logged once per (format, value); never refused.
+
+    A RECEIVER NEVER REFUSES ON THIS, and that is the rule the whole change rests on. A parent one
+    release behind has to keep accepting a child one release ahead, or an operator updating their own
+    node silently stops the district's numbers. So an unknown version is processed for the fields this
+    node recognises and the rest are dropped — which is exactly what `receive_events` already did for
+    unknown columns, and this only makes it say so. A document with no `schema` predates the key and
+    is read as `-v0`, which is what it is.
+
+    The log is once per distinct value and the set is capped, because the value comes off the wire
+    from a child and an unbounded set keyed on a stranger's string is a slow leak.
+    """
+    said = ((body.get("schema") or "") if isinstance(body, dict) else "")
+    said = said.strip()[:40] if isinstance(said, str) else "<not a string>"
+    key = (expect, said)
+    if key not in _wire_said and len(_wire_said) < 64:
+        _wire_said.add(key)
+        if not said:
+            log.info("%s: a push arrived with no schema key; reading it as %s (legacy)", expect, expect)
+        elif said != expect:
+            log.info("%s: a push says schema=%r, which this node does not know; reading the fields it "
+                     "recognises and dropping the rest", expect, said)
+    return said or expect
 
 
 def _bearer_ok(authorization: str, *tokens: str) -> bool:
@@ -1630,6 +1710,35 @@ def cells():
         return index.cells(cur)
 
 
+@app.get("/sources")
+def sources_(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
+             wired: bool | None = None):
+    """The network's registry of what can be measured, as this node carries it (app/registry.py).
+
+    `/cells` says what this node computes. This says what the network has registered — including for
+    the cells no adapter fills yet, which have no `/cells` row at all. `?cell=Social|City` is the
+    query the 5 September report did by hand.
+
+    Not to be confused with `app/sources.py`, which is the node's own sensor adapters. This serves
+    rows somebody filed upstream; that reads instruments."""
+    entries, ver = registry.load()
+    if not entries:
+        raise HTTPException(503, f"no source registry on this node: {registry.SOURCES_DIR} is empty or "
+                                 "unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.")
+    rows = registry.find(pillar=pillar, scale=scale, pilot=pilot, cell=cell, wired=wired)
+    return {"registry": {k: ver.get(k) for k in ("sha", "short", "synced", "entries")},
+            "count": len(rows), "sources": rows}
+
+
+@app.get("/sources/{pillar}/{scale}/{slug}")
+def source_(pillar: str, scale: str, slug: str):
+    e = registry.one(f"{pillar}/{scale}/{slug}")
+    if not e:
+        raise HTTPException(404, f"{pillar}/{scale}/{slug} is not in the registry this node carries "
+                                 f"({registry.load()[1].get('short', 'none')}). Ask /sources for the list.")
+    return e
+
+
 @app.get("/packs")
 def packs_():
     """What this node has loaded beyond the core. data packs are rules/cells only; code packs run Python."""
@@ -1705,6 +1814,7 @@ def receive_events(body: dict, authorization: str = Header("")):
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    _wire_in(body, EVENTS_V0)
     rows, child = body.get("rows", []), body.get("node", "?")
     scale = body.get("scale", "community")
     kept = 0
@@ -1748,6 +1858,7 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    _wire_in(body, AGGREGATES_V0)
     rows = body.get("rows", [])
     child = body.get("node", "?")
     with db() as con, con.cursor() as cur:

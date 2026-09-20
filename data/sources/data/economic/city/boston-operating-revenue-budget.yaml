@@ -1,0 +1,42 @@
+name: Boston - Operating and Revenue Budget
+url: https://data.boston.gov/dataset/operating-budget
+description: |
+  City of Boston adopted operating budget and revenue budget, published as
+  bulk CSV with a PDF data dictionary, by department and programme for the
+  General Fund.
+pillar: economic
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: null
+pilot_relevance: [boston]
+tags: [public-budget, municipal-finance, open-budget, united-states]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Two datasets:
+  /dataset/operating-budget (planned expenditure) and /dataset/revenue-budget
+  (planned revenue). FY27 Adopted is current; budget documents run back to
+  FY2011 on boston.gov.
+
+  PLANNED ONLY. Executed spending is a separate publication - see
+  boston-checkbook-explorer in this registry. Payroll actuals are separate
+  again (/dataset/employee-earnings-report, individual-level, 2011-2025), and
+  Checkbook explicitly excludes them, so the three together are the complete
+  fiscal picture and no two of them overlap.
+
+  Fiscal year runs 1 July to 30 June. USD, nominal. Granularity is
+  programme-within-department.
+
+  FEDERATION PROBLEM, RECORDED DELIBERATELY: these files carry the City's own
+  internal department and programme codes and NO FIPS/GEOID. Boston's place
+  code is 2507000 and it appears nowhere in the budget data. There is no
+  crosswalk to the state (CTHRU) or federal (USAspending) rungs without
+  building one. Any comparison across US localities hits this first.
+
+  Classification is the City's own chart of accounts; no COFOG crosswalk found.
+
+  ACCESS CAVEAT: data.boston.gov robots.txt disallows /api/, so the CKAN action
+  API cannot be used by a well-behaved client. Bulk CSV download only. The
+  api field is null for that reason, not because no endpoint exists.

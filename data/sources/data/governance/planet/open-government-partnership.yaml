@@ -1,0 +1,29 @@
+name: Open Government Partnership — Open Data
+url: https://www.opengovpartnership.org/open-data/
+description: |
+  OGP's commitment-level databases covering national and local action
+  plans, with Independent Reporting Mechanism assessments of ambition,
+  completion and early results. Run by the OGP Support Unit.
+pillar: governance
+scale: planet
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [open-government, ogp, commitments, irm, transparency, csv]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. 73 countries, 141 local members, 479 national and
+  147 local action plans, 5,762 commitments, 2011-2026, updated daily
+  (dashboard stamped 'Last Updated: 9:40am 08 Sep 2026 UTC'). Databases
+  offered as Google Sheet, XLS and CSV: National Commitment, Local
+  Commitment, Local Member, Local Action Plan, Process, and Open
+  Government databases. CLEANEST LICENCE IN THE GOVERNANCE ROW - stated
+  verbatim as 'available in multiple formats under a Creative Commons (CC
+  BY 4.0) license'. Note the old /open-government-partnership-data/ URL
+  404s; this is the working path. SLICING: country table for the national
+  database; the LOCAL databases are city and region level and are the one
+  place OGP drops below national resolution, which makes them directly
+  useful for the Regime 1 city and region rows as well.

@@ -10,6 +10,8 @@ for an agent already inside a running node.
 | "it stopped working", "no alerts since Tuesday", here is a log | `skills/troubleshoot-node/SKILL.md` | Ask for `planetai doctor --json`, `status --json` and twenty lines of logs. Never `.env`. |
 | "connect this to Claude / Codex / my agent", "how do I reach it from outside?" | `skills/connect-agent/SKILL.md` | Get the URL and token from `planetai agent`. Tailscale, never a port forward. |
 | "put our city on the Fab City Index", "how do we publish cells?" | `skills/publish-to-index/SKILL.md` | Establish the tier first. One node per pilot writes; a home node never does. |
+| you are about to change this repository — any task, any size | `skills/preflight/SKILL.md` | `tools/session.sh preflight` first. Your own worktree, your own branch; never the one holding `main`. |
+| you are about to end a session that changed this repository | `skills/land/SKILL.md` | `tools/session.sh land`. Nothing exists only on this machine, and the gates ran, not were assumed. |
 
 The skills order the documents; they do not replace them. Everything below is what an agent operating a
 node needs to know, and it is the authority.
@@ -23,10 +25,20 @@ led to an action. Your job is to keep it healthy, useful and truthful. This file
 
 ## A local model may already be running here
 
-`planetai agent local` puts Ollama on the node with `qwen3:4b` (or `qwen3:8b` on 16 GB) and a loop (`app/agent_loop.py`)
-that answers the household on Telegram using these same tools and sends a brief each morning. It appears in the audit
-trail as `local-model`. If you are a remote agent, you are not alone on this node; read `alerts` and the actions before
-acting, and do not undo what the person's local model did without asking.
+`planetai agent local` puts Ollama on the node and a loop (`app/agent_loop.py`) that answers the household on Telegram
+using these same tools. It downloads no model: it prints the recommendation for the machine's memory and stops, and
+`planetai agent local pull <tag>` fetches one when somebody asks. `docs/MODELS.md` is the catalogue, and its first line
+is that a node needs none of it. The loop appears in the audit trail as `local-model`.
+
+**That local model gets `read` and `act` only.** It cannot change a setting, run a pack's code, or make the node
+message the household by itself — `app/tool_classes.py` is the table and `app/agent_loop.py` derives the allow-list
+from it. You, a remote agent driven by a person, have all twenty; the difference is that somebody is reading what you
+propose. If you are a remote agent, you are not alone on this node; read `alerts` and the actions before acting, and do
+not undo what the person's local model did without asking.
+
+**`act` needs the person's own words.** It has no default `note` and refuses a placeholder. ρ is the share of act-level
+alerts a human answered, and a row written without anything a human said is a model measuring itself. If somebody told
+you they did a thing, record what they told you. If they did not, ask.
 
 ## Two ways in
 

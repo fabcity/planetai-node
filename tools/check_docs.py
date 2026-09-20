@@ -65,8 +65,31 @@ ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | ENV_IN_MCP | 
     "MQTT_USER", "MQTT_PASS", "WIFI_SSID", "WIFI_PSK", "GATEWAY", "CHNAME", "MAP_KEY", "CLOUDFLARE_API_TOKEN",
     "CLOUDFLARE_ACCOUNT_ID", "POSTGRES_USER", "POSTGRES_DB", "POSTGRES_PASSWORD", "NODE_VERSION", "APP_PORT"}
 
+# A spec proposes things that do not exist yet — that is what a spec is for, and this gate otherwise makes
+# one impossible to commit. Each entry names the document that owns the promise, in the shape
+# tests/test_settings.py's NO_PANE_YET uses: an entry needs a reason, and the release that BUILDS the thing
+# deletes the entry. The two assertions under the loop are what force that deletion — an entry for a
+# document that is gone, or for something that now exists, fails the gate.
+PROPOSED = {
+    # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
+    # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
+    "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},
+    # MAINTAINERS.md's entry for docs/SPEC_rho.md goes here, because this commit writes that file — the
+    # same gate that fired for the licence record fires for this one. What replaces it is the promise
+    # the spec itself makes: tests/test_rho.py lands with Phase 2's code and deletes this line.
+    "docs/SPEC_rho.md": {"tests/test_rho.py"},
+}
+for _doc, _names in PROPOSED.items():
+    if not os.path.exists(_doc):
+        errs.append(f"check_docs.py: PROPOSED names {_doc}, which is gone — delete the entry")
+for _doc, _names in PROPOSED.items():
+    for _n in _names:
+        if "/" in _n and os.path.exists(_n):
+            errs.append(f"check_docs.py: PROPOSED lets {_doc} name `{_n}`, which now exists — delete it from the entry")
+
 for doc in DOCS:
     text = open(doc).read()
+    proposed = PROPOSED.get(doc, set())
     body = re.sub(r"```.*?```", lambda m: m.group(0) if "planetai " in m.group(0) or "docs/" in m.group(0) else "", text, flags=re.S)
 
     # `planetai <cmd>` at a command position: after a backtick, a prompt, or the start of a line — not
@@ -74,7 +97,7 @@ for doc in DOCS:
     for cmd in set(re.findall(r"(?:^|`|\$ |\n)planetai ([a-z][a-z-]+)", text, re.M)):
         if cmd in ("node",):        # "planetai-node", the repo name, not a command
             continue
-        if cmd not in CMDS:
+        if cmd not in CMDS and cmd not in proposed:
             errs.append(f"{doc}: mentions `planetai {cmd}`, which the CLI does not dispatch")
 
     for link in set(re.findall(r"\]\((?!https?:|#|mailto:)([^)#]+)", text)):
@@ -88,9 +111,11 @@ for doc in DOCS:
                # a build artifact: present on any machine that has run the app, absent in a clean
                # checkout. `make lint` passed on every laptop and failed on every CI run since 5 Sep.
                "app/__pycache__"}
-    for path in set(re.findall(r"`((?:docs|packs|app|config|tools|tests|presets|out|skills)/[A-Za-z0-9_./-]+)`", text)):
+    for path in set(re.findall(r"`((?:docs|packs|app|config|data|tools|tests|presets|out|skills)/[A-Za-z0-9_./-]+)`", text)):
         p = path.rstrip("/.")
         if p in RUNTIME or path in RUNTIME or p.startswith("out/") or doc == "CHANGELOG.md":   # out/ holds runtime artifacts     # the changelog is a record; files move
+            continue
+        if p in proposed or path in proposed:
             continue
         if not os.path.exists(p) and not glob.glob(p):
             errs.append(f"{doc}: names `{path}`, which does not exist")
@@ -140,7 +165,13 @@ readme = open("README.md").read()
 block = re.search(r"^docs/\s+.*?(?=\n[A-Za-z]+\.md|\n[a-z]+/)", readme, re.M | re.S)
 if block:
     # document names are the tokens that look like file stems: UPPER_CASE, or the one lowercase file (sensors)
-    listed = set(re.findall(r"\b([A-Z][A-Za-z_]{2,}|sensors)\b", block.group(0)))     # HANDOFF_beta_review is mixed case
+    # HANDOFF_beta_review is mixed case; HANDOFF_arm64 has a digit, and without \d the regex read it as
+    # "HANDOFF_arm" and reported the file as unlisted while it was sitting there in the block.
+    # `\d` matters: HANDOFF_arm64 without it reads as "HANDOFF_arm", and the file sitting in the block
+    # is reported unlisted. The lookbehind matters for the same reason in reverse: with digits allowed,
+    # `design/DIRECTIONS_2026-09` starts matching, and that file is in docs/design/, which this check
+    # does not glob. A stem preceded by a slash belongs to a subdirectory and is not this list's business.
+    listed = set(re.findall(r"(?<![/\w])([A-Z][A-Za-z0-9_]{2,}|sensors)\b", block.group(0)))
     actual = {os.path.basename(f)[:-3] for f in glob.glob("docs/*.md")}
     for miss in sorted(actual - listed):
         errs.append(f"README.md: docs/ index does not list {miss}.md")

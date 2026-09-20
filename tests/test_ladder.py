@@ -36,6 +36,20 @@ assert names(AGENT_PREFER="strongest") == ["online", "remote", "local"], names(A
 assert names(AGENT_PREFER="fallback") == ["remote", "online", "local"], names(AGENT_PREFER="fallback")
 assert names(AGENT_PREFER="private") == ["remote", "local"], names(AGENT_PREFER="private")
 
+# The key absent from .env AND from the settings table is the case this whole file is about. Until v0.63 the two
+# call sites defaulted to "strongest", so a household that pasted an API key into the Model page and never opened
+# the preference sent its 64 kB report bundle — its numbers, its room names, its own sentences — to somebody
+# else's API first and to the model on the box last. BOTH is fully configured here and online must still be absent.
+assert names() == ["remote", "local"], names()
+# and the value, wherever it was set, still decides
+assert names(AGENT_PREFER="strongest") == ["online", "remote", "local"], "an explicit choice is not overridden"
+
+# The second default: what /model prints. It reads through cfg(), which is CFG then os.environ then the default —
+# so with neither, the household is told the truth about where its sentences go.
+A.CFG = {}
+os = __import__("os"); os.environ.pop("AGENT_PREFER", None)
+assert "Prefer: private" in A.ladder_text({}, "chat"), A.ladder_text({}, "chat")
+
 # fallback with nothing online configured is just the local ladder, not an empty one
 assert names(AGENT_PREFER="fallback", AGENT_ONLINE_KEY="") == ["remote", "local"]
 # local is always last-resort present, even with nothing else set at all
@@ -50,8 +64,67 @@ assert "remote" not in names(AGENT_PREFER="fallback", AGENT_REMOTE_URL="100.64.0
 # the one setting where a typo must be refused rather than tolerated: not-"private" sends data off the network
 sys.path.insert(0, "app")
 import settings as S  # noqa: E402
-assert S.CHOICES["AGENT_PREFER"] == ("strongest", "fallback", "private"), S.CHOICES.get("AGENT_PREFER")
+# private first: describe() publishes this tuple and every surface offers the values in the order it gives them.
+assert S.CHOICES["AGENT_PREFER"] == ("private", "fallback", "strongest"), S.CHOICES.get("AGENT_PREFER")
+assert set(S.CHOICES["AGENT_PREFER"]) == {"private", "fallback", "strongest"}, "the three values themselves do not change"
 
+# ---------------------------------------------------------------------------------------------------
+# The model is a client of this node, not a component of it.
+#
+# Stage 1's trigger has not fired, the 9 September benchmark memo retired "local AI over your own data"
+# as a claim, and the agent surface is twenty tools including settings_set and run_pack_script. What the
+# unattended model on the box may reach is therefore a decision, and this is where it is held.
+import types  # noqa: E402 — already imported above; named again because this block stands on its own
+import tool_classes as TC  # noqa: E402
+
+ADMIN = {n for n, c in TC.TOOL_CLASS.items() if c == "admin"}
+assert ADMIN == {"settings_set", "run_pack_script", "maintenance", "report_now"}, ADMIN
+
+# 1. the allow-list is derived, not retyped: a tool added to TOOL_CLASS as admin cannot appear here
+assert A.LOCAL_TOOLS == {n for n, c in TC.TOOL_CLASS.items() if c in ("read", "act")}
+assert not (A.LOCAL_TOOLS & ADMIN), "an admin tool is in the local model's allow-list"
+
+# 2. and the filter actually drops them. to_openai_tools is the ONE place the model's menu is built,
+#    so this is the whole mechanism: hand it every tool the server has and see what comes back.
+Tool = type("Tool", (), {})
+def _t(name):
+    t = Tool(); t.name = name; t.description = ""; t.inputSchema = {}; return t
+menu = {f["function"]["name"] for f in A.to_openai_tools([_t(n) for n in TC.TOOL_CLASS])}
+assert menu == A.LOCAL_TOOLS, sorted(menu ^ A.LOCAL_TOOLS)
+for bad in ADMIN:
+    assert bad not in menu, f"{bad} reached the local model's menu"
+assert "act" in menu and "issues" in menu, "read and act must still be there; this is a subset, not a lockout"
+
+# 3. nothing was removed from the MCP surface. A keeper in Claude Desktop over the tailnet still has all
+#    twenty, which is the case the surface was built for.
+assert len(TC.TOOL_CLASS) == 20, len(TC.TOOL_CLASS)
+
+# 4. rho is built out of what people said, so a model may not write a row without it. The placeholders
+#    are the strings this repository itself used where a human's sentence belongs.
+assert {"acted", "acted (via reticulum)"} <= TC.PLACEHOLDER_NOTES
+assert "/act" in open("app/agent_loop.py").read()
+src = open("app/agent_loop.py").read()
+assert '"note": parts[2] if len(parts) > 2 else "acted"' not in src, \
+    "the Telegram handler is substituting a placeholder for the person's own words again"
+assert "What did you do about #" in src, "it must ask for the words instead of inventing them"
+
+# 5. `planetai agent` prints the class, and the two cannot drift. The CLI is Bash and cannot import the
+#    table, so this is the gate instead of a shared file.
+import re  # noqa: E402
+CLI = open("bin/planetai").read()
+block = CLI[CLI.index('echo "    read   '):CLI.index('echo "  A person driving an agent')]
+for name in TC.TOOL_CLASS:
+    assert re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", block), \
+        f"`planetai agent` does not list {name}; a tool nobody is told about is a tool nobody audits"
+admin_line = next(l for l in block.splitlines() if '"    admin' in l)
+for name in ADMIN:
+    assert re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", admin_line), f"{name} is not on the CLI's admin line"
+for name in A.LOCAL_TOOLS:
+    if name != "act":                       # `act` appears on its own line, by name, with its rule
+        assert not re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", admin_line), \
+            f"{name} is listed as admin in the CLI and is {TC.TOOL_CLASS[name]} in the table"
+
+print("the local model gets read and act; settings_set, run_pack_script, maintenance and report_now are withheld")
 print("the ladder: strongest online-first, fallback remote-online-local, private online-never, and a non-URL is not a rung")
 
 # A key that ships blank must not carry a trailing comment. Compose's env_file strips an inline comment only when the

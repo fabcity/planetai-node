@@ -1,0 +1,35 @@
+name: Fabriqué en Occitanie — artisans et entreprises affiliés
+url: https://www.data.gouv.fr/datasets/artisans-et-entreprises-affilies-a-la-marque-fabrique-en-occitanie
+description: |
+  Register of artisans and firms certified under Occitanie's regional made-here mark,
+  with an accompanying product list. A rare open, named registry of locally manufacturing
+  producers at regional scale.
+pillar: economic
+scale: region
+status: live
+license: Licence Ouverte / Open Licence version 2.0
+api: null
+pilot_relevance: []
+tags: [local-production, manufacturing, business-registry, occitanie, france, region]
+added: 2026-09-09
+updated: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09: dataset page opened, HTTP 200. Last update 2026-05-28. CSV (181.6 KB),
+  two JSON exports and a ZIP. Covers affiliated producers since 2023 across fashion, beauty,
+  leisure and home categories. A companion dataset listing the referenced products sits on
+  data.laregion.fr.
+  WHY THIS IS WORTH THE ENTRY RATHER THAN A GENERIC BUSINESS REGISTRY: the Fab City claim is
+  about what a territory makes within its own boundary, and almost nowhere is that directly
+  observable. National business registries record where a firm is REGISTERED, not where
+  production happens. A regional made-here certification scheme is one of the few public
+  instruments that asserts the second, and publishes the members who meet it. It is a
+  certification-scheme proxy, not a measurement — the boundary is the scheme's own criteria,
+  which are political — but it is a named, joinable, openly licensed list of producers who
+  claim to manufacture in the region.
+  NOT VERIFIED: whether the file carries SIRET, commune or sector fields. Without SIRET the
+  list cannot be joined to the national business registry, which caps what can be computed
+  from it. Open the CSV header before wiring it.
+  Metadata quality self-rated 56% ("À améliorer"): update frequency, temporal coverage and
+  spatial scope undocumented.

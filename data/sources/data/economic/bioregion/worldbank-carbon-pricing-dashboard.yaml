@@ -1,0 +1,31 @@
+name: World Bank Carbon Pricing Dashboard
+url: https://datacatalog.worldbank.org/search/dataset/0042051
+description: |
+  World Bank register of carbon taxes and emissions trading systems
+  worldwide with prices, coverage and revenues by jurisdiction, at both
+  national and sub-national level. Companion to the annual State and
+  Trends of Carbon Pricing report.
+pillar: economic
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [world-bank, carbon-pricing, ets, carbon-tax, subnational]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. 121 instruments, revenue series 1990-2025,
+  irregular refresh. DOWNLOAD PATH IS DEGRADED: /compliance/data-download
+  returned 404 and the Excel path found via search (data_08_2025.xlsx)
+  also 404'd - do not use it. The /map_data view renders but exposes no
+  download link and shows 'last updated March 31, 2023'. Scrape the
+  dashboard or contact data@worldbank.org for the file. RARE SUB-NATIONAL
+  RESOLUTION: instruments are recorded at national and sub-national level
+  (California, Quebec and similar), so some bioregions map directly onto a
+  single instrument - one of only two sources in the economic row that
+  breaks below the nation-state. INDICATOR CAVEAT: carbon pricing revenue
+  is a state-levied environmental payment, not a payments-for-ecosystem-
+  services scheme. Use it explicitly labelled as a proxy for PES, or not
+  at all.

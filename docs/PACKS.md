@@ -109,6 +109,14 @@ alone lists them.
 
 ## A dashboard section
 
+**What the page draws is `GET /issues`, and that document is `issues-v0`.** Every section reads off
+globals bound from one fetch of it, so its top level is the contract a section is written against. It
+carries `"schema": "issues-v0"`; `tools/check_wire.py` holds the top-level key list in
+`tests/data/wire/issues-v0.json`, and a key cannot appear or vanish under a section without somebody
+editing that file. If a node ever answers a version the page does not know, the page says one sentence
+and draws what it recognises — it does not blank. A version bumps only on a breaking change, and the
+bump is a `docs/decisions/` entry.
+
 A pack can put a section on the dashboard. It registers one object with the page contract and the
 page renders it in the stage it belongs to — observe, decide, act, measure — in the order the loop
 runs, and folds its explanations at the foot:
@@ -166,6 +174,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
 | nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
+| season | data | air | the same ring across time: is this week worse than its own preceding two months, paired per station — no cell, same reason as `nearby` |
 | forecast | code | — feeds air and heat | wind and rain for the next day, from BMKG and Open-Meteo — context for the report, no alerts, no cell |
 | trust | data | — the instruments | coverage, frozen channels, collocated disagreement — needs a week of a sensor before it names it; all three `info`, no cell, by design |
 | cold-start | data | air (`modelled_air_today`, `sensor_vs_model`), heat (`hotter_than_normal`) | day one with no hardware: modelled air, normals |
@@ -174,6 +183,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | earth-engine | code | — Dynamic World, Sentinel-2, VIIRS | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
+| thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
 | example-cooking-hours | data | air | a worked example |
 
 Land's number is `earth`'s and only `earth`'s: the change this node computed itself, from embeddings

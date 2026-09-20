@@ -35,7 +35,19 @@ for k in ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOT
     assert f'"{k}"' in settings, f"settings.py: {k}"
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
 assert re.search(r"^\s*agent: \['", gui, re.M), "gui: a tab for the agent group"
-assert "cmd_agent_local()" in cli and "local) cmd_agent_local" in cli
+# v0.63: `local` dispatches to the setup OR to `pull`, which is the whole point of that release — the
+# setup no longer fetches weights. Both halves must exist and `local)` must reach both.
+assert "cmd_agent_local()" in cli and "cmd_agent_local_pull()" in cli
+assert "local) if" in cli and "cmd_agent_local_pull" in cli and "else cmd_agent_local" in cli, \
+    "`planetai agent local [pull]` no longer dispatches to both"
+# cmd_agent_local_pull() is defined ABOVE cmd_agent_local(), so splitting on it reads the wrong half —
+# which this assertion did until an injected `ollama pull` walked straight through it. Slice the setup
+# function's own body and look in there.
+_body = cli[cli.index("\ncmd_agent_local() {"):]
+_body = _body[:_body.index("\n}\n")]
+assert "ollama pull" not in _body, \
+    "`planetai agent local` fetches a model again; the setup must download nothing"
+assert "ollama pull" in cli, "`planetai agent local pull` must still be able to fetch one"
 assert "def refresh_ladder" in open("app/agent_loop.py").read()
 print("all shipped claims present")
 
@@ -593,3 +605,21 @@ for _port in sorted(set(re.findall(r"localhost:(\d+)", cli)) - HOST_PORTS):
         f"bin/planetai talks to localhost:{_port}, which docker-compose.yml publishes on no service"
 
 print("every localhost port the CLI uses is published by a compose service")
+
+# v0.61 the vendored source registry. A tarball that carries the code and not the snapshot gives a
+# tester `planetai sources` that answers nothing and a doctor row that is red on arrival — and lint
+# cannot see it, because lint runs in a checkout where data/sources is right there.
+import pathlib as _pl
+import subprocess as _sp
+_tracked = set(_sp.run(["git", "ls-files"], capture_output=True, text=True).stdout.split())
+for _f in ("data/sources/REGISTRY_VERSION", "data/sources/index.json"):
+    assert _f in _tracked, f"{_f} is not tracked, so tools/bundle.sh will not ship it"
+_ver = dict(l.split("=", 1) for l in _pl.Path("data/sources/REGISTRY_VERSION").read_text().split() if "=" in l)
+assert len(_ver.get("sha", "")) == 40, "REGISTRY_VERSION: sha is not a full commit"
+# The snapshot is mounted, not baked: app/Dockerfile COPYs *.py, issues/ and static/ and never data/,
+# so without this line the container's /app/data does not exist and /sources 503s on a working node.
+assert "./data:/app/data:ro" in compose["services"]["app"]["volumes"], "compose: the data mount"
+assert "cmd_sources()" in cli and "sources) shift; cmd_sources" in cli, "bin/planetai: sources command"
+assert "def sources_(" in main and "import registry" in main, "main.py: GET /sources"
+
+print("v0.61: the tarball carries the source registry, and the app mounts it")

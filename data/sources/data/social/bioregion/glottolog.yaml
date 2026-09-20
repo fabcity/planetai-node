@@ -1,0 +1,32 @@
+name: Glottolog
+url: https://glottolog.org/meta/downloads
+description: |
+  The Max Planck Institute for Evolutionary Anthropology's catalogue of
+  the world's languages, dialects and families, with geographic
+  coordinates per languoid and full bibliographic references. Openly
+  licensed and versioned with DOIs.
+pillar: social
+scale: bioregion
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [languages, linguistic-diversity, traditional-knowledge-proxy, point-coordinates, zenodo-doi]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09. Version 5.3 current. Formats: PostgreSQL dumps, CSV
+  (including a CSV of geographic coordinates for languages and dialects),
+  BibTeX, RDF, and Newick trees for language families. Curated on GitHub
+  (glottolog/glottolog), archived on Zenodo, DOI 10.5281/zenodo.596479. No
+  REST API documented. SLICING: point coordinates per languoid, so
+  intersect the coordinate CSV with a bioregion polygon to count languoids
+  present and, where endangerment status is populated, their vitality.
+  This is the only openly licensed way found to attach any culturally
+  specific measure to a bioregion polygon. INTERPRETATION LIMIT: it
+  measures languages present, not knowledge held or transmitted. Use it as
+  a contextual layer for traditional knowledge, never as a measure of
+  knowledge preservation. Also note each version is a snapshot of
+  scholarly consensus, so year-over-year change reflects catalogue
+  revision as much as real change - it is not a time series.

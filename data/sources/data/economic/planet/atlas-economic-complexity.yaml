@@ -1,0 +1,24 @@
+name: Atlas of Economic Complexity (Harvard Growth Lab)
+url: https://atlas.hks.harvard.edu/
+description: |
+  Global trade + economic-complexity indicators (ECI, product-space,
+  diversification metrics) for ~250 countries × ~6,000 products.
+  Bulk download via Dataverse; interactive web tool for exploration.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: [global]
+tags: [trade, economic-complexity, eci, harvard]
+added: 2026-05-04
+updated: '2026-09-19'
+wired_in_planetai: true
+upstream_listed_in: [awesome-public-datasets]
+notes: |
+  MOVED 2026-09-19. Harvard moved the Atlas from the Center for International Development to the Kennedy School: atlas.cid.harvard.edu now redirects to atlas.hks.harvard.edu, and the documented API host api-docs.atlas.cid.harvard.edu no longer resolves at all. The new host does not answer at api-docs.atlas.hks.harvard.edu either and the landing page links no API, so api is set to null rather than guessed. Somebody wiring this needs to find the endpoint and put it back. Flagged wired_in_planetai, though no pack declares it - see issue #3.
+  CORS is unreliable from browser origins — pre-fetch and serve as a
+  static snapshot for production. Dataverse mirror at
+  dataverse.harvard.edu carries the full bulk dump.
+  The methodological predecessor of Metroverse (city scale) and
+  Boeing 2024 Fab City Index.

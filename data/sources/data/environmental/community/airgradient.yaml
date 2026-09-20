@@ -1,0 +1,24 @@
+name: AirGradient
+url: https://www.airgradient.com/
+description: |
+  Open-hardware indoor + outdoor air quality monitoring network with
+  public REST API. PM2.5, PM10, CO2, TVOC, NOx, temperature, humidity.
+  ~10k+ devices deployed globally; transparent pricing for the open
+  variant.
+pillar: environmental
+scale: community
+status: live
+license: CC-BY-4.0 (data) + custom open (hardware)
+api: https://api.airgradient.com/public/api/v1
+pilot_relevance: [global]
+tags: [air-quality, citizen-science, open-hardware, indoor-air]
+added: 2026-05-04
+updated: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Strong fit for the Community-tier indoor environment signal that
+  Smart Citizen does not cover well (Smart Citizen focuses outdoor).
+  AirGradient kits are commonly deployed in schools, offices, and homes.
+  Combined with Smart Citizen they form a complementary indoor + outdoor
+  community sensing layer.

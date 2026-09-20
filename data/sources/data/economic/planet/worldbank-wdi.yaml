@@ -1,0 +1,31 @@
+name: World Bank World Development Indicators
+url: https://datacatalog.worldbank.org/search/dataset/0037712/World-Development-Indicators
+description: |
+  The World Bank's flagship cross-country indicator database served
+  through a free unauthenticated REST API. Carries global and national
+  GDP, value added by sector, adjusted net savings and natural-resource
+  depletion rents.
+pillar: economic
+scale: planet
+status: live
+license: CC-BY-4.0
+api: https://api.worldbank.org/v2
+pilot_relevance: [global]
+tags: [world-bank, gdp, wdi, macroeconomics, open-api]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 with a live call:
+  /v2/country/all/indicator/NY.GDP.MKTP.CD?format=json returned 17,556
+  records, paginated, GDP current US$ 2021-2025, aggregates and countries
+  interleaved. No key required. 1,500+ indicators, 200+ countries,
+  1960-present, database last refreshed 2025-12-19. Attribution format per
+  World Bank dataset terms: 'The World Bank: Dataset name: Data source (if
+  known)'. Note that CC-BY-4.0 is the default for World Bank-produced
+  datasets but some partner data is ODbL and microdata carries a
+  restrictive Research License - check per dataset. SLICING: country table
+  you filter (country/ESP for one territory, aggregate code WLD for the
+  planet total). No sub-national. A bioregion is a sum or filter of ISO3
+  country rows. Also carries NY.ADJ.* adjusted net savings and depletion
+  series as a partial natural-capital signal.

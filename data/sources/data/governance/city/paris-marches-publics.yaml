@@ -1,0 +1,38 @@
+name: Paris - Marches publics (procurement register)
+url: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets?where=search%28%22marches%22%29
+description: |
+  Register of public contracts awarded by the Paris collectivite, plus the
+  separate register for CASVP, the city's social-action agency. Published as open
+  data on the city's own portal.
+pillar: governance
+scale: city
+status: live
+license: Open Database License (ODbL)
+api: https://opendata.paris.fr/api/explore/v2.1/catalog/datasets?where=search%28%22marches%22%29
+pilot_relevance: []
+tags: [procurement, transparency, public-contracts, france]
+added: 2026-09-09
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France). Confirmed
+  dataset ids, all ODbL: liste-des-marches-de-la-collectivite-parisienne (the
+  main register), liste-des-marches-du-casvp0 (CASVP 2013-2017) and
+  listes-des-marches-publics-du-casvp-a-compter-de-2018 (CASVP from 2018).
+
+  Filed under governance, not economic, per this repo's CONTRIBUTING judgment
+  call: procurement carries "what the public sector chooses to buy".
+
+  WHY IT MATTERS FOR FAB CITY: procurement is the lever that turns a city's
+  local-production ambition into demand. A machine-readable award register is
+  what makes "did the city actually buy locally / circularly" a measurable
+  question rather than a rhetorical one. Paris publishing it openly is the
+  precondition for that measurement; none of the other four French cities in this
+  wave surfaced an equivalent register in the same pass.
+
+  The CASVP register is split at 2018 into two datasets - a break to stitch.
+
+  NOT CHECKED IN THIS PASS: whether award values, CPV codes and supplier SIRET
+  are present per record, which is what determines whether local-sourcing share
+  is actually computable. Next visit should open the dataset's field schema
+  before anyone builds on it.

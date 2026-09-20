@@ -1,0 +1,42 @@
+name: Analyze Boston
+url: https://data.boston.gov/dataset
+description: |
+  City of Boston open data portal, CKAN-based. 235 datasets covering 311
+  service requests, budget and spending, building permits, employee earnings,
+  food inspections, traffic and public safety.
+pillar: governance
+scale: city
+status: live
+license: Open Data Commons Public Domain Dedication and License (PDDL)
+api: null
+pilot_relevance: [boston]
+tags: [open-data, boston, ckan, municipal]
+added: 2026-05-04
+updated: 2026-09-18
+wired_in_planetai: true
+upstream_listed_in: []
+notes: |
+  Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Three
+  corrections to the original entry:
+
+  1. DATASET COUNT is 235, not ~200 - read from the catalogue page.
+  2. LICENCE is not simply "public". The facet breakdown, verbatim: "Open Data
+     Commons Public Domain Dedication and License (PDDL)" on 219 of 235,
+     "License not specified" on 14, and "Open Data Commons Open Database
+     License [ODbL]" on 1. The header licence here records the dominant regime;
+     the 14 unspecified ones must be checked individually before reuse.
+  3. THE API FIELD IS NOW NULL. data.boston.gov/robots.txt disallows /api/, so
+     the CKAN action API at /api/3/action/* is not available to a well-behaved
+     client. The previous value implied a usable endpoint. Catalogue
+     enumeration has to come from rendered HTML, or from a client that ignores
+     robots - which is a deliberate choice, not a default.
+
+  This entry is the CATALOGUE ITSELF, which is a legitimate Governance|City
+  indicator: dataset count and licence regime are the open-data-availability
+  signal that packs/open-data-health computes. Specific Boston datasets are
+  separate entries - see boston-operating-revenue-budget,
+  boston-checkbook-explorer, boston-capital-plan, boston-procurement and
+  boston-ghg-emissions.
+
+  The 311 service-requests dataset remains the action-latency candidate for
+  Boston: time from complaint to resolution at address level.

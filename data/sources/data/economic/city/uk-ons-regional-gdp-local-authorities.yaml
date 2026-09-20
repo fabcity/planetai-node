@@ -1,0 +1,47 @@
+name: ONS Regional gross domestic product - local authorities
+url: https://www.ons.gov.uk/economy/grossdomesticproductgdp/datasets/regionalgrossdomesticproductlocalauthorities
+description: |
+  Balanced UK regional GDP 1998-2023 in current prices and chained
+  volume measures for local authority districts, unitary authorities,
+  Scottish council areas and ITL regions. Excel.
+pillar: economic
+scale: city
+status: live
+license: Open Government Licence v3.0
+api: null
+pilot_relevance: []
+tags: [gdp, gva, ons, xlsx, annual, itl3, uk]
+added: 2026-09-11
+updated: 2026-09-11
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).
+
+  THE CORRECTIONS NOTICE IS THE MOST IMPORTANT THING ON THIS ENTRY. The
+  page records TWO CORRECTIONS, issued 29 May 2025 and 10 October 2025,
+  both addressing "deflation methodology issues affecting regional GDP
+  volume measures at ITL3 and local authority levels". That is EXACTLY
+  the geography and EXACTLY the measure a city-level real-GDP indicator
+  would use. ANY CACHED COPY TAKEN BEFORE 10 OCTOBER 2025 HAS WRONG
+  VOLUME MEASURES AT PLYMOUTH'S LEVEL. Pin the edition, re-check the
+  corrections notice on every refresh, and prefer current-price series
+  unless the volume measure is genuinely needed.
+
+  Second trap: "next release TBA" - NO COMMITTED CADENCE, so there is no
+  safe polling interval. Released 17 April 2025 for the 1998-2023 data.
+  Third: xlsx multi-sheet with header banners, same parsing tax as the
+  DEFRA ODS files.
+
+  Covers Plymouth as a UNITARY AUTHORITY. The claim that Plymouth is its
+  own ITL3 area is PLAUSIBLE BUT UNVERIFIED - the dataset was confirmed
+  to reach ITL3 and local authority level, not Plymouth's specific ITL3
+  identity.
+
+  Companion not fetched, and it is the natural source for industry
+  composition at both city and region: "Regional gross value added
+  (balanced) by industry: local authorities by ITL1 region" on the same
+  ONS site.
+
+  Licence verbatim: "All content is available under the Open Government
+  Licence v3.0, except where otherwise stated".

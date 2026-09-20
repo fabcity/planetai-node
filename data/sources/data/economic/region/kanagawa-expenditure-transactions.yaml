@@ -1,0 +1,48 @@
+name: Kanagawa Prefecture Transaction-Level Expenditure (神奈川県 1件ごとの支出情報)
+url: https://catalog.opendata.pref.kanagawa.jp/dataset/92b4932f5f41d4ba0750bde96b6b1bdf
+description: Transaction-level expenditure records for Kanagawa Prefecture's general and special
+  accounts, published monthly as XLSX by the prefectural Accounting Bureau under CC BY 4.0.
+  Individual payments, not aggregates.
+pillar: economic
+scale: region
+status: live
+license: CC-BY-4.0
+api: null
+pilot_relevance: []
+tags:
+- budget
+- expenditure
+- transactions
+- xlsx
+- japan
+- kanagawa
+- monthly
+added: '2026-09-11'
+updated: '2026-09-11'
+wired_in_planetai: false
+upstream_listed_in: []
+notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). The most granular
+
+  fiscal object found anywhere in this wave.
+
+
+  Description verbatim: 「直近２年間の神奈川県における歳出予算の1件ごとの支出情報
+
+  （企業会計を除く）」 - general and special accounts, enterprise accounts excluded.
+
+
+  ROLLING 2-YEAR WINDOW ONLY (currently 2024-06 to 2026-05). Older months are
+
+  dropped from the catalogue, so history is lost unless harvesting starts now and
+
+  runs continuously. Cadence 月1回; last updated 2026-08-31.
+
+
+  Classification is the appropriation structure, not COFOG; no crosswalk.
+
+  JPY nominal. Publisher 神奈川県会計局.
+
+
+  The host CKAN''s /api/ is robots-disallowed (Crawl-Delay: 10) - harvest via the
+
+  dataset HTML pages or seek permission.'

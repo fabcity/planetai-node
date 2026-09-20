@@ -41,9 +41,19 @@ signing_key() {
    release key has been issued yet. docs/HANDOFF_signing.md has the command that makes it and the four
    places the public line is pasted."
   # The key that signs must be the key the committed line publishes, or nodes verify against a stranger.
+  #
+  # Read out of the .pub beside it. `ssh-keygen -y -f <private key>` answers the same question but reads
+  # the PRIVATE half and prompts for the passphrase to do it — it does not consult ssh-agent, so the old
+  # form failed here however many times you had run ssh-add, and said to run ssh-add again. (19 Sep 2026,
+  # the first time this was run against a real key.)
   local pub want
-  pub="$(ssh-keygen -y -f "$key" 2>/dev/null | awk '{print $1" "$2}')" \
-    || die "could not read a public key out of $key (a passphrase-protected key needs ssh-agent: ssh-add $key)."
+  if [[ -f "$key.pub" ]]; then
+    pub="$(awk '{print $1" "$2}' "$key.pub")"
+  else
+    pub="$(ssh-keygen -y -f "$key" 2>/dev/null | awk '{print $1" "$2}')"
+  fi
+  [[ -n "$pub" ]] || die "could not read a public key for $key. If it is passphrase-protected and has no
+   .pub beside it, write one:  ssh-keygen -y -f $key > $key.pub"
   want="$(grep -v '^[[:space:]]*\(#\|$\)' tools/allowed_signers | head -1 | awk '{print $2" "$3}')"
   [[ "$pub" == "$want" ]] || die "the key in PLANETAI_SIGNING_KEY is not the one tools/allowed_signers publishes.
    signing with  $pub
@@ -62,11 +72,24 @@ sign_tarball() {
     return 0
   fi
   key="$(signing_key)" || exit 1
-  ssh-keygen -Y sign -f "$key" -n planetai-node "$tgz" >/dev/null \
-    || die "ssh-keygen could not sign $tgz with $key."
+  # `ssh-keygen -Y sign` PROMPTS when <file>.sig is already there — "…already exists. Overwrite
+  # (y/n)?" — and with nothing on stdin it answers itself, leaves the old signature untouched, and
+  # EXITS 0. So the `|| die` below cannot see it. The first release had no .sig to collide with; the
+  # second, v0.62, signed nothing and would have published v0.61's signature over a new tarball. The
+  # verify at the end of this function is what caught it. Give it nothing to overwrite.
+  rm -f "$tgz.sig"
+  # Sign through the agent where there is one. `-f <public key>` is what makes ssh-keygen ask the agent
+  # for the private half; `-f <private key>` reads the file and prompts, which cannot work unattended and
+  # is what stopped the first real release. Falls back to the private key when the agent has nothing, so
+  # an unencrypted key on a build machine still signs.
+  local signwith="$key"
+  if [[ -f "$key.pub" ]] && ssh-add -l >/dev/null 2>&1; then signwith="$key.pub"; fi
+  ssh-keygen -Y sign -f "$signwith" -n planetai-node "$tgz" >/dev/null \
+    || die "ssh-keygen could not sign $tgz with $signwith.
+   If that is a passphrase-protected key, put it in the agent first:  ssh-add $key"
   # Verify what was just written, against the same file a node will use. A signature nobody checked here
   # is a signature discovered to be wrong by a tester in Menorca.
-  ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city -n planetai-node \
+  ssh-keygen -Y verify -f tools/allowed_signers -I fabcity -n planetai-node \
     -s "$tgz.sig" < "$tgz" >/dev/null \
     || die "the signature just written does not verify against tools/allowed_signers. Nothing was shipped."
   say "signed, and the signature verifies against tools/allowed_signers"
@@ -253,7 +276,7 @@ if [[ "$HERE" == v*  && "$HERE" != *-g* ]]; then
       gh release create "$HERE" --title "$HERE" \
         --notes "The node at ${HERE}. Verify before installing:
 
-    ssh-keygen -Y verify -f tools/allowed_signers -I release@planetai.fab.city \\
+    ssh-keygen -Y verify -f tools/allowed_signers -I fabcity \\
       -n planetai-node -s planetai-node.tar.gz.sig < planetai-node.tar.gz
 
 Install from here rather than the site:

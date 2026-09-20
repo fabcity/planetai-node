@@ -1,0 +1,38 @@
+name: Somerville - Capital Investment Plan FY16-26
+url: https://data.somervillema.gov/d/wz6k-gm5k
+description: |
+  City of Somerville ten-year capital investment plan - infrastructure, building
+  improvements, park redesigns and equipment - with per-project addresses,
+  coordinates, funding source and year-by-year amounts.
+pillar: economic
+scale: city
+status: stale
+license: Open Data Commons Open Database License (ODbL)
+api: https://data.somervillema.gov/resource/wz6k-gm5k.json
+pilot_relevance: [boston]
+tags: [budget, capital-investment, municipal-finance, geospatial, united-states]
+added: 2026-09-10
+wired_in_planetai: false
+upstream_listed_in: []
+notes: |
+  Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).
+
+  MARKED STALE, DELIBERATELY LISTED. data_updated_at is 2016-02-09 - the file
+  has not moved in over ten years, while still carrying per-year columns
+  labelled _2016 through _2025. Read literally it is a plan whose entire
+  horizon has now elapsed without a single revision published. Do not use the
+  out-years as forward commitments; they are 2016 intentions.
+
+  Kept in the list per CONTRIBUTING - mark drift, don't delete it. It is also
+  the only open-licensed municipal capital series for Somerville in existence,
+  and the decay itself is an honest governance datum: Somerville publishes
+  participatory budgeting enthusiastically and its capital plan not at all.
+
+  Structure is good where it is populated: department, project, project
+  description, project justification, type, status, total, funding_source, full
+  address plus x/y coordinates. Geocoded, so spatially joinable without an
+  admin-code crosswalk - the same property that makes Cambridge's capital
+  budget useful.
+
+  No operating budget, no revenue file and no execution data exist for
+  Somerville as open data. The city rung here is capital-only and frozen.
