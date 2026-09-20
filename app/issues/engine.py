@@ -913,7 +913,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     headline_issue = _headline(out, declared)
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
-    return {"order": declared, "undeclared": undeclared, "dropped": dropped,
+    # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
+    # sees a schema it does not know draws what it recognises; it never refuses, and the dashboard's
+    # assertion is one sentence rather than a blank page.
+    return {"schema": "issues-v0",
+            "order": declared, "undeclared": undeclared, "dropped": dropped,
             "headline": headline_issue, "as_of": now.isoformat(),
             # the column headings, so the page and Telegram both take their words from the node
             "distances": list(DISTANCES), "labels": LABEL_WORDS,

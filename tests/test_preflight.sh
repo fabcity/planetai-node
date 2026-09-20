@@ -85,10 +85,16 @@ run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64
 hasnt "  no macOS verdict"                        "No container runtime can be installed"
 has   "  the installer adds Docker"               "installer adds Dock"
 
-echo "10. Linux arm64 — the database image is amd64-only"
-run PF_OS=Linux PF_OS_PRETTY="Ubuntu 24.04 LTS" PF_ARCH=arm64
-has   "  the arch row fails"                      "amd64"
-ok    "  exit 1"                                  "$RC" 1
+# Until v0.63 this case asserted the opposite — that arm64 Linux FAILS, because the database image
+# published one manifest and it was amd64. That was the wall, and this test is where it was held. The
+# image is `imresamu/postgis:16-3.4-alpine` now and publishes both, so the assertion inverts: a Pi gets
+# past the second row. It must still SAY it has never been run on one, or a green check becomes a claim
+# about hardware nobody has plugged in.
+echo "10. Linux arm64 — a Pi gets past the arch row, and is told what that does and does not mean"
+run PF_OS=Linux PF_OS_PRETTY="Ubuntu 24.04 LTS" PF_ARCH=arm64 PF_HAVE="docker python3" PF_DOCKER_RUNNING=1
+has   "  the arch row passes"                     "arm64 (untested on hardware"
+hasnt "  and no longer blames the image"          "amd64 only"
+ok    "  exit 0"                                  "$RC" 0
 
 echo "11. WSL2"
 run PF_OS=Linux PF_OS_PRETTY="Ubuntu 22.04.5 LTS" PF_ARCH=x86_64 PF_IS_WSL=1 PF_MEM_BYTES=4294967296

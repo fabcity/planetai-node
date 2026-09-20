@@ -78,6 +78,24 @@ don't summarise upward.
 
 Every layer speaks three protocols. Compute, apps, and partner systems attach by speaking one of them.
 
+**Every wire document says which document it is.** From v0.63 the five below carry a top-level `schema`
+key, and `tools/check_wire.py` in `make lint` holds their top-level shape against a fixture in
+`tests/data/wire/`, so a key cannot be gained or lost without somebody editing that file on purpose.
+
+| `schema` | the document | built by |
+|---|---|---|
+| `issues-v0` | `GET /issues` — the one document a client draws | `app/issues/engine.py::compute` |
+| `export-v0` | `GET /export?day=` — the nightly open-data file, pinned to IPFS forever | `app/main.py::export` |
+| `report-v0` | `GET /report/latest` | `app/main.py::report_latest` |
+| `aggregates-v0` | the child's hourly push body | `app/main.py::push_aggregates` |
+| `events-v0` | the child's ρ push body | `app/main.py::push_events` |
+
+A receiver that sees a `schema` it does not know **logs once and processes what it recognises. It never
+refuses** — a parent one release behind has to keep accepting a child one release ahead. A document with
+no `schema` is read as `-v0` and logged once as legacy. A version bumps only on a breaking change, and
+the bump is a `docs/decisions/` entry. (`/health`'s `schema` is older and means something else: the
+database schema version. Nothing else should use the name for two things.)
+
 **Readings**: `(ts, sensor_id, metric, value)` + a `sensors` row `(source, name, lat, lon, indoor, local, meta)`.
 Up: children push hourly means (`POST /aggregates`). Down: a sensor or a phone the household trusts posts raw
 (`POST /readings`, with the node's admin token: a posted reading counts as one of the house's own). The instance

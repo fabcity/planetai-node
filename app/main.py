@@ -453,7 +453,7 @@ def push_aggregates() -> None:
         cur.execute("SELECT bucket, sensor_id, metric, mean, min, max, n FROM readings_1h WHERE bucket > now() - interval '2 hours'")
         rows = [{**r, "bucket": r["bucket"].isoformat()} for r in cur.fetchall()]
     try:
-        httpx.post(f"{PARENT()}/aggregates", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+        httpx.post(f"{PARENT()}/aggregates", json={"schema": AGGREGATES_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
                    headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d hourly rows to parent", len(rows))
@@ -501,7 +501,7 @@ def push_events() -> None:
     if not rows:
         return
     try:
-        httpx.post(f"{PARENT()}/events", json={"node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
+        httpx.post(f"{PARENT()}/events", json={"schema": EVENTS_V0, "node": NODE, "rows": rows, "scale": os.getenv("NODE_SCALE", "community")},
                    headers={"Authorization": f"Bearer {PARENT_TOKEN()}"} if PARENT_TOKEN() else {},
                    timeout=30).raise_for_status()
         log.info("pushed %d alert events to parent", len(rows))
@@ -1112,7 +1112,8 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)
-    return {"node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
+    return {"schema": EXPORT_V0,
+            "node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
             "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3),
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
@@ -1336,8 +1337,21 @@ def report_latest():
     # in `planetai report last` — the button said "sent" and the page went on showing the one before it.
     rows = q("""SELECT id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason
                   FROM reports ORDER BY ts DESC LIMIT 1""")
-    return rows[0] if rows else {"text": None, "ts": None, "depth": None, "rung": None, "held_quiet": None,
-                                 "note": "no report yet; the first one lands at the next due hour"}
+    # One shape, whether or not a report exists. Until v0.63 the empty case answered five keys and the
+    # populated case answered ten, so a client that read `sent` had to know which case it was in — the
+    # exact implicitness this release is about. Every key is present and null when there is no report,
+    # and `note` is added rather than substituted.
+    r = rows[0] if rows else {}
+    out = {"schema": REPORT_V0,
+           "id": r.get("id"), "ts": r.get("ts"), "due_local": r.get("due_local"),
+           "window_hours": r.get("window_hours"), "depth": r.get("depth"), "rung": r.get("rung"),
+           "text": r.get("text"), "sent": r.get("sent"), "held_quiet": r.get("held_quiet"),
+           "fallback_reason": r.get("fallback_reason"),
+           # in the literal, None when there is a report: a key added by subscript is a key of the
+           # document that does not appear in it, which tools/check_wire.py refuses for the same
+           # reason it refuses `**`.
+           "note": None if rows else "no report yet; the first one lands at the next due hour"}
+    return out
 
 
 @app.get("/report/bundle")
@@ -1410,6 +1424,43 @@ def sparks(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
 BACKUPS = Path("/app/backups")
 EXPORTS = Path("/app/exports")
 OUT = Path(os.getenv("PACK_OUT", "/app/out"))      # the one writable mount; packs put their artifacts here
+
+
+# ---------------------------------------------------------------- wire formats
+# ARCHITECTURE.md §3 names the contracts that must not change casually. One of them was versioned
+# (`fci-cells-v0`) and the rest were implicit: the nightly export is pinned to IPFS forever with a
+# licence and no schema version, GET /issues is the one document a client draws, and the two pushes
+# travel between nodes on different releases. Four nodes exist. The cost of saying which is a string.
+ISSUES_V0, EXPORT_V0, AGGREGATES_V0, EVENTS_V0, REPORT_V0 = (
+    "issues-v0", "export-v0", "aggregates-v0", "events-v0", "report-v0")
+
+_wire_said: set = set()
+
+
+def _wire_in(body: dict, expect: str) -> str:
+    """What a received document says it is. Logged once per (format, value); never refused.
+
+    A RECEIVER NEVER REFUSES ON THIS, and that is the rule the whole change rests on. A parent one
+    release behind has to keep accepting a child one release ahead, or an operator updating their own
+    node silently stops the district's numbers. So an unknown version is processed for the fields this
+    node recognises and the rest are dropped — which is exactly what `receive_events` already did for
+    unknown columns, and this only makes it say so. A document with no `schema` predates the key and
+    is read as `-v0`, which is what it is.
+
+    The log is once per distinct value and the set is capped, because the value comes off the wire
+    from a child and an unbounded set keyed on a stranger's string is a slow leak.
+    """
+    said = ((body.get("schema") or "") if isinstance(body, dict) else "")
+    said = said.strip()[:40] if isinstance(said, str) else "<not a string>"
+    key = (expect, said)
+    if key not in _wire_said and len(_wire_said) < 64:
+        _wire_said.add(key)
+        if not said:
+            log.info("%s: a push arrived with no schema key; reading it as %s (legacy)", expect, expect)
+        elif said != expect:
+            log.info("%s: a push says schema=%r, which this node does not know; reading the fields it "
+                     "recognises and dropping the rest", expect, said)
+    return said or expect
 
 
 def _bearer_ok(authorization: str, *tokens: str) -> bool:
@@ -1757,6 +1808,7 @@ def receive_events(body: dict, authorization: str = Header("")):
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    _wire_in(body, EVENTS_V0)
     rows, child = body.get("rows", []), body.get("node", "?")
     scale = body.get("scale", "community")
     kept = 0
@@ -1800,6 +1852,7 @@ def receive_aggregates(body: dict, authorization: str = Header("")):
         raise HTTPException(403, "this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them")
     if not _bearer_ok(authorization, AGG_TOKEN()):
         raise HTTPException(401, "bad or missing Authorization: Bearer <AGGREGATE_TOKEN>")
+    _wire_in(body, AGGREGATES_V0)
     rows = body.get("rows", [])
     child = body.get("node", "?")
     with db() as con, con.cursor() as cur:

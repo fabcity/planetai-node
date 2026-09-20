@@ -84,6 +84,15 @@ your network at all. Three values, offered in this order:
 
 Changing this needs a restart of the agent container; the page says so.
 
+**The model on this machine.** The page shows which tag the node is pointing at, whether it is actually on the disk,
+and the recommendation for this machine's memory with its size. Pulling is a button, never automatic:
+`planetai agent local` installs the loop and downloads nothing. `docs/MODELS.md` is the catalogue, and a node with no
+local model still reads its sensors, writes its reports and sends its alerts — it just does not chat.
+
+**What that model may do.** `read` and `act`, and nothing else: it cannot change a setting on this page, run a pack's
+code, or send the household a report by itself. A person driving an agent over the tailnet has the full set;
+`planetai agent` prints every tool and its class.
+
 ## Access
 
 Reads are open on your network, like the API: a household display cannot need a login. Writes need the token. It is a
