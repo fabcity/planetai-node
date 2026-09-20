@@ -1,5 +1,19 @@
 # Changelog
 
+- 2026-09-20 — **`make` is now off until you say so, and v0.65's note about it was wrong.** That
+  release said the fab-lab pack was off until you turned it on. On a node that already allowed code
+  packs it turned itself on at update and read the directory before anyone chose it — because an
+  empty `PACKS_ENABLED` means *every* pack is enabled. We found it on our own node minutes after
+  shipping.
+
+  It now has its own switch, `MAKE_ENABLED`, which ships as `0`. If you updated to v0.65 and want
+  the pack, set `MAKE_ENABLED=1` and `planetai restart`. If you did not want it, this update turns
+  it off for you and `planetai doctor` will say so.
+
+  Why a pack gets its own switch when no other one does: the Fab Lab Network directory it reads is
+  not openly licensed, and Fab City Foundation's decision to read it covers the Foundation and not
+  you. A pack in that position should not start on its own.
+
 ## v0.65 — 2026-09-20 — the node can say where to go, not only what is wrong
 
 Two changes, one idea. The registry your node carries gains its first **act** sources — places to go
