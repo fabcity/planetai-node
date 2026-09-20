@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.64 — 2026-09-20 — the node stops repeating a claim it could not check
+
+One change, and a small one. v0.63 went out this morning carrying four large ones at once and said so;
+this is the opposite kind of release, and deliberately so — if something comes back wrong after it,
+there is exactly one candidate.
+
 - 2026-09-20 — **`planetai sources` now names the code that reads a source, instead of the word
   "wired".** v0.63 shipped the registry at `9303adc`, where `adapter` — a string like `core:ckan` or
   `pack:coast` — replaced a boolean typed by hand in another repository. This is the node catching up

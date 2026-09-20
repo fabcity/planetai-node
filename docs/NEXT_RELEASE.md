@@ -1,5 +1,9 @@
 # Next release — collecting
 
+> **v0.64 shipped 20 September 2026**, hours after v0.63 and on purpose the opposite shape: one change,
+> the node reading the registry's `adapter` instead of a boolean it could not check. Nothing on this page
+> was owed by it.
+>
 > **v0.63 shipped 20 September 2026** and took with it: the arm64 database image, the wire-format version
 > strings, `AGENT_PREFER=private` by default, the local model's read-and-act surface, Spanish, and the
 > registry at `9303adc`. It broke rule 3 below — one large change per release — and said so in its own
