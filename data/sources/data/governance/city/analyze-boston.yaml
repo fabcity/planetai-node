@@ -13,6 +13,8 @@ pilot_relevance: [boston]
 tags: [open-data, boston, ckan, municipal]
 added: 2026-05-04
 updated: 2026-09-18
+adapter: core:ckan
+feeds_cells: [Governance|City]
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |

@@ -39,3 +39,8 @@ notes: |
   The catalogue's own size and licence regime are themselves the Governance|City
   open-data-availability indicator - see packs/open-data-health in planetai-node,
   which computes datasets_total and datasets_fresh_90d from any CKAN portal.
+
+  PLANETAI: no `adapter`, deliberately. `app/sources.py::ckan()` would read this portal the moment a
+  node put it in CKAN_PORTALS, but no preset and no pack names it today, and a pointer at code nobody
+  runs is the hand-typed claim this field exists to replace. Set `adapter: core:ckan` in the same
+  change that adds it to a preset, not before.

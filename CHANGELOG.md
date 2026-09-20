@@ -1,5 +1,10 @@
 # Changelog
 
+- 2026-09-20 — the source registry is re-pinned to `9303adc`, still 209 entries. Upstream replaced a
+  boolean nobody could check with `adapter` and `feeds_cells`, read from the node's own code rather than
+  remembered, and the schema gained the fields to hold them. `planetai sources` and `GET /sources` answer
+  from this. Eleven pack source ids still resolve.
+
 - 2026-09-20 — **`planetai agent local` no longer downloads a model, and the model on your node can no
   longer change your settings.** Two changes, both in the same direction: the model is a guest on this
   machine, not a part of it.

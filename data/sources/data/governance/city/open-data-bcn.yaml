@@ -13,6 +13,8 @@ pilot_relevance: [barcelona]
 tags: [open-data, barcelona, ckan, municipal]
 added: 2026-05-04
 updated: 2026-09-09
+adapter: core:ckan
+feeds_cells: [Governance|City]
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |

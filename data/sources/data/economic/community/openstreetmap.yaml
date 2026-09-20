@@ -12,6 +12,9 @@ api: https://overpass-api.de/api/interpreter
 pilot_relevance: [global]
 tags: [urban-form, buildings, amenities, land-use, premises, crowdsourced, odbl]
 added: 2026-09-18
+adapter: pack:place
+feeds_cells: [Economic|Community]
+auth: key-free-rate-limited
 wired_in_planetai: true
 upstream_listed_in: [awesome-public-datasets]
 notes: |
@@ -25,3 +28,8 @@ notes: |
   PLANETAI: `packs/place` describes PLACE_RADIUS_M around the node and
   refreshes every PLACE_REFRESH_DAYS; `app/bootstrap.py::place_name()` uses
   Nominatim for the node's place name.
+
+  PLANETAI: two readers, and `adapter` names the one that fills a cell. `packs/place` queries Overpass
+  for what is around the node; `app/bootstrap.py::place_name()` reverse-geocodes once at install via
+  Nominatim, whose usage policy is one request per second and a real User-Agent — hence once, never in
+  a loop.

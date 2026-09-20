@@ -12,6 +12,8 @@ api: gs://alphaearth_foundations
 pilot_relevance: [global]
 tags: [land, satellite, embeddings, earth-observation, remote-sensing, foundation-model, google-deepmind]
 added: 2026-09-18
+adapter: pack:earth
+feeds_cells: [Environmental|City]
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |

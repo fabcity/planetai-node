@@ -12,6 +12,9 @@ api: https://api.open-meteo.com/v1
 pilot_relevance: [global]
 tags: [weather, climate, ecmwf, free-tier]
 added: 2026-05-04
+adapter: core:openmeteo
+feeds_cells: []
+auth: none
 wired_in_planetai: true
 upstream_listed_in: [awesome-public-datasets]
 notes: |
@@ -20,3 +23,7 @@ notes: |
   forecasts, and as a fallback for several PLANETAI panels.
   Reverse-geocoding via /v1/forecast carries city + country names
   so it doubles as a geocoder.
+
+  `feeds_cells` is empty on purpose: `openmeteo()` writes `temp_model`, `humidity_model` and friends
+  to `om-point`, `kind='model'`, and no pack's cells.yml reads those metrics. It is a boundary
+  condition and a geocoder, never aggregated upward into a cell.

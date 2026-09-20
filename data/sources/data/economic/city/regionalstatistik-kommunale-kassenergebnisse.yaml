@@ -12,6 +12,7 @@ api: https://www.regionalstatistik.de/genesis/online
 pilot_relevance: []
 tags: [public-budget, municipal-finance, budget-execution, open-budget, germany]
 added: 2026-09-10
+auth: registration
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

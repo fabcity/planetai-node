@@ -12,6 +12,7 @@ api: https://www.presupuestoabierto.gob.ar/api/v1
 pilot_relevance: []
 tags: [public-finance, national-budget, budget-execution, argentina]
 added: 2026-09-10
+auth: api-key
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

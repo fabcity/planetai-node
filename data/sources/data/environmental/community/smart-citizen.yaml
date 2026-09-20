@@ -12,6 +12,8 @@ api: https://api.smartcitizen.me/v0
 pilot_relevance: [barcelona, global]
 tags: [air-quality, citizen-science, open-hardware, fab-lab-bcn, iaac]
 added: 2026-05-04
+adapter: core:smartcitizen
+feeds_cells: [Environmental|Community, Social|Community]
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |

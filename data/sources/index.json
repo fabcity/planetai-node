@@ -84,6 +84,7 @@
   {
     "added": "2026-09-09",
     "api": null,
+    "auth": "none",
     "cell": "Economic|Bioregion",
     "description": "FAO Food Balance Sheets: production, imports, exports, stock change,\nfeed, seed, losses and food supply per commodity per country. The\ncanonical basis for any food self-sufficiency ratio.\n",
     "license": "CC-BY-4.0 (FAO standard database licence — not confirmable from the pages fetched; verify at download)",
@@ -136,6 +137,7 @@
   {
     "added": "2026-09-09",
     "api": "https://sdmx.oecd.org/public/rest",
+    "auth": "none",
     "cell": "Economic|Bioregion",
     "description": "OECD's green growth indicator set delivered over a public SDMX REST API\nwith no key. Carries green jobs, environmental goods and services trade,\nenvironmental taxation, fossil-fuel support and resource productivity\nfor OECD and partner economies.\n",
     "license": "OECD terms — CC-BY-4.0 for most OECD statistical data, not restated on the SDMX endpoint; verify per dataflow",
@@ -446,6 +448,7 @@
   {
     "added": "2026-09-09",
     "api": "https://satudata.denpasarkota.go.id/api/3",
+    "auth": "none",
     "cell": "Economic|City",
     "description": "Kota Denpasar publishes its annual budget summaries and RKPD-to-APBD\nconsistency documents as CKAN datasets, mostly from BPKAD, in CSV with a\npublic-domain licence.\n",
     "license": "Lainnya (Domain Publik)",
@@ -599,6 +602,7 @@
   {
     "added": "2026-09-10",
     "api": "https://www.inegi.org.mx/app/api/denue/v1/consulta/",
+    "auth": "api-key",
     "cell": "Economic|City",
     "description": "Mexico's national business register as a geocoded REST API: over five million\nestablishments with activity code, employee-size band, address and\ncoordinates. Run by INEGI, free token required.\n",
     "license": "INEGI Terminos de Libre Uso de la Informacion",
@@ -734,6 +738,7 @@
   {
     "added": "2026-09-11",
     "api": "https://municipaldata.treasury.gov.za/api/cubes",
+    "auth": "none",
     "cell": "Economic|City",
     "description": "National Treasury's municipal finance API for all 292 South African\nmunicipalities: budgeted and audited income, expenditure, cash flow, capital\nand grants, 2008-09 to 2025-26. Built with OpenUp.\n",
     "license": "National Treasury Terms of Use - free commercial and non-commercial reuse, redistribution permitted, attribution to National Treasury plus date of publication required",
@@ -832,6 +837,7 @@
   {
     "added": "2026-09-10",
     "api": "https://www.regionalstatistik.de/genesis/online",
+    "auth": "registration",
     "cell": "Economic|City",
     "description": "Cash results for German municipal government: gross revenue and gross\nexpenditure of Gemeinden and Kreise, published at individual municipality\nresolution by the Laender statistical offices via IT.NRW.\n",
     "license": "dl-de/by-2-0 (Datenlizenz Deutschland - Namensnennung - Version 2.0)",
@@ -1190,13 +1196,18 @@
     "wired_in_planetai": true
   },
   {
+    "adapter": "pack:place",
     "added": "2026-09-18",
     "api": "https://overpass-api.de/api/interpreter",
+    "auth": "key-free-rate-limited",
     "cell": "Economic|Community",
     "description": "The collaborative world map: buildings, roads, land use, shops, workshops,\namenities, with a free query API (Overpass). The densest open record of\nwhat a neighbourhood physically contains, edited by the people who live in it.\n",
+    "feeds_cells": [
+      "Economic|Community"
+    ],
     "license": "ODbL-1.0",
     "name": "OpenStreetMap (Overpass API)",
-    "notes": "ODbL: derived databases must be shared under ODbL; produced works need\nattribution \"(c) OpenStreetMap contributors\". Public Overpass instances are\nrate-limited and shared; a lab running many nodes should host its own.\nClassified economic/community because the signal the network uses is\npremises - workshops, shops, industrial land use, repair and making places\n- around a node. It also carries social (schools, clinics, worship) and\nenvironmental (green space, water) features; one entry, cited once.\nPLANETAI: `packs/place` describes PLACE_RADIUS_M around the node and\nrefreshes every PLACE_REFRESH_DAYS; `app/bootstrap.py::place_name()` uses\nNominatim for the node's place name.\n",
+    "notes": "ODbL: derived databases must be shared under ODbL; produced works need\nattribution \"(c) OpenStreetMap contributors\". Public Overpass instances are\nrate-limited and shared; a lab running many nodes should host its own.\nClassified economic/community because the signal the network uses is\npremises - workshops, shops, industrial land use, repair and making places\n- around a node. It also carries social (schools, clinics, worship) and\nenvironmental (green space, water) features; one entry, cited once.\nPLANETAI: `packs/place` describes PLACE_RADIUS_M around the node and\nrefreshes every PLACE_REFRESH_DAYS; `app/bootstrap.py::place_name()` uses\nNominatim for the node's place name.\n\nPLANETAI: two readers, and `adapter` names the one that fills a cell. `packs/place` queries Overpass\nfor what is around the node; `app/bootstrap.py::place_name()` reverse-geocodes once at install via\nNominatim, whose usage policy is one request per second and a real User-Agent — hence once, never in\na loop.\n",
     "pillar": "economic",
     "pilot_relevance": [
       "global"
@@ -1276,6 +1287,7 @@
   {
     "added": "2026-09-09",
     "api": "https://ourworldindata.org/grapher/{slug}.csv?csvType=full&useColumnShortNames=true",
+    "auth": "none",
     "cell": "Economic|Planet",
     "description": "OWID republishes FAOSTAT, World Bank and other series as clean, tidy,\nversioned CSVs at a stable URL pattern. Useful as the machine-readable\nescape hatch when an upstream agency's own API is unreachable.\n",
     "license": "CC-BY-4.0 for OWID's processing; upstream licences still apply to underlying values",
@@ -1327,6 +1339,7 @@
   {
     "added": "2026-09-09",
     "api": "https://api.worldbank.org/v2",
+    "auth": "none",
     "cell": "Economic|Planet",
     "description": "The World Bank's flagship cross-country indicator database served\nthrough a free unauthenticated REST API. Carries global and national\nGDP, value added by sector, adjusted net savings and natural-resource\ndepletion rents.\n",
     "license": "CC-BY-4.0",
@@ -1798,6 +1811,7 @@
   {
     "added": "2026-09-10",
     "api": "https://www.presupuestoabierto.gob.ar/api/v1",
+    "auth": "api-key",
     "cell": "Economic|Region",
     "description": "Argentina's national budget credit, revenue, physical execution and\ncross-cutting financial analysis, published by the Secretaría de Hacienda.\nQueryable through a documented v1 REST API and as bulk open data.\n",
     "license": "CC-BY-4.0",
@@ -2184,6 +2198,7 @@
   {
     "added": "2026-09-09",
     "api": "https://data-api.globalforestwatch.org",
+    "auth": "none",
     "cell": "Environmental|Bioregion",
     "description": "WRI's Global Forest Watch data API serving the Hansen/UMD 30 m global\nforest change products - annual tree cover loss and 2000/2010 tree cover\ndensity - plus a large catalogue of third-party layers.\n",
     "license": "CC-BY-4.0 (per-dataset; other catalogue layers vary, several are non-commercial)",
@@ -2262,13 +2277,18 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "pack:coast",
     "added": "2026-09-18",
     "api": "https://marine-api.open-meteo.com/v1/marine",
+    "auth": "none",
     "cell": "Environmental|Bioregion",
     "description": "Key-free hourly marine forecasts to 16 days: wave height, period and\ndirection (wind, swell, secondary swell), sea surface temperature, sea\nlevel with tides, ocean current. Backed by MFWAM, ECMWF WAM, GFS Wave, EWAM.\n",
+    "feeds_cells": [
+      "Environmental|Bioregion"
+    ],
     "license": "CC-BY-4.0 (Open-Meteo) with mandatory attribution to the model providers (DWD, ECMWF, Meteo-France, NCEP)",
     "name": "Open-Meteo Marine Weather API",
-    "notes": "Resolution 5-50 km depending on model; a point query is snapped to the\nnearest ocean cell, so inland nodes get a cell that may be far away.\nPLANETAI: `packs/coast` reads it and refuses to report when the nearest\nocean cell is further than COAST_MAX_KM (default 30). Free for\nnon-commercial use; commercial use needs an Open-Meteo subscription.\n",
+    "notes": "Resolution 5-50 km depending on model; a point query is snapped to the\nnearest ocean cell, so inland nodes get a cell that may be far away.\nPLANETAI: `packs/coast` reads it and refuses to report when the nearest\nocean cell is further than COAST_MAX_KM (default 30). Free for\nnon-commercial use; commercial use needs an Open-Meteo subscription.\n\nPLANETAI: `packs/coast` samples the nearest ocean cell onto `marine-point`, and `packs/posidonia`\nreads those same rows against a thermal-stress threshold. Both land on `Environmental|Bioregion`,\nwhich is why `feeds_cells` carries one key and not two.\n`auth: none` records what a node must hold — nothing. The non-commercial limit in `license` is a\nseparate question and stays there; a node operator, not this file, decides it.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "bali",
@@ -2347,10 +2367,14 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "pack:earth",
     "added": "2026-09-18",
     "api": "gs://alphaearth_foundations",
     "cell": "Environmental|City",
     "description": "Annual 10 m global embeddings (64 dimensions per pixel) learned from\nSentinel-1/2, Landsat, GEDI, ERA5 and more, 2017-2024. A general-purpose\nland representation: change, similarity and classification without labels.\n",
+    "feeds_cells": [
+      "Environmental|City"
+    ],
     "license": "CC-BY-4.0 (attribution required)",
     "name": "AlphaEarth Foundations - Satellite Embedding V1 (Google DeepMind)",
     "notes": "Available in Earth Engine (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL) and as\nGeoTIFF tiles in the public GCS bucket gs://alphaearth_foundations; the\nbucket moved to provider-pays in July 2026, so egress is billed to the\nrequester's project. PLANETAI: `packs/earth` fetches a square of\nEARTH_RADIUS_M around the node (5 km = 10 km square, ~64 MB per year) and\ntracks year-on-year change; `packs/earth-engine` is the EE variant.\nClassified at city scale: 10 m pixels are far finer than a bioregion needs\nand it is the land layer a municipality or a lab can actually use.\n",
@@ -2402,6 +2426,7 @@
   {
     "added": "2026-05-04",
     "api": "https://airquality.googleapis.com/v1",
+    "auth": "paid",
     "cell": "Environmental|City",
     "description": "500m-resolution PM2.5 + AQI grid derived from regulatory stations,\nsatellite, and modelling. Global coverage with hourly updates.\n",
     "license": "Google Maps Platform terms (free quota tier available)",
@@ -2505,6 +2530,7 @@
   {
     "added": "2026-05-04",
     "api": "https://api.openaq.org/v3",
+    "auth": "key-free-rate-limited",
     "cell": "Environmental|City",
     "description": "Reference-grade air quality aggregator. Pulls from ~10k+ regulatory\nmonitoring stations globally and harmonises to a common schema.\nFree public API with optional auth for higher rate limits.\n",
     "license": "CC-BY-4.0",
@@ -2535,6 +2561,7 @@
   {
     "added": "2026-09-11",
     "api": "https://api.luchtmeetnet.nl/open_api/stations",
+    "auth": "none",
     "cell": "Environmental|City",
     "description": "The Dutch national air quality monitoring network, run by RIVM with regional\nenvironment agencies. Open JSON API serving station metadata and hourly\nconcentrations for NO2, PM10, PM2.5, O3 and more.\n",
     "license": "CC-BY-4.0",
@@ -2772,10 +2799,15 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "core:airgradient",
     "added": "2026-05-04",
     "api": "https://api.airgradient.com/public/api/v1",
     "cell": "Environmental|Community",
     "description": "Open-hardware indoor + outdoor air quality monitoring network with\npublic REST API. PM2.5, PM10, CO2, TVOC, NOx, temperature, humidity.\n~10k+ devices deployed globally; transparent pricing for the open\nvariant.\n",
+    "feeds_cells": [
+      "Environmental|Community",
+      "Social|Community"
+    ],
     "license": "CC-BY-4.0 (data) + custom open (hardware)",
     "name": "AirGradient",
     "notes": "Strong fit for the Community-tier indoor environment signal that\nSmart Citizen does not cover well (Smart Citizen focuses outdoor).\nAirGradient kits are commonly deployed in schools, offices, and homes.\nCombined with Smart Citizen they form a complementary indoor + outdoor\ncommunity sensing layer.\n",
@@ -2798,13 +2830,18 @@
     "wired_in_planetai": true
   },
   {
+    "adapter": "core:baliairdispatch",
     "added": "2026-09-18",
     "api": "https://baliairdispatch.com/api/v1",
+    "auth": "none",
     "cell": "Environmental|Community",
     "description": "Island-wide PM2.5 archive for Bali aggregating eight sensor networks\n(Nafas, IQAir, PurpleAir, AQICN, OpenAQ, AirGradient, Smart Citizen, Airly)\ninto one key-free, read-only API with raw and humidity-corrected values.\n",
+    "feeds_cells": [
+      "Environmental|City"
+    ],
     "license": "Public-interest archive; redistribution encouraged with attribution to Bali Air Dispatch and to the originating network named in each row. Upstream readings remain under their networks' terms.",
     "name": "Bali Air Dispatch",
-    "notes": "A peer observatory, not a sensor network: credit both the archive and the\nrow's network. Endpoints: /stations, /latest, /measurements (raw, hourly,\ndaily; JSON or CSV). Applies the US EPA 2021 humidity correction to\nPlantower-based networks and stores raw alongside corrected; flags\nsuspected-indoor stations and stale readings. Collaborators: Fab Lab Bali,\nCAST Foundation, Bali Net Zero Coalition, Meaningful Design Group.\nPLANETAI: read by `app/sources.py::baliairdispatch()` as reference context\n(local=false) on Bali nodes and by `packs/nearby`. Nodes with outdoor\nhardware should also publish to a network BAD reads so the map densifies.\n",
+    "notes": "A peer observatory, not a sensor network: credit both the archive and the\nrow's network. Endpoints: /stations, /latest, /measurements (raw, hourly,\ndaily; JSON or CSV). Applies the US EPA 2021 humidity correction to\nPlantower-based networks and stores raw alongside corrected; flags\nsuspected-indoor stations and stale readings. Collaborators: Fab Lab Bali,\nCAST Foundation, Bali Net Zero Coalition, Meaningful Design Group.\nPLANETAI: read by `app/sources.py::baliairdispatch()` as reference context\n(local=false) on Bali nodes and by `packs/nearby`. Nodes with outdoor\nhardware should also publish to a network BAD reads so the map densifies.\n\nPLANETAI: three readers, and `adapter` names one. `app/sources.py::baliairdispatch()` ingests the ring;\n`packs/nearby` configures and verifies it; `packs/season` reads the same rows over a 68-day window.\nIts stations are stored `local=False`, so they fill the public-reference-stations cell and never the\nin-custody one — which is the whole point of the ring.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "bali"
@@ -2851,10 +2888,15 @@
     "wired_in_planetai": true
   },
   {
+    "adapter": "core:smartcitizen",
     "added": "2026-05-04",
     "api": "https://api.smartcitizen.me/v0",
     "cell": "Environmental|Community",
     "description": "Open-hardware community sensor network from Fab Lab Barcelona / IAAC.\n~25k kits deployed globally measuring PM2.5, sound, temperature, humidity,\nlight, CO2. FOSS hardware + firmware, public REST API.\n",
+    "feeds_cells": [
+      "Environmental|Community",
+      "Social|Community"
+    ],
     "license": "CC-BY-SA-4.0 (data) + GPL-3.0 (firmware/hardware)",
     "name": "Smart Citizen",
     "notes": "Originated at Fab Lab Barcelona / IAAC. Public devices endpoint:\n/devices/world_map (returns ~50-100k device records).\nPer-device readings: /devices/{id}/readings.\nUsed as the canonical Community-tier environmental signal in the\nPLANETAI observatory. Note: BCN archive is ~98% dormant\n(25 of 1,408 kits actively reporting as of April 2026).\nFab labs can deploy kits and contribute to the network with no\nenrollment friction. Kit ID #19236 is the live anchor used in\nthe observatory's Local view.\n",
@@ -2930,6 +2972,7 @@
   {
     "added": "2026-05-04",
     "api": "https://floodforecasting.googleapis.com/v1",
+    "auth": "key-free-rate-limited",
     "cell": "Environmental|Planet",
     "description": "Riverine flood forecasts up to 7 days ahead for ~80 countries\nincluding Indonesia, Spain, Chile. Inundation maps + alerts via\nfree public API (rate-limited).\n",
     "license": "Google Maps Platform terms (free tier)",
@@ -2983,13 +3026,16 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "core:power_climatology",
     "added": "2026-09-18",
     "api": "https://power.larc.nasa.gov/api/temporal/",
+    "auth": "none",
     "cell": "Environmental|Planet",
     "description": "NASA Langley's Prediction Of Worldwide Energy Resources: solar and\nmeteorological parameters from MERRA-2 and CERES, hourly to climatology,\nfor any point on Earth since 1981, via a key-free REST API.\n",
+    "feeds_cells": [],
     "license": "US Government work (public domain); NASA POWER asks for citation",
     "name": "NASA POWER",
-    "notes": "Temporal endpoints: hourly, daily, monthly, climatology, each as\n/api/temporal/{level}/point?parameters=...&latitude=&longitude=&community=RE|AG|SB.\nResolution ~0.5 x 0.625 deg (MERRA-2); a point query returns the enclosing cell.\nPLANETAI: `app/bootstrap.py::power_climatology()` pulls the 12 monthly\nnormals (temperature, humidity, solar, precipitation) for the node's\ncoordinates at first start; the `cold-start` pack cites this slug. It is\nthe reason a node needs coordinates, not a sensor, to have a baseline.\n",
+    "notes": "Temporal endpoints: hourly, daily, monthly, climatology, each as\n/api/temporal/{level}/point?parameters=...&latitude=&longitude=&community=RE|AG|SB.\nResolution ~0.5 x 0.625 deg (MERRA-2); a point query returns the enclosing cell.\nPLANETAI: `app/bootstrap.py::power_climatology()` pulls the 12 monthly\nnormals (temperature, humidity, solar, precipitation) for the node's\ncoordinates at first start; the `cold-start` pack cites this slug. It is\nthe reason a node needs coordinates, not a sensor, to have a baseline.\n\n`feeds_cells` is empty on purpose: the twelve monthly normals land on `power-point`, `kind='model'`,\nas `*_norm` metrics that no cells.yml reads. They are what a normal year looks like here — the\nbaseline a measurement is read against, not a measurement.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "global"
@@ -3038,13 +3084,16 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "core:openmeteo",
     "added": "2026-05-04",
     "api": "https://api.open-meteo.com/v1",
+    "auth": "none",
     "cell": "Environmental|Planet",
     "description": "Free weather + climate API with no auth required. Backed by ECMWF +\nGFS + DWD + KNMI. Hourly forecasts to 14 days, historical reanalysis,\nclimate projections, marine forecasts.\n",
+    "feeds_cells": [],
     "license": "CC-BY-4.0",
     "name": "Open-Meteo",
-    "notes": "Most generous free tier in the weather-API space. Used for\ngeocoding (forward + reverse), climate projections, marine\nforecasts, and as a fallback for several PLANETAI panels.\nReverse-geocoding via /v1/forecast carries city + country names\nso it doubles as a geocoder.\n",
+    "notes": "Most generous free tier in the weather-API space. Used for\ngeocoding (forward + reverse), climate projections, marine\nforecasts, and as a fallback for several PLANETAI panels.\nReverse-geocoding via /v1/forecast carries city + country names\nso it doubles as a geocoder.\n\n`feeds_cells` is empty on purpose: `openmeteo()` writes `temp_model`, `humidity_model` and friends\nto `om-point`, `kind='model'`, and no pack's cells.yml reads those metrics. It is a boundary\ncondition and a geocoder, never aggregated upward into a cell.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "global"
@@ -3065,13 +3114,16 @@
     "wired_in_planetai": true
   },
   {
+    "adapter": "core:openmeteo_air",
     "added": "2026-09-18",
     "api": "https://air-quality-api.open-meteo.com/v1/air-quality",
+    "auth": "none",
     "cell": "Environmental|Planet",
     "description": "Key-free hourly air-quality forecasts and 92 days of history from the\nCopernicus CAMS global (0.4 deg) and European (0.1 deg) models: PM2.5,\nPM10, O3, NO2, SO2, CO, dust, aerosol optical depth, UV index, pollen (EU).\n",
+    "feeds_cells": [],
     "license": "CC-BY-4.0 (Open-Meteo) with mandatory attribution to CAMS / Copernicus as data provider",
     "name": "Open-Meteo Air Quality API (Copernicus CAMS)",
-    "notes": "Model output, not measurement: at a node this is the reference row, never\n`live`. Free for non-commercial use; commercial use needs an Open-Meteo\nsubscription. PLANETAI: `app/sources.py::openmeteo_air()` samples it hourly\nat the node's coordinates as sensor `cams-point` (kind=model, scale=planet)\nand `app/bootstrap.py::cams_history()` pulls the 92-day history at first\nstart. Where no public sensor is within reach, the indoor/outdoor rule\ncompares against this and names it in the alert.\n",
+    "notes": "Model output, not measurement: at a node this is the reference row, never\n`live`. Free for non-commercial use; commercial use needs an Open-Meteo\nsubscription. PLANETAI: `app/sources.py::openmeteo_air()` samples it hourly\nat the node's coordinates as sensor `cams-point` (kind=model, scale=planet)\nand `app/bootstrap.py::cams_history()` pulls the 92-day history at first\nstart. Where no public sensor is within reach, the indoor/outdoor rule\ncompares against this and names it in the alert.\n\nPLANETAI: two readers. `app/sources.py::openmeteo_air()` samples it hourly and\n`app/bootstrap.py::cams_history()` backfills 92 days at first start; `adapter` names the first.\n`feeds_cells` is empty on purpose: both write `pm25_model` to a sensor stamped `kind='model'`,\nand every pack cell requires `s.custody` or `s.kind='sensor'`. This is a boundary condition a\nlocal reading is compared against, not an Index cell. Deliberate — see docs/SPEC_custody.md.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "global"
@@ -3147,6 +3199,7 @@
   {
     "added": "2026-09-11",
     "api": "https://nsdi.systems.gov.bt/server/rest/services/Hosted/lulc_2020_src_view/FeatureServer",
+    "auth": "none",
     "cell": "Environmental|Region",
     "description": "National land use and land cover for Bhutan derived from Sentinel-2 imagery with random-forest classification, 87% overall accuracy, showing 69% forest cover. Published by the National Land Commission Secretariat.",
     "license": "Open (Geo-Information Policy 2018 §6.3.1 open tier: \"Open data shall be openly and freely accessible\")",
@@ -3224,13 +3277,16 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "pack:forecast",
     "added": "2026-09-18",
     "api": "https://api.bmkg.go.id/publik/prakiraan-cuaca",
+    "auth": "key-free-rate-limited",
     "cell": "Environmental|Region",
     "description": "Indonesia's meteorological agency publishes a three-day, 3-hourly forecast\nfor every kelurahan and desa in the country, keyed by the level-IV\nadministrative code, refreshed twice daily. Key-free JSON, 60 req/min/IP.\n",
+    "feeds_cells": [],
     "license": "BMKG terms of use; attribution \"Sumber: BMKG\" mandatory; repackaging into third-party applications and commercial use require written permission from BMKG (Ketentuan Penggunaan s.9.3)",
     "name": "BMKG Prakiraan Cuaca (Indonesia public weather forecast API)",
-    "notes": "Query: /publik/prakiraan-cuaca?adm4=<kode wilayah tingkat IV>. Returns\ntemperature, humidity, weather code, wind, cloud cover, visibility.\nThe finest official forecast for Indonesia, at a scale (desa) no global\nmodel resolves. Licence caveat: the API page asks only for attribution,\nbut the agency-wide terms (s.9.3) say integration into third-party apps\nneeds written permission. PLANETAI's `packs/forecast` reads it on Bali\nnodes; the Foundation should request that permission in writing before\nthe pack is promoted from beta. Automated scraping of bmkg.go.id pages is\nprohibited; use this API only.\n",
+    "notes": "Query: /publik/prakiraan-cuaca?adm4=<kode wilayah tingkat IV>. Returns\ntemperature, humidity, weather code, wind, cloud cover, visibility.\nThe finest official forecast for Indonesia, at a scale (desa) no global\nmodel resolves. Licence caveat: the API page asks only for attribution,\nbut the agency-wide terms (s.9.3) say integration into third-party apps\nneeds written permission. PLANETAI's `packs/forecast` reads it on Bali\nnodes; the Foundation should request that permission in writing before\nthe pack is promoted from beta. Automated scraping of bmkg.go.id pages is\nprohibited; use this API only.\n\nPLANETAI: `packs/forecast` reads it on Bali nodes. `feeds_cells` is empty because that pack has no\ncells.yml — it produces an ask, not an Index row. Note also that the pack does not declare a\n`sources:` line, so scripts/wired.py cannot see this link from the node's side; `adapter` is the\nonly record of it until it does.\nLICENCE, UNRESOLVED: data.bmkg.go.id asks only for attribution, but the agency-wide terms (S9.3)\nrequire written permission before integration into a third-party application. The Foundation should\nask BMKG in writing before `packs/forecast` leaves beta.\n",
     "pillar": "environmental",
     "pilot_relevance": [
       "bali"
@@ -3307,6 +3363,7 @@
   {
     "added": "2026-05-04",
     "api": "https://api.mercadopublico.cl/servicios/v1/publico",
+    "auth": "key-free-rate-limited",
     "cell": "Governance|Bioregion",
     "description": "Chilean national public-procurement portal. All government\nprocurement lifecycle: bases de licitacion, ofertas, adjudicaciones.\nPublic REST API + bulk download.\n",
     "license": "public domain",
@@ -3357,6 +3414,7 @@
   {
     "added": "2026-09-09",
     "api": null,
+    "auth": "none",
     "cell": "Governance|Bioregion",
     "description": "Convention on Wetlands database of 2,000+ internationally important\nwetland sites across 160+ Contracting Parties, with wetland type,\necology, land use, threats, hydrological values and a Ramsar Information\nSheet per site.\n",
     "license": "Open access statement only — the Secretariat provides open access to promote conservation and wise use; no reuse terms, no SPDX identifier",
@@ -3489,10 +3547,14 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "core:ckan",
     "added": "2026-05-04",
     "api": null,
     "cell": "Governance|City",
     "description": "City of Boston open data portal, CKAN-based. 235 datasets covering 311\nservice requests, budget and spending, building permits, employee earnings,\nfood inspections, traffic and public safety.\n",
+    "feeds_cells": [
+      "Governance|City"
+    ],
     "license": "Open Data Commons Public Domain Dedication and License (PDDL)",
     "name": "Analyze Boston",
     "notes": "Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Three\ncorrections to the original entry:\n\n1. DATASET COUNT is 235, not ~200 - read from the catalogue page.\n2. LICENCE is not simply \"public\". The facet breakdown, verbatim: \"Open Data\n   Commons Public Domain Dedication and License (PDDL)\" on 219 of 235,\n   \"License not specified\" on 14, and \"Open Data Commons Open Database\n   License [ODbL]\" on 1. The header licence here records the dominant regime;\n   the 14 unspecified ones must be checked individually before reuse.\n3. THE API FIELD IS NOW NULL. data.boston.gov/robots.txt disallows /api/, so\n   the CKAN action API at /api/3/action/* is not available to a well-behaved\n   client. The previous value implied a usable endpoint. Catalogue\n   enumeration has to come from rendered HTML, or from a client that ignores\n   robots - which is a deliberate choice, not a default.\n\nThis entry is the CATALOGUE ITSELF, which is a legitimate Governance|City\nindicator: dataset count and licence regime are the open-data-availability\nsignal that packs/open-data-health computes. Specific Boston datasets are\nseparate entries - see boston-operating-revenue-budget,\nboston-checkbook-explorer, boston-capital-plan, boston-procurement and\nboston-ghg-emissions.\n\nThe 311 service-requests dataset remains the action-latency candidate for\nBoston: time from complaint to resolution at address level.\n",
@@ -3515,13 +3577,17 @@
     "wired_in_planetai": true
   },
   {
+    "adapter": "core:ckan",
     "added": "2026-05-04",
     "api": null,
     "cell": "Governance|City",
     "description": "Provinsi Bali's Satu Data portal. Reachable and responding, but its search\nreturns an empty state with no datasets listed by default, so its actual\nholdings could not be established.\n",
+    "feeds_cells": [
+      "Governance|City"
+    ],
     "license": "not stated",
     "name": "Bali Satu Data (provincial)",
-    "notes": "Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). This entry was\nsubstantially wrong and is corrected here.\n\nWHAT WAS CLAIMED: \"cross-domain datasets ... demography, environment,\neconomy, public services, customary-village indicators\", with \"environmental\n+ demographic dense\". WHAT WAS OBSERVED: HTTP 200, an empty search result\nstate, no datasets visible, no confirmed API, and portal type (CKAN or\ncustom) undeterminable from the page. The portal appears to be a shell. The\noriginal description was not verified against the live site.\n\nLICENCE was \"public (Indonesian government)\" with no source. Corrected to\n\"not stated\".\n\nTHIS IS THE PROVINCIAL PORTAL, NOT THE CITY ONE. The Denpasar municipal\nportal at satudata.denpasarkota.go.id is a different system entirely - CKAN\n2.8.3, roughly 1,028 datasets, near-universal public-domain licence - and is\nnow its own entry, governance/city/satudata-denpasar. That is the one with\nthe data. Do not merge the two or treat this URL as Bali's open-data story.\n\nwired_in_planetai is left at true because this registry cannot verify another\nrepo's runtime state, but it should be checked: a connector reporting live\nagainst a portal with an empty search state is unlikely to be returning\nanything useful. This is exactly the drift the FCI provenance proposal is\nmeant to end.\n\nNational context: katalog.data.go.id and data.go.id gave inconsistent results\nfor Bali and Denpasar organisations - one query returned \"0 datasets,\ncuration underway\", another failed DNS. The national Satu Data catalogue's\nlive state for this province is genuinely unclear.\n",
+    "notes": "Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). This entry was\nsubstantially wrong and is corrected here.\n\nWHAT WAS CLAIMED: \"cross-domain datasets ... demography, environment,\neconomy, public services, customary-village indicators\", with \"environmental\n+ demographic dense\". WHAT WAS OBSERVED: HTTP 200, an empty search result\nstate, no datasets visible, no confirmed API, and portal type (CKAN or\ncustom) undeterminable from the page. The portal appears to be a shell. The\noriginal description was not verified against the live site.\n\nLICENCE was \"public (Indonesian government)\" with no source. Corrected to\n\"not stated\".\n\nTHIS IS THE PROVINCIAL PORTAL, NOT THE CITY ONE. The Denpasar municipal\nportal at satudata.denpasarkota.go.id is a different system entirely - CKAN\n2.8.3, roughly 1,028 datasets, near-universal public-domain licence - and is\nnow its own entry, governance/city/satudata-denpasar. That is the one with\nthe data. Do not merge the two or treat this URL as Bali's open-data story.\n\nwired_in_planetai is left at true because this registry cannot verify another\nrepo's runtime state, but it should be checked: a connector reporting live\nagainst a portal with an empty search state is unlikely to be returning\nanything useful. This is exactly the drift the FCI provenance proposal is\nmeant to end.\n\nNational context: katalog.data.go.id and data.go.id gave inconsistent results\nfor Bali and Denpasar organisations - one query returned \"0 datasets,\ncuration underway\", another failed DNS. The national Satu Data catalogue's\nlive state for this province is genuinely unclear.\n\nPLANETAI: `presets/bali.env` still points CKAN_PORTALS at this portal, which is why `adapter` is set.\nThe September 2026 harvest found it returning no usable packages. The adapter stays and reports what\nit finds — a portal nobody maintains is not open data, and saying so is the DIDO signal.\n",
     "pillar": "governance",
     "pilot_relevance": [
       "bali"
@@ -3670,6 +3736,7 @@
   {
     "added": "2026-09-11",
     "api": "https://api.data.amsterdam.nl/v1/",
+    "auth": "none",
     "cell": "Governance|City",
     "description": "Gemeente Amsterdam's data catalogue and its DataPunt REST API, which serves\nroughly 100 versioned dataset collections (BAG, trees, ecology, waste,\ngas-free zones) as JSON, plus WFS and MVT layers.\n",
     "license": "CC0-1.0",
@@ -3839,10 +3906,14 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "core:ckan",
     "added": "2026-05-04",
     "api": null,
     "cell": "Governance|City",
     "description": "Chile's national open data portal, CKAN 2.10.4, publishing 3,211 datasets\nfrom 272 institutions including central government and many municipalities.\nUsed as the Santiago pilot's open-data substrate.\n",
+    "feeds_cells": [
+      "Governance|City"
+    ],
     "license": "not stated",
     "name": "datos.gob.cl",
     "notes": "Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Two corrections,\none of which matters a lot:\n\n1. THE LICENCE CLAIM WAS UNSUPPORTED. This entry previously read \"public\n   domain (Chilean government)\". No such statement was found. The portal's\n   licence regime could not be established at all, because\n   /api/3/action/package_search is disallowed by the site's own robots.txt,\n   so per-dataset licence fields cannot be enumerated programmatically and\n   the homepage does not state a blanket licence. Recorded as \"not stated\",\n   which is honest and which means CONTRIBUTING criterion 1 is NOT satisfied\n   for anything pulled from here until a licence is confirmed per dataset.\n2. API set to null for the same robots.txt reason.\n\nCounts (3,211 datasets, 272 institutions, 9,615 registered users) are from\nthe homepage's own figures, not from the API.\n\nSCALE IS ARGUABLE AND LEFT AS-IS. This is a national portal filed at city\nscale because that is how the Santiago pilot uses it. Moving it to region or\nplanet would change its slug and break the Airtable sync key, so the\ninconsistency is recorded here rather than fixed silently.\n\nCHILE IS DATA-RICH AND LICENCE-POOR. Wave 1 produced ZERO YAML-eligible\nsources for Santiago. SINIM (datos.sinim.gov.cl), the only comuna-level\nmunicipal finance source in the country, claims \"Creative Commons Atribucion\n2.0 Chile\" in its footer while its terms restrict use to \"fines que estime\npertinentes, sin fines comerciales\" - a non-commercial clause inside a CC-BY\nclaim. SINCA (sinca.mma.gob.cl), the only PM2.5 source for Santiago, is\n\"Todos los derechos reservados\". Both are recorded as restricted-licence\ncandidates in the coverage tracker, deliberately without YAML files.\n",
@@ -3967,6 +4038,7 @@
   {
     "added": "2026-09-11",
     "api": "https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Local_Authority_Districts_December_2024_Boundaries_UK_BFC/FeatureServer/0/query",
+    "auth": "none",
     "cell": "Governance|City",
     "description": "Queryable ArcGIS FeatureServers for UK statistical geography, serving\nvintaged GSS codes and boundaries from output area to country. Around\n600 vintage-suffixed services, no key, no authentication.\n",
     "license": "Open Government Licence v3.0",
@@ -4016,10 +4088,14 @@
     "wired_in_planetai": false
   },
   {
+    "adapter": "core:ckan",
     "added": "2026-05-04",
     "api": "https://opendata-ajuntament.barcelona.cat/data/api/action/package_search",
     "cell": "Governance|City",
     "description": "Barcelona municipal open data portal, CKAN-based. 555 datasets covering\nmobility, environment, demographics, economy, governance and urban fabric,\nentirely under CC-BY-4.0.\n",
+    "feeds_cells": [
+      "Governance|City"
+    ],
     "license": "CC-BY-4.0",
     "name": "Open Data BCN",
     "notes": "Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Corrections:\n\n1. DATASET COUNT is 555, not ~600 - from package_search?rows=0, which\n   returned {\"count\":555,\"success\":true}.\n2. THE API PATH WAS WRONG. The working action API is /data/api/action/*, not\n   /data/api/3/. The previous value would 404.\n3. LICENCE CONFIRMED uniform: every dataset fetched returned license_title\n   \"Creative Commons Attribution 4.0\" with license_url pointing at\n   creativecommons.org/licenses/by/4.0/. Barcelona is the only pilot portal\n   in wave 1 with a single, uniform, unambiguous licence across the catalogue.\n\nACCESS CAVEAT, IMPORTANT: every human-facing HTML page on this portal -\nthe homepage, /en/api-cataleg, individual /data/*/dataset/* pages - sits\nbehind a BunkerWeb/hCaptcha bot challenge and cannot be fetched\nautomatically. Only the raw /data/api/action/* JSON responds. Anything built\nagainst the HTML will break.\n\nThis entry is the CATALOGUE ITSELF as a Governance|City availability\nindicator. Specific datasets are separate entries - see\nbarcelona-pressupost-execucio, barcelona-perfil-contractant,\nbarcelona-cens-activitat-economica and barcelona-eleccions-seccio-censal.\n\nCrosswalks to the Generalitat de Catalunya Socrata portal for regional-tier\ndata (datasets yd9k-7jhw and 4g9s-gzp6), whose licence was NOT verified\nverbatim in this pass and is therefore not yet in this registry.\n",
@@ -4145,7 +4221,7 @@
     "description": "Kota Denpasar's municipal open data portal, CKAN 2.8.3, roughly 1,028\ndatasets across departmental organisations, published almost entirely under\na public-domain licence.\n",
     "license": "Lainnya (Domain Publik)",
     "name": "Portal Satu Data Denpasar",
-    "notes": "Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). CKAN 2.8.3\nconfirmed from the footer and meta-generator.\n\nTHE MOST OPENLY LICENSED MUNICIPAL CATALOGUE IN WAVE 1. Licence facet shows\n1,027 datasets under \"Lainnya (Domain Publik)\" and 1 under \"Lainnya (Open)\".\nFor comparison: Barcelona 555 datasets under CC-BY-4.0, Boston 235 of which\n219 PDDL and 14 unspecified, Santiago's national portal licence regime\nunknown. On licence terms Denpasar leads the pilots, which is the opposite of\nwhat the network generally assumes.\n\nOrganisations by dataset count: BKPSDM 77, DINKES 74, DISPAR 61, BPKAD 55,\nDPMD 47, DPUPR 47. Tag \"pemerintahan\" carries 106.\n\nDISTINCT FROM governance/city/bali-satu-data IN THIS REGISTRY. That entry is\nthe PROVINCIAL portal at balisatudata.baliprov.go.id, which returned an empty\nsearch state when checked. This is the CITY portal and it is the one with the\ndata. Do not merge them.\n\nDataset count and licence split come from rendered facets, not package_search,\nwhich robots.txt disallowed in this pass.\n\nThe catalogue's own size and licence regime are themselves the Governance|City\nopen-data-availability indicator - see packs/open-data-health in planetai-node,\nwhich computes datasets_total and datasets_fresh_90d from any CKAN portal.\n",
+    "notes": "Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). CKAN 2.8.3\nconfirmed from the footer and meta-generator.\n\nTHE MOST OPENLY LICENSED MUNICIPAL CATALOGUE IN WAVE 1. Licence facet shows\n1,027 datasets under \"Lainnya (Domain Publik)\" and 1 under \"Lainnya (Open)\".\nFor comparison: Barcelona 555 datasets under CC-BY-4.0, Boston 235 of which\n219 PDDL and 14 unspecified, Santiago's national portal licence regime\nunknown. On licence terms Denpasar leads the pilots, which is the opposite of\nwhat the network generally assumes.\n\nOrganisations by dataset count: BKPSDM 77, DINKES 74, DISPAR 61, BPKAD 55,\nDPMD 47, DPUPR 47. Tag \"pemerintahan\" carries 106.\n\nDISTINCT FROM governance/city/bali-satu-data IN THIS REGISTRY. That entry is\nthe PROVINCIAL portal at balisatudata.baliprov.go.id, which returned an empty\nsearch state when checked. This is the CITY portal and it is the one with the\ndata. Do not merge them.\n\nDataset count and licence split come from rendered facets, not package_search,\nwhich robots.txt disallowed in this pass.\n\nThe catalogue's own size and licence regime are themselves the Governance|City\nopen-data-availability indicator - see packs/open-data-health in planetai-node,\nwhich computes datasets_total and datasets_fresh_90d from any CKAN portal.\n\nPLANETAI: no `adapter`, deliberately. `app/sources.py::ckan()` would read this portal the moment a\nnode put it in CKAN_PORTALS, but no preset and no pack names it today, and a pointer at code nobody\nruns is the hand-typed claim this field exists to replace. Set `adapter: core:ckan` in the same\nchange that adds it to a preset, not before.\n",
     "pillar": "governance",
     "pilot_relevance": [
       "bali"
@@ -4268,6 +4344,7 @@
   {
     "added": "2026-09-09",
     "api": null,
+    "auth": "none",
     "cell": "Governance|Planet",
     "description": "Country-level assessment of data governance, capability and availability\nacross eight thematic clusters including public procurement, public\nfinance, land management and political integrity. Hosted by D4D.net and\nILDA with IDRC funding.\n",
     "license": "CC-BY-4.0",
@@ -4294,6 +4371,7 @@
   {
     "added": "2026-09-09",
     "api": "https://api.iatistandard.org/datastore",
+    "auth": "api-key",
     "cell": "Governance|Planet",
     "description": "Solr-backed query layer over all published IATI activity, transaction\nand budget data - the largest machine-readable register of aid and\ndevelopment finance flows, including climate-tagged spend, published by\ndonors and implementers themselves.\n",
     "license": "Per-publisher — IATI publisher data is generally released openly but the licence is set by each publisher and was NOT verified here",
@@ -4400,6 +4478,7 @@
   {
     "added": "2026-09-11",
     "api": "https://nsdi.systems.gov.bt/portal/sharing/rest?f=json",
+    "auth": "none",
     "cell": "Governance|Region",
     "description": "The anonymous ArcGIS Enterprise catalogue API for Bhutan's National Spatial Data Infrastructure, returning 193 feature services with per-item licence category across 22 contributing agencies. The only machine-readable government data catalogue in Bhutan.",
     "license": "Open (Geo-Information Policy 2018 §6.3.1 open tier: \"Open data shall be openly and freely accessible\")",
@@ -4575,6 +4654,7 @@
   {
     "added": "2026-05-04",
     "api": "https://transparency.entsoe.eu/api",
+    "auth": "api-key",
     "cell": "Governance|Region",
     "description": "European electricity grid data: generation by source, consumption,\ncross-border flows, balancing, day-ahead prices. Hourly resolution\nfor all EU + UK + Norway + Switzerland.\n",
     "license": "custom open (ENTSO-E terms; free for non-commercial)",
@@ -4652,6 +4732,7 @@
   {
     "added": "2026-09-10",
     "api": "https://apis.datos.gob.ar/georef/api",
+    "auth": "key-free-rate-limited",
     "cell": "Governance|Region",
     "description": "Argentina's official API for resolving and normalising administrative units\n— provincias, departamentos, municipios, localidades and addresses — to\ntheir national identifier codes. Run by Datos Argentina on IGN base data.\n",
     "license": "CC-BY-4.0",
@@ -4883,6 +4964,7 @@
   {
     "added": "2026-09-11",
     "api": "https://open.canada.ca/data/api/3/action/package_search",
+    "auth": "none",
     "cell": "Governance|Region",
     "description": "Canada's federal CKAN catalogue, uniformly licensed under the Open\nGovernment Licence - Canada, with a fully open API. Over 1200\nbudget-related datasets and the reference source for federal fiscal\ndata.\n",
     "license": "Open Government Licence - Canada",
@@ -5165,6 +5247,7 @@
   {
     "added": "2026-09-09",
     "api": null,
+    "auth": "api-key",
     "cell": "Social|Planet",
     "description": "UNDP Human Development Report Office composite indices as a single tidy\nCSV covering 1990-2023: HDI, inequality-adjusted HDI, Gender Development\nIndex and Gender Inequality Index for around 193 countries.\n",
     "license": "Not formally stated — UNDP commits to free public accessibility of key statistics; licence UNCONFIRMED",
@@ -5192,6 +5275,7 @@
   {
     "added": "2026-09-09",
     "api": "https://api.uis.unesco.org/api/public/data/indicators",
+    "auth": "none",
     "cell": "Social|Planet",
     "description": "UNESCO's official statistics API for education, science, culture and\ndemographics. Indicator CR.3 gives upper-secondary completion rate and\nCR.3.GPIA its gender parity index, matching the framework's education-\naccess and gender indicators directly.\n",
     "license": "Could not be verified — UNESCO data is commonly CC-BY-SA-3.0-IGO but neither the terms page nor the disclaimer carried licence text",
@@ -5218,6 +5302,7 @@
   {
     "added": "2026-09-09",
     "api": "https://ghoapi.azureedge.net/api",
+    "auth": "none",
     "cell": "Social|Planet",
     "description": "WHO's official global health statistics service exposed as an open OData\nAPI. Indicator WHOSIS_000001 carries life expectancy at birth by\ncountry, year and sex with confidence intervals; hundreds of other\nindicators share the interface.\n",
     "license": "Not retrievable from the API endpoint — WHO GHO is generally CC-BY-NC-SA-3.0-IGO but this is UNVERIFIED",
@@ -5245,6 +5330,7 @@
   {
     "added": "2026-09-09",
     "api": "https://api.worldbank.org/pip/v1/pip",
+    "auth": "none",
     "cell": "Social|Planet",
     "description": "The World Bank's authoritative poverty and distributional statistics\nengine, computed from harmonised household surveys. Serves headcount,\npoverty gap, Gini, MLD and full income deciles per country-year with\nsurvey provenance.\n",
     "license": "CC-BY-4.0 (World Bank dataset terms)",
@@ -5354,6 +5440,7 @@
   {
     "added": "2026-05-04",
     "api": "https://vizhub.healthdata.org/gbd-results/",
+    "auth": "registration",
     "cell": "Social|Region",
     "description": "Mortality + morbidity by cause × geography × age × year for ~370\ndiseases and injuries across ~200 countries. The de facto global\nhealth-burden time series.\n",
     "license": "custom open (registration required)",

@@ -12,6 +12,9 @@ api: https://marine-api.open-meteo.com/v1/marine
 pilot_relevance: [bali, barcelona, boston, santiago, global]
 tags: [marine, waves, sea-surface-temperature, coast, tides, model, forecast]
 added: 2026-09-18
+adapter: pack:coast
+feeds_cells: [Environmental|Bioregion]
+auth: none
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |
@@ -20,3 +23,9 @@ notes: |
   PLANETAI: `packs/coast` reads it and refuses to report when the nearest
   ocean cell is further than COAST_MAX_KM (default 30). Free for
   non-commercial use; commercial use needs an Open-Meteo subscription.
+
+  PLANETAI: `packs/coast` samples the nearest ocean cell onto `marine-point`, and `packs/posidonia`
+  reads those same rows against a thermal-stress threshold. Both land on `Environmental|Bioregion`,
+  which is why `feeds_cells` carries one key and not two.
+  `auth: none` records what a node must hold — nothing. The non-commercial limit in `license` is a
+  separate question and stays there; a node operator, not this file, decides it.

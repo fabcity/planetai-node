@@ -12,6 +12,7 @@ api: https://floodforecasting.googleapis.com/v1
 pilot_relevance: [bali, barcelona, santiago, global]
 tags: [flooding, forecasting, water, google]
 added: 2026-05-04
+auth: key-free-rate-limited
 wired_in_planetai: true
 upstream_listed_in: []
 notes: |

@@ -13,6 +13,7 @@ pilot_relevance: []
 tags: [air-quality, netherlands, rivm, pm25, monitoring-stations, rest-api]
 added: 2026-09-11
 updated: 2026-09-11
+auth: none
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |

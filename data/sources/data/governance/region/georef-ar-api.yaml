@@ -12,6 +12,7 @@ api: https://apis.datos.gob.ar/georef/api
 pilot_relevance: []
 tags: [admin-boundaries, geocoding, identifiers, argentina, federation]
 added: 2026-09-10
+auth: key-free-rate-limited
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |
