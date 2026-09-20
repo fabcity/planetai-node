@@ -1,0 +1,50 @@
+# Who GitHub asks to review what. GOVERNANCE.md is the rule; this file is how GitHub is told about it.
+#
+# READ THIS BEFORE TRUSTING IT. `main` has no branch protection — checked against the API on
+# 20 September 2026: no required reviews, no required checks, no push restriction. Without a protected
+# branch a CODEOWNERS file REQUESTS a reviewer and enforces nothing; a merge with no review is still a
+# merge. docs/decisions/2026-09-20-governance.md lists the settings that would make these lines real.
+#
+# The paths below are GOVERNANCE.md's "two maintainers" row, and they share one reason: a household
+# updates by running `planetai update` and cannot review what arrives. init.sql runs against a database
+# holding a year of somebody's readings; `install` and `update.sh` are executed by a stranger straight
+# off a URL; bin/planetai is what a keeper types when something is already wrong.
+#
+# Two reviews is the intent and ONE OWNER IS LISTED, because a rule needs somebody who has agreed to
+# it. @lucfabcity already holds admin here and is `proposed` in MAINTAINERS.md; uncommenting his name
+# on these lines is the one edit that makes the rule two-of-two, and it is his to agree to first.
+
+# Everything, until the list below narrows it.
+*                       @tomasdiez
+
+# The schema a node applies to its own database on every update.
+/init.sql               @tomasdiez
+# /init.sql             @tomasdiez @lucfabcity      # proposed — see MAINTAINERS.md
+
+# The contracts §1 names, which node #7 has to share with node #1.
+/SPEC.md                @tomasdiez
+# /SPEC.md              @tomasdiez @lucfabcity      # proposed
+
+# The wire formats' top-level shape. tools/check_wire.py fails when these and the code disagree; that
+# gate is what makes a change deliberate, and this is what makes it reviewed.
+/tests/data/wire/       @tomasdiez
+# /tests/data/wire/     @tomasdiez @lucfabcity      # proposed
+
+# What a stranger pipes into bash, and what every node runs to update itself.
+/install                @tomasdiez
+/install.sh             @tomasdiez
+/update.sh              @tomasdiez
+# /install              @tomasdiez @lucfabcity      # proposed — the installer is his scope
+# /install.sh           @tomasdiez @lucfabcity      # proposed
+# /update.sh            @tomasdiez @lucfabcity      # proposed
+
+# The command a keeper types when something is already wrong.
+/bin/planetai           @tomasdiez
+# /bin/planetai         @tomasdiez @lucfabcity      # proposed
+
+# Governance itself, so a change to who decides is not a one-line PR nobody looked at.
+/GOVERNANCE.md          @tomasdiez
+/MAINTAINERS.md         @tomasdiez
+/.github/CODEOWNERS     @tomasdiez
+/SECURITY.md            @tomasdiez
+/LICENSE                @tomasdiez

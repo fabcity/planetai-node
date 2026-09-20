@@ -1,0 +1,10 @@
+{
+  "schema": "events-v0",
+  "source": "app/main.py::push_events",
+  "keys": [
+    "node",
+    "rows",
+    "scale",
+    "schema"
+  ]
+}
