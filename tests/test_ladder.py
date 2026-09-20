@@ -108,6 +108,22 @@ assert '"note": parts[2] if len(parts) > 2 else "acted"' not in src, \
     "the Telegram handler is substituting a placeholder for the person's own words again"
 assert "What did you do about #" in src, "it must ask for the words instead of inventing them"
 
+# 5. `planetai agent` prints the class, and the two cannot drift. The CLI is Bash and cannot import the
+#    table, so this is the gate instead of a shared file.
+import re  # noqa: E402
+CLI = open("bin/planetai").read()
+block = CLI[CLI.index('echo "    read   '):CLI.index('echo "  A person driving an agent')]
+for name in TC.TOOL_CLASS:
+    assert re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", block), \
+        f"`planetai agent` does not list {name}; a tool nobody is told about is a tool nobody audits"
+admin_line = next(l for l in block.splitlines() if '"    admin' in l)
+for name in ADMIN:
+    assert re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", admin_line), f"{name} is not on the CLI's admin line"
+for name in A.LOCAL_TOOLS:
+    if name != "act":                       # `act` appears on its own line, by name, with its rule
+        assert not re.search(rf"(?<![\w-]){re.escape(name)}(?![\w-])", admin_line), \
+            f"{name} is listed as admin in the CLI and is {TC.TOOL_CLASS[name]} in the table"
+
 print("the local model gets read and act; settings_set, run_pack_script, maintenance and report_now are withheld")
 print("the ladder: strongest online-first, fallback remote-online-local, private online-never, and a non-URL is not a rung")
 
