@@ -1,6 +1,6 @@
 # Database schema
 
-One Postgres database, `planetai`, on the `postgis/postgis:16-3.4-alpine` image, bound to the machine
+One Postgres database, `planetai`, on the `imresamu/postgis:16-3.4-alpine` image, bound to the machine
 itself. `init.sql` is the whole schema, written idempotently — `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE …
 ADD COLUMN IF NOT EXISTS`, `DROP VIEW` then `CREATE VIEW` — and the same file runs on a fresh volume and on
 every update, because Postgres runs it on its own only when the data volume is first created. Schema changes are additive by rule (SPEC §5): no dropped columns, no renames, no destructive migrations, which is what makes rollback `git checkout <tag>` and a restart rather than a restore. The one exception so far is `events.cleared_at`, a column nothing ever wrote, dropped in 0.51. `schema_version` records where a node is

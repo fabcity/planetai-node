@@ -73,7 +73,7 @@ Seven named steps, each printing its elapsed time and a heartbeat at least every
    answers, stamps `NODE_VERSION`, generates `POSTGRES_PASSWORD` and `ADMIN_TOKEN`. It refuses to start
    without coordinates, and refuses to generate a new database password over an existing database volume.
 3. **Port and folders.** Checks `APP_PORT` (8080) is free; creates `backups`, `exports`, `out`.
-4. **The database image.** Pulls `postgis/postgis:16-3.4-alpine` (about 162 MB) with visible progress.
+4. **The database image.** Pulls `imresamu/postgis:16-3.4-alpine` (about 162 MB) with visible progress. It is published for amd64 and arm64, which is why a Raspberry Pi gets this far.
 5. **Build and start.** `docker compose up -d --build`: the `app` image on `python:3.12-slim`, then both
    containers.
 6. **Schema.** Waits for Postgres and applies `init.sql` — the whole schema, idempotent, the same file a

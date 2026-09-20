@@ -161,7 +161,13 @@ readme = open("README.md").read()
 block = re.search(r"^docs/\s+.*?(?=\n[A-Za-z]+\.md|\n[a-z]+/)", readme, re.M | re.S)
 if block:
     # document names are the tokens that look like file stems: UPPER_CASE, or the one lowercase file (sensors)
-    listed = set(re.findall(r"\b([A-Z][A-Za-z_]{2,}|sensors)\b", block.group(0)))     # HANDOFF_beta_review is mixed case
+    # HANDOFF_beta_review is mixed case; HANDOFF_arm64 has a digit, and without \d the regex read it as
+    # "HANDOFF_arm" and reported the file as unlisted while it was sitting there in the block.
+    # `\d` matters: HANDOFF_arm64 without it reads as "HANDOFF_arm", and the file sitting in the block
+    # is reported unlisted. The lookbehind matters for the same reason in reverse: with digits allowed,
+    # `design/DIRECTIONS_2026-09` starts matching, and that file is in docs/design/, which this check
+    # does not glob. A stem preceded by a slash belongs to a subdirectory and is not this list's business.
+    listed = set(re.findall(r"(?<![/\w])([A-Z][A-Za-z0-9_]{2,}|sensors)\b", block.group(0)))
     actual = {os.path.basename(f)[:-3] for f in glob.glob("docs/*.md")}
     for miss in sorted(actual - listed):
         errs.append(f"README.md: docs/ index does not list {miss}.md")

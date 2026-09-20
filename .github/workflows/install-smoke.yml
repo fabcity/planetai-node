@@ -150,7 +150,7 @@ jobs:
           # installer rightly refuses to start a node whose new .env cannot log in to an old volume.
           docker volume rm -f planetai_db >/dev/null 2>&1 || true
           cp -r . /tmp/failrun && cd /tmp/failrun
-          sed -i 's|postgis/postgis:16-3.4-alpine|postgis/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
+          sed -i 's|imresamu/postgis:16-3.4-alpine|imresamu/postgis:16-3.4-alpine-DOES-NOT-EXIST|' docker-compose.yml
           cp .env.example .env && sed -i 's|^APP_PORT=.*|APP_PORT=8123|' .env
           set +e
           COMPOSE_PROJECT_NAME=planetai_fail timeout 600 ./install.sh --name ci-fail --lat 39.57 --lon 2.65 --no-bad \
@@ -187,14 +187,15 @@ jobs:
   # Lucas was on 8 September. The host's docker socket is mounted, so the engine the script installs has
   # something to talk to; what is under test is the platform branch, not nested virtualisation.
   clean-linux:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
-      max-parallel: 1          # one machine at a time: both legs drive the SAME host daemon
+      max-parallel: 1          # one machine at a time: the x86 legs drive the SAME host daemon
       matrix:
         include:
           - name: Ubuntu Server 22.04
+            runner: ubuntu-22.04
             project: pai_ubuntu
             port: 8131
             image: ubuntu:22.04
@@ -203,6 +204,7 @@ jobs:
           # os-release and lsb_release: ID=linuxmint with an Ubuntu upstream, which is what our platform
           # detection reads and what get.docker.com resolves through `lsb_release -a -u`.
           - name: Linux Mint 22.3 (Lucas's machine)
+            runner: ubuntu-22.04
             project: pai_mint
             port: 8133
             image: ubuntu:24.04
@@ -211,10 +213,23 @@ jobs:
               printf 'NAME="Linux Mint"\nVERSION="22.3 (Zara)"\nID=linuxmint\nID_LIKE="ubuntu debian"\nPRETTY_NAME="Linux Mint 22.3"\nVERSION_ID="22.3"\nVERSION_CODENAME=zara\nUBUNTU_CODENAME=noble\n' > /etc/os-release &&
               printf '#!/bin/sh\nif [ "$1$2" = "-a-u" ]; then exit 1; fi\nprintf "Distributor ID:\\tLinuxmint\\nCodename:\\tzara\\n"\n' > /usr/bin/lsb_release && chmod +x /usr/bin/lsb_release
           - name: Arch (what Omarchy is built on)
+            runner: ubuntu-22.04
             project: pai_arch
             port: 8132
             image: archlinux:latest
             prep: pacman -Sy --noconfirm --quiet curl sudo tar python openssh >/dev/null
+          # The wall, from the other side. Raspberry Pi OS 64-bit is Debian (the Pi's own download page,
+          # 15 Sep 2026, is Trixie), and Docker's Raspberry Pi OS install page covers 32-bit only and sends
+          # 64-bit users to the Debian instructions — so a Debian container on an arm64 runner is the
+          # nearest honest stand-in for a Pi that CI can hold. It is NOT a Pi: no SD card, no thermal
+          # throttling, no 4 GB ceiling. What it proves is the one thing that blocked the Pi for a year —
+          # that every image the node pulls exists for linux/arm64 and the database comes up on it.
+          - name: Debian on arm64 (the Pi's userland, not the Pi)
+            runner: ubuntu-24.04-arm
+            project: pai_arm64
+            port: 8134
+            image: debian:13
+            prep: apt-get update -qq && apt-get install -y -qq curl sudo tar ca-certificates python3 openssh-client >/dev/null
     name: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
@@ -256,7 +271,16 @@ jobs:
           {"name": "ci-clean", "lat": 39.95, "lon": 4.05, "kind": "home", "sensor": {}}
           JSON
           chown tester /home/tester/node.json
+          # PLANETAI_REF, and it is load-bearing. The stub arrives on stdin here, exactly as a tester runs
+          # it, so BASH_SOURCE is unset and `./tools/preflight.sh` is not next to it — which sends the stub
+          # down its fetch branch and pulls tools/preflight.sh from raw.githubusercontent at REF, whose
+          # default is `main`. So every leg of this job has been checking the preflight on main rather than
+          # the one in the commit under test, and it went unnoticed because main's preflight agreed with
+          # the branch's on x86. It stopped agreeing the moment a branch changed the arm64 row: CI reported
+          # `arch arm64 x the database image is published for linux/amd64 only` from a file the commit had
+          # already rewritten. Pin it to this commit and the stub fetches what is actually being tested.
           su tester -c 'cd /home/tester && PATH=/opt/notools:$PATH PLANETAI_SITE=http://172.17.0.1:8099 PLANETAI_HOME=/home/tester/planetai \
+            PLANETAI_REF=REF_PLACEHOLDER \
             COMPOSE_PROJECT_NAME=PROJECT_PLACEHOLDER APP_PORT=PORT_PLACEHOLDER \
             timeout 1500 bash -c "cat /work/install.signed | bash -s -- --answers /home/tester/node.json"' </dev/null 2>&1 | tee /tmp/T.txt
           echo "installer exit: ${PIPESTATUS[0]}"
@@ -271,6 +295,17 @@ jobs:
           fi
           grep -q "^install OK — ci-clean," /tmp/T.txt || { echo "the answers file was ignored: $(grep '^install OK' /tmp/T.txt)"; exit 1; }
           grep -qi "Something went wrong" /tmp/T.txt && { echo "still says Something went wrong"; exit 1; } || true
+          # And the node ANSWERS. "install OK" means seven steps finished and the database went healthy; it
+          # does not mean the app container is still up, because `docker compose up -d` returns when a
+          # container starts and not when it works. That gap is the whole difference on a new architecture:
+          # an app image can build and start on arm64 and then die on its first import. It was measured
+          # doing exactly that on a 2022 LinuxKit kernel — SIGILL out of cryptography's Rust bindings, by
+          # way of mcp -> pyjwt — so the one check that would have caught it belongs here on every leg.
+          for i in $(seq 40); do curl -fsS "http://127.0.0.1:PORT_PLACEHOLDER/health" >/dev/null 2>&1 && break; sleep 3; done
+          curl -fsS "http://127.0.0.1:PORT_PLACEHOLDER/health" > /tmp/H.json \
+            || { echo "the installer said OK and /health does not answer"; docker logs "$(docker ps -aq --filter name=app | head -1)" 2>&1 | tail -30; exit 1; }
+          python3 -c "import json;d=json.load(open('/tmp/H.json'));print('  /health:', d['node'], d['version'], 'schema', d['schema']);assert 'schema' in d" \
+            || { echo "/health answered something that is not a node"; cat /tmp/H.json; exit 1; }
           echo "ok on this userland"
           INNER
           # the matrix's prep line, spliced in without YAML fighting the shell
@@ -280,6 +315,7 @@ jobs:
           s = s.replace('PREP_PLACEHOLDER', os.environ['PREP'])
           s = s.replace('PROJECT_PLACEHOLDER', os.environ['PROJECT'])
           s = s.replace('PORT_PLACEHOLDER', os.environ['PORT'])
+          s = s.replace('REF_PLACEHOLDER', os.environ['REF'])
           open('/tmp/run.sh','w').write(s)
           PYP
           # The daemon is the HOST's, so every bind mount in docker-compose.yml — ./init.sql, ./config,
@@ -297,6 +333,9 @@ jobs:
           PREP: ${{ matrix.prep }}
           PROJECT: ${{ matrix.project }}
           PORT: ${{ matrix.port }}
+          # For a pull request GITHUB_SHA is the merge commit, which raw.githubusercontent does not serve.
+          # The head sha is the one that is really pushed to this repository.
+          REF: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: leave the daemon as we found it
         if: always()
         run: |
