@@ -184,7 +184,22 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |
 | thingdata | code | — repair knowledge, its own catalogue | a ThingData server's things, guides and stories, and how much of the catalogue anyone has written down how to fix |
+| make | code | — places, not numbers | the nearest active fab labs and what each can do, from the Fab Lab Network directory — display-only, no metrics, no cell and no alert, by design |
 | example-cooking-hours | data | air | a worked example |
+
+`make` is the only pack that stores no number at all. Its rows are `kind='facility'`: a place with
+a name and a point, so an alert can end somewhere a person can go instead of on a reading. It has no
+`cells.yml` and the reason is structural rather than a convention — `custody` is generated as
+`kind='child' OR (local AND kind<>'peer')`, and a facility is `local=False`, so it could not reach an
+Index cell even if somebody wrote the SQL. A fab lab down the road is not this node's measurement of
+anything. Its `rules.yml` is empty for a matching reason: a lab opening is news on the scale of a
+year, and the line it produces belongs in *other* packs' asks, at the moment somebody has just been
+told they need something made.
+
+Read [`packs/make/README.md`](../packs/make/README.md) before enabling it. The Fab Lab Network
+directory is **not openly licensed** — each lab retains copyright in its own record and no data
+licence is published — and the Foundation's decision to read it covers the Foundation, not each
+node's operator.
 
 Land's number is `earth`'s and only `earth`'s: the change this node computed itself, from embeddings
 it downloaded. `earth-engine` contributes land's readouts (built and trees, from Dynamic World) but

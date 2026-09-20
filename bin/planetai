@@ -599,6 +599,21 @@ print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' 
   chk "$rline" "[ -f \"$rv\" ] && [ \"$rage\" -le 180 ]" \
     "$([[ -f "$rv" ]] && echo "the pin is ${rage} days old: re-pin on a dev machine with tools/sync_registry.sh <sha>, then planetai update" \
        || echo "this node ships no source registry, so planetai sources and GET /sources cannot answer. planetai update")" "$rsev"
+  # packs/make, when it is on. A fact, not a check: the number of labs in the ring, where they came
+  # from, and how many active labs the directory publishes with no coordinates — those can never be
+  # placed and would otherwise vanish into a smaller number without anyone noticing.
+  if [[ -d packs/make ]] && grep -qE '^PACKS_ALLOW_CODE=1' .env 2>/dev/null; then
+    local mline mn mfetched msnap
+    mn="$(docker compose exec -T db psql -tAqU planetai -c "SELECT count(*) FROM sensors WHERE kind='facility' AND source='fablabs-io'" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || true)"
+    if [[ -n "$mn" && "$mn" != "0" ]]; then
+      mfetched="$(docker compose exec -T db psql -tAqU planetai -c "SELECT max((meta->>'fetched')::timestamptz)::date FROM sensors WHERE kind='facility' AND source='fablabs-io'" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || echo "?")"
+      msnap="$(docker compose exec -T db psql -tAqU planetai -c "SELECT meta->>'snapshot' FROM sensors WHERE kind='facility' AND source='fablabs-io' LIMIT 1" planetai </dev/null 2>/dev/null | tr -d '[:space:]' || echo "?")"
+      mline="make: $mn fab lab(s) within ${MAKE_RADIUS_KM:-50} km · fablabs.io @ $msnap · read $mfetched"
+    else
+      mline="make: no fab lab within ${MAKE_RADIUS_KM:-50} km of this node yet"
+    fi
+    chk "$mline" "true" "" ""
+  fi
   chk "telegram connected"       "grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && grep -qE '^TELEGRAM_CHAT_IDS=.+' .env"  "planetai telegram   (alerts go to the log until then)"
   chk "a backup exists"          "ls backups/*.sql.gz"                                  "planetai backup   (then check the line below)"
   chk "nightly backup scheduled" "grep -q planetai-backup <<< \"\$(crontab -l 2>/dev/null)\""   "no cron entry. Add it: (crontab -l 2>/dev/null; echo '17 3 * * * cd $PWD && ./backup.sh >/dev/null 2>&1 # planetai-backup') | crontab -   (macOS: give cron Full Disk Access first)"

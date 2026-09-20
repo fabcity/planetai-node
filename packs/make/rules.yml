@@ -1,0 +1,15 @@
+# No rules, and that is the design rather than an omission.
+#
+# A rule fires an alert, and an alert asks somebody to do something about a number that changed. This
+# pack has no numbers. It holds a list of places, refreshed monthly, that changes when a lab opens or
+# closes — which is news on the scale of a year, not of an evening, and nobody should be woken for it.
+#
+# What this pack contributes instead is one line: "the nearest place to make or fix something is X, N
+# km away". That line belongs to the asks in OTHER packs' rules — the air-quality rule that suggests a
+# filter, the heat rule that suggests a fan — because the useful moment to hear where the fab lab is,
+# is the moment you have been told you need something made.
+#
+# There is also no cells.yml. A fab lab down the road is not this node's measurement of anything, and
+# an Index cell claims a measurement. See the README.
+#
+# An all-comment file parses to nothing, which is what an empty rule set looks like here.

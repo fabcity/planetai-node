@@ -1,0 +1,51 @@
+name: Fab Lab Network Data — the labs.json archive
+url: https://gitlab.fabcloud.org/fl-management/fablab-network-data
+description: |
+  Forty-eight dated freezes of the fablabs.io lab directory, monthly since 2025,
+  kept in a public Fab Foundation repository. The same records as the live
+  endpoint, but pinnable: a dated file instead of a moving target.
+pillar: economic
+scale: community
+status: live
+license: "No licence published — the repository has none, and the records are fablabs.io's, under its Terms of Use. See economic/community/fablabs-io."
+api: https://gitlab.fabcloud.org/api/v4/projects/fl-management%2Ffablab-network-data/repository/tree?path=archive/labs.json
+pilot_relevance: [global]
+tags: [fab-lab, directory, archive, snapshot, distributed-manufacturing, act]
+added: 2026-09-20
+auth: none
+role: [observe, act]
+act_kind: facility
+upstream_listed_in: []
+notes: |
+  WHY THIS IS FILED SEPARATELY FROM economic/community/fablabs-io: same records,
+  different access contract. fablabs.io serves a live endpoint that declares
+  itself removed; this serves dated files in git. Verified 2026-09-20: 48
+  snapshots from 2018.12.04 to 2026.07.31, monthly since 2025-01, latest 2,828
+  records and 5.3 MB. Repository actively maintained — commits 2026-09-01
+  ("monthly update") and 2026-09-11, by Pieter van der Hijden.
+
+  A PIN, WHICH IS THE POINT. Two nodes reading the same dated file answer
+  identically; two nodes polling a live endpoint on different days do not. This
+  is the discipline planetai-node already applies to this very list —
+  data/sources/REGISTRY_VERSION pins a sha and tools/sync_registry.sh refuses a
+  branch name, because a floating pin is a node whose answers change under it.
+  The publisher's own monthly cadence replaces an invented poll interval.
+
+  LICENCE — UNCHANGED, AND WORSE THAN IT LOOKS. All 100 paths in the repository
+  were checked: there is no LICENSE, COPYING or equivalent. The records remain
+  fablabs.io's, under Terms of Use whose 7.4 forbids anyone "to massively collect
+  or harvest" platform data. A public repository of 48 complete monthly copies is
+  that activity, performed by the Foundation's own working group for eight years.
+  Recorded as fact, not accusation: it is the strongest argument for stating a
+  licence, because the clause would regularise something the network already
+  depends on rather than granting anything new.
+
+  CARRIES CONTACT DETAILS, like the live endpoint: email on 2,720 of the 2026.07
+  snapshot, phone on 2,571. Do not store them.
+
+  NAMING IS NOT UNIFORM — `2023.03.31 labs.json` uses a space where every other
+  file uses an underscore, and two files use a `YYYYMMDD_HHMM` form. Anything
+  globbing this directory must expect both.
+
+  No `adapter`: the node must not read this until the licence is settled. Reading
+  a frozen copy is no more permitted than reading the live one.

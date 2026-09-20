@@ -167,8 +167,15 @@ print("every threshold the report quotes is the rule's own")
 assert set(report.T) == {"en", "id", "es"}, sorted(report.T)
 for loc, d in report.T.items():
     assert set(d) == set(report.T["en"]), f"{loc} differs: {sorted(set(d) ^ set(report.T['en']))}"
+    # The report's whole placeholder vocabulary. A phrase may only ask for something the code fills,
+    # so a typo like {palce} fails here rather than reaching a person as a literal brace. Growing this
+    # tuple is how the vocabulary grows — {where} arrived with packs/make.
+    PLACEHOLDERS = ("{place}", "{what}", "{n}", "{clauses}", "{fix}", "{where}")
     for k, v in d.items():
-        assert v.strip() and "{" not in v.replace("{place}", "").replace("{what}", "").replace("{n}", "").replace("{clauses}", "").replace("{fix}", ""), f"{loc}/{k}: {v}"
+        bare = v
+        for ph in PLACEHOLDERS:
+            bare = bare.replace(ph, "")
+        assert v.strip() and "{" not in bare, f"{loc}/{k}: {v}"
 # every placeholder the code fills has a phrase to fill, in every language
 for m in re.findall(r"""t\[["']([a-z_]+)["']\]""", open("app/report.py").read()):
     for loc in report.T:

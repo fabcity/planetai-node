@@ -1,0 +1,50 @@
+name: Fab City pledged cities
+url: https://gitlab.fabcloud.org/fl-management/fablab-network-data/-/blob/main/data/fabcity.xlsx
+description: |
+  The cities, regions and countries that have pledged to produce most of what they
+  consume by 2054, with the year each one signed. The Fab City commitment as a
+  list rather than a map on a website.
+pillar: governance
+scale: city
+status: live
+license: "No licence published — the repository carries none. The Foundation's own list, and the one source here it could license with a sentence."
+api: https://gitlab.fabcloud.org/api/v4/projects/fl-management%2Ffablab-network-data/repository/files/data%2Ffabcity.xlsx/raw?ref=main
+pilot_relevance: [global]
+tags: [fab-city, pledge, network, commitment, governance, act]
+added: 2026-09-20
+auth: none
+role: [act]
+act_kind: network
+upstream_listed_in: []
+notes: |
+  READ IN FULL 2026-09-20 from data/fabcity.xlsx in the public Fab Foundation
+  repository at gitlab.fabcloud.org/fl-management/fablab-network-data. 61 rows,
+  six columns: name, slug, country_code, level, pledge, city.
+
+    level    48 City, 11 Region, 2 Country
+    pledge   signature years 2014-2026
+    spread   27 countries
+    example  Bali, fc-bali, ID, Region, 2022, Denpasar
+
+  WHY IT IS AN ACT SOURCE AND `act_kind: network`. It names no machine and hosts
+  no design. It is a set of places bound by a commitment rather than by
+  capability — which is exactly what `network` is for, and what distinguishes it
+  from the fab lab directory filed at economic/community/fablabs-io. A node can
+  answer "is this place pledged, and since when" from it, which is a governance
+  question, hence the pillar.
+
+  FORMAT: .xlsx, not JSON or CSV. Reachable programmatically through the GitLab
+  raw-file API (the `api` field above, verified 200, 13,808 bytes), but a reader
+  must parse a spreadsheet. Six columns of flat text in one sheet, so the parse
+  is trivial — but it is a spreadsheet, and anything depending on it should say
+  so out loud rather than discover it.
+
+  THIS IS THE FOUNDATION'S OWN DATA, AND THE EASIEST LICENCE ON THIS LIST TO FIX.
+  Every other licence gap here needs somebody else to answer: fablabs.io needs a
+  scoped statement, Open Know-How needs a version number, Field Ready needs to
+  reconcile its site with its catalogue. This one needs a single sentence from the
+  people who compiled it. CC-BY-4.0 GeoJSON on fab.city would make it the
+  network's first unambiguously open act source; it has coordinates implied by
+  `city` and nothing sensitive in it.
+
+  No `adapter`: nothing in planetai-node reads it yet.
