@@ -22,6 +22,43 @@
   explanation. It now needs what you actually said, and `/act 23` with no words asks you for them rather
   than inventing them. ρ — the share of alerts somebody answered — is built out of those sentences, and a
   model filling them in is a model measuring itself.
+- 2026-09-19 — **the node's database image is now published for arm64, so a Raspberry Pi is no longer
+  refused.** `postgis/postgis:16-3.4-alpine` is built for amd64 and nothing else, and that one fact is what
+  the docs used to turn into "a Pi cannot be a node". The `db` service moves to
+  `imresamu/postgis:16-3.4-alpine` — a docker-postgis co-maintainer's build of the same recipe, same Alpine
+  base, same PostGIS 3.4, published for amd64 **and** arm64. **Your node updates straight through this**:
+  same data directory, same Postgres 16, same libc, and it was tested both ways round — a database created
+  by the old image opens on the new one with its tables, its geometry, its indexes and its text ordering
+  intact. Nothing to do.
+
+  **If your node is an Apple Silicon Mac, its database stops being emulated.** It has been running an
+  x86 build under translation since the day it was installed. You may notice it is quicker; you should not
+  notice anything else.
+
+  Not yet true: nobody has run a node on a Pi, a Jetson or a reComputer. CI installs one end to end on
+  arm64 every push, which proves the images resolve and the database comes up, and proves nothing about an
+  SD card or a hot cupboard. `docs/HANDOFF_arm64.md` is the seven-day test for whoever goes first, and the
+  short version is: 8 GB, and an SSD — never an SD card, which Postgres will kill inside a year.
+
+  Also: `planetai preflight` stops failing on arm64 Linux, and the installer no longer installs Docker on
+  a machine that already runs Podman — it prints the two commands that let Podman answer to `docker` and
+  stops, because no node has been run on Podman and it would rather say so than pretend.
+- 2026-09-19 — **five of the node's documents now say which document they are**, and nothing you will
+  see changes. `GET /issues` (what your page draws), `GET /export` (the nightly open-data file that is
+  pinned to IPFS forever), `GET /report/latest`, and the two hourly pushes a child node sends its parent
+  each gain one key: `"schema": "issues-v0"`, `"export-v0"`, `"report-v0"`, `"aggregates-v0"`,
+  `"events-v0"`. Until now only the Index cells carried a version and the rest were implicit.
+
+  **Nothing stops working, in either direction.** A parent that has updated still accepts every push
+  from a child that has not; a child that has updated still pushes to a parent that has not. A node
+  reading a version it does not know processes the fields it recognises and writes one line in its log —
+  it never refuses, because a parent one release behind refusing its children would stop a district's
+  numbers and tell nobody. The same rule holds for your page: if it ever meets a version it does not
+  know it prints one sentence and draws what it recognises, instead of going blank.
+
+  One small fix alongside: `GET /report/latest` used to answer five keys when the node had no report yet
+  and ten when it did, so anything reading it had to know which case it was in. It now answers the same
+  keys either way, null until there is a report.
 
 - 2026-09-19 — **a node that has never chosen a model preference now keeps everything on the network.**
   `AGENT_PREFER` shipped as `strongest`, which sends every question — and the 64 kB report bundle that
