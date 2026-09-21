@@ -237,6 +237,15 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .barcode .bc .empty { font-size: 12.5px; color: var(--mute); align-self: center;
   grid-column: 2 / -1 }
 .barcode .cap { font-size: 12px; color: var(--mute); margin: 4px 0 0; line-height: 1.45 }
+
+/* The worked instance under the sentence template: the node's own sentence, and under it the parts
+   named. Indented from the row above so it reads as that row's example and not as a fourth row. */
+.tmplex { display: grid; gap: 4px; margin: 0; padding: 10px 0 12px 12px;
+  border-left: 2px solid var(--hair) }
+.tmplex .k { margin: 0 }   /* the rest is the global .k, which the shout gate already knows */
+.tmplex .said { font-size: 14.5px; line-height: 1.45; color: var(--ink) }
+.tmplex .m { font-size: 12px; color: var(--mute); line-height: 1.5 }
+.tmplex .m b { font-weight: 700; color: var(--ink) }
 @media (max-width: 560px) {
   /* The label goes above at phone width: twelve characters and 24 bars cannot share 390 px. */
   .barcode .bc { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px }

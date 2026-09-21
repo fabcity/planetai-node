@@ -120,8 +120,10 @@ function t1legs(d) {
 // screen, which had been true on the real node for weeks under a green gate.
 //
 // Heights are up because Observe gained three sections on purpose — the matrix, the day and the
-// sources — and because the richer fixture draws more in the ones that were already there. The 8%
-// margin refused every one of them, which is what it is for.
+// sources — because the request ledger became a section of its own, because Decide gained the
+// four-grain row, the two boundaries and the sentence template, and because the richer fixture
+// draws more in the sections that were already there. The 8% margin refused every one of them,
+// which is what it is for.
 //
 // 1440's emptiness is re-recorded DOWN, from 61.3 to 57.4: the redesign is meant to drive that
 // number and locking in the gain is the point of recording it. 390's is NOT re-recorded. It is
@@ -129,7 +131,7 @@ function t1legs(d) {
 // would make that the new normal. It is a watch item, not a new standard.
 //
 // Previous, from 46018b0 on node1-2026-09-06: 390: 8267 px / 37.7%, 1440: 5261 px / 61.3%.
-const HEIGHT_SHIPPED = { now_populated_390: 12126, now_populated_1440: 7914 };
+const HEIGHT_SHIPPED = { now_populated_390: 13819, now_populated_1440: 8752 };
 const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 57.4 };
 const HEIGHT_MARGIN = 1.08, EMPTY_MARGIN = 6;
 

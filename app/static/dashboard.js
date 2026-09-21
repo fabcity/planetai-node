@@ -867,8 +867,15 @@ const H = window.H3;
 const { esc, fmt, pill, row, readout, cmpText, sign } = window.K;
 
 /* ------------------------------------------------------------------ reading a cell out loud */
-const km2 = m2 => m2 >= 1e6 ? `${(m2 / 1e6).toFixed(m2 >= 1e7 ? 0 : 2)} km²`
-  : `${Math.round(m2).toLocaleString()} m²`;
+/* Both branches group their thousands. They did not: the m² branch used toLocaleString and the km²
+   branch toFixed, so one card read "639,778 m²" and the next "10857 km²" — the same helper writing
+   a number two ways on one screen. */
+const km2 = (m2) => {
+  if (m2 < 1e6) return `${Math.round(m2).toLocaleString()} m²`;
+  const dp = m2 >= 1e7 ? 0 : 2;
+  return `${(m2 / 1e6).toLocaleString(undefined,
+    { minimumFractionDigits: dp, maximumFractionDigits: dp })} km²`;
+};
 const edge = m => m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} km` : `${Math.round(m)} m`;
 
 /* An H3 id is fifteen characters and a household will never read it as a word. It is still the one
@@ -3390,7 +3397,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc } = window.K;
+const { esc, fmt, readout, row } = window.K;
 const { H, km2, edge } = window.KH;
 
 function table(ctx) {
@@ -3461,14 +3468,145 @@ function grainLine(ctx) {
       + `the counts that would go here would be counts about open water.</p>`;
   }
   const same = t.filter(g => g.occupied === G.occupied && g.in_my_cell === G.in_my_cell);
-  return `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="rail">`
-    + `At resolution ${ctx.RES} one cell is ${esc(km2(G.area_m2))} and this node's ${n} stations `
-    + `fall in <span data-num="grain.occupied" data-cmp="against ${n} stations in `
-    + `${finest ? finest.occupied : 0} cells at resolution ${finest ? finest.res : '?'}, the finest `
-    + `this node publishes">${G.occupied}</span> of them. ${G.in_my_cell} sit in this node's own `
-    + `cell, of which ${G.mine_in_my_cell} are its own.`
-    + (same.length > 1 ? ` Resolutions ${same[0].res} to ${same[same.length - 1].res} answer this `
-      + `question identically.` : '') + `</p>`;
+  /* A READOUT, not a paragraph. The rail's whole job is to move this number, and a numeral buried
+   * mid-sentence is a numeral a reader has to find before they can watch it change — which is the
+   * one thing the rail exists to let them do. The sentence is not lost: it is the comparison, which
+   * is where a readout keeps the words that qualify its figure. */
+  return readout({
+    id: 'grain-line', component: 'grainLine', ref: 'rail',
+    title: `occupied cells at resolution ${ctx.RES}`,
+    num: 'grain.occupied',
+    /* "of N stations" and not "of every station this node reads": H.sensors is what /issues
+       publishes, which is only what has a coordinate, and the sources rows count the sensor table,
+       which is everything. Five of node #1's kits have no coordinate and so fall in no cell — two
+       different true numbers on one page, and the shorter label made them look like a
+       contradiction. */
+    value: G.occupied, dp: 0, unit: `of ${n} with a coordinate`,
+    source: 'this node\u2019s own grain table',
+    cmp: { text: `one cell is ${km2(G.area_m2)} here \u00b7 ${G.in_my_cell} station`
+      + `${G.in_my_cell === 1 ? '' : 's'} sit in this node's own cell, of which `
+      + `${G.mine_in_my_cell} ${G.mine_in_my_cell === 1 ? 'is' : 'are'} its own`
+      + (same.length > 1 ? ` \u00b7 resolutions ${same[0].res} to ${same[same.length - 1].res} answer `
+        + `this identically` : '')
+      + ` \u00b7 against ${finest ? finest.occupied : 0} at resolution ${finest ? finest.res : '?'}, `
+      + `the finest this node publishes` },
+  });
+}
+
+/* The four grains the household actually lives at, side by side: how many cells hold something at
+ * each. THE SKETCH STAMPED THIS `example` AND IT SHOULD NOT HAVE — every number is the node's own
+ * grain table, computed from the stations it can see, and the stamp said the opposite.
+ *
+ * Seven to ten because that is where a person lives: a resolution-7 cell is a neighbourhood and a
+ * resolution-10 cell is a building. Coarser than 7 and the answer is about an island; finer than 10
+ * and, on this node, it has stopped changing — which is itself the finding, and the row says which
+ * of the two it is rather than leaving four identical numbers to be read as a mistake. */
+const GRAINS = [7, 8, 9, 10];
+
+function fourGrain(ctx) {
+  const t = H.grain_table || [];
+  const got = GRAINS.map(res => t.find(g => g.res === res)).filter(Boolean);
+  if (got.length < 2) return '';
+  const vals = got.map(g => g.occupied);
+  const flat = vals.every(v => v === vals[0]);
+  const settles = got.findIndex((g, i) => i > 0 && vals.slice(i).every(v => v === g.occupied));
+  return row({
+    id: 'grain-four', component: 'fourGrain', ref: 'grain-line',
+    cols: 'minmax(0,210px) minmax(0,1fr) auto',
+    left: `<span class="who"><b>Cells with something in them</b>`
+      + `<span class="m">resolutions ${got[0].res} to ${got[got.length - 1].res}</span></span>`,
+    line: flat
+      ? `The same answer at all four. From ${got[0].res} inward this node is buying precision it `
+        + `cannot spend: each step is seven times finer and finds nothing new.`
+      : settles > 0
+        ? `It stops changing at ${got[settles].res}. Finer than that, each step is seven times `
+          + `smaller and answers "who is near me" with the same cells \u2014 which is the grain that `
+          + `holds here, and it is a fact about how spread out this node's stations are, not about `
+          + `H3.`
+        : `Still changing at every step, so the finest grain in this range is still earning its `
+          + `precision on this node today.`,
+    qty: got.map(g => ({
+      num: `grain.occupied.${g.res}`, value: String(g.occupied),
+      cmp: `cells holding a station at resolution ${g.res}, where one cell is `
+        + `${edge(g.edge_m)} across`,
+    })),
+  });
+}
+
+/* What leaves this machine about WHERE it is, in the two channels that carry it, at the grain each
+ * one is set to. Both numbers are decisions somebody made and can change, so both name the setting.
+ *
+ * WHY IT IS ON NOW AND THE RADIO CARD IS NOT A DUPLICATE OF IT. The reticulum section says the same
+ * thing about the radio, and it lives on Network — so a reader who never leaves Now has until now
+ * been told nothing at all about what this node says about its own position. This is the decide
+ * stage's question in its plainest form: not what was read, but how coarsely this house is willing
+ * to be located, and by whom.
+ *
+ * The sentences are the node's where the node has one. `publication.why` is written by app/main.py
+ * and printed verbatim; the radio has no `why` on the wire, so this composes from the two settings
+ * and names them both, which is the next most honest thing to quoting.
+ */
+function leaves(ctx) {
+  const R = H.radio || {}, P = H.publication || {};
+  const floor = (H.settings || {}).PRESENCE_RES_FLOOR;
+  const pres = (H.settings || {}).RETICULUM_PRESENCE_RES;
+  const cols = 'minmax(0,210px) minmax(0,1fr) auto';
+  const who = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
+  return `<div class="reads" id="leaves-rows" data-ref="grain-line">`
+    + row({ id: 'leaves-radio', component: 'leaves', ref: 'grain-line', cols,
+      left: who('Over the radio', `RETICULUM_PRESENCE_RES ${pres == null ? '\u2014' : pres}`),
+      line: `A cell and nothing else \u2014 never a coordinate. A stranger listening learns which `
+        + `${km2(R.area_m2)} of the planet this node is somewhere inside, and no settings box may `
+        + `take it finer than resolution ${floor}: that floor is in app/main.py, not in a form.`,
+      qty: [{ num: 'leaves.radio', value: edge(R.edge_m),
+        cmp: `to an edge of the cell this node announces itself in, at resolution ${R.res}` }] })
+    + row({ id: 'leaves-health', component: 'leaves', ref: 'grain-line', cols,
+      left: who('In GET /health', `${P.decimals} decimals`),
+      line: P.why || `Latitude and longitude are rounded before they are published.`,
+      qty: [{ num: 'leaves.health', value: `${P.metres} m`,
+        cmp: `how far the published coordinate may be from the real one \u00b7 about a resolution-`
+          + `${P.res} cell` }] })
+    + `</div>`;
+}
+
+/* The shape every issue's sentence takes, with this node's headline issue as the worked instance.
+ *
+ * WHY IT BELONGS TO DECIDE. This stage answers what may be said about a reading and at what grain.
+ * The sentence is the answer — it is the one place the node commits to words — and a reader who can
+ * see its grammar can parse any of the four, including the ones that read strangely because the
+ * data is strange rather than because the sentence is wrong.
+ *
+ * NOTHING HERE IS COMPOSED IN THE BROWSER. The sentence is the node's, verbatim, in `.said`. What
+ * this adds is the naming of its parts, which is the page's own job: the node writes the sentence,
+ * the page says what kind of sentence it is. */
+function template(ctx) {
+  const k = S.issues.headline, d = ISS[k];
+  if (!d || !d.sentence) return '';
+  const cell = (d.stack || {})[d.headline] || {};
+  const others = (DIST || []).filter(x => x !== d.headline && ((d.stack || {})[x] || {}).value != null);
+  return `<div class="reads" id="template-rows" data-ref="grain-line">`
+    + row({ id: 'sentence-shape', component: 'template', ref: 'grain-line',
+      cols: 'minmax(0,210px) minmax(0,1fr) auto',
+      left: `<span class="who"><b>How a sentence is built</b>`
+        + `<span class="m">the same for all ${(ORDER || []).length}</span></span>`,
+      line: `The state, then the reading at the closest distance that has one, then how the other `
+        + `distances stand against it. Never a distance the node cannot read, and never a `
+        + `comparison against a line the issue does not have.`,
+      qty: [{ num: 'template.parts', value: `${2 + (others.length ? 1 : 0)} parts`,
+        cmp: `state \u00b7 the ${LAB[d.headline]} reading`
+          + `${others.length ? ` \u00b7 ${others.length} other distance`
+            + `${others.length === 1 ? '' : 's'} compared` : ''}` }] })
+    + `<p class="tmplex" id="sentence-example" data-ref="sentence-shape">`
+    /* The issue's NAME is the node's word and must not be shouted with the rest of the label —
+       `µ` uppercases to `M`, and a pack may name an issue anything. Page words shout, node words
+       sit in .said, which is the rule check_ui holds every uppercase rule to. */
+    + `<span class="k">as written now, for <span class="said">${esc(d.name[LOC])}</span></span>`
+    + `<span class="said">${esc(d.sentence[LOC])}</span>`
+    + `<span class="m">state <b>${esc(d.state)}</b> \u00b7 closest distance with a reading, the `
+    + `<b>${esc(LAB[d.headline])}</b>, at <b>${esc(cell.value == null ? '\u2014'
+      : fmt(cell.value, d.dp))} ${esc(d.unit || '')}</b>`
+    + `${others.length ? ` \u00b7 against ${others.map(x => esc(LAB[x])).join(' and ')}` : ''}</span>`
+    + `</p></div>`;
 }
 
 window.PAI.register({
@@ -3498,7 +3636,7 @@ window.PAI.register({
             + `and there is no grain to compare. The table below is still this node's own arithmetic: `
             + `what one cell is worth at each of the ${rows} stops.`)
         + `</p>`;
-    return grainLine(ctx) + finding
+    return grainLine(ctx) + fourGrain(ctx) + leaves(ctx) + template(ctx) + finding
       + `<details class="fold"><summary>All eleven grains, and what each is worth</summary>`
       + table(ctx) + `</details>`;
   },
