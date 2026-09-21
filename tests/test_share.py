@@ -240,6 +240,23 @@ assert "host" not in f0["meta"], \
 main.q = _sensors
 print("open: a facility publishes its own public facts, and still not a hostname")
 
+# How far back this node's own record goes is not private: it is the length of the line the page
+# already draws. It is on the open allowlist so a wall screen with no token can say that the
+# satellite reaches ten years and the kit in this house reaches three weeks — which is the whole
+# reason the readout exists.
+_reach = [{"kind": "sensor", "oldest": "2026-09-01", "newest": "2026-09-21", "buckets": 32833,
+           "sources": 21, "days": 20}]
+_prev = main.q
+main.q = lambda sql, *a: _reach if "FROM readings_1h" in sql else _prev(sql, *a)
+_rr = lan.get("/reach")
+assert _rr.status_code == 200, "open: a wall screen cannot ask how far back the record goes"
+assert _rr.json()[0]["days"] == 20, f"/reach did not answer: {_rr.json()}"
+main.q = _prev
+level("off")
+assert lan.get("/reach").status_code == 403, "off: /reach is not on the off allowlist and must refuse"
+level("open")
+print("open: /reach readable, and refused at off")
+
 # F10 · closing a loop. The middleware refuses the anonymous case; the route refuses a read-only token.
 level("open")
 assert lan.post("/actions", json={"alert_id": 1, "stage": "acted"}).status_code == 403, "open: an anonymous action must be refused"

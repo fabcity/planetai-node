@@ -697,7 +697,7 @@ _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presen
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
-    "/report/latest", "/readings",
+    "/report/latest", "/readings", "/reach",
     "/history", "/exports", "/sources",
 }), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
@@ -911,6 +911,31 @@ def readings(sensor_id: str | None = None, metric: str | None = None, limit: int
 def stats():
     """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations."""
     return q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+
+
+@app.get("/reach")
+def reach():
+    """How far back this node's own record goes, per kind of source.
+
+    The Historical view draws years of satellite record beside a node that may have been switched on
+    last week, and nothing on the page said which. A reader comparing 2017 to now deserves to know
+    that the line under it starts in September — the satellite's reach and this node's are different
+    lengths and the page was drawing them as if they were the same.
+
+    Per kind, because the kinds reach back differently and for different reasons: this house's own
+    sensors go back to the day somebody plugged them in, a model's point samples start when the pack
+    was enabled, and a portal's history is whatever the portal chose to publish. One number for all
+    of them would be the shortest of them, reported as if it were the record.
+
+    `readings_1h` and not `readings`: the hourly means are what survives, and they are what every
+    chart on the page is drawn from, so this is the reach of the thing actually shown.
+    """
+    return q("""SELECT s.kind,
+                       min(r.bucket) AS oldest, max(r.bucket) AS newest,
+                       count(*) AS buckets, count(DISTINCT r.sensor_id) AS sources,
+                       round(extract(epoch FROM max(r.bucket) - min(r.bucket)) / 86400.0)::int AS days
+                FROM readings_1h r JOIN sensors s USING (sensor_id)
+                GROUP BY s.kind ORDER BY s.kind""")
 
 
 @app.get("/trust")
