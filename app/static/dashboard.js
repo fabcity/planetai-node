@@ -1338,7 +1338,13 @@ const sections = [];
 const problems = [];
 
 function register(mod) {
-  const missing = ['id', 'pack', 'stage', 'title', 'render'].filter(k => !mod[k]);
+  /* `render` OR `lead`. A section must draw something, but the lead is drawn by the shell from every
+     registered section that has one (see the fig/lead assembly), independently of which view is on —
+     so a section whose whole contribution is the lead is a real thing, not a mistake. The ground is
+     exactly that: a surface with a tab bar and no card, once its request ledger became its own
+     section. Requiring `render` refused it and the map vanished with the ledger. */
+  const missing = ['id', 'pack', 'stage', 'title'].filter(k => !mod[k]);
+  if (!mod.render && !mod.lead) missing.push('render or lead');
   if (missing.length || !(mod.stage in STAGE_INDEX)) {
     problems.push(`${mod.id || '?'}: ${missing.length ? `missing ${missing.join(', ')}`
       : `unknown stage ${mod.stage}`}`);
@@ -1370,7 +1376,7 @@ function bandFor(ctx, s) {
        whole Now view was blank paper. It is the last hook that was outside a guard. */
     try {
       controls = s.controls ? (s.controls(ctx) || '') : '';
-      body = s.render(ctx) || '';
+      body = s.render ? (s.render(ctx) || '') : '';
     }
     catch (e) {
       /* And the strip goes with it: a control pointing at a body that did not render is a link to
@@ -1381,6 +1387,10 @@ function bandFor(ctx, s) {
         + `answer, so the rest of the page is still here.</p>`;
     }
   }
+  /* A lead-only section draws no band. Without this the ground contributed a heading with nothing
+     under it — a title for a card that is not there, which reads as a section that failed. Its
+     notes still appear: they explain the drawing the shell put at the top. */
+  if (!body && !controls) return '';
   return `<section class="band" id="${esc(s.id)}" data-band="${esc(s.stage)}:${esc(s.id)}"`
     + ` data-pack="${esc(s.pack)}" data-stage="${esc(s.stage)}">`
     + `<div class="k"><span>${esc(s.title)}</span><span class="pack">${esc(s.pack)}</span></div>`
@@ -1476,15 +1486,19 @@ function notesBand(ctx, ordered) {
     + `them. Open one to see what that part measured, where the figure came from, and what it does `
     + `not say. Nothing here is needed to read the page — it is here for when you want to check `
     + `it.</p>`
-    + groups.map(g => `<details class="fold notefold" id="notes-${esc(g.section.id)}"`
-      + ` data-component="notes" data-ref="${esc(g.section.id)}">`
+    /* `anchor` is where a fold points when the section's own id is not on the page. A lead-only
+       section draws no band, so its notes linked to an id that does not exist and the fold was a
+       component with no link out — which the gate counts. The ground points at its own drawing. */
+    + groups.map(g => { const at = g.section.anchor || g.section.id; return `<details`
+      + ` class="fold notefold" id="notes-${esc(g.section.id)}"`
+      + ` data-component="notes" data-ref="${esc(at)}">`
       + `<summary><span class="t">${esc(g.section.title)}</span>`
       + `<span class="pack">${esc(g.section.pack)}</span>`
       + `<span class="n">${g.notes.length}</span></summary>`
       + `<dl class="notelist">` + g.notes.map(n =>
-        `<div class="noteitem" id="${esc(n.id)}"><dt><a href="#${esc(g.section.id)}">`
+        `<div class="noteitem" id="${esc(n.id)}"><dt><a href="#${esc(at)}">`
         + `${esc(g.section.title)}</a></dt><dd>${n.html ? n.text : esc(n.text)}</dd></div>`).join('')
-      + `</dl></details>`).join('')
+      + `</dl></details>`; }).join('')
     + `</section>`;
 }
 
@@ -1910,7 +1924,68 @@ window.GROUND = { figure, frame, BASES, SIZE };
 window.PAI.register({
   id: 'ground', pack: 'place', stage: 'observe', title: 'The ground', order: 0,
   needs: ['H3.nav'],
-  lead, render, notes,
+  anchor: 'ground-figure',   /* no band of its own, so its notes point at the drawing they explain */
+  /* No `render`: the ledger that used to sit at this section's foot is its own section now (see
+     below). The ground is a surface with a tab bar, like the wall — it is not a card and carries no
+     data-kind — so what remains here is the drawing and the notes that explain it. */
+  lead, notes,
+});
+
+/* What leaves this machine when somebody opens this page, and what leaves the node when nobody is
+ * looking. Promoted out of the ground's foot, where it was a footnote to a map, because it is not
+ * about the map: it is the one section that accounts for this page as a thing that reaches out.
+ *
+ * TWO HALVES, AND THE DIFFERENCE MATTERS. A tile request is made by the device you are reading on,
+ * to somebody else's server, and it tells them which square of ground you are looking at and from
+ * which address. A poll is made by the node, on your behalf, whether or not anyone is at the
+ * screen. Rolling them into one count would say the same number means the same thing twice. */
+window.PAI.register({
+  id: 'requests', pack: 'place', stage: 'observe', order: 60,
+  title: 'What this page asked of the world',
+  needs: ['H3.nav'],
+  render(ctx) {
+    const h = ctx.S.health || {};
+    const all = window.SENSORS || [];
+    /* Whose machines the node itself polls, named from the rows they wrote. `source` and not
+       `attribution`: /sensors carries the former and has never carried the latter, and reading a
+       field that is not there is how this row silently drew nothing at all. Local kit is excluded —
+       a sensor on this wall is not somebody the node reaches out to — and these are the node's own
+       slugs rather than a prettier list kept here, so a pack that starts reading somewhere new
+       appears without anyone remembering to add it. */
+    const upstream = [...new Set(all.filter(x => !x.local && x.source).map(x => x.source))].sort();
+    const cols = 'minmax(0,210px) minmax(0,1fr) auto';
+    const who = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
+    return render(ctx)
+      + `<div class="reads" id="requests-node" data-ref="ground-figure">`
+      + row({ id: 'requests-poll', component: 'requestsPoll', ref: 'ground-figure', cols,
+        left: who('this node', 'polling, with nobody watching'),
+        line: `The node fetches on its own cycle whether or not this page is open, which is how `
+          + `there is a day to draw when you arrive. That reaching is the node's, not yours, and it `
+          + `happens from this house rather than from the device you are reading on.`,
+        qty: [{ num: 'requests.polls',
+          value: `${h.polls == null ? '—' : h.polls} poll${h.polls === 1 ? '' : 's'}`,
+          cmp: `${h.ingested == null ? 'an unknown number of' : h.ingested} readings taken in` }] })
+      + (upstream.length ? row({ id: 'requests-upstream', component: 'requestsUp',
+        ref: 'ground-figure', cols,
+        left: who('whose machines', 'named by the rows they wrote'),
+        line: upstream.join(' · '),
+        qty: [{ num: 'requests.upstream', value: String(upstream.length),
+          cmp: `sources outside this house that this node reads` }] }) : '')
+      + `</div>`;
+  },
+  notes(ctx) {
+    return [
+      { id: 'requests-poll', text: 'Two different kinds of reaching are counted here and they are '
+        + 'not the same number twice. A tile request is made by the device you are reading on, to '
+        + 'somebody else\u2019s server, and tells them which square of ground you are looking at and '
+        + 'from which address. A poll is made by the node, from this house, whether or not anybody '
+        + 'is at the screen \u2014 which is why there is a day already drawn when you arrive.' },
+      { id: 'requests-upstream', text: 'These are named by the rows they wrote, not by a list kept '
+        + 'here, so a pack that starts reading somewhere new appears in this count without anyone '
+        + 'remembering to add it. A sensor on this house\u2019s own wall is not in it: the node does '
+        + 'not reach out to reach it.' },
+    ];
+  },
 });
 
 });
@@ -4837,7 +4912,7 @@ function main() {
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
+  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'claims', 'grain', 'asks', 'measure'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a
