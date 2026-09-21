@@ -745,10 +745,16 @@ async def _share_level(request, call_next):
     exact, prefixes = _SHARE.get(level, _SHARE_OFF)
     if request.url.path not in exact and not request.url.path.startswith(prefixes):
         from fastapi.responses import JSONResponse
+        openable, open_prefixes = _SHARE_OPEN
+        # Only offer the setting when changing it would actually answer THIS path. /version, /backups and the rest
+        # are in no allowlist at any level, and telling their reader to set `open` sends them to change a setting,
+        # come back, and get the same 403 — the advice has to know whether it is advice.
+        fix = ("Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your network read it."
+               if request.url.path in openable or request.url.path.startswith(open_prefixes)
+               else "No share level opens this one, so it always needs a token from anywhere but the node itself.")
         return JSONResponse(status_code=403, content={"error":
             f"this node is set to SHARE_LEVEL={level}, so {request.url.path} answers only this machine or a request "
-            f"carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your "
-            f"network read it."})
+            f"carrying a token. {fix}"})
     return await call_next(request)
 
 

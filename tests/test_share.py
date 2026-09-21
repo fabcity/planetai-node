@@ -276,4 +276,16 @@ assert d["TELEGRAM_BOT_TOKEN"]["value"] in ("", "•••• set"), "a secret i
 level("open")
 assert lan.get("/settings").json()["runtime"], "open: /settings still answers"
 print("settings: at off, the layout and the level and nothing else")
+# The 403 has to know whether its own advice is advice. /reach is refused at `off` and answered at `open`, so the
+# setting is a real remedy; /version is on no allowlist at any level, so sending its reader to the Set up view is
+# sending them to change a setting, come back, and read the same 403.
+level("off")
+_msg = lan.get("/reach").json()["error"]
+assert "Set SHARE_LEVEL to open" in _msg, f"off: /reach is one `open` away and must say so: {_msg}"
+level("open")
+_msg = lan.get("/version").json()["error"]
+assert "Set SHARE_LEVEL to open" not in _msg, f"open: /version must not advise the setting it already has: {_msg}"
+assert "always needs a token" in _msg, f"open: /version must say a token is the only way in: {_msg}"
+print("the refusal only offers the setting when the setting would answer")
+
 print("all share-level checks passed")
