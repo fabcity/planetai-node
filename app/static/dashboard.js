@@ -2256,7 +2256,7 @@ window.PAI.register({
 
 });
 
-/* ================================================================= h/mods/registry.js ==== */
+/* ================================================================= h/mods/sources.js ==== */
 /* sources · core · observe
  *
  * What this page is built out of, counted in signs. Isotype's rule: more is more signs, never a
@@ -3186,7 +3186,7 @@ window.PAI.register({
 
 });
 
-/* ================================================================= h/mods/sources.js ==== */
+/* ================================================================= h/mods/registry.js ==== */
 /* registry · core · observe (Network)
  *
  * What this place COULD read, and where it could go — the whole registry, not just the part this
@@ -5678,7 +5678,11 @@ function main() {
     });
   }
 
-  function sectionsBox() {
+  /* Globals the page fills only when a reader reaches the view that needs them, so the section list
+   can tell "this node does not have it" from "nobody has asked for it yet". */
+const LATE = new Set(['SOURCES']);
+
+function sectionsBox() {
     const byPack = {};
     for (const s of PAI.sections) (byPack[s.pack] = byPack[s.pack] || []).push(s);
     const packs = Object.entries(byPack).sort(([a], [b]) => (a === 'core') - (b === 'core') || a.localeCompare(b));
@@ -5693,7 +5697,12 @@ function main() {
           + ` <span class="mono" style="color:var(--mute);font-size:10.5px">· ${esc(s.stage)}`
           + `${(s.needs || []).length ? ` · needs ${esc(s.needs.join(', '))}` : ''}</span></span>`
           + `<span class="mono" style="font-size:10.5px;color:var(--mute)">`
-          + `${(s.needs || []).every(PAI.has) ? 'drawing' : 'nothing here yet'}</span></div>`).join(''))
+          /* Three states, not two. A need that is fetched on the view the section lives on is not
+             absent from the node — it has not been asked for yet, and calling that "nothing here
+             yet" on Set up says a section is dataless when opening its own view would fill it. */
+          + `${(s.needs || []).every(PAI.has) ? 'drawing'
+            : (s.needs || []).every(n => LATE.has(n)) ? 'asked for on its own view'
+              : 'nothing here yet'}</span></div>`).join(''))
         .join('')
       + `<div class="cap">Reordering and hiding a section is Arrange, on its own view. Proposing one `
       + `back — the section’s file, its notes and this node’s renders, sent as one bundle for `
