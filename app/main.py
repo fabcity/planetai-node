@@ -859,6 +859,20 @@ def _cell() -> dict | None:
 # else in there describes the household's network rather than the measurement.
 _META_PUBLIC = ("licence", "attribution", "model", "dataset", "network", "note", "corrected")
 
+# A FACILITY IS NOT A SENSOR, and the list above was written about sensors. It drops `host`,
+# `firmware`, `gateway`, `channel` and `topic` because those describe the household's own network —
+# correct for a thing in this house, and meaningless for a fab lab, which is somebody else's
+# building, published by name and coordinate in a public directory the node read it from.
+#
+# The effect until now: a facility row reached the page carrying `attribution` and nothing else, so
+# the dashboard could name a place and could not say how far away it is or what is in it. The page
+# runs in a browser on the LAN and is therefore untrusted, so this was not a corner case — it was
+# every reader. Every key below describes the lab or the archive it came from; not one of them is a
+# fact about this household that `lat`, `lon` and the node's own position do not already publish.
+_META_PUBLIC_FACILITY = _META_PUBLIC + (
+    "slug", "capabilities", "kind_name", "city", "country_code",
+    "distance_km", "url", "registry_slug", "snapshot", "fetched")
+
 
 @app.get("/sensors")
 def sensors_(request: Request):
@@ -881,7 +895,8 @@ def sensors_(request: Request):
     for r in rows:
         for k in ("lat", "lon"):
             r[k] = round(r[k], 3) if r[k] is not None else None
-        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in _META_PUBLIC} or None
+        allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
+        r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
     return rows
 
 
