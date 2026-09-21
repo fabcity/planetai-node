@@ -2,8 +2,8 @@
 
 ## v0.69 — 2026-09-21 — the last stage stops being a zero, and a refusal stops sending you in a circle
 
-Two fixes, both of them things the node was saying that were not quite true. The interface redraw
-is still not in this release.
+Two fixes to what the node says, and two to the machinery that is supposed to catch us saying it
+wrong. The interface redraw is still not in this release.
 
 - 2026-09-21 — **"Measured" was a stage nothing could ever reach.** Last release added the four
   stages an ask goes through — asked, acknowledged, acted, measured — and the last one read zero on
@@ -36,6 +36,20 @@ is still not in this release.
   The message now only offers the setting when the setting would actually answer, and otherwise says
   a token is the only way in. The dashboard prints whatever your node said rather than its own copy
   of it, so the two can no longer drift apart.
+
+- 2026-09-21 — **Our own tests stopped running on the build machine, and nobody noticed.** One test
+  hands a JavaScript program to `node` as a command-line argument, and that program now includes
+  every setting the node knows about. Linux refuses a single argument over 128 KB; macOS does not.
+  Last release pushed it to 138 KB by adding the pack settings — so it kept passing on every
+  developer's machine and stopped running on the build machine, with an error that said nothing
+  about size. v0.68 went out with a red gate. The program goes in through the front door now, which
+  has no such limit.
+
+- 2026-09-21 — **And the release script waited for a verdict it never waited for.** It refuses to
+  build when the checks have failed, and it refuses when they are still running. It did not refuse
+  when they had not started yet — it said so and carried on — and since they start seconds after a
+  push, that was the state every release was in. v0.68 was built and signed before its own failing
+  check had finished. It now waits for that too.
 
 ## v0.68 — 2026-09-21 — what the node can say about itself, and what you can change
 
