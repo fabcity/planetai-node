@@ -232,7 +232,7 @@ function stack(key, d, o = {}) {
           : dist === 'room' || room == null
             ? cmpText({ mode: 'none', reason: `${d.name[LOC]} has no line: ${noLine(d)}` })
             : cmpText({ mode: 'ring', other: room, otherLabel: 'the room', unit, dp });
-    return `<div class="col" id="col-${esc(key)}-${dist}"`
+    return `<div class="col" id="${esc(id)}-col-${dist}"`
       + ` data-ref="src-${esc(key)}-${dist}">`
       + `<div class="k">${esc(LAB[dist])}</div>`
       + `<div class="v">`
@@ -247,9 +247,28 @@ function stack(key, d, o = {}) {
         : '')
       + `</div>`;
   }).join('');
-  return `<div class="stack${meter ? ' meters' : ''}" data-kind="stack" data-component="stack" id="${esc(id)}"`
-    + ` role="group" aria-label="${esc(d.name[LOC])} at four distances"`
-    + `${o.ref ? ` data-ref="${esc(o.ref)}"` : ` data-ref="band-${esc(key)}"`}>${cols}</div>`;
+  /* The fifth column, for the matrix only. The four distances are readings and the line is not —
+   * it is what they are read against — so it is drawn as a column rather than folded into each
+   * cell's comparison, where the same threshold was being restated four times across a row. An
+   * issue with no line says which kind of no it is: a context issue never asks, and an issue with
+   * no threshold named here has simply not been given one. */
+  const lineCol = !o.line ? '' :
+    `<div class="col line" id="${esc(id)}-col-line" data-ref="src-${esc(key)}-line">`
+    + `<div class="k">line</div><div class="v">`
+    + `<span class="num${_line == null ? ' none' : ''}" data-num="${esc(key)}.line"`
+    + ` data-cmp="${esc(_line == null ? `${d.name[LOC]} is read against nothing here`
+        : `what the four readings left of this are read against`)}">`
+    + `${_line == null ? '—' : esc(fmt(_line, d.dp))}</span>`
+    + (_line == null ? '' : `<small>${esc(d.unit || '')}</small>`) + `</div>`
+    + `<div class="cmp${_line == null ? ' none' : ''}">`
+    + `${esc(_line == null ? noLine(d) : 'crossing it is what raises an ask')}</div>`
+    + (_line == null ? '' : `<div class="src"><span class="said">${esc(d.line.source)}</span></div>`)
+    + `</div>`;
+  return `<div class="stack${meter ? ' meters' : ''}${o.line ? ' withline' : ''}" data-kind="stack"`
+    + ` data-component="stack" id="${esc(id)}"`
+    + ` role="group" aria-label="${esc(d.name[LOC])} at four distances`
+    + `${o.line ? ', and the line it is read against' : ''}"`
+    + `${o.ref ? ` data-ref="${esc(o.ref)}"` : ` data-ref="band-${esc(key)}"`}>${cols}${lineCol}</div>`;
 }
 
 const noLine = d => d.kind === 'context'
@@ -1843,6 +1862,67 @@ window.PAI.register({
   id: 'ground', pack: 'place', stage: 'observe', title: 'The ground', order: 0,
   needs: ['H3.nav'],
   lead, render, notes,
+});
+
+});
+
+/* ================================================================= h/mods/matrix.js ==== */
+/* matrix · core · observe
+ *
+ * Every issue this node carries, at every distance it can read, against the line it is read
+ * against. Four issues down, five columns across: room · wall outside · street · model · line.
+ *
+ * WHY IT IS ONE CARD AND NOT FOUR. The lead says one number about one issue. This says the same
+ * kind of number about all of them at once, and the whole point is the comparison DOWN a column:
+ * whether the street is worse than the room is a different question from whether the air is worse
+ * than the heat, and only a grid lets a reader ask both. Four separate cards would answer neither.
+ *
+ * EVERY EMPTY CELL SAYS WHY. A blank reads as a node that did not bother; `reasonFor` names which
+ * absence it is — no sensor indoors, no kit on the wall outside, no public station reporting, no
+ * model for this point. That is the sentence a keeper acts on, and it is the commonest cell here.
+ *
+ * The columns and their words are the node's (`issues.distances`, `issues.labels[loc]`), never this
+ * file's: a heading and the sentence under it have to agree, and only one of them can be the source.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, stack, pill } = window.K;
+
+window.PAI.register({
+  id: 'matrix', pack: 'core', stage: 'observe', title: 'Every issue, at every distance', order: 10,
+  /* No `needs`. It resolves paths against `window`, and the issues are file-scope in the kit, not
+     global — `needs: ['ISS']` would have drawn "the core pack has nothing here yet" on every node
+     that has issues. A node with none is a real state and the render says so itself. */
+  render(ctx) {
+    const { ISS, ORDER } = ctx;
+    const rows = ORDER.filter(k => ISS[k]);
+    if (!rows.length) return `<p class="note" id="matrix-grid" data-ref="rail">This node carries no `
+      + `issues in this capture.</p>`;
+    return `<div class="matrix" id="matrix-grid" data-ref="rail">`
+      + rows.map(k => {
+        const d = ISS[k];
+        return `<div class="mrow" id="mrow-${esc(k)}" data-ref="matrix-grid">`
+          + `<p class="mname"><b>${esc(d.name[LOC])}</b>${d.watched ? '' : ' <span class="m">not '
+            + 'watched</span>'} ${pill(d.state)}</p>`
+          + stack(k, d, { id: `matrix-${esc(k)}`, line: true, ref: `mrow-${esc(k)}` })
+          + `</div>`;
+      }).join('')
+      + `</div>`;
+  },
+  notes() {
+    return [
+      { id: 'matrix-grid', text: 'Four issues down, five columns across, and the column you can read '
+        + 'down is the reason this is a grid. Whether the street is worse than the room is a '
+        + 'different question from whether the air is worse than the heat, and four separate cards '
+        + 'would answer neither. The last column is the line — what the four readings to its left '
+        + 'are read against — drawn once per row rather than repeated in every cell.' },
+      { id: 'mrow-air', text: 'An empty cell is the commonest thing on this grid and it always says '
+        + 'which absence it is: no sensor indoors, no kit on the wall outside, no public station '
+        + 'reporting, no model for this point. Those are four different jobs for whoever keeps this '
+        + 'node, and a blank would have been none of them.' },
+    ];
+  },
 });
 
 });
@@ -4540,7 +4620,7 @@ function main() {
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
+  const NOW = ['ground', 'matrix', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a

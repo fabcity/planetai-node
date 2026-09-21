@@ -110,7 +110,11 @@ function t1legs(d) {
 // points is layout noise (a line wrapping differently at a slightly different font); +6 points is
 // roughly a whole section's worth of ground going unused, which is the H1 complaint this redesign
 // exists to answer — a regression there is worth failing on, and a couple of rounding points is not.
-const HEIGHT_SHIPPED = { now_populated_390: 8267, now_populated_1440: 5261 };
+// Re-recorded 21 Sep 2026, prompt 3's Observe stage: the matrix is a whole new section (four issues
+// at five columns each), so the page is taller on purpose and the 8% margin correctly refused it.
+// The previous numbers, from 46018b0, were 390: 8267 and 1440: 5261. Emptiness is NOT re-recorded —
+// a redesign that adds content should drive that down, and it is the number H1 is about.
+const HEIGHT_SHIPPED = { now_populated_390: 9416, now_populated_1440: 5829 };
 const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 61.3 };
 const HEIGHT_MARGIN = 1.08, EMPTY_MARGIN = 6;
 

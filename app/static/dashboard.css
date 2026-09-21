@@ -100,6 +100,24 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
   [data-kind="stack"] .col:nth-child(3) { padding-left: 0 }
 }
 
+/* The matrix's fifth column. [data-kind="stack"] is four distances, so a fifth child wrapped to a
+   row of its own and the line read as a second heading under each issue — a whole band of wasted
+   height per row. Answer the track list, not just the class.
+
+   The divider before it is heavier than the others on purpose: the four to its left are readings
+   and this one is not, it is what they are read against. A fifth identical column would say they
+   were five of the same thing. Weight, not hue — the layer's rule. */
+.stack.withline { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, .8fr) }
+.stack.withline .col.line { border-left: 1px solid var(--ink); padding-left: 12px }
+.stack.withline .col.line .k { color: var(--ink) }
+@media (max-width: 560px) {
+  /* At two columns the line cannot sit beside anything, so it spans and keeps its heavier rule on
+     the edge that is now above it rather than beside it. */
+  .stack.withline { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .stack.withline .col.line { grid-column: 1 / -1; border-left: 0; padding-left: 0;
+    border-top: 1px solid var(--ink) }
+}
+
 /* ---------------------------------------------------------------- 3 · series
  * A trace with an axis, a time origin, the line, and a text alternative. The text alternative is
  * not a fallback: it is beside the drawing at every width, because the drawing stretches and its
