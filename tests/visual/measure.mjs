@@ -334,6 +334,30 @@ function richForecast() {
  * route — the caller must not also route.continue() it. Shared by `open()`'s render path and
  * `stall()`'s stall path: both serve a page and both need the same four answers for the same
  * reason, so there is one function rather than two copies that can drift. */
+/* The pinned registry, read by the node's own loader so the rig cannot drift from it. Cached: it is
+ * a file on disk and 417 kB of JSON, and every job would otherwise pay for it again. */
+let _registry;
+function spawnRegistry() {
+  if (_registry !== undefined) return _registry;
+  const script = `import json, sys
+sys.path.insert(0, 'app')
+import registry
+entries, ver = registry.load()
+rows = registry.find() if entries else []
+print(json.dumps({"registry": {k: ver.get(k) for k in ("sha","short","synced","entries")},
+                  "count": len(rows), "sources": rows}))`;
+  try {
+    _registry = execFileSync('python3', ['-c', script],
+      { cwd: ROOT, maxBuffer: 512 * 1024 * 1024,
+        // SOURCES_DIR defaults to the container's /app/data/sources, so a checkout loads nothing.
+        env: { ...process.env, PYTHONPATH: 'app', SOURCES_DIR: path.join(ROOT, 'data', 'sources') } }).toString();
+  } catch (e) {
+    console.error(`measure.mjs: the registry did not load: ${e.message.split('\n')[0]}`);
+    _registry = null;
+  }
+  return _registry;
+}
+
 async function serveNodeAPI(route, u) {
   const fx = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
   if (fx) {
@@ -409,6 +433,16 @@ async function serveNodeAPI(route, u) {
       ? route.fulfill({ status: 404, contentType: 'application/json',
           body: JSON.stringify({ detail: `this snapshot carries no ${FROM_SNAPSHOT[u.pathname]}` }) })
       : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
+    return true;
+  }
+  if (u.pathname === '/sources') {
+    /* From the pinned registry in data/sources, the same file app/main.py::sources_ reads — not
+     * from the snapshot, which does not carry it and should not: the registry is identical on every
+     * node at a given pin, so a capture of one node has no opinion about it. */
+    const r = spawnRegistry();
+    if (r == null) return route.fulfill({ status: 503, contentType: 'application/json',
+      body: JSON.stringify({ detail: 'no source registry in this checkout' }) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: r });
     return true;
   }
   if (u.pathname === '/place/geojson') {

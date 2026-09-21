@@ -2256,7 +2256,7 @@ window.PAI.register({
 
 });
 
-/* ================================================================= h/mods/sources.js ==== */
+/* ================================================================= h/mods/registry.js ==== */
 /* sources · core · observe
  *
  * What this page is built out of, counted in signs. Isotype's rule: more is more signs, never a
@@ -2302,11 +2302,11 @@ window.PAI.register({
     const pick = m => land.find(r => r.metric === m);
     const built = pick('built_frac'), trees = pick('tree_frac');
     const plan = window.PLAN;
-    const R = o => row({ ...o, ref: 'sources-rows', component: 'unitRow',
+    const R = o => row({ ...o, ref: 'registry-rows', component: 'unitRow',
       cols: 'minmax(0,210px) minmax(0,1fr) auto' });
     const lab = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
 
-    let html = `<div class="reads units" id="sources-rows" data-ref="matrix-grid">`
+    let html = `<div class="reads units" id="registry-rows" data-ref="matrix-grid">`
       + R({ id: 'src-own', left: lab('This house\u2019s own', 'one sign, one station'),
         signs: many('sensor', own),
         qty: [{ num: 'sources.own', value: String(own),
@@ -2338,14 +2338,14 @@ window.PAI.register({
         signs: many('house', Math.round(plan.counts.buildings / 250)),
         qty: [{ num: 'sources.houses', value: String(plan.counts.buildings),
           cmp: `buildings on the plan within this kilometre, drawn one sign per 250` }] })
-      : `<p class="note" id="src-houses" data-ref="sources-rows">The buildings on this kilometre `
+      : `<p class="note" id="src-houses" data-ref="registry-rows">The buildings on this kilometre `
         + `are on the plan, and the plan needs a token at every share level. Without one this row `
         + `is absent rather than guessed.</p>`;
     return html + `</div>`;
   },
   notes() {
     return [
-      { id: 'sources-rows', text: 'More is more signs, never a bigger sign. A row you can count is '
+      { id: 'registry-rows', text: 'More is more signs, never a bigger sign. A row you can count is '
         + 'a measurement; a bar you have to read off an axis is a picture of one. Three grains are '
         + 'mixed here and each row says which it is: a station is one sign because you could point '
         + 'at it, the ground is twentieths because a percentage counts nothing, and houses are one '
@@ -3180,6 +3180,119 @@ window.PAI.register({
       { id: 'netmap-what', text: `Readings stay on this machine \u2014 ${(d.health.ingested || 0)
         .toLocaleString()} of them so far, and not one leaves. What travels up to a community node is `
         + 'hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= h/mods/sources.js ==== */
+/* registry · core · observe (Network)
+ *
+ * What this place COULD read, and where it could go — the whole registry, not just the part this
+ * node has wired up. `GET /sources` at the pin in `data/sources`: 217 entries, 14 with an adapter,
+ * 8 that are somewhere to act rather than something to read.
+ *
+ * WHY IT IS FETCHED LATE. /sources is 417 kB, which is nearly what /issues costs, to draw three
+ * numbers. Every other route the page reads is needed on the view a reader lands on; this one is
+ * needed on Network and nowhere else, so it is asked for the first time somebody goes there and the
+ * page redraws when it arrives. A reader who never opens Network never pays for it.
+ *
+ * THE PAGE DOES NOT JUDGE A LICENCE. The registry carries `license` as free text and publishes no
+ * open/not flag, so the counts here are of what the rows SAY: how many state in the registry's own
+ * words that no licence is published, against how many carry a licence text. Sorting "CC-BY-SA-4.0
+ * (site default; proprietary licences on some pages)" into open or not-open is a judgement, and a
+ * page that made it would be making it on the Foundation's behalf. The text is shown instead.
+ *
+ * ONE COUNT WILL LOOK WRONG AND IS NOT. `fablabs-io` has `adapter: null` at pin 85a194c although
+ * `pack:make` reads it — the registry's CI checks adapter strings against this repository and the
+ * pack landed the same day as the pin. This row reads `adapter` and never infers, so it says 14
+ * until the registry is re-pinned upstream. A re-pin owed, not a page bug.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row } = window.K;
+
+/* The registry's own words for what a place to act IS. `act_kind` is a token; these name it. */
+const ACT_WORDS = {
+  /* [one, many, what it is]. Both forms are written out because the plurals are irregular — one
+     directory, two directories; one library, two libraries — and "1 lists of places that pledged"
+     is what appending an s gets you. */
+  facility: ['directory of fab labs', 'directories of fab labs', 'places with machines in them'],
+  design: ['library of open designs', 'libraries of open designs',
+    'things somebody has already worked out'],
+  network: ['list of places that pledged', 'lists of places that pledged', 'who else is doing this'],
+};
+
+/* A row that says, in the registry's own words, that nothing is licensed. Matching the registry's
+   OWN statement is reading; deciding whether "CC-BY-SA-4.0 (site default)" counts as open is not. */
+const saysNoLicence = r => /^\s*(no licence published|not open\b)/i.test(String(r.license || ''));
+
+window.PAI.register({
+  id: 'registry', pack: 'core', stage: 'observe', order: 60,
+  title: 'What this place could read, and where it could go',
+  needs: ['SOURCES'],
+  render() {
+    const d = window.SOURCES || {};
+    const rows = d.sources || [];
+    const reg = d.registry || {};
+    if (!rows.length) {
+      return `<p class="note" id="registry-none" data-ref="netmap-figure">The registry answered with `
+        + `no entries, so there is nothing to say about what this place could read.</p>`;
+    }
+    const wired = rows.filter(r => r.adapter);
+    const acts = rows.filter(r => String(r.role || '').includes('act'));
+    const byKind = {};
+    for (const r of acts) (byKind[r.act_kind] = byKind[r.act_kind] || []).push(r);
+    const unlicensed = acts.filter(saysNoLicence).length;
+    const kinds = Object.entries(byKind)
+      .map(([k, v]) => `${v.length} ${(ACT_WORDS[k] || [k, k])[v.length === 1 ? 0 : 1]}`)
+      .join(' \u00b7 ');
+    const codes = [...new Set(wired.map(r => r.adapter))].sort();
+    return `<div class="reads" id="registry-rows" data-ref="netmap-figure">`
+      + row({ id: 'registry-read', component: 'sourcesRead', ref: 'netmap-figure',
+        cols: 'minmax(0,210px) minmax(0,1fr) auto',
+        left: `<span class="who"><b>Registered, and read</b>`
+          + `<span class="m">pin ${esc(reg.short || '?')} \u00b7 synced ${esc(reg.synced || '?')}`
+          + `</span></span>`,
+        line: `${rows.length} sources registered; ${wired.length} have code on this node that reads `
+          + `them \u2014 ${esc(codes.join(', '))}. The rest have no adapter yet, which is a thing `
+          + `nobody has written rather than a thing this node refuses.`,
+        qty: [{ num: 'sources.read', value: `${wired.length}/${rows.length}`,
+          cmp: `registered sources this node has code for, at registry pin ${esc(reg.short || '?')}` }] })
+      + row({ id: 'registry-act', component: 'sourcesAct', ref: 'netmap-figure',
+        cols: 'minmax(0,210px) minmax(0,1fr) auto',
+        line: `${kinds}. ${unlicensed} of them say, in the registry's own words, that no licence is `
+          + `published; the rest carry a licence text. This page does not sort a licence into open `
+          + `or not \u2014 it shows what the registry wrote.`,
+        left: `<span class="who"><b>Places to act</b><span class="m">not things to read</span></span>`,
+        qty: [{ num: 'sources.act', value: String(acts.length),
+          cmp: `of ${rows.length} registered are somewhere to go rather than something to read` }] })
+      + `</div>`
+      + `<details class="fold" id="registry-fold"><summary>The eight, and what each one's licence says`
+      + `</summary><dl class="notelist">`
+      + acts.map(r => `<div class="noteitem" id="src-${esc(r.slug || '').replace(/[^a-z0-9-]/gi, '-')}">`
+        + `<dt>${esc(r.name || r.slug)}<span class="m"> \u00b7 `
+        + `${esc((ACT_WORDS[r.act_kind] || [])[2] || r.act_kind || '')}</span></dt>`
+        + `<dd><span class="said">${esc(r.license || 'the registry records no licence text at all')}`
+        + `</span></dd></div>`).join('')
+      + `</dl></details>`;
+  },
+  notes() {
+    return [
+      { id: 'registry-read', text: 'The registry is what this place COULD read; the adapters are what '
+        + 'it does. The gap between them is not a refusal — it is code nobody has written yet, and '
+        + 'naming it is how somebody comes to write it. One entry reads lower than it should: '
+        + '`fablabs-io` carries no adapter string at this pin although a pack reads it, because the '
+        + 'registry checks those strings against this repository and the pack landed the same day. '
+        + 'This row reads the field and never infers, so it will say so until the pin moves.' },
+      { id: 'registry-act', text: 'A place to act is not a source of readings. Two are directories of '
+        + 'workshops, five are libraries of designs somebody has already worked out, one is a list '
+        + 'of places that pledged. What this page will not do is decide whether a licence is open: '
+        + 'the registry carries free text, some of it plainly saying no licence is published and '
+        + 'some of it a licence with conditions, and sorting the second kind into a yes or a no is '
+        + 'a judgement made on somebody else\u2019s behalf. The text is here instead.' },
     ];
   },
 });
@@ -5451,7 +5564,7 @@ function main() {
      them rather than at the top of the page about the network.
      Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
      it last spoke are a history of that sensor, not a fact about now. */
-  const NETWORK = ['netmap', 'reticulum', 'meshtastic', 'hardware'];
+  const NETWORK = ['netmap', 'registry', 'reticulum', 'meshtastic', 'hardware'];
   const HISTORICAL = ['satellite', 'reach', 'trust'];
   applyOrder();
 
@@ -5595,8 +5708,24 @@ function main() {
  * step, and a path would need the node to serve every view's URL back as the same file. A re-render
  * is cheap here — every section draws from globals already in memory and nothing is fetched again —
  * so a view change is a render, not a fetch. */
+/* /sources is 417 kB — nearly what /issues costs — to draw three numbers, and it is wanted on
+ * Network and nowhere else. So it is asked for the first time somebody goes there, once, and the
+ * page redraws when it arrives; a reader who never opens Network never pays for it. The flag is set
+ * before the fetch, so a reader who switches away and back does not ask twice, and a refusal leaves
+ * SOURCES null and the section prints the line its `needs` gives it. */
+let SOURCES_ASKED = false;
+function askSources() {
+  /* Asked in fixture mode too: the registry is a pinned FILE this repository carries in
+     data/sources, identical on every node at a given pin, so it is not something a capture of one
+     node has or lacks. The rig and tools/preview.py both answer it from registry.load(). */
+  if (SOURCES_ASKED || VIEW !== 'network') return;
+  SOURCES_ASKED = true;
+  api('/sources').then(d => { window.SOURCES = d; route(); }).catch(() => { window.SOURCES = null; });
+}
+
 function route() {
   readView();
+  askSources();
   document.body.className = '';
   main();
   /* main() has just replaced the page, so any player on it is fresh markup with no listeners and

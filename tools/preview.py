@@ -31,6 +31,9 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "app"))
 os.environ.setdefault("PACKS_DIR", str(ROOT / "packs"))
 os.environ.setdefault("RULES_PATH", str(ROOT / "config" / "rules.yml"))
+# Same shape as PACKS_DIR: the default is the container path /app/data/sources, so a checkout
+# loads an empty registry and /sources answers 503 with nothing saying why.
+os.environ.setdefault("SOURCES_DIR", str(ROOT / "data" / "sources"))
 # main.py builds a connection string at import and never connects here. Without this it raises on
 # DATABASE_URL, the COMPANIONS import below falls back, and the fallback is MORE PERMISSIVE than the
 # node — which is the whole thing this file's docstring says it must not be.
@@ -139,6 +142,18 @@ class H(BaseHTTPRequestHandler):
 
         if p == "/issues":
             return self.send(200, snapshot(fx)["issues"])
+
+        if p == "/sources":
+            # The registry is a pinned file this repository carries (data/sources), not something a
+            # capture of one node has: registry.load() is what app/main.py::sources_ reads too.
+            import registry                       # noqa: PLC0415
+            entries, ver = registry.load()
+            if not entries:
+                return self.send(503, {"detail": "no source registry in this checkout"})
+            rows = registry.find()
+            return self.send(200, {"registry": {k: ver.get(k) for k in
+                                                ("sha", "short", "synced", "entries")},
+                                   "count": len(rows), "sources": rows})
 
         if p == "/settings":
             return self.send(200, settings.describe(unlocked=False, public=settings.PUBLIC))
