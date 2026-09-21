@@ -80,7 +80,6 @@ mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
 # a bridge that is down would turn the node's own health check into a timeout.
 reticulum_state = {"ok": False, "address": None, "destinations": 0, "announce_s": None,
                    "announcing": False, "peers": [], "last": None}
-RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
 STARTED = time.time()
 state = {"polls": 0, "last_poll": None, "last_error": None, "ingested": 0}
 
@@ -283,14 +282,6 @@ def ha_alert(level: str, text: str, alert_id: int | None) -> None:
 
 
 # ---------------------------------------------------------------- rules → alerts
-def load_rules() -> list[dict]:
-    try:
-        core = yaml.safe_load(RULES.read_text()) or []
-    except FileNotFoundError:
-        core = []
-    return core + packs.alerts()      # a pack rule with `contributes:` is part of the report, not an alert
-
-
 def _local_now() -> datetime:
     """The node's own clock. Everything a person is told about time uses this, never UTC: a 'good morning' that arrives
     at one in the afternoon is the bug this exists to prevent."""
@@ -381,7 +372,7 @@ def run_report(cur) -> None:
 
 
 def run_rules() -> None:
-    rules = load_rules()
+    rules = packs.load_rules()
     with db() as con, con.cursor() as cur:
         try:
             run_report(cur)

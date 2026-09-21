@@ -64,9 +64,12 @@ behind it until §4 defines the block.
 
 ### And one more thing that does not exist
 
-**The funnel is fixture-only.** `app/issues/engine.py::compute` never emits `funnel`; the dashboard binds
-`funnel: issues.funnel || null` and its tile therefore draws on a captured snapshot and never on a live
-node. The review says "`/rho` returns both and the funnel" — the funnel is something to *build*.
+**The funnel was fixture-only.** `app/issues/engine.py::compute` never emitted `funnel`; the dashboard bound
+`funnel: issues.funnel || null` and its tile therefore drew on a captured snapshot and never on a live
+node. The review says "`/rho` returns both and the funnel" — the funnel was something to *build*.
+
+**Built in v0.68** (`app/index.py::_funnel`, returned under `/rho`). Verified on node #1: 162 asked,
+0 acknowledged, 30 acted, 5 measured, median detect-to-act 115 min.
 
 ---
 
@@ -155,6 +158,30 @@ is not answering it. **This lowers the published number on every node**, which i
 for a number that has been counting glances, and it must be said in the CHANGELOG in those words.
 
 Striking this keeps today's definition and the two halves of the node keep disagreeing.
+
+### `measured` is derived from rule silence, and that is not ρ_observed
+
+The funnel's fourth stage had a worse problem than a missing source: **nothing could write it.**
+`POST /actions` accepts `acknowledged` and `acted` only (`app/main.py::post_action`), so a stage the
+schema documents and the page was to draw was structurally zero on every node that has ever run.
+
+It is now derived, not posted. `run_rules` re-raises an alert the moment its cooldown expires and the
+condition still holds, so an act followed by `index.MEASURED_WINDOW_MIN` of silence *from a rule the node
+still evaluates* is that condition having stopped being true. No household is asked to learn a habit and
+the answer is retroactive: node #1 read 5 of 30 on the day it shipped, having never recorded one.
+
+**Two guards, because the naive version lies.** The window (2880 min) must outlast the slowest act-level
+cooldown or a rule merely waiting its turn is called cleared — `tests/test_share.py` fails if a pack adds
+a slower one. And only live rule ids count: a retired rule cannot fire whatever anyone does, so its
+silence is not evidence. Without that second guard node #1 read **8**, three of them free — two
+`_test/hello-<epoch>` alerts and one `indoor_pm25_high` from before pack ids were namespaced.
+
+**This is not ρ_observed and does not displace it.** It answers *whether* the condition stopped holding,
+never *when* — the proof is a window, so `latency_minutes.measured` is `null` on purpose and a median of
+window-ends would be a constant 48h dressed as a measurement. ρ_observed below asks a sharper question a
+rule has to declare: the metric came back under a named threshold inside a named time. When a pack writes
+its first `recovery:` block the two stand side by side — the declared one sharper and narrower, this one
+answering on every rule from day one. Neither is the other's estimate.
 
 ### ρ_observed — and the block it needs first
 

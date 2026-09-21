@@ -64,6 +64,21 @@ def manifests() -> list[dict]:
 CONTRIBUTES = ("report",)
 
 
+CORE_RULES = Path(os.getenv("RULES_PATH", "/app/config/rules.yml"))
+
+
+def load_rules() -> list[dict]:
+    """Every rule this node evaluates, core plus packs. Lives here rather than in main because two callers need it and
+    they must not disagree: main runs them, and index asks which rule ids are still alive when it derives whether an
+    alert's condition stopped being true. A rule that has been renamed or deleted can never fire again, so counting
+    its silence as a cleared condition would turn every retired rule into a success."""
+    try:
+        core = yaml.safe_load(CORE_RULES.read_text()) or []
+    except FileNotFoundError:
+        core = []
+    return core + alerts()            # a pack rule with `contributes:` is part of the report, not an alert
+
+
 def rules() -> list[dict]:
     """Every rule a pack ships, alerts and contributors alike. Rule ids are namespaced <pack>/<id>."""
     out = []
