@@ -134,6 +134,15 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
   vertical-align: middle; margin-right: 6px }
 [data-kind="series"] .legend i.dash { border-top-style: dashed }
 [data-kind="series"] .legend i.dot { border-top-style: dotted }
+/* A distance that is NOT drawn, named in the same legend as the ones that are. Its rule is a gap,
+   not a line, so the legend itself says which of the four have a trace and which do not — and it
+   is the muted weight, never a colour, because absence is not a warning. */
+[data-kind="series"] .legend .gone { color: var(--mute) }
+[data-kind="series"] .legend .gone i { border-top: 1.5px dotted var(--dim); opacity: .55 }
+/* The hours-over key. The marks under the axis are the one red thing in the drawing after the
+   line itself, so the legend entry carries the same red and the count beside it. */
+[data-kind="series"] .legend .over i { border-top: 0; width: 2px; height: 11px;
+  background: var(--signal-worse); vertical-align: -2px }
 
 /* ---------------------------------------------------------------- 4 · row
  * A ledger, an index, a unit row or a sensor row. One grammar: a left rail that is scannable, a
