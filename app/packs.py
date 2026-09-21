@@ -79,6 +79,33 @@ def load_rules() -> list[dict]:
     return core + alerts()            # a pack rule with `contributes:` is part of the report, not an alert
 
 
+def module(pack: str, name: str = "adapter"):
+    """A pack's own module, imported from PACKS_DIR, or None if it is not on this node.
+
+    `packs` in app/ is this LOADER, not a package: the pack directories live under PACKS_DIR and
+    `import packs.make.adapter` fails with "packs is not a package". Two callers worked around that
+    by inserting a path and importing bare — `app/issues/engine.py::_where_to_go` and
+    `app/report.py` — and both defaulted PACKS_DIR to "../packs", which is not where a node keeps
+    them. It is /app/packs in the image, and PACKS_DIR is unset there, so both imports failed on
+    every node: `asks.where` was null with the pack on and a lab 3.3 km away, and the report's
+    `make` line never appeared. Neither said anything, because both swallow the failure by design.
+
+    One place knows this path, and it is the one that already reads every pack. This also stops
+    mutating sys.path on each call, which the two workarounds did once per request."""
+    d = PACKS_DIR / pack
+    f = d / f"{name}.py"
+    if not f.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location(f"pai_pack_{pack}_{name}", f)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as e:  # noqa: BLE001 — a broken pack must not break the caller
+        log.warning("pack %s: %s.py did not import (%s)", pack, name, e)
+        return None
+
+
 def rules() -> list[dict]:
     """Every rule a pack ships, alerts and contributors alike. Rule ids are namespaced <pack>/<id>."""
     out = []

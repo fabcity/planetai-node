@@ -518,10 +518,12 @@ def sheet(b: dict, locale: str = "en") -> str:
     fac = b.get("facility")
     if fac:
         try:
-            import sys as _sys
-            _sys.path.insert(0, os.path.join(os.getenv("PACKS_DIR", "../packs"), "make"))
-            from adapter import ask_line       # packs/make owns the wording of the place itself
-            where = ask_line([fac], locale)
+            # Same fix as app/issues/engine.py::_where_to_go: the old "../packs" default is not
+            # where a node keeps its packs, so this line never ran on one. packs.module() knows.
+            # Imported here because sheet() is not the function that imports packs at module level.
+            import packs as _packs
+            _mod = _packs.module("make")
+            where = _mod.ask_line([fac], locale) if hasattr(_mod, "ask_line") else None
         except Exception:  # noqa: BLE001 — a missing or broken pack must not cost the report
             where = None
         if where:
