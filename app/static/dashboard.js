@@ -3681,13 +3681,117 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, pill, row, funnel, ask } = window.K;
+const { esc, fmt, age, pill, row, ask, sign } = window.K;
 
 /* The alerts in the fixture that asked for something, most recent first. `level: act` is the rule
  * saying a person should do something; `info` and `warn` said something and asked nothing. They
  * come through h3.js, which make-h3.mjs fills from the fixture: the id, the rule, the first line. */
 const A = () => (window.H3 && window.H3.asks) || { acts: [], actions: [], levels: {} };
 const ACTS = () => A().acts.slice().sort((a, b) => b.ts.localeCompare(a.ts));
+
+/* Which asks are still open, from the node's own answer and never from a copy of its rule.
+ *
+ * `CLOSED_STAGES` is ("acted", "measured") in app/issues/schema.py — acknowledged does NOT close an
+ * ask — and the node has already applied it: an alert in an issue's `open_asks` is open and one
+ * that is not is closed. So the ring reads membership, and this page holds no second copy of a rule
+ * it does not own. Publishing `closed_stages` on /issues would have been the other way to do it,
+ * and it would have been a field the node does not have for an answer the node already gives. */
+const OPEN_IDS = () => new Set((ORDER || Object.keys(ISS))
+  .flatMap(k => ((ISS[k] || {}).open_asks || []).map(a => a.id)));
+
+/* One ring an ask, closed first, with the unit changed rather than the row silently truncated when
+ * a rule has asked more times than a person can count. Same grammar as the \u03c1 row, same reason. */
+function ringsFor(list, open) {
+  const total = list.length, closed = list.filter(a => !open.has(a.id)).length;
+  /* One ring an ask up to 80, because the strip has a grid row to itself and 52 of them fit on two
+   * lines. It was 24, which put this node's busiest rule on a unit of ten — five rings for 52 asks,
+   * and its one closed ask rounding to zero filled rings. The count beside it said 1/52 while the
+   * drawing said nothing had been done, which is the failure a unit is supposed to prevent, not
+   * cause. A node with hundreds still gets a unit rather than a wall of rings. */
+  const UNIT = total <= 80 ? 1 : total <= 800 ? 10 : 100;
+  const rings = Math.round(total / UNIT);
+  /* Any progress shows. At a unit above one, a closed count smaller than the unit would round to no
+   * filled rings at all — so it is floored at one ring, and the numeral beside it carries the exact
+   * figure that a rounded ring cannot. */
+  const full = closed > 0 ? Math.max(1, Math.round(closed / UNIT)) : 0;
+  let out = '';
+  for (let i = 0; i < rings; i++) {
+    out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
+  }
+  return { html: out, closed, total, unit: UNIT };
+}
+
+/* WHERE TO GO, under the ask it answers.
+ *
+ * The `make` pack stores fab labs on /sensors as `kind === 'facility'` — a place, not a station, and
+ * every count on this page filters them out. The SENTENCE is the pack's, from /issues.asks.where,
+ * and it already names the nearest lab, the distance and the top three machines in the reader's
+ * language. The page does not compose it and does not translate: `meta.capabilities` arrives as raw
+ * tokens (`three_d_printing`) and CAPABILITY_WORDS lives in the pack, so drawing the tokens here in
+ * English would be this file inventing a vocabulary it does not own. See the STOP in the handoff.
+ *
+ * `cached` and not `live` or `partial`: a monthly archive is neither. The date drawn is the SNAPSHOT
+ * filename, not the day the node fetched it — what a reader needs to know is how old the directory
+ * is, not how recently this machine copied it.
+ *
+ * With the pack off there is no row, and the section says so in the NODE'S OWN WORDS — the help
+ * text /settings publishes for MAKE_ENABLED, which carries the licence sentence a keeper should
+ * read before turning it on. Never this page's paraphrase of it. */
+function whereToGo() {
+  const labs = (window.SENSORS || []).filter(x => x.kind === 'facility');
+  const said = ((A() || {}).where || {})[LOC];
+  if (!labs.length) {
+    const h = ((window.SETTINGS_RAW || {}).runtime || [])
+      .find(r => r.key === 'MAKE_ENABLED') || {};
+    return `<p class="note" id="where-off" data-ref="asks-rows">`
+      + (h.help
+        ? `No place to get something made is listed here. <span class="said">${esc(h.help)}</span>`
+        : `No place to get something made is listed here, and this node does not say why: it `
+          + `carries no MAKE_ENABLED setting, so its image predates the pack that would.`)
+      + `</p>`;
+  }
+  const near = labs.slice().sort((a, b) =>
+    ((a.meta || {}).distance_km ?? 1e9) - ((b.meta || {}).distance_km ?? 1e9))[0];
+  const m = near.meta || {};
+  return row({ id: 'where-to-go', component: 'whereToGo', ref: 'asks-rows',
+    cols: 'minmax(0,210px) minmax(0,1fr) auto',
+    href: m.url || null,
+    left: `<span class="who"><b>${esc(near.name)}</b>`
+      + `<span class="m mono">${m.distance_km == null ? '\u2014' : `${m.distance_km} km`}</span></span>`,
+    /* No sentence is a real state and not a blank: the pack composes it and a node whose pack could
+       not be loaded sends null, which is what this said on every node until packs.module() landed. */
+    line: said || `${labs.length} place${labs.length === 1 ? '' : 's'} stored, and this node sent no `
+      + `sentence for them \u2014 the facts are here and the wording is the pack's to write.`,
+    qty: [{ num: 'where.km', value: esc(String(m.snapshot || 'no date')),
+      cmp: `the dated archive this came from \u2014 not when this machine copied it`
+        + `${m.attribution ? ` \u00b7 ${m.attribution}` : ''}` }] })
+    + `<p class="note" id="where-prov" data-ref="where-to-go">${pill('cached')} A monthly archive `
+    + `is neither live nor partial. ${labs.length > 1 ? `${labs.length} are stored; the nearest is `
+      + `drawn.` : ''}</p>`;
+}
+
+/* THE HOUSEHOLD'S OWN CAPACITY, where the node has any. A purifier's filter life is the first thing
+ * this node knows about a machine the household owns rather than about the air — `device_health`,
+ * never a measurement (packs/xiaomi-air/channels.yml says so and marks it `comparable: false`). It
+ * is a row with its own sign and never a sensor tile, because a tile beside the air readings would
+ * put a consumable on the same footing as a reading of the room. */
+function capacity() {
+  /* null when the node has no appliance to ask about, which is why /stats was never fetched (see
+     boot). An empty row here would be the page claiming it looked. */
+  const rows = (window.STATS || []).filter(r => r.metric === 'filter_life');
+  if (!rows.length) return '';
+  return rows.map(r => row({ id: `capacity-${esc(r.sensor_id)}`, component: 'capacity',
+    ref: 'asks-rows', cols: 'minmax(0,210px) minmax(0,1fr) auto',
+    left: `<span class="who"><b>${esc(r.name || r.sensor_id)}</b>`
+      + `<span class="m">filter life</span></span>`,
+    signs: sign('machine'),
+    line: `What this household can still do about its own air without asking anybody. A filter is a `
+      + `consumable, not a reading: it says how much of this machine is left, never how the room is.`,
+    qty: [{ num: `capacity.${esc(r.sensor_id)}.filter`,
+      value: `${fmt(r.last, 0)}%`,
+      cmp: `of this filter's life remaining \u00b7 device health, and the node marks it not `
+        + `comparable with anything else on this page` }] })).join('');
+}
 
 window.PAI.register({
   id: 'asks', pack: 'core', stage: 'act', order: 10,
@@ -3700,7 +3804,7 @@ window.PAI.register({
   render(ctx) {
     const S = ctx.S, ISS = ctx.ISS;
     const acts = ACTS();
-    const acted = new Set(A().actions.map(x => x.alert_id));
+    const open = OPEN_IDS();
     const byRule = {};
     for (const a of acts) (byRule[a.rule_id] = byRule[a.rule_id] || []).push(a);
     const rules = Object.entries(byRule).sort((a, b) => b[1].length - a[1].length);
@@ -3713,18 +3817,27 @@ window.PAI.register({
       + `<div class="reads" id="asks-rows" data-ref="funnel">`
       + rules.map(([rule, list]) => {
         const [pack, name] = rule.split('/');
-        const answered = list.filter(a => acted.has(a.id)).length;
+          const r = ringsFor(list, open);
         const latest = list[0];
-        return row({ id: `ask-rule-${esc(name)}`, component: 'askRule', ref: 'funnel',
+        /* LEVEL IN WEIGHT, never hue: an `act` ask is one somebody was asked to do something about
+           and a `warn` is one a keeper should know about, so the first is drawn at full weight and
+           the rest quieter. The level is the node's, per alert. */
+        return row({ id: `ask-rule-${esc(name)}`, component: 'askRule', ref: 'asks-rows',
+          cls: latest.level === 'act' ? '' : 'quiet',
           cols: 'minmax(0,210px) minmax(0,1fr) auto',
           left: `<span class="who"><b>${esc(name.replace(/_/g, ' '))}</b>`
             + `<span class="m">${esc(pack)} · last ${esc(age(Math.round((captured
               - Date.parse(latest.ts)) / 60000)))}</span></span>`,
           line: esc(String(latest.text || '').split('\n')[0].slice(0, 140)),
-          qty: [{ num: `asks.${esc(name)}.sent`, value: String(list.length),
-            cmp: `asks sent in the window, of which ${answered} were answered` }],
+          signs: r.html,
+          qty: [{ num: `asks.${esc(name)}.sent`, value: `${r.closed}/${r.total}`,
+            cmp: `closed of asked in the window \u2014 an ask closes when somebody acted or the `
+              + `outcome was measured, never merely by being seen`
+              + `${r.unit > 1 ? ` \u00b7 one ring per ${r.unit}` : ''}` }],
         });
       }).join('')
+      + whereToGo()
+      + capacity()
       + `</div></div>`
       + `</div>`;
   },
@@ -3749,6 +3862,23 @@ window.PAI.register({
         + 'person, on Telegram. It is the only thing on this page that is addressed to somebody; '
         + 'everything else is addressed to nobody in particular. "Nothing has been asked" and '
         + '"nothing to do" are two different sentences, and the ask strip says which one is true.' },
+      { id: 'asks-rows', text: 'One ring an ask, closed first. An ask closes when somebody acted '
+        + 'or the outcome was measured \u2014 being seen is not closing it, which is the node\u2019s rule '
+        + 'and not this page\u2019s: the page reads which asks are still open from the node\u2019s own '
+        + 'answer rather than keeping a copy of the rule that decides it. A rule that has asked '
+        + 'more times than a person can count gets a coarser unit and says which, and the figure '
+        + 'beside the strip is always exact.' },
+      { id: 'where-to-go', text: 'The nearest place you could get something made, under the ask it '
+        + 'answers rather than as a tile of its own \u2014 the pack that stores it says the line belongs '
+        + 'to the moment you have been told you need something made. The sentence is the pack\u2019s, '
+        + 'including which lab and how far; the page draws it and does not compose it. The date is '
+        + 'the archive\u2019s, not the day this machine copied it, because what matters is how old the '
+        + 'directory is. `cached`, because a monthly archive is neither live nor partial. A lab is '
+        + 'never a station: no count on this page includes it.' },
+      { id: 'where-prov', text: 'The directory this reads is not openly licensed, which is why the '
+        + 'pack ships off and why the switch carries that sentence where a keeper will read it '
+        + 'before turning it on. With the pack off this row does not exist and the node\u2019s own '
+        + 'words say why \u2014 never this page\u2019s summary of them.' },
       { id: 'asks-button', text: 'The green button is the one control on the page that is not the '
         + 'dial. It is a response, so it is green — the layer’s rule is that orange means what only '
         + 'the satellite knows and nothing else — and it is drawn in the ask strip and nowhere else.' },
@@ -4659,6 +4789,19 @@ async function boot() {
   window.CELLS = cells;
   window.TRUST = trust;
   window.FORECAST = forecast;
+  /* /stats, and ONLY on a node that has an appliance to say anything about.
+   *
+   * The household's own capacity — a purifier's filter life — is `role: device_health` in
+   * packs/xiaomi-air/channels.yml and deliberately absent from /issues, which publishes readings of
+   * the place and not the state of a machine in it. So it is only on /stats, and /stats is a
+   * thirteenth request on a page that makes twelve.
+   *
+   * Almost no node has a purifier — node #1 has XIAOMI_PURIFIERS empty — so paying that request
+   * everywhere to draw a row almost nowhere is the wrong trade. /sensors is already in hand and
+   * names its sources, so the page asks for /stats when there is an appliance whose health it
+   * would report, and not otherwise. */
+  window.STATS = (sensors || []).some(x => x && x.source === 'xiaomi-air')
+    ? await api('/stats').catch(() => null) : null;
   window.PLAN = await plan(health).catch(() => null);
 }
 
