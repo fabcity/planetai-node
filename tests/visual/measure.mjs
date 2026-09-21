@@ -362,8 +362,15 @@ async function serveNodeAPI(route, u) {
     return true;
   }
   if (u.pathname === '/earth') {
-    const health = computeNodeData(FIXTURE).snapshot?.health;
-    const body = process.env.PAI_RICH === '1' ? richFixture().earth : emptyEarth(health);
+    /* THE CAPTURE'S OWN EARTH WHEN IT HAS ONE. `planetai snapshot` did not fetch /earth until
+     * 21 Sep, so every fixture was earthless and this route had only two things it could serve: an
+     * empty stub or the design repo's rich one. A fixture that now CARRIES nine years of embeddings
+     * and eight change pairs was still being handed the empty stub, so Historical reviewed as "this
+     * node has no satellite passes on disk yet" while the node it was captured from has ten years
+     * of them. The stubs stay for the fixtures that genuinely have none, and for PAI_RICH. */
+    const snap = computeNodeData(FIXTURE).snapshot;
+    const body = snap?.earth
+      ?? (process.env.PAI_RICH === '1' ? richFixture().earth : emptyEarth(snap?.health));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     return true;
   }
@@ -415,7 +422,11 @@ async function serveNodeAPI(route, u) {
 }
 
 const WIDTHS = [375, 390, 768, 1440];
-const VIEWS = ['now', 'network', 'setup', 'setup-unlocked', 'wall', 'arrange'];
+/* `historical` was missing. The page has had that view since the tab order changed (dashboard.js
+ * VIEWS), and the overflow check below has always covered it — but the job table did not, so
+ * `render`, `shots` and `targets` could not be pointed at it and nothing on it has ever been
+ * measured. Prompt 4 is largely about that view. */
+const VIEWS = ['now', 'historical', 'network', 'setup', 'setup-unlocked', 'wall', 'arrange'];
 
 /* ------------------------------------------------------------------ the job table */
 function jobs() {

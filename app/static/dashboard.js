@@ -2889,9 +2889,19 @@ window.PAI.register({
         : `<p class="note" id="sat-grain" data-component="satGrain" data-ref="sat-map">`
           + `${esc(region.declared)} covers no ground, so there is no covering to compact and no `
           + `grain to state.</p>`)
-      + `<p class="cap">${esc(land.state === 'none'
-        ? `land: ${land.reason_text[ctx.LOC]} in this capture`
-        : `land_change_yoy ${fmt((land.stack.room || {}).value, land.dp)} ${land.unit}`)}</p>`
+      /* `land_change_yoy` is a column in the observations table, not a thing to say to a household,
+         and with no value it printed "land_change_yoy — %". The issue has a name and the node writes
+         a source sentence for the figure; both are used instead, and a missing value says it is
+         missing rather than drawing a dash after a column name. */
+      + `<p class="cap">${esc((() => {
+        if (land.state === 'none') return `land: ${land.reason_text[ctx.LOC]} in this capture`;
+        const v = (land.stack.room || {}).value;
+        const src = ((land.provenance || []).find(e => e.value === v) || {}).source || '';
+        if (v == null) return `${land.name[ctx.LOC]}: this node has the square but no year-on-year `
+          + `figure for it in this capture`;
+        return `${land.name[ctx.LOC]} ${fmt(v, land.dp)} ${land.unit || ''}`
+          + `${src ? ` \u2014 ${src}` : ''}`;
+      })())}</p>`
       + `</div></div>`;
   },
   notes(ctx) {
@@ -2927,6 +2937,102 @@ window.PAI.register({
           + 'and not a year-over-year number it has not produced here.'
         : 'The land_change_yoy figure is the earth pack’s own, computed on this node from the '
           + 'embeddings it keeps.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= h/mods/reach.js ==== */
+/* reach · core · observe (Historical)
+ *
+ * How far back this node's own record goes, per kind of source. Three numbers, from the oldest
+ * hourly bucket each kind has — `GET /reach`, added in v0.68, which is gap E of the data contract.
+ *
+ * WHY IT BELONGS TO HISTORICAL AND NOT TO NOW. Every other panel here says what is true now or what
+ * changed; this says how much past there is to ask about at all. A reader who wants a year of
+ * anything needs to know that on this node the sensors hold twenty days and the satellite holds ten
+ * years, because the second question — "show me a year" — has a different answer for each.
+ *
+ * TWO THINGS PROMPT 4 ASKS FOR AND THIS NODE CANNOT ANSWER, recorded rather than drawn:
+ *
+ *   · The Isotype year rows, lighting in step with the satellite loop. They need per-year built and
+ *     tree fractions. /earth carries nine years of embeddings, eight change pairs with their
+ *     hectares over threshold, the Sentinel and Landsat years, and two credit lines — and no
+ *     fraction of anything, per year or otherwise. The prompt says to read it first and omit if so.
+ *   · The barcode grown into a year of daily means. There is no daily route: /series and /sparks
+ *     are hourly, a snapshot carries twenty-four hours of readings_1h, and the sensors here only
+ *     reach twenty days anyway. A year of bars from twenty days of readings would be a drawing of
+ *     nothing.
+ *
+ * Neither is stamped `example`. An absence that says which absence it is can be answered later; a
+ * drawing of invented data cannot be un-seen.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row } = window.K;
+
+/* The node's own words for what each kind IS, because "map" and "model" are table values and not
+   sentences. The node does not publish a gloss for them, so these name the kind and say plainly
+   that the naming is this page's. */
+const KINDS = {
+  sensor: ['Kit in and around this house', 'what somebody here installed'],
+  model: ['Models read for this point', 'somebody else computes them, this node reads them'],
+  map: ['The satellite record', 'annual passes, kept on this machine'],
+};
+
+const day = iso => {
+  const d = new Date(iso);
+  return isNaN(d) ? String(iso).slice(0, 10)
+    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
+window.PAI.register({
+  id: 'reach', pack: 'core', stage: 'observe', order: 5,
+  title: 'How far back this node can be asked',
+  needs: ['REACH'],
+  render(ctx) {
+    const rows = (window.REACH || []).slice()
+      .sort((a, b) => (b.days || 0) - (a.days || 0));
+    if (!rows.length) {
+      return `<p class="note" id="reach-none" data-ref="sat-strip">This node has no hourly record `
+        + `for any kind of source yet, so there is no past here to ask about.</p>`;
+    }
+    const most = rows[0].days || 1;
+    return `<div class="reads" id="reach-rows" data-ref="sat-strip">`
+      + rows.map(r => {
+        const [name, what] = KINDS[r.kind] || [r.kind, 'a kind this page has no words for'];
+        return row({ id: `reach-${esc(r.kind)}`, component: 'reachRow', ref: 'reach-rows',
+          cols: 'minmax(0,210px) minmax(0,1fr) auto',
+          left: `<span class="who"><b>${esc(name)}</b><span class="m">${esc(what)}</span></span>`,
+          line: `Oldest hourly reading ${day(r.oldest)}, newest ${day(r.newest)} \u00b7 `
+            + `${(r.buckets || 0).toLocaleString()} hours from ${r.sources} `
+            + `${r.sources === 1 ? 'source' : 'sources'}.`,
+          qty: [{ num: `reach.${esc(r.kind)}.days`,
+            value: r.days >= 730 ? `${(r.days / 365).toFixed(1)} yr` : `${r.days} d`,
+            cmp: `of record on this node \u00b7 against ${most >= 730
+              ? `${(most / 365).toFixed(1)} years` : `${most} days`} for the longest of the three` }] });
+      }).join('')
+      + `</div>`
+      + `<p class="cap" id="reach-cap" data-ref="reach-rows">Two things this view was asked for and `
+      + `this node cannot answer, named rather than drawn: the year rows that would light in step `
+      + `with the loop need a built and tree fraction per year, and <b>/earth carries none</b> \u2014 `
+      + `nine years of embeddings, eight change pairs and two credit lines, no fractions. And a year `
+      + `of daily means has no route: the hourly ones hold a day, and the kit here reaches twenty.</p>`;
+  },
+  notes() {
+    return [
+      { id: 'reach-rows', text: 'Three kinds of source and three different amounts of past. The '
+        + 'satellite record reaches ten years because an annual pass is one row a year and this '
+        + 'node kept them; the kit in the house reaches twenty days because that is how long it has '
+        + 'been running. A question about a year has a different answer for each, and that is the '
+        + 'thing this panel exists to say before anybody asks one.' },
+      { id: 'reach-cap', text: 'Prompt 4 asked for Isotype year rows lighting with the loop, and '
+        + 'for the barcode grown into a year of daily means. Neither is on this node\u2019s wire: '
+        + '/earth has no per-year fractions and there is no daily route at all. The instruction was '
+        + 'to read the endpoint first and omit if it does not carry them, which is what this is \u2014 '
+        + 'not a stamp saying `example` over a drawing of numbers nobody computed.' },
     ];
   },
 });
@@ -4839,7 +4945,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -4847,6 +4953,11 @@ async function boot() {
        Index, and is what "Index cells" out of this node actually means. Both are routes the node
        already serves and the page this replaces already read; neither is new. */
     api('/sensors').catch(() => null), api('/cells').catch(() => null),
+    /* /reach is three rows and joins the batch rather than costing a round trip of its own. Every
+       node has one — unlike /stats, which is fetched only where there is an appliance to report —
+       because every node has a record with a beginning, and Historical's first question is how far
+       back it may be asked. */
+    api('/reach').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -4859,6 +4970,7 @@ async function boot() {
   window.EARTH = earth;
   window.SENSORS = sensors;
   window.CELLS = cells;
+  window.REACH = reach;
   window.TRUST = trust;
   window.FORECAST = forecast;
   /* /stats, and ONLY on a node that has an appliance to say anything about.
@@ -5340,7 +5452,7 @@ function main() {
      Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
      it last spoke are a history of that sensor, not a fact about now. */
   const NETWORK = ['netmap', 'reticulum', 'meshtastic', 'hardware'];
-  const HISTORICAL = ['satellite', 'trust'];
+  const HISTORICAL = ['satellite', 'reach', 'trust'];
   applyOrder();
 
   const el = document.getElementById('page');
