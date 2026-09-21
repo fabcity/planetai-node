@@ -75,12 +75,24 @@ NOUN_WORDS = {
     "es": {"room": "la habitación", "yard": "la pared de fuera", "ring": "la calle",
            "region": "lo que dice el modelo"},
 }
-# The four distances as column headings: short, and the same four words wherever they appear. English
-# keeps the system's own words (Decision 6); the other two get the household's.
+# The four distances as column headings: short, and the same four words wherever they appear.
+#
+# CHANGED 21 September 2026, and it reverses half of Decision 6. That decision gave English the
+# system's own words — room, yard, ring, region — and the other two languages the household's, and
+# the result was a page that labelled a column `YARD` above a sentence reading "on the wall
+# outside". Two vocabularies for one place, on one screen, in the one language that had them.
+# These are now the sentence's nouns in all three, so a heading and the line under it name the same
+# thing. `yard` was the worst of them: nothing at node #1 is a yard, it is a wall.
+#
+# The API KEYS do not change. `room/yard/ring/region` are what `/issues.distances` publishes, what
+# every issue's `stack` is keyed on and what a pack's `where:` block overrides; renaming those would
+# be a wire break for a wording problem. Only the words a person reads change.
 LABEL_WORDS = {
-    "en": {"room": "room", "yard": "yard", "ring": "ring", "region": "region"},
-    "id": {"room": "ruangan", "yard": "halaman", "ring": "sekitar", "region": "wilayah"},
-    "es": {"room": "habitación", "yard": "patio", "ring": "alrededor", "region": "región"},
+    "en": {"room": "room", "yard": "wall outside", "ring": "street", "region": "model"},
+    "id": {"room": "ruangan", "yard": "dinding luar", "ring": "jalan", "region": "model"},
+    # NOUN_WORDS' Spanish for `region` is a clause — "lo que dice el modelo" — because the sentence
+    # templates need one. A column heading is not a sentence, so it takes the noun out of it.
+    "es": {"room": "habitación", "yard": "pared de fuera", "ring": "calle", "region": "modelo"},
 }
 # {cmp} is assembled from these. Never a bare number: a comparison a household can read.
 # "a, b and c". The list separator the sentences use when one comparison covers several distances.
@@ -99,6 +111,96 @@ SPAN_WORDS = {
     "en": {"between": "between {a} and {b}", "since": "{pct} % since {year}."},
     "id": {"between": "antara {a} dan {b}", "since": "{pct} % sejak {year}."},
     "es": {"between": "entre {a} y {b}", "since": "{pct} % desde {year}."},
+}
+# Simple mode's whole answer: one sentence per stage, written HERE and never in the browser. A
+# sentence about what was observed is a claim about the data, and the page draws what the node
+# computes. Four sentences, three languages, and every figure in them is already in the bundle.
+#
+# `measure` deliberately does not report rho. rho is specified in docs/SPEC_rho.md over its own
+# window and computed by app/index.py from a query this engine cannot make — `Replay` answers five
+# table reads and no more, so a fixture could not render it. A second rho computed from a different
+# window would be a second rho, and two of them disagreeing on one page is worse than one of them
+# being absent. This sentence reports the ledger the Act stage draws, and says that is what it is.
+DIGEST_WORDS = {
+    "en": {
+        "observe": "{issues} issues watched here, read from {stations} stations. "
+                   "{headline} has the most to say: it is {phrase}.",
+        "observe_none": "{issues} issues watched here, and no station is reading any of them.",
+        "decide": "At resolution {res} one cell is {area} m\u00b2, and this node's {stations} stations "
+                  "fall in {occupied} of them \u2014 {mine} in its own cell. The node says where it is "
+                  "to about {metres} m, and {leave}.",
+        "act": "{open} asks are open, {top} of them about {issue}. "
+               "Somebody in the house has answered {answered}.",
+        "act_none": "Nothing is open. Somebody in the house has answered {answered}.",
+        "measure": "Of the {acts} alerts here that asked for something, {answered} have been "
+                   "answered, and the usual wait was {median} minutes.",
+        "measure_none": "Of the {acts} alerts here that asked for something, none have been "
+                        "answered yet.",
+        "measure_empty": "Nothing here has asked anybody to do anything.",
+        "stays": "nothing at this grain leaves the machine",
+        "leaves": "this grain may leave the machine",
+        "state": {"act": "over the line and asking for something", "notable": "worth a look",
+                  "quiet": "quiet", "context": "context, and it never asks",
+                  "none": "reading nothing"},
+    },
+    "id": {
+        "observe": "{issues} isu dipantau di sini, dibaca dari {stations} stasiun. "
+                   "{headline} paling banyak bicara: {phrase}.",
+        "observe_none": "{issues} isu dipantau di sini, dan tidak ada stasiun yang membacanya.",
+        "decide": "Pada resolusi {res} satu sel seluas {area} m\u00b2, dan {stations} stasiun node ini "
+                  "jatuh di {occupied} di antaranya \u2014 {mine} di selnya sendiri. Node menyebut "
+                  "posisinya sampai sekitar {metres} m, dan {leave}.",
+        "act": "{open} permintaan terbuka, {top} di antaranya tentang {issue}. "
+               "Seseorang di rumah telah menjawab {answered}.",
+        "act_none": "Tidak ada yang terbuka. Seseorang di rumah telah menjawab {answered}.",
+        "measure": "Dari {acts} peringatan di sini yang meminta sesuatu, {answered} telah dijawab, "
+                   "dan waktu tunggu biasanya {median} menit.",
+        "measure_none": "Dari {acts} peringatan di sini yang meminta sesuatu, belum ada yang "
+                        "dijawab.",
+        "measure_empty": "Tidak ada di sini yang meminta siapa pun melakukan sesuatu.",
+        "stays": "tidak ada pada perincian ini yang keluar dari mesin",
+        "leaves": "perincian ini boleh keluar dari mesin",
+        "state": {"act": "di atas garis dan meminta sesuatu", "notable": "layak dilihat",
+                  "quiet": "tenang", "context": "konteks, dan tidak pernah meminta",
+                  "none": "tidak membaca apa pun"},
+    },
+    "es": {
+        "observe": "{issues} asuntos vigilados aqu\u00ed, le\u00eddos desde {stations} estaciones. "
+                   "{headline} es el que m\u00e1s dice: {phrase}.",
+        "observe_none": "{issues} asuntos vigilados aqu\u00ed, y ninguna estaci\u00f3n lee ninguno.",
+        "decide": "En la resoluci\u00f3n {res} una celda son {area} m\u00b2, y las {stations} estaciones "
+                  "de este nodo caen en {occupied} de ellas \u2014 {mine} en la suya propia. El nodo "
+                  "dice d\u00f3nde est\u00e1 con unos {metres} m, y {leave}.",
+        "act": "{open} peticiones abiertas, {top} de ellas sobre {issue}. "
+               "Alguien en la casa ha respondido {answered}.",
+        "act_none": "No hay nada abierto. Alguien en la casa ha respondido {answered}.",
+        "measure": "De las {acts} alertas de aqu\u00ed que ped\u00edan algo, {answered} han sido "
+                   "respondidas, y la espera habitual fue de {median} minutos.",
+        "measure_none": "De las {acts} alertas de aqu\u00ed que ped\u00edan algo, ninguna ha sido "
+                        "respondida todav\u00eda.",
+        "measure_empty": "Nada de aqu\u00ed ha pedido a nadie que haga nada.",
+        "stays": "nada de este grano sale de la m\u00e1quina",
+        "leaves": "este grano puede salir de la m\u00e1quina",
+        "state": {"act": "por encima de la l\u00ednea y pide algo", "notable": "merece una mirada",
+                  "quiet": "tranquilo", "context": "contexto, y nunca pide nada",
+                  "none": "no lee nada"},
+    },
+}
+# Why THIS issue is at the top, in the household's language. The node ranks them, so the node says
+# how — a page that keeps its own copy of the rule goes stale the moment the ranking changes, which
+# is not hypothetical: v0.59 changed it on 18 September and the sentence describing it lived in
+# dashboard.js, where nothing connected the two. A ranking a reader cannot check is the one thing
+# this page does not do, so the explanation travels with the ranking.
+HEADLINE_RULE = {
+    "en": "The issue with most to say leads \u2014 and where two have as much to say, the one that has "
+          "moved most in the last three hours. An even tie goes to the order this place chose, under "
+          "Set up \u2192 Issues.",
+    "id": "Isu yang paling banyak bicara memimpin \u2014 dan bila dua sama banyaknya, yang paling berubah "
+          "dalam tiga jam terakhir. Bila tetap seri, urutannya mengikuti pilihan tempat ini, di "
+          "Set up \u2192 Issues.",
+    "es": "Lidera el asunto que m\u00e1s tiene que decir \u2014 y si dos dicen otro tanto, el que m\u00e1s se ha "
+          "movido en las \u00faltimas tres horas. Si hay empate exacto, manda el orden que eligi\u00f3 este "
+          "lugar, en Set up \u2192 Issues.",
 }
 REASON_WORDS = {
     "en": {

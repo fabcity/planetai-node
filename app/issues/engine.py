@@ -39,10 +39,11 @@ from datetime import datetime, timezone
 
 import packs
 
-from . import (CMP_WORDS, DISTANCES, JOIN_WORDS, LABEL_WORDS, LOCALES, NOUN_WORDS, REASON_WORDS,
+from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, JOIN_WORDS, LABEL_WORDS, LOCALES,
+               NOUN_WORDS, REASON_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
 from . import geometry
-from .schema import is_open, is_seen, place_of, stage_of
+from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
 
 log = logging.getLogger("planetai.issues")
 # Said once per process, not once per request: /issues is polled by every open page.
@@ -146,6 +147,88 @@ def _asks_ledger(alerts: list[dict], actions: list[dict]) -> dict:
                      "ts": x["ts"] if isinstance(x.get("ts"), str) else x["ts"].isoformat()} for x in actions],
         "levels": {lvl: sum(1 for a in alerts if a.get("level") == lvl) for lvl in ("act", "warn", "info")},
     }
+
+
+# The resolution the Decide sentence speaks about: the one the dashboard's dial opens at
+# (app/static/dashboard.js, `Q.get('res') || defaultRes || 8`) and the one GET /health reports as the
+# cell this node stands in. If that default ever moves, this moves with it, or the page and the
+# page's own summary of itself quietly disagree about which cell "here" is.
+DIGEST_RES = 8
+
+
+def _group(n: int, loc: str) -> str:
+    """639550 as "639,550" in English and "639.550" in Spanish and Indonesian.
+
+    Not cosmetic. A comma is the DECIMAL mark in both of those, so "639,550 m\u00b2" reads there as
+    six hundred and thirty-nine point five five — three orders of magnitude wrong, inside the one
+    sentence whose whole job is to be the short true answer.
+    """
+    return f"{n:,}" if loc == "en" else f"{n:,}".replace(",", ".")
+
+
+def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: str | None) -> dict:
+    """Four sentences, one per stage, in three languages, from figures already in this document.
+
+    Simple mode draws these and nothing else, so they are the whole answer for a reader who wants
+    one. Every number here is read off `out`, `stations`, `geom` or `asks` — nothing is queried, and
+    nothing is rounded differently than the section that draws the same figure further down.
+    """
+    n_stations, n_issues = len(stations), len(out)
+    row = next((r for r in (geom.get("grain_table") or []) if r.get("res") == DIGEST_RES), None)
+    pub = geom.get("publication") or {}
+
+    acts = asks.get("acts") or []
+    closed = {a.get("alert_id") for a in (asks.get("actions") or [])
+              if a.get("stage") in CLOSED_STAGES}
+    waits = []
+    first = {}
+    for a in (asks.get("actions") or []):
+        if a.get("stage") not in CLOSED_STAGES or a.get("alert_id") is None:
+            continue
+        k = a["alert_id"]
+        if k not in first or a["ts"] < first[k]:
+            first[k] = a["ts"]
+    for a in acts:
+        if a.get("id") in first:
+            try:
+                waits.append((datetime.fromisoformat(first[a["id"]])
+                              - datetime.fromisoformat(a["ts"])).total_seconds() / 60)
+            except (TypeError, ValueError):       # a snapshot with a timestamp we cannot parse
+                pass
+    answered = sum(1 for a in acts if a.get("id") in closed)
+
+    open_by = {k: len(v.get("open_asks") or []) for k, v in out.items()}
+    n_open = sum(open_by.values())
+    top = max(open_by, key=lambda k: open_by[k]) if n_open else None
+
+    digest = {}
+    for loc in LOCALES:
+        w = DIGEST_WORDS[loc]
+        name = lambda k: (out[k].get("name") or {}).get(loc) or k       # noqa: E731
+        if headline and n_stations:
+            observe = w["observe"].format(issues=n_issues, stations=n_stations,
+                                          headline=name(headline),
+                                          phrase=w["state"].get(out[headline]["state"], ""))
+        else:
+            observe = w["observe_none"].format(issues=n_issues)
+        decide = "" if not row else w["decide"].format(
+            res=DIGEST_RES, area=_group(round(row.get("area_m2") or 0), loc), stations=n_stations,
+            occupied=row.get("occupied") or 0, mine=row.get("in_my_cell") or 0,
+            metres=pub.get("metres") or "?",
+            leave=w["leaves"] if row.get("may_leave") else w["stays"])
+        act = (w["act"].format(open=n_open, top=open_by[top], issue=name(top), answered=answered)
+               if n_open else w["act_none"].format(answered=answered))
+        if not acts:
+            measure = w["measure_empty"]
+        elif waits:
+            measure = w["measure"].format(acts=len(acts), answered=answered,
+                                          median=round(statistics.median(waits)))
+        else:
+            measure = w["measure_none"].format(acts=len(acts))
+        digest[loc] = {"observe": observe, "decide": decide, "act": act, "measure": measure}
+    # One key per stage, each a string per locale — the shape `dashboard.js::digest()` reads.
+    return {stage: {loc: digest[loc][stage] for loc in LOCALES}
+            for stage in ("observe", "decide", "act", "measure")}
 
 
 def _mesh(mesh: dict | None, stats: list[dict]) -> dict | None:
@@ -720,6 +803,11 @@ class Replay:
 
     It matches on the table name rather than the whole statement, so a whitespace change in the SQL
     does not break every fixture and every test.
+
+    All five tables must be present, even as empty lists. That is not pedantry: `planetai snapshot`
+    fetched only three of them until v0.67, and because a missing key used to read as an empty one,
+    every fixture taken in between rendered with no act ledger, no stages, no series and no barcode,
+    and nothing anywhere said so. An absent table now refuses out loud.
     """
     TABLES = (("FROM stats", "stats"), ("FROM observations", "observations"),
               ("FROM alerts", "alerts"), ("FROM actions", "actions"),
@@ -731,7 +819,17 @@ class Replay:
     def execute(self, sql: str, args=()):
         for needle, key in self.TABLES:
             if needle in sql:
-                self.rows = [dict(r) for r in (self.snapshot.get(key) or [])]
+                # A table that is ABSENT and a table that is EMPTY are different facts, and reading
+                # them as one is how a fixture came to render with no act ledger and no series while
+                # saying nothing. A node with nothing to report sends `[]`; a snapshot that never
+                # fetched the table has no key at all, and that is a broken fixture, not a quiet node.
+                if key not in self.snapshot:
+                    raise LookupError(
+                        f"this snapshot carries no {key}, so its issues cannot be replayed. Every "
+                        f"snapshot taken before v0.67 is missing actions and readings_1h, because "
+                        f"planetai snapshot did not fetch them; take a new one on a node running "
+                        f"v0.67 or later. See docs/design/fixtures/README.md.")
+                self.rows = [dict(r) for r in (self.snapshot[key] or [])]
                 if key == "actions":
                     self.rows = [r for r in self.rows if r.get("alert_id") is not None]
                 if key == "readings_1h":
@@ -913,21 +1011,27 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     headline_issue = _headline(out, declared)
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
+    geom = _safe_geometry(lat, lon, settings, stations, peers)
+    asks = _asks_ledger(data["alerts"], data["actions"])
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
     # sees a schema it does not know draws what it recognises; it never refuses, and the dashboard's
     # assertion is one sentence rather than a blank page.
     return {"schema": "issues-v0",
             "order": declared, "undeclared": undeclared, "dropped": dropped,
             "headline": headline_issue, "as_of": now.isoformat(),
+            # why that one is at the top, in three languages — see HEADLINE_RULE
+            "headline_rule": HEADLINE_RULE,
             # the column headings, so the page and Telegram both take their words from the node
             "distances": list(DISTANCES), "labels": LABEL_WORDS,
             "issues": out,
             # what the modular dashboard reads beside the issues — 15 September 2026's decisions
             "stations": stations,
             "metrics": METRICS,
-            "asks": _asks_ledger(data["alerts"], data["actions"]),
+            "asks": asks,
+            # simple mode's whole answer, written here because the page may not compose a sentence
+            "digest": _digest(out, stations, geom, asks, headline_issue),
             "mesh": _mesh(mesh, data["stats"]),
-            "geometry": _safe_geometry(lat, lon, settings, stations, peers)}
+            "geometry": geom}
 
 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}

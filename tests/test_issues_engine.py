@@ -243,6 +243,65 @@ for key in ("air", "heat", "land", "coast"):
     check(e["issues"][key]["sentence"]["en"], f"{key} must still have a sentence with no source")
 check(e["order"] == ["air", "heat", "land", "coast"], "an empty node keeps the declared order")
 
+# 6b: an ABSENT table is not an empty one.
+#
+# Until v0.67 `planetai snapshot` fetched three of the five tables Replay reads -- `actions` and
+# `readings_1h` are not endpoints -- and a missing key read as `[]`. So every fixture taken in
+# between replayed with no act ledger, no stages, no series and no barcode, and nothing anywhere
+# said so. A design round would have measured that as a page bug. Both halves are checked here: that
+# an absent table refuses out loud, and that every fixture the route can serve carries all five.
+for _missing in [k for _, k in engine.Replay.TABLES]:
+    _partial = {k: v for k, v in empty.items() if k != _missing}
+    try:
+        run(_partial)
+        check(False, f"a snapshot carrying no {_missing} replayed silently instead of refusing")
+    except LookupError as _exc:
+        check(_missing in str(_exc), f"a refusal must name the table it wants, got: {_exc}")
+
+# 6c: the digest — simple mode's whole answer, so a brace left in it is the entire page.
+#
+# Four stages, three languages, twelve sentences, on a node with data and on one with none. The
+# empty node matters more than the populated one: that is the node a tester sets up on a Tuesday,
+# and "{issues} issues watched here" printed literally is what the page would lead with.
+for _case, _d in (("node #1", run()), ("an empty node", e)):
+    _dg = _d.get("digest")
+    check(isinstance(_dg, dict), f"{_case}: /issues carries no digest")
+    for _stage in ("observe", "decide", "act", "measure"):
+        for _loc in ("en", "id", "es"):
+            _s = (_dg or {}).get(_stage, {}).get(_loc)
+            check(isinstance(_s, str), f"{_case}: digest.{_stage}.{_loc} is not a sentence")
+            if _case == "node #1":
+                check(_s, f"{_case}: digest.{_stage}.{_loc} is empty")
+            check("{" not in (_s or "") and "}" not in (_s or ""),
+                  f"{_case}: digest.{_stage}.{_loc} has an unfilled placeholder: {_s}")
+
+# The cell area is grouped for the language it is read in. A comma is the DECIMAL mark in Spanish
+# and Indonesian, so an English "639,550 m2" reads there as six hundred and thirty-nine point five
+# five — the same digits, three orders of magnitude out, in the one sentence that has to be right.
+# The number itself depends on where the node stands, so this checks the separator and not a value.
+_dec = run()["digest"]["decide"]
+_m = re.search(r"([\d,]{5,}) m", _dec["en"])
+check(_m is not None and "," in _m.group(1), f"en groups thousands with commas: {_dec['en']}")
+if _m:
+    _same = _m.group(1).replace(",", ".")
+    check(_same in _dec["es"], f"es wants {_same}: {_dec['es']}")
+    check(_same in _dec["id"], f"id wants {_same}: {_dec['id']}")
+
+# rho stays out of the digest. It is specified over its own window in docs/SPEC_rho.md and computed
+# by app/index.py from a query Replay cannot answer, so a digest that reported one would be a second
+# rho over a different window — and two of them disagreeing on one page is worse than one absent.
+for _loc in ("en", "id", "es"):
+    check("%" not in run()["digest"]["measure"][_loc],
+          f"measure reports the ledger, never a rate a reader could take for rho: "
+          f"{run()['digest']['measure'][_loc]}")
+
+for _fx in sorted((ROOT / "app/issues/fixtures").glob("*.json")):
+    _snap = json.loads(_fx.read_text())
+    _absent = [k for _, k in engine.Replay.TABLES if k not in _snap]
+    check(not _absent, f"{_fx.name} is served by /issues/fixtures/ but cannot be replayed: "
+                       f"it carries no {', '.join(_absent)}. A snapshot that is evidence of the "
+                       f"wire rather than a render belongs in docs/design/fixtures/.")
+
 # 7: level on state, the one that MOVED leads; an exact tie goes to the declared order
 #
 # This asserted "a tie goes to the declared order" for both orders, and on 18 September it started

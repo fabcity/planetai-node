@@ -1068,6 +1068,23 @@ def alerts(limit: int = Query(50, ge=0, le=1000)):
                 FROM alerts a ORDER BY a.ts DESC LIMIT %s""", limit)
 
 
+@app.get("/actions")
+def actions(limit: int = Query(500, ge=0, le=5000)):
+    """Every answer a person gave an alert, newest first: which alert, which stage, who, and the note they left.
+
+    `/alerts` says only *whether* somebody acted, as one timestamp. The stage is the thing the Act ledger and
+    the funnel are counted from, and acknowledged, acted and measured are three different answers — collapsing
+    them to "acted_at" loses the question. `issues/engine.py::_read` reads this table directly, so a snapshot
+    that cannot fetch it replays with no act ledger, no stages and no funnel, and nothing says so at render
+    time (docs/design/PICK_2026-09-20.md, gap J).
+
+    On neither share allowlist, deliberately: `actor` and `note` are the household's own words about what they
+    did in their own house. This answers a token or the machine itself, and nothing else.
+    """
+    return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE alert_id IS NOT NULL "
+             "ORDER BY ts DESC LIMIT %s", limit)
+
+
 @app.get("/series")
 def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
     """Hourly means for the dashboard's strip: local indoor, everything outdoor (yours and references), and the

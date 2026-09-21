@@ -64,10 +64,18 @@ def _ring(cell: str) -> list[tuple[float, float]]:
 
 def _edge_m(cell: str) -> int:
     """This cell's own mean edge, in metres. Cells are never regular hexagons and the length varies
-    with latitude, so it is measured rather than quoted from a table."""
-    b = h3.cell_to_boundary(cell)
-    return round(sum(h3.great_circle_distance(b[i], b[(i + 1) % len(b)], unit="m")
-                     for i in range(len(b))) / len(b))
+    with latitude, so it is measured rather than quoted from a table.
+
+    The measuring moved to `issues.geometry.edge_m` on 21 September 2026, when the grain table, the
+    plates and the radio row stopped quoting the global average beside a specific cell's area. This
+    is the same number it always was; there is now one function producing it instead of this one
+    being right and three other rows being wrong.
+
+    Imported inside the call, not at module scope: `issues.geometry` imports h3 unconditionally and
+    this file must stay importable on a machine without it — `facts()` above is what checks, and it
+    raises a sentence rather than failing at import and taking `app/main.py` down with it."""
+    from issues.geometry import edge_m       # noqa: PLC0415 — see the paragraph above
+    return edge_m(cell)
 
 
 @lru_cache(maxsize=4)

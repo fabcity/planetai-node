@@ -177,6 +177,32 @@ for declared, want_order, want_dropped in [
     if dropped != want_dropped:
         fails.append(f"NODE_ISSUES={declared!r} dropped {dropped}, expected {want_dropped}")
 
+# --- the four distances have ONE vocabulary ---------------------------------------------------------------------
+#
+# A column headed YARD above a sentence reading "on the wall outside" is two names for one place on
+# one screen, and English was the only language that had them: Decision 6 gave it the system's own
+# words and gave the household's to the other two. Half of that is reversed — the headings are the
+# sentence's nouns now, in all three — and this is what keeps them from drifting apart again.
+#
+# The API keys are deliberately NOT part of it. `room/yard/ring/region` are what /issues.distances
+# publishes, what every stack is keyed on and what a pack's `where:` block overrides. Renaming them
+# would be a wire break to fix a wording problem.
+for _loc in I.LOCALES:
+    if set(I.LABEL_WORDS.get(_loc, {})) != set(I.DISTANCES):
+        fails.append(f"LABEL_WORDS[{_loc}] does not carry exactly the four distances")
+        continue
+    for _d in I.DISTANCES:
+        _label, _noun = I.LABEL_WORDS[_loc][_d], I.NOUN_WORDS[_loc][_d]
+        if not _label.strip():
+            fails.append(f"LABEL_WORDS[{_loc}][{_d}] is blank")
+        # The heading must be the noun the sentence uses, allowing the article the sentence needs
+        # and the heading does not: "the street" -> "street", "la calle" -> "calle".
+        if _label.lower() not in _noun.lower():
+            fails.append(f"LABEL_WORDS[{_loc}][{_d}] is {_label!r} but the sentence says {_noun!r} — "
+                         f"one place, two names, on one screen")
+if set(I.DISTANCES) != {"room", "yard", "ring", "region"}:
+    fails.append(f"the API keys changed to {I.DISTANCES}: that is a wire break, not a wording change")
+
 print("\n".join(f"  x {f}" for f in fails) or
       f"  issues: {len(DECL)} declarations validate in {len(I.LOCALES)} locales; "
       f"{len(manifests)} packs all reach an issue or are named as not one; every line matches its "

@@ -1800,8 +1800,9 @@ print("  %d of %d entries. The last column is the code that reads it. A cell wit
 # and what a tester sends when something on the page is not what they expected.
 #
 # WHAT IT CONTAINS: 15-minute, hourly and daily means per sensor; alert texts; sensor names and the
-# node's position; the last report; rho. That is the keeper's own data, and it should be treated the
-# way you would treat a photograph of their kitchen wall.
+# node's position; the last report; rho; and every action a person took on an alert, with the note
+# they wrote. That last one is somebody's own words about their own house. All of it is the keeper's
+# own data, and it should be treated the way you would treat a photograph of their kitchen wall.
 # WHAT IT NEVER CONTAINS: raw readings. Not one row of them, at any flag, ever — they do not leave the
 # machine that recorded them (SPEC.md, "Invariants"). It also carries no token and no .env value: the
 # token is used to ask, and is not written down.
@@ -1820,8 +1821,12 @@ cmd_snapshot() {
 import json, os, sys, urllib.error, urllib.request
 from datetime import datetime
 
-PATHS = ["/health", "/issues", "/stats", "/alerts?limit=50", "/rho", "/cells", "/observations",
-         "/sensors", "/trust", "/report/latest", "/nearby", "/forecast"]
+# /alerts asks for 200 because engine._read does: a fixture given 50 replays a shorter ledger than
+# the node it was taken from. /actions and /aggregates are the two engine.Replay reads that were
+# never fetched here -- see the readings_1h stitch below, and PICK_2026-09-20.md gap J.
+PATHS = ["/health", "/issues", "/stats", "/alerts?limit=200", "/rho", "/cells", "/observations",
+         "/sensors", "/trust", "/report/latest", "/nearby", "/forecast",
+         "/actions?limit=2000", "/aggregates?hours=24"]
 base = "http://localhost:" + os.environ["SNAP_PORT"]
 tok = os.environ["SNAP_TOKEN"]
 
@@ -1841,6 +1846,26 @@ for path in PATHS:
         # /trust. That is not a failed snapshot; it is the snapshot saying so.
         out[key] = None
         out["provenance"]["refused"][key] = "GET %s: %s" % (path, type(e).__name__)
+# readings_1h is not an endpoint and never will be, but engine.Replay answers one of its five
+# queries from it: without it a fixture renders with no series, no buckets and no barcode, and
+# nothing says so. /aggregates IS that table -- it is short only the three columns the engine joins
+# in from sensors, so they are joined here rather than by widening a route other nodes federate on.
+# The engine uses an INNER JOIN, which drops a bucket whose sensor is gone; so does this.
+prov, agg = out["provenance"], out.pop("aggregates", None)
+if "aggregates" in prov["refused"]:
+    prov["refused"]["readings_1h"] = prov["refused"].pop("aggregates")
+    out["readings_1h"] = None
+else:
+    prov["read"].pop("aggregates", None)
+    by_id = {s["sensor_id"]: s for s in (out.get("sensors") or [])
+             if isinstance(s, dict) and s.get("sensor_id")}
+    out["readings_1h"] = [dict(r, indoor=by_id[r["sensor_id"]].get("indoor"),
+                               local=by_id[r["sensor_id"]].get("local"),
+                               kind=by_id[r["sensor_id"]].get("kind"))
+                          for r in (agg or []) if r.get("sensor_id") in by_id]
+    prov["read"]["readings_1h"] = ("GET /aggregates?hours=24, with indoor, local and kind joined "
+                                   "from GET /sensors, as engine._read joins them")
+
 h = out.get("health") or {}
 out["node"], out["version"] = h.get("node"), h.get("version")
 out["provenance"]["what_this_is"] = (

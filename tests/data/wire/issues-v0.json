@@ -4,10 +4,12 @@
   "keys": [
     "as_of",
     "asks",
+    "digest",
     "distances",
     "dropped",
     "geometry",
     "headline",
+    "headline_rule",
     "issues",
     "labels",
     "mesh",

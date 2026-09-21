@@ -56,6 +56,27 @@ def ladder(lat: float, lon: float) -> list[dict]:
     return out
 
 
+def edge_m(cell: str) -> int:
+    """THIS cell's own mean edge, in metres — measured, not quoted.
+
+    `h3.average_hexagon_edge_length(res)` is the average over the whole globe, and a cell's edge
+    varies with latitude. At node #1, resolution 8: the table says 531 m, this cell measures 497,
+    and the cell's own area — 639,778 m², which is what `cell_area` returns and what every one of
+    these rows already publishes — is a hexagon with a 496 m edge. Reporting the table's number
+    beside this cell's area put two different hexagons on one row, and the page drew both.
+
+    So wherever a row says `cell_area(<a specific cell>)`, its edge is measured from that same cell.
+    Where a row publishes the resolution's AVERAGE area — `_ladder` does, and labels this cell's own
+    separately as `own_area_m2` — the average edge is the right partner and stays.
+
+    This is the function `app/ground.py` has measured `/health`'s caption with all along; it lives
+    here now so there is one of it.
+    """
+    b = h3.cell_to_boundary(cell)
+    return round(sum(h3.great_circle_distance(b[i], b[(i + 1) % len(b)], unit="m")
+                     for i in range(len(b))) / len(b))
+
+
 def _cell_of(station: dict, res: int) -> str:
     return h3.latlng_to_cell(station["lat"], station["lon"], res)
 
@@ -92,7 +113,7 @@ def plates(lat: float, lon: float, stations: list[dict], res_min: int = NAV_MIN,
                 "neighbours": [n for n in around if in_plate(res, n)],
                 "neighbours_total": len(around),
                 "area_m2": round(h3.cell_area(cid, unit="m^2")),
-                "edge_m": round(h3.average_hexagon_edge_length(res, unit="m")),
+                "edge_m": edge_m(cid),
                 "pentagon": h3.is_pentagon(cid),
                 "sensors": [i for i, s in enumerate(stations) if _cell_of(s, res) == cid],
             }
@@ -111,7 +132,7 @@ def grain_table(lat: float, lon: float, stations: list[dict], floor_res: int, pu
         out.append({
             "res": res, "home": home,
             "area_m2": round(h3.cell_area(home, unit="m^2")),
-            "edge_m": round(h3.average_hexagon_edge_length(res, unit="m")),
+            "edge_m": edge_m(home),
             "occupied": len(cells),
             "in_my_cell": len(mine),
             "mine_in_my_cell": sum(1 for s in mine if s.get("local")),
@@ -272,5 +293,5 @@ def radio(lat: float, lon: float, settings, peers: list[dict]) -> dict:
                 if cid != mine and lo <= p["km"] <= hi and cid not in cands:
                     cands.append(cid)
     return {"res": res, "mine": mine, "candidates": cands, "peer_km": km,
-            "edge_m": round(h3.average_hexagon_edge_length(res, unit="m")),
+            "edge_m": edge_m(mine),
             "area_m2": round(h3.cell_area(mine, unit="m^2")), "cells": around}

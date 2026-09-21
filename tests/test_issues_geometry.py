@@ -169,6 +169,41 @@ else:
         if C0[key] != C[key]:
             fails.append(f"a zero radius on ring must not change the {key} claim")
 
+# --- a row that names one cell reports THAT cell's edge ------------------------------------------------------
+#
+# `h3.average_hexagon_edge_length(res)` is the average over the globe and is about 7% above what
+# node #1's own cells measure at every resolution. The grain table, the plates and the radio row all
+# published `cell_area(<a specific cell>)` beside that table value: at resolution 8, this cell's
+# 639,778 m² next to a 531 m edge, when the cell measures 497 and an ideal hexagon of that area has
+# one of 496. Two different cells on one row, and the dashboard's grain rail was about to draw the
+# table's number beside the right area.
+#
+# Checked as this file checks everything else — against numbers that are known — rather than by a
+# geometric identity. H3 has twelve pentagons and the cells around them are distorted enough that
+# "edge implied by area" is out by a quarter on some plate cells, so that identity is not true of
+# every row and a test asserting it would be asserting something false.
+_g8 = [r for r in G.grain_table(LAT, LON, STATIONS, floor_res=6, publication_res=10) if r["res"] == 8][0]
+if _g8["edge_m"] != 497:
+    fails.append(f"node #1's own cell at resolution 8 measures 497 m to an edge; grain_table says "
+                 f"{_g8['edge_m']}")
+if _g8["edge_m"] == round(G.h3.average_hexagon_edge_length(8, unit="m")):
+    fails.append("grain_table is quoting h3's global average edge again (531 m at res 8) instead of "
+                 "measuring the cell whose area it publishes beside it")
+
+import ground as _ground                     # noqa: E402
+_caption = _ground.facts(LAT, LON)
+if _caption["edge_m"] != _g8["edge_m"]:
+    fails.append(f"/health's caption says {_caption['edge_m']} m to an edge and the grain table says "
+                 f"{_g8['edge_m']} m, for the one cell this node stands in")
+
+# The radio row and the plate centre name the same cell as the grain table's res-8 home, so all
+# three have to agree about it. This is the check that would have caught the original divergence.
+_pc = G.plates(LAT, LON, STATIONS)
+_centre = (_pc.get("cells") or {}).get(_g8["home"])
+if _centre and _centre["edge_m"] != _g8["edge_m"]:
+    fails.append(f"the plate's centre cell and the grain table disagree about one cell's edge: "
+                 f"{_centre['edge_m']} m and {_g8['edge_m']} m")
+
 for f in fails:
     print("FAIL", f)
 print("ok" if not fails else f"{len(fails)} failure(s)")

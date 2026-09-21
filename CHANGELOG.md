@@ -1,5 +1,75 @@
 # Changelog
 
+## v0.67 — 2026-09-21 — the node says more about itself, and says it correctly
+
+Four changes, all of them about what this node reports rather than how the page draws it. Nothing
+here needs you to do anything; two of them change numbers you may have written down.
+
+The interface redraw is NOT in this release. It is still being built, and per `docs/NEXT_RELEASE.md`
+it ships on its own when it is finished — so if you are running this, you have a node that answers
+better and the page you already had.
+
+- 2026-09-21 — **A snapshot you send us can be looked at again.** `planetai snapshot` writes one JSON
+  of everything your node answers. Somebody working on the page opens it with `?fixture=<name>` and
+  sees your node on their own screen — it is how a bug you report gets reproduced without anybody
+  touching your machine. That has been broken for a while, and nothing said so.
+
+  The fixture is drawn by the real engine, which reads five tables. The snapshot fetched three.
+  `actions` — what a person did about an alert, and the note they wrote — and `readings_1h` — the
+  hourly means every chart is drawn from — are not endpoints, so they were never captured. A missing
+  table was then read as an empty one. The snapshot opened, drew a page, and showed no act ledger, no
+  stages, no series and no barcode, exactly as if your node had none of those things.
+
+  Now the node answers `GET /actions`, the hourly means are read off `/aggregates`, and `/alerts` is
+  asked for the 200 rows the engine itself uses instead of 50. A snapshot still missing a table now
+  refuses and names it, rather than drawing a quiet, wrong page.
+
+  `/actions` is on neither sharing allowlist on purpose: the note you write when you close an alert
+  is your own words about your own house, so it answers a token or the machine itself and nothing
+  else. Nothing about what a snapshot contains has otherwise changed, and it still carries no raw
+  readings and no token.
+
+  If you sent a snapshot before today, it was thinner than your node. A new one is worth taking.
+
+- 2026-09-21 — **The node writes a four-sentence summary of itself.** `GET /issues` carries a new
+  `digest`: one sentence for each of the four stages — what is read here, at what grain, what has
+  been asked, and whether it worked — in English, Indonesian and Spanish. Every figure in them is
+  one the page already draws somewhere further down; nothing new is measured and nothing is
+  estimated.
+
+  It is written by the node because a sentence about your data is a claim about your data, and that
+  is not a browser's to make. The dashboard's simple mode draws these four and nothing else, so on a
+  phone, or for a visitor, or on a morning when you want the answer rather than the working, this is
+  the whole page.
+
+  One thing it deliberately does not say: rho. rho is measured over its own window and has its own
+  row further down the page. A second one computed here from a different window would be a second
+  rho, and two of them disagreeing on one page is worse than one of them being absent. The Measure
+  sentence reports the same ledger the Act stage shows, and says that is what it is.
+
+- 2026-09-21 — **The four distances have one set of words again.** The page labelled a column
+  `YARD` above a sentence reading "on the wall outside", and `RING` above "on the street". Two names
+  for one place, on one screen — and only in English, because the Indonesian and Spanish had been
+  given the household's words from the start and English had been left on the system's.
+
+  The headings are now the nouns the sentences use: room, wall outside, street, model. Nothing about
+  what is measured changes, and nothing about the wire changes either — `room/yard/ring/region` are
+  still the keys `/issues` publishes and still what a pack's `where:` block overrides. Only the
+  words you read are different. If you have a screenshot from last week, the columns are renamed in
+  it and nothing else is.
+
+- 2026-09-21 — **A cell's edge is measured now, not looked up.** Where the node told you how big one
+  cell is, it printed that cell's real area next to a number out of a table — the average edge of
+  every cell at that resolution, anywhere on Earth. At node #1 those describe different hexagons:
+  the cell covers 639,778 m², which is 496 m to an edge, and the table said 531.
+
+  `/health` had measured its own cell correctly all along, so the node disagreed with itself
+  wherever both were shown. It now measures in all of them, and the number you will see at
+  resolution 8 on node #1 is 497 m where it used to say 531. Nothing moved; the ruler was wrong.
+
+  This is about 7% at every resolution, so any figure you have written down from the grain table,
+  the plates or the radio row is a little smaller now.
+
 ## v0.66 — 2026-09-20 — a correction, shipped the same day as the mistake
 
 One change, and it exists because v0.65 told you something untrue. That release said the fab-lab
