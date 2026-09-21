@@ -5,6 +5,8 @@
   · every field it reads off /stats rows is a column of the stats view
   · anything the script hides with .hidden is not un-hidden by a display rule
 Run: python3 tools/check_ui.py"""
+import json
+import pathlib
 import re
 import shutil
 import subprocess
@@ -411,7 +413,15 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    # rename where a reading IS (`where:` overrides WHERE_WORDS and NOUN_WORDS); it
                    # cannot reach these four. Closed vocabulary, four words, never a sentence, and
                    # none of them can contain a mu. `.askref` is this page's own words and a count.
-                   ".stack.meters .col .k", ".askref"}
+                   ".stack.meters .col .k", ".askref",
+                   # Added 22 September 2026 with learn mode. Four rules, all of them chrome the
+                   # page writes for itself: "Walk the page", "Close", "Back", "Next", "This page:",
+                   # the mark's key (an identifier — `dial`, `share` — not a word of anybody's), and
+                   # "n of 17". The two places a learn panel carries prose are the quote and the
+                   # `more` line, and neither is shouted: `.lpanel .qt` and `.lpanel .more` are set
+                   # in the body face at their own case, because one is the documentation's sentence
+                   # and the other is this page's.
+                   ".learnbar .walk", ".lpanel .lh", ".lpanel .more .who", ".lpanel .nav button"}
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "
@@ -439,6 +449,25 @@ for _i, _line in enumerate(JS_SRC.splitlines(), 1):
     if any(m in _code for m in MU) and "said" not in _code:
         errs.append(f"dashboard.js:{_i} writes a mu into the page outside .said. If a rule above it ever "
                     f"uppercases, that becomes MG/M³ and the household reads milligrams. Wrap it in .said.")
+
+# --- the learn layer: a mark the page draws and a mark the build wrote are the same seventeen -------------
+# A `.q` with no entry behind it is a question mark that opens nothing; an entry nothing draws is a
+# quote maintained against a docs page for no reader. Both are silent — the page renders either way —
+# so they are counted here rather than discovered by a tester. build_learn.py's own --check holds the
+# other half: that each of those quotes is still a verbatim span of the page it cites.
+_learn = pathlib.Path("app/static/learn.json")
+if _learn.exists():
+    _have = set(json.loads(_learn.read_text())["marks"])
+    _drawn = set()
+    for _arr in re.findall(r"\blearn:\s*\[([^\]]*)\]", js):
+        _drawn |= set(re.findall(r"'([a-z]+)'", _arr))
+    _drawn |= set(re.findall(r"\bmark\('([a-z]+)'", js))
+    for _k in sorted(_drawn - _have):
+        errs.append(f"the page draws a learn mark '{_k}' that app/static/learn.json does not have. "
+                    f"Add it to MARKS in tools/build_learn.py, or stop drawing it.")
+    for _k in sorted(_have - _drawn):
+        errs.append(f"learn.json carries '{_k}' and nothing on the page draws it. Give it to a section "
+                    f"(`learn: ['{_k}']`) or to the shell, or take it out of tools/build_learn.py.")
 
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"

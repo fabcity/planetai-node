@@ -1378,6 +1378,8 @@ window.KMAP = { map, caption, frameOf, MAX_SPAN_M };
  *       controls(ctx) → html,    // optional: a control strip for this section (a toggle, a selector)
  *       render(ctx)   → html,    // the body. Captions belong here; explanations do not
  *       wall(ctx)     → html,    // optional: what it contributes to the wall at ctx.RES
+ *       learn: ['states'],       // optional: the learn marks this section carries. A key the
+ *                                //   layer does not have draws nothing; see tools/build_learn.py
  *       notes(ctx)    → [{ id, text }],   // the explanations, gathered at the bottom of the page
  *     });
  *
@@ -1427,7 +1429,7 @@ function register(mod) {
      this existed, or by a pack that has never heard of it, keeps the behaviour it had: drawn on the
      full page, absent from the short answer. A section opts INTO simple; it is never opted in for
      it, because what belongs in a four-sentence answer is a judgement its author has to make. */
-  sections.push({ order: 50, needs: [], level: 'advanced', ...mod });
+  sections.push({ order: 50, needs: [], level: 'advanced', learn: [], ...mod });
 }
 
 /* A global path like 'H3.nav.plates' resolves or does not. */
@@ -1463,9 +1465,13 @@ function bandFor(ctx, s) {
      under it — a title for a card that is not there, which reads as a section that failed. Its
      notes still appear: they explain the drawing the shell put at the top. */
   if (!body && !controls) return '';
+  /* The marks a section declares, drawn at the band's top right. A section that declares none
+     carries none; simple mode draws no bands at all, so there is nothing here to suppress. */
+  const marks = (s.learn || []).map(k => (window.PAI_LEARN ? window.PAI_LEARN.mark(k, s.id) : ''))
+    .join('');
   return `<section class="band" id="${esc(s.id)}" data-band="${esc(s.stage)}:${esc(s.id)}"`
     + ` data-pack="${esc(s.pack)}" data-stage="${esc(s.stage)}">`
-    + `<div class="k"><span>${esc(s.title)}</span><span class="pack">${esc(s.pack)}</span></div>`
+    + `<div class="k"><span>${esc(s.title)}</span>${marks}<span class="pack">${esc(s.pack)}</span></div>`
     + controls + body + `</section>`;
 }
 
@@ -1521,7 +1527,11 @@ function render(ctx, lead, opts = {}) {
       + `<div class="stagehead"><span class="n">${STAGE_INDEX[key] + 1}</span>`
       + `<h2>${esc(name)}</h2><span class="what">${esc(what)}</span>`
       + `<span class="loop" aria-hidden="true">${STAGES.map(([k]) =>
-        `<i class="${k === key ? 'on' : ''}"></i>`).join('')}</span></div>`
+        `<i class="${k === key ? 'on' : ''}"></i>`).join('')}</span>`
+      /* One mark for the loop, on the first stage a view draws. The same mark on all four would be
+         the same quote four times, which is a page repeating itself rather than explaining itself. */
+      + (key === ordered[0].stage && window.PAI_LEARN
+        ? window.PAI_LEARN.mark('stages', `stage-${key}`) : '') + `</div>`
       + mine.map(s => bandFor(ctx, s)).join('') + `</div>`;
   }
   html += notesBand(ctx, ordered);
@@ -1994,7 +2004,7 @@ function notes(ctx) {
 window.GROUND = { figure, frame, BASES, SIZE };
 
 window.PAI.register({
-  id: 'ground', pack: 'place', stage: 'observe', title: 'The ground', order: 0,
+  id: 'ground', pack: 'place', stage: 'observe', title: 'The ground', order: 0, learn: ['tiles', 'cell'],
   needs: ['H3.nav'],
   anchor: 'ground-figure',   /* no band of its own, so its notes point at the drawing they explain */
   /* No `render`: the ledger that used to sit at this section's foot is its own section now (see
@@ -2012,7 +2022,7 @@ window.PAI.register({
  * which address. A poll is made by the node, on your behalf, whether or not anyone is at the
  * screen. Rolling them into one count would say the same number means the same thing twice. */
 window.PAI.register({
-  id: 'requests', pack: 'place', stage: 'observe', order: 60,
+  id: 'requests', pack: 'place', stage: 'observe', order: 60, learn: ['share'],
   title: 'What this page asked of the world',
   needs: ['H3.nav'],
   render(ctx) {
@@ -2157,7 +2167,7 @@ PAI_LOAD.push(function () {
 const { esc, stack, pill } = window.K;
 
 window.PAI.register({
-  id: 'matrix', pack: 'core', stage: 'observe', title: 'Every issue, at every distance', order: 10,
+  id: 'matrix', pack: 'core', stage: 'observe', title: 'Every issue, at every distance', order: 10, learn: ['distances', 'states'],
   /* No `needs`. It resolves paths against `window`, and the issues are file-scope in the kit, not
      global — `needs: ['ISS']` would have drawn "the core pack has nothing here yet" on every node
      that has issues. A node with none is a real state and the render says so itself. */
@@ -2221,7 +2231,7 @@ const hasDay = d => (window.K.DIST || []).some(x => Array.isArray((d.series || {
   && (d.series[x] || []).some(v => v != null));
 
 window.PAI.register({
-  id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12,
+  id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw'],
   render(ctx) {
     const { ISS, ORDER } = ctx;
     const drawn = ORDER.filter(k => ISS[k] && hasDay(ISS[k]));
@@ -2291,7 +2301,7 @@ const of20 = (pct, cls = '') => Array.from({ length: 20 }, (_, i) =>
   sign('cell', i < Math.round((pct || 0) / 5) ? `on ${cls}` : 'off')).join('');
 
 window.PAI.register({
-  id: 'sources', pack: 'core', stage: 'observe', title: 'What this page is made of', order: 14,
+  id: 'sources', pack: 'core', stage: 'observe', title: 'What this page is made of', order: 14, learn: ['custody'],
   needs: ['SENSORS'],
   render(ctx) {
     const all = window.SENSORS || [];
@@ -3900,7 +3910,7 @@ function template(ctx) {
 }
 
 window.PAI.register({
-  id: 'grain', pack: 'core', stage: 'decide', order: 20,
+  id: 'grain', pack: 'core', stage: 'decide', order: 20, learn: ['containment'],
   title: 'What each grain is worth',
   needs: ['H3.grain_table'],
   render(ctx) {
@@ -4084,7 +4094,7 @@ function capacity() {
 }
 
 window.PAI.register({
-  id: 'asks', pack: 'core', stage: 'act', order: 10,
+  id: 'asks', pack: 'core', stage: 'act', order: 10, learn: ['levels', 'current'],
   title: 'What this node has asked',
   /* PORTED: the prototype also needed SNAP.funnel, which was one of its three synthetic
      contributions — no endpoint on this node computes a stage split or the 2x2. The ledger is the
@@ -4222,7 +4232,7 @@ function careLabel() {
 }
 
 window.PAI.register({
-  id: 'measure', pack: 'core', stage: 'measure', order: 10,
+  id: 'measure', pack: 'core', stage: 'measure', order: 10, learn: ['rho', 'refusals'],
   title: 'Whether it worked',
   needs: ['SNAP.rho'],
   render(ctx) {
@@ -5312,6 +5322,158 @@ function mode() {
 }
 window.PAI_MODE = mode;
 
+/* THE LEARN LAYER — the tester guide folded into the page.
+ *
+ * Seventeen marks. Each is a question mark floating at the part of the page it explains; pressing
+ * one opens a panel that QUOTES this node's own documentation for that part, says which page and
+ * which section the words come from, links out, and walks to the next.
+ *
+ * WHY THE QUOTE IS INLINE AND NOT A LINK. The node does not serve docs/site — the site build does,
+ * onto planetai.fab.city — so there is nothing on this machine to fetch at read time and a link is
+ * useless on a household LAN with no route out. tools/build_learn.py cuts the spans out of the
+ * markdown at build time into app/static/learn.json, and `make lint` fails when that file is not
+ * what the documentation says now. So the words in the panel are the documentation's, verbatim, and
+ * the link is an offer rather than the answer.
+ *
+ * Fetched once, and only when somebody turns learn mode on: a reader who never does never pays for
+ * it. Until it arrives the marks are simply not drawn — a question mark that cannot answer the
+ * question is worse than no question mark. */
+let LEARN = null, LEARN_ASKED = false, LEARN_AT = null;
+function askLearn() {
+  if (LEARN_ASKED || mode() !== 'learn') return;
+  LEARN_ASKED = true;
+  fetch('static/learn.json', { headers: { accept: 'application/json' } })
+    .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+    .then(d => { LEARN = d; route(); })
+    /* A node whose static file is missing says so in the bar rather than drawing seventeen marks
+       that open nothing. `order` empty is how every other reader of LEARN tells the two apart. */
+    .catch(e => { LEARN = { order: [], marks: {}, failed: String(e.message || e) }; route(); });
+}
+
+/* The stored quote is a span of markdown, because that is what the page it was cut from is. Four
+   inline markers survive into it and are rendered here; nothing else is, and nothing is invented. */
+function quoteHtml(q) {
+  return window.K.esc(String(q).replace(/\s*\n\s*/g, ' '))
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[\s(])\*([^*]+)\*/g, '$1<i>$2</i>');
+}
+const plainly = s => String(s).replace(/`/g, '');
+
+/* A mark, for a renderer that has a part to explain. `ref` is the id of the thing it is about: a
+   component with no link in or out is what T5 counts, and a question mark floating beside nothing
+   in particular is exactly that mistake in visible form. */
+function qmark(key, ref) {
+  const esc = window.K.esc;
+  if (mode() !== 'learn' || !LEARN || !LEARN.marks[key]) return '';
+  return `<button type="button" class="q" data-component="learnMark" data-learn="${esc(key)}"`
+    + ` data-ref="${esc(ref)}" aria-expanded="false" aria-controls="learnpanel">`
+    + `<span class="vh">What is ${esc(plainly(LEARN.marks[key].title))}?</span>`
+    + `<span aria-hidden="true">?</span></button>`;
+}
+
+/* The bar under the header: where the words in the panels come from, and the way in for somebody
+   who would rather be walked than hunt for question marks. */
+function learnBar() {
+  const esc = window.K.esc;
+  if (mode() !== 'learn') return '';
+  const box = s => `<div class="wrap"><div class="learnbar" id="learnbar"`
+    + ` data-component="learnBar" data-ref="header">`
+    + `<span class="qq" aria-hidden="true">?</span>${s}</div></div>`;
+  if (!LEARN) return box(`<span>Asking this node for the marks&hellip;</span>`);
+  if (!LEARN.order.length) {
+    return box(`<span>This node did not answer for <code>static/learn.json</code>`
+      + `${LEARN.failed ? ` (${esc(LEARN.failed)})` : ''}, so there are no marks on this page. The `
+      + `page itself is unchanged — learn mode adds marks, it never hides anything.</span>`);
+  }
+  /* The count is filled in by learnSync() from the marks this VIEW actually drew, because the bar
+     is built before the page under it is. Saying "17 marks on this page" on Network, where there
+     are none, is the page telling a reader to look for something that is not there. */
+  return box(`<span class="ln">&nbsp;</span>`
+    + `<button type="button" class="walk" data-learn="${esc(LEARN.order[0])}">Walk the page</button>`);
+}
+
+/* Every render rewrites the marks, so the one that is open has to be told again that it is. */
+function learnSync() {
+  const ln = document.querySelector('#learnbar .ln');
+  if (ln && LEARN && LEARN.order.length) {
+    const n = document.querySelectorAll('#page .q').length;
+    ln.innerHTML = (n
+      ? `<b data-num="learn.here" data-cmp="learn.total ${LEARN.order.length}">${n}</b> mark`
+        + `${n === 1 ? '' : 's'} on this view, of ${LEARN.order.length} on the page. Every one quotes `
+        + `this node&rsquo;s own documentation, word for word, built in so it reads with no route out.`
+      : `No marks on this view. All ${LEARN.order.length} are on Now; walking starts there and the `
+        + `words come with it, so the panel reads the same from here.`);
+  }
+  if (!LEARN_AT) return;
+  const at = document.querySelector(`.q[data-learn="${LEARN_AT}"]`);
+  /* A mark that is not on the view the reader just moved to leaves the panel where it is: the
+     words in it are a page of documentation, not a tooltip on a thing that has scrolled away. */
+  if (at) at.setAttribute('aria-expanded', 'true');
+}
+
+function learnClose() {
+  const p = document.getElementById('learnpanel');
+  if (p) { p.classList.remove('open'); p.innerHTML = ''; }
+  LEARN_AT = null;
+  document.querySelectorAll('.q[aria-expanded="true"]')
+    .forEach(b => b.setAttribute('aria-expanded', 'false'));
+}
+
+function learnOpen(key) {
+  const esc = window.K.esc;
+  const p = document.getElementById('learnpanel');
+  const m = LEARN && LEARN.marks[key];
+  if (!p || !m) return;
+  const i = LEARN.order.indexOf(key);
+  p.innerHTML = `<div class="lh"><span class="k">${esc(key)}</span>`
+    + `<span class="n">${i + 1} of ${LEARN.order.length}</span>`
+    + `<button type="button" class="x" data-learn-close="1">Close</button></div>`
+    + `<h2>${esc(plainly(m.title))}</h2>`
+    + `<blockquote class="qt">${quoteHtml(m.quote)}</blockquote>`
+    /* Two voices, and the panel says which is which. The quote is the documentation's, cut at build
+       time and not touched; the line under it is this page talking about what it draws, which is a
+       thing the docs do not cover and must not be made to look as though they did. */
+    + `<p class="more"><span class="who">This page:</span> ${esc(m.more)}</p>`
+    + `<p class="src">The words above are from <code>docs/site/${esc(m.page)}</code>`
+    + `${m.section ? ` &middot; ${esc(plainly(m.section))}` : ''}.<br>`
+    + `<a href="${esc(m.url)}" rel="noreferrer">${esc(m.url)}</a></p>`
+    + `<div class="nav"><button type="button" data-learn-step="-1">Back</button>`
+    + `<button type="button" class="pri" data-learn-step="1">Next</button></div>`;
+  p.classList.add('open');
+  LEARN_AT = key;
+  document.querySelectorAll('.q').forEach(b =>
+    b.setAttribute('aria-expanded', String(b.getAttribute('data-learn') === key)));
+  const at = document.querySelector(`.q[data-learn="${key}"]`);
+  if (at) at.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  p.focus();
+}
+
+/* One listener, on the document, installed once — the marks are rewritten on every render and a
+   listener bound to a button dies with it. */
+document.addEventListener('click', e => {
+  const t = e.target.closest ? e.target : (e.target.parentNode || document.body);
+  const close = t.closest('[data-learn-close]');
+  if (close) { learnClose(); return; }
+  const step = t.closest('[data-learn-step]');
+  if (step && LEARN && LEARN.order.length) {
+    const open = document.querySelector('.q[aria-expanded="true"]');
+    const n = LEARN.order.length;
+    const i = open ? LEARN.order.indexOf(open.getAttribute('data-learn')) : -1;
+    learnOpen(LEARN.order[((i + Number(step.getAttribute('data-learn-step'))) % n + n) % n]);
+    return;
+  }
+  const q = t.closest('[data-learn]');
+  if (!q) return;
+  if (q.getAttribute('aria-expanded') === 'true') learnClose();
+  else learnOpen(q.getAttribute('data-learn'));
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') learnClose(); });
+
+/* What the renderer inside PAI_LOAD can reach: a mark for a key, and the panel, by name. */
+window.PAI_LEARN = { mark: qmark, bar: learnBar, open: learnOpen, close: learnClose };
+
 /* Now first, then the three views that widen the frame in order — this hour, the years behind it,
    the network around it — then the wall, then the two that configure rather than report. The hash
    is the view id and none of those changed, so every link anybody has saved still lands. */
@@ -5336,7 +5498,7 @@ function chrome(node, city, view) {
       `<button type="button" data-register="${r}" class="${r === reg ? 'on' : ''}"`
       + ` aria-pressed="${r === reg}">${esc(name)}</button>`).join('')
     + `</div>`
-    + `</div></header>`;
+    + `</div>${learnBar()}</header>`;
 }
 
 /* SHARE_LEVEL=off and no token. /health still answers — it answers at every share level, which is
@@ -5397,6 +5559,10 @@ function main() {
       return '?' + q.toString() + (location.hash || '');
     },
   };
+
+  /* A learn mark from the shell rather than from a section: the rail, the lead, the provenance
+     pill and the stages strip are drawn here and belong to nobody's pack. */
+  const mark = (k, ref) => (window.PAI_LEARN ? window.PAI_LEARN.mark(k, ref) : '');
 
   /* The views are buttons and the URL is the hash, the way the page this replaces routed: one
      document served from /, no router, no build step. A span is a drawing; a button is a control. */
@@ -5469,7 +5635,7 @@ function main() {
          sentence rather than three numbers in a key. Printing them here as well made the key three
          lines deep at 390 and pushed the as-of off the first screen, which is T1's fifth leg. */
       + `<span>one cell here: <b data-num="rail.area" data-cmp="rail.res">`
-      + `${esc(km2(ctx.grain.area_m2))}</b></span></div>`;
+      + `${esc(km2(ctx.grain.area_m2))}</b></span>${mark('dial', 'rail')}</div>`;
   }
 
   /* THE RULE under the rail: where each grain truly sits between 10 m and 200 km.
@@ -5498,8 +5664,13 @@ function main() {
      be told something, and that sentence is not a module's to move. */
   function lead() {
     const hk = S.issues.headline, d = ISS[hk];
-    const fig = PAI.sections.filter(s => s.lead && (s.needs || []).every(PAI.has))
-      .map(s => { try { return s.lead(ctx) || ''; } catch { return ''; } }).join('');
+    const leads = PAI.sections.filter(s => s.lead && (s.needs || []).every(PAI.has));
+    const fig = leads.map(s => { try { return s.lead(ctx) || ''; } catch { return ''; } }).join('');
+    /* A lead-only section draws no band, so the marks it declares have nowhere to sit but beside
+       the drawing it contributed. The ground is the only one today and it is the reason for this:
+       without it the two marks about the map would have been registered and never drawn. */
+    const figMarks = leads.filter(s => !s.render)
+      .map(s => (s.learn || []).map(k => mark(k, s.anchor || s.id)).join('')).join('');
     /* THE ASK STRIP IS GONE FROM THE LEAD and lives in Act, where the ledger it belongs to is. It
        was the lead's fifth block and the only one a reader could act on, which made the lead a
        control panel as well as a sentence. The stamp line below says how many are open and where
@@ -5519,7 +5690,8 @@ function main() {
         + ` role="img" aria-label="${esc(d.name[LOC])}"><use href="static/signs.svg#pix-${esc(hk)}"/></svg>`
       : '';
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
-      + kicker(hk, d) + monument(hk, d, pix) + sentence(hk, d, 'big')
+      + `<div class="leadk">${kicker(hk, d)}${mark('lead', `sentence-${esc(hk)}`)}</div>`
+      + monument(hk, d, pix) + sentence(hk, d, 'big')
       + why(hk, d, (S.issues.headline_rule || {})[LOC] || '')
       + stack(hk, d, { id: `meters-${hk}`, meter: true, ref: `sentence-${hk}` })
       /* The sketch explains the red tick once, under the meters. Without it the one mark on the
@@ -5549,8 +5721,9 @@ function main() {
             + `${window.K.stamp()}`
       + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
         : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
-        : pill('live', 'measured by this node, and kept up to date')) + `</div>`
-      + fig + `</section>`;
+        : pill('live', 'measured by this node, and kept up to date'))
+      + mark('prov', `band-${esc(hk)}`) + `</div>`
+      + fig + (figMarks ? `<div class="figmarks">${figMarks}</div>` : '') + `</section>`;
   }
 
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
@@ -5741,12 +5914,14 @@ function askSources() {
 function route() {
   readView();
   askSources();
+  askLearn();
   document.body.className = '';
   main();
   /* main() has just replaced the page, so any player on it is fresh markup with no listeners and
      any timer from the last render is pointing at elements that are gone. */
   const page = document.getElementById('page');
   if (page) wireSat(page);
+  learnSync();
   window.scrollTo(0, 0);
 }
 

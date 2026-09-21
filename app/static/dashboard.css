@@ -1068,3 +1068,79 @@ h1.brand { font: inherit }
  * absence, which is the one thing this page may not draw. */
 .satstrip .frame .miss { display: none }
 .satstrip .frame.missing .miss { display: block }
+
+/* ------------------------------------------------------------------ LEARN MODE
+ * The third mode: the page as it is, with a question mark at each part and a panel that quotes the
+ * node's own documentation for it. Nothing is hidden and nothing moves — learn mode only adds.
+ *
+ * THE MARK SITS AT THE END OF THE PART'S OWN LABEL LINE, not floating over its top-right corner as
+ * the sketch drew it. A mark positioned over a corner needs a positioned ancestor and a negative
+ * offset, and at 390 px a negative right offset is horizontal overflow on a page whose gate counts
+ * exactly that across 108 combinations. The label line is the top of the part, it is where the eye
+ * already is, and it reflows for free.
+ *
+ * The float is the one motion: 4 px, transform only, on `--motion-mark-float`. The token is prompt
+ * 6's — it belongs in the frozen layer beside the other motion datums, and until it is there this
+ * reads the same 3.2s as a fallback, so nothing has to change here when it lands. */
+.q { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%;
+  background: var(--ground); color: var(--ink); font: 800 12px/1 var(--mono); cursor: pointer;
+  display: inline-grid; place-items: center; padding: 0;
+  animation: qfloat var(--motion-mark-float, 3.2s) ease-in-out infinite }
+.q:nth-of-type(even) { animation-delay: -1.6s }
+.q:hover, .q[aria-expanded="true"] { background: var(--ink); color: var(--ground) }
+@keyframes qfloat { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+/* The one existing block: every motion on this page goes to zero here, this one with it. */
+@media (prefers-reduced-motion: reduce) { .q { animation: none } }
+
+/* Where the marks sit. A band's kicker is a flex row that was justified apart; pushing the title
+   with an auto margin leaves the rest packed right and looks identical when there are no marks. */
+.band > .k > span:first-child { margin-right: auto }
+.band > .k .q { align-self: center }
+.railkey .q { margin-left: auto }
+.leadk { display: flex; gap: 12px; align-items: baseline; justify-content: space-between }
+.figmarks { display: flex; gap: 8px; justify-content: flex-end }
+.stagehead .q { align-self: center }
+
+/* The bar under the header: where these words come from, and the way in for a reader who would
+   rather be walked than hunt. */
+.learnbar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  border: 1.5px solid var(--ink); padding: 9px 14px; margin-top: 10px;
+  font: 500 12px/1.5 var(--fc-font-body) }
+.learnbar .qq { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink);
+  border-radius: 50%; display: inline-grid; place-items: center; font: 800 12px var(--mono) }
+.learnbar span { min-width: 0 }
+.learnbar .walk { margin-left: auto; background: var(--ink); color: var(--ground); border: 0;
+  padding: 7px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer }
+
+/* The panel. Outside #page, because the renderer replaces #page and the panel has to outlive a
+   re-render. Closed is display:none — a reader who never presses a mark never has it in the tree
+   as a thing to tab through. */
+.lpanel { display: none }
+.lpanel.open { display: block; position: fixed; inset: 0 0 0 auto; width: min(420px, 100%);
+  z-index: 9; background: var(--ground); border-left: 1.5px solid var(--ink);
+  padding: 20px 22px 28px; overflow: auto }
+.lpanel .lh { display: flex; gap: 12px; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--ink); padding-bottom: 8px;
+  font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute) }
+.lpanel .lh .k { font-weight: 700; color: var(--ink); letter-spacing: .1em }
+.lpanel .lh .x { background: none; border: 1px solid var(--ink); color: var(--ink);
+  padding: 3px 8px; font: 500 11px var(--mono); cursor: pointer }
+.lpanel h2 { font: 800 clamp(1.15rem, 2vw, 1.5rem) var(--fc-font-display); letter-spacing: -.02em;
+  margin: 16px 0 10px }
+/* The documentation's words, marked as a quotation and set apart from the page's own line. */
+.lpanel .qt { margin: 0 0 14px; border-left: 3px solid var(--ink); padding-left: 14px;
+  font: 400 15px/1.5 var(--fc-font-body) }
+.lpanel .qt code { font: 500 .9em var(--mono) }
+.lpanel .more { font: 400 13.5px/1.55 var(--fc-font-body); color: var(--mute); margin: 0 0 16px }
+.lpanel .more .who { font: 700 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink) }
+.lpanel .src { font: 500 11px/1.7 var(--mono); border-top: 1px dotted var(--ink); padding-top: 10px;
+  color: var(--mute) }
+.lpanel .src code { font: inherit; color: var(--ink) }
+.lpanel .src a { color: var(--cells); overflow-wrap: anywhere }
+.lpanel .nav { display: flex; gap: 8px; margin-top: 16px }
+.lpanel .nav button { flex: 1; background: none; border: 1.5px solid var(--ink); color: var(--ink);
+  padding: 9px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer }
+.lpanel .nav button.pri { background: var(--ink); color: var(--ground) }
