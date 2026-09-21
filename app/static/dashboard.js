@@ -385,6 +385,71 @@ function series(key, d, o = {}) {
     + `<div class="legend">${legend}</div></div>`;
 }
 
+/* The barcode: every issue's day in one strip, one bar an hour.
+ *
+ * WHY IT IS NOT THE TRACES AGAIN. The traces detail the two issues that have a day; this carries
+ * ALL of them, including the ones with nothing, so the shape of a whole day is one object a reader
+ * can take in at a glance and the empty ones are visibly empty rather than absent. The matrix is
+ * issues by distance, now. This is issues by hour, today. Same rows, the other axis.
+ *
+ * THE GRAIN IS 24 BARS AND THE CAPTION SAYS SO. The drawing this is built from shows 96 at fifteen
+ * minutes. No route on this node can answer that: /series and /sparks are hourly, and `stats` has
+ * fifteen-minute means for *now* only, never for a day. So it is hourly and says it is hourly,
+ * rather than drawing 96 bars out of 24 readings and calling the difference smoothing.
+ *
+ * One bar an hour, height for the reading against that issue's own scale, red when it was over
+ * that issue's own line — the same red the hours-over marks use, and for the same fact. */
+function barcode(o = {}) {
+  const id = o.id || 'barcode';
+  const rows = (ORDER || []).filter(k => ISS[k]);
+  if (!rows.length) return '';
+  const HRS = 24, BW = 26, BH = 34, GAP = 4;
+  const W = HRS * (BW + GAP);
+  const strip = k => {
+    const d = ISS[k];
+    /* The closest distance that has a day. A barcode of the model when the room is measured would
+       be drawing somewhere else and calling it here. */
+    const pick = (DIST || []).find(x => Array.isArray((d.series || {})[x])
+      && d.series[x].some(v => v != null));
+    const vals = pick ? d.series[pick] : [];
+    const got = vals.filter(v => v != null);
+    if (!got.length) {
+      return `<div class="bc" id="${esc(id)}-${esc(k)}" data-ref="${esc(id)}">`
+        + `<span class="k">${esc(d.name[LOC])}</span>`
+        + `<span class="empty">no hourly record at any distance</span></div>`;
+    }
+    const line = d.line ? d.line.value : null;
+    const lo = Math.min(...got), hi = Math.max(...got, line == null ? -Infinity : line);
+    const span = (hi - lo) || 1;
+    const bars = Array.from({ length: HRS }, (_, i) => {
+      const v = vals[i];
+      if (v == null) return `<rect x="${i * (BW + GAP)}" y="${BH - 1}" width="${BW}" height="1"`
+        + ` class="gap"/>`;
+      const h = Math.max(2, Math.round(((v - lo) / span) * BH));
+      const over = line != null && v > line;
+      return `<rect x="${i * (BW + GAP)}" y="${BH - h}" width="${BW}" height="${h}"`
+        + `${over ? ' class="over"' : ''}/>`;
+    }).join('');
+    const overN = line == null ? 0 : vals.filter(v => v != null && v > line).length;
+    return `<div class="bc" id="${esc(id)}-${esc(k)}" data-ref="${esc(id)}">`
+      + `<span class="k">${esc(d.name[LOC])}</span>`
+      + `<svg viewBox="0 0 ${W} ${BH}" preserveAspectRatio="none" role="img" aria-label="`
+      + `${esc(d.name[LOC])} at the ${esc(LAB[pick])}, ${got.length} of ${HRS} hours recorded`
+      + `${line == null ? '' : `, ${overN} over the line`}">${bars}</svg>`
+      + `<span class="m" data-num="barcode.${esc(k)}" data-cmp="${esc(line == null
+        ? `${d.name[LOC]} has no line: ${noLine(d)}`
+        : `hours over ${fmt(line, d.dp)} ${d.unit || ''}, at the ${LAB[pick]}`)}">`
+      + `${line == null ? '\u2014' : `${overN}/${got.length}`}</span></div>`;
+  };
+  return `<div class="barcode" data-kind="series" data-component="barcode" id="${esc(id)}"`
+    + ` data-ref="${esc(o.ref || 'days')}">${rows.map(strip).join('')}`
+    + `<p class="cap">One bar an hour, 24 hours, at the closest distance each issue has. `
+    + `<b>Every row is on its own scale</b>, because a micrograph and a degree are not the same `
+    + `quantity \u2014 read a row across the day, never one row against another. `
+    + `<b>Hourly, not quarter-hourly</b>: this node keeps fifteen-minute means for now only, never `
+    + `for a day, so an hour is the finest grain it can honestly publish for one.</p></div>`;
+}
+
 /* --------------------------------------------------------------------------- 4 · row */
 function row(o) {
   const id = o.id || uid('row');
@@ -746,7 +811,7 @@ const interp = (str, vals) => String(str || '')
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp,
   readout, stack, series, row, kicker, sentence, why, ask, stamp, asof, rhoRow, funnel,
-  peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, REFUSED };
+  peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -2070,7 +2135,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, series } = window.K;
+const { esc, series, barcode } = window.K;
 
 /* An issue has a day when any distance carries a trace. The node decides what a trace is; this
    only asks whether one arrived. */
@@ -2087,7 +2152,8 @@ window.PAI.register({
         + `record yet, so there is no day to draw. The matrix above says what each one has.</p>`;
     }
     const silent = ORDER.filter(k => ISS[k] && !hasDay(ISS[k]));
-    return `<div class="days" id="days" data-ref="matrix-grid">`
+    return barcode({ id: 'barcode', ref: 'days' })
+      + `<div class="days" id="days" data-ref="matrix-grid">`
       + drawn.map(k => `<div class="dayone" id="day-${esc(k)}" data-ref="days">`
         + `<p class="k">${esc(ISS[k].name[LOC])}</p>`
         + series(k, ISS[k], { id: `day-series-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
