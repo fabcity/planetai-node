@@ -178,5 +178,54 @@ def rho(cur, days_ago: int = 0) -> dict:
                    FROM a LEFT JOIN f ON f.id = a.id""", {"back": days_ago})
     r = cur.fetchone() or {}
     n, acted = int(r.get("alerts_act") or 0), int(r.get("acted") or 0)
-    return {"window_days": 30, "days_ago": days_ago, "alerts_act": n, "acted": acted, "rho": round(acted / n, 3) if n else None,
-            "median_minutes": round(float(r["median_minutes"])) if r.get("median_minutes") is not None else None}
+    out = {"window_days": 30, "days_ago": days_ago, "alerts_act": n, "acted": acted, "rho": round(acted / n, 3) if n else None,
+           "median_minutes": round(float(r["median_minutes"])) if r.get("median_minutes") is not None else None}
+    out["funnel"] = _funnel(cur, days_ago)
+    return out
+
+
+def _funnel(cur, days_ago: int = 0) -> dict:
+    """How far the asks got, stage by stage, and how long each step took.
+
+    NOT A SECOND RHO, and the query above is untouched. rho is one number with a specification of
+    its own (docs/SPEC_rho.md) and its `acted` means "acknowledged OR acted, within 24 hours" — a
+    deliberately generous test of whether anybody answered at all. The funnel's `acted` is the
+    literal stage. The two will not agree and are not meant to; they are different questions asked
+    of the same ledger, which is why this is a separate query returning separate names.
+    
+    THIS NODE'S OWN ALERTS ONLY. rho pools its children's, because a child pushes the two timestamps
+    that rho is defined on. It does not push stages — `events` carries `responded_at` and `acted_at`
+    and no notion of `measured` — so a pooled funnel would report every child's ask as never reaching
+    a stage the child cannot express. One node's ledger, honestly, beats a district's with a hole.
+
+    The latencies are medians between CONSECUTIVE stages, each falling back to the last stage that
+    actually happened: an ask acted on without being acknowledged first is measured from when it was
+    asked, not from a timestamp that does not exist."""
+    cur.execute("""WITH ref AS (SELECT now() - make_interval(days => %(back)s) AS t),
+                        a AS (SELECT id, ts FROM alerts, ref
+                              WHERE level='act' AND ts > ref.t - interval '30 days' AND ts <= ref.t),
+                        s AS (SELECT alert_id, stage, min(ts) AS t FROM actions
+                              WHERE stage IN ('acknowledged','acted','measured') GROUP BY alert_id, stage)
+                   SELECT count(*) AS asked,
+                          count(ack.t) AS acknowledged,
+                          count(act.t) AS acted,
+                          count(mea.t) AS measured,
+                          percentile_cont(0.5) WITHIN GROUP (
+                            ORDER BY extract(epoch FROM ack.t - a.ts)/60) AS to_acknowledged,
+                          percentile_cont(0.5) WITHIN GROUP (
+                            ORDER BY extract(epoch FROM act.t - coalesce(ack.t, a.ts))/60) AS to_acted,
+                          percentile_cont(0.5) WITHIN GROUP (
+                            ORDER BY extract(epoch FROM mea.t - coalesce(act.t, ack.t, a.ts))/60) AS to_measured
+                   FROM a
+                   LEFT JOIN s ack ON ack.alert_id = a.id AND ack.stage = 'acknowledged'
+                   LEFT JOIN s act ON act.alert_id = a.id AND act.stage = 'acted'
+                   LEFT JOIN s mea ON mea.alert_id = a.id AND mea.stage = 'measured'""",
+                {"back": days_ago})
+    f = cur.fetchone() or {}
+    rnd = lambda k: round(float(f[k])) if f.get(k) is not None else None      # noqa: E731
+    return {
+        "stages": {k: int(f.get(k) or 0) for k in ("asked", "acknowledged", "acted", "measured")},
+        "latency_minutes": {"acknowledged": rnd("to_acknowledged"), "acted": rnd("to_acted"),
+                            "measured": rnd("to_measured")},
+        "self_only": True,
+    }

@@ -106,4 +106,66 @@ assert "--max-time" in stub[stub.index("a Fab City project") - 400:stub.index("a
 # ---- every group the wizard can be pointed at is a real group
 groups = set(re.findall(r'^\s*"[A-Z_]+":\s*\("(\w+)"', settings, re.M))
 assert {"sources", "alerts", "node"} <= groups, f"settings.py groups moved: {groups}"
+# ---- a pack's own keys reach /settings, or nobody can turn the pack on -------------------------
+#
+# Until 21 September 2026 they did not reach it at all. settings.py listed only its own RUNTIME
+# dict, so a pack could declare five keys in its pack.yaml and none of them appeared in the body
+# GET /settings returns — including the switch whose entire job is to turn that pack on. Node #1
+# had MAKE_ENABLED=1 in its .env and the string MAKE appeared nowhere in its settings body.
+#
+# EVERY INSTALLED PACK, enabled or not. packs.manifests() filters by PACKS_ENABLED and
+# PACKS_ALLOW_CODE, which is right for loading code and exactly wrong here: a keeper cannot enable
+# what the page will not show them, and the pack that is off is the one they most need to see.
+# This file reads its inputs relative to the repo root, the way the asserts above do.
+import os as _os, sys as _sys                                        # noqa: E402
+_sys.path.insert(0, "app")
+_os.environ.setdefault("PACKS_DIR", "packs")
+import settings as _st                                               # noqa: E402
+
+_declared = _st.pack_settings()
+assert _declared, "no pack declares an env key, which means this is reading the wrong directory"
+_rows = {r["key"]: r for r in _st.describe(unlocked=True, public=_st.PUBLIC)["runtime"]}
+for _d in _declared:
+    _r = _rows.get(_d["key"])
+    assert _r, f"{_d['pack']} declares {_d['key']} and /settings does not carry it"
+    assert _r["group"] == "packs", f"{_d['key']} is not in the packs group"
+    assert _r["default"] == _d["default"], \
+        f"{_d['key']} publishes default {_r['default']!r}, pack.yaml says {_d['default']!r}"
+    assert _r["help"], f"{_d['key']} reaches the page with no help text"
+
+# The one that is the point: `make` ships OFF, and its switch has to be visible anyway.
+_mk = _rows.get("MAKE_ENABLED")
+assert _mk and _mk["default"] == "0", \
+    "MAKE_ENABLED is the switch that turns on a pack that ships off; a keeper who cannot see it " \
+    "cannot turn it on, which is the whole of the bug this checks for"
+assert "not openly licensed" in (_mk["help"] or "").lower(), \
+    "MAKE_ENABLED reaches Set up without the licence sentence pack.yaml puts above it"
+
+# ---- and every key says what a fresh node would have given it ---------------------------------
+#
+# `.env.example` is the record of that and `make lint` already holds it to a rule, but it is at the
+# repo root and the app image is built from app/, so the container could never read it: a row could
+# say "this value is a default" and never "the default is X". tools/gen_defaults.py generates the
+# same facts into data/, which IS mounted, with a --check in lint so the two cannot drift.
+_os.environ.setdefault("ENV_DEFAULTS", "data/env_defaults.yml")
+_st._defaults_cache.clear()
+_src = {k: v for k, v in
+        ((l.split("=", 1)[0].strip(), l.split("=", 1)[1].split("#")[0].strip())
+         for l in open(".env.example") if "=" in l and not l.strip().startswith("#"))
+        if k.isupper()}
+_rt = {r["key"]: r for r in _st.describe(unlocked=True, public=_st.PUBLIC)["runtime"]}
+for _k, _r in _rt.items():
+    if _r["group"] == "packs":
+        continue                                     # those come from pack.yaml, checked above
+    if _k == "UI_LAYOUT":
+        assert _r.get("default") in (None, ""), \
+            "UI_LAYOUT has no default VALUE — blank is how a keeper restores the default layout"
+        continue
+    assert _r.get("default") is not None, \
+        f"{_k} reaches Set up with no default, so a keeper who overrode it cannot see what it was"
+    if _k in _src:
+        assert _r["default"] == _src[_k], \
+            f"{_k}: /settings says {_r['default']!r}, .env.example says {_src[_k]!r}"
+
 print("config: separator safe, subcommands wired, writes routed, banner says Fab City and a version")
+print(f"config: {len(_declared)} pack-declared keys reach /settings with their defaults and help")

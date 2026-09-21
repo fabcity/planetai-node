@@ -12,10 +12,12 @@ Two classes of key, and the distinction is the whole design:
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 
 DB = os.getenv("DATABASE_URL", "postgresql://planetai:planetai@db:5432/planetai")
+log = logging.getLogger("planetai.settings")
 _cache: dict = {"at": 0.0, "rows": {}}
 TTL = 20
 
@@ -100,6 +102,13 @@ RUNTIME = {
     "AGENT_ONLINE_MODEL": ("agent", "Online model", False, True, "e.g. claude-sonnet-4-6"),
     "AGENT_ONLINE_KEY":   ("agent", "Online model key", True, True, "The only thing that lets household data leave your network. Your choice."),
     "UI_LAYOUT":          ("node", "Dashboard layout", False, False, "Order and visibility of the dashboard's cards, as JSON. Managed by the dashboard's Arrange mode; blank restores the default."),
+    "UI_MODE":            ("node", "How much of the page is shown", False, False,
+                           "simple = one sentence per stage, written by this node, and nothing else: for a phone, "
+                           "a visitor, or anybody who wants the answer rather than the working. advanced (default) = "
+                           "every section. learn = the advanced page with a question mark at each part, which opens "
+                           "the node's own documentation for it. This is what the page opens as; anyone reading it "
+                           "can switch from the header, and their choice is remembered by their browser and changes "
+                           "nothing for anybody else."),
     "MAP_TILES":          ("node", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
     "STATIONS_SHOWN":     ("node", "Other people's stations listed", False, False,
                            "How many of the neighbourhood's stations the dashboard lists, nearest first. Default 3; "
@@ -126,7 +135,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
@@ -141,6 +150,7 @@ CHOICES = {
     "REPORT_EVERY":  ("3", "4", "6", "8", "12", "24"),      # each divides 24, so the rhythm does not walk round the clock
     "REPORT_ANCHOR": tuple(str(h) for h in range(24)),
     "REPORT_DEPTH":  ("auto", "brief", "standard", "deep"),
+    "UI_MODE":       ("simple", "advanced", "learn"),
     # private first because it is the default and because the order is what every surface offers: `describe()`
     # publishes this tuple and the dashboard's select and `planetai config` both walk it as given.
     "AGENT_PREFER":  ("private", "fallback", "strongest"),   # a typo here would fail open: not-"private" sends household data off the network
@@ -248,6 +258,97 @@ def _mask(v: str) -> str:
     return ("•••• set" if v else "") if v is not None else ""
 
 
+# What a fresh node gets, generated from `.env.example` into `data/`, which IS mounted into the
+# image — the app is built from `app/`, so a COPY cannot reach the repo root and the container has
+# never been able to say what a default IS. tools/gen_defaults.py writes it and `make lint` fails
+# when the two disagree, the same arrangement the platform floors have.
+_defaults_cache: dict = {}
+
+
+def defaults() -> dict:
+    """`{KEY: {default, help}}`, read once. A node whose image predates this file gets {} and every
+    row simply has no `default` — the page says nothing rather than guessing one."""
+    if not _defaults_cache:
+        # Read at call time, not at import: a path frozen when the module loads cannot be pointed
+        # anywhere else afterwards, which is fine in a container and wrong everywhere else.
+        path = os.getenv("ENV_DEFAULTS", "/app/data/env_defaults.yml")
+        try:
+            import yaml                              # noqa: PLC0415
+            with open(path) as fh:
+                _defaults_cache.update(yaml.safe_load(fh.read()) or {})
+        except Exception:                            # noqa: BLE001 — no defaults is not an outage
+            _defaults_cache["_"] = {}
+    return _defaults_cache
+
+
+def _env_lines(lines) -> list[tuple[str, str, str]]:
+    """`[(KEY, default, help)]` from a block of `# comment` and `KEY=value` lines.
+
+    This is the shape both `.env.example` and a pack.yaml `env:` list are already written in —
+    comments above the key they describe, which `make lint` enforces for the first of them. So the
+    help text and the default a pack publishes are read from the pack rather than copied into this
+    file, where they would be a second version of the same sentence with nothing holding them level.
+    """
+    out, note, started = [], [], False
+    for raw in lines:
+        s = str(raw).strip()
+        if s.startswith("#"):
+            if started:                              # a new block after a key ends the last one
+                note, started = [], False
+            note.append(s.lstrip("#").strip())
+            continue
+        if "=" not in s:
+            note, started = [], False
+            continue
+        k, _, v = s.partition("=")
+        k = k.strip()
+        if k and k.replace("_", "").isalnum() and k.isupper():
+            out.append((k, v.strip(), " ".join(n for n in note if n)))
+            started = True
+        # The block is NOT cleared here. These files are written with one comment covering a run of
+        # related keys — "radius around the node, and how often to re-fetch" sits above both
+        # PLACE_RADIUS_M and PLACE_REFRESH_DAYS — so clearing after the first of them sends the
+        # second to Set up with nothing said about it. A blank line ends a block; the next comment
+        # starts a new one.
+    return out
+
+
+def pack_settings() -> list[dict]:
+    """Every key the installed packs declare, whether or not the pack is switched on.
+
+    A PACK'S KEYS NEVER REACHED /settings AT ALL, so the Set up page could not show them and nobody
+    could turn a pack on from the dashboard — including the switch whose entire job is to turn the
+    pack on. Node #1 had MAKE_ENABLED=1 in its .env and the string MAKE appeared nowhere in its
+    settings body. Found 21 September 2026.
+
+    EVERY installed pack, not the enabled ones. `packs.manifests()` filters by PACKS_ENABLED and
+    PACKS_ALLOW_CODE, which is right for loading code and exactly wrong here: a keeper cannot enable
+    what the page will not show them, and a pack that is off is the one they most need to see.
+
+    Read straight off disk rather than through the loader, so this cannot be the reason /settings
+    fails: a pack with a broken pack.yaml costs its own rows and nothing else.
+    """
+    import glob                                     # noqa: PLC0415
+    root = os.getenv("PACKS_DIR", "/app/packs")
+    rows = []
+    for path in sorted(glob.glob(os.path.join(root, "*", "pack.yaml"))):
+        name = os.path.basename(os.path.dirname(path))
+        try:
+            import yaml                             # noqa: PLC0415
+            m = yaml.safe_load(open(path).read()) or {}
+        except Exception as e:                      # noqa: BLE001 — one bad pack, not a 500
+            # Silently is the wrong kind of tolerant: a pack.yaml that will not parse loses every
+            # key it declares from Set up, and the keeper's only symptom is a pack that is not
+            # there. Caught while writing this — an invalid escape in a double-quoted YAML scalar
+            # dropped the whole forecast pack and nothing said so.
+            log.warning("settings: %s has a pack.yaml that will not parse (%s), so none of its "
+                        "keys reach Set up", name, e)
+            continue
+        for key, default, help_ in _env_lines(m.get("env") or []):
+            rows.append({"key": key, "pack": name, "default": default, "help": help_})
+    return rows
+
+
 def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
     """unlocked=False is what an anonymous GET /settings gets: secrets masked, and every value outside PUBLIC masked too.
     unlocked=True (admin token presented, or an MCP call, which is behind the token already) shows all but the secrets.
@@ -266,7 +367,25 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
                                # somebody type one it will refuse. CHOICES is already the authority for the refusal;
                                # publishing it means the dashboard's widget and the node's validation cannot disagree.
                                "choices": list(CHOICES[k]) if k in CHOICES else None,
+                               # None when the image has no defaults file, never a guess.
+                               "default": (defaults().get(k) or {}).get("default"),
                                "outward": k in OUTWARD})
+    # The packs' own keys, after the node's. They carry a `default` because pack.yaml states one
+    # beside every key; the node's own rows do not, which is the other half of this gap and needs
+    # somewhere in the image to read them from — `.env.example` is at the repo root and the app
+    # image is built from `app/`, so the container cannot see it.
+    # `db` is already the dict of gui-set rows and `set` is this module's own setter, so the
+    # obvious `set(db)` calls it with one argument and raises.
+    for r in pack_settings():
+        k = r["key"]
+        v = get(k, "")
+        hide = not unlocked and k not in public
+        out["runtime"].append({
+            "key": k, "group": "packs", "label": k, "secret": False, "restart": True,
+            "help": r["help"], "value": _mask(v) if hide else v, "set": bool(v),
+            "source": "gui" if k in db else ("env" if os.getenv(k) else "default"),
+            "choices": None, "outward": k in OUTWARD,
+            "default": r["default"], "pack": r["pack"]})
     for k, label in BOOTSTRAP.items():
         out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, "")})
     return out

@@ -130,7 +130,45 @@ def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sit
     return sorted(by.values(), key=lambda s: (s["km"] is None, s["km"] or 0))
 
 
-def _asks_ledger(alerts: list[dict], actions: list[dict]) -> dict:
+def _where_to_go(facilities: list[dict]) -> dict | None:
+    """The `make` pack's sentence, per locale, or None — and this engine does not write it.
+
+    `packs/make/rules.yml` says where the line belongs: to the asks in OTHER packs' rules, "the
+    moment you have been told you need something made". So the ledger carries it and the page draws
+    it under the ask it answers, rather than a freestanding tile nobody asked for.
+
+    The wording is the pack's, including which lab is nearest and how far: `ask_line` reads the rows
+    as STORED, so a distance is never re-derived here and the sentence cannot disagree with the
+    database. This function only calls it and only in the languages the node speaks.
+
+    A node with the pack off, or with no lab inside MAKE_RADIUS_KM, has no facility rows and gets
+    None. So does a node whose image predates the pack: the import is guarded because `packs/make`
+    is a pack, and a pack is a thing a node may simply not have.
+    """
+    if not facilities:
+        return None
+    # `packs` in app/ is the LOADER, not a package: the pack directories live outside it and are
+    # reached by path, which is what app/report.py already does for this same function. Importing
+    # `packs.make.adapter` fails with "packs is not a package" and takes the sentence with it.
+    try:
+        import sys as _sys                           # noqa: PLC0415
+        _sys.path.insert(0, os.path.join(os.getenv("PACKS_DIR", "../packs"), "make"))
+        from adapter import ask_line                 # noqa: PLC0415 — packs/make owns the wording
+    except Exception:                                # noqa: BLE001 — a pack may simply not be here
+        return None
+    out = {}
+    for loc in LOCALES:
+        try:
+            said = ask_line(facilities, loc)
+        except Exception:                            # noqa: BLE001 — a pack must not break /issues
+            log.exception("make: ask_line failed for %s", loc)
+            return None
+        if said:
+            out[loc] = said
+    return out or None
+
+
+def _asks_ledger(alerts: list[dict], actions: list[dict], facilities: list[dict] | None = None) -> dict:
     """The act stage's ledger: every alert that asked a person to do something, first line only, and every answer.
 
     This is not `_asks()` above — that one is per-issue and only ever surfaces act-level alerts that are still
@@ -146,6 +184,9 @@ def _asks_ledger(alerts: list[dict], actions: list[dict]) -> dict:
         "actions": [{"alert_id": x.get("alert_id"), "stage": x.get("stage"), "actor": x.get("actor"),
                      "ts": x["ts"] if isinstance(x.get("ts"), str) else x["ts"].isoformat()} for x in actions],
         "levels": {lvl: sum(1 for a in alerts if a.get("level") == lvl) for lvl in ("act", "warn", "info")},
+        # Nullable on purpose: most nodes have no facility rows and the page draws nothing rather
+        # than a sentence about a lab that is not there.
+        "where": _where_to_go(facilities or []),
     }
 
 
@@ -866,8 +907,14 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     place = (health["lat"], health["lon"]) if health.get("lat") is not None and health.get("lon") is not None \
         else None
     peer = snapshot.get("peer")
+    # Facilities are an input like `earth` and `peers`, not a sixth table: they postdate every
+    # fixture but the newest, and a snapshot that has none simply has none. Read off the snapshot's
+    # own /sensors body, which is where the pack's rows land.
+    sensors = snapshot.get("sensors") or []
+    facilities = [r for r in sensors if isinstance(r, dict) and r.get("kind") == "facility"]
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
-                   place=place, mesh=health.get("mesh"), peers=[peer] if peer else [])
+                   place=place, mesh=health.get("mesh"), peers=[peer] if peer else [],
+                   facilities=facilities)
 
 
 def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
@@ -916,7 +963,7 @@ def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers
 
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
-            peers=()) -> dict:
+            peers=(), facilities=()) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -1012,7 +1059,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     headline_issue = _headline(out, declared)
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
     geom = _safe_geometry(lat, lon, settings, stations, peers)
-    asks = _asks_ledger(data["alerts"], data["actions"])
+    asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
     # sees a schema it does not know draws what it recognises; it never refuses, and the dashboard's
     # assertion is one sentence rather than a blank page.

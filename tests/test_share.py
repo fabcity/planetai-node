@@ -210,6 +210,53 @@ assert dp(s0["lat"]) <= 3 and dp(s0["lon"]) <= 3, f"open: /sensors hands out {s0
 assert s0["name"] == "Kitchen, upstairs", "open: the sensor's name is on the dashboard and stays"
 print("open: sensors readable, hostnames and firmware gone, position at 110 m")
 
+# A FACILITY IS NOT A SENSOR, and the filter above was written about sensors. A fab lab is somebody
+# else's building, published by name and coordinate in a public directory this node read; `host` and
+# `firmware` are meaningless for it and `distance_km`, `capabilities` and the archive it came from
+# are the whole of what makes it useful. Until 21 September the sensor list was applied to both, so
+# a facility reached the page carrying `attribution` and nothing else — and the page runs in a
+# browser on the LAN, so that was not a corner case, it was every reader. The dashboard could name a
+# place and could not say how far away it was or what was in it.
+FACILITY = {"sensor_id": "lab-fablabbali", "source": "fablabs-io", "name": "Fab Lab Bali",
+            "lat": -8.793, "lon": 115.15, "indoor": False, "local": False, "kind": "facility",
+            "scale": "community", "cadence": "P30D",
+            "meta": {"slug": "fablabbali", "capabilities": ["laser", "cnc_milling"],
+                     "distance_km": 3.3, "url": "https://www.fablabs.io/labs/fablabbali",
+                     "snapshot": "2026.07.31_labs.json", "city": "Badung", "country_code": "ID",
+                     "registry_slug": "economic/community/fablabs-io", "kind_name": "fab_lab",
+                     "fetched": "2026-09-20T13:59:38+00:00",
+                     "attribution": "fablabs.io — Fab Lab Network. Not openly licensed.",
+                     # and one that is NOT a fact about the lab: it must still be cut.
+                     "host": "should-never-be-published.local"}}
+_sensors = main.q
+main.q = lambda sql, *a: ([dict(FACILITY, meta=dict(FACILITY["meta"]))] if "FROM sensors" in sql
+                          else _sensors(sql, *a))
+f0 = lan.get("/sensors").json()[0]
+for k in ("distance_km", "capabilities", "url", "snapshot", "city", "registry_slug", "attribution"):
+    assert k in f0["meta"], f"open: a facility cannot say its own {k}, so the page cannot draw it"
+assert f0["meta"]["distance_km"] == 3.3, "the distance is the one figure the ask needs"
+assert "host" not in f0["meta"], \
+    "the facility allowlist is not an amnesty: a key that describes a network is still cut"
+main.q = _sensors
+print("open: a facility publishes its own public facts, and still not a hostname")
+
+# How far back this node's own record goes is not private: it is the length of the line the page
+# already draws. It is on the open allowlist so a wall screen with no token can say that the
+# satellite reaches ten years and the kit in this house reaches three weeks — which is the whole
+# reason the readout exists.
+_reach = [{"kind": "sensor", "oldest": "2026-09-01", "newest": "2026-09-21", "buckets": 32833,
+           "sources": 21, "days": 20}]
+_prev = main.q
+main.q = lambda sql, *a: _reach if "FROM readings_1h" in sql else _prev(sql, *a)
+_rr = lan.get("/reach")
+assert _rr.status_code == 200, "open: a wall screen cannot ask how far back the record goes"
+assert _rr.json()[0]["days"] == 20, f"/reach did not answer: {_rr.json()}"
+main.q = _prev
+level("off")
+assert lan.get("/reach").status_code == 403, "off: /reach is not on the off allowlist and must refuse"
+level("open")
+print("open: /reach readable, and refused at off")
+
 # F10 · closing a loop. The middleware refuses the anonymous case; the route refuses a read-only token.
 level("open")
 assert lan.post("/actions", json={"alert_id": 1, "stage": "acted"}).status_code == 403, "open: an anonymous action must be refused"

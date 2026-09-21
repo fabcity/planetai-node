@@ -46,8 +46,14 @@ def issues_now():
         # `/health` route — reading them here costs no query and no network call (Ruling P3: /issues
         # never makes a network call, so the Reticulum bridge's peer list is Task 4's problem, not this
         # one's). `place` is left to default to the node's own coordinates.
+        # The facility rows the `make` pack stores. One query, on the cursor already open, and only
+        # what the pack's own sentence needs — a place has no readings, so it is in neither `stats`
+        # nor the five reads the engine makes.
+        cur.execute("SELECT sensor_id, name, meta FROM sensors WHERE kind = 'facility'")
+        facilities = [dict(r) for r in cur.fetchall()]
         return engine.compute(cur, main.settings, load(), earth=_earth(),
-                               mesh=main.mesh_state if main.MQTT_HOST else None)
+                               mesh=main.mesh_state if main.MQTT_HOST else None,
+                               facilities=facilities)
 
 
 def _earth():

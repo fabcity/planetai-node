@@ -19,6 +19,8 @@ env:
   - "# Open-Meteo works anywhere, which is why it is here at all — but its free tier is non-commercial only,"
   - "# so it is the operator's decision, not ours. Off until you turn it on."
   - "FORECAST_OPENMETEO=0"
+  - "# forecast: how often to ask, in hours. Both sources publish a few times a day, so six is the"
+  - "# publishers own cadence rather than a number this pack invented."
   - "FORECAST_POLL_HOURS=6"
 needs:
   - api.bmkg.go.id

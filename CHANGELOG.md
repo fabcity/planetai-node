@@ -1,5 +1,48 @@
 # Changelog
 
+## v0.68 — 2026-09-21 — what the node can say about itself, and what you can change
+
+Six changes, all of them about what this node reports and what you can reach from Set up. Two of
+them fix things that were simply not possible before. The interface redraw is still not in this
+release; it ships on its own when it is finished.
+
+- 2026-09-21 — **You can turn a pack on from Set up now.** A pack declares its own settings in its
+  `pack.yaml` — how far the fab-lab pack looks, which snapshot it reads, whether it runs at all —
+  and none of them ever reached the settings page. Not one. So the switch whose entire job is to
+  turn a pack on was invisible, and the only way to touch any of it was to edit `.env` by hand.
+
+  All of them are there now, in a Packs group, each with the explanation its pack wrote for it and
+  the value it has if you never touch it. Including `MAKE_ENABLED`, which arrives with the sentence
+  about the fab-lab directory not being openly licensed, because that is the sentence you should
+  read before turning it on.
+
+- 2026-09-21 — **Every setting says what it would be if you cleared it.** The page could tell you a
+  value was the default; it could not tell you what the default was once you had changed it. Now
+  every row carries both, so you can see what you are overriding.
+
+- 2026-09-21 — **A fab lab is a place, and the page can finally say where it is.** With the `make`
+  pack on, the node stores the labs near you — how far, what machines, which monthly snapshot it
+  read. The page was being handed the name and nothing else, because the filter that hides your own
+  sensors' hostnames and firmware was being applied to somebody else's public workshop as well.
+  A lab publishes what a lab publishes; your own kit's network details are still cut.
+
+  With it, the node now offers one sentence naming the nearest place you could get something made,
+  in your own language — the pack writes it, and the page draws it under the ask it answers.
+
+- 2026-09-21 — **How far your asks actually get.** Beside ρ, the node now counts them stage by
+  stage: asked, acknowledged, acted, measured, with the usual wait between each. On our own node it
+  reports 162 asked and 30 acted with none acknowledged first — which is a true thing about how this
+  household works, and ρ alone could not show it. It is not a second ρ and will not agree with it:
+  ρ asks whether anyone answered at all, this asks how far they went.
+
+- 2026-09-21 — **How far back your record goes.** `GET /reach` says, per kind of source, when the
+  oldest hourly reading is. On our node: the satellite record reaches 3,720 days, the models 447,
+  and the sensors in the house 20. The Historical view draws those on one page and has never said
+  they are different lengths of line.
+
+- 2026-09-21 — **A pack with a broken `pack.yaml` says so.** It used to lose every setting it
+  declared and the only symptom was a pack that seemed not to be installed. It is in the log now.
+
 ## v0.67 — 2026-09-21 — the node says more about itself, and says it correctly
 
 Four changes, all of them about what this node reports rather than how the page draws it. Nothing
