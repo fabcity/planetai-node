@@ -26,6 +26,28 @@ is an ink-only square pill: `live`, `partial`, `model`, `cached`.
 `?view=` works too, `?fixture=<name>` replays a committed snapshot through the node's own engine (the pill
 says `cached`), and `?state=empty` or `?state=refused` draws those states for a capture.
 
+## Modes
+
+How much of the page is drawn. Three, as a page setting, in the header beside the register:
+
+| mode | what it draws |
+|---|---|
+| **simple** | the digest and nothing else — one sentence per stage, each written by the node and not by the page. A node too old to send them says so and names its version rather than composing four sentences in the browser. |
+| **advanced** | every registered section, in loop order. The default. |
+| **learn** | advanced, with a question mark at each part of the page. Pressing one opens a panel that quotes this node's own documentation for that part, says which page and section the words came from, links out, and walks to the next. |
+
+`UI_MODE` is what the page **opens** as, chosen by the household. A reader who switches is switching
+their own copy and nobody else's: the choice is kept in this browser, the way the register is.
+`?mode=simple` is read first and remembers nothing — it is how one person sends another the short
+answer without changing their page, and how the measuring rig renders all three.
+
+The learn panels are quotations, not summaries. The node does not serve this documentation — the
+site build does — so `tools/build_learn.py` cuts the spans out of these pages at build time into
+`app/static/learn.json`, which the page fetches only when somebody turns learn mode on. The quote
+therefore reads on a network with no route out, and `make lint` fails when a span is no longer in
+the page it names. Seventeen marks; the bar under the header says how many are on the view you are
+looking at, and *walk the page* starts at the first.
+
 ## The lead
 
 The first thing on Now is the headline issue's sentence in the household's language — "Falling to 9

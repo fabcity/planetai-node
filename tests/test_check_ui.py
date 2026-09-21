@@ -26,7 +26,7 @@ def tree():
     """A throwaway copy of the files check_ui.py reads. The page is three of them now."""
     tmp = Path(tempfile.mkdtemp(prefix="planetai-ui-"))
     (tmp / "app" / "static").mkdir(parents=True)
-    for f in ("index.html", "dashboard.js", "dashboard.css"):
+    for f in ("index.html", "dashboard.js", "dashboard.css", "learn.json"):
         shutil.copy(ROOT / "app" / "static" / f, tmp / "app" / "static" / f)
     shutil.copy(ROOT / "app" / "main.py", tmp / "app" / "main.py")
     (tmp / "app" / "issues").mkdir(parents=True, exist_ok=True)
@@ -170,5 +170,15 @@ broken("a viewport-height class on an element and its own ancestor",
        sub('<div class="wrap"><p class="note">Asking',
            '<div class="wallbox"><div class="wallbox"></div></div><div class="wrap"><p class="note">Asking'),
        r"\.wallbox sets a viewport height and is on <div>.*inside <div>", where="index.html")
+
+# 12. a learn mark with nothing behind it, and an entry nothing draws
+# Both are silent: the page renders either way and the only way to find out is to be the tester who
+# presses a question mark and gets nothing. So they are counted at build time instead.
+broken("a mark the layer does not have",
+       sub("learn: ['cards', 'raw']", "learn: ['cards', 'raw', 'weather']"),
+       r"draws a learn mark 'weather' that app/static/learn\.json does not have", where="dashboard.js")
+broken("an entry nothing on the page draws",
+       sub("learn: ['rho', 'refusals']", "learn: ['rho']"),
+       r"learn\.json carries 'refusals' and nothing on the page draws it", where="dashboard.js")
 
 print("check_ui: every visual-language gate fails when the page breaks its rule")
