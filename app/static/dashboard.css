@@ -404,14 +404,26 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
 @media (max-width: 520px) { .lead { gap: 7px } .stack.meters .col { padding: 4px 0 } }
 .lead .big { font: 700 clamp(1.35rem, 2.6vw, 2.1rem)/1.18 var(--fc-font-display);
   letter-spacing: -.03em; max-width: 26ch; text-wrap: balance }
-/* THE MONUMENT NUMERAL. One figure on the page big enough to stop being a number and start being
-   typography — 132 px at the top of the clamp, which is design-log R21. `--num-face` is the layer's
-   token for which face it is set in; the fallback keeps it on the mono on a node whose frozen layer
-   predates the token, and resolves to exactly the same family either way. O13 in the layer is
-   whether it should stay in the mono at all or be set in Funnel Sans beside the sentence. */
-.lead .big b { font-family: var(--num-face, var(--mono)); font-weight: 700;
-  font-size: clamp(2.4rem, 7.4vw, 8.25rem);   /* 107px at 1440; 132 at the 1780 the clamp tops out */
-  line-height: .78; letter-spacing: -.04em; vertical-align: -.06em; margin: 0 .05em }
+/* THE MONUMENT — its own row, which is the whole point. The figure was inline inside the sentence
+   until 21 September and kept having to shrink, because a 132px numeral inside a paragraph decides
+   where every line in that paragraph breaks. Out of the flow it is the size the sketch draws it.
+   `--num-face` is the layer's token for which face; the fallback keeps it on the mono where the
+   frozen layer predates the token. O13 is whether it stays mono or goes to Funnel Sans. */
+.lead .num { display: flex; align-items: flex-end; gap: clamp(12px, 1.6vw, 22px); min-width: 0 }
+.lead .num .v { font-family: var(--num-face, var(--mono)); font-weight: 800;
+  font-size: clamp(3.4rem, 9.2vw, 8.25rem); line-height: .82; letter-spacing: -.06em }
+.lead .num .u { font: 600 clamp(15px, 1.8vw, 26px) var(--mono); letter-spacing: -.02em;
+  padding-bottom: clamp(4px, .7vw, 10px); white-space: nowrap }
+/* The sentence is prose and is set as prose: the sketch gives it the body face at 21px, not the
+   display face the whole lead used to be in. The figure inside it is the sentence's own word for
+   the number, at sentence size — the monument above is the reading. */
+.lead .big { font: 400 clamp(16px, 1.5vw, 21px)/1.3 var(--fc-font-body); letter-spacing: 0;
+  max-width: 30ch }
+.lead .big b { font-family: var(--mono); font-weight: 700 }
+/* What the red tick on every meter means, said once. */
+.legend { font: 500 10.5px var(--mono); letter-spacing: .04em; color: var(--mute); margin: 0 }
+.legend i { display: inline-block; width: 9px; height: 2px; background: var(--signal-worse);
+  vertical-align: middle; margin-right: 7px }
 
 /* THE BRACKET METERS — the Stack's mini variant, design-log R15. Sixteen cells against one scale
    shared by the four distances, and the line as a tick at the same x on every row, so under it and
@@ -453,29 +465,24 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
   color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink) }
 .askref.none { color: var(--mute); border-bottom: 0 }
 .askref b { font-weight: 700 }
-/* The kicker and the issue's mark share one row: the kicker reads left, the pictogram sits at the
-   end of it, and the map column beside them is where the space came from. Flex rather than two grid
-   items in one area, because a long kicker and a right-aligned mark in the same cell overlap. */
-.leadhead { display: flex; align-items: center; justify-content: space-between; gap: 14px;
-  min-width: 0 }
-.leadhead > .k { min-width: 0 }
-.pix { flex: 0 0 auto; width: 66px; height: 48px; color: var(--ink) }
-@media (max-width: 520px) { .pix { width: 48px; height: 35px } }
+/* The pictogram belongs to the monument, beside the figure, at the size the sketch draws it. */
+.pix { flex: 0 0 auto; width: clamp(92px, 10.4vw, 150px); height: auto; aspect-ratio: 15 / 11;
+  color: var(--ink) }
 .lead .why { max-width: 54ch; font-size: 14.5px }
 .lead .whenline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap }
 @media (min-width: 900px) {
   .lead { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
     /* 7px and not 9: six rows of it is 45px of the first screen, and the as-of line was sitting
        five pixels above the fold before the ground panel gained one sentence. */
-    grid-template-areas: "k g" "s g" "w g" "m g" "n g" "t g"; gap: 7px clamp(20px, 3vw, 40px);
+    grid-template-areas: "k g" "n g" "s g" "w g" "m g" "l g" "t g"; gap: 7px clamp(20px, 3vw, 40px);
     align-items: start }
-  .lead > .leadhead { grid-area: k } .lead > .big { grid-area: s }
+  .lead > .k { grid-area: k } .lead > .num { grid-area: n } .lead > .big { grid-area: s }
   /* `.why` matched the why line AND the headline rule, which both landed in `w` and printed on top
      of each other at every width over 900. The rule is a span inside the why line now, so there is
      one element here and nothing to collide with. `a` was the ask strip's; the strip is in Act and
      the meters take the row. */
   .lead > .why { grid-area: w } .lead > .stack { grid-area: m }
-  .lead > .why.grainline { grid-area: n } .lead > .whenline { grid-area: t }
+  .lead > .legend { grid-area: l } .lead > .whenline { grid-area: t }
   .lead > .mapwrap { grid-area: g; align-self: start }
 }
 

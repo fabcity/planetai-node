@@ -359,6 +359,28 @@ const kicker = (key, d) =>
 
 /* The numeral inside the sentence is the monument, and it carries its comparison like every other
  * numeral on the page. The node formatted it; this finds it in its own sentence to set it. */
+/* THE MONUMENT — the figure, its unit and the issue's pictogram, on one row, with the node's
+ * sentence as prose beneath it. This is the sketch's central gesture and I had not built it: the
+ * figure was inline inside the sentence, which is why it kept having to shrink. A 132px numeral
+ * inside a paragraph decides where every line in that paragraph breaks, so it was traded down to
+ * 107 and then fought the unit for a line. Out of the flow it can be the size it was drawn at.
+ *
+ * It carries `data-role="numeral"` and the id the why line points at, because it is the reading;
+ * the copy inside the sentence is the sentence's own word for the same number. */
+function monument(key, d, pix = '') {
+  const cell = (d.stack || {})[d.headline];
+  const n = cell && cell.value != null ? fmt(cell.value, d.dp) : null;
+  if (n == null) return '';
+  const crossed = !!(d.line && cell.value > d.line.value && (d.state === 'act' || d.state === 'notable'));
+  const cmp = d.line
+    ? cmpText({ mode: 'line', line: d.line, unit: d.unit, dp: d.dp })
+    : cmpText({ mode: 'none', reason: noLine(d) });
+  return `<div class="num" data-component="monument" data-ref="sentence-${esc(key)}">${pix}`
+    + `<b class="v${crossed ? ' crossed' : ''}" data-role="numeral" id="num-${esc(key)}"`
+    + ` data-num="${esc(key)}.headline" data-cmp="${esc(cmp.text)}">${esc(n)}</b>`
+    + `<span class="u">${esc(d.unit || '')}</span></div>`;
+}
+
 function sentence(key, d, cls = 'big') {
   const s = d.sentence ? d.sentence[LOC] : '';
   const cell = (d.stack || {})[d.headline];
@@ -368,10 +390,12 @@ function sentence(key, d, cls = 'big') {
   const cmp = d.line
     ? cmpText({ mode: 'line', line: d.line, unit: d.unit, dp: d.dp })
     : cmpText({ mode: 'none', reason: noLine(d) });
+  /* The figure inside the sentence is set in the mono and nothing else. It is not the monument and
+     does not carry the monument's attributes: the sketch says this number twice — once as a figure
+     large enough to stop being a number, once inside a sentence that reads as a sentence — and two
+     elements claiming `data-role="numeral"` for one reading is one of them lying. */
   const marked = n
-    ? esc(s).replace(esc(n), `<b class="mono${crossed ? ' crossed' : ''}" data-role="numeral"`
-      + ` data-num="${esc(key)}.headline" data-cmp="${esc(cmp.text)}"`
-      + ` id="num-${esc(key)}">${esc(n)}</b>`)
+    ? esc(s).replace(esc(n), `<b class="mono${crossed ? ' crossed' : ''}">${esc(n)}</b>`)
     : esc(s);
   return `<p class="${cls}" data-component="sentence" data-role="sentence" id="sentence-${esc(key)}"`
     + ` data-ref="stack-${esc(key)}">${marked}</p>`;
@@ -4414,13 +4438,20 @@ function main() {
        nothing is redrawn per reading. An issue with no pictogram yet simply has none: the lead is
        not going to invent a mark for it. */
     const pix = ['air', 'heat', 'land', 'coast'].includes(hk)
-      ? `<svg class="pix" viewBox="0 0 15 11" data-component="pictogram" data-ref="kicker-${esc(hk)}"`
+      ? `<svg class="pix" viewBox="0 0 15 11" data-component="pictogram" data-ref="num-${esc(hk)}"`
         + ` role="img" aria-label="${esc(d.name[LOC])}"><use href="static/signs.svg#pix-${esc(hk)}"/></svg>`
       : '';
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
-      + `<div class="leadhead">${kicker(hk, d)}${pix}</div>` + sentence(hk, d, 'big')
+      + kicker(hk, d) + monument(hk, d, pix) + sentence(hk, d, 'big')
       + why(hk, d, (S.issues.headline_rule || {})[LOC] || '')
       + stack(hk, d, { id: `meters-${hk}`, meter: true, ref: `sentence-${hk}` })
+      /* The sketch explains the red tick once, under the meters. Without it the one mark on the
+         page that means "a line was crossed" is the only mark nobody is told the meaning of. */
+      + (d.line
+        ? `<p class="legend" data-component="meterLegend" data-ref="meters-${esc(hk)}">`
+          + `<i></i>the line, at ${esc(fmt(d.line.value, d.dp))} ${esc(d.line.unit || d.unit)}, `
+          + `on every row at the same place</p>`
+        : '')
       /* WHY THIS ONE IS AT THE TOP is in the why line above, not in a paragraph of its own. The
          words are the node's now (`headline_rule` on /issues) rather than three strings in this file:
          v0.59 changed the ranking on 18 September and the page's copy of the explanation had no way
