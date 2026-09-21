@@ -164,12 +164,24 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .funnel .bar { height: 14px; border: 1px solid var(--ink); background: var(--raise) }
 .funnel .bar > i { display: block; height: 100%; background: var(--ink) }
 .funnel .lat { font: 500 11px var(--mono); color: var(--mute); text-align: right; white-space: nowrap }
-.funnel .m2 { display: grid; grid-template-columns: minmax(0, 14ch) 1fr 1fr; gap: 1px;
-  margin-top: 14px; background: var(--hair); border: 1px solid var(--hair) }
-.funnel .m2 > * { background: var(--ground); padding: 8px 10px; font-size: 12.5px }
-.funnel .m2 .h { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mute) }
-.funnel .m2 b { font-family: var(--mono); font-size: 18px }
+/* The reason line under a stage. It is a fourth child of a three-column .st, so it is told to span
+   the row; without this it lands in column one and reads as a second stage name. */
+.funnel .st .m { grid-column: 1 / -1; font-size: 11.5px; color: var(--mute); margin: -2px 0 0 }
+/* A stage at zero, in weight and never in hue: the bar keeps its outline so the row still reads as a
+   stage that exists and is empty, rather than as a stage that is missing. */
+.funnel .st.none .k { font-weight: 400; color: var(--mute) }
+.funnel .st.none .lat { color: var(--mute) }
+.funnel > .note { margin-top: 10px }
+
+/* The care label. Five sentences the architecture owns, set as a block so it reads as one label and
+   not as five more rows of data. The sign slot keeps its width when a sign is absent, so the
+   sentences stay aligned while `person` does not exist. */
+.care { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--ink) }
+.care .k { margin: 0 0 8px }   /* the rest comes from .k, which the shout gate already knows about */
+.care .rf { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start;
+  margin: 0 0 6px; font-size: 12.5px; line-height: 1.45 }
+.care .sg { display: block; width: 18px; height: 18px }
+.care .sg svg { width: 18px; height: 18px; color: var(--ink) }
 
 .peer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px 0;
   border-top: 1px solid var(--hair); align-items: start }

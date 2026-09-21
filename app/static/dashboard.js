@@ -511,34 +511,54 @@ function rhoRow(small, ref) {
     + `${closed} of ${total} asks answered · median ${r.median_minutes} min</p>`;
 }
 
-/* The funnel: four stages, four latencies and the 2x2. Counted, never sized by a gauge — each bar
- * is a share of the first stage and the number is beside it. */
-/* PORTED: the funnel was one of the prototype's three synthetic contributions — the stage split and
- * the 2x2 were invented for the drawing. No endpoint on this node computes them, so the caller asks
- * whether S.funnel is there before drawing it, and the act section stands without it. */
+/* The four stages of the ledger, from GET /rho.funnel. Each bar is a share of `asked` and the count
+ * is beside it, because a share nobody can count is a mood.
+ *
+ * THE NODE'S WORDS, NOT THE PROTOTYPE'S. This drew reached · acknowledged · deployed · closed over a
+ * synthetic `S.funnel` from a fixture, beside a 2x2 whose four cells no endpoint computed — invented
+ * for the drawing. The node publishes asked · acknowledged · acted · measured (v0.68), so those are
+ * the words, and the 2x2 is gone rather than kept as the one thing on the page with no source.
+ *
+ * TWO STAGES READ ZERO ON A REAL NODE AND BOTH SAY WHY. `acknowledged` can be written and nobody has
+ * — the Telegram flow posts `acted` directly — so it is drawn empty with that sentence, because a
+ * stage that could be non-zero and is not is a true fact about the household. `measured` is derived
+ * from rule silence rather than posted (app/index.py::_funnel), which is why it carries no latency:
+ * the evidence is a window, so it says whether the loop closed and never how fast. */
 function funnel() {
-  const f = S.funnel, top = f.stages[0].n;
-  const lat = f.latencies_minutes;
-  const gaps = ['', 'reached_to_acknowledged', 'acknowledged_to_deployed', 'deployed_to_closed'];
+  const f = S.rho && S.rho.funnel;
+  if (!f) return '';
+  const st = f.stages, top = st.asked;
+  const lat = f.latency_minutes || {};
   const mins = m => m == null ? '' : m < 120 ? `${m} min` : `${Math.round(m / 60)} h`;
-  const rows = f.stages.map((st, i) =>
-    `<div class="st"><span class="k">${esc(st.label[LOC])}</span>`
-    + `<span class="bar"><i style="width:${(100 * st.n / top).toFixed(1)}%"></i></span>`
-    + `<span class="lat"><span data-num="funnel.${st.key}"`
-    + ` data-cmp="against ${top} asks reached">${st.n}</span>`
-    + `${gaps[i] ? ` · +${esc(mins(lat[gaps[i]]))}` : ''}</span></div>`).join('');
-  const m = f.matrix;
-  const cell = (n, k) => `<div><b data-num="funnel.${k}" data-cmp="against ${top} asks reached">`
-    + `${n}</b></div>`;
-  return `<div class="funnel" data-component="funnel" id="funnel" data-ref="rho">`
-    + rows
-    + `<div class="m2">`
-    + `<div class="h"></div><div class="h">the reading came back</div><div class="h">still over</div>`
-    + `<div class="h">answered</div>${cell(m.answered_cleared, 'answered_cleared')}`
-    + `${cell(m.answered_still, 'answered_still')}`
-    + `<div class="h">not answered</div>${cell(m.unanswered_cleared, 'unanswered_cleared')}`
-    + `${cell(m.unanswered_still, 'unanswered_still')}</div>`
-    + `<p class="note">${esc(f.source)}. ${pill(f.provenance)}</p></div>`;
+  const KEYS = [
+    ['asked', { en: 'asked', id: 'diminta', es: 'pedido' }, null],
+    ['acknowledged', { en: 'acknowledged', id: 'dilihat', es: 'visto' }, 'acknowledged'],
+    ['acted', { en: 'acted', id: 'dikerjakan', es: 'hecho' }, 'acted'],
+    ['measured', { en: 'measured', id: 'terukur', es: 'medido' }, 'measured'],
+  ];
+  /* A zero says why it is a zero, or it reads as a household that does not bother. The two are
+   * different zeros: nobody has acknowledged anything here, which is a fact about the house; and on
+   * a node whose version cannot derive the last stage there is nothing that could ever write it,
+   * which is a fact about the node and not about anyone in it. */
+  const why = {
+    acknowledged: st.acknowledged ? '' : 'nothing has been acknowledged on this node',
+    measured: f.measured_derived
+      ? `the rule stayed quiet for ${Math.round((f.measured_window_minutes || 0) / 60)} h after the act`
+      : st.measured ? ''
+      : 'this node does not work out whether the condition cleared, so nothing can record this stage',
+  };
+  const rows = KEYS.map(([k, label, gap]) => {
+    const n = st[k] || 0;
+    return `<div class="st${n ? '' : ' none'}"><span class="k">${esc(label[LOC] || label.en)}</span>`
+      + `<span class="bar"><i style="width:${top ? (100 * n / top).toFixed(1) : 0}%"></i></span>`
+      + `<span class="lat"><span data-num="funnel.${k}"`
+      + ` data-cmp="against ${top} asks the node sent">${n}</span>`
+      + `${gap && lat[gap] != null ? ` · +${esc(mins(lat[gap]))}` : ''}</span>`
+      + `${why[k] ? `<span class="m">${esc(why[k])}</span>` : ''}</div>`;
+  }).join('');
+  return `<div class="funnel" data-component="funnel" id="funnel" data-ref="rho">${rows}`
+    + `<p class="note">This node's own asks only, over ${S.rho.window_days} days. `
+    + `${esc(why.measured ? 'The last stage is derived, not recorded: nobody types it.' : '')}</p></div>`;
 }
 
 /* A peer node: another node's number, and the sentence saying what it must never become. */
@@ -619,8 +639,6 @@ function emptySnapshot() {
   }
   S.issues.headline = ORDER[0];
   S.rho = { window_days: 30, alerts_act: 0, acted: 0, rho: null, median_minutes: null };
-  S.funnel = { ...S.funnel, stages: S.funnel.stages.map(s => ({ ...s, n: 0 })),
-    matrix: { answered_cleared: 0, answered_still: 0, unanswered_cleared: 0, unanswered_still: 0 } };
   S.peer = null;
 }
 const emptyLine = k => ({
@@ -633,17 +651,21 @@ const emptyLine = k => ({
 
 const REFUSED = {
   household: 'This node is not sharing its readings with the network.',
-  node: "this node is set to SHARE_LEVEL=off, so /issues answers only this machine or a request "
-    + "carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on "
-    + "your network read it.",
+  /* Only used when a 403 arrives with no `error` key. It says the shape of the refusal and stops
+     short of the remedy, because which remedy applies is the node's to say and not this file's. */
+  node: 'This node answers /issues only to the machine it runs on, or to a request carrying a token.',
   todo: 'Ask whoever set this node up to turn sharing on, or open this page on the machine the node '
     + 'runs on.',
 };
 
-function refusedPage() {
+function refusedPage(said) {
+  /* `said` is the node's own 403 body, captured at the fetch (see Refused()). Print it, never a copy:
+   * the node decides what advice its refusal carries — for a path no share level opens it says a token
+   * is the only way in, and a hardcoded paraphrase here sent that reader to change a setting and come
+   * back to the same refusal. REFUSED.node is the fallback for a 403 with no `error` key at all. */
   return `<div class="refused" data-component="refused" id="refused" data-ref="header">`
     + `<p class="big" data-role="sentence">${esc(REFUSED.household)}</p>`
-    + `<p class="why">${esc(REFUSED.node)}</p>`
+    + `<p class="why">${esc(said || REFUSED.node)}</p>`
     + `<p class="note">${esc(REFUSED.todo)}</p></div>`;
 }
 
@@ -3128,10 +3150,7 @@ window.PAI.register({
         });
       }).join('')
       + `</div></div>`
-      + `<div>${S.funnel ? funnel()
-        : `<p class="note" id="funnel" data-ref="asks-rows">This node counts what it asked and what `
-          + `was answered; it does not keep the stages in between, so there is no funnel to draw.</p>`
-      }</div></div>`;
+      + `</div>`;
   },
   wall(ctx) {
     const acts = ACTS();
@@ -3149,21 +3168,11 @@ window.PAI.register({
       + `</small></div></div>`;
   },
   notes(ctx) {
-    const f = ctx.S.funnel;
     return [
       { id: 'asks-what', text: 'An ask is a rule crossing a line and the node saying so to a '
         + 'person, on Telegram. It is the only thing on this page that is addressed to somebody; '
         + 'everything else is addressed to nobody in particular. "Nothing has been asked" and '
         + '"nothing to do" are two different sentences, and the ask strip says which one is true.' },
-      f ? { id: 'asks-funnel', text: `The funnel counts one thing four times: how many asks reached a `
-        + `phone, how many were acknowledged, how many led to something being done, how many closed `
-        + `— and how long each step took. ${f.source}. The 2×2 under it splits answered against `
-        + 'unanswered by whether the reading came back under the line, which is the only honest way '
-        + 'to ask whether acting on an ask made a difference.' }
-        : { id: 'asks-funnel', text: 'There is no funnel here. This node records that an ask was sent '
-          + 'and that somebody answered it, and nothing about the stages in between — reached, '
-          + 'acknowledged, deployed, closed. Drawing four stages from two facts would be inventing '
-          + 'the two in the middle.' },
       { id: 'asks-button', text: 'The green button is the one control on the page that is not the '
         + 'dial. It is a response, so it is green — the layer’s rule is that orange means what only '
         + 'the satellite knows and nothing else — and it is drawn in the ask strip and nowhere else.' },
@@ -3187,7 +3196,33 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, row, rhoRow, series, peerRow, unplaced } = window.K;
+const { esc, fmt, row, rhoRow, series, peerRow, unplaced, funnel, sign } = window.K;
+
+/* The care label: the refusals that hold across every stage, from ARCHITECTURE.md §7, drawn where the
+ * loop closes because a refusal is the last thing a reader should meet, not the first.
+ *
+ * It is copied text, and deliberately so — these five sentences are the architecture's, not the page's,
+ * and paraphrasing them here would make a sixth version of a promise that already has one home.
+ *
+ * SIGN DISCIPLINE. Each sign means its own sentence or there is no sign. `person` does not exist yet
+ * (it lands with prompt 3's sign commit), and the human row is the third refusal's whole subject, so
+ * that row draws its slot empty rather than borrowing `rho-closed` — which already means an answered
+ * ask twelve pixels higher in this same card, and would then mean two things in one place. */
+const REFUSALS = [
+  ['house', 'No raw readings leave the instance that recorded them.'],
+  ['cell', 'No cell is upgraded from mock or partial to live by aggregation.'],
+  ['', 'No agent dispatches without a human row in the actions ledger.'],
+  ['machine', 'No layer requires a cloud provider to function.'],
+  ['planet', 'No scale is skipped: a city aggregator is built from nodes, not declared from above.'],
+];
+
+function careLabel() {
+  return `<div class="care" data-component="careLabel" id="care" data-ref="rho">`
+    + `<p class="k">What this node will not do, at any stage</p>`
+    + REFUSALS.map(([sg, text]) =>
+      `<p class="rf"><span class="sg">${sg ? sign(sg) : ''}</span>${esc(text)}</p>`).join('')
+    + `</div>`;
+}
 
 window.PAI.register({
   id: 'measure', pack: 'core', stage: 'measure', order: 10,
@@ -3211,12 +3246,18 @@ window.PAI.register({
       })
       + row({ id: 'measure-rho', component: 'rhoValue', ref: 'rho',
         cols: 'minmax(0,210px) minmax(0,1fr) auto',
-        left: `<span class="who"><b>ρ</b><span class="m">answered ÷ asked</span></span>`,
-        line: `The one number this node reports about itself to anybody.`,
+        left: `<span class="who"><b>ρ reported</b><span class="m">answered ÷ asked`
+          + `</span></span>`,
+        /* Two numbers are specified (SPEC_rho §4) and one exists. ρ_observed needs a `recovery:`
+           block naming the metric and the threshold that would count as recovered, and no rule in the
+           core or any pack carries one — so the words say so. A 0.00 beside ρ would read as a node
+           that checked and found nothing, which is the opposite of what is true. */
+        line: `The one number this node reports about itself to anybody. ρ observed: not yet — `
+          + `no rule has said what recovery would look like.`,
         qty: [{ num: 'rho.value', value: r.rho == null ? null : fmt(r.rho, 2),
           cmp: `${r.acted} answered of ${r.alerts_act} asked in ${r.window_days} days` }],
       })
-      + `</div></div>`
+      + `</div>${funnel()}${careLabel()}</div>`
       + `<div>${series(hk, ISS[hk])}`
       + `${(S.issues.undeclared_slots || []).map(u => {
         const c = (ISS.water && ISS.water.contributions || []).find(x => x.slot === u.slot);
@@ -3229,7 +3270,25 @@ window.PAI.register({
       { id: 'measure-rho', text: `ρ is the share of asks answered — ${r.acted} of ${r.alerts_act} `
         + `in ${r.window_days} days here — and it is the one number a node reports about itself. It `
         + 'is drawn as a row of rings, answered first, because a row a person can count is a '
-        + 'measurement and a dial needle is a mood. Its definition is not this page’s to touch.' },
+        + 'measurement and a dial needle is a mood. Its definition is not this page’s to touch. A '
+        + 'second ρ is specified and does not exist: ρ observed would ask whether the reading came '
+        + 'back under the line, and no rule has yet said what its own line is, so the page prints '
+        + 'those words rather than a zero that would read as a node that looked and found nothing.' },
+      { id: 'funnel', text: 'The funnel counts one thing four times: how many asks the node sent, '
+        + 'how many were acknowledged, how many led to something being done, and how many stopped '
+        + 'coming back. Two of the four read zero here and each says why. Nobody has acknowledged '
+        + 'anything on this node — the phone’s button records that something was done, which skips '
+        + 'the middle stage — and that is a fact about the household, not a hole in the drawing. The '
+        + 'last stage is not typed by anyone: the node re-asks every rule on a cycle, so an ask '
+        + 'followed by a long silence from the same rule on the same sensor is the condition having '
+        + 'stopped being true. It says whether the loop closed, never how fast, which is why it is '
+        + 'the one stage with no time beside it.' },
+      { id: 'care', text: 'The five refusals are copied from the architecture, not written here, '
+        + 'because a promise repeated in a second place is a promise that can drift. They sit at the '
+        + 'end of the loop rather than the top of the page: a reader meets what this node does '
+        + 'first, and what it will not do once they have seen it. One row has no sign yet — there '
+        + 'is no person in the sign set, and borrowing the answered-ask ring would make that ring '
+        + 'mean two things in one card.' },
       { id: 'measure-day', text: 'The day is the headline issue’s own trace: the node supplies every '
         + 'value and the line, the page supplies only the box. A hole in the series is a hole in the '
         + 'line — a run of one reading is a dot, never nothing — and the text alternative beside the '
@@ -3978,7 +4037,7 @@ function wireNote(issues) {
 function bind(issues, health, rho) {
   window.WIRE_NOTE = wireNote(issues);
   window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
-    rho, funnel: issues.funnel || null, peer: issues.peer || null, fixture: FIXTURE || null };
+    rho, peer: issues.peer || null, fixture: FIXTURE || null };
   const geo = issues.geometry || {};
   window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
     asks: issues.asks || null,
@@ -4268,11 +4327,13 @@ function chrome(node, city, view) {
  * why the node's name and the nav are here at all — and every view draws the node's own sentence
  * about why. A blank would be the node lying about being broken, and a blank on the WALL is a black
  * shelf screen a household reads as a dead node. Both surfaces say it. */
+let SAID = '';        /* the node's own words from the 403 that refused the page */
+
 function drawRefused() {
   const el = document.getElementById('page');
   const v = (location.hash || '').replace(/^#/, '')
     || new URLSearchParams(location.search).get('view') || 'now';
-  const said = window.K.refusedPage();
+  const said = window.K.refusedPage(SAID);
   applyRegister(v);
   if (v === 'wall') {
     document.body.className = 'wall wallview';
@@ -4514,7 +4575,7 @@ function main() {
     if (window.WALL && window.WALL.start && STATE !== 'refused'
         && el.querySelector('#wall-lead')) window.WALL.start(ctx);
   } else if (STATE === 'refused') {
-    el.innerHTML = head() + `<div class="wrap">${refusedPage()}</div>`;
+    el.innerHTML = head() + `<div class="wrap">${refusedPage(SAID)}</div>`;
   } else if (VIEW === 'now' || VIEW === 'arrange') {
     ARRANGING = VIEW === 'arrange';
     el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, lead(), { only: want(NOW) })}</div>`
@@ -4922,6 +4983,7 @@ function startRefresh() {
 
 boot().then(() => { init(); route(); startRefresh(); }).catch(async e => {
   if (e && e.refused) {
+    SAID = e.refused;
     const h = await api('/health').catch(() => ({}));
     window.NODE_NAME = h.node; window.NODE_CITY = h.city;
     addEventListener('hashchange', drawRefused);
