@@ -100,6 +100,13 @@ RUNTIME = {
     "AGENT_ONLINE_MODEL": ("agent", "Online model", False, True, "e.g. claude-sonnet-4-6"),
     "AGENT_ONLINE_KEY":   ("agent", "Online model key", True, True, "The only thing that lets household data leave your network. Your choice."),
     "UI_LAYOUT":          ("node", "Dashboard layout", False, False, "Order and visibility of the dashboard's cards, as JSON. Managed by the dashboard's Arrange mode; blank restores the default."),
+    "UI_MODE":            ("node", "How much of the page is shown", False, False,
+                           "simple = one sentence per stage, written by this node, and nothing else: for a phone, "
+                           "a visitor, or anybody who wants the answer rather than the working. advanced (default) = "
+                           "every section. learn = the advanced page with a question mark at each part, which opens "
+                           "the node's own documentation for it. This is what the page opens as; anyone reading it "
+                           "can switch from the header, and their choice is remembered by their browser and changes "
+                           "nothing for anybody else."),
     "MAP_TILES":          ("node", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
     "STATIONS_SHOWN":     ("node", "Other people's stations listed", False, False,
                            "How many of the neighbourhood's stations the dashboard lists, nearest first. Default 3; "
@@ -126,7 +133,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
@@ -141,6 +148,7 @@ CHOICES = {
     "REPORT_EVERY":  ("3", "4", "6", "8", "12", "24"),      # each divides 24, so the rhythm does not walk round the clock
     "REPORT_ANCHOR": tuple(str(h) for h in range(24)),
     "REPORT_DEPTH":  ("auto", "brief", "standard", "deep"),
+    "UI_MODE":       ("simple", "advanced", "learn"),
     # private first because it is the default and because the order is what every surface offers: `describe()`
     # publishes this tuple and the dashboard's select and `planetai config` both walk it as given.
     "AGENT_PREFER":  ("private", "fallback", "strongest"),   # a typo here would fail open: not-"private" sends household data off the network

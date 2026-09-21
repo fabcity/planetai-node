@@ -10,7 +10,7 @@
    #20388D on ink #171717 = 1.72:1 — it may NEVER appear inside it.
    #F9F5F2 at 62% over ink #171717 composites to #A3A19F = 6.96:1, which is the wall credit lines.
 
-   11 OPEN items are carried as comments at the token each one affects. */
+   12 OPEN items are carried as comments at the token each one affects. */
 
 @import "tokens.css";
 
@@ -122,6 +122,10 @@
 
   /* every number, unit, timestamp, cell id and chip label · rho-row.svg · Decision 0 */
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* the monument numeral on the node's lead, and nothing else · node dashboard · R21 */
+  /* OPEN: the monument numeral is the one figure on the page big enough to be a piece of typography rather than a reading, and nothing records whether it should stay in the mono or be set in Funnel Sans like the headline beside it. The token exists so the answer is one line either way — using var(--mono) until settled */
+  --num-face: var(--mono);
 
   /* a reading lands: the fade · node dashboard · R6 */
   --motion-reading-fade: 120ms;

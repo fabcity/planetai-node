@@ -19,9 +19,19 @@ five queries from five tables — `stats`, `observations`, `alerts`, `actions`, 
 missing any of them is refused out loud since v0.67. `tests/test_issues_engine.py` checks every file in that
 directory carries all five, so a fixture that cannot render cannot be committed there.
 
-Today: `node1-2026-09-06.json` — node #1 as it stood on 6 September 2026 at 14:08 UTC. Its own `provenance`
-block says which parts were read from the API verbatim, which were transcribed off the capture's screenshot,
-and which had to be reconstructed.
+Two of them:
+
+`node1-2026-09-06.json` — node #1 on 6 September 2026 at 14:08 UTC. Hand-assembled: its own `provenance`
+block says which parts were read from the API verbatim, which were transcribed off the capture's
+screenshot, and which had to be reconstructed. **It is still what the visual gate measures against**,
+because `tests/visual/gate.sh`'s `HEIGHT_SHIPPED` and `EMPTY_SHIPPED` numbers were measured from it and a
+baseline compared against a different node is not a baseline. Prompt 7 re-measures and moves them.
+
+`node1-2026-09-21.json` — node #1 on 21 September 2026 at 13:56 WITA, running v0.67, and **the first
+snapshot `planetai snapshot` has ever produced that replays**. Fourteen endpoints, all five tables the
+engine reads: 96 stats, 51 observations, 200 alerts, 31 actions, 2,548 hourly buckets. It replays with a
+full act ledger and a real day of series, which is exactly what every snapshot between these two dates
+could not do.
 
 **A wire-shape fixture lives beside this README**, in `docs/design/fixtures/`. It is evidence of what the node
 answered on a day, read by people and by design sessions on a laptop; it is never served and never rendered,

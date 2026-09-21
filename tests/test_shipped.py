@@ -325,7 +325,13 @@ assert '"cell": _cell()' in main and "ground.facts(" in main and "ground.svg(" i
 # code that draws today: the stamp is a component, it is drawn on both surfaces from one piece of
 # code, and its caption is /health's own cell rather than anything the page worked out.
 assert 'data-component="stamp"' in gui, "gui: the cell stamp"
-assert "${asof()}${window.K.stamp()}" in gui, "gui: the lead no longer draws the cell stamp"
+# The two used to be asserted as one adjacent string. They are not adjacent since
+# 21 September 2026: the lead's stamp line carries the open-ask reference between them,
+# because the ask strip moved to Act and T1 still wants an ask on the first screen. What
+# this guards is that the LEAD draws the stamp at all — one stamp(), called from here and
+# from the wall — not the order of the line it sits in.
+assert "${window.K.stamp()}" in gui, "gui: the lead no longer draws the cell stamp"
+assert "${asof()}" in gui, "gui: the lead no longer draws its as-of"
 assert "${K.asof()}${K.stamp()}" in gui, "gui: the wall no longer draws the cell stamp"
 assert "const c = (S.health || {}).cell;" in gui, "gui: the caption is the cell's own, from /health"
 assert "const said = c ? c.caption : '';" in gui, "gui: and a node with no cell prints nothing"

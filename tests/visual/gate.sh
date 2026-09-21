@@ -144,3 +144,9 @@ for (const f of fails) console.log('FAIL', f);
 console.log(fails.length ? `${fails.length} regression(s)` : 'ok');
 process.exit(fails.length ? 1 : 0);
 JS
+
+# A page that scrolls sideways on a phone is the defect a household reports as "it is broken", and
+# every check above can be green while it is true: each box the right size, the document wider than
+# the screen. This asks the page itself, in all 108 combinations of view, width, mode and register.
+# It is last because it is the slowest thing here by a distance — a browser per combination.
+node tests/visual/measure.mjs overflow

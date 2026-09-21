@@ -453,14 +453,22 @@ async function open(job) {
       else if (u.pathname.startsWith('/static/')) file = u.pathname.slice(8);
     }
     if (file) {
-      /* The node serves /static/<NAME> from an allowlist that takes a name and not a path, so the
-       * three faces live under app/static/fonts/ and are asked for flat. Serving the directory
-       * layout instead 404s them and the page silently falls back: measured, Funnel Sans and
-       * Figtree both `document.fonts.check` false, and every cap height then belongs to
-       * system-ui rather than to the face the layer names. */
-      const p = fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
-        : path.join(STATIC, 'fonts', file);
-      if (fs.existsSync(p)) return route.fulfill({
+      /* The node serves /static/<NAME> from an allowlist that takes a NAME and not a path — a path
+       * parameter reaching the filesystem on a port open to a household LAN is the usual way that
+       * goes wrong. So the four faces live under app/static/fonts/ and are asked for flat, and this
+       * resolves a flat name into that directory the way the node's allowlist does.
+       *
+       * AND IT REFUSES A PATH, since 21 September 2026. It used to serve the directory layout too,
+       * so `/static/fonts/x.woff2` — which 404s on every real node — resolved here and every render
+       * in this repo showed a page with fonts the node could not load. That is how JetBrains Mono
+       * went four months declared only in planetai-theme.css at `fonts/jetbrains-mono-latin.woff2`,
+       * 404ing on hardware, with every number in ui-monospace, and no render ever saying so. A rig
+       * more permissive than the thing it measures reports a page that does not exist. */
+      const p = file.includes('/') ? null
+        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
+          : path.join(STATIC, 'fonts', file);
+      if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
+      if (p && fs.existsSync(p)) return route.fulfill({
         status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
     }
@@ -477,6 +485,12 @@ async function open(job) {
   const q = [];
   if (job.state === 'populated') q.push(`fixture=${FIXTURE}`);   // 'live' reads the node itself
   if (job.dark) q.push('theme=dark');
+  /* The page has three modes and `?mode=` selects one without remembering it, which is exactly what
+     a measuring rig wants: no localStorage to clear between renders, and the same URL a person can
+     be sent. A job may name one; PAI_MODE sets it for a whole run. */
+  const uiMode = job.mode || process.env.PAI_MODE;
+  if (uiMode) q.push(`mode=${uiMode}`);
+  if (job.register) q.push(`register=${job.register}`);
   await page.goto(base + '/' + (q.length ? '?' + q.join('&') : ''), { waitUntil: 'networkidle' });
 
   // ?theme=dark boots straight to the wall and body.wallview hides the header, so there is no nav
@@ -781,7 +795,7 @@ async function stall(name) {
     }
     if (file) {
       const p = path.join(STATIC, file);
-      if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
+      if (p && fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
     }
     // the document and its companions are not API calls and must not wait on the gate
@@ -1405,7 +1419,13 @@ const ROLES = {
    * selector ending in a bare tag matched the header's own <b>. */
   numeral: ['[data-role="numeral"]', 'b.mono'],
   state: ['[data-component="kicker"] .state', '[data-role="state"]', '.hero .k .state', '.wall .k .state'],
-  ask: ['[data-component="askStrip"]', '[data-role="ask"]', '.askstrip'],
+  /* `[data-role="ask"]` FIRST, since 21 September 2026. role() returns the first selector with any
+   * hit at all and stops, so while the ask strip lived in the lead the component name found it and
+   * the chain never went further. The strip is in Act now and the lead carries a line saying how
+   * many are open and where they are; a component-name match therefore finds Act's strips, which
+   * are correctly far below the fold, and reports the first screen as having no ask on it. The
+   * explicit role is the marker put there to be found, so it is asked first. */
+  ask: ['[data-role="ask"]', '[data-component="askStrip"]', '.askstrip'],
   asof: ['[data-role="asof"]', '.asof', '#headprov .asof', '.wall .foot'],
   index: ['[data-component="index"]', '[data-role="index"]', '#index', '.index'],
   indexRow: ['[data-component="indexRow"]', '[data-role="index-row"]', '.index .row'],
@@ -1755,13 +1775,13 @@ async function press() {
   const h = await open(job);
   const read = () => h.page.evaluate(() => ({
     url: location.search,
-    dialOn: (document.querySelector('#dial a.on') || {}).textContent || null,
+    railOn: (document.querySelector('#rail a.on') || {}).textContent || null,
     grain: (document.getElementById('grain-line') || {}).textContent || null,
     heads: [...document.querySelectorAll('[data-component="cellGroup"]')].map(e => e.textContent.trim()),
   }));
   const before = await read();
   const moved = await h.page.evaluate(() => {
-    const a = document.querySelector('#dial a:not(.on)');
+    const a = document.querySelector('#rail a:not(.on)');
     if (!a) return false;
     a.click();
     return true;
@@ -1770,15 +1790,74 @@ async function press() {
   await h.page.waitForTimeout(700);
   const after = await read();
   const same = k => JSON.stringify(before[k]) === JSON.stringify(after[k]);
-  const dead = ['dialOn', 'grain', 'heads'].filter(same);
+  const dead = ['railOn', 'grain', 'heads'].filter(same);
   const fails = [];
   if (before.url === after.url) fails.push('the URL did not change');
   if (dead.length) fails.push(`the press changed the URL and nothing else: ${dead.join(', ')} identical`);
   for (const f of fails) console.log('FAIL press:', f);
-  if (!fails.length) console.log(`  press: ${before.dialOn} -> ${after.dialOn}, `
+  if (!fails.length) console.log(`  press: ${before.railOn} -> ${after.railOn}, `
     + `${before.heads.length} cell group(s) -> ${after.heads.length}, and the grain line moved`);
   await h.browser.close();
   process.exit(fails.length ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------ T-overflow
+ *
+ * A page that scrolls sideways on a phone is the defect a household reports as "it is broken", and
+ * it is invisible to every other check in this file: every box can be the right size and the
+ * document still be wider than the screen, because one `1fr` track floored at its max-content and
+ * pushed the rest along. So this asks the page itself, at the one width that matters and two that
+ * catch it early, in every combination of view, mode and register the page can be in.
+ *
+ * NOT IN `make test`, and the prompt that asked for it wanted it there. It cannot be: Playwright
+ * lives in planetai-design's node_modules, not this repo's, and tests/all must run on a node with
+ * neither — the same reason gate.sh is not in it. It runs in gate.sh, before shipping, which is
+ * where every other Playwright check in this repo runs. Raised for Tomas rather than either
+ * breaking CI or quietly not doing it.
+ *
+ *   node tests/visual/measure.mjs overflow            every combination
+ *   node tests/visual/measure.mjs overflow now wall   named views only
+ */
+const OVER_W = [390, 768, 1440];
+const OVER_V = ['now', 'historical', 'network', 'wall', 'arrange', 'setup'];
+const OVER_M = ['simple', 'advanced', 'learn'];
+const OVER_R = ['paper', 'dark'];
+
+async function overflow(views) {
+  const want = views && views.length && views[0] !== 'all' ? views : OVER_V;
+  const bad = [];
+  let n = 0;
+  for (const view of want) {
+    for (const w of OVER_W) for (const mode of OVER_M) for (const reg of OVER_R) {
+      const job = { name: `overflow_${view}_${w}_${mode}_${reg}`, view, w,
+        state: 'populated', mode, register: reg };
+      const { browser, page } = await open(job);
+      try {
+        const got = await page.evaluate(() => ({
+          scroll: document.documentElement.scrollWidth,
+          client: document.documentElement.clientWidth,
+        }));
+        n += 1;
+        /* One pixel of slack: a sub-pixel layout can report 390.5 as 391 and that is a rounding
+           artefact, not a page a thumb can push sideways. Two is a bug. */
+        if (got.scroll > got.client + 1) {
+          bad.push({ view, w, mode, reg, over: got.scroll - got.client, scroll: got.scroll });
+        }
+      } finally { await browser.close(); }
+    }
+    process.stderr.write(`  ${view} \u00b7 ${OVER_W.length * OVER_M.length * OVER_R.length} combinations\n`);
+  }
+  if (!bad.length) {
+    console.log(`  no horizontal overflow in ${n} combinations `
+      + `(${want.length} views \u00d7 ${OVER_W.join('/')} \u00d7 ${OVER_M.join('/')} \u00d7 paper/dark)`);
+    return;
+  }
+  console.error(`  ${bad.length} of ${n} combinations scroll sideways:`);
+  for (const b of bad) {
+    console.error(`    ${b.view} @ ${b.w} \u00b7 ${b.mode} \u00b7 ${b.reg}`
+      + ` \u2014 document is ${b.scroll}px, ${b.over}px past the viewport`);
+  }
+  process.exit(1);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -1792,6 +1871,7 @@ else if (cmd === 'targets') aTargets();
 else if (cmd === 'audit') await audit(rest.length ? rest : ['all']);
 else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
+else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|steps|stall|press|sheets|header|targets|audit|analyse|list');
+else { console.error('usage: measure.mjs render|shots|steps|stall|press|sheets|header|targets|audit|overflow|analyse|list');
   process.exit(2); }

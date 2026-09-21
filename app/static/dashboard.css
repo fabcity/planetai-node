@@ -310,47 +310,170 @@ header .wrap { display: flex; align-items: center; justify-content: space-betwee
 .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0 }
 .brand b { font: 800 17px var(--fc-font-display); letter-spacing: -.02em }
 .brand span { font-size: 13px; color: var(--mute) }
+/* The tabs are buttons and have been since the shell was rewritten; these rules still said `span`,
+   so every tab fell back to the base button at line ~669 and drew its own box inside the nav's box.
+   One border around the group and one hairline between, which is what the rules always meant. */
 nav { display: flex; border: 1px solid var(--ink) }
-nav span { padding: 7px 14px; font: 500 13.5px var(--fc-font-body); color: var(--mute);
-  border-right: 1px solid var(--ink); white-space: nowrap }
-nav span:last-child { border-right: 0 }
-nav span.on { background: var(--ink); color: var(--ground) }
+nav span, nav button { padding: 7px 14px; font: 500 13.5px var(--fc-font-body); color: var(--mute);
+  background: none; border: 0; border-right: 1px solid var(--ink); white-space: nowrap }
+nav span:last-child, nav button:last-child { border-right: 0 }
+nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-weight: 700 }
 
-/* THE DIAL. Eleven stops, two lines across it, and the whole page hanging off where it stands. */
-.dialwrap { position: sticky; top: 0; z-index: 3; background: var(--ground);
+/* A segmented control: the register here, and the mode beside it. Same anatomy as the nav, set in
+   the mono at label size because it names a state of the page rather than a place in it. */
+.seg { display: flex; border: 1px solid var(--ink) }
+.seg button { padding: 7px 12px; font: 500 11px var(--mono); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mute); background: none; border: 0;
+  border-right: 1px solid var(--ink); white-space: nowrap }
+.seg button:last-child { border-right: 0 }
+.seg button.on { background: var(--ink); color: var(--ground); font-weight: 700 }
+
+/* THE DIGEST — simple mode's whole answer: four stages, one sentence each, written by the node.
+   Four tracks on a wide screen and one on a narrow one; `minmax(0, 1fr)` because a long sentence in
+   an `auto` track widens the page instead of wrapping inside it. */
+.digest { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--ink); margin-block: 22px }
+.digest .d { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--ink) }
+.digest .d:last-child { border-right: 0 }
+.digest .d .n { display: inline-block; vertical-align: middle; width: 20px; height: 20px;
+  margin-right: 8px; border: 1px solid var(--ink); font: 800 11px var(--mono); line-height: 18px;
+  text-align: center }
+.digest .d b { vertical-align: middle; font: 700 17px var(--fc-font-display); letter-spacing: -.01em }
+.digest .d p { margin: 8px 0 0; font: 400 14px var(--fc-font-body); line-height: 1.45 }
+@media (max-width: 860px) {
+  .digest { grid-template-columns: minmax(0, 1fr) }
+  .digest .d { border-right: 0; border-bottom: 1px solid var(--ink) }
+  .digest .d:last-child { border-bottom: 0 }
+}
+
+/* THE GRAIN RAIL. Eleven stops, the top instrument on Now, and the whole page hanging off where it
+   stands. Design log R14.
+
+   THE ZONES ARE TEXTURE, NOT HUE. `may_leave` was a 12% wash of the cells blue, which spent the one
+   colour that means "a cell" on a second meaning, vanished for a reader who cannot separate blue
+   from grey, and went white on a printed plate. It is a dot screen now. `finer_than_published` was
+   already a strike-through and stays one. Plain is plain. */
+.railwrap { position: sticky; top: 0; z-index: 3; background: var(--ground);
   border-bottom: 1px solid var(--ink); padding-block: 10px }
-.dial { display: flex; border: 1px solid var(--ink); overflow: hidden }
-.dial a { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; text-align: center; text-decoration: none;
-  color: var(--mute); border-right: 1px solid var(--hair); display: grid; gap: 2px }
-.dial a:last-child { border-right: 0 }
-.dial a .r { font: 700 13px var(--mono) }
-.dial a .s { font: 500 9.5px var(--mono); letter-spacing: .04em; white-space: nowrap;
+.rail { display: flex; border: 1px solid var(--ink); overflow: hidden }
+.rail a { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; text-align: center; text-decoration: none;
+  color: var(--mute); border-right: 1px solid var(--hair); display: grid; gap: 2px;
+  position: relative }
+.rail a:last-child { border-right: 0 }
+.rail a .r { font: 700 13px var(--mono) }
+.rail a .s { font: 500 9.5px var(--mono); letter-spacing: .04em; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis }
-.dial a.on { background: var(--ink); color: var(--ground) }
-.dial a.leaves { background: color-mix(in srgb, var(--cells) 12%, transparent) }
-.dial a.leaves.on { background: var(--ink) }
-.dial a.toofine .r { text-decoration: line-through }
-.dialkey { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font: 500 10.5px var(--mono);
+.rail a.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
+  background-size: 6px 6px }
+/* The dots run under the text, so both lines carry the ground with them to stay legible on it. */
+.rail a.leaves .r, .rail a.leaves .s { background: var(--ground); width: max-content; max-width: 100%;
+  margin-inline: auto; padding-inline: 4px }
+.rail a.on { background: var(--ink); color: var(--ground); background-image: none }
+.rail a.on .r, .rail a.on .s { background: none; color: var(--ground) }
+.rail a.toofine .r { text-decoration: line-through; text-decoration-thickness: 2px }
+/* The picked stop says so twice: inverted, and pointed at. */
+.rail a.on .r::before { content: "\25c2\00a0"; font-weight: 400 }
+.rail a.on .r::after { content: "\00a0\25b8"; font-weight: 400 }
+
+/* THE RULE. Eleven equal boxes say the step from 7 to 8 is the step from 11 to 12; it is about the
+   same factor but on numbers three orders of magnitude apart. This puts each grain where it falls
+   between 10 m and 200 km. Hidden below 860, where it would draw a distinction finer than its
+   pixels. Decorative in the accessibility tree: every figure in it is already in the rail above. */
+.ruler { position: relative; height: 26px; margin: 6px 4px 0 }
+.ruler .line { position: absolute; inset: 0 0 auto; height: 9px;
+  border-bottom: 1px solid var(--hair) }
+.ruler .line i { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--mute) }
+.ruler .line i.on { height: 9px; width: 2px; background: var(--ink) }
+.ruler .marks { position: absolute; inset: 11px 0 auto; height: 14px }
+.ruler .marks span { position: absolute; transform: translateX(-50%); white-space: nowrap;
+  font: 500 9px var(--mono); letter-spacing: .04em; color: var(--mute) }
+@media (max-width: 860px) { .ruler { display: none } }
+
+.railkey { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font: 500 10.5px var(--mono);
   letter-spacing: .06em; color: var(--mute) }
-.dialkey i { display: inline-block; width: 14px; height: 9px; border: 1px solid var(--ink);
+.railkey code { font: inherit; color: var(--ink) }
+.railkey i { display: inline-block; width: 14px; height: 9px; border: 1px solid var(--ink);
   vertical-align: -1px; margin-right: 5px }
-.dialkey i.leaves { background: color-mix(in srgb, var(--cells) 12%, transparent) }
-.dialkey i.fine { border-style: dashed }
+.railkey i.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
+  background-size: 5px 5px }
+.railkey i.fine { border-style: dashed }
 
 .lead { padding: clamp(14px, 2vw, 22px) 0 clamp(10px, 1.6vw, 16px); display: grid; gap: 10px }
+/* On a phone the lead is one column of six blocks, so its gaps are 50px of the first screen and
+   the as-of line was landing 12px under the fold — T1's fifth leg, for the sake of spacing. */
+@media (max-width: 520px) { .lead { gap: 7px } .stack.meters .col { padding: 4px 0 } }
 .lead .big { font: 700 clamp(1.35rem, 2.6vw, 2.1rem)/1.18 var(--fc-font-display);
   letter-spacing: -.03em; max-width: 26ch; text-wrap: balance }
-.lead .big b { font-family: var(--mono); font-weight: 700; font-size: clamp(2.4rem, 5.2vw, 4rem);
+/* THE MONUMENT NUMERAL. One figure on the page big enough to stop being a number and start being
+   typography — 132 px at the top of the clamp, which is design-log R21. `--num-face` is the layer's
+   token for which face it is set in; the fallback keeps it on the mono on a node whose frozen layer
+   predates the token, and resolves to exactly the same family either way. O13 in the layer is
+   whether it should stay in the mono at all or be set in Funnel Sans beside the sentence. */
+.lead .big b { font-family: var(--num-face, var(--mono)); font-weight: 700;
+  font-size: clamp(2.4rem, 7.4vw, 8.25rem);   /* 107px at 1440; 132 at the 1780 the clamp tops out */
   line-height: .78; letter-spacing: -.04em; vertical-align: -.06em; margin: 0 .05em }
+
+/* THE BRACKET METERS — the Stack's mini variant, design-log R15. Sixteen cells against one scale
+   shared by the four distances, and the line as a tick at the same x on every row, so under it and
+   over it is a thing you see instead of a thing you work out. The anatomy is the Stack's; only the
+   value's drawing is different, which is why this is a variant and not a fifth card kind. */
+/* Every property the four-column base sets has to be answered here, not just `display`: the cascade
+   is per property, so a rule that changed only display and gap left `repeat(4, minmax(0, 1fr))`
+   standing and drew four meters side by side, overprinting each other. */
+.stack.meters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0;
+  border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair) }
+.stack.meters .col { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) auto;
+  gap: 4px 10px; align-items: center; padding: 6px 0; border-right: 0;
+  border-top: 1px dotted var(--hair) }
+.stack.meters .col + .col { padding-left: 0 }
+.stack.meters .col:first-child { border-top: 0 }
+.stack.meters .col .k { font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.stack.meters .col .v { display: flex; align-items: center; gap: 8px; min-width: 0;
+  margin-top: 0; white-space: nowrap }
+.stack.meters .col .v .num { font: 700 15px var(--mono) }
+.stack.meters .col .v small { font: 500 10px var(--mono); color: var(--mute) }
+/* ONE LINE PER DISTANCE, which is what the sketch draws and what makes four of these a glance
+   rather than a section. The full Stack — comparison and provenance visible per column — is still
+   drawn wherever a Stack is drawn; this is the mini variant in the lead, and four rows of four
+   lines each came to 356 px and pushed the as-of line off the first screen. T1's fifth leg.
+   The comparison is not lost: `data-cmp` is an attribute on every numeral and T4 reads it there.
+   It is only not SHOWN — except where there is no reading, when the words are the whole point. */
+.stack.meters .col .cmp { display: none }
+.stack.meters .col .cmp.none { display: block; grid-column: 2 / -1; font: 500 10.5px var(--mono);
+  letter-spacing: .02em; color: var(--mute); font-style: italic }
+.stack.meters .col .src, .stack.meters .col .pill { display: none }
+.meter { display: block; width: 100%; height: 11px; min-width: 0; overflow: visible }
+.meter .on { fill: var(--ink) }
+.meter .off { fill: none; stroke: var(--hair); stroke-width: .9 }
+.meter .line { fill: var(--signal-worse) }
+
+/* Where the open asks are, said once, in the stamp line the lead ends on. */
+.askref { font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink) }
+.askref.none { color: var(--mute); border-bottom: 0 }
+.askref b { font-weight: 700 }
+/* The kicker and the issue's mark share one row: the kicker reads left, the pictogram sits at the
+   end of it, and the map column beside them is where the space came from. Flex rather than two grid
+   items in one area, because a long kicker and a right-aligned mark in the same cell overlap. */
+.leadhead { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  min-width: 0 }
+.leadhead > .k { min-width: 0 }
+.pix { flex: 0 0 auto; width: 66px; height: 48px; color: var(--ink) }
+@media (max-width: 520px) { .pix { width: 48px; height: 35px } }
 .lead .why { max-width: 54ch; font-size: 14.5px }
 .lead .whenline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap }
 @media (min-width: 900px) {
   .lead { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    grid-template-areas: "k g" "s g" "w g" "n g" "a g" "t g"; gap: 9px clamp(20px, 3vw, 40px);
+    grid-template-areas: "k g" "s g" "w g" "m g" "n g" "t g"; gap: 9px clamp(20px, 3vw, 40px);
     align-items: start }
-  .lead > .k { grid-area: k } .lead > .big { grid-area: s }
-  .lead > .why { grid-area: w } .lead > .why.grainline { grid-area: n }
-  .lead > .ask { grid-area: a } .lead > .whenline { grid-area: t }
+  .lead > .leadhead { grid-area: k } .lead > .big { grid-area: s }
+  /* `.why` matched the why line AND the headline rule, which both landed in `w` and printed on top
+     of each other at every width over 900. The rule is a span inside the why line now, so there is
+     one element here and nothing to collide with. `a` was the ask strip's; the strip is in Act and
+     the meters take the row. */
+  .lead > .why { grid-area: w } .lead > .stack { grid-area: m }
+  .lead > .why.grainline { grid-area: n } .lead > .whenline { grid-area: t }
   .lead > .mapwrap { grid-area: g; align-self: start }
 }
 
@@ -422,7 +545,7 @@ table.tbl td.mono { white-space: nowrap; font-family: var(--mono) }
 table.tbl tr.picked td { font-weight: 700 }
 table.tbl tr.flat td { color: var(--mute) }
 
-body.wall header, body.wall .dialwrap, body.wall .band { display: none }
+body.wall header, body.wall .railwrap, body.wall .band { display: none }
 /* The way out of the wall. Quiet until it is wanted: a wall is looked at from three metres and
    read by nobody standing at the keyboard, so the control sits in the corner at low contrast and
    comes up to full on hover and on focus. Never hidden — a door that only appears once you know
@@ -763,8 +886,30 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip-path: inset(50%); white-space: nowrap; border: 0 }
 h1.brand { font: inherit }
-.tblwrap { overflow-x: auto }
+/* `min-width: 0` is what makes `overflow-x: auto` mean anything here. A grid or flex child floors
+   at its max-content width unless told otherwise, so a box that scrolls its contents still widened
+   the page to fit them: measured at 390, the table is 391px and the document came back 409. */
+.tblwrap { overflow-x: auto; min-width: 0; max-width: 100% }
 .tblwrap:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+
+/* THE THREE BREAKPOINTS the shell reflows on. The page is fluid to the wrap's max width and then
+   centres; these are where its own furniture — the header, the tabs, the two segmented controls —
+   changes shape. Component-level rules elsewhere in this file still carry a scatter of their own
+   widths from before this was written; they are left to the prompts that redraw those components,
+   and the overflow gate in tests/visual/measure.mjs covers all of them either way. */
+@media (max-width: 1180px) {
+  header .wrap { row-gap: 10px }
+}
+@media (max-width: 860px) {
+  /* Six tabs are 429px on one row and the viewport is 390. They wrap, and a wrapped row needs its
+     own bottom hairline or the two rows read as one block with a gap in it. */
+  nav { flex-wrap: wrap }
+  nav span, nav button { flex: 1 1 auto; padding: 7px 10px }
+}
+@media (max-width: 520px) {
+  nav span, nav button { padding: 6px 8px; font-size: 12.5px }
+  .seg button { padding: 6px 9px; font-size: 10px }
+}
 
 /* One column, definite, below the width the lead splits in two.
  *

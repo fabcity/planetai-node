@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- 2026-09-21 — **The numbers on the page are in the typeface they were meant to be in.** Every figure
+  the dashboard shows — readings, the grain table, the as-of, the cell id — is set in JetBrains Mono,
+  which the node carries so the page works on a network with no way out. It has never loaded. The one
+  place that asked for it asked by a path, and the node serves its assets by name, so the request
+  404ed and every number fell back to whatever the machine reading it calls monospace.
+
+  Nothing about the numbers changes. They will look slightly different, and line up the way they were
+  drawn to.
+
 ## v0.67 — 2026-09-21 — the node says more about itself, and says it correctly
 
 Four changes, all of them about what this node reports rather than how the page draws it. Nothing

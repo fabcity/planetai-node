@@ -349,14 +349,27 @@ _rd = _js[_js.index("function redraw(opts)"):]
 _rd = _rd[:_rd.index("\n}") + 2]
 assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditionally — a press would not redraw the map"
 
-# THE DIAL IS NOW'S CONTROL. Drawn under every view's header until 18 September, where on Network,
-# Historical and Set up nothing on the page answered to it. Arrange keeps it: it draws Now's own
-# sections through want(NOW), so taking it away there left seven of them — the ground, the station
-# groups, the claims, the grain and the grain line — pointing at a control that was not on the page.
-assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="dialwrap"' in _js, \
-    "the dial is no longer drawn for Now and Arrange, or is drawn for every view again"
+# THE RAIL IS NOW'S CONTROL. It was the dial, drawn under every view's header until 18 September,
+# where on Network, Historical and Set up nothing on the page answered to it. Arrange keeps it: it
+# draws Now's own sections through want(NOW), so taking it away there left seven of them — the
+# ground, the station groups, the claims, the grain and the grain line — pointing at a control that
+# was not on the page. Renamed to the rail on 21 September when it became the top instrument (design
+# log R14); the wall keeps its own dial, which is a different control on a different surface.
+assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="railwrap"' in _js, \
+    "the rail is no longer drawn for Now and Arrange, or is drawn for every view again"
 assert re.search(r"const ref = 'grain-line';", _js), \
-    "the dial's link out is back to being chosen per view; only Now draws it now"
+    "the rail's link out is back to being chosen per view; only Now draws it now"
+# The zones are texture, not hue (design log R14). The cells blue has one meaning — a cell — and a
+# 12% wash of it for "may leave this machine" spent it on a second, vanished for a reader who cannot
+# separate blue from grey, and went white on a printed plate.
+assert not re.search(r"\.rail a\.leaves\s*\{[^}]*--cells", _css), \
+    "the rail's may-leave zone is back to a wash of the cells blue; it is a dot screen"
+assert re.search(r"\.rail a\.leaves\s*\{[^}]*radial-gradient", _css), \
+    "the rail's may-leave zone has lost its texture, so the three zones are two"
+assert 'data-component="rail"' in _js and 'data-kind="row"' in _js, \
+    "the rail no longer declares itself a component of a card kind the page is held to"
+assert 'data-ref="dial"' not in _js, \
+    "something still points at a component called dial; on Now it is the rail, and T5 counts orphans"
 
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
@@ -426,6 +439,83 @@ assert "chrome(" in _refused, "a refused reader cannot reach the other views: th
 # and a refused page never reaches the lead at all.
 assert re.search(r"S\.fixture \? pill\('cached'", _js), \
     "the lead's provenance pill no longer follows whether this is a fixture; it said `live` over a snapshot"
+
+# --- the mode, read the way MAP_TILES was not ------------------------------------------------------------------
+#
+# UI_MODE decides whether the page draws every section or four sentences, so a page that cannot read
+# it opens in the wrong one for every household that set it. That is exactly the MAP_TILES bug forty
+# lines up: GET /settings is describe() — {unlocked, runtime: [{key, value, ...}], bootstrap: [...]}
+# — never a flat map, and a proximity check would pass while `window.SETTINGS.UI_MODE` was forever
+# undefined. So this runs the page's own mode() against that endpoint's real body.
+#
+# The precedence is the other half: `?mode=` for the rig and for a link one person sends another,
+# then this browser's own choice, then what the household set the node to. A reader switching must
+# not rewrite the node, and the node must not overrule a reader who has switched.
+if shutil.which("node"):
+    _mode_js = "\n".join((
+        _lift(r"const MODE_KEY = '[^']*';", "MODE_KEY"),
+        _lift(r"const MODES = \[.*?\];", "MODES"),
+        _lift(r"const isMode = .*?;", "isMode()"),
+        _lift(r"function mode\(\) \{.*?\n\}", "mode()"),
+    ))
+    _mode_bodies = {}
+    _mb = os.environ.get("UI_MODE")
+    for _v in ("simple", "learn", "", "sideways"):
+        os.environ["UI_MODE"] = _v
+        _settings._cache["at"] = 0.0
+        _mode_bodies[_v or "unset"] = _settings.describe(unlocked=False, public=_settings.PUBLIC)
+    os.environ.pop("UI_MODE", None) if _mb is None else os.environ.__setitem__("UI_MODE", _mb)
+    _settings._cache["at"] = 0.0
+
+    _cases = {
+        # name                 node setting   this browser   the URL
+        "node_simple":        ("simple",      None,          ""),
+        "node_learn":         ("learn",       None,          ""),
+        "node_unset":         ("unset",       None,          ""),
+        "node_garbage":       ("sideways",    None,          ""),
+        "browser_overrides":  ("simple",      "learn",       ""),
+        "url_overrides_both": ("simple",      "learn",       "?mode=advanced"),
+        "url_garbage":        ("simple",      None,          "?mode=sideways"),
+        "storage_blocked":    ("learn",       "THROW",       ""),
+    }
+    _prog = (_mode_js + "\nconst B = " + json.dumps(_mode_bodies)
+             + ";\nconst C = " + json.dumps(_cases) + ";\nconst out = {};\n"
+             + "for (const [name, [setting, mine, search]] of Object.entries(C)) {\n"
+             + "  globalThis.window = { SETTINGS: B[setting] };\n"
+             + "  globalThis.location = { search };\n"
+             + "  globalThis.localStorage = mine === 'THROW'\n"
+             + "    ? { getItem() { throw new Error('site data blocked'); } }\n"
+             + "    : { getItem: k => (k === MODE_KEY && mine !== null ? mine : null) };\n"
+             + "  try { out[name] = mode(); } catch (e) { out[name] = 'THREW: ' + e.message; }\n"
+             + "}\nconsole.log(JSON.stringify(out))")
+    _m = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True,
+                                   check=True).stdout)
+
+    assert _m["node_simple"] == "simple", \
+        f"UI_MODE must reach the page through describe()'s runtime rows, not a flat map: {_m}"
+    assert _m["node_learn"] == "learn", f"every value the setting allows must arrive: {_m}"
+    assert _m["node_unset"] == "advanced", \
+        f"a node that never set it opens on the whole page, not on four sentences: {_m}"
+    assert _m["node_garbage"] == "advanced", \
+        f"an unreadable setting is the default, never a blank page: {_m}"
+    assert _m["browser_overrides"] == "learn", \
+        f"a reader who switched keeps their choice over the node's: {_m}"
+    assert _m["url_overrides_both"] == "advanced", \
+        f"?mode= is what the rig and a shared link use, and it wins: {_m}"
+    assert _m["url_garbage"] == "simple", \
+        f"a nonsense ?mode= falls through to the node rather than to the default: {_m}"
+    assert _m["storage_blocked"] == "learn", \
+        f"a browser with site data blocked still renders; it just cannot remember: {_m}"
+
+# The digest is drawn in simple mode and the node writes it. Both halves matter: a page that
+# composed its own four sentences would be the renderer making a claim about the household's data.
+assert "function digest(ctx)" in _js, "dashboard.js no longer draws the digest"
+assert re.search(r"const d = \(ctx\.S\.issues \|\| \{\}\)\.digest", _js), \
+    "the digest is no longer READ from /issues — if the page is composing those sentences, stop"
+assert re.search(r"simple \? digest\(ctx\) : ''", _js), \
+    "simple mode no longer draws the digest in place of the sections it hides"
+assert "level: 'advanced'" in _js, \
+    "the section contract lost its default level, so every section would vanish in simple mode"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "

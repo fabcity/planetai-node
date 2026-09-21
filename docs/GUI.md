@@ -6,6 +6,34 @@ One HTML file the node serves at `/`. No build step, no framework, no account.
 planetai ui        # the URLs, and the token that unlocks the settings pages
 ```
 
+## The six views
+
+They run in the order a question widens: where you stand, then the years behind it, then the network
+around it, then the wall, then the two pages that configure rather than report. The name in the URL has
+not changed, so any link you have saved still lands where it did.
+
+| tab | URL | what it answers |
+|---|---|---|
+| **Now** | `/` | What is the air, the heat, the land and the coast doing here, this hour? |
+| **Historical** | `#historical` | What has this place looked like over the years the satellite has watched it? |
+| **Network** | `#network` | What is this node connected to, what does it hear, and what could it read? |
+| **Wall** | `#wall` | The same node at three metres, for a screen on a wall. Dark, and it stays dark. |
+| **Arrange** | `#arrange` | Which sections Now shows, and in what order. Saved on the node. |
+| **Set up** | `#setup` | Every setting, what it does, and where its value came from. Needs the token. |
+
+### Paper or dark
+
+Beside the tabs there is a switch: **Paper** or **Dark**. Paper is what the page is by default, because most
+of the time it is read in a room with light in it. Dark is there for when it is not.
+
+The page does not guess. It does not follow the operating system and it does not watch the clock — if you
+want it dark at noon it stays dark, and if you want it paper at midnight it stays paper. The choice is
+remembered by the browser you made it in, so a phone and a laptop can disagree, and neither one changes
+what anybody else in the house sees.
+
+The Wall is the one exception: it is always dark, because a lit white rectangle in a dark room is a lamp,
+and nobody chose a lamp.
+
 ## Now
 
 The page reads from where you stand, outward. Each band names its distance.

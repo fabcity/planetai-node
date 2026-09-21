@@ -30,9 +30,12 @@ made. That is the whole reason the two halves are kept.
 **One line is allowed to differ, and it is named.** `planetai-theme.css` declares the mono at
 `fonts/jetbrains-mono-latin.woff2`. `GET /static/{name}` takes a NAME and not a path, deliberately,
 on a port that answers a household LAN, so that request 404s — a cost of one request, paid on
-purpose, because the alternative is a path parameter reaching the filesystem. `dashboard.css`
-declares the same family at the flat name the node does serve, which is the declaration that
-resolves. So a `src:` line whose two sides name the same FILE by different paths is reported and
+purpose, because the alternative is a path parameter reaching the filesystem. `tokens.css` — this
+repo's file, where the other three faces already live — declares the same family at the flat name
+the node does serve, which is the declaration that resolves. This said `dashboard.css` until
+21 September 2026, and NO file declared it at all: the mono was the fourth of four faces and the
+only one never brought over, so every number on the page had been in a fallback since the layer
+arrived. So a `src:` line whose two sides name the same FILE by different paths is reported and
 forgiven. Anything else — a second such line, a different file, a changed token, a moved brace —
 fails, and the fix is to copy the file again rather than to widen this.
 

@@ -177,8 +177,42 @@ function readout(o) {
 /* --------------------------------------------------------------------------- 2 · stack */
 /* The four distances, each with its value, what it is measured against, its source and its word.
  * An absent distance says why. Every column links to the source card that stands behind it. */
+/* THE BRACKET METER is the Stack's mini variant, not a fifth card kind. Design log R15: the anatomy
+ * is the Stack's — label, value, comparison, provenance — and only the VALUE'S DRAWING changes, from
+ * a numeral to sixteen cells filled against one scale shared by all four distances, with the line
+ * drawn as a tick at the same x on every row. Under the line and over it becomes a thing you see
+ * rather than a thing you compute.
+ *
+ * Drawn in SVG and not in text. The sketch writes it `ROOM [▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯] 6`, and the pack says
+ * to check the glyphs before trusting them. Measured against the shipped subset: U+25AE and U+25AF
+ * are not in it — jetbrains-mono-latin.woff2 is a latin subset — and both fall back at an advance of
+ * 60.21 where every real glyph is 60. On this Mac that is a 0.35% error nobody would see; on a wall
+ * screen with a different fallback it is a broken bar. Sixteen rects have no such question. */
+const METER_CELLS = 16;
+
+function meterBar(value, scale, line, dist, key) {
+  const W = 6, G = 1, H = 10, full = METER_CELLS * W;
+  const lit = value == null ? 0
+    : Math.max(0, Math.min(METER_CELLS, Math.round((value / scale) * METER_CELLS)));
+  const cells = Array.from({ length: METER_CELLS }, (_, i) =>
+    `<rect x="${i * W}" y="0" width="${W - G}" height="${H}" class="${i < lit ? 'on' : 'off'}"/>`)
+    .join('');
+  const tick = line == null || !(line > 0) || line > scale ? ''
+    : `<rect x="${((line / scale) * full).toFixed(2)}" y="-1" width="1.2" height="${H + 2}"`
+      + ` class="line"/>`;
+  return `<svg class="meter" viewBox="-1 -1 ${full + 2} ${H + 2}" role="img" aria-hidden="true"`
+    + ` preserveAspectRatio="none">${cells}${tick}</svg>`;
+}
+
 function stack(key, d, o = {}) {
   const id = o.id || `stack-${key}`;
+  /* One scale for the four distances, so the four rows can be read against each other, with a
+     little headroom so a full bar is not also the edge of the drawing. */
+  const _vals = DIST.map(x => ((d.stack || {})[x] || {}).value).filter(v => v != null);
+  const _line = d.line ? d.line.value : null;
+  const _top = Math.max(0, ..._vals, _line == null ? 0 : _line);
+  const meter = o.meter && _vals.length > 0 && _top > 0;
+  const _scale = _top * 1.12;
   const cols = DIST.map(dist => {
     const c = (d.stack || {})[dist];
     const has = c && c.value != null;
@@ -201,7 +235,9 @@ function stack(key, d, o = {}) {
     return `<div class="col" id="col-${esc(key)}-${dist}"`
       + ` data-ref="src-${esc(key)}-${dist}">`
       + `<div class="k">${esc(LAB[dist])}</div>`
-      + `<div class="v"><span class="num${has ? '' : ' none'}${crossed ? ' crossed' : ''}"`
+      + `<div class="v">`
+      + (meter ? meterBar(has ? c.value : null, _scale, _line, dist, key) : '')
+      + `<span class="num${has ? '' : ' none'}${crossed ? ' crossed' : ''}"`
       + ` data-num="${esc(key)}.${dist}" data-cmp="${esc(cmp.text)}">`
       + `${has ? esc(fmt(c.value, dp)) : '—'}</span>`
       + (has ? `<small>${esc(unit || '')}</small>` : '') + `</div>`
@@ -211,7 +247,7 @@ function stack(key, d, o = {}) {
         : '')
       + `</div>`;
   }).join('');
-  return `<div class="stack" data-kind="stack" data-component="stack" id="${esc(id)}"`
+  return `<div class="stack${meter ? ' meters' : ''}" data-kind="stack" data-component="stack" id="${esc(id)}"`
     + ` role="group" aria-label="${esc(d.name[LOC])} at four distances"`
     + `${o.ref ? ` data-ref="${esc(o.ref)}"` : ` data-ref="band-${esc(key)}"`}>${cols}</div>`;
 }
@@ -341,11 +377,24 @@ function sentence(key, d, cls = 'big') {
     + ` data-ref="stack-${esc(key)}">${marked}</p>`;
 }
 
-const why = (key, d) => d.line
-  ? `<p class="why" data-component="why" id="why-${esc(key)}" data-ref="num-${esc(key)}">`
-    + `${esc(d.line.source)} · ${esc(fmt(d.line.value, d.dp))} ${esc(d.line.unit || d.unit)}</p>`
-  : `<p class="why" data-component="why" id="why-${esc(key)}" data-ref="sentence-${esc(key)}">`
-    + `No line: ${esc(noLine(d))}</p>`;
+/* `rule` is the lead's only. It used to be a second paragraph of its own, and `.lead > .why` matched
+ * both it and this one, so two elements landed in grid area `w` and printed on top of each other at
+ * every width over 900 px — visible on the shipped page, and on every shot taken of it. One
+ * paragraph cannot overlap itself. The sentence comes from `headline_rule` on /issues, in the
+ * household's language: the node does the ranking, so the node says how it ranked. */
+const why = (key, d, rule) => {
+  const said = rule ? ` <span class="said rule">${esc(rule)}</span>` : '';
+  /* The line's figure and the ranking rule are two sentences in one paragraph, so they need the
+     separator every other pair of facts on this page gets. Without it they ran together as
+     "…not a global one · 35.0 °C The issue with most to say leads —". */
+  const sep = rule ? ' · ' : '';
+  return d.line
+    ? `<p class="why" data-component="why" id="why-${esc(key)}" data-ref="num-${esc(key)}">`
+      + `${esc(d.line.source)} · ${esc(fmt(d.line.value, d.dp))} ${esc(d.line.unit || d.unit)}`
+      + `${sep}${said}</p>`
+    : `<p class="why" data-component="why" id="why-${esc(key)}" data-ref="sentence-${esc(key)}">`
+      + `No line: ${esc(noLine(d))}${sep}${said}</p>`;
+};
 
 /* The ask, and the words that stand in for one. T1 asks for the open ask OR "nothing to do", and
  * the shipped page has neither when there is nothing to do — it renders a hidden div. A household
@@ -1018,7 +1067,7 @@ function frameOf(cellsM, pad = 0.06) {
 function map(res, opts = {}) {
   const plate = H.nav.plates[res];
   if (!plate) return '';
-  if (!P()) return NOPLAN(opts.ref || 'dial');
+  if (!P()) return NOPLAN(opts.ref || 'rail');
   const f = frameOf(plate.cells_m);
   const u = f.span / 620;                        // metres per nominal pixel at the drawn size
   const heavy = new Set(opts.cells || [plate.centre]);
@@ -1182,7 +1231,11 @@ function register(mod) {
     return;
   }
   if (sections.some(s => s.id === mod.id)) { problems.push(`${mod.id}: registered twice`); return; }
-  sections.push({ order: 50, needs: [], ...mod });
+  /* `level` is the one field simple mode reads. Default `advanced`, so a section written before
+     this existed, or by a pack that has never heard of it, keeps the behaviour it had: drawn on the
+     full page, absent from the short answer. A section opts INTO simple; it is never opted in for
+     it, because what belongs in a four-sentence answer is a judgement its author has to make. */
+  sections.push({ order: 50, needs: [], level: 'advanced', ...mod });
 }
 
 /* A global path like 'H3.nav.plates' resolves or does not. */
@@ -1221,14 +1274,50 @@ function bandFor(ctx, s) {
 }
 
 /* The page: the lead the shell passes in, then the four stages in loop order, then the notes. */
+/* THE DIGEST: one sentence per stage, and the node writes every one of them.
+ *
+ * Simple mode is not a smaller page. It is a shorter answer, and an answer is a sentence. This page
+ * does not compose it and must not: a sentence about what was observed is a claim about the data,
+ * and the one rule the renderer has is that the node computes and the page draws. So `/issues`
+ * carries `digest` — four stages, each a string per locale — and this draws them in stage order.
+ *
+ * A node that has not been updated yet sends none. Then this says so, names the version it is
+ * talking to and points at the page that does exist, rather than printing a blank or, worse, four
+ * sentences the browser made up. */
+function digest(ctx) {
+  const { esc } = window.K;
+  const d = (ctx.S.issues || {}).digest;
+  const line = key => {
+    const s = d && d[key];
+    if (!s) return '';
+    return typeof s === 'string' ? s : (s[ctx.LOC] || s.en || '');
+  };
+  const got = STAGES.filter(([k]) => line(k));
+  if (!got.length) {
+    return `<div class="band" id="digest" data-component="digest" data-ref="header">`
+      + `<p class="note" data-component="digestAbsent" id="digest-absent" data-ref="digest">`
+      + `This node has not sent a digest. The four sentences are written by the node, not by this `
+      + `page, and the node answering here (${esc((ctx.S.health || {}).version || 'unknown version')}) `
+      + `does not write them yet. Switch to Advanced above to read the page it does have.</p></div>`;
+  }
+  return `<div class="band" id="digest" data-component="digest" data-ref="header">`
+    + `<div class="digest" data-kind="stack" data-component="digestGrid" data-ref="digest">`
+    + got.map(([k, name]) =>
+      `<div class="d" data-ref="digestGrid"><span class="n">${STAGE_INDEX[k] + 1}</span>`
+      + `<b>${esc(name)}</b><p class="said">${esc(line(k))}</p></div>`).join('')
+    + `</div></div>`;
+}
+
 function render(ctx, lead, opts = {}) {
   const { esc } = window.K;
   /* `only` is the whole of the Now/Network split: one registry, two views, and the notes band at
      the foot then lists the sections on the view a reader is actually on. */
   const keep = opts.only ? new Set(opts.only) : null;
-  const ordered = sections.filter(s => !keep || keep.has(s.id)).slice().sort((a, b) =>
+  const simple = (window.PAI_MODE ? window.PAI_MODE() : 'advanced') === 'simple';
+  const ordered = sections.filter(s => (!keep || keep.has(s.id))
+    && (!simple || s.level === 'simple')).slice().sort((a, b) =>
     STAGE_INDEX[a.stage] - STAGE_INDEX[b.stage] || a.order - b.order || a.id.localeCompare(b.id));
-  let html = lead || '';
+  let html = (lead || '') + (simple ? digest(ctx) : '');
   for (const [key, name, what] of STAGES) {
     const mine = ordered.filter(s => s.stage === key);
     if (!mine.length) continue;
@@ -1511,7 +1600,7 @@ function figure(ctx, opts = {}) {
 const sited = window.KH.sited;
 
 function unsited(ctx) {
-  return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="dial">`
+  return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="rail">`
     + `<img src="static/node-ground.svg?variant=${ctx.register}" alt="the resolution ladder as `
     + `hexagons, drawn by this node; it stands for no particular place until this one has been sited">`
     + `<figcaption class="cap">This node has not been sited yet, so there is no ground to draw. `
@@ -1571,7 +1660,7 @@ function lead(ctx) {
       + `serves">${f.z}</span> · <span data-num="ground.tiles" data-cmp="against 0 for the offline `
       + `plan">${f.tiles.length}</span> tiles from ${esc(B.host)} · ${esc(B.credit)}`;
   }
-  return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="dial">`
+  return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="rail">`
     + strip + figure(ctx, { base, size: SIZE })
     + `<div class="gridkey">${key}</div>`
     + `<figcaption class="cap">${cap}</figcaption></figure>`;
@@ -1952,7 +2041,7 @@ window.PAI.register({
     let html = `<div class="stations" id="sensors-list">`;
     for (const g of gs) {
       const id = `sensors-cell-${g.cell || 'outside'}`;
-      html += `<div class="cellhead" id="${id}" data-component="cellGroup" data-ref="dial">`
+      html += `<div class="cellhead" id="${id}" data-component="cellGroup" data-ref="rail">`
         + CELLHEAD(ctx, g)
         + `<span class="n"><b data-num="sensors.cell.${esc(g.cell || 'outside')}.n" data-cmp="against `
         + `${H.sensors.length} stations with a coordinate in this capture">${g.ss.length}`
@@ -2699,7 +2788,7 @@ function claimCard(ctx, c) {
   const mine = H.claims[H.claims.length - 1];
   const bars = Object.entries(c.drawn.by_res).sort((a, b) => a[0] - b[0]);
   const total = bars.reduce((a, [, v]) => a + v, 0);
-  return `<section class="claim" id="claim-${esc(c.key)}" data-component="claim" data-ref="dial">`
+  return `<section class="claim" id="claim-${esc(c.key)}" data-component="claim" data-ref="rail">`
     + `<div class="pic gridwrap">`
     + grid(c.draw, { own: [], read: c.cells,
       label: `${c.name}: ${c.drawn.compact} cells cover ${c.area_km2} km²` })
@@ -2799,7 +2888,7 @@ function table(ctx) {
      cannot be focused cannot be scrolled from a keyboard — the finding that put tabindex on the
      page before this one, re-made here. */
   return `<div class="tblwrap" tabindex="0" role="region" aria-label="all eleven grains">`
-    + `<table class="tbl" id="grain-table" data-component="grainTable" data-ref="dial">`
+    + `<table class="tbl" id="grain-table" data-component="grainTable" data-ref="rail">`
     + `<thead><tr><th>resolution</th><th>one cell</th><th>edge</th>`
     + `<th>cells the ${H.sensors.length} stations fall in</th><th>in this node's own cell</th>`
     + `<th></th></tr></thead><tbody>`
@@ -2841,6 +2930,36 @@ function flatRun(H) {
   return run.length > 1 ? run : [];
 }
 
+/* THE GRAIN LINE, which used to be the lead's.
+ *
+ * It is a sentence about what the picked resolution is worth — one cell's area, how many cells this
+ * node's stations fall in, how many are its own — and that is the Decide stage's question, not the
+ * lead's. It sat in the lead because the rail sat under the header; with the rail at the top and the
+ * lead carrying a monument numeral and four meters, it was six blocks deep and pushing the as-of
+ * line off the first screen on a phone. T1's fifth leg, for a paragraph that was in the wrong stage.
+ *
+ * It keeps its id. The rail points at `grain-line` as the sentence a press re-derives, and Decide is
+ * on the same page as the rail, so the arm still lands. */
+function grainLine(ctx) {
+  const G = ctx.grain, t = H.grain_table || [], finest = t.length ? t[t.length - 1] : null;
+  const n = (H.sensors || []).length;
+  if (!window.KH.sited()) {
+    return `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="rail">`
+      + `At resolution ${ctx.RES} one cell is ${esc(km2(G.area_m2))}. Which cell this node stands in `
+      + `is not known: it has no NODE_LAT/NODE_LON, so none of its ${n} stations has a cell yet and `
+      + `the counts that would go here would be counts about open water.</p>`;
+  }
+  const same = t.filter(g => g.occupied === G.occupied && g.in_my_cell === G.in_my_cell);
+  return `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="rail">`
+    + `At resolution ${ctx.RES} one cell is ${esc(km2(G.area_m2))} and this node's ${n} stations `
+    + `fall in <span data-num="grain.occupied" data-cmp="against ${n} stations in `
+    + `${finest ? finest.occupied : 0} cells at resolution ${finest ? finest.res : '?'}, the finest `
+    + `this node publishes">${G.occupied}</span> of them. ${G.in_my_cell} sit in this node's own `
+    + `cell, of which ${G.mine_in_my_cell} are its own.`
+    + (same.length > 1 ? ` Resolutions ${same[0].res} to ${same[same.length - 1].res} answer this `
+      + `question identically.` : '') + `</p>`;
+}
+
 window.PAI.register({
   id: 'grain', pack: 'core', stage: 'decide', order: 20,
   title: 'What each grain is worth',
@@ -2849,7 +2968,7 @@ window.PAI.register({
     const flat = flatRun(H);
     const rows = (H.grain_table || []).length;
     const finding = flat.length
-      ? `<p class="honest" id="flat-run" data-component="finding" data-ref="dial">Resolutions `
+      ? `<p class="honest" id="flat-run" data-component="finding" data-ref="rail">Resolutions `
         + `${flat[0].res} to ${flat[flat.length - 1].res} are one row repeated ${flat.length} times. `
         + `Each is seven times finer than the one above it — `
         + `<span data-num="grain.flat.ratio" data-cmp="the area ratio across ${flat.length - 1} steps `
@@ -2859,7 +2978,7 @@ window.PAI.register({
       /* No flat run is not a failure and not a blank: it is a different node, and the table below is
          still worth reading. The two cases are named apart because they mean opposite things —
          nothing to file, against a grain that is still earning its precision at the finest stop. */
-      : `<p class="honest" id="flat-run" data-component="finding" data-ref="dial">`
+      : `<p class="honest" id="flat-run" data-component="finding" data-ref="rail">`
         + (H.sensors && H.sensors.length
           ? `On this node on this day the count of occupied cells is still changing at the finest `
             + `resolution in the table, so there is no flat run to report: every stop of the dial is `
@@ -2868,7 +2987,7 @@ window.PAI.register({
             + `and there is no grain to compare. The table below is still this node's own arithmetic: `
             + `what one cell is worth at each of the ${rows} stops.`)
         + `</p>`;
-    return finding
+    return grainLine(ctx) + finding
       + `<details class="fold"><summary>All eleven grains, and what each is worth</summary>`
       + table(ctx) + `</details>`;
   },
@@ -4015,16 +4134,83 @@ window.PAI_ROUTE = () => route();
 /* The header, shared by the page and by the refused page, because a household with no token still
  * has to be able to reach the other views. The node's name is an <h1>: the page had none at all
  * before that was found by looking, and page-has-heading-one fired on every view in every state. */
-const VIEWS = [['now', 'Now'], ['network', 'Network'], ['historical', 'Historical'],
-  ['setup', 'Set up'], ['wall', 'Wall'], ['arrange', 'Arrange']];
+/* THE REGISTER: paper by day, dark on the wall and by a keeper's switch. Design log R13.
+ *
+ * Dark is not guessed from the operating system and it is not a time of day. It is the wall — where
+ * a lit rectangle in a dark room is a lamp and nobody chose anything — or it is a switch somebody
+ * pressed. Both set the same attribute the wall has always set, so every rule under
+ * `:root[data-theme="dark"]` already covers the switch and no component carries a second palette.
+ *
+ * It lives here because `route()` cleared `data-theme` on every render and `main()` put it back for
+ * the wall, so a keeper's choice survived exactly until the next view change. One function decides
+ * the register now; the four places that used to set or clear the attribute ask it instead. */
+const REGISTER_KEY = 'planetai_register';
+function register() {
+  /* `?register=dark` is read first and remembers nothing, for the same two reasons `?mode=` is:
+     the measuring rig needs every combination without touching storage between renders, and one
+     person can send another the page as they are looking at it. */
+  const q = new URLSearchParams(location.search).get('register');
+  if (q === 'dark' || q === 'paper') return q;
+  /* A browser with site data blocked still has to render. It just cannot remember. */
+  try { return localStorage.getItem(REGISTER_KEY) === 'dark' ? 'dark' : 'paper'; }
+  catch (e) { return 'paper'; }
+}
+function applyRegister(view) {
+  const root = document.documentElement;
+  if (view === 'wall' || register() === 'dark') root.setAttribute('data-theme', 'dark');
+  else root.removeAttribute('data-theme');
+}
+
+/* THE MODE: how much of the page is drawn. `simple` is the digest and nothing else, `advanced` is
+ * every section, `learn` is advanced with a question mark at each part. The marks arrive with the
+ * learn layer; until they do, `learn` draws exactly what `advanced` draws. The control still offers
+ * all three, because the setting a keeper picks has to be a setting the page honours.
+ *
+ * Two sources, in this order: what this browser last chose, then what the node is set to. `UI_MODE`
+ * is what the page OPENS as, chosen by the household; a reader who switches is switching their own
+ * copy and nobody else's. Same bargain the register makes, for the same reason. */
+const MODE_KEY = 'planetai_mode';
+const MODES = [['simple', 'Simple'], ['advanced', 'Advanced'], ['learn', 'Learn']];
+const isMode = m => MODES.some(([k]) => k === m);
+function mode() {
+  /* `?mode=simple` is read first and remembers nothing: it is how the measuring rig renders all
+     three modes, and how one person sends another the short answer without changing their page. */
+  const q = new URLSearchParams(location.search).get('mode');
+  if (isMode(q)) return q;
+  let mine = null;
+  try { mine = localStorage.getItem(MODE_KEY); } catch (e) { /* see register() */ }
+  if (isMode(mine)) return mine;
+  const row = ((window.SETTINGS || {}).runtime || []).find(x => x.key === 'UI_MODE');
+  const set = row && String(row.value == null ? '' : row.value).trim();
+  return isMode(set) ? set : 'advanced';
+}
+window.PAI_MODE = mode;
+
+/* Now first, then the three views that widen the frame in order — this hour, the years behind it,
+   the network around it — then the wall, then the two that configure rather than report. The hash
+   is the view id and none of those changed, so every link anybody has saved still lands. */
+const VIEWS = [['now', 'Now'], ['historical', 'Historical'], ['network', 'Network'],
+  ['wall', 'Wall'], ['arrange', 'Arrange'], ['setup', 'Set up']];
 function chrome(node, city, view) {
   const esc = window.K.esc;
+  const reg = register(), md = mode();
   return `<header id="header"><div class="wrap">`
     + `<h1 class="brand"><b>${esc(node || 'PLANETAI')}</b><span>${esc(city || '')}</span></h1>`
     + `<nav class="views" aria-label="Views">` + VIEWS.map(([v, name]) =>
       `<button type="button" data-view="${v}" class="${v === view ? 'on' : ''}"`
       + `${v === view ? ' aria-current="page"' : ''}>${esc(name)}</button>`).join('')
-    + `</nav></div></header>`;
+    + `</nav>`
+    + `<div class="seg mode" role="group" aria-label="How much of the page is shown">`
+    + MODES.map(([m, name]) =>
+      `<button type="button" data-mode="${m}" class="${m === md ? 'on' : ''}"`
+      + ` aria-pressed="${m === md}">${esc(name)}</button>`).join('')
+    + `</div>`
+    + `<div class="seg register" role="group" aria-label="Register">`
+    + [['paper', 'Paper'], ['dark', 'Dark']].map(([r, name]) =>
+      `<button type="button" data-register="${r}" class="${r === reg ? 'on' : ''}"`
+      + ` aria-pressed="${r === reg}">${esc(name)}</button>`).join('')
+    + `</div>`
+    + `</div></header>`;
 }
 
 /* SHARE_LEVEL=off and no token. /health still answers — it answers at every share level, which is
@@ -4036,13 +4222,12 @@ function drawRefused() {
   const v = (location.hash || '').replace(/^#/, '')
     || new URLSearchParams(location.search).get('view') || 'now';
   const said = window.K.refusedPage();
+  applyRegister(v);
   if (v === 'wall') {
-    document.documentElement.setAttribute('data-theme', 'dark');
     document.body.className = 'wall wallview';
     el.innerHTML = `<div class="wallbox"><h1 class="vh">${window.K.esc(window.NODE_NAME || 'PLANETAI')}`
       + ` · refused</h1>${said}</div>`;
   } else {
-    document.documentElement.removeAttribute('data-theme');
     document.body.className = '';
     el.innerHTML = chrome(window.NODE_NAME, window.NODE_CITY, v) + `<div class="wrap">${said}</div>`;
   }
@@ -4109,66 +4294,124 @@ function main() {
          mode and keeps the dial with them. Taking it away there left the ground, the station
          groups, the claims, the grain and the grain line all pointing at a control that was not on
          the page. */
-      ? `<div class="dialwrap"><div class="wrap">${dial()}</div></div>` : '');
+      ? `<div class="railwrap"><div class="wrap">${rail()}</div></div>` : '');
 
-  /* One control. Each stop says what one cell of it is worth on the ground, the two lines the
-     product already draws are drawn across it, and pressing a stop re-derives the whole page. */
-  function dial() {
+  /* THE GRAIN RAIL — the top instrument, above the lead. Design log R14.
+   *
+   * It was a dial tucked under the header. It is the first thing on Now now, because the question
+   * it answers — how coarse is what you are about to read — comes before the reading. Eleven stops,
+   * resolution 2 to 12, every figure off `geometry.grain_table[]` and nothing worked out here.
+   *
+   * THE ZONES ARE TEXTURE, NOT HUE. Dotted where the cell may leave this machine, plain where it
+   * stays, struck through where it is finer than the node says where it is. The cells blue keeps
+   * its one meaning, a reader who cannot separate blue from grey still sees three zones, and the
+   * rail survives being printed. Texture alone is not a label, so each stop also says which zone it
+   * is in its accessible name — the key below says it once, in words, for everybody else.
+   *
+   * Pressing a stop still re-derives the whole page; that is what this control is for. */
+  function rail() {
+    const zone = g => g.may_leave ? ', may leave this machine'
+      : g.finer_than_published ? ', finer than this node says where it is' : '';
     const stops = H.grain_table.map(g => {
       const on = g.res === RES;
       return `<a class="${on ? 'on ' : ''}${g.may_leave ? 'leaves ' : ''}`
         + `${g.finer_than_published ? 'toofine' : ''}" href="${link(N.chain[g.res], { res: g.res })}"`
         + ` data-move="${g.res < RES ? 'out' : g.res > RES ? 'in' : 'here'}"`
-        + ` title="one cell is ${km2(g.area_m2)}">`
-        + `<span class="r">${g.res}</span><span class="s">${esc(edge(g.edge_m))}</span></a>`;
+        + `${on ? ' aria-current="true"' : ''}`
+        + ` aria-label="resolution ${g.res}, ${esc(edge(g.edge_m))} to an edge, `
+        + `one cell ${esc(km2(g.area_m2))}${zone(g)}">`
+        + `<b class="r">${g.res}</b><small class="s">${esc(edge(g.edge_m))}</small></a>`;
     }).join('');
-    /* The dial's link out is the sentence it re-derives. On Now that is the grain line; on the
-       other views it is the view's own band, because the grain line is the lead's and the lead is
-       Now's. A component pointing at an id that is not on the page is what T5 counts. */
-    /* The sentence the dial re-derives, and the only one left: Now is the only view that draws it.
-       The arm that pointed at `satellite` died when the satellite moved to Historical in v0.56 —
-       it had been naming an id that was not on the page for two releases. */
+    /* The rail's link out is the sentence it re-derives. On Now that is the grain line; the arm
+       that pointed at `satellite` died when the satellite moved to Historical in v0.56 and had been
+       naming an id that was not on the page for two releases. A component pointing at an id that is
+       not there is what T5 counts. */
     const ref = 'grain-line';
-    return `<div class="dial" id="dial" data-component="dial" data-ref="${esc(ref)}"`
+    return `<div class="rail" id="rail" data-component="rail" data-kind="row" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
-      + `<div class="dialkey"><span><i class="leaves"></i>may leave this machine `
-      + `(resolution ${ctx.FLOOR} and coarser)</span>`
-      + `<span><i class="fine"></i>finer than this node says where it is (past ${ctx.PUB.res})</span>`
-      + `<span>one cell here: <b>${esc(km2(ctx.grain.area_m2))}</b></span></div>`;
+      + ruler()
+      + `<div class="railkey" data-component="railKey" data-ref="rail">`
+      + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
+      + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
+      + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
+      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
+      /* `occupied`, `in_my_cell` and `mine_in_my_cell` are the rail's figures too, and they are
+         drawn ONCE — in the grain line this rail re-derives and points at, where they are a
+         sentence rather than three numbers in a key. Printing them here as well made the key three
+         lines deep at 390 and pushed the as-of off the first screen, which is T1's fifth leg. */
+      + `<span>one cell here: <b data-num="rail.area" data-cmp="rail.res">`
+      + `${esc(km2(ctx.grain.area_m2))}</b></span></div>`;
+  }
+
+  /* THE RULE under the rail: where each grain truly sits between 10 m and 200 km.
+   *
+   * The stops are evenly spaced because they are eleven buttons; the grains they name are not —
+   * resolution 2 is 183 km to an edge and resolution 12 is 9. A linear row of equal boxes says the
+   * step from 7 to 8 is the step from 11 to 12, and it is a factor of about 2.6 either way but on
+   * numbers three orders of magnitude apart. This puts a tick where each one actually falls.
+   *
+   * Hidden below 860 px, where it would be drawing a distinction finer than the pixels it has. */
+  function ruler() {
+    const LO = 10, HI = 200000;
+    const at = m => ((Math.log10(Math.max(LO, Math.min(HI, m))) - Math.log10(LO))
+      / (Math.log10(HI) - Math.log10(LO))) * 100;
+    const ticks = H.grain_table.map(g =>
+      `<i class="${g.res === RES ? 'on' : ''}" style="left:${at(g.edge_m).toFixed(2)}%"></i>`).join('');
+    const marks = [[10, '10 m'], [100, '100 m'], [1000, '1 km'], [10000, '10 km'],
+      [100000, '100 km']].map(([m, name]) =>
+      `<span style="left:${at(m).toFixed(2)}%">${esc(name)}</span>`).join('');
+    return `<div class="ruler" data-component="ruler" data-ref="rail" aria-hidden="true">`
+      + `<div class="line">${ticks}</div><div class="marks">${marks}</div></div>`;
   }
 
   /* The lead is the shell's: the node's own headline, the ask, the grain line, the as-of — and the
      figure a module offers for it (the ground module offers the map). A household opens the page to
      be told something, and that sentence is not a module's to move. */
   function lead() {
-    const hk = S.issues.headline, d = ISS[hk], G = ctx.grain;
-    const flat = H.grain_table.filter(g => g.occupied === G.occupied && g.in_my_cell === G.in_my_cell);
+    const hk = S.issues.headline, d = ISS[hk];
     const fig = PAI.sections.filter(s => s.lead && (s.needs || []).every(PAI.has))
       .map(s => { try { return s.lead(ctx) || ''; } catch { return ''; } }).join('');
+    /* THE ASK STRIP IS GONE FROM THE LEAD and lives in Act, where the ledger it belongs to is. It
+       was the lead's fifth block and the only one a reader could act on, which made the lead a
+       control panel as well as a sentence. The stamp line below says how many are open and where
+       they are, which is what the lead owes a reader: the fact, and the way to it. */
+    const openAll = ORDER.reduce((n, k) => n + ((ISS[k].open_asks || []).length), 0);
+    /* `open_asks` holds the alert rows themselves, not their ids: printing the row gave
+       `#[object Object]` in the stamp line. */
+    const firstAsk = (((d.open_asks || [])[0]
+      ?? ORDER.map(k => (ISS[k].open_asks || [])[0]).find(x => x != null)) || {}).id;
+    /* THE ISSUE'S PICTOGRAM. One per issue, drawn once, at hero size, and never repeated to show
+       quantity — that is the whole difference between this family and the counting signs, and it is
+       why it is 15x11 rather than on the 24-unit grid. A <use> of a symbol already in signs.svg, so
+       nothing is redrawn per reading. An issue with no pictogram yet simply has none: the lead is
+       not going to invent a mark for it. */
+    const pix = ['air', 'heat', 'land', 'coast'].includes(hk)
+      ? `<svg class="pix" viewBox="0 0 15 11" data-component="pictogram" data-ref="kicker-${esc(hk)}"`
+        + ` role="img" aria-label="${esc(d.name[LOC])}"><use href="static/signs.svg#pix-${esc(hk)}"/></svg>`
+      : '';
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
-      + kicker(hk, d) + sentence(hk, d, 'big') + why(hk, d) + ask(hk, d)
-      + (!window.KH.sited()
-        ? `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="dial">`
-          + `At resolution ${RES} one cell is ${esc(km2(G.area_m2))}. Which cell this node stands in `
-          + `is not known: it has no NODE_LAT/NODE_LON, so none of its ${H.sensors.length} stations `
-          + `has a cell yet and the counts that would go here would be counts about open water.</p>`
-        : `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="dial">`
-      + `At resolution ${RES} one cell is ${esc(km2(G.area_m2))} and this node's `
-      + `${H.sensors.length} stations fall in `
-      + `<span data-num="grain.occupied" data-cmp="against ${H.sensors.length} stations in `
-      + `${H.grain_table[H.grain_table.length - 1].occupied} cells at resolution `
-      + `${N.res_max}, the finest this node publishes">${G.occupied}</span> of them. `
-      + `${G.in_my_cell} sit in this node's own cell, of which ${G.mine_in_my_cell} are its own.`
-      + (flat.length > 1 ? ` Resolutions ${flat[0].res} to ${flat[flat.length - 1].res} answer this `
-        + `question identically.` : '') + `</p>`)
-      /* WHY THIS ONE IS AT THE TOP. The page stopped saying it in the Phase 2 rewrite — v0.53 had
-         the sentence and the modular page carried neither the words nor a place to put them — and
-         on 18 September the rule itself changed, so it has to be sayable again. A ranking a reader
-         cannot check is the one thing this page does not do. */
-      + `<p class="why rule" id="headline-rule" data-component="headlineRule" data-ref="grain-line">`
-      + `${esc((window.W ? window.W() : {}).headlineRule || '')}</p>`
-      + `<div class="whenline">${asof()}${window.K.stamp()}`
+      + `<div class="leadhead">${kicker(hk, d)}${pix}</div>` + sentence(hk, d, 'big')
+      + why(hk, d, (S.issues.headline_rule || {})[LOC] || '')
+      + stack(hk, d, { id: `meters-${hk}`, meter: true, ref: `sentence-${hk}` })
+      /* WHY THIS ONE IS AT THE TOP is in the why line above, not in a paragraph of its own. The
+         words are the node's now (`headline_rule` on /issues) rather than three strings in this file:
+         v0.59 changed the ranking on 18 September and the page's copy of the explanation had no way
+         of knowing. A ranking a reader cannot check is the one thing this page does not do. */
+      + `<div class="whenline">${asof()}`
+      + (openAll
+        /* `data-role="ask"` is what T1's fourth leg looks for. The strip itself is in Act now, and
+           this line is the lead's statement about it — the count, the id and where to go. A reader
+           who has to infer "nothing to do" from an absence has not been told anything, so the
+           other branch says it in words rather than drawing nothing. */
+        ? `<a class="askref" href="#stage-act" data-role="ask" data-component="askRef"`
+          + ` data-ref="stage-act">`
+          + `<b data-num="asks.open" data-cmp="asks open across ${ORDER.length} issues">${openAll}</b>`
+          + ` ask${openAll === 1 ? '' : 's'} open`
+          + `${firstAsk != null ? ` · #${esc(String(firstAsk))}` : ''} · in 3 Act</a>`
+        : `<span class="askref none" data-role="ask" data-component="askRef" data-ref="stage-act">`
+          + `nothing open · 3 Act is empty</span>`)
+            + `${window.K.stamp()}`
       + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
         : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
         : pill('live', 'measured by this node, and kept up to date')) + `</div>`
@@ -4192,8 +4435,8 @@ function main() {
 
   const el = document.getElementById('page');
   document.body.classList.toggle('wallview', VIEW === 'wall');
+  applyRegister(VIEW);
   if (VIEW === 'wall') {
-    document.documentElement.setAttribute('data-theme', 'dark');
     document.body.classList.add('wall');
     /* PAI.render() wraps every section so one that throws prints that it did and the rest of the
        page stands. The wall had no such guard, and it is the one surface nobody is watching: a throw
@@ -4332,7 +4575,6 @@ function main() {
  * so a view change is a render, not a fetch. */
 function route() {
   readView();
-  document.documentElement.removeAttribute('data-theme');
   document.body.className = '';
   main();
   /* main() has just replaced the page, so any player on it is fresh markup with no listeners and
@@ -4418,6 +4660,28 @@ document.addEventListener('click', ev => {
 document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-back') {
     history.pushState({ view: 'now' }, '', location.pathname + location.search);
+    return route();
+  }
+  const rb = ev.target.closest && ev.target.closest('.register button');
+  if (rb && rb.dataset.register) {
+    ev.preventDefault();
+    try { localStorage.setItem(REGISTER_KEY, rb.dataset.register); } catch (e) { /* see register() */ }
+    /* Not a re-render: the register is one attribute and every rule under it is already written, so
+       toggling in place restyles the whole page without scrolling it back to the top. */
+    applyRegister(VIEW);
+    rb.parentNode.querySelectorAll('button').forEach(x => {
+      const on = x === rb;
+      x.classList.toggle('on', on);
+      x.setAttribute('aria-pressed', String(on));
+    });
+    return;
+  }
+  const mb = ev.target.closest && ev.target.closest('.seg.mode button');
+  if (mb && mb.dataset.mode) {
+    ev.preventDefault();
+    try { localStorage.setItem(MODE_KEY, mb.dataset.mode); } catch (e) { /* see register() */ }
+    /* Unlike the register, this one IS a re-render: which sections draw is the whole of the mode,
+       and that is decided in render(), not in a stylesheet. */
     return route();
   }
   const b = ev.target.closest && ev.target.closest('nav.views button, .wall .exit');
@@ -4625,8 +4889,8 @@ boot().then(() => { init(); route(); startRefresh(); }).catch(async e => {
   const el = document.getElementById('page');
   const v = (location.hash || '').replace(/^#/, '')
     || new URLSearchParams(location.search).get('view') || 'now';
+  applyRegister(v);
   if (v === 'wall') {
-    document.documentElement.setAttribute('data-theme', 'dark');
     document.body.className = 'wall wallview';
     el.innerHTML = `<div class="wallbox"><h1 class="vh">${window.K.esc(h.node || 'PLANETAI')}`
       + ` · no answer</h1><p class="note">${said}</p></div>`;
@@ -4675,15 +4939,12 @@ const route = () => window.PAI_ROUTE();
 const WORDS = {
   en: { leavesMachine: 'leaves this machine',
     openOnAnotherScreen: 'Open this on another screen in the house:',
-    headlineRule: 'The issue with most to say leads \u2014 and where two have as much to say, the one that has moved most in the last three hours. An even tie goes to the order this place chose, under Set up \u2192 Issues.',
     net: { cellsN: '{n} of 20', cellsOut: 'Index cells', home: 'home', kept: '{n} readings kept, none of them leave', leaves: 'What leaves this house', leavesShort: 'what leaves', means: 'hourly means', model: 'model', models: 'the models', models_: 'models', parentNowhere: 'nowhere yet', reads: 'What this node reads', rhoN: '{closed} of {total}', rhoOut: 'answered asks', sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations', street: 'the street', sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.', title: 'This house is one node of a much larger instrument.', yours: 'your sensors' }, },
   id: { leavesMachine: 'keluar dari mesin ini',
     openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
-    headlineRule: 'Isu yang paling banyak bicara memimpin \u2014 dan bila dua sama banyaknya, yang paling berubah dalam tiga jam terakhir. Bila tetap seri, urutannya mengikuti pilihan tempat ini, di Set up \u2192 Issues.',
     net: { cellsN: '{n} dari 20', cellsOut: 'sel Indeks', home: 'rumah', kept: '{n} bacaan disimpan, tidak satu pun keluar', leaves: 'Yang keluar dari rumah ini', leavesShort: 'yang keluar', means: 'rata-rata per jam', model: 'model', models: 'model', models_: 'model', parentNowhere: 'belum ke mana-mana', reads: 'Yang dibaca node ini', rhoN: '{closed} dari {total}', rhoOut: 'permintaan dijawab', sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik', street: 'jalan', sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.', title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.', yours: 'sensor Anda' }, },
   es: { leavesMachine: 'sale de esta máquina',
     openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
-    headlineRule: 'Lidera el asunto que m\u00e1s tiene que decir \u2014 y si dos dicen otro tanto, el que m\u00e1s se ha movido en las \u00faltimas tres horas. Si hay empate exacto, manda el orden que eligi\u00f3 este lugar, en Set up \u2192 Issues.',
     net: { cellsN: '{n} de 20', cellsOut: 'celdas del \u00cdndice', home: 'casa', kept: '{n} lecturas guardadas, ninguna sale', leaves: 'Lo que sale de esta casa', leavesShort: 'lo que sale', means: 'medias horarias', model: 'modelo', models: 'los modelos', models_: 'modelos', parentNowhere: 'a ning\u00fan sitio todav\u00eda', reads: 'Lo que lee este nodo', rhoN: '{closed} de {total}', rhoOut: 'peticiones respondidas', sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas', street: 'la calle', sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.', title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.', yours: 'tus sensores' }, },
 };
 const W = () => WORDS[(window.K || {}).LOC] || WORDS.en;
