@@ -91,7 +91,12 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const POP = 'http://127.0.0.1:8081';        // bootstrapped, SHARE_LEVEL=open
 const EMPTY = 'http://127.0.0.1:8082';      // fresh install, BOOTSTRAP=0
-const FIXTURE = process.env.PAI_FIXTURE || 'node1-2026-09-06';
+/* Which snapshot the node routes answer from. PAI_Q is the page's own query string and may name a
+ * fixture; PAI_FIXTURE is what serveNodeAPI serves. They are one fact, so PAI_Q wins when it names
+ * one — gate.sh set only PAI_Q, and the page then asked for one capture while /sensors, /health and
+ * /settings answered from another, which is a mismatch nothing would have printed. */
+const _qFixture = (process.env.PAI_Q || '').match(/[?&]fixture=([a-z0-9][a-z0-9._-]{0,63})/);
+const FIXTURE = (_qFixture && _qFixture[1]) || process.env.PAI_FIXTURE || 'node1-2026-09-06';
 
 // The node's own refusal, from app/main.py:744, for SHARE_LEVEL=off on /issues.
 const REFUSAL = p => JSON.stringify({ error:
@@ -371,6 +376,32 @@ async function serveNodeAPI(route, u) {
     const health = computeNodeData(FIXTURE).snapshot?.health;
     const body = process.env.PAI_RICH === '1' ? richForecast() : emptyForecast(health);
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    return true;
+  }
+  /* The rest of the snapshot, answered under the route the node answers it under.
+   *
+   * These were simply absent: a `?fixture=` page fetched /sensors and got nothing, so every section
+   * that needs it drew "the core pack has nothing here yet" in review while working perfectly on a
+   * real node. A rig that is LESS capable than the node reports a working section as broken, which
+   * is the same false measurement as a rig that is more permissive reporting a broken one as fine.
+   *
+   * /trust and /forecast are NOT here: they have their own empty-vs-rich branches above, which is a
+   * deliberate choice about what a review should see, not a gap. */
+  const FROM_SNAPSHOT = {
+    '/sensors': 'sensors', '/cells': 'cells', '/nearby': 'nearby', '/alerts': 'alerts',
+    '/observations': 'observations', '/stats': 'stats', '/reach': 'reach', '/rho': 'rho',
+    '/actions': 'actions', '/report/latest': 'report_latest',
+  };
+  if (FROM_SNAPSHOT[u.pathname]) {
+    const data = computeNodeData(FIXTURE);
+    if (data.error) { await failNodeAPI(route, u.pathname, data); return true; }
+    const body = data.snapshot[FROM_SNAPSHOT[u.pathname]];
+    /* A key the snapshot does not carry is a 404, exactly as a node with that route switched off
+       answers — never an empty array, which would be the snapshot claiming a fact it never took. */
+    await (body == null
+      ? route.fulfill({ status: 404, contentType: 'application/json',
+          body: JSON.stringify({ detail: `this snapshot carries no ${FROM_SNAPSHOT[u.pathname]}` }) })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
     return true;
   }
   if (u.pathname === '/place/geojson') {

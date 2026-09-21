@@ -210,6 +210,15 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .care .sg { display: block; width: 18px; height: 18px }
 .care .sg svg { width: 18px; height: 18px; color: var(--ink) }
 
+/* Isotype unit rows. [data-kind="row"] .signs already wraps them, sizes them and gives svg.sat the
+   satellite's own colour, so only the two states it has never needed are here.
+
+   Somebody else's station is the same sign at less weight: the same kind of thing, read at a
+   distance. And a twentieth of the ground that is NOT built still occupies its place, so the row is
+   the same width whatever the share is and both halves can be counted. Weight, never hue. */
+.units .row .signs svg.sg.faint { opacity: .45 }
+.units .row .signs svg.sg.off { opacity: .22 }
+
 .peer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px 0;
   border-top: 1px solid var(--hair); align-items: start }
 .peer svg.sg { width: 20px; height: 20px; color: var(--ink); margin-top: 2px }

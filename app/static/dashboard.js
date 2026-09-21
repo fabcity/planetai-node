@@ -556,8 +556,18 @@ function rhoRow(small, ref) {
       + `This node has not said how many of its asks were answered: GET /rho did not come back.</p>`;
   }
   const r = S.rho, total = r.alerts_act, closed = r.acted;
+  /* ONE RING PER ASK UNTIL THAT STOPS BEING A ROW. This drew `total` rings unconditionally, so the
+   * height of the wall was a function of how long the node had been running: node #1 reached 164
+   * asks and the row wrapped to 116 px, pushing the wall to 1,118 on a 1,080 px screen. Nobody can
+   * count 164 of anything at three metres either, so it had stopped being a measurement twice over.
+   *
+   * Isotype's own answer is to change the unit and say which unit it is, never to shrink the sign
+   * or cap the row silently. The caption carries it, and the exact counts are in the caption too,
+   * so nothing is lost by rounding the drawing. */
+  const UNIT = total <= 40 ? 1 : total <= 400 ? 10 : 100;
+  const rings = Math.round(total / UNIT), full = Math.round(closed / UNIT);
   let s = '';
-  for (let i = 0; i < total; i++) s += sign(i < closed ? 'rho-closed' : 'rho-open', i < closed ? 'closed' : '');
+  for (let i = 0; i < rings; i++) s += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
   /* The row is a texture of signs and the CAPTION is the readable part of it, so the caption is
    * what carries the role and what the three-metre floor is measured against. A sign is measured
    * against --sign-floor; a cap height is measured against a distance. */
@@ -565,7 +575,8 @@ function rhoRow(small, ref) {
     + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="img" aria-label="${closed} of ${total} asks answered">${s}</div>`
     + `<p class="note" data-role="rho" data-num="rho"`
     + ` data-cmp="against the ${total} asks this node sent in 30 days">`
-    + `${closed} of ${total} asks answered · median ${r.median_minutes} min</p>`;
+    + `${closed} of ${total} asks answered · median ${r.median_minutes} min`
+    + `${UNIT > 1 ? ` · one ring per ${UNIT}` : ''}</p>`;
 }
 
 /* The four stages of the ledger, from GET /rho.funnel. Each bar is a share of `asked` and the count
@@ -2020,6 +2031,113 @@ window.PAI.register({
         + 'hourly record at any distance would be an empty box claiming to be a drawing, so it is '
         + 'named in a sentence instead and the matrix above carries what it does have. That is the '
         + 'difference between a gap in the record and a gap in the page.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= h/mods/sources.js ==== */
+/* sources · core · observe
+ *
+ * What this page is built out of, counted in signs. Isotype's rule: more is more signs, never a
+ * bigger sign, so a row you can count is a measurement and a bar you have to read off an axis is
+ * not. Six rows, and every one of them is a different kind of knowing.
+ *
+ * THE COUNTS COME FROM /sensors, NOT FROM /issues. /issues publishes only what has a coordinate;
+ * the sensor table carries every kind the node knows. And the filters are `kind === 'sensor'` and
+ * `kind === 'model'` throughout — a `facility` is a workshop somebody could walk to, not a station,
+ * and it must never enter a count of what this node reads. There is one on node #1 today.
+ *
+ * ORANGE IS THE SATELLITE'S, and only the satellite's — the layer's rule. Built and trees are the
+ * two rows nothing on the ground here measured: they are Earth Engine's reading of a square
+ * kilometre, so they carry it and nothing else does.
+ *
+ * TWO GRAINS, SAID OUT LOUD. Stations and models are one sign each, because each is a thing you
+ * could point at. Built and trees are twentieths of the ground, because a percentage is not a
+ * count of anything. Houses are one sign per 250, because 2,713 signs is not a row. Each row says
+ * which it is rather than leaving a reader to infer it from the number.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row, sign } = window.K;
+
+/* A run of the same sign, which is the whole grammar of a unit row. */
+const many = (id, n, cls = '') => Array.from({ length: Math.max(0, n) }, () => sign(id, cls)).join('');
+
+/* A percentage as twentieths of the ground: filled for the share, hollow for the rest, so the row
+   is countable both ways and the total is always the same width. */
+const of20 = (pct, cls = '') => Array.from({ length: 20 }, (_, i) =>
+  sign('cell', i < Math.round((pct || 0) / 5) ? `on ${cls}` : 'off')).join('');
+
+window.PAI.register({
+  id: 'sources', pack: 'core', stage: 'observe', title: 'What this page is made of', order: 14,
+  needs: ['SENSORS'],
+  render(ctx) {
+    const all = window.SENSORS || [];
+    const own = all.filter(s => s.local && s.kind === 'sensor').length;
+    const ring = all.filter(s => !s.local && s.kind === 'sensor').length;
+    const models = all.filter(s => s.kind === 'model').length;
+    const land = ((ctx.ISS.land || {}).readouts) || [];
+    const pick = m => land.find(r => r.metric === m);
+    const built = pick('built_frac'), trees = pick('tree_frac');
+    const plan = window.PLAN;
+    const R = o => row({ ...o, ref: 'sources-rows', component: 'unitRow',
+      cols: 'minmax(0,210px) minmax(0,1fr) auto' });
+    const lab = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
+
+    let html = `<div class="reads units" id="sources-rows" data-ref="matrix-grid">`
+      + R({ id: 'src-own', left: lab('This house\u2019s own', 'one sign, one station'),
+        signs: many('sensor', own),
+        qty: [{ num: 'sources.own', value: String(own),
+          cmp: `against ${own + ring} stations this node reads` }] })
+      + R({ id: 'src-ring', left: lab('Other people\u2019s', 'one sign, one station'),
+        signs: many('sensor', ring, 'faint'),
+        qty: [{ num: 'sources.ring', value: String(ring),
+          cmp: `against ${own + ring} stations this node reads` }] })
+      + R({ id: 'src-models', left: lab('Models', 'one sign, one model'),
+        signs: many('planet', models),
+        qty: [{ num: 'sources.models', value: String(models),
+          cmp: `against ${own + ring} stations \u2014 a model is not a station and is never counted `
+            + `as one` }] });
+
+    /* Built and trees are the satellite's, and they are twentieths rather than counts. */
+    for (const [k, r] of [['built', built], ['trees', trees]]) {
+      if (!r) continue;
+      html += R({ id: `src-${k}`,
+        left: lab(r.label[LOC] || r.label.en, 'twentieths of the ground'),
+        signs: of20(r.value, 'sat'),
+        qty: [{ num: `sources.${k}`, value: `${esc(String(r.value))}${esc(r.unit || '')}`,
+          cmp: `${r.source} \u2014 nothing on the ground here measured it` }] });
+    }
+
+    /* The plan needs a token at every share level, so a page without one draws no house row and
+       says which fact is missing rather than quietly rounding the sources down to five. */
+    html += plan && plan.counts
+      ? R({ id: 'src-houses', left: lab('Houses', 'one sign per 250'),
+        signs: many('house', Math.round(plan.counts.buildings / 250)),
+        qty: [{ num: 'sources.houses', value: String(plan.counts.buildings),
+          cmp: `buildings on the plan within this kilometre, drawn one sign per 250` }] })
+      : `<p class="note" id="src-houses" data-ref="sources-rows">The buildings on this kilometre `
+        + `are on the plan, and the plan needs a token at every share level. Without one this row `
+        + `is absent rather than guessed.</p>`;
+    return html + `</div>`;
+  },
+  notes() {
+    return [
+      { id: 'sources-rows', text: 'More is more signs, never a bigger sign. A row you can count is '
+        + 'a measurement; a bar you have to read off an axis is a picture of one. Three grains are '
+        + 'mixed here and each row says which it is: a station is one sign because you could point '
+        + 'at it, the ground is twentieths because a percentage counts nothing, and houses are one '
+        + 'sign per 250 because 2,713 signs is not a row.' },
+      { id: 'src-models', text: 'A model is not a station and is never counted as one. Nor is a '
+        + 'workshop: the `make` pack stores fab labs in the same table, and every count on this '
+        + 'page filters to stations and models so that a place somebody could walk to never '
+        + 'arrives as a reading of the air.' },
+      { id: 'src-built', text: 'Built and trees are the only rows here that nothing on the ground '
+        + 'measured \u2014 they are a satellite\u2019s reading of this square kilometre. They carry orange '
+        + 'and nothing else on the page does, because that is what orange means in this layer.' },
     ];
   },
 });
@@ -4719,7 +4837,7 @@ function main() {
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'matrix', 'day', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
+  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'forecast', 'claims', 'grain', 'asks', 'measure'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a

@@ -20,13 +20,13 @@ DESIGN="$(cd "${PAI_DESIGN_REPO:-../planetai-design}" 2>/dev/null && pwd)" || DE
 [ -n "$DESIGN" ] && [ -d "$DESIGN/node_modules/playwright" ] || { echo "  playwright is not in ${PAI_DESIGN_REPO:-../planetai-design} (resolved: ${DESIGN:-<not found>}); npm install there"; exit 2; }
 
 OUT="${PAI_OUT:-/tmp/pai-gate}"; mkdir -p "$OUT"
-export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI_Q="?fixture=node1-2026-09-06"
+export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI_Q="?fixture=node1-2026-09-21c"
 
 # now_populated_390/1440: everything T1-T5 below is read off these two. wall_populated_1920_dark:
 # T7 and the 1,080 px check. All three go through serveNodeAPI() in measure.mjs — no node, no
 # container, no network; see that function's own comment for what changed on 2026-09 and why.
 node tests/visual/measure.mjs render now_populated_1440 now_populated_390 >/dev/null
-PAI_Q="?fixture=node1-2026-09-06&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
+PAI_Q="?fixture=node1-2026-09-21c&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
 node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_populated_1920_dark >/dev/null
 
 # A press must redraw. Every check below this line measures one render, and since v0.55 a control
@@ -110,13 +110,27 @@ function t1legs(d) {
 // points is layout noise (a line wrapping differently at a slightly different font); +6 points is
 // roughly a whole section's worth of ground going unused, which is the H1 complaint this redesign
 // exists to answer — a regression there is worth failing on, and a couple of rounding points is not.
-// Re-recorded 21 Sep 2026, prompt 3's Observe stage, as each section lands: the matrix (four issues
-// at five columns) and the day (two series with their hours-over). The page is taller on purpose and
-// the 8% margin correctly refused both, which is what it is for.
-// The previous numbers, from 46018b0, were 390: 8267 and 1440: 5261. Emptiness is NOT re-recorded —
-// a redesign that adds content should drive that down, and it is the number H1 is about.
-const HEIGHT_SHIPPED = { now_populated_390: 9416, now_populated_1440: 6422 };
-const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 61.3 };
+// Re-recorded 21 Sep 2026, prompt 3's Observe stage, AND against a different fixture.
+//
+// THE FIXTURE CHANGED, which matters more than the numbers. This gate measured node1-2026-09-06,
+// a capture with no `sensors`, no `issues`, no `forecast`, no `trust`, no `nearby` and no `reach` —
+// so every section that reads one of those was never exercised here, and the wall was measured
+// against a house with four stations when node #1 has six. It now measures node1-2026-09-21c: node
+// #1 as it is today, on v0.69. The first thing that found was the wall at 1,107 px on a 1,080 px
+// screen, which had been true on the real node for weeks under a green gate.
+//
+// Heights are up because Observe gained three sections on purpose — the matrix, the day and the
+// sources — and because the richer fixture draws more in the ones that were already there. The 8%
+// margin refused every one of them, which is what it is for.
+//
+// 1440's emptiness is re-recorded DOWN, from 61.3 to 57.4: the redesign is meant to drive that
+// number and locking in the gain is the point of recording it. 390's is NOT re-recorded. It is
+// 42.6% against a 37.7% baseline — inside the +6 margin, but the wrong way, and writing 42.6 here
+// would make that the new normal. It is a watch item, not a new standard.
+//
+// Previous, from 46018b0 on node1-2026-09-06: 390: 8267 px / 37.7%, 1440: 5261 px / 61.3%.
+const HEIGHT_SHIPPED = { now_populated_390: 12126, now_populated_1440: 7914 };
+const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 57.4 };
 const HEIGHT_MARGIN = 1.08, EMPTY_MARGIN = 6;
 
 for (const n of ['now_populated_1440', 'now_populated_390']) {
