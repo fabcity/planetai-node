@@ -141,5 +141,31 @@ assert _mk and _mk["default"] == "0", \
 assert "not openly licensed" in (_mk["help"] or "").lower(), \
     "MAKE_ENABLED reaches Set up without the licence sentence pack.yaml puts above it"
 
+# ---- and every key says what a fresh node would have given it ---------------------------------
+#
+# `.env.example` is the record of that and `make lint` already holds it to a rule, but it is at the
+# repo root and the app image is built from app/, so the container could never read it: a row could
+# say "this value is a default" and never "the default is X". tools/gen_defaults.py generates the
+# same facts into data/, which IS mounted, with a --check in lint so the two cannot drift.
+_os.environ.setdefault("ENV_DEFAULTS", "data/env_defaults.yml")
+_st._defaults_cache.clear()
+_src = {k: v for k, v in
+        ((l.split("=", 1)[0].strip(), l.split("=", 1)[1].split("#")[0].strip())
+         for l in open(".env.example") if "=" in l and not l.strip().startswith("#"))
+        if k.isupper()}
+_rt = {r["key"]: r for r in _st.describe(unlocked=True, public=_st.PUBLIC)["runtime"]}
+for _k, _r in _rt.items():
+    if _r["group"] == "packs":
+        continue                                     # those come from pack.yaml, checked above
+    if _k == "UI_LAYOUT":
+        assert _r.get("default") in (None, ""), \
+            "UI_LAYOUT has no default VALUE — blank is how a keeper restores the default layout"
+        continue
+    assert _r.get("default") is not None, \
+        f"{_k} reaches Set up with no default, so a keeper who overrode it cannot see what it was"
+    if _k in _src:
+        assert _r["default"] == _src[_k], \
+            f"{_k}: /settings says {_r['default']!r}, .env.example says {_src[_k]!r}"
+
 print("config: separator safe, subcommands wired, writes routed, banner says Fab City and a version")
 print(f"config: {len(_declared)} pack-declared keys reach /settings with their defaults and help")

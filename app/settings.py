@@ -258,6 +258,29 @@ def _mask(v: str) -> str:
     return ("•••• set" if v else "") if v is not None else ""
 
 
+# What a fresh node gets, generated from `.env.example` into `data/`, which IS mounted into the
+# image — the app is built from `app/`, so a COPY cannot reach the repo root and the container has
+# never been able to say what a default IS. tools/gen_defaults.py writes it and `make lint` fails
+# when the two disagree, the same arrangement the platform floors have.
+_defaults_cache: dict = {}
+
+
+def defaults() -> dict:
+    """`{KEY: {default, help}}`, read once. A node whose image predates this file gets {} and every
+    row simply has no `default` — the page says nothing rather than guessing one."""
+    if not _defaults_cache:
+        # Read at call time, not at import: a path frozen when the module loads cannot be pointed
+        # anywhere else afterwards, which is fine in a container and wrong everywhere else.
+        path = os.getenv("ENV_DEFAULTS", "/app/data/env_defaults.yml")
+        try:
+            import yaml                              # noqa: PLC0415
+            with open(path) as fh:
+                _defaults_cache.update(yaml.safe_load(fh.read()) or {})
+        except Exception:                            # noqa: BLE001 — no defaults is not an outage
+            _defaults_cache["_"] = {}
+    return _defaults_cache
+
+
 def _env_lines(lines) -> list[tuple[str, str, str]]:
     """`[(KEY, default, help)]` from a block of `# comment` and `KEY=value` lines.
 
@@ -344,6 +367,8 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
                                # somebody type one it will refuse. CHOICES is already the authority for the refusal;
                                # publishing it means the dashboard's widget and the node's validation cannot disagree.
                                "choices": list(CHOICES[k]) if k in CHOICES else None,
+                               # None when the image has no defaults file, never a guess.
+                               "default": (defaults().get(k) or {}).get("default"),
                                "outward": k in OUTWARD})
     # The packs' own keys, after the node's. They carry a `default` because pack.yaml states one
     # beside every key; the node's own rows do not, which is the other half of this gap and needs
