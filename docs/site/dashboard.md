@@ -36,8 +36,9 @@ own." Then the as-of time, the version stamp, and the provenance pill: `live` on
 fixture.
 
 A **dial** sits under the header: one stop per H3 resolution the node's grain table knows, opening at 8.
-Stops at a resolution coarse enough that the cell may leave the machine (at or above the presence floor,
-resolution 6) are shaded in the cells blue; stops finer than the published resolution are struck through.
+Stops coarse enough that the cell may leave the machine (at or above the presence floor,
+resolution 6) are shaded with a dotted texture rather than the cells blue; stops finer than the
+published resolution are struck through.
 Turning the dial re-draws the ground and the grain at that resolution.
 
 ## Issues, states and distances
