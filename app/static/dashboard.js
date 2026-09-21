@@ -2062,6 +2062,77 @@ window.PAI.register({
 
 });
 
+/* ================================================================= h/mods/figures.js ==== */
+/* figures · core · measure
+ *
+ * Every figure on this page, once, with where it came from and what the node calls it. Eighteen
+ * rows on node #1, and the node computed all of them — `issues[*].provenance[]` is the ledger, not
+ * a summary the page assembles by walking its own DOM.
+ *
+ * WHY IT IS THE LAST THING. A reader who wants to check one number should not have to find the card
+ * it came from: the whole page in one table, in loop order, is the citation list. It closes the page
+ * the way the care label closes the loop — after everything, for the reader who is not taking it on
+ * trust.
+ *
+ * NO NUMERAL HERE HAS A COMPARISON, and that is why they carry `data-figure` rather than `data-num`.
+ * T4 counts numerals without a comparison, and it is right to: a figure on a card must say what it
+ * is measured against. But this table is the provenance OF those figures, and the comparison is on
+ * the card the row names. Repeating it eighteen times would be quoting the page at itself.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, fmt, pill, age } = window.K;
+
+window.PAI.register({
+  id: 'figures', pack: 'core', stage: 'measure', order: 90,
+  title: 'Every figure on this page, and where it came from',
+  render(ctx) {
+    const { ISS, ORDER } = ctx;
+    const rows = (ORDER || []).flatMap(k => ((ISS[k] || {}).provenance || [])
+      .map(e => ({ ...e, issue: k })));
+    if (!rows.length) {
+      return `<p class="note" id="figures-none" data-ref="care">This node sent no provenance for `
+        + `its figures, so there is nothing to list. That is a gap in what it published, not an `
+        + `empty page: every figure above came from somewhere.</p>`;
+    }
+    return `<div class="figwrap" id="figures-table" data-ref="care">`
+      + `<table class="figs"><thead><tr>`
+      + `<th>figure</th><th>value</th><th>from</th><th>word</th><th>age</th>`
+      + `</tr></thead><tbody>`
+      + rows.map(e => `<tr id="fig-${esc(e.figure)}">`
+        + `<td class="mono">${esc(e.figure)}</td>`
+        + `<td class="mono num" data-figure="${esc(e.figure)}">`
+        + `${e.value == null ? '\u2014' : esc(fmt(e.value, e.unit === '%' ? 1 : 2))}`
+        + `<small> ${esc(e.unit || '')}</small></td>`
+        + `<td><span class="said">${esc(e.source || '')}</span>`
+        + `${e.n > 1 ? `<small> \u00b7 ${e.n} of them</small>` : ''}</td>`
+        + `<td>${pill(e.provenance)}</td>`
+        + `<td class="mono">${e.age_minutes == null ? '\u2014' : esc(age(e.age_minutes))}</td>`
+        + `</tr>`).join('')
+      + `</tbody></table>`
+      + `<p class="cap">${rows.length} figures, in loop order. The node computed this list; the `
+      + `page did not assemble it by reading itself.</p></div>`;
+  },
+  notes(ctx) {
+    const n = (ctx.ORDER || []).reduce((a, k) => a + (((ctx.ISS[k] || {}).provenance) || []).length, 0);
+    return [
+      { id: 'figures-table', text: `Every figure on the page, once, with its source and the word the `
+        + `node puts on it \u2014 ${n} of them here. It is the node's own ledger and not a summary this `
+        + `page assembled: a page that walked its own numbers to build a citation list would be `
+        + `citing itself. A reader checking one figure should not have to find the card it came `
+        + `from, which is why the whole page is in one table at the end of it.` },
+      { id: 'fig-air.room', text: 'These numerals carry no comparison, which every other numeral on '
+        + 'the page must. That is deliberate: this is the provenance OF those figures, and what each '
+        + 'is measured against is on the card the row names. Repeating it eighteen times would be '
+        + 'the page quoting itself, so these are marked as figures rather than as numerals and the '
+        + 'gate that counts uncompared numerals correctly ignores them.' },
+    ];
+  },
+});
+
+});
+
 /* ================================================================= h/mods/matrix.js ==== */
 /* matrix · core · observe
  *
@@ -5260,7 +5331,7 @@ function main() {
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'claims', 'grain', 'asks', 'measure'];
+  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'claims', 'grain', 'asks', 'measure', 'figures'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a

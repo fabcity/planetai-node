@@ -1824,9 +1824,16 @@ from datetime import datetime
 # /alerts asks for 200 because engine._read does: a fixture given 50 replays a shorter ledger than
 # the node it was taken from. /actions and /aggregates are the two engine.Replay reads that were
 # never fetched here -- see the readings_1h stitch below, and PICK_2026-09-20.md gap J.
+# /earth is here because engine.replay passes snapshot["earth"] straight into compute(), and a
+# snapshot without it replays two of the land figures away: land.region and land.square, the
+# AlphaEarth comparison and the attribution that goes with it. The node published 18 figures and a
+# replay of the same capture produced 16, silently, which is what the Figures ledger made visible.
+# It is 10.6 kB on node 1 against 465 kB for /issues, so carrying it costs nothing.
+# NOTE for whoever edits this next: no apostrophes in here. This block is inside a single-quoted
+# shell string and one apostrophe ends it, taking the whole snapshot command with it.
 PATHS = ["/health", "/issues", "/stats", "/alerts?limit=200", "/rho", "/cells", "/observations",
          "/sensors", "/trust", "/report/latest", "/nearby", "/forecast",
-         "/actions?limit=2000", "/aggregates?hours=24", "/reach"]
+         "/actions?limit=2000", "/aggregates?hours=24", "/reach", "/earth"]
 base = "http://localhost:" + os.environ["SNAP_PORT"]
 tok = os.environ["SNAP_TOKEN"]
 
