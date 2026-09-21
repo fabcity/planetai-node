@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.69 — 2026-09-21 — the last stage stops being a zero, and a refusal stops sending you in a circle
+
+Two fixes, both of them things the node was saying that were not quite true. The interface redraw
+is still not in this release.
+
+- 2026-09-21 — **"Measured" was a stage nothing could ever reach.** Last release added the four
+  stages an ask goes through — asked, acknowledged, acted, measured — and the last one read zero on
+  every node in existence, including ones where people had been acting on alerts for months. Not
+  because nobody checks their work: because there was no way to record it. The node accepted
+  `acknowledged` and `acted` and nothing else, so `measured` could only ever be zero, on your node
+  and on everyone's.
+
+  It is worked out now instead of typed. Your node re-asks every rule on a cycle, so an alert that
+  was acted on and then went quiet — the same rule, the same sensor, quiet for longer than that rule
+  ever waits before asking again — is the thing having stopped being true. Nobody has to learn a new
+  habit and it reads backwards through everything already in the ledger: our own node went from 0 to
+  5 of 30 the moment it updated, having never recorded one.
+
+  It says whether something worked, never how fast, so it is the one stage with no time beside it.
+  And it is honest about the cases it cannot see: a rule that has been renamed or uninstalled can
+  never ask again, so its silence proves nothing and does not count. Without that guard our node
+  read 8 — three of them free, from two old test alerts and a rule that has since been renamed.
+
+  On our node the heat alerts are 13 acted and 0 measured. Heat does not stop because you acted, and
+  the page now says so rather than averaging it away.
+
+- 2026-09-21 — **A refusal that told you to change a setting you had already changed.** When the
+  node declines to answer something, it names the setting and offers to let you open sharing up. For
+  most things that is the right advice. For a handful of them — the version, the backups — no
+  sharing level opens them at all: they need a token from anywhere but the machine itself. Those
+  refusals were still offering the setting, so you changed it, came back, and got the same refusal,
+  now telling you to set it to what it already was.
+
+  The message now only offers the setting when the setting would actually answer, and otherwise says
+  a token is the only way in. The dashboard prints whatever your node said rather than its own copy
+  of it, so the two can no longer drift apart.
+
 ## v0.68 — 2026-09-21 — what the node can say about itself, and what you can change
 
 Six changes, all of them about what this node reports and what you can reach from Set up. Two of
