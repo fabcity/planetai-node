@@ -1,15 +1,98 @@
 # Changelog
 
-## Unreleased
+## v0.69 — 2026-09-21 — the last stage stops being a zero, and a refusal stops sending you in a circle
 
-- 2026-09-21 — **The numbers on the page are in the typeface they were meant to be in.** Every figure
-  the dashboard shows — readings, the grain table, the as-of, the cell id — is set in JetBrains Mono,
-  which the node carries so the page works on a network with no way out. It has never loaded. The one
-  place that asked for it asked by a path, and the node serves its assets by name, so the request
-  404ed and every number fell back to whatever the machine reading it calls monospace.
+Two fixes to what the node says, and two to the machinery that is supposed to catch us saying it
+wrong. The interface redraw is still not in this release.
 
-  Nothing about the numbers changes. They will look slightly different, and line up the way they were
-  drawn to.
+- 2026-09-21 — **"Measured" was a stage nothing could ever reach.** Last release added the four
+  stages an ask goes through — asked, acknowledged, acted, measured — and the last one read zero on
+  every node in existence, including ones where people had been acting on alerts for months. Not
+  because nobody checks their work: because there was no way to record it. The node accepted
+  `acknowledged` and `acted` and nothing else, so `measured` could only ever be zero, on your node
+  and on everyone's.
+
+  It is worked out now instead of typed. Your node re-asks every rule on a cycle, so an alert that
+  was acted on and then went quiet — the same rule, the same sensor, quiet for longer than that rule
+  ever waits before asking again — is the thing having stopped being true. Nobody has to learn a new
+  habit and it reads backwards through everything already in the ledger: our own node went from 0 to
+  5 of 30 the moment it updated, having never recorded one.
+
+  It says whether something worked, never how fast, so it is the one stage with no time beside it.
+  And it is honest about the cases it cannot see: a rule that has been renamed or uninstalled can
+  never ask again, so its silence proves nothing and does not count. Without that guard our node
+  read 8 — three of them free, from two old test alerts and a rule that has since been renamed.
+
+  On our node the heat alerts are 13 acted and 0 measured. Heat does not stop because you acted, and
+  the page now says so rather than averaging it away.
+
+- 2026-09-21 — **A refusal that told you to change a setting you had already changed.** When the
+  node declines to answer something, it names the setting and offers to let you open sharing up. For
+  most things that is the right advice. For a handful of them — the version, the backups — no
+  sharing level opens them at all: they need a token from anywhere but the machine itself. Those
+  refusals were still offering the setting, so you changed it, came back, and got the same refusal,
+  now telling you to set it to what it already was.
+
+  The message now only offers the setting when the setting would actually answer, and otherwise says
+  a token is the only way in. The dashboard prints whatever your node said rather than its own copy
+  of it, so the two can no longer drift apart.
+
+- 2026-09-21 — **Our own tests stopped running on the build machine, and nobody noticed.** One test
+  hands a JavaScript program to `node` as a command-line argument, and that program now includes
+  every setting the node knows about. Linux refuses a single argument over 128 KB; macOS does not.
+  Last release pushed it to 138 KB by adding the pack settings — so it kept passing on every
+  developer's machine and stopped running on the build machine, with an error that said nothing
+  about size. v0.68 went out with a red gate. The program goes in through the front door now, which
+  has no such limit.
+
+- 2026-09-21 — **And the release script waited for a verdict it never waited for.** It refuses to
+  build when the checks have failed, and it refuses when they are still running. It did not refuse
+  when they had not started yet — it said so and carried on — and since they start seconds after a
+  push, that was the state every release was in. v0.68 was built and signed before its own failing
+  check had finished. It now waits for that too.
+
+## v0.68 — 2026-09-21 — what the node can say about itself, and what you can change
+
+Six changes, all of them about what this node reports and what you can reach from Set up. Two of
+them fix things that were simply not possible before. The interface redraw is still not in this
+release; it ships on its own when it is finished.
+
+- 2026-09-21 — **You can turn a pack on from Set up now.** A pack declares its own settings in its
+  `pack.yaml` — how far the fab-lab pack looks, which snapshot it reads, whether it runs at all —
+  and none of them ever reached the settings page. Not one. So the switch whose entire job is to
+  turn a pack on was invisible, and the only way to touch any of it was to edit `.env` by hand.
+
+  All of them are there now, in a Packs group, each with the explanation its pack wrote for it and
+  the value it has if you never touch it. Including `MAKE_ENABLED`, which arrives with the sentence
+  about the fab-lab directory not being openly licensed, because that is the sentence you should
+  read before turning it on.
+
+- 2026-09-21 — **Every setting says what it would be if you cleared it.** The page could tell you a
+  value was the default; it could not tell you what the default was once you had changed it. Now
+  every row carries both, so you can see what you are overriding.
+
+- 2026-09-21 — **A fab lab is a place, and the page can finally say where it is.** With the `make`
+  pack on, the node stores the labs near you — how far, what machines, which monthly snapshot it
+  read. The page was being handed the name and nothing else, because the filter that hides your own
+  sensors' hostnames and firmware was being applied to somebody else's public workshop as well.
+  A lab publishes what a lab publishes; your own kit's network details are still cut.
+
+  With it, the node now offers one sentence naming the nearest place you could get something made,
+  in your own language — the pack writes it, and the page draws it under the ask it answers.
+
+- 2026-09-21 — **How far your asks actually get.** Beside ρ, the node now counts them stage by
+  stage: asked, acknowledged, acted, measured, with the usual wait between each. On our own node it
+  reports 162 asked and 30 acted with none acknowledged first — which is a true thing about how this
+  household works, and ρ alone could not show it. It is not a second ρ and will not agree with it:
+  ρ asks whether anyone answered at all, this asks how far they went.
+
+- 2026-09-21 — **How far back your record goes.** `GET /reach` says, per kind of source, when the
+  oldest hourly reading is. On our node: the satellite record reaches 3,720 days, the models 447,
+  and the sensors in the house 20. The Historical view draws those on one page and has never said
+  they are different lengths of line.
+
+- 2026-09-21 — **A pack with a broken `pack.yaml` says so.** It used to lose every setting it
+  declared and the only symptom was a pack that seemed not to be installed. It is in the log now.
 
 ## v0.67 — 2026-09-21 — the node says more about itself, and says it correctly
 

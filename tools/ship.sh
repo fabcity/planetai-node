@@ -209,7 +209,15 @@ if command -v gh >/dev/null 2>&1; then
   CI="$(gh run list --commit "$(git rev-parse HEAD)" --limit 20 \
         --json conclusion,status,workflowName,url 2>/dev/null || true)"
   if [[ -z "$CI" || "$CI" == "[]" ]]; then
-    say "no CI run for this commit yet — building anyway, but nothing has tested it"
+    # "No run yet" is not "nothing to wait for". A push fires the workflows within seconds, so an
+    # empty list on a commit that has just been pushed means CI has not STARTED — which is the
+    # pending case, not the absent one. Treating it as absent is how v0.68 was built and signed
+    # minutes before its own lint went red, and shipped with a red gate nobody saw.
+    [[ "${SHIP_WITHOUT_CI:-0}" == 1 ]] || die "no CI run has started for this commit yet, so nothing
+   has tested what you are about to hand a tester. Wait for it to appear and finish, then ship — or,
+   if this commit genuinely has no workflow:
+     SHIP_WITHOUT_CI=1 make ship"
+    say "no CI run for this commit, shipping anyway because SHIP_WITHOUT_CI=1"
   else
     BAD="$(printf '%s' "$CI" | python3 -c 'import json,sys
 r=json.load(sys.stdin)

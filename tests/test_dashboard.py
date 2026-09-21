@@ -22,6 +22,19 @@ import subprocess
 import sys
 from pathlib import Path
 
+def _node(prog):
+    """Run a JS program through node, with the program on STDIN and never in argv.
+
+    Linux caps a single argument at 128 KiB (MAX_ARG_STRLEN) and macOS does not, so a program
+    that outgrew that limit passed on every dev machine and failed only in CI, with `OSError:
+    [Errno 7] Argument list too long: 'node'` and no hint that the size was the reason. It
+    failed that way from v0.68. The program is a lifted function plus a JSON blob of settings,
+    and the blob grows every time a setting is added, so argv was always going to be outgrown.
+    tools/check_ui.py already reads its input this way."""
+    r = subprocess.run(["node"], input=prog, capture_output=True, text=True, check=True)
+    return json.loads(r.stdout)
+
+
 ROOT = Path(__file__).resolve().parent.parent
 os.chdir(ROOT)
 sys.path.insert(0, str(ROOT / "app"))
@@ -87,7 +100,7 @@ if shutil.which("node"):
     _prog = (_runs.group(0) + "\nconst at = (v, i) => [i, v];\n"
              + "console.log(JSON.stringify(Object.fromEntries(Object.entries("
              + json.dumps(_cases) + ").map(([k, v]) => [k, runs(v, at).map(r => r.length)]))))")
-    _out = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True, check=True).stdout)
+    _out = _node(_prog)
     assert _out["a hole in the middle"] == [2, 2], f"one hole must give two lines, not one: {_out}"
     assert _out["the fixture's own case"] == [8, 9], \
         f"the seven nulled hours must split the day into 8 points and 9, not bridge into 17: {_out}"
@@ -169,7 +182,7 @@ if shutil.which("node"):
              + "             secretLeaked: 'TELEGRAM_BOT_TOKEN' in flat,\n"
              + "             rowsKept: Array.isArray(flat.runtime) };\n}\n"
              + "console.log(JSON.stringify(out))")
-    _t = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True, check=True).stdout)
+    _t = _node(_prog)
 
     assert _t["on-anonymous"]["value"] == "on", \
         f"MAP_TILES=on must reach window.SETTINGS unmasked for a reader with no token: {_t['on-anonymous']}"
@@ -213,11 +226,9 @@ if shutil.which("node"):
     os.environ.pop("STATIONS_SHOWN", None) if _sb is None else os.environ.__setitem__("STATIONS_SHOWN", _sb)
     _settings._cache["at"] = 0.0
 
-    _c = json.loads(subprocess.run(
-        ["node", "-e", _cap_js + "\nconst B = " + json.dumps(_caps) + ";\n"
-         + "const out = {};\nfor (const [k, body] of Object.entries(B)) "
-         + "out[k] = capOf(flatSettings(body));\nconsole.log(JSON.stringify(out))"],
-        capture_output=True, text=True, check=True).stdout)
+    _c = _node(_cap_js + "\nconst B = " + json.dumps(_caps) + ";\n"
+                + "const out = {};\nfor (const [k, body] of Object.entries(B)) "
+                + "out[k] = capOf(flatSettings(body));\nconsole.log(JSON.stringify(out))")
 
     assert _c["3"] == 3 and _c["7"] == 7, f"the keeper's number must reach the page: {_c}"
     assert _c["0"] is None, f"0 lists every station: {_c}"
@@ -243,11 +254,9 @@ if shutil.which("node"):
         # a node still splitting cells at the finest stop: no flat run either, for the other reason
         "busy": [{"res": r, "occupied": r} for r in range(2, 13)],
     }
-    _f = json.loads(subprocess.run(
-        ["node", "-e", _run + "\nconst T = " + json.dumps(_tables) + ";\nconst out = {};\n"
-         + "for (const [k, grain_table] of Object.entries(T)) "
-         + "out[k] = flatRun({ grain_table }).map(r => r.res);\nconsole.log(JSON.stringify(out))"],
-        capture_output=True, text=True, check=True).stdout)
+    _f = _node(_run + "\nconst T = " + json.dumps(_tables) + ";\nconst out = {};\n"
+                + "for (const [k, grain_table] of Object.entries(T)) "
+                + "out[k] = flatRun({ grain_table }).map(r => r.res);\nconsole.log(JSON.stringify(out))")
     assert _f["node1"] == [9, 10, 11, 12], f"the flat run must be the tail that stops changing: {_f}"
     assert _f["empty"] == [], f"every row zero is an empty node, not a finding about grain: {_f}"
     assert _f["busy"] == [], f"a count still changing at the finest stop has no flat run: {_f}"

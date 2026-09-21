@@ -276,4 +276,34 @@ assert d["TELEGRAM_BOT_TOKEN"]["value"] in ("", "•••• set"), "a secret i
 level("open")
 assert lan.get("/settings").json()["runtime"], "open: /settings still answers"
 print("settings: at off, the layout and the level and nothing else")
+# The 403 has to know whether its own advice is advice. /reach is refused at `off` and answered at `open`, so the
+# setting is a real remedy; /version is on no allowlist at any level, so sending its reader to the Set up view is
+# sending them to change a setting, come back, and read the same 403.
+level("off")
+_msg = lan.get("/reach").json()["error"]
+assert "Set SHARE_LEVEL to open" in _msg, f"off: /reach is one `open` away and must say so: {_msg}"
+level("open")
+_msg = lan.get("/version").json()["error"]
+assert "Set SHARE_LEVEL to open" not in _msg, f"open: /version must not advise the setting it already has: {_msg}"
+assert "always needs a token" in _msg, f"open: /version must say a token is the only way in: {_msg}"
+print("the refusal only offers the setting when the setting would answer")
+
+
+# The derived `measured` stage is only honest while its window outlasts every act-level cooldown. A rule that waits
+# longer than the window to re-fire would be counted as cleared while it was merely waiting its turn, turning "we have
+# not looked yet" into "it worked" — the one lie this stage exists to avoid.
+import yaml as _yaml, pathlib as _pl
+import index as _index
+_slow = []
+for _f in [_pl.Path("config/rules.yml")] + sorted(_pl.Path("packs").glob("*/rules.yml")):
+    try: _rules = _yaml.safe_load(_f.read_text()) or []
+    except Exception as _e: raise AssertionError(f"{_f} does not parse, so its cooldowns cannot be checked: {_e}")
+    for _r in _rules:
+        if isinstance(_r, dict) and _r.get("level") == "act" and int(_r.get("cooldown_minutes", 60)) > _index.MEASURED_WINDOW_MIN:
+            _slow.append(f"{_r.get('id')} ({_f.parent.name}) waits {_r.get('cooldown_minutes')}m")
+assert not _slow, ("act-level rules slower than index.MEASURED_WINDOW_MIN="
+                   f"{_index.MEASURED_WINDOW_MIN}m: {'; '.join(_slow)}. Raise the window to match, or the funnel will "
+                   "call their alerts measured while they are still waiting to fire again.")
+print(f"measured window {_index.MEASURED_WINDOW_MIN}m outlasts every act-level cooldown")
+
 print("all share-level checks passed")

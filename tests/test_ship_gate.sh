@@ -134,7 +134,10 @@ git -C "$D/other" tag -a v2 -m v2
 git -C "$D/other" push -q origin main 2>/dev/null && git -C "$D/other" push -q origin v2 2>/dev/null
 git -C "$D/work" fetch -q --tags origin
 
-out="$(cd "$D/work" && bash tools/s.sh 2>&1)"
+# SHIP_WITHOUT_CI=1 because this throwaway repo has no workflow at all, which is the one case the CI
+# check is meant to let through. Without it the run now stops at the gate closed after v0.68 shipped
+# ahead of its own lint, and never reaches the restart this case is about.
+out="$(cd "$D/work" && SHIP_WITHOUT_CI=1 bash tools/s.sh 2>&1)"
 grep -q "restarting so this release is built by the new one" <<<"$out" \
   && ok "a fast-forward that replaces ship.sh restarts it" \
   || bad "ship.sh was replaced mid-run and carried on reading the old file: $out"
@@ -147,6 +150,15 @@ grep -q "I AM version-two" <<<"$out" \
 [[ "$(sed -n 's/^BUILDING-AS //p' <<<"$out" | tail -1)" == v2 ]] \
   && ok "and it builds as v2, the version it actually contains" \
   || bad "labelled '$(sed -n 's/^BUILDING-AS //p' <<<"$out" | tail -1)', not v2: $out"
+
+# And the gate bites without that escape. v0.68 was built and signed minutes before its own lint went
+# red, because an empty run list read as "nothing to wait for" rather than "CI has not started". A
+# check that only ever passes is not a check, so this asserts the refusal, not just the pass above.
+out="$(cd "$D/work" && bash tools/s.sh 2>&1)"; rc=$?
+[[ $rc -ne 0 ]] && grep -q "no CI run has started for this commit yet" <<<"$out" \
+  && ok "and with no CI run and no escape, it refuses" \
+  || bad "shipped with nothing having tested the commit (rc=$rc): $out"
+
 cd /; rm -rf "$D"
 
 [[ $fails -eq 0 ]] && { echo "ship gate tests pass"; exit 0; } || { echo "$fails failed"; exit 1; }

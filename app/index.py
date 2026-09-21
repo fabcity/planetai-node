@@ -16,6 +16,7 @@ import logging
 import os
 from datetime import datetime, timezone
 
+import packs
 import registry
 
 log = logging.getLogger("planetai.index")
@@ -184,8 +185,36 @@ def rho(cur, days_ago: int = 0) -> dict:
     return out
 
 
+# How long a rule must stay silent after the act before its condition counts as cleared. It has to be at least the
+# longest cooldown of any act-level rule, core or pack: a rule with a 3-day cooldown asked a 2-day question would be
+# called measured while it was merely waiting its turn to fire again. Today the slowest is nearby/only_here at 2880.
+# tests/test_share.py asserts no act-level rule outgrows this, so a pack that adds a slower one fails a check instead
+# of quietly turning "we have not looked yet" into "it worked".
+MEASURED_WINDOW_MIN = 2880
+
+def _live_rule_ids() -> list[str]:
+    """The rule ids this node still evaluates. A retired rule — renamed, uninstalled with its pack, or a one-off test
+    id — cannot fire again whatever the household does, so its silence is not evidence that anything was fixed. On
+    node #1 three of eight derived measurements were exactly this: two `_test/hello-<epoch>` alerts and one
+    `indoor_pm25_high` from before pack ids were prefixed, each counted as a closed loop for free."""
+    try:
+        return [str(r["id"]) for r in packs.load_rules() if isinstance(r, dict) and r.get("id")]
+    except Exception as e:  # noqa: BLE001
+        log.warning("cannot read the rule set, so no measurement can be derived: %s", e)
+        return []
+
+
 def _funnel(cur, days_ago: int = 0) -> dict:
     """How far the asks got, stage by stage, and how long each step took.
+
+    `measured` IS DERIVED, NOT POSTED. Nothing in the node writes a measured row — main.py::post_action takes
+    acknowledged and acted only — so counting posted rows would report a structural zero as a household that never
+    checks its work. What the node does have is the rule itself: run_rules re-fires an alert as soon as its cooldown
+    expires and the condition still holds. So an act followed by MEASURED_WINDOW_MIN of silence from the same rule on
+    the same sensor is the condition having stopped being true, on every node, retroactively, with nobody asked to
+    learn a new habit. A posted measured row still counts if one ever arrives.
+
+    This is evidence of WHETHER, not of WHEN — see latency_minutes below.
 
     NOT A SECOND RHO, and the query above is untouched. rho is one number with a specification of
     its own (docs/SPEC_rho.md) and its `acted` means "acknowledged OR acted, within 24 hours" — a
@@ -202,30 +231,49 @@ def _funnel(cur, days_ago: int = 0) -> dict:
     actually happened: an ask acted on without being acknowledged first is measured from when it was
     asked, not from a timestamp that does not exist."""
     cur.execute("""WITH ref AS (SELECT now() - make_interval(days => %(back)s) AS t),
-                        a AS (SELECT id, ts FROM alerts, ref
+                        a AS (SELECT id, ts, rule_id, sensor_id FROM alerts, ref
                               WHERE level='act' AND ts > ref.t - interval '30 days' AND ts <= ref.t),
                         s AS (SELECT alert_id, stage, min(ts) AS t FROM actions
-                              WHERE stage IN ('acknowledged','acted','measured') GROUP BY alert_id, stage)
+                              WHERE stage IN ('acknowledged','acted','measured') GROUP BY alert_id, stage),
+                        -- Derived: the rule had a full MEASURED_WINDOW_MIN after the act to fire again on the same
+                        -- sensor and did not, so its condition stopped being true. main.py::run_rules re-fires a rule
+                        -- the moment its cooldown expires and the condition still holds, so silence across a window
+                        -- longer than any act-level cooldown is evidence, not absence of evidence.
+                        der AS (SELECT a.id AS alert_id, act.t
+                                FROM a
+                                JOIN s act ON act.alert_id = a.id AND act.stage = 'acted'
+                                CROSS JOIN ref
+                                WHERE a.rule_id = ANY(%(live)s)
+                                  AND ref.t > act.t + make_interval(mins => %(win)s)
+                                  AND NOT EXISTS (SELECT 1 FROM alerts r
+                                                  WHERE r.rule_id = a.rule_id
+                                                    AND r.sensor_id IS NOT DISTINCT FROM a.sensor_id
+                                                    AND r.ts > act.t
+                                                    AND r.ts <= act.t + make_interval(mins => %(win)s))),
+                        m AS (SELECT alert_id FROM s WHERE stage = 'measured'
+                              UNION SELECT alert_id FROM der)
                    SELECT count(*) AS asked,
                           count(ack.t) AS acknowledged,
                           count(act.t) AS acted,
-                          count(mea.t) AS measured,
+                          count(mea.alert_id) AS measured,
                           percentile_cont(0.5) WITHIN GROUP (
                             ORDER BY extract(epoch FROM ack.t - a.ts)/60) AS to_acknowledged,
                           percentile_cont(0.5) WITHIN GROUP (
-                            ORDER BY extract(epoch FROM act.t - coalesce(ack.t, a.ts))/60) AS to_acted,
-                          percentile_cont(0.5) WITHIN GROUP (
-                            ORDER BY extract(epoch FROM mea.t - coalesce(act.t, ack.t, a.ts))/60) AS to_measured
+                            ORDER BY extract(epoch FROM act.t - coalesce(ack.t, a.ts))/60) AS to_acted
                    FROM a
                    LEFT JOIN s ack ON ack.alert_id = a.id AND ack.stage = 'acknowledged'
                    LEFT JOIN s act ON act.alert_id = a.id AND act.stage = 'acted'
-                   LEFT JOIN s mea ON mea.alert_id = a.id AND mea.stage = 'measured'""",
-                {"back": days_ago})
+                   LEFT JOIN m mea ON mea.alert_id = a.id""",
+                {"back": days_ago, "win": MEASURED_WINDOW_MIN, "live": _live_rule_ids()})
     f = cur.fetchone() or {}
     rnd = lambda k: round(float(f[k])) if f.get(k) is not None else None      # noqa: E731
     return {
         "stages": {k: int(f.get(k) or 0) for k in ("asked", "acknowledged", "acted", "measured")},
-        "latency_minutes": {"acknowledged": rnd("to_acknowledged"), "acted": rnd("to_acted"),
-                            "measured": rnd("to_measured")},
+        # `measured` has no latency on purpose. The derivation proves the condition stopped being true somewhere
+        # inside the window, never when — a median of window-ends would be a near-constant 48h dressed up as a
+        # measurement. It says whether the loop closed, not how fast.
+        "latency_minutes": {"acknowledged": rnd("to_acknowledged"), "acted": rnd("to_acted"), "measured": None},
+        "measured_derived": True,
+        "measured_window_minutes": MEASURED_WINDOW_MIN,
         "self_only": True,
     }
