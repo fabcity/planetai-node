@@ -188,3 +188,26 @@ assert "'es', 'Espa\u00f1ol'" in open("app/static/dashboard.js").read(), "dashbo
 for pre in ("santiago", "barcelona", "menorca"):
     assert "ALERT_LOCALE=es" in open(f"presets/{pre}.env").read(), f"presets/{pre}.env: Spanish-first pilots speak Spanish"
 print("every template speaks en, id and es")
+
+# packs.module() is the one place that knows where a node keeps its packs. Two callers used to
+# insert "../packs/<name>" on sys.path and import bare — engine._where_to_go and report.sheet — and
+# "../packs" is not where the image keeps them (/app/packs is, and PACKS_DIR is unset there), so
+# both imports failed on every real node. Both swallow the failure by design, so nothing said so:
+# `asks.where` was null with the make pack on and a lab 3.3 km away, and the report's `make` line
+# never appeared once. This asserts the loader finds a real pack's adapter, and that neither caller
+# has gone back to building the path itself.
+import pathlib as _pl
+_m = _packs.module("make")
+assert _m is not None, f"packs.module('make') found nothing under {_packs.PACKS_DIR}"
+assert hasattr(_m, "ask_line"), "packs/make/adapter.py no longer exposes ask_line"
+assert _packs.module("no-such-pack") is None, "a pack that is not here must be None, never a raise"
+assert _packs.module("make", "no-such-module") is None, "a missing module must be None"
+for _f in ("app/issues/engine.py", "app/report.py"):
+    # The CODE, not the prose: both files explain the old bug in a comment that names the path, and
+    # matching the string flagged the explanation as the offence.
+    _src = "\n".join(l.split("#")[0] for l in _pl.Path(_f).read_text().split("\n"))
+    assert 'getenv("PACKS_DIR"' not in _src, \
+        f"{_f} resolves PACKS_DIR itself again; packs.py holds that default (/app/packs on a node)"
+    assert "path.insert" not in _src, \
+        f"{_f} is putting a pack on sys.path again; packs.module() imports it by file"
+print("packs.module finds a pack's adapter, and neither caller builds the path itself")

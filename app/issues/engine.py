@@ -147,15 +147,14 @@ def _where_to_go(facilities: list[dict]) -> dict | None:
     """
     if not facilities:
         return None
-    # `packs` in app/ is the LOADER, not a package: the pack directories live outside it and are
-    # reached by path, which is what app/report.py already does for this same function. Importing
-    # `packs.make.adapter` fails with "packs is not a package" and takes the sentence with it.
-    try:
-        import sys as _sys                           # noqa: PLC0415
-        _sys.path.insert(0, os.path.join(os.getenv("PACKS_DIR", "../packs"), "make"))
-        from adapter import ask_line                 # noqa: PLC0415 — packs/make owns the wording
-    except Exception:                                # noqa: BLE001 — a pack may simply not be here
+    # packs.module() knows where a node keeps its packs. This used to insert "../packs/make" on
+    # sys.path and import bare, which is not where the image keeps them — /app/packs is — so the
+    # import failed on every real node and the sentence was silently None. See packs.module().
+    import packs as _packs                           # noqa: PLC0415
+    _mod = _packs.module("make")
+    if _mod is None or not hasattr(_mod, "ask_line"):
         return None
+    ask_line = _mod.ask_line                         # packs/make owns the wording
     out = {}
     for loc in LOCALES:
         try:
