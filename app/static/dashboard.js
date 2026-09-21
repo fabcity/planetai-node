@@ -5618,7 +5618,13 @@ function main() {
      unexplained buttons appear beside every band and no way to finish. */
   function arrbar() {
     return `<div class="arrbar" id="arrbar" role="region" aria-label="Arrange">`
-      + `<span>Arrange: ← and → move a section within its stage, ✕ hides it.</span>`
+      + `<span>Arrange: ← and → move a section within its stage, ✕ hides it. `
+      /* The three that do not move, said rather than left to be discovered by trying. They carry no
+         controls because they are not sections — the rail is the page's one instrument, the lead is
+         its answer, and the ground is the surface both stand on — and a reader who cannot see why a
+         band has no arrows will assume the arrows are broken. */
+      + `<b>The rail, the lead and the ground are fixed</b> and carry no controls: the first is this `
+      + `page's instrument, the second its answer, the third the surface both stand on.</span>`
       + `<label class="vh" for="arr-restore">Put a hidden section back</label>`
       + `<select id="arr-restore"><option value="">Restore a hidden section…</option></select>`
       + `<button type="button" class="btn ghost" id="btn-arr-reset">Default</button>`
