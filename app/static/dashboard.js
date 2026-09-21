@@ -5396,6 +5396,9 @@ function learnBar() {
 
 /* Every render rewrites the marks, so the one that is open has to be told again that it is. */
 function learnSync() {
+  /* Switching out of learn mode takes the marks away, so it takes the panel with them: a panel
+     open over a page with nothing to point at is a thing the reader cannot get back to. */
+  if (mode() !== 'learn') { if (LEARN_AT) learnClose(); return; }
   const ln = document.querySelector('#learnbar .ln');
   if (ln && LEARN && LEARN.order.length) {
     const n = document.querySelectorAll('#page .q').length;
@@ -5453,7 +5456,8 @@ function learnOpen(key) {
 /* One listener, on the document, installed once — the marks are rewritten on every render and a
    listener bound to a button dies with it. */
 document.addEventListener('click', e => {
-  const t = e.target.closest ? e.target : (e.target.parentNode || document.body);
+  const t = e.target && e.target.closest ? e.target : null;
+  if (!t) return;
   const close = t.closest('[data-learn-close]');
   if (close) { learnClose(); return; }
   const step = t.closest('[data-learn-step]');
