@@ -1430,14 +1430,18 @@ const SIZE = 600;                   // logical px of the lead's square; the wall
 const FILL = 0.9;                   // the cells may take this much of the square
 const EQUATOR_M = 40075016.686;     // Web Mercator's circumference, metres
 
+/* THE OFFLINE PLAN LEADS. It was third of three, after the two that leave the house — so the first
+ * thing offered was the one with a cost, and the one that costs nothing was the afterthought. The
+ * node's own map is the default from resolution 9 in and it is the only base that sends no request
+ * anywhere; it goes first, and the other two say what they would cost before they are pressed. */
 const BASES = {
+  plan: { name: 'plan, offline', host: null, credit: 'OpenStreetMap, kept on this node\u2019s disk' },
   sat: { name: 'satellite', host: 'tiles.maps.eox.at', maxZ: 18,
     url: (z, x, y) => `https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/g/${z}/${y}/${x}.jpg`,
     credit: 'Sentinel-2 cloudless by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2020)' },
   osm: { name: 'street map', host: 'tile.openstreetmap.org', maxZ: 19,
     url: (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
     credit: '© OpenStreetMap contributors' },
-  plan: { name: 'plan, offline', host: null, credit: 'OpenStreetMap, kept on this node’s disk' },
 };
 /* Which base when nobody has pressed one. Tomas's rule: from resolution 9 inward, the plan. The
  * node's own map is about 3 km across; the res-9 plate is 1.6 km, so from 9 the plan fills the
@@ -1628,17 +1632,40 @@ function lead(ctx) {
   const why = tilesOn
     ? `the plan fills the frame from resolution ${PLAN_FROM} in — turn the dial out to offer this`
     : 'live tiles are off on this node — turn MAP_TILES on under Set up';
+  /* WHAT EACH BASE COSTS, in the tab, before it is pressed. The request count was at the foot of
+     the panel and only ever described the base already showing — so the one number a reader needs
+     in order to choose was the one they could only see after choosing. Each tile is this household's
+     kilometre named to a tile server, so it is a price and it belongs on the thing being bought.
+     The plan's is zero, and says so rather than being left blank. */
+  const cost = (k) => {
+    if (k === 'plan') return 'sends nothing';
+    try {
+      const n = frame(res, SIZE, k).tiles.length;
+      return `${n} request${n === 1 ? '' : 's'}`;
+    } catch (e) { return ''; }
+  };
   const strip = `<div class="ctlstrip" role="group" aria-label="the ground under the cells">`
-    + Object.entries(BASES).map(([k, b]) => (k === 'plan' || allowed)
-      ? `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">`
-        + `${esc(b.name)}</a>`
-      : `<span class="off" aria-disabled="true" title="${esc(why)}">${esc(b.name)}</span>`).join('')
-    + `<span class="auto">${allowed
+    + Object.entries(BASES).map(([k, b]) => {
+      const price = cost(k);
+      const inner = `${esc(b.name)}${price ? `<small>${esc(price)}</small>` : ''}`;
+      return (k === 'plan' || allowed)
+        ? `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">${inner}</a>`
+        : `<span class="off" aria-disabled="true" title="${esc(why)}">${inner}</span>`;
+    }).join('')
+    + `</div>`
+    /* The rule the strip follows is a SENTENCE ABOUT the strip, not a fourth thing to press. Inside
+       the bordered box it wrapped to three lines, made the strip 82px, and the ground panel is in
+       the lead's right-hand column — which spans all six rows, so a taller panel pushes the left
+       column apart and the as-of off the first screen. It sits under the box now. */
+    + `<p class="ctlrule">${allowed
       ? `plan from resolution ${PLAN_FROM} · tiles coarser`
       : (window.SETTINGS || {}).MAP_TILES === 'on'
-        ? `the plan fills the frame from resolution ${PLAN_FROM} in, and sends nothing`
-        : 'live tiles are off on this node · turn MAP_TILES on under Set up to offer them'
-      }</span></div>`;
+        ? `the plan fills the frame from resolution ${PLAN_FROM} in`
+        /* One line, in this column, at this size. Two lines here cost 17px, and the map column
+           spans all six rows of the lead — so the panel's height IS the lead's height, and the
+           as-of line sits five pixels above the fold. The disabled tabs carry the same reason. */
+        : 'live tiles are off · turn MAP_TILES on under Set up'
+      }</p>`;
 
   let key, cap;
   if (base === 'plan') {
