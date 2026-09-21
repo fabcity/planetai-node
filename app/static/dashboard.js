@@ -3910,14 +3910,15 @@ const { esc, fmt, row, rhoRow, series, peerRow, unplaced, funnel, sign } = windo
  * It is copied text, and deliberately so — these five sentences are the architecture's, not the page's,
  * and paraphrasing them here would make a sixth version of a promise that already has one home.
  *
- * SIGN DISCIPLINE. Each sign means its own sentence or there is no sign. `person` does not exist yet
- * (it lands with prompt 3's sign commit), and the human row is the third refusal's whole subject, so
- * that row draws its slot empty rather than borrowing `rho-closed` — which already means an answered
- * ask twelve pixels higher in this same card, and would then mean two things in one place. */
+ * SIGN DISCIPLINE. Each sign means its own sentence or there is no sign. The third row drew an empty
+ * slot for a while rather than borrow `rho-closed`, which already means an answered ask twelve pixels
+ * higher in this same card and would then have meant two things in one place. `person` exists for
+ * this row now — its first pass measured 90.3% identical to `heat` at 12 px and went back for a
+ * redraw, which is R23 in the design log. */
 const REFUSALS = [
   ['house', 'No raw readings leave the instance that recorded them.'],
   ['cell', 'No cell is upgraded from mock or partial to live by aggregation.'],
-  ['', 'No agent dispatches without a human row in the actions ledger.'],
+  ['person', 'No agent dispatches without a human row in the actions ledger.'],
   ['machine', 'No layer requires a cloud provider to function.'],
   ['planet', 'No scale is skipped: a city aggregator is built from nodes, not declared from above.'],
 ];
@@ -3992,9 +3993,9 @@ window.PAI.register({
       { id: 'care', text: 'The five refusals are copied from the architecture, not written here, '
         + 'because a promise repeated in a second place is a promise that can drift. They sit at the '
         + 'end of the loop rather than the top of the page: a reader meets what this node does '
-        + 'first, and what it will not do once they have seen it. One row has no sign yet — there '
-        + 'is no person in the sign set, and borrowing the answered-ask ring would make that ring '
-        + 'mean two things in one card.' },
+        + 'first, and what it will not do once they have seen it. The row about the human row went '
+        + 'without a sign until one was drawn for it: borrowing the answered-ask ring would have '
+        + 'made that ring mean two things twelve pixels apart.' },
       { id: 'measure-day', text: 'The day is the headline issue’s own trace: the node supplies every '
         + 'value and the line, the page supplies only the box. A hole in the series is a hole in the '
         + 'line — a run of one reading is a dot, never nothing — and the text alternative beside the '
