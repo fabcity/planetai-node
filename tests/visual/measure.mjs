@@ -181,6 +181,16 @@ function fixtureHealth(name) {
 // fixture), 500 when Python raised. There is no third shape that hands back an empty object: a
 // child that fails and a child that answers "no issues, no health" must never look the same to
 // whatever reads the response, or a broken rig measures a broken page and reports it as an empty one.
+const REPLAY_FAILED = [];
+process.on('exit', c => {
+  if (REPLAY_FAILED.length && !c) {
+    console.error(`measure.mjs: ${REPLAY_FAILED.length} fixture(s) never replayed `
+      + `(${[...new Set(REPLAY_FAILED)].join(', ')}), so anything measured after that was measured `
+      + `on a page with no data. Exiting non-zero rather than reporting it.`);
+    process.exitCode = 1;
+  }
+});
+
 const _nodeDataCache = new Map();
 function computeNodeData(name) {
   if (_nodeDataCache.has(name)) return _nodeDataCache.get(name);
@@ -206,12 +216,18 @@ snap['issues'] = engine.replay(snap, settings, load())
 desc = settings.describe(unlocked=False, public=settings.PUBLIC)
 print(json.dumps({'snapshot': snap, 'settings': desc}))`;
     try {
+      // maxBuffer, because the default is 1 MB and every snapshot taken from a node that has been
+      // running a while is larger than that: node #1's 21 Sep fixture is 1.5 MB in and more out.
+      // Without it execFileSync throws ENOBUFS, the page renders with no data at all, and `targets`
+      // then prints a full table of crosses that reads as the page having broken.
       const out = execFileSync('python3', ['-c', script],
-        { cwd: ROOT, env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
+        { cwd: ROOT, maxBuffer: 512 * 1024 * 1024,
+          env: { ...process.env, PACKS_DIR: 'packs', PYTHONPATH: 'app', ...nodeEnv(fixtureHealth(name)) } });
       result = { status: 200, ...JSON.parse(out.toString()) };
     } catch (e) {
       const msg = `python3 failed replaying fixture ${name}: ${e.message.split('\n')[0]}`;
       console.error(`measure.mjs: ${msg}`);
+      REPLAY_FAILED.push(name);
       result = { status: 500, error: msg };
     }
   }
