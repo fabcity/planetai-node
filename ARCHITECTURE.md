@@ -217,3 +217,8 @@ publishes. Mobile app ships as the domestic client. The Index publishes a quarte
 No raw readings leave the instance that recorded them. No cell is upgraded from mock or partial to live by
 aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to function.
 No scale is skipped: a city aggregator is built from nodes, not declared from above.
+
+The node's page is three static files served from `app/static/` and stays so — no framework, no build step,
+nothing loaded from anywhere else, because a node serves it to a household network that may have no route out.
+`planetai.fab.city` may use a framework; the two never share code, and both read the programme layer, which is
+published as [`docs/site/design.md`](docs/site/design.md).

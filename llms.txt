@@ -30,6 +30,7 @@ the files themselves.
 - [docs/REVIVE_A_LAPTOP.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/REVIVE_A_LAPTOP.md): turning an old laptop into a node with Ubuntu Server or Omarchy — a USB stick and about an hour.
 - [docs/MAC_MINI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/MAC_MINI.md): running a node on a Mac that stays on, including the settings that stop it sleeping.
 - [docs/UPDATING.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/UPDATING.md): what `planetai update` does, in what order, and how to get back if it goes wrong.
+- [docs/site/design.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/site/design.md): the programme layer — every colour with its one meaning, the four card kinds, the signs and their 12 px floor, every motion with the datum that drives it, and the refusals.
 - [docs/STORAGE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/STORAGE.md): where the data lives, why never on a network mount, and how backups reach a NAS.
 - [docs/PREFILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/PREFILL.md): what a node knows about a place before it has measured anything.
 
