@@ -5600,7 +5600,16 @@ const ASKING = (function () {
   const GL = '0123456789abcdef';
   const N = 560;                       // ≤ 600, the budget prompt 6 set
   const SPIN = 0.35;                   // rad/s
+  /* THE SETTLE IS A FLOOR, NOT A DURATION — for the same reason the hold is. The glyphs turn while
+     the node has not answered and settle into its cell when /issues lands, and the turning decays
+     with the settle (`k = 1 - s` below), so a fixed 900 ms meant a fast node flattened by ~930 ms
+     and then held a STILL FRAME for the other two seconds of the three-second floor. The rAF loop
+     was running the whole time, drawing the same picture. Reported by Tomas, 22 September.
+     `settleFor` is whatever is left of the floor when /issues lands, so the settle ends exactly as
+     close() takes the overlay away; a node slower than the floor gets this minimum instead, because
+     there the page arriving is the thing wanted and nothing should be stretched to meet it. */
   const SETTLE_MS = 900;
+  let settleFor = SETTLE_MS;
   /* A fixed sphere, computed once: the globe is the same globe every time it is asked for, and
      scattering 560 points per open would be work for no difference anybody can see. */
   const pts = [];
@@ -5657,7 +5666,7 @@ const ASKING = (function () {
     ctx.strokeStyle = cells; ctx.lineWidth = 2 * dpr; ctx.globalAlpha = 0.9; ctx.stroke();
     ctx.globalAlpha = 1;
 
-    const s = settle0 ? Math.min(1, (now - settle0) / SETTLE_MS) : 0;
+    const s = settle0 ? Math.min(1, (now - settle0) / settleFor) : 0;
     const k = 1 - s;                            // 1 = a globe, 0 = flat in the cell's plane
     const ang = (now - t0) / 1000 * SPIN * k;   // and it stops turning as it flattens
     const ca = Math.cos(ang), sa = Math.sin(ang);
@@ -5745,6 +5754,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      settleFor = SETTLE_MS;
       held = !!hold;
       /* Per episode, not per session: the cost of the frames drawn while the page was loading is
          not the cost of the frames drawn when somebody pressed ↻ twenty minutes later. */
@@ -5789,6 +5799,12 @@ const ASKING = (function () {
     landed(issues) {
       if (!on || !issues) return;
       settle0 = performance.now();
+      /* Stretch the settle over what is left of the floor, so the glyphs are still moving when the
+         overlay goes. `held` is still true here: close() is called after boot() resolves and this
+         runs inside it. Under reduced motion the token is 0, so this is the minimum and the loop
+         draws one frame anyway. */
+      const floor = held ? window.K.msToken('--motion-asking-hold') : 0;
+      settleFor = Math.max(SETTLE_MS, floor - (settle0 - t0));
       const hk = issues.headline, d = (issues.issues || {})[hk] || {};
       /* The reading the lead will carry, off the field the lead reads: stack.room. `readouts` is an
          empty list on this node's own wire and was never the numeral's source. */

@@ -2343,6 +2343,8 @@ async function plateShots(names) {
  *     also a surface something could draw on again by accident. display:none keeps both.
  *   · under reduced motion it draws ONE frame. Not zero — a reader who has asked for stillness is
  *     still owed the picture — and not a loop.
+ *   · with motion on it is STILL MOVING when the floor ends, which is the one claim here that is
+ *     about the drawing rather than the DOM, and the one that needed the canvas read.
  *
  * Driven through PAI_ASKING, which exists for this: a surface that only appears while a fetch is in
  * flight cannot be caught by a screenshot, and one that only animates when the browser says the tab
@@ -2394,6 +2396,60 @@ async function asking() {
       if (r.subscribed !== 1) fails.push(`${tag}: it did not subscribe to the loop (PAI_RAF.size ${r.subscribed})`);
       if (!r.floor) fails.push(`${tag}: --motion-asking-hold is ${r.floor} — the account cannot be read`);
       if (!r.heldOpen) fails.push(`${tag}: it closed on the spot, so the reads it lists are never seen`);
+    }
+    /* THE FOURTH CLAIM, added 22 September: it is still moving when the floor ends.
+     *
+     * The settle decays the spin (`k = 1 - s` in draw()), so a fixed 900 ms settle meant a node
+     * that answers in 30 ms flattened by ~930 ms and then showed a STILL FRAME for the other two
+     * seconds of the three-second floor — the rAF loop running the whole time, drawing the same
+     * picture. Reported by Tomas. Nothing above catches it: every other check here is about the DOM
+     * at a moment, and `probe(30)` draws thirty frames without ever asking whether any two differ.
+     *
+     * So this one reads the canvas itself, twice, late, and requires the pixels to have changed.
+     * Position-weighted rather than a plain alpha sum, because a rotation moves ink without
+     * changing how much of it there is. */
+    if (!reduce) {
+      const moved = await h.page.evaluate(async () => {
+        const A = window.PAI_ASKING, K = window.K;
+        const sig = () => {
+          const c = document.getElementById('askcv');
+          if (!c) return null;
+          const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+          let v = 0;
+          for (let i = 3; i < d.length; i += 4) v = (v + d[i] * ((i >> 2) % 1013)) % 4294967296;
+          return v;
+        };
+        const wait = ms => new Promise(res => setTimeout(res, ms));
+        /* The floor probe above closed itself, and close() reschedules for the rest of the floor —
+           so it is still `up`, and open() returns early on a surface that is already open. Wait for
+           it to actually go before asking for a fresh episode, or this measures nothing and then
+           reports on the previous episode's dying frames. */
+        for (let i = 0; i < 60 && A.up(); i++) await wait(100);
+        if (A.up()) return { stuck: true };
+        A.open('moving', true);
+        A.landed(K.S.issues);                    // the node answered at once, as a fixture does
+        await wait(300);
+        const early = sig();
+        await wait(2300);                        // 2.6 s into a 3 s floor
+        const late1 = sig();
+        await wait(250);
+        const late2 = sig();
+        const upLate = A.up();
+        A.close();
+        return { early, late1, late2, upLate };
+      });
+      if (moved.stuck) {
+        fails.push(`${tag}: the previous episode never closed, so this could not be measured`);
+      } else if (moved.early === null || moved.late1 === null) {
+        fails.push(`${tag}: the canvas drew nothing, so "still moving" cannot be read`);
+      } else if (!moved.upLate) {
+        fails.push(`${tag}: gone 2.85 s into a ${r.floor} ms floor`);
+      } else if (moved.late1 === moved.late2) {
+        fails.push(`${tag}: identical pixels at 2.6 s and 2.85 s — it settles early and holds a `
+          + `still frame for the rest of the floor`);
+      } else {
+        said.push(`${tag}: still moving at 2.85 s of the ${r.floor} ms floor`);
+      }
     }
     said.push(`${tag}: ${reduce ? 'one still frame, no subscription, no floor'
       : `subscribed to the one loop, held for ${r.floor} ms`}`

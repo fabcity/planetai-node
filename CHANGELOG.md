@@ -12,6 +12,13 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **The loading animation kept still for two of its three seconds.** The glyph globe turns while
+  your node has not answered and settles into your own cell when it does — and the turning fades out
+  as it settles, over a fixed nine-tenths of a second. On a node that answers in a blink that meant
+  it had finished moving before the first second was up, and then showed you a photograph for the
+  rest of the hold. It now spreads the settle across whatever is left, so it is still moving when it
+  goes. A node slower than the hold is not slowed down further. Reported by Tomas.
+
 - **"I did this" does something now.** Every open ask has carried that button since this page
   shipped, and nothing was listening for it. The node has taken a closed loop since v0.21 — who
   acted, and a sentence in their own words — so every act on node #1 was recorded over Telegram, a

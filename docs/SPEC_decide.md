@@ -141,7 +141,75 @@ A keeper deleting a watch would therefore **retroactively convert every decision
 a success.** So: `retired_at`, and the derivation keeps ignoring anything not currently live. This is
 the single sharpest constraint in this document and it is not negotiable.
 
-## 6 · Options of actions
+## 6 · The decision is the record, and the action may never come
+
+*From Tomas, 22 September: "it is important to record the decision… If there is no act, then it
+should be taken as no action, so the process is recorded but does not affect further down, it is as
+an action that never happens. But an action coming from a decision and it never happened, it should
+show that the decision was made."*
+
+This splits something the ledger currently runs together. `actions` has three stages —
+`acknowledged`, `acted`, `measured` — and the *decision* is not among them. Today a decision only
+exists as the note attached to an act, so a decision that was made and never carried out leaves no
+trace at all: the ask simply stays open, as though nobody had thought about it.
+
+So a decision is its own record, and an act is a separate thing that may or may not follow it:
+
+| | what it means | what it does downstream |
+|---|---|---|
+| **decided** | somebody thought about this and said what they would do | **nothing** |
+| **acted** | it was done | the funnel's `acted`, and the watch starts earning its answer |
+| **measured** | the condition stopped being true | derived, as now |
+
+**A decision alone moves nothing.** It does not close an ask, it does not enter ρ, it does not count
+as `acted`, and it does not make a cell or a count say anything different. In Tomas's words it is
+*an action that never happens* — and the point of recording it is precisely that the node can tell
+the difference between a household that never looked and a household that looked, decided, and did
+not manage it. Those are opposite facts and today they are the same blank.
+
+**And it stays visible.** A decision with no act is not a failure to be tidied away. Where an ask
+shows as open, it shows *what was decided about it and when*, and the page says plainly that the
+thing was not done. That is the one place this spec asks the page to be blunt: the honest sentence
+is "decided on the 14th, not done", not a quiet omission.
+
+Two consequences worth writing down now:
+
+- **A decision needs no watch.** §5's prediction is what makes an *act* measurable. A decision that
+  never becomes an act has nothing to measure and needs nothing, so nothing in §5 gates §6. The
+  watch is created when the act is recorded, not when the decision is.
+- **The stage goes in the same table, and there is already a precedent for adding one.**
+  `actions.stage` is a CHECK constraint that `init.sql:135` drops and re-adds with **four** values —
+  `acknowledged`, `acted`, `measured` and `settings`. That fourth one is the node recording its own
+  configuration changes: `alert_id` NULL, no ask, counted by nothing. `_funnel` selects the three it
+  names and ignores it, which is exactly the treatment `decided` needs. So this is a fifth value by
+  the same two lines of migration, and every existing consumer ignores it without being told. What
+  must **not** happen is `decided` counting anywhere `acted` counts, which is the whole of §6.
+
+## 7 · At this scale, one person. At the next, consensus
+
+*From Tomas: "at this scale is individual, but as we keep developing the node, it will be collective,
+depending on the scale of the decision. If I decide to do something about my street, maybe need to
+build consensus with other neighbors."*
+
+Not built, and not designed here — but the shape of §6 has to leave room for it, so:
+
+**A decision carries the scale it is about.** This node already has the vocabulary and uses it for
+everything else it says: the four distances (room · wall outside · street · model) and the eleven
+grains of the rail. A decision about the room is one person's and needs nobody. A decision about the
+street is about ground this node shares with nodes it can already see — §4 of `SPEC_discovery.md`
+gives it the list — and one household recording it does not make it true for the street.
+
+So the field exists from the first version and the consensus does not. A decision at room scale is
+complete when one person makes it. A decision at street scale is **recorded by whoever made it and
+marked as one household's**, and what turns several of those into a decision the street has taken is
+the question the collective version answers. It is a real question — who is asked, what counts as
+agreement, what a node does when its neighbours disagree, and whether a decision can bind anyone who
+did not answer — and none of it should be guessed at while there are two nodes on the network.
+
+What matters now is only that a decision recorded today at street scale is still legible when that
+arrives, rather than being an individual decision with a bigger word on it.
+
+## 8 · Options of actions
 
 The agent has the readings, the alerts, the issues and a model, and could offer two or three things a
 household might do. It must not be load-bearing:
@@ -156,7 +224,7 @@ pre-filling the same two sentences, each one editable, and each one marked as th
 and not the node's finding. A decision recorded from a proposal records which rung answered — the
 agent already stamps `X-Agent=<name>/<rung>` on every write.
 
-## 7 · By whom
+## 9 · By whom
 
 `actions.actor` is eighty characters of free text. Today the honest answer to "who decided" is
 "whoever typed their name", and there is no identity behind it. That question belongs to
@@ -164,7 +232,7 @@ agent already stamps `X-Agent=<name>/<rung>` on every write.
 must be *asked for* and not defaulted: an unattributed decision in a house with four people in it is
 a record nobody can check.
 
-## 8 · What it refuses
+## 10 · What it refuses
 
 - No decision without something to watch, or it is a diary entry the funnel cannot count — and the
   page must say which of the two it is taking.
@@ -173,8 +241,12 @@ a record nobody can check.
 - No watch finer than the grain the node has already proved is flat.
 - No proposal presented as a finding.
 - Nothing here writes a `measured` row. The derivation stays the only way that stage is reached.
+- **A decision never counts as an act.** Not in the funnel, not in ρ, not in a cell, not in a count.
+- **A decision that was never acted on is never hidden.** It shows, with its date, beside the ask it
+  was about.
+- No decision speaks for more people than the one who made it, whatever scale it names.
 
-## 9 · Still open
+## 11 · Still open
 
 - **What happens to a decision whose watch never fires.** If the condition is not true when you
   decide, there is no alert to act on and nothing to measure. Probably correct — you decide about
@@ -182,6 +254,9 @@ a record nobody can check.
   are not written.
 - **A decision about something the node cannot see.** "We moved the burning to the far field" is
   real, useful, and has no metric. §8 forbids counting it; it does not say whether to record it.
+- **What a decision at a scale bigger than this house means before consensus exists.** §7 says it is
+  recorded as one household's and that is all. Whether the page should say so every time, or only
+  where a neighbour is visible to disagree, is not settled.
 - **Whether an insight can be wrong.** The three kinds in §4 are arithmetic, not judgement. A sensor
   in the sun reads high and the arithmetic will call it an insight.
 
