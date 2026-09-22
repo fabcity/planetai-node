@@ -1532,6 +1532,15 @@ function digest(ctx) {
 
 function render(ctx, lead, opts = {}) {
   const { esc } = window.K;
+  /* THE DIGEST IS NOW'S, AND ONLY NOW'S.
+   *
+   * It is four sentences about this hour — observe, decide, act, measure — written by the node. It
+   * was being drawn on EVERY view in simple mode, so Historical and Network each answered "what is
+   * the air doing right now" under a heading about the years and about the network, with no sections
+   * under it because none of theirs opt into simple. 652 characters and not one of them about the
+   * view the reader had asked for. A short answer to the wrong question is worse than a long one to
+   * the right question. */
+  const onNow = !opts.only || opts.only.includes('matrix');
   /* `only` is the whole of the Now/Network split: one registry, two views, and the notes band at
      the foot then lists the sections on the view a reader is actually on. */
   const keep = opts.only ? new Set(opts.only) : null;
@@ -1539,7 +1548,7 @@ function render(ctx, lead, opts = {}) {
   const ordered = sections.filter(s => (!keep || keep.has(s.id))
     && (!simple || s.level === 'simple')).slice().sort((a, b) =>
     STAGE_INDEX[a.stage] - STAGE_INDEX[b.stage] || a.order - b.order || a.id.localeCompare(b.id));
-  let html = (lead || '') + (simple ? digest(ctx) : '');
+  let html = (lead || '') + (simple && onNow ? digest(ctx) : '');
   for (const [key, name, what] of STAGES) {
     const mine = ordered.filter(s => s.stage === key);
     if (!mine.length) continue;
@@ -2847,6 +2856,9 @@ function record(ctx) {
 
 window.PAI.register({
   id: 'satellite', pack: 'earth', stage: 'observe', order: 30,
+  /* Historical's short answer. The pack says the satellite loop leads this view, so it is what a
+     reader gets when they ask for the short version of it — not Now's four sentences. */
+  level: 'simple',
   title: 'What the satellite says',
   needs: ['PLAN', 'H3.claims'],
   render(ctx) {
@@ -3151,6 +3163,9 @@ function rows(side, items) {
 
 window.PAI.register({
   id: 'netmap', pack: 'core', stage: 'observe', order: 0,
+  /* Network's short answer, for the same reason: this view is this node in relation to the network,
+     and the map of that relation is the whole of the short version. */
+  level: 'simple',
   title: 'This node, and what moves through it',
   needs: ['SENSORS'],
   render(ctx) {
@@ -5344,8 +5359,27 @@ function applyRegister(view) {
  * copy and nobody else's. Same bargain the register makes, for the same reason. */
 const MODE_KEY = 'planetai_mode';
 const MODES = [['simple', 'Simple'], ['advanced', 'Advanced'], ['learn', 'Learn']];
+/* WHICH VIEWS HAVE A SHORT ANSWER TO GIVE.
+ *
+ * Simple is "the short version of what this view reports", and three views do not report: Set up is
+ * a form, Arrange is a mode for moving sections about, and the Wall is already the short version —
+ * it is one screen at three metres and it has no header to put a control in. Offering Simple on them
+ * was a control that did nothing on Set up and took the sections away from Arrange, leaving its bar
+ * with nothing to arrange.
+ *
+ * Learn stays on all of them: a question mark is worth having wherever there is something to explain,
+ * and the marks are drawn per section rather than per view. */
+const SHORT_VIEW = new Set(['now', 'historical', 'network']);
 const isMode = m => MODES.some(([k]) => k === m);
-function mode() {
+function mode(view) {
+  /* A view with no short answer draws the full one, whatever this browser last chose. Otherwise a
+     reader who picked Simple on Now arrived at Arrange to find no sections and a bar offering to
+     reorder them. The stored choice is not changed — going back to Now restores it. */
+  if (view && !SHORT_VIEW.has(view) && modeRaw() === 'simple') return 'advanced';
+  return modeRaw();
+}
+
+function modeRaw() {
   /* `?mode=simple` is read first and remembers nothing: it is how the measuring rig renders all
      three modes, and how one person sends another the short answer without changing their page. */
   const q = new URLSearchParams(location.search).get('mode');
@@ -5357,7 +5391,9 @@ function mode() {
   const set = row && String(row.value == null ? '' : row.value).trim();
   return isMode(set) ? set : 'advanced';
 }
-window.PAI_MODE = mode;
+/* The renderer asks without a view and gets the stored choice; chrome() and main() ask about the
+   view they are drawing. VIEW is set by readView() before either runs. */
+window.PAI_MODE = () => mode(VIEW);
 
 /* ONE ANIMATION LOOP FOR THE WHOLE PAGE.
  *
@@ -5860,7 +5896,7 @@ const VIEWS = [['now', 'Now'], ['historical', 'Historical'], ['network', 'Networ
   ['wall', 'Wall'], ['arrange', 'Arrange'], ['setup', 'Set up']];
 function chrome(node, city, view) {
   const esc = window.K.esc;
-  const reg = register(), md = mode();
+  const reg = register(), md = mode(view);
   return `<header id="header"><div class="wrap">`
     + `<h1 class="brand"><b>${esc(node || 'PLANETAI')}</b><span>${esc(city || '')}</span></h1>`
     + `<nav class="views" aria-label="Views">` + VIEWS.map(([v, name]) =>
@@ -5868,7 +5904,7 @@ function chrome(node, city, view) {
       + `${v === view ? ' aria-current="page"' : ''}>${esc(name)}</button>`).join('')
     + `</nav>`
     + `<div class="seg mode" role="group" aria-label="How much of the page is shown">`
-    + MODES.map(([m, name]) =>
+    + MODES.filter(([m]) => m !== 'simple' || SHORT_VIEW.has(view)).map(([m, name]) =>
       `<button type="button" data-mode="${m}" class="${m === md ? 'on' : ''}"`
       + ` aria-pressed="${m === md}">${esc(name)}</button>`).join('')
     + `</div>`

@@ -504,7 +504,9 @@ if shutil.which("node"):
         _lift(r"const MODE_KEY = '[^']*';", "MODE_KEY"),
         _lift(r"const MODES = \[.*?\];", "MODES"),
         _lift(r"const isMode = .*?;", "isMode()"),
-        _lift(r"function mode\(\) \{.*?\n\}", "mode()"),
+        _lift(r"const SHORT_VIEW = new Set\(\[.*?\]\);", "SHORT_VIEW"),
+        _lift(r"function mode\(view\) \{.*?\n\}", "mode()"),
+        _lift(r"function modeRaw\(\) \{.*?\n\}", "modeRaw()"),
     ))
     _mode_bodies = {}
     _mb = os.environ.get("UI_MODE")
@@ -542,6 +544,30 @@ if shutil.which("node"):
     assert _m["node_simple"] == "simple", \
         f"UI_MODE must reach the page through describe()'s runtime rows, not a flat map: {_m}"
     assert _m["node_learn"] == "learn", f"every value the setting allows must arrive: {_m}"
+    # A VIEW WITH NO SHORT ANSWER DRAWS THE FULL ONE, whatever this browser last chose.
+    #
+    # Simple is the short version of what a view reports, and three views do not report: Set up is a
+    # form, Arrange is a mode for moving sections about, and the Wall is already one screen at three
+    # metres with no header to put a control in. Before this, a reader who chose Simple on Now and
+    # then opened Arrange got the digest, no sections at all, and a bar offering to reorder them.
+    # The stored choice is not rewritten — going back to Now restores it — so both halves are here.
+    _vprog = (_mode_js + ";\nglobalThis.window = { SETTINGS: { runtime: [] } };\n"
+              + "globalThis.location = { search: '' };\n"
+              + "globalThis.localStorage = { getItem: k => (k === MODE_KEY ? 'simple' : null) };\n"
+              + "const out = {}; for (const v of ['now','historical','network','setup','arrange','wall',undefined])\n"
+              + "  out[String(v)] = mode(v);\nconsole.log(JSON.stringify(out))")
+    _v = json.loads(subprocess.run(["node", "-e", _vprog], capture_output=True, text=True,
+                                   check=True).stdout)
+    for _view in ("now", "historical", "network"):
+        assert _v[_view] == "simple", \
+            f"{_view} reports something, so it must honour a reader's Simple: {_v}"
+    for _view in ("setup", "arrange", "wall"):
+        assert _v[_view] == "advanced", \
+            (f"{_view} has no short answer to give, so Simple must not follow a reader onto it — "
+             f"on Arrange it took every section away and left the bar with nothing to arrange: {_v}")
+    assert _v["undefined"] == "simple", \
+        f"asked without a view, mode() must still answer what this browser chose: {_v}"
+
     assert _m["node_unset"] == "advanced", \
         f"a node that never set it opens on the whole page, not on four sentences: {_m}"
     assert _m["node_garbage"] == "advanced", \
@@ -560,8 +586,21 @@ if shutil.which("node"):
 assert "function digest(ctx)" in _js, "dashboard.js no longer draws the digest"
 assert re.search(r"const d = \(ctx\.S\.issues \|\| \{\}\)\.digest", _js), \
     "the digest is no longer READ from /issues — if the page is composing those sentences, stop"
-assert re.search(r"simple \? digest\(ctx\) : ''", _js), \
+assert re.search(r"simple && onNow \? digest\(ctx\) : ''", _js), \
     "simple mode no longer draws the digest in place of the sections it hides"
+# AND ONLY ON NOW. The digest is four sentences about this hour. It was drawn on every view in
+# simple mode, so Historical and Network each answered "what is the air doing right now" under a
+# heading about the years and about the network, with no sections under them because none of theirs
+# opted into simple: 652 characters, not one about the view the reader had asked for. A short answer
+# to the wrong question is worse than a long answer to the right one.
+assert re.search(r"const onNow = !opts\.only \|\| opts\.only\.includes\('matrix'\)", _js), \
+    "the digest is no longer confined to Now, so the other views answer a question nobody asked"
+# Each of the other two names its own short answer instead, which is the section the pack says leads
+# that view: the satellite loop on Historical, the network map on Network.
+for _sec in ("satellite", "netmap"):
+    _blk = _js[_js.index(f"id: '{_sec}'"):]
+    assert "level: 'simple'" in _blk[:400], \
+        f"{_sec} no longer opts into simple, so its view has no short answer to give"
 assert "level: 'advanced'" in _js, \
     "the section contract lost its default level, so every section would vanish in simple mode"
 
