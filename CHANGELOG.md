@@ -12,6 +12,24 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **You can see what was decided, and by whom.** Your node has recorded every answer anybody gave an
+  alert since v0.21 — who, when, which ask, and the sentence they wrote — and the dashboard drew none
+  of it. Node #1 had thirty-one answers on its own wire with twenty-three names in them, and the Act
+  stage showed a count in a funnel and no account. There is now a ledger under the asks: newest
+  first, four shown and the rest folded.
+
+  The sentences are treated as your node treats them. Who acted and when is published with the rest
+  of the page; the note is not, because `GET /actions` answers a token or the machine itself — a note
+  is your household's own words about what it did in its own house. Without a token the ledger says
+  so and names the ask instead of the sentence. Reported by Tomas, who went looking for it on the Act
+  stage and found nothing.
+
+- **`planetai snapshot` no longer writes your household's notes into the file.** A snapshot is made
+  to be sent — to a bug report, a design round, a repository — and it was capturing those sentences
+  with the admin token and storing them verbatim, which walks around the very decision the node makes
+  when it refuses them to a reader without one. They are removed now, and the file says how many were
+  removed. Nothing in a replay reads them.
+
 - **The loading animation kept still for two of its three seconds.** The glyph globe turns while
   your node has not answered and settles into your own cell when it does — and the turning fades out
   as it settles, over a fixed nine-tenths of a second. On a node that answers in a blink that meant

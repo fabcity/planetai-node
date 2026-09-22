@@ -4291,6 +4291,122 @@ window.PAI.register({
   },
 });
 
+/* ================================================================= h/mods/ledger.js ==== */
+/* ledger · core · act
+ *
+ * WHAT WAS DECIDED, AND BY WHOM. The one thing the loop records that the page never drew.
+ *
+ * `POST /actions` has taken a stage, an actor and a 500-character note since v0.21, and from
+ * 22 September the page can write one. Nothing read them back: node #1 has 31 acts on its own wire
+ * with 23 names in them and the page drew none of it, so "somebody closed this" was a count in a
+ * funnel and never an account. Reported by Tomas, who could not find it on the Act stage.
+ *
+ * TWO SOURCES, AND THE SPLIT IS THE NODE'S, NOT THIS PAGE'S:
+ *
+ *   · the rows — who, when, which ask, which stage — come off `H3.asks.actions`, which /issues
+ *     publishes to anyone the share level lets read it.
+ *   · the WORDS come off GET /actions, which is on neither share allowlist on purpose: the note is
+ *     the household's own sentence about what it did in its own house, and that route answers a
+ *     token or the machine itself. `window.ACT_NOTES` is null for a reader without one, and this
+ *     section says so once rather than drawing a column of blanks.
+ *
+ * This page does not widen that. Publishing the note on /issues would put those sentences on the
+ * `open` allowlist, which is the opposite of what the node decided.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row, age } = window.K;
+const { H } = window.KH;
+
+/* Four, and the rest folded. Eight rows and a five-line head were 1,029 px at 390 and took the page
+   past the length target by 175 px — measured by the gate, which is what that target is for. The
+   whole explanation of why the words are missing lives in this section's notes; the head says the
+   short version and stops. */
+const SHOWN = 4;
+
+/* The ask a row answers, by id, off the act ledger /issues already carries. An act older than the
+   200 alerts `_read` keeps has no ask to name, and says that rather than drawing an empty cell. */
+function askOf(id) {
+  return ((H.asks || {}).acts || []).find(a => a.id === id) || null;
+}
+
+function line(x, ctx) {
+  const a = askOf(x.alert_id);
+  const notes = window.ACT_NOTES;
+  const note = notes ? notes[`${x.alert_id}:${x.stage}`] : null;
+  const when = new Date(x.ts);
+  const mins = Math.round((Date.parse(ctx.S.base.captured_utc) - when.getTime()) / 60000);
+  const name = String(x.actor || '').trim();
+  return row({
+    id: `act-${esc(String(x.alert_id))}-${esc(String(x.stage))}`,
+    component: 'ledgerRow', ref: 'asks-rows',
+    cls: x.stage === 'acted' ? '' : 'quiet',
+    cols: 'minmax(0,170px) minmax(0,1fr) auto',
+    left: `<span class="who"><b>${esc(name || 'somebody')}</b>`
+      + `<span class="m">${esc(x.stage)} · ${esc(age(mins))}</span></span>`,
+    /* The sentence if this reader may have it; otherwise the ask it answered, so the row still says
+       what was closed. Never a blank and never a guess at what was written. */
+    line: note ? esc(note)
+      : a ? esc(String(a.text || '').split('\n')[0].slice(0, 120))
+        : 'the ask this answered is older than the ledger this node keeps',
+    qty: [],
+  });
+}
+
+window.PAI.register({
+  id: 'ledger', pack: 'core', stage: 'act', order: 20,
+  title: 'What was decided, and by whom',
+  needs: ['H3.asks.actions'],
+  anchor: 'ledger',
+  render(ctx) {
+    const rows = (((H.asks || {}).actions) || []).slice()
+      .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    if (!rows.length) {
+      return `<p class="note" id="ledger-none" data-component="absent" data-ref="asks-rows">`
+        + `Nobody has answered an ask on this node yet. When somebody does \u2014 from this page, `
+        + `from Telegram, or from a terminal \u2014 what they did and who they are is recorded here.`
+        + `</p>`;
+    }
+    const words = window.ACT_NOTES;
+    const said = words ? Object.keys(words).length : 0;
+    /* One sentence about what this reader is being shown, because a ledger of names with no words
+       looks like a ledger whose words are missing, and on most readings it is a ledger whose words
+       this reader is not entitled to. */
+    const head = `<p class="why" id="ledger-head" data-component="ledgerHead" data-ref="ledger">`
+      + `${rows.length} answer${rows.length === 1 ? '' : 's'} on this node. `
+      + (words
+        ? `${said} carr${said === 1 ? 'ies' : 'y'} the sentence somebody wrote.`
+        : `The sentences need a token \u2014 a note is the household\u2019s own words about its own `
+          + `house. Set up \u2192 unlock.`)
+      + `</p>`;
+    const first = rows.slice(0, SHOWN).map(x => line(x, ctx)).join('');
+    const rest = rows.slice(SHOWN);
+    return head + `<div class="reads" id="ledger-rows" data-ref="asks-rows">${first}`
+      + (rest.length
+        ? `<details class="fold"><summary>The other ${rest.length}</summary>`
+          + rest.map(x => line(x, ctx)).join('') + `</details>`
+        : '')
+      + `</div>`;
+  },
+  notes() {
+    return [
+      { id: 'ledger-two-sources', text: 'This ledger is drawn from two answers, and the line '
+        + 'between them is the node\u2019s. Who acted, when, and on which ask are published with the '
+        + 'rest of the page. The sentence they wrote is not: GET /actions is on neither sharing '
+        + 'allowlist, because a note is what a household said about its own house, and it answers a '
+        + 'token or this machine and nothing else.' },
+      { id: 'ledger-no-decision', text: 'Every row here is an act \u2014 something that was done. A '
+        + 'decision that was made and never carried out has nowhere to go on this node yet: the '
+        + 'ledger has three stages and none of them is "decided". docs/SPEC_decide.md proposes the '
+        + 'fourth, and until it exists a household that looked, decided and could not manage it '
+        + 'leaves exactly the same trace as one that never looked, which is none.' },
+    ];
+  },
+});
+
+});
+
 });
 
 /* ================================================================= h/mods/measure.js ==== */
@@ -5236,7 +5352,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells, reach] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach, notes] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -5249,6 +5365,14 @@ async function boot() {
        because every node has a record with a beginning, and Historical's first question is how far
        back it may be asked. */
     api('/reach').catch(() => null),
+    /* THE LEDGER'S WORDS, and only the words. `asks.actions` on /issues already carries every act
+       with its stage, its actor and its time — but NOT the note, which engine.py:183 drops. That is
+       the right call and this does not change it: /issues is on the `open` share allowlist, and
+       GET /actions is deliberately on neither, because `actor` and `note` are the household's own
+       words about what they did in their own house. So the ledger draws from /issues for everyone
+       and asks this route only for the sentences, which arrive for a reader holding a token and do
+       not for anyone else. A 403 here is the node working. */
+    api('/actions').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -5264,6 +5388,13 @@ async function boot() {
   window.REACH = reach;
   window.TRUST = trust;
   window.FORECAST = forecast;
+  /* A map from alert id to the sentence somebody left, or null where the node would not say. The
+     ledger section reads it opportunistically and is not in its `needs`: the rows exist for every
+     reader and it is the words that are gated. */
+  window.ACT_NOTES = Array.isArray(notes)
+    ? notes.reduce((m, x) => { if (x && x.alert_id != null && String(x.note || '').trim()) {
+      m[`${x.alert_id}:${x.stage}`] = x.note; } return m; }, {})
+    : null;
   /* /stats, and ONLY on a node that has an appliance to say anything about.
    *
    * The household's own capacity — a purifier's filter life — is `role: device_health` in

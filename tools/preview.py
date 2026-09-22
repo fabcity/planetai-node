@@ -51,7 +51,7 @@ PLAN = Path(os.environ.get("PLANETAI_DESIGN_REPO", ROOT.parent / "planetai-desig
 FROM_SNAPSHOT = {
     "/health": "health", "/sensors": "sensors", "/cells": "cells", "/trust": "trust",
     "/forecast": "forecast", "/stats": "stats", "/rho": "rho", "/reach": "reach",
-    "/actions": "actions", "/alerts": "alerts", "/observations": "observations",
+    "/alerts": "alerts", "/observations": "observations",
     "/nearby": "nearby", "/report/latest": "report_latest", "/earth": "earth",
 }
 
@@ -162,6 +162,22 @@ class H(BaseHTTPRequestHandler):
             if not PLAN.is_file():
                 return self.send(404, {"detail": "no place plan in this checkout"})
             return self.send(200, PLAN.read_bytes(), "application/geo+json")
+
+        if p == "/actions":
+            # THE NODE REFUSES THIS WITHOUT A TOKEN, AT EVERY SHARE LEVEL, and so does this. It is on
+            # neither allowlist in app/main.py because `actor` and `note` are the household's own
+            # words about what it did in its own house. Serving them here because they happen to be
+            # in the file would make the preview more generous than the thing it previews — the one
+            # rule this server has — and it would have shown a page that no reader of a real node
+            # can see. Pass ?token= to read them, which is the preview's stand-in for holding one.
+            if not (q.get("token") or self.headers.get("authorization")):
+                return self.send(403, {"error": "this node is set to SHARE_LEVEL=off, so /actions "
+                                                "answers only this machine or a request carrying a "
+                                                "token."})
+            body = snapshot(fx).get("actions")
+            if body is None:
+                return self.send(404, {"detail": "this snapshot carries no actions"})
+            return self.send(200, body)
 
         if p in FROM_SNAPSHOT:
             body = snapshot(fx).get(FROM_SNAPSHOT[p])
