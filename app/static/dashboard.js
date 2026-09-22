@@ -1232,6 +1232,9 @@ const H = window.H3;
  * place pack need not be installed, and the route is refused to anything but this machine or a
  * token. So it is read when it is drawn, never captured at load, and its absence is one line. */
 const P = () => window.PLAN;
+/* WHY, not just THAT. The plan is the one read that needs a token at every sharing level, because
+   GET /place/geojson carries the shape of every building here and this node's exact position. A
+   reader on another machine sees an empty base and, until now, no reason for it. */
 const NOPLAN = ref => `<p class="note" data-component="absent" id="plan-absent" data-ref="${ref}">`
   + `This node has no plan of its own ground. GET /place/geojson is on no share allowlist at any `
   + `level — it is the exact building footprints within PLACE_RADIUS_M of the address — so it `
@@ -2874,7 +2877,21 @@ window.PAI.register({
      reader gets when they ask for the short version of it — not Now's four sentences. */
   level: 'simple',
   title: 'What the satellite says',
-  needs: ['PLAN', 'H3.claims'],
+  /* IT NEEDS THE SATELLITE, NOT THE PLAN.
+   *
+   * This said `['PLAN', 'H3.claims']`, and the plan comes from GET /place/geojson, which needs a
+   * token at EVERY sharing level — it carries the shapes of the buildings and the node's exact
+   * coordinates, and that is deliberate. So on any browser that has not unlocked Set up, window.PLAN
+   * is null, this section's needs were unmet, and the whole of Historical's satellite view printed
+   * "the earth pack has nothing here yet: PLAN is not on this node".
+   *
+   * Which was false. Node #1 has nine years of embeddings, four Sentinel passes and 589 MB on disk,
+   * and every one of those images answers over the LAN. What needed the plan was ONE part of this
+   * section — the claim about buildings a satellite pass found that OpenStreetMap does not have,
+   * which compares against the plan's own count. A need declared for the section took out the view.
+   *
+   * Reported by Tomas from node #1 at v0.71: the satellite data is not loading. */
+  needs: ['EARTH'],
   render(ctx) {
     const land = ctx.ISS.land;
     const region = H.claims.find(c => c.key === 'region');
@@ -2904,6 +2921,18 @@ window.PAI.register({
       : `<p class="note" id="sat-strip" data-component="satStrip" data-ref="sat-map">This node has `
         + `no satellite passes on disk yet, so there are none to show. `
         + `${esc((window.EARTH || {}).hint || 'The earth pack fetches them on command.')}</p>`;
+    /* The plan is token-only, so this half may be absent on a page the rest of which is fine. It
+       says which token and where to put it, rather than leaving a hole: a reader who can see nine
+       years of satellite above this line has not been refused the satellite. */
+    if (!P()) {
+      return strip + record(ctx)
+        + `<p class="note" data-component="absent" id="sat-claim-absent" data-ref="sat-strip">`
+        + `The buildings only the satellite knows are drawn against the plan of this place, and the `
+        + `plan needs a token: <code>GET /place/geojson</code> carries the shape of every building `
+        + `here and this node's exact position, so it asks for one at every sharing level. Put the `
+        + `admin token into this browser under Set up and it draws. Everything above this line is `
+        + `the satellite record itself and needs no token.</p>`;
+    }
     return strip + record(ctx)
       + `<div class="two-up">`
       + `<figure class="gridwrap mapwrap" id="sat-map" data-component="satMap" data-ref="sat-strip">`
