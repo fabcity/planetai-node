@@ -12,11 +12,34 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **Decide has a decision in it.** The stage was named for it from the first sketch and carried three
+  sections about grain, provenance and trust — at what resolution a thing may be said, never what to
+  do about it. It now opens with the thing itself: what your node saw, **what your node suggests**,
+  and somewhere to say what you decided.
+
+  The suggestion is not new and not a model's. Every rule your node runs ends its message with a line
+  beginning 👉 — *"Open a window or two and let it through. It clears faster than a purifier can
+  catch it"* — written by whoever wrote the rule, in every language your node speaks. It was on the
+  wire the whole time and the page was drawing only the first line, the symptom. Take its word and
+  the box fills with your node's own sentence; or write your own. A rule with no recommendation says
+  so, because this page does not invent advice about your air.
+
+  **A decision moves nothing.** It does not close the ask, it does not enter ρ, it is not a stage in
+  the funnel — your node keeps watching. What it changes is the record: a house that looked, decided
+  and never managed it used to leave the same trace as one that never looked, which was none. When it
+  is done, press *I did this* under Act. Asked for by Tomas, three times.
+
+- **The six footprint cards under Decide are folded now.** Since the rail learned to say what one
+  cell at a stop is worth, it carries the live version of the comparison those cards were making —
+  and it moves when you turn the dial, which they never did. They keep what it does not have: the
+  ground each covers, each source's own grain, how its covering was packed. One line above, the cards
+  one press away.
+
 - **You can see what was decided, and by whom.** Your node has recorded every answer anybody gave an
   alert since v0.21 — who, when, which ask, and the sentence they wrote — and the dashboard drew none
   of it. Node #1 had thirty-one answers on its own wire with twenty-three names in them, and the Act
   stage showed a count in a funnel and no account. There is now a ledger under the asks: newest
-  first, four shown and the rest folded.
+  first, behind one press.
 
   The sentences are treated as your node treats them. Who acted and when is published with the rest
   of the page; the note is not, because `GET /actions` answers a token or the machine itself — a note

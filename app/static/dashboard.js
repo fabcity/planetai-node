@@ -597,7 +597,12 @@ function ask(key, d, ref) {
   return `<div class="ask" data-component="askStrip" data-role="ask" id="${esc(id)}"`
     + ` data-ref="${esc(ref || `sentence-${key}`)}">`
     + `<div class="what">${esc(a.text ? String(a.text).split('\n')[0] : a.says[LOC])}`
-    + `<small>${esc(a.how[LOC])}</small></div>`
+    /* NOT `a.how`. The node composes that line in act_hint(), and it offers Telegram or a terminal
+       — "Reply /act 361 on Telegram" — because until the form below existed the page was the one
+       surface that could not close a loop. It is still the right sentence for a Telegram message
+       and the wrong one here, on a screen with the button on it. The node's words are unchanged;
+       this surface says what this surface offers. */
+    + `<small>${esc(a.says[LOC])}</small></div>`
     + `<button type="button" class="go" data-did="${esc(String(a.id))}">I did this</button>`
     + `<form class="did" hidden data-alert="${esc(String(a.id))}">`
     + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
@@ -3755,7 +3760,22 @@ window.PAI.register({
         + `are still declared — ${H.claims.map(c => c.declared).join(' · ')} — and each gets its `
         + `covering as soon as NODE_LAT and NODE_LON are set.</p>`;
     }
-    return `<div class="claimgrid">${H.claims.map(c => claimCard(ctx, c)).join('')}</div>`;
+    /* FOLDED, for the reason grain's table is: it is evidence and not reading, and since 22 September
+       the rail's own fold carries the live version of the comparison these cards were making — what
+       each footprint costs to cover at the stop you are standing on, redrawn every time the rail
+       moves. The cards keep what the fold does not have: the ground each covers in km², each
+       source's native grain, and how its covering was packed. That is a thing to look up, not a
+       thing to read past on the way to deciding something. */
+    const mine = H.claims[H.claims.length - 1], widest = H.claims[0];
+    return `<p class="honest" id="claims-span" data-component="finding" data-ref="claims">`
+      + `The widest thing this node says anything about covers `
+      + `<span data-num="claim.span" data-cmp="against ${esc(String(mine.area_km2))} km², `
+      + `${esc(mine.name.toLowerCase())}, the smallest">${esc(String(widest.area_km2))}</span> km² `
+      + `and the narrowest covers ${esc(String(mine.area_km2))}. Both produce one number. What that `
+      + `costs at the grain you are standing on is under the rail, and it moves when the rail does.`
+      + `</p>`
+      + `<details class="fold"><summary>All ${H.claims.length}, and the ground each covers</summary>`
+      + `<div class="claimgrid">${H.claims.map(c => claimCard(ctx, c)).join('')}</div></details>`;
   },
   wall(ctx) {
     /* The comparison the dial exists to make, as four columns a wall can carry. */
@@ -3780,6 +3800,10 @@ window.PAI.register({
         + 'cells of the grain you are standing on that word has to cover to say its one thing.' },
       { id: 'claims-note', text: H.claims.filter(c => c.note).map(c => `${c.name}: ${c.note}.`)
         .join(' ') },
+      { id: 'claims-folded', text: 'The six cards are folded for the reason the eleven-row grain '
+        + 'table is: they are evidence and not reading. The comparison they exist to make \u2014 what '
+        + 'each of these words costs to cover at one grain \u2014 is under the rail now, where turning '
+        + 'the control is what changes it, which is the one thing these cards could never do.' },
       { id: 'claims-model', text: 'The one source with no declared footprint is the model point, '
         + `which covers ${H.claims[0].cells_at[8].toLocaleString()} cells at resolution 8 against `
         + 'the one a probe in this room covers. Nothing in the product says how big a model point’s '
@@ -4291,6 +4315,112 @@ window.PAI.register({
   },
 });
 
+/* ================================================================= h/mods/decide.js ==== */
+/* decide · core · decide
+ *
+ * WHERE AN OBSERVATION BECOMES SOMETHING SOMEBODY DECIDED. The stage was named `decide` from the
+ * first sketch and carried three sections about grain, provenance and trust — at what resolution a
+ * thing may be said, never what to do about it. Reported by Tomas three times before it was built.
+ *
+ * THE NODE ALREADY DECIDES, AND THE PAGE WAS THROWING IT AWAY. Every rule in config/rules.yml and
+ * every pack rule ends its message with a line beginning U+1F449 — "Open a window or two and let it
+ * through. It clears faster than a purifier can catch it." Written by whoever wrote the rule, in
+ * three languages, shipped, and on the wire in `open_asks[].text`. It is an informed recommendation
+ * from an observation, which is exactly the thing this section exists to put in front of somebody.
+ * `ask()` renders `text.split("\n")[0]` — the first line, the symptom — and the recommendation was
+ * never drawn anywhere on this page.
+ *
+ * So: what was seen, what the node suggests, and a box. Accept its words or write your own, and the
+ * decision is recorded whether or not anybody ever gets to it. `decided` moves nothing — not rho,
+ * not the funnel, not an ask's open/closed — which is init.sql:135 and the whole of
+ * docs/SPEC_decide.md section 6. Doing it is a separate press, in Act, where the ledger is.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, age } = window.K;
+
+/* The recommendation, which is the last paragraph and starts with the pointing hand. Absent on a
+   rule whose author did not write one — and then this says so rather than inventing advice, which
+   is not a thing this page is allowed to do. */
+function suggestion(text) {
+  const paras = String(text || '').split('\n').map(x => x.trim()).filter(Boolean);
+  const hit = paras.filter(x => x.startsWith('\u{1F449}')).pop();
+  return hit ? hit.replace(/^\u{1F449}\s*/u, '') : null;
+}
+
+function card(ctx, key, d, a) {
+  const sug = suggestion(a.text);
+  const seen = String(a.text || '').split('\n')[0];
+  const id = `decide-${esc(key)}`;
+  /* THE OBSERVATION IS A LINE, NOT A PARAGRAPH. It is already on this page twice — in the lead and
+     in Act's own strip — and drawn a third time at headline size it cost 91 px a card at 390 to say
+     nothing new. What is new here is the suggestion, so that is what gets the room. */
+  return `<section class="decide" id="${esc(id)}" data-component="decision" data-ref="asks-rows">`
+    + `<div class="obs"><span class="k">what was seen</span>`
+    + `<p>${esc(seen)}</p>`
+    + `<span class="m">${esc(d.name[ctx.LOC] || key)} \u00b7 asked ${esc(age(a.age_minutes))}`
+    + `${a.current ? '' : ' \u00b7 the reading has come back on its own'}</span></div>`
+    + `<div class="sug"><span class="k">what this node suggests</span>`
+    + (sug ? `<p>${esc(sug)}</p>`
+      : `<p class="none">The rule that raised this does not carry a recommendation, so there is `
+        + `nothing here. This page will not invent one.</p>`)
+    + `</div>`
+    + `<button type="button" class="open" data-decide="${esc(String(a.id))}"`
+    + ` aria-expanded="false">Decide about this</button>`
+    + `<form class="decided" hidden data-alert="${esc(String(a.id))}">`
+    + `<label><span>Who is deciding</span><input name="actor" maxlength="80" autocomplete="name"`
+    + ` placeholder="your name"></label>`
+    + `<label><span>What will be done</span><input name="note" maxlength="500"`
+    + ` placeholder="${esc(sug || 'in your own words')}"${sug
+      ? ` data-suggest="${esc(sug)}"` : ''}></label>`
+    + `<div class="btns">`
+    + (sug ? `<button type="button" class="take">Take its word</button>` : '')
+    + `<button type="submit" class="pri">Record the decision</button></div>`
+    + `<p class="fine">This closes no ask and moves no number. When it is done, press `
+    + `<b>I did this</b> under Act.</p>`
+    + `</form></section>`;
+}
+
+window.PAI.register({
+  id: 'decide', pack: 'core', stage: 'decide', order: 5, level: 'simple',
+  title: 'What to do about it',
+  needs: ['H3.asks'],
+  anchor: 'decide',
+  render(ctx) {
+    const ISS = ctx.ISS;
+    const open = ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length);
+    if (!open.length) {
+      return `<p class="note" id="decide-none" data-component="absent" data-ref="asks-rows">`
+        + `Nothing is asking for a decision. When a reading crosses a line this node watches, what `
+        + `it saw and what it suggests appear here, with somewhere to say what you decided.</p>`;
+    }
+    /* One card per ISSUE, not per ask: four open asks about the same air are one decision, and a
+       household asked to decide four times about one room stops deciding. */
+    return open.map(k => card(ctx, k, ISS[k], ISS[k].open_asks[0])).join('');
+  },
+  notes() {
+    return [
+      { id: 'decide-suggestion', text: 'The suggested action is the rule\u2019s own last line, the one '
+        + 'that begins with a pointing hand, written by whoever wrote the rule and shipped in every '
+        + 'language this node speaks. It is not generated here and it is not a model\u2019s: a node '
+        + 'with no agent running shows exactly the same words. Where a rule carries no '
+        + 'recommendation the card says so, because a page that invents advice about somebody\u2019s '
+        + 'air is a page that cannot be trusted about anything.' },
+      { id: 'decide-moves-nothing', text: 'A decision moves nothing. It does not close the ask, it '
+        + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the ask stays open and the '
+        + 'node keeps watching. What it changes is the record: a household that looked, decided and '
+        + 'never managed it used to leave the same trace as one that never looked, which was none.' },
+      { id: 'decide-collective', text: 'This is one person deciding for one node. A decision about a '
+        + 'street is not one household\u2019s to make, and what turns several households\u2019 decisions '
+        + 'into a decision a community has taken \u2014 who is asked, what counts as agreement \u2014 is '
+        + 'not on a node at all. docs/SPEC_decide.md says so and leaves it to the scale above.' },
+    ];
+  },
+});
+
+});
+
 /* ================================================================= h/mods/ledger.js ==== */
 /* ledger · core · act
  *
@@ -4319,11 +4449,12 @@ PAI_LOAD.push(function () {
 const { esc, row, age } = window.K;
 const { H } = window.KH;
 
-/* Four, and the rest folded. Eight rows and a five-line head were 1,029 px at 390 and took the page
-   past the length target by 175 px — measured by the gate, which is what that target is for. The
-   whole explanation of why the words are missing lives in this section's notes; the head says the
-   short version and stops. */
-const SHOWN = 4;
+/* ALL OF IT FOLDED, and the head says how many. Eight rows and a five-line head were 1,029 px at 390
+   and put the page past its length target; four were still 530. This is a record somebody consults
+   — "what did we decide about the kitchen" — and not something to read on the way past, so it costs
+   one line until it is wanted. The whole explanation of why the words may be missing is in this
+   section's notes. */
+const SHOWN = 0;
 
 /* The ask a row answers, by id, off the act ledger /issues already carries. An act older than the
    200 alerts `_read` keeps has no ask to name, and says that rather than drawing an empty cell. */
@@ -4384,7 +4515,8 @@ window.PAI.register({
     const rest = rows.slice(SHOWN);
     return head + `<div class="reads" id="ledger-rows" data-ref="asks-rows">${first}`
       + (rest.length
-        ? `<details class="fold"><summary>The other ${rest.length}</summary>`
+        ? `<details class="fold"><summary>${SHOWN ? `The other ${rest.length}`
+          : `All ${rest.length}, newest first`}</summary>`
           + rest.map(x => line(x, ctx)).join('') + `</details>`
         : '')
       + `</div>`;
@@ -6766,14 +6898,23 @@ async function layoutSave(reset) {
 async function didThis(form) {
   const btn = form.querySelector('button[type="submit"]');
   const alert_id = Number(form.getAttribute('data-alert'));
+  /* Which form it is IS which stage it writes. Decide records what somebody said they would do and
+     moves nothing; Act records that it was done. Two surfaces, one endpoint, and the difference is
+     the whole of docs/SPEC_decide.md section 6. */
+  const decision = form.classList.contains('decided');
+  const stage = decision ? 'decided' : 'acted';
   const val = n => String((form.elements[n] || {}).value || '').trim();
-  if (!val('note')) { say('Say what you did — that sentence is the whole of the record.', true); return; }
+  if (!val('note')) {
+    say(decision ? 'Say what will be done — that sentence is the decision.'
+      : 'Say what you did — that sentence is the whole of the record.', true);
+    return;
+  }
   btn.disabled = true;
   try {
     const r = await fetch('/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...auth_() },
-      body: JSON.stringify({ alert_id, stage: 'acted', actor: val('actor'), note: val('note') }),
+      body: JSON.stringify({ alert_id, stage, actor: val('actor'), note: val('note') }),
     });
     /* THE NODE'S OWN SENTENCE FIRST. Proved on pai-clean: a browser is never `_is_local` — it
        arrives as the bridge gateway, deliberately, so trusting it would trust the whole WiFi — and
@@ -6789,8 +6930,11 @@ async function didThis(form) {
     } else if (!r.ok) {
       say(`The node refused it (${r.status}).`, true);
     } else {
-      say('Recorded. The node watches what happens next.');
-      form.hidden = true;
+      say(decision
+        ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
+        : 'Recorded. The node watches what happens next.');
+      if (!decision) form.hidden = true;
+      else { form.reset(); }
       await refresh();
     }
   } catch (e) {
@@ -6799,7 +6943,7 @@ async function didThis(form) {
 }
 
 document.addEventListener('submit', ev => {
-  const form = ev.target.closest && ev.target.closest('form.did');
+  const form = ev.target.closest && ev.target.closest('form.did, form.decided');
   if (!form) return;
   ev.preventDefault();
   if (FIXTURE || STATE !== 'populated') {
@@ -6818,6 +6962,21 @@ document.addEventListener('click', ev => {
     form.hidden = !form.hidden;
     go.setAttribute('aria-expanded', String(!form.hidden));
     if (!form.hidden) form.elements.note.focus();
+    return;
+  }
+  const dec = ev.target.closest && ev.target.closest('.decide .open');
+  if (dec) {
+    const f = dec.parentElement.querySelector('form.decided');
+    f.hidden = !f.hidden;
+    dec.setAttribute('aria-expanded', String(!f.hidden));
+    if (!f.hidden) f.elements.note.focus();
+    return;
+  }
+  const take = ev.target.closest && ev.target.closest('form.decided .take');
+  if (take) {
+    const f = take.closest('form.decided'), i = f.elements.note;
+    i.value = i.getAttribute('data-suggest') || i.placeholder || '';
+    i.focus();
     return;
   }
   const cancel = ev.target.closest && ev.target.closest('.ask form.did .cancel');

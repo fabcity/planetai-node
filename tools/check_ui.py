@@ -403,6 +403,12 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    ".stations .more a",          # "show all" and "show N" — the page's own two words
                    # Added 18 September 2026 with the year player.
                    ".satplay .satctl button",    # "Play", "Pause", "Motion off", "one year"
+                   # Added 22 September 2026 with the Decide card. Four fixed labels this page
+                   # writes: "what was seen", "what this node suggests", "who is deciding", "what
+                   # will be done". The node's own sentence and the household's are both in the
+                   # elements under them, neither of which is shouted.
+                   ".decide .k",
+                   ".decide form.decided label span",
                    # Added 22 September 2026 with the act form. Two field labels the PAGE writes,
                    # "Who" and "What you did". The keeper's own sentence goes in the input, which is
                    # not shouted and never could be.

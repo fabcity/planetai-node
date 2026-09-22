@@ -209,7 +209,116 @@ did not answer — and none of it should be guessed at while there are two nodes
 What matters now is only that a decision recorded today at street scale is still legible when that
 arrives, rather than being an individual decision with a bigger word on it.
 
-## 8 · Options of actions
+## 8 · How a decision reaches the node
+
+*From Tomas, 22 September: "how it can 'talk' to the node (telegram?), does the decision need to come
+via telegram? or there is a text interface in the decision section (I was expecting that)… or the
+node just decides for the user, it is an informed decision based on observation, and that the user
+can validate or not."*
+
+**Not Telegram, and the node was already telling people it was.** `act_hint()` composes the line the
+page prints under every ask — *"Reply /act 361 on Telegram"*, or `planetai act 361` on a node with no
+bot — because until 22 September the page was the one surface that could not close a loop. That
+sentence is still right in a Telegram message and wrong on a screen with the button on it.
+
+**And the node already decides.** This is the part that needed finding rather than designing. Every
+rule in `config/rules.yml`, and every pack rule, ends its message with a line beginning 👉:
+
+> 🔥🪟 Inside is worse than outside at S ROOM.
+> Something in the house is making smoke or fine dust: cooking, incense, a candle, a mosquito coil.
+> **👉 Open a window or two and let it through. It clears faster than a purifier can catch it.**
+
+That is an informed recommendation from an observation, written by whoever wrote the rule, shipped in
+every language the node speaks, and on the wire today in `open_asks[].text`. **No model is involved**
+— a node with no agent running shows the same words. The page was rendering `text.split("\n")[0]`,
+the symptom, and throwing the recommendation away.
+
+So the answer to all three of Tomas's options is one surface, and it is neither a blank box nor a
+model:
+
+1. **what was seen** — the observation, in the node's words
+2. **what this node suggests** — the rule's own 👉 line, or, where a rule carries none, a sentence
+   saying so. *This page does not invent advice about somebody's air.*
+3. **a box** — take its word, which fills the box with the node's sentence, or write your own
+
+Recording it writes `decided`, and §6 governs what that does: nothing. Doing it is a separate press,
+under Act, and that writes `acted`.
+
+**One card per issue, not per ask.** Four open asks about the same air are one decision, and a
+household asked to decide four times about one room stops deciding.
+
+## 9 · Two measurements, and only one of them exists
+
+*From Tomas: "that action can be measured in two ways: when it happens, and how long it takes for the
+action to take an effect in the observed indicator."*
+
+The first exists. `actions.ts` is when somebody acted, and `_funnel` already reports medians from ask
+to acknowledged to acted.
+
+**The second does not, and cannot be got from the mechanism in §2.** The derivation proves the
+condition stopped being true *somewhere inside* `MEASURED_WINDOW_MIN`, never when — which is why
+`latency_minutes.measured` is `null` on purpose and why the comment there calls a median of
+window-ends "a near-constant 48h dressed up as a measurement". Rule silence has no moment in it.
+
+Getting Tomas's second number means leaving the rule and reading the readings: from the act's
+timestamp, the first hour in `readings_1h` where the issue's own metric is back under its line. That
+is a real query against data the node already keeps, and it answers a different and better question —
+*how long did it take to work* — with an honest failure mode, because a condition that never comes
+back under the line has no such hour and the answer is "not yet" rather than a number.
+
+Two things it must not do. It must not be called ρ or fold into the funnel, which count whether. And
+it must not be reported where the act and the effect have no causal link the household would
+recognise: a window opened at 21:00 and air that cleared at 03:00 may be the window or may be the
+night, and the node cannot tell. The number is *elapsed time to the indicator recovering*, stated as
+that and not as an effect of the action.
+
+## 10 · A private node and a community node are not the same node
+
+*From Tomas: "an observation can be turned into an action. That action can come from a previous
+decision or not in a private node, but in a community node it needs a previous decision, with
+consensus mechanisms to be decided by each community. I guess there are features that belong to the
+upper stream, rather than to a node that runs in a lab, a home or an office."*
+
+This settles §7's shape and narrows what this node ever has to do:
+
+- **On a private node** — a home, a lab, an office — an act needs no decision before it. Somebody saw
+  something and did something, and the ledger records it. That is every node shipping today, and
+  nothing above changes it: the decision is *offered*, never required.
+- **On a community node**, an act that speaks for more than one household needs a decision before it,
+  and what makes that decision legitimate is a consensus mechanism **each community chooses for
+  itself**. A node in a house has no business holding one.
+
+So the consensus machinery is **upstream, not here**, and this spec claims no part of it. What this
+node owes the scale above is only that its own record is legible there: a decision that carries its
+scale, its author, its time, and the observation it was about. One household's decision about its
+street is a *contribution* to a community decision and never the decision itself — which is the same
+refusal as `custody` and as "no scale is skipped: a city aggregator is built from nodes, not declared
+from above".
+
+The one thing that would be wrong to build here is a node that decides for a street because one
+person pressed a button in one kitchen.
+
+## 11 · Learning over time
+
+*From Tomas: "I also want the nodes to learn as we evolve on time, generate more intelligent
+insights, have weekly, monthly, yearly patterns."*
+
+Named as a direction, not specified. Two notes so it is not built badly later:
+
+- **The node already has the material and almost none of the reading.** `readings_1h` holds every
+  hour, `reach` says how far back the record goes, and Historical draws it. What is missing is any
+  statement of the form "this room is worse on Tuesdays" or "this is the third week running".
+- **A pattern is an insight and §4 already governs it.** It carries a claim, a grain, a window, and
+  what it is measured against — and a weekly or yearly pattern makes the *window* the interesting
+  part rather than an afterthought. A node with three weeks of history cannot have a yearly pattern
+  and must say so rather than drawing one from three points, which is the failure mode this whole
+  page exists to refuse.
+
+The honest sequence is: the decisions and their effects first, then the patterns — because a node
+that knows what was decided and whether it worked has something to learn *from*, and one that only
+knows its readings can only ever learn what the weather did.
+
+## 12 · Options of actions
 
 The agent has the readings, the alerts, the issues and a model, and could offer two or three things a
 household might do. It must not be load-bearing:
@@ -224,7 +333,7 @@ pre-filling the same two sentences, each one editable, and each one marked as th
 and not the node's finding. A decision recorded from a proposal records which rung answered — the
 agent already stamps `X-Agent=<name>/<rung>` on every write.
 
-## 9 · By whom
+## 13 · By whom
 
 `actions.actor` is eighty characters of free text. Today the honest answer to "who decided" is
 "whoever typed their name", and there is no identity behind it. That question belongs to
@@ -232,7 +341,7 @@ agent already stamps `X-Agent=<name>/<rung>` on every write.
 must be *asked for* and not defaulted: an unattributed decision in a house with four people in it is
 a record nobody can check.
 
-## 10 · What it refuses
+## 14 · What it refuses
 
 - No decision without something to watch, or it is a diary entry the funnel cannot count — and the
   page must say which of the two it is taking.
@@ -246,7 +355,7 @@ a record nobody can check.
   was about.
 - No decision speaks for more people than the one who made it, whatever scale it names.
 
-## 11 · Still open
+## 15 · Still open
 
 - **What happens to a decision whose watch never fires.** If the condition is not true when you
   decide, there is no alert to act on and nothing to measure. Probably correct — you decide about
