@@ -55,10 +55,16 @@ If the terminal says `command not found: planetai` afterwards, open a new termin
 
 ## 3. Minute five: what you should see
 
-Open `http://localhost:8080`. With no sensor the top card says **"No sensor yet. The model says N for this square of
-the map."** N is the satellite model's PM2.5 estimate for your district (CAMS, an 11 km square). Below it: *Inside*
-(empty until you add a sensor), *Outside the door* (the wind), *The day it just had* (an empty chart for now), *Region*
-(the model, and the weather). The node polls every 5 minutes; "polled N min ago" sits next to the orange **ALPHA** pill.
+Open `http://localhost:8080`. Across the top is the grain rail — eleven stops, one per size of map
+cell your node knows, with the one it is standing on lit. Under it, the issue with most to say, as a
+sentence. With no sensor yet that sentence says so in as many words: **"No air sensor here yet, and
+no model for this point"**, or the model's own figure where there is one — CAMS, an 11 km square.
+
+Below that the page runs through the four stages the node works in, numbered: **1 Observe** (every
+issue at every distance, and for each empty cell the reason it is empty), **2 Decide** (how coarse
+the answer is and what may leave the machine), **3 Act** (what has been asked of whom), **4
+Measure** (whether it worked). The node polls every 5 minutes and the line under the lead says when
+it last heard anything.
 
 Within the first hour the node fetches 92 days of modelled air history and the climate normals for your coordinates,
 so the chart and the "compared with normal" sentences fill in.
@@ -92,8 +98,8 @@ planetai act 3 "read it"
 ```
 
 The terminal answers with ρ ("rho"): the share of alerts that led to someone doing something. This one number is what
-the node exists to measure. On the dashboard, the button **I did this** beside an alert in the *Act here* band does the
-same.
+the node exists to measure. On the dashboard the same button sits beside the ask itself, in **3 Act** — the third of the four
+stages the page is read in.
 
 Replying `/act 3` in Telegram only works if the node's bot is running (`planetai agent local`, which installs a small
 local model; optional, and heavy on an 8 GB machine).
@@ -118,7 +124,7 @@ The old two-reports-a-day rhythm, if you want it: `planetai report every 12 && p
   changed, anything only the satellites know, what happened after the alerts, the one thing to do before the next
   report, and an invitation to ask. Under a hundred words.
 - **The one due at midnight is written and held, not sent.** You read it at six, with the night folded into it, and it
-  says so. It is on the dashboard the whole time under *Here — the last thing the node said*.
+  says so. It is on the dashboard the whole time, as the sentence at the top of **Now**.
 - **Between reports: act-level alerts only.** They say what to do in one sentence and ask for nothing back — no number
   to quote, no button on the hero. Quiet hours 22:00–06:00 hold everything but *act*.
 - Change the rhythm: `planetai report every 3|4|6|8|12|24` and `planetai report at <hour>`. Want one right now?

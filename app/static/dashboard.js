@@ -5906,6 +5906,17 @@ function drawRefused() {
     el.innerHTML = chrome(window.NODE_NAME, window.NODE_CITY, v) + `<div class="wrap">${said}</div>`;
   }
 }
+/* Globals the page fills only when a reader reaches the view that needs them, so the section list
+ * can tell "this node does not have it" from "nobody has asked for it yet".
+ *
+ * OUT HERE, not inside main(), and that is the whole of a bug worth remembering. It was declared
+ * near the foot of main() and read by sectionsBox() near the middle. A function declaration hoists;
+ * a `const` does not. So sectionsBox() was callable and LATE was in its temporal dead zone, and
+ * every render of the Set up view threw `Cannot access 'LATE' before initialization` from the
+ * moment that line was written — main() bailed, #page kept whatever was on it, and the view simply
+ * never appeared. Silent, because the page that was already drawn stayed drawn. */
+const LATE = new Set(['SOURCES']);
+
 function main() {
   const { S, ISS, ORDER, DIST, LAB, LOC, esc, fmt, pill, kicker, sentence, why, ask, asof,
     refusedPage, VIEW, STATE } = window.K;
@@ -6123,6 +6134,23 @@ function main() {
      it last spoke are a history of that sensor, not a fact about now. */
   const NETWORK = ['netmap', 'registry', 'reticulum', 'meshtastic', 'hardware'];
   const HISTORICAL = ['satellite', 'reach', 'trust'];
+  /* NOW IS THE DEFAULT HOME, AND WITHOUT THIS LINE THE CONTRACT IS A LIE.
+   *
+   * The three lists above are how one registry serves three views, and they are lists of ids this
+   * file knows. A pack's section is an id this file has never heard of — that is the whole point of
+   * the contract, and the docstring at the top of this file promises it: "the shell renders whatever
+   * registered", "adding a feature is adding a file". From the Now/Network split on 15 September
+   * until this line, a registered section whose id was not typed into one of those three arrays was
+   * filtered out of every view and drawn nowhere. It registered, it appeared in Set up's list of
+   * sections as `drawing`, and it was on no page. Found by rendering a stranger's pack — see
+   * `measure.mjs extend`, which is the only thing that ever asked.
+   *
+   * So the two named lists are the exceptions and Now is the rest. Network and Historical stay
+   * closed, because what belongs on them is a judgement about the frame those views draw; Now is
+   * the page about this place now, which is where a section about this place goes unless somebody
+   * has said otherwise. Order is untouched: render() sorts by stage, then order, then id. */
+  const placed = new Set([...NOW, ...NETWORK, ...HISTORICAL]);
+  const homeless = PAI.sections.map(s => s.id).filter(id => !placed.has(id));
   applyOrder();
 
   const el = document.getElementById('page');
@@ -6151,7 +6179,8 @@ function main() {
     el.innerHTML = head() + `<div class="wrap">${refusedPage(SAID)}</div>`;
   } else if (VIEW === 'now' || VIEW === 'arrange') {
     ARRANGING = VIEW === 'arrange';
-    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, lead(), { only: want(NOW) })}</div>`
+    el.innerHTML = head() + `<div class="wrap">`
+      + `${PAI.render(ctx, lead(), { only: want([...NOW, ...homeless]) })}</div>`
       + (ARRANGING ? arrbar() : '');
     if (ARRANGING) { arrangeControls(); fillRestore(); }
   } else if (VIEW === 'network') {
@@ -6240,10 +6269,6 @@ function main() {
       el.prepend(bar);
     });
   }
-
-  /* Globals the page fills only when a reader reaches the view that needs them, so the section list
-   can tell "this node does not have it" from "nobody has asked for it yet". */
-const LATE = new Set(['SOURCES']);
 
 function sectionsBox() {
     const byPack = {};

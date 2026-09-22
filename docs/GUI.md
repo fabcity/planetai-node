@@ -1,127 +1,142 @@
 # The dashboard
 
-One HTML file the node serves at `/`. No build step, no framework, no account.
+One page the node serves at `/`. No build step, no framework, no account, and no connection to
+anywhere else — a node hands this page to the machine you are reading it on, and if the house has no
+route to the internet it still works.
 
 ```bash
-planetai ui        # the URLs, and the token that unlocks the settings pages
+planetai ui        # the URLs, and the token that unlocks Set up
 ```
 
-## The six views
+## The shape of it
 
-They run in the order a question widens: where you stand, then the years behind it, then the network
-around it, then the wall, then the two pages that configure rather than report. The name in the URL has
-not changed, so any link you have saved still lands where it did.
+The page is read in the order the node works, and the node works in a loop of four:
+
+1. **Observe** — what is read, seen and heard about this place.
+2. **Decide** — what may be said about it, and at how coarse a grain.
+3. **Act** — what has been asked, of whom.
+4. **Measure** — whether it worked, and how long it took.
+
+Every part of the page belongs to one of those four and is drawn under it, numbered. If a part has
+nothing to show — no sensor for it, a pack you have not installed — it prints one line saying which,
+and never a blank or a zero standing in for a reading nobody took.
+
+## The first screen
+
+**The rail, across the top.** Eleven stops, one per grain your node knows: resolution 2 is 172 km to
+an edge, resolution 12 is 10 m, and the one you are standing on is lit. Stops coarse enough that the
+cell could leave your machine are textured; stops finer than your node is willing to say where it is
+are struck through. Press one and the whole page re-answers at that grain.
+
+**Then the thing that matters.** The issue with most to say, as a sentence in your language, with its
+number beside it at the size of a headline — *"It feels like 33.9 °C in the room, under the line."*
+Under it, in smaller type, why that issue and not another. Then the four distances as bars on one
+scale: the room, the wall outside, the street, the model, with a red tick where the line is. One
+scale for all four, so you can see at a glance whether it is you or whether it is everywhere.
+
+Beside it, the ground: the map cell this node stands in, its six neighbours and the seven smaller
+cells inside it, with the buildings and roads of your own square kept on your own disk. The line
+under it is the cell's id — `8839446033fffff · RES 8 · 497 M EDGE` — which is how this node's
+readings find their place without anybody being told where you live.
+
+## What you will find further down
+
+- **Every issue at every distance**, as a table. Where a cell is empty it says why: *no kit on the
+  wall outside*, *no public station reporting*.
+- **The day this place just had** — twenty-four hours of the room, the street and the model, with the
+  hours it was over the line marked under the axis, because eight hours over is the thing you act on
+  and a curve does not tell you that.
+- **What this page is made of** — your own stations, the borrowed ones faint, what only the satellite
+  knows in orange, counted in signs rather than drawn as a chart.
+- **What this page asked of the world while you looked at it.** The offline plan asks nothing.
+  Switching the map to satellite asks twelve times, and tells that server which five kilometres of
+  the planet you are looking at. Your node's own polls are counted apart, because they happen
+  whether or not anybody is at the screen.
+- **What has been asked, of whom** — every alert that asked a person to do something, whether anybody
+  answered, and the button that records it when you do. And, when your node knows one, the nearest
+  place to make or fix something.
+- **Whether it worked** — the share of asks that got an answer, drawn as one ring per ask rather than
+  one long bar, with the median minutes to the first answer. It is the one number on the page that
+  comes from a person.
+- **What this node will not do, at any stage** — five refusals, as signs, at the foot.
+
+Everything that wants to explain itself is folded into one band at the very bottom, *Where these
+numbers come from*. A household that wants to know why is one scroll away; one that does not is never
+interrupted.
+
+## The six tabs
 
 | tab | URL | what it answers |
 |---|---|---|
 | **Now** | `/` | What is the air, the heat, the land and the coast doing here, this hour? |
-| **Historical** | `#historical` | What has this place looked like over the years the satellite has watched it? |
+| **Historical** | `#historical` | What has this place looked like over the years the satellite has watched it, and how far back does each source go? |
 | **Network** | `#network` | What is this node connected to, what does it hear, and what could it read? |
 | **Wall** | `#wall` | The same node at three metres, for a screen on a wall. Dark, and it stays dark. |
 | **Arrange** | `#arrange` | Which sections Now shows, and in what order. Saved on the node. |
 | **Set up** | `#setup` | Every setting, what it does, and where its value came from. Needs the token. |
 
-### Paper or dark
+## How much of it you want to see
 
-Beside the tabs there is a switch: **Paper** or **Dark**. Paper is what the page is by default, because most
-of the time it is read in a room with light in it. Dark is there for when it is not.
+Three modes, in the header:
 
-The page does not guess. It does not follow the operating system and it does not watch the clock — if you
-want it dark at noon it stays dark, and if you want it paper at midnight it stays paper. The choice is
-remembered by the browser you made it in, so a phone and a laptop can disagree, and neither one changes
-what anybody else in the house sees.
+- **Simple** — four sentences, one per stage, and your node writes all four. Nothing on the page
+  composes them; if your node is too old to send them, the page says so and names the version rather
+  than making them up.
+- **Advanced** — the whole page. This is the default.
+- **Learn** — the whole page with a small question mark at each part. Press one and a panel opens
+  that quotes your node's own documentation for that part, word for word, says which page the words
+  came from, and offers to walk you to the next. Seventeen marks. The words are built into the page,
+  so it works with no way out to the internet; the link is an offer, not the answer.
 
-The Wall is the one exception: it is always dark, because a lit white rectangle in a dark room is a lamp,
-and nobody chose a lamp.
+The mode is remembered by the browser you chose it in, so a phone and a wall screen can disagree.
+`?mode=simple` on the end of any URL shows one without remembering it, which is how you send somebody
+the short answer without changing their page.
 
-## Now
+## Paper or dark
 
-The page reads from where you stand, outward. Each band names its distance.
+Beside the modes: **Paper** or **Dark**. Paper is the default, because most of the time this is read
+in a room with light in it.
 
-**Here.** The room's number as a sentence ("Falling to 9 micrograms, under the street, under the model, under the
-line"), why, and, when an act-level alert is unanswered, an orange strip naming it with the button that closes the loop.
-Behind the sentence is the ground: the map cell this node stands in, the seven smaller cells inside it, and its
-neighbours' edges running off the frame. It is drawn on the node from the coordinates it was set up with, and the line
-under it names the cell — `8839446033fffff · RES 8 · 525 M EDGE`. That id is how this node's readings find their place
-in the index. The same ground and the same line are on the wall.
+The page does not guess. It does not follow the operating system and it does not watch the clock — if
+you want it dark at noon it stays dark. The choice is remembered by the browser you made it in and
+changes nothing for anybody else in the house.
 
-**Room.** How it feels indoors, then each indoor sensor with a note on what it is doing and a day's trace.
+The Wall is the one exception: it is always dark, because a lit white rectangle in a dark room is a
+lamp, and nobody chose a lamp. There is also nothing to press on the wall. That is deliberate: the
+wall is an instruction, not a control.
 
-**Street, a few hundred metres.** Your kit on the wall, the nearest public sensors with their distance, the wind as a
-direction. Then the day: a 24-hour chart of inside, the street and the model, with the WHO line and the peaks named.
+## Changing the order
 
-**Neighbourhood, 1 km.** The plan: buildings on the map in ink, roads as hairlines, green as green, every mapped use a
-dot, the buildings only the satellite knows in orange. Beside it, what is here in numbers, what is unmapped, and one
-button: **Fix the map**, which opens the OpenStreetMap editor at your coordinates.
+**Arrange** is Now in another mode. Each section grows three controls — move it within its stage,
+hide it, restore it — and *Done* saves the order to the node, for every screen in the house. The
+rail, the lead and the ground do not move, and the bar says so.
 
-**Region, 11 km and beyond.** The satellite air model and its gap to your street, the land within a kilometre from
-orbit, the sea, the weather.
+That changes the order of the *sections*. To change which issues your node watches at all, and in
+what order, that is `NODE_ISSUES` under **Set up → Issues** — a list, most important first.
 
-**Act here.** ρ, and every alert with **I did this** beside the ones that asked for something.
+## If something moves, it is because a reading moved
 
-Cards sit at their natural height on fixed tracks (four across on a desktop, two on a laptop, one on a phone). Every
-sentence is computed from the API; nothing is typed in.
+Nothing on this page animates for its own sake. A number that has just arrived fades in over 120 ms
+and pulses once; a ring closes when somebody answers an ask; a satellite year holds for four seconds
+before the next. Every one of those durations is named after the thing that drives it, and if you
+have asked your machine for less motion, all of them stop. The list is on the
+[Design](site/design.md) page.
 
-## The kilometre around you
+While the page is waiting for your node to answer, it draws the one motion that is not about a
+reading: a globe of the sixteen characters a map cell id is written in, turning inside your own cell,
+with the list of things it is asking for and how many milliseconds each took. It settles into the
+plane of that cell the moment the answer arrives, and leaves.
 
-When the place pack has run, the Neighbourhood band appears: a figure-ground of the radius around the node.
-Buildings on the map in ink, roads as hairlines weighted by class, green as green, every mapped use a dot coloured by
-kind, and the buildings only the satellite knows in orange, so the mapping gap is visible. North up, a 200 m scale bar,
-the node pulsing at the centre. Legend buttons toggle each layer; hovering a dot names the place. Drawn in the browser
-from `/place/geojson`, no map tiles, works offline.
+## Seeing it without a node
 
-## Arrange
+Every view can be drawn from a committed snapshot, which is how the page is reviewed and how a
+problem gets looked at on somebody else's machine:
 
-The Arrange button puts the Now view into edit mode: every card gets ← → to move it within its row and ✕ to hide it;
-a menu restores hidden cards; Default resets. Done saves the layout in the browser and, when Set up is unlocked, on the
-node as `UI_LAYOUT`, so every screen in the house shows the same arrangement.
+```bash
+python3 tools/preview.py     # http://127.0.0.1:8123
+```
 
-## Network
-
-The house as one node of a larger instrument: this room, the neighbourhood, the planetary models, the parent (or "not
-linked yet"), the Index cells as rings, the agent's model ladder. Flows animate along real links only. Below, what
-leaves the house and the machine in the corner.
-
-## Wall
-
-`#wall`, or the Wall button: the dark register for a screen nobody is standing at — the nineteen cells around the
-node at the current resolution, the headline sentence, the ρ row, and a dial that turns itself every eight
-seconds. It needs `SHARE_LEVEL=open`, because a wall carries no token.
-
-## Set up
-
-Behind the admin token, once per browser. Sources, alerts and Telegram, packs (a switch each; code packs behind one more
-switch), integrations, keys, the node's place in the tree, and the bootstrap settings read-only. A test-alert button.
-Changes are live within twenty seconds. A blank field returns a setting to `.env`. A value set here **overrides** the
-same key in `.env`, and the page says so next to it; `planetai telegram` writes both places so they cannot disagree.
-
-Settings live in a `settings` table that overlays `.env`; the code reads them at the moment of use. Ports, the database
-and the extra containers stay in `.env` because they are read once at start.
-
-**Model.** Which model answers the household, and the one setting on this page that decides whether anything leaves
-your network at all. Three values, offered in this order:
-
-- **private** — nothing leaves your network. The node answers from the model on this machine, or from one you run
-  yourself elsewhere on your tailnet. **This is what a node does until somebody here chooses otherwise**, including a
-  node where an online key has been set: setting a key does not by itself start using it.
-- **fallback** — your own remote model first, then the online one, then the small local model as the floor that still
-  works with no internet. Online sits above local on purpose — a rung is skipped only when it *fails*, and a 4B model
-  never fails, it answers badly.
-- **strongest** — online first, so every question goes to the online model whenever a key is set. The report bundle
-  that goes with it is 64 kB of this house: its numbers, its room names, its own sentences.
-
-Changing this needs a restart of the agent container; the page says so.
-
-**The model on this machine.** The page shows which tag the node is pointing at, whether it is actually on the disk,
-and the recommendation for this machine's memory with its size. Pulling is a button, never automatic:
-`planetai agent local` installs the loop and downloads nothing. `docs/MODELS.md` is the catalogue, and a node with no
-local model still reads its sensors, writes its reports and sends its alerts — it just does not chat.
-
-**What that model may do.** `read` and `act`, and nothing else: it cannot change a setting on this page, run a pack's
-code, or send the household a report by itself. A person driving an agent over the tailnet has the full set;
-`planetai agent` prints every tool and its class.
-
-## Access
-
-Reads are open on your network, like the API: a household display cannot need a login. Writes need the token. It is a
-password.
+`?fixture=<name>` replays a snapshot through the node's own engine and the pill says `cached`.
+`?state=empty` shows a node with nothing on it yet; `?state=refused` shows what a reader with no
+token sees. None of those four remember anything, so any of them can be sent to somebody without
+changing their own page.

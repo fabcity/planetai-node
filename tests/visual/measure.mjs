@@ -488,8 +488,14 @@ const tagged = j => ({ ...j,
     + (process.env.PAI_TAG ? '_' + process.env.PAI_TAG : '') });
 
 /* ------------------------------------------------------------------ the browser */
-async function open(job, opts = {}) {
-  const base = job.state === 'empty' ? EMPTY : POP;
+async function open(job, opts = {}, stranger = null) {
+  /* EMPTY was a second container on :8082 — a fresh install with BOOTSTRAP=0, from the pai-clean
+     review rig. It is not running anywhere now, and nothing noticed: the document is fulfilled from
+     PAI_STATIC whatever the origin, and every API call fell through to serveNodeAPI, which answers
+     from the snapshot. So `state: 'empty'` rendered the POPULATED page from a dead origin, and had
+     since that rig was taken down. The page has its own honest mechanism for this and the docs name
+     it — `?state=empty` runs emptySnapshot() over the fixture — so that is what a capture uses. */
+  const base = POP;
   const browser = await chromium.launch();
   /* `reducedMotion: 'reduce'` is the default here and has been since this file was written: a
      screenshot of a page mid-animation is a different picture every run, so every measurement in
@@ -578,8 +584,21 @@ async function open(job, opts = {}) {
   });
 
   const page = await ctx.newPage();
+  /* A pack's dashboard contribution is one more static file the node serves, and it registers when
+     it parses. A setter on window.PAI reproduces that timing exactly — the registration lands the
+     moment dashboard.js assigns the contract, before route() has drawn anything — without the page
+     being edited to expect a visitor. */
+  if (stranger) {
+    await page.addInitScript(`(() => { window.__pai_probe = 'installed'; let real;
+      Object.defineProperty(window, 'PAI', { configurable: true, get: () => real,
+        set: v => { real = v; if (v && v.register) {
+          try { (${stranger.toString()})(); window.__pai_probe = 'fired'; }
+          catch (e) { window.__pai_probe = 'threw: ' + (e && e.message); } } } }); })()`);
+  }
   const q = [];
-  if (job.state === 'populated') q.push(`fixture=${FIXTURE}`);   // 'live' reads the node itself
+  // 'live' reads the node itself; 'empty' is the fixture with emptySnapshot() run over it
+  if (job.state === 'populated' || job.state === 'empty') q.push(`fixture=${FIXTURE}`);
+  if (job.state === 'empty' || job.state === 'refused') q.push(`state=${job.state}`);
   if (job.dark) q.push('theme=dark');
   /* The page has three modes and `?mode=` selects one without remembering it, which is exactly what
      a measuring rig wants: no localStorage to clear between renders, and the same URL a person can
@@ -594,6 +613,28 @@ async function open(job, opts = {}) {
   const already = await page.evaluate(() => document.body.classList.contains('wallview'));
   const target = job.view.startsWith('setup') ? 'setup' : job.view;
   if (!(already && target === 'wall') && target !== 'now') await page.click(`button[data-view="${target}"]`);
+
+  /* THE VIEW IT ASKED FOR IS THE VIEW IT GOT.
+   *
+   * Nothing checked this, and it cost the Set up view: a temporal-dead-zone error in main() made
+   * every render of it throw, main() bailed before assigning #page, and the page that was already
+   * drawn stayed drawn — so the rig pressed Set up, screenshotted Now, and wrote the file under the
+   * Set up name. Byte-identical to the Now shot beside it, which is how it was finally caught. Both
+   * the shot and the measurement had been of the wrong page since the branch began.
+   *
+   * A render that silently measures a different page is worse than a render that fails, so this
+   * fails. `body.wallview` is how the wall says it is on; every other view is its own id. */
+  if (target !== 'now') {
+    const got = await page.evaluate(t => (t === 'wall'
+      ? document.body.classList.contains('wallview')
+      : !!document.getElementById(`view-${t}`)
+        || !!document.querySelector(`nav.views button[data-view="${t}"].on`)), target);
+    if (!got) {
+      const err = await page.evaluate(() => (window.__paiLastError || null));
+      throw new Error(`pressed ${target} and the page did not go there`
+        + `${err ? ` — the page threw: ${err}` : ''}`);
+    }
+  }
 
   // Arrange needs no token to enter: the bar and the per-band controls render for anyone, and only
   // Done refuses (Part 1, A8). Set up does, and it is the only job that reads one.
@@ -1897,6 +1938,205 @@ async function press() {
   process.exit(fails.length ? 1 : 0);
 }
 
+/* ------------------------------------------------------------------ a stranger's pack
+ *
+ * WHAT THIS IS, AND WHY IT IS NOT CALLED T8. Prompt 7 asks to "run the third-party `water` pack
+ * fixture from the 14 Sep prompt (1.4) and prove T8 still holds". Neither exists any more: the
+ * 14 September prompt is not in this repository, not in `docs/`, and not anywhere on the machine
+ * that wrote it, and with it went T8's definition — the target tables in
+ * `docs/design/DIRECTIONS_2026-09.md` run T1, T1b, T2, T3, T4, T5, T6 and PICK adds T7 and T9.
+ * There is no T8 to hold. So rather than invent a number and claim it was met, this proves the
+ * thing that prompt and `DIRECTIONS` §"Where the new things land" were plainly about: the page
+ * draws a section it has never heard of, and the targets survive it.
+ *
+ * HOW A STRANGER GETS IN. A pack's dashboard contribution is one more static file the node serves,
+ * which calls `window.PAI.register` when it parses. Here that timing is reproduced exactly, with a
+ * setter on `window.PAI`: the moment dashboard.js assigns it, the stranger registers — before
+ * `route()` draws anything, and without the page having been edited to expect it.
+ *
+ * Four sections, because a stranger is not always well behaved:
+ *   water        draws a stack of its own, with a unit per cell
+ *   water-deep   declares a need this node does not have
+ *   water-bad    throws
+ *   water-fifth  draws a FIFTH card kind, which T3 says does not exist
+ *
+ * The first three are the contract's promises. The fourth is the one that must show up as damage:
+ * if a stranger can add a fifth kind and nothing notices, "four card kinds and no fifth" is a
+ * sentence in a document rather than a property of the page.
+ */
+const STRANGER = () => {
+  const K = window.K;
+  window.PAI.register({
+    id: 'water', pack: 'water', stage: 'observe', order: 13,
+    title: 'What the water is doing',
+    render() {
+      /* A unit per cell, which is the case DIRECTIONS names: the room is turbidity in NTU and the
+         region is metres below a water table. Two quantities, so two scales and never one bar. */
+      const rows = [['room', '4.2', 'NTU'], ['region', '11.8', 'm below']];
+      return `<div class="stack" data-kind="stack" data-component="waterStack" id="water-stack"`
+        + ` data-ref="water"><div class="col" id="water-col-room" data-ref="water-stack">`
+        + rows.map(([k, v, u], i) =>
+          `<div class="v"><span class="num" data-num="water.${k}"`
+          + ` data-cmp="${K.esc(`${k}: ${v} ${u}, no line declared`)}">${K.esc(v)}</span>`
+          + `<small>${K.esc(u)}</small></div>`).join('')
+        + `</div></div>`;
+    },
+    notes: () => [{ id: 'water-note', text: 'A stranger wrote this section and this note.' }],
+  });
+  window.PAI.register({
+    id: 'water-deep', pack: 'water', stage: 'observe', order: 14,
+    title: 'The water table', needs: ['WATER_TABLE'], render: () => '<p>never drawn</p>',
+  });
+  window.PAI.register({
+    id: 'water-bad', pack: 'water', stage: 'decide', order: 99,
+    title: 'What the water pack cannot do',
+    render() { throw new Error('a stranger threw'); },
+  });
+  window.PAI.register({
+    id: 'water-fifth', pack: 'water', stage: 'observe', order: 15,
+    title: 'A fifth kind',
+    render: () => '<div data-kind="dial" data-component="waterDial" id="water-dial"'
+      + ' data-ref="water-stack">a dial</div>',
+  });
+};
+
+async function extend() {
+  const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+  const h = await open(job, {}, STRANGER);
+  const d = await h.page.evaluate(COLLECT);
+  const bands = await h.page.evaluate(() => [...document.querySelectorAll('section.band')]
+    .map(b => ({ id: b.id, pack: b.dataset.pack, stage: b.dataset.stage })));
+  const probe = await h.page.evaluate(() => window.__pai_probe || 'never installed');
+  const said = await h.page.evaluate(() => ({
+    absent: (document.getElementById('water-deep-absent') || {}).textContent || null,
+    failed: (document.getElementById('water-bad-failed') || {}).textContent || null,
+    note: !!document.getElementById('water-note'),
+  }));
+  await h.browser.close();
+
+  const has = (e, c) => (e.cls || '').split(/\s+/).includes(c);
+  const kinds = [...new Set(d.els.map(e => e.dkind).filter(Boolean))].sort();
+  const nums = d.els.filter(e => e.dnum !== null);
+  const orphanNums = nums.filter(e => e.dcmp === null);
+  const ids = new Set(d.els.map(e => e.id).filter(Boolean));
+  const refs = d.els.map(e => e.dref).filter(Boolean);
+  const comps = d.els.filter(e => e.dc && !['header', 'hero'].includes(e.dc));
+  const orphanComps = comps.filter(c => {
+    const out = c.dref && ids.has(c.dref.replace(/^#/, ''));
+    const mine = new Set(d.els.filter(e => e.id && e.x >= c.x - 1 && e.y >= c.y - 1
+      && e.x + e.w <= c.x + c.w + 1 && e.y + e.h <= c.y + c.h + 1).map(e => e.id));
+    return !(out || refs.some(r => mine.has(r.replace(/^#/, ''))));
+  });
+
+  const fails = [];
+  if (probe !== 'fired') fails.push(`the registration hook: ${probe}`);
+  const water = bands.find(b => b.id === 'water');
+  if (!water) fails.push('the stranger\'s section is not on the page at all');
+  else {
+    if (water.pack !== 'water') fails.push(`the band says pack="${water.pack}", not the pack that wrote it`);
+    if (water.stage !== 'observe') fails.push(`it was drawn in ${water.stage}, not the stage it declared`);
+    const obs = bands.filter(b => b.stage === 'observe').map(b => b.id);
+    const i = obs.indexOf('water');
+    if (i <= 0 || obs.indexOf('matrix') > i) fails.push(`observe order ignores it: ${obs.join(' ')}`);
+  }
+  if (!said.absent || !/water pack has nothing here yet/i.test(said.absent)) {
+    fails.push('a declared need this node does not have did not print one honest line');
+  }
+  if (!said.failed || !/did not render/.test(said.failed)) {
+    fails.push('a section that threw did not say so');
+  }
+  if (bands.length < 8) fails.push(`only ${bands.length} bands survived a stranger throwing`);
+  if (!said.note) fails.push('the stranger\'s note is not in the notes band');
+  if (orphanNums.length) fails.push(`${orphanNums.length} numeral(s) with no comparison`);
+  if (orphanComps.length) fails.push(`${orphanComps.length} component(s) with no link in or out`);
+  /* The fifth kind MUST show. This is the one assertion that fails when the page is too permissive
+     rather than too strict, and it is the reason the stranger draws one. */
+  if (!kinds.includes('dial')) {
+    fails.push('a stranger drew data-kind="dial" and the count did not see it, so T3 is measuring '
+      + 'nothing and a fifth kind could ship unnoticed');
+  }
+  const four = kinds.filter(k => k !== 'dial');
+  if (four.length !== 4) fails.push(`the page's own kinds are ${four.join(' ')} — ${four.length}, not four`);
+
+  for (const f of fails) console.log('FAIL extend:', f);
+  if (!fails.length) {
+    console.log(`  extend: a stranger's section draws in its own stage and order `
+      + `(${bands.filter(b => b.stage === 'observe').map(b => b.id).join(' ')})`);
+    console.log(`  extend: an absent need prints one line, a throw says so, ${bands.length} bands still drew`);
+    console.log(`  extend: T3 ${four.join(' ')} + the stranger's fifth caught · `
+      + `T4 ${orphanNums.length} of ${nums.length} · T5 ${orphanComps.length} of ${comps.length}`);
+  }
+  process.exit(fails.length ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------ the baseline plates
+ *
+ * Every combination the page can be in, as a JPEG at one device pixel, kept as the baseline a later
+ * round diffs against. Fifty-four renders: five views at three widths in both registers, Now again
+ * in simple and in learn, the wall, and the empty and refused states.
+ *
+ * THE WALL IS DARK ONLY. Its register is not a choice — applyRegister() forces dark on that view
+ * because it is a screen on a wall in a room — so rendering it "in paper" would write two identical
+ * files under two names and claim the pair proved something.
+ *
+ * FOLD, NOT FULL, except for six. A full-page JPEG of Now at 1440 is 300 kB and the whole matrix
+ * that way is twenty megabytes in a repository a tester clones. The fold is what T1 and T2 are
+ * about, which is what a baseline is for; the six full pages are the ones somebody actually reads
+ * end to end.
+ */
+function plates() {
+  const P = [];
+  const WIDE = [390, 768, 1440];
+  for (const v of ['now', 'historical', 'network', 'arrange', 'setup']) {
+    for (const w of WIDE) for (const r of ['paper', 'dark']) {
+      P.push({ name: `${v}_${w}_${r}`, view: v, w, state: 'populated', register: r,
+        full: v === 'now' && r === 'paper' });
+    }
+  }
+  for (const w of WIDE) P.push({ name: `wall_${w}_dark`, view: 'wall', w, state: 'populated', dark: true });
+  /* No `full` for the wall: it does not scroll, so the full page and the fold are the same
+     picture, and the pair would be two files under two names proving nothing. */
+  P.push({ name: 'wall_1920_dark', view: 'wall', w: 1920, state: 'populated', dark: true });
+  for (const m of ['simple', 'learn']) {
+    for (const w of WIDE) for (const r of ['paper', 'dark']) {
+      P.push({ name: `now_${m}_${w}_${r}`, view: 'now', w, state: 'populated', mode: m, register: r,
+        full: m === 'learn' && r === 'paper' && w === 1440 });
+    }
+  }
+  for (const s of ['empty', 'refused']) {
+    for (const w of [390, 1440]) for (const r of ['paper', 'dark']) {
+      P.push({ name: `now_${s}_${w}_${r}`, view: 'now', w, state: s, register: r, wireOnly: true });
+    }
+  }
+  return P;
+}
+
+async function plateShots(names) {
+  const all = plates();
+  const want = names[0] === 'all' ? all : all.filter(j => names.includes(j.name));
+  if (!want.length) { console.error('no such plate:', names.join(' ')); process.exit(2); }
+  const dir = process.env.PAI_PLATES ? path.resolve(process.env.PAI_PLATES) : OUT;
+  fs.mkdirSync(dir, { recursive: true });
+  let bytes = 0, made = 0, failed = 0;
+  for (const job of want) {
+    let h;
+    try {
+      h = await open(job);
+      for (const full of job.full ? [false, true] : [false]) {
+        const f = path.join(dir, `${job.name}${full ? '_full' : ''}.jpg`);
+        await h.page.screenshot({ path: f, fullPage: full, type: 'jpeg', quality: 80 });
+        bytes += fs.statSync(f).size; made += 1;
+      }
+    } catch (e) {
+      console.error(`  ${job.name}  FAILED  ${e.message}`);
+      failed += 1;
+    } finally { if (h) await h.browser.close(); }
+  }
+  console.log(`  plates: ${made} JPEG(s) from ${want.length} render(s), `
+    + `${(bytes / 1048576).toFixed(1)} MB, in ${path.relative(ROOT, dir) || dir}`);
+  if (failed) { console.log(`FAIL plates: ${failed} render(s) did not complete`); process.exit(1); }
+}
+
 /* ------------------------------------------------------------------ the loading state
  *
  * Three claims about `asking` that nothing else can check, because all three are about the DOM at a
@@ -2021,6 +2261,9 @@ else if (cmd === 'steps') await steps();
 else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
 else if (cmd === 'press') await press();
 else if (cmd === 'asking') await asking();
+else if (cmd === 'plates') await plateShots(rest.length ? rest : ['all']);
+else if (cmd === 'extend') await extend();
+else if (cmd === 'plate-list') plates().forEach(j => console.log(j.name + (j.full ? '  (+full)' : '')));
 else if (cmd === 'sheets') await sheets();
 else if (cmd === 'header') await header();
 else if (cmd === 'targets') aTargets();
@@ -2029,5 +2272,5 @@ else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
 else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|steps|stall|press|asking|sheets|header|targets|audit|overflow|analyse|list');
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|sheets|header|targets|audit|overflow|analyse|list');
   process.exit(2); }

@@ -430,8 +430,23 @@ for _sel in (".readrow .who .m {", ".cellhead .n {", "[data-kind=\"readout\"] .s
 # goes, or if the view stops going through it.
 assert "view.filter(id => !(LAYOUT.hidden || []).includes(id))" in _js, \
     "a section hidden in Arrange is no longer filtered out before the page is drawn — ✕ does nothing"
-assert "only: want(NOW)" in _js and "only: want(NETWORK)" in _js, \
-    "a view no longer goes through want(), so hiding a section has no effect on it"
+for _v in ("NOW", "NETWORK", "HISTORICAL"):
+    assert f"want([...{_v}" in _js or f"want({_v})" in _js, \
+        f"the {_v} view no longer goes through want(), so hiding a section has no effect on it"
+
+# A SECTION THE PAGE HAS NEVER HEARD OF HAS TO GO SOMEWHERE.
+#
+# One registry serves three views through three hardcoded arrays of ids. A pack's section is an id
+# this file has never seen — that is the whole point of the contract, and the docstring at the top of
+# dashboard.js promises it in as many words. From the Now/Network split until 22 September a
+# registered section not typed into one of those arrays was filtered out of all three and drawn
+# nowhere: it registered, Set up listed it as `drawing`, and it was on no page. Now is the default
+# home for anything the two named lists do not claim, and this is the line that says so.
+assert "const homeless = PAI.sections.map(s => s.id).filter(id => !placed.has(id))" in _js, \
+    ("a registered section that no view names is filtered out of every view again, so a pack can "
+     "register a section and have it drawn nowhere — which is the contract this page publishes")
+assert "want([...NOW, ...homeless])" in _js, \
+    "Now is no longer the default home for a section no view names"
 # and the restore menu must be read, not just drawn. Red if fillRestore stops filling it or the
 # change handler stops putting the section back.
 assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden section cannot come back"

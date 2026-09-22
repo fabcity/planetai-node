@@ -39,6 +39,11 @@ node tests/visual/measure.mjs press
 # draws one still frame instead of subscribing to the loop. Prints what a frame cost, both ways.
 node tests/visual/measure.mjs asking
 
+# A pack this file has never heard of: does its section draw, in its own stage and order, and do the
+# targets survive it. Also the one check that fails when the page is too PERMISSIVE — a stranger
+# drawing a fifth card kind has to show up, or "four kinds and no fifth" is only a sentence.
+node tests/visual/measure.mjs extend
+
 node - <<'JS'
 const fs = require('fs'), out = process.env.PAI_OUT;
 const j = n => JSON.parse(fs.readFileSync(`${out}/${n}.json`, 'utf8'));

@@ -71,6 +71,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
           the earth pack           HANDOFF_earth_pack
           the dashboard's design    HANDOFF_dashboard_violations · design/shots/
+          the page redesign        HANDOFF_dashboard_redesign · design/shots/redesign/
           reports and messages     HANDOFF_reports
           the trust pack           HANDOFF_trust
           the ring and the forecast HANDOFF_nearby_forecast
