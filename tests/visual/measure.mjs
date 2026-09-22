@@ -1890,10 +1890,161 @@ async function audit(names) {
     'axe serious/critical'], rows));
 }
 
+/* WHERE THE AIR IS — T2c, decomposed.
+ *
+ * T2's empty-share leg says the first screen at 1440 is 57 % air and does not say where. Prompt 7
+ * guessed with a method of its own — unioning element boxes over a coarse grid — and got 20-40 %,
+ * because a section's own container box marks everything inside it as used. That number was wrong
+ * and the disagreement was the tell.
+ *
+ * So this uses aTargets' grid VERBATIM: the same 4 px cells, the same predicate (an element that
+ * carries direct text, or is media, or is a control, marks its whole box), the same `read` variant
+ * that drops what the page marked aria-hidden. Nothing here re-decides what full means. What it adds
+ * is attribution: for every EMPTY cell, which part of the page it sits in.
+ *
+ * Three readings, because "where" has three useful answers:
+ *
+ *   · by part — the air inside each named component's own box, which is a layout question for that
+ *     component, and the air inside no component at all, which is a spacing question between them.
+ *   · down the page — the empty share of each 60 px stripe, which says whether the air is one hole
+ *     or spread evenly.
+ *   · across the page — the empty share of each tenth of the width, which is the question the lead's
+ *     two-column grid raises: is one column carrying the whole screen.
+ *
+ * A cell is attributed to the SMALLEST named component containing it, so the lead's own box does not
+ * swallow the air inside the meters. Scaffold is not a part: HTML, BODY, MAIN, .wrap and a view
+ * SECTION are containers, not things on the screen, and attributing air to them says nothing.
+ */
+function aAir() {
+  const G = 4;
+  const SCAFFOLD0 = e => ['HTML', 'BODY', 'MAIN'].includes(e.tag) || has(e, 'wrap')
+    || (e.tag === 'SECTION' && has(e, 'view'));
+  for (const n of sets()) {
+    const d = load(n), view = n.replace(/_populated_.*/, ''), w = +n.match(/(\d+)$/)[1];
+    if (view !== 'now' || (w !== 390 && w !== 1440)) continue;
+    const vh = d.doc.vh, gw = Math.ceil(w / G), gh = Math.ceil(vh / G);
+
+    for (const which of ['lit', 'read']) {
+      const grid = new Uint8Array(gw * gh);
+      const mark = (x, y, ww, hh) => {
+        for (let gy = Math.max(0, Math.floor(y / G)); gy < Math.min(gh, Math.ceil((y + hh) / G)); gy++)
+          for (let gx = Math.max(0, Math.floor(x / G)); gx < Math.min(gw, Math.ceil((x + ww) / G)); gx++)
+            grid[gy * gw + gx] = 1;
+      };
+      for (const e of d.els) {
+        if (e.y >= vh || !(e.hasText || e.kind === 'media' || e.kind === 'control')) continue;
+        if (which === 'read' && e.hidden) continue;
+        mark(e.x, e.y, e.w, e.h);
+      }
+      const total = gw * gh;
+      let air = 0;
+      for (let i = 0; i < total; i++) if (!grid[i]) air += 1;
+      if (which === 'lit') {
+        console.log(`\n### Now @ ${w} — the first ${vh} px`);
+        console.log(`\n${(100 * air / total).toFixed(1)} % air on the \`lit\` reading `
+          + `(${air} of ${total} cells of ${G} px).`);
+      } else {
+        console.log(`${(100 * air / total).toFixed(1)} % on \`read\`, `
+          + `which drops what the page marked aria-hidden.`);
+        continue;                      // the two readings differ by very little; decompose `lit`
+      }
+
+      /* THE SAME AIR, MEASURED INSIDE THE PAGE'S OWN COLUMN.
+       *
+       * T2 counts the empty share of the VIEWPORT, and this page is a centred column with a
+       * max-width — so at 1440 there are 140 px of margin down each side that no page with a
+       * readable measure could ever fill. They are 19 % of the screen and T2 counts every pixel of
+       * them as a failure. The wider the display, the worse the number, for a page that has not
+       * changed. That is measuring a typographic virtue as a defect.
+       *
+       * So both are reported: against the viewport, which is T2 as written, and against the column
+       * the page actually draws in, which is the number that can be acted on. */
+      const col = d.els.filter(e => e.y < vh && e.w > w * 0.5 && e.w < w - 8 && !SCAFFOLD0(e))
+        .sort((a, b) => b.w - a.w)[0];
+      if (col) {
+        const x0 = Math.floor(col.x / G), x1 = Math.ceil((col.x + col.w) / G);
+        let e1 = 0, c1 = 0;
+        for (let gy = 0; gy < gh; gy++)
+          for (let gx = Math.max(0, x0); gx < Math.min(gw, x1); gx++) {
+            c1 += 1; if (!grid[gy * gw + gx]) e1 += 1;
+          }
+        const margin = 100 * (1 - (c1 / total));
+        console.log(`\n**${(100 * e1 / c1).toFixed(1)} % inside the page's own column** `
+          + `(${r1(col.w)} px wide, ${r1(col.x)} px in). The margins either side are `
+          + `${margin.toFixed(1)} % of the viewport and no page with a readable measure fills them; `
+          + `T2 as written counts every pixel of them as empty.`);
+      }
+
+      /* the parts: named components, smallest first, so a child wins its own cells */
+      const SCAFFOLD = e => ['HTML', 'BODY', 'MAIN'].includes(e.tag)
+        || has(e, 'wrap') || (e.tag === 'SECTION' && has(e, 'view'));
+      const parts = d.els
+        .filter(e => e.y < vh && e.y + e.h > 0 && e.w > 8 && e.h > 8 && !SCAFFOLD(e))
+        .filter(e => e.dc || e.dband || (e.id && e.tag === 'SECTION'))
+        .map(e => ({ ...e, boxArea: e.w * e.h }))
+        .sort((a, b) => a.boxArea - b.boxArea);
+      const owner = new Int32Array(total).fill(-1);
+      for (let pi = parts.length - 1; pi >= 0; pi--) {           // biggest first, smallest overwrite
+        const e = parts[pi];
+        for (let gy = Math.max(0, Math.floor(e.y / G)); gy < Math.min(gh, Math.ceil((e.y + e.h) / G)); gy++)
+          for (let gx = Math.max(0, Math.floor(e.x / G)); gx < Math.min(gw, Math.ceil((e.x + e.w) / G)); gx++)
+            owner[gy * gw + gx] = pi;
+      }
+      const tally = new Map();
+      let loose = 0;
+      for (let i = 0; i < total; i++) {
+        if (grid[i]) continue;
+        const pi = owner[i];
+        if (pi < 0) { loose += 1; continue; }
+        tally.set(pi, (tally.get(pi) || 0) + 1);
+      }
+      const name = e => `${e.dc ? e.dc : e.tag}${e.id ? ' #' + e.id : ''}`;
+      const rows = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([pi, cells]) => {
+        const e = parts[pi];
+        const own = Math.ceil(e.w / G) * Math.ceil(e.h / G);
+        return [name(e), `${r1(e.w)} x ${r1(e.h)}`, cells,
+          (100 * cells / own).toFixed(0) + ' %', (100 * cells / air).toFixed(0) + ' %'];
+      });
+      rows.push(['**between the parts** — inside no component', '—', loose, '100 %',
+        (100 * loose / air).toFixed(0) + ' %']);
+      console.log('\n**Where it is, by part.** "air in it" is the share of that component\'s own box '
+        + 'that is empty; the last column is its share of all the air on the screen.\n');
+      console.log(tbl(['part', 'box', 'empty cells', 'air in it', 'share of all air'], rows));
+
+      /* down the page */
+      const STRIPE = 60, srows = [];
+      for (let top = 0; top < vh; top += STRIPE) {
+        let e0 = 0, c0 = 0;
+        for (let gy = Math.floor(top / G); gy < Math.min(gh, Math.ceil((top + STRIPE) / G)); gy++)
+          for (let gx = 0; gx < gw; gx++) { c0 += 1; if (!grid[gy * gw + gx]) e0 += 1; }
+        const pc = 100 * e0 / (c0 || 1);
+        srows.push([`${top}–${Math.min(vh, top + STRIPE)}`, pc.toFixed(0) + ' %',
+          '`' + '█'.repeat(Math.round(pc / 4)) + '`']);
+      }
+      console.log('\n**Down the page**, in 60 px stripes.\n');
+      console.log(tbl(['px from the top', 'air', ''], srows));
+
+      /* across the page */
+      const crows = [];
+      for (let k = 0; k < 10; k++) {
+        const x0 = Math.floor(k * gw / 10), x1 = Math.floor((k + 1) * gw / 10);
+        let e0 = 0, c0 = 0;
+        for (let gy = 0; gy < gh; gy++)
+          for (let gx = x0; gx < x1; gx++) { c0 += 1; if (!grid[gy * gw + gx]) e0 += 1; }
+        const pc = 100 * e0 / (c0 || 1);
+        crows.push([`${Math.round(k * w / 10)}–${Math.round((k + 1) * w / 10)}`, pc.toFixed(0) + ' %',
+          '`' + '█'.repeat(Math.round(pc / 4)) + '`']);
+      }
+      console.log('\n**Across the page**, in tenths of the width.\n');
+      console.log(tbl(['px from the left', 'air', ''], crows));
+    }
+  }
+}
+
 const A = { grid: aGrid, spacing: () => aSpacing(true), rhythm: aRhythm, lines: aLines,
   align: aAlign, type: aType, headings: aHeadings, order: aOrder, dist: aDist, wall: aWall,
   dom: aDom, anatomy: aAnatomy, components: aComponents, stack: aStack,
-  targets: aTargets };
+  targets: aTargets, air: aAir };
 
 /* DOES A PRESS ACTUALLY REDRAW?
  *

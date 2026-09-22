@@ -1000,3 +1000,52 @@ machine, in no repository history, in none of this project's forty-five session 
 artifact — prompt 0 was already citing a file it could not read, which is why the baseline table in
 `PICK_2026-09-20.md` runs T7 then T9. What prompt 7 built in its place is
 `node tests/visual/measure.mjs extend`, under its own name.
+
+## T2c, decomposed (22 September 2026)
+
+`node tests/visual/measure.mjs analyse air` uses `aTargets`' grid **verbatim** — the same 4 px cells,
+the same predicate, the same `lit` / `read` split — and adds attribution: for every empty cell, which
+part of the page it sits in. It reproduces T2's own figure exactly (42.5 % at 390, 57.3 % at 1440),
+which is the only reason to trust the breakdown under it.
+
+### A third of the miss at 1440 is the page's own margin
+
+| | viewport (T2 as written) | the page's margins | inside the page's column |
+|---|---|---|---|
+| **1440** | 57.3 % | 19.4 % of the viewport | **47.0 %** |
+| **390** | 42.5 % | 9.2 % | **36.8 %** |
+
+The page is a centred column with a max-width: 1,160 px of content inside a 1,440 px viewport leaves
+140 px down each side that **no page with a readable measure could ever fill**. T2 counts every pixel
+of them as a failure, so the wider the display, the worse the number, for a page that has not
+changed. That is measuring a typographic virtue as a defect, and it is why the same page reads 42.5 %
+on a phone and 57.3 % at a desk.
+
+**So T2c is restated to measure inside the column the page actually draws in.** The goal is unchanged
+— ≤ 30 % at 1440, ≤ 20 % at 390 — and the page still misses it, at **47.0 %** and **36.8 %**. It is
+now a number somebody can act on.
+
+### Where the remaining air is
+
+At 1440, across the width in tenths:
+
+| px from the left | air | |
+|---|---|---|
+| 0–144 | 98 % | the left margin |
+| 144–576 | 41–46 % | the lead's text column — normal for type |
+| **576–864** | **69–79 %** | **the gutter between the sentence and the ground** |
+| 864–1296 | 25–40 % | the ground figure |
+| 1296–1440 | 100 % | the right margin |
+
+**The gutter is the finding.** Two tenths of the screen — nearly 290 px — sit between the lead's text
+column and the ground drawing, three quarters empty, and they are inside the column so no margin
+argument excuses them. By part, the same air shows up as `stack #meters-heat` 54 % empty in its own
+box, `rail` 45 %, `railKey` 54 % and `ruler` 93 % — a 1,152 × 26 strip carrying five labels and a row
+of ticks.
+
+Forty-three per cent of all the air at 1440 is inside no named component at all, which is the
+spacing between parts rather than the parts themselves.
+
+**Nothing here has been changed.** The next person to work on T2c has the number, the place and the
+method; what to do about the gutter is a drawing decision and belongs to a round, not to a
+measurement.

@@ -62,13 +62,25 @@ against a page with two card kinds and none of those ledgers. Part four of
 it: T2a, the answer is on the first screen (this is T1, and it passes); T2b, the lead names the open
 asks and links to the stage that holds them (it does); and T2c, the empty share, unchanged.
 
-**T2c is the open miss and it is real.** 57.3 / 59.6 % of the first screen at 1440 is air, and 42.5 /
-45.3 % at 390. That is the lead's layout, not the number of sections after it, which is why no amount
-of folding would have touched it. It is **not yet decomposed** — the rig's `lit`/`read` figure is the
-authority and nothing yet says *which* part of the lead the air is in. A quick attempt of my own
-answered 20–40 % by unioning element boxes, which over-counts, because a section's container marks
-everything inside it as used. Building that breakdown is the next thing anybody working on T2c should
-do, before anything is moved.
+**T2c is the open miss, and it is now decomposed.** `node tests/visual/measure.mjs analyse air`
+reuses `aTargets`' grid verbatim and attributes every empty cell to the part of the page it sits in;
+it reproduces T2's own figure exactly, which is the only reason to trust what is under it.
+
+**A third of the miss at 1440 is the page's own margin.** 1,160 px of column inside a 1,440 px
+viewport leaves 140 px down each side that no page with a readable measure could fill, and T2 counts
+every pixel of them as a failure — which is why the same page reads 42.5 % on a phone and 57.3 % at a
+desk. Measured inside the column the page actually draws in: **47.0 % at 1440 and 36.8 % at 390**,
+against goals of 30 % and 20 %. Still missed, and now actionable.
+
+**The gutter is the finding.** Across the width at 1440, the lead's text column runs 41–46 % air
+(normal for type) and the ground figure 25–40 % — but the 290 px between them is **69–79 % air**, and
+it is inside the column, so no margin argument excuses it. By part: `stack #meters-heat` is 54 %
+empty in its own box, `railKey` 54 %, `rail` 45 %, and `ruler` 93 % — a 1,152 × 26 strip carrying
+five labels and a row of ticks. Forty-three per cent of all the air is inside no named component,
+which is spacing between parts rather than the parts themselves.
+
+**Nothing has been changed on the page.** What to do about the gutter is a drawing decision and
+belongs to a round. Part four of `docs/design/DIRECTIONS_2026-09.md` carries the full tables.
 
 ## 3 · The contract, as it now stands
 
@@ -283,10 +295,11 @@ to somebody without changing their own page.
 
 - ✅ **done** — prompts 1–6; 58 plates; the T1–T9 table on a matched fixture; the stranger's-pack
   check; `make docs && make lint && make test` and the visual gate all green.
-- ⚠ **open** — **T2c**: 57.3 / 59.6 % of the first screen at 1440 is air, and nobody yet knows which
-  part of the lead it is in. That breakdown is the next piece of work. T1b's index rows are still
-  absent at 1440, and at 390 T1's ask leg falls below the fold on a sparse node. The wall carries two
-  components with no link in or out.
+- ⚠ **open** — **T2c**, restated to measure inside the page's own column: **47.0 % at 1440** and
+  36.8 % at 390 against 30 % and 20 %. The place is known — the 290 px gutter between the lead's
+  sentence and the ground drawing, at 69–79 % air — and what to do about it is a drawing decision.
+  T1b's index rows are still absent at 1440, and at 390 T1's ask leg falls below the fold on a sparse
+  node. The wall carries two components with no link in or out.
 - ⛔ **needs Tomas** — the tag, which no session takes; a `docs/site/design.md` pass in his own
   voice; the two sentences above, which are drafts of his words and not his words; and whether node
   #2 gets the page, which is Lucas's machine.
