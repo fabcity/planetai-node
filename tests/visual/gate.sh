@@ -44,6 +44,11 @@ node tests/visual/measure.mjs asking
 # drawing a fifth card kind has to show up, or "four kinds and no fifth" is only a sentence.
 node tests/visual/measure.mjs extend
 
+# Every in-page link the page writes, followed. The hash is how this page routes, so an anchor and a
+# view are the same string; `#stage-act` routed to a view of that name and drew a blank page in
+# v0.71. Static checks cannot see it — the id is built from a template and the failure is the router.
+node tests/visual/measure.mjs anchors
+
 node - <<'JS'
 const fs = require('fs'), out = process.env.PAI_OUT;
 const j = n => JSON.parse(fs.readFileSync(`${out}/${n}.json`, 'utf8'));

@@ -151,6 +151,9 @@
   /* the node has not answered yet: the loading state holds until /issues lands · node dashboard · R24 */
   --motion-asking: until-data;
 
+  /* the loading state is also a reading: how long it is held so the reads can be read · node dashboard · R25 */
+  --motion-asking-hold: 3s;
+
   /* a stack arrives: one bracket cell fills per step · node dashboard · R24 */
   --motion-meter-fill: 40ms;
 
@@ -216,6 +219,7 @@
     --motion-ring-closed: 0s;
     --motion-satellite-year: 0s;
     --motion-land-change-yoy: 0s;
+    --motion-asking-hold: 0s;
     --motion-meter-fill: 0s;
     --motion-mark-float: 0s;
   }

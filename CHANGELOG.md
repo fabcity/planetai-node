@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.71.1 — 2026-09-22 — the link to the asks led nowhere
+
+- **Pressing "in 3 Act" gave you a blank page.** The lead counts your open asks and offers to take
+  you to them. It took you to an empty screen instead. Every link that points at a part of the page
+  did the same — the ones at the bottom that take you back to the section a note explains, all
+  eleven of them. Your node's address bar is how this page remembers which view you are on, so a
+  link to a *place on the page* looked to it like a view that does not exist, and it drew that.
+
+  It now knows the difference between the six views and everywhere else, and a link to somewhere on
+  the page scrolls there without redrawing anything — so you keep your place, your open folds and
+  whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
+
+- **You can now see what your node was asked.** While the page waits for your node it draws what it
+  is asking for, and how many milliseconds each answer took — your node's own speed, which is not
+  shown anywhere else. On a healthy node that is over in a tenth of a second, so in practice nobody
+  had ever seen it. It is held for three seconds now on a reload and when you press ↻. Not on the
+  five-minute refresh, and not when a node that had stopped answering comes back — there you want
+  the page, not the story of getting it. If you have asked your machine for less motion, there is no
+  wait at all.
+
 ## v0.71 — 2026-09-22 — the page, rebuilt
 
 *Your node's own page, taken apart and put back together. It needs nothing you do not already have:

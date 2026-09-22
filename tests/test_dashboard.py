@@ -308,6 +308,37 @@ assert "extra = PACKS.map" in _js and "pane.innerHTML = PACKS.map" not in _js, \
 assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
     "a group's keys are no longer rendered after whatever extra that group adds"
 
+# AN UNKNOWN HASH IS AN ANCHOR ON THIS PAGE, NOT A VIEW.
+#
+# readView() took the hash as the view whatever it said. The lead's own ask line links to
+# `#stage-act` — it is what a reader presses when the page says "94 asks open · in 3 Act" — so the
+# page routed to a view called `stage-act`, found none, fell through to the branch that draws Set up,
+# and rendered a band titled STAGE-ACT with nothing in it. A blank page, reached from the page's own
+# link, on a household's node. Every in-page anchor did it: the notes band links back to the section
+# each note explains, and so does this one.
+#
+# Reported by Tomas from node #1 at v0.71, which is the release this fixes.
+assert "const VIEW_NAMES = new Set(" in _js, \
+    "readView no longer has a list of what a view IS, so any hash is one again"
+assert re.search(r"VIEW = \(VIEW_NAMES\.has\(h\) \? h : ''\) \|\| q\.get\('view'\) \|\| 'now'", _js), \
+    ("an unknown hash is being taken as a view again — `#stage-act` empties the page, and so does "
+     "every link in the notes band")
+# Every hash the page itself writes must either name a view or name an element it draws.
+_names = set(re.findall(r"'(now|historical|network|wall|arrange|setup)'",
+                        re.search(r"const VIEW_NAMES = new Set\(\[(.*?)\]\)", _js, re.S).group(1)))
+assert _names == {"now", "historical", "network", "wall", "arrange", "setup"}, \
+    f"VIEW_NAMES and the six views have drifted apart: {sorted(_names)}"
+# The one literal anchor the page writes is the lead's, and the element it points at is built from
+# a template — `id="stage-${key}"` — so there is no literal to grep for. Assert the pair instead:
+# the link, and the template that makes its target. The rig checks the live page lands on it.
+assert 'href="#stage-act"' in _js, "the lead no longer links to the Act stage"
+assert 'id="stage-${key}"' in _js, \
+    "the stages no longer carry an id, so the lead's link to #stage-act lands nowhere"
+# And an anchor must not throw the page away: same view, so scroll rather than re-render.
+assert "if (VIEW === before)" in _js and "scrollIntoView({ block: 'start' })" in _js, \
+    ("a hashchange that does not change the view re-renders the whole page, which loses the scroll "
+     "position, the open folds and the learn panel for a link to somewhere already on screen")
+
 # THE PAGE KEEPS UP WITH THE NODE, AND SAYS SO WHEN IT CANNOT.
 #
 # v0.53 ended its boot with `setInterval(refresh, 20000)`. The Phase 2 rewrite did not carry it, and
@@ -341,8 +372,21 @@ assert "const wasStale = !!window.STALE" in _ask and "mine = wasStale" in _ask, 
     "refresh() no longer decides between a reconnect and a poll before playing the loading state"
 # And the header's control is a different function on purpose: if ↻ were refresh() with the overlay
 # bolted on, the timer would inherit it the next time somebody edited either one.
-assert "async function askAgain()" in _js and "ASKING.open('Asking the node again')" in _js, \
+assert "async function askAgain()" in _js and "ASKING.open('Asking the node again'" in _js, \
     "the header's re-ask no longer has a function of its own"
+# THE FLOOR, AND THE TWO MOMENTS THAT ASK FOR IT.
+#
+# What the loading state says is the page's account of what it asked of the world — the endpoints and
+# the milliseconds each took — and on a fixture the node answers in under a tenth of a second, so
+# without a floor nobody ever read it. A reload and the header's ↻ are the two moments a PERSON
+# asked to see it; a reconnect is not, because there the page coming back is the thing wanted and a
+# delay is only a delay. So exactly those two pass `true`.
+assert "ASKING.open('Asking the node', true)" in _js, "a reload no longer holds the loading state"
+assert "ASKING.open('Asking the node again', true)" in _js, "the ↻ no longer holds it"
+assert re.search(r"ASKING\.open\('The node stopped answering[^)]*\)(?!\s*,\s*true)", _js), \
+    "a reconnect now holds the page for the floor, which delays the answer a reader is waiting for"
+assert "window.K.msToken('--motion-asking-hold')" in _js, \
+    "the floor is no longer read from the layer's own token"
 # What it may and may not ask for again. /settings, /earth, /sensors, /cells and the plan do not move
 # on the node's poll; re-fetching them every cycle is traffic for no change.
 _ref = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
