@@ -12,6 +12,9 @@ api: https://gitlab.fabcloud.org/api/v4/projects/fl-management%2Ffablab-network-
 pilot_relevance: [global]
 tags: [fab-lab, directory, archive, snapshot, distributed-manufacturing, act]
 added: 2026-09-20
+updated: 2026-09-22
+adapter: pack:make
+feeds_cells: []
 auth: none
 role: [observe, act]
 act_kind: facility
@@ -47,5 +50,6 @@ notes: |
   file uses an underscore, and two files use a `YYYYMMDD_HHMM` form. Anything
   globbing this directory must expect both.
 
-  No `adapter`: the node must not read this until the licence is settled. Reading
-  a frozen copy is no more permitted than reading the live one.
+  `adapter: pack:make` since node v0.70, and that pack ships `MAKE_ENABLED=0`: it
+  must stay off until the licence is settled. Reading a frozen copy is no more
+  permitted than reading the live one.

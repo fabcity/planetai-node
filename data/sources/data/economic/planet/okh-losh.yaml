@@ -1,0 +1,46 @@
+name: OKH-LOSH — Library of Open Source Hardware
+url: https://github.com/iop-alliance/OpenKnowHow
+description: |
+  The Linked-Data successor to Open Know-How v1: an ontology and graph database
+  for open hardware design metadata, maintained by Open Source Ecology Germany
+  and re-integrated into the Internet of Production Alliance in May 2024.
+pillar: economic
+scale: planet
+status: planned
+license: not stated
+api: null
+pilot_relevance: [global]
+tags: [open-hardware, okh, losh, linked-data, sparql, act]
+added: 2026-09-22
+auth: none
+role: [act]
+act_kind: design
+upstream_listed_in: []
+notes: |
+  `planned`, against §3's lead of "live". The specification is active and the
+  graph is not queryable, and those are two different facts.
+
+  VERIFIED 2026-09-22. No live endpoint could be found from the project's own
+  pages. `losh.opensourceecology.de` does not resolve — the TLS handshake is
+  refused with an unrecognised server name. `stack.opensourceecology.de`
+  describes the search ecosystem but publishes no SPARQL or Wikibase URL. The
+  upstream OKH repository names one instance, `search.tech.opensourceecology.de`,
+  and labels it in its own words "old, outdated", pointing testers at a local
+  RDF-DB harness instead. The same page records that the scraper "is currently
+  (June 2025) not run periodically", so even a reachable graph would be stale.
+
+  LICENCE NOT STATED for the metadata. `stack.opensourceecology.de` states
+  CC-BY-SA-4.0 for the code repository; nothing states terms for the harvested
+  design metadata. The distinction is the one this list keeps meeting.
+
+  WHAT TO USE TODAY: `economic/planet/okh-search` — the IoP Alliance's federated
+  manifest index — is the live way to reach OKH manifests, and each manifest
+  carries its own licence. This entry is the Linked-Data layer beneath that, and
+  it is carried as `planned` so the successor standard is on the record with its
+  actual state rather than an assumed one.
+
+  The NGI Search-funded Hardware Open Search Ecosystem project drove OKH from
+  October 2024 to June 2025. Worth re-checking after that work lands rather than
+  assuming this stays `planned`.
+
+  No `adapter`, and no `api`: there is nothing to point at yet.

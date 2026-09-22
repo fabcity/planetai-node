@@ -1197,14 +1197,16 @@
   },
   {
     "act_kind": "facility",
+    "adapter": "pack:make",
     "added": "2026-09-20",
     "api": "https://api.fablabs.io/0/labs.json",
     "auth": "none",
     "cell": "Economic|Community",
     "description": "The Fab Foundation's directory of fab labs: name, coordinates, activity status\nand a six-token capability vocabulary, self-entered by the labs themselves. The\nclosest thing the network has to a census of where things can be made.\n",
+    "feeds_cells": [],
     "license": "NOT OPEN — no data licence published. Platform ToS §7.4 restricts mass harvesting, §7.5 restricts commercial use, §8.1 leaves copyright with each lab. See notes.",
     "name": "fablabs.io — Fab Lab Network directory",
-    "notes": "NOT OPEN, and read anyway by decision. Criterion 1 is unmet; the basis is\nrecorded so it is auditable.\n\nDECISION 2026-09-20 — Tomas Diez, co-founder of fablabs.io and of Fab City\nFoundation, decided PLANETAI may read this directory and accepted\nresponsibility, pending the Terms of Use clause drafted the same day. That\ncovers the Foundation. It does NOT extend to every operator who installs a\nnode: each is a separate party to the ToS. Until the clause lands, a node\nreading this relies on one organisation's position, not on a licence.\n\nWHAT THE DOCUMENTS SAY. github.com/fablabbcn/fablabs.io is AGPL-3.0 — the Rails\napp; neither LICENSE, README nor /about mentions the records. The Terms of Use\nat https://fablabs.io/tos govern them, read live 2026-09-20: 7.4 forbids anyone\nto \"massively collect or harvest\" platform data unless they keep all generated\nanalysis sets open on the Platform; 7.5 forbids commercial use without written\napproval; 8.1 leaves copyright with each lab; 8.3 says content published as a\nfeed lets permitted users use and redistribute it. 8.3 and 7.4/7.5 pull\nopposite ways and nothing resolves them — the document has no open-data\nprovision at all.\n\n8.1 is why a footer edit cannot fix this. The fix needing nobody's consent is\nscoped to the directory FACTS — name, coordinates, capabilities, status — and\n7.4's own exception points there: a node network keeping its analysis open sits\ninside it, which is the ground the decision above stands on.\n\nENDPOINT: api.fablabs.io/ says \"Legacy API ... has now been removed. A new API\nwill soon be available\", and /0/labs.json returns 200 and 5.38 MB anyway. Both\ntrue 2026-09-20. Prefer economic/community/fablabs-network-data-archive: the\nsame records as dated monthly files that can be pinned.\n\nMEASURED: 2,864 records, 5.38 MB, 6.3 s; 1,998 active, 1,819 with coordinates.\nQuery parameters are ignored, so filtering is client-side. Contact details are\nin the payload (email 2,756, phone 2,608) — do not store them.\n",
+    "notes": "NOT OPEN, read anyway by decision. Criterion 1 is unmet; the basis is\nrecorded and auditable.\n\nDECISION 2026-09-20 — Tomas Diez, co-founder of fablabs.io and of Fab City\nFoundation, decided PLANETAI may read this directory and accepted\nresponsibility, pending the Terms of Use clause drafted the same day. That\ncovers the Foundation. It does NOT extend to every operator installing a\nnode: each is a separate party to the ToS. Until the clause lands, a node\nreading this relies on one organisation's position, not on a licence.\n\nWHAT THE DOCUMENTS SAY. github.com/fablabbcn/fablabs.io is AGPL-3.0 — the Rails\napp; neither LICENSE, README nor /about mentions the records. The Terms of Use\nat https://fablabs.io/tos govern them, read live 2026-09-20: 7.4 forbids anyone\nto \"massively collect or harvest\" platform data unless they keep all generated\nanalysis sets open on the Platform; 7.5 forbids commercial use without written\napproval; 8.1 leaves copyright with each lab; 8.3 says content published as a\nfeed lets permitted users use and redistribute it. 8.3 and 7.4/7.5 pull\nopposite ways; the document has no open-data provision at all.\n\nRE-READ 2026-09-22, in full, against a reaffirmed decision to proceed. The page\nstill ends \"These Terms of Service was last revised on April 19th 2017\" — so the\nclause drafted on 20 Sep has NOT landed, and nothing on fablabs.io states a data\nlicence. 7.4, 7.5, 8.1 as quoted above are intact verbatim. Two further clauses\nbelong on the record:\n\n7.3 — \"You agree not to distribute any part of or parts of the Platform,\nincluding but not limited to any Content, in any medium without Fablabs.io's\nprior written authorisation.\" This is the clause the downstream copies turn on,\nnot 7.4: economic/community/maps-of-making redistributes 2,412 of these records\nand economic/planet/open-hardware-manager serves all of them onward. 7.3 is also\nthe one a fablabs.io owner CAN settle outright, because the authorisation it\nrequires is fablabs.io's own to give. One signed sentence covers the chain.\n\n8.2 — the licence labs grant fablabs.io is \"solely for the purpose of providing\nPlatform's services\", passable only to those \"with whom this latter has\ncontractual relationships related to the provision of the Platform, solely for\nthe purpose of providing Platform's services\". Read with 8.1, which says\nfablabs.io \"do not obtain any right, title or interest from you\", this is the\nlimit ownership cannot decide past: an open data licence on the existing records\nis not fablabs.io's to grant, because 8.1 says it never received one. That needs\na ToS revision going forward, or the labs. Not a reading to act on without a\nlawyer — but it is what the document says.\n\n8.1 is why a footer edit cannot fix this. The fix needing nobody's consent is\nscoped to the directory FACTS — name, coordinates, capabilities, status — and\n7.4's own exception points there: a node network keeping its analysis open sits\ninside it, the ground the decision above stands on.\n\nENDPOINT: api.fablabs.io/ says the legacy API \"has now been removed\"; /0/labs.json\nreturns 200 and 5.38 MB anyway. Both true 2026-09-20. Prefer\neconomic/community/fablabs-network-data-archive: the same records as pinnable\nmonthly files.\n\nPRIOR USE: the v0.30 observatory called it from the browser, and\nfab-lab-activity-index measures from these records.\n\nMEASURED: 2,864 records, 5.38 MB, 6.3 s; 1,998 active, 1,819 with coordinates.\nQuery parameters are ignored, so filter client-side. Contact details are\nin the payload (email 2,756, phone 2,608) — do not store them.\n",
     "pillar": "economic",
     "pilot_relevance": [
       "global"
@@ -1223,20 +1225,23 @@
       "distributed-manufacturing",
       "act"
     ],
+    "updated": "2026-09-22",
     "upstream_listed_in": [],
     "url": "https://www.fablabs.io/",
     "wired_in_planetai": false
   },
   {
     "act_kind": "facility",
+    "adapter": "pack:make",
     "added": "2026-09-20",
     "api": "https://gitlab.fabcloud.org/api/v4/projects/fl-management%2Ffablab-network-data/repository/tree?path=archive/labs.json",
     "auth": "none",
     "cell": "Economic|Community",
     "description": "Forty-eight dated freezes of the fablabs.io lab directory, monthly since 2025,\nkept in a public Fab Foundation repository. The same records as the live\nendpoint, but pinnable: a dated file instead of a moving target.\n",
+    "feeds_cells": [],
     "license": "No licence published — the repository has none, and the records are fablabs.io's, under its Terms of Use. See economic/community/fablabs-io.",
     "name": "Fab Lab Network Data — the labs.json archive",
-    "notes": "WHY THIS IS FILED SEPARATELY FROM economic/community/fablabs-io: same records,\ndifferent access contract. fablabs.io serves a live endpoint that declares\nitself removed; this serves dated files in git. Verified 2026-09-20: 48\nsnapshots from 2018.12.04 to 2026.07.31, monthly since 2025-01, latest 2,828\nrecords and 5.3 MB. Repository actively maintained — commits 2026-09-01\n(\"monthly update\") and 2026-09-11, by Pieter van der Hijden.\n\nA PIN, WHICH IS THE POINT. Two nodes reading the same dated file answer\nidentically; two nodes polling a live endpoint on different days do not. This\nis the discipline planetai-node already applies to this very list —\ndata/sources/REGISTRY_VERSION pins a sha and tools/sync_registry.sh refuses a\nbranch name, because a floating pin is a node whose answers change under it.\nThe publisher's own monthly cadence replaces an invented poll interval.\n\nLICENCE — UNCHANGED, AND WORSE THAN IT LOOKS. All 100 paths in the repository\nwere checked: there is no LICENSE, COPYING or equivalent. The records remain\nfablabs.io's, under Terms of Use whose 7.4 forbids anyone \"to massively collect\nor harvest\" platform data. A public repository of 48 complete monthly copies is\nthat activity, performed by the Foundation's own working group for eight years.\nRecorded as fact, not accusation: it is the strongest argument for stating a\nlicence, because the clause would regularise something the network already\ndepends on rather than granting anything new.\n\nCARRIES CONTACT DETAILS, like the live endpoint: email on 2,720 of the 2026.07\nsnapshot, phone on 2,571. Do not store them.\n\nNAMING IS NOT UNIFORM — `2023.03.31 labs.json` uses a space where every other\nfile uses an underscore, and two files use a `YYYYMMDD_HHMM` form. Anything\nglobbing this directory must expect both.\n\nNo `adapter`: the node must not read this until the licence is settled. Reading\na frozen copy is no more permitted than reading the live one.\n",
+    "notes": "WHY THIS IS FILED SEPARATELY FROM economic/community/fablabs-io: same records,\ndifferent access contract. fablabs.io serves a live endpoint that declares\nitself removed; this serves dated files in git. Verified 2026-09-20: 48\nsnapshots from 2018.12.04 to 2026.07.31, monthly since 2025-01, latest 2,828\nrecords and 5.3 MB. Repository actively maintained — commits 2026-09-01\n(\"monthly update\") and 2026-09-11, by Pieter van der Hijden.\n\nA PIN, WHICH IS THE POINT. Two nodes reading the same dated file answer\nidentically; two nodes polling a live endpoint on different days do not. This\nis the discipline planetai-node already applies to this very list —\ndata/sources/REGISTRY_VERSION pins a sha and tools/sync_registry.sh refuses a\nbranch name, because a floating pin is a node whose answers change under it.\nThe publisher's own monthly cadence replaces an invented poll interval.\n\nLICENCE — UNCHANGED, AND WORSE THAN IT LOOKS. All 100 paths in the repository\nwere checked: there is no LICENSE, COPYING or equivalent. The records remain\nfablabs.io's, under Terms of Use whose 7.4 forbids anyone \"to massively collect\nor harvest\" platform data. A public repository of 48 complete monthly copies is\nthat activity, performed by the Foundation's own working group for eight years.\nRecorded as fact, not accusation: it is the strongest argument for stating a\nlicence, because the clause would regularise something the network already\ndepends on rather than granting anything new.\n\nCARRIES CONTACT DETAILS, like the live endpoint: email on 2,720 of the 2026.07\nsnapshot, phone on 2,571. Do not store them.\n\nNAMING IS NOT UNIFORM — `2023.03.31 labs.json` uses a space where every other\nfile uses an underscore, and two files use a `YYYYMMDD_HHMM` form. Anything\nglobbing this directory must expect both.\n\n`adapter: pack:make` since node v0.70, and that pack ships `MAKE_ENABLED=0`: it\nmust stay off until the licence is settled. Reading a frozen copy is no more\npermitted than reading the live one.\n",
     "pillar": "economic",
     "pilot_relevance": [
       "global"
@@ -1256,8 +1261,72 @@
       "distributed-manufacturing",
       "act"
     ],
+    "updated": "2026-09-22",
     "upstream_listed_in": [],
     "url": "https://gitlab.fabcloud.org/fl-management/fablab-network-data"
+  },
+  {
+    "act_kind": "facility",
+    "added": "2026-09-22",
+    "api": "https://wiki.hackerspaces.org/w/api.php",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "The hackerspace movement's own wiki: 2,601 space pages with structured\ncoordinates, member counts, equipment and a status vocabulary that records\nclosures as well as openings. Queryable through Semantic MediaWiki.\n",
+    "license": "not stated",
+    "name": "HackerspaceWiki — List of ALL Hacker Spaces",
+    "notes": "LICENCE NOT STATED — and §3's lead of \"CC-BY-SA (wiki default)\" is wrong. There\nis no wiki default here: `api.php?action=query&meta=siteinfo&siprop=rightsinfo`\nreturns `{\"text\": \"\", \"url\": \"\"}`, both empty, meaning $wgRightsText and\n$wgRightsUrl were never set. A server-side parse of an article carries no licence\nline either. MediaWiki says, authoritatively, that this wiki grants nothing.\nCriterion 1 is NOT met; licence-pending. A sysop setting two config values fixes\nit for 2,601 pages at once.\n\nTHE HTML LIST IS BROKEN — do not send anyone to it. `/List_of_ALL_Hacker_Spaces`\nreturns a PHP fatal error: \"Allowed memory size of 67108864 bytes exhausted\" in\nMediaWiki 1.35.2's QuickTemplate.php. The page is too big for the server's 64 MB\nlimit. The data is fine; the rendering is not. Use the API.\n\nAPI VERIFIED 2026-09-22, key-free, at `/w/api.php` (NOT `/api.php`, which the\narticle rewrite swallows into a 404). Semantic MediaWiki is installed —\n`action=smwinfo` reports 171,072 properties — so `action=ask` returns structured\nresults and bypasses the broken skin entirely.\n\nMEASURED on a 500-row `[[Category:Hackerspace]]` sample of 2,601 pages: has\ncoordinates 403, `Hackerspace status` 497, `Number of members` 361, `Equipment`\n161, `SpaceAPI` 28. The property names are `Has coordinates` and `Hackerspace\nstatus` — not `Coordinates` or `Status`, which return zero rows and look like\nmissing data.\n\nCOUNT THE STATUSES. Of 500: active 183, closed 124, suspected inactive 66,\nplanned 65, building 43, reformatting 8, unknown 8. **Only 37% are active**, so\na node reading 2,601 pages without filtering will route somebody to a space that\nshut down. That the wiki records closures at all makes it better curated than the\naggregators that copy from it.\n\n28 spaces carry a `SpaceAPI` property pointing at their own live endpoint — the\njoin to economic/community/spaceapi-directory.\n\nNo `adapter`: nothing in planetai-node reads it yet.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "observe",
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/hackerspaces-org",
+    "status": "live",
+    "tags": [
+      "hackerspace",
+      "makerspace",
+      "wiki",
+      "semantic-mediawiki",
+      "directory",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://wiki.hackerspaces.org/List_of_ALL_Hacker_Spaces"
+  },
+  {
+    "act_kind": "facility",
+    "added": "2026-09-22",
+    "api": "https://mapsofmaking.org/data/spaces.geojson",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "A map of 3,193 workshops, fab labs and open workshops aggregated from the fab\nlab network, the German Verbund Offener Werkstaetten and the SpaceAPI\nDirectory, served as one static GeoJSON. A v0.2 demo, and the records are\nharvested rather than contributed.\n",
+    "license": "not stated",
+    "name": "Maps of Making",
+    "notes": "LICENCE NOT STATED — 2026-09-22. `mapsofmaking.org` carries no licence, terms or\nattribution statement anywhere in its rendered text, and the GeoJSON's top-level\nkeys are only `type`, `generated_at`, `thresholds`, `features` — no licence,\nsource or attribution field. CONTRIBUTING criterion 1 is NOT met; licence-pending.\n\nWHERE THE RECORDS COME FROM, read off the endpoint in this session. 3,193\nfeatures by `source`: `scraped-fabnet` 2303, `scraped-vow` 566,\n`spaceapi-directory` 201, `scraped-fabTafel` 109, `self-registered` 13,\n`canary` 1. Sampling the `endpoint_url` of `scraped-fabnet` and `scraped-fabTafel`\nreturns `https://www.fablabs.io/labs/<slug>` in both cases — so 2,412 of the\n3,193 are fablabs.io records, and 566 are offene-werkstaetten.org.\n\nTHIS IS A LICENCE PROBLEM, NOT A CREDIT ONE. `economic/community/fablabs-io`\nrecords that fablabs.io publishes no data licence and that its Terms of Use §7.4\nrestricts massively collecting or harvesting platform data unless the analysis\nsets are kept open on the Platform, §7.5 restricts commercial use without prior\nwritten approval, and §8.1 leaves copyright with each lab. A `source` key spelled\n`scraped-` against that upstream is the thing to resolve before this list\nrecommends reading it. Read the upstreams directly.\n\nAPI VERIFIED 2026-09-22: `/data/spaces.geojson` returned 200, key-free, 3,193\nfeatures. It is a STATIC FILE, not a federated backend — the page's only data\nrequest is for that one file.\n\nDEMO, NOT PRODUCTION. The title is \"Maps of Making — demo\" and the build is\nv0.2; \"Ask the map\" is labelled `preview · not wired yet`. One record is a\ndeliberate canary — Mother Sands, `country_code: sol-3`, contact at\n`example.org` — so any consumer must filter `source: canary`.\n\n`role: [act]` only: the `open_now` field is copied from the upstreams, so read\nSpaceAPI or fablabs.io for it rather than a second-hand copy.\n\nNo `adapter`: nothing in planetai-node reads it, and on this licence it should not.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/maps-of-making",
+    "status": "live",
+    "tags": [
+      "fab-lab",
+      "makerspace",
+      "open-workshop",
+      "aggregator",
+      "geojson",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://mapsofmaking.org/"
   },
   {
     "adapter": "pack:place",
@@ -1293,6 +1362,98 @@
     ],
     "url": "https://www.openstreetmap.org/",
     "wired_in_planetai": true
+  },
+  {
+    "act_kind": "facility",
+    "added": "2026-09-22",
+    "api": "https://community.preciousplastic.com/api/map-pins",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "The Precious Plastic movement's map of distributed plastic-recycling: 1,203\nworkspaces, collection points, community points and machine builders, plus\n2,502 individual members, each a self-entered profile with coordinates.\n",
+    "license": "NOT OPEN — the Terms reserve database rights to Precious Plastic. The MIT licence covers the platform code only. See notes.",
+    "name": "Precious Plastic Community map",
+    "notes": "NOT OPEN, and unlike fablabs.io this is not silence — it is a reservation,\nstated. `/terms`, read live 2026-09-22: \"All the trade marks, copyright,\ndatabase rights and other intellectual property rights related to this\nplatform instance belong to Precious Plastic\", and \"The platform code is\nlicensed as MIT, and full details of the code license can be found on GitHub.\nYou are not allowed to otherwise copy, modify or use trademarks found within\nthe platform in any way.\" So the MIT is the code — the third source in this\nlist where a code licence sits next to unlicensed records — and the database\nright is claimed rather than left open. Criterion 1 is NOT met, and no Fab City\ndecision covers reading it the way one covers fablabs.io. Do not harvest it.\n\nCOUNT THE TYPES BEFORE USING IT. `/api/map-pins` returned 200 without a key,\n5.17 MB, 3,705 pins, all `moderation: accepted`. By profile type: member 2502,\nworkspace 754, community-point 167, machine-builder 160, collection-point 122.\nSo two thirds of the pins are PEOPLE, not places. A node wanting somewhere to\ngo must filter to the four place types — 1,203 of them — or it will route\nsomebody to a stranger's home town.\n\nPin fields are id, name, administrative, country, countryCode, lat, lng,\npostCode, profileId and a nested profile of about, badges, country,\ncoverImages, displayName, lastActive, photo, tags, type, username. No email or\nphone, which is better than fablabs.io. `about` is free text a person wrote\nabout themselves: display it, do not mine it.\n\nThe per-pin detail endpoint requires auth; only the list is open.\n\nNo `adapter`: nothing in planetai-node reads it, and on these terms it should\nnot without asking first.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/precious-plastic-community",
+    "status": "live",
+    "tags": [
+      "plastic-recycling",
+      "circular-economy",
+      "workspace",
+      "machine-builder",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://community.preciousplastic.com/map"
+  },
+  {
+    "act_kind": "repair",
+    "added": "2026-09-22",
+    "api": null,
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "The International Repair Café Foundation's directory of 4,015 repair cafés:\nname and street address for each, worldwide. The only network-scale record of\nwhere a person can take a broken thing and be helped to fix it.\n",
+    "license": "not stated",
+    "name": "Repair Café International directory",
+    "notes": "`planned`, NOT `live`, and the distinction is the point: the records exist and\nare public, but there is no way to read them as data. Carried so the gap is\nvisible and so nobody re-does this search.\n\nVERIFIED 2026-09-22. `repaircafe.org/en/visit/` renders 4,015 cafés with street\naddresses, server-side, through a WordPress/BuddyPress map plugin\n(`bp-maps-for-members`). The page's network traffic contains no JSON, GeoJSON\nor tile-data request — the list is HTML. There is no documented export, no\ndownload and no API on the site.\n\nLICENCE NOT STATED. Nothing on the homepage or the visit page states terms,\nreuse or attribution for the directory. Criterion 1 is unmet, but that is moot\nwhile there is nothing to reuse.\n\nDO NOT SCRAPE THIS ONE, for a reason beyond the licence. The site's stock\nWordPress REST API is reachable without a key and returns member records that\ninclude personal email addresses. That is a platform default and not a\npublished dataset; it is not an export, and a node must not read it. The Fab\nCity Foundation should tell the Repair Café Foundation it is open — that is a\ncourtesy, not a finding this list acts on.\n\nWHAT WOULD MAKE THIS `live`: one CSV or GeoJSON of name, address and\ncoordinates under an open licence. 4,015 rows the Foundation already publishes\nas HTML. Worth asking for — repair is the only `act_kind` in this list with a\nsingle source, and this is it.\n\nThe Open Repair Alliance's ORDS dataset is a different thing — repair EVENT\nrecords, not a directory of places — and is not this entry.\n\nNo `adapter`: nothing reads it, and nothing can.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/repair-cafe-directory",
+    "status": "planned",
+    "tags": [
+      "repair",
+      "circular-economy",
+      "directory",
+      "volunteer",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.repaircafe.org/en/visit/"
+  },
+  {
+    "act_kind": "facility",
+    "added": "2026-09-22",
+    "api": "https://directory.spaceapi.io/",
+    "auth": "none",
+    "cell": "Economic|Community",
+    "description": "A curated list of 251 hacker-, maker- and fab spaces that publish a SpaceAPI\nJSON endpoint. The Directory itself is a name-to-URL map; each space's own\nendpoint carries its location, contact details and whether it is open right now.\n",
+    "license": "not stated",
+    "name": "SpaceAPI Directory",
+    "notes": "LICENCE NOT STATED — 2026-09-22. Three pages read in this session; none grants or\nwithholds a reuse right:\n\n- `spaceapi.io` — describes the Directory and the Schema and shows an example\n  status file. Says nothing about terms, reuse, attribution or licensing.\n- `github.com/SpaceApi/directory` — the repo holding `directory.json` has NO\n  LICENSE file; its four top-level entries are `.github`, `.gitignore`,\n  `README.md`, `directory.json`, and GitHub shows no licence in the sidebar. The\n  README only explains how to add your space by pull request.\n- `directory.spaceapi.io` — bare JSON, no licence field, header or wrapper.\n\nCONTRIBUTING criterion 1 is therefore NOT met; carried as licence-pending. One\nsentence from the SpaceAPI project would settle it.\n\nAPI VERIFIED 2026-09-22: returned 200 and a flat JSON object of 251\n`\"<name>\": \"<endpoint>\"` pairs, no key, no account, no rate-limit header.\n`status: live` rests on that test and claims nothing more.\n\nTHE DIRECTORY IS NOT THE SCHEMA. Only one of the two is this entry. The Schema\nspecifies a space's own status file; the Directory lists the URLs of spaces\nimplementing it and carries no data about any space. A node wanting locations or\nstate must fetch 251 third-party endpoints — cache hard, poll rarely.\n\nWHY `observe` TOO: each space's own file carries `state.open` and\n`state.last_change` — whether it is open right now. Across 251 spaces that is a\nlive activity signal for distributed production, the thing\n`economic/community/fab-lab-activity-index` can only approximate from registry\nmetadata and a census. The `act` half is ordinary: read an address, walk in.\n\n`economic/community/maps-of-making` re-publishes 201 of these 251. Read this one;\nit is the upstream.\n\nNo `adapter`: nothing in planetai-node reads it yet.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "observe",
+      "act"
+    ],
+    "scale": "community",
+    "slug": "economic/community/spaceapi-directory",
+    "status": "live",
+    "tags": [
+      "hackerspace",
+      "makerspace",
+      "fab-lab",
+      "open-close-state",
+      "directory",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://spaceapi.io/"
   },
   {
     "act_kind": "design",
@@ -1413,6 +1574,37 @@
   },
   {
     "act_kind": "design",
+    "added": "2026-09-22",
+    "api": null,
+    "auth": "none",
+    "cell": "Economic|Planet",
+    "description": "The Linked-Data successor to Open Know-How v1: an ontology and graph database\nfor open hardware design metadata, maintained by Open Source Ecology Germany\nand re-integrated into the Internet of Production Alliance in May 2024.\n",
+    "license": "not stated",
+    "name": "OKH-LOSH — Library of Open Source Hardware",
+    "notes": "`planned`, against §3's lead of \"live\". The specification is active and the\ngraph is not queryable, and those are two different facts.\n\nVERIFIED 2026-09-22. No live endpoint could be found from the project's own\npages. `losh.opensourceecology.de` does not resolve — the TLS handshake is\nrefused with an unrecognised server name. `stack.opensourceecology.de`\ndescribes the search ecosystem but publishes no SPARQL or Wikibase URL. The\nupstream OKH repository names one instance, `search.tech.opensourceecology.de`,\nand labels it in its own words \"old, outdated\", pointing testers at a local\nRDF-DB harness instead. The same page records that the scraper \"is currently\n(June 2025) not run periodically\", so even a reachable graph would be stale.\n\nLICENCE NOT STATED for the metadata. `stack.opensourceecology.de` states\nCC-BY-SA-4.0 for the code repository; nothing states terms for the harvested\ndesign metadata. The distinction is the one this list keeps meeting.\n\nWHAT TO USE TODAY: `economic/planet/okh-search` — the IoP Alliance's federated\nmanifest index — is the live way to reach OKH manifests, and each manifest\ncarries its own licence. This entry is the Linked-Data layer beneath that, and\nit is carried as `planned` so the successor standard is on the record with its\nactual state rather than an assumed one.\n\nThe NGI Search-funded Hardware Open Search Ecosystem project drove OKH from\nOctober 2024 to June 2025. Worth re-checking after that work lands rather than\nassuming this stays `planned`.\n\nNo `adapter`, and no `api`: there is nothing to point at yet.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/okh-losh",
+    "status": "planned",
+    "tags": [
+      "open-hardware",
+      "okh",
+      "losh",
+      "linked-data",
+      "sparql",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://github.com/iop-alliance/OpenKnowHow"
+  },
+  {
+    "act_kind": "design",
     "added": "2026-09-20",
     "api": "https://search.openknowhow.org/manifests/list.json",
     "auth": "none",
@@ -1441,6 +1633,68 @@
     ],
     "upstream_listed_in": [],
     "url": "https://search.openknowhow.org/"
+  },
+  {
+    "act_kind": "match",
+    "added": "2026-09-22",
+    "api": "https://www.openhardwaremanager.org/v1/api/okw/spaces",
+    "auth": "none",
+    "cell": "Economic|Planet",
+    "description": "A matcher between open hardware designs and the workshops that could build\nthem: pick a design, rank facilities by capability with a domain-aware match,\nexport the chosen workshops' contact details. It holds no facilities of its\nown — it reads them from Maps of Making.\n",
+    "license": "not stated",
+    "name": "OHM — Open Hardware Manager",
+    "notes": "A MATCHER, NOT A DIRECTORY. This is the distinction that decides whether it\nbelongs here, so: OHM holds no facilities of its own. `/v1/api/okw/spaces`\nanswered `local_count: 0`, `mom_count: 3193`, `total: 3193` in this session —\nevery facility it can match against is `economic/community/maps-of-making`,\nfetched live. What OHM adds is the match: pick a design, rank facilities by\ncapability, export the chosen workshops' contact details. Coordination happens\noutside OHM. `act_kind: match` exactly as CONTRIBUTING defines it.\n\nLICENCE NOT STATED for the data — 2026-09-22. Pages read: the application's own\nrendered text carries no licence, terms or attribution statement; the API's\n`metadata` envelope carries only `processing_time` and `timestamp`; and\n`github.com/binaryLady/OHM` has a LICENSE file which is GPL-3.0 verbatim,\ncovering the CODE. Its README discusses open hardware licensing generally and says\nnothing about the facility or design records — the same shape as fablabs.io, where\na code licence gets read as a data licence.\nCONTRIBUTING criterion 1 is NOT met; licence-pending, and one of ours.\n\nINHERITED PROVENANCE. Because every facility comes from Maps of Making, and\n2,412 of those 3,193 are harvested `fablabs.io/labs/*` records, OHM is the third\nhop of a chain whose origin publishes no data licence and restricts harvesting\n(ToS §7.4, see `economic/community/fablabs-io`). Resolving it upstream resolves\nit here; nothing OHM can write in its own repo will.\n\nAPI VERIFIED 2026-09-22: `/v1/api/utility/domains`, `/v1/api/utility/metrics`\nand `/v1/api/okw/spaces?include_mom=true` all returned 200 with no key and no\naccount. `/v1/api/identity/security-policy` reports\n`require_auth_for_writes: true`, so reads are open by design and writes are not.\n\nA Fab City hub instance is planned — tracker 1.30. Until it exists this entry\ndescribes the public instance only.\n\nNo `adapter`: nothing in planetai-node reads it yet.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/open-hardware-manager",
+    "status": "live",
+    "tags": [
+      "open-hardware",
+      "okw",
+      "matcher",
+      "supply-chain",
+      "fab-lab",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.openhardwaremanager.org/"
+  },
+  {
+    "act_kind": "design",
+    "added": "2026-09-22",
+    "api": null,
+    "auth": "none",
+    "cell": "Economic|Planet",
+    "description": "Eight open-source digital fabrication machines with full build files — two\nlasers, two CNC mills, two 3D printers, a vinyl cutter and a 3D scanner, plus\nshared electronics. How a lab gets its machines rather than buys them.\n",
+    "license": "CERN-OHL-W-2.0 on eight of the nine repositories; OLSK-Large-3D-Printer is GPL-3.0. Per-repository, verified 2026-09-22 — see notes.",
+    "name": "Open Lab Starter Kit (OLSK)",
+    "notes": "MEETS CRITERION 1 — and it is the only act source added in this PR that does.\nThe licences are real, per-repository and machine-readable.\n\nVERIFIED 2026-09-22 against the GitHub API for the `Open-Lab-Starter-Kit`\norganisation, reading each repository's detected SPDX id rather than a prose\nclaim on a project page:\n\n  OLSK-Small-Laser        CERN-OHL-W-2.0\n  OLSK-Large-Laser        CERN-OHL-W-2.0\n  OLSK-Small-CNC          CERN-OHL-W-2.0\n  OLSK-Large-CNC          CERN-OHL-W-2.0\n  OLSK-Small-3D-Printer   CERN-OHL-W-2.0\n  OLSK-Large-3D-Printer   GPL-3.0          <- the exception\n  OLSK-3D-Scanner         CERN-OHL-W-2.0\n  OLSK-Vinyl-Cutter       CERN-OHL-W-2.0\n  OLSK-Electronics        CERN-OHL-W-2.0\n\nThe act-side document's lead said \"CERN-OHL variant — verify\". Verification\nfound the exact variant — W-2.0, the weakly reciprocal one — and one repository\nthat is not CERN-OHL at all. Anyone building the large 3D printer inherits\nGPL-3.0 reciprocity on a hardware design, which is a different obligation from\nits seven siblings. That single-row difference is why this list cites licences\nper repository and not per project.\n\n`act_kind: design`, not `equipment`. CONTRIBUTING reserves `equipment` for the\nday one lab's own OKW machine record is an entry in its own right; this is a\ncommons of designs for machines, which is the design kind. `economic/planet`\nbecause a commons publishes globally — what is local is the building.\n\nNO API, and `status: live` is not claiming one: the deliverable is git\nrepositories, browsable and cloneable without a key. `api: null` is honest.\n\nBuilt by the New Production Institute with InMachines Ingrassia, as a Fab City\nHamburg measure under dtec.bw. A Fab City project, which makes the GPL-3.0\noutlier worth one question to the maintainers rather than a guess here.\n\nNo `adapter`: nothing in planetai-node reads it.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "global"
+    ],
+    "role": [
+      "act"
+    ],
+    "scale": "planet",
+    "slug": "economic/planet/open-lab-starter-kit",
+    "status": "live",
+    "tags": [
+      "open-hardware",
+      "machine-tools",
+      "fab-lab",
+      "cern-ohl",
+      "fab-city-hamburg",
+      "act"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.inmachines.net/open-lab-starter-kit"
   },
   {
     "act_kind": "design",

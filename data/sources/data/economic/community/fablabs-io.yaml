@@ -12,19 +12,22 @@ api: https://api.fablabs.io/0/labs.json
 pilot_relevance: [global]
 tags: [fab-lab, directory, production-capacity, distributed-manufacturing, act]
 added: 2026-09-20
+updated: 2026-09-22
+adapter: pack:make
+feeds_cells: []
 auth: none
 role: [observe, act]
 act_kind: facility
 wired_in_planetai: false
 upstream_listed_in: []
 notes: |
-  NOT OPEN, and read anyway by decision. Criterion 1 is unmet; the basis is
-  recorded so it is auditable.
+  NOT OPEN, read anyway by decision. Criterion 1 is unmet; the basis is
+  recorded and auditable.
 
   DECISION 2026-09-20 — Tomas Diez, co-founder of fablabs.io and of Fab City
   Foundation, decided PLANETAI may read this directory and accepted
   responsibility, pending the Terms of Use clause drafted the same day. That
-  covers the Foundation. It does NOT extend to every operator who installs a
+  covers the Foundation. It does NOT extend to every operator installing a
   node: each is a separate party to the ToS. Until the clause lands, a node
   reading this relies on one organisation's position, not on a licence.
 
@@ -35,19 +38,45 @@ notes: |
   analysis sets open on the Platform; 7.5 forbids commercial use without written
   approval; 8.1 leaves copyright with each lab; 8.3 says content published as a
   feed lets permitted users use and redistribute it. 8.3 and 7.4/7.5 pull
-  opposite ways and nothing resolves them — the document has no open-data
-  provision at all.
+  opposite ways; the document has no open-data provision at all.
+
+  RE-READ 2026-09-22, in full, against a reaffirmed decision to proceed. The page
+  still ends "These Terms of Service was last revised on April 19th 2017" — so the
+  clause drafted on 20 Sep has NOT landed, and nothing on fablabs.io states a data
+  licence. 7.4, 7.5, 8.1 as quoted above are intact verbatim. Two further clauses
+  belong on the record:
+
+  7.3 — "You agree not to distribute any part of or parts of the Platform,
+  including but not limited to any Content, in any medium without Fablabs.io's
+  prior written authorisation." This is the clause the downstream copies turn on,
+  not 7.4: economic/community/maps-of-making redistributes 2,412 of these records
+  and economic/planet/open-hardware-manager serves all of them onward. 7.3 is also
+  the one a fablabs.io owner CAN settle outright, because the authorisation it
+  requires is fablabs.io's own to give. One signed sentence covers the chain.
+
+  8.2 — the licence labs grant fablabs.io is "solely for the purpose of providing
+  Platform's services", passable only to those "with whom this latter has
+  contractual relationships related to the provision of the Platform, solely for
+  the purpose of providing Platform's services". Read with 8.1, which says
+  fablabs.io "do not obtain any right, title or interest from you", this is the
+  limit ownership cannot decide past: an open data licence on the existing records
+  is not fablabs.io's to grant, because 8.1 says it never received one. That needs
+  a ToS revision going forward, or the labs. Not a reading to act on without a
+  lawyer — but it is what the document says.
 
   8.1 is why a footer edit cannot fix this. The fix needing nobody's consent is
   scoped to the directory FACTS — name, coordinates, capabilities, status — and
   7.4's own exception points there: a node network keeping its analysis open sits
-  inside it, which is the ground the decision above stands on.
+  inside it, the ground the decision above stands on.
 
-  ENDPOINT: api.fablabs.io/ says "Legacy API ... has now been removed. A new API
-  will soon be available", and /0/labs.json returns 200 and 5.38 MB anyway. Both
-  true 2026-09-20. Prefer economic/community/fablabs-network-data-archive: the
-  same records as dated monthly files that can be pinned.
+  ENDPOINT: api.fablabs.io/ says the legacy API "has now been removed"; /0/labs.json
+  returns 200 and 5.38 MB anyway. Both true 2026-09-20. Prefer
+  economic/community/fablabs-network-data-archive: the same records as pinnable
+  monthly files.
+
+  PRIOR USE: the v0.30 observatory called it from the browser, and
+  fab-lab-activity-index measures from these records.
 
   MEASURED: 2,864 records, 5.38 MB, 6.3 s; 1,998 active, 1,819 with coordinates.
-  Query parameters are ignored, so filtering is client-side. Contact details are
+  Query parameters are ignored, so filter client-side. Contact details are
   in the payload (email 2,756, phone 2,608) — do not store them.

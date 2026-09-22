@@ -33,8 +33,8 @@
       "description": "The scale tier where the source publishes its strongest signal. Some sources span scales; pick the one where the resolution is highest."
     },
     "status": {
-      "enum": ["live", "stale", "paywalled", "deprecated", "planned"],
-      "description": "Operational status. live = current public read; stale = older than 12 months without update; paywalled = requires payment for full access; deprecated = officially retired; planned = upstream announced but not yet shipped."
+      "enum": ["candidate", "live", "stale", "paywalled", "deprecated", "planned"],
+      "description": "Operational status. candidate = fits a named indicator row, licence and endpoint verified, and nobody has read it for a real territory yet \u2014 it is registered honestly, not asserted as evidence; requires `notes` saying what was verified and what is still missing. live = a named person's review under reviews/, or code that reads it (`adapter`) \u2014 not merely a URL that answers. stale = older than 12 months without update; paywalled = requires payment for full access; deprecated = officially retired; planned = upstream announced but not yet shipped."
     },
     "license": {
       "type": "string",
@@ -108,8 +108,8 @@
     },
     "notes": {
       "type": "string",
-      "maxLength": 2000,
-      "description": "Longer-form notes: API quirks, rate limits, licensing edge cases, recommended usage patterns, citation requirements."
+      "maxLength": 4000,
+      "description": "Longer-form notes: API quirks, rate limits, licensing edge cases, recommended usage patterns, citation requirements. Raised from 2000 to 4000 on 2026-09-22: the sources whose licensing is genuinely unresolved need to quote the clauses they turn on, and at 2000 the fablabs.io entry was full and losing a sentence for every one gained. Nothing renders this field \u2014 build_readme.py ignores it \u2014 so the ceiling only ever cost accuracy."
     }
   },
   "allOf": [

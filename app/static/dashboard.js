@@ -3315,8 +3315,12 @@ window.PAI.register({
         qty: [{ num: 'sources.act', value: String(acts.length),
           cmp: `of ${rows.length} registered are somewhere to go rather than something to read` }] })
       + `</div>`
-      + `<details class="fold" id="registry-fold"><summary>The eight, and what each one's licence says`
-      + `</summary><dl class="notelist">`
+      /* COUNTED, NOT TYPED. This said "The eight" because there were eight at registry pin 85a194c.
+         The pin moved to 5998a64 and there are sixteen, and a fold that says eight over a list of
+         sixteen is the page telling a reader something it can see is false. A number in prose about
+         data that arrives over the wire is a number that will be wrong. */
+      + `<details class="fold" id="registry-fold"><summary>All ${acts.length}, and what each one's `
+      + `licence says</summary><dl class="notelist">`
       + acts.map(r => `<div class="noteitem" id="src-${esc(r.slug || '').replace(/[^a-z0-9-]/gi, '-')}">`
         + `<dt>${esc(r.name || r.slug)}<span class="m"> \u00b7 `
         + `${esc((ACT_WORDS[r.act_kind] || [])[2] || r.act_kind || '')}</span></dt>`
