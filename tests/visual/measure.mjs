@@ -2089,6 +2089,50 @@ async function press() {
   process.exit(fails.length ? 1 : 0);
 }
 
+/* ------------------------------------------------------------------ the page's own links
+ *
+ * Every `href="#…"` the page writes, followed. The hash is how this page routes, so a link to an
+ * ANCHOR and a link to a VIEW are the same string in the same bar, and until 22 September the
+ * router could not tell them apart: `#stage-act` — the lead's own link, pressed by anyone the page
+ * tells "94 asks open · in 3 Act" — routed to a view of that name, found none, and drew an empty
+ * band. A blank page, from the page's own link, in a shipped release.
+ *
+ * Nothing static could catch it: the id it lands on is built from a template, and the failure is in
+ * the router at runtime. So this presses each one and asks the page three things afterwards — did
+ * it stay on a real page, is the thing linked to actually there, and did it go to it.
+ */
+async function anchors() {
+  const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+  const h = await open(job);
+  const links = await h.page.evaluate(() => [...new Set([...document.querySelectorAll('#page a[href^="#"]')]
+    .map(a => a.getAttribute('href').slice(1)).filter(Boolean))]);
+  const fails = [];
+  const said = [];
+  for (const id of links) {
+    const r = await h.page.evaluate(async (anchor) => {
+      location.hash = anchor;
+      await new Promise(x => setTimeout(x, 500));
+      const page = document.getElementById('page');
+      const el = document.getElementById(anchor);
+      return { chars: page.innerText.trim().length, bands: page.querySelectorAll('section.band').length,
+        there: !!el, top: el ? Math.round(el.getBoundingClientRect().top) : null };
+    }, id);
+    if (!r.there) fails.push(`#${id}: nothing on the page carries that id`);
+    else if (r.bands < 2 || r.chars < 2000) {
+      fails.push(`#${id}: the page emptied — ${r.bands} band(s), ${r.chars} characters`);
+    } else if (r.top > 200 || r.top < -200) {
+      fails.push(`#${id}: it did not go there — the element is ${r.top}px from the top`);
+    } else said.push(`#${id}`);
+  }
+  await h.browser.close();
+  for (const f of fails) console.log('FAIL anchors:', f);
+  if (!fails.length) {
+    console.log(`  anchors: ${said.length} in-page link(s) followed, each one lands on its own `
+      + `element with the page still drawn \u2014 ${said.join(' ')}`);
+  }
+  process.exit(fails.length ? 1 : 0);
+}
+
 /* ------------------------------------------------------------------ a stranger's pack
  *
  * WHAT THIS IS, AND WHY IT IS NOT CALLED T8. Prompt 7 asks to "run the third-party `water` pack
@@ -2322,8 +2366,18 @@ async function asking() {
       const subscribed = window.PAI_RAF.size;
       const cost = A.probe(30);
       A.close();
-      return { had, atOpen, subscribed, up: A.up(),
+      const after = { had, atOpen, subscribed, up: A.up(),
         canvas: !!document.getElementById('askcv'), subs: window.PAI_RAF.size, cost };
+      /* THE FLOOR. What this state says is the page's own account of what it asked of the world,
+         and on a fixture the node answers in under a tenth of a second — so without a floor nobody
+         ever read it. Opened with the floor and closed at once: with motion on it must still be up,
+         and under reduced motion it must be gone, because the layer zeroes that token there and a
+         reader who asked for stillness did not ask for a three-second introduction. */
+      A.open('floor', true);
+      A.close();
+      after.heldOpen = A.up();
+      after.floor = window.K.msToken('--motion-asking-hold');
+      return after;
     });
     const tag = reduce ? 'reduced motion' : 'motion on';
     if (r.missing) { fails.push(`${tag}: PAI_ASKING is not on the page`); await h.browser.close(); continue; }
@@ -2334,10 +2388,15 @@ async function asking() {
     if (reduce) {
       if (r.atOpen !== 1) fails.push(`${tag}: the scheduler drew ${r.atOpen} frame(s), not one still`);
       if (r.subscribed !== 0) fails.push(`${tag}: it subscribed to the loop instead of drawing one still`);
-    } else if (r.subscribed !== 1) {
-      fails.push(`${tag}: it did not subscribe to the loop (PAI_RAF.size ${r.subscribed})`);
+      if (r.floor !== 0) fails.push(`${tag}: --motion-asking-hold is ${r.floor}, not zeroed`);
+      if (r.heldOpen) fails.push(`${tag}: it held the page for the floor anyway`);
+    } else {
+      if (r.subscribed !== 1) fails.push(`${tag}: it did not subscribe to the loop (PAI_RAF.size ${r.subscribed})`);
+      if (!r.floor) fails.push(`${tag}: --motion-asking-hold is ${r.floor} — the account cannot be read`);
+      if (!r.heldOpen) fails.push(`${tag}: it closed on the spot, so the reads it lists are never seen`);
     }
-    said.push(`${tag}: ${reduce ? 'one still frame, no subscription' : 'subscribed to the one loop'}`
+    said.push(`${tag}: ${reduce ? 'one still frame, no subscription, no floor'
+      : `subscribed to the one loop, held for ${r.floor} ms`}`
       + ` · ${r.cost.frames} probe frames, mean ${r.cost.mean.toFixed(2)} ms, `
       + `worst ${r.cost.worst.toFixed(2)} ms`);
     await h.browser.close();
@@ -2414,6 +2473,7 @@ else if (cmd === 'press') await press();
 else if (cmd === 'asking') await asking();
 else if (cmd === 'plates') await plateShots(rest.length ? rest : ['all']);
 else if (cmd === 'extend') await extend();
+else if (cmd === 'anchors') await anchors();
 else if (cmd === 'plate-list') plates().forEach(j => console.log(j.name + (j.full ? '  (+full)' : '')));
 else if (cmd === 'sheets') await sheets();
 else if (cmd === 'header') await header();
@@ -2423,5 +2483,5 @@ else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
 else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|sheets|header|targets|audit|overflow|analyse|list');
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|anchors|sheets|header|targets|audit|overflow|analyse|list');
   process.exit(2); }

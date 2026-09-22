@@ -769,10 +769,24 @@ function contribution(c, key) {
  * directly. ?state= stays: it is how the empty node and the refused page are captured. */
 let VIEW = 'now';
 let STATE = 'populated';
+/* THE HASH IS THE VIEW — AND ONLY WHEN IT NAMES ONE.
+ *
+ * It used to be taken as the view whatever it said, so `#stage-act` — which is the lead's own link
+ * to the Act stage, and the first thing a reader presses when the page says "94 asks open · in
+ * 3 Act" — became a view called `stage-act`. There is no such view, so main() fell through to the
+ * branch that draws Set up and drew a band titled STAGE-ACT with nothing in it. A blank page,
+ * reached from the page's own link, reported from node #1.
+ *
+ * Every in-page anchor had the same effect: the notes band links back to the section each note
+ * explains, and so does the ask line. One unknown hash and the page emptied itself.
+ *
+ * So an unknown hash is what it looks like — a link to somewhere ON this page — and the view is
+ * whatever it already was. `?view=` still works, and every saved link still lands. */
+const VIEW_NAMES = new Set(['now', 'historical', 'network', 'wall', 'arrange', 'setup']);
 function readView() {
   const q = new URLSearchParams(location.search);
   const h = (location.hash || '').replace(/^#/, '');
-  VIEW = h || q.get('view') || 'now';
+  VIEW = (VIEW_NAMES.has(h) ? h : '') || q.get('view') || 'now';
   STATE = q.get('state') || 'populated';
   if (window.K) Object.assign(window.K, { VIEW, STATE });
 }
@@ -5546,6 +5560,14 @@ const ASKING = (function () {
   for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30 + 8); hex.push([Math.cos(a), Math.sin(a)]); }
 
   let box, cv, on = false, t0 = 0, settle0 = 0, spec = null;
+  /* A floor, not a duration. What this state says — the endpoints asked for and the milliseconds
+     each took — is the page's own account of what it asked of the world, and on a fixture the node
+     answers in under a tenth of a second, so nobody had ever read it. --motion-asking-hold is the
+     shortest time it is held; the state still ends when the node answers if the node is slower, and
+     the frozen layer zeroes the token under reduced motion, so a reader who asked for stillness
+     gets the page as soon as it is ready. `held` is what open() asked for: a reload and the ↻ want
+     the floor, a reconnect does not — there the page coming back IS the thing wanted. */
+  let held = false;
   /* What a frame of this actually costs, measured rather than asserted. Prompt 6 set a budget of
      4 ms of main-thread work per frame on a 2015 MacBook Pro, and a budget nobody can read is a
      budget nobody keeps. PAI_ASKING.cost() answers in milliseconds. */
@@ -5657,7 +5679,7 @@ const ASKING = (function () {
 
   return {
     /* `why` is what the header says while it is up, in the page's own words. */
-    open(why) {
+    open(why, hold) {
       box = el('asking');
       if (!box || on) return;
       /* close() takes the canvas out of the tree, so opening puts one back. The id is in
@@ -5671,6 +5693,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      held = !!hold;
       /* Per episode, not per session: the cost of the frames drawn while the page was loading is
          not the cost of the frames drawn when somebody pressed ↻ twenty minutes later. */
       cost.frames = 0; cost.total = 0; cost.worst = 0;
@@ -5752,6 +5775,12 @@ const ASKING = (function () {
     },
     close() {
       if (!on) return;
+      /* Held open for the rest of the floor, and only for it: the page underneath is already drawn,
+         so this delays nothing but the overlay leaving. A second close() while waiting is ignored —
+         `on` is still true — which is what stops two timers racing to take the same canvas away. */
+      const floor = held ? window.K.msToken('--motion-asking-hold') : 0;
+      const left = floor - (performance.now() - t0);
+      if (left > 0) { held = false; setTimeout(() => this.close(), left); return; }
       on = false;
       window.PAI_RAF.remove(cv);
       window.removeEventListener('resize', size);
@@ -6417,7 +6446,12 @@ function route() {
   const page = document.getElementById('page');
   if (page) wireSat(page);
   learnSync();
-  window.scrollTo(0, 0);
+  /* The renderer has just replaced #page, so the browser's own jump to an anchor happened against
+     markup that no longer exists. Do it again, now that the thing being linked to is on the page. */
+  const anchor = (location.hash || '').replace(/^#/, '');
+  const target = anchor && !VIEW_NAMES.has(anchor) ? document.getElementById(anchor) : null;
+  if (target) target.scrollIntoView({ block: 'start' });
+  else window.scrollTo(0, 0);
 }
 
 /* Saying something, wherever the pane that says things is. */
@@ -6453,7 +6487,19 @@ document.addEventListener('change', ev => {
   route();
 });
 
-addEventListener('hashchange', route);
+/* An in-page anchor is not a navigation. Re-rendering for one throws away the scroll position, the
+   open folds and the learn panel, and rebuilds a page that did not change — so when the view is the
+   same, this only goes to the anchor. */
+addEventListener('hashchange', () => {
+  const before = VIEW;
+  readView();
+  if (VIEW === before) {
+    const a = (location.hash || '').replace(/^#/, '');
+    const el = a && !VIEW_NAMES.has(a) ? document.getElementById(a) : null;
+    if (el) { el.scrollIntoView({ block: 'start' }); return; }
+  }
+  route();
+});
 addEventListener('popstate', route);
 
 /* EVERY CONTROL ON THIS PAGE IS A QUERY LINK, AND EVERY ONE OF THEM RELOADED THE DOCUMENT.
@@ -6720,12 +6766,12 @@ function startRefresh() {
    stays the thing the timer calls and draws nothing over the page. */
 async function askAgain() {
   if (ASKING.up()) return;
-  ASKING.open('Asking the node again');
+  ASKING.open('Asking the node again', true);
   try { await refresh(); }
   finally { ASKING.close(); }
 }
 
-ASKING.open('Asking the node');
+ASKING.open('Asking the node', true);
 boot().then(() => { init(); route(); startRefresh(); ASKING.close(); }).catch(async e => {
   ASKING.close();
   if (e && e.refused) {

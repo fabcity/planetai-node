@@ -7,8 +7,8 @@
 # The hashes are of the files as they are HERE. Where a line differs from the original by
 # decision (the mono's path — see tools/check_theme.py), this records what this repo serves.
 design_repo=https://github.com/fabcity/planetai-design.git
-design_sha=34029f4ea0ef557d5c6cb3819ca74b3f5ac685c7
+design_sha=41a9db5e992f8bc5984ba5b293c86e49baecad4d
 copied=2026-09-22
-sha256 app/static/planetai-theme.css 46ca644be0f204b9f53961622021def6b152b242d6dbaf6ff845f6d14fad1230
+sha256 app/static/planetai-theme.css e8c1b1139b43ef76e4a4b0738d6d9f2c3d82a8e3a19b9fa8b42d2cac5c2c0f10
 sha256 app/static/signs.svg 495ef4f1a49ea7da22ebeb06c550be564eab963bdc7a2941725b981b36de4c8c
 sha256 app/static/kilometre-cells.json 6b4488d50271b5d050c0b94d8ec01d41cc001e28cba89ddd7d3f70ef73bb8316
