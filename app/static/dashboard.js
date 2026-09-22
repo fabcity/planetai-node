@@ -4257,7 +4257,11 @@ window.PAI.register({
           left: `<span class="who"><b>${esc(name.replace(/_/g, ' '))}</b>`
             + `<span class="m">${esc(pack)} · last ${esc(age(Math.round((captured
               - Date.parse(latest.ts)) / 60000)))}</span></span>`,
-          line: esc(String(latest.text || '').split('\n')[0].slice(0, 140)),
+          /* RAW, not escaped: row() escapes `line` itself, so escaping here sends &quot; and &amp;
+             through to the screen. Node #1's alert text has no such character today, which is why
+             this survived — the effect section's own line, which has a quoted word in it, is where
+             it showed. */
+          line: String(latest.text || '').split('\n')[0].slice(0, 140),
           signs: r.html,
           qty: [{ num: `asks.${esc(name)}.sent`, value: `${r.closed}/${r.total}`,
             cmp: `closed of asked in the window \u2014 an ask closes when somebody acted or the `
@@ -4313,6 +4317,116 @@ window.PAI.register({
         + 'the satellite knows and nothing else — and it is drawn in the ask strip and nowhere else.' },
     ];
   },
+});
+
+/* ================================================================= h/mods/effect.js ==== */
+/* effect · core · measure
+ *
+ * WHICH OF THIS HOUSEHOLD'S ACTIONS WORK. The node learning about itself rather than about the
+ * weather: anybody can draw a year of PM2.5, and only this node can say which of the things done
+ * about it were followed by the condition stopping.
+ *
+ * TWO QUESTIONS, TWO KINDS OF EVIDENCE, DRAWN APART.
+ *
+ *   cleared  — the funnel's own derivation, per rule: an act followed by a full window of silence
+ *              from the same rule on the same sensor. Works for every rule, needs no threshold, and
+ *              answers WHETHER. It cannot answer when: the rule re-fires the moment its cooldown
+ *              expires while the condition holds, so one cooldown is the finest it can ever resolve.
+ *   hours    — the other question, and it needs the readings and a line to come back under. Only a
+ *              rule carrying `watch: {metric, over}` has one; the rest fire on a RELATION ("inside
+ *              is worse than outside") where a threshold would be invented. Those say so.
+ *
+ * On node #1 this already found the thing it exists to find: thirteen acts on heat_stress_now and
+ * NONE of them cleared, because heat does not stop because somebody acted, while ventilating cleared
+ * four of nine. A household that reads that stops pressing the heat one and starts opening windows.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row } = window.K;
+
+function name(id) { return String(id).split('/').pop().replace(/_/g, ' '); }
+
+window.PAI.register({
+  id: 'effect', pack: 'core', stage: 'measure', order: 20,
+  title: 'Which of these worked',
+  needs: ['EFFECT.rules'],
+  anchor: 'effect',
+  render(ctx) {
+    const E = window.EFFECT, rules = E.rules || [];
+    if (!rules.length) {
+      return `<p class="note" id="effect-none" data-component="absent" data-ref="measure">`
+        + `Nobody has acted on an ask here yet, or not long enough ago to judge: this waits `
+        + `${E.window_hours} hours after an act before asking whether the condition stopped. `
+        + `Nothing is missing.</p>`;
+    }
+    const worst = rules.filter(r => r.acted >= 3 && r.cleared === 0)[0];
+    const best = rules.slice().filter(r => r.acted >= 3 && r.cleared > 0)
+      .sort((a, b) => (b.cleared / b.acted) - (a.cleared / a.acted))[0];
+    /* The finding above the evidence, as everywhere else here. The one worth printing is a rule
+       people keep answering that never clears — that is a household spending effort on something
+       that does not respond, and nothing else on this page could ever have told them. */
+    const finding = worst
+      ? `<p class="honest" id="effect-finding" data-component="finding" data-ref="effect">`
+        + `<b>${esc(name(worst.rule_id))}</b> has been acted on `
+        + `<span data-num="effect.worst" data-cmp="times, and the condition did not stop within `
+        + `${E.window_hours} hours on any of them">${worst.acted}</span> times and the condition did `
+        + `not stop once.${best ? ` <b>${esc(name(best.rule_id))}</b> stopped ${best.cleared} of `
+          + `${best.acted} times.` : ''} Acting is not the same as it working, and this is the only `
+        + `place that says which.</p>`
+      : '';
+    return finding + `<div class="reads" id="effect-rows" data-ref="measure">`
+      + rules.map(r => {
+        const pct = r.acted ? Math.round((r.cleared / r.acted) * 100) : 0;
+        /* `hours` is null on every rule with no watch, and on a watched rule whose acts all came too
+           late or whose trigger is finer than the hourly record. Each says which. */
+        const timed = !r.watch
+          ? 'what "recovered" means here is a relation, not a line \u2014 nothing to time against'
+          : r.hours != null ? `typically ${r.hours} h to come back under ${r.watch.over}`
+            : r.already ? `${r.already} act${r.already === 1 ? '' : 's'} could not be timed: the `
+              + `reading was already back under ${r.watch.over} at that hour`
+              : 'no act on this one has been timed yet';
+        return row({ id: `effect-${esc(name(r.rule_id).replace(/ /g, '-'))}`,
+          component: 'effectRule', ref: 'effect-rows',
+          cls: r.cleared ? '' : 'quiet',
+          cols: 'minmax(0,210px) minmax(0,1fr) auto',
+          left: `<span class="who"><b>${esc(name(r.rule_id))}</b>`
+            + `<span class="m">${esc(String(r.rule_id).split('/')[0])}</span></span>`,
+          line: timed,
+          qty: [{ num: `effect.${esc(name(r.rule_id).replace(/ /g, '-'))}`,
+            value: `${r.cleared}/${r.acted}`,
+            cmp: `stopped within ${E.window_hours} hours of somebody acting, of the acts on this `
+              + `rule \u2014 ${pct}%. Evidence that the condition ended, never that the act ended it` }],
+        });
+      }).join('') + `</div>`;
+  },
+  notes(ctx) {
+    const E = window.EFFECT || {};
+    return [
+      { id: 'effect-not-cause', text: `This says a condition stopped within ${E.window_hours} hours `
+        + 'of somebody acting. It does not say the act stopped it. A window opened at nine in the '
+        + 'evening and air that cleared by three in the morning may be the window or may be the '
+        + 'night, and this node cannot tell the two apart \u2014 so it reports the elapsed time and '
+        + 'leaves the causation to the household that was there.' },
+      { id: 'effect-two-evidences', text: 'Whether and how long are different questions with '
+        + 'different evidence. Whether comes from the rule going quiet, which works for every rule '
+        + 'and resolves no finer than one cooldown, because the rule re-fires as soon as its '
+        + 'cooldown expires while the condition holds. How long needs an indicator and a line to '
+        + 'come back under, which only a rule carrying `watch:` has \u2014 the others fire on a '
+        + 'relation, where a threshold would be invented.' },
+      { id: 'effect-coarser', text: 'Where a rule triggers on a fifteen-minute mean and the only '
+        + 'history a node keeps is hourly, the timing is coarser than the trigger: a short spike can '
+        + 'fire an alert without the hour it sits in ever crossing the line, and then there is '
+        + 'nothing to time. Those acts are counted and named rather than folded in as an instant '
+        + 'recovery, which is what a nought would have claimed.' },
+      { id: 'effect-retired', text: 'A rule that has been renamed or deleted is left out entirely. '
+        + 'It can never fire again, so its silence is not evidence of anything \u2014 counting it '
+        + 'turned three retired rules into successes on this node once, and made the funnel say '
+        + 'eight where the true number was five.' },
+    ];
+  },
+});
+
 });
 
 /* ================================================================= h/mods/shape.js ==== */
@@ -4614,9 +4728,8 @@ function line(x, ctx, all) {
       + `${from ? ' · decided first' : ''}</span></span>`,
     /* The sentence if this reader may have it; otherwise the ask it answered, so the row still says
        what was closed. Never a blank and never a guess at what was written. */
-    line: note ? esc(note)
-      : a ? esc(String(a.text || '').split('\n')[0].slice(0, 120))
-        : 'the ask this answered is older than the ledger this node keeps',
+    line: note || (a ? String(a.text || '').split('\n')[0].slice(0, 120)
+      : 'the ask this answered is older than the ledger this node keeps'),
     qty: [],
   });
 }
@@ -5632,7 +5745,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells, reach, notes, dayshape] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach, notes, dayshape, effect] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -5654,6 +5767,7 @@ async function boot() {
        not for anyone else. A 403 here is the node working. */
     api('/actions').catch(() => null),
     api('/shape').catch(() => null),
+    api('/effect').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -5673,6 +5787,7 @@ async function boot() {
      ledger section reads it opportunistically and is not in its `needs`: the rows exist for every
      reader and it is the words that are gated. */
   window.SHAPE = dayshape;
+  window.EFFECT = effect;
   window.ACT_NOTES = Array.isArray(notes)
     ? notes.reduce((m, x) => { if (x && x.alert_id != null && String(x.note || '').trim()) {
       m[`${x.alert_id}:${x.stage}`] = x.note; } return m; }, {})
@@ -6802,7 +6917,8 @@ function main() {
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'claims', 'grain', 'asks', 'measure', 'figures'];
+  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'decide',
+    'claims', 'grain', 'asks', 'ledger', 'measure', 'effect', 'figures'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a

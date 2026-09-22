@@ -688,7 +688,7 @@ _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presen
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
-    "/report/latest", "/readings", "/reach", "/shape",
+    "/report/latest", "/readings", "/reach", "/shape", "/effect",
     "/history", "/exports", "/sources",
 }), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
@@ -1139,6 +1139,93 @@ def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
         hours, metric, hours, metric, hours)
     return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
             "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+
+
+@app.get("/effect")
+def effect(days: int = Query(365, ge=1, le=3650)):
+    """Did the actions work, and how long did they take? Per rule, over this node's whole record.
+
+    TWO DIFFERENT QUESTIONS WITH TWO DIFFERENT KINDS OF EVIDENCE, and they are reported apart because
+    conflating them would overstate the second.
+
+    `cleared` is the funnel's derivation, per rule: an act followed by a full MEASURED_WINDOW_MIN of silence from
+    the same rule on the same sensor is the condition having stopped being true. It works for every rule, needs no
+    threshold, and says WHETHER. It cannot say when: run_rules re-fires the moment a cooldown expires and the
+    condition still holds, so the finest this evidence can ever resolve is one cooldown.
+
+    `hours` is the other question and it needs the readings. Only a rule that declares `watch: {metric, over}` has an
+    indicator and a line to recover under -- of node #1's seven act-level rules, two do; the rest fire on a RELATION
+    ("inside is worse than outside"), where a threshold would be a fiction. For those the answer is null and the
+    reason is published rather than a zero.
+
+    AND IT IS ELAPSED TIME, NOT AN EFFECT. A window opened at 21:00 and air that cleared at 03:00 may be the window
+    or may be the night, and this node cannot tell. Nothing here says the action caused the recovery.
+
+    `already` IS NOT A NOUGHT-HOUR RECOVERY and has two causes, which is why it is counted apart rather than folded
+    into the median. Node #1's five acts on indoor_pm25_high are all `already`, and reading them one by one shows
+    both: people acted 2.0, 1.8 and 10.3 hours after the alert, by which time the air had come back on its own --
+    and separately, the rule triggers on `mean_15m` while the only history a node keeps is hourly, so a
+    fifteen-minute spike over 35.5 can fire without the hour ever crossing it (four of those five had an hourly mean
+    of 14 to 22 when they fired). The measurement is therefore COARSER THAN THE TRIGGER, structurally, and the
+    honest report is a count of the acts it cannot time rather than a number that pretends otherwise.
+
+    Retired rules are excluded for the reason index.py::_live_rule_ids exists: a rule that can never fire again would
+    have its silence counted as a cleared condition, which once made this node's own funnel report 8 where the true
+    number was 5."""
+    win = index.MEASURED_WINDOW_MIN
+    live = index._live_rule_ids()
+    if not live:
+        return {"window_hours": round(win / 60), "rules": [], "note": "this node could not read its rule set"}
+    rows = q("""WITH a AS (SELECT id, ts, rule_id, sensor_id FROM alerts
+                            WHERE level = 'act' AND rule_id = ANY(%s)
+                              AND ts > now() - make_interval(days => %s)),
+                     act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage = 'acted' GROUP BY alert_id),
+                     -- only an act whose window has fully elapsed can be judged either way
+                     j AS (SELECT a.rule_id, a.id, a.sensor_id, act.t AS acted_at,
+                                  NOT EXISTS (SELECT 1 FROM alerts r
+                                               WHERE r.rule_id = a.rule_id
+                                                 AND r.sensor_id IS NOT DISTINCT FROM a.sensor_id
+                                                 AND r.ts > act.t
+                                                 AND r.ts <= act.t + make_interval(mins => %s)) AS cleared
+                           FROM a JOIN act ON act.alert_id = a.id
+                           WHERE now() > act.t + make_interval(mins => %s))
+                SELECT rule_id, count(*) AS acted, count(*) FILTER (WHERE cleared) AS cleared
+                FROM j GROUP BY rule_id ORDER BY count(*) DESC, rule_id""",
+             live, days, win, win)
+    watches = {r["id"]: r["watch"] for r in packs.load_rules()
+               if isinstance(r, dict) and isinstance(r.get("watch"), dict)}
+    out = []
+    for r in rows:
+        w = watches.get(r["rule_id"])
+        item = {"rule_id": r["rule_id"], "acted": int(r["acted"]), "cleared": int(r["cleared"]),
+                "watch": w, "hours": None, "measured": 0, "already": 0}
+        if w:
+            # The first hour, at or after the act, when that alert's own sensor is back under the line. `already`
+            # is an act made when the reading had come back on its own, which is a real and common thing and not
+            # a nought-hour recovery.
+            h = q("""WITH a AS (SELECT id, ts, sensor_id FROM alerts
+                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)),
+                          act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage='acted' GROUP BY alert_id),
+                          e AS (SELECT a.id, act.t AS acted_at,
+                                       (SELECT min(x.bucket) FROM readings_1h x
+                                         WHERE x.sensor_id = a.sensor_id AND x.metric = %s
+                                           AND x.bucket >= date_trunc('hour', act.t) AND x.mean < %s) AS ok_at
+                                FROM a JOIN act ON act.alert_id = a.id)
+                     SELECT count(*) FILTER (WHERE ok_at IS NOT NULL
+                                             AND ok_at > date_trunc('hour', acted_at)) AS measured,
+                            count(*) FILTER (WHERE ok_at IS NOT NULL
+                                             AND ok_at <= date_trunc('hour', acted_at)) AS already,
+                            percentile_cont(0.5) WITHIN GROUP (
+                              ORDER BY extract(epoch FROM ok_at - acted_at) / 3600.0)
+                              FILTER (WHERE ok_at IS NOT NULL
+                                      AND ok_at > date_trunc('hour', acted_at)) AS median_hours
+                     FROM e""", r["rule_id"], days, w["metric"], w["over"])
+            g = (h[0] if h else {}) or {}
+            item["measured"] = int(g.get("measured") or 0)
+            item["already"] = int(g.get("already") or 0)
+            item["hours"] = round(float(g["median_hours"]), 1) if g.get("median_hours") is not None else None
+        out.append(item)
+    return {"window_hours": round(win / 60), "days": days, "rules": out}
 
 
 @app.get("/shape")

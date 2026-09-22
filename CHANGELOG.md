@@ -12,6 +12,19 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **Your node can tell you which of your actions actually work.** Under Measure, per rule, over its
+  whole record: how many times somebody acted, and how many of those were followed by the condition
+  stopping. On node #1 it immediately found the thing it exists to find — **thirteen acts on the heat
+  alert and not one of them cleared**, because heat does not stop because you acted, while ventilating
+  cleared four of nine. A household that reads that stops pressing one button and starts opening
+  windows, and nothing else on this page could ever have told them.
+
+  Two honest limits, both stated on the page. It says a condition *stopped* within 48 hours of
+  somebody acting — never that the act stopped it; a window opened at nine and air that cleared by
+  three may be the window or may be the night. And *how long* needs an indicator and a line to come
+  back under, which only a rule that declares one has: the others fire on a relation ("inside is worse
+  than outside"), where a number would be invented. Those say so rather than showing a zero.
+
 - **Your node has started to learn the shape of your days.** Under Historical, a new section draws the
   day this place *usually* has: one line for inside, one for outside, hour by hour, averaged over
   every day your node has recorded. It is the first thing on this page that gets better the longer

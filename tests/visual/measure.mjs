@@ -422,6 +422,10 @@ async function serveNodeAPI(route, u) {
     '/sensors': 'sensors', '/cells': 'cells', '/nearby': 'nearby', '/alerts': 'alerts',
     '/observations': 'observations', '/stats': 'stats', '/reach': 'reach', '/rho': 'rho',
     '/actions': 'actions', '/report/latest': 'report_latest',
+    /* Added 23 September with the two learning routes. A capture taken before `planetai snapshot`
+       fetched them carries neither key, and then `body === undefined` below answers 404 and the
+       section draws its own absent line — which is the truth about that capture, not a fault. */
+    '/shape': 'shape', '/effect': 'effect',
   };
   if (FROM_SNAPSHOT[u.pathname]) {
     const data = computeNodeData(FIXTURE);
