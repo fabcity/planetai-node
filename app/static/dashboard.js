@@ -4619,14 +4619,33 @@ const VAR = ctx => (ctx.Q.get('var') && H.metrics[ctx.Q.get('var')] ? ctx.Q.get(
  * lies about what this node measures. */
 const carried = () => Object.keys(H.metrics).filter(v => (H.sensors || []).some(s => s.read && s.read[v]));
 
+/* FOUR, AND THE REST REACHABLE. Tomas's call, 22 September.
+ *
+ * The sketch draws four chips; this node reads nine, and it will read more as packs land. Nine
+ * chips wrapped to two rows and pushed the counts down — on a surface read at three metres, a strip
+ * that long is a list rather than a control. So: the one being shown, then the node's own order, up
+ * to four, and a link to the rest. `?vars=all` rather than a press-to-expand, because a wall screen
+ * is not touched and a link still works from the phone somebody is holding.
+ *
+ * The current variable is always among the four, wherever it sits in the node's order — otherwise
+ * the strip could be showing temperature with no chip saying so. */
+const VARS_SHOWN = 4;
 function vars(ctx) {
   const { esc } = ctx.K;
   const list = carried(), v = VAR(ctx);
   if (list.length < 2) return '';
+  const all = ctx.Q.get('vars') === 'all';
+  const order = [v, ...list.filter(k => k !== v)];
+  const show = all ? list : order.slice(0, VARS_SHOWN);
+  const hidden = list.length - show.length;
   return `<div class="wvars" id="wall-vars" data-component="wallVars" data-ref="wall-field"`
     + ` role="group" aria-label="what the cells show">`
-    + list.map(k => `<a class="${k === v ? 'on' : ''}" href="${esc(ctx.qlink({ var: k }))}"`
+    + show.map(k => `<a class="${k === v ? 'on' : ''}" href="${esc(ctx.qlink({ var: k }))}"`
       + `${k === v ? ' aria-current="true"' : ''}>${esc(H.metrics[k].label)}</a>`).join('')
+    + (hidden > 0
+      ? `<a class="more" href="${esc(ctx.qlink({ vars: 'all' }))}">+${hidden} more</a>`
+      : all && list.length > VARS_SHOWN
+        ? `<a class="more" href="${esc(ctx.qlink({ vars: null }))}">fewer</a>` : '')
     + `</div>`;
 }
 
@@ -4826,24 +4845,51 @@ function render(ctx, sel) {
      a reader who pressed Wall had no way out but the keyboard. It is a button rather than a link
      because it changes the view and does not go anywhere, and it is drawn first so it is the first
      thing the keyboard reaches. */
+  /* THE TOP BAR — the sketch's, 18–20 September, and the one part of that wall this page did not
+     carry. Which node, which cell, how open it is, how often the field turns, and what the numbers
+     in it are: at three metres those are the questions asked before any reading is read, and they
+     were all in the foot, which on a 1080 px screen is the last place the eye arrives. The variable
+     and its unit go at the right, because they are the caption for everything in the field. */
+  const share = ((ctx.S.health || {}).share_level || 'off');
+  const m = H.metrics[VAR(ctx)] || {};
   return `<div class="wallbox" id="wall-lead" data-band="wall">`
     + `<h1 class="vh">${esc(ctx.S.health.node)} · the wall</h1>`
+    + `<div class="wtop" id="wall-top" data-component="wallTop" data-ref="wall-field">`
     + `<button type="button" class="exit" data-view="now" data-component="wallExit"`
     + ` data-ref="wall-field" id="wall-exit">back</button>`
+    /* The chips ride the bar rather than taking a row of their own. Four of them fit beside the
+       exit, and a row here is 48 px off the field — which is the one thing on this surface that
+       wants every pixel. The wall's rule is that nothing falls below 1080, and that rule wins. */
+    + vars(ctx)
+    + `<span class="who">${esc(ctx.S.health.node)}<i>·</i>${esc(ctx.S.health.city || '')}`
+    + `<i>·</i>#wall<i>·</i>share level ${esc(share)}<i>·</i>`
+    + `${STILL ? 'the dial stands still' : `the dial turns every ${DWELL_MS / 1000} s`}</span>`
+    + `<span class="what">${esc(m.label || VAR(ctx))}<i>·</i>${esc(m.unit || '')}`
+    + `<i>·</i>15-min means</span></div>`
     + `<div class="wgrid">`
     + `<figure class="wfield" id="wall-field" data-component="wallField" data-ref="wall-dial">`
     + field(ctx, sel) + `</figure>`
     + `<div class="wside">`
     + `<div id="band-${esc(hk)}">${K.kicker(hk, d)}${K.sentence(hk, d, 'big')}${K.why(hk, d)}${K.ask(hk, d)}</div>`
+    /* The sketch puts this where an ask would be, in the column, rather than in the foot. It is the
+       wall's own refusal and it answers the question the ask above it raises. */
+    + `<p class="wnoask" data-component="wallNoAsk" data-ref="wall-dial">`
+    + `Answer on Telegram, not here.</p>`
     + `<div class="wdial" id="wall-dial" data-component="dial" data-ref="wall-field" role="group"`
     + ` aria-label="the dial">${dial(ctx)}</div>`
-    + vars(ctx)
+    /* And the dial says how to read itself, under itself. The foot's caption is about the MOTION;
+       this one is about the marks, and a reader looking at the stops should not have to look away. */
+    + `<p class="wcap" data-component="dialKey" data-ref="wall-dial">`
+    + `the dial<i>·</i>current stop filled ink<i>·</i>may-leave stops filled `
+    + `<code>--cells</code> at .16<i>·</i>finer than published, dashed</p>`
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
     + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
     + `</div></div>`
     + `<div class="wmore" id="wall-more" data-component="wallMore" data-ref="wall-field">${more(ctx)}</div>`
-    + `<div class="foot"><span>${esc(ctx.S.health.node)}</span>${K.asof()}${K.stamp()}<span class="st">stale</span>`
-    + `<span>Answer on Telegram, not here.</span>`
+    /* The node's name, the share level and the dial's cadence have gone to the top bar and the
+       Telegram line into the column, so the foot is what is left: when this was true, which cell it
+       is about, and whether the node has stopped answering. Nothing is said twice. */
+    + `<div class="foot">${K.asof()}${K.stamp()}<span class="st">stale</span>`
     + `<span class="wcap">${STILL
       ? 'reduced motion is on, so the dial stands still · press a stop to turn it'
       : `the dial turns by itself every ${DWELL_MS / 1000} s · nothing interpolates between stops · `

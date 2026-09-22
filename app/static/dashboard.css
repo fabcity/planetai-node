@@ -1208,3 +1208,30 @@ h1.brand { font: inherit }
 .reask { flex: none; background: none; border: 1px solid var(--hair); color: var(--ink);
   padding: 5px 9px; font: 500 13px var(--mono); cursor: pointer }
 .reask:hover { border-color: var(--ink) }
+
+/* THE WALL'S TOP BAR — the sketch's, and the answers a person wants before they read a number:
+ * which node, which cell, how open it is, how often the field turns, and what the numbers are.
+ * All of it used to be in the foot, which on a 1080 px screen is the last place the eye arrives. */
+.wallbox .wtop { display: flex; align-items: center; gap: clamp(12px, 1.4vw, 26px); flex-wrap: wrap;
+  border-bottom: 1px solid var(--hair); padding-bottom: clamp(8px, .8vw, 14px);
+  font: 500 clamp(11px, .78vw, 15px) var(--mono); letter-spacing: .06em; color: var(--mute) }
+/* Uppercase on the left half only. The right half carries the UNIT, and `µ` uppercases to `M`, so
+   `µg/m³` becomes `MG/M³` — micrograms read as milligrams, a factor of a thousand, on a wall, in
+   silence. The sketch shouts this half; the sketch is wrong, and check_ui caught it. */
+.wallbox .wtop .who { margin-right: auto; text-transform: uppercase }
+.wallbox .wtop .what { color: var(--ink); font-weight: 700 }
+/* A middot with air either side, so a run of facts reads as a run and not as one long word. */
+.wallbox .wtop i { font-style: normal; margin: 0 .55em; opacity: .55 }
+/* In the bar now, not floated over the corner. It was absolutely positioned top-right from before
+   there was a bar to put it in; the sketch has it top-LEFT and first, which is also where the
+   keyboard reaches it — a wall with the door painted on was the bug that put it here at all. */
+.wallbox .wtop .exit { position: static; margin: 0; opacity: 1; order: -1 }
+/* Four chips under the bar, not nine inside the column. `+N more` is a link, because a wall screen
+   is not touched and the reader who wants the rest is holding a phone. */
+.wallbox .wtop .wvars { display: flex; flex-wrap: wrap; gap: 0; width: max-content; margin: 0 }
+.wallbox .wvars .more { border-left: 0; color: var(--mute) }
+/* The wall's own refusal, where an ask would be, and the dial's key under the dial. */
+.wallbox .wnoask { font: 700 clamp(12px, .95vw, 18px) var(--mono); letter-spacing: .06em;
+  text-transform: uppercase; margin: clamp(10px, 1vw, 18px) 0 0 }
+.wallbox .wcap i { font-style: normal; margin: 0 .5em; opacity: .55 }
+.wallbox .wcap code { font: inherit; color: var(--ink) }

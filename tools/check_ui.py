@@ -427,7 +427,14 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    # node stopped answering. Asking again" — and a count. The endpoint paths beside
                    # it are NOT in here and are not shouted: /issues is a route, and a route that has
                    # been uppercased is a route a reader cannot type back.
-                   ".asking .hd"}
+                   ".asking .hd",
+                   # Added 22 September 2026 with the wall's top bar. `.who` is the node's name, its
+                   # city, "#wall", the share level and the dial's cadence — NODE_NAME is lowercase
+                   # with dashes and a city key is a word, so no unit and no mu can reach it. The
+                   # variable and its unit are the other half of that bar and are deliberately NOT
+                   # in here: `.wallbox .wtop .what` is left in its own case because µg/m³ shouted
+                   # is MG/M³. `.wnoask` is this page's one sentence, "Answer on Telegram, not here."
+                   ".wallbox .wtop .who", ".wallbox .wnoask"}
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "
