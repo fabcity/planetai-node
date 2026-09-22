@@ -95,7 +95,13 @@ gui = open("app/static/dashboard.js").read()
 assert 'data-component="stamp"' in gui, "the cell stamp is a component"
 # 2 — one stamp(), called from the lead and from the wall's foot. Delete either call and this is red;
 # it is the same guarantee the two anatomy entries gave, read off the call sites instead of a table.
-assert "${asof()}${window.K.stamp()}" in gui, "the lead no longer draws the cell stamp"
+# The two used to be asserted as one adjacent string. They are not adjacent since
+# 21 September 2026: the lead's stamp line carries the open-ask reference between them,
+# because the ask strip moved to Act and T1 still wants an ask on the first screen. What
+# this guards is that the LEAD draws the stamp at all — one stamp(), called from here and
+# from the wall — not the order of the line it sits in.
+assert "${window.K.stamp()}" in gui, "the lead no longer draws the cell stamp"
+assert "${asof()}" in gui, "the lead no longer draws its as-of"
 assert "${K.asof()}${K.stamp()}" in gui, "the wall no longer draws the cell stamp, and it has no header"
 # 3 — the caption is the cell's own, off /health, and a node with no cell prints nothing rather than
 # a caption the page made up. Change either half and this is red.

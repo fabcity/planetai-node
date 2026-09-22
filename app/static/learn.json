@@ -1,0 +1,176 @@
+{
+ "marks": {
+  "cards": {
+   "anchor": "the-sections",
+   "more": "Room is the solid line, the street dotted, the model dashed, the line itself dashed red. Where a distance has no source its trace is absent and the legend says which one.",
+   "page": "dashboard.md",
+   "quote": "Four card kinds and no fifth: readout, stack, series, row. A gap in a series is a gap in the line, never a\nramp across the WHO line nobody measured. The node's own words are never uppercased — `µg/m³` once became\n`MG/M³` on the hero, a factor of a thousand.",
+   "section": "The sections",
+   "title": "Four card kinds and no fifth",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-sections"
+  },
+  "cell": {
+   "anchor": "the-node-and-its-place",
+   "more": "Resolution 8 is coarser than the rounding already applied to the node's position, so the cell drawn on the ground puts nothing back that the node had held out.",
+   "page": "concepts.md",
+   "quote": "**The H3 cell.** The node stands in a hexagon of the H3 grid at resolution 8 — an edge of roughly half a\nkilometre; 525 m for node #1's cell — printed in the mono as a fifteen-character id such as\n`8839446033fffff`, with its edge length beside it.",
+   "section": "The node and its place",
+   "title": "The cell this node stands in",
+   "url": "https://planetai.fab.city/docs/concepts/#the-node-and-its-place"
+  },
+  "containment": {
+   "anchor": "the-lead",
+   "more": "That is the documentation's example grain line. The one under the lead is tonight's, read from this node, and when the neighbouring grains give the same answer the page says so.",
+   "page": "dashboard.md",
+   "quote": "At resolution 8 one cell is\n0.74 km² and this node's 7 stations fall in 3 of them. 4 sit in this node's own cell, of which 3 are its\nown.",
+   "section": "The lead",
+   "title": "Exact in the index, approximate on the ground",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
+  },
+  "current": {
+   "anchor": "conditions-that-are-not-events",
+   "more": "A heat alert is a condition that holds for hours; a cooking spike is an event with a cooldown. The schema does not yet know an alert can clear, so the page says which it is.",
+   "page": "alerts.md",
+   "quote": "The dashboard marks\nan open act-level ask as *current* only while its condition still holds — the room over the line, or the\nalert under two hours old — and otherwise says the reading came back on its own and the ask is still open.",
+   "section": "Conditions that are not events",
+   "title": "Conditions that are not events",
+   "url": "https://planetai.fab.city/docs/alerts/#conditions-that-are-not-events"
+  },
+  "custody": {
+   "anchor": "sources-and-sensors",
+   "more": "Your own instruments are drawn in ink on this page, the borrowed ones faint, and what only the satellite knows in orange.",
+   "page": "concepts.md",
+   "quote": "**`custody`.** A generated column: `kind = 'child' OR (local AND kind <> 'peer')`. The only thing a cell may\ncount, and the thing that may roll up to a parent. Custody splits geography from responsibility: a peer's\nstation can be closer than your own kit and still never be counted.",
+   "section": "Sources and sensors",
+   "title": "Custody: who may be counted",
+   "url": "https://planetai.fab.city/docs/concepts/#sources-and-sensors"
+  },
+  "dial": {
+   "anchor": "the-lead",
+   "more": "The stops that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell.",
+   "page": "dashboard.md",
+   "quote": "A **dial** sits under the header: one stop per H3 resolution the node's grain table knows, opening at 8.\nStops coarse enough that the cell may leave the machine (at or above the presence floor,\nresolution 6) are shaded with a dotted texture rather than the cells blue; stops finer than the\npublished resolution are struck through.",
+   "section": "The lead",
+   "title": "The dial: one stop per grain",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
+  },
+  "distances": {
+   "anchor": "sources-and-sensors",
+   "more": "The page prints them in the household's words — room, wall outside, street, model — on one scale, so the eye can answer whether it is me or everywhere without arithmetic.",
+   "page": "concepts.md",
+   "quote": "**The four distances.** Where a reading comes from, nearest first: `room` (local, indoor), `yard` (local,\noutdoor), `ring` (somebody else's device near here) and `region` (a model, a portal — what only the models\nknow). A child node is a fifth place that is not a column. In Bahasa: ruangan · halaman · sekitar · wilayah.",
+   "section": "Sources and sensors",
+   "title": "Four distances, not four resolutions",
+   "url": "https://planetai.fab.city/docs/concepts/#sources-and-sensors"
+  },
+  "lead": {
+   "anchor": "the-lead",
+   "more": "The node computes and the page draws. A number this page worked out for itself would be a bug, which is why the sentence, the numeral and the state word all arrive from GET /issues.",
+   "page": "dashboard.md",
+   "quote": "The first thing on Now is the headline issue's sentence in the household's language — \"Falling to 9\nmicrograms, under the street, under the model, under the line\" — with the kicker naming the issue, a line\nsaying why, and the ask strip if something is open.",
+   "section": "The lead",
+   "title": "The lead",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
+  },
+  "levels": {
+   "anchor": "levels",
+   "more": "An alert's acted_at stays null until a person acts and records it — this page's button, the CLI, the bot, a radio, or an agent. It is the one measurement the node cannot make itself.",
+   "page": "alerts.md",
+   "quote": "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person. `planetai report level warn` lowers it\nwithout a restart. Below the floor an alert is still recorded, still drawn, and still in the next\n[report](report.md).",
+   "section": "Levels",
+   "title": "Three levels, one floor",
+   "url": "https://planetai.fab.city/docs/alerts/#levels"
+  },
+  "prov": {
+   "anchor": "provenance-words-on-the-page",
+   "more": "Provenance is ink only and square on this page, never a coloured pill, and the full H3 id is printed once per object and never truncated.",
+   "page": "concepts.md",
+   "quote": "`live` — measured by this node, room or yard. `partial` — derived, a portal, the ring. `model` — a model\nrow. `cached` — a committed fixture replayed through the node's own engine.",
+   "section": "Provenance words on the page",
+   "title": "Provenance words",
+   "url": "https://planetai.fab.city/docs/concepts/#provenance-words-on-the-page"
+  },
+  "raw": {
+   "anchor": "what-leaves-the-machine-and-what-never-does",
+   "more": "The barcode under Observe is hourly means of the room's PM2.5 — the finest grain this page shows, and still not a raw reading.",
+   "page": "how-it-works.md",
+   "quote": "Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if there\nis one; the daily [export](storage.md) — hourly means by role (`indoor-1`, `outdoor-2`), cells, the first line\nof each alert, ρ, the node's position to three decimals — under CC BY 4.0",
+   "section": "What leaves the machine, and what never does",
+   "title": "Raw readings stay",
+   "url": "https://planetai.fab.city/docs/how-it-works/#what-leaves-the-machine-and-what-never-does"
+  },
+  "refusals": {
+   "anchor": "refusals-that-hold-at-every-stage",
+   "more": "The care label at the foot is those refusals as signs. Nothing to press on the wall is the wall's own refusal: it is an instruction, not a control.",
+   "page": "how-it-works.md",
+   "quote": "No raw readings leave the instance that recorded them. No cell is upgraded from `partial` to `live` by\naggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to\nfunction. No scale is skipped: a city aggregator is built from nodes, not declared from above.",
+   "section": "Refusals that hold at every stage",
+   "title": "Refusals that hold at every stage",
+   "url": "https://planetai.fab.city/docs/how-it-works/#refusals-that-hold-at-every-stage"
+  },
+  "rho": {
+   "anchor": "",
+   "more": "The page draws it as the asks answered over the asks raised, with the median minutes to the first answer, and counts the rings rather than sizing them.",
+   "page": "rho.md",
+   "quote": "ρ (rho) is the share of the node's act-level alerts that led to someone doing something. It is the one\nnumber on the page that comes from a person, the Fab City Index's `Governance` cell at the node's scale, and\nthe reason the `actions` table is the Index's instrument rather than an app feature.",
+   "section": "",
+   "title": "ρ — the loop closed",
+   "url": "https://planetai.fab.city/docs/rho/"
+  },
+  "share": {
+   "anchor": "share-level",
+   "more": "The request ledger below is this page confessing what it asked of the world while you looked at it. The offline plan asks nothing; Telegram is reached by the node, never by this page.",
+   "page": "sharing.md",
+   "quote": "`SHARE_LEVEL` is reach, not publishing: it says who on your network may read; it never sends anything\nanywhere. Change it in Set up, with `planetai config set SHARE_LEVEL open`, or over MCP; it is live within 20\nseconds.",
+   "section": "`SHARE_LEVEL`",
+   "title": "Reach, not publishing",
+   "url": "https://planetai.fab.city/docs/sharing/#share-level"
+  },
+  "stages": {
+   "anchor": "the-sections",
+   "more": "Observe, decide, act, measure — the four stages this page is read in. A section whose data is not on this node prints one honest line in its place, never a blank and never a guess.",
+   "page": "dashboard.md",
+   "quote": "Every section is registered with the page contract — `id`, `pack`, `stage`, `title`, `render`, and\noptionally `order`, `needs`, `controls`, `wall`, `notes` — and rendered in the stage it belongs to, in the\norder the loop runs",
+   "section": "The sections",
+   "title": "The order the loop runs",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-sections"
+  },
+  "states": {
+   "anchor": "issues-states-and-distances",
+   "more": "State is carried by weight, fill and dash, never by hue — act is set at 800 and quiet at 400. Colour is argument only: blue a cell, green a loop closed, red a line crossed.",
+   "page": "dashboard.md",
+   "quote": "For every issue the keeper declared in\n`NODE_ISSUES` (an undeclared one is still shown, greyed, as `watched: false`): a `state` — `act` (something\nis asked), `notable` (something changed), `quiet`, `context` (an issue that informs and never asks), `none`\n(no record)",
+   "section": "Issues, states and distances",
+   "title": "States, in weight not hue",
+   "url": "https://planetai.fab.city/docs/dashboard/#issues-states-and-distances"
+  },
+  "tiles": {
+   "anchor": "the-ground",
+   "more": "The request count sits in the tab bar so the price of switching to satellite is visible before you pay it: live tiles need MAP_TILES=on, and a press may only ever reduce it.",
+   "page": "dashboard.md",
+   "quote": "Three bases: `plan` — offline, from `/place/geojson`, the buildings\nand roads within `PLACE_RADIUS_M` projected in the browser with every vertex kept, nothing leaving the house;\n`sat` — Sentinel-2 cloudless tiles; `osm` — OpenStreetMap tiles.",
+   "section": "The ground",
+   "title": "What a map costs",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-ground"
+  }
+ },
+ "order": [
+  "dial",
+  "lead",
+  "containment",
+  "distances",
+  "prov",
+  "cell",
+  "tiles",
+  "stages",
+  "cards",
+  "states",
+  "custody",
+  "share",
+  "raw",
+  "levels",
+  "current",
+  "rho",
+  "refusals"
+ ]
+}

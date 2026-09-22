@@ -20,13 +20,13 @@ DESIGN="$(cd "${PAI_DESIGN_REPO:-../planetai-design}" 2>/dev/null && pwd)" || DE
 [ -n "$DESIGN" ] && [ -d "$DESIGN/node_modules/playwright" ] || { echo "  playwright is not in ${PAI_DESIGN_REPO:-../planetai-design} (resolved: ${DESIGN:-<not found>}); npm install there"; exit 2; }
 
 OUT="${PAI_OUT:-/tmp/pai-gate}"; mkdir -p "$OUT"
-export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI_Q="?fixture=node1-2026-09-06"
+export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI_Q="?fixture=node1-2026-09-21d"
 
 # now_populated_390/1440: everything T1-T5 below is read off these two. wall_populated_1920_dark:
 # T7 and the 1,080 px check. All three go through serveNodeAPI() in measure.mjs — no node, no
 # container, no network; see that function's own comment for what changed on 2026-09 and why.
 node tests/visual/measure.mjs render now_populated_1440 now_populated_390 >/dev/null
-PAI_Q="?fixture=node1-2026-09-06&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
+PAI_Q="?fixture=node1-2026-09-21d&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
 node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_populated_1920_dark >/dev/null
 
 # A press must redraw. Every check below this line measures one render, and since v0.55 a control
@@ -34,6 +34,15 @@ node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_po
 # and leaves every static number here exactly as it was. That is not hypothetical: v0.55 shipped
 # with the dial dead and this gate was green. This presses it.
 node tests/visual/measure.mjs press
+
+# The loading state: it stops when the data is in, the canvas leaves the tree, and reduced motion
+# draws one still frame instead of subscribing to the loop. Prints what a frame cost, both ways.
+node tests/visual/measure.mjs asking
+
+# A pack this file has never heard of: does its section draw, in its own stage and order, and do the
+# targets survive it. Also the one check that fails when the page is too PERMISSIVE — a stranger
+# drawing a fifth card kind has to show up, or "four kinds and no fifth" is only a sentence.
+node tests/visual/measure.mjs extend
 
 node - <<'JS'
 const fs = require('fs'), out = process.env.PAI_OUT;
@@ -110,8 +119,30 @@ function t1legs(d) {
 // points is layout noise (a line wrapping differently at a slightly different font); +6 points is
 // roughly a whole section's worth of ground going unused, which is the H1 complaint this redesign
 // exists to answer — a regression there is worth failing on, and a couple of rounding points is not.
-const HEIGHT_SHIPPED = { now_populated_390: 8267, now_populated_1440: 5261 };
-const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 61.3 };
+// Re-recorded 21 Sep 2026, prompt 3's Observe stage, AND against a different fixture.
+//
+// THE FIXTURE CHANGED, which matters more than the numbers. This gate measured node1-2026-09-06,
+// a capture with no `sensors`, no `issues`, no `forecast`, no `trust`, no `nearby` and no `reach` —
+// so every section that reads one of those was never exercised here, and the wall was measured
+// against a house with four stations when node #1 has six. It now measures node1-2026-09-21d: node
+// #1 as it is today, on v0.69. The first thing that found was the wall at 1,107 px on a 1,080 px
+// screen, which had been true on the real node for weeks under a green gate.
+//
+// Heights are up because Observe gained three sections on purpose — the matrix, the day and the
+// sources — because the request ledger became a section of its own, because Decide gained the
+// four-grain row, the two boundaries and the sentence template, because Act gained the ring strips
+// and where-to-go, because Measure gained the Figures ledger — eighteen rows, the whole page cited
+// once — and because the richer fixture draws more in the sections that were already there. The 8%
+// margin refused every one of them, which is what it is for.
+//
+// 1440's emptiness is re-recorded DOWN, from 61.3 to 57.4: the redesign is meant to drive that
+// number and locking in the gain is the point of recording it. 390's is NOT re-recorded. It is
+// 42.6% against a 37.7% baseline — inside the +6 margin, but the wrong way, and writing 42.6 here
+// would make that the new normal. It is a watch item, not a new standard.
+//
+// Previous, from 46018b0 on node1-2026-09-06: 390: 8267 px / 37.7%, 1440: 5261 px / 61.3%.
+const HEIGHT_SHIPPED = { now_populated_390: 15893, now_populated_1440: 10051 };
+const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 57.4 };
 const HEIGHT_MARGIN = 1.08, EMPTY_MARGIN = 6;
 
 for (const n of ['now_populated_1440', 'now_populated_390']) {
@@ -144,3 +175,9 @@ for (const f of fails) console.log('FAIL', f);
 console.log(fails.length ? `${fails.length} regression(s)` : 'ok');
 process.exit(fails.length ? 1 : 0);
 JS
+
+# A page that scrolls sideways on a phone is the defect a household reports as "it is broken", and
+# every check above can be green while it is true: each box the right size, the document wider than
+# the screen. This asks the page itself, in all 108 combinations of view, width, mode and register.
+# It is last because it is the slowest thing here by a distance — a browser per combination.
+node tests/visual/measure.mjs overflow

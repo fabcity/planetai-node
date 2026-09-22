@@ -5,6 +5,8 @@
   · every field it reads off /stats rows is a column of the stats view
   · anything the script hides with .hidden is not un-hidden by a display rule
 Run: python3 tools/check_ui.py"""
+import json
+import pathlib
 import re
 import shutil
 import subprocess
@@ -149,11 +151,25 @@ for hexv, name in WEBSITE_PALETTE.items():
                         f"green a response, red a line crossed, blue data, orange satellite-only, else ink.")
 
 # --- 3. gradients and glows ---------------------------------------------------------------------------------------
+# The rule was written against .glow.a and .glow.b — two drifting radial-gradients behind the whole page, decoration
+# pretending to be atmosphere. It is not written against a DOT SCREEN, which is the only way CSS draws one and which
+# is how the grain rail says "this cell may leave the machine" without spending the cells blue on a second meaning.
+# A texture that encodes a datum is an instrument; a gradient behind everything is a mood.
+#
+# Recorded verbatim and exactly, the way PROSE_IN_A_SHOUT and RADIUS_LEGACY are: this is the one expression allowed,
+# not the one function. Anything else with a gradient in it still fails. Added 21 September 2026 with the rail.
+TEXTURE_KNOWN = (
+    "radial-gradient(circle, var(--ink) .8px, transparent 1px)",     # the rail's may-leave zone, and its key swatch
+)
 for fn in ("linear-gradient", "radial-gradient", "conic-gradient"):
     for src, where in ((CSS_SRC, "the stylesheet"), (JS_SRC, "the script"), (BODY, "the markup")):
-        if fn + "(" in src:
+        probe = src
+        for _tex in TEXTURE_KNOWN:
+            probe = probe.replace(_tex, "")
+        if fn + "(" in probe:
             errs.append(f"{fn}() is in {where}. No gradients and no glows: .glow.a and .glow.b were two "
-                        f"drifting radial-gradients behind the whole page.")
+                        f"drifting radial-gradients behind the whole page. A dot screen that encodes a "
+                        f"datum goes in TEXTURE_KNOWN, verbatim, with a reason.")
 
 # --- 4. radius -----------------------------------------------------------------------------------------------------
 # A control is at most 8px and a card at most 18px. The dashboard predates the rule and its pills and 30px cards
@@ -386,11 +402,108 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    # Added 16 September 2026 with the station list's display cap.
                    ".stations .more a",          # "show all" and "show N" — the page's own two words
                    # Added 18 September 2026 with the year player.
-                   ".satplay .satctl button"}    # "Play", "Pause", "Motion off", "one year"
+                   ".satplay .satctl button",    # "Play", "Pause", "Motion off", "one year"
+                   # Added 21 September 2026 with the header's segmented controls. The register is
+                   # "Paper" and "Dark"; the mode is "Simple", "Advanced" and "Learn". Five words,
+                   # all written by this page. The node's own words cannot reach either control.
+                   ".seg button",
+                   # Added 21 September 2026 with the lead's bracket meters and its stamp line.
+                   # `.stack.meters .col .k` carries LABEL_WORDS — room, wall outside, street, model
+                   # — which is an engine constant published verbatim as /issues.labels. A pack can
+                   # rename where a reading IS (`where:` overrides WHERE_WORDS and NOUN_WORDS); it
+                   # cannot reach these four. Closed vocabulary, four words, never a sentence, and
+                   # none of them can contain a mu. `.askref` is this page's own words and a count.
+                   ".stack.meters .col .k", ".askref",
+                   # Added 22 September 2026 with learn mode. Four rules, all of them chrome the
+                   # page writes for itself: "Walk the page", "Close", "Back", "Next", "This page:",
+                   # the mark's key (an identifier — `dial`, `share` — not a word of anybody's), and
+                   # "n of 17". The two places a learn panel carries prose are the quote and the
+                   # `more` line, and neither is shouted: `.lpanel .qt` and `.lpanel .more` are set
+                   # in the body face at their own case, because one is the documentation's sentence
+                   # and the other is this page's.
+                   ".learnbar .walk", ".lpanel .lh", ".lpanel .more .who", ".lpanel .nav button",
+                   # Added 22 September 2026 with the loading state. Its heading is one of three
+                   # sentences this file writes — "Asking the node", "Asking the node again", "The
+                   # node stopped answering. Asking again" — and a count. The endpoint paths beside
+                   # it are NOT in here and are not shouted: /issues is a route, and a route that has
+                   # been uppercased is a route a reader cannot type back.
+                   ".asking .hd",
+                   # Added 22 September 2026 with the wall's top bar. `.who` is the node's name, its
+                   # city, "#wall", the share level and the dial's cadence — NODE_NAME is lowercase
+                   # with dashes and a city key is a word, so no unit and no mu can reach it. The
+                   # variable and its unit are the other half of that bar and are deliberately NOT
+                   # in here: `.wallbox .wtop .what` is left in its own case because µg/m³ shouted
+                   # is MG/M³. `.wnoask` is this page's one sentence, "Answer on Telegram, not here."
+                   ".wallbox .wtop .who", ".wallbox .wnoask"}
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "
                 f".said — see PROSE_IN_A_SHOUT in this file. Then add it to UPPERCASE_KNOWN.")
+
+# --- and the letter that started all of this -----------------------------------------------------------------
+# `µ` uppercases to `M`. Not to a bigger µ: to the letter M, so `µg/m³` is printed `MG/M³` and a household reads
+# milligrams where the node said micrograms — a thousandfold error, in the unit, on a wall, silently. It was found
+# on the wall foot in September, fixed at the two sites PROSE_IN_A_SHOUT names, and then drawn again on the
+# September sketch's wall foot by somebody who had not been told. So it gets a rule rather than a memory.
+#
+# Two halves, both static, because `make lint` has no browser: a mu authored into the stylesheet, and a mu
+# authored into the page's own markup outside a `.said` wrapper. A mu arriving from the NODE is a different
+# problem and is already covered — that is what .said and PROSE_IN_A_SHOUT are for.
+MU = ("\u00b5", "\u03bc")          # MICRO SIGN and GREEK SMALL LETTER MU; they look identical and both do this
+# A mu in the STYLESHEET is always wrong here, whatever the selector: units are the node's words and
+# arrive over the wire, so a `content: "µg/m³"` is the page inventing a unit — and one uppercase rule
+# anywhere above it turns that into MG/M³. No allowlist, because there is no good case for one.
+for _sel, _body in RULES:
+    if any(m in _body for m in MU):
+        errs.append(f"{_sel.strip()} writes a mu into the stylesheet. Units come from the node, not from "
+                    f"CSS, and an uppercase rule turns µg/m³ into MG/M³ — a thousandfold error, on a wall.")
+for _i, _line in enumerate(JS_SRC.splitlines(), 1):
+    _code = _line.split("//")[0] if not _line.lstrip().startswith(("*", "/*")) else ""
+    if any(m in _code for m in MU) and "said" not in _code:
+        errs.append(f"dashboard.js:{_i} writes a mu into the page outside .said. If a rule above it ever "
+                    f"uppercases, that becomes MG/M³ and the household reads milligrams. Wrap it in .said.")
+
+# --- the learn layer: a mark the page draws and a mark the build wrote are the same seventeen -------------
+# A `.q` with no entry behind it is a question mark that opens nothing; an entry nothing draws is a
+# quote maintained against a docs page for no reader. Both are silent — the page renders either way —
+# so they are counted here rather than discovered by a tester. build_learn.py's own --check holds the
+# other half: that each of those quotes is still a verbatim span of the page it cites.
+_learn = pathlib.Path("app/static/learn.json")
+if _learn.exists():
+    _have = set(json.loads(_learn.read_text())["marks"])
+    _drawn = set()
+    for _arr in re.findall(r"\blearn:\s*\[([^\]]*)\]", js):
+        _drawn |= set(re.findall(r"'([a-z]+)'", _arr))
+    _drawn |= set(re.findall(r"\bmark\('([a-z]+)'", js))
+    for _k in sorted(_drawn - _have):
+        errs.append(f"the page draws a learn mark '{_k}' that app/static/learn.json does not have. "
+                    f"Add it to MARKS in tools/build_learn.py, or stop drawing it.")
+    for _k in sorted(_have - _drawn):
+        errs.append(f"learn.json carries '{_k}' and nothing on the page draws it. Give it to a section "
+                    f"(`learn: ['{_k}']`) or to the shell, or take it out of tools/build_learn.py.")
+
+# --- SMIL: the one kind of motion this page may not use --------------------------------------------------
+# `@media (prefers-reduced-motion: reduce)` reaches CSS animations and nothing else. An SVG <animate>
+# keeps running when a household has asked the whole machine for stillness, and there is no way to
+# switch it off from a stylesheet. The netmap shipped one and it was rewritten in CSS for exactly
+# this; nothing has stopped the next drawing from reaching for it again. This does.
+#
+# The pattern wants an ATTRIBUTE, so prose about SMIL — the page's own note explaining why the wires
+# are not drawn that way, and the comments in this repo — is not a false positive. A real SMIL
+# element always carries one.
+SMIL = re.compile(r"<(animate|animateTransform|animateMotion|set)\b[^>]*\b"
+                  r"(attributeName|dur|values|from|to|begin|repeatCount)\s*=")
+for _name, _text in (("index.html", h), ("dashboard.js", js), ("dashboard.css", open("app/static/dashboard.css").read())):
+    _m = SMIL.search(_text)
+    if _m:
+        errs.append(f"{_name} writes an SVG <{_m.group(1)}>. Reduced motion cannot reach SMIL: it keeps "
+                    f"moving after a household has asked the machine to stop. Use a CSS animation on a "
+                    f"--motion- token, which the one reduce block in planetai-theme.css turns off.")
+for _svg in sorted(pathlib.Path("app/static").glob("*.svg")):
+    _m = SMIL.search(_svg.read_text())
+    if _m:
+        errs.append(f"{_svg.name} carries an SVG <{_m.group(1)}>, which reduced motion cannot reach. "
+                    f"It is served as a document of its own, so no stylesheet on the page can stop it.")
 
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"

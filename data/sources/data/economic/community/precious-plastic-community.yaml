@@ -1,0 +1,47 @@
+name: Precious Plastic Community map
+url: https://community.preciousplastic.com/map
+description: |
+  The Precious Plastic movement's map of distributed plastic-recycling: 1,203
+  workspaces, collection points, community points and machine builders, plus
+  2,502 individual members, each a self-entered profile with coordinates.
+pillar: economic
+scale: community
+status: live
+license: "NOT OPEN — the Terms reserve database rights to Precious Plastic. The MIT licence covers the platform code only. See notes."
+api: https://community.preciousplastic.com/api/map-pins
+pilot_relevance: [global]
+tags: [plastic-recycling, circular-economy, workspace, machine-builder, act]
+added: 2026-09-22
+auth: none
+role: [act]
+act_kind: facility
+upstream_listed_in: []
+notes: |
+  NOT OPEN, and unlike fablabs.io this is not silence — it is a reservation,
+  stated. `/terms`, read live 2026-09-22: "All the trade marks, copyright,
+  database rights and other intellectual property rights related to this
+  platform instance belong to Precious Plastic", and "The platform code is
+  licensed as MIT, and full details of the code license can be found on GitHub.
+  You are not allowed to otherwise copy, modify or use trademarks found within
+  the platform in any way." So the MIT is the code — the third source in this
+  list where a code licence sits next to unlicensed records — and the database
+  right is claimed rather than left open. Criterion 1 is NOT met, and no Fab City
+  decision covers reading it the way one covers fablabs.io. Do not harvest it.
+
+  COUNT THE TYPES BEFORE USING IT. `/api/map-pins` returned 200 without a key,
+  5.17 MB, 3,705 pins, all `moderation: accepted`. By profile type: member 2502,
+  workspace 754, community-point 167, machine-builder 160, collection-point 122.
+  So two thirds of the pins are PEOPLE, not places. A node wanting somewhere to
+  go must filter to the four place types — 1,203 of them — or it will route
+  somebody to a stranger's home town.
+
+  Pin fields are id, name, administrative, country, countryCode, lat, lng,
+  postCode, profileId and a nested profile of about, badges, country,
+  coverImages, displayName, lastActive, photo, tags, type, username. No email or
+  phone, which is better than fablabs.io. `about` is free text a person wrote
+  about themselves: display it, do not mine it.
+
+  The per-pin detail endpoint requires auth; only the list is open.
+
+  No `adapter`: nothing in planetai-node reads it, and on these terms it should
+  not without asking first.

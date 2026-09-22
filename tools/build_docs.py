@@ -84,6 +84,9 @@ NAV = [
     ("Sharing and security", [
         ("sharing", "docs/site/sharing.md"),
     ]),
+    ("Design", [
+        ("design", "docs/site/design.md"),
+    ]),
     ("Reference", [
         ("api", "docs/site/api.md"),
         ("schema", "docs/site/schema.md"),
@@ -185,7 +188,35 @@ def resolve_link(href, src, mode, base, commit):
     if path.exists():
         kind = "tree" if path.is_dir() else "blob"
         return f"{GITHUB}/{kind}/{commit}/{rel}" + (f"#{frag}" if frag else "")
+    # A page whose SOURCE is outside docs/site — Architecture, Spec, the changelog, the platform
+    # pages — is still linked by its file name, because that is what STYLE.md tells an author to
+    # write and the sidebar slug is the same word. Resolving relative to docs/site/ looks for
+    # docs/site/architecture.md, which does not exist, so `[Architecture](architecture.md)` came out
+    # of the renderer untouched and shipped as a dead link on three pages for as long as it has
+    # existed. The slug is the last thing to try, after the real paths.
+    stem = target[:-3] if target.endswith(".md") else target.rstrip("/")
+    if stem in BY_SLUG:
+        if not frag:
+            return page_url(stem, mode, base)
+        return f"#{stem}--{frag}" if mode == "single" else f"{page_url(stem, mode, base)}#{frag}"
     return href
+
+
+DEAD_LINK = re.compile(r'href="([^"]*\.md(?:#[^"]*)?)"')
+
+
+def dead_links(html_body, slug):
+    """Any `.md` a link still points at after resolve_link has had its turn.
+
+    An unresolved markdown link is not a broken build, it is a dead link on a published page: the
+    renderer leaves the href alone and the site serves it. That is how `architecture.md` reached
+    three pages. Collected per page and raised together, so one run names all of them.
+
+    A resolved link may legitimately END in .md — a GitHub blob URL for a repository file, or an
+    outside link to somebody else's README. What is dead is a href the renderer did not touch, and
+    that is exactly the RELATIVE ones: everything it resolves comes back absolute."""
+    return [m.group(1) for m in DEAD_LINK.finditer(html_body)
+            if not m.group(1).startswith(("http:", "https:", "mailto:", "#", "/"))]
 
 
 def postprocess(html_body, src, slug, mode, base, commit):
@@ -368,11 +399,20 @@ def main():
     for mode in (["multi"] if args.out else []) + (["single"] if args.single else []):
         base = args.base if mode == "multi" else ""
         rendered = {}
+        dead = []
         for slug, src, _ in PAGES:
             prefix = slug if mode == "single" else ""
             body_html, toc = render_md(sources[slug], prefix)
             body_html = postprocess(body_html, src, slug, mode, base, commit)
             rendered[slug] = (body_html, toc)
+            for href in dead_links(body_html, slug):
+                dead.append(f"{slug} ({src}) links to {href}, which resolved to nothing")
+
+        if dead:
+            sys.exit("dead markdown links — the renderer left these as they were written, so the "
+                     "site would serve them:\n  " + "\n  ".join(dead)
+                     + "\n\nLink a page by its sidebar slug (see docs/site/STYLE.md), or a "
+                       "repository file by its path from the repo root.")
 
         if mode == "multi":
             out = Path(args.out).resolve()

@@ -915,3 +915,176 @@ Nothing in Part Two's list is withdrawn. Three things are added:
    already, 3.0 kB a move — and needed by G and H.
 
 Everything else stands: the pick is one of nine, and Phase 2 does not start without it.
+
+---
+
+# Part four · T2 is re-set (22 September 2026)
+
+Tomas's call, taken on the numbers below after prompt 7 measured the built page.
+
+## What T2 said, and why half of it has to go
+
+T2 was two targets under one name:
+
+- **the empty share of the first viewport** — ≤ 30 % at 1440, ≤ 20 % at 390
+- **the height of the whole page** — ≤ 4 viewports at 1440, ≤ 8 at 390
+
+The second is **unreachable, and was unreachable when it was written.** Four viewports at 1440 is
+3,600 px. The built page is 10,205 px, and here is every band in it:
+
+| section | px | share |
+|---|---|---|
+| asks | 1,203 | 11.8 % |
+| day | 1,132 | 11.1 % |
+| sensors | 1,082 | 10.6 % |
+| notes (already a fold) | 1,002 | 9.8 % |
+| matrix | 814 | 8.0 % |
+| figures | 754 | 7.4 % |
+| claims | 734 | 7.2 % |
+| measure | 658 | 6.4 % |
+| grain | 643 | 6.3 % |
+| sources | 430 | 4.2 % |
+| requests | 318 | 3.1 % |
+| forecast | 166 | 1.6 % |
+
+The rail and the lead are the first 1,016 px; the twelve bands are 87.6 % of the rest. Folding every
+foldable section — figures, claims, grain, sources, requests — saves 2,879 px and lands at 7.1
+viewports. Moving those five to another view lands in the same place. **Nothing short of deleting
+two thirds of the bands reaches four, and every one of them draws something this node measured.**
+
+The target was set in the 14 September prompt against a page with **two** card kinds, no matrix, no
+day, no request ledger, no ask ledger and no Figures ledger. It is a measurement of a different page.
+A target that can only be met by not saying what the node knows is measuring the wrong virtue.
+
+## What replaces it
+
+**The length leg is retired.** In its place, the thing it was actually worried about — that a reader
+has to hunt for the part they came for:
+
+> **T2a · the answer is on the first screen.** The sentence, the numeral, the state, the ask and the
+> as-of, in the first viewport. *This is T1 and it already passes at both widths.*
+>
+> **T2b · every stage is reachable in its own order, and the page says where.** The lead names the
+> open asks and links to the stage that holds them. A reader never scrolls to find out *whether*
+> there is something to do — only to read the detail.
+>
+> **T2c · the empty share of the first viewport.** ≤ 30 % at 1440 and ≤ 20 % at 390, unchanged. This
+> is the half of T2 that was always about the drawing rather than the content, and it is **still
+> missed**: 57.3 / 59.6 % at 1440 and 42.5 / 45.3 % at 390.
+
+## Where the built page stands against that
+
+| | 1440 | 390 |
+|---|---|---|
+| **T2a** first screen carries the answer | ✓ | ✓ (✗ on the sparser fixture: the ask falls below) |
+| **T2b** the lead names the open asks and links to Act | ✓ | ✓ |
+| page height, recorded and no longer a pass or a fail | 11.3 viewports | 18.4 |
+| observe · decide · act · measure begin at | 1.0 · 5.5 · 7.1 · 8.6 | 1.7 · 9.1 · 11.9 · 14.0 |
+| **T2c** empty share, lit / read | **57.3 / 59.6 %** ✗ | **42.5 / 45.3 %** ✗ |
+
+**T2c is the open miss and it is a real one.** Nearly six tenths of the first screen at a desk is
+air. That is a fact about the lead's layout and not about how many sections follow it, which is why
+it survives the re-set: no amount of folding or moving changes it.
+
+It is also **not yet decomposed.** A quick attempt at working out *where* that air is, by unioning
+element boxes over a grid, answered 20–40 % — it over-counts, because a section's own container box
+marks everything inside it as used. The rig's `lit`/`read` figure is the authority and the breakdown
+it would take to say which part of the lead is the problem has not been built. That is the next
+thing anybody looking at T2c should build, before anything is moved.
+
+## What this does not change
+
+T1, T1b, T3, T4, T5, T6, T7 and T9 stand as written. The horizontal-overflow gate stands at zero.
+T8 was defined in `PROMPT_dashboard_redesign_2026-09-14.md` and nowhere else, and that file is on no
+machine, in no repository history, in none of this project's forty-five session transcripts and in no
+artifact — prompt 0 was already citing a file it could not read, which is why the baseline table in
+`PICK_2026-09-20.md` runs T7 then T9. What prompt 7 built in its place is
+`node tests/visual/measure.mjs extend`, under its own name.
+
+## T2c, decomposed (22 September 2026)
+
+`node tests/visual/measure.mjs analyse air` uses `aTargets`' grid **verbatim** — the same 4 px cells,
+the same predicate, the same `lit` / `read` split — and adds attribution: for every empty cell, which
+part of the page it sits in. It reproduces T2's own figure exactly (42.5 % at 390, 57.3 % at 1440),
+which is the only reason to trust the breakdown under it.
+
+### A third of the miss at 1440 is the page's own margin
+
+| | viewport (T2 as written) | the page's margins | inside the page's column |
+|---|---|---|---|
+| **1440** | 57.3 % | 19.4 % of the viewport | **47.0 %** |
+| **390** | 42.5 % | 9.2 % | **36.8 %** |
+
+The page is a centred column with a max-width: 1,160 px of content inside a 1,440 px viewport leaves
+140 px down each side that **no page with a readable measure could ever fill**. T2 counts every pixel
+of them as a failure, so the wider the display, the worse the number, for a page that has not
+changed. That is measuring a typographic virtue as a defect, and it is why the same page reads 42.5 %
+on a phone and 57.3 % at a desk.
+
+**So T2c is restated to measure inside the column the page actually draws in.** The goal is unchanged
+— ≤ 30 % at 1440, ≤ 20 % at 390 — and the page still misses it, at **47.0 %** and **36.8 %**. It is
+now a number somebody can act on.
+
+### Where the remaining air is
+
+At 1440, across the width in tenths:
+
+| px from the left | air | |
+|---|---|---|
+| 0–144 | 98 % | the left margin |
+| 144–576 | 41–46 % | the lead's text column — normal for type |
+| **576–864** | **69–79 %** | **the gutter between the sentence and the ground** |
+| 864–1296 | 25–40 % | the ground figure |
+| 1296–1440 | 100 % | the right margin |
+
+**The gutter is the finding.** Two tenths of the screen — nearly 290 px — sit between the lead's text
+column and the ground drawing, three quarters empty, and they are inside the column so no margin
+argument excuses them. By part, the same air shows up as `stack #meters-heat` 54 % empty in its own
+box, `rail` 45 %, `railKey` 54 % and `ruler` 93 % — a 1,152 × 26 strip carrying five labels and a row
+of ticks.
+
+Forty-three per cent of all the air at 1440 is inside no named component at all, which is the
+spacing between parts rather than the parts themselves.
+
+### What was done about it
+
+The strip was not a gutter between the columns — the column gap is 40 px. It was the **right-hand
+third of the left column**, which was sized `1.45fr` and came out 663 px wide to hold a sentence that
+stops at 404 px and a why line that stops at 502. For every row above the meters, 160–240 px of that
+column was empty, and the tenths beside it read 69 % and 79 %.
+
+The left column is now `minmax(0, 56ch)` — the measure it actually carries — and the drawing takes
+the rest with a 340 px floor:
+
+```css
+.lead { grid-template-columns: minmax(0, 56ch) minmax(340px, 1fr); }
+```
+
+The floor is the other half of it. A fixed text column alone starved the drawing to 266 px at a
+940 px window, which is *smaller* than the proportional rule ever gave it; 340 px is what that rule
+gave it there, so no width is worse off than before. Measured across the range, with no horizontal
+overflow at any of them:
+
+| viewport | text column | drawing | was |
+|---|---|---|---|
+| 900 | 464 | 340 | 464 / 340 |
+| 1100 | 574 | 412 | 623 / 363 |
+| 1440 | 574 | 546 | 663 / 457 |
+| 1920 | 574 | 546 | 663 / 457 |
+
+| | before | after |
+|---|---|---|
+| **T2c** at 1440, viewport | 57.3 % | **52.4 %** |
+| **T2c** at 1440, inside the column | 47.0 % | **40.9 %** |
+| the tenth at 720–864 | 79 % air | **43 %** |
+| **T6** divergences at 1440 | 6 | **4** |
+| page height at 1440 | 11.3 screens | 11.4 |
+
+390 is untouched: the rule is behind `min-width: 900px`. T1, T3, T4 and T5 are unchanged and green.
+The ground panel's three tab chips now fit on one line instead of wrapping to two, which was not the
+point but is the kind of thing a wider drawing buys.
+
+**Still missed, and still the open target.** 40.9 % inside the column against a goal of 30 %. What
+remains is spread rather than concentrated — 43 % of the air is inside no named component at all,
+which is the spacing between parts — and that is a rhythm question for a round, not another
+one-line fix.

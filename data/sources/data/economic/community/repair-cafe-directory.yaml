@@ -1,0 +1,49 @@
+name: Repair Café International directory
+url: https://www.repaircafe.org/en/visit/
+description: |
+  The International Repair Café Foundation's directory of 4,015 repair cafés:
+  name and street address for each, worldwide. The only network-scale record of
+  where a person can take a broken thing and be helped to fix it.
+pillar: economic
+scale: community
+status: planned
+license: not stated
+api: null
+pilot_relevance: [global]
+tags: [repair, circular-economy, directory, volunteer, act]
+added: 2026-09-22
+auth: none
+role: [act]
+act_kind: repair
+upstream_listed_in: []
+notes: |
+  `planned`, NOT `live`, and the distinction is the point: the records exist and
+  are public, but there is no way to read them as data. Carried so the gap is
+  visible and so nobody re-does this search.
+
+  VERIFIED 2026-09-22. `repaircafe.org/en/visit/` renders 4,015 cafés with street
+  addresses, server-side, through a WordPress/BuddyPress map plugin
+  (`bp-maps-for-members`). The page's network traffic contains no JSON, GeoJSON
+  or tile-data request — the list is HTML. There is no documented export, no
+  download and no API on the site.
+
+  LICENCE NOT STATED. Nothing on the homepage or the visit page states terms,
+  reuse or attribution for the directory. Criterion 1 is unmet, but that is moot
+  while there is nothing to reuse.
+
+  DO NOT SCRAPE THIS ONE, for a reason beyond the licence. The site's stock
+  WordPress REST API is reachable without a key and returns member records that
+  include personal email addresses. That is a platform default and not a
+  published dataset; it is not an export, and a node must not read it. The Fab
+  City Foundation should tell the Repair Café Foundation it is open — that is a
+  courtesy, not a finding this list acts on.
+
+  WHAT WOULD MAKE THIS `live`: one CSV or GeoJSON of name, address and
+  coordinates under an open licence. 4,015 rows the Foundation already publishes
+  as HTML. Worth asking for — repair is the only `act_kind` in this list with a
+  single source, and this is it.
+
+  The Open Repair Alliance's ORDS dataset is a different thing — repair EVENT
+  records, not a directory of places — and is not this entry.
+
+  No `adapter`: nothing reads it, and nothing can.

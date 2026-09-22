@@ -1,0 +1,56 @@
+name: Open Lab Starter Kit (OLSK)
+url: https://www.inmachines.net/open-lab-starter-kit
+description: |
+  Eight open-source digital fabrication machines with full build files — two
+  lasers, two CNC mills, two 3D printers, a vinyl cutter and a 3D scanner, plus
+  shared electronics. How a lab gets its machines rather than buys them.
+pillar: economic
+scale: planet
+status: live
+license: "CERN-OHL-W-2.0 on eight of the nine repositories; OLSK-Large-3D-Printer is GPL-3.0. Per-repository, verified 2026-09-22 — see notes."
+api: null
+pilot_relevance: [global]
+tags: [open-hardware, machine-tools, fab-lab, cern-ohl, fab-city-hamburg, act]
+added: 2026-09-22
+auth: none
+role: [act]
+act_kind: design
+upstream_listed_in: []
+notes: |
+  MEETS CRITERION 1 — and it is the only act source added in this PR that does.
+  The licences are real, per-repository and machine-readable.
+
+  VERIFIED 2026-09-22 against the GitHub API for the `Open-Lab-Starter-Kit`
+  organisation, reading each repository's detected SPDX id rather than a prose
+  claim on a project page:
+
+    OLSK-Small-Laser        CERN-OHL-W-2.0
+    OLSK-Large-Laser        CERN-OHL-W-2.0
+    OLSK-Small-CNC          CERN-OHL-W-2.0
+    OLSK-Large-CNC          CERN-OHL-W-2.0
+    OLSK-Small-3D-Printer   CERN-OHL-W-2.0
+    OLSK-Large-3D-Printer   GPL-3.0          <- the exception
+    OLSK-3D-Scanner         CERN-OHL-W-2.0
+    OLSK-Vinyl-Cutter       CERN-OHL-W-2.0
+    OLSK-Electronics        CERN-OHL-W-2.0
+
+  The act-side document's lead said "CERN-OHL variant — verify". Verification
+  found the exact variant — W-2.0, the weakly reciprocal one — and one repository
+  that is not CERN-OHL at all. Anyone building the large 3D printer inherits
+  GPL-3.0 reciprocity on a hardware design, which is a different obligation from
+  its seven siblings. That single-row difference is why this list cites licences
+  per repository and not per project.
+
+  `act_kind: design`, not `equipment`. CONTRIBUTING reserves `equipment` for the
+  day one lab's own OKW machine record is an entry in its own right; this is a
+  commons of designs for machines, which is the design kind. `economic/planet`
+  because a commons publishes globally — what is local is the building.
+
+  NO API, and `status: live` is not claiming one: the deliverable is git
+  repositories, browsable and cloneable without a key. `api: null` is honest.
+
+  Built by the New Production Institute with InMachines Ingrassia, as a Fab City
+  Hamburg measure under dtec.bw. A Fab City project, which makes the GPL-3.0
+  outlier worth one question to the maintainers rather than a guess here.
+
+  No `adapter`: nothing in planetai-node reads it.

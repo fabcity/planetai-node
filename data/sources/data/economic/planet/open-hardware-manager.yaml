@@ -1,0 +1,52 @@
+name: OHM — Open Hardware Manager
+url: https://www.openhardwaremanager.org/
+description: |
+  A matcher between open hardware designs and the workshops that could build
+  them: pick a design, rank facilities by capability with a domain-aware match,
+  export the chosen workshops' contact details. It holds no facilities of its
+  own — it reads them from Maps of Making.
+pillar: economic
+scale: planet
+status: live
+license: not stated
+api: https://www.openhardwaremanager.org/v1/api/okw/spaces
+pilot_relevance: [global]
+tags: [open-hardware, okw, matcher, supply-chain, fab-lab, act]
+added: 2026-09-22
+auth: none
+role: [act]
+act_kind: match
+upstream_listed_in: []
+notes: |
+  A MATCHER, NOT A DIRECTORY. This is the distinction that decides whether it
+  belongs here, so: OHM holds no facilities of its own. `/v1/api/okw/spaces`
+  answered `local_count: 0`, `mom_count: 3193`, `total: 3193` in this session —
+  every facility it can match against is `economic/community/maps-of-making`,
+  fetched live. What OHM adds is the match: pick a design, rank facilities by
+  capability, export the chosen workshops' contact details. Coordination happens
+  outside OHM. `act_kind: match` exactly as CONTRIBUTING defines it.
+
+  LICENCE NOT STATED for the data — 2026-09-22. Pages read: the application's own
+  rendered text carries no licence, terms or attribution statement; the API's
+  `metadata` envelope carries only `processing_time` and `timestamp`; and
+  `github.com/binaryLady/OHM` has a LICENSE file which is GPL-3.0 verbatim,
+  covering the CODE. Its README discusses open hardware licensing generally and says
+  nothing about the facility or design records — the same shape as fablabs.io, where
+  a code licence gets read as a data licence.
+  CONTRIBUTING criterion 1 is NOT met; licence-pending, and one of ours.
+
+  INHERITED PROVENANCE. Because every facility comes from Maps of Making, and
+  2,412 of those 3,193 are harvested `fablabs.io/labs/*` records, OHM is the third
+  hop of a chain whose origin publishes no data licence and restricts harvesting
+  (ToS §7.4, see `economic/community/fablabs-io`). Resolving it upstream resolves
+  it here; nothing OHM can write in its own repo will.
+
+  API VERIFIED 2026-09-22: `/v1/api/utility/domains`, `/v1/api/utility/metrics`
+  and `/v1/api/okw/spaces?include_mom=true` all returned 200 with no key and no
+  account. `/v1/api/identity/security-policy` reports
+  `require_auth_for_writes: true`, so reads are open by design and writes are not.
+
+  A Fab City hub instance is planned — tracker 1.30. Until it exists this entry
+  describes the public instance only.
+
+  No `adapter`: nothing in planetai-node reads it yet.

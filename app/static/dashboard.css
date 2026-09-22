@@ -100,6 +100,24 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
   [data-kind="stack"] .col:nth-child(3) { padding-left: 0 }
 }
 
+/* The matrix's fifth column. [data-kind="stack"] is four distances, so a fifth child wrapped to a
+   row of its own and the line read as a second heading under each issue — a whole band of wasted
+   height per row. Answer the track list, not just the class.
+
+   The divider before it is heavier than the others on purpose: the four to its left are readings
+   and this one is not, it is what they are read against. A fifth identical column would say they
+   were five of the same thing. Weight, not hue — the layer's rule. */
+.stack.withline { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, .8fr) }
+.stack.withline .col.line { border-left: 1px solid var(--ink); padding-left: 12px }
+.stack.withline .col.line .k { color: var(--ink) }
+@media (max-width: 560px) {
+  /* At two columns the line cannot sit beside anything, so it spans and keeps its heavier rule on
+     the edge that is now above it rather than beside it. */
+  .stack.withline { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .stack.withline .col.line { grid-column: 1 / -1; border-left: 0; padding-left: 0;
+    border-top: 1px solid var(--ink) }
+}
+
 /* ---------------------------------------------------------------- 3 · series
  * A trace with an axis, a time origin, the line, and a text alternative. The text alternative is
  * not a fallback: it is beside the drawing at every width, because the drawing stretches and its
@@ -116,6 +134,15 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
   vertical-align: middle; margin-right: 6px }
 [data-kind="series"] .legend i.dash { border-top-style: dashed }
 [data-kind="series"] .legend i.dot { border-top-style: dotted }
+/* A distance that is NOT drawn, named in the same legend as the ones that are. Its rule is a gap,
+   not a line, so the legend itself says which of the four have a trace and which do not — and it
+   is the muted weight, never a colour, because absence is not a warning. */
+[data-kind="series"] .legend .gone { color: var(--mute) }
+[data-kind="series"] .legend .gone i { border-top: 1.5px dotted var(--dim); opacity: .55 }
+/* The hours-over key. The marks under the axis are the one red thing in the drawing after the
+   line itself, so the legend entry carries the same red and the count beside it. */
+[data-kind="series"] .legend .over i { border-top: 0; width: 2px; height: 11px;
+  background: var(--signal-worse); vertical-align: -2px }
 
 /* ---------------------------------------------------------------- 4 · row
  * A ledger, an index, a unit row or a sensor row. One grammar: a left rail that is scannable, a
@@ -132,6 +159,11 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 [data-kind="row"] .signs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
 [data-kind="row"] .signs svg.sg { width: 18px; height: 18px; color: var(--ink) }
 [data-kind="row"] .signs svg.sat { color: var(--satellite-only) }
+/* A row with BOTH a sentence and a strip of signs gives the strip its own grid row.
+   Side by side, a strip of 22 rings took the `auto` track and squeezed the 1fr sentence to one word
+   a line — twenty lines of single words where a sentence should be. Isotype rows (`.units`) have no
+   sentence and keep the strip inline, which is why this is scoped to rows that have both. */
+[data-kind="row"]:has(> .line):has(> .signs) > .signs { grid-column: 2 / -1; margin-top: 2px }
 [data-kind="row"].quiet .name, [data-kind="row"].quiet .line { opacity: .72 }
 [data-kind="row"].unwatched { opacity: .5 }
 @media (max-width: 820px) {
@@ -164,12 +196,81 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .funnel .bar { height: 14px; border: 1px solid var(--ink); background: var(--raise) }
 .funnel .bar > i { display: block; height: 100%; background: var(--ink) }
 .funnel .lat { font: 500 11px var(--mono); color: var(--mute); text-align: right; white-space: nowrap }
-.funnel .m2 { display: grid; grid-template-columns: minmax(0, 14ch) 1fr 1fr; gap: 1px;
-  margin-top: 14px; background: var(--hair); border: 1px solid var(--hair) }
-.funnel .m2 > * { background: var(--ground); padding: 8px 10px; font-size: 12.5px }
-.funnel .m2 .h { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase;
-  color: var(--mute) }
-.funnel .m2 b { font-family: var(--mono); font-size: 18px }
+/* The reason line under a stage. It is a fourth child of a three-column .st, so it is told to span
+   the row; without this it lands in column one and reads as a second stage name. */
+.funnel .st .m { grid-column: 1 / -1; font-size: 11.5px; color: var(--mute); margin: -2px 0 0 }
+/* A stage at zero, in weight and never in hue: the bar keeps its outline so the row still reads as a
+   stage that exists and is empty, rather than as a stage that is missing. */
+.funnel .st.none .k { font-weight: 400; color: var(--mute) }
+.funnel .st.none .lat { color: var(--mute) }
+.funnel > .note { margin-top: 10px }
+
+/* The care label. Five sentences the architecture owns, set as a block so it reads as one label and
+   not as five more rows of data. The sign slot keeps its width when a sign is absent, so the
+   sentences stay aligned while `person` does not exist. */
+.care { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--ink) }
+.care .k { margin: 0 0 8px }   /* the rest comes from .k, which the shout gate already knows about */
+.care .rf { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start;
+  margin: 0 0 6px; font-size: 12.5px; line-height: 1.45 }
+.care .sg { display: block; width: 18px; height: 18px }
+.care .sg svg { width: 18px; height: 18px; color: var(--ink) }
+
+/* Isotype unit rows. [data-kind="row"] .signs already wraps them, sizes them and gives svg.sat the
+   satellite's own colour, so only the two states it has never needed are here.
+
+   Somebody else's station is the same sign at less weight: the same kind of thing, read at a
+   distance. And a twentieth of the ground that is NOT built still occupies its place, so the row is
+   the same width whatever the share is and both halves can be counted. Weight, never hue. */
+.units .row .signs svg.sg.faint { opacity: .45 }
+.units .row .signs svg.sg.off { opacity: .22 }
+
+/* The barcode: one row an issue, one bar an hour. The strip stretches and the bars with it, which
+   is right — an hour is an hour whatever the screen is — and the label and the count hold their
+   own width so four rows line up down the page. */
+.barcode { display: grid; gap: 6px; margin: 0 0 16px }
+.barcode .bc { display: grid; grid-template-columns: minmax(0, 12ch) minmax(0, 1fr) auto;
+  gap: 12px; align-items: end; border-top: 1px solid var(--hair); padding-top: 6px }
+.barcode .bc .k { font: 500 11px var(--mono); color: var(--mute); align-self: center }
+.barcode .bc svg { width: 100%; height: 34px; display: block; fill: var(--ink) }
+/* Over that issue's own line: the same red the hours-over marks under a trace use, for the same
+   fact, so a reader who has learnt one has learnt both. */
+.barcode .bc svg rect.over { fill: var(--signal-worse) }
+/* An hour with no reading is a hairline on the floor, not a gap in the row: a missing hour and an
+   hour that read zero are different, and a blank would draw them the same. */
+.barcode .bc svg rect.gap { fill: var(--dim) }
+.barcode .bc .m { font: 700 12px var(--mono); color: var(--ink); align-self: center }
+.barcode .bc .empty { font-size: 12.5px; color: var(--mute); align-self: center;
+  grid-column: 2 / -1 }
+.barcode .cap { font-size: 12px; color: var(--mute); margin: 4px 0 0; line-height: 1.45 }
+
+/* The worked instance under the sentence template: the node's own sentence, and under it the parts
+   named. Indented from the row above so it reads as that row's example and not as a fourth row. */
+.tmplex { display: grid; gap: 4px; margin: 0; padding: 10px 0 12px 12px;
+  border-left: 2px solid var(--hair) }
+.tmplex .k { margin: 0 }   /* the rest is the global .k, which the shout gate already knows */
+.tmplex .said { font-size: 14.5px; line-height: 1.45; color: var(--ink) }
+.tmplex .m { font-size: 12px; color: var(--mute); line-height: 1.5 }
+.tmplex .m b { font-weight: 700; color: var(--ink) }
+
+/* The Figures ledger. It scrolls INSIDE its own box rather than making the page scroll sideways —
+   N6 of the UX review measured the old one at 435 px in a 390 px column, which took the whole page
+   with it. The overflow gate in tests/visual/gate.sh checks the document, so a table that scrolls
+   itself passes and a table that pushes the page does not. */
+.figwrap { overflow-x: auto; -webkit-overflow-scrolling: touch }
+table.figs { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 12.5px }
+table.figs th { font: 500 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--mute); text-align: left; padding: 0 12px 6px 0; border-bottom: 1px solid var(--ink) }
+table.figs td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--hair);
+  vertical-align: baseline }
+table.figs td.mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+table.figs td.num { font-weight: 700; white-space: nowrap }
+table.figs td small { font-weight: 500; color: var(--mute) }
+.figwrap .cap { font-size: 12px; color: var(--mute); margin: 8px 0 0 }
+@media (max-width: 560px) {
+  /* The label goes above at phone width: twelve characters and 24 bars cannot share 390 px. */
+  .barcode .bc { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px }
+  .barcode .bc .k { grid-column: 1 / -1; align-self: start }
+}
 
 .peer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px 0;
   border-top: 1px solid var(--hair); align-items: start }
@@ -310,47 +411,187 @@ header .wrap { display: flex; align-items: center; justify-content: space-betwee
 .brand { display: flex; align-items: baseline; gap: 10px; min-width: 0 }
 .brand b { font: 800 17px var(--fc-font-display); letter-spacing: -.02em }
 .brand span { font-size: 13px; color: var(--mute) }
+/* The tabs are buttons and have been since the shell was rewritten; these rules still said `span`,
+   so every tab fell back to the base button at line ~669 and drew its own box inside the nav's box.
+   One border around the group and one hairline between, which is what the rules always meant. */
 nav { display: flex; border: 1px solid var(--ink) }
-nav span { padding: 7px 14px; font: 500 13.5px var(--fc-font-body); color: var(--mute);
-  border-right: 1px solid var(--ink); white-space: nowrap }
-nav span:last-child { border-right: 0 }
-nav span.on { background: var(--ink); color: var(--ground) }
+nav span, nav button { padding: 7px 14px; font: 500 13.5px var(--fc-font-body); color: var(--mute);
+  background: none; border: 0; border-right: 1px solid var(--ink); white-space: nowrap }
+nav span:last-child, nav button:last-child { border-right: 0 }
+nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-weight: 700 }
 
-/* THE DIAL. Eleven stops, two lines across it, and the whole page hanging off where it stands. */
-.dialwrap { position: sticky; top: 0; z-index: 3; background: var(--ground);
+/* A segmented control: the register here, and the mode beside it. Same anatomy as the nav, set in
+   the mono at label size because it names a state of the page rather than a place in it. */
+.seg { display: flex; border: 1px solid var(--ink) }
+.seg button { padding: 7px 12px; font: 500 11px var(--mono); letter-spacing: .06em;
+  text-transform: uppercase; color: var(--mute); background: none; border: 0;
+  border-right: 1px solid var(--ink); white-space: nowrap }
+.seg button:last-child { border-right: 0 }
+.seg button.on { background: var(--ink); color: var(--ground); font-weight: 700 }
+
+/* THE DIGEST — simple mode's whole answer: four stages, one sentence each, written by the node.
+   Four tracks on a wide screen and one on a narrow one; `minmax(0, 1fr)` because a long sentence in
+   an `auto` track widens the page instead of wrapping inside it. */
+.digest { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--ink); margin-block: 22px }
+.digest .d { min-width: 0; padding: 12px 14px; border-right: 1px solid var(--ink) }
+.digest .d:last-child { border-right: 0 }
+.digest .d .n { display: inline-block; vertical-align: middle; width: 20px; height: 20px;
+  margin-right: 8px; border: 1px solid var(--ink); font: 800 11px var(--mono); line-height: 18px;
+  text-align: center }
+.digest .d b { vertical-align: middle; font: 700 17px var(--fc-font-display); letter-spacing: -.01em }
+.digest .d p { margin: 8px 0 0; font: 400 14px var(--fc-font-body); line-height: 1.45 }
+@media (max-width: 860px) {
+  .digest { grid-template-columns: minmax(0, 1fr) }
+  .digest .d { border-right: 0; border-bottom: 1px solid var(--ink) }
+  .digest .d:last-child { border-bottom: 0 }
+}
+
+/* THE GRAIN RAIL. Eleven stops, the top instrument on Now, and the whole page hanging off where it
+   stands. Design log R14.
+
+   THE ZONES ARE TEXTURE, NOT HUE. `may_leave` was a 12% wash of the cells blue, which spent the one
+   colour that means "a cell" on a second meaning, vanished for a reader who cannot separate blue
+   from grey, and went white on a printed plate. It is a dot screen now. `finer_than_published` was
+   already a strike-through and stays one. Plain is plain. */
+.railwrap { position: sticky; top: 0; z-index: 3; background: var(--ground);
   border-bottom: 1px solid var(--ink); padding-block: 10px }
-.dial { display: flex; border: 1px solid var(--ink); overflow: hidden }
-.dial a { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; text-align: center; text-decoration: none;
-  color: var(--mute); border-right: 1px solid var(--hair); display: grid; gap: 2px }
-.dial a:last-child { border-right: 0 }
-.dial a .r { font: 700 13px var(--mono) }
-.dial a .s { font: 500 9.5px var(--mono); letter-spacing: .04em; white-space: nowrap;
+.rail { display: flex; border: 1px solid var(--ink); overflow: hidden }
+.rail a { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; text-align: center; text-decoration: none;
+  color: var(--mute); border-right: 1px solid var(--hair); display: grid; gap: 2px;
+  position: relative }
+.rail a:last-child { border-right: 0 }
+.rail a .r { font: 700 13px var(--mono) }
+.rail a .s { font: 500 9.5px var(--mono); letter-spacing: .04em; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis }
-.dial a.on { background: var(--ink); color: var(--ground) }
-.dial a.leaves { background: color-mix(in srgb, var(--cells) 12%, transparent) }
-.dial a.leaves.on { background: var(--ink) }
-.dial a.toofine .r { text-decoration: line-through }
-.dialkey { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font: 500 10.5px var(--mono);
+.rail a.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
+  background-size: 6px 6px }
+/* The dots run under the text, so both lines carry the ground with them to stay legible on it. */
+.rail a.leaves .r, .rail a.leaves .s { background: var(--ground); width: max-content; max-width: 100%;
+  margin-inline: auto; padding-inline: 4px }
+.rail a.on { background: var(--ink); color: var(--ground); background-image: none }
+.rail a.on .r, .rail a.on .s { background: none; color: var(--ground) }
+.rail a.toofine .r { text-decoration: line-through; text-decoration-thickness: 2px }
+/* The picked stop says so twice: inverted, and pointed at. */
+.rail a.on .r::before { content: "\25c2\00a0"; font-weight: 400 }
+.rail a.on .r::after { content: "\00a0\25b8"; font-weight: 400 }
+
+/* THE RULE. Eleven equal boxes say the step from 7 to 8 is the step from 11 to 12; it is about the
+   same factor but on numbers three orders of magnitude apart. This puts each grain where it falls
+   between 10 m and 200 km. Hidden below 860, where it would draw a distinction finer than its
+   pixels. Decorative in the accessibility tree: every figure in it is already in the rail above. */
+.ruler { position: relative; height: 26px; margin: 6px 4px 0 }
+.ruler .line { position: absolute; inset: 0 0 auto; height: 9px;
+  border-bottom: 1px solid var(--hair) }
+.ruler .line i { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--mute) }
+.ruler .line i.on { height: 9px; width: 2px; background: var(--ink) }
+.ruler .marks { position: absolute; inset: 11px 0 auto; height: 14px }
+.ruler .marks span { position: absolute; transform: translateX(-50%); white-space: nowrap;
+  font: 500 9px var(--mono); letter-spacing: .04em; color: var(--mute) }
+@media (max-width: 860px) { .ruler { display: none } }
+
+.railkey { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font: 500 10.5px var(--mono);
   letter-spacing: .06em; color: var(--mute) }
-.dialkey i { display: inline-block; width: 14px; height: 9px; border: 1px solid var(--ink);
+.railkey code { font: inherit; color: var(--ink) }
+.railkey i { display: inline-block; width: 14px; height: 9px; border: 1px solid var(--ink);
   vertical-align: -1px; margin-right: 5px }
-.dialkey i.leaves { background: color-mix(in srgb, var(--cells) 12%, transparent) }
-.dialkey i.fine { border-style: dashed }
+.railkey i.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
+  background-size: 5px 5px }
+.railkey i.fine { border-style: dashed }
 
 .lead { padding: clamp(14px, 2vw, 22px) 0 clamp(10px, 1.6vw, 16px); display: grid; gap: 10px }
+/* On a phone the lead is one column of six blocks, so its gaps are 50px of the first screen and
+   the as-of line was landing 12px under the fold — T1's fifth leg, for the sake of spacing. */
+@media (max-width: 520px) { .lead { gap: 7px } .stack.meters .col { padding: 4px 0 } }
 .lead .big { font: 700 clamp(1.35rem, 2.6vw, 2.1rem)/1.18 var(--fc-font-display);
   letter-spacing: -.03em; max-width: 26ch; text-wrap: balance }
-.lead .big b { font-family: var(--mono); font-weight: 700; font-size: clamp(2.4rem, 5.2vw, 4rem);
-  line-height: .78; letter-spacing: -.04em; vertical-align: -.06em; margin: 0 .05em }
+/* THE MONUMENT — its own row, which is the whole point. The figure was inline inside the sentence
+   until 21 September and kept having to shrink, because a 132px numeral inside a paragraph decides
+   where every line in that paragraph breaks. Out of the flow it is the size the sketch draws it.
+   `--num-face` is the layer's token for which face; the fallback keeps it on the mono where the
+   frozen layer predates the token. O13 is whether it stays mono or goes to Funnel Sans. */
+.lead .num { display: flex; align-items: flex-end; gap: clamp(12px, 1.6vw, 22px); min-width: 0 }
+.lead .num .v { font-family: var(--num-face, var(--mono)); font-weight: 800;
+  font-size: clamp(3.4rem, 9.2vw, 8.25rem); line-height: .82; letter-spacing: -.06em }
+.lead .num .u { font: 600 clamp(15px, 1.8vw, 26px) var(--mono); letter-spacing: -.02em;
+  padding-bottom: clamp(4px, .7vw, 10px); white-space: nowrap }
+/* The sentence is prose and is set as prose: the sketch gives it the body face at 21px, not the
+   display face the whole lead used to be in. The figure inside it is the sentence's own word for
+   the number, at sentence size — the monument above is the reading. */
+.lead .big { font: 400 clamp(16px, 1.5vw, 21px)/1.3 var(--fc-font-body); letter-spacing: 0;
+  max-width: 30ch }
+.lead .big b { font-family: var(--mono); font-weight: 700 }
+/* What the red tick on every meter means, said once. */
+.legend { font: 500 10.5px var(--mono); letter-spacing: .04em; color: var(--mute); margin: 0 }
+.legend i { display: inline-block; width: 9px; height: 2px; background: var(--signal-worse);
+  vertical-align: middle; margin-right: 7px }
+
+/* THE BRACKET METERS — the Stack's mini variant, design-log R15. Sixteen cells against one scale
+   shared by the four distances, and the line as a tick at the same x on every row, so under it and
+   over it is a thing you see instead of a thing you work out. The anatomy is the Stack's; only the
+   value's drawing is different, which is why this is a variant and not a fifth card kind. */
+/* Every property the four-column base sets has to be answered here, not just `display`: the cascade
+   is per property, so a rule that changed only display and gap left `repeat(4, minmax(0, 1fr))`
+   standing and drew four meters side by side, overprinting each other. */
+.stack.meters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0;
+  border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair) }
+.stack.meters .col { display: grid; grid-template-columns: minmax(0, 7.5em) minmax(0, 1fr) auto;
+  gap: 4px 10px; align-items: center; padding: 6px 0; border-right: 0;
+  border-top: 1px dotted var(--hair) }
+.stack.meters .col + .col { padding-left: 0 }
+.stack.meters .col:first-child { border-top: 0 }
+.stack.meters .col .k { font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.stack.meters .col .v { display: flex; align-items: center; gap: 8px; min-width: 0;
+  margin-top: 0; white-space: nowrap }
+.stack.meters .col .v .num { font: 700 15px var(--mono) }
+.stack.meters .col .v small { font: 500 10px var(--mono); color: var(--mute) }
+/* ONE LINE PER DISTANCE, which is what the sketch draws and what makes four of these a glance
+   rather than a section. The full Stack — comparison and provenance visible per column — is still
+   drawn wherever a Stack is drawn; this is the mini variant in the lead, and four rows of four
+   lines each came to 356 px and pushed the as-of line off the first screen. T1's fifth leg.
+   The comparison is not lost: `data-cmp` is an attribute on every numeral and T4 reads it there.
+   It is only not SHOWN — except where there is no reading, when the words are the whole point. */
+.stack.meters .col .cmp { display: none }
+.stack.meters .col .cmp.none { display: block; grid-column: 2 / -1; font: 500 10.5px var(--mono);
+  letter-spacing: .02em; color: var(--mute); font-style: italic }
+.stack.meters .col .src, .stack.meters .col .pill { display: none }
+.meter { display: block; width: 100%; height: 11px; min-width: 0; overflow: visible }
+.meter .on { fill: var(--ink) }
+.meter .off { fill: none; stroke: var(--hair); stroke-width: .9 }
+.meter .line { fill: var(--signal-worse) }
+
+/* Where the open asks are, said once, in the stamp line the lead ends on. */
+.askref { font: 500 10.5px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink) }
+.askref.none { color: var(--mute); border-bottom: 0 }
+.askref b { font-weight: 700 }
+/* The pictogram belongs to the monument, beside the figure, at the size the sketch draws it. */
+.pix { flex: 0 0 auto; width: clamp(92px, 10.4vw, 150px); height: auto; aspect-ratio: 15 / 11;
+  color: var(--ink) }
 .lead .why { max-width: 54ch; font-size: 14.5px }
 .lead .whenline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap }
 @media (min-width: 900px) {
-  .lead { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    grid-template-areas: "k g" "s g" "w g" "n g" "a g" "t g"; gap: 9px clamp(20px, 3vw, 40px);
+  /* THE TEXT COLUMN IS ITS MEASURE, AND THE DRAWING HAS A FLOOR.
+     It was `1.45fr 1fr`, which at 1440 gave the left column 663 px to hold a sentence that stops at
+     404 and a why line that stops at 502 — so a 200 px strip of it was empty for every row above
+     the meters, and T2c's own decomposition put 79 % air in the tenth beside it. `56ch` is the
+     measure the column actually carries. The 340 px floor on the drawing is the other half: a fixed
+     text column alone starved the ground to 266 px at a 940 px window; 340 is what the
+     proportional rule gave it there, so no width is worse off than before. Measured with `analyse air`: 57.3 % → 52.4 % of the viewport at
+     1440, 47.0 % → 40.9 % inside the page's own column, and T6 from six divergences to four. */
+  .lead { grid-template-columns: minmax(0, 56ch) minmax(340px, 1fr);
+    /* 7px and not 9: six rows of it is 45px of the first screen, and the as-of line was sitting
+       five pixels above the fold before the ground panel gained one sentence. */
+    grid-template-areas: "k g" "n g" "s g" "w g" "m g" "l g" "t g"; gap: 7px clamp(20px, 3vw, 40px);
     align-items: start }
-  .lead > .k { grid-area: k } .lead > .big { grid-area: s }
-  .lead > .why { grid-area: w } .lead > .why.grainline { grid-area: n }
-  .lead > .ask { grid-area: a } .lead > .whenline { grid-area: t }
+  .lead > .k { grid-area: k } .lead > .num { grid-area: n } .lead > .big { grid-area: s }
+  /* `.why` matched the why line AND the headline rule, which both landed in `w` and printed on top
+     of each other at every width over 900. The rule is a span inside the why line now, so there is
+     one element here and nothing to collide with. `a` was the ask strip's; the strip is in Act and
+     the meters take the row. */
+  .lead > .why { grid-area: w } .lead > .stack { grid-area: m }
+  .lead > .legend { grid-area: l } .lead > .whenline { grid-area: t }
   .lead > .mapwrap { grid-area: g; align-self: start }
 }
 
@@ -398,7 +639,28 @@ details.notefold[open] > summary .n::after { content: ' · open' }
 /* A base this node will not send for, drawn rather than hidden: a reader can see that satellite and
    street exist and that one setting stands between them and the map. Not a link, not pressable, and
    struck through so it cannot be mistaken for one. */
-.ctlstrip .off { color: var(--mute); opacity: .5; text-decoration: line-through; cursor: not-allowed }
+/* A disabled base is drawn, not hidden — hiding them made a keeper who had seen satellite and street
+   in the prototype think production had lost them. But it was styled for colour only: no padding, no
+   border, so the two of them ran together as "satellitestreet map" inside the strip's own box. It is
+   a cell of the strip like the others; only its state differs. */
+.ctlstrip .off { padding: 6px 12px; font: 500 12px var(--fc-font-body); white-space: nowrap;
+  border-right: 1px solid var(--ink); color: var(--mute); cursor: not-allowed }
+.ctlstrip .off:last-child { border-right: 0 }
+/* The price sits beside the name on ONE line, not under it. Stacked, it made each tab two lines and
+   the ground panel taller — and the map column spans all six rows of the lead, so a taller panel
+   pushes the left column's rows apart and the as-of off the first screen. T1's fifth leg, spent on
+   a line break. */
+.ctlstrip a, .ctlstrip .off { text-decoration: none; white-space: nowrap }
+/* After the rule above, not before it: `text-decoration: none` there was winning on source order and
+   a base you cannot press looked exactly like one you can. The strike is the whole of the state. */
+.ctlstrip .off { text-decoration: line-through; text-decoration-thickness: 1px }
+.ctlstrip .off small { text-decoration: none }
+.ctlstrip a small, .ctlstrip .off small { margin-left: 7px; font: 500 9.5px var(--mono);
+  letter-spacing: .04em; color: var(--mute); text-decoration: none }
+.ctlstrip a.on small { color: var(--ground); opacity: .8 }
+/* The rule the strip follows, under it: a sentence about the strip, not a base you can press. */
+.ctlrule { margin: -6px 0 6px; font: 500 10.5px var(--mono); letter-spacing: .04em; line-height: 1.35;
+  color: var(--mute); max-width: 60ch }
 .ctlstrip { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--ink); width: max-content;
   max-width: 100%; margin-bottom: 10px }
 .ctlstrip a { padding: 6px 12px; font: 500 12px var(--fc-font-body); color: var(--mute);
@@ -422,7 +684,7 @@ table.tbl td.mono { white-space: nowrap; font-family: var(--mono) }
 table.tbl tr.picked td { font-weight: 700 }
 table.tbl tr.flat td { color: var(--mute) }
 
-body.wall header, body.wall .dialwrap, body.wall .band { display: none }
+body.wall header, body.wall .railwrap, body.wall .band { display: none }
 /* The way out of the wall. Quiet until it is wanted: a wall is looked at from three metres and
    read by nobody standing at the keyboard, so the control sits in the corner at low contrast and
    comes up to full on hover and on focus. Never hidden — a door that only appears once you know
@@ -763,8 +1025,30 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
   clip-path: inset(50%); white-space: nowrap; border: 0 }
 h1.brand { font: inherit }
-.tblwrap { overflow-x: auto }
+/* `min-width: 0` is what makes `overflow-x: auto` mean anything here. A grid or flex child floors
+   at its max-content width unless told otherwise, so a box that scrolls its contents still widened
+   the page to fit them: measured at 390, the table is 391px and the document came back 409. */
+.tblwrap { overflow-x: auto; min-width: 0; max-width: 100% }
 .tblwrap:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+
+/* THE THREE BREAKPOINTS the shell reflows on. The page is fluid to the wrap's max width and then
+   centres; these are where its own furniture — the header, the tabs, the two segmented controls —
+   changes shape. Component-level rules elsewhere in this file still carry a scatter of their own
+   widths from before this was written; they are left to the prompts that redraw those components,
+   and the overflow gate in tests/visual/measure.mjs covers all of them either way. */
+@media (max-width: 1180px) {
+  header .wrap { row-gap: 10px }
+}
+@media (max-width: 860px) {
+  /* Six tabs are 429px on one row and the viewport is 390. They wrap, and a wrapped row needs its
+     own bottom hairline or the two rows read as one block with a gap in it. */
+  nav { flex-wrap: wrap }
+  nav span, nav button { flex: 1 1 auto; padding: 7px 10px }
+}
+@media (max-width: 520px) {
+  nav span, nav button { padding: 6px 8px; font-size: 12.5px }
+  .seg button { padding: 6px 9px; font-size: 10px }
+}
 
 /* One column, definite, below the width the lead splits in two.
  *
@@ -792,3 +1076,162 @@ h1.brand { font: inherit }
  * absence, which is the one thing this page may not draw. */
 .satstrip .frame .miss { display: none }
 .satstrip .frame.missing .miss { display: block }
+
+/* ------------------------------------------------------------------ LEARN MODE
+ * The third mode: the page as it is, with a question mark at each part and a panel that quotes the
+ * node's own documentation for it. Nothing is hidden and nothing moves — learn mode only adds.
+ *
+ * THE MARK SITS AT THE END OF THE PART'S OWN LABEL LINE, not floating over its top-right corner as
+ * the sketch drew it. A mark positioned over a corner needs a positioned ancestor and a negative
+ * offset, and at 390 px a negative right offset is horizontal overflow on a page whose gate counts
+ * exactly that across 108 combinations. The label line is the top of the part, it is where the eye
+ * already is, and it reflows for free.
+ *
+ * The float is the one motion: 4 px, transform only, on `--motion-mark-float`, which is in the
+ * frozen layer beside the other motion datums. No fallback duration here: a second copy of the
+ * number is the thing the token exists to prevent. */
+.q { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%;
+  background: var(--ground); color: var(--ink); font: 800 12px/1 var(--mono); cursor: pointer;
+  display: inline-grid; place-items: center; padding: 0;
+  animation: qfloat var(--motion-mark-float) ease-in-out infinite }
+.q:nth-of-type(even) { animation-delay: -1.6s }
+.q:hover, .q[aria-expanded="true"] { background: var(--ink); color: var(--ground) }
+@keyframes qfloat { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+/* The one existing block: every motion on this page goes to zero here, this one with it. */
+@media (prefers-reduced-motion: reduce) { .q { animation: none } }
+
+/* Where the marks sit. A band's kicker is a flex row that was justified apart; pushing the title
+   with an auto margin leaves the rest packed right and looks identical when there are no marks. */
+.band > .k > span:first-child { margin-right: auto }
+.band > .k .q { align-self: center }
+.railkey .q { margin-left: auto }
+.leadk { display: flex; gap: 12px; align-items: baseline; justify-content: space-between }
+.figmarks { display: flex; gap: 8px; justify-content: flex-end }
+.stagehead .q { align-self: center }
+
+/* The bar under the header: where these words come from, and the way in for a reader who would
+   rather be walked than hunt. */
+.learnbar { display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  border: 1.5px solid var(--ink); padding: 9px 14px; margin-top: 10px;
+  font: 500 12px/1.5 var(--fc-font-body) }
+.learnbar .qq { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink);
+  border-radius: 50%; display: inline-grid; place-items: center; font: 800 12px var(--mono) }
+.learnbar span { min-width: 0 }
+.learnbar .walk { margin-left: auto; background: var(--ink); color: var(--ground); border: 0;
+  padding: 7px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer }
+
+/* The panel. Outside #page, because the renderer replaces #page and the panel has to outlive a
+   re-render. Closed is display:none — a reader who never presses a mark never has it in the tree
+   as a thing to tab through. */
+.lpanel { display: none }
+.lpanel.open { display: block; position: fixed; inset: 0 0 0 auto; width: min(420px, 100%);
+  z-index: 9; background: var(--ground); border-left: 1.5px solid var(--ink);
+  padding: 20px 22px 28px; overflow: auto }
+.lpanel .lh { display: flex; gap: 12px; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--ink); padding-bottom: 8px;
+  font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute) }
+.lpanel .lh .k { font-weight: 700; color: var(--ink); letter-spacing: .1em }
+.lpanel .lh .x { background: none; border: 1px solid var(--ink); color: var(--ink);
+  padding: 3px 8px; font: 500 11px var(--mono); cursor: pointer }
+.lpanel h2 { font: 800 clamp(1.15rem, 2vw, 1.5rem) var(--fc-font-display); letter-spacing: -.02em;
+  margin: 16px 0 10px }
+/* The documentation's words, marked as a quotation and set apart from the page's own line. */
+.lpanel .qt { margin: 0 0 14px; border-left: 3px solid var(--ink); padding-left: 14px;
+  font: 400 15px/1.5 var(--fc-font-body) }
+.lpanel .qt code { font: 500 .9em var(--mono) }
+.lpanel .more { font: 400 13.5px/1.55 var(--fc-font-body); color: var(--mute); margin: 0 0 16px }
+.lpanel .more .who { font: 700 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink) }
+.lpanel .src { font: 500 11px/1.7 var(--mono); border-top: 1px dotted var(--ink); padding-top: 10px;
+  color: var(--mute) }
+.lpanel .src code { font: inherit; color: var(--ink) }
+.lpanel .src a { color: var(--cells); overflow-wrap: anywhere }
+.lpanel .nav { display: flex; gap: 8px; margin-top: 16px }
+.lpanel .nav button { flex: 1; background: none; border: 1.5px solid var(--ink); color: var(--ink);
+  padding: 9px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer }
+.lpanel .nav button.pri { background: var(--ink); color: var(--ground) }
+
+/* ------------------------------------------------------------------ ASKING THE NODE
+ * The loading state, over the page and not instead of it. `.on` is the whole of its visibility, the
+ * way the learn panel works and for the same reason: a reader who never waits never has it in the
+ * tree as something to tab through.
+ *
+ * It has no motion of its own in here. The globe is a canvas driven by PAI_RAF — which draws one
+ * still frame under reduced motion — and the numeral and the meters use the layer's own tokens. The
+ * one thing that is CSS is the blink beside the heading, and it goes to zero in the block below. */
+.asking { display: none }
+.asking.on { display: grid; position: fixed; inset: 0; z-index: 8; background: var(--ground);
+  grid-template-columns: minmax(0, 1fr) min(380px, 40vw); gap: clamp(16px, 3vw, 32px);
+  align-content: start; padding: clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px); overflow: auto }
+.asking .frame { position: relative; border: 1px solid var(--ink); aspect-ratio: 1.55;
+  max-height: 60vh; overflow: hidden }
+/* The corner brackets: a frame around a thing being measured, which is what this is. */
+.asking .frame::before, .asking .frame::after { content: ""; position: absolute; width: 18px;
+  height: 18px; border: 1.5px solid var(--ink) }
+.asking .frame::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0 }
+.asking .frame::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0 }
+.asking canvas { width: 100%; height: 100%; display: block }
+.asking .aside { min-width: 0 }
+.asking .hd { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 10px;
+  font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute) }
+.asking .hd b { color: var(--ink); font-weight: 800 }
+.asking .hd .blink { display: inline-block; width: 8px; height: 8px; background: var(--ink);
+  vertical-align: middle; margin-right: 8px; animation: askblink 1s steps(1) infinite }
+@keyframes askblink { 50% { opacity: 0 } }
+.asking .ep .r { display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 7px 0; border-top: 1px dotted var(--ink); font: 500 12.5px var(--mono) }
+.asking .ep .r .ms { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap }
+.asking .ep .r.wait .ms { color: var(--mute); font-weight: 400 }
+/* Four dashes until /issues lands, then the node's own figure with the layer's two arrival motions. */
+.asking .big { font: 800 clamp(2.2rem, 6vw, 3.5rem)/1 var(--num-face, var(--mono));
+  letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin: 14px 0 0 }
+.asking .big small { font: 600 14px var(--mono); letter-spacing: 0; margin-left: 8px }
+/* The lead's four bars, with their words. Same drawing as the page behind, so the eye does not
+   have to re-learn it when the overlay leaves. */
+.asking .meters { display: grid; gap: 4px; margin: 12px 0 0 }
+.asking .meters .r { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px;
+  align-items: center }
+.asking .meters .k { font: 500 10.5px var(--mono); letter-spacing: .06em; color: var(--mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.asking .meters .meter { height: 10px; width: 100% }
+.asking .rule { font: 400 11.5px/1.6 var(--fc-font-body); color: var(--mute); margin: 14px 0 0;
+  max-width: 48ch }
+@media (max-width: 899px) {
+  .asking.on { grid-template-columns: minmax(0, 1fr) }
+  .asking .frame { max-height: 38vh }
+}
+@media (prefers-reduced-motion: reduce) { .asking .hd .blink { animation: none } }
+
+/* The header's ↻. A control, so it is a button and it says what it does to a screen reader. */
+.reask { flex: none; background: none; border: 1px solid var(--hair); color: var(--ink);
+  padding: 5px 9px; font: 500 13px var(--mono); cursor: pointer }
+.reask:hover { border-color: var(--ink) }
+
+/* THE WALL'S TOP BAR — the sketch's, and the answers a person wants before they read a number:
+ * which node, which cell, how open it is, how often the field turns, and what the numbers are.
+ * All of it used to be in the foot, which on a 1080 px screen is the last place the eye arrives. */
+.wallbox .wtop { display: flex; align-items: center; gap: clamp(12px, 1.4vw, 26px); flex-wrap: wrap;
+  border-bottom: 1px solid var(--hair); padding-bottom: clamp(8px, .8vw, 14px);
+  font: 500 clamp(11px, .78vw, 15px) var(--mono); letter-spacing: .06em; color: var(--mute) }
+/* Uppercase on the left half only. The right half carries the UNIT, and `µ` uppercases to `M`, so
+   `µg/m³` becomes `MG/M³` — micrograms read as milligrams, a factor of a thousand, on a wall, in
+   silence. The sketch shouts this half; the sketch is wrong, and check_ui caught it. */
+.wallbox .wtop .who { margin-right: auto; text-transform: uppercase }
+.wallbox .wtop .what { color: var(--ink); font-weight: 700 }
+/* A middot with air either side, so a run of facts reads as a run and not as one long word. */
+.wallbox .wtop i { font-style: normal; margin: 0 .55em; opacity: .55 }
+/* In the bar now, not floated over the corner. It was absolutely positioned top-right from before
+   there was a bar to put it in; the sketch has it top-LEFT and first, which is also where the
+   keyboard reaches it — a wall with the door painted on was the bug that put it here at all. */
+.wallbox .wtop .exit { position: static; margin: 0; opacity: 1; order: -1 }
+/* Four chips under the bar, not nine inside the column. `+N more` is a link, because a wall screen
+   is not touched and the reader who wants the rest is holding a phone. */
+.wallbox .wtop .wvars { display: flex; flex-wrap: wrap; gap: 0; width: max-content; margin: 0 }
+.wallbox .wvars .more { border-left: 0; color: var(--mute) }
+/* The wall's own refusal, where an ask would be, and the dial's key under the dial. */
+.wallbox .wnoask { font: 700 clamp(12px, .95vw, 18px) var(--mono); letter-spacing: .06em;
+  text-transform: uppercase; margin: clamp(10px, 1vw, 18px) 0 0 }
+.wallbox .wcap i { font-style: normal; margin: 0 .5em; opacity: .55 }
+.wallbox .wcap code { font: inherit; color: var(--ink) }

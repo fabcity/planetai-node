@@ -1,0 +1,52 @@
+name: SpaceAPI Directory
+url: https://spaceapi.io/
+description: |
+  A curated list of 251 hacker-, maker- and fab spaces that publish a SpaceAPI
+  JSON endpoint. The Directory itself is a name-to-URL map; each space's own
+  endpoint carries its location, contact details and whether it is open right now.
+pillar: economic
+scale: community
+status: live
+license: not stated
+api: https://directory.spaceapi.io/
+pilot_relevance: [global]
+tags: [hackerspace, makerspace, fab-lab, open-close-state, directory, act]
+added: 2026-09-22
+auth: none
+role: [observe, act]
+act_kind: facility
+upstream_listed_in: []
+notes: |
+  LICENCE NOT STATED — 2026-09-22. Three pages read in this session; none grants or
+  withholds a reuse right:
+
+  - `spaceapi.io` — describes the Directory and the Schema and shows an example
+    status file. Says nothing about terms, reuse, attribution or licensing.
+  - `github.com/SpaceApi/directory` — the repo holding `directory.json` has NO
+    LICENSE file; its four top-level entries are `.github`, `.gitignore`,
+    `README.md`, `directory.json`, and GitHub shows no licence in the sidebar. The
+    README only explains how to add your space by pull request.
+  - `directory.spaceapi.io` — bare JSON, no licence field, header or wrapper.
+
+  CONTRIBUTING criterion 1 is therefore NOT met; carried as licence-pending. One
+  sentence from the SpaceAPI project would settle it.
+
+  API VERIFIED 2026-09-22: returned 200 and a flat JSON object of 251
+  `"<name>": "<endpoint>"` pairs, no key, no account, no rate-limit header.
+  `status: live` rests on that test and claims nothing more.
+
+  THE DIRECTORY IS NOT THE SCHEMA. Only one of the two is this entry. The Schema
+  specifies a space's own status file; the Directory lists the URLs of spaces
+  implementing it and carries no data about any space. A node wanting locations or
+  state must fetch 251 third-party endpoints — cache hard, poll rarely.
+
+  WHY `observe` TOO: each space's own file carries `state.open` and
+  `state.last_change` — whether it is open right now. Across 251 spaces that is a
+  live activity signal for distributed production, the thing
+  `economic/community/fab-lab-activity-index` can only approximate from registry
+  metadata and a census. The `act` half is ordinary: read an address, walk in.
+
+  `economic/community/maps-of-making` re-publishes 201 of these 251. Read this one;
+  it is the upstream.
+
+  No `adapter`: nothing in planetai-node reads it yet.

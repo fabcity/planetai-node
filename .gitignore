@@ -29,3 +29,14 @@ exports/*
 # the September 2026 design audit — 135 MB of evidence, now in planetai-design at
 # design/audit/2026-09/. See docs/design/README.md. Left on disk where it already is.
 docs/design/audit/
+
+# measure.mjs writes its renders beside itself when PAI_OUT is unset, so a `git add -A` after a
+# bare `node tests/visual/measure.mjs render ...` swept 674 kB of generated JSON and PNG into the
+# repo. The inputs it reads (rich-fixture.json) are tracked; nothing it writes should be.
+tests/visual/*_populated_*.json
+tests/visual/*_empty_*.json
+tests/visual/*_refused_*.json
+tests/visual/*_live_*.json
+tests/visual/*.png
+tests/visual/*.jpg
+tests/visual/sizes.json

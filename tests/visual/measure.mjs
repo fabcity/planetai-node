@@ -91,7 +91,12 @@ fs.mkdirSync(OUT, { recursive: true });
 
 const POP = 'http://127.0.0.1:8081';        // bootstrapped, SHARE_LEVEL=open
 const EMPTY = 'http://127.0.0.1:8082';      // fresh install, BOOTSTRAP=0
-const FIXTURE = process.env.PAI_FIXTURE || 'node1-2026-09-06';
+/* Which snapshot the node routes answer from. PAI_Q is the page's own query string and may name a
+ * fixture; PAI_FIXTURE is what serveNodeAPI serves. They are one fact, so PAI_Q wins when it names
+ * one — gate.sh set only PAI_Q, and the page then asked for one capture while /sensors, /health and
+ * /settings answered from another, which is a mismatch nothing would have printed. */
+const _qFixture = (process.env.PAI_Q || '').match(/[?&]fixture=([a-z0-9][a-z0-9._-]{0,63})/);
+const FIXTURE = (_qFixture && _qFixture[1]) || process.env.PAI_FIXTURE || 'node1-2026-09-06';
 
 // The node's own refusal, from app/main.py:744, for SHARE_LEVEL=off on /issues.
 const REFUSAL = p => JSON.stringify({ error:
@@ -329,6 +334,30 @@ function richForecast() {
  * route — the caller must not also route.continue() it. Shared by `open()`'s render path and
  * `stall()`'s stall path: both serve a page and both need the same four answers for the same
  * reason, so there is one function rather than two copies that can drift. */
+/* The pinned registry, read by the node's own loader so the rig cannot drift from it. Cached: it is
+ * a file on disk and 417 kB of JSON, and every job would otherwise pay for it again. */
+let _registry;
+function spawnRegistry() {
+  if (_registry !== undefined) return _registry;
+  const script = `import json, sys
+sys.path.insert(0, 'app')
+import registry
+entries, ver = registry.load()
+rows = registry.find() if entries else []
+print(json.dumps({"registry": {k: ver.get(k) for k in ("sha","short","synced","entries")},
+                  "count": len(rows), "sources": rows}))`;
+  try {
+    _registry = execFileSync('python3', ['-c', script],
+      { cwd: ROOT, maxBuffer: 512 * 1024 * 1024,
+        // SOURCES_DIR defaults to the container's /app/data/sources, so a checkout loads nothing.
+        env: { ...process.env, PYTHONPATH: 'app', SOURCES_DIR: path.join(ROOT, 'data', 'sources') } }).toString();
+  } catch (e) {
+    console.error(`measure.mjs: the registry did not load: ${e.message.split('\n')[0]}`);
+    _registry = null;
+  }
+  return _registry;
+}
+
 async function serveNodeAPI(route, u) {
   const fx = u.pathname.match(/^\/issues\/fixtures\/([a-z0-9][a-z0-9._-]{0,63})$/);
   if (fx) {
@@ -357,8 +386,15 @@ async function serveNodeAPI(route, u) {
     return true;
   }
   if (u.pathname === '/earth') {
-    const health = computeNodeData(FIXTURE).snapshot?.health;
-    const body = process.env.PAI_RICH === '1' ? richFixture().earth : emptyEarth(health);
+    /* THE CAPTURE'S OWN EARTH WHEN IT HAS ONE. `planetai snapshot` did not fetch /earth until
+     * 21 Sep, so every fixture was earthless and this route had only two things it could serve: an
+     * empty stub or the design repo's rich one. A fixture that now CARRIES nine years of embeddings
+     * and eight change pairs was still being handed the empty stub, so Historical reviewed as "this
+     * node has no satellite passes on disk yet" while the node it was captured from has ten years
+     * of them. The stubs stay for the fixtures that genuinely have none, and for PAI_RICH. */
+    const snap = computeNodeData(FIXTURE).snapshot;
+    const body = snap?.earth
+      ?? (process.env.PAI_RICH === '1' ? richFixture().earth : emptyEarth(snap?.health));
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     return true;
   }
@@ -373,6 +409,42 @@ async function serveNodeAPI(route, u) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     return true;
   }
+  /* The rest of the snapshot, answered under the route the node answers it under.
+   *
+   * These were simply absent: a `?fixture=` page fetched /sensors and got nothing, so every section
+   * that needs it drew "the core pack has nothing here yet" in review while working perfectly on a
+   * real node. A rig that is LESS capable than the node reports a working section as broken, which
+   * is the same false measurement as a rig that is more permissive reporting a broken one as fine.
+   *
+   * /trust and /forecast are NOT here: they have their own empty-vs-rich branches above, which is a
+   * deliberate choice about what a review should see, not a gap. */
+  const FROM_SNAPSHOT = {
+    '/sensors': 'sensors', '/cells': 'cells', '/nearby': 'nearby', '/alerts': 'alerts',
+    '/observations': 'observations', '/stats': 'stats', '/reach': 'reach', '/rho': 'rho',
+    '/actions': 'actions', '/report/latest': 'report_latest',
+  };
+  if (FROM_SNAPSHOT[u.pathname]) {
+    const data = computeNodeData(FIXTURE);
+    if (data.error) { await failNodeAPI(route, u.pathname, data); return true; }
+    const body = data.snapshot[FROM_SNAPSHOT[u.pathname]];
+    /* A key the snapshot does not carry is a 404, exactly as a node with that route switched off
+       answers — never an empty array, which would be the snapshot claiming a fact it never took. */
+    await (body == null
+      ? route.fulfill({ status: 404, contentType: 'application/json',
+          body: JSON.stringify({ detail: `this snapshot carries no ${FROM_SNAPSHOT[u.pathname]}` }) })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
+    return true;
+  }
+  if (u.pathname === '/sources') {
+    /* From the pinned registry in data/sources, the same file app/main.py::sources_ reads — not
+     * from the snapshot, which does not carry it and should not: the registry is identical on every
+     * node at a given pin, so a capture of one node has no opinion about it. */
+    const r = spawnRegistry();
+    if (r == null) return route.fulfill({ status: 503, contentType: 'application/json',
+      body: JSON.stringify({ detail: 'no source registry in this checkout' }) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: r });
+    return true;
+  }
   if (u.pathname === '/place/geojson') {
     await (fs.existsSync(PLACE_GEOJSON)
       ? route.fulfill({ status: 200, contentType: 'application/geo+json', body: fs.readFileSync(PLACE_GEOJSON) })
@@ -384,7 +456,11 @@ async function serveNodeAPI(route, u) {
 }
 
 const WIDTHS = [375, 390, 768, 1440];
-const VIEWS = ['now', 'network', 'setup', 'setup-unlocked', 'wall', 'arrange'];
+/* `historical` was missing. The page has had that view since the tab order changed (dashboard.js
+ * VIEWS), and the overflow check below has always covered it — but the job table did not, so
+ * `render`, `shots` and `targets` could not be pointed at it and nothing on it has ever been
+ * measured. Prompt 4 is largely about that view. */
+const VIEWS = ['now', 'historical', 'network', 'setup', 'setup-unlocked', 'wall', 'arrange'];
 
 /* ------------------------------------------------------------------ the job table */
 function jobs() {
@@ -412,12 +488,22 @@ const tagged = j => ({ ...j,
     + (process.env.PAI_TAG ? '_' + process.env.PAI_TAG : '') });
 
 /* ------------------------------------------------------------------ the browser */
-async function open(job) {
-  const base = job.state === 'empty' ? EMPTY : POP;
+async function open(job, opts = {}, stranger = null) {
+  /* EMPTY was a second container on :8082 — a fresh install with BOOTSTRAP=0, from the pai-clean
+     review rig. It is not running anywhere now, and nothing noticed: the document is fulfilled from
+     PAI_STATIC whatever the origin, and every API call fell through to serveNodeAPI, which answers
+     from the snapshot. So `state: 'empty'` rendered the POPULATED page from a dead origin, and had
+     since that rig was taken down. The page has its own honest mechanism for this and the docs name
+     it — `?state=empty` runs emptySnapshot() over the fixture — so that is what a capture uses. */
+  const base = POP;
   const browser = await chromium.launch();
+  /* `reducedMotion: 'reduce'` is the default here and has been since this file was written: a
+     screenshot of a page mid-animation is a different picture every run, so every measurement in
+     this file is of the page with motion off. `opts` is for the one check that is ABOUT motion —
+     the loading state — which has to see both settings to say anything. */
   const ctx = await browser.newContext({
     viewport: { width: job.w, height: job.w >= 1920 ? 1080 : 900 },
-    deviceScaleFactor: 1, colorScheme: 'light', reducedMotion: 'reduce',
+    deviceScaleFactor: 1, colorScheme: 'light', reducedMotion: 'reduce', ...opts,
   });
 
   /* A drawing that happens to be HTML: one file, no fetch, no views to switch between. Measured by
@@ -469,14 +555,22 @@ async function open(job) {
       else if (u.pathname.startsWith('/static/')) file = u.pathname.slice(8);
     }
     if (file) {
-      /* The node serves /static/<NAME> from an allowlist that takes a name and not a path, so the
-       * three faces live under app/static/fonts/ and are asked for flat. Serving the directory
-       * layout instead 404s them and the page silently falls back: measured, Funnel Sans and
-       * Figtree both `document.fonts.check` false, and every cap height then belongs to
-       * system-ui rather than to the face the layer names. */
-      const p = fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
-        : path.join(STATIC, 'fonts', file);
-      if (fs.existsSync(p)) return route.fulfill({
+      /* The node serves /static/<NAME> from an allowlist that takes a NAME and not a path — a path
+       * parameter reaching the filesystem on a port open to a household LAN is the usual way that
+       * goes wrong. So the four faces live under app/static/fonts/ and are asked for flat, and this
+       * resolves a flat name into that directory the way the node's allowlist does.
+       *
+       * AND IT REFUSES A PATH, since 21 September 2026. It used to serve the directory layout too,
+       * so `/static/fonts/x.woff2` — which 404s on every real node — resolved here and every render
+       * in this repo showed a page with fonts the node could not load. That is how JetBrains Mono
+       * went four months declared only in planetai-theme.css at `fonts/jetbrains-mono-latin.woff2`,
+       * 404ing on hardware, with every number in ui-monospace, and no render ever saying so. A rig
+       * more permissive than the thing it measures reports a page that does not exist. */
+      const p = file.includes('/') ? null
+        : fs.existsSync(path.join(STATIC, file)) ? path.join(STATIC, file)
+          : path.join(STATIC, 'fonts', file);
+      if (p === null) return route.fulfill({ status: 404, body: 'the node serves a name, not a path' });
+      if (p && fs.existsSync(p)) return route.fulfill({
         status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
     }
@@ -490,9 +584,28 @@ async function open(job) {
   });
 
   const page = await ctx.newPage();
+  /* A pack's dashboard contribution is one more static file the node serves, and it registers when
+     it parses. A setter on window.PAI reproduces that timing exactly — the registration lands the
+     moment dashboard.js assigns the contract, before route() has drawn anything — without the page
+     being edited to expect a visitor. */
+  if (stranger) {
+    await page.addInitScript(`(() => { window.__pai_probe = 'installed'; let real;
+      Object.defineProperty(window, 'PAI', { configurable: true, get: () => real,
+        set: v => { real = v; if (v && v.register) {
+          try { (${stranger.toString()})(); window.__pai_probe = 'fired'; }
+          catch (e) { window.__pai_probe = 'threw: ' + (e && e.message); } } } }); })()`);
+  }
   const q = [];
-  if (job.state === 'populated') q.push(`fixture=${FIXTURE}`);   // 'live' reads the node itself
+  // 'live' reads the node itself; 'empty' is the fixture with emptySnapshot() run over it
+  if (job.state === 'populated' || job.state === 'empty') q.push(`fixture=${FIXTURE}`);
+  if (job.state === 'empty' || job.state === 'refused') q.push(`state=${job.state}`);
   if (job.dark) q.push('theme=dark');
+  /* The page has three modes and `?mode=` selects one without remembering it, which is exactly what
+     a measuring rig wants: no localStorage to clear between renders, and the same URL a person can
+     be sent. A job may name one; PAI_MODE sets it for a whole run. */
+  const uiMode = job.mode || process.env.PAI_MODE;
+  if (uiMode) q.push(`mode=${uiMode}`);
+  if (job.register) q.push(`register=${job.register}`);
   await page.goto(base + '/' + (q.length ? '?' + q.join('&') : ''), { waitUntil: 'networkidle' });
 
   // ?theme=dark boots straight to the wall and body.wallview hides the header, so there is no nav
@@ -500,6 +613,28 @@ async function open(job) {
   const already = await page.evaluate(() => document.body.classList.contains('wallview'));
   const target = job.view.startsWith('setup') ? 'setup' : job.view;
   if (!(already && target === 'wall') && target !== 'now') await page.click(`button[data-view="${target}"]`);
+
+  /* THE VIEW IT ASKED FOR IS THE VIEW IT GOT.
+   *
+   * Nothing checked this, and it cost the Set up view: a temporal-dead-zone error in main() made
+   * every render of it throw, main() bailed before assigning #page, and the page that was already
+   * drawn stayed drawn — so the rig pressed Set up, screenshotted Now, and wrote the file under the
+   * Set up name. Byte-identical to the Now shot beside it, which is how it was finally caught. Both
+   * the shot and the measurement had been of the wrong page since the branch began.
+   *
+   * A render that silently measures a different page is worse than a render that fails, so this
+   * fails. `body.wallview` is how the wall says it is on; every other view is its own id. */
+  if (target !== 'now') {
+    const got = await page.evaluate(t => (t === 'wall'
+      ? document.body.classList.contains('wallview')
+      : !!document.getElementById(`view-${t}`)
+        || !!document.querySelector(`nav.views button[data-view="${t}"].on`)), target);
+    if (!got) {
+      const err = await page.evaluate(() => (window.__paiLastError || null));
+      throw new Error(`pressed ${target} and the page did not go there`
+        + `${err ? ` — the page threw: ${err}` : ''}`);
+    }
+  }
 
   // Arrange needs no token to enter: the bar and the per-band controls render for anyone, and only
   // Done refuses (Part 1, A8). Set up does, and it is the only job that reads one.
@@ -797,7 +932,7 @@ async function stall(name) {
     }
     if (file) {
       const p = path.join(STATIC, file);
-      if (fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
+      if (p && fs.existsSync(p)) return route.fulfill({ status: 200, body: fs.readFileSync(p),
         headers: { 'content-type': MIME[path.extname(p)] || 'application/octet-stream' } });
     }
     // the document and its companions are not API calls and must not wait on the gate
@@ -1421,7 +1556,13 @@ const ROLES = {
    * selector ending in a bare tag matched the header's own <b>. */
   numeral: ['[data-role="numeral"]', 'b.mono'],
   state: ['[data-component="kicker"] .state', '[data-role="state"]', '.hero .k .state', '.wall .k .state'],
-  ask: ['[data-component="askStrip"]', '[data-role="ask"]', '.askstrip'],
+  /* `[data-role="ask"]` FIRST, since 21 September 2026. role() returns the first selector with any
+   * hit at all and stops, so while the ask strip lived in the lead the component name found it and
+   * the chain never went further. The strip is in Act now and the lead carries a line saying how
+   * many are open and where they are; a component-name match therefore finds Act's strips, which
+   * are correctly far below the fold, and reports the first screen as having no ask on it. The
+   * explicit role is the marker put there to be found, so it is asked first. */
+  ask: ['[data-role="ask"]', '[data-component="askStrip"]', '.askstrip'],
   asof: ['[data-role="asof"]', '.asof', '#headprov .asof', '.wall .foot'],
   index: ['[data-component="index"]', '[data-role="index"]', '#index', '.index'],
   indexRow: ['[data-component="indexRow"]', '[data-role="index-row"]', '.index .row'],
@@ -1749,10 +1890,161 @@ async function audit(names) {
     'axe serious/critical'], rows));
 }
 
+/* WHERE THE AIR IS — T2c, decomposed.
+ *
+ * T2's empty-share leg says the first screen at 1440 is 57 % air and does not say where. Prompt 7
+ * guessed with a method of its own — unioning element boxes over a coarse grid — and got 20-40 %,
+ * because a section's own container box marks everything inside it as used. That number was wrong
+ * and the disagreement was the tell.
+ *
+ * So this uses aTargets' grid VERBATIM: the same 4 px cells, the same predicate (an element that
+ * carries direct text, or is media, or is a control, marks its whole box), the same `read` variant
+ * that drops what the page marked aria-hidden. Nothing here re-decides what full means. What it adds
+ * is attribution: for every EMPTY cell, which part of the page it sits in.
+ *
+ * Three readings, because "where" has three useful answers:
+ *
+ *   · by part — the air inside each named component's own box, which is a layout question for that
+ *     component, and the air inside no component at all, which is a spacing question between them.
+ *   · down the page — the empty share of each 60 px stripe, which says whether the air is one hole
+ *     or spread evenly.
+ *   · across the page — the empty share of each tenth of the width, which is the question the lead's
+ *     two-column grid raises: is one column carrying the whole screen.
+ *
+ * A cell is attributed to the SMALLEST named component containing it, so the lead's own box does not
+ * swallow the air inside the meters. Scaffold is not a part: HTML, BODY, MAIN, .wrap and a view
+ * SECTION are containers, not things on the screen, and attributing air to them says nothing.
+ */
+function aAir() {
+  const G = 4;
+  const SCAFFOLD0 = e => ['HTML', 'BODY', 'MAIN'].includes(e.tag) || has(e, 'wrap')
+    || (e.tag === 'SECTION' && has(e, 'view'));
+  for (const n of sets()) {
+    const d = load(n), view = n.replace(/_populated_.*/, ''), w = +n.match(/(\d+)$/)[1];
+    if (view !== 'now' || (w !== 390 && w !== 1440)) continue;
+    const vh = d.doc.vh, gw = Math.ceil(w / G), gh = Math.ceil(vh / G);
+
+    for (const which of ['lit', 'read']) {
+      const grid = new Uint8Array(gw * gh);
+      const mark = (x, y, ww, hh) => {
+        for (let gy = Math.max(0, Math.floor(y / G)); gy < Math.min(gh, Math.ceil((y + hh) / G)); gy++)
+          for (let gx = Math.max(0, Math.floor(x / G)); gx < Math.min(gw, Math.ceil((x + ww) / G)); gx++)
+            grid[gy * gw + gx] = 1;
+      };
+      for (const e of d.els) {
+        if (e.y >= vh || !(e.hasText || e.kind === 'media' || e.kind === 'control')) continue;
+        if (which === 'read' && e.hidden) continue;
+        mark(e.x, e.y, e.w, e.h);
+      }
+      const total = gw * gh;
+      let air = 0;
+      for (let i = 0; i < total; i++) if (!grid[i]) air += 1;
+      if (which === 'lit') {
+        console.log(`\n### Now @ ${w} — the first ${vh} px`);
+        console.log(`\n${(100 * air / total).toFixed(1)} % air on the \`lit\` reading `
+          + `(${air} of ${total} cells of ${G} px).`);
+      } else {
+        console.log(`${(100 * air / total).toFixed(1)} % on \`read\`, `
+          + `which drops what the page marked aria-hidden.`);
+        continue;                      // the two readings differ by very little; decompose `lit`
+      }
+
+      /* THE SAME AIR, MEASURED INSIDE THE PAGE'S OWN COLUMN.
+       *
+       * T2 counts the empty share of the VIEWPORT, and this page is a centred column with a
+       * max-width — so at 1440 there are 140 px of margin down each side that no page with a
+       * readable measure could ever fill. They are 19 % of the screen and T2 counts every pixel of
+       * them as a failure. The wider the display, the worse the number, for a page that has not
+       * changed. That is measuring a typographic virtue as a defect.
+       *
+       * So both are reported: against the viewport, which is T2 as written, and against the column
+       * the page actually draws in, which is the number that can be acted on. */
+      const col = d.els.filter(e => e.y < vh && e.w > w * 0.5 && e.w < w - 8 && !SCAFFOLD0(e))
+        .sort((a, b) => b.w - a.w)[0];
+      if (col) {
+        const x0 = Math.floor(col.x / G), x1 = Math.ceil((col.x + col.w) / G);
+        let e1 = 0, c1 = 0;
+        for (let gy = 0; gy < gh; gy++)
+          for (let gx = Math.max(0, x0); gx < Math.min(gw, x1); gx++) {
+            c1 += 1; if (!grid[gy * gw + gx]) e1 += 1;
+          }
+        const margin = 100 * (1 - (c1 / total));
+        console.log(`\n**${(100 * e1 / c1).toFixed(1)} % inside the page's own column** `
+          + `(${r1(col.w)} px wide, ${r1(col.x)} px in). The margins either side are `
+          + `${margin.toFixed(1)} % of the viewport and no page with a readable measure fills them; `
+          + `T2 as written counts every pixel of them as empty.`);
+      }
+
+      /* the parts: named components, smallest first, so a child wins its own cells */
+      const SCAFFOLD = e => ['HTML', 'BODY', 'MAIN'].includes(e.tag)
+        || has(e, 'wrap') || (e.tag === 'SECTION' && has(e, 'view'));
+      const parts = d.els
+        .filter(e => e.y < vh && e.y + e.h > 0 && e.w > 8 && e.h > 8 && !SCAFFOLD(e))
+        .filter(e => e.dc || e.dband || (e.id && e.tag === 'SECTION'))
+        .map(e => ({ ...e, boxArea: e.w * e.h }))
+        .sort((a, b) => a.boxArea - b.boxArea);
+      const owner = new Int32Array(total).fill(-1);
+      for (let pi = parts.length - 1; pi >= 0; pi--) {           // biggest first, smallest overwrite
+        const e = parts[pi];
+        for (let gy = Math.max(0, Math.floor(e.y / G)); gy < Math.min(gh, Math.ceil((e.y + e.h) / G)); gy++)
+          for (let gx = Math.max(0, Math.floor(e.x / G)); gx < Math.min(gw, Math.ceil((e.x + e.w) / G)); gx++)
+            owner[gy * gw + gx] = pi;
+      }
+      const tally = new Map();
+      let loose = 0;
+      for (let i = 0; i < total; i++) {
+        if (grid[i]) continue;
+        const pi = owner[i];
+        if (pi < 0) { loose += 1; continue; }
+        tally.set(pi, (tally.get(pi) || 0) + 1);
+      }
+      const name = e => `${e.dc ? e.dc : e.tag}${e.id ? ' #' + e.id : ''}`;
+      const rows = [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map(([pi, cells]) => {
+        const e = parts[pi];
+        const own = Math.ceil(e.w / G) * Math.ceil(e.h / G);
+        return [name(e), `${r1(e.w)} x ${r1(e.h)}`, cells,
+          (100 * cells / own).toFixed(0) + ' %', (100 * cells / air).toFixed(0) + ' %'];
+      });
+      rows.push(['**between the parts** — inside no component', '—', loose, '100 %',
+        (100 * loose / air).toFixed(0) + ' %']);
+      console.log('\n**Where it is, by part.** "air in it" is the share of that component\'s own box '
+        + 'that is empty; the last column is its share of all the air on the screen.\n');
+      console.log(tbl(['part', 'box', 'empty cells', 'air in it', 'share of all air'], rows));
+
+      /* down the page */
+      const STRIPE = 60, srows = [];
+      for (let top = 0; top < vh; top += STRIPE) {
+        let e0 = 0, c0 = 0;
+        for (let gy = Math.floor(top / G); gy < Math.min(gh, Math.ceil((top + STRIPE) / G)); gy++)
+          for (let gx = 0; gx < gw; gx++) { c0 += 1; if (!grid[gy * gw + gx]) e0 += 1; }
+        const pc = 100 * e0 / (c0 || 1);
+        srows.push([`${top}–${Math.min(vh, top + STRIPE)}`, pc.toFixed(0) + ' %',
+          '`' + '█'.repeat(Math.round(pc / 4)) + '`']);
+      }
+      console.log('\n**Down the page**, in 60 px stripes.\n');
+      console.log(tbl(['px from the top', 'air', ''], srows));
+
+      /* across the page */
+      const crows = [];
+      for (let k = 0; k < 10; k++) {
+        const x0 = Math.floor(k * gw / 10), x1 = Math.floor((k + 1) * gw / 10);
+        let e0 = 0, c0 = 0;
+        for (let gy = 0; gy < gh; gy++)
+          for (let gx = x0; gx < x1; gx++) { c0 += 1; if (!grid[gy * gw + gx]) e0 += 1; }
+        const pc = 100 * e0 / (c0 || 1);
+        crows.push([`${Math.round(k * w / 10)}–${Math.round((k + 1) * w / 10)}`, pc.toFixed(0) + ' %',
+          '`' + '█'.repeat(Math.round(pc / 4)) + '`']);
+      }
+      console.log('\n**Across the page**, in tenths of the width.\n');
+      console.log(tbl(['px from the left', 'air', ''], crows));
+    }
+  }
+}
+
 const A = { grid: aGrid, spacing: () => aSpacing(true), rhythm: aRhythm, lines: aLines,
   align: aAlign, type: aType, headings: aHeadings, order: aOrder, dist: aDist, wall: aWall,
   dom: aDom, anatomy: aAnatomy, components: aComponents, stack: aStack,
-  targets: aTargets };
+  targets: aTargets, air: aAir };
 
 /* DOES A PRESS ACTUALLY REDRAW?
  *
@@ -1771,13 +2063,13 @@ async function press() {
   const h = await open(job);
   const read = () => h.page.evaluate(() => ({
     url: location.search,
-    dialOn: (document.querySelector('#dial a.on') || {}).textContent || null,
+    railOn: (document.querySelector('#rail a.on') || {}).textContent || null,
     grain: (document.getElementById('grain-line') || {}).textContent || null,
     heads: [...document.querySelectorAll('[data-component="cellGroup"]')].map(e => e.textContent.trim()),
   }));
   const before = await read();
   const moved = await h.page.evaluate(() => {
-    const a = document.querySelector('#dial a:not(.on)');
+    const a = document.querySelector('#rail a:not(.on)');
     if (!a) return false;
     a.click();
     return true;
@@ -1786,15 +2078,332 @@ async function press() {
   await h.page.waitForTimeout(700);
   const after = await read();
   const same = k => JSON.stringify(before[k]) === JSON.stringify(after[k]);
-  const dead = ['dialOn', 'grain', 'heads'].filter(same);
+  const dead = ['railOn', 'grain', 'heads'].filter(same);
   const fails = [];
   if (before.url === after.url) fails.push('the URL did not change');
   if (dead.length) fails.push(`the press changed the URL and nothing else: ${dead.join(', ')} identical`);
   for (const f of fails) console.log('FAIL press:', f);
-  if (!fails.length) console.log(`  press: ${before.dialOn} -> ${after.dialOn}, `
+  if (!fails.length) console.log(`  press: ${before.railOn} -> ${after.railOn}, `
     + `${before.heads.length} cell group(s) -> ${after.heads.length}, and the grain line moved`);
   await h.browser.close();
   process.exit(fails.length ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------ a stranger's pack
+ *
+ * WHAT THIS IS, AND WHY IT IS NOT CALLED T8. Prompt 7 asks to "run the third-party `water` pack
+ * fixture from the 14 Sep prompt (1.4) and prove T8 still holds". Neither exists any more: the
+ * 14 September prompt is not in this repository, not in `docs/`, and not anywhere on the machine
+ * that wrote it, and with it went T8's definition — the target tables in
+ * `docs/design/DIRECTIONS_2026-09.md` run T1, T1b, T2, T3, T4, T5, T6 and PICK adds T7 and T9.
+ * There is no T8 to hold. So rather than invent a number and claim it was met, this proves the
+ * thing that prompt and `DIRECTIONS` §"Where the new things land" were plainly about: the page
+ * draws a section it has never heard of, and the targets survive it.
+ *
+ * HOW A STRANGER GETS IN. A pack's dashboard contribution is one more static file the node serves,
+ * which calls `window.PAI.register` when it parses. Here that timing is reproduced exactly, with a
+ * setter on `window.PAI`: the moment dashboard.js assigns it, the stranger registers — before
+ * `route()` draws anything, and without the page having been edited to expect it.
+ *
+ * Four sections, because a stranger is not always well behaved:
+ *   water        draws a stack of its own, with a unit per cell
+ *   water-deep   declares a need this node does not have
+ *   water-bad    throws
+ *   water-fifth  draws a FIFTH card kind, which T3 says does not exist
+ *
+ * The first three are the contract's promises. The fourth is the one that must show up as damage:
+ * if a stranger can add a fifth kind and nothing notices, "four card kinds and no fifth" is a
+ * sentence in a document rather than a property of the page.
+ */
+const STRANGER = () => {
+  const K = window.K;
+  window.PAI.register({
+    id: 'water', pack: 'water', stage: 'observe', order: 13,
+    title: 'What the water is doing',
+    render() {
+      /* A unit per cell, which is the case DIRECTIONS names: the room is turbidity in NTU and the
+         region is metres below a water table. Two quantities, so two scales and never one bar. */
+      const rows = [['room', '4.2', 'NTU'], ['region', '11.8', 'm below']];
+      return `<div class="stack" data-kind="stack" data-component="waterStack" id="water-stack"`
+        + ` data-ref="water"><div class="col" id="water-col-room" data-ref="water-stack">`
+        + rows.map(([k, v, u], i) =>
+          `<div class="v"><span class="num" data-num="water.${k}"`
+          + ` data-cmp="${K.esc(`${k}: ${v} ${u}, no line declared`)}">${K.esc(v)}</span>`
+          + `<small>${K.esc(u)}</small></div>`).join('')
+        + `</div></div>`;
+    },
+    notes: () => [{ id: 'water-note', text: 'A stranger wrote this section and this note.' }],
+  });
+  window.PAI.register({
+    id: 'water-deep', pack: 'water', stage: 'observe', order: 14,
+    title: 'The water table', needs: ['WATER_TABLE'], render: () => '<p>never drawn</p>',
+  });
+  window.PAI.register({
+    id: 'water-bad', pack: 'water', stage: 'decide', order: 99,
+    title: 'What the water pack cannot do',
+    render() { throw new Error('a stranger threw'); },
+  });
+  window.PAI.register({
+    id: 'water-fifth', pack: 'water', stage: 'observe', order: 15,
+    title: 'A fifth kind',
+    render: () => '<div data-kind="dial" data-component="waterDial" id="water-dial"'
+      + ' data-ref="water-stack">a dial</div>',
+  });
+};
+
+async function extend() {
+  const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+  const h = await open(job, {}, STRANGER);
+  const d = await h.page.evaluate(COLLECT);
+  const bands = await h.page.evaluate(() => [...document.querySelectorAll('section.band')]
+    .map(b => ({ id: b.id, pack: b.dataset.pack, stage: b.dataset.stage })));
+  const probe = await h.page.evaluate(() => window.__pai_probe || 'never installed');
+  const said = await h.page.evaluate(() => ({
+    absent: (document.getElementById('water-deep-absent') || {}).textContent || null,
+    failed: (document.getElementById('water-bad-failed') || {}).textContent || null,
+    note: !!document.getElementById('water-note'),
+  }));
+  await h.browser.close();
+
+  const has = (e, c) => (e.cls || '').split(/\s+/).includes(c);
+  const kinds = [...new Set(d.els.map(e => e.dkind).filter(Boolean))].sort();
+  const nums = d.els.filter(e => e.dnum !== null);
+  const orphanNums = nums.filter(e => e.dcmp === null);
+  const ids = new Set(d.els.map(e => e.id).filter(Boolean));
+  const refs = d.els.map(e => e.dref).filter(Boolean);
+  const comps = d.els.filter(e => e.dc && !['header', 'hero'].includes(e.dc));
+  const orphanComps = comps.filter(c => {
+    const out = c.dref && ids.has(c.dref.replace(/^#/, ''));
+    const mine = new Set(d.els.filter(e => e.id && e.x >= c.x - 1 && e.y >= c.y - 1
+      && e.x + e.w <= c.x + c.w + 1 && e.y + e.h <= c.y + c.h + 1).map(e => e.id));
+    return !(out || refs.some(r => mine.has(r.replace(/^#/, ''))));
+  });
+
+  const fails = [];
+  if (probe !== 'fired') fails.push(`the registration hook: ${probe}`);
+  const water = bands.find(b => b.id === 'water');
+  if (!water) fails.push('the stranger\'s section is not on the page at all');
+  else {
+    if (water.pack !== 'water') fails.push(`the band says pack="${water.pack}", not the pack that wrote it`);
+    if (water.stage !== 'observe') fails.push(`it was drawn in ${water.stage}, not the stage it declared`);
+    const obs = bands.filter(b => b.stage === 'observe').map(b => b.id);
+    const i = obs.indexOf('water');
+    if (i <= 0 || obs.indexOf('matrix') > i) fails.push(`observe order ignores it: ${obs.join(' ')}`);
+  }
+  if (!said.absent || !/water pack has nothing here yet/i.test(said.absent)) {
+    fails.push('a declared need this node does not have did not print one honest line');
+  }
+  if (!said.failed || !/did not render/.test(said.failed)) {
+    fails.push('a section that threw did not say so');
+  }
+  if (bands.length < 8) fails.push(`only ${bands.length} bands survived a stranger throwing`);
+  if (!said.note) fails.push('the stranger\'s note is not in the notes band');
+  if (orphanNums.length) fails.push(`${orphanNums.length} numeral(s) with no comparison`);
+  if (orphanComps.length) fails.push(`${orphanComps.length} component(s) with no link in or out`);
+  /* The fifth kind MUST show. This is the one assertion that fails when the page is too permissive
+     rather than too strict, and it is the reason the stranger draws one. */
+  if (!kinds.includes('dial')) {
+    fails.push('a stranger drew data-kind="dial" and the count did not see it, so T3 is measuring '
+      + 'nothing and a fifth kind could ship unnoticed');
+  }
+  const four = kinds.filter(k => k !== 'dial');
+  if (four.length !== 4) fails.push(`the page's own kinds are ${four.join(' ')} — ${four.length}, not four`);
+
+  for (const f of fails) console.log('FAIL extend:', f);
+  if (!fails.length) {
+    console.log(`  extend: a stranger's section draws in its own stage and order `
+      + `(${bands.filter(b => b.stage === 'observe').map(b => b.id).join(' ')})`);
+    console.log(`  extend: an absent need prints one line, a throw says so, ${bands.length} bands still drew`);
+    console.log(`  extend: T3 ${four.join(' ')} + the stranger's fifth caught · `
+      + `T4 ${orphanNums.length} of ${nums.length} · T5 ${orphanComps.length} of ${comps.length}`);
+  }
+  process.exit(fails.length ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------ the baseline plates
+ *
+ * Every combination the page can be in, as a JPEG at one device pixel, kept as the baseline a later
+ * round diffs against. Fifty-four renders: five views at three widths in both registers, Now again
+ * in simple and in learn, the wall, and the empty and refused states.
+ *
+ * THE WALL IS DARK ONLY. Its register is not a choice — applyRegister() forces dark on that view
+ * because it is a screen on a wall in a room — so rendering it "in paper" would write two identical
+ * files under two names and claim the pair proved something.
+ *
+ * FOLD, NOT FULL, except for six. A full-page JPEG of Now at 1440 is 300 kB and the whole matrix
+ * that way is twenty megabytes in a repository a tester clones. The fold is what T1 and T2 are
+ * about, which is what a baseline is for; the six full pages are the ones somebody actually reads
+ * end to end.
+ */
+function plates() {
+  const P = [];
+  const WIDE = [390, 768, 1440];
+  for (const v of ['now', 'historical', 'network', 'arrange', 'setup']) {
+    for (const w of WIDE) for (const r of ['paper', 'dark']) {
+      P.push({ name: `${v}_${w}_${r}`, view: v, w, state: 'populated', register: r,
+        full: v === 'now' && r === 'paper' });
+    }
+  }
+  for (const w of WIDE) P.push({ name: `wall_${w}_dark`, view: 'wall', w, state: 'populated', dark: true });
+  /* No `full` for the wall: it does not scroll, so the full page and the fold are the same
+     picture, and the pair would be two files under two names proving nothing. */
+  P.push({ name: 'wall_1920_dark', view: 'wall', w: 1920, state: 'populated', dark: true });
+  for (const m of ['simple', 'learn']) {
+    for (const w of WIDE) for (const r of ['paper', 'dark']) {
+      P.push({ name: `now_${m}_${w}_${r}`, view: 'now', w, state: 'populated', mode: m, register: r,
+        full: m === 'learn' && r === 'paper' && w === 1440 });
+    }
+  }
+  for (const s of ['empty', 'refused']) {
+    for (const w of [390, 1440]) for (const r of ['paper', 'dark']) {
+      P.push({ name: `now_${s}_${w}_${r}`, view: 'now', w, state: s, register: r, wireOnly: true });
+    }
+  }
+  return P;
+}
+
+async function plateShots(names) {
+  const all = plates();
+  const want = names[0] === 'all' ? all : all.filter(j => names.includes(j.name));
+  if (!want.length) { console.error('no such plate:', names.join(' ')); process.exit(2); }
+  const dir = process.env.PAI_PLATES ? path.resolve(process.env.PAI_PLATES) : OUT;
+  fs.mkdirSync(dir, { recursive: true });
+  let bytes = 0, made = 0, failed = 0;
+  for (const job of want) {
+    let h;
+    try {
+      h = await open(job);
+      for (const full of job.full ? [false, true] : [false]) {
+        const f = path.join(dir, `${job.name}${full ? '_full' : ''}.jpg`);
+        await h.page.screenshot({ path: f, fullPage: full, type: 'jpeg', quality: 80 });
+        bytes += fs.statSync(f).size; made += 1;
+      }
+    } catch (e) {
+      console.error(`  ${job.name}  FAILED  ${e.message}`);
+      failed += 1;
+    } finally { if (h) await h.browser.close(); }
+  }
+  console.log(`  plates: ${made} JPEG(s) from ${want.length} render(s), `
+    + `${(bytes / 1048576).toFixed(1)} MB, in ${path.relative(ROOT, dir) || dir}`);
+  if (failed) { console.log(`FAIL plates: ${failed} render(s) did not complete`); process.exit(1); }
+}
+
+/* ------------------------------------------------------------------ the loading state
+ *
+ * Three claims about `asking` that nothing else can check, because all three are about the DOM at a
+ * moment rather than about a drawing:
+ *
+ *   · it stops when the data is in. A loading state that keeps a rAF loop alive behind the page it
+ *     was covering is a page that never goes idle, on a wall screen, for weeks.
+ *   · the canvas LEAVES the tree. At 1440x900 and DPR 2 it is a 1670x1076 backing store, and it is
+ *     also a surface something could draw on again by accident. display:none keeps both.
+ *   · under reduced motion it draws ONE frame. Not zero — a reader who has asked for stillness is
+ *     still owed the picture — and not a loop.
+ *
+ * Driven through PAI_ASKING, which exists for this: a surface that only appears while a fetch is in
+ * flight cannot be caught by a screenshot, and one that only animates when the browser says the tab
+ * is visible cannot be timed from a headless run at all.
+ */
+async function asking() {
+  const fails = [];
+  const said = [];
+  for (const reduce of [false, true]) {
+    const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+    const h = await open(job, { reducedMotion: reduce ? 'reduce' : 'no-preference' });
+    const r = await h.page.evaluate(async () => {
+      const A = window.PAI_ASKING;
+      if (!A) return { missing: true };
+      A.open('probe');
+      const had = !!document.getElementById('askcv');
+      /* What the SCHEDULER drew, read before the probe resets the counter. Under reduced motion
+         PAI_RAF calls the tick once and never subscribes, so this is exactly 1 and the subscription
+         count is 0; with motion on nothing is drawn yet and the subscription is the claim. */
+      const atOpen = A.cost().frames;
+      const subscribed = window.PAI_RAF.size;
+      const cost = A.probe(30);
+      A.close();
+      return { had, atOpen, subscribed, up: A.up(),
+        canvas: !!document.getElementById('askcv'), subs: window.PAI_RAF.size, cost };
+    });
+    const tag = reduce ? 'reduced motion' : 'motion on';
+    if (r.missing) { fails.push(`${tag}: PAI_ASKING is not on the page`); await h.browser.close(); continue; }
+    if (!r.had) fails.push(`${tag}: open() did not put a canvas in the frame`);
+    if (r.up) fails.push(`${tag}: it is still up after close()`);
+    if (r.canvas) fails.push(`${tag}: the canvas is still in the DOM once the data is in`);
+    if (r.subs !== 0) fails.push(`${tag}: ${r.subs} surface(s) still asking PAI_RAF for frames`);
+    if (reduce) {
+      if (r.atOpen !== 1) fails.push(`${tag}: the scheduler drew ${r.atOpen} frame(s), not one still`);
+      if (r.subscribed !== 0) fails.push(`${tag}: it subscribed to the loop instead of drawing one still`);
+    } else if (r.subscribed !== 1) {
+      fails.push(`${tag}: it did not subscribe to the loop (PAI_RAF.size ${r.subscribed})`);
+    }
+    said.push(`${tag}: ${reduce ? 'one still frame, no subscription' : 'subscribed to the one loop'}`
+      + ` · ${r.cost.frames} probe frames, mean ${r.cost.mean.toFixed(2)} ms, `
+      + `worst ${r.cost.worst.toFixed(2)} ms`);
+    await h.browser.close();
+  }
+  for (const f of fails) console.log('FAIL asking:', f);
+  if (!fails.length) said.forEach(s => console.log('  asking ·', s));
+  process.exit(fails.length ? 1 : 0);
+}
+
+/* ------------------------------------------------------------------ T-overflow
+ *
+ * A page that scrolls sideways on a phone is the defect a household reports as "it is broken", and
+ * it is invisible to every other check in this file: every box can be the right size and the
+ * document still be wider than the screen, because one `1fr` track floored at its max-content and
+ * pushed the rest along. So this asks the page itself, at the one width that matters and two that
+ * catch it early, in every combination of view, mode and register the page can be in.
+ *
+ * NOT IN `make test`, and the prompt that asked for it wanted it there. It cannot be: Playwright
+ * lives in planetai-design's node_modules, not this repo's, and tests/all must run on a node with
+ * neither — the same reason gate.sh is not in it. It runs in gate.sh, before shipping, which is
+ * where every other Playwright check in this repo runs. Raised for Tomas rather than either
+ * breaking CI or quietly not doing it.
+ *
+ *   node tests/visual/measure.mjs overflow            every combination
+ *   node tests/visual/measure.mjs overflow now wall   named views only
+ */
+const OVER_W = [390, 768, 1440];
+const OVER_V = ['now', 'historical', 'network', 'wall', 'arrange', 'setup'];
+const OVER_M = ['simple', 'advanced', 'learn'];
+const OVER_R = ['paper', 'dark'];
+
+async function overflow(views) {
+  const want = views && views.length && views[0] !== 'all' ? views : OVER_V;
+  const bad = [];
+  let n = 0;
+  for (const view of want) {
+    for (const w of OVER_W) for (const mode of OVER_M) for (const reg of OVER_R) {
+      const job = { name: `overflow_${view}_${w}_${mode}_${reg}`, view, w,
+        state: 'populated', mode, register: reg };
+      const { browser, page } = await open(job);
+      try {
+        const got = await page.evaluate(() => ({
+          scroll: document.documentElement.scrollWidth,
+          client: document.documentElement.clientWidth,
+        }));
+        n += 1;
+        /* One pixel of slack: a sub-pixel layout can report 390.5 as 391 and that is a rounding
+           artefact, not a page a thumb can push sideways. Two is a bug. */
+        if (got.scroll > got.client + 1) {
+          bad.push({ view, w, mode, reg, over: got.scroll - got.client, scroll: got.scroll });
+        }
+      } finally { await browser.close(); }
+    }
+    process.stderr.write(`  ${view} \u00b7 ${OVER_W.length * OVER_M.length * OVER_R.length} combinations\n`);
+  }
+  if (!bad.length) {
+    console.log(`  no horizontal overflow in ${n} combinations `
+      + `(${want.length} views \u00d7 ${OVER_W.join('/')} \u00d7 ${OVER_M.join('/')} \u00d7 paper/dark)`);
+    return;
+  }
+  console.error(`  ${bad.length} of ${n} combinations scroll sideways:`);
+  for (const b of bad) {
+    console.error(`    ${b.view} @ ${b.w} \u00b7 ${b.mode} \u00b7 ${b.reg}`
+      + ` \u2014 document is ${b.scroll}px, ${b.over}px past the viewport`);
+  }
+  process.exit(1);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -1802,12 +2411,17 @@ if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
 else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
 else if (cmd === 'press') await press();
+else if (cmd === 'asking') await asking();
+else if (cmd === 'plates') await plateShots(rest.length ? rest : ['all']);
+else if (cmd === 'extend') await extend();
+else if (cmd === 'plate-list') plates().forEach(j => console.log(j.name + (j.full ? '  (+full)' : '')));
 else if (cmd === 'sheets') await sheets();
 else if (cmd === 'header') await header();
 else if (cmd === 'targets') aTargets();
 else if (cmd === 'audit') await audit(rest.length ? rest : ['all']);
 else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
+else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|steps|stall|press|sheets|header|targets|audit|analyse|list');
+else { console.error('usage: measure.mjs render|shots|plates|plate-list|steps|stall|press|asking|extend|sheets|header|targets|audit|overflow|analyse|list');
   process.exit(2); }

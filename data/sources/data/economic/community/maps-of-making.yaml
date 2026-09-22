@@ -1,0 +1,53 @@
+name: Maps of Making
+url: https://mapsofmaking.org/
+description: |
+  A map of 3,193 workshops, fab labs and open workshops aggregated from the fab
+  lab network, the German Verbund Offener Werkstaetten and the SpaceAPI
+  Directory, served as one static GeoJSON. A v0.2 demo, and the records are
+  harvested rather than contributed.
+pillar: economic
+scale: community
+status: live
+license: not stated
+api: https://mapsofmaking.org/data/spaces.geojson
+pilot_relevance: [global]
+tags: [fab-lab, makerspace, open-workshop, aggregator, geojson, act]
+added: 2026-09-22
+auth: none
+role: [act]
+act_kind: facility
+upstream_listed_in: []
+notes: |
+  LICENCE NOT STATED — 2026-09-22. `mapsofmaking.org` carries no licence, terms or
+  attribution statement anywhere in its rendered text, and the GeoJSON's top-level
+  keys are only `type`, `generated_at`, `thresholds`, `features` — no licence,
+  source or attribution field. CONTRIBUTING criterion 1 is NOT met; licence-pending.
+
+  WHERE THE RECORDS COME FROM, read off the endpoint in this session. 3,193
+  features by `source`: `scraped-fabnet` 2303, `scraped-vow` 566,
+  `spaceapi-directory` 201, `scraped-fabTafel` 109, `self-registered` 13,
+  `canary` 1. Sampling the `endpoint_url` of `scraped-fabnet` and `scraped-fabTafel`
+  returns `https://www.fablabs.io/labs/<slug>` in both cases — so 2,412 of the
+  3,193 are fablabs.io records, and 566 are offene-werkstaetten.org.
+
+  THIS IS A LICENCE PROBLEM, NOT A CREDIT ONE. `economic/community/fablabs-io`
+  records that fablabs.io publishes no data licence and that its Terms of Use §7.4
+  restricts massively collecting or harvesting platform data unless the analysis
+  sets are kept open on the Platform, §7.5 restricts commercial use without prior
+  written approval, and §8.1 leaves copyright with each lab. A `source` key spelled
+  `scraped-` against that upstream is the thing to resolve before this list
+  recommends reading it. Read the upstreams directly.
+
+  API VERIFIED 2026-09-22: `/data/spaces.geojson` returned 200, key-free, 3,193
+  features. It is a STATIC FILE, not a federated backend — the page's only data
+  request is for that one file.
+
+  DEMO, NOT PRODUCTION. The title is "Maps of Making — demo" and the build is
+  v0.2; "Ask the map" is labelled `preview · not wired yet`. One record is a
+  deliberate canary — Mother Sands, `country_code: sol-3`, contact at
+  `example.org` — so any consumer must filter `source: canary`.
+
+  `role: [act]` only: the `open_now` field is copied from the upstreams, so read
+  SpaceAPI or fablabs.io for it rather than a second-hand copy.
+
+  No `adapter`: nothing in planetai-node reads it, and on this licence it should not.

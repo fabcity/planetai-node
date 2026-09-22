@@ -32,6 +32,17 @@
   font-weight:300 900; font-style:normal; font-display:swap; }
 @font-face{ font-family:"Figtree"; src:url("Figtree-Italic-VariableFont_wght.ttf") format("truetype");
   font-weight:300 900; font-style:italic; font-display:swap; }
+/* The fourth. The comment at the top of this file has said "four @font-face src paths" since it was
+   written, and only three were ever brought over — so JetBrains Mono was declared once, in
+   planetai-theme.css, at `fonts/jetbrains-mono-latin.woff2`, which /static/{name} cannot serve
+   because it takes a NAME and not a path. That request 404s and every number on the page fell back
+   to ui-monospace: SF Mono on a Mac, Menlo next, and on a Linux wall screen whatever the system
+   calls monospace. Found 16 September in the docs-site review, and the note in tools/check_theme.py
+   said another file already compensated for it. No file did.
+   The theme is frozen and is not this repo's to edit; this file is, and it is where the other three
+   live at the flat names the node actually serves. SIL OFL 1.1: app/static/fonts/OFL-JetBrainsMono.txt. */
+@font-face{ font-family:"JetBrains Mono"; src:url("jetbrains-mono-latin.woff2") format("woff2");
+  font-weight:400 800; font-style:normal; font-display:swap; }
 /* Circular Std is NOT declared here, and its file is not in this repository. It is a commercial
    typeface from Lineto, and this node ships as a public tarball that anyone can download — putting
    it in there would be redistributing a font nobody bought a redistribution licence for. The only

@@ -10,7 +10,7 @@
    #20388D on ink #171717 = 1.72:1 — it may NEVER appear inside it.
    #F9F5F2 at 62% over ink #171717 composites to #A3A19F = 6.96:1, which is the wall credit lines.
 
-   11 OPEN items are carried as comments at the token each one affects. */
+   12 OPEN items are carried as comments at the token each one affects. */
 
 @import "tokens.css";
 
@@ -123,6 +123,10 @@
   /* every number, unit, timestamp, cell id and chip label · rho-row.svg · Decision 0 */
   --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* the monument numeral on the node's lead, and nothing else · node dashboard · R21 */
+  /* OPEN: the monument numeral is the one figure on the page big enough to be a piece of typography rather than a reading, and nothing records whether it should stay in the mono or be set in Funnel Sans like the headline beside it. The token exists so the answer is one line either way — using var(--mono) until settled */
+  --num-face: var(--mono);
+
   /* a reading lands: the fade · node dashboard · R6 */
   --motion-reading-fade: 120ms;
 
@@ -143,6 +147,15 @@
 
   /* the datum changes once a year, so it does not animate · no artboard records this value · R6 */
   --motion-land-change-yoy: 0s;
+
+  /* the node has not answered yet: the loading state holds until /issues lands · node dashboard · R24 */
+  --motion-asking: until-data;
+
+  /* a stack arrives: one bracket cell fills per step · node dashboard · R24 */
+  --motion-meter-fill: 40ms;
+
+  /* learn mode is on: a mark floats 4 px · node dashboard · R24 */
+  --motion-mark-float: 3.2s;
 }
 
 /* The dark register. A wall screen in a room at night: paper becomes the figure and ink becomes the
@@ -191,8 +204,10 @@
 .veg    { fill: var(--rings); color: var(--rings); }
 
 /* Every motion on a PLANETAI surface is named after the datum that drives it. Nothing here is
-   decoration: a motion with no datum behind it is deleted, not tokenised. Under reduced motion all
-   of them go to zero in one place, and every surface has to read frozen. */
+   decoration: a motion with no datum behind it is deleted, not tokenised. Under reduced motion every
+   one that HAS a duration goes to zero in one place, and every surface has to read frozen. A motion
+   recorded as a word rather than a duration is not listed here: the state it names still happens,
+   it simply stops moving, and there is no number to remove. */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-reading-fade: 0s;
@@ -201,5 +216,7 @@
     --motion-ring-closed: 0s;
     --motion-satellite-year: 0s;
     --motion-land-change-yoy: 0s;
+    --motion-meter-fill: 0s;
+    --motion-mark-float: 0s;
   }
 }

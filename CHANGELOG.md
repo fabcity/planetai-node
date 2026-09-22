@@ -1,5 +1,67 @@
 # Changelog
 
+## v0.71 — 2026-09-22 — the page, rebuilt
+
+*Your node's own page, taken apart and put back together. It needs nothing you do not already have:
+update and it is there. Everything below is the same node saying the same things — what changed is
+the order it says them in, and what it will no longer say.*
+
+The dashboard has been taken apart and put back together. It is the same node saying the same things;
+what changed is the order it says them in, and what it will no longer say.
+
+- **It leads with how coarse the answer is, and then with the thing that matters.** The first
+  instrument on the page is now a rail of eleven stops, one per grain the node knows — half a
+  kilometre, five kilometres, a hundred and eighty — with the one you are standing on lit and a rule
+  underneath showing where each truly falls. The stops that are coarse enough to leave your machine
+  are textured, the ones finer than your node says where it is are struck through. Then the issue
+  that matters, as a sentence, with its number beside it. Which issue that is, and why, is printed
+  under it in your own language.
+
+- **Every number sits beside what it is compared to, or it does not appear.** Ninety-odd figures on
+  the page and not one of them is alone: the room against the line, the street against the room, the
+  model against the street. Where there is nothing to compare a reading to, the page says so in
+  words instead of drawing a bar that means nothing. Where a distance has no source at all, its
+  place is left empty and the reason is written in it — "no kit on the wall outside", not a zero.
+
+- **Three modes, and the third one teaches.** *Simple* is four sentences, one per stage, and the node
+  writes all four. *Advanced* is the whole page. *Learn* is the whole page with a question mark at
+  each part; press one and a panel quotes this node's own documentation for it, word for word, says
+  which page the words came from, and walks you to the next. Seventeen marks. The quotes are built
+  into the page, so learn mode works on a network with no way out to the internet.
+
+- **Paper by day, dark on the wall.** The page is ink on paper by default and switches to the dark
+  register from the header, and the wall is always dark because it is a screen in a room. Colour is
+  argument and never decoration: blue means an H3 cell, green means a loop closed, red means a line
+  crossed, orange means only the satellite knows. State is carried by weight, not colour, so it
+  still reads if you cannot separate blue from grey, and it survives being printed.
+
+- **It shows you what it asked of the world while you looked.** A section called *What this page
+  asked of the world* counts it: the offline plan asks nothing, switching to satellite asks twelve
+  times and tells that server which five kilometres of the planet you are looking at, and the node's
+  own polls are counted separately because they happen whether or not anyone is at the screen. You
+  can see the price of a map before you pay it.
+
+- **You can change the order of the issues, and hide what you do not want.** *Arrange* is Now in
+  another mode: each section grows three controls — move it within its stage, hide it, restore it —
+  and Done saves the order to your node as `UI_LAYOUT`, for every screen in the house. The rail, the
+  lead and the ground do not move, and the bar says so. To change which issues exist at all and in
+  what order, that is `NODE_ISSUES` under Set up → Issues, most important first.
+
+- **The wall says what it is before you read it.** A bar across the top: which node, which place,
+  how open it is, how often the field turns, and what the numbers in it are. All of that used to be
+  at the foot, which on a screen across a room is the last place you look. Four variables sit up
+  there with it and the rest are one press away.
+
+Also: the page no longer scrolls sideways on a phone, which it did by 85 px. Nothing moves on the
+page that does not have a reading behind it, and everything stops if you have asked your machine for
+less motion.
+
+**The list of places to act got longer.** The registry this node carries is re-pinned — 225 sources
+where there were 217, and sixteen of them now have code on this node that reads them where there
+were fourteen. Sixteen are places to go rather than things to read: six directories of fab labs,
+seven libraries of open designs, and four others. Your node shows what the registry wrote about each
+one's licence and does not sort them into open or not on your behalf.
+
 ## v0.70 — 2026-09-22 — the node found you a workshop and never said so
 
 Two things this node already knew and could not tell you. The interface redraw is still not in this
@@ -29,7 +91,6 @@ release.
   Nothing was wrong on the node; the record of it was short, which is worse, because a short record
   looks like a complete one. Snapshots carry it now. It is 10.6 kB against 465 kB for the rest, so
   nothing gets slower.
-
 ## v0.69 — 2026-09-21 — the last stage stops being a zero, and a refusal stops sending you in a circle
 
 Two fixes to what the node says, and two to the machinery that is supposed to catch us saying it

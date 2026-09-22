@@ -317,8 +317,32 @@ assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
 # page looks exactly like one render of a fresh one. These are the assertions that would have.
 assert "function refresh()" in _js and "setInterval(refresh, refreshEvery())" in _js, \
     "the page no longer re-fetches on a timer — it will show the readings it booted with, forever"
-assert "boot().then(() => { init(); route(); startRefresh(); })" in _js, \
-    "boot no longer starts the refresh loop"
+_bootline = _js[_js.index("boot().then("):]
+_bootline = _bootline[:_bootline.index("\n")]
+assert "startRefresh()" in _bootline, "boot no longer starts the refresh loop"
+assert "route()" in _bootline and "init()" in _bootline, "boot no longer draws the page"
+
+# THE LOADING STATE PLAYS ON THREE THINGS AND A POLL IS NOT ONE OF THEM.
+#
+# `asking` covers the page. A poll fires every POLL_SECONDS on a page somebody is reading, so an
+# overlay on every poll would make a node that is working perfectly look like one that is stuck —
+# and it would do it every five minutes, on a wall, unattended. The rule is in prompt 6 and it is one
+# line of code away from being broken by accident, so it is asserted here rather than remembered.
+assert "ASKING.close()" in _bootline, "the loading state is never taken down after the first paint"
+_ask = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
+assert "ASKING.open" in _ask, "refresh() never plays the loading state, so a reconnect is silent"
+for _line in _ask.splitlines():
+    _code = _line.split("//")[0]
+    if "ASKING.open" in _code:
+        assert "mine" in _code or "STALE" in _code, \
+            ("refresh() plays the loading state unconditionally, so it plays on every poll: "
+             + _code.strip())
+assert "const wasStale = !!window.STALE" in _ask and "mine = wasStale" in _ask, \
+    "refresh() no longer decides between a reconnect and a poll before playing the loading state"
+# And the header's control is a different function on purpose: if ↻ were refresh() with the overlay
+# bolted on, the timer would inherit it the next time somebody edited either one.
+assert "async function askAgain()" in _js and "ASKING.open('Asking the node again')" in _js, \
+    "the header's re-ask no longer has a function of its own"
 # What it may and may not ask for again. /settings, /earth, /sensors, /cells and the plan do not move
 # on the node's poll; re-fetching them every cycle is traffic for no change.
 _ref = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
@@ -358,14 +382,27 @@ _rd = _js[_js.index("function redraw(opts)"):]
 _rd = _rd[:_rd.index("\n}") + 2]
 assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditionally — a press would not redraw the map"
 
-# THE DIAL IS NOW'S CONTROL. Drawn under every view's header until 18 September, where on Network,
-# Historical and Set up nothing on the page answered to it. Arrange keeps it: it draws Now's own
-# sections through want(NOW), so taking it away there left seven of them — the ground, the station
-# groups, the claims, the grain and the grain line — pointing at a control that was not on the page.
-assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="dialwrap"' in _js, \
-    "the dial is no longer drawn for Now and Arrange, or is drawn for every view again"
+# THE RAIL IS NOW'S CONTROL. It was the dial, drawn under every view's header until 18 September,
+# where on Network, Historical and Set up nothing on the page answered to it. Arrange keeps it: it
+# draws Now's own sections through want(NOW), so taking it away there left seven of them — the
+# ground, the station groups, the claims, the grain and the grain line — pointing at a control that
+# was not on the page. Renamed to the rail on 21 September when it became the top instrument (design
+# log R14); the wall keeps its own dial, which is a different control on a different surface.
+assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="railwrap"' in _js, \
+    "the rail is no longer drawn for Now and Arrange, or is drawn for every view again"
 assert re.search(r"const ref = 'grain-line';", _js), \
-    "the dial's link out is back to being chosen per view; only Now draws it now"
+    "the rail's link out is back to being chosen per view; only Now draws it now"
+# The zones are texture, not hue (design log R14). The cells blue has one meaning — a cell — and a
+# 12% wash of it for "may leave this machine" spent it on a second, vanished for a reader who cannot
+# separate blue from grey, and went white on a printed plate.
+assert not re.search(r"\.rail a\.leaves\s*\{[^}]*--cells", _css), \
+    "the rail's may-leave zone is back to a wash of the cells blue; it is a dot screen"
+assert re.search(r"\.rail a\.leaves\s*\{[^}]*radial-gradient", _css), \
+    "the rail's may-leave zone has lost its texture, so the three zones are two"
+assert 'data-component="rail"' in _js and 'data-kind="row"' in _js, \
+    "the rail no longer declares itself a component of a card kind the page is held to"
+assert 'data-ref="dial"' not in _js, \
+    "something still points at a component called dial; on Now it is the rail, and T5 counts orphans"
 
 # axe found nothing on any view or state, and these are the findings that had to hold for that.
 #
@@ -393,8 +430,23 @@ for _sel in (".readrow .who .m {", ".cellhead .n {", "[data-kind=\"readout\"] .s
 # goes, or if the view stops going through it.
 assert "view.filter(id => !(LAYOUT.hidden || []).includes(id))" in _js, \
     "a section hidden in Arrange is no longer filtered out before the page is drawn — ✕ does nothing"
-assert "only: want(NOW)" in _js and "only: want(NETWORK)" in _js, \
-    "a view no longer goes through want(), so hiding a section has no effect on it"
+for _v in ("NOW", "NETWORK", "HISTORICAL"):
+    assert f"want([...{_v}" in _js or f"want({_v})" in _js, \
+        f"the {_v} view no longer goes through want(), so hiding a section has no effect on it"
+
+# A SECTION THE PAGE HAS NEVER HEARD OF HAS TO GO SOMEWHERE.
+#
+# One registry serves three views through three hardcoded arrays of ids. A pack's section is an id
+# this file has never seen — that is the whole point of the contract, and the docstring at the top of
+# dashboard.js promises it in as many words. From the Now/Network split until 22 September a
+# registered section not typed into one of those arrays was filtered out of all three and drawn
+# nowhere: it registered, Set up listed it as `drawing`, and it was on no page. Now is the default
+# home for anything the two named lists do not claim, and this is the line that says so.
+assert "const homeless = PAI.sections.map(s => s.id).filter(id => !placed.has(id))" in _js, \
+    ("a registered section that no view names is filtered out of every view again, so a pack can "
+     "register a section and have it drawn nowhere — which is the contract this page publishes")
+assert "want([...NOW, ...homeless])" in _js, \
+    "Now is no longer the default home for a section no view names"
 # and the restore menu must be read, not just drawn. Red if fillRestore stops filling it or the
 # change handler stops putting the section back.
 assert "arr-restore" in _js, "the restore menu is markup nobody reads again; a hidden section cannot come back"
@@ -435,6 +487,122 @@ assert "chrome(" in _refused, "a refused reader cannot reach the other views: th
 # and a refused page never reaches the lead at all.
 assert re.search(r"S\.fixture \? pill\('cached'", _js), \
     "the lead's provenance pill no longer follows whether this is a fixture; it said `live` over a snapshot"
+
+# --- the mode, read the way MAP_TILES was not ------------------------------------------------------------------
+#
+# UI_MODE decides whether the page draws every section or four sentences, so a page that cannot read
+# it opens in the wrong one for every household that set it. That is exactly the MAP_TILES bug forty
+# lines up: GET /settings is describe() — {unlocked, runtime: [{key, value, ...}], bootstrap: [...]}
+# — never a flat map, and a proximity check would pass while `window.SETTINGS.UI_MODE` was forever
+# undefined. So this runs the page's own mode() against that endpoint's real body.
+#
+# The precedence is the other half: `?mode=` for the rig and for a link one person sends another,
+# then this browser's own choice, then what the household set the node to. A reader switching must
+# not rewrite the node, and the node must not overrule a reader who has switched.
+if shutil.which("node"):
+    _mode_js = "\n".join((
+        _lift(r"const MODE_KEY = '[^']*';", "MODE_KEY"),
+        _lift(r"const MODES = \[.*?\];", "MODES"),
+        _lift(r"const isMode = .*?;", "isMode()"),
+        _lift(r"const SHORT_VIEW = new Set\(\[.*?\]\);", "SHORT_VIEW"),
+        _lift(r"function mode\(view\) \{.*?\n\}", "mode()"),
+        _lift(r"function modeRaw\(\) \{.*?\n\}", "modeRaw()"),
+    ))
+    _mode_bodies = {}
+    _mb = os.environ.get("UI_MODE")
+    for _v in ("simple", "learn", "", "sideways"):
+        os.environ["UI_MODE"] = _v
+        _settings._cache["at"] = 0.0
+        _mode_bodies[_v or "unset"] = _settings.describe(unlocked=False, public=_settings.PUBLIC)
+    os.environ.pop("UI_MODE", None) if _mb is None else os.environ.__setitem__("UI_MODE", _mb)
+    _settings._cache["at"] = 0.0
+
+    _cases = {
+        # name                 node setting   this browser   the URL
+        "node_simple":        ("simple",      None,          ""),
+        "node_learn":         ("learn",       None,          ""),
+        "node_unset":         ("unset",       None,          ""),
+        "node_garbage":       ("sideways",    None,          ""),
+        "browser_overrides":  ("simple",      "learn",       ""),
+        "url_overrides_both": ("simple",      "learn",       "?mode=advanced"),
+        "url_garbage":        ("simple",      None,          "?mode=sideways"),
+        "storage_blocked":    ("learn",       "THROW",       ""),
+    }
+    _prog = (_mode_js + "\nconst B = " + json.dumps(_mode_bodies)
+             + ";\nconst C = " + json.dumps(_cases) + ";\nconst out = {};\n"
+             + "for (const [name, [setting, mine, search]] of Object.entries(C)) {\n"
+             + "  globalThis.window = { SETTINGS: B[setting] };\n"
+             + "  globalThis.location = { search };\n"
+             + "  globalThis.localStorage = mine === 'THROW'\n"
+             + "    ? { getItem() { throw new Error('site data blocked'); } }\n"
+             + "    : { getItem: k => (k === MODE_KEY && mine !== null ? mine : null) };\n"
+             + "  try { out[name] = mode(); } catch (e) { out[name] = 'THREW: ' + e.message; }\n"
+             + "}\nconsole.log(JSON.stringify(out))")
+    _m = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True,
+                                   check=True).stdout)
+
+    assert _m["node_simple"] == "simple", \
+        f"UI_MODE must reach the page through describe()'s runtime rows, not a flat map: {_m}"
+    assert _m["node_learn"] == "learn", f"every value the setting allows must arrive: {_m}"
+    # A VIEW WITH NO SHORT ANSWER DRAWS THE FULL ONE, whatever this browser last chose.
+    #
+    # Simple is the short version of what a view reports, and three views do not report: Set up is a
+    # form, Arrange is a mode for moving sections about, and the Wall is already one screen at three
+    # metres with no header to put a control in. Before this, a reader who chose Simple on Now and
+    # then opened Arrange got the digest, no sections at all, and a bar offering to reorder them.
+    # The stored choice is not rewritten — going back to Now restores it — so both halves are here.
+    _vprog = (_mode_js + ";\nglobalThis.window = { SETTINGS: { runtime: [] } };\n"
+              + "globalThis.location = { search: '' };\n"
+              + "globalThis.localStorage = { getItem: k => (k === MODE_KEY ? 'simple' : null) };\n"
+              + "const out = {}; for (const v of ['now','historical','network','setup','arrange','wall',undefined])\n"
+              + "  out[String(v)] = mode(v);\nconsole.log(JSON.stringify(out))")
+    _v = json.loads(subprocess.run(["node", "-e", _vprog], capture_output=True, text=True,
+                                   check=True).stdout)
+    for _view in ("now", "historical", "network"):
+        assert _v[_view] == "simple", \
+            f"{_view} reports something, so it must honour a reader's Simple: {_v}"
+    for _view in ("setup", "arrange", "wall"):
+        assert _v[_view] == "advanced", \
+            (f"{_view} has no short answer to give, so Simple must not follow a reader onto it — "
+             f"on Arrange it took every section away and left the bar with nothing to arrange: {_v}")
+    assert _v["undefined"] == "simple", \
+        f"asked without a view, mode() must still answer what this browser chose: {_v}"
+
+    assert _m["node_unset"] == "advanced", \
+        f"a node that never set it opens on the whole page, not on four sentences: {_m}"
+    assert _m["node_garbage"] == "advanced", \
+        f"an unreadable setting is the default, never a blank page: {_m}"
+    assert _m["browser_overrides"] == "learn", \
+        f"a reader who switched keeps their choice over the node's: {_m}"
+    assert _m["url_overrides_both"] == "advanced", \
+        f"?mode= is what the rig and a shared link use, and it wins: {_m}"
+    assert _m["url_garbage"] == "simple", \
+        f"a nonsense ?mode= falls through to the node rather than to the default: {_m}"
+    assert _m["storage_blocked"] == "learn", \
+        f"a browser with site data blocked still renders; it just cannot remember: {_m}"
+
+# The digest is drawn in simple mode and the node writes it. Both halves matter: a page that
+# composed its own four sentences would be the renderer making a claim about the household's data.
+assert "function digest(ctx)" in _js, "dashboard.js no longer draws the digest"
+assert re.search(r"const d = \(ctx\.S\.issues \|\| \{\}\)\.digest", _js), \
+    "the digest is no longer READ from /issues — if the page is composing those sentences, stop"
+assert re.search(r"simple && onNow \? digest\(ctx\) : ''", _js), \
+    "simple mode no longer draws the digest in place of the sections it hides"
+# AND ONLY ON NOW. The digest is four sentences about this hour. It was drawn on every view in
+# simple mode, so Historical and Network each answered "what is the air doing right now" under a
+# heading about the years and about the network, with no sections under them because none of theirs
+# opted into simple: 652 characters, not one about the view the reader had asked for. A short answer
+# to the wrong question is worse than a long answer to the right one.
+assert re.search(r"const onNow = !opts\.only \|\| opts\.only\.includes\('matrix'\)", _js), \
+    "the digest is no longer confined to Now, so the other views answer a question nobody asked"
+# Each of the other two names its own short answer instead, which is the section the pack says leads
+# that view: the satellite loop on Historical, the network map on Network.
+for _sec in ("satellite", "netmap"):
+    _blk = _js[_js.index(f"id: '{_sec}'"):]
+    assert "level: 'simple'" in _blk[:400], \
+        f"{_sec} no longer opts into simple, so its view has no short answer to give"
+assert "level: 'advanced'" in _js, \
+    "the section contract lost its default level, so every section would vanish in simple mode"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "

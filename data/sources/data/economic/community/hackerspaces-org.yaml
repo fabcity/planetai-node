@@ -1,0 +1,53 @@
+name: HackerspaceWiki — List of ALL Hacker Spaces
+url: https://wiki.hackerspaces.org/List_of_ALL_Hacker_Spaces
+description: |
+  The hackerspace movement's own wiki: 2,601 space pages with structured
+  coordinates, member counts, equipment and a status vocabulary that records
+  closures as well as openings. Queryable through Semantic MediaWiki.
+pillar: economic
+scale: community
+status: live
+license: not stated
+api: https://wiki.hackerspaces.org/w/api.php
+pilot_relevance: [global]
+tags: [hackerspace, makerspace, wiki, semantic-mediawiki, directory, act]
+added: 2026-09-22
+auth: none
+role: [observe, act]
+act_kind: facility
+upstream_listed_in: []
+notes: |
+  LICENCE NOT STATED — and §3's lead of "CC-BY-SA (wiki default)" is wrong. There
+  is no wiki default here: `api.php?action=query&meta=siteinfo&siprop=rightsinfo`
+  returns `{"text": "", "url": ""}`, both empty, meaning $wgRightsText and
+  $wgRightsUrl were never set. A server-side parse of an article carries no licence
+  line either. MediaWiki says, authoritatively, that this wiki grants nothing.
+  Criterion 1 is NOT met; licence-pending. A sysop setting two config values fixes
+  it for 2,601 pages at once.
+
+  THE HTML LIST IS BROKEN — do not send anyone to it. `/List_of_ALL_Hacker_Spaces`
+  returns a PHP fatal error: "Allowed memory size of 67108864 bytes exhausted" in
+  MediaWiki 1.35.2's QuickTemplate.php. The page is too big for the server's 64 MB
+  limit. The data is fine; the rendering is not. Use the API.
+
+  API VERIFIED 2026-09-22, key-free, at `/w/api.php` (NOT `/api.php`, which the
+  article rewrite swallows into a 404). Semantic MediaWiki is installed —
+  `action=smwinfo` reports 171,072 properties — so `action=ask` returns structured
+  results and bypasses the broken skin entirely.
+
+  MEASURED on a 500-row `[[Category:Hackerspace]]` sample of 2,601 pages: has
+  coordinates 403, `Hackerspace status` 497, `Number of members` 361, `Equipment`
+  161, `SpaceAPI` 28. The property names are `Has coordinates` and `Hackerspace
+  status` — not `Coordinates` or `Status`, which return zero rows and look like
+  missing data.
+
+  COUNT THE STATUSES. Of 500: active 183, closed 124, suspected inactive 66,
+  planned 65, building 43, reformatting 8, unknown 8. **Only 37% are active**, so
+  a node reading 2,601 pages without filtering will route somebody to a space that
+  shut down. That the wiki records closures at all makes it better curated than the
+  aggregators that copy from it.
+
+  28 spaces carry a `SpaceAPI` property pointing at their own live endpoint — the
+  join to economic/community/spaceapi-directory.
+
+  No `adapter`: nothing in planetai-node reads it yet.
