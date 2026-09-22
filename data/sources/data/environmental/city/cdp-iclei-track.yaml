@@ -1,0 +1,85 @@
+name: CDP–ICLEI Track open data (CDP Open Data Portal)
+url: https://data.cdp.net/
+description: |
+  What cities, states and regions report to CDP through the unified CDP–ICLEI
+  Track: emissions inventories, climate hazards, adaptation plans, targets and
+  renewable energy, self-reported and published annually.
+pillar: environmental
+scale: city
+status: candidate
+license: "CDP Open Database License (27 Nov 2014) — NON-COMMERCIAL. Despite the name it is not ODbL: it is ODbL with commercial use removed, so criterion 1 is NOT met. Derivatives ARE permitted, non-commercially. See notes."
+api: https://data.cdp.net/resource/
+pilot_relevance: [global]
+tags: [cdp, iclei, emissions, cities, self-reported, climate-adaptation]
+added: 2026-09-23
+auth: none
+feeds_cells: [Environmental|City]
+upstream_listed_in: []
+notes: |
+  **THE LICENCE IS NOT ODbL, AND THE NAME IS WHY ANYONE WOULD THINK IT WAS.**
+  The portal's dataset metadata carries `"License Type": "CDP Open Database
+  License"`, which reads like Open Data Commons ODbL and is not. The licence
+  text is a 7-page PDF behind the Terms of Use page, embedded through a Google
+  Docs viewer, last updated 27 November 2014. Read in full 2026-09-23; the
+  summary says, verbatim, that you are free "To Share ... for non-commercial
+  purposes", "To Create: To produce works from this database for non-commercial
+  purposes", "To Adapt: To modify, transform and build upon the database for
+  non-commercial purposes", and:
+
+  > "The CDP Open Database License draws directly and heavily on Open Data
+  > Commons' Open Database License. However, the CDP Open Database License
+  > explicitly forbids commercial use of the data and enumerates specifically
+  > prohibited uses."
+
+  So **criterion 1 is NOT met** — non-commercial is not an open licence by this
+  list's definition — and this entry is licence-restricted rather than
+  licence-unknown, which is a different and more actionable state.
+
+  HOW IT DIFFERS FROM environmental/planet/edgar, and it matters. EDGAR's CO2 is
+  NC-**ND**: no derivatives at all, so an Index cell is forbidden outright.
+  CDP's licence permits adaptation and derived works explicitly — it restricts
+  only *commercial* use. Whether a Foundation publishing an open Index is
+  commercial is a question for the Foundation and not for a session, but it is a
+  question with a plausible answer, which the EDGAR one is not.
+
+  CDP says so itself: "CDP allows and encourages both non-commercial and
+  commercial uses of our data ... A much larger set of data is available for
+  commercial uses to paying customers only and can be arranged by contacting CDP
+  at partnerships@cdp.net". The free tier is deliberately the non-commercial
+  tier, and the commercial route is a purchase.
+
+  ENDPOINT VERIFIED 2026-09-23, no key and no account. Socrata:
+  `GET data.cdp.net/resource/cbdf-w4g3.json?$limit=1` returned City of Los
+  Angeles, questionnaire year 2020; `ss7p-tmd7` returned Aarhus Municipality
+  with GCoM, C40 and ICLEI membership flags. The catalogue is
+  `api/views.json`. One trap: several published assets are non-tabular blobs and
+  answer `"no row or column access to non-tabular tables"` — check `viewType`
+  before pointing code at an id.
+
+  VINTAGE: 2025 questionnaire datasets are published (Nature and Health,
+  Adaptation and Resilience, cities and states/regions). Annual, following the
+  reporting cycle.
+
+  SPATIAL, and the weakness. Cities are identified by CDP's own
+  `account_number` / `organization_number` — 10894 Los Angeles, 54408 Aarhus —
+  plus a free-text name and a country. There is **no LAU, NUTS, FIPS/GEOID or
+  any national code on any row**. Joining to a territory means matching a city
+  name against a register, which is the fragile join this contract exists to
+  flag: **not federatable without a crosswalk**, and the crosswalk has to be
+  built and maintained by hand.
+
+  SELF-REPORTED, which is the other thing to hold in mind: these are cities'
+  own submissions on a voluntary questionnaire. Absence is not zero, coverage
+  is skewed to cities with the staff to report, and a year-on-year change can
+  be a change in who answered rather than in the world.
+
+  INDICATOR: city greenhouse-gas inventories and adaptation status — the
+  environmental-pillar city row, and the only source here reported *by* cities
+  rather than modelled *about* them. I could not read the landing plan's Table 2
+  in this session, so this names the indicator in plain words rather than a row
+  id.
+
+  Promotes to live when the Foundation has decided whether its use is
+  non-commercial within this licence's meaning, and somebody has matched one
+  partner city to its CDP account number and confirmed the inventory year is
+  present. The licence decision is the blocker, not the data.

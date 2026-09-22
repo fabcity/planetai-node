@@ -28,6 +28,12 @@ an edge, resolution 12 is 10 m, and the one you are standing on is lit. Stops co
 cell could leave your machine are textured; stops finer than your node is willing to say where it is
 are struck through. Press one and the whole page re-answers at that grain.
 
+Under the rail, folded shut, is what one cell at that stop is worth: three hexagons to scale — the
+grain you are on against the one above and the one below — and what each thing your node speaks for
+costs to cover at it. Open it and turn the dial: at resolution 4 the sea takes five cells and your
+room takes one, and so does everything in between. That is the whole argument for grain in one
+table.
+
 **Then the thing that matters.** The issue with most to say, as a sentence in your language, with its
 number beside it at the size of a headline — *"It feels like 33.9 °C in the room, under the line."*
 Under it, in smaller type, why that issue and not another. Then the four distances as bars on one

@@ -1,0 +1,69 @@
+name: INE Spain — Tempus3 JSON API
+url: https://www.ine.es/
+description: |
+  Spain's national statistics office: official municipal population, census,
+  labour and price statistics for all 8,000-plus municipalities, through a
+  key-free JSON API.
+pillar: social
+scale: city
+status: candidate
+license: CC-BY-4.0
+api: https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/2855
+pilot_relevance: [barcelona, global]
+tags: [ine, spain, municipal, padron, census, codigo-ine]
+added: 2026-09-23
+auth: none
+feeds_cells: [Social|City, Social|Region]
+upstream_listed_in: []
+notes: |
+  LICENCE, from INE's own Aviso legal, section "Reutilización de la información
+  contenida en este sitio web", read 2026-09-23. Verbatim: "La licencia de uso
+  general a aplicar a la información estadística de este sitio web, salvo que se
+  indique lo contrario, es la **Creative Commons Reconocimiento 4.0 (CC BY 4.0)**
+  ... siendo posible la copia, distribución y comunicación pública, así como la
+  producción de obras derivadas, incluso con finalidad comercial citando la
+  autoría." Derived works and commercial use are named explicitly. Criterion 1
+  is met.
+
+  Two conditions worth carrying. INE authorises reuse only of material whose
+  original source is INE itself — "el INE solo autoriza la reutilización de
+  aquélla cuya fuente original sea el propio INE" — so third-party data
+  republished on the site is not covered. And the attribution has prescribed
+  wording: "Fuente: Sitio web del INE: www.ine.es" when the data is unprocessed,
+  or "Elaboración propia con datos extraídos del sitio web del INE: www.ine.es"
+  when it has been worked on. An Index computing a cell is the second case.
+
+  ONE INCONSISTENCY ON THE SITE, recorded because a careful reader will hit it.
+  The page footer reads "Este sitio web y su contenido están bajo licencia CC
+  BY-SA 4.0" — **BY-SA** — while the licence link beside it points at
+  `creativecommons.org/licenses/by/4.0/`, which is **BY**. The Aviso legal is
+  the operative text for statistical information and says CC BY 4.0, so that is
+  what this entry records; the footer badge disagrees with its own href and
+  appears to be about the website rather than the data.
+
+  ENDPOINT VERIFIED 2026-09-23, no key and no account. `OPERACIONES_DISPONIBLES`
+  lists 112 statistical operations; operation 22 (Cifras Oficiales de Población
+  de los Municipios Españoles) has 65 tables; `DATOS_TABLA/2855?nult=1` returned
+  264 series of municipal population for Albacete province — Albacete 390,406,
+  Abengibre 753.
+
+  SPATIAL: **federatable, in two calls rather than one.** The data payload
+  identifies a municipality by name inside a series label — "Albacete. Total.
+  Total habitantes." — and carries INE's series code, not the municipal code.
+  The código INE is in the variable-values endpoint:
+  `VALORES_VARIABLE/19` returns every municipality with `"Codigo":"31195"`, the
+  official 5-digit register code. So the join to a Spanish municipality is real
+  and uses **the provider's own crosswalk**, not one somebody invented — but a
+  node has to fetch both and key on it. Anything that string-matches the names
+  will break on the bilingual ones, of which `Oronz/Orontze` in that response is
+  the first example.
+
+  INDICATOR: municipal population and census — the social-pillar city row for
+  the Barcelona pilot, at official-register resolution. I could not read the
+  landing plan's Table 2 in this session, so this names the indicator in plain
+  words rather than a row id.
+
+  Promotes to live when somebody pulls Barcelona's population by código INE
+  (08019), confirms the value matches INE's published padrón figure, and states
+  which of the 112 operations the Index would actually read — the API is one
+  door onto a very large building and "INE is usable" is not a finding.

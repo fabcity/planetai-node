@@ -63,6 +63,13 @@ resolution 6) are shaded with a dotted texture rather than the cells blue; stops
 published resolution are struck through.
 Turning the dial re-draws the ground and the grain at that resolution.
 
+Under it, folded shut, is **what one cell at that stop is worth**: three hexagons drawn to true
+relative scale — the stop you are on, filled, against the one above and the one below — and a table
+of what each thing the node speaks for costs to cover at it, from the sea down to this room. Each
+stop is about seven times finer by area than the one above, which is the one fact about the ladder
+that eleven evenly spaced buttons cannot say. The fold's state is a query key, so it survives the
+dial it is there to be read against.
+
 ## Issues, states and distances
 
 `GET /issues` is the whole of what the page knows about the place. For every issue the keeper declared in

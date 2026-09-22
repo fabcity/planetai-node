@@ -178,6 +178,75 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ask .what small { display: block; font-weight: 400; color: var(--mute); font-size: 13px; margin-top: 2px }
 .ask .go { background: var(--rings); border: 1px solid var(--rings); color: var(--on-rings);
   font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0 }
+/* THE FORM BEHIND "I did this". Hidden it costs no height, which matters because T1 reads this
+   strip's own box on the first screen. Open it spans both columns under the sentence and the
+   button, so nothing above it moves sideways. */
+.ask form.did { grid-column: 1 / -1; display: grid; gap: 10px 16px; padding-top: 12px;
+  border-top: 1px solid var(--hair) }
+/* An author `display` beats the UA's `[hidden] { display: none }`, so the rule above showed the
+   form at all times — 93.5 px on every strip on every view, measured, including the first screen
+   T1 reads. It renders either way, which is why a screenshot would not have caught it. */
+.ask form.did[hidden] { display: none }
+@media (min-width: 620px) {
+  .ask form.did { grid-template-columns: minmax(0, 14em) minmax(0, 1fr) auto; align-items: end }
+}
+.ask form.did label { display: grid; gap: 3px; min-width: 0 }
+.ask form.did label span { font: 500 10.5px var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute) }
+.ask form.did input { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+  border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
+.ask form.did input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.ask form.did .btns { display: flex; gap: 8px }
+.ask form.did button { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.ask form.did button.pri { background: var(--ink); color: var(--ground) }
+.ask form.did button[disabled] { opacity: .5 }
+/* ==== h/mods/shape.js — the day this place usually has ==== */
+/* Two lines told apart by dash and weight, never hue, like every other pair on this page. */
+.shapeplot { display: block; width: 100%; height: auto; max-height: 190px; margin: 10px 0 4px;
+  border: 1px solid var(--hair); background: var(--ground) }
+.shapeplot .grid line { stroke: var(--hair); stroke-width: 1 }
+.shapeplot text { font: 500 9px var(--mono); fill: var(--mute) }
+.shapeplot path { fill: none; vector-effect: non-scaling-stroke }
+.shapeplot path.in { stroke: var(--ink); stroke-width: 2.2 }
+.shapeplot path.out { stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 5 4; opacity: .75 }
+
+/* ==== h/mods/decide.js — an observation, what the node suggests, and a box ==== */
+/* Three bands down one card: what was seen, what the node suggests, and the decision. The suggestion
+   sits inside a rule rather than beside it, because it is the node speaking and the box underneath
+   is the household answering, and the order is the argument. */
+.decide { border: 1px solid var(--ink); padding: clamp(13px, 1.4vw, 18px); display: grid;
+  gap: 12px; background: var(--ground); margin-bottom: clamp(12px, 1.4vw, 20px) }
+.decide .k { font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute); display: block; margin-bottom: 3px }
+.decide .obs p { font: 600 14.5px/1.4 var(--fc-font-body); max-width: 56ch }
+.decide .obs .m { font: 500 11.5px var(--mono); color: var(--mute); display: block; margin-top: 4px }
+.decide .sug { border-left: 3px solid var(--cells); padding-left: 12px }
+.decide .sug p { font-size: 14.5px; max-width: 56ch }
+.decide .sug p.none { color: var(--mute) }
+.decide .open { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink); justify-self: start }
+.decide form.decided { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair);
+  padding-top: 12px }
+/* An author `display` beats the UA's `[hidden] { display: none }` — the same trap the act form hit,
+   where it rendered 93.5 px on every strip while claiming to be hidden. */
+.decide form.decided[hidden] { display: none }
+@media (min-width: 620px) {
+  .decide form.decided { grid-template-columns: minmax(0, 13em) minmax(0, 1fr); align-items: end }
+  .decide form.decided .btns, .decide form.decided .fine { grid-column: 1 / -1 }
+}
+.decide form.decided label { display: grid; gap: 3px; min-width: 0 }
+.decide form.decided label span { font: 500 10.5px var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute) }
+.decide form.decided input { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+  border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
+.decide form.decided input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.decide form.decided .btns { display: flex; gap: 8px; flex-wrap: wrap }
+.decide form.decided button { font: 600 14px var(--fc-font-body); padding: 9px 14px;
+  border-radius: 0; border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.decide form.decided button.pri { background: var(--ink); color: var(--ground) }
+.decide form.decided .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
+
 .ask.none { border-style: dashed; border-color: var(--hair) }
 .ask.none .what { font-weight: 400; color: var(--mute) }
 
@@ -376,11 +445,11 @@ svg.hexgrid { width: 100%; height: auto; display: block }
 /* a claim: what one source's word covers, and how coarse it is by the time it says it */
 .claim { border-top: 1px solid var(--ink); padding: clamp(11px, 1.3vw, 15px) 0; display: grid;
   gap: 8px clamp(18px, 2.6vw, 34px) }
-.claim { grid-template-columns: minmax(0, 84px) minmax(0, 1fr) }
-@media (min-width: 760px) { .claim { grid-template-columns: minmax(0, 150px) minmax(0, 1fr) } }
-.claim .pic { max-width: 150px }
-.claim .pic .cap { font-size: 9.5px }
-.claim .pic { align-self: start }
+/* ONE COLUMN. The picture column held a drawing of the card's own compacted covering, which the
+   striped bar under the same card already drew and which did not answer to the rail above it. It
+   moved into the rail's fold on 22 September; the column went with it. */
+.claim { grid-template-columns: minmax(0, 1fr) }
+.claim .decl .cx { display: block; color: var(--ink) }
 .claim h3 { font: 800 clamp(1rem, 1.5vw, 1.25rem) var(--fc-font-display); letter-spacing: -.02em }
 .claim .what { font-size: 13.5px; color: var(--mute); max-width: 56ch }
 .claim .facts { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-top: 4px }
@@ -498,6 +567,38 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
 .railkey i.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
   background-size: 5px 5px }
 .railkey i.fine { border-style: dashed }
+
+/* THE RAIL'S FOLD — what one cell at this stop is worth. Open, it is the three hexagons to scale
+   and the table of what each footprint costs to cover here; closed it is NOT THERE, and its
+   trigger is the key's own last chip. A <details> of its own cost 33.5 px shut and took the ask and
+   the as-of off the first screen at 390 and 1440 both — T1, on a gate that was green the render
+   before. The one control the page could afford was the one already on the page.
+
+   Two columns where there is room, stacked where there is not: the drawing is square and the table
+   is three narrow columns, and side by side they are one look rather than two. */
+.railkey a.worth { color: inherit; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--hair) }
+.railkey a.worth::after { content: "\00a0\25be" }
+.railkey a.worth.on::after { content: "\00a0\25b4" }
+.railkey a.worth:hover, .railkey a.worth:focus-visible { text-decoration-color: var(--ink) }
+.railfold { border-top: 1px solid var(--hair); margin-top: 10px; padding-top: 4px }
+.railfold .rh { display: flex; gap: 14px; align-items: baseline; padding: 6px 0 8px }
+.railfold .rh h2 { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute) }
+.railfold .rh a { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute); margin-left: auto }
+.railfold .rf { display: grid; gap: clamp(10px, 1.5vw, 20px); padding-bottom: 10px }
+@media (min-width: 760px) {
+  .railfold .rf { grid-template-columns: minmax(0, 190px) minmax(0, 1fr); align-items: start }
+}
+.railfold .pic { max-width: 190px }
+.railfold .pic svg { display: block; width: 100%; height: auto }
+.railfold .pic .cap { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: center }
+.railfold .pic .cap .on { color: var(--ink); font-weight: 700 }
+/* `min-width: 0` for the same reason the grain table's box has it: a grid child floors at its own
+   max-content width, so the table inside widened the document at 390 instead of scrolling. */
+.railfold .rfx { min-width: 0 }
+.railfold .rfx p { font-size: 13.5px; color: var(--mute); max-width: 56ch; margin-bottom: 8px }
 
 .lead { padding: clamp(14px, 2vw, 22px) 0 clamp(10px, 1.6vw, 16px); display: grid; gap: 10px }
 /* On a phone the lead is one column of six blocks, so its gaps are 50px of the first screen and

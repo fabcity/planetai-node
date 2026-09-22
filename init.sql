@@ -132,8 +132,14 @@ CREATE TABLE IF NOT EXISTS settings (
 
 -- 'settings' rows record who changed what (actor = an agent's name or "gui"); alert_id is NULL for them and
 -- rho ignores them. Idempotent: drop and re-add the check.
+-- `decided` is the fifth, and it MOVES NOTHING. rho filters stage IN ('acknowledged','acted'),
+-- index.py::_funnel selects the three it names, and CLOSED_STAGES in app/issues/schema.py is
+-- ("acted","measured") -- so a decision does not close an ask, does not enter rho, and is not a
+-- stage in the funnel. It is a record that somebody looked at an observation and said what they
+-- would do, which today leaves exactly the same trace as never having looked: none. See
+-- docs/SPEC_decide.md section 6.
 ALTER TABLE actions DROP CONSTRAINT IF EXISTS actions_stage_check;
-ALTER TABLE actions ADD CONSTRAINT actions_stage_check CHECK (stage IN ('acknowledged','acted','measured','settings'));
+ALTER TABLE actions ADD CONSTRAINT actions_stage_check CHECK (stage IN ('acknowledged','acted','measured','settings','decided'));
 INSERT INTO schema_version (version) VALUES ('0.20') ON CONFLICT DO NOTHING;
 
 -- Pack SQL (rules.yml, cells.yml) runs as planetai_ro: SELECT on every table except settings, no writes. A "data pack,

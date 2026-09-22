@@ -17,7 +17,8 @@
    "actions": "GET /actions?limit=2000, verbatim",
    "reach": "GET /reach, verbatim",
    "earth": "GET /earth, verbatim",
-   "readings_1h": "GET /aggregates?hours=24, with indoor, local and kind joined from GET /sensors, as engine._read joins them"
+   "readings_1h": "GET /aggregates?hours=24, with indoor, local and kind joined from GET /sensors, as engine._read joins them",
+   "effect": "derived from this capture own alerts and actions by the rules GET /effect uses, because the route postdates the capture and planetai snapshot now fetches it. `hours` is null on purpose: a capture carries only 24 hours of readings_1h, so the first hour back under a line is 8 days after an act made a week earlier, which is an artefact of the window and not a recovery. A live node reads the whole view and does not have that problem"
   },
   "refused": {},
   "what_this_is": "Every answer this node gives, at one moment. It holds 15-minute means, alert texts, sensor names and the node position: data that belongs to the household. It holds no raw readings, and no token."
@@ -68796,5 +68797,41 @@
   }
  ],
  "node": "bayu-ungasan",
- "version": "v0.69"
+ "version": "v0.69",
+ "effect": {
+  "window_hours": 48,
+  "days": 365,
+  "rules": [
+   {
+    "rule_id": "air-quality/indoor_pm25_high",
+    "acted": 4,
+    "cleared": 1,
+    "watch": {
+     "metric": "pm25",
+     "over": 35.5
+    },
+    "hours": null,
+    "measured": 0,
+    "already": 0
+   },
+   {
+    "rule_id": "air-quality/inside_worse_ventilate",
+    "acted": 2,
+    "cleared": 1,
+    "watch": null,
+    "hours": null,
+    "measured": 0,
+    "already": 0
+   },
+   {
+    "rule_id": "heat/heat_stress_now",
+    "acted": 1,
+    "cleared": 0,
+    "watch": null,
+    "hours": null,
+    "measured": 0,
+    "already": 0
+   }
+  ]
+ }
 }

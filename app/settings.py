@@ -117,6 +117,17 @@ RUNTIME = {
                            "stopped: the page says how many it is not listing and one press lists them all. To collect "
                            "fewer stations in the first place, turn the Bali Air Dispatch radius down instead."),
     "AGGREGATE_TOKEN":    ("node", "Token children must present", True, False, "Set this before pointing another node at this one."),
+    # Off by default, and a community's switch rather than the software's. A node in a house records
+    # an act whether or not anybody deliberated first -- somebody smells smoke and opens a window,
+    # and a node that refused to record that would be asserting a deliberation that did not happen.
+    # A node that acts for more than one household is a different case, and this is where that
+    # community says so. See docs/SPEC_decide.md section 10.
+    "DECISION_REQUIRED":  ("node", "An act needs a decision first", False, False,
+                           "0 (default) records an act whenever somebody says they did something. 1 refuses "
+                           "one unless a decision was recorded against the same ask first, which is what a "
+                           "node acting for a street rather than a room usually wants. It applies to every "
+                           "way in -- the dashboard, Telegram, the radio and the terminal -- so turn it on "
+                           "only where everybody answering has a screen to decide on."),
     "BACKUP_TOKEN":       ("node", "Token for collecting backups", True, False, "Read-only: lets a NAS fetch /backups. Separate from the admin token."),
     "PARENT_API_URL":     ("node", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
     "PARENT_TOKEN":       ("node", "Token for the parent", True, False, ""),

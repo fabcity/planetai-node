@@ -1,0 +1,77 @@
+name: OECD Regional and Metropolitan Database
+url: https://data-explorer.oecd.org/
+description: |
+  OECD's sub-national statistics: GDP, labour, demography and climate exposure
+  for regions (TL2/TL3) and functional urban areas across member and partner
+  countries, served as SDMX.
+pillar: economic
+scale: region
+status: candidate
+license: "OECD Terms and Conditions (last updated 1 July 2024) — reuse for any purpose including commercial, with attribution that must be passed on to sub-licensees. An open permission, not a named licence. See notes."
+api: https://sdmx.oecd.org/public/rest/dataflow/OECD.CFE.EDS
+pilot_relevance: [barcelona, boston, santiago, global]
+tags: [oecd, regional, metropolitan, sdmx, gdp, functional-urban-area]
+added: 2026-09-22
+auth: none
+feeds_cells: [Economic|Region, Economic|City]
+upstream_listed_in: []
+notes: |
+  LICENCE, read from the OECD's own Terms & Conditions §3 "Data" 2026-09-22. The
+  permission is broad, verbatim: "you can extract from, download, copy, adapt,
+  print, distribute, share and embed Data for any purpose, even for commercial
+  use. You must give appropriate credit to the OECD by using the citation
+  associated with the relevant Data". It is not a named open licence — there is
+  no SPDX id and no Creative Commons anywhere on the page — so this entry cites
+  the instrument rather than inventing a label.
+
+  TWO CONDITIONS THAT TRAVEL, and both matter for an Index built on this.
+
+  The attribution is **viral**: "When sharing or licensing work created using
+  the Data, you agree to include the same acknowledgment requirement in any
+  sub-licenses that you grant, along with the requirement that any further
+  sub-licensees do the same." Anything derived from this has to carry the
+  requirement downstream, which is a thing to decide once and honour, not to
+  discover later.
+
+  And the OECD does not warrant it owns the data: §3 says Data "may be subject
+  to restrictions beyond the scope of these Terms", that third parties may own
+  some of it, and that it is "the user's responsibility to verify ... whether
+  the Data is fully or partially owned by third parties" per dataset. So the
+  licence above is the floor for OECD-owned series and has to be re-checked for
+  any specific table before it is relied on.
+
+  "Availability of Data" additionally reserves the right to throttle: the OECD
+  "may monitor your use" and "modify the amount of Data you may request in a
+  single query" and the number of queries over time. Cache; do not poll.
+
+  ENDPOINT VERIFIED 2026-09-22, no key and no account. The SDMX service at
+  `sdmx.oecd.org/public/rest/` answers; `GET /dataflow/OECD.CFE.EDS?format=
+  json-structure-2.0.0` lists 133 dataflows for regions and cities, and
+  `GET /data/OECD.CFE.EDS,DSD_FUA_ECO@DF_ECONOMY,1.1/all?startPeriod=2021&
+  format=csvfilewithlabels` returns labelled CSV. Two traps cost a request each
+  and are written down so they do not cost another: `format=jsondata` is
+  rejected with the acceptable values listed, and **the dataflow version is part
+  of the path** — the same query at `1.0` 404s with "Could not find Dataflow
+  and/or DSD", which reads like the flow does not exist. Read the version off
+  the dataflow listing first.
+
+  SPATIAL: OECD territorial codes, not national register codes — `FR062F`
+  Mamoudzou, `USA62F` Hidalgo, with a `TERRITORIAL_LEVEL` dimension carrying
+  TL2, TL3 or FUA. These are stable, official OECD codes and the OECD publishes
+  correspondence to NUTS and national units, so this is federatable *through a
+  published crosswalk* rather than directly — better than a raster with no code
+  at all, weaker than Urban Audit's LAU-aligned city codes.
+
+  CADENCE: annual, with a lag of two to three years on economic series; the
+  economy flow answered for 2021 in September 2026.
+
+  INDICATOR: regional GDP and labour — the economic-pillar region row, and the
+  only source here that gives a functional urban area rather than an
+  administrative city, which is the right unit for a commuting economy. I could
+  not read the landing plan's Table 2 in this session, so this names the
+  indicator in plain words rather than a row id.
+
+  Promotes to live when somebody pulls one series for one partner region —
+  Catalonia, Massachusetts, a Chilean región — and confirms the OECD territorial
+  code maps to that region's own official code, because everything downstream
+  depends on that crosswalk being real rather than assumed.

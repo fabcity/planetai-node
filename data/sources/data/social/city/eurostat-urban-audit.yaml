@@ -1,0 +1,72 @@
+name: Eurostat Urban Audit (urb_* — cities and greater cities)
+url: https://ec.europa.eu/eurostat/web/cities
+description: |
+  Eurostat's city-level statistics: population, living conditions, labour,
+  housing and environment for 969 European cities and greater cities, each with
+  an official Urban Audit code that joins to LAU.
+pillar: social
+scale: city
+status: candidate
+license: "Commission Decision 2011/833/EU — reuse for commercial or non-commercial purposes authorised with the source acknowledged. NOT CC-BY-4.0, which covers the site's editorial content only. See notes for the non-commercial exception."
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/urb_cpop1
+pilot_relevance: [barcelona, global]
+tags: [urban-audit, eurostat, population, city-statistics, lau, sdmx]
+added: 2026-09-22
+auth: none
+feeds_cells: [Social|City]
+upstream_listed_in: []
+notes: |
+  LICENCE, read from Eurostat's own copyright notice 2026-09-22, and the
+  distinction matters. Two sentences on that page say different things: "The
+  copyright for the editorial content of this website ... is licensed under the
+  Creative Commons Attribution 4.0 International licence", and separately
+  "Reuse of statistical data, metadata, publications, and other dissemination
+  tools published on this website for commercial or non-commercial purposes is
+  authorised provided the source is acknowledged. The reuse policy of the
+  European Commission is implemented by the Decision of 12 December 2011."
+  **The data is not CC-BY-4.0; it is the Commission reuse Decision.** Both are
+  open with attribution, and filing the data as CC-BY-4.0 would be citing the
+  wrong instrument.
+
+  THE NON-COMMERCIAL EXCEPTION, verbatim and worth reading before building a
+  product on any Eurostat table: some data "may not be reused for commercial
+  purposes, but non-commercial reuse is possible without restriction" — data
+  belonging to sources other than Eurostat, co-publications, and "Data for
+  countries other than: Member States of the European Union (EU) ... EFTA ...
+  official EU acceding and candidate countries", where "the user will need to
+  eliminate these data from the tables before reusing them commercially".
+  Urban Audit covers EU, EFTA and candidate cities, so the restriction does not
+  bite here — but a node that generalises "Eurostat is open" to a table with
+  US or Japanese rows in it inherits a non-commercial clause on those rows.
+
+  ENDPOINT VERIFIED 2026-09-22, no key and no account: `GET
+  .../1.0/data/urb_cpop1?format=JSON&lang=EN&time=2023&indic_ur=DE1001V`
+  returned JSON-stat, "Population on 1 January by age groups and sex - cities
+  and greater cities", `updated: 2026-09-07`. The dataset id is the whole API —
+  `urb_cpop1` is population, and the other `urb_*` tables (living conditions,
+  labour, economy) answer the same way.
+
+  SPATIAL, and this is what separates it from a population grid. The geo
+  dimension is `cities`, 969 members, coded with official Eurostat Urban Audit
+  codes — `BE001C` Bruxelles, `BE002C` Antwerpen, `ES002C` Barcelona — with
+  country rollups under the plain ISO code. These correspond to LAU, so a
+  European partner city can join this to its own register without a crosswalk
+  somebody invented. That is rarer than it sounds: social/city/jrc-ghsl and
+  social/region/worldpop both give better resolution and neither can be joined
+  to an official boundary at all.
+
+  CADENCE: annual, published with a lag; the 2023 reference year was refreshed
+  2026-09-07. Coverage is uneven city by city — a city can be in the register
+  and carry no value for an indicator in a given year, which is a null and not
+  a zero.
+
+  INDICATOR: city population and living conditions — the social-pillar city row
+  for European partner cities, and the only source in this list that gives it
+  with an official code attached. I could not read the landing plan's Table 2 in
+  this session, so this names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody pulls one indicator for one partner city —
+  Barcelona is `ES002C` — checks the value against that city's own published
+  figure, and confirms how many of the 969 carry a non-null value for the year
+  they need. Coverage, not the endpoint, is what will decide whether this is
+  usable.

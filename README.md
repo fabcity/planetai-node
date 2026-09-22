@@ -70,6 +70,8 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           radios and reachability  NETWORKING · MESHTASTIC
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
           the earth pack           HANDOFF_earth_pack
+          nodes finding nodes     SPEC_discovery
+          deciding, and measuring it SPEC_decide
           the dashboard's design    HANDOFF_dashboard_violations · design/shots/
           the page redesign        HANDOFF_dashboard_redesign · design/shots/redesign/
           reports and messages     HANDOFF_reports

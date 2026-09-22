@@ -1833,7 +1833,7 @@ from datetime import datetime
 # shell string and one apostrophe ends it, taking the whole snapshot command with it.
 PATHS = ["/health", "/issues", "/stats", "/alerts?limit=200", "/rho", "/cells", "/observations",
          "/sensors", "/trust", "/report/latest", "/nearby", "/forecast",
-         "/actions?limit=2000", "/aggregates?hours=24", "/reach", "/earth"]
+         "/actions?limit=2000", "/aggregates?hours=24", "/reach", "/earth", "/shape", "/effect"]
 base = "http://localhost:" + os.environ["SNAP_PORT"]
 tok = os.environ["SNAP_TOKEN"]
 
@@ -1858,6 +1858,25 @@ for path in PATHS:
 # nothing says so. /aggregates IS that table -- it is short only the three columns the engine joins
 # in from sensors, so they are joined here rather than by widening a route other nodes federate on.
 # The engine uses an INNER JOIN, which drops a bucket whose sensor is gone; so does this.
+# THE NOTES COME OUT. A snapshot is made to be sent -- to a design round, to a bug report, into a
+# repository -- and GET /actions is on neither sharing allowlist precisely because a note is the
+# household own words about what it did in its own house. Capturing it with the admin token and
+# writing it into a file somebody will attach to an issue walks around that decision. Nothing in the
+# replay reads it: engine.Replay uses actions for stages, for whether an ask is open and for the
+# funnel, and asks.actions on the wire carries actor and never note. So it costs the replay nothing
+# and it is the same rule the node already applies to anyone without a token.
+acts = out.get("actions")
+if isinstance(acts, list):
+    kept = 0
+    for a in acts:
+        if isinstance(a, dict) and str(a.get("note") or "").strip():
+            a["note"] = None
+            kept += 1
+    if kept:
+        out["provenance"]["read"]["actions"] = (
+            "GET /actions?limit=2000, with %d note(s) removed: a note is the household own words "
+            "and this file is made to be sent" % kept)
+
 prov, agg = out["provenance"], out.pop("aggregates", None)
 if "aggregates" in prov["refused"]:
     prov["refused"]["readings_1h"] = prov["refused"].pop("aggregates")

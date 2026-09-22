@@ -1,0 +1,65 @@
+name: US Census Bureau American Community Survey (ACS) API
+url: https://www.census.gov/data/developers/data-sets/acs-5year.html
+description: |
+  The United States' rolling household survey: population, income, housing,
+  commuting and employment down to block group, five-year estimates, queried
+  by FIPS geography through a public API.
+pillar: social
+scale: city
+status: candidate
+license: "No named licence. Published as open data under OMB M-10-06 and EO 13642; the API terms require a specific attribution notice, quoted in notes. US federal works carry no domestic copyright, which is the usual basis — but the Bureau names no licence of its own."
+api: https://api.census.gov/data/2024/acs/acs5
+pilot_relevance: [boston, global]
+tags: [census, acs, united-states, fips, demographics, housing]
+added: 2026-09-23
+auth: api-key
+feeds_cells: [Social|City, Social|Region]
+upstream_listed_in: []
+notes: |
+  LICENCE, and the honest shape of it. The Census Bureau's API Terms of Service,
+  read 2026-09-23, **name no licence at all**. They impose an attribution
+  requirement, verbatim: services using the API "should display the following
+  notice prominently within the application: *This product uses the Census
+  Bureau Data API but is not endorsed or certified by the Census Bureau*", and
+  forbid modifying or falsely representing content while still claiming the
+  Bureau as source. Separately the Bureau publishes to data.gov "in accordance
+  with OMB Memorandum M-10-06 [and] Executive Order 13642 on open data".
+
+  So this is open by policy rather than by licence. The usual basis for calling
+  it public domain is that US federal government works carry no domestic
+  copyright — which is true and is *not* something the Bureau says on these
+  pages, so this entry does not put the words in its mouth. Criterion 1 is met
+  in substance; a reviewer who needs a named licence will not find one.
+
+  **A KEY IS NOW REQUIRED FOR DATA, and this changed.** `GET
+  api.census.gov/data/2023/acs/acs5?get=NAME,B01003_001E&for=place:*&in=state:25`
+  without a key returns an HTML page titled **"Missing Key"**, not JSON. The
+  long-standing behaviour of 500 keyless queries a day is gone. Keys are issued
+  on request without review, hence `auth: api-key` rather than `registration`.
+
+  The split is worth knowing: **metadata is still keyless.** `/data.json` and
+  `/data/2024/acs/acs5/variables.json` both answered 200 with no key, so a node
+  can discover variables and vintages anonymously and only needs the key to
+  fetch values. Anything that probes the API to check it is alive should probe
+  metadata.
+
+  VINTAGE: acs5 variable endpoints answered for 2022, 2023 and **2024**, so the
+  2024 five-year release is live. Five-year estimates pool 2020–2024, which is
+  the thing to say out loud when comparing to a single-year figure from
+  elsewhere: an ACS 5-year value is not a 2024 measurement.
+
+  SPATIAL, and this is the best in Tier A or B. Geography is **FIPS/GEOID**
+  natively — `for=place:*&in=state:25` is every place in Massachusetts — through
+  state, county, county subdivision, place, tract and block group. No crosswalk,
+  no name matching, no invented identifier. Boston is a FIPS place code and
+  joins to every other US federal dataset on it.
+
+  INDICATOR: city population, income and housing — the social-pillar city row
+  for the Boston pilot, at a resolution no other source in this list reaches.
+  I could not read the landing plan's Table 2 in this session, so this names the
+  indicator in plain words rather than a row id.
+
+  Promotes to live when somebody registers a key, pulls one variable for Boston
+  by FIPS place code, and confirms the attribution notice is displayed wherever
+  the value surfaces — the notice is a condition of use, not a courtesy, and an
+  Index that shows ACS numbers without it is out of terms.

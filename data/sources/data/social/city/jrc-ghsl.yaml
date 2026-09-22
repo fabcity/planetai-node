@@ -1,0 +1,62 @@
+name: JRC Global Human Settlement Layer (GHSL)
+url: https://human-settlement.emergency.copernicus.eu/
+description: |
+  The European Commission's global record of where people and buildings are:
+  population, built-up surface and a settlement classification on a 100 m grid
+  from 1975 to 2030, plus a city-by-city Urban Centre Database.
+pillar: social
+scale: city
+status: candidate
+license: CC-BY-4.0
+api: https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/
+pilot_relevance: [global]
+tags: [population, built-up, settlement, raster, copernicus, urban-centre]
+added: 2026-09-22
+auth: none
+feeds_cells: [Social|City, Social|Region]
+upstream_listed_in: []
+notes: |
+  LICENCE, read from the provider's own page 2026-09-22. `GHSLhowToCite.php`
+  states it in one sentence: "The GHSL data are provided under the Creative
+  Commons Attribution 4.0 International (CC BY 4.0) license", permitting reuse
+  "for any purpose, including commercial uses" with attribution. The download
+  page adds "Reuse of this data is authorised with proper acknowledgment of the
+  source", the European Commission reuse notice. Criterion 1 is met.
+
+  Attribution is not the usual footnote: the page says citing the website
+  generically is "inappropriate" and that the peer-reviewed methodology paper
+  for the specific product must be cited. Anything built on this inherits that.
+
+  ENDPOINT, no key and no account: the JRC open-data FTP tree at
+  `jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/`, product by product, plus
+  `ghsl.jrc.ec.europa.eu/download/GHSL_data_54009_shapefile.zip` for the tiling
+  schema. Bulk files, not a query API — a node fetches a tile, it does not ask a
+  question. The old `ghsl.jrc.ec.europa.eu` host now 302s to
+  `human-settlement.emergency.copernicus.eu`; both work, the second is canonical.
+
+  VINTAGE: release R2023A is current for the grids (GHS-SMOD v1.2, dated
+  10/06/2026), and the Urban Centre Database is R2024A, released 05/11/2024.
+  Epochs run 1975–2030 in five-year steps, so "latest" means latest release, not
+  latest year — the 2030 layer is a projection and must not be read as observed.
+
+  SPATIAL, and the part that limits it. The grids are raster in Mollweide
+  (ESRI:54009), not administrative units, so there is no BPS, INE, IBGE, INEGI,
+  NUTS or LAU code on anything. Boundaries ship as GADM v4.1 vectors, which are
+  a global convenience layer and not any country's official register. **Not
+  federatable without a crosswalk**: to attach a GHSL number to a territory a
+  node can name, somebody has to supply that territory's own boundary and
+  aggregate the grid inside it. The Urban Centre Database is the exception worth
+  knowing — it carries one record per urban centre with its own ID, which is a
+  join a city can actually make.
+
+  INDICATOR: population and built-up surface for a city or region — the
+  denominator almost every other per-capita or per-hectare number in the Index
+  needs, and the one an Indonesian or Chilean partner cannot get from a national
+  census between census years. I could not read the landing plan's Table 2 in
+  this session, so this names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody aggregates a GHSL product inside one real
+  territory's own boundary — Menorca, Bali, a Chilean comuna — and confirms the
+  population total is within a defensible distance of that territory's own
+  official figure, because the whole value of this source is as a denominator
+  and a denominator that disagrees with the census is worse than none.

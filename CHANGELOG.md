@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.72 — 2026-09-23 — the loop closes on the page, and the node starts to learn
+
+- **The source registry is at `1010aa0`** — 238 entries, up from 229. Synced before this tag, as every
+  release must be: nothing checks that the pin is current, so it goes stale silently.
+
 ## v0.71.1 — 2026-09-22 — the link to the asks led nowhere
 
 - **Pressing "in 3 Act" gave you a blank page.** The lead counts your open asks and offers to take
@@ -11,6 +16,124 @@
   It now knows the difference between the six views and everywhere else, and a link to somewhere on
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
+
+- **Your node can tell you which of your actions actually work.** Under Measure, per rule, over its
+  whole record: how many times somebody acted, and how many of those were followed by the condition
+  stopping. On node #1 it immediately found the thing it exists to find — **thirteen acts on the heat
+  alert and not one of them cleared**, because heat does not stop because you acted, while ventilating
+  cleared four of nine. A household that reads that stops pressing one button and starts opening
+  windows, and nothing else on this page could ever have told them.
+
+  Two honest limits, both stated on the page. It says a condition *stopped* within 48 hours of
+  somebody acting — never that the act stopped it; a window opened at nine and air that cleared by
+  three may be the window or may be the night. And *how long* needs an indicator and a line to come
+  back under, which only a rule that declares one has: the others fire on a relation ("inside is worse
+  than outside"), where a number would be invented. Those say so rather than showing a zero.
+
+- **Your node has started to learn the shape of your days.** Under Historical, a new section draws the
+  day this place *usually* has: one line for inside, one for outside, hour by hour, averaged over
+  every day your node has recorded. It is the first thing on this page that gets better the longer
+  your node runs.
+
+  On node #1, over 22 days, it found something worth knowing: **inside is worst around midday
+  (16.1 µg/m³ against 7.7 outside) and outside is worst around six in the evening (14.3 against 9.4
+  inside).** They do not peak together — so there are hours when opening a window helps and hours
+  when it does the opposite. A single line averaging inside and outside would have hidden that
+  completely.
+
+  It refuses what it has not seen. A usual day needs a week behind it, so a node switched on
+  yesterday is told how many more days it needs rather than shown an average of two. The week, the
+  month and the year need two weeks, two months and a year, and your node decides which of those its
+  own record supports. Asked for by Tomas.
+
+- **Your node now says how often a decision came first, and can insist on one.** Every act in the
+  ledger that had a decision recorded against the same ask beforehand says *decided first*, and the
+  ledger's own line counts them: *"0 of 31 had a decision recorded first"* on node #1, which is true
+  and is the honest starting point since deciding only became possible today.
+
+  It is a measure and not a rule. Four of the five ways to record an act have no screen to decide
+  on — a reply over the LoRa radio, the Telegram bot, the terminal, a script — and a node in a house
+  should record *"I opened the window"* whether or not anybody deliberated first; demanding otherwise
+  would make your node assert a deliberation that never happened. A node that acts for more than one
+  household is a different case, and **`DECISION_REQUIRED`** under Set up → Node is where that
+  community says so: turn it on and an act with no decision behind it is refused, whichever way it
+  came in. Off by default. Proposed by Tomas, and this is the part of it that does not break the
+  radio.
+
+- **Decide has a decision in it.** The stage was named for it from the first sketch and carried three
+  sections about grain, provenance and trust — at what resolution a thing may be said, never what to
+  do about it. It now opens with the thing itself: what your node saw, **what your node suggests**,
+  and somewhere to say what you decided.
+
+  The suggestion is not new and not a model's. Every rule your node runs ends its message with a line
+  beginning 👉 — *"Open a window or two and let it through. It clears faster than a purifier can
+  catch it"* — written by whoever wrote the rule, in every language your node speaks. It was on the
+  wire the whole time and the page was drawing only the first line, the symptom. Take its word and
+  the box fills with your node's own sentence; or write your own. A rule with no recommendation says
+  so, because this page does not invent advice about your air.
+
+  **A decision moves nothing.** It does not close the ask, it does not enter ρ, it is not a stage in
+  the funnel — your node keeps watching. What it changes is the record: a house that looked, decided
+  and never managed it used to leave the same trace as one that never looked, which was none. When it
+  is done, press *I did this* under Act. Asked for by Tomas, three times.
+
+- **The six footprint cards under Decide are folded now.** Since the rail learned to say what one
+  cell at a stop is worth, it carries the live version of the comparison those cards were making —
+  and it moves when you turn the dial, which they never did. They keep what it does not have: the
+  ground each covers, each source's own grain, how its covering was packed. One line above, the cards
+  one press away.
+
+- **You can see what was decided, and by whom.** Your node has recorded every answer anybody gave an
+  alert since v0.21 — who, when, which ask, and the sentence they wrote — and the dashboard drew none
+  of it. Node #1 had thirty-one answers on its own wire with twenty-three names in them, and the Act
+  stage showed a count in a funnel and no account. There is now a ledger under the asks: newest
+  first, behind one press.
+
+  The sentences are treated as your node treats them. Who acted and when is published with the rest
+  of the page; the note is not, because `GET /actions` answers a token or the machine itself — a note
+  is your household's own words about what it did in its own house. Without a token the ledger says
+  so and names the ask instead of the sentence. Reported by Tomas, who went looking for it on the Act
+  stage and found nothing.
+
+- **`planetai snapshot` no longer writes your household's notes into the file.** A snapshot is made
+  to be sent — to a bug report, a design round, a repository — and it was capturing those sentences
+  with the admin token and storing them verbatim, which walks around the very decision the node makes
+  when it refuses them to a reader without one. They are removed now, and the file says how many were
+  removed. Nothing in a replay reads them.
+
+- **The loading animation kept still for two of its three seconds.** The glyph globe turns while
+  your node has not answered and settles into your own cell when it does — and the turning fades out
+  as it settles, over a fixed nine-tenths of a second. On a node that answers in a blink that meant
+  it had finished moving before the first second was up, and then showed you a photograph for the
+  rest of the hold. It now spreads the settle across whatever is left, so it is still moving when it
+  goes. A node slower than the hold is not slowed down further. Reported by Tomas.
+
+- **"I did this" does something now.** Every open ask has carried that button since this page
+  shipped, and nothing was listening for it. The node has taken a closed loop since v0.21 — who
+  acted, and a sentence in their own words — so every act on node #1 was recorded over Telegram, a
+  terminal or curl, because the page you actually look at was the one surface that could not write
+  one. Press it and it opens: your name, what you did, and Record it. The node takes it from there —
+  it watches whether the rule goes quiet, and that is what the funnel's *measured* has always meant.
+
+  It needs an act token, which is not a new rule: a browser is never treated as local, deliberately,
+  because on a node whose Docker forwards through a VM the whole WiFi would arrive looking local.
+  `planetai ui` prints the token and Set up holds it. Where the node refuses, the page now says the
+  node's own reason rather than a guess.
+
+- **The rail says what a grain is worth now, and the Decide cards stopped drawing something else.**
+  The rail across the top is eleven stops and an edge length: it said which grain you were standing
+  on and never what choosing it costs. Press *one cell here* in the key under it and it opens: three
+  hexagons to true relative scale — the stop you are on, filled, against the one above and the one
+  below — and a table of what each thing your node speaks for costs to cover at that grain, from the
+  sea down to this room. Turn the dial with it open and the numbers move. At resolution 4 the sea
+  takes five cells and your room takes one, and so does everything in between; that is the whole
+  argument for grain, and nothing on the page had ever shown it.
+
+  The six cards under *Whose word, over how much ground* each carried a drawing of their own
+  footprint. Each one drew how the covering had been packed — a detail the striped bar on the same
+  card already drew — beside a number counting cells at the rail's resolution, so the picture and
+  the number were about different things and the picture did not move when the rail did. They are
+  gone; the cards keep every number they had and the section is half the height. Reported by Tomas.
 
 - **You can now see what your node was asked.** While the page waits for your node it draws what it
   is asking for, and how many milliseconds each answer took — your node's own speed, which is not

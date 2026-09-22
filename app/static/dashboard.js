@@ -586,11 +586,31 @@ function ask(key, d, ref) {
         : ', and no reading here has asked for anything.')
       + `</small></div></div>`;
   }
+  /* THE BUTTON DOES SOMETHING NOW. It was drawn on every open ask on every node from the day this
+     page shipped and nothing listened for it — a promise the page made and did not keep, while the
+     funnel beside it counted acts nobody could make from here. POST /actions has taken a stage, an
+     actor and a 500-character note since v0.21; every act on node #1 was made over Telegram, MCP or
+     curl because this was the only surface that could not.
+
+     The form is in the markup and hidden rather than built on the press: a hidden child costs no
+     height, and T1 reads this strip's own box. */
   return `<div class="ask" data-component="askStrip" data-role="ask" id="${esc(id)}"`
     + ` data-ref="${esc(ref || `sentence-${key}`)}">`
     + `<div class="what">${esc(a.text ? String(a.text).split('\n')[0] : a.says[LOC])}`
-    + `<small>${esc(a.how[LOC])}</small></div>`
-    + `<button type="button" class="go">I did this</button></div>`;
+    /* NOT `a.how`. The node composes that line in act_hint(), and it offers Telegram or a terminal
+       — "Reply /act 361 on Telegram" — because until the form below existed the page was the one
+       surface that could not close a loop. It is still the right sentence for a Telegram message
+       and the wrong one here, on a screen with the button on it. The node's words are unchanged;
+       this surface says what this surface offers. */
+    + `<small>${esc(a.says[LOC])}</small></div>`
+    + `<button type="button" class="go" data-did="${esc(String(a.id))}">I did this</button>`
+    + `<form class="did" hidden data-alert="${esc(String(a.id))}">`
+    + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
+    + ` placeholder="your name"></label>`
+    + `<label><span>What you did</span><input name="note" maxlength="500"`
+    + ` placeholder="closed the windows on the north side"></label>`
+    + `<div class="btns"><button type="submit" class="pri">Record it</button>`
+    + `<button type="button" class="cancel">Cancel</button></div></form></div>`;
 }
 
 /* PORTED: `plan` is not an id on this page; the figure the caption belongs to is the ground map.
@@ -1232,6 +1252,9 @@ const H = window.H3;
  * place pack need not be installed, and the route is refused to anything but this machine or a
  * token. So it is read when it is drawn, never captured at load, and its absence is one line. */
 const P = () => window.PLAN;
+/* WHY, not just THAT. The plan is the one read that needs a token at every sharing level, because
+   GET /place/geojson carries the shape of every building here and this node's exact position. A
+   reader on another machine sees an empty base and, until now, no reason for it. */
 const NOPLAN = ref => `<p class="note" data-component="absent" id="plan-absent" data-ref="${ref}">`
   + `This node has no plan of its own ground. GET /place/geojson is on no share allowlist at any `
   + `level — it is the exact building footprints within PLACE_RADIUS_M of the address — so it `
@@ -2874,7 +2897,21 @@ window.PAI.register({
      reader gets when they ask for the short version of it — not Now's four sentences. */
   level: 'simple',
   title: 'What the satellite says',
-  needs: ['PLAN', 'H3.claims'],
+  /* IT NEEDS THE SATELLITE, NOT THE PLAN.
+   *
+   * This said `['PLAN', 'H3.claims']`, and the plan comes from GET /place/geojson, which needs a
+   * token at EVERY sharing level — it carries the shapes of the buildings and the node's exact
+   * coordinates, and that is deliberate. So on any browser that has not unlocked Set up, window.PLAN
+   * is null, this section's needs were unmet, and the whole of Historical's satellite view printed
+   * "the earth pack has nothing here yet: PLAN is not on this node".
+   *
+   * Which was false. Node #1 has nine years of embeddings, four Sentinel passes and 589 MB on disk,
+   * and every one of those images answers over the LAN. What needed the plan was ONE part of this
+   * section — the claim about buildings a satellite pass found that OpenStreetMap does not have,
+   * which compares against the plan's own count. A need declared for the section took out the view.
+   *
+   * Reported by Tomas from node #1 at v0.71: the satellite data is not loading. */
+  needs: ['EARTH'],
   render(ctx) {
     const land = ctx.ISS.land;
     const region = H.claims.find(c => c.key === 'region');
@@ -2904,6 +2941,18 @@ window.PAI.register({
       : `<p class="note" id="sat-strip" data-component="satStrip" data-ref="sat-map">This node has `
         + `no satellite passes on disk yet, so there are none to show. `
         + `${esc((window.EARTH || {}).hint || 'The earth pack fetches them on command.')}</p>`;
+    /* The plan is token-only, so this half may be absent on a page the rest of which is fine. It
+       says which token and where to put it, rather than leaving a hole: a reader who can see nine
+       years of satellite above this line has not been refused the satellite. */
+    if (!P()) {
+      return strip + record(ctx)
+        + `<p class="note" data-component="absent" id="sat-claim-absent" data-ref="sat-strip">`
+        + `The buildings only the satellite knows are drawn against the plan of this place, and the `
+        + `plan needs a token: <code>GET /place/geojson</code> carries the shape of every building `
+        + `here and this node's exact position, so it asks for one at every sharing level. Put the `
+        + `admin token into this browser under Set up and it draws. Everything above this line is `
+        + `the satellite record itself and needs no token.</p>`;
+    }
     return strip + record(ctx)
       + `<div class="two-up">`
       + `<figure class="gridwrap mapwrap" id="sat-map" data-component="satMap" data-ref="sat-strip">`
@@ -3646,12 +3695,20 @@ window.PAI.register({
  * came from — and the covering was computed at the grain the source itself has and then compacted.
  * The bar under each card is what compactCells left behind: mostly one grain in the middle, striped
  * at the rim.
+ *
+ * NO PICTURE PER CARD, since 22 September. Each card used to carry a drawing of its own compacted
+ * covering — "119 cells, resolutions 5 to 7" — beside a number counting cells at the dial's
+ * resolution. The two were about different things: the drawing showed how compactCells packed the
+ * footprint, which the striped bar on the same card already showed, and it did not move when the
+ * dial moved. Six of them, and not one answered the question its own card asks. The comparison they
+ * were reaching for is the rail's, where turning the control is what changes the number, and that
+ * is where the drawing went: the rail's fold, in the shell. Reported by Tomas.
  */
 PAI_LOAD.push(function () {
 'use strict';
 
 const { esc } = window.K;
-const { H, grid, km2 } = window.KH;
+const { H, km2 } = window.KH;
 
 function claimCard(ctx, c) {
   const RES = ctx.RES;
@@ -3660,11 +3717,6 @@ function claimCard(ctx, c) {
   const bars = Object.entries(c.drawn.by_res).sort((a, b) => a[0] - b[0]);
   const total = bars.reduce((a, [, v]) => a + v, 0);
   return `<section class="claim" id="claim-${esc(c.key)}" data-component="claim" data-ref="rail">`
-    + `<div class="pic gridwrap">`
-    + grid(c.draw, { own: [], read: c.cells,
-      label: `${c.name}: ${c.drawn.compact} cells cover ${c.area_km2} km²` })
-    + `<div class="cap">${c.drawn.compact} cells, resolutions `
-    + `${bars[0][0]}–${bars[bars.length - 1][0]}</div></div>`
     + `<div><h3>${esc(c.name)}</h3>`
     + `<p class="what">${esc(c.what)}</p>`
     + `<div class="facts">`
@@ -3685,7 +3737,12 @@ function claimCard(ctx, c) {
     + bars.map(([r, v]) => `<i style="width:${(100 * v / total).toFixed(1)}%;`
       + `background:color-mix(in srgb, var(--cells) ${Math.min(60, (r - 4) * 12)}%, transparent)"`
       + ` title="${v} cells at resolution ${r}"></i>`).join('') + `</div>`
-    + `<p class="decl">${esc(c.declared)} · ${esc(c.where)}</p></div></section>`;
+    /* The bar's own caption, which used to sit under a drawing of the same fact. It is here rather
+       than absent because a striped bar with nothing naming it is decoration, and the compaction is
+       the only thing on this card the bar is about. */
+    + `<p class="decl"><span class="cx">${c.drawn.compact} cells, resolutions `
+    + `${bars[0][0]}–${bars[bars.length - 1][0]}</span>${esc(c.declared)} · ${esc(c.where)}</p>`
+    + `</div></section>`;
 }
 
 window.PAI.register({
@@ -3703,7 +3760,22 @@ window.PAI.register({
         + `are still declared — ${H.claims.map(c => c.declared).join(' · ')} — and each gets its `
         + `covering as soon as NODE_LAT and NODE_LON are set.</p>`;
     }
-    return `<div class="claimgrid">${H.claims.map(c => claimCard(ctx, c)).join('')}</div>`;
+    /* FOLDED, for the reason grain's table is: it is evidence and not reading, and since 22 September
+       the rail's own fold carries the live version of the comparison these cards were making — what
+       each footprint costs to cover at the stop you are standing on, redrawn every time the rail
+       moves. The cards keep what the fold does not have: the ground each covers in km², each
+       source's native grain, and how its covering was packed. That is a thing to look up, not a
+       thing to read past on the way to deciding something. */
+    const mine = H.claims[H.claims.length - 1], widest = H.claims[0];
+    return `<p class="honest" id="claims-span" data-component="finding" data-ref="claims">`
+      + `The widest thing this node says anything about covers `
+      + `<span data-num="claim.span" data-cmp="against ${esc(String(mine.area_km2))} km², `
+      + `${esc(mine.name.toLowerCase())}, the smallest">${esc(String(widest.area_km2))}</span> km² `
+      + `and the narrowest covers ${esc(String(mine.area_km2))}. Both produce one number. What that `
+      + `costs at the grain you are standing on is under the rail, and it moves when the rail does.`
+      + `</p>`
+      + `<details class="fold"><summary>All ${H.claims.length}, and the ground each covers</summary>`
+      + `<div class="claimgrid">${H.claims.map(c => claimCard(ctx, c)).join('')}</div></details>`;
   },
   wall(ctx) {
     /* The comparison the dial exists to make, as four columns a wall can carry. */
@@ -3728,6 +3800,10 @@ window.PAI.register({
         + 'cells of the grain you are standing on that word has to cover to say its one thing.' },
       { id: 'claims-note', text: H.claims.filter(c => c.note).map(c => `${c.name}: ${c.note}.`)
         .join(' ') },
+      { id: 'claims-folded', text: 'The six cards are folded for the reason the eleven-row grain '
+        + 'table is: they are evidence and not reading. The comparison they exist to make \u2014 what '
+        + 'each of these words costs to cover at one grain \u2014 is under the rail now, where turning '
+        + 'the control is what changes it, which is the one thing these cards could never do.' },
       { id: 'claims-model', text: 'The one source with no declared footprint is the model point, '
         + `which covers ${H.claims[0].cells_at[8].toLocaleString()} cells at resolution 8 against `
         + 'the one a probe in this room covers. Nothing in the product says how big a model point’s '
@@ -4181,7 +4257,11 @@ window.PAI.register({
           left: `<span class="who"><b>${esc(name.replace(/_/g, ' '))}</b>`
             + `<span class="m">${esc(pack)} · last ${esc(age(Math.round((captured
               - Date.parse(latest.ts)) / 60000)))}</span></span>`,
-          line: esc(String(latest.text || '').split('\n')[0].slice(0, 140)),
+          /* RAW, not escaped: row() escapes `line` itself, so escaping here sends &quot; and &amp;
+             through to the screen. Node #1's alert text has no such character today, which is why
+             this survived — the effect section's own line, which has a quoted word in it, is where
+             it showed. */
+          line: String(latest.text || '').split('\n')[0].slice(0, 140),
           signs: r.html,
           qty: [{ num: `asks.${esc(name)}.sent`, value: `${r.closed}/${r.total}`,
             cmp: `closed of asked in the window \u2014 an ask closes when somebody acted or the `
@@ -4237,6 +4317,487 @@ window.PAI.register({
         + 'the satellite knows and nothing else — and it is drawn in the ask strip and nowhere else.' },
     ];
   },
+});
+
+/* ================================================================= h/mods/effect.js ==== */
+/* effect · core · measure
+ *
+ * WHICH OF THIS HOUSEHOLD'S ACTIONS WORK. The node learning about itself rather than about the
+ * weather: anybody can draw a year of PM2.5, and only this node can say which of the things done
+ * about it were followed by the condition stopping.
+ *
+ * TWO QUESTIONS, TWO KINDS OF EVIDENCE, DRAWN APART.
+ *
+ *   cleared  — the funnel's own derivation, per rule: an act followed by a full window of silence
+ *              from the same rule on the same sensor. Works for every rule, needs no threshold, and
+ *              answers WHETHER. It cannot answer when: the rule re-fires the moment its cooldown
+ *              expires while the condition holds, so one cooldown is the finest it can ever resolve.
+ *   hours    — the other question, and it needs the readings and a line to come back under. Only a
+ *              rule carrying `watch: {metric, over}` has one; the rest fire on a RELATION ("inside
+ *              is worse than outside") where a threshold would be invented. Those say so.
+ *
+ * On node #1 this already found the thing it exists to find: thirteen acts on heat_stress_now and
+ * NONE of them cleared, because heat does not stop because somebody acted, while ventilating cleared
+ * four of nine. A household that reads that stops pressing the heat one and starts opening windows.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row } = window.K;
+
+function name(id) { return String(id).split('/').pop().replace(/_/g, ' '); }
+
+window.PAI.register({
+  id: 'effect', pack: 'core', stage: 'measure', order: 20,
+  title: 'Which of these worked',
+  needs: ['EFFECT.rules'],
+  anchor: 'effect',
+  render(ctx) {
+    const E = window.EFFECT, rules = E.rules || [];
+    if (!rules.length) {
+      return `<p class="note" id="effect-none" data-component="absent" data-ref="measure">`
+        + `Nobody has acted on an ask here yet, or not long enough ago to judge: this waits `
+        + `${E.window_hours} hours after an act before asking whether the condition stopped. `
+        + `Nothing is missing.</p>`;
+    }
+    const worst = rules.filter(r => r.acted >= 3 && r.cleared === 0)[0];
+    const best = rules.slice().filter(r => r.acted >= 3 && r.cleared > 0)
+      .sort((a, b) => (b.cleared / b.acted) - (a.cleared / a.acted))[0];
+    /* The finding above the evidence, as everywhere else here. The one worth printing is a rule
+       people keep answering that never clears — that is a household spending effort on something
+       that does not respond, and nothing else on this page could ever have told them. */
+    const finding = worst
+      ? `<p class="honest" id="effect-finding" data-component="finding" data-ref="effect">`
+        + `<b>${esc(name(worst.rule_id))}</b> has been acted on `
+        + `<span data-num="effect.worst" data-cmp="times, and the condition did not stop within `
+        + `${E.window_hours} hours on any of them">${worst.acted}</span> times and the condition did `
+        + `not stop once.${best ? ` <b>${esc(name(best.rule_id))}</b> stopped ${best.cleared} of `
+          + `${best.acted} times.` : ''} Acting is not the same as it working, and this is the only `
+        + `place that says which.</p>`
+      : '';
+    return finding + `<div class="reads" id="effect-rows" data-ref="measure">`
+      + rules.map(r => {
+        const pct = r.acted ? Math.round((r.cleared / r.acted) * 100) : 0;
+        /* `hours` is null on every rule with no watch, and on a watched rule whose acts all came too
+           late or whose trigger is finer than the hourly record. Each says which. */
+        const timed = !r.watch
+          ? 'what "recovered" means here is a relation, not a line \u2014 nothing to time against'
+          : r.hours != null ? `typically ${r.hours} h to come back under ${r.watch.over}`
+            : r.already ? `${r.already} act${r.already === 1 ? '' : 's'} could not be timed: the `
+              + `reading was already back under ${r.watch.over} at that hour`
+              : 'no act on this one has been timed yet';
+        return row({ id: `effect-${esc(name(r.rule_id).replace(/ /g, '-'))}`,
+          component: 'effectRule', ref: 'effect-rows',
+          cls: r.cleared ? '' : 'quiet',
+          cols: 'minmax(0,210px) minmax(0,1fr) auto',
+          left: `<span class="who"><b>${esc(name(r.rule_id))}</b>`
+            + `<span class="m">${esc(String(r.rule_id).split('/')[0])}</span></span>`,
+          line: timed,
+          qty: [{ num: `effect.${esc(name(r.rule_id).replace(/ /g, '-'))}`,
+            value: `${r.cleared}/${r.acted}`,
+            cmp: `stopped within ${E.window_hours} hours of somebody acting, of the acts on this `
+              + `rule \u2014 ${pct}%. Evidence that the condition ended, never that the act ended it` }],
+        });
+      }).join('') + `</div>`;
+  },
+  notes(ctx) {
+    const E = window.EFFECT || {};
+    return [
+      { id: 'effect-not-cause', text: `This says a condition stopped within ${E.window_hours} hours `
+        + 'of somebody acting. It does not say the act stopped it. A window opened at nine in the '
+        + 'evening and air that cleared by three in the morning may be the window or may be the '
+        + 'night, and this node cannot tell the two apart \u2014 so it reports the elapsed time and '
+        + 'leaves the causation to the household that was there.' },
+      { id: 'effect-two-evidences', text: 'Whether and how long are different questions with '
+        + 'different evidence. Whether comes from the rule going quiet, which works for every rule '
+        + 'and resolves no finer than one cooldown, because the rule re-fires as soon as its '
+        + 'cooldown expires while the condition holds. How long needs an indicator and a line to '
+        + 'come back under, which only a rule carrying `watch:` has \u2014 the others fire on a '
+        + 'relation, where a threshold would be invented.' },
+      { id: 'effect-coarser', text: 'Where a rule triggers on a fifteen-minute mean and the only '
+        + 'history a node keeps is hourly, the timing is coarser than the trigger: a short spike can '
+        + 'fire an alert without the hour it sits in ever crossing the line, and then there is '
+        + 'nothing to time. Those acts are counted and named rather than folded in as an instant '
+        + 'recovery, which is what a nought would have claimed.' },
+      { id: 'effect-retired', text: 'A rule that has been renamed or deleted is left out entirely. '
+        + 'It can never fire again, so its silence is not evidence of anything \u2014 counting it '
+        + 'turned three retired rules into successes on this node once, and made the funnel say '
+        + 'eight where the true number was five.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= h/mods/shape.js ==== */
+/* shape · core · historical
+ *
+ * THE DAY THIS PLACE USUALLY HAS — the first thing this node learns rather than reads.
+ *
+ * Every other section on this page says what is true now, or what was true at some moment. This one
+ * says what is USUALLY true, which a node can only say once it has watched for a while, and which
+ * gets better the longer it runs. It is the smallest honest piece of docs/SPEC_decide.md §11.
+ *
+ * WHAT MAKES IT HONEST IS THE REFUSAL, not the drawing. `GET /shape` returns `days` — how many
+ * distinct local days this node's OWN stations have for this metric — and `windows`, which is what
+ * that record can support. A node installed this morning gets one day and is told so; it is not
+ * shown a week it has not seen. The temptation this section exists to resist is describing a pattern
+ * from three points, and the node decides that question, not this page.
+ *
+ * INDOOR AND OUTDOOR ARE DRAWN APART because on node #1 they are anti-phased — inside peaks at meal
+ * times, outside peaks in the evening — and at midday inside is twice outside while at six in the
+ * evening it is the reverse. One line averaging both would describe neither and would hide the only
+ * thing in here a household can act on.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, fmt } = window.K;
+
+const W = 640, HT = 150, PAD = { l: 34, r: 8, t: 10, b: 20 };
+
+function plot(hours) {
+  const vals = hours.flatMap(h => [h.indoor, h.outdoor]).filter(v => v != null);
+  if (!vals.length) return '';
+  const top = Math.max(...vals) * 1.15;
+  const x = h => PAD.l + (h / 23) * (W - PAD.l - PAD.r);
+  const y = v => HT - PAD.b - (v / top) * (HT - PAD.t - PAD.b);
+  const path = key => hours.filter(h => h[key] != null)
+    .map((h, i) => `${i ? 'L' : 'M'}${x(h.hour).toFixed(1)},${y(h[key]).toFixed(1)}`).join('');
+  /* Two lines, told apart by dash and weight and not by hue — the page's rule everywhere else. */
+  const ticks = [0, 6, 12, 18, 23].map(h =>
+    `<text x="${x(h).toFixed(1)}" y="${HT - 6}" text-anchor="middle">${h}</text>`).join('');
+  const grid = [0, top / 2, top].map(v =>
+    `<line x1="${PAD.l}" y1="${y(v).toFixed(1)}" x2="${W - PAD.r}" y2="${y(v).toFixed(1)}"/>`
+    + `<text x="${PAD.l - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, 0)}</text>`)
+    .join('');
+  return `<svg class="shapeplot" viewBox="0 0 ${W} ${HT}" role="img" preserveAspectRatio="none"`
+    + ` aria-label="the usual day, hour by hour, inside against outside">`
+    + `<g class="grid">${grid}</g><g class="hrs">${ticks}</g>`
+    + `<path class="out" d="${path('outdoor')}"/><path class="in" d="${path('indoor')}"/></svg>`;
+}
+
+/* The two hours worth naming: where each line is highest. A shape nobody reads off the drawing is a
+   drawing; the sentence is the finding. */
+function peak(hours, key) {
+  const got = hours.filter(h => h[key] != null);
+  if (!got.length) return null;
+  return got.reduce((a, b) => (b[key] > a[key] ? b : a));
+}
+const hh = h => `${String(h).padStart(2, '0')}:00`;
+
+window.PAI.register({
+  id: 'shape', pack: 'core', stage: 'observe', order: 15,
+  title: 'The day this place usually has',
+  needs: ['SHAPE.hours'],
+  anchor: 'shape',
+  render(ctx) {
+    const S = window.SHAPE, hours = S.hours || [];
+    /* Not an error and not a blank: a node that has just been switched on has nothing to average and
+       the honest sentence says when it will. */
+    if (!S.windows || !S.windows.day) {
+      return `<p class="note" id="shape-young" data-component="absent" data-ref="reach">`
+        + `This node has ${S.days === 1 ? 'one day' : `${S.days} days`} of its own readings. `
+        + `A usual day is an average over the days it has seen, so this waits for seven \u2014 `
+        + `about ${Math.max(1, 7 - (S.days || 0))} more. Nothing is missing; it has not watched `
+        + `long enough yet.</p>`;
+    }
+    const pin = peak(hours, 'indoor'), pout = peak(hours, 'outdoor');
+    const both = pin && pout;
+    /* The finding, printed above the drawing, as everywhere else on this page: the sentence is what
+       a household acts on and the drawing is the evidence for it. */
+    const finding = both
+      ? `<p class="honest" id="shape-finding" data-component="finding" data-ref="shape">`
+        + `Over ${S.days} days, the air in this house is worst around `
+        + `<span data-num="shape.indoor.peak" data-cmp="against ${esc(fmt(pout.indoor, 1))} outside `
+        + `at the same hour">${esc(hh(pin.hour))}</span> and the air outside is worst around `
+        + `<span data-num="shape.outdoor.peak" data-cmp="against ${esc(fmt(pin.outdoor, 1))} inside `
+        + `at the same hour">${esc(hh(pout.hour))}</span>`
+        + `${pin.hour !== pout.hour ? ' \u2014 they do not peak together, so there are hours when '
+          + 'opening a window helps and hours when it does not' : ''}.</p>`
+      : '';
+    return finding + plot(hours)
+      + `<p class="cap" id="shape-key" data-component="shapeKey" data-ref="shape">`
+      + `<b>\u2014\u2014</b> inside \u00b7 <b>- -</b> outside \u00b7 hour of the day, in this `
+      + `node\u2019s own time \u00b7 ${esc(S.metric)} \u00b7 averaged over ${S.days} days</p>`
+      + `<p class="cap">${Object.entries(S.windows).filter(([, v]) => !v).length
+        ? `Not yet: ${Object.entries(S.windows).filter(([, v]) => !v).map(([k]) => k).join(', ')}. `
+          + `This node decides that from the length of its own record, not from this page.`
+        : `This record supports every window this node knows how to draw.`}</p>`;
+  },
+  notes() {
+    const S = window.SHAPE || {};
+    return [
+      { id: 'shape-local-hours', text: 'The hours are this node\u2019s own, not UTC. Postgres answers '
+        + '`extract(hour FROM ...)` in the session timezone and defaults to UTC, so the same query '
+        + 'run outside the node\u2019s own connection moves this whole drawing by eight hours on a node '
+        + 'in Bali and reports a midday cooking peak as a four-in-the-morning one. db() sets the '
+        + 'timezone from NODE_TZ on every connection, and its comment records that this was found '
+        + 'once before, in the day boundaries.' },
+      { id: 'shape-two-lines', text: 'Inside and outside are drawn apart because they are not the '
+        + 'same day. On the node this was built against they are anti-phased: inside peaks when '
+        + 'somebody is cooking and outside peaks in the evening, so at midday inside is about twice '
+        + 'outside and at six in the evening it is the other way round. A single average over both '
+        + 'would describe neither, and the difference is the only thing here anybody can act on.' },
+      { id: 'shape-windows', text: `This is the day\u2019s shape, which needs a week behind it. The `
+        + `week\u2019s, the month\u2019s and the year\u2019s need two weeks, two months and a year, and this `
+        + `node has ${S.days == null ? 'no' : S.days} day${S.days === 1 ? '' : 's'} of its own `
+        + 'readings. The node decides what its record supports and the page draws what it is told; '
+        + 'a page that worked that out for itself would be the one place tempted to round up.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= h/mods/decide.js ==== */
+/* decide · core · decide
+ *
+ * WHERE AN OBSERVATION BECOMES SOMETHING SOMEBODY DECIDED. The stage was named `decide` from the
+ * first sketch and carried three sections about grain, provenance and trust — at what resolution a
+ * thing may be said, never what to do about it. Reported by Tomas three times before it was built.
+ *
+ * THE NODE ALREADY DECIDES, AND THE PAGE WAS THROWING IT AWAY. Every rule in config/rules.yml and
+ * every pack rule ends its message with a line beginning U+1F449 — "Open a window or two and let it
+ * through. It clears faster than a purifier can catch it." Written by whoever wrote the rule, in
+ * three languages, shipped, and on the wire in `open_asks[].text`. It is an informed recommendation
+ * from an observation, which is exactly the thing this section exists to put in front of somebody.
+ * `ask()` renders `text.split("\n")[0]` — the first line, the symptom — and the recommendation was
+ * never drawn anywhere on this page.
+ *
+ * So: what was seen, what the node suggests, and a box. Accept its words or write your own, and the
+ * decision is recorded whether or not anybody ever gets to it. `decided` moves nothing — not rho,
+ * not the funnel, not an ask's open/closed — which is init.sql:135 and the whole of
+ * docs/SPEC_decide.md section 6. Doing it is a separate press, in Act, where the ledger is.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, age } = window.K;
+
+/* The recommendation, which is the last paragraph and starts with the pointing hand. Absent on a
+   rule whose author did not write one — and then this says so rather than inventing advice, which
+   is not a thing this page is allowed to do. */
+function suggestion(text) {
+  const paras = String(text || '').split('\n').map(x => x.trim()).filter(Boolean);
+  const hit = paras.filter(x => x.startsWith('\u{1F449}')).pop();
+  return hit ? hit.replace(/^\u{1F449}\s*/u, '') : null;
+}
+
+function card(ctx, key, d, a) {
+  const sug = suggestion(a.text);
+  const seen = String(a.text || '').split('\n')[0];
+  const id = `decide-${esc(key)}`;
+  /* THE OBSERVATION IS A LINE, NOT A PARAGRAPH. It is already on this page twice — in the lead and
+     in Act's own strip — and drawn a third time at headline size it cost 91 px a card at 390 to say
+     nothing new. What is new here is the suggestion, so that is what gets the room. */
+  return `<section class="decide" id="${esc(id)}" data-component="decision" data-ref="asks-rows">`
+    + `<div class="obs"><span class="k">what was seen</span>`
+    + `<p>${esc(seen)}</p>`
+    + `<span class="m">${esc(d.name[ctx.LOC] || key)} \u00b7 asked ${esc(age(a.age_minutes))}`
+    + `${a.current ? '' : ' \u00b7 the reading has come back on its own'}</span></div>`
+    + `<div class="sug"><span class="k">what this node suggests</span>`
+    + (sug ? `<p>${esc(sug)}</p>`
+      : `<p class="none">The rule that raised this does not carry a recommendation, so there is `
+        + `nothing here. This page will not invent one.</p>`)
+    + `</div>`
+    + `<button type="button" class="open" data-decide="${esc(String(a.id))}"`
+    + ` aria-expanded="false">Decide about this</button>`
+    + `<form class="decided" hidden data-alert="${esc(String(a.id))}">`
+    + `<label><span>Who is deciding</span><input name="actor" maxlength="80" autocomplete="name"`
+    + ` placeholder="your name"></label>`
+    + `<label><span>What will be done</span><input name="note" maxlength="500"`
+    + ` placeholder="${esc(sug || 'in your own words')}"${sug
+      ? ` data-suggest="${esc(sug)}"` : ''}></label>`
+    + `<div class="btns">`
+    + (sug ? `<button type="button" class="take">Take its word</button>` : '')
+    + `<button type="submit" class="pri">Record the decision</button></div>`
+    + `<p class="fine">This closes no ask and moves no number. When it is done, press `
+    + `<b>I did this</b> under Act.</p>`
+    + `</form></section>`;
+}
+
+window.PAI.register({
+  id: 'decide', pack: 'core', stage: 'decide', order: 5, level: 'simple',
+  title: 'What to do about it',
+  needs: ['H3.asks'],
+  anchor: 'decide',
+  render(ctx) {
+    const ISS = ctx.ISS;
+    const open = ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length);
+    if (!open.length) {
+      return `<p class="note" id="decide-none" data-component="absent" data-ref="asks-rows">`
+        + `Nothing is asking for a decision. When a reading crosses a line this node watches, what `
+        + `it saw and what it suggests appear here, with somewhere to say what you decided.</p>`;
+    }
+    /* One card per ISSUE, not per ask: four open asks about the same air are one decision, and a
+       household asked to decide four times about one room stops deciding. */
+    return open.map(k => card(ctx, k, ISS[k], ISS[k].open_asks[0])).join('');
+  },
+  notes() {
+    return [
+      { id: 'decide-suggestion', text: 'The suggested action is the rule\u2019s own last line, the one '
+        + 'that begins with a pointing hand, written by whoever wrote the rule and shipped in every '
+        + 'language this node speaks. It is not generated here and it is not a model\u2019s: a node '
+        + 'with no agent running shows exactly the same words. Where a rule carries no '
+        + 'recommendation the card says so, because a page that invents advice about somebody\u2019s '
+        + 'air is a page that cannot be trusted about anything.' },
+      { id: 'decide-moves-nothing', text: 'A decision moves nothing. It does not close the ask, it '
+        + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the ask stays open and the '
+        + 'node keeps watching. What it changes is the record: a household that looked, decided and '
+        + 'never managed it used to leave the same trace as one that never looked, which was none.' },
+      { id: 'decide-collective', text: 'This is one person deciding for one node. A decision about a '
+        + 'street is not one household\u2019s to make, and what turns several households\u2019 decisions '
+        + 'into a decision a community has taken \u2014 who is asked, what counts as agreement \u2014 is '
+        + 'not on a node at all. docs/SPEC_decide.md says so and leaves it to the scale above.' },
+    ];
+  },
+});
+
+});
+
+/* ================================================================= h/mods/ledger.js ==== */
+/* ledger · core · act
+ *
+ * WHAT WAS DECIDED, AND BY WHOM. The one thing the loop records that the page never drew.
+ *
+ * `POST /actions` has taken a stage, an actor and a 500-character note since v0.21, and from
+ * 22 September the page can write one. Nothing read them back: node #1 has 31 acts on its own wire
+ * with 23 names in them and the page drew none of it, so "somebody closed this" was a count in a
+ * funnel and never an account. Reported by Tomas, who could not find it on the Act stage.
+ *
+ * TWO SOURCES, AND THE SPLIT IS THE NODE'S, NOT THIS PAGE'S:
+ *
+ *   · the rows — who, when, which ask, which stage — come off `H3.asks.actions`, which /issues
+ *     publishes to anyone the share level lets read it.
+ *   · the WORDS come off GET /actions, which is on neither share allowlist on purpose: the note is
+ *     the household's own sentence about what it did in its own house, and that route answers a
+ *     token or the machine itself. `window.ACT_NOTES` is null for a reader without one, and this
+ *     section says so once rather than drawing a column of blanks.
+ *
+ * This page does not widen that. Publishing the note on /issues would put those sentences on the
+ * `open` allowlist, which is the opposite of what the node decided.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, row, age } = window.K;
+const { H } = window.KH;
+
+/* ALL OF IT FOLDED, and the head says how many. Eight rows and a five-line head were 1,029 px at 390
+   and put the page past its length target; four were still 530. This is a record somebody consults
+   — "what did we decide about the kitchen" — and not something to read on the way past, so it costs
+   one line until it is wanted. The whole explanation of why the words may be missing is in this
+   section's notes. */
+const SHOWN = 0;
+
+/* The ask a row answers, by id, off the act ledger /issues already carries. An act older than the
+   200 alerts `_read` keeps has no ask to name, and says that rather than drawing an empty cell. */
+function askOf(id) {
+  return ((H.asks || {}).acts || []).find(a => a.id === id) || null;
+}
+
+/* THE DECISION AN ACT CAME FROM: the latest `decided` row on the same ask, recorded before it.
+ *
+ * A convention and not a foreign key, deliberately: `asks.actions` already carries alert_id, stage
+ * and ts, so this needs nothing added to the schema, the endpoint or the wire. An act with none is
+ * not a fault — four of the five ways to record one have no screen to decide on, and the LoRa reply
+ * through the Reticulum bridge is the case that settles it — so this answers null, and the count in
+ * the head says how often. */
+function cameFrom(rows, act) {
+  return rows.filter(x => x.alert_id === act.alert_id && x.stage === 'decided'
+    && String(x.ts) < String(act.ts))
+    .sort((a, b) => String(b.ts).localeCompare(String(a.ts)))[0] || null;
+}
+
+function line(x, ctx, all) {
+  const a = askOf(x.alert_id);
+  const from = x.stage === 'acted' ? cameFrom(all || [], x) : null;
+  const notes = window.ACT_NOTES;
+  const note = notes ? notes[`${x.alert_id}:${x.stage}`] : null;
+  const when = new Date(x.ts);
+  const mins = Math.round((Date.parse(ctx.S.base.captured_utc) - when.getTime()) / 60000);
+  const name = String(x.actor || '').trim();
+  return row({
+    id: `act-${esc(String(x.alert_id))}-${esc(String(x.stage))}`,
+    component: 'ledgerRow', ref: 'asks-rows',
+    cls: x.stage === 'acted' ? '' : 'quiet',
+    cols: 'minmax(0,170px) minmax(0,1fr) auto',
+    left: `<span class="who"><b>${esc(name || 'somebody')}</b>`
+      + `<span class="m">${esc(x.stage)} · ${esc(age(mins))}`
+      + `${from ? ' · decided first' : ''}</span></span>`,
+    /* The sentence if this reader may have it; otherwise the ask it answered, so the row still says
+       what was closed. Never a blank and never a guess at what was written. */
+    line: note || (a ? String(a.text || '').split('\n')[0].slice(0, 120)
+      : 'the ask this answered is older than the ledger this node keeps'),
+    qty: [],
+  });
+}
+
+window.PAI.register({
+  id: 'ledger', pack: 'core', stage: 'act', order: 20,
+  title: 'What was decided, and by whom',
+  needs: ['H3.asks.actions'],
+  anchor: 'ledger',
+  render(ctx) {
+    const rows = (((H.asks || {}).actions) || []).slice()
+      .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    if (!rows.length) {
+      return `<p class="note" id="ledger-none" data-component="absent" data-ref="asks-rows">`
+        + `Nobody has answered an ask on this node yet. When somebody does \u2014 from this page, `
+        + `from Telegram, or from a terminal \u2014 what they did and who they are is recorded here.`
+        + `</p>`;
+    }
+    const words = window.ACT_NOTES;
+    const said = words ? Object.keys(words).length : 0;
+    /* One sentence about what this reader is being shown, because a ledger of names with no words
+       looks like a ledger whose words are missing, and on most readings it is a ledger whose words
+       this reader is not entitled to. */
+    /* HOW OFTEN A DECISION CAME FIRST. A measure of practice and never a gate: on a node in a house
+       this is honestly low and that is not a failing, and on a node acting for a street it should be
+       all of them — and when it is not, the number says so. A refusal is one curl away; a number is
+       not. Same shape as ρ, which never forces anybody to answer an alert and only counts whether
+       they did. DECISION_REQUIRED under Set up is the switch for a community that wants the gate. */
+    const acts = rows.filter(x => x.stage === 'acted');
+    const led = acts.filter(x => cameFrom(rows, x)).length;
+    const practice = acts.length
+      ? ` <span data-num="ledger.decided" data-cmp="of ${acts.length} act${acts.length === 1 ? ''
+        : 's'} on this node — a measure of practice and not a rule; DECISION_REQUIRED under Set up `
+        + `is the rule">${led}</span> of ${acts.length} had a decision recorded first.`
+      : '';
+    const head = `<p class="why" id="ledger-head" data-component="ledgerHead" data-ref="ledger">`
+      + `${rows.length} answer${rows.length === 1 ? '' : 's'} on this node.${practice} `
+      + (words
+        ? `${said} carr${said === 1 ? 'ies' : 'y'} the sentence somebody wrote.`
+        : `The sentences need a token \u2014 a note is the household\u2019s own words about its own `
+          + `house. Set up \u2192 unlock.`)
+      + `</p>`;
+    const first = rows.slice(0, SHOWN).map(x => line(x, ctx, rows)).join('');
+    const rest = rows.slice(SHOWN);
+    return head + `<div class="reads" id="ledger-rows" data-ref="asks-rows">${first}`
+      + (rest.length
+        ? `<details class="fold"><summary>${SHOWN ? `The other ${rest.length}`
+          : `All ${rest.length}, newest first`}</summary>`
+          + rest.map(x => line(x, ctx, rows)).join('') + `</details>`
+        : '')
+      + `</div>`;
+  },
+  notes() {
+    return [
+      { id: 'ledger-two-sources', text: 'This ledger is drawn from two answers, and the line '
+        + 'between them is the node\u2019s. Who acted, when, and on which ask are published with the '
+        + 'rest of the page. The sentence they wrote is not: GET /actions is on neither sharing '
+        + 'allowlist, because a note is what a household said about its own house, and it answers a '
+        + 'token or this machine and nothing else.' },
+      { id: 'ledger-no-decision', text: 'Every row here is an act \u2014 something that was done. A '
+        + 'decision that was made and never carried out has nowhere to go on this node yet: the '
+        + 'ledger has three stages and none of them is "decided". docs/SPEC_decide.md proposes the '
+        + 'fourth, and until it exists a household that looked, decided and could not manage it '
+        + 'leaves exactly the same trace as one that never looked, which is none.' },
+    ];
+  },
+});
+
 });
 
 });
@@ -5184,7 +5745,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells, reach] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach, notes, dayshape, effect] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -5197,6 +5758,16 @@ async function boot() {
        because every node has a record with a beginning, and Historical's first question is how far
        back it may be asked. */
     api('/reach').catch(() => null),
+    /* THE LEDGER'S WORDS, and only the words. `asks.actions` on /issues already carries every act
+       with its stage, its actor and its time — but NOT the note, which engine.py:183 drops. That is
+       the right call and this does not change it: /issues is on the `open` share allowlist, and
+       GET /actions is deliberately on neither, because `actor` and `note` are the household's own
+       words about what they did in their own house. So the ledger draws from /issues for everyone
+       and asks this route only for the sentences, which arrive for a reader holding a token and do
+       not for anyone else. A 403 here is the node working. */
+    api('/actions').catch(() => null),
+    api('/shape').catch(() => null),
+    api('/effect').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -5212,6 +5783,15 @@ async function boot() {
   window.REACH = reach;
   window.TRUST = trust;
   window.FORECAST = forecast;
+  /* A map from alert id to the sentence somebody left, or null where the node would not say. The
+     ledger section reads it opportunistically and is not in its `needs`: the rows exist for every
+     reader and it is the words that are gated. */
+  window.SHAPE = dayshape;
+  window.EFFECT = effect;
+  window.ACT_NOTES = Array.isArray(notes)
+    ? notes.reduce((m, x) => { if (x && x.alert_id != null && String(x.note || '').trim()) {
+      m[`${x.alert_id}:${x.stage}`] = x.note; } return m; }, {})
+    : null;
   /* /stats, and ONLY on a node that has an appliance to say anything about.
    *
    * The household's own capacity — a purifier's filter life — is `role: device_health` in
@@ -5548,7 +6128,16 @@ const ASKING = (function () {
   const GL = '0123456789abcdef';
   const N = 560;                       // ≤ 600, the budget prompt 6 set
   const SPIN = 0.35;                   // rad/s
+  /* THE SETTLE IS A FLOOR, NOT A DURATION — for the same reason the hold is. The glyphs turn while
+     the node has not answered and settle into its cell when /issues lands, and the turning decays
+     with the settle (`k = 1 - s` below), so a fixed 900 ms meant a fast node flattened by ~930 ms
+     and then held a STILL FRAME for the other two seconds of the three-second floor. The rAF loop
+     was running the whole time, drawing the same picture. Reported by Tomas, 22 September.
+     `settleFor` is whatever is left of the floor when /issues lands, so the settle ends exactly as
+     close() takes the overlay away; a node slower than the floor gets this minimum instead, because
+     there the page arriving is the thing wanted and nothing should be stretched to meet it. */
   const SETTLE_MS = 900;
+  let settleFor = SETTLE_MS;
   /* A fixed sphere, computed once: the globe is the same globe every time it is asked for, and
      scattering 560 points per open would be work for no difference anybody can see. */
   const pts = [];
@@ -5605,7 +6194,7 @@ const ASKING = (function () {
     ctx.strokeStyle = cells; ctx.lineWidth = 2 * dpr; ctx.globalAlpha = 0.9; ctx.stroke();
     ctx.globalAlpha = 1;
 
-    const s = settle0 ? Math.min(1, (now - settle0) / SETTLE_MS) : 0;
+    const s = settle0 ? Math.min(1, (now - settle0) / settleFor) : 0;
     const k = 1 - s;                            // 1 = a globe, 0 = flat in the cell's plane
     const ang = (now - t0) / 1000 * SPIN * k;   // and it stops turning as it flattens
     const ca = Math.cos(ang), sa = Math.sin(ang);
@@ -5693,6 +6282,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      settleFor = SETTLE_MS;
       held = !!hold;
       /* Per episode, not per session: the cost of the frames drawn while the page was loading is
          not the cost of the frames drawn when somebody pressed ↻ twenty minutes later. */
@@ -5737,6 +6327,12 @@ const ASKING = (function () {
     landed(issues) {
       if (!on || !issues) return;
       settle0 = performance.now();
+      /* Stretch the settle over what is left of the floor, so the glyphs are still moving when the
+         overlay goes. `held` is still true here: close() is called after boot() resolves and this
+         runs inside it. Under reduced motion the token is 0, so this is the minimum and the loop
+         draws one frame anyway. */
+      const floor = held ? window.K.msToken('--motion-asking-hold') : 0;
+      settleFor = Math.max(SETTLE_MS, floor - (settle0 - t0));
       const hk = issues.headline, d = (issues.issues || {})[hk] || {};
       /* The reading the lead will carry, off the field the lead reads: stack.room. `readouts` is an
          empty list on this node's own wire and was never the numeral's source. */
@@ -6098,7 +6694,13 @@ function main() {
          mode and keeps the dial with them. Taking it away there left the ground, the station
          groups, the claims, the grain and the grain line all pointing at a control that was not on
          the page. */
-      ? `<div class="railwrap"><div class="wrap">${rail()}</div></div>` : '');
+      /* THE FOLD IS OUTSIDE THE STICKY BOX, deliberately. `.railwrap` is sticky because the rail is
+         the control the whole of Now answers to and has to stay reachable; a fold inside it pinned
+         566 px of a 1000 px viewport to the top of every screen the moment it was opened. Open, it
+         belongs in the flow directly under the rail: it pushes the page down, it scrolls away as
+         you read, and the strip itself stays where it was. */
+      ? `<div class="railwrap"><div class="wrap">${rail()}</div></div>`
+        + `<div class="wrap">${railfold()}</div>` : '');
 
   /* THE GRAIN RAIL — the top instrument, above the lead. Design log R14.
    *
@@ -6114,6 +6716,7 @@ function main() {
    *
    * Pressing a stop still re-derives the whole page; that is what this control is for. */
   function rail() {
+    const open = Q.get('worth') === '1';
     const zone = g => g.may_leave ? ', may leave this machine'
       : g.finer_than_published ? ', finer than this node says where it is' : '';
     const stops = H.grain_table.map(g => {
@@ -6144,8 +6747,83 @@ function main() {
          drawn ONCE — in the grain line this rail re-derives and points at, where they are a
          sentence rather than three numbers in a key. Printing them here as well made the key three
          lines deep at 390 and pushed the as-of off the first screen, which is T1's fifth leg. */
-      + `<span>one cell here: <b data-num="rail.area" data-cmp="rail.res">`
-      + `${esc(km2(ctx.grain.area_m2))}</b></span>${mark('dial', 'rail')}</div>`;
+      /* THE FOLD'S TRIGGER IS THIS CHIP, and it is this chip because a fold of its own cost 33.5 px
+         and T1 lost the ask and the as-of off the first screen at both 390 and 1440 — measured, on
+         a gate that was green the render before. The key's last chip already names the fold's
+         subject ("one cell here"), so making it the control adds nothing to lay out. */
+      + `<a class="worth${open ? ' on' : ''}" href="${ctx.qlink({ worth: open ? null : '1' })}"`
+      + ` aria-expanded="${open}">one cell here: <b data-num="rail.area" data-cmp="rail.res">`
+      + `${esc(km2(ctx.grain.area_m2))}</b></a>${mark('dial', 'rail')}</div>`;
+  }
+
+  /* WHAT A STOP IS WORTH — the rail's own fold. Closed by default, in every mode, like the three
+   * folds already on the page.
+   *
+   * The rail says which stop you are standing on and what one cell there is worth. It never said
+   * what CHOOSING it costs, and the one fact about this ladder that no drawing on the page carried
+   * is the step: each stop is about seven times the area of the one below it, so the cell you are
+   * on is a shade over two and a half times across the one beneath and a bit over a third of the
+   * one above. Three hexagons to true relative scale say that in one look; eleven evenly spaced
+   * buttons cannot, which is what the ruler under them already concedes.
+   *
+   * The six footprints below came out of the claim cards in Decide, where each carried a drawing of
+   * its own compacted covering beside a number counting cells at this rail's resolution — a picture
+   * and a number about different things, under a control neither answered to. Here the number is
+   * the thing that moves when the rail moves, which is the whole argument the cards were making.
+   *
+   * NOTHING IS WORKED OUT HERE THAT IS NOT DRAWING. The radii are a ratio of two areas the node
+   * published, used to size a polygon, and the counts are `cells_at[res]` read off the wire. No
+   * derived number is printed as a fact.
+   */
+  function railfold() {
+    if (Q.get('worth') !== '1') return '';
+    const i = H.grain_table.findIndex(g => g.res === RES);
+    const near = [i - 1, i, i + 1].map(k => H.grain_table[k]).filter(Boolean);
+    if (near.length < 2) return '';
+    const top = near[0].area_m2;
+    /* Coarsest first, so the finer cells are painted over it rather than under. */
+    const hexes = near.map(g => {
+      const R = 46 * Math.sqrt(g.area_m2 / top), on = g.res === RES;
+      const pts = [30, 90, 150, 210, 270, 330].map(a => {
+        const t = a * Math.PI / 180;
+        return `${(50 + R * Math.cos(t)).toFixed(1)},${(50 + R * Math.sin(t)).toFixed(1)}`;
+      }).join(' ');
+      return `<polygon points="${pts}" fill="var(--cells)" fill-opacity="${on ? 0.18 : 0}"`
+        + ` stroke="var(--ink)" stroke-opacity="${on ? 0.7 : 0.3}"`
+        + ` stroke-width="${on ? 2.5 : 1}"${on ? '' : ' stroke-dasharray="4 4"'}>`
+        + `<title>resolution ${g.res} · ${esc(km2(g.area_m2))}</title></polygon>`;
+    }).join('');
+    const fig = `<div class="pic gridwrap"><svg class="hexgrid" viewBox="0 0 100 100" role="img"`
+      + ` aria-label="one cell at resolution ${RES} drawn to scale against `
+      + `${near.filter(g => g.res !== RES).map(g => `resolution ${g.res}`).join(' and ')}">`
+      + `${hexes}</svg><div class="cap">`
+      + near.map(g => `<span class="${g.res === RES ? 'on' : ''}">res ${g.res} · `
+        + `${esc(edge(g.edge_m))}</span>`).join('') + `</div></div>`;
+    /* With no coordinates there is no ground for a footprint to cover, and the claims section says
+       so in its own words. The drawing above is still true — a cell's size is not a question about
+       where it is — so the fold keeps it and drops only the table. */
+    const claims = (H.claims || []).length && ctx.KH.sited()
+      ? `<div class="tblwrap" tabindex="0" role="region" aria-label="what each footprint costs to `
+        + `cover at resolution ${RES}"><table class="tbl"><thead><tr><th>what speaks</th>`
+        + `<th>declared</th><th>cells at resolution ${RES}</th></tr></thead><tbody>`
+        + H.claims.map(c => `<tr${c.key === H.claims[H.claims.length - 1].key ? ' class="picked"' : ''}>`
+          + `<td>${esc(c.name)}</td><td class="mono">${esc(c.declared)}</td>`
+          + `<td class="mono">${(c.cells_at[RES] || 0).toLocaleString()}</td></tr>`).join('')
+        + `</tbody></table></div>`
+      : '';
+    /* OPEN IS A QUERY KEY, not a DOM state, because a render throws an open fold away (the
+       hashchange handler below says so in as many words) and the one control this exists to be read
+       against — the rail — re-renders the page every time it is pressed. Opening it and turning the
+       dial closed it, which is precisely the move it is for. `link()` copies the whole query, so
+       every stop carries the key with no work and nothing has to listen for anything. */
+    return `<div class="railfold" id="railfold" data-component="railFold" data-ref="rail">`
+      + `<div class="rh"><h2>What one cell at resolution ${RES} is worth</h2>`
+      + `<a href="${ctx.qlink({ worth: null })}">Close</a></div>`
+      + `<div class="rf">${fig}<div class="rfx"><p>Each stop down is about seven times finer by `
+      + `area than the one above it, and the drawing is to scale: the filled cell is the one you `
+      + `are standing on.${claims ? ` The table is what each thing this node speaks for costs to `
+      + `cover at it — the number that moves when this control moves.` : ''}</p>${claims}</div>`
+      + `</div></div>`;
   }
 
   /* THE RULE under the rail: where each grain truly sits between 10 m and 200 km.
@@ -6239,7 +6917,8 @@ function main() {
   /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
      and the measure; the satellite, the two radios and the hardware are the Network view. One
      registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'claims', 'grain', 'asks', 'measure', 'figures'];
+  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'decide',
+    'claims', 'grain', 'asks', 'ledger', 'measure', 'effect', 'figures'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a
@@ -6248,7 +6927,7 @@ function main() {
      Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
      it last spoke are a history of that sensor, not a fact about now. */
   const NETWORK = ['netmap', 'registry', 'reticulum', 'meshtastic', 'hardware'];
-  const HISTORICAL = ['satellite', 'reach', 'trust'];
+  const HISTORICAL = ['shape', 'satellite', 'reach', 'trust'];
   /* NOW IS THE DEFAULT HOME, AND WITHOUT THIS LINE THE CONTRACT IS A LIE.
    *
    * The three lists above are how one registry serves three views, and they are lists of ids this
@@ -6474,9 +7153,106 @@ async function layoutSave(reset) {
   route();
 }
 
+/* CLOSING A LOOP FROM THE PAGE. The ledger has taken this since v0.21 and the page could not write
+   it: `POST /actions` with a stage, an actor and a note, guarded by ACT_TOKEN — deliberately weaker
+   than the admin token, so somebody in the house can close a loop without holding the key to
+   /settings/raw. `auth_()` already sends whichever of the two Set up has stored.
+
+   A capture is refused rather than posted. `open_asks` carries the alert ids of the node the
+   capture came FROM, so a press while reading one would close somebody else's loop with this
+   reader's name on it. `refresh()` guards itself the same way and for the same reason. */
+async function didThis(form) {
+  const btn = form.querySelector('button[type="submit"]');
+  const alert_id = Number(form.getAttribute('data-alert'));
+  /* Which form it is IS which stage it writes. Decide records what somebody said they would do and
+     moves nothing; Act records that it was done. Two surfaces, one endpoint, and the difference is
+     the whole of docs/SPEC_decide.md section 6. */
+  const decision = form.classList.contains('decided');
+  const stage = decision ? 'decided' : 'acted';
+  const val = n => String((form.elements[n] || {}).value || '').trim();
+  if (!val('note')) {
+    say(decision ? 'Say what will be done — that sentence is the decision.'
+      : 'Say what you did — that sentence is the whole of the record.', true);
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const r = await fetch('/actions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...auth_() },
+      body: JSON.stringify({ alert_id, stage, actor: val('actor'), note: val('note') }),
+    });
+    /* THE NODE'S OWN SENTENCE FIRST. Proved on pai-clean: a browser is never `_is_local` — it
+       arrives as the bridge gateway, deliberately, so trusting it would trust the whole WiFi — and
+       a node at SHARE_LEVEL=off answers 403 with a better sentence than any this page could
+       compose, naming the setting and where to change it. So the page adds only what the node
+       cannot know: where the token comes from. */
+    if (r.status === 401 || r.status === 403) {
+      const said = await r.json().then(b => b && b.error).catch(() => '');
+      say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
+        + `act token; Set up \u2192 unlock holds it.`, true);
+    } else if (r.status === 404) {
+      say('This node has no such ask any more. Reload and look again.', true);
+    } else if (!r.ok) {
+      say(`The node refused it (${r.status}).`, true);
+    } else {
+      say(decision
+        ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
+        : 'Recorded. The node watches what happens next.');
+      if (!decision) form.hidden = true;
+      else { form.reset(); }
+      await refresh();
+    }
+  } catch (e) {
+    say(`The node did not answer: ${String((e && e.message) || e)}`, true);
+  } finally { btn.disabled = false; }
+}
+
+document.addEventListener('submit', ev => {
+  const form = ev.target.closest && ev.target.closest('form.did, form.decided');
+  if (!form) return;
+  ev.preventDefault();
+  if (FIXTURE || STATE !== 'populated') {
+    say('This is a capture, not a live node — its asks belong to the node it came from.', true);
+    return;
+  }
+  didThis(form);
+});
+
 document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
   if (ev.target.id === 'btn-arr-done') return layoutSave(false);
+  const go = ev.target.closest && ev.target.closest('.ask .go');
+  if (go) {
+    const form = go.parentElement.querySelector('form.did');
+    form.hidden = !form.hidden;
+    go.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.elements.note.focus();
+    return;
+  }
+  const dec = ev.target.closest && ev.target.closest('.decide .open');
+  if (dec) {
+    const f = dec.parentElement.querySelector('form.decided');
+    f.hidden = !f.hidden;
+    dec.setAttribute('aria-expanded', String(!f.hidden));
+    if (!f.hidden) f.elements.note.focus();
+    return;
+  }
+  const take = ev.target.closest && ev.target.closest('form.decided .take');
+  if (take) {
+    const f = take.closest('form.decided'), i = f.elements.note;
+    i.value = i.getAttribute('data-suggest') || i.placeholder || '';
+    i.focus();
+    return;
+  }
+  const cancel = ev.target.closest && ev.target.closest('.ask form.did .cancel');
+  if (cancel) {
+    const form = cancel.closest('form.did');
+    form.hidden = true;
+    const b = form.parentElement.querySelector('.go');
+    if (b) { b.setAttribute('aria-expanded', 'false'); b.focus(); }
+    return;
+  }
 });
 document.addEventListener('change', ev => {
   if (ev.target.id !== 'arr-restore' || !ev.target.value) return;

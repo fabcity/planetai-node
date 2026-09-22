@@ -11,6 +11,14 @@
 - id: indoor_pm25_high
   level: act
   cooldown_minutes: 120
+  # WHAT THIS RULE WATCHES, so the node can say how long an action took to work. The rule's SQL reads
+  # `stats`, which is the present; it cannot be replayed over history. This names the indicator and
+  # the line in the rule's own words, and GET /effect looks for the first hour after somebody acted
+  # when that sensor's mean is back under it. tools/check_rules.py fails if `over` stops matching the
+  # number in the SQL, because two places holding one threshold is how they come to disagree.
+  # Omit it where "recovered" is not a threshold: inside_worse_ventilate is a RELATION between two
+  # readings, and a number here would be a fiction.
+  watch: {metric: pm25, over: 35.5}
   sql: |
     SELECT sensor_id, name, mean_15m FROM stats
     WHERE local AND indoor AND metric = 'pm25' AND mean_15m > 35.5
@@ -92,6 +100,7 @@
 - id: outdoor_pm25_high
   level: act
   cooldown_minutes: 180
+  watch: {metric: pm25, over: 55.5}
   sql: |
     SELECT sensor_id, name, mean_1h FROM stats
     WHERE local AND NOT indoor AND metric = 'pm25' AND mean_1h > 55.5

@@ -109,6 +109,22 @@ for f in sorted(glob.glob("config/rules.yml") + glob.glob("packs/*/rules.yml")):
             errs.append(f"{where}: `contributes: {con}` and a message — a contributor is never sent, so the message is dead")
         if not con and not msg:
             errs.append(f"{where}: no message and no `contributes:` — this rule can fire and reach nobody")
+        # `watch:` names the indicator and the line this rule is about, so GET /effect can say how long an
+        # action took to work. The rule's SQL is the truth and this is a second copy of one number out of it:
+        # the guard is that the number must still appear in that SQL. Two places holding one threshold is
+        # exactly how they come to disagree, and a disagreement here would be a measurement that lies.
+        w = r.get("watch")
+        if w is not None:
+            if not isinstance(w, dict) or "metric" not in w or "over" not in w:
+                errs.append(f"{where}: `watch:` needs a metric and an `over` threshold, or leave it out")
+            else:
+                sql_txt = str(r.get("sql") or "")
+                if f"'{w['metric']}'" not in sql_txt:
+                    errs.append(f"{where}: watch.metric is {w['metric']!r} and the SQL never mentions it")
+                over = str(w["over"])
+                if over not in sql_txt and over.rstrip("0").rstrip(".") not in sql_txt:
+                    errs.append(f"{where}: watch.over is {over} and the SQL does not use that number — "
+                                "one of the two has moved, and the effect measurement would be against the wrong line")
         for lang, tmpl in (msg.items() if isinstance(msg, dict) else [("", msg)]):
             for ph in re.findall(r"\{(\w+)", str(tmpl)):
                 if ph not in outs:

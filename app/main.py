@@ -688,7 +688,7 @@ _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presen
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
-    "/report/latest", "/readings", "/reach",
+    "/report/latest", "/readings", "/reach", "/shape", "/effect",
     "/history", "/exports", "/sources",
 }), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
@@ -1139,6 +1139,132 @@ def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
         hours, metric, hours, metric, hours)
     return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
             "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+
+
+@app.get("/effect")
+def effect(days: int = Query(365, ge=1, le=3650)):
+    """Did the actions work, and how long did they take? Per rule, over this node's whole record.
+
+    TWO DIFFERENT QUESTIONS WITH TWO DIFFERENT KINDS OF EVIDENCE, and they are reported apart because
+    conflating them would overstate the second.
+
+    `cleared` is the funnel's derivation, per rule: an act followed by a full MEASURED_WINDOW_MIN of silence from
+    the same rule on the same sensor is the condition having stopped being true. It works for every rule, needs no
+    threshold, and says WHETHER. It cannot say when: run_rules re-fires the moment a cooldown expires and the
+    condition still holds, so the finest this evidence can ever resolve is one cooldown.
+
+    `hours` is the other question and it needs the readings. Only a rule that declares `watch: {metric, over}` has an
+    indicator and a line to recover under -- of node #1's seven act-level rules, two do; the rest fire on a RELATION
+    ("inside is worse than outside"), where a threshold would be a fiction. For those the answer is null and the
+    reason is published rather than a zero.
+
+    AND IT IS ELAPSED TIME, NOT AN EFFECT. A window opened at 21:00 and air that cleared at 03:00 may be the window
+    or may be the night, and this node cannot tell. Nothing here says the action caused the recovery.
+
+    `already` IS NOT A NOUGHT-HOUR RECOVERY and has two causes, which is why it is counted apart rather than folded
+    into the median. Node #1's five acts on indoor_pm25_high are all `already`, and reading them one by one shows
+    both: people acted 2.0, 1.8 and 10.3 hours after the alert, by which time the air had come back on its own --
+    and separately, the rule triggers on `mean_15m` while the only history a node keeps is hourly, so a
+    fifteen-minute spike over 35.5 can fire without the hour ever crossing it (four of those five had an hourly mean
+    of 14 to 22 when they fired). The measurement is therefore COARSER THAN THE TRIGGER, structurally, and the
+    honest report is a count of the acts it cannot time rather than a number that pretends otherwise.
+
+    Retired rules are excluded for the reason index.py::_live_rule_ids exists: a rule that can never fire again would
+    have its silence counted as a cleared condition, which once made this node's own funnel report 8 where the true
+    number was 5."""
+    win = index.MEASURED_WINDOW_MIN
+    live = index._live_rule_ids()
+    if not live:
+        return {"window_hours": round(win / 60), "rules": [], "note": "this node could not read its rule set"}
+    rows = q("""WITH a AS (SELECT id, ts, rule_id, sensor_id FROM alerts
+                            WHERE level = 'act' AND rule_id = ANY(%s)
+                              AND ts > now() - make_interval(days => %s)),
+                     act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage = 'acted' GROUP BY alert_id),
+                     -- only an act whose window has fully elapsed can be judged either way
+                     j AS (SELECT a.rule_id, a.id, a.sensor_id, act.t AS acted_at,
+                                  NOT EXISTS (SELECT 1 FROM alerts r
+                                               WHERE r.rule_id = a.rule_id
+                                                 AND r.sensor_id IS NOT DISTINCT FROM a.sensor_id
+                                                 AND r.ts > act.t
+                                                 AND r.ts <= act.t + make_interval(mins => %s)) AS cleared
+                           FROM a JOIN act ON act.alert_id = a.id
+                           WHERE now() > act.t + make_interval(mins => %s))
+                SELECT rule_id, count(*) AS acted, count(*) FILTER (WHERE cleared) AS cleared
+                FROM j GROUP BY rule_id ORDER BY count(*) DESC, rule_id""",
+             live, days, win, win)
+    watches = {r["id"]: r["watch"] for r in packs.load_rules()
+               if isinstance(r, dict) and isinstance(r.get("watch"), dict)}
+    out = []
+    for r in rows:
+        w = watches.get(r["rule_id"])
+        item = {"rule_id": r["rule_id"], "acted": int(r["acted"]), "cleared": int(r["cleared"]),
+                "watch": w, "hours": None, "measured": 0, "already": 0}
+        if w:
+            # The first hour, at or after the act, when that alert's own sensor is back under the line. `already`
+            # is an act made when the reading had come back on its own, which is a real and common thing and not
+            # a nought-hour recovery.
+            h = q("""WITH a AS (SELECT id, ts, sensor_id FROM alerts
+                                 WHERE level='act' AND rule_id = %s AND ts > now() - make_interval(days => %s)),
+                          act AS (SELECT alert_id, min(ts) AS t FROM actions WHERE stage='acted' GROUP BY alert_id),
+                          e AS (SELECT a.id, act.t AS acted_at,
+                                       (SELECT min(x.bucket) FROM readings_1h x
+                                         WHERE x.sensor_id = a.sensor_id AND x.metric = %s
+                                           AND x.bucket >= date_trunc('hour', act.t) AND x.mean < %s) AS ok_at
+                                FROM a JOIN act ON act.alert_id = a.id)
+                     SELECT count(*) FILTER (WHERE ok_at IS NOT NULL
+                                             AND ok_at > date_trunc('hour', acted_at)) AS measured,
+                            count(*) FILTER (WHERE ok_at IS NOT NULL
+                                             AND ok_at <= date_trunc('hour', acted_at)) AS already,
+                            percentile_cont(0.5) WITHIN GROUP (
+                              ORDER BY extract(epoch FROM ok_at - acted_at) / 3600.0)
+                              FILTER (WHERE ok_at IS NOT NULL
+                                      AND ok_at > date_trunc('hour', acted_at)) AS median_hours
+                     FROM e""", r["rule_id"], days, w["metric"], w["over"])
+            g = (h[0] if h else {}) or {}
+            item["measured"] = int(g.get("measured") or 0)
+            item["already"] = int(g.get("already") or 0)
+            item["hours"] = round(float(g["median_hours"]), 1) if g.get("median_hours") is not None else None
+        out.append(item)
+    return {"window_hours": round(win / 60), "days": days, "rules": out}
+
+
+@app.get("/shape")
+def shape(metric: str = "pm25"):
+    """The day this place usually has: one hour-of-day mean per hour, over the whole record, indoor against outdoor.
+
+    THE HOURS ARE LOCAL, and that is not incidental. `extract(hour FROM bucket)` answers in the session timezone, and
+    db() sets it from NODE_TZ on every connection for exactly this reason -- the comment there records the day
+    boundaries and "evening" landing eight hours out in Bali once already. Read the same query in a psql session,
+    which does not go through db(), and node #1's shape moves by eight hours and says the opposite thing: a midday
+    cooking peak reads as a 4 a.m. one. Anything computing an hour-of-day here must go through db().
+
+    INDOOR AND OUTDOOR ARE SEPARATE because on node #1 they are ANTI-PHASED -- inside peaks at meal times, outside
+    peaks in the evening -- and one average over both is a number that describes neither and hides the only thing a
+    household could act on.
+
+    `days` is how many distinct local days this node's OWN stations have for this metric, and `windows` is what that
+    record can honestly support. A node installed this morning has a day and says so; it does not draw a year from
+    it. That refusal is the point: this is the one place a page is most tempted to describe a pattern it has not
+    seen."""
+    rows = q("""SELECT extract(hour FROM h.bucket)::int AS hour,
+                       avg(h.mean) FILTER (WHERE s.indoor)     AS indoor,
+                       avg(h.mean) FILTER (WHERE NOT s.indoor) AS outdoor,
+                       count(*) AS n
+                FROM readings_1h h JOIN sensors s USING (sensor_id)
+                WHERE h.metric = %s AND s.local
+                GROUP BY 1 ORDER BY 1""", metric)
+    span = q("""SELECT count(DISTINCT date_trunc('day', h.bucket)) AS days,
+                       min(h.bucket) AS first, max(h.bucket) AS last
+                FROM readings_1h h JOIN sensors s USING (sensor_id)
+                WHERE h.metric = %s AND s.local""", metric)
+    d = (span[0] if span else {}) or {}
+    days = int(d.get("days") or 0)
+    # What the record supports, decided here and not on the page: the page draws what the node says it may.
+    # A day's shape wants a week behind it before an hourly mean means anything; a week-on-week comparison wants two;
+    # a month wants two months to compare; a year wants a year. Nothing here is a forecast and nothing extrapolates.
+    return {"metric": metric, "days": days, "first": d.get("first"), "last": d.get("last"),
+            "hours": [{"hour": r["hour"], "indoor": r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
+            "windows": {"day": days >= 7, "week": days >= 14, "month": days >= 60, "year": days >= 365}}
 
 
 @app.get("/export")
@@ -1828,12 +1954,25 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         if not _bearer_ok(authorization, *tokens):
             raise HTTPException(401, "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>")
     stage = body.get("stage")
-    if stage not in ("acknowledged", "acted"):            # 'settings' rows are written by the node itself, never posted
+    # `decided` is a record and not an answer: it closes nothing, enters no rho, and is not a funnel stage. A household
+    # that looked at an observation, decided what to do and did not manage it leaves the same trace today as one that
+    # never looked, and those are opposite facts. docs/SPEC_decide.md section 6.
+    if stage not in ("acknowledged", "acted", "decided"):  # 'settings' rows are written by the node itself, never posted
         raise HTTPException(400, "stage must be acknowledged or acted")
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT 1 FROM alerts WHERE id = %s", (body.get("alert_id"),))
         if not cur.fetchone():
             raise HTTPException(404, "no such alert")
+        # DECISION_REQUIRED is a community's switch and it is off by default, because the four other ways in here have
+        # no screen to decide on: the Reticulum bridge (a LoRa reply from a device with no display), the MCP `act` tool,
+        # the terminal, and curl. A node in a house records an act whether or not anybody deliberated -- somebody smells
+        # smoke and opens a window -- and refusing that would make the node assert a deliberation that did not happen,
+        # or push the act somewhere it is never recorded at all. A node acting for a street is the case this is for.
+        if stage == "acted" and settings.num("DECISION_REQUIRED", 0):
+            cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
+            if not cur.fetchone():
+                raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
+                                         "against the same ask first. Decide on the dashboard, then record what you did.")
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
                     (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}
