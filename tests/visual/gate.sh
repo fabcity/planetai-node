@@ -176,6 +176,32 @@ for (const n of ['now_populated_1440', 'now_populated_390']) {
 const w = j('wall_populated_1920_dark');
 if (w.doc.h > 1080) fails.push(`wall is ${w.doc.h} px on a 1,080 px screen`);
 
+// THE RULE UNDER THE RAIL RUNS THE SAME WAY THE RAIL DOES. The rail's stops go coarse to fine left
+// to right — resolution 2 at 172 km first, resolution 12 at 10 m last. The rule shipped with its
+// log scale the other way round, so 10 m sat at the left edge under the 172 km stop and every tick
+// fell under the stop at the opposite end of the row. Nothing else here could see it: each box was
+// the right size, the page did not overflow, and the numbers were correct — only the axis was
+// backwards. Read off the rendered text lines inside the ruler's own box, so it checks the drawing
+// rather than the source.
+{
+  const d = j('now_populated_1440');
+  const r = d.els.find(e => (e.cls || '').split(/\s+/).includes('ruler'));
+  if (!r) fails.push('no ruler under the rail');
+  else {
+    const M = { m: 1, km: 1000 };
+    const marks = d.lines
+      .filter(l => l.x >= r.x && l.x <= r.x + r.w && l.y >= r.y && l.y <= r.y + r.h)
+      .map(l => ({ x: l.x, t: (l.text || '').trim() }))
+      .map(l => ({ ...l, m: (l.t.match(/^([\d.]+)\s*(m|km)$/) || [])[1] * M[(l.t.match(/(m|km)$/) || [])[1]] }))
+      .filter(l => l.m > 0).sort((a, b) => a.x - b.x);
+    if (marks.length < 3) fails.push(`the ruler has ${marks.length} readable mark(s), not a scale`);
+    else for (let i = 1; i < marks.length; i++)
+      if (marks[i].m >= marks[i - 1].m)
+        fails.push(`the ruler runs the wrong way: ${marks[i - 1].t} is left of ${marks[i].t}, `
+          + 'and the rail above it goes coarse to fine');
+  }
+}
+
 for (const f of fails) console.log('FAIL', f);
 console.log(fails.length ? `${fails.length} regression(s)` : 'ok');
 process.exit(fails.length ? 1 : 0);

@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.72.1 — 2026-09-23 — three things the page was drawing wrong
+
+*Nothing about what your node measures changed. Three things the page was drawing wrong, all of them
+reported by Tomas reading v0.72 on node #1.*
+
+- **The scale under the resolution rail ran backwards.** The eleven stops go from coarse to fine
+  left to right — 172 km at one end, 10 m at the other — and the little rule underneath them, the one
+  that shows where each grain truly falls, was labelled the other way round: 10 m at the left edge,
+  100 km at the right. So every tick sat under the stop at the opposite end of the row, and anybody
+  checking a grain against the scale read it backwards. The numbers were always right; only the axis
+  was reversed.
+
+- **Act was using half its width.** The whole stage — the open asks, every rule and its rings, the
+  nearest place to get something made — was squeezed into the left half of the band while the right
+  half sat empty from the top of the section to the bottom of it. It had been asking for two columns
+  and only ever filling one. The rings now run the full width of the page, so a rule that has asked
+  fifty times is two rows instead of four.
+
+- **Every explanation at the bottom of the page was labelled with the same words.** Open the fold for
+  the satellite and you got five paragraphs about five different things, each one headed "What the
+  satellite says" — the fold's own title, said again, five times over. Scanning for the one you
+  wanted told you nothing. Each of the 84 notes now names its own subject: "What orange means",
+  "Compacting the covering", "Brightness matched across years".
+
+Two of these could have come back without anybody noticing, so each has a check behind it now. The
+visual gate reads the rendered scale and fails if it does not descend left to right — nothing else
+could see that fault, because every box was the right size and only the direction was wrong. And
+`make lint` now fails a note that has not been given its own label, which is how the third one would
+have returned: one note at a time, with the page rendering perfectly either way.
+
 ## v0.72 — 2026-09-23 — the loop closes on the page, and the node starts to learn
 
 - **The source registry is at `1010aa0`** — 238 entries, up from 229. Synced before this tag, as every
