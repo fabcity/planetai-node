@@ -41,13 +41,23 @@ SRC="$(find "$TMP" -maxdepth 1 -type d -name 'awesome-fabcity-data-*' | head -1)
 FULL="$(basename "$SRC" | sed 's/^awesome-fabcity-data-//')"
 [ -d "$SRC/data" ] || { echo "x $REF has no data/ — wrong repository?"; exit 1; }
 
-# Only the entries and the schema they are validated against. Not the upstream README, its CI, or its
-# harvest scripts: the node reads the list, it does not curate it.
+# Only the entries, the reviews and cells beside them, and the schemas they are validated against. Not
+# the upstream README, its CI, or its harvest scripts: the node reads the list, it does not curate it.
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -R "$SRC/data" "$OUT/data"
 mkdir -p "$OUT/schema"
 cp "$SRC/schema/dataset.schema.json" "$OUT/schema/dataset.schema.json"
+
+# reviews/ and cells/ arrived upstream on 2026-09-22 and a pin taken before that has neither, so each
+# is copied only when the tarball carries it. `if` rather than `[ -d x ] && cp`, because that idiom
+# returns non-zero on the last pin without them and this script runs under `set -e`.
+for tree in reviews cells; do
+  if [ -d "$SRC/$tree" ]; then cp -R "$SRC/$tree" "$OUT/$tree"; fi
+done
+for s in review cell; do
+  if [ -f "$SRC/schema/$s.schema.json" ]; then cp "$SRC/schema/$s.schema.json" "$OUT/schema/$s.schema.json"; fi
+done
 
 N="$(find "$OUT/data" -name '*.yaml' | wc -l | tr -d ' ')"
 cat > "$OUT/REGISTRY_VERSION" <<EOF
