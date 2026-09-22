@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.72 — 2026-09-23 — the loop closes on the page, and the node starts to learn
+
+- **The source registry is at `1010aa0`** — 238 entries, up from 229. Synced before this tag, as every
+  release must be: nothing checks that the pin is current, so it goes stale silently.
+
 ## v0.71.1 — 2026-09-22 — the link to the asks led nowhere
 
 - **Pressing "in 3 Act" gave you a blank page.** The lead counts your open asks and offers to take

@@ -1,0 +1,61 @@
+name: IBGE SIDRA / servicodados API (Brazil)
+url: https://servicodados.ibge.gov.br/api/docs
+description: |
+  Brazil's statistics institute: population, census, agriculture and economic
+  aggregates for all 5,570 municipalities through a key-free API, with the
+  official municipal code and its full territorial hierarchy on every row.
+pillar: social
+scale: city
+status: candidate
+license: "No named licence. Open by Decreto nº 8.777/2016, the Brazilian federal Open Data Policy, which IBGE's own Dados Abertos page cites and under which it publishes its Plano de Dados Abertos. No Creative Commons statement anywhere on that page or the API docs."
+api: https://servicodados.ibge.gov.br/api/v3/agregados
+pilot_relevance: [global]
+tags: [ibge, brazil, sidra, municipal, census, open-data-decree]
+added: 2026-09-23
+auth: none
+feeds_cells: [Social|City, Social|Region]
+upstream_listed_in: []
+notes: |
+  LICENCE, and it is a policy rather than a licence. IBGE's Dados Abertos page,
+  read 2026-09-23, names "O Decreto nº 8.777/2016, que instituiu a Política de
+  Dados Abertos do Poder Executivo Federal" and describes the Plano de Dados
+  Abertos published under it. Searched in full: **no "licença", no "Creative
+  Commons", no reuse clause of any kind** — and the API docs at
+  `servicodados.ibge.gov.br/api/docs` state no terms either.
+
+  Same shape as social/city/us-census-acs: open by federal policy, with nothing
+  named. Criterion 1 is met in substance and a reviewer wanting an SPDX id will
+  not find one. (IBGE's *journal*, the Revista Brasileira de Geografia, adopted
+  CC BY 4.0 in 2023 — that is the journal, not the statistics, and is the wrong
+  thing to cite for this data.)
+
+  ENDPOINT VERIFIED 2026-09-23, no key and no account:
+  `GET /api/v3/agregados` returns the full aggregate catalogue, 1.95 MB.
+  `GET /api/v3/agregados/6579/periodos/2024/variaveis/9324?localidades=N6[3550308]`
+  returns **São Paulo, 2024, 11,895,578 residents**. Aggregate 6579 is "População
+  residente estimada", periods 2001–2026, territorial levels N1 country, N2
+  region, N3 state, N6 municipality.
+
+  **A TRAP THAT FAILS SILENTLY.** The square brackets in `localidades=N6[...]`
+  must be URL-encoded. Unencoded, the request returns **an empty body with no
+  error** — not a 400, not a message, nothing. `curl -G --data-urlencode` works;
+  a naive client that interpolates the bracket gets silence and will look like a
+  source with no data rather than a malformed call.
+
+  SPATIAL, and it is the best structured of any source in either tier.
+  `GET /api/v1/localidades/municipios/3550308` returns São Paulo with the
+  **official 7-digit IBGE municipal code** and the entire hierarchy in one
+  response: microrregião, mesorregião, UF (35 / SP), região (3 / SE), plus the
+  newer regiões imediata and intermediária. No crosswalk, no name matching, and
+  the aggregation path from municipality to state to region is given rather than
+  inferred. US Census ACS matches it on codes; nothing matches it on hierarchy.
+
+  INDICATOR: municipal population and census — the social-pillar city row for
+  any Brazilian Fab City, at official-register resolution. I could not read the
+  landing plan's Table 2 in this session, so this names the indicator in plain
+  words rather than a row id.
+
+  Promotes to live when somebody reads it for a real Brazilian territory — there
+  is no Brazilian pilot in `pilot_relevance` today, which is itself the thing to
+  notice about this entry: it is the most technically capable source in Tier B
+  and the network has nobody to point it at yet.

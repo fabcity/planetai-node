@@ -1,0 +1,62 @@
+name: ILOSTAT
+url: https://ilostat.ilo.org/
+description: |
+  The ILO's labour statistics: employment, unemployment, informality, working
+  time and wages for some 190 countries, by sex and age, with a key-free query
+  API returning CSV or JSON.
+pillar: social
+scale: region
+status: candidate
+license: "CC-BY-4.0 for databases and datasets published from 3 May 2023. Anything produced before that date is NOT automatically Creative Commons and must be checked per work; microdata is excluded entirely. See notes."
+api: https://rplumber.ilo.org/data/indicator/
+pilot_relevance: [bali, santiago, global]
+tags: [labour, employment, informality, ilo, wages, decent-work]
+added: 2026-09-22
+auth: none
+feeds_cells: [Social|Region]
+upstream_listed_in: []
+notes: |
+  LICENCE, from the ILO's own rights-and-permissions page, verbatim: "As of 3
+  May 2023, databases and datasets together with the accompanying referential
+  metadata are covered by the Creative Commons CC BY 4.0 licence."
+
+  **The date is the whole caveat and it is the provider's own sentence:**
+  "Databases and datasets together with the accompanying referential metadata
+  produced prior to 3 May 2023 do not automatically benefit from a Creative
+  Commons licence", and users must "check the copyright page of each work for
+  exact licence information". A long time series pulled today can therefore
+  straddle two regimes — the recent vintages CC-BY-4.0, an older archived
+  release not necessarily. Anyone building on a back series has a per-work check
+  to do, and this entry does not pretend otherwise. Microdata submitted by
+  constituents is excluded from the licence entirely and is not what this
+  endpoint serves.
+
+  ENDPOINT VERIFIED 2026-09-22, no key and no account: `GET
+  rplumber.ilo.org/data/indicator/?id=EMP_TEMP_SEX_AGE_NB_A&ref_area=IDN&
+  lang=en&format=.csv` returned CSV with `ref_area, source, indicator, sex,
+  classif1, time, obs_value` and 2023 values for Indonesia. The browsable bulk
+  tree at `ilostat.ilo.org/data/bulk/` answers 403 to a plain client and the
+  site itself sits behind a Cloudflare bot check, so the plumber host is the one
+  to point code at — reading the licence required going to `ilo.org`, which is
+  the same provider and not behind the challenge.
+
+  SPATIAL, and the honest limit of this entry. `ref_area` is ISO 3166-1
+  alpha-3 — `IDN` — and the overwhelming majority of ILOSTAT is **national**.
+  It is filed at `region` scale because that is the nearest tier in this
+  taxonomy, not because it resolves a province: a Chilean región or a Balinese
+  kabupaten is not in here. Some indicators carry a subnational or urban/rural
+  breakdown through `classif1`, and which ones do is exactly what a reviewer
+  should check. **Not federatable below the country without a crosswalk**, and
+  for most series not federatable below the country at all.
+
+  INDICATOR: employment, informality and working time — the social-pillar labour
+  row, and the only open source in this list that measures informal work, which
+  is most of the production a Fab City in Indonesia or Chile is actually
+  surrounded by. I could not read the landing plan's Table 2 in this session, so
+  this names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody pulls one indicator for Indonesia or Chile,
+  confirms the vintage they need is dated on or after 3 May 2023 so the CC-BY-4.0
+  actually covers it, and reports whether any `classif1` breakdown reaches below
+  the national level for that indicator. If nothing does, this is a national
+  context source and the entry should say so in its description.

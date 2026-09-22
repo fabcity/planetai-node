@@ -1992,6 +1992,37 @@
     "wired_in_planetai": false
   },
   {
+    "added": "2026-09-23",
+    "api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/sbs_r_nuts2021",
+    "auth": "none",
+    "cell": "Economic|Region",
+    "description": "Enterprises, local units and persons employed by NUTS 2 region and NACE\nactivity: how much manufacturing capacity a European region actually has, and\nhow many people it employs.\n",
+    "feeds_cells": [
+      "Economic|Region"
+    ],
+    "license": "Commission Decision 2011/833/EU — reuse for commercial or non-commercial purposes authorised with the source acknowledged. NOT CC-BY-4.0, which covers the site's editorial content only. See notes.",
+    "name": "Eurostat Structural Business Statistics by NUTS 2 region",
+    "notes": "LICENCE: the same instrument verified for social/city/eurostat-urban-audit in\nthis session, from Eurostat's own copyright notice — data is governed by the\nCommission reuse Decision of 12 December 2011, not by the CC-BY-4.0 that\ncovers the website's editorial content. The non-commercial exception for data\non countries outside the EU, EFTA and candidate states applies to Eurostat\ntables generally; SBS regional covers EU and EFTA regions, so it does not bite\nhere. Read that entry's notes for the wording.\n\n**THE DATASET ID IS THE TRAP, and it cost three requests to find.** Searching\nfor regional SBS lands on `sbs_r_nuts06_r2`, which answers 200, returns 24 MB,\nand is titled \"SBS data by NUTS 2 region and NACE Rev. 2 **(2008-2020)**\" —\na discontinued series, last updated 2024-03-01. Asking it for 2021 returns an\nempty time dimension, which reads like a gap in the data rather than the end\nof the series. The live dataset is **`sbs_r_nuts2021`**, \"Enterprises by NUTS\n2 region and NACE Rev.2 activity\", covering **2021–2024** and updated\n**2026-08-31**. Anyone building on the first one is building on a series that\nstopped six years ago.\n\nENDPOINT VERIFIED 2026-09-23, no key and no account:\n`GET .../1.0/data/sbs_r_nuts2021?format=JSON&lang=EN&time=2023&nace_r2=C`\nreturns JSON-stat with seven indicators under `indic_sbs`, including \"Persons\nemployed in local units - number\" and \"Share of employment in local units in\nmanufacturing total - percentage\". Filter before fetching: unfiltered the\nsibling dataset is 24 MB of JSON.\n\nSPATIAL: the `geo` dimension is **NUTS**, 410 members at mixed levels —\n`BE` country, `BE1` NUTS 1, `BE10` NUTS 2 — so a European region joins this to\nits own official code with no crosswalk at all. Together with Urban Audit's\nLAU-aligned city codes, this is the pair of Tier A sources that are directly\nfederatable for a European partner; everything else in this tier needs a\ncrosswalk or has no code.\n\nCADENCE: annual, published roughly two years behind; 2023 was present in\nSeptember 2026.\n\nINDICATOR: manufacturing employment and enterprise counts for a region — the\neconomic-pillar region row, and the closest open measure of *where production\ncapacity actually sits* in Europe, which is the question a Fab City asks about\nits own hinterland. I could not read the landing plan's Table 2 in this\nsession, so this names the indicator in plain words rather than a row id.\n\nPromotes to live when somebody pulls manufacturing persons-employed for one\npartner region — Catalonia is `ES51`, the Balearics `ES53` — for the newest\nyear present, and confirms the NUTS code matches that region's own official\ncode and that the value is non-null. Regional SBS has real coverage holes by\ncountry and activity, and which cells are empty is the thing to report.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "barcelona",
+      "global"
+    ],
+    "scale": "region",
+    "slug": "economic/region/eurostat-sbs",
+    "status": "candidate",
+    "tags": [
+      "sbs",
+      "eurostat",
+      "manufacturing",
+      "enterprises",
+      "employment",
+      "nuts"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://ec.europa.eu/eurostat/web/structural-business-statistics"
+  },
+  {
     "added": "2026-09-11",
     "api": "https://pc-axis.geostat.ge/PXWeb/api/v1/en/Database/National%20Accounts",
     "cell": "Economic|Region",
@@ -2281,6 +2312,40 @@
     "upstream_listed_in": [],
     "url": "https://www.data.gouv.fr/datasets/artisans-et-entreprises-affilies-a-la-marque-fabrique-en-occitanie",
     "wired_in_planetai": false
+  },
+  {
+    "added": "2026-09-22",
+    "api": "https://sdmx.oecd.org/public/rest/dataflow/OECD.CFE.EDS",
+    "auth": "none",
+    "cell": "Economic|Region",
+    "description": "OECD's sub-national statistics: GDP, labour, demography and climate exposure\nfor regions (TL2/TL3) and functional urban areas across member and partner\ncountries, served as SDMX.\n",
+    "feeds_cells": [
+      "Economic|Region",
+      "Economic|City"
+    ],
+    "license": "OECD Terms and Conditions (last updated 1 July 2024) — reuse for any purpose including commercial, with attribution that must be passed on to sub-licensees. An open permission, not a named licence. See notes.",
+    "name": "OECD Regional and Metropolitan Database",
+    "notes": "LICENCE, read from the OECD's own Terms & Conditions §3 \"Data\" 2026-09-22. The\npermission is broad, verbatim: \"you can extract from, download, copy, adapt,\nprint, distribute, share and embed Data for any purpose, even for commercial\nuse. You must give appropriate credit to the OECD by using the citation\nassociated with the relevant Data\". It is not a named open licence — there is\nno SPDX id and no Creative Commons anywhere on the page — so this entry cites\nthe instrument rather than inventing a label.\n\nTWO CONDITIONS THAT TRAVEL, and both matter for an Index built on this.\n\nThe attribution is **viral**: \"When sharing or licensing work created using\nthe Data, you agree to include the same acknowledgment requirement in any\nsub-licenses that you grant, along with the requirement that any further\nsub-licensees do the same.\" Anything derived from this has to carry the\nrequirement downstream, which is a thing to decide once and honour, not to\ndiscover later.\n\nAnd the OECD does not warrant it owns the data: §3 says Data \"may be subject\nto restrictions beyond the scope of these Terms\", that third parties may own\nsome of it, and that it is \"the user's responsibility to verify ... whether\nthe Data is fully or partially owned by third parties\" per dataset. So the\nlicence above is the floor for OECD-owned series and has to be re-checked for\nany specific table before it is relied on.\n\n\"Availability of Data\" additionally reserves the right to throttle: the OECD\n\"may monitor your use\" and \"modify the amount of Data you may request in a\nsingle query\" and the number of queries over time. Cache; do not poll.\n\nENDPOINT VERIFIED 2026-09-22, no key and no account. The SDMX service at\n`sdmx.oecd.org/public/rest/` answers; `GET /dataflow/OECD.CFE.EDS?format=\njson-structure-2.0.0` lists 133 dataflows for regions and cities, and\n`GET /data/OECD.CFE.EDS,DSD_FUA_ECO@DF_ECONOMY,1.1/all?startPeriod=2021&\nformat=csvfilewithlabels` returns labelled CSV. Two traps cost a request each\nand are written down so they do not cost another: `format=jsondata` is\nrejected with the acceptable values listed, and **the dataflow version is part\nof the path** — the same query at `1.0` 404s with \"Could not find Dataflow\nand/or DSD\", which reads like the flow does not exist. Read the version off\nthe dataflow listing first.\n\nSPATIAL: OECD territorial codes, not national register codes — `FR062F`\nMamoudzou, `USA62F` Hidalgo, with a `TERRITORIAL_LEVEL` dimension carrying\nTL2, TL3 or FUA. These are stable, official OECD codes and the OECD publishes\ncorrespondence to NUTS and national units, so this is federatable *through a\npublished crosswalk* rather than directly — better than a raster with no code\nat all, weaker than Urban Audit's LAU-aligned city codes.\n\nCADENCE: annual, with a lag of two to three years on economic series; the\neconomy flow answered for 2021 in September 2026.\n\nINDICATOR: regional GDP and labour — the economic-pillar region row, and the\nonly source here that gives a functional urban area rather than an\nadministrative city, which is the right unit for a commuting economy. I could\nnot read the landing plan's Table 2 in this session, so this names the\nindicator in plain words rather than a row id.\n\nPromotes to live when somebody pulls one series for one partner region —\nCatalonia, Massachusetts, a Chilean región — and confirms the OECD territorial\ncode maps to that region's own official code, because everything downstream\ndepends on that crosswalk being real rather than assumed.\n",
+    "pillar": "economic",
+    "pilot_relevance": [
+      "barcelona",
+      "boston",
+      "santiago",
+      "global"
+    ],
+    "scale": "region",
+    "slug": "economic/region/oecd-regional-metropolitan",
+    "status": "candidate",
+    "tags": [
+      "oecd",
+      "regional",
+      "metropolitan",
+      "sdmx",
+      "gdp",
+      "functional-urban-area"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://data-explorer.oecd.org/"
   },
   {
     "added": "2026-09-10",
@@ -2898,6 +2963,36 @@
     "wired_in_planetai": false
   },
   {
+    "added": "2026-09-23",
+    "api": "https://data.cdp.net/resource/",
+    "auth": "none",
+    "cell": "Environmental|City",
+    "description": "What cities, states and regions report to CDP through the unified CDP–ICLEI\nTrack: emissions inventories, climate hazards, adaptation plans, targets and\nrenewable energy, self-reported and published annually.\n",
+    "feeds_cells": [
+      "Environmental|City"
+    ],
+    "license": "CDP Open Database License (27 Nov 2014) — NON-COMMERCIAL. Despite the name it is not ODbL: it is ODbL with commercial use removed, so criterion 1 is NOT met. Derivatives ARE permitted, non-commercially. See notes.",
+    "name": "CDP–ICLEI Track open data (CDP Open Data Portal)",
+    "notes": "**THE LICENCE IS NOT ODbL, AND THE NAME IS WHY ANYONE WOULD THINK IT WAS.**\nThe portal's dataset metadata carries `\"License Type\": \"CDP Open Database\nLicense\"`, which reads like Open Data Commons ODbL and is not. The licence\ntext is a 7-page PDF behind the Terms of Use page, embedded through a Google\nDocs viewer, last updated 27 November 2014. Read in full 2026-09-23; the\nsummary says, verbatim, that you are free \"To Share ... for non-commercial\npurposes\", \"To Create: To produce works from this database for non-commercial\npurposes\", \"To Adapt: To modify, transform and build upon the database for\nnon-commercial purposes\", and:\n\n> \"The CDP Open Database License draws directly and heavily on Open Data\n> Commons' Open Database License. However, the CDP Open Database License\n> explicitly forbids commercial use of the data and enumerates specifically\n> prohibited uses.\"\n\nSo **criterion 1 is NOT met** — non-commercial is not an open licence by this\nlist's definition — and this entry is licence-restricted rather than\nlicence-unknown, which is a different and more actionable state.\n\nHOW IT DIFFERS FROM environmental/planet/edgar, and it matters. EDGAR's CO2 is\nNC-**ND**: no derivatives at all, so an Index cell is forbidden outright.\nCDP's licence permits adaptation and derived works explicitly — it restricts\nonly *commercial* use. Whether a Foundation publishing an open Index is\ncommercial is a question for the Foundation and not for a session, but it is a\nquestion with a plausible answer, which the EDGAR one is not.\n\nCDP says so itself: \"CDP allows and encourages both non-commercial and\ncommercial uses of our data ... A much larger set of data is available for\ncommercial uses to paying customers only and can be arranged by contacting CDP\nat partnerships@cdp.net\". The free tier is deliberately the non-commercial\ntier, and the commercial route is a purchase.\n\nENDPOINT VERIFIED 2026-09-23, no key and no account. Socrata:\n`GET data.cdp.net/resource/cbdf-w4g3.json?$limit=1` returned City of Los\nAngeles, questionnaire year 2020; `ss7p-tmd7` returned Aarhus Municipality\nwith GCoM, C40 and ICLEI membership flags. The catalogue is\n`api/views.json`. One trap: several published assets are non-tabular blobs and\nanswer `\"no row or column access to non-tabular tables\"` — check `viewType`\nbefore pointing code at an id.\n\nVINTAGE: 2025 questionnaire datasets are published (Nature and Health,\nAdaptation and Resilience, cities and states/regions). Annual, following the\nreporting cycle.\n\nSPATIAL, and the weakness. Cities are identified by CDP's own\n`account_number` / `organization_number` — 10894 Los Angeles, 54408 Aarhus —\nplus a free-text name and a country. There is **no LAU, NUTS, FIPS/GEOID or\nany national code on any row**. Joining to a territory means matching a city\nname against a register, which is the fragile join this contract exists to\nflag: **not federatable without a crosswalk**, and the crosswalk has to be\nbuilt and maintained by hand.\n\nSELF-REPORTED, which is the other thing to hold in mind: these are cities'\nown submissions on a voluntary questionnaire. Absence is not zero, coverage\nis skewed to cities with the staff to report, and a year-on-year change can\nbe a change in who answered rather than in the world.\n\nINDICATOR: city greenhouse-gas inventories and adaptation status — the\nenvironmental-pillar city row, and the only source here reported *by* cities\nrather than modelled *about* them. I could not read the landing plan's Table 2\nin this session, so this names the indicator in plain words rather than a row\nid.\n\nPromotes to live when the Foundation has decided whether its use is\nnon-commercial within this licence's meaning, and somebody has matched one\npartner city to its CDP account number and confirmed the inventory year is\npresent. The licence decision is the blocker, not the data.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "city",
+    "slug": "environmental/city/cdp-iclei-track",
+    "status": "candidate",
+    "tags": [
+      "cdp",
+      "iclei",
+      "emissions",
+      "cities",
+      "self-reported",
+      "climate-adaptation"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://data.cdp.net/"
+  },
+  {
     "added": "2026-05-04",
     "api": "https://airquality.googleapis.com/v1",
     "auth": "paid",
@@ -3417,6 +3512,37 @@
     "upstream_listed_in": [],
     "url": "https://microsoft.github.io/aurora/",
     "wired_in_planetai": true
+  },
+  {
+    "added": "2026-09-23",
+    "api": "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/datasets/EDGAR_2024_GHG/",
+    "auth": "none",
+    "cell": "Environmental|Planet",
+    "description": "The JRC's global greenhouse-gas inventory: CO2, CH4, N2O and F-gases by\ncountry and sector back to 1970, plus 0.1° gridded maps. The reference\nemissions dataset when a national inventory does not exist.\n",
+    "feeds_cells": [
+      "Environmental|Planet"
+    ],
+    "license": "SPLIT, and one half is not open. EDGAR CH4, N2O and F-gases are CC-BY-4.0. The IEA-EDGAR CO2 component is CC BY-NC-ND 4.0 — non-commercial AND no-derivatives, which fails criterion 1 and cannot back a derived Index. See notes.",
+    "name": "EDGAR — Emissions Database for Global Atmospheric Research",
+    "notes": "**THE LICENCE IS SPLIT AND THE CO2 HALF IS THE PROBLEM.** Read from EDGAR's\nown release page 2026-09-23. The general statement is the usual EC one:\n\"Unless otherwise noted, all material owned by the European Union is licensed\nunder the Creative Commons Attribution 4.0 International (CC BY 4.0) licence.\"\nThat covers EDGAR CH4, EDGAR N2O and EDGAR F-gases.\n\nFossil CO2 is not owned by the European Union. Verbatim from the same page:\n\"IEA-EDGAR CO2 data are based on data from IEA (2023) Greenhouse Gas Emissions\nfrom Energy, www.iea.org/data-and-statistics, as modified by the Joint\nResearch Centre, **licensed under CC BY-NC-ND 4.0**. Users of the IEA-EDGAR\nCO2 data should contact the IEA at compliance@iea.org if they wish to use such\ndata outside the terms of the CC-BY-NC-ND 4.0 licence.\"\n\nNC-ND is neither open nor usable here, on two counts. **NonCommercial** fails\nCONTRIBUTING criterion 1 outright. **NoDerivatives** is the sharper one: an\nIndex cell is a derived aggregate, which is exactly what ND forbids, so a\ncell computed from IEA-EDGAR CO2 is not a licensing edge case — it is the\nthing the licence names. The irony is that CO2 is the series anybody comes to\nEDGAR for.\n\nWHAT IS ACTUALLY USABLE, then: CH4, N2O and F-gases under CC-BY-4.0, which is\na real and unusual offer — methane by country and sector back to 1970 is hard\nto get elsewhere openly. A node or an Index may use those. It may not publish\na derived fossil-CO2 number from here without writing to compliance@iea.org\nfirst, and that email is a decision for the Foundation, not a session.\n\nENDPOINT VERIFIED 2026-09-23, no key and no account: the JRC open-data tree at\n`jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/datasets/EDGAR_2024_GHG/`\nanswers 200. Bulk ZIPs per gas, not a query API.\n\nVINTAGE: release EDGAR_2024_GHG, covering data through 2023.\n\nSPATIAL: country totals in kt/year, and a 0.1° × 0.1° grid. Countries carry\nISO codes; the grid carries none. **Not federatable below the country without\na crosswalk** — a city's emissions are not in here, and downscaling a 0.1°\ncell to a municipality is a modelling choice somebody has to own.\n\nINDICATOR: greenhouse-gas emissions by country and gas — the\nenvironmental-pillar planet row, and the fallback denominator for any\nterritory whose own inventory does not exist. I could not read the landing\nplan's Table 2 in this session, so this names the indicator in plain words\nrather than a row id.\n\nPromotes to live when somebody confirms which gases a cell would actually be\nbuilt from, and that no IEA-EDGAR CO2 value is in the chain — or when the\nFoundation has written to compliance@iea.org and has an answer in hand. A\nreview that says \"usable\" without separating the gases has not read the\nlicence.\n",
+    "pillar": "environmental",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "planet",
+    "slug": "environmental/planet/edgar",
+    "status": "candidate",
+    "tags": [
+      "emissions",
+      "ghg",
+      "co2",
+      "methane",
+      "inventory",
+      "jrc",
+      "gridded"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://edgar.jrc.ec.europa.eu/"
   },
   {
     "added": "2026-09-09",
@@ -4981,6 +5107,35 @@
     "wired_in_planetai": false
   },
   {
+    "added": "2026-09-23",
+    "api": "https://api.worldbank.org/v2/sources/3/indicators",
+    "auth": "none",
+    "cell": "Governance|Planet",
+    "description": "Six governance dimensions — voice and accountability, political stability,\ngovernment effectiveness, regulatory quality, rule of law, control of\ncorruption — for over 200 economies, 1996 to 2024, with confidence intervals.\n",
+    "feeds_cells": [
+      "Governance|Planet"
+    ],
+    "license": "CC-BY-4.0",
+    "name": "World Bank Worldwide Governance Indicators (WGI)",
+    "notes": "LICENCE: \"Creative Commons Attribution 4.0\" on the World Bank Data Catalog\nentry for dataset 0038026, read 2026-09-23. Criterion 1 is met, and this is\nthe cleanest licence in Tier A — no split, no date cutoff, no viral clause, no\nnon-commercial exception.\n\nENDPOINT VERIFIED 2026-09-23, no key and no account. `GET\napi.worldbank.org/v2/country/ESP/indicator/GOV_WGI_GE.EST?format=json&\ndate=2020:2024&source=3` returned Spain's Government Effectiveness estimate\nfor five years — 1.11 for 2024.\n\n**TWO TRAPS, both of which cost a request.** The indicator codes changed: the\nlong-standing `GE.EST`, `CC.EST` and friends now return \"The indicator was not\nfound. It may have been deleted or archived.\" The current ids are prefixed —\n`GOV_WGI_GE.EST`, `GOV_WGI_CC.EST` — and `source=3` must be passed explicitly\nor the call fails with \"The provided parameter value is not valid\". Any code\nor tutorial written before the 2025 release is wrong about both. The full list\nof 36 series is at `/v2/sources/3/indicators?format=json`.\n\nVINTAGE: the 2025 release, version 7, spans 1996–2024, and the World Bank\nrecalculates the whole history each release for methodological consistency —\nso a stored 2019 value from an older release will not match this one. Pin the\nrelease, or re-pull the series; do not mix.\n\nSPATIAL: ISO 3166-1 country level and nothing below it. Every value is a\nnational score, so **not federatable to a region or a city at all** — not for\nwant of a crosswalk, but because the thing measured is the country. A Fab City\ncannot have its own rule-of-law score, and an Index that implies otherwise by\nshowing a national figure on a city row would be making a claim the source\ndoes not support.\n\nRead with care for a second reason: these are perception-based composites\nbuilt from other people's surveys, with published standard errors and\nconfidence intervals. The interval is part of the measurement — two countries\nwhose intervals overlap are not ranked, whatever the point estimates do, and\nthe `.SE`, `.SC_LB` and `.SC_UB` series exist so that a consumer can say so.\n\nINDICATOR: institutional quality at national scale — the governance-pillar\nplanet row, and national context for every city cell rather than a city\nmeasure. I could not read the landing plan's Table 2 in this session, so this\nnames the indicator in plain words rather than a row id.\n\nPromotes to live when somebody pulls one dimension for a pilot country and\nstates, in the review, what the Index will do with a national score on a\nsub-national dashboard — because the licence and the endpoint are not the hard\npart here, the interpretation is.\n",
+    "pillar": "governance",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "planet",
+    "slug": "governance/planet/worldbank-wgi",
+    "status": "candidate",
+    "tags": [
+      "governance",
+      "world-bank",
+      "institutions",
+      "corruption",
+      "rule-of-law"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://datacatalog.worldbank.org/search/dataset/0038026"
+  },
+  {
     "added": "2026-09-11",
     "api": "https://nsdi.systems.gov.bt/portal/sharing/rest?f=json",
     "auth": "none",
@@ -5699,6 +5854,162 @@
     "wired_in_planetai": false
   },
   {
+    "added": "2026-09-22",
+    "api": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/urb_cpop1",
+    "auth": "none",
+    "cell": "Social|City",
+    "description": "Eurostat's city-level statistics: population, living conditions, labour,\nhousing and environment for 969 European cities and greater cities, each with\nan official Urban Audit code that joins to LAU.\n",
+    "feeds_cells": [
+      "Social|City"
+    ],
+    "license": "Commission Decision 2011/833/EU — reuse for commercial or non-commercial purposes authorised with the source acknowledged. NOT CC-BY-4.0, which covers the site's editorial content only. See notes for the non-commercial exception.",
+    "name": "Eurostat Urban Audit (urb_* — cities and greater cities)",
+    "notes": "LICENCE, read from Eurostat's own copyright notice 2026-09-22, and the\ndistinction matters. Two sentences on that page say different things: \"The\ncopyright for the editorial content of this website ... is licensed under the\nCreative Commons Attribution 4.0 International licence\", and separately\n\"Reuse of statistical data, metadata, publications, and other dissemination\ntools published on this website for commercial or non-commercial purposes is\nauthorised provided the source is acknowledged. The reuse policy of the\nEuropean Commission is implemented by the Decision of 12 December 2011.\"\n**The data is not CC-BY-4.0; it is the Commission reuse Decision.** Both are\nopen with attribution, and filing the data as CC-BY-4.0 would be citing the\nwrong instrument.\n\nTHE NON-COMMERCIAL EXCEPTION, verbatim and worth reading before building a\nproduct on any Eurostat table: some data \"may not be reused for commercial\npurposes, but non-commercial reuse is possible without restriction\" — data\nbelonging to sources other than Eurostat, co-publications, and \"Data for\ncountries other than: Member States of the European Union (EU) ... EFTA ...\nofficial EU acceding and candidate countries\", where \"the user will need to\neliminate these data from the tables before reusing them commercially\".\nUrban Audit covers EU, EFTA and candidate cities, so the restriction does not\nbite here — but a node that generalises \"Eurostat is open\" to a table with\nUS or Japanese rows in it inherits a non-commercial clause on those rows.\n\nENDPOINT VERIFIED 2026-09-22, no key and no account: `GET\n.../1.0/data/urb_cpop1?format=JSON&lang=EN&time=2023&indic_ur=DE1001V`\nreturned JSON-stat, \"Population on 1 January by age groups and sex - cities\nand greater cities\", `updated: 2026-09-07`. The dataset id is the whole API —\n`urb_cpop1` is population, and the other `urb_*` tables (living conditions,\nlabour, economy) answer the same way.\n\nSPATIAL, and this is what separates it from a population grid. The geo\ndimension is `cities`, 969 members, coded with official Eurostat Urban Audit\ncodes — `BE001C` Bruxelles, `BE002C` Antwerpen, `ES002C` Barcelona — with\ncountry rollups under the plain ISO code. These correspond to LAU, so a\nEuropean partner city can join this to its own register without a crosswalk\nsomebody invented. That is rarer than it sounds: social/city/jrc-ghsl and\nsocial/region/worldpop both give better resolution and neither can be joined\nto an official boundary at all.\n\nCADENCE: annual, published with a lag; the 2023 reference year was refreshed\n2026-09-07. Coverage is uneven city by city — a city can be in the register\nand carry no value for an indicator in a given year, which is a null and not\na zero.\n\nINDICATOR: city population and living conditions — the social-pillar city row\nfor European partner cities, and the only source in this list that gives it\nwith an official code attached. I could not read the landing plan's Table 2 in\nthis session, so this names the indicator in plain words rather than a row id.\n\nPromotes to live when somebody pulls one indicator for one partner city —\nBarcelona is `ES002C` — checks the value against that city's own published\nfigure, and confirms how many of the 969 carry a non-null value for the year\nthey need. Coverage, not the endpoint, is what will decide whether this is\nusable.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "barcelona",
+      "global"
+    ],
+    "scale": "city",
+    "slug": "social/city/eurostat-urban-audit",
+    "status": "candidate",
+    "tags": [
+      "urban-audit",
+      "eurostat",
+      "population",
+      "city-statistics",
+      "lau",
+      "sdmx"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://ec.europa.eu/eurostat/web/cities"
+  },
+  {
+    "added": "2026-09-23",
+    "api": "https://servicodados.ibge.gov.br/api/v3/agregados",
+    "auth": "none",
+    "cell": "Social|City",
+    "description": "Brazil's statistics institute: population, census, agriculture and economic\naggregates for all 5,570 municipalities through a key-free API, with the\nofficial municipal code and its full territorial hierarchy on every row.\n",
+    "feeds_cells": [
+      "Social|City",
+      "Social|Region"
+    ],
+    "license": "No named licence. Open by Decreto nº 8.777/2016, the Brazilian federal Open Data Policy, which IBGE's own Dados Abertos page cites and under which it publishes its Plano de Dados Abertos. No Creative Commons statement anywhere on that page or the API docs.",
+    "name": "IBGE SIDRA / servicodados API (Brazil)",
+    "notes": "LICENCE, and it is a policy rather than a licence. IBGE's Dados Abertos page,\nread 2026-09-23, names \"O Decreto nº 8.777/2016, que instituiu a Política de\nDados Abertos do Poder Executivo Federal\" and describes the Plano de Dados\nAbertos published under it. Searched in full: **no \"licença\", no \"Creative\nCommons\", no reuse clause of any kind** — and the API docs at\n`servicodados.ibge.gov.br/api/docs` state no terms either.\n\nSame shape as social/city/us-census-acs: open by federal policy, with nothing\nnamed. Criterion 1 is met in substance and a reviewer wanting an SPDX id will\nnot find one. (IBGE's *journal*, the Revista Brasileira de Geografia, adopted\nCC BY 4.0 in 2023 — that is the journal, not the statistics, and is the wrong\nthing to cite for this data.)\n\nENDPOINT VERIFIED 2026-09-23, no key and no account:\n`GET /api/v3/agregados` returns the full aggregate catalogue, 1.95 MB.\n`GET /api/v3/agregados/6579/periodos/2024/variaveis/9324?localidades=N6[3550308]`\nreturns **São Paulo, 2024, 11,895,578 residents**. Aggregate 6579 is \"População\nresidente estimada\", periods 2001–2026, territorial levels N1 country, N2\nregion, N3 state, N6 municipality.\n\n**A TRAP THAT FAILS SILENTLY.** The square brackets in `localidades=N6[...]`\nmust be URL-encoded. Unencoded, the request returns **an empty body with no\nerror** — not a 400, not a message, nothing. `curl -G --data-urlencode` works;\na naive client that interpolates the bracket gets silence and will look like a\nsource with no data rather than a malformed call.\n\nSPATIAL, and it is the best structured of any source in either tier.\n`GET /api/v1/localidades/municipios/3550308` returns São Paulo with the\n**official 7-digit IBGE municipal code** and the entire hierarchy in one\nresponse: microrregião, mesorregião, UF (35 / SP), região (3 / SE), plus the\nnewer regiões imediata and intermediária. No crosswalk, no name matching, and\nthe aggregation path from municipality to state to region is given rather than\ninferred. US Census ACS matches it on codes; nothing matches it on hierarchy.\n\nINDICATOR: municipal population and census — the social-pillar city row for\nany Brazilian Fab City, at official-register resolution. I could not read the\nlanding plan's Table 2 in this session, so this names the indicator in plain\nwords rather than a row id.\n\nPromotes to live when somebody reads it for a real Brazilian territory — there\nis no Brazilian pilot in `pilot_relevance` today, which is itself the thing to\nnotice about this entry: it is the most technically capable source in Tier B\nand the network has nobody to point it at yet.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "city",
+    "slug": "social/city/ibge-sidra",
+    "status": "candidate",
+    "tags": [
+      "ibge",
+      "brazil",
+      "sidra",
+      "municipal",
+      "census",
+      "open-data-decree"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://servicodados.ibge.gov.br/api/docs"
+  },
+  {
+    "added": "2026-09-23",
+    "api": "https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/2855",
+    "auth": "none",
+    "cell": "Social|City",
+    "description": "Spain's national statistics office: official municipal population, census,\nlabour and price statistics for all 8,000-plus municipalities, through a\nkey-free JSON API.\n",
+    "feeds_cells": [
+      "Social|City",
+      "Social|Region"
+    ],
+    "license": "CC-BY-4.0",
+    "name": "INE Spain — Tempus3 JSON API",
+    "notes": "LICENCE, from INE's own Aviso legal, section \"Reutilización de la información\ncontenida en este sitio web\", read 2026-09-23. Verbatim: \"La licencia de uso\ngeneral a aplicar a la información estadística de este sitio web, salvo que se\nindique lo contrario, es la **Creative Commons Reconocimiento 4.0 (CC BY 4.0)**\n... siendo posible la copia, distribución y comunicación pública, así como la\nproducción de obras derivadas, incluso con finalidad comercial citando la\nautoría.\" Derived works and commercial use are named explicitly. Criterion 1\nis met.\n\nTwo conditions worth carrying. INE authorises reuse only of material whose\noriginal source is INE itself — \"el INE solo autoriza la reutilización de\naquélla cuya fuente original sea el propio INE\" — so third-party data\nrepublished on the site is not covered. And the attribution has prescribed\nwording: \"Fuente: Sitio web del INE: www.ine.es\" when the data is unprocessed,\nor \"Elaboración propia con datos extraídos del sitio web del INE: www.ine.es\"\nwhen it has been worked on. An Index computing a cell is the second case.\n\nONE INCONSISTENCY ON THE SITE, recorded because a careful reader will hit it.\nThe page footer reads \"Este sitio web y su contenido están bajo licencia CC\nBY-SA 4.0\" — **BY-SA** — while the licence link beside it points at\n`creativecommons.org/licenses/by/4.0/`, which is **BY**. The Aviso legal is\nthe operative text for statistical information and says CC BY 4.0, so that is\nwhat this entry records; the footer badge disagrees with its own href and\nappears to be about the website rather than the data.\n\nENDPOINT VERIFIED 2026-09-23, no key and no account. `OPERACIONES_DISPONIBLES`\nlists 112 statistical operations; operation 22 (Cifras Oficiales de Población\nde los Municipios Españoles) has 65 tables; `DATOS_TABLA/2855?nult=1` returned\n264 series of municipal population for Albacete province — Albacete 390,406,\nAbengibre 753.\n\nSPATIAL: **federatable, in two calls rather than one.** The data payload\nidentifies a municipality by name inside a series label — \"Albacete. Total.\nTotal habitantes.\" — and carries INE's series code, not the municipal code.\nThe código INE is in the variable-values endpoint:\n`VALORES_VARIABLE/19` returns every municipality with `\"Codigo\":\"31195\"`, the\nofficial 5-digit register code. So the join to a Spanish municipality is real\nand uses **the provider's own crosswalk**, not one somebody invented — but a\nnode has to fetch both and key on it. Anything that string-matches the names\nwill break on the bilingual ones, of which `Oronz/Orontze` in that response is\nthe first example.\n\nINDICATOR: municipal population and census — the social-pillar city row for\nthe Barcelona pilot, at official-register resolution. I could not read the\nlanding plan's Table 2 in this session, so this names the indicator in plain\nwords rather than a row id.\n\nPromotes to live when somebody pulls Barcelona's population by código INE\n(08019), confirms the value matches INE's published padrón figure, and states\nwhich of the 112 operations the Index would actually read — the API is one\ndoor onto a very large building and \"INE is usable\" is not a finding.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "barcelona",
+      "global"
+    ],
+    "scale": "city",
+    "slug": "social/city/ine-spain",
+    "status": "candidate",
+    "tags": [
+      "ine",
+      "spain",
+      "municipal",
+      "padron",
+      "census",
+      "codigo-ine"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.ine.es/"
+  },
+  {
+    "added": "2026-09-23",
+    "api": "https://www.inegi.org.mx/contenidos/programas/ccpv/2020/datosabiertos/iter/iter_00_cpv2020_csv.zip",
+    "auth": "none",
+    "cell": "Social|City",
+    "description": "Mexico's 2020 census, published down to the locality: population, housing,\neducation and services for every locality in the country, with official\ngeostatistical codes and coordinates, as open CSV.\n",
+    "feeds_cells": [
+      "Social|City",
+      "Social|Community"
+    ],
+    "license": "Términos de Libre Uso de la Información del INEGI — copying, distribution, adaptation and commercial exploitation are all permitted with attribution. An open permission governed by Mexican law, not a named licence; no SPDX id exists for it.",
+    "name": "INEGI Censo de Población y Vivienda 2020 — ITER (Mexico)",
+    "notes": "LICENCE: the \"Términos de Libre Uso de la Información del INEGI\", read\n2026-09-23. Users \"pueden hacer y distribuir copias de la información\" and\n\"pueden explotar comercialmente la información, utilizándola como insumo para\ngenerar otros productos o servicios\" — copying, distribution, derived products\nand commercial use, all named. Attribution takes the form \"Fuente: INEGI,\n[nombre del producto]\" with the update date where available, and the reuser\nmust tell the end user about any transformation applied and must not imply\nINEGI endorsed it. Criterion 1 is met in substance; it is INEGI's own\ninstrument under Mexican law and has no SPDX id.\n\n**THE BULK FILES NEED NO TOKEN; THE INDICATOR API DOES.** This entry is the\nITER open-data download, deliberately, because that half is unauthenticated.\nINEGI's indicator API (`/app/api/indicadores/...`) requires a token obtained\nby registration, and this entry does not depend on it. If a node ever needs\nthe API rather than the files, that is a different `auth` and worth a separate\nentry.\n\nENDPOINT VERIFIED 2026-09-23, no key and no account. The national file\n`iter_00_cpv2020_csv.zip` is **36.6 MB**, `Content-Type:\napplication/x-zip-compressed`, `Last-Modified: Thu, 19 May 2022`. Per-state\nfiles exist and are far smaller — `iter_09` (Ciudad de México) is 175 kB,\n`iter_32` (Zacatecas) 884 kB — so a node wanting one territory should fetch\none state, not the country. Downloaded and unzipped `iter_32` in this session:\nit carries the data, a metadata file, a data dictionary and catalogues.\n\nSPATIAL: official INEGI geostatistical codes as separate columns —\n`ENTIDAD` (32 = Zacatecas), `MUN`, `LOC`, with `NOM_ENT` / `NOM_MUN` /\n`NOM_LOC` alongside, which concatenate to CVEGEO. **And every locality row\ncarries `LONGITUD`, `LATITUD` and `ALTITUD`.** That combination — official\ncode plus coordinates, at locality rather than municipality level — is unique\nin Tier A and Tier B: it is the only source here that can place a settlement\non a map and join it to a national register without either a crosswalk or a\ngeocoder. Verified value: Zacatecas state total, 1,622,138.\n\nVINTAGE: the 2020 census, files last modified May 2022. It is a census, so it\ndoes not refresh — the next one is 2030, and any \"current population\" claim\nbuilt on this is a 2020 number however it is labelled.\n\nINDICATOR: locality population and housing — the social-pillar city row, and\nat `LOC` level it reaches the community tier, which is why `feeds_cells` names\nboth. I could not read the landing plan's Table 2 in this session, so this\nnames the indicator in plain words rather than a row id.\n\nPromotes to live when somebody reads one Mexican locality for a real purpose\nand confirms the ENTIDAD/MUN/LOC triple joins to whatever boundary they are\nusing. There is no Mexican pilot in `pilot_relevance` today — like\nsocial/city/ibge-sidra, this is a strong source the network has nowhere to\npoint yet.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "city",
+    "slug": "social/city/inegi-censo-iter",
+    "status": "candidate",
+    "tags": [
+      "inegi",
+      "mexico",
+      "census",
+      "iter",
+      "locality",
+      "cvegeo"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.inegi.org.mx/programas/ccpv/2020/"
+  },
+  {
+    "added": "2026-09-22",
+    "api": "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/",
+    "auth": "none",
+    "cell": "Social|City",
+    "description": "The European Commission's global record of where people and buildings are:\npopulation, built-up surface and a settlement classification on a 100 m grid\nfrom 1975 to 2030, plus a city-by-city Urban Centre Database.\n",
+    "feeds_cells": [
+      "Social|City",
+      "Social|Region"
+    ],
+    "license": "CC-BY-4.0",
+    "name": "JRC Global Human Settlement Layer (GHSL)",
+    "notes": "LICENCE, read from the provider's own page 2026-09-22. `GHSLhowToCite.php`\nstates it in one sentence: \"The GHSL data are provided under the Creative\nCommons Attribution 4.0 International (CC BY 4.0) license\", permitting reuse\n\"for any purpose, including commercial uses\" with attribution. The download\npage adds \"Reuse of this data is authorised with proper acknowledgment of the\nsource\", the European Commission reuse notice. Criterion 1 is met.\n\nAttribution is not the usual footnote: the page says citing the website\ngenerically is \"inappropriate\" and that the peer-reviewed methodology paper\nfor the specific product must be cited. Anything built on this inherits that.\n\nENDPOINT, no key and no account: the JRC open-data FTP tree at\n`jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/GHSL/`, product by product, plus\n`ghsl.jrc.ec.europa.eu/download/GHSL_data_54009_shapefile.zip` for the tiling\nschema. Bulk files, not a query API — a node fetches a tile, it does not ask a\nquestion. The old `ghsl.jrc.ec.europa.eu` host now 302s to\n`human-settlement.emergency.copernicus.eu`; both work, the second is canonical.\n\nVINTAGE: release R2023A is current for the grids (GHS-SMOD v1.2, dated\n10/06/2026), and the Urban Centre Database is R2024A, released 05/11/2024.\nEpochs run 1975–2030 in five-year steps, so \"latest\" means latest release, not\nlatest year — the 2030 layer is a projection and must not be read as observed.\n\nSPATIAL, and the part that limits it. The grids are raster in Mollweide\n(ESRI:54009), not administrative units, so there is no BPS, INE, IBGE, INEGI,\nNUTS or LAU code on anything. Boundaries ship as GADM v4.1 vectors, which are\na global convenience layer and not any country's official register. **Not\nfederatable without a crosswalk**: to attach a GHSL number to a territory a\nnode can name, somebody has to supply that territory's own boundary and\naggregate the grid inside it. The Urban Centre Database is the exception worth\nknowing — it carries one record per urban centre with its own ID, which is a\njoin a city can actually make.\n\nINDICATOR: population and built-up surface for a city or region — the\ndenominator almost every other per-capita or per-hectare number in the Index\nneeds, and the one an Indonesian or Chilean partner cannot get from a national\ncensus between census years. I could not read the landing plan's Table 2 in\nthis session, so this names the indicator in plain words rather than a row id.\n\nPromotes to live when somebody aggregates a GHSL product inside one real\nterritory's own boundary — Menorca, Bali, a Chilean comuna — and confirms the\npopulation total is within a defensible distance of that territory's own\nofficial figure, because the whole value of this source is as a denominator\nand a denominator that disagrees with the census is worse than none.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "city",
+    "slug": "social/city/jrc-ghsl",
+    "status": "candidate",
+    "tags": [
+      "population",
+      "built-up",
+      "settlement",
+      "raster",
+      "copernicus",
+      "urban-centre"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://human-settlement.emergency.copernicus.eu/"
+  },
+  {
     "added": "2026-09-11",
     "api": null,
     "cell": "Social|City",
@@ -5748,6 +6059,38 @@
     "upstream_listed_in": [],
     "url": "https://data.seoul.go.kr/dataList/OA-14991/S/1/datasetView.do",
     "wired_in_planetai": false
+  },
+  {
+    "added": "2026-09-23",
+    "api": "https://api.census.gov/data/2024/acs/acs5",
+    "auth": "api-key",
+    "cell": "Social|City",
+    "description": "The United States' rolling household survey: population, income, housing,\ncommuting and employment down to block group, five-year estimates, queried\nby FIPS geography through a public API.\n",
+    "feeds_cells": [
+      "Social|City",
+      "Social|Region"
+    ],
+    "license": "No named licence. Published as open data under OMB M-10-06 and EO 13642; the API terms require a specific attribution notice, quoted in notes. US federal works carry no domestic copyright, which is the usual basis — but the Bureau names no licence of its own.",
+    "name": "US Census Bureau American Community Survey (ACS) API",
+    "notes": "LICENCE, and the honest shape of it. The Census Bureau's API Terms of Service,\nread 2026-09-23, **name no licence at all**. They impose an attribution\nrequirement, verbatim: services using the API \"should display the following\nnotice prominently within the application: *This product uses the Census\nBureau Data API but is not endorsed or certified by the Census Bureau*\", and\nforbid modifying or falsely representing content while still claiming the\nBureau as source. Separately the Bureau publishes to data.gov \"in accordance\nwith OMB Memorandum M-10-06 [and] Executive Order 13642 on open data\".\n\nSo this is open by policy rather than by licence. The usual basis for calling\nit public domain is that US federal government works carry no domestic\ncopyright — which is true and is *not* something the Bureau says on these\npages, so this entry does not put the words in its mouth. Criterion 1 is met\nin substance; a reviewer who needs a named licence will not find one.\n\n**A KEY IS NOW REQUIRED FOR DATA, and this changed.** `GET\napi.census.gov/data/2023/acs/acs5?get=NAME,B01003_001E&for=place:*&in=state:25`\nwithout a key returns an HTML page titled **\"Missing Key\"**, not JSON. The\nlong-standing behaviour of 500 keyless queries a day is gone. Keys are issued\non request without review, hence `auth: api-key` rather than `registration`.\n\nThe split is worth knowing: **metadata is still keyless.** `/data.json` and\n`/data/2024/acs/acs5/variables.json` both answered 200 with no key, so a node\ncan discover variables and vintages anonymously and only needs the key to\nfetch values. Anything that probes the API to check it is alive should probe\nmetadata.\n\nVINTAGE: acs5 variable endpoints answered for 2022, 2023 and **2024**, so the\n2024 five-year release is live. Five-year estimates pool 2020–2024, which is\nthe thing to say out loud when comparing to a single-year figure from\nelsewhere: an ACS 5-year value is not a 2024 measurement.\n\nSPATIAL, and this is the best in Tier A or B. Geography is **FIPS/GEOID**\nnatively — `for=place:*&in=state:25` is every place in Massachusetts — through\nstate, county, county subdivision, place, tract and block group. No crosswalk,\nno name matching, no invented identifier. Boston is a FIPS place code and\njoins to every other US federal dataset on it.\n\nINDICATOR: city population, income and housing — the social-pillar city row\nfor the Boston pilot, at a resolution no other source in this list reaches.\nI could not read the landing plan's Table 2 in this session, so this names the\nindicator in plain words rather than a row id.\n\nPromotes to live when somebody registers a key, pulls one variable for Boston\nby FIPS place code, and confirms the attribution notice is displayed wherever\nthe value surfaces — the notice is a condition of use, not a courtesy, and an\nIndex that shows ACS numbers without it is out of terms.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "boston",
+      "global"
+    ],
+    "scale": "city",
+    "slug": "social/city/us-census-acs",
+    "status": "candidate",
+    "tags": [
+      "census",
+      "acs",
+      "united-states",
+      "fips",
+      "demographics",
+      "housing"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://www.census.gov/data/developers/data-sets/acs-5year.html"
   },
   {
     "added": "2026-09-09",
@@ -5971,6 +6314,38 @@
     "wired_in_planetai": false
   },
   {
+    "added": "2026-09-22",
+    "api": "https://rplumber.ilo.org/data/indicator/",
+    "auth": "none",
+    "cell": "Social|Region",
+    "description": "The ILO's labour statistics: employment, unemployment, informality, working\ntime and wages for some 190 countries, by sex and age, with a key-free query\nAPI returning CSV or JSON.\n",
+    "feeds_cells": [
+      "Social|Region"
+    ],
+    "license": "CC-BY-4.0 for databases and datasets published from 3 May 2023. Anything produced before that date is NOT automatically Creative Commons and must be checked per work; microdata is excluded entirely. See notes.",
+    "name": "ILOSTAT",
+    "notes": "LICENCE, from the ILO's own rights-and-permissions page, verbatim: \"As of 3\nMay 2023, databases and datasets together with the accompanying referential\nmetadata are covered by the Creative Commons CC BY 4.0 licence.\"\n\n**The date is the whole caveat and it is the provider's own sentence:**\n\"Databases and datasets together with the accompanying referential metadata\nproduced prior to 3 May 2023 do not automatically benefit from a Creative\nCommons licence\", and users must \"check the copyright page of each work for\nexact licence information\". A long time series pulled today can therefore\nstraddle two regimes — the recent vintages CC-BY-4.0, an older archived\nrelease not necessarily. Anyone building on a back series has a per-work check\nto do, and this entry does not pretend otherwise. Microdata submitted by\nconstituents is excluded from the licence entirely and is not what this\nendpoint serves.\n\nENDPOINT VERIFIED 2026-09-22, no key and no account: `GET\nrplumber.ilo.org/data/indicator/?id=EMP_TEMP_SEX_AGE_NB_A&ref_area=IDN&\nlang=en&format=.csv` returned CSV with `ref_area, source, indicator, sex,\nclassif1, time, obs_value` and 2023 values for Indonesia. The browsable bulk\ntree at `ilostat.ilo.org/data/bulk/` answers 403 to a plain client and the\nsite itself sits behind a Cloudflare bot check, so the plumber host is the one\nto point code at — reading the licence required going to `ilo.org`, which is\nthe same provider and not behind the challenge.\n\nSPATIAL, and the honest limit of this entry. `ref_area` is ISO 3166-1\nalpha-3 — `IDN` — and the overwhelming majority of ILOSTAT is **national**.\nIt is filed at `region` scale because that is the nearest tier in this\ntaxonomy, not because it resolves a province: a Chilean región or a Balinese\nkabupaten is not in here. Some indicators carry a subnational or urban/rural\nbreakdown through `classif1`, and which ones do is exactly what a reviewer\nshould check. **Not federatable below the country without a crosswalk**, and\nfor most series not federatable below the country at all.\n\nINDICATOR: employment, informality and working time — the social-pillar labour\nrow, and the only open source in this list that measures informal work, which\nis most of the production a Fab City in Indonesia or Chile is actually\nsurrounded by. I could not read the landing plan's Table 2 in this session, so\nthis names the indicator in plain words rather than a row id.\n\nPromotes to live when somebody pulls one indicator for Indonesia or Chile,\nconfirms the vintage they need is dated on or after 3 May 2023 so the CC-BY-4.0\nactually covers it, and reports whether any `classif1` breakdown reaches below\nthe national level for that indicator. If nothing does, this is a national\ncontext source and the entry should say so in its description.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "bali",
+      "santiago",
+      "global"
+    ],
+    "scale": "region",
+    "slug": "social/region/ilostat",
+    "status": "candidate",
+    "tags": [
+      "labour",
+      "employment",
+      "informality",
+      "ilo",
+      "wages",
+      "decent-work"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://ilostat.ilo.org/"
+  },
+  {
     "added": "2026-09-09",
     "api": "https://data.laregion.fr/api/explore/v2.1/catalog/datasets",
     "cell": "Social|Region",
@@ -6020,5 +6395,35 @@
     "upstream_listed_in": [],
     "url": "https://data.who.int/",
     "wired_in_planetai": false
+  },
+  {
+    "added": "2026-09-22",
+    "api": "https://hub.worldpop.org/rest/data",
+    "auth": "none",
+    "cell": "Social|Region",
+    "description": "Gridded population estimates for every country at 100 m, 2000–2020, built by\ndasymetric redistribution of census counts. The open population denominator\nfor places whose census is a decade old.\n",
+    "feeds_cells": [
+      "Social|Region",
+      "Social|City"
+    ],
+    "license": "CC-BY-4.0",
+    "name": "WorldPop",
+    "notes": "LICENCE, from the provider's own hub 2026-09-22: \"Creative Commons Attribution\n4.0 International License\", linking creativecommons.org/licenses/by/4.0/.\nCriterion 1 is met. Note that worldpop.org and hub.worldpop.org are the same\nproject and the licence statement lives on the hub — the marketing site does\nnot carry it, which is why this entry's `url` is the hub.\n\nENDPOINT VERIFIED 2026-09-22, no key and no account: `GET\nhub.worldpop.org/rest/data` returns the product catalogue as JSON, and\n`/rest/data/pop/wpgp?iso3=IDN` returns 21 records for Indonesia with DOI,\ndescription and a GeoTIFF link each. `www.worldpop.org/rest/...` 301s to the\nhub; follow redirects or use the hub host directly.\n\nVINTAGE, and it is the thing to know before anyone builds on this: the\nunconstrained global series `wpgp` covers **2000–2020** at 100 m and the\nIndonesian records were published 2018-11-01. There is no 2021+ year in this\ncatalogue. For a 2026 question this is a five-year-old estimate of a\nfast-moving denominator, which is defensible for a rural bioregion and not for\na city that has been building.\n\nSPATIAL: raster, 3 arc-second (~100 m at the equator), WGS84, one file per\ncountry selected by ISO 3166-1 alpha-3. That is the only code in the payload.\nThere is no ISO 3166-2, no NUTS, no BPS or INE code on anything. **Not\nfederatable without a crosswalk** below the country: a node wanting a\nprovince's population must bring that province's own boundary and sum the\ngrid inside it. Same shape as economic/social/city/jrc-ghsl and worth reading\nthe two together — GHSL models built-up surface, this one redistributes census\ncounts, and they disagree in exactly the places that matter.\n\nINDICATOR: population for a region or a city, as the denominator under\nper-capita anything. I could not read the landing plan's Table 2 in this\nsession, so this names the indicator in plain words rather than a row id.\n\nPromotes to live when somebody sums the grid inside one real administrative\nboundary — a Chilean región, a Balinese kabupaten — and compares the total to\nthat territory's own published figure for the same year, and records the gap.\nA population denominator nobody has checked against the local census is the\nkind of number that quietly makes every rate wrong.\n",
+    "pillar": "social",
+    "pilot_relevance": [
+      "global"
+    ],
+    "scale": "region",
+    "slug": "social/region/worldpop",
+    "status": "candidate",
+    "tags": [
+      "population",
+      "raster",
+      "dasymetric",
+      "demographics",
+      "denominator"
+    ],
+    "upstream_listed_in": [],
+    "url": "https://hub.worldpop.org/"
   }
 ]

@@ -1,0 +1,55 @@
+name: WorldPop
+url: https://hub.worldpop.org/
+description: |
+  Gridded population estimates for every country at 100 m, 2000–2020, built by
+  dasymetric redistribution of census counts. The open population denominator
+  for places whose census is a decade old.
+pillar: social
+scale: region
+status: candidate
+license: CC-BY-4.0
+api: https://hub.worldpop.org/rest/data
+pilot_relevance: [global]
+tags: [population, raster, dasymetric, demographics, denominator]
+added: 2026-09-22
+auth: none
+feeds_cells: [Social|Region, Social|City]
+upstream_listed_in: []
+notes: |
+  LICENCE, from the provider's own hub 2026-09-22: "Creative Commons Attribution
+  4.0 International License", linking creativecommons.org/licenses/by/4.0/.
+  Criterion 1 is met. Note that worldpop.org and hub.worldpop.org are the same
+  project and the licence statement lives on the hub — the marketing site does
+  not carry it, which is why this entry's `url` is the hub.
+
+  ENDPOINT VERIFIED 2026-09-22, no key and no account: `GET
+  hub.worldpop.org/rest/data` returns the product catalogue as JSON, and
+  `/rest/data/pop/wpgp?iso3=IDN` returns 21 records for Indonesia with DOI,
+  description and a GeoTIFF link each. `www.worldpop.org/rest/...` 301s to the
+  hub; follow redirects or use the hub host directly.
+
+  VINTAGE, and it is the thing to know before anyone builds on this: the
+  unconstrained global series `wpgp` covers **2000–2020** at 100 m and the
+  Indonesian records were published 2018-11-01. There is no 2021+ year in this
+  catalogue. For a 2026 question this is a five-year-old estimate of a
+  fast-moving denominator, which is defensible for a rural bioregion and not for
+  a city that has been building.
+
+  SPATIAL: raster, 3 arc-second (~100 m at the equator), WGS84, one file per
+  country selected by ISO 3166-1 alpha-3. That is the only code in the payload.
+  There is no ISO 3166-2, no NUTS, no BPS or INE code on anything. **Not
+  federatable without a crosswalk** below the country: a node wanting a
+  province's population must bring that province's own boundary and sum the
+  grid inside it. Same shape as economic/social/city/jrc-ghsl and worth reading
+  the two together — GHSL models built-up surface, this one redistributes census
+  counts, and they disagree in exactly the places that matter.
+
+  INDICATOR: population for a region or a city, as the denominator under
+  per-capita anything. I could not read the landing plan's Table 2 in this
+  session, so this names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody sums the grid inside one real administrative
+  boundary — a Chilean región, a Balinese kabupaten — and compares the total to
+  that territory's own published figure for the same year, and records the gap.
+  A population denominator nobody has checked against the local census is the
+  kind of number that quietly makes every rate wrong.

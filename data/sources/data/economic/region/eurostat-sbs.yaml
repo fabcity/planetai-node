@@ -1,0 +1,64 @@
+name: Eurostat Structural Business Statistics by NUTS 2 region
+url: https://ec.europa.eu/eurostat/web/structural-business-statistics
+description: |
+  Enterprises, local units and persons employed by NUTS 2 region and NACE
+  activity: how much manufacturing capacity a European region actually has, and
+  how many people it employs.
+pillar: economic
+scale: region
+status: candidate
+license: "Commission Decision 2011/833/EU — reuse for commercial or non-commercial purposes authorised with the source acknowledged. NOT CC-BY-4.0, which covers the site's editorial content only. See notes."
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/sbs_r_nuts2021
+pilot_relevance: [barcelona, global]
+tags: [sbs, eurostat, manufacturing, enterprises, employment, nuts]
+added: 2026-09-23
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  LICENCE: the same instrument verified for social/city/eurostat-urban-audit in
+  this session, from Eurostat's own copyright notice — data is governed by the
+  Commission reuse Decision of 12 December 2011, not by the CC-BY-4.0 that
+  covers the website's editorial content. The non-commercial exception for data
+  on countries outside the EU, EFTA and candidate states applies to Eurostat
+  tables generally; SBS regional covers EU and EFTA regions, so it does not bite
+  here. Read that entry's notes for the wording.
+
+  **THE DATASET ID IS THE TRAP, and it cost three requests to find.** Searching
+  for regional SBS lands on `sbs_r_nuts06_r2`, which answers 200, returns 24 MB,
+  and is titled "SBS data by NUTS 2 region and NACE Rev. 2 **(2008-2020)**" —
+  a discontinued series, last updated 2024-03-01. Asking it for 2021 returns an
+  empty time dimension, which reads like a gap in the data rather than the end
+  of the series. The live dataset is **`sbs_r_nuts2021`**, "Enterprises by NUTS
+  2 region and NACE Rev.2 activity", covering **2021–2024** and updated
+  **2026-08-31**. Anyone building on the first one is building on a series that
+  stopped six years ago.
+
+  ENDPOINT VERIFIED 2026-09-23, no key and no account:
+  `GET .../1.0/data/sbs_r_nuts2021?format=JSON&lang=EN&time=2023&nace_r2=C`
+  returns JSON-stat with seven indicators under `indic_sbs`, including "Persons
+  employed in local units - number" and "Share of employment in local units in
+  manufacturing total - percentage". Filter before fetching: unfiltered the
+  sibling dataset is 24 MB of JSON.
+
+  SPATIAL: the `geo` dimension is **NUTS**, 410 members at mixed levels —
+  `BE` country, `BE1` NUTS 1, `BE10` NUTS 2 — so a European region joins this to
+  its own official code with no crosswalk at all. Together with Urban Audit's
+  LAU-aligned city codes, this is the pair of Tier A sources that are directly
+  federatable for a European partner; everything else in this tier needs a
+  crosswalk or has no code.
+
+  CADENCE: annual, published roughly two years behind; 2023 was present in
+  September 2026.
+
+  INDICATOR: manufacturing employment and enterprise counts for a region — the
+  economic-pillar region row, and the closest open measure of *where production
+  capacity actually sits* in Europe, which is the question a Fab City asks about
+  its own hinterland. I could not read the landing plan's Table 2 in this
+  session, so this names the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody pulls manufacturing persons-employed for one
+  partner region — Catalonia is `ES51`, the Balearics `ES53` — for the newest
+  year present, and confirms the NUTS code matches that region's own official
+  code and that the value is non-null. Regional SBS has real coverage holes by
+  country and activity, and which cells are empty is the thing to report.
