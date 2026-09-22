@@ -72,15 +72,23 @@ every pixel of them as a failure — which is why the same page reads 42.5 % on 
 desk. Measured inside the column the page actually draws in: **47.0 % at 1440 and 36.8 % at 390**,
 against goals of 30 % and 20 %. Still missed, and now actionable.
 
-**The gutter is the finding.** Across the width at 1440, the lead's text column runs 41–46 % air
-(normal for type) and the ground figure 25–40 % — but the 290 px between them is **69–79 % air**, and
-it is inside the column, so no margin argument excuses it. By part: `stack #meters-heat` is 54 %
-empty in its own box, `railKey` 54 %, `rail` 45 %, and `ruler` 93 % — a 1,152 × 26 strip carrying
-five labels and a row of ticks. Forty-three per cent of all the air is inside no named component,
-which is spacing between parts rather than the parts themselves.
+**The strip was the left column, and it is fixed.** It was not a gutter between the columns — the
+gap is 40 px. It was the right-hand third of the left column, sized `1.45fr` and 663 px wide to hold
+a sentence that stops at 404 and a why line that stops at 502. The column is now `minmax(0, 56ch)`,
+the measure it carries, and the drawing takes the rest with a 340 px floor so no window is worse off
+than before.
 
-**Nothing has been changed on the page.** What to do about the gutter is a drawing decision and
-belongs to a round. Part four of `docs/design/DIRECTIONS_2026-09.md` carries the full tables.
+| | before | after |
+|---|---|---|
+| T2c at 1440, viewport | 57.3 % | **52.4 %** |
+| T2c at 1440, inside the column | 47.0 % | **40.9 %** |
+| the tenth at 720–864 | 79 % air | **43 %** |
+| T6 divergences at 1440 | 6 | **4** |
+
+**Still missed at 40.9 % against 30 %**, and what remains is spread rather than concentrated: 43 % of
+the air is inside no named component at all, which is the spacing between parts. That is a rhythm
+question for a round, not another one-line fix. Part four of `docs/design/DIRECTIONS_2026-09.md`
+carries the tables and the widths from 900 to 1920.
 
 ## 3 · The contract, as it now stands
 
@@ -295,9 +303,9 @@ to somebody without changing their own page.
 
 - ✅ **done** — prompts 1–6; 58 plates; the T1–T9 table on a matched fixture; the stranger's-pack
   check; `make docs && make lint && make test` and the visual gate all green.
-- ⚠ **open** — **T2c**, restated to measure inside the page's own column: **47.0 % at 1440** and
-  36.8 % at 390 against 30 % and 20 %. The place is known — the 290 px gutter between the lead's
-  sentence and the ground drawing, at 69–79 % air — and what to do about it is a drawing decision.
+- ⚠ **open** — **T2c**, measured inside the page's own column: **40.9 % at 1440** and 36.8 % at 390
+  against 30 % and 20 %. The concentrated part is closed; what is left is spacing between parts,
+  which is a rhythm question for a round.
   T1b's index rows are still absent at 1440, and at 390 T1's ask leg falls below the fold on a sparse
   node. The wall carries two components with no link in or out.
 - ⛔ **needs Tomas** — the tag, which no session takes; a `docs/site/design.md` pass in his own

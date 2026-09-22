@@ -572,7 +572,15 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
 .lead .why { max-width: 54ch; font-size: 14.5px }
 .lead .whenline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap }
 @media (min-width: 900px) {
-  .lead { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  /* THE TEXT COLUMN IS ITS MEASURE, AND THE DRAWING HAS A FLOOR.
+     It was `1.45fr 1fr`, which at 1440 gave the left column 663 px to hold a sentence that stops at
+     404 and a why line that stops at 502 — so a 200 px strip of it was empty for every row above
+     the meters, and T2c's own decomposition put 79 % air in the tenth beside it. `56ch` is the
+     measure the column actually carries. The 340 px floor on the drawing is the other half: a fixed
+     text column alone starved the ground to 266 px at a 940 px window; 340 is what the
+     proportional rule gave it there, so no width is worse off than before. Measured with `analyse air`: 57.3 % → 52.4 % of the viewport at
+     1440, 47.0 % → 40.9 % inside the page's own column, and T6 from six divergences to four. */
+  .lead { grid-template-columns: minmax(0, 56ch) minmax(340px, 1fr);
     /* 7px and not 9: six rows of it is 45px of the first screen, and the as-of line was sitting
        five pixels above the fold before the ground panel gained one sentence. */
     grid-template-areas: "k g" "n g" "s g" "w g" "m g" "l g" "t g"; gap: 7px clamp(20px, 3vw, 40px);

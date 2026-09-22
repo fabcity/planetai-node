@@ -1046,6 +1046,45 @@ of ticks.
 Forty-three per cent of all the air at 1440 is inside no named component at all, which is the
 spacing between parts rather than the parts themselves.
 
-**Nothing here has been changed.** The next person to work on T2c has the number, the place and the
-method; what to do about the gutter is a drawing decision and belongs to a round, not to a
-measurement.
+### What was done about it
+
+The strip was not a gutter between the columns — the column gap is 40 px. It was the **right-hand
+third of the left column**, which was sized `1.45fr` and came out 663 px wide to hold a sentence that
+stops at 404 px and a why line that stops at 502. For every row above the meters, 160–240 px of that
+column was empty, and the tenths beside it read 69 % and 79 %.
+
+The left column is now `minmax(0, 56ch)` — the measure it actually carries — and the drawing takes
+the rest with a 340 px floor:
+
+```css
+.lead { grid-template-columns: minmax(0, 56ch) minmax(340px, 1fr); }
+```
+
+The floor is the other half of it. A fixed text column alone starved the drawing to 266 px at a
+940 px window, which is *smaller* than the proportional rule ever gave it; 340 px is what that rule
+gave it there, so no width is worse off than before. Measured across the range, with no horizontal
+overflow at any of them:
+
+| viewport | text column | drawing | was |
+|---|---|---|---|
+| 900 | 464 | 340 | 464 / 340 |
+| 1100 | 574 | 412 | 623 / 363 |
+| 1440 | 574 | 546 | 663 / 457 |
+| 1920 | 574 | 546 | 663 / 457 |
+
+| | before | after |
+|---|---|---|
+| **T2c** at 1440, viewport | 57.3 % | **52.4 %** |
+| **T2c** at 1440, inside the column | 47.0 % | **40.9 %** |
+| the tenth at 720–864 | 79 % air | **43 %** |
+| **T6** divergences at 1440 | 6 | **4** |
+| page height at 1440 | 11.3 screens | 11.4 |
+
+390 is untouched: the rule is behind `min-width: 900px`. T1, T3, T4 and T5 are unchanged and green.
+The ground panel's three tab chips now fit on one line instead of wrapping to two, which was not the
+point but is the kind of thing a wider drawing buys.
+
+**Still missed, and still the open target.** 40.9 % inside the column against a goal of 30 %. What
+remains is spread rather than concentrated — 43 % of the air is inside no named component at all,
+which is the spacing between parts — and that is a rhythm question for a round, not another
+one-line fix.
