@@ -47,7 +47,7 @@
   },
   "dial": {
    "anchor": "the-lead",
-   "more": "The stops that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell.",
+   "more": "The stops that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell. Under the dial, a fold draws one cell at the stop you are on against the stops either side, to scale, and what each thing this node speaks for costs to cover at it.",
    "page": "dashboard.md",
    "quote": "A **dial** sits under the header: one stop per H3 resolution the node's grain table knows, opening at 8.\nStops coarse enough that the cell may leave the machine (at or above the presence floor,\nresolution 6) are shaded with a dotted texture rather than the cells blue; stops finer than the\npublished resolution are struck through.",
    "section": "The lead",

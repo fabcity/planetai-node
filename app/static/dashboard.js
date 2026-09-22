@@ -3675,12 +3675,20 @@ window.PAI.register({
  * came from — and the covering was computed at the grain the source itself has and then compacted.
  * The bar under each card is what compactCells left behind: mostly one grain in the middle, striped
  * at the rim.
+ *
+ * NO PICTURE PER CARD, since 22 September. Each card used to carry a drawing of its own compacted
+ * covering — "119 cells, resolutions 5 to 7" — beside a number counting cells at the dial's
+ * resolution. The two were about different things: the drawing showed how compactCells packed the
+ * footprint, which the striped bar on the same card already showed, and it did not move when the
+ * dial moved. Six of them, and not one answered the question its own card asks. The comparison they
+ * were reaching for is the rail's, where turning the control is what changes the number, and that
+ * is where the drawing went: the rail's fold, in the shell. Reported by Tomas.
  */
 PAI_LOAD.push(function () {
 'use strict';
 
 const { esc } = window.K;
-const { H, grid, km2 } = window.KH;
+const { H, km2 } = window.KH;
 
 function claimCard(ctx, c) {
   const RES = ctx.RES;
@@ -3689,11 +3697,6 @@ function claimCard(ctx, c) {
   const bars = Object.entries(c.drawn.by_res).sort((a, b) => a[0] - b[0]);
   const total = bars.reduce((a, [, v]) => a + v, 0);
   return `<section class="claim" id="claim-${esc(c.key)}" data-component="claim" data-ref="rail">`
-    + `<div class="pic gridwrap">`
-    + grid(c.draw, { own: [], read: c.cells,
-      label: `${c.name}: ${c.drawn.compact} cells cover ${c.area_km2} km²` })
-    + `<div class="cap">${c.drawn.compact} cells, resolutions `
-    + `${bars[0][0]}–${bars[bars.length - 1][0]}</div></div>`
     + `<div><h3>${esc(c.name)}</h3>`
     + `<p class="what">${esc(c.what)}</p>`
     + `<div class="facts">`
@@ -3714,7 +3717,12 @@ function claimCard(ctx, c) {
     + bars.map(([r, v]) => `<i style="width:${(100 * v / total).toFixed(1)}%;`
       + `background:color-mix(in srgb, var(--cells) ${Math.min(60, (r - 4) * 12)}%, transparent)"`
       + ` title="${v} cells at resolution ${r}"></i>`).join('') + `</div>`
-    + `<p class="decl">${esc(c.declared)} · ${esc(c.where)}</p></div></section>`;
+    /* The bar's own caption, which used to sit under a drawing of the same fact. It is here rather
+       than absent because a striped bar with nothing naming it is decoration, and the compaction is
+       the only thing on this card the bar is about. */
+    + `<p class="decl"><span class="cx">${c.drawn.compact} cells, resolutions `
+    + `${bars[0][0]}–${bars[bars.length - 1][0]}</span>${esc(c.declared)} · ${esc(c.where)}</p>`
+    + `</div></section>`;
 }
 
 window.PAI.register({
@@ -6127,7 +6135,13 @@ function main() {
          mode and keeps the dial with them. Taking it away there left the ground, the station
          groups, the claims, the grain and the grain line all pointing at a control that was not on
          the page. */
-      ? `<div class="railwrap"><div class="wrap">${rail()}</div></div>` : '');
+      /* THE FOLD IS OUTSIDE THE STICKY BOX, deliberately. `.railwrap` is sticky because the rail is
+         the control the whole of Now answers to and has to stay reachable; a fold inside it pinned
+         566 px of a 1000 px viewport to the top of every screen the moment it was opened. Open, it
+         belongs in the flow directly under the rail: it pushes the page down, it scrolls away as
+         you read, and the strip itself stays where it was. */
+      ? `<div class="railwrap"><div class="wrap">${rail()}</div></div>`
+        + `<div class="wrap">${railfold()}</div>` : '');
 
   /* THE GRAIN RAIL — the top instrument, above the lead. Design log R14.
    *
@@ -6143,6 +6157,7 @@ function main() {
    *
    * Pressing a stop still re-derives the whole page; that is what this control is for. */
   function rail() {
+    const open = Q.get('worth') === '1';
     const zone = g => g.may_leave ? ', may leave this machine'
       : g.finer_than_published ? ', finer than this node says where it is' : '';
     const stops = H.grain_table.map(g => {
@@ -6173,8 +6188,83 @@ function main() {
          drawn ONCE — in the grain line this rail re-derives and points at, where they are a
          sentence rather than three numbers in a key. Printing them here as well made the key three
          lines deep at 390 and pushed the as-of off the first screen, which is T1's fifth leg. */
-      + `<span>one cell here: <b data-num="rail.area" data-cmp="rail.res">`
-      + `${esc(km2(ctx.grain.area_m2))}</b></span>${mark('dial', 'rail')}</div>`;
+      /* THE FOLD'S TRIGGER IS THIS CHIP, and it is this chip because a fold of its own cost 33.5 px
+         and T1 lost the ask and the as-of off the first screen at both 390 and 1440 — measured, on
+         a gate that was green the render before. The key's last chip already names the fold's
+         subject ("one cell here"), so making it the control adds nothing to lay out. */
+      + `<a class="worth${open ? ' on' : ''}" href="${ctx.qlink({ worth: open ? null : '1' })}"`
+      + ` aria-expanded="${open}">one cell here: <b data-num="rail.area" data-cmp="rail.res">`
+      + `${esc(km2(ctx.grain.area_m2))}</b></a>${mark('dial', 'rail')}</div>`;
+  }
+
+  /* WHAT A STOP IS WORTH — the rail's own fold. Closed by default, in every mode, like the three
+   * folds already on the page.
+   *
+   * The rail says which stop you are standing on and what one cell there is worth. It never said
+   * what CHOOSING it costs, and the one fact about this ladder that no drawing on the page carried
+   * is the step: each stop is about seven times the area of the one below it, so the cell you are
+   * on is a shade over two and a half times across the one beneath and a bit over a third of the
+   * one above. Three hexagons to true relative scale say that in one look; eleven evenly spaced
+   * buttons cannot, which is what the ruler under them already concedes.
+   *
+   * The six footprints below came out of the claim cards in Decide, where each carried a drawing of
+   * its own compacted covering beside a number counting cells at this rail's resolution — a picture
+   * and a number about different things, under a control neither answered to. Here the number is
+   * the thing that moves when the rail moves, which is the whole argument the cards were making.
+   *
+   * NOTHING IS WORKED OUT HERE THAT IS NOT DRAWING. The radii are a ratio of two areas the node
+   * published, used to size a polygon, and the counts are `cells_at[res]` read off the wire. No
+   * derived number is printed as a fact.
+   */
+  function railfold() {
+    if (Q.get('worth') !== '1') return '';
+    const i = H.grain_table.findIndex(g => g.res === RES);
+    const near = [i - 1, i, i + 1].map(k => H.grain_table[k]).filter(Boolean);
+    if (near.length < 2) return '';
+    const top = near[0].area_m2;
+    /* Coarsest first, so the finer cells are painted over it rather than under. */
+    const hexes = near.map(g => {
+      const R = 46 * Math.sqrt(g.area_m2 / top), on = g.res === RES;
+      const pts = [30, 90, 150, 210, 270, 330].map(a => {
+        const t = a * Math.PI / 180;
+        return `${(50 + R * Math.cos(t)).toFixed(1)},${(50 + R * Math.sin(t)).toFixed(1)}`;
+      }).join(' ');
+      return `<polygon points="${pts}" fill="var(--cells)" fill-opacity="${on ? 0.18 : 0}"`
+        + ` stroke="var(--ink)" stroke-opacity="${on ? 0.7 : 0.3}"`
+        + ` stroke-width="${on ? 2.5 : 1}"${on ? '' : ' stroke-dasharray="4 4"'}>`
+        + `<title>resolution ${g.res} · ${esc(km2(g.area_m2))}</title></polygon>`;
+    }).join('');
+    const fig = `<div class="pic gridwrap"><svg class="hexgrid" viewBox="0 0 100 100" role="img"`
+      + ` aria-label="one cell at resolution ${RES} drawn to scale against `
+      + `${near.filter(g => g.res !== RES).map(g => `resolution ${g.res}`).join(' and ')}">`
+      + `${hexes}</svg><div class="cap">`
+      + near.map(g => `<span class="${g.res === RES ? 'on' : ''}">res ${g.res} · `
+        + `${esc(edge(g.edge_m))}</span>`).join('') + `</div></div>`;
+    /* With no coordinates there is no ground for a footprint to cover, and the claims section says
+       so in its own words. The drawing above is still true — a cell's size is not a question about
+       where it is — so the fold keeps it and drops only the table. */
+    const claims = (H.claims || []).length && ctx.KH.sited()
+      ? `<div class="tblwrap" tabindex="0" role="region" aria-label="what each footprint costs to `
+        + `cover at resolution ${RES}"><table class="tbl"><thead><tr><th>what speaks</th>`
+        + `<th>declared</th><th>cells at resolution ${RES}</th></tr></thead><tbody>`
+        + H.claims.map(c => `<tr${c.key === H.claims[H.claims.length - 1].key ? ' class="picked"' : ''}>`
+          + `<td>${esc(c.name)}</td><td class="mono">${esc(c.declared)}</td>`
+          + `<td class="mono">${(c.cells_at[RES] || 0).toLocaleString()}</td></tr>`).join('')
+        + `</tbody></table></div>`
+      : '';
+    /* OPEN IS A QUERY KEY, not a DOM state, because a render throws an open fold away (the
+       hashchange handler below says so in as many words) and the one control this exists to be read
+       against — the rail — re-renders the page every time it is pressed. Opening it and turning the
+       dial closed it, which is precisely the move it is for. `link()` copies the whole query, so
+       every stop carries the key with no work and nothing has to listen for anything. */
+    return `<div class="railfold" id="railfold" data-component="railFold" data-ref="rail">`
+      + `<div class="rh"><h2>What one cell at resolution ${RES} is worth</h2>`
+      + `<a href="${ctx.qlink({ worth: null })}">Close</a></div>`
+      + `<div class="rf">${fig}<div class="rfx"><p>Each stop down is about seven times finer by `
+      + `area than the one above it, and the drawing is to scale: the filled cell is the one you `
+      + `are standing on.${claims ? ` The table is what each thing this node speaks for costs to `
+      + `cover at it — the number that moves when this control moves.` : ''}</p>${claims}</div>`
+      + `</div></div>`;
   }
 
   /* THE RULE under the rail: where each grain truly sits between 10 m and 200 km.

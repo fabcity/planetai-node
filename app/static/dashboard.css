@@ -376,11 +376,11 @@ svg.hexgrid { width: 100%; height: auto; display: block }
 /* a claim: what one source's word covers, and how coarse it is by the time it says it */
 .claim { border-top: 1px solid var(--ink); padding: clamp(11px, 1.3vw, 15px) 0; display: grid;
   gap: 8px clamp(18px, 2.6vw, 34px) }
-.claim { grid-template-columns: minmax(0, 84px) minmax(0, 1fr) }
-@media (min-width: 760px) { .claim { grid-template-columns: minmax(0, 150px) minmax(0, 1fr) } }
-.claim .pic { max-width: 150px }
-.claim .pic .cap { font-size: 9.5px }
-.claim .pic { align-self: start }
+/* ONE COLUMN. The picture column held a drawing of the card's own compacted covering, which the
+   striped bar under the same card already drew and which did not answer to the rail above it. It
+   moved into the rail's fold on 22 September; the column went with it. */
+.claim { grid-template-columns: minmax(0, 1fr) }
+.claim .decl .cx { display: block; color: var(--ink) }
 .claim h3 { font: 800 clamp(1rem, 1.5vw, 1.25rem) var(--fc-font-display); letter-spacing: -.02em }
 .claim .what { font-size: 13.5px; color: var(--mute); max-width: 56ch }
 .claim .facts { display: flex; gap: 6px 22px; flex-wrap: wrap; margin-top: 4px }
@@ -498,6 +498,38 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
 .railkey i.leaves { background-image: radial-gradient(circle, var(--ink) .8px, transparent 1px);
   background-size: 5px 5px }
 .railkey i.fine { border-style: dashed }
+
+/* THE RAIL'S FOLD — what one cell at this stop is worth. Open, it is the three hexagons to scale
+   and the table of what each footprint costs to cover here; closed it is NOT THERE, and its
+   trigger is the key's own last chip. A <details> of its own cost 33.5 px shut and took the ask and
+   the as-of off the first screen at 390 and 1440 both — T1, on a gate that was green the render
+   before. The one control the page could afford was the one already on the page.
+
+   Two columns where there is room, stacked where there is not: the drawing is square and the table
+   is three narrow columns, and side by side they are one look rather than two. */
+.railkey a.worth { color: inherit; text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--hair) }
+.railkey a.worth::after { content: "\00a0\25be" }
+.railkey a.worth.on::after { content: "\00a0\25b4" }
+.railkey a.worth:hover, .railkey a.worth:focus-visible { text-decoration-color: var(--ink) }
+.railfold { border-top: 1px solid var(--hair); margin-top: 10px; padding-top: 4px }
+.railfold .rh { display: flex; gap: 14px; align-items: baseline; padding: 6px 0 8px }
+.railfold .rh h2 { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute) }
+.railfold .rh a { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--mute); margin-left: auto }
+.railfold .rf { display: grid; gap: clamp(10px, 1.5vw, 20px); padding-bottom: 10px }
+@media (min-width: 760px) {
+  .railfold .rf { grid-template-columns: minmax(0, 190px) minmax(0, 1fr); align-items: start }
+}
+.railfold .pic { max-width: 190px }
+.railfold .pic svg { display: block; width: 100%; height: auto }
+.railfold .pic .cap { display: flex; flex-wrap: wrap; gap: 2px 10px; justify-content: center }
+.railfold .pic .cap .on { color: var(--ink); font-weight: 700 }
+/* `min-width: 0` for the same reason the grain table's box has it: a grid child floors at its own
+   max-content width, so the table inside widened the document at 390 instead of scrolling. */
+.railfold .rfx { min-width: 0 }
+.railfold .rfx p { font-size: 13.5px; color: var(--mute); max-width: 56ch; margin-bottom: 8px }
 
 .lead { padding: clamp(14px, 2vw, 22px) 0 clamp(10px, 1.6vw, 16px); display: grid; gap: 10px }
 /* On a phone the lead is one column of six blocks, so its gaps are 50px of the first screen and

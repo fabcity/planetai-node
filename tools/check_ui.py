@@ -403,6 +403,11 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    ".stations .more a",          # "show all" and "show N" — the page's own two words
                    # Added 18 September 2026 with the year player.
                    ".satplay .satctl button",    # "Play", "Pause", "Motion off", "one year"
+                   # Added 22 September 2026 with the rail's fold. Both carry the PAGE's own
+                   # words and nothing else: a heading the page composes around a resolution number,
+                   # which uppercasing cannot change, and the literal word "Close".
+                   ".railfold .rh h2",
+                   ".railfold .rh a",
                    # Added 21 September 2026 with the header's segmented controls. The register is
                    # "Paper" and "Dark"; the mode is "Simple", "Advanced" and "Learn". Five words,
                    # all written by this page. The node's own words cannot reach either control.

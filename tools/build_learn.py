@@ -39,7 +39,9 @@ MARKS = [
     ("dial", "The dial: one stop per grain", "dashboard.md", "The lead",
      "A **dial** sits under the header", "are struck through.",
      "The stops that may leave the machine are drawn as a dotted texture rather than the cells "
-     "blue, so blue keeps its one meaning on this page: an H3 cell."),
+     "blue, so blue keeps its one meaning on this page: an H3 cell. Under the dial, a fold draws "
+     "one cell at the stop you are on against the stops either side, to scale, and what each "
+     "thing this node speaks for costs to cover at it."),
     ("lead", "The lead", "dashboard.md", "The lead",
      "The first thing on Now", "if something is open.",
      "The node computes and the page draws. A number this page worked out for itself would be a "

@@ -12,6 +12,21 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **The rail says what a grain is worth now, and the Decide cards stopped drawing something else.**
+  The rail across the top is eleven stops and an edge length: it said which grain you were standing
+  on and never what choosing it costs. Press *one cell here* in the key under it and it opens: three
+  hexagons to true relative scale — the stop you are on, filled, against the one above and the one
+  below — and a table of what each thing your node speaks for costs to cover at that grain, from the
+  sea down to this room. Turn the dial with it open and the numbers move. At resolution 4 the sea
+  takes five cells and your room takes one, and so does everything in between; that is the whole
+  argument for grain, and nothing on the page had ever shown it.
+
+  The six cards under *Whose word, over how much ground* each carried a drawing of their own
+  footprint. Each one drew how the covering had been packed — a detail the striped bar on the same
+  card already drew — beside a number counting cells at the rail's resolution, so the picture and
+  the number were about different things and the picture did not move when the rail did. They are
+  gone; the cards keep every number they had and the section is half the height. Reported by Tomas.
+
 - **You can now see what your node was asked.** While the page waits for your node it draws what it
   is asking for, and how many milliseconds each answer took — your node's own speed, which is not
   shown anywhere else. On a healthy node that is over in a tenth of a second, so in practice nobody
