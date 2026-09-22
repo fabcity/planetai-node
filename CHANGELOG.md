@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.70 — 2026-09-22 — the node found you a workshop and never said so
+
+Two things this node already knew and could not tell you. The interface redraw is still not in this
+release.
+
+- 2026-09-22 — **The nearest place to make or fix something has never once been mentioned, on any
+  node.** Since v0.65 a node with the `make` pack switched on keeps the fab labs within
+  `MAKE_RADIUS_KM` and is meant to end its report — and any ask it can answer — with one line:
+  *Nearest place to make or fix something: …*
+
+  The pack was doing its job. Our node has had Fab Lab Bali, 3.3 km away, on its books for days.
+  What failed was the two places that ask the pack for its own wording: both went looking in
+  `../packs`, and a node keeps its packs in `/app/packs`. Both were written to fail quietly, on the
+  reasoning that a missing pack should never cost you a report — so the line was simply absent and
+  nothing said why. On our node every open ask carried an empty `where`: all 94 of them.
+
+  One function knows where a node's packs live now, and it is the one that already reads all of
+  them. If you have the pack on, the line appears after this update. The report line has been
+  missing since v0.65; the one on an ask has never worked since it arrived in v0.68.
+
+- 2026-09-22 — **A saved snapshot was quietly dropping two of the land figures.** `planetai
+  snapshot` copies everything your node is currently saying, so a problem can be looked at later or
+  on somebody else's machine. It was not copying what the satellite says. Replaying that copy gave
+  16 figures where the node itself had published 18 — the two missing being the comparison against
+  the wider region and the credit line naming whose data it is.
+
+  Nothing was wrong on the node; the record of it was short, which is worse, because a short record
+  looks like a complete one. Snapshots carry it now. It is 10.6 kB against 465 kB for the rest, so
+  nothing gets slower.
+
 ## v0.69 — 2026-09-21 — the last stage stops being a zero, and a refusal stops sending you in a circle
 
 Two fixes to what the node says, and two to the machinery that is supposed to catch us saying it
