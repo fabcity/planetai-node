@@ -4462,8 +4462,22 @@ function askOf(id) {
   return ((H.asks || {}).acts || []).find(a => a.id === id) || null;
 }
 
-function line(x, ctx) {
+/* THE DECISION AN ACT CAME FROM: the latest `decided` row on the same ask, recorded before it.
+ *
+ * A convention and not a foreign key, deliberately: `asks.actions` already carries alert_id, stage
+ * and ts, so this needs nothing added to the schema, the endpoint or the wire. An act with none is
+ * not a fault — four of the five ways to record one have no screen to decide on, and the LoRa reply
+ * through the Reticulum bridge is the case that settles it — so this answers null, and the count in
+ * the head says how often. */
+function cameFrom(rows, act) {
+  return rows.filter(x => x.alert_id === act.alert_id && x.stage === 'decided'
+    && String(x.ts) < String(act.ts))
+    .sort((a, b) => String(b.ts).localeCompare(String(a.ts)))[0] || null;
+}
+
+function line(x, ctx, all) {
   const a = askOf(x.alert_id);
+  const from = x.stage === 'acted' ? cameFrom(all || [], x) : null;
   const notes = window.ACT_NOTES;
   const note = notes ? notes[`${x.alert_id}:${x.stage}`] : null;
   const when = new Date(x.ts);
@@ -4475,7 +4489,8 @@ function line(x, ctx) {
     cls: x.stage === 'acted' ? '' : 'quiet',
     cols: 'minmax(0,170px) minmax(0,1fr) auto',
     left: `<span class="who"><b>${esc(name || 'somebody')}</b>`
-      + `<span class="m">${esc(x.stage)} · ${esc(age(mins))}</span></span>`,
+      + `<span class="m">${esc(x.stage)} · ${esc(age(mins))}`
+      + `${from ? ' · decided first' : ''}</span></span>`,
     /* The sentence if this reader may have it; otherwise the ask it answered, so the row still says
        what was closed. Never a blank and never a guess at what was written. */
     line: note ? esc(note)
@@ -4504,20 +4519,32 @@ window.PAI.register({
     /* One sentence about what this reader is being shown, because a ledger of names with no words
        looks like a ledger whose words are missing, and on most readings it is a ledger whose words
        this reader is not entitled to. */
+    /* HOW OFTEN A DECISION CAME FIRST. A measure of practice and never a gate: on a node in a house
+       this is honestly low and that is not a failing, and on a node acting for a street it should be
+       all of them — and when it is not, the number says so. A refusal is one curl away; a number is
+       not. Same shape as ρ, which never forces anybody to answer an alert and only counts whether
+       they did. DECISION_REQUIRED under Set up is the switch for a community that wants the gate. */
+    const acts = rows.filter(x => x.stage === 'acted');
+    const led = acts.filter(x => cameFrom(rows, x)).length;
+    const practice = acts.length
+      ? ` <span data-num="ledger.decided" data-cmp="of ${acts.length} act${acts.length === 1 ? ''
+        : 's'} on this node — a measure of practice and not a rule; DECISION_REQUIRED under Set up `
+        + `is the rule">${led}</span> of ${acts.length} had a decision recorded first.`
+      : '';
     const head = `<p class="why" id="ledger-head" data-component="ledgerHead" data-ref="ledger">`
-      + `${rows.length} answer${rows.length === 1 ? '' : 's'} on this node. `
+      + `${rows.length} answer${rows.length === 1 ? '' : 's'} on this node.${practice} `
       + (words
         ? `${said} carr${said === 1 ? 'ies' : 'y'} the sentence somebody wrote.`
         : `The sentences need a token \u2014 a note is the household\u2019s own words about its own `
           + `house. Set up \u2192 unlock.`)
       + `</p>`;
-    const first = rows.slice(0, SHOWN).map(x => line(x, ctx)).join('');
+    const first = rows.slice(0, SHOWN).map(x => line(x, ctx, rows)).join('');
     const rest = rows.slice(SHOWN);
     return head + `<div class="reads" id="ledger-rows" data-ref="asks-rows">${first}`
       + (rest.length
         ? `<details class="fold"><summary>${SHOWN ? `The other ${rest.length}`
           : `All ${rest.length}, newest first`}</summary>`
-          + rest.map(x => line(x, ctx)).join('') + `</details>`
+          + rest.map(x => line(x, ctx, rows)).join('') + `</details>`
         : '')
       + `</div>`;
   },

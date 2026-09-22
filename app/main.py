@@ -1837,6 +1837,16 @@ def action(body: dict, request: Request, authorization: str = Header("")):
         cur.execute("SELECT 1 FROM alerts WHERE id = %s", (body.get("alert_id"),))
         if not cur.fetchone():
             raise HTTPException(404, "no such alert")
+        # DECISION_REQUIRED is a community's switch and it is off by default, because the four other ways in here have
+        # no screen to decide on: the Reticulum bridge (a LoRa reply from a device with no display), the MCP `act` tool,
+        # the terminal, and curl. A node in a house records an act whether or not anybody deliberated -- somebody smells
+        # smoke and opens a window -- and refusing that would make the node assert a deliberation that did not happen,
+        # or push the act somewhere it is never recorded at all. A node acting for a street is the case this is for.
+        if stage == "acted" and settings.num("DECISION_REQUIRED", 0):
+            cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
+            if not cur.fetchone():
+                raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
+                                         "against the same ask first. Decide on the dashboard, then record what you did.")
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
                     (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}

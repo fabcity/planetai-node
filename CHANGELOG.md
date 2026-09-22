@@ -12,6 +12,20 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **Your node now says how often a decision came first, and can insist on one.** Every act in the
+  ledger that had a decision recorded against the same ask beforehand says *decided first*, and the
+  ledger's own line counts them: *"0 of 31 had a decision recorded first"* on node #1, which is true
+  and is the honest starting point since deciding only became possible today.
+
+  It is a measure and not a rule. Four of the five ways to record an act have no screen to decide
+  on — a reply over the LoRa radio, the Telegram bot, the terminal, a script — and a node in a house
+  should record *"I opened the window"* whether or not anybody deliberated first; demanding otherwise
+  would make your node assert a deliberation that never happened. A node that acts for more than one
+  household is a different case, and **`DECISION_REQUIRED`** under Set up → Node is where that
+  community says so: turn it on and an act with no decision behind it is refused, whichever way it
+  came in. Off by default. Proposed by Tomas, and this is the part of it that does not break the
+  radio.
+
 - **Decide has a decision in it.** The stage was named for it from the first sketch and carried three
   sections about grain, provenance and trust — at what resolution a thing may be said, never what to
   do about it. It now opens with the thing itself: what your node saw, **what your node suggests**,

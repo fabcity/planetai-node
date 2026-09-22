@@ -128,6 +128,9 @@ PARENT_TOKEN:
 AGGREGATE_TOKEN:
   default: ""
   help: "What this node presents to its parent, and what it demands from its own children. Without AGGREGATE_TOKEN this node accepts no children at all (POST /aggregates returns 403)."
+DECISION_REQUIRED:
+  default: "0"
+  help: "1 refuses to record an act unless a decision was recorded against the same ask first. Off by default and meant for a node that acts for more than one household: four of the five ways to record an act have no screen to decide on — a LoRa reply, the MCP tool, the terminal, curl — and a node in a house should record \"I opened the window\" whether or not anybody deliberated first."
 COMPOSE_PROFILES:
   default: ""
   help: "---- optional layers (set by `planetai meshtastic` / `planetai reticulum`; leave alone by hand) ---- Which extra containers to run: mqtt, reticulum, or both, comma-separated. Empty = the two base containers only."

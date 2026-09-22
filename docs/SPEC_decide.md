@@ -298,6 +298,49 @@ from above".
 The one thing that would be wrong to build here is a node that decides for a street because one
 person pressed a button in one kitchen.
 
+### Must an act wait for a decision?
+
+*Asked by Tomas, 22 September: "what if we need a decision to register an action… an action does not
+start running until a decision has been made."*
+
+Evaluated, and the answer is **not by default, and a switch for the nodes that want it.**
+
+The reason is that five things write an act and four of them have no screen to decide on:
+`app/reticulum_bridge.py:178` (a LoRa reply, from a device with no display, in a place with no
+network), `app/agent.py:197` (the MCP `act` tool, and so Telegram), `bin/planetai:769` (the
+terminal), the dashboard, and anything posting to the route — a phone, Home Assistant. The radio
+settles it: that path exists for exactly the places a decision card cannot reach.
+
+And node #1's own history says what refusing would cost: of 31 acts, **none** came from a surface
+that could have shown a decision first.
+
+Three things a hard requirement would do:
+
+- **Record a fiction.** Somebody smells smoke and opens a window; there was no deliberation. A node
+  that demands a decision row first is asserting one that did not happen.
+- **Get worked around, and then lie.** The refusal is one `curl` away for anyone who knows and, for
+  everyone else, the act goes unrecorded. ρ falls toward zero and the funnel reports a household that
+  stopped answering, when what stopped was form-filling.
+- **Apply a community's rule to every home node** — the thing this section exists to refuse.
+
+So, three parts instead:
+
+1. **The link.** An act names the decision it came from: the latest `decided` on the same ask,
+   recorded before it. A convention, not a foreign key — `asks.actions` already carries `alert_id`,
+   `stage` and `ts`, so it needs nothing added to the schema, the endpoint or the wire.
+2. **The measure.** *"N of M acts had a decision recorded first."* On a node in a house that is
+   honestly low and is not a failing; on a node acting for a street it should be all of them, and
+   when it is not, the number says so. A refusal is one `curl` away and a number is not. It is the
+   same shape as ρ, which never forces anybody to answer an alert and only counts whether they did.
+3. **`DECISION_REQUIRED`**, default `0`, under Set up → Node. Set to 1, `POST /actions` answers **409**
+   to an act with no prior decision on that ask, whichever way it came in. That is the gate Tomas
+   described, owned by the community that turns it on rather than by the software — which is what
+   this section says consensus mechanisms should be.
+
+The measure comes first in usefulness: it makes the practice visible on every node, including the
+ones that will never turn the gate on, and it says whether a gate is needed before anybody commits
+to one.
+
 ## 11 · Learning over time
 
 *From Tomas: "I also want the nodes to learn as we evolve on time, generate more intelligent
