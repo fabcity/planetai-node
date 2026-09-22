@@ -1437,7 +1437,10 @@ window.KMAP = { map, caption, frameOf, MAX_SPAN_M };
  *       wall(ctx)     → html,    // optional: what it contributes to the wall at ctx.RES
  *       learn: ['states'],       // optional: the learn marks this section carries. A key the
  *                                //   layer does not have draws nothing; see tools/build_learn.py
- *       notes(ctx)    → [{ id, text }],   // the explanations, gathered at the bottom of the page
+ *       notes(ctx)    → [{ id, label, text }],  // the explanations, gathered at the bottom of the
+ *                                             // page. `label` names what THIS note is about and is
+ *                                             // the row's term; without one the row falls back to
+ *                                             // the section title, which every row would repeat.
  *     });
  *
  * and the shell renders whatever registered, stage by stage. A section from a pack a node does not
@@ -1643,9 +1646,18 @@ function notesBand(ctx, ordered) {
       + `<summary><span class="t">${esc(g.section.title)}</span>`
       + `<span class="pack">${esc(g.section.pack)}</span>`
       + `<span class="n">${g.notes.length}</span></summary>`
+      /* EVERY NOTE NAMES ITS OWN SUBJECT. The term used to be the section's title, printed once per
+         note — so a fold of five notes was five rows reading "What the satellite says", "What the
+         satellite says", "What the satellite says", beside five paragraphs about five different
+         things. A term that is the same for every row in a list is not a term: it is the fold's
+         heading said again, and it told a reader scanning for the note about compaction nothing
+         about which row to stop at. `label` is the note's own, a few words for the thing it
+         explains; the section title is the fallback for a note that has not been given one, which
+         is at worst what every note said before. */
       + `<dl class="notelist">` + g.notes.map(n =>
         `<div class="noteitem" id="${esc(n.id)}"><dt><a href="#${esc(at)}">`
-        + `${esc(g.section.title)}</a></dt><dd>${n.html ? n.text : esc(n.text)}</dd></div>`).join('')
+        + `${esc(n.label || g.section.title)}</a></dt><dd>${n.html ? n.text : esc(n.text)}</dd>`
+        + `</div>`).join('')
       + `</dl></details>`; }).join('')
     + `</section>`;
 }
@@ -2010,7 +2022,8 @@ function render(ctx) {
 /* ------------------------------------------------------------------ the notes */
 function notes(ctx) {
   if (!sited()) {
-    return [{ id: 'ground-unsited', text: 'This node has no coordinates, so nothing on this page can '
+    return [{ id: 'ground-unsited', label: 'No coordinates',
+        text: 'This node has no coordinates, so nothing on this page can '
       + 'say where it is. GET /health publishes lat and lon rounded to three decimals and an unsited '
       + 'node publishes zero for both, which is a real point in the Gulf of Guinea — so the page '
       + 'draws the grid itself rather than a map of open water labelled as this household’s ground.' }];
@@ -2018,7 +2031,8 @@ function notes(ctx) {
   const base = baseOf(ctx.Q.get('base'), ctx.RES);
   const f = frame(ctx.RES, SIZE, base === 'plan' ? 'sat' : base);
   return [
-    { id: 'ground-rule', text: `From resolution ${PLAN_FROM} inward the ground is this node’s own `
+    { id: 'ground-rule', label: 'Where the plan takes over',
+        text: `From resolution ${PLAN_FROM} inward the ground is this node’s own `
       + 'plan unless a live base is pressed — Tomas’s rule. The plan is about 3 km across and the '
       + 'resolution-9 plate is 1.6 km, so from 9 the plan fills the frame edge to edge; it is the '
       + 'better drawing there, every vertex is the node’s own, and it sends nothing. At 8 the plate '
@@ -2026,38 +2040,44 @@ function notes(ctx) {
       + `coarser — but only when a keeper has set MAP_TILES to on, which on this node it is `
       + `${(window.SETTINGS || {}).MAP_TILES === 'on' ? 'is' : 'is not'}. Off, the plan is the ground `
       + 'at every stop and the page sends nothing at all.' },
-    { id: 'ground-why-live', text: 'The live bases are here because Tomas asked for them: a real map '
+    { id: 'ground-why-live', label: 'Why a live base at all',
+        text: 'The live bases are here because Tomas asked for them: a real map '
       + 'with a satellite view that rescales when the dial turns. He was told what it costs — a page '
       + 'that fetches tiles tells the tile server which square of the planet is being looked at, '
       + 'every time anybody opens it — and asked for it anyway. So it is built, the cost is printed '
       + 'beside the picture, and the offline plan is one press away in the same strip.' },
-    { id: 'ground-cost', text: `What leaves: one request per tile, ${f.tiles.length} for this view, `
+    { id: 'ground-cost', label: 'What a tile costs',
+        text: `What leaves: one request per tile, ${f.tiles.length} for this view, `
       + `from the device the page is open on to ${BASES[f.base].host}. Each request names a tile by `
       + `zoom, column and row, which is a square of ground ${edge(f.tile_m)} wide, and carries the `
       + `device's own address. The server does not learn that this is a PLANETAI node or where the `
       + `node itself stands beyond that square; it does learn that somebody at that address looks at `
       + `this ${edge(f.across_m)}${S.health.city ? ` of ${S.health.city}` : ''}, and how often. The `
       + `plan sends nothing.` },
-    { id: 'ground-zoom', text: 'The zoom follows the dial because the frame is the cells, not the '
+    { id: 'ground-zoom', label: 'Zoom follows the dial',
+        text: 'The zoom follows the dial because the frame is the cells, not the '
       + 'map. The dial sets the resolution, the resolution sets the nineteen cells of the plate, and '
       + 'the zoom is the largest of 0 to 19 at which their bounding box fits nine tenths of the '
       + 'square. H3 steps by seven in area and a tile zoom by four, so one stop on the dial moves the '
       + 'zoom by one or two levels, and the cell in the middle stays the same size on the page at '
       + 'every stop within a factor of two.' },
-    { id: 'ground-frames', text: 'Tiles are Web Mercator, EPSG:3857, because that is the only frame a '
+    { id: 'ground-frames', label: 'Two frames, one drawing',
+        text: 'Tiles are Web Mercator, EPSG:3857, because that is the only frame a '
       + 'tile server speaks. The offline plan is drawn in the node\'s own local frame — metres east '
       + 'and north of the node, which make-plan.mjs computed and kit-map.js places. At 8.8° south '
       + 'Mercator\'s scale is within 1.2% of true and constant to a part in a thousand across a 5 km '
       + 'frame, so the cells fall on the same pixels either way. At resolution 2 and 3 the frame is '
       + 'hundreds of kilometres and the difference shows; there the plan is already a rectangle, and '
       + 'the tiles are the only base that is a picture at all.' },
-    { id: 'ground-osm-policy', text: 'OpenStreetMap\'s tiles come from volunteer-run servers under a '
+    { id: 'ground-osm-policy', label: 'OpenStreetMap’s usage policy',
+        text: 'OpenStreetMap\'s tiles come from volunteer-run servers under a '
       + 'usage policy: light use, attribution, a real browser referrer, no bulk downloading. One '
       + 'household opening one page is inside it; a fleet of nodes refreshing a map every minute '
       + 'would not be, and the same tile fetched without a referrer is refused with a placeholder '
       + 'that says so. The attribution is in the caption, and this page asks for tiles only when '
       + 'somebody opens it.' },
-    { id: 'ground-s2', text: 'The satellite base is EOX\'s Sentinel-2 cloudless mosaic for 2020: '
+    { id: 'ground-s2', label: 'The satellite base',
+        text: 'The satellite base is EOX\'s Sentinel-2 cloudless mosaic for 2020: '
       + 'many passes stitched into one cloud-free picture, six years old. It is a ground to read '
       + 'the cells against, not an observation of today — the sky, the season and the newest roofs '
       + 'in it are none of this week\'s. What this node\'s own satellite passes saw of the same '
@@ -2123,12 +2143,14 @@ window.PAI.register({
   },
   notes(ctx) {
     return [
-      { id: 'requests-poll', text: 'Two different kinds of reaching are counted here and they are '
+      { id: 'requests-poll', label: 'Two kinds of reaching',
+        text: 'Two different kinds of reaching are counted here and they are '
         + 'not the same number twice. A tile request is made by the device you are reading on, to '
         + 'somebody else\u2019s server, and tells them which square of ground you are looking at and '
         + 'from which address. A poll is made by the node, from this house, whether or not anybody '
         + 'is at the screen \u2014 which is why there is a day already drawn when you arrive.' },
-      { id: 'requests-upstream', text: 'These are named by the rows they wrote, not by a list kept '
+      { id: 'requests-upstream', label: 'Named by the rows they wrote',
+        text: 'These are named by the rows they wrote, not by a list kept '
         + 'here, so a pack that starts reading somewhere new appears in this count without anyone '
         + 'remembering to add it. A sensor on this house\u2019s own wall is not in it: the node does '
         + 'not reach out to reach it.' },
@@ -2193,12 +2215,14 @@ window.PAI.register({
   notes(ctx) {
     const n = (ctx.ORDER || []).reduce((a, k) => a + (((ctx.ISS[k] || {}).provenance) || []).length, 0);
     return [
-      { id: 'figures-table', text: `Every figure on the page, once, with its source and the word the `
+      { id: 'figures-table', label: 'The node’s ledger, not a summary',
+        text: `Every figure on the page, once, with its source and the word the `
         + `node puts on it \u2014 ${n} of them here. It is the node's own ledger and not a summary this `
         + `page assembled: a page that walked its own numbers to build a citation list would be `
         + `citing itself. A reader checking one figure should not have to find the card it came `
         + `from, which is why the whole page is in one table at the end of it.` },
-      { id: 'fig-air.room', text: 'These numerals carry no comparison, which every other numeral on '
+      { id: 'fig-air.room', label: 'Why these carry no comparison',
+        text: 'These numerals carry no comparison, which every other numeral on '
         + 'the page must. That is deliberate: this is the provenance OF those figures, and what each '
         + 'is measured against is on the card the row names. Repeating it eighteen times would be '
         + 'the page quoting itself, so these are marked as figures rather than as numerals and the '
@@ -2255,12 +2279,14 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'matrix-grid', text: 'Four issues down, five columns across, and the column you can read '
+      { id: 'matrix-grid', label: 'Why a grid and not a list',
+        text: 'Four issues down, five columns across, and the column you can read '
         + 'down is the reason this is a grid. Whether the street is worse than the room is a '
         + 'different question from whether the air is worse than the heat, and four separate cards '
         + 'would answer neither. The last column is the line — what the four readings to its left '
         + 'are read against — drawn once per row rather than repeated in every cell.' },
-      { id: 'mrow-air', text: 'An empty cell is the commonest thing on this grid and it always says '
+      { id: 'mrow-air', label: 'What an empty cell says',
+        text: 'An empty cell is the commonest thing on this grid and it always says '
         + 'which absence it is: no sensor indoors, no kit on the wall outside, no public station '
         + 'reporting, no model for this point. Those are four different jobs for whoever keeps this '
         + 'node, and a blank would have been none of them.' },
@@ -2318,11 +2344,13 @@ window.PAI.register({
   },
   notes(ctx) {
     return [
-      { id: 'days', text: 'The trace says how high and the marks under the axis say how long. A '
+      { id: 'days', label: 'Height, and how long',
+        text: 'The trace says how high and the marks under the axis say how long. A '
         + 'brief spike and a long plateau can reach the same height, and only one of them is worth '
         + 'getting out of a chair for, so the hours over the line are counted under the drawing '
         + 'rather than left to be read off a curve.' },
-      { id: 'day-silent', text: 'A card appears here when there is a day to draw. An issue with no '
+      { id: 'day-silent', label: 'A day with nothing to draw',
+        text: 'A card appears here when there is a day to draw. An issue with no '
         + 'hourly record at any distance would be an empty box claiming to be a drawing, so it is '
         + 'named in a sentence instead and the matrix above carries what it does have. That is the '
         + 'difference between a gap in the record and a gap in the page.' },
@@ -2421,16 +2449,19 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'registry-rows', text: 'More is more signs, never a bigger sign. A row you can count is '
+      { id: 'registry-rows', label: 'More is more signs',
+        text: 'More is more signs, never a bigger sign. A row you can count is '
         + 'a measurement; a bar you have to read off an axis is a picture of one. Three grains are '
         + 'mixed here and each row says which it is: a station is one sign because you could point '
         + 'at it, the ground is twentieths because a percentage counts nothing, and houses are one '
         + 'sign per 250 because 2,713 signs is not a row.' },
-      { id: 'src-models', text: 'A model is not a station and is never counted as one. Nor is a '
+      { id: 'src-models', label: 'A model is not a station',
+        text: 'A model is not a station and is never counted as one. Nor is a '
         + 'workshop: the `make` pack stores fab labs in the same table, and every count on this '
         + 'page filters to stations and models so that a place somebody could walk to never '
         + 'arrives as a reading of the air.' },
-      { id: 'src-built', text: 'Built and trees are the only rows here that nothing on the ground '
+      { id: 'src-built', label: 'Built, and trees',
+        text: 'Built and trees are the only rows here that nothing on the ground '
         + 'measured \u2014 they are a satellite\u2019s reading of this square kilometre. They carry orange '
         + 'and nothing else on the page does, because that is what orange means in this layer.' },
     ];
@@ -2738,24 +2769,29 @@ window.PAI.register({
     const oldest = Math.max(0, ...H.sensors.flatMap(s => Object.values(s.read).map(r => r.silent_minutes || 0)));
     const air = ctx.ISS.air, heat = ctx.ISS.heat;
     return [
-      { id: 'sensors-note-station', text: ctx.KN.NAV_HONEST.perStation() },
-      { id: 'sensors-note-series', text: `${traced.length} of the ${H.sensors.length} stations carry `
+      { id: 'sensors-note-station', label: 'One station’s own mean',
+        text: ctx.KN.NAV_HONEST.perStation() },
+      { id: 'sensors-note-series', label: 'Which stations carry an hour',
+        text: `${traced.length} of the ${H.sensors.length} stations carry `
         + `an hourly series in this capture — ${traced.map(s => `${s.name} (${s.local ? 'this house'
           : `${s.km} km`}, ${Object.keys(s.series).map(k => H.metrics[k].label).join(', ')})`).join(' and ')}`
         + ` — so those rows have a trace with its min–max band and the others have one tick at the `
         + `15-minute mean, drawn at now. No trace was drawn where none was recorded.` },
-      { id: 'sensors-note-dial', text: `The groups follow the dial: at resolution 4 all `
+      { id: 'sensors-note-dial', label: 'The groups follow the dial',
+        text: `The groups follow the dial: at resolution 4 all `
         + `${H.sensors.length} stations are in ${gt(4).occupied} cell, at 9 they are in `
         + `${gt(9).occupied}, and this node’s own ${gt(9).mine_in_my_cell} share one cell at every `
         + `resolution because they carry one coordinate. Regrouping changes which header a row sits `
         + `under and nothing in the row: a station’s number is its own, not its cell’s.` },
-      { id: 'sensors-note-line', text: `${air.name.en}’s line, ${fmt(air.line ? air.line.value : null,
+      { id: 'sensors-note-line', label: 'The line, and what it covers',
+        text: `${air.name.en}’s line, ${fmt(air.line ? air.line.value : null,
         H.metrics.pm25.dp)} ${air.unit}, is ${air.line ? air.line.source : 'not declared'} and is drawn `
         + `against PM2.5 only. ${heat.name.en}’s line${heat.line ? `, ${fmt(heat.line.value, 1)} `
           + `${heat.line.unit || heat.unit}, is for ${heat.metric}, which no station here reports `
           + `directly` : ' is not declared'}. Every other variable prints “no comparison yet” with the `
         + `reason, at the same size, in the same place — the number is never left to look compared.` },
-      { id: 'sensors-note-sources', text: `Smart Citizen kits link to their public page on `
+      { id: 'sensors-note-sources', label: 'Where each station links out',
+        text: `Smart Citizen kits link to their public page on `
         + `smartcitizen.me. Stations that came through Bali Air Dispatch link to baliairdispatch.com, `
         + `whose attribution line — “Bali Air Dispatch, baliairdispatch.com” — is required and printed `
         + `under the list; each of those rows also names the network the station is on. `
@@ -2764,7 +2800,8 @@ window.PAI.register({
         + `A station whose last reading is more than 60 minutes old is marked with the word “silent” `
         + `and the age — a word, not a colour. ${oldest > 60 ? '' : `None is in this capture; the oldest `
           + `reading is ${oldest} min.`}` },
-      { id: 'sensors-note-mesh', text: `The Meshtastic device in this house`
+      { id: 'sensors-note-mesh', label: 'The device with no cell',
+        text: `The Meshtastic device in this house`
         + `${H.radio && H.radio.mesh_sensor ? ` (${H.radio.mesh_sensor.name})` : ''} carries no `
         + `coordinate, so it falls in no cell and is not in this list. It appears under the radio.` },
     ];
@@ -3012,21 +3049,25 @@ window.PAI.register({
   notes(ctx) {
     const region = H.claims.find(c => c.key === 'region');
     return [
-      { id: 'sat-matched', text: 'The frames are brightness matched across years. Measured on '
+      { id: 'sat-matched', label: 'Brightness matched across years',
+        text: 'The frames are brightness matched across years. Measured on '
         + 'the passes as delivered, mean luminance ran 81, 116, 94, 108 and greenness flipped sign on '
         + '2019 — season and haze, not change — so a loop of the raw frames reads as something '
         + 'happening that did not. After matching every channel to 2016 the only thing that differs '
         + 'between frames is structure. That changes pixel values, which is why the page says so '
         + 'beside the year rather than passing the frames off as raw medians.' },
-      { id: 'sat-colour', text: 'Nothing in green, red, blue or orange sits on the photograph. The '
+      { id: 'sat-colour', label: 'No colour on the photograph',
+        text: 'Nothing in green, red, blue or orange sits on the photograph. The '
         + 'photograph is a ground, never a backdrop for coloured marks — on this page green means a '
         + 'loop closed, red means a signal got worse and orange means what only the satellite knows, '
         + 'and a green-and-brown image would borrow all three.' },
-      { id: 'sat-orange', text: `Orange means one thing on every page here: what only the satellite `
+      { id: 'sat-orange', label: 'What orange means',
+        text: `Orange means one thing on every page here: what only the satellite `
         + `knows. ${P().counts.sat.toLocaleString()} buildings on this ground are in a satellite pass `
         + `and not in OpenStreetMap, each with the confidence the pass gave it, drawn over the `
         + `hairline outlines of the ${P().counts.buildings.toLocaleString()} the map already had.` },
-      { id: 'sat-compaction', text: region.native
+      { id: 'sat-compaction', label: 'Compacting the covering',
+        text: region.native
         ? `EARTH_RADIUS_M=5000 at 10 m a pixel is resolution `
           + `${region.native.res}. polygonToCells on that square returns `
           + `${region.native.cells.toLocaleString()} cells and compactCells returns `
@@ -3036,7 +3077,8 @@ window.PAI.register({
           + 'how a covering this fine is ever published.'
         : `${region.declared} declares no ground, so this node has no covering of the square to `
           + 'compact and nothing to say about what compaction saves here.' },
-      { id: 'sat-land', text: ctx.ISS.land.state === 'none'
+      { id: 'sat-land', label: 'The land figure',
+        text: ctx.ISS.land.state === 'none'
         ? 'The earth pack has no reading in this capture. What is in the section is what the '
           + 'satellite has already said about this place — the passes, and the buildings it found — '
           + 'and not a year-over-year number it has not produced here.'
@@ -3128,12 +3170,14 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'reach-rows', text: 'Three kinds of source and three different amounts of past. The '
+      { id: 'reach-rows', label: 'Three kinds of past',
+        text: 'Three kinds of source and three different amounts of past. The '
         + 'satellite record reaches ten years because an annual pass is one row a year and this '
         + 'node kept them; the kit in the house reaches twenty days because that is how long it has '
         + 'been running. A question about a year has a different answer for each, and that is the '
         + 'thing this panel exists to say before anybody asks one.' },
-      { id: 'reach-cap', text: 'Prompt 4 asked for Isotype year rows lighting with the loop, and '
+      { id: 'reach-cap', label: 'Two things not on the wire',
+        text: 'Prompt 4 asked for Isotype year rows lighting with the loop, and '
         + 'for the barcode grown into a year of daily means. Neither is on this node\u2019s wire: '
         + '/earth has no per-year fractions and there is no daily route at all. The instruction was '
         + 'to read the endpoint first and omit if it does not carry them, which is what this is \u2014 '
@@ -3276,16 +3320,19 @@ window.PAI.register({
     const still = [['a parent', !!d.parentName], ['Index cells', d.cells.length > 0],
                    ['answered asks', d.asks > 0]].filter(([, on]) => !on).map(([k]) => k);
     return [
-      { id: 'netmap-motion', text: 'The wires carry a moving dot only where something actually '
+      { id: 'netmap-motion', label: 'A wire with nothing on it',
+        text: 'The wires carry a moving dot only where something actually '
         + 'travels. A dashed, faint wire is a link that exists with no traffic on it'
         + (still.length ? `, which on this node is ${still.join(' and ')}.` : ', of which this node '
           + 'has none right now \u2014 all six are carrying.')
         + ' A motion with no datum behind it would be the page telling this house something the node '
         + 'never said.' },
-      { id: 'netmap-still', text: 'Every animation here is CSS, so the operating system\u2019s '
+      { id: 'netmap-still', label: 'Reduce motion stops all of it',
+        text: 'Every animation here is CSS, so the operating system\u2019s '
         + '"reduce motion" setting stops all of it. The original figure used SVG\u2019s own <animate>, '
         + 'which ignores that setting, and that is why it was rewritten rather than restored as it was.' },
-      { id: 'netmap-what', text: `Readings stay on this machine \u2014 ${(d.health.ingested || 0)
+      { id: 'netmap-what', label: 'What actually travels',
+        text: `Readings stay on this machine \u2014 ${(d.health.ingested || 0)
         .toLocaleString()} of them so far, and not one leaves. What travels up to a community node is `
         + 'hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.' },
     ];
@@ -3393,13 +3440,15 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'registry-read', text: 'The registry is what this place COULD read; the adapters are what '
+      { id: 'registry-read', label: 'Could read, against does',
+        text: 'The registry is what this place COULD read; the adapters are what '
         + 'it does. The gap between them is not a refusal — it is code nobody has written yet, and '
         + 'naming it is how somebody comes to write it. One entry reads lower than it should: '
         + '`fablabs-io` carries no adapter string at this pin although a pack reads it, because the '
         + 'registry checks those strings against this repository and the pack landed the same day. '
         + 'This row reads the field and never infers, so it will say so until the pin moves.' },
-      { id: 'registry-act', text: 'A place to act is not a source of readings. Two are directories of '
+      { id: 'registry-act', label: 'A place to act is not a source',
+        text: 'A place to act is not a source of readings. Two are directories of '
         + 'workshops, five are libraries of designs somebody has already worked out, one is a list '
         + 'of places that pledged. What this page will not do is decide whether a licence is open: '
         + 'the registry carries free text, some of it plainly saying no licence is published and '
@@ -3487,18 +3536,22 @@ window.PAI.register({
   notes(ctx) {
     const pr = ctx.S.peer;
     return [
-      { id: 'reticulum-cell', text: `Reticulum announces the H3 cell this node is in at resolution `
+      { id: 'reticulum-cell', label: 'The cell it announces',
+        text: `Reticulum announces the H3 cell this node is in at resolution `
         + `${R.res} — ${edge(R.edge_m)} to an edge, ${km2(R.area_m2)} — and nothing else. It is never `
         + `finer than resolution ${H.settings.PRESENCE_RES_FLOOR}, which is the floor no settings box `
         + 'may pass. That cell is the whole of what a stranger on the radio learns about where this '
         + 'node is.' },
-      { id: 'reticulum-peer', text: `The fixture kept the peer’s resolution and its distance and not `
+      { id: 'reticulum-peer', label: 'Where the peer could be',
+        text: `The fixture kept the peer’s resolution and its distance and not `
         + `the cell it announced, so the drawing shows all ${R.candidates.length} cells `
         + `${R.peer_km} km could be in. That is not a gap in the drawing — it is the shape of what a `
         + 'radio announce actually tells you. A page that put a pin at 61 km on a bearing it was never '
         + 'sent would be inventing the one thing the scheme refuses to send.' },
-      ...(pr ? [{ id: 'reticulum-never', text: pr.never[ctx.LOC] }] : []),
-      { id: 'reticulum-pack', text: 'This section is a pack’s, not the page’s: it registered itself '
+      ...(pr ? [{ id: 'reticulum-never', label: 'What the announce never carries',
+        text: pr.never[ctx.LOC] }] : []),
+      { id: 'reticulum-pack', label: 'A pack’s section, not the page’s',
+        text: 'This section is a pack’s, not the page’s: it registered itself '
         + 'with the page contract the way any pack does, and the page knows nothing about Reticulum '
         + 'beyond what the section declares. A node without the reticulum pack has no such section; '
         + 'a node with a new radio adds a file.' },
@@ -3566,16 +3619,19 @@ window.PAI.register({
   notes() {
     const d = R.mesh_sensor;
     return [
-      { id: 'mesh-noposition', text: `${d ? d.name : 'The mesh device'} carries no latitude or `
+      { id: 'mesh-noposition', label: 'No coordinate, no cell',
+        text: `${d ? d.name : 'The mesh device'} carries no latitude or `
         + 'longitude, which is why it appears on no grid drawing here: a station with no coordinate '
         + 'has no cell of its own, and the page will not put it in one by assumption. It is in this '
         + 'node’s cell because this node is.' },
-      { id: 'mesh-what', text: 'What a LoRa device in a room actually knows: its battery, a gas '
+      { id: 'mesh-what', label: 'What a LoRa device knows',
+        text: 'What a LoRa device in a room actually knows: its battery, a gas '
         + 'resistance, an air quality index, how busy its radio channel is. The Meshtastic pack turns '
         + 'the gateway’s JSON into readings the node can keep; a gateway with JSON output off is the '
         + 'commonest reason this section is empty on a new node, and `planetai meshtastic` says how '
         + 'to turn it on.' },
-      { id: 'mesh-pack', text: 'A pack section, and a small one on purpose: it shows the shape a '
+      { id: 'mesh-pack', label: 'A small pack on purpose',
+        text: 'A pack section, and a small one on purpose: it shows the shape a '
         + 'community pack’s contribution takes — a file that registers a title, a stage, what it '
         + 'needs, and what it says.' },
     ];
@@ -3665,16 +3721,19 @@ window.PAI.register({
   notes() {
     const list = devices();
     return [
-      { id: 'hardware-real', text: `What is real here is the list: ${list.length} devices on this `
+      { id: 'hardware-real', label: 'What is real in this list',
+        text: `What is real here is the list: ${list.length} devices on this `
         + 'node’s own ground, and everything said about them is in the fixture — source, indoors or '
         + 'out, what each measures, when it last spoke. Smart Citizen and Meshtastic are both open '
         + 'hardware, which is a fact about the devices and not a claim this page makes for them.' },
-      { id: 'hardware-manager', text: 'The manager row is the hook Tomas asked for and nothing more: '
+      { id: 'hardware-manager', label: 'The manager row',
+        text: 'The manager row is the hook Tomas asked for and nothing more: '
         + 'an open hardware manager and the capacity to make locally are the next packs, not this '
         + 'one. When they exist they register a section the way every section here did, and this row '
         + 'stops saying "not connected". Until then the contract’s rule holds — a missing pack is one '
         + 'honest line, never a blank.' },
-      { id: 'hardware-shape', text: 'This is the shape a community pack’s contribution takes: a '
+      { id: 'hardware-shape', label: 'What a pack contributes',
+        text: 'This is the shape a community pack’s contribution takes: a '
         + 'title, a stage, what it needs, what it says, and its notes. A node that adds a device adds '
         + 'a row; a node that writes a pack adds a file; proposing either back is sending the file.' },
     ];
@@ -3789,22 +3848,27 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'claims-declared', text: 'Every footprint here is a number a pack or a preset already '
+      { id: 'claims-declared', label: 'Every footprint is declared',
+        text: 'Every footprint here is a number a pack or a preset already '
         + 'declares — COAST_MAX_KM, BAD_RADIUS_KM, EARTH_RADIUS_M at 10 m a pixel, PLACE_RADIUS_M, '
         + 'LOCAL_RADIUS_M, and the three decimals GET /health rounds a coordinate to, which is about '
         + '110 m and the finest grain anything from this node may honestly be drawn at. Not one '
         + 'radius on this page was chosen by it.' },
-      { id: 'claims-order', text: 'The cards are ordered by the ground one word covers, widest '
+      { id: 'claims-order', label: 'Widest ground first',
+        text: 'The cards are ordered by the ground one word covers, widest '
         + 'first. Reading down them is reading from a model that speaks for the sea to a probe on a '
         + 'shelf, and the number that changes with the dial — cells at this resolution — is how many '
         + 'cells of the grain you are standing on that word has to cover to say its one thing.' },
-      { id: 'claims-note', text: H.claims.filter(c => c.note).map(c => `${c.name}: ${c.note}.`)
+      { id: 'claims-note', label: 'What a source says of itself',
+        text: H.claims.filter(c => c.note).map(c => `${c.name}: ${c.note}.`)
         .join(' ') },
-      { id: 'claims-folded', text: 'The six cards are folded for the reason the eleven-row grain '
+      { id: 'claims-folded', label: 'Why the cards are folded',
+        text: 'The six cards are folded for the reason the eleven-row grain '
         + 'table is: they are evidence and not reading. The comparison they exist to make \u2014 what '
         + 'each of these words costs to cover at one grain \u2014 is under the rail now, where turning '
         + 'the control is what changes it, which is the one thing these cards could never do.' },
-      { id: 'claims-model', text: 'The one source with no declared footprint is the model point, '
+      { id: 'claims-model', label: 'The one with no footprint',
+        text: 'The one source with no declared footprint is the model point, '
         + `which covers ${H.claims[0].cells_at[8].toLocaleString()} cells at resolution 8 against `
         + 'the one a probe in this room covers. Nothing in the product says how big a model point’s '
         + 'word is, and the page will not guess for it.' },
@@ -4075,19 +4139,22 @@ window.PAI.register({
       /* Every number in this note was node #1's, spelled out in words — "four stops", "the same
          nine cells", "the same three sensors". They are this node's now, and the note is only made
          at all where there is a flat run to make it about. */
-      ...(flat.length ? [{ id: 'grain-flat', text: `Past resolution ${flat[0].res}, on this node on `
+      ...(flat.length ? [{ id: 'grain-flat', label: 'Where grain stops saying anything',
+        text: `Past resolution ${flat[0].res}, on this node on `
         + `this day, grain is precision with no information in it. ${flat.length} stops of the dial, `
         + 'each seven times finer than the last, and the answer to "who is near me" does not change: '
         + `the same ${flat[0].occupied} cells hold something and the same ${flat[0].mine_in_my_cell} `
         + 'sensors sit in this node’s own cell. Nothing in the first two rounds of drawings could '
         + 'have shown this, because nothing in them varied the grain.' }] : []),
-      { id: 'grain-lines', text: `The two marks on the dial are the product’s own lines, not this `
+      { id: 'grain-lines', label: 'The two marks on the dial',
+        text: `The two marks on the dial are the product’s own lines, not this `
         + `page’s. Resolution ${H.settings.PRESENCE_RES_FLOOR} and coarser may leave this machine — `
         + `it is PRESENCE_RES_FLOOR in app/main.py, the finest any node may announce. Past resolution `
         + `${H.publication.res} is finer than this node is willing to say where it is: GET /health `
         + 'rounds a coordinate to three decimals, about 110 m, and no reading from it may be drawn '
         + 'finer than that.' },
-      { id: 'grain-folded', text: 'The eleven-row table is folded because it is evidence and not '
+      { id: 'grain-folded', label: 'Why the table is folded',
+        text: 'The eleven-row table is folded because it is evidence and not '
         + 'reading. Measured, it was half a screen of a page that was already long, and the one '
         + 'sentence it exists to support is printed above it in full.' },
     ];
@@ -4238,8 +4305,12 @@ window.PAI.register({
     for (const a of acts) (byRule[a.rule_id] = byRule[a.rule_id] || []).push(a);
     const rules = Object.entries(byRule).sort((a, b) => b[1].length - a[1].length);
     const captured = Date.parse(S.base.captured_utc);
-    return `<div class="two-up">`
-      + `<div>`
+    /* ONE COLUMN, FULL WIDTH. This was a `two-up` with a single child, so the grid reserved half the
+       band for a second column that no branch of this render ever fills — the ask cards and every
+       rule row were squeezed into the left half and the right half of Act was white from the strip
+       to the foot. `two-up` is for the sections that genuinely draw two things (Measure's rows
+       beside its series, the radio's map beside its rows); Act draws one list. */
+    return `<div>`
       + ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length).map(k => ask(k, ISS[k], 'asks-rows')).join('')
       + (ctx.ORDER.some(k => ISS[k] && (ISS[k].open_asks || []).length) ? ''
         : ask(S.issues.headline, ISS[S.issues.headline], 'asks-rows'))
@@ -4271,7 +4342,7 @@ window.PAI.register({
       }).join('')
       + whereToGo()
       + capacity()
-      + `</div></div>`
+      + `</div>`
       + `</div>`;
   },
   wall(ctx) {
@@ -4291,28 +4362,33 @@ window.PAI.register({
   },
   notes(ctx) {
     return [
-      { id: 'asks-what', text: 'An ask is a rule crossing a line and the node saying so to a '
+      { id: 'asks-what', label: 'What an ask is',
+        text: 'An ask is a rule crossing a line and the node saying so to a '
         + 'person, on Telegram. It is the only thing on this page that is addressed to somebody; '
         + 'everything else is addressed to nobody in particular. "Nothing has been asked" and '
         + '"nothing to do" are two different sentences, and the ask strip says which one is true.' },
-      { id: 'asks-rows', text: 'One ring an ask, closed first. An ask closes when somebody acted '
+      { id: 'asks-rows', label: 'One ring, one ask',
+        text: 'One ring an ask, closed first. An ask closes when somebody acted '
         + 'or the outcome was measured \u2014 being seen is not closing it, which is the node\u2019s rule '
         + 'and not this page\u2019s: the page reads which asks are still open from the node\u2019s own '
         + 'answer rather than keeping a copy of the rule that decides it. A rule that has asked '
         + 'more times than a person can count gets a coarser unit and says which, and the figure '
         + 'beside the strip is always exact.' },
-      { id: 'where-to-go', text: 'The nearest place you could get something made, under the ask it '
+      { id: 'where-to-go', label: 'The nearest place to get it made',
+        text: 'The nearest place you could get something made, under the ask it '
         + 'answers rather than as a tile of its own \u2014 the pack that stores it says the line belongs '
         + 'to the moment you have been told you need something made. The sentence is the pack\u2019s, '
         + 'including which lab and how far; the page draws it and does not compose it. The date is '
         + 'the archive\u2019s, not the day this machine copied it, because what matters is how old the '
         + 'directory is. `cached`, because a monthly archive is neither live nor partial. A lab is '
         + 'never a station: no count on this page includes it.' },
-      { id: 'where-prov', text: 'The directory this reads is not openly licensed, which is why the '
+      { id: 'where-prov', label: 'Why that directory ships off',
+        text: 'The directory this reads is not openly licensed, which is why the '
         + 'pack ships off and why the switch carries that sentence where a keeper will read it '
         + 'before turning it on. With the pack off this row does not exist and the node\u2019s own '
         + 'words say why \u2014 never this page\u2019s summary of them.' },
-      { id: 'asks-button', text: 'The green button is the one control on the page that is not the '
+      { id: 'asks-button', label: 'The green button',
+        text: 'The green button is the one control on the page that is not the '
         + 'dial. It is a response, so it is green — the layer’s rule is that orange means what only '
         + 'the satellite knows and nothing else — and it is drawn in the ask strip and nowhere else.' },
     ];
@@ -4403,23 +4479,27 @@ window.PAI.register({
   notes(ctx) {
     const E = window.EFFECT || {};
     return [
-      { id: 'effect-not-cause', text: `This says a condition stopped within ${E.window_hours} hours `
+      { id: 'effect-not-cause', label: 'Stopped after, not stopped by',
+        text: `This says a condition stopped within ${E.window_hours} hours `
         + 'of somebody acting. It does not say the act stopped it. A window opened at nine in the '
         + 'evening and air that cleared by three in the morning may be the window or may be the '
         + 'night, and this node cannot tell the two apart \u2014 so it reports the elapsed time and '
         + 'leaves the causation to the household that was there.' },
-      { id: 'effect-two-evidences', text: 'Whether and how long are different questions with '
+      { id: 'effect-two-evidences', label: 'Whether, and how long',
+        text: 'Whether and how long are different questions with '
         + 'different evidence. Whether comes from the rule going quiet, which works for every rule '
         + 'and resolves no finer than one cooldown, because the rule re-fires as soon as its '
         + 'cooldown expires while the condition holds. How long needs an indicator and a line to '
         + 'come back under, which only a rule carrying `watch:` has \u2014 the others fire on a '
         + 'relation, where a threshold would be invented.' },
-      { id: 'effect-coarser', text: 'Where a rule triggers on a fifteen-minute mean and the only '
+      { id: 'effect-coarser', label: 'When the history is coarser',
+        text: 'Where a rule triggers on a fifteen-minute mean and the only '
         + 'history a node keeps is hourly, the timing is coarser than the trigger: a short spike can '
         + 'fire an alert without the hour it sits in ever crossing the line, and then there is '
         + 'nothing to time. Those acts are counted and named rather than folded in as an instant '
         + 'recovery, which is what a nought would have claimed.' },
-      { id: 'effect-retired', text: 'A rule that has been renamed or deleted is left out entirely. '
+      { id: 'effect-retired', label: 'A rule that can never fire',
+        text: 'A rule that has been renamed or deleted is left out entirely. '
         + 'It can never fire again, so its silence is not evidence of anything \u2014 counting it '
         + 'turned three retired rules into successes on this node once, and made the funnel say '
         + 'eight where the true number was five.' },
@@ -4528,18 +4608,21 @@ window.PAI.register({
   notes() {
     const S = window.SHAPE || {};
     return [
-      { id: 'shape-local-hours', text: 'The hours are this node\u2019s own, not UTC. Postgres answers '
+      { id: 'shape-local-hours', label: 'The hours are this node’s own',
+        text: 'The hours are this node\u2019s own, not UTC. Postgres answers '
         + '`extract(hour FROM ...)` in the session timezone and defaults to UTC, so the same query '
         + 'run outside the node\u2019s own connection moves this whole drawing by eight hours on a node '
         + 'in Bali and reports a midday cooking peak as a four-in-the-morning one. db() sets the '
         + 'timezone from NODE_TZ on every connection, and its comment records that this was found '
         + 'once before, in the day boundaries.' },
-      { id: 'shape-two-lines', text: 'Inside and outside are drawn apart because they are not the '
+      { id: 'shape-two-lines', label: 'Why inside and outside are apart',
+        text: 'Inside and outside are drawn apart because they are not the '
         + 'same day. On the node this was built against they are anti-phased: inside peaks when '
         + 'somebody is cooking and outside peaks in the evening, so at midday inside is about twice '
         + 'outside and at six in the evening it is the other way round. A single average over both '
         + 'would describe neither, and the difference is the only thing here anybody can act on.' },
-      { id: 'shape-windows', text: `This is the day\u2019s shape, which needs a week behind it. The `
+      { id: 'shape-windows', label: 'How much record each window needs',
+        text: `This is the day\u2019s shape, which needs a week behind it. The `
         + `week\u2019s, the month\u2019s and the year\u2019s need two weeks, two months and a year, and this `
         + `node has ${S.days == null ? 'no' : S.days} day${S.days === 1 ? '' : 's'} of its own `
         + 'readings. The node decides what its record supports and the page draws what it is told; '
@@ -4636,17 +4719,20 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'decide-suggestion', text: 'The suggested action is the rule\u2019s own last line, the one '
+      { id: 'decide-suggestion', label: 'The suggestion is the rule’s own',
+        text: 'The suggested action is the rule\u2019s own last line, the one '
         + 'that begins with a pointing hand, written by whoever wrote the rule and shipped in every '
         + 'language this node speaks. It is not generated here and it is not a model\u2019s: a node '
         + 'with no agent running shows exactly the same words. Where a rule carries no '
         + 'recommendation the card says so, because a page that invents advice about somebody\u2019s '
         + 'air is a page that cannot be trusted about anything.' },
-      { id: 'decide-moves-nothing', text: 'A decision moves nothing. It does not close the ask, it '
+      { id: 'decide-moves-nothing', label: 'A decision moves nothing',
+        text: 'A decision moves nothing. It does not close the ask, it '
         + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the ask stays open and the '
         + 'node keeps watching. What it changes is the record: a household that looked, decided and '
         + 'never managed it used to leave the same trace as one that never looked, which was none.' },
-      { id: 'decide-collective', text: 'This is one person deciding for one node. A decision about a '
+      { id: 'decide-collective', label: 'One person, one node',
+        text: 'This is one person deciding for one node. A decision about a '
         + 'street is not one household\u2019s to make, and what turns several households\u2019 decisions '
         + 'into a decision a community has taken \u2014 who is asked, what counts as agreement \u2014 is '
         + 'not on a node at all. docs/SPEC_decide.md says so and leaves it to the scale above.' },
@@ -4784,12 +4870,14 @@ window.PAI.register({
   },
   notes() {
     return [
-      { id: 'ledger-two-sources', text: 'This ledger is drawn from two answers, and the line '
+      { id: 'ledger-two-sources', label: 'Two answers, and what stays here',
+        text: 'This ledger is drawn from two answers, and the line '
         + 'between them is the node\u2019s. Who acted, when, and on which ask are published with the '
         + 'rest of the page. The sentence they wrote is not: GET /actions is on neither sharing '
         + 'allowlist, because a note is what a household said about its own house, and it answers a '
         + 'token or this machine and nothing else.' },
-      { id: 'ledger-no-decision', text: 'Every row here is an act \u2014 something that was done. A '
+      { id: 'ledger-no-decision', label: 'No stage for a decision yet',
+        text: 'Every row here is an act \u2014 something that was done. A '
         + 'decision that was made and never carried out has nowhere to go on this node yet: the '
         + 'ledger has three stages and none of them is "decided". docs/SPEC_decide.md proposes the '
         + 'fourth, and until it exists a household that looked, decided and could not manage it '
@@ -4888,14 +4976,16 @@ window.PAI.register({
   notes(ctx) {
     const r = ctx.S.rho;
     return [
-      { id: 'measure-rho', text: `ρ is the share of asks answered — ${r.acted} of ${r.alerts_act} `
+      { id: 'measure-rho', label: 'ρ, and the one that does not exist',
+        text: `ρ is the share of asks answered — ${r.acted} of ${r.alerts_act} `
         + `in ${r.window_days} days here — and it is the one number a node reports about itself. It `
         + 'is drawn as a row of rings, answered first, because a row a person can count is a '
         + 'measurement and a dial needle is a mood. Its definition is not this page’s to touch. A '
         + 'second ρ is specified and does not exist: ρ observed would ask whether the reading came '
         + 'back under the line, and no rule has yet said what its own line is, so the page prints '
         + 'those words rather than a zero that would read as a node that looked and found nothing.' },
-      { id: 'funnel', text: 'The funnel counts one thing four times: how many asks the node sent, '
+      { id: 'funnel', label: 'One thing counted four times',
+        text: 'The funnel counts one thing four times: how many asks the node sent, '
         + 'how many were acknowledged, how many led to something being done, and how many stopped '
         + 'coming back. Two of the four read zero here and each says why. Nobody has acknowledged '
         + 'anything on this node — the phone’s button records that something was done, which skips '
@@ -4904,21 +4994,25 @@ window.PAI.register({
         + 'followed by a long silence from the same rule on the same sensor is the condition having '
         + 'stopped being true. It says whether the loop closed, never how fast, which is why it is '
         + 'the one stage with no time beside it.' },
-      { id: 'care', text: 'The five refusals are copied from the architecture, not written here, '
+      { id: 'care', label: 'The five refusals',
+        text: 'The five refusals are copied from the architecture, not written here, '
         + 'because a promise repeated in a second place is a promise that can drift. They sit at the '
         + 'end of the loop rather than the top of the page: a reader meets what this node does '
         + 'first, and what it will not do once they have seen it. The row about the human row went '
         + 'without a sign until one was drawn for it: borrowing the answered-ask ring would have '
         + 'made that ring mean two things twelve pixels apart.' },
-      { id: 'measure-day', text: 'The day is the headline issue’s own trace: the node supplies every '
+      { id: 'measure-day', label: 'The headline issue’s own trace',
+        text: 'The day is the headline issue’s own trace: the node supplies every '
         + 'value and the line, the page supplies only the box. A hole in the series is a hole in the '
         + 'line — a run of one reading is a dot, never nothing — and the text alternative beside the '
         + 'drawing says where the day opened and closed.' },
-      { id: 'measure-loop', text: 'This is the stage that closes the loop. Observe put a number on '
+      { id: 'measure-loop', label: 'Where the loop closes',
+        text: 'This is the stage that closes the loop. Observe put a number on '
         + 'the page; decide said how far that number may be trusted; act asked somebody to do '
         + 'something; measure is the reading coming back after they did, or did not, and how long it '
         + 'took. The next observation is the first section again.' },
-      { id: 'measure-unplaced', text: 'A pack that asks for a slot this page has no place for lands '
+      { id: 'measure-unplaced', label: 'A slot this page has no place for',
+        text: 'A pack that asks for a slot this page has no place for lands '
         + 'here with the pack’s name on it, rather than being dropped — the water pack’s gauge is the '
         + 'example. That is how a community pack finds out the vocabulary has a gap without its '
         + 'reading disappearing.' },
@@ -4999,15 +5093,18 @@ window.PAI.register({
   notes() {
     const all = ((T() || {}).rows || T() || []);
     return [
-      { id: 'trust-what', text: 'Three things this node can tell about its own sensors without '
+      { id: 'trust-what', label: 'Three things it can tell alone',
+        text: 'Three things this node can tell about its own sensors without '
         + 'anybody looking: a channel that has stopped moving while the kit is still alive, a '
         + 'sensor that has reported for less than sixty per cent of the week, and two collocated '
         + 'kits that disagree. GET /trust computes all three; none of them is an alert, because a '
         + 'doubt is not something to interrupt a household about.' },
-      { id: 'trust-young', text: 'A sensor under seven days old has no seven-day coverage and is '
+      { id: 'trust-young', label: 'A sensor under a week old',
+        text: 'A sensor under seven days old has no seven-day coverage and is '
         + 'said to be still gathering its first week, not shown at some low percentage. Reading 0% '
         + 'as a fault on a kit plugged in yesterday is the page inventing a problem.' },
-      { id: 'trust-stage', text: `This is in decide rather than observe because a coverage figure is `
+      { id: 'trust-stage', label: 'Why this is in decide',
+        text: `This is in decide rather than observe because a coverage figure is `
         + `not a reading of the place: it is a statement about how far a reading may be trusted, `
         + `which is the question the decide stage exists for. `
         + `${Array.isArray(all) && all.length ? `${all.length} sensors are in it.` : ''}` },
@@ -5104,15 +5201,18 @@ window.PAI.register({
   notes() {
     const d = window.FORECAST || {};
     return [
-      { id: 'forecast-not-a-reading', text: 'Every number here is a forecast for a point, fetched '
+      { id: 'forecast-not-a-reading', label: 'A forecast is not a reading',
+        text: 'Every number here is a forecast for a point, fetched '
         + 'from an archive and kept on this node. None of it was measured here and none of it is '
         + 'this node’s own: the node fetches it, it does not predict it, and the card says so '
         + 'under the credit rather than leaving a household to assume otherwise.' },
-      { id: 'forecast-two-archives', text: 'BMKG is Indonesia’s own service and Open-Meteo is '
+      { id: 'forecast-two-archives', label: 'Two archives, both named',
+        text: 'BMKG is Indonesia’s own service and Open-Meteo is '
         + 'the fallback; both are named on the card because both are required to be. Where the two '
         + 'disagree the section says by how much and that neither is the truth, rather than picking '
         + 'one and drawing it as if there were no second answer.' },
-      { id: 'forecast-point', text: `A forecast is for a point, and the nearest point an archive has `
+      { id: 'forecast-point', label: 'A point, not this address',
+        text: `A forecast is for a point, and the nearest point an archive has `
         + `is not always this address. Where it is far enough to be another place the section says `
         + `how far${(d.far_from_node || []).length ? '' : '; on this node it does not, which means it '
         + 'is near enough'}.` },
@@ -6833,10 +6933,17 @@ function main() {
    * step from 7 to 8 is the step from 11 to 12, and it is a factor of about 2.6 either way but on
    * numbers three orders of magnitude apart. This puts a tick where each one actually falls.
    *
+   * IT RUNS THE WAY THE RAIL RUNS — coarse on the left, fine on the right. The rule was drawn the
+   * other way round, 10 m at the left edge and 100 km at the right, under a rail whose first stop is
+   * 172 km and whose last is 10 m. So every tick sat under the stop at the opposite end of the row:
+   * the mark for the grain you were standing at appeared beside a number three orders of magnitude
+   * from it, and a reader checking one against the other read the rule backwards. A rule under a row
+   * has one job, which is to be the same axis as the row.
+   *
    * Hidden below 860 px, where it would be drawing a distinction finer than the pixels it has. */
   function ruler() {
     const LO = 10, HI = 200000;
-    const at = m => ((Math.log10(Math.max(LO, Math.min(HI, m))) - Math.log10(LO))
+    const at = m => 100 - ((Math.log10(Math.max(LO, Math.min(HI, m))) - Math.log10(LO))
       / (Math.log10(HI) - Math.log10(LO))) * 100;
     const ticks = H.grain_table.map(g =>
       `<i class="${g.res === RES ? 'on' : ''}" style="left:${at(g.edge_m).toFixed(2)}%"></i>`).join('');

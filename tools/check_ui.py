@@ -497,6 +497,23 @@ if _learn.exists():
         errs.append(f"learn.json carries '{_k}' and nothing on the page draws it. Give it to a section "
                     f"(`learn: ['{_k}']`) or to the shell, or take it out of tools/build_learn.py.")
 
+# --- every note names its own subject -----------------------------------------------------------------
+# The notes band prints a term beside each note. It used to print the SECTION's title for every note
+# in the fold, so a fold of five was five rows reading "What the satellite says" beside five
+# paragraphs about five different things — the fold's own heading, said again, five times, telling a
+# reader scanning for one of them nothing. `label` fixed that, and the fallback to the section title
+# is still there for a note that has none, which is exactly how the repeat would come back: silently,
+# one note at a time, with the page rendering perfectly either way. So a note without a label is a
+# lint error rather than something somebody notices at the bottom of a long page.
+# A note is the only shape on this page whose `id` is followed by `text:` — a row carries `left`,
+# `line` and `qty`, never prose — so that pair is what this looks for, and `label:` has to be
+# between them.
+for _m in re.finditer(r"\{\s*id:\s*[`'\"]([A-Za-z0-9_.-]+)[`'\"]\s*,([^{}]{0,80}?)text\s*:", js):
+    if "label:" not in _m.group(2):
+        errs.append(f"the note '{_m.group(1)}' has no `label:`, so the notes band prints its section's "
+                    f"title beside it \u2014 the same words every other note in that fold prints. Give it a "
+                    f"few words naming what THIS note is about.")
+
 # --- SMIL: the one kind of motion this page may not use --------------------------------------------------
 # `@media (prefers-reduced-motion: reduce)` reaches CSS animations and nothing else. An SVG <animate>
 # keeps running when a household has asked the whole machine for stillness, and there is no way to
