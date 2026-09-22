@@ -55,12 +55,15 @@ def load() -> tuple[list[dict], dict]:
 
 
 def find(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
-         wired: bool | None = None) -> list[dict]:
+         wired: bool | None = None, status: str = "") -> list[dict]:
     """Every filter is AND, and an empty one matches everything.
 
     `wired` keeps its name on the wire — nothing that worked yesterday stops working — but reads the
     registry's `adapter`, a string naming the code, rather than the `wired_in_planetai` boolean that
     is deprecated upstream. Same question, asked of something that can be checked.
+
+    `status` is the registry's own word — live, candidate, stale, deprecated, paywalled, planned —
+    and filtering on it is how a reader asks for the half of the list a node could actually call.
 
     `pilot` is the exception worth knowing: an entry relevant to `global` is relevant to every pilot,
     so asking for Bali returns Bali's sources AND the planet-wide ones. A node asking what it could
@@ -73,6 +76,8 @@ def find(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
         if scale and e.get("scale") != scale:
             continue
         if cell and e.get("cell") != cell:
+            continue
+        if status and e.get("status") != status:
             continue
         if wired is not None and bool(e.get("adapter")) is not wired:
             continue
@@ -110,7 +115,7 @@ def cell_counts() -> dict[str, dict[str, int]]:
 
     **What counts at all.** Only two statuses count anywhere. `deprecated`, `stale`, `paywalled` and
     `planned` count nowhere, because a number that includes a source no node can call is the kind of
-    number the Index was criticised for. Thirteen of today's entries are in that group.
+    number the Index was criticised for. Sixteen of today's 225 entries are in that group.
 
         capable    status `live` AND an `adapter` — code here reads it
         reviewed   status `live` AND (an `adapter` OR a review whose verdict is in USABLE).

@@ -43,10 +43,36 @@ It reads the node over HTTP when the node is answering and `data/sources/index.j
 when it is not, and gives the same answer either way. Over HTTP it is `GET /sources`, with the same
 filters as query parameters, plus `GET /sources/<pillar>/<scale>/<slug>` for one entry.
 
-`/cells` rows carry two fields from the same snapshot: `registered`, how many sources are filed for
-that cell, and `adapter`, whether anything reads one. A cell with a registered source and **no**
-adapter has no `/cells` row at all — a node only emits rows it can compute — so that half of the
-question is `planetai sources --cell` and not `/cells`.
+### Three counts, and what counts nowhere
+
+A cell carries three numbers, on every `/cells` row and for every cell at the top of `GET /sources`
+as `counts`:
+
+| | |
+|---|---|
+| `capable` | status `live` **and** an `adapter` — code here reads it |
+| `reviewed` | status `live` **and** an adapter **or** a review whose verdict is `usable` or `usable-with-caveats`. Exactly the registry's own join rule, so the node and the list it carries agree on what backs the word `live` |
+| `candidate` | status `candidate` — verified, and nobody has read it for a real territory |
+
+**They are counted from `feeds_cells`, not from where the entry is filed.** An entry counts against
+the cells a node could fill from it, falling back to its own pillar/scale only when `feeds_cells` is
+absent — so nothing disappears merely because nobody backfilled it. An entry that says
+`feeds_cells: []` counts nowhere, on purpose: the registry uses the empty list to mean *code reads
+this and no Index cell comes out of it*, which is true of a model point sample and of a directory of
+fab labs.
+
+**`deprecated`, `stale`, `paywalled` and `planned` count nowhere at all.** Sixteen of the 225
+vendored entries are in that group, and a number that includes a source no node can call is exactly the
+number the Index was criticised for. `planetai sources --all` names them and says so.
+
+`registered` on a `/cells` row keeps its name and now carries the `reviewed` count. It used to be
+"entries filed under this cell, any status", which made Governance|City read 32 when four of those
+are backed by anything. The old number was not a smaller version of the new one; it was a different
+claim.
+
+A cell with a registered source and **no** adapter still has no `/cells` row at all — a node only
+emits rows it can compute — so that half of the question is `planetai sources --cell` and
+`GET /sources?cell=`, not `/cells`.
 
 `planetai doctor` prints which pin the node carries, and goes amber when it is over 180 days old.
 

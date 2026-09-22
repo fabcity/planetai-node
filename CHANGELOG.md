@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **The cell numbers say what a node could actually use.** A cell now carries three counts —
+  `capable`, `reviewed`, `candidate` — counted from each source's `feeds_cells` rather than from
+  where it happens to be filed, and no `deprecated`, `stale`, `paywalled` or `planned` source counts
+  in any of them. On today's pin that is 12 capable across 225 registered entries, where the old
+  single number read 225. `planetai sources --cell 'Governance|City'` shows 32 filed and 4 backed.
+  The node also now carries the registry's `reviews/` and `cells/` trees when a pin has them.
+
 ## v0.72.1 — 2026-09-23 — three things the page was drawing wrong
 
 *Nothing about what your node measures changed. Three things the page was drawing wrong, all of them

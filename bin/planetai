@@ -1746,11 +1746,11 @@ cmd_cells()   { [[ "${1:-}" == "--json" ]] && { api /cells; echo; return; }; api
 # NODE_CITY that is not one of the registry's pilots leaves the global rows, which is the honest
 # answer: nothing has been filed for that place yet. `--all` for the whole list.
 cmd_sources() {
-  local pillar="" scale="" cell="" pilot="" jsonout=0
+  local pillar="" scale="" cell="" pilot="" jsonout=0 showall=0
   pilot="$(envget NODE_CITY)"
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --all)    pilot="";;
+      --all)    pilot=""; showall=1;;
       --pillar) pillar="${2:-}"; shift;;
       --scale)  scale="${2:-}"; shift;;
       --cell)   cell="${2:-}"; shift;;
@@ -1774,7 +1774,7 @@ cmd_sources() {
   [[ $jsonout -eq 1 ]] || { step "Sources"; echo "  registered in awesome-fabcity-data, read from ${where}:"; }
   # Filtering happens here rather than in the query string so that the file path and the API path
   # format one list one way. The API filters the same way; this is the half that has to work offline.
-  printf '%s' "$raw" | FPILLAR="$pillar" FSCALE="$scale" FCELL="$cell" FPILOT="$pilot" FJSON="$jsonout" python3 -c 'import json, os, sys
+  printf '%s' "$raw" | FPILLAR="$pillar" FSCALE="$scale" FCELL="$cell" FPILOT="$pilot" FJSON="$jsonout" FALL="$showall" python3 -c 'import json, os, sys
 d = json.load(sys.stdin)
 rows = d["sources"] if isinstance(d, dict) else d
 def f(k): return os.environ.get(k, "")
@@ -1793,7 +1793,43 @@ for e in out:
     pil = ",".join(e.get("pilot_relevance") or []) or "-"
     print("  %-44s %-9s %-40s %-20s %s" % (e.get("slug", ""), e.get("status", ""), (e.get("license") or "")[:40], pil[:20], e.get("adapter") or ""))
 print("")
-print("  %d of %d entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet." % (len(out), len(rows)))'
+print("  %d of %d entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet." % (len(out), len(rows)))
+# The three honest counts. Served by the node as "counts" (app/registry.py::cell_counts); recomputed
+# here by the same rule when the answer came from data/sources/index.json with the node down, which
+# is the case this command exists for. Grouped by feeds_cells, falling back to the path-derived cell
+# only when that key is absent, and no deprecated/stale/paywalled/planned entry counts anywhere.
+USABLE = ("usable", "usable-with-caveats")
+counts = d.get("counts") if isinstance(d, dict) else None
+if not counts:
+    counts = {}
+    for e in rows:
+        cs = e["feeds_cells"] if "feeds_cells" in e else [e.get("cell", "")]
+        st = e.get("status"); ad = bool(e.get("adapter"))
+        ok = ad or any(r.get("verdict") in USABLE for r in (e.get("reviews") or []))
+        for c in cs:
+            if not c: continue
+            row = counts.setdefault(c, {"capable": 0, "reviewed": 0, "candidate": 0})
+            if st == "live" and ad: row["capable"] += 1
+            if st == "live" and ok: row["reviewed"] += 1
+            if st == "candidate": row["candidate"] += 1
+sel = f("FCELL")
+if sel:
+    c = counts.get(sel, {"capable": 0, "reviewed": 0, "candidate": 0})
+    print("  %s: capable %d / reviewed %d / candidate %d" % (sel, c["capable"], c["reviewed"], c["candidate"]))
+else:
+    tot = {"capable": 0, "reviewed": 0, "candidate": 0}
+    for c in counts.values():
+        for k in tot: tot[k] += c[k]
+    print("  across %d cells: capable %d / reviewed %d / candidate %d" % (len(counts), tot["capable"], tot["reviewed"], tot["candidate"]))
+print("  capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.")
+if f("FALL") == "1":
+    skipped = {}
+    for e in rows:
+        st = e.get("status", "")
+        if st not in ("live", "candidate"): skipped[st] = skipped.get(st, 0) + 1
+    if skipped:
+        parts = ", ".join("%d %s" % (n, s) for s, n in sorted(skipped.items()))
+        print("  counted nowhere: %s. A node cannot call them, so they are in no cell number." % parts)'
 }
 # One file holding every answer the node gives, so a screen that looks wrong can be looked at somewhere
 # else. It is what a design round renders against (the dashboard reads it back with ?fixture=<name>)
