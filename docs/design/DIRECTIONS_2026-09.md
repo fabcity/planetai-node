@@ -915,3 +915,88 @@ Nothing in Part Two's list is withdrawn. Three things are added:
    already, 3.0 kB a move — and needed by G and H.
 
 Everything else stands: the pick is one of nine, and Phase 2 does not start without it.
+
+---
+
+# Part four · T2 is re-set (22 September 2026)
+
+Tomas's call, taken on the numbers below after prompt 7 measured the built page.
+
+## What T2 said, and why half of it has to go
+
+T2 was two targets under one name:
+
+- **the empty share of the first viewport** — ≤ 30 % at 1440, ≤ 20 % at 390
+- **the height of the whole page** — ≤ 4 viewports at 1440, ≤ 8 at 390
+
+The second is **unreachable, and was unreachable when it was written.** Four viewports at 1440 is
+3,600 px. The built page is 10,205 px, and here is every band in it:
+
+| section | px | share |
+|---|---|---|
+| asks | 1,203 | 11.8 % |
+| day | 1,132 | 11.1 % |
+| sensors | 1,082 | 10.6 % |
+| notes (already a fold) | 1,002 | 9.8 % |
+| matrix | 814 | 8.0 % |
+| figures | 754 | 7.4 % |
+| claims | 734 | 7.2 % |
+| measure | 658 | 6.4 % |
+| grain | 643 | 6.3 % |
+| sources | 430 | 4.2 % |
+| requests | 318 | 3.1 % |
+| forecast | 166 | 1.6 % |
+
+The rail and the lead are the first 1,016 px; the twelve bands are 87.6 % of the rest. Folding every
+foldable section — figures, claims, grain, sources, requests — saves 2,879 px and lands at 7.1
+viewports. Moving those five to another view lands in the same place. **Nothing short of deleting
+two thirds of the bands reaches four, and every one of them draws something this node measured.**
+
+The target was set in the 14 September prompt against a page with **two** card kinds, no matrix, no
+day, no request ledger, no ask ledger and no Figures ledger. It is a measurement of a different page.
+A target that can only be met by not saying what the node knows is measuring the wrong virtue.
+
+## What replaces it
+
+**The length leg is retired.** In its place, the thing it was actually worried about — that a reader
+has to hunt for the part they came for:
+
+> **T2a · the answer is on the first screen.** The sentence, the numeral, the state, the ask and the
+> as-of, in the first viewport. *This is T1 and it already passes at both widths.*
+>
+> **T2b · every stage is reachable in its own order, and the page says where.** The lead names the
+> open asks and links to the stage that holds them. A reader never scrolls to find out *whether*
+> there is something to do — only to read the detail.
+>
+> **T2c · the empty share of the first viewport.** ≤ 30 % at 1440 and ≤ 20 % at 390, unchanged. This
+> is the half of T2 that was always about the drawing rather than the content, and it is **still
+> missed**: 57.3 / 59.6 % at 1440 and 42.5 / 45.3 % at 390.
+
+## Where the built page stands against that
+
+| | 1440 | 390 |
+|---|---|---|
+| **T2a** first screen carries the answer | ✓ | ✓ (✗ on the sparser fixture: the ask falls below) |
+| **T2b** the lead names the open asks and links to Act | ✓ | ✓ |
+| page height, recorded and no longer a pass or a fail | 11.3 viewports | 18.4 |
+| observe · decide · act · measure begin at | 1.0 · 5.5 · 7.1 · 8.6 | 1.7 · 9.1 · 11.9 · 14.0 |
+| **T2c** empty share, lit / read | **57.3 / 59.6 %** ✗ | **42.5 / 45.3 %** ✗ |
+
+**T2c is the open miss and it is a real one.** Nearly six tenths of the first screen at a desk is
+air. That is a fact about the lead's layout and not about how many sections follow it, which is why
+it survives the re-set: no amount of folding or moving changes it.
+
+It is also **not yet decomposed.** A quick attempt at working out *where* that air is, by unioning
+element boxes over a grid, answered 20–40 % — it over-counts, because a section's own container box
+marks everything inside it as used. The rig's `lit`/`read` figure is the authority and the breakdown
+it would take to say which part of the lead is the problem has not been built. That is the next
+thing anybody looking at T2c should build, before anything is moved.
+
+## What this does not change
+
+T1, T1b, T3, T4, T5, T6, T7 and T9 stand as written. The horizontal-overflow gate stands at zero.
+T8 was defined in `PROMPT_dashboard_redesign_2026-09-14.md` and nowhere else, and that file is on no
+machine, in no repository history, in none of this project's forty-five session transcripts and in no
+artifact — prompt 0 was already citing a file it could not read, which is why the baseline table in
+`PICK_2026-09-20.md` runs T7 then T9. What prompt 7 built in its place is
+`node tests/visual/measure.mjs extend`, under its own name.

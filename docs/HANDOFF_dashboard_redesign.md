@@ -4,7 +4,9 @@ Branch `dashboard-redesign-2026-09`, 35 commits from `f01b3e0` to `39dab39`, on 
 Prompts 1–6 of `docs/design/PROMPTS_dashboard_build_2026-09-20.md` are in. Prompt 7 is this file,
 the plates, the changelog and `docs/GUI.md`. **Nothing is tagged and no pull request is open.**
 
-Read §2 first. It is the one thing in here that argues against shipping as it stands.
+Read §2 first. **T2 was re-set on 22 September** — Tomas's call, on the numbers in §2 — and the
+argument is recorded as Part four of `docs/design/DIRECTIONS_2026-09.md`. The branch is ready for a
+tag; one target is still missed and §2 says which.
 
 ## 1 · What shipped
 
@@ -48,16 +50,25 @@ what it is compared to, and nothing is drawn without a link in or out. T6 improv
 The 85 px of horizontal scroll a phone had is gone, and a gate now holds it at zero across 108
 combinations of view, width, mode and register.
 
-**What was lost, and it is the headline.** **The page is 1.8× longer than the one it replaces, at both
-widths, and the empty share is no better at 1440 and ten points worse at 390.** T2 was one of the two
-misses the sketch existed to fix. It is now the redesign's own worst number.
+**What was lost.** **The page is 1.8× longer than the one it replaces, at both widths, and the empty
+share is no better at 1440 and ten points worse at 390.** The cause is not a bug: prompts 3, 4 and 5
+added eight sections and none took any away.
 
-The cause is not a bug. Prompts 3, 4 and 5 added eight sections — the matrix, the day, the sources, the
-request ledger, the reach rows, the registry, the Figures ledger, the learn bar — and each is
-defensible where it stands. The sum is a page that asks for nine screens of scrolling at a desk and
-fourteen on a phone. **This is a decision for Tomas and not a fix for a session:** the sections are
-honest, so the answer is which of them belong on Now at all, which fold, and which move to Historical
-or Network. Nothing in the prompt pack chose; every prompt added.
+**T2 was re-set rather than met.** Four viewports at 1440 is 3,600 px against a 10,205 px page, and
+folding or moving every foldable section reaches 7.1 — nothing short of deleting two thirds of the
+bands gets to four, and each of them draws something the node measured. The target was written
+against a page with two card kinds and none of those ledgers. Part four of
+`docs/design/DIRECTIONS_2026-09.md` carries the arithmetic, the per-section table, and what replaces
+it: T2a, the answer is on the first screen (this is T1, and it passes); T2b, the lead names the open
+asks and links to the stage that holds them (it does); and T2c, the empty share, unchanged.
+
+**T2c is the open miss and it is real.** 57.3 / 59.6 % of the first screen at 1440 is air, and 42.5 /
+45.3 % at 390. That is the lead's layout, not the number of sections after it, which is why no amount
+of folding would have touched it. It is **not yet decomposed** — the rig's `lit`/`read` figure is the
+authority and nothing yet says *which* part of the lead the air is in. A quick attempt of my own
+answered 20–40 % by unioning element boxes, which over-counts, because a section's container marks
+everything inside it as used. Building that breakdown is the next thing anybody working on T2c should
+do, before anything is moved.
 
 ## 3 · The contract, as it now stands
 
@@ -272,12 +283,13 @@ to somebody without changing their own page.
 
 - ✅ **done** — prompts 1–6; 58 plates; the T1–T9 table on a matched fixture; the stranger's-pack
   check; `make docs && make lint && make test` and the visual gate all green.
-- ⚠ **open** — T2: the page is 1.8× longer than the one it replaces and no emptier. Four sections'
-  worth of scrolling needs a decision, not a patch. T1b's index rows are still absent at 1440. The
-  wall carries two components with no link in or out.
-- ⛔ **needs Tomas** — whether to ship the page as it stands or cut §2's length first; the tag, which
-  no session takes; a `docs/site/design.md` pass in his own voice; and the two sentences above,
-  which are drafts of his words and not his words.
+- ⚠ **open** — **T2c**: 57.3 / 59.6 % of the first screen at 1440 is air, and nobody yet knows which
+  part of the lead it is in. That breakdown is the next piece of work. T1b's index rows are still
+  absent at 1440, and at 390 T1's ask leg falls below the fold on a sparse node. The wall carries two
+  components with no link in or out.
+- ⛔ **needs Tomas** — the tag, which no session takes; a `docs/site/design.md` pass in his own
+  voice; the two sentences above, which are drafts of his words and not his words; and whether node
+  #2 gets the page, which is Lucas's machine.
 
 ---
 
