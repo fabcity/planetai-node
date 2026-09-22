@@ -53,6 +53,10 @@ FROM_SNAPSHOT = {
     "/forecast": "forecast", "/stats": "stats", "/rho": "rho", "/reach": "reach",
     "/alerts": "alerts", "/observations": "observations",
     "/nearby": "nearby", "/report/latest": "report_latest", "/earth": "earth",
+    # Captures taken before `planetai snapshot` learned to fetch it carry no `shape`, and the 404
+    # below is then the right answer: the section's own absent line is one of its two real states,
+    # and inventing a shape here would be the preview describing a pattern no node has seen.
+    "/shape": "shape",
 }
 
 

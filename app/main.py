@@ -688,7 +688,7 @@ _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presen
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
-    "/report/latest", "/readings", "/reach",
+    "/report/latest", "/readings", "/reach", "/shape",
     "/history", "/exports", "/sources",
 }), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
@@ -1139,6 +1139,45 @@ def series(metric: str = "pm25", hours: int = Query(24, ge=1, le=168)):
         hours, metric, hours, metric, hours)
     return {"metric": metric, "hours": hours, "buckets": [x["bucket"] for x in rows],
             "indoor": [x["indoor"] for x in rows], "outdoor": [x["outdoor"] for x in rows], "model": [x["model"] for x in rows]}
+
+
+@app.get("/shape")
+def shape(metric: str = "pm25"):
+    """The day this place usually has: one hour-of-day mean per hour, over the whole record, indoor against outdoor.
+
+    THE HOURS ARE LOCAL, and that is not incidental. `extract(hour FROM bucket)` answers in the session timezone, and
+    db() sets it from NODE_TZ on every connection for exactly this reason -- the comment there records the day
+    boundaries and "evening" landing eight hours out in Bali once already. Read the same query in a psql session,
+    which does not go through db(), and node #1's shape moves by eight hours and says the opposite thing: a midday
+    cooking peak reads as a 4 a.m. one. Anything computing an hour-of-day here must go through db().
+
+    INDOOR AND OUTDOOR ARE SEPARATE because on node #1 they are ANTI-PHASED -- inside peaks at meal times, outside
+    peaks in the evening -- and one average over both is a number that describes neither and hides the only thing a
+    household could act on.
+
+    `days` is how many distinct local days this node's OWN stations have for this metric, and `windows` is what that
+    record can honestly support. A node installed this morning has a day and says so; it does not draw a year from
+    it. That refusal is the point: this is the one place a page is most tempted to describe a pattern it has not
+    seen."""
+    rows = q("""SELECT extract(hour FROM h.bucket)::int AS hour,
+                       avg(h.mean) FILTER (WHERE s.indoor)     AS indoor,
+                       avg(h.mean) FILTER (WHERE NOT s.indoor) AS outdoor,
+                       count(*) AS n
+                FROM readings_1h h JOIN sensors s USING (sensor_id)
+                WHERE h.metric = %s AND s.local
+                GROUP BY 1 ORDER BY 1""", metric)
+    span = q("""SELECT count(DISTINCT date_trunc('day', h.bucket)) AS days,
+                       min(h.bucket) AS first, max(h.bucket) AS last
+                FROM readings_1h h JOIN sensors s USING (sensor_id)
+                WHERE h.metric = %s AND s.local""", metric)
+    d = (span[0] if span else {}) or {}
+    days = int(d.get("days") or 0)
+    # What the record supports, decided here and not on the page: the page draws what the node says it may.
+    # A day's shape wants a week behind it before an hourly mean means anything; a week-on-week comparison wants two;
+    # a month wants two months to compare; a year wants a year. Nothing here is a forecast and nothing extrapolates.
+    return {"metric": metric, "days": days, "first": d.get("first"), "last": d.get("last"),
+            "hours": [{"hour": r["hour"], "indoor": r["indoor"], "outdoor": r["outdoor"], "n": r["n"]} for r in rows],
+            "windows": {"day": days >= 7, "week": days >= 14, "month": days >= 60, "year": days >= 365}}
 
 
 @app.get("/export")

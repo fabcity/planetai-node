@@ -1833,7 +1833,7 @@ from datetime import datetime
 # shell string and one apostrophe ends it, taking the whole snapshot command with it.
 PATHS = ["/health", "/issues", "/stats", "/alerts?limit=200", "/rho", "/cells", "/observations",
          "/sensors", "/trust", "/report/latest", "/nearby", "/forecast",
-         "/actions?limit=2000", "/aggregates?hours=24", "/reach", "/earth"]
+         "/actions?limit=2000", "/aggregates?hours=24", "/reach", "/earth", "/shape"]
 base = "http://localhost:" + os.environ["SNAP_PORT"]
 tok = os.environ["SNAP_TOKEN"]
 

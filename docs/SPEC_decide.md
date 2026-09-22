@@ -361,6 +361,51 @@ The honest sequence is: the decisions and their effects first, then the patterns
 that knows what was decided and whether it worked has something to learn *from*, and one that only
 knows its readings can only ever learn what the weather did.
 
+### What a node actually has, measured
+
+Node #1 on 23 September 2026, from `/reach`, and the split is the whole design:
+
+| kind | oldest | days |
+|---|---|---|
+| **its own sensors** | 2 Sep 2026 | **21** |
+| model | Jul 2025 | 449 |
+| map (AlphaEarth) | Jul 2016 | 3,720 |
+
+A weekly pattern is available now; a monthly one in about two months; a yearly one from this house's
+own measurements in about eleven. The model and the map reach back years — but **a yearly claim drawn
+from a model is a claim about a model**, and saying otherwise would be the largest provenance
+failure this page could make.
+
+**Nothing prunes.** There is no retention policy anywhere in the node, so the record only grows:
+293,371 readings and 64 MB for 21 days is about 1.1 GB and ~5M rows a year, on an SD card in a Pi.
+That is the right default — a node that forgets cannot learn — and it has a consequence.
+
+**`readings_1h` is a plain `VIEW`** that re-aggregates the whole `readings` table on every touch.
+Its own comment in `init.sql` already says *"A plain view is fine until this node holds millions of
+rows; then materialize it."* Counting its buckets on node #1 takes 63 ms today over 44,738 of them.
+**It stops being fine at roughly the moment the yearly patterns it exists for become possible**, so
+materialising it is not an optimisation to do later — it is the prerequisite for the last window.
+
+### The first window, built
+
+`GET /shape` and the section on Historical: the day this place usually has, one hour-of-day mean per
+hour over the whole record, **indoor drawn apart from outdoor**. Two things settled by building it:
+
+- **The hours are local, and that is load-bearing.** `extract(hour FROM bucket)` answers in the
+  session timezone; Postgres defaults to UTC and `db()` sets it from `NODE_TZ` on every connection,
+  with a comment recording that day boundaries and "evening" landed eight hours out in Bali once
+  already. Read outside that connection, node #1's midday cooking peak reads as a four-in-the-morning
+  one — which is exactly the mistake this document's author made before checking.
+- **Inside and outside are anti-phased on node #1**, and one average over both would have hidden it:
+  inside peaks at 12:00 (16.1 µg/m³ against 7.7 outside), outside peaks at 18:00 (14.3 against 9.4
+  inside). Cooking, then the evening. That difference is the only thing in the drawing a household
+  can act on, and it is the shape of every later window too: **a pattern is worth drawing when it
+  separates two things that were being averaged together.**
+
+`windows` on that route — which of day, week, month, year the record supports — is decided by the
+node and obeyed by the page. A page that worked it out for itself would be the one place tempted to
+round up.
+
 ## 12 · Options of actions
 
 The agent has the readings, the alerts, the issues and a model, and could offer two or three things a

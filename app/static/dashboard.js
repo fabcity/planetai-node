@@ -4315,6 +4315,127 @@ window.PAI.register({
   },
 });
 
+/* ================================================================= h/mods/shape.js ==== */
+/* shape · core · historical
+ *
+ * THE DAY THIS PLACE USUALLY HAS — the first thing this node learns rather than reads.
+ *
+ * Every other section on this page says what is true now, or what was true at some moment. This one
+ * says what is USUALLY true, which a node can only say once it has watched for a while, and which
+ * gets better the longer it runs. It is the smallest honest piece of docs/SPEC_decide.md §11.
+ *
+ * WHAT MAKES IT HONEST IS THE REFUSAL, not the drawing. `GET /shape` returns `days` — how many
+ * distinct local days this node's OWN stations have for this metric — and `windows`, which is what
+ * that record can support. A node installed this morning gets one day and is told so; it is not
+ * shown a week it has not seen. The temptation this section exists to resist is describing a pattern
+ * from three points, and the node decides that question, not this page.
+ *
+ * INDOOR AND OUTDOOR ARE DRAWN APART because on node #1 they are anti-phased — inside peaks at meal
+ * times, outside peaks in the evening — and at midday inside is twice outside while at six in the
+ * evening it is the reverse. One line averaging both would describe neither and would hide the only
+ * thing in here a household can act on.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const { esc, fmt } = window.K;
+
+const W = 640, HT = 150, PAD = { l: 34, r: 8, t: 10, b: 20 };
+
+function plot(hours) {
+  const vals = hours.flatMap(h => [h.indoor, h.outdoor]).filter(v => v != null);
+  if (!vals.length) return '';
+  const top = Math.max(...vals) * 1.15;
+  const x = h => PAD.l + (h / 23) * (W - PAD.l - PAD.r);
+  const y = v => HT - PAD.b - (v / top) * (HT - PAD.t - PAD.b);
+  const path = key => hours.filter(h => h[key] != null)
+    .map((h, i) => `${i ? 'L' : 'M'}${x(h.hour).toFixed(1)},${y(h[key]).toFixed(1)}`).join('');
+  /* Two lines, told apart by dash and weight and not by hue — the page's rule everywhere else. */
+  const ticks = [0, 6, 12, 18, 23].map(h =>
+    `<text x="${x(h).toFixed(1)}" y="${HT - 6}" text-anchor="middle">${h}</text>`).join('');
+  const grid = [0, top / 2, top].map(v =>
+    `<line x1="${PAD.l}" y1="${y(v).toFixed(1)}" x2="${W - PAD.r}" y2="${y(v).toFixed(1)}"/>`
+    + `<text x="${PAD.l - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, 0)}</text>`)
+    .join('');
+  return `<svg class="shapeplot" viewBox="0 0 ${W} ${HT}" role="img" preserveAspectRatio="none"`
+    + ` aria-label="the usual day, hour by hour, inside against outside">`
+    + `<g class="grid">${grid}</g><g class="hrs">${ticks}</g>`
+    + `<path class="out" d="${path('outdoor')}"/><path class="in" d="${path('indoor')}"/></svg>`;
+}
+
+/* The two hours worth naming: where each line is highest. A shape nobody reads off the drawing is a
+   drawing; the sentence is the finding. */
+function peak(hours, key) {
+  const got = hours.filter(h => h[key] != null);
+  if (!got.length) return null;
+  return got.reduce((a, b) => (b[key] > a[key] ? b : a));
+}
+const hh = h => `${String(h).padStart(2, '0')}:00`;
+
+window.PAI.register({
+  id: 'shape', pack: 'core', stage: 'observe', order: 15,
+  title: 'The day this place usually has',
+  needs: ['SHAPE.hours'],
+  anchor: 'shape',
+  render(ctx) {
+    const S = window.SHAPE, hours = S.hours || [];
+    /* Not an error and not a blank: a node that has just been switched on has nothing to average and
+       the honest sentence says when it will. */
+    if (!S.windows || !S.windows.day) {
+      return `<p class="note" id="shape-young" data-component="absent" data-ref="reach">`
+        + `This node has ${S.days === 1 ? 'one day' : `${S.days} days`} of its own readings. `
+        + `A usual day is an average over the days it has seen, so this waits for seven \u2014 `
+        + `about ${Math.max(1, 7 - (S.days || 0))} more. Nothing is missing; it has not watched `
+        + `long enough yet.</p>`;
+    }
+    const pin = peak(hours, 'indoor'), pout = peak(hours, 'outdoor');
+    const both = pin && pout;
+    /* The finding, printed above the drawing, as everywhere else on this page: the sentence is what
+       a household acts on and the drawing is the evidence for it. */
+    const finding = both
+      ? `<p class="honest" id="shape-finding" data-component="finding" data-ref="shape">`
+        + `Over ${S.days} days, the air in this house is worst around `
+        + `<span data-num="shape.indoor.peak" data-cmp="against ${esc(fmt(pout.indoor, 1))} outside `
+        + `at the same hour">${esc(hh(pin.hour))}</span> and the air outside is worst around `
+        + `<span data-num="shape.outdoor.peak" data-cmp="against ${esc(fmt(pin.outdoor, 1))} inside `
+        + `at the same hour">${esc(hh(pout.hour))}</span>`
+        + `${pin.hour !== pout.hour ? ' \u2014 they do not peak together, so there are hours when '
+          + 'opening a window helps and hours when it does not' : ''}.</p>`
+      : '';
+    return finding + plot(hours)
+      + `<p class="cap" id="shape-key" data-component="shapeKey" data-ref="shape">`
+      + `<b>\u2014\u2014</b> inside \u00b7 <b>- -</b> outside \u00b7 hour of the day, in this `
+      + `node\u2019s own time \u00b7 ${esc(S.metric)} \u00b7 averaged over ${S.days} days</p>`
+      + `<p class="cap">${Object.entries(S.windows).filter(([, v]) => !v).length
+        ? `Not yet: ${Object.entries(S.windows).filter(([, v]) => !v).map(([k]) => k).join(', ')}. `
+          + `This node decides that from the length of its own record, not from this page.`
+        : `This record supports every window this node knows how to draw.`}</p>`;
+  },
+  notes() {
+    const S = window.SHAPE || {};
+    return [
+      { id: 'shape-local-hours', text: 'The hours are this node\u2019s own, not UTC. Postgres answers '
+        + '`extract(hour FROM ...)` in the session timezone and defaults to UTC, so the same query '
+        + 'run outside the node\u2019s own connection moves this whole drawing by eight hours on a node '
+        + 'in Bali and reports a midday cooking peak as a four-in-the-morning one. db() sets the '
+        + 'timezone from NODE_TZ on every connection, and its comment records that this was found '
+        + 'once before, in the day boundaries.' },
+      { id: 'shape-two-lines', text: 'Inside and outside are drawn apart because they are not the '
+        + 'same day. On the node this was built against they are anti-phased: inside peaks when '
+        + 'somebody is cooking and outside peaks in the evening, so at midday inside is about twice '
+        + 'outside and at six in the evening it is the other way round. A single average over both '
+        + 'would describe neither, and the difference is the only thing here anybody can act on.' },
+      { id: 'shape-windows', text: `This is the day\u2019s shape, which needs a week behind it. The `
+        + `week\u2019s, the month\u2019s and the year\u2019s need two weeks, two months and a year, and this `
+        + `node has ${S.days == null ? 'no' : S.days} day${S.days === 1 ? '' : 's'} of its own `
+        + 'readings. The node decides what its record supports and the page draws what it is told; '
+        + 'a page that worked that out for itself would be the one place tempted to round up.' },
+    ];
+  },
+});
+
+});
+
 /* ================================================================= h/mods/decide.js ==== */
 /* decide · core · decide
  *
@@ -5511,7 +5632,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells, reach, notes] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach, notes, dayshape] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -5532,6 +5653,7 @@ async function boot() {
        and asks this route only for the sentences, which arrive for a reader holding a token and do
        not for anyone else. A 403 here is the node working. */
     api('/actions').catch(() => null),
+    api('/shape').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -5550,6 +5672,7 @@ async function boot() {
   /* A map from alert id to the sentence somebody left, or null where the node would not say. The
      ledger section reads it opportunistically and is not in its `needs`: the rows exist for every
      reader and it is the words that are gated. */
+  window.SHAPE = dayshape;
   window.ACT_NOTES = Array.isArray(notes)
     ? notes.reduce((m, x) => { if (x && x.alert_id != null && String(x.note || '').trim()) {
       m[`${x.alert_id}:${x.stage}`] = x.note; } return m; }, {})
@@ -6688,7 +6811,7 @@ function main() {
      Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
      it last spoke are a history of that sensor, not a fact about now. */
   const NETWORK = ['netmap', 'registry', 'reticulum', 'meshtastic', 'hardware'];
-  const HISTORICAL = ['satellite', 'reach', 'trust'];
+  const HISTORICAL = ['shape', 'satellite', 'reach', 'trust'];
   /* NOW IS THE DEFAULT HOME, AND WITHOUT THIS LINE THE CONTRACT IS A LIE.
    *
    * The three lists above are how one registry serves three views, and they are lists of ids this

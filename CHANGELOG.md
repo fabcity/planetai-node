@@ -12,6 +12,22 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **Your node has started to learn the shape of your days.** Under Historical, a new section draws the
+  day this place *usually* has: one line for inside, one for outside, hour by hour, averaged over
+  every day your node has recorded. It is the first thing on this page that gets better the longer
+  your node runs.
+
+  On node #1, over 22 days, it found something worth knowing: **inside is worst around midday
+  (16.1 µg/m³ against 7.7 outside) and outside is worst around six in the evening (14.3 against 9.4
+  inside).** They do not peak together — so there are hours when opening a window helps and hours
+  when it does the opposite. A single line averaging inside and outside would have hidden that
+  completely.
+
+  It refuses what it has not seen. A usual day needs a week behind it, so a node switched on
+  yesterday is told how many more days it needs rather than shown an average of two. The week, the
+  month and the year need two weeks, two months and a year, and your node decides which of those its
+  own record supports. Asked for by Tomas.
+
 - **Your node now says how often a decision came first, and can insist on one.** Every act in the
   ledger that had a decision recorded against the same ask beforehand says *decided first*, and the
   ledger's own line counts them: *"0 of 31 had a decision recorded first"* on node #1, which is true
