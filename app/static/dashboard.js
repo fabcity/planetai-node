@@ -586,11 +586,26 @@ function ask(key, d, ref) {
         : ', and no reading here has asked for anything.')
       + `</small></div></div>`;
   }
+  /* THE BUTTON DOES SOMETHING NOW. It was drawn on every open ask on every node from the day this
+     page shipped and nothing listened for it — a promise the page made and did not keep, while the
+     funnel beside it counted acts nobody could make from here. POST /actions has taken a stage, an
+     actor and a 500-character note since v0.21; every act on node #1 was made over Telegram, MCP or
+     curl because this was the only surface that could not.
+
+     The form is in the markup and hidden rather than built on the press: a hidden child costs no
+     height, and T1 reads this strip's own box. */
   return `<div class="ask" data-component="askStrip" data-role="ask" id="${esc(id)}"`
     + ` data-ref="${esc(ref || `sentence-${key}`)}">`
     + `<div class="what">${esc(a.text ? String(a.text).split('\n')[0] : a.says[LOC])}`
     + `<small>${esc(a.how[LOC])}</small></div>`
-    + `<button type="button" class="go">I did this</button></div>`;
+    + `<button type="button" class="go" data-did="${esc(String(a.id))}">I did this</button>`
+    + `<form class="did" hidden data-alert="${esc(String(a.id))}">`
+    + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
+    + ` placeholder="your name"></label>`
+    + `<label><span>What you did</span><input name="note" maxlength="500"`
+    + ` placeholder="closed the windows on the north side"></label>`
+    + `<div class="btns"><button type="submit" class="pri">Record it</button>`
+    + `<button type="button" class="cancel">Cancel</button></div></form></div>`;
 }
 
 /* PORTED: `plan` is not an id on this page; the figure the caption belongs to is the ground map.
@@ -6593,9 +6608,79 @@ async function layoutSave(reset) {
   route();
 }
 
+/* CLOSING A LOOP FROM THE PAGE. The ledger has taken this since v0.21 and the page could not write
+   it: `POST /actions` with a stage, an actor and a note, guarded by ACT_TOKEN — deliberately weaker
+   than the admin token, so somebody in the house can close a loop without holding the key to
+   /settings/raw. `auth_()` already sends whichever of the two Set up has stored.
+
+   A capture is refused rather than posted. `open_asks` carries the alert ids of the node the
+   capture came FROM, so a press while reading one would close somebody else's loop with this
+   reader's name on it. `refresh()` guards itself the same way and for the same reason. */
+async function didThis(form) {
+  const btn = form.querySelector('button[type="submit"]');
+  const alert_id = Number(form.getAttribute('data-alert'));
+  const val = n => String((form.elements[n] || {}).value || '').trim();
+  if (!val('note')) { say('Say what you did — that sentence is the whole of the record.', true); return; }
+  btn.disabled = true;
+  try {
+    const r = await fetch('/actions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...auth_() },
+      body: JSON.stringify({ alert_id, stage: 'acted', actor: val('actor'), note: val('note') }),
+    });
+    /* THE NODE'S OWN SENTENCE FIRST. Proved on pai-clean: a browser is never `_is_local` — it
+       arrives as the bridge gateway, deliberately, so trusting it would trust the whole WiFi — and
+       a node at SHARE_LEVEL=off answers 403 with a better sentence than any this page could
+       compose, naming the setting and where to change it. So the page adds only what the node
+       cannot know: where the token comes from. */
+    if (r.status === 401 || r.status === 403) {
+      const said = await r.json().then(b => b && b.error).catch(() => '');
+      say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
+        + `act token; Set up \u2192 unlock holds it.`, true);
+    } else if (r.status === 404) {
+      say('This node has no such ask any more. Reload and look again.', true);
+    } else if (!r.ok) {
+      say(`The node refused it (${r.status}).`, true);
+    } else {
+      say('Recorded. The node watches what happens next.');
+      form.hidden = true;
+      await refresh();
+    }
+  } catch (e) {
+    say(`The node did not answer: ${String((e && e.message) || e)}`, true);
+  } finally { btn.disabled = false; }
+}
+
+document.addEventListener('submit', ev => {
+  const form = ev.target.closest && ev.target.closest('form.did');
+  if (!form) return;
+  ev.preventDefault();
+  if (FIXTURE || STATE !== 'populated') {
+    say('This is a capture, not a live node — its asks belong to the node it came from.', true);
+    return;
+  }
+  didThis(form);
+});
+
 document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
   if (ev.target.id === 'btn-arr-done') return layoutSave(false);
+  const go = ev.target.closest && ev.target.closest('.ask .go');
+  if (go) {
+    const form = go.parentElement.querySelector('form.did');
+    form.hidden = !form.hidden;
+    go.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.elements.note.focus();
+    return;
+  }
+  const cancel = ev.target.closest && ev.target.closest('.ask form.did .cancel');
+  if (cancel) {
+    const form = cancel.closest('form.did');
+    form.hidden = true;
+    const b = form.parentElement.querySelector('.go');
+    if (b) { b.setAttribute('aria-expanded', 'false'); b.focus(); }
+    return;
+  }
 });
 document.addEventListener('change', ev => {
   if (ev.target.id !== 'arr-restore' || !ev.target.value) return;

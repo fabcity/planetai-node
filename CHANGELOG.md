@@ -12,6 +12,18 @@
   the page scrolls there without redrawing anything — so you keep your place, your open folds and
   whatever you were reading. Reported by Tomas on node #1 within the hour of v0.71.
 
+- **"I did this" does something now.** Every open ask has carried that button since this page
+  shipped, and nothing was listening for it. The node has taken a closed loop since v0.21 — who
+  acted, and a sentence in their own words — so every act on node #1 was recorded over Telegram, a
+  terminal or curl, because the page you actually look at was the one surface that could not write
+  one. Press it and it opens: your name, what you did, and Record it. The node takes it from there —
+  it watches whether the rule goes quiet, and that is what the funnel's *measured* has always meant.
+
+  It needs an act token, which is not a new rule: a browser is never treated as local, deliberately,
+  because on a node whose Docker forwards through a VM the whole WiFi would arrive looking local.
+  `planetai ui` prints the token and Set up holds it. Where the node refuses, the page now says the
+  node's own reason rather than a guess.
+
 - **The rail says what a grain is worth now, and the Decide cards stopped drawing something else.**
   The rail across the top is eleven stops and an edge length: it said which grain you were standing
   on and never what choosing it costs. Press *one cell here* in the key under it and it opens: three

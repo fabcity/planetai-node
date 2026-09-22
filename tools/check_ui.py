@@ -403,6 +403,10 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    ".stations .more a",          # "show all" and "show N" — the page's own two words
                    # Added 18 September 2026 with the year player.
                    ".satplay .satctl button",    # "Play", "Pause", "Motion off", "one year"
+                   # Added 22 September 2026 with the act form. Two field labels the PAGE writes,
+                   # "Who" and "What you did". The keeper's own sentence goes in the input, which is
+                   # not shouted and never could be.
+                   ".ask form.did label span",
                    # Added 22 September 2026 with the rail's fold. Both carry the PAGE's own
                    # words and nothing else: a heading the page composes around a resolution number,
                    # which uppercasing cannot change, and the literal word "Close".
