@@ -488,12 +488,16 @@ const tagged = j => ({ ...j,
     + (process.env.PAI_TAG ? '_' + process.env.PAI_TAG : '') });
 
 /* ------------------------------------------------------------------ the browser */
-async function open(job) {
+async function open(job, opts = {}) {
   const base = job.state === 'empty' ? EMPTY : POP;
   const browser = await chromium.launch();
+  /* `reducedMotion: 'reduce'` is the default here and has been since this file was written: a
+     screenshot of a page mid-animation is a different picture every run, so every measurement in
+     this file is of the page with motion off. `opts` is for the one check that is ABOUT motion —
+     the loading state — which has to see both settings to say anything. */
   const ctx = await browser.newContext({
     viewport: { width: job.w, height: job.w >= 1920 ? 1080 : 900 },
-    deviceScaleFactor: 1, colorScheme: 'light', reducedMotion: 'reduce',
+    deviceScaleFactor: 1, colorScheme: 'light', reducedMotion: 'reduce', ...opts,
   });
 
   /* A drawing that happens to be HTML: one file, no fetch, no views to switch between. Measured by
@@ -1893,6 +1897,65 @@ async function press() {
   process.exit(fails.length ? 1 : 0);
 }
 
+/* ------------------------------------------------------------------ the loading state
+ *
+ * Three claims about `asking` that nothing else can check, because all three are about the DOM at a
+ * moment rather than about a drawing:
+ *
+ *   · it stops when the data is in. A loading state that keeps a rAF loop alive behind the page it
+ *     was covering is a page that never goes idle, on a wall screen, for weeks.
+ *   · the canvas LEAVES the tree. At 1440x900 and DPR 2 it is a 1670x1076 backing store, and it is
+ *     also a surface something could draw on again by accident. display:none keeps both.
+ *   · under reduced motion it draws ONE frame. Not zero — a reader who has asked for stillness is
+ *     still owed the picture — and not a loop.
+ *
+ * Driven through PAI_ASKING, which exists for this: a surface that only appears while a fetch is in
+ * flight cannot be caught by a screenshot, and one that only animates when the browser says the tab
+ * is visible cannot be timed from a headless run at all.
+ */
+async function asking() {
+  const fails = [];
+  const said = [];
+  for (const reduce of [false, true]) {
+    const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+    const h = await open(job, { reducedMotion: reduce ? 'reduce' : 'no-preference' });
+    const r = await h.page.evaluate(async () => {
+      const A = window.PAI_ASKING;
+      if (!A) return { missing: true };
+      A.open('probe');
+      const had = !!document.getElementById('askcv');
+      /* What the SCHEDULER drew, read before the probe resets the counter. Under reduced motion
+         PAI_RAF calls the tick once and never subscribes, so this is exactly 1 and the subscription
+         count is 0; with motion on nothing is drawn yet and the subscription is the claim. */
+      const atOpen = A.cost().frames;
+      const subscribed = window.PAI_RAF.size;
+      const cost = A.probe(30);
+      A.close();
+      return { had, atOpen, subscribed, up: A.up(),
+        canvas: !!document.getElementById('askcv'), subs: window.PAI_RAF.size, cost };
+    });
+    const tag = reduce ? 'reduced motion' : 'motion on';
+    if (r.missing) { fails.push(`${tag}: PAI_ASKING is not on the page`); await h.browser.close(); continue; }
+    if (!r.had) fails.push(`${tag}: open() did not put a canvas in the frame`);
+    if (r.up) fails.push(`${tag}: it is still up after close()`);
+    if (r.canvas) fails.push(`${tag}: the canvas is still in the DOM once the data is in`);
+    if (r.subs !== 0) fails.push(`${tag}: ${r.subs} surface(s) still asking PAI_RAF for frames`);
+    if (reduce) {
+      if (r.atOpen !== 1) fails.push(`${tag}: the scheduler drew ${r.atOpen} frame(s), not one still`);
+      if (r.subscribed !== 0) fails.push(`${tag}: it subscribed to the loop instead of drawing one still`);
+    } else if (r.subscribed !== 1) {
+      fails.push(`${tag}: it did not subscribe to the loop (PAI_RAF.size ${r.subscribed})`);
+    }
+    said.push(`${tag}: ${reduce ? 'one still frame, no subscription' : 'subscribed to the one loop'}`
+      + ` · ${r.cost.frames} probe frames, mean ${r.cost.mean.toFixed(2)} ms, `
+      + `worst ${r.cost.worst.toFixed(2)} ms`);
+    await h.browser.close();
+  }
+  for (const f of fails) console.log('FAIL asking:', f);
+  if (!fails.length) said.forEach(s => console.log('  asking ·', s));
+  process.exit(fails.length ? 1 : 0);
+}
+
 /* ------------------------------------------------------------------ T-overflow
  *
  * A page that scrolls sideways on a phone is the defect a household reports as "it is broken", and
@@ -1957,6 +2020,7 @@ if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
 else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
 else if (cmd === 'press') await press();
+else if (cmd === 'asking') await asking();
 else if (cmd === 'sheets') await sheets();
 else if (cmd === 'header') await header();
 else if (cmd === 'targets') aTargets();
@@ -1965,5 +2029,5 @@ else if (cmd === 'shots') await shots(rest.length ? rest : ['all']);
 else if (cmd === 'analyse') { const f = A[rest[0]]; if (!f) { console.error('analyse: ' + Object.keys(A).join(' ')); process.exit(2); } f(); }
 else if (cmd === 'overflow') await overflow(rest);
 else if (cmd === 'list') jobs().forEach(j => console.log(j.name));
-else { console.error('usage: measure.mjs render|shots|steps|stall|press|sheets|header|targets|audit|overflow|analyse|list');
+else { console.error('usage: measure.mjs render|shots|steps|stall|press|asking|sheets|header|targets|audit|overflow|analyse|list');
   process.exit(2); }

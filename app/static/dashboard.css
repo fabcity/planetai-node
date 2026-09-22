@@ -1144,3 +1144,59 @@ h1.brand { font: inherit }
   padding: 9px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
   cursor: pointer }
 .lpanel .nav button.pri { background: var(--ink); color: var(--ground) }
+
+/* ------------------------------------------------------------------ ASKING THE NODE
+ * The loading state, over the page and not instead of it. `.on` is the whole of its visibility, the
+ * way the learn panel works and for the same reason: a reader who never waits never has it in the
+ * tree as something to tab through.
+ *
+ * It has no motion of its own in here. The globe is a canvas driven by PAI_RAF — which draws one
+ * still frame under reduced motion — and the numeral and the meters use the layer's own tokens. The
+ * one thing that is CSS is the blink beside the heading, and it goes to zero in the block below. */
+.asking { display: none }
+.asking.on { display: grid; position: fixed; inset: 0; z-index: 8; background: var(--ground);
+  grid-template-columns: minmax(0, 1fr) min(380px, 40vw); gap: clamp(16px, 3vw, 32px);
+  align-content: start; padding: clamp(16px, 3vw, 28px) clamp(16px, 4vw, 32px); overflow: auto }
+.asking .frame { position: relative; border: 1px solid var(--ink); aspect-ratio: 1.55;
+  max-height: 60vh; overflow: hidden }
+/* The corner brackets: a frame around a thing being measured, which is what this is. */
+.asking .frame::before, .asking .frame::after { content: ""; position: absolute; width: 18px;
+  height: 18px; border: 1.5px solid var(--ink) }
+.asking .frame::before { left: -1px; top: -1px; border-right: 0; border-bottom: 0 }
+.asking .frame::after { right: -1px; bottom: -1px; border-left: 0; border-top: 0 }
+.asking canvas { width: 100%; height: 100%; display: block }
+.asking .aside { min-width: 0 }
+.asking .hd { display: flex; justify-content: space-between; gap: 12px; margin: 0 0 10px;
+  font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute) }
+.asking .hd b { color: var(--ink); font-weight: 800 }
+.asking .hd .blink { display: inline-block; width: 8px; height: 8px; background: var(--ink);
+  vertical-align: middle; margin-right: 8px; animation: askblink 1s steps(1) infinite }
+@keyframes askblink { 50% { opacity: 0 } }
+.asking .ep .r { display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 7px 0; border-top: 1px dotted var(--ink); font: 500 12.5px var(--mono) }
+.asking .ep .r .ms { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap }
+.asking .ep .r.wait .ms { color: var(--mute); font-weight: 400 }
+/* Four dashes until /issues lands, then the node's own figure with the layer's two arrival motions. */
+.asking .big { font: 800 clamp(2.2rem, 6vw, 3.5rem)/1 var(--num-face, var(--mono));
+  letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin: 14px 0 0 }
+.asking .big small { font: 600 14px var(--mono); letter-spacing: 0; margin-left: 8px }
+/* The lead's four bars, with their words. Same drawing as the page behind, so the eye does not
+   have to re-learn it when the overlay leaves. */
+.asking .meters { display: grid; gap: 4px; margin: 12px 0 0 }
+.asking .meters .r { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 10px;
+  align-items: center }
+.asking .meters .k { font: 500 10.5px var(--mono); letter-spacing: .06em; color: var(--mute);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.asking .meters .meter { height: 10px; width: 100% }
+.asking .rule { font: 400 11.5px/1.6 var(--fc-font-body); color: var(--mute); margin: 14px 0 0;
+  max-width: 48ch }
+@media (max-width: 899px) {
+  .asking.on { grid-template-columns: minmax(0, 1fr) }
+  .asking .frame { max-height: 38vh }
+}
+@media (prefers-reduced-motion: reduce) { .asking .hd .blink { animation: none } }
+
+/* The header's ↻. A control, so it is a button and it says what it does to a screen reader. */
+.reask { flex: none; background: none; border: 1px solid var(--hair); color: var(--ink);
+  padding: 5px 9px; font: 500 13px var(--mono); cursor: pointer }
+.reask:hover { border-color: var(--ink) }

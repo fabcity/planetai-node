@@ -35,6 +35,10 @@ node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_po
 # with the dial dead and this gate was green. This presses it.
 node tests/visual/measure.mjs press
 
+# The loading state: it stops when the data is in, the canvas leaves the tree, and reduced motion
+# draws one still frame instead of subscribing to the loop. Prints what a frame cost, both ways.
+node tests/visual/measure.mjs asking
+
 node - <<'JS'
 const fs = require('fs'), out = process.env.PAI_OUT;
 const j = n => JSON.parse(fs.readFileSync(`${out}/${n}.json`, 'utf8'));

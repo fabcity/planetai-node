@@ -190,10 +190,30 @@ function readout(o) {
  * screen with a different fallback it is a broken bar. Sixteen rects have no such question. */
 const METER_CELLS = 16;
 
-function meterBar(value, scale, line, dist, key) {
+/* A motion token's value in MILLISECONDS, whichever unit the layer wrote it in.
+ *
+ * The table carries both — `--motion-reading-fade: 120ms` and `--motion-mark-float: 3.2s` — and
+ * `parseFloat` answers 120 and 3.2 with no way to tell them apart. The satellite player got away
+ * with multiplying by 1000 because its own token happens to be in seconds; the meter fill, at
+ * `40ms`, came out as forty seconds and the bars sat empty. One reader for all of them.
+ *
+ * Zero is the answer under reduced motion, because that is what the frozen layer's one reduce block
+ * sets every timed token to — so `if (!ms)` is how a caller asks "is motion off", and it is the same
+ * question for every motion on the page. */
+function msToken(name) {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return 0;
+  return /ms\s*$/.test(raw) ? n : n * 1000;
+}
+
+function meterBar(value, scale, line, dist, key, cap) {
   const W = 6, G = 1, H = 10, full = METER_CELLS * W;
-  const lit = value == null ? 0
-    : Math.max(0, Math.min(METER_CELLS, Math.round((value / scale) * METER_CELLS)));
+  /* `cap` is how many cells may be lit yet — the loading state filling one per
+     --motion-meter-fill. Absent, a bar draws the whole reading, which is every other caller. */
+  const lit = Math.min(cap == null ? METER_CELLS : Math.max(0, cap),
+    value == null ? 0
+      : Math.max(0, Math.min(METER_CELLS, Math.round((value / scale) * METER_CELLS))));
   const cells = Array.from({ length: METER_CELLS }, (_, i) =>
     `<rect x="${i * W}" y="0" width="${W - G}" height="${H}" class="${i < lit ? 'on' : 'off'}"/>`)
     .join('');
@@ -809,7 +829,7 @@ function refusedPage(said) {
 const interp = (str, vals) => String(str || '')
   .replace(/\{(\w+)\}/g, (_, k) => (vals[k] == null ? '' : vals[k]));
 
-window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp,
+window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, stamp, asof, rhoRow, funnel,
   peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED };
 
@@ -4910,17 +4930,32 @@ const TIMEOUT_MS = 20000;
 
 async function api(path) {
   let r;
+  /* The loading state's account of what this page asked of the node is measured here, at the one
+     place every read goes through, so it cannot come to disagree with what actually happened. It
+     records a refusal and a timeout as readily as an answer: a list that only shows successes is a
+     list that says nothing on the one occasion somebody is looking at it. */
+  const t0 = performance.now();
+  ASKING.flight(path);
   try {
     r = await fetch(path, { headers: auth_(), signal: AbortSignal.timeout(TIMEOUT_MS) });
   } catch (e) {
+    ASKING.saw(path, performance.now() - t0, false);
     /* A hang and a dropped network arrive here the same way, and neither is an answer. Say which. */
     throw new Error(e && e.name === 'TimeoutError'
       ? `${path} did not answer within ${TIMEOUT_MS / 1000} seconds`
       : `${path} could not be reached: ${(e && e.message) || e}`);
   }
-  if (r.status === 403) throw Refused((await r.json().catch(() => ({}))).error || 'refused');
-  if (!r.ok) throw new Error(`${path} answered ${r.status}`);
-  return r.json();
+  if (r.status === 403) {
+    ASKING.saw(path, performance.now() - t0, false);
+    throw Refused((await r.json().catch(() => ({}))).error || 'refused');
+  }
+  if (!r.ok) {
+    ASKING.saw(path, performance.now() - t0, false);
+    throw new Error(`${path} answered ${r.status}`);
+  }
+  const body = await r.json();
+  ASKING.saw(path, performance.now() - t0, true);
+  return body;
 }
 
 /* ------------------------------------------------------------------ the plan */
@@ -5057,10 +5092,12 @@ async function boot() {
   const answered = await api(FIXTURE ? `/issues/fixtures/${encodeURIComponent(FIXTURE)}` : '/issues');
   const snapshot = FIXTURE ? answered : null;
   const issues = FIXTURE ? answered.issues : answered;
+  ASKING.landed(FIXTURE ? answered.issues : answered);
   const [health, settings] = await Promise.all([
     api('/health'),
     api('/settings').catch(() => ({})),
   ]);
+  ASKING.placed(health);
   /* A fixture carries the ρ of the hour it was captured; a live node keeps it at /rho, which is the
      same route the page this replaces read. Neither is computed here. */
   const rho = (snapshot && snapshot.rho) || await api('/rho').catch(() => null);
@@ -5385,6 +5422,281 @@ window.PAI_RAF = (function () {
   };
 }());
 
+/* ASKING THE NODE — the loading state, and the only motion on this page with no reading behind it.
+ *
+ * What it says is what is happening: the page is reading a list of endpoints off one machine, and
+ * each one either answers or does not. So it draws that list, and closes a ring per answer with the
+ * milliseconds it took. The globe of glyphs is the sixteen characters an H3 index is written in,
+ * turning inside this node's own cell — the one thing the page knows about where it is before the
+ * node has said anything — and it settles into the plane of that cell when /issues lands.
+ *
+ * WHEN IT PLAYS, and this is a rule and not a preference: first paint, the header's ↻ ask the node
+ * again, and reconnect after the pill has dropped `live`. NEVER ON A POLL. A poll re-reads /issues,
+ * /health and /rho every POLL_SECONDS and redraws; covering a page somebody is reading with a
+ * loading state every five minutes would make the node look broken while it is working perfectly.
+ * The only motion a poll may cause is reading-fade on the numerals that changed.
+ *
+ * It is one canvas, one subscription to PAI_RAF, ≤ 600 glyphs, DPR capped at 2, sized to its own box
+ * and never to the viewport. Under reduced motion PAI_RAF draws one still frame and never schedules
+ * another; the reads still land as they answer, because their latencies are real and there is
+ * nothing to compress.
+ *
+ * The latencies are the real ones: api() reports every read here, so this is the page's own account
+ * of what it asked and how long each answer took — the same honesty the request ledger owes.
+ */
+const ASKING = (function () {
+  const GL = '0123456789abcdef';
+  const N = 560;                       // ≤ 600, the budget prompt 6 set
+  const SPIN = 0.35;                   // rad/s
+  const SETTLE_MS = 900;
+  /* A fixed sphere, computed once: the globe is the same globe every time it is asked for, and
+     scattering 560 points per open would be work for no difference anybody can see. */
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u);
+    pts.push({ x: r * Math.cos(th), y: u, z: r * Math.sin(th), g: GL[i % 16] });
+  }
+  const hex = [];
+  for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30 + 8); hex.push([Math.cos(a), Math.sin(a)]); }
+
+  let box, cv, on = false, t0 = 0, settle0 = 0, spec = null;
+  /* What a frame of this actually costs, measured rather than asserted. Prompt 6 set a budget of
+     4 ms of main-thread work per frame on a 2015 MacBook Pro, and a budget nobody can read is a
+     budget nobody keeps. PAI_ASKING.cost() answers in milliseconds. */
+  const cost = { frames: 0, total: 0, worst: 0 };
+  const reads = [];                    // { path, ms, ok } in the order they answered
+  let asking = '';                     // the read in flight, for the tethered label
+
+  const el = id => document.getElementById(id);
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  function size() {
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.max(1, Math.round(r.width * dpr));
+    cv.height = Math.max(1, Math.round(r.height * dpr));
+    cv._dpr = dpr;
+  }
+
+  function draw(now) {
+    const c0 = performance.now();
+    const W = cv.width, H = cv.height, dpr = cv._dpr || 1;
+    if (!W || !H) return;
+    const ctx = cv.getContext('2d');
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.36;
+    const ink = css('--ink') || '#171717', cells = css('--cells') || '#20388D',
+      mute = css('--mute') || css('--muted') || '#6B6864';
+    ctx.clearRect(0, 0, W, H);
+    /* The cell this node stands in, in the one colour that means an H3 cell and nothing else. */
+    ctx.beginPath();
+    hex.forEach((pp, i) => {
+      const x = cx + pp[0] * R * 1.18, y = cy + pp[1] * R * 1.18;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = cells; ctx.lineWidth = 2 * dpr; ctx.globalAlpha = 0.9; ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const s = settle0 ? Math.min(1, (now - settle0) / SETTLE_MS) : 0;
+    const k = 1 - s;                            // 1 = a globe, 0 = flat in the cell's plane
+    const ang = (now - t0) / 1000 * SPIN * k;   // and it stops turning as it flattens
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    ctx.font = `${(9 * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < N; i++) {
+      const pp = pts[i];
+      const x = pp.x * ca + pp.z * sa, z = -pp.x * sa + pp.z * ca;
+      const depth = (z + 1) / 2;
+      ctx.globalAlpha = Math.min(1, (0.18 + 0.62 * depth) * (0.35 + 0.65 * k) + 0.25 * s);
+      ctx.fillStyle = ink;
+      ctx.fillText(pp.g, cx + x * R * (1 + 0.02 * k), cy + pp.y * R * (0.92 + 0.08 * k));
+    }
+    ctx.globalAlpha = 1;
+
+    /* Two labels tethered from the frame's corners, naming the endpoint being read and the last one
+       that answered. Not decoration: they are the only place on this surface that says what the
+       delay is for. */
+    const last = reads.length ? reads[reads.length - 1].path : '';
+    const tether = [[asking, -0.55, -0.42, 0], [last, 0.52, 0.38, 1]];
+    for (const [name, lx, ly, right] of tether) {
+      if (!name) continue;
+      const px = cx + lx * R, py = cy + ly * R;
+      const ex = right ? W - 24 * dpr : 24 * dpr, ey = right ? H - 24 * dpr : 24 * dpr;
+      ctx.strokeStyle = ink; ctx.lineWidth = 1 * dpr; ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.moveTo(ex, ey);
+      ctx.lineTo(ex + (right ? -60 : 60) * dpr, ey); ctx.lineTo(px, py); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = ink;
+      ctx.font = `bold ${(12 * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+      ctx.textAlign = right ? 'right' : 'left';
+      ctx.fillText(name, ex + (right ? -4 : 4) * dpr, ey + (right ? -10 : 10) * dpr);
+    }
+
+    /* The spec block: what this node has published about where it is, which before /health answers
+       is only the glyph count. It fills in rather than guessing. */
+    ctx.fillStyle = mute; ctx.textAlign = 'left';
+    ctx.font = `${(8.5 * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+    const lines = [`GLYPHS 0-9 A-F · ${N} · ONE GLOBE, ONE CELL`].concat(spec || []);
+    lines.forEach((line, i) => ctx.fillText(line, 24 * dpr, H - (16 + 12 * (lines.length - 1 - i)) * dpr));
+
+    const ms = performance.now() - c0;
+    cost.frames += 1; cost.total += ms; if (ms > cost.worst) cost.worst = ms;
+  }
+
+  /* The lead's own bars, capped as they fill.
+     NOT the sketch's `[▮▮▮▯▯]`: meterBar's own comment records that U+25AE and U+25AF are absent
+     from the shipped font subset and fall back at a different advance — a broken bar on any screen
+     with a different fallback. That was measured once; writing it back in text here would have
+     thrown the measurement away. Drawn twice is drawn once, in one function. */
+  const CELLS = 16;
+  function meters(rows, filled) {
+    return rows.map(([name, value, scale, line]) =>
+      `<span class="r"><span class="k">${window.K.esc(name)}</span>`
+      + `${window.K.meterBar(value, scale, line, null, null, filled)}</span>`).join('');
+  }
+
+  function rows() {
+    return reads.map(r =>
+      `<div class="r"><span class="p">${window.K.esc(r.path)}</span>`
+      + `<span class="ms">${r.ok ? `${Math.round(r.ms)} ms` : 'no answer'}</span></div>`).join('')
+      + (asking ? `<div class="r wait"><span class="p">${window.K.esc(asking)}</span>`
+        + `<span class="ms">asking…</span></div>` : '');
+  }
+
+  function paint() {
+    if (!on) return;
+    const e = el('ask-ep'); if (e) e.innerHTML = rows();
+    const c = el('ask-count');
+    if (c) c.textContent = `${reads.filter(r => r.ok).length} answered`;
+  }
+
+  return {
+    /* `why` is what the header says while it is up, in the page's own words. */
+    open(why) {
+      box = el('asking');
+      if (!box || on) return;
+      /* close() takes the canvas out of the tree, so opening puts one back. The id is in
+         index.html — that is what tools/check_ui.py checks — and this is the same element by every
+         name that matters; what it is not is a 1440x900x2 backing store kept alive for the rest of
+         the session behind display:none. */
+      cv = el('askcv');
+      if (!cv) {
+        cv = document.createElement('canvas');
+        cv.id = 'askcv';
+        (box.querySelector('.frame') || box).appendChild(cv);
+      }
+      on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      /* Per episode, not per session: the cost of the frames drawn while the page was loading is
+         not the cost of the frames drawn when somebody pressed ↻ twenty minutes later. */
+      cost.frames = 0; cost.total = 0; cost.worst = 0;
+      t0 = performance.now();
+      box.classList.add('on'); box.setAttribute('aria-hidden', 'false');
+      const w = el('ask-what'); if (w) w.textContent = why || 'Asking the node';
+      const b = el('ask-big'); if (b) { b.textContent = '----'; b.className = 'big'; }
+      const m = el('ask-meters'); if (m) m.innerHTML = '';
+      const r = el('ask-rule');
+      if (r) {
+        r.textContent = 'The glyphs are the sixteen characters an H3 index is written in. They turn '
+          + 'while the node has not answered and settle into this node’s own cell the moment '
+          + '/issues lands. Nothing here is a reading.';
+      }
+      size();
+      window.addEventListener('resize', size);
+      window.PAI_RAF.add(cv, draw);
+      paint();
+    },
+    /* Every read the page makes reports here, answered or not. api() is the only caller. */
+    saw(path, ms, ok) {
+      if (!on) return;
+      reads.push({ path, ms, ok });
+      if (asking === path) asking = '';
+      paint();
+    },
+    /* The read in flight, for the tethered label. */
+    flight(path) { if (on) { asking = path; paint(); } },
+    /* /health answered: the spec block can stop being a glyph count. */
+    placed(health) {
+      if (!on || !health) return;
+      const c = health.cell || {};
+      const area = c.edge_m ? Math.round(2.59807621 * c.edge_m * c.edge_m).toLocaleString('en-GB') : null;
+      spec = [
+        `RES ${c.res == null ? '?' : c.res} · EDGE ${c.edge_m == null ? '?' : `${c.edge_m} M`}`
+          + `${area ? ` · ${area} M²` : ''}`,
+        `SHARE LEVEL ${String((health.share_level || 'off')).toUpperCase()} · RAW STAYS HOME`,
+      ];
+    },
+    /* /issues landed. The numeral stops being four dashes and the meters fill a cell at a time. */
+    landed(issues) {
+      if (!on || !issues) return;
+      settle0 = performance.now();
+      const hk = issues.headline, d = (issues.issues || {})[hk] || {};
+      /* The reading the lead will carry, off the field the lead reads: stack.room. `readouts` is an
+         empty list on this node's own wire and was never the numeral's source. */
+      const room = ((d.stack || {}).room || {}).value;
+      const b = el('ask-big');
+      if (b && room != null) {
+        b.innerHTML = `${window.K.esc(window.K.fmt(room, d.dp))}`
+          + `<small>${window.K.esc(d.unit || '')}</small>`;
+        b.className = 'big land pulse';
+      }
+      const m = el('ask-meters');
+      if (!m) return;
+      const st = d.stack || {};
+      /* The distances and their words come off THIS payload, not off window.K: bind() has not run
+         yet when the overlay is still up, which is the whole point of the overlay. */
+      const loc = issues.locale || 'en';
+      const labs = (issues.labels || {})[loc] || (issues.labels || {}).en || {};
+      /* The lead's own scale, so the bars here and the bars on the page behind are one drawing of
+         the same four numbers. */
+      const vals = Object.values(st).map(x => x && x.value).filter(v => v != null);
+      const scale = (vals.length ? Math.max(...vals) : 1) * 1.12;
+      const line = d.line ? d.line.value : null;
+      const rs = (issues.distances || ['room', 'yard', 'ring', 'region'])
+        .map(k => [String(labs[k] || k), (st[k] || {}).value, scale, line]);
+      /* One cell per --motion-meter-fill. Zero under reduced motion, which the frozen layer's one
+         reduce block sets — so the meters arrive full, in one step. */
+      const step = window.K.msToken('--motion-meter-fill');
+      if (!step) { m.innerHTML = meters(rs, CELLS); return; }
+      let i = 0;
+      m.innerHTML = meters(rs, 0);
+      const iv = setInterval(() => {
+        i += 1;
+        m.innerHTML = meters(rs, i);
+        if (i >= CELLS || !on) clearInterval(iv);
+      }, step);
+    },
+    close() {
+      if (!on) return;
+      on = false;
+      window.PAI_RAF.remove(cv);
+      window.removeEventListener('resize', size);
+      if (box) { box.classList.remove('on'); box.setAttribute('aria-hidden', 'true'); }
+      if (cv && cv.parentNode) cv.parentNode.removeChild(cv);
+      cv = null;
+      /* The page underneath is drawn by now, so the reading it carries gets the two motions the
+         layer names for a reading that has just arrived. */
+      const v = document.querySelector('#page .num .v');
+      if (v && !window.PAI_RAF.reduced()) { v.classList.remove('land', 'pulse'); void v.offsetWidth; v.classList.add('land', 'pulse'); }
+    },
+    /* For the tests and the rig: is it up, what did it see, and what did a frame cost.
+       `probe(n)` draws n frames on the spot and answers with the cost. It exists for the same
+       reason PAI_REFRESH.now() does — a thing that only happens on a timer, or only when a browser
+       decides the tab is visible, cannot be measured — and the budget prompt 6 set (4 ms of
+       main-thread work per frame) is a number somebody has to be able to read back. */
+    probe(n) {
+      if (!on || !cv) return null;
+      cost.frames = 0; cost.total = 0; cost.worst = 0;
+      const t = performance.now();
+      for (let i = 0; i < (n || 60); i++) draw(t + i * 16.7);
+      return this.cost();
+    },
+    up: () => on,
+    reads: () => reads.slice(),
+    cost: () => ({ frames: cost.frames, mean: cost.frames ? cost.total / cost.frames : 0,
+      worst: cost.worst }),
+  };
+}());
+window.PAI_ASKING = ASKING;
+
 /* THE LEARN LAYER — the tester guide folded into the page.
  *
  * Seventeen marks. Each is a question mark floating at the part of the page it explains; pressing
@@ -5565,6 +5877,11 @@ function chrome(node, city, view) {
       `<button type="button" data-register="${r}" class="${r === reg ? 'on' : ''}"`
       + ` aria-pressed="${r === reg}">${esc(name)}</button>`).join('')
     + `</div>`
+    /* Ask again. The page polls on the node's own cadence and says how old its figures are, but a
+       reader who has just fixed something at the other end should not have to wait out an interval
+       to find out it worked. This is also the only control that plays the loading state on purpose. */
+    + `<button type="button" class="reask" data-reask="1" title="Ask the node again">`
+    + `<span aria-hidden="true">\u21bb</span><span class="vh">Ask the node again</span></button>`
     + `</div>${learnBar()}</header>`;
 }
 
@@ -6084,6 +6401,12 @@ document.addEventListener('click', ev => {
     });
     return;
   }
+  const ra = ev.target.closest && ev.target.closest('[data-reask]');
+  if (ra) {
+    ev.preventDefault();
+    askAgain();
+    return;
+  }
   const mb = ev.target.closest && ev.target.closest('.seg.mode button');
   if (mb && mb.dataset.mode) {
     ev.preventDefault();
@@ -6150,6 +6473,12 @@ window.STALE = null;
 async function refresh() {
   if (FIXTURE || STATE !== 'populated') return;         // a snapshot cannot change
   if (document.hidden) return;                          // nobody is looking
+  /* Reconnect, and only reconnect. The pill has dropped `live` and this is the read that may bring
+     it back, which is a thing worth showing; the five minutes of polls before it were not, and
+     covering the page for each of them would make a working node look broken. */
+  const wasStale = !!window.STALE;
+  const mine = wasStale && !ASKING.up();
+  if (mine) ASKING.open('The node stopped answering. Asking again');
   if (VIEW === 'setup' && window.PAI_SETUP && window.PAI_SETUP.dirty && window.PAI_SETUP.dirty()) return;
   let issues, health, rho;
   try {
@@ -6158,16 +6487,19 @@ async function refresh() {
     window.STALE = { since: (window.STALE && window.STALE.since) || Date.now(),
       why: String((e && e.message) || e) };
     redraw({ keepGround: true });                       // the stamp has something new to say
+    if (mine) ASKING.close();                           // still not answering: give the page back
     return;
   }
   /* ρ is the node measuring itself and is the slowest of the three. It failing is not a reason to
      throw away a good reading of the air, so the last one stands and the page says nothing new. */
   rho = await api('/rho').catch(() => (window.SNAP || {}).rho || null);
   window.STALE = null;
+  ASKING.landed(issues);
   bind(issues, health, rho);
   initKit();
   initGeometry();
   redraw({ keepGround: true });
+  if (mine) ASKING.close();
 }
 
 /* ---------------------------------------------------------------- the year players
@@ -6187,8 +6519,10 @@ async function refresh() {
 const SAT_LOOPS = new Map();
 
 function wireSat(root) {
-  const secs = parseFloat(getComputedStyle(document.documentElement)
-    .getPropertyValue('--motion-satellite-year')) || 0;
+  /* Was `parseFloat(...) || 0` and multiplied by 1000 below, which is right only while this token
+     stays in seconds. msToken reads the unit, so a layer that writes `4000ms` one day does not
+     quietly turn this into a four-second page into a four-millisecond flicker. */
+  const secs = window.K.msToken('--motion-satellite-year') / 1000;
   for (const [el, t] of SAT_LOOPS) { if (!root.contains(el)) { clearInterval(t); SAT_LOOPS.delete(el); } }
   root.querySelectorAll('.satplay[data-years]').forEach(el => {
     if (SAT_LOOPS.has(el)) { clearInterval(SAT_LOOPS.get(el)); SAT_LOOPS.delete(el); }
@@ -6270,7 +6604,19 @@ function startRefresh() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
 }
 
-boot().then(() => { init(); route(); startRefresh(); }).catch(async e => {
+/* The header's ↻. Not `refresh()` with an overlay bolted on: the difference between this and a poll
+   is the whole of the rule, so it is a function of its own with the overlay in it, and refresh()
+   stays the thing the timer calls and draws nothing over the page. */
+async function askAgain() {
+  if (ASKING.up()) return;
+  ASKING.open('Asking the node again');
+  try { await refresh(); }
+  finally { ASKING.close(); }
+}
+
+ASKING.open('Asking the node');
+boot().then(() => { init(); route(); startRefresh(); ASKING.close(); }).catch(async e => {
+  ASKING.close();
   if (e && e.refused) {
     SAID = e.refused;
     const h = await api('/health').catch(() => ({}));

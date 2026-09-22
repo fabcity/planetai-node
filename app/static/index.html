@@ -23,6 +23,21 @@
 </div>
 <!-- What the Set up pane says back. Chrome, not content: the renderer writes only #page. -->
 <div class="toast" id="toast"></div>
+<!-- ASKING THE NODE. The loading state, over the page rather than instead of it: the renderer writes
+     #page underneath while this is up, so when it leaves there is a drawn page behind it and not a
+     second flash of blank paper. It plays on first paint, on "ask the node again" and on reconnect
+     after the pill has dropped live — never on a poll. The canvas is sized to its own box. -->
+<div class="asking" id="asking" aria-hidden="true">
+  <div class="frame"><canvas id="askcv"></canvas></div>
+  <div class="aside">
+    <p class="hd"><span><i class="blink" aria-hidden="true"></i><b id="ask-what">Asking the node</b></span>
+      <span id="ask-count"></span></p>
+    <div class="ep" id="ask-ep"></div>
+    <p class="big" id="ask-big">----</p>
+    <p class="meters" id="ask-meters"></p>
+    <p class="rule" id="ask-rule"></p>
+  </div>
+</div>
 <!-- The learn layer's panel, for the same reason as the toast: the renderer replaces #page on
      every render, and a panel inside it would close itself whenever the page redrew under it.
      Empty until a mark is pressed; the renderer fills it from static/learn.json. -->

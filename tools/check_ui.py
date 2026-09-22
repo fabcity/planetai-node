@@ -421,7 +421,13 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    # `more` line, and neither is shouted: `.lpanel .qt` and `.lpanel .more` are set
                    # in the body face at their own case, because one is the documentation's sentence
                    # and the other is this page's.
-                   ".learnbar .walk", ".lpanel .lh", ".lpanel .more .who", ".lpanel .nav button"}
+                   ".learnbar .walk", ".lpanel .lh", ".lpanel .more .who", ".lpanel .nav button",
+                   # Added 22 September 2026 with the loading state. Its heading is one of three
+                   # sentences this file writes — "Asking the node", "Asking the node again", "The
+                   # node stopped answering. Asking again" — and a count. The endpoint paths beside
+                   # it are NOT in here and are not shouted: /issues is a route, and a route that has
+                   # been uppercased is a route a reader cannot type back.
+                   ".asking .hd"}
 _shouting = {sel.strip() for sel, body in RULES if re.search(r"text-transform\s*:\s*uppercase", body)}
 for _new in sorted(_shouting - UPPERCASE_KNOWN):
     errs.append(f"{_new} is a new text-transform:uppercase rule. If the node's own words can reach it, they need "

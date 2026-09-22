@@ -317,8 +317,32 @@ assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
 # page looks exactly like one render of a fresh one. These are the assertions that would have.
 assert "function refresh()" in _js and "setInterval(refresh, refreshEvery())" in _js, \
     "the page no longer re-fetches on a timer — it will show the readings it booted with, forever"
-assert "boot().then(() => { init(); route(); startRefresh(); })" in _js, \
-    "boot no longer starts the refresh loop"
+_bootline = _js[_js.index("boot().then("):]
+_bootline = _bootline[:_bootline.index("\n")]
+assert "startRefresh()" in _bootline, "boot no longer starts the refresh loop"
+assert "route()" in _bootline and "init()" in _bootline, "boot no longer draws the page"
+
+# THE LOADING STATE PLAYS ON THREE THINGS AND A POLL IS NOT ONE OF THEM.
+#
+# `asking` covers the page. A poll fires every POLL_SECONDS on a page somebody is reading, so an
+# overlay on every poll would make a node that is working perfectly look like one that is stuck —
+# and it would do it every five minutes, on a wall, unattended. The rule is in prompt 6 and it is one
+# line of code away from being broken by accident, so it is asserted here rather than remembered.
+assert "ASKING.close()" in _bootline, "the loading state is never taken down after the first paint"
+_ask = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
+assert "ASKING.open" in _ask, "refresh() never plays the loading state, so a reconnect is silent"
+for _line in _ask.splitlines():
+    _code = _line.split("//")[0]
+    if "ASKING.open" in _code:
+        assert "mine" in _code or "STALE" in _code, \
+            ("refresh() plays the loading state unconditionally, so it plays on every poll: "
+             + _code.strip())
+assert "const wasStale = !!window.STALE" in _ask and "mine = wasStale" in _ask, \
+    "refresh() no longer decides between a reconnect and a poll before playing the loading state"
+# And the header's control is a different function on purpose: if ↻ were refresh() with the overlay
+# bolted on, the timer would inherit it the next time somebody edited either one.
+assert "async function askAgain()" in _js and "ASKING.open('Asking the node again')" in _js, \
+    "the header's re-ask no longer has a function of its own"
 # What it may and may not ask for again. /settings, /earth, /sensors, /cells and the plan do not move
 # on the node's poll; re-fetching them every cycle is traffic for no change.
 _ref = _js[_js.index("async function refresh()"):_js.index("function redraw(opts)")]
