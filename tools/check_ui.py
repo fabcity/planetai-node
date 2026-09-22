@@ -469,6 +469,29 @@ if _learn.exists():
         errs.append(f"learn.json carries '{_k}' and nothing on the page draws it. Give it to a section "
                     f"(`learn: ['{_k}']`) or to the shell, or take it out of tools/build_learn.py.")
 
+# --- SMIL: the one kind of motion this page may not use --------------------------------------------------
+# `@media (prefers-reduced-motion: reduce)` reaches CSS animations and nothing else. An SVG <animate>
+# keeps running when a household has asked the whole machine for stillness, and there is no way to
+# switch it off from a stylesheet. The netmap shipped one and it was rewritten in CSS for exactly
+# this; nothing has stopped the next drawing from reaching for it again. This does.
+#
+# The pattern wants an ATTRIBUTE, so prose about SMIL — the page's own note explaining why the wires
+# are not drawn that way, and the comments in this repo — is not a false positive. A real SMIL
+# element always carries one.
+SMIL = re.compile(r"<(animate|animateTransform|animateMotion|set)\b[^>]*\b"
+                  r"(attributeName|dur|values|from|to|begin|repeatCount)\s*=")
+for _name, _text in (("index.html", h), ("dashboard.js", js), ("dashboard.css", open("app/static/dashboard.css").read())):
+    _m = SMIL.search(_text)
+    if _m:
+        errs.append(f"{_name} writes an SVG <{_m.group(1)}>. Reduced motion cannot reach SMIL: it keeps "
+                    f"moving after a household has asked the machine to stop. Use a CSS animation on a "
+                    f"--motion- token, which the one reduce block in planetai-theme.css turns off.")
+for _svg in sorted(pathlib.Path("app/static").glob("*.svg")):
+    _m = SMIL.search(_svg.read_text())
+    if _m:
+        errs.append(f"{_svg.name} carries an SVG <{_m.group(1)}>, which reduced motion cannot reach. "
+                    f"It is served as a document of its own, so no stylesheet on the page can stop it.")
+
 print("\n".join(f"  x {e}" for e in errs) or
       "  GUI: script parses; every id, endpoint, field and asset resolves; nothing hidden is un-hidden by CSS;\n"
       "       no decorative hexagon, no website palette, no gradient, no rounded verdict, orange only on the\n"

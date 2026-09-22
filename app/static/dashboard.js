@@ -5322,6 +5322,69 @@ function mode() {
 }
 window.PAI_MODE = mode;
 
+/* ONE ANIMATION LOOP FOR THE WHOLE PAGE.
+ *
+ * Every surface that wants a frame asks here instead of calling requestAnimationFrame itself. Two
+ * loops on one page cost twice the wake-ups and cannot be reasoned about together; one loop can be
+ * stopped, and this one stops itself whenever there is nothing to draw:
+ *
+ *   · the tab is hidden          — `visibilitychange`, so a wall screen behind a screensaver is idle
+ *   · the element is off-screen  — IntersectionObserver, so a canvas scrolled past costs nothing
+ *   · nobody is subscribed       — the loop is not scheduled at all, rather than spinning on zero
+ *
+ * Under reduced motion it never schedules anything: the tick is called ONCE and the surface draws a
+ * still. That is not a fallback, it is what the surface is meant to look like when somebody has
+ * asked for nothing to move — every drawing this page makes has to read frozen.
+ *
+ * A subscriber that throws is dropped rather than throwing once a frame for the rest of the session.
+ */
+window.PAI_RAF = (function () {
+  const subs = new Map();                 // element -> { tick, on }
+  let raf = 0;
+  const reduced = () => !!(window.matchMedia
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  /* No observer on this browser: assume every subscriber is on screen. Drawing a frame nobody can
+     see is a waste; not drawing one somebody can see is a bug. */
+  const io = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver(es => {
+      for (const e of es) { const s = subs.get(e.target); if (s) s.on = e.isIntersecting; }
+      kick();
+    }, { threshold: 0 })
+    : null;
+
+  const awake = () => !document.hidden && [...subs.values()].some(s => s.on);
+
+  function frame(now) {
+    raf = 0;
+    for (const [el, s] of [...subs]) {
+      if (!s.on) continue;
+      try { s.tick(now, el); }
+      catch (e) { subs.delete(el); if (io) io.unobserve(el); }
+    }
+    kick();
+  }
+  function kick() { if (!raf && awake()) raf = requestAnimationFrame(frame); }
+  document.addEventListener('visibilitychange', kick);
+
+  return {
+    /* `tick(now, el)` runs once per frame while `el` is on screen and the tab is visible. */
+    add(el, tick) {
+      if (reduced()) { try { tick(performance.now(), el); } catch (e) { /* one still, or none */ } return; }
+      subs.set(el, { tick, on: !io });
+      if (io) io.observe(el);
+      kick();
+    },
+    remove(el) {
+      subs.delete(el);
+      if (io) io.unobserve(el);
+      if (!subs.size && raf) { cancelAnimationFrame(raf); raf = 0; }
+    },
+    reduced,
+    /* For the tests: how many surfaces are asking for frames right now. */
+    get size() { return subs.size; },
+  };
+}());
+
 /* THE LEARN LAYER — the tester guide folded into the page.
  *
  * Seventeen marks. Each is a question mark floating at the part of the page it explains; pressing

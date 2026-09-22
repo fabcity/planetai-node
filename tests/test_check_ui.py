@@ -26,7 +26,10 @@ def tree():
     """A throwaway copy of the files check_ui.py reads. The page is three of them now."""
     tmp = Path(tempfile.mkdtemp(prefix="planetai-ui-"))
     (tmp / "app" / "static").mkdir(parents=True)
-    for f in ("index.html", "dashboard.js", "dashboard.css", "learn.json"):
+    # The two drawings the node serves as documents of their own go too: no stylesheet on the page
+    # can reach inside them, so the SMIL rule has to be checked against the files themselves.
+    for f in ("index.html", "dashboard.js", "dashboard.css", "learn.json",
+              "signs.svg", "node-ground.svg"):
         shutil.copy(ROOT / "app" / "static" / f, tmp / "app" / "static" / f)
     shutil.copy(ROOT / "app" / "main.py", tmp / "app" / "main.py")
     (tmp / "app" / "issues").mkdir(parents=True, exist_ok=True)
@@ -61,6 +64,11 @@ def sub(old, new):
         assert s.count(old) >= 1, f"anchor not found in the file under test: {old[:60]!r}"
         return s.replace(old, new, 1)
     return f
+
+
+def prepend_js(line):
+    """A violation at the top of the script. Same reasoning as prepend() below."""
+    return lambda s: line + "\n" + s
 
 
 def prepend(css):
@@ -180,5 +188,25 @@ broken("a mark the layer does not have",
 broken("an entry nothing on the page draws",
        sub("learn: ['rho', 'refusals']", "learn: ['rho']"),
        r"learn\.json carries 'refusals' and nothing on the page draws it", where="dashboard.js")
+
+# 13. SVG SMIL, which reduced motion cannot reach
+# The netmap shipped an <animate> and it was rewritten in CSS for exactly this reason. Nothing
+# stopped the next drawing reaching for it again; this does. Prose about SMIL is not a violation —
+# the page's own note explains why the wires are not drawn that way — so the rule wants an attribute.
+broken("an SVG <animate> in the script",
+       prepend_js('const SMIL = \'<animate attributeName="opacity" dur="2s"/>\';'),
+       r"dashboard\.js writes an SVG <animate>.*reduced motion cannot reach smil", where="dashboard.js")
+broken("an <animateTransform> inside a drawing the node serves",
+       sub("</svg>", '<animateTransform attributeName="transform" dur="3s"/></svg>'),
+       r"node-ground\.svg carries an SVG <animateTransform>", where="node-ground.svg")
+# and the other half: the page already TALKS about SMIL, in a note a reader sees and in this repo's
+# own comments. A rule that cannot tell the two apart would have been red the day it was written.
+tmp = tree()
+p = tmp / "app" / "static" / "dashboard.js"
+p.write_text("/* the netmap once used <animate> and does not any more */\n" + p.read_text())
+rc, out = run(tmp)
+assert rc == 0, f"prose mentioning <animate> was read as a violation:\n{out}"
+shutil.rmtree(tmp, ignore_errors=True)
+print("  · prose mentioning <animate> is left alone: the rule wants an attribute")
 
 print("check_ui: every visual-language gate fails when the page breaks its rule")

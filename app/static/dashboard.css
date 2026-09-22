@@ -1079,13 +1079,13 @@ h1.brand { font: inherit }
  * exactly that across 108 combinations. The label line is the top of the part, it is where the eye
  * already is, and it reflows for free.
  *
- * The float is the one motion: 4 px, transform only, on `--motion-mark-float`. The token is prompt
- * 6's — it belongs in the frozen layer beside the other motion datums, and until it is there this
- * reads the same 3.2s as a fallback, so nothing has to change here when it lands. */
+ * The float is the one motion: 4 px, transform only, on `--motion-mark-float`, which is in the
+ * frozen layer beside the other motion datums. No fallback duration here: a second copy of the
+ * number is the thing the token exists to prevent. */
 .q { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%;
   background: var(--ground); color: var(--ink); font: 800 12px/1 var(--mono); cursor: pointer;
   display: inline-grid; place-items: center; padding: 0;
-  animation: qfloat var(--motion-mark-float, 3.2s) ease-in-out infinite }
+  animation: qfloat var(--motion-mark-float) ease-in-out infinite }
 .q:nth-of-type(even) { animation-delay: -1.6s }
 .q:hover, .q[aria-expanded="true"] { background: var(--ink); color: var(--ground) }
 @keyframes qfloat { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
