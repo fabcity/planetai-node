@@ -77,7 +77,7 @@ How much of the page is drawn. Three, in the header beside the register:
 |---|---|
 | **simple** | offered on Now, Historical and Network only. On Now: the ladder, the lead, the **digest** (four sentences, one per stage, each written by the node), then only the sections marked `level: 'simple'`, which on Now is the Decide card "What to do about it". On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it". The digest is Now's alone |
 | **advanced** | every registered section, in loop order. The default |
-| **learn** | advanced, with a question mark at each part of the page. Pressing one opens a panel that quotes this node's own documentation for that part, says which page and section the words came from, links out, and walks to the next |
+| **learn** | advanced, with a question mark at each part of the page: every section, the ladder, the lead and the foot. Pressing one opens a panel that quotes this node's own documentation for that part, names the page and section the words came from by their titles, links out, and walks to the next. Not on the wall, which has no header to switch it on |
 
 A node too old to send a digest gets a note instead: "This node has not sent a digest", naming the version
 it is talking to, rather than four sentences composed in the browser.
@@ -90,8 +90,12 @@ their page, and how the measuring rig renders all three.
 The learn panels are quotations, not summaries. The node does not serve this documentation (the site build
 does), so `tools/build_learn.py` cuts the spans out of these pages at build time into `app/static/learn.json`,
 which the page fetches only when somebody turns learn mode on. The quote therefore reads on a network with
-no route out, and `make lint` fails when a span is no longer in the page it names. Seventeen marks; the bar
-under the header says how many are on the view you are looking at, and *walk the page* starts at the first.
+no route out, and `make lint` fails when a span is no longer in the page it names. Every registered section
+carries at least one mark, and the foot carries the node's purpose and its doors on every view but the wall.
+The bar under the header says how many marks are on the view you are looking at; *walk the page* starts at
+the first of them, and **Back** and **Next** follow the view from top to bottom. The quotes are in English
+only, whatever language the rest of the page is drawn in, because the documentation is. The wall has no
+Learn mode: it draws no header, so there is nothing on it to switch one on, and no marks.
 
 ## The lead
 
@@ -182,6 +186,12 @@ or a line saying the rule carries none and the page will not invent one. **Recor
 no alert. With `DECISION_REQUIRED=1` (Set up → Node, off by default) the node refuses an act with 409 unless a
 decision was recorded against the same alert first. The two resolution sections say at what resolution a
 thing may be said, and the trust section says which of the node's own sensors it doubts.
+
+"Whose word, over how much ground" covers with H3 cells the six footprints this node already declares,
+from `COAST_MAX_KM` for the sea to the three decimals `/health` rounds a position to. Each produces one
+number, and its card says how many cells of the rung you are on that one number has to cover. The other
+four are `BAD_RADIUS_KM`, `EARTH_RADIUS_M`, `PLACE_RADIUS_M` and `LOCAL_RADIUS_M`. The node computes the
+coverings and sends them in `GET /issues` as `geometry.claims`, widest first.
 
 ### Act
 

@@ -4,9 +4,12 @@ Every panel in learn mode puts words in front of a household and says they are t
 documentation. The only thing standing between that claim and a paraphrase is tools/build_learn.py,
 and the only thing standing between the claim and rot is its --check. So:
 
-  · the seventeen quotes in app/static/learn.json are each a verbatim substring of the docs/site
-    page they cite, right now, against the real tree — the invariant itself, asserted directly and
-    not through the tool that maintains it;
+  · every quote in app/static/learn.json is a verbatim substring of the docs/site page it cites,
+    right now, against the real tree (the invariant itself, asserted directly and not through the
+    tool that maintains it), and it carries that page's own `# Title`, which is what the panel cites;
+  · every section dashboard.js registers carries at least one mark, and every key a section names
+    is one tools/build_learn.py has, so no part of the page is left unexplained and no question
+    mark opens nothing;
   · editing a quote out of its page fails the build, naming the mark;
   · a quote that grows past sixty words fails the build rather than being drawn and cut off;
   · --check fails when the committed file is not what the docs say, and passes again after a
@@ -15,6 +18,7 @@ and the only thing standing between the claim and rot is its --check. So:
 Run: python3 tests/test_learn.py
 """
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +27,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 LEARN = ROOT / "app" / "static" / "learn.json"
+sys.path.insert(0, str(ROOT / "tools"))
+import build_learn  # noqa: E402  the MARKS table itself, not the file it writes
 
 
 def edit(page, old, new):
@@ -67,7 +73,54 @@ for key in built["order"]:
     assert n <= 60, f"{key}: {n} words, over the sixty the panel holds"
     assert m["more"], f"{key}: no line of the page's own"
     assert m["url"].startswith("https://planetai.fab.city/docs/"), f"{key}: {m['url']}"
-print(f"  · all {len(built['order'])} quotes are verbatim spans of the page they name, and under 60 words")
+    assert m["url"].startswith(f"https://planetai.fab.city/docs/{m['page'][:-3]}/"), (
+        f"{key}: the URL scheme is /docs/<stem>/#<anchor>, and this one is {m['url']}")
+    title = re.match(r"# (.+)", page)
+    assert title and m.get("page_title") == title.group(1).strip(), (
+        f"{key}: the panel cites the page by its title, and learn.json says "
+        f"{m.get('page_title')!r} where docs/site/{m['page']} says {title and title.group(1)!r}")
+print(f"  · all {len(built['order'])} quotes are verbatim spans of the page they name, under 60 words, "
+      f"cited by the page's own title")
+
+# --- every section explains itself, and every key it names exists --------------------------------
+# A registration is `window.PAI.register({` up to its first method: the fields a section declares
+# about itself sit at the top of the object, and a `learn:` further down, after the render code, is
+# one nobody reading the registration would see.
+JS = (ROOT / "app" / "static" / "dashboard.js").read_text(encoding="utf-8")
+KEYS = {m[0] for m in build_learn.MARKS}
+assert len(KEYS) == len(build_learn.MARKS), "two MARKS entries share a key"
+heads = re.findall(r"^window\.PAI\.register\(\{(.*?)\n  (?:render|lead|controls|wall|notes)\b", JS,
+                   re.S | re.M)
+assert heads and len(heads) == len(re.findall(r"^window\.PAI\.register\(\{", JS, re.M)), (
+    "a registration with no render, lead, controls, wall or notes: the test cannot find where its "
+    "declared fields end")
+ids = []
+for head in heads:
+    sid = re.search(r"\bid:\s*'([^']+)'", head)
+    assert sid, f"a registration with no id: {head[:80]!r}"
+    ids.append(sid.group(1))
+    arr = re.search(r"\blearn:\s*\[([^\]]*)\]", head)
+    assert arr, f"section '{sid.group(1)}' declares no `learn:` array, so in learn mode it is the one part of the page with no question mark"
+    keys = re.findall(r"'([a-z]+)'", arr.group(1))
+    assert keys, f"section '{sid.group(1)}' has an empty `learn:` array"
+    for k in keys:
+        assert k in KEYS, f"section '{sid.group(1)}' names the mark '{k}', which is not in MARKS in tools/build_learn.py"
+assert len(ids) == len(set(ids)), f"a section id is registered twice: {ids}"
+print(f"  · all {len(ids)} registered sections carry a mark, and every key they name is in MARKS")
+
+# The walk follows the page: Back and Next and "Walk the page" read the marks this view drew, in
+# document order, and fall back to learn.json's order only for a key this view does not carry.
+assert "function learnWalk()" in JS and "'#page .q[data-learn], #foot .q[data-learn]'" in JS, \
+    "the walk no longer reads the marks in the order the view drew them"
+assert "data-learn-walk" in JS and "learnWalk()[0] || LEARN.order[0]" in JS, \
+    "Walk the page no longer starts at the first mark on this view"
+# Every view that has a foot carries the purpose: the foot draws it, and the foot is on every view
+# but the wall.
+foot = JS[JS.index("function foot(S)"):]
+foot = foot[:foot.index("\n}\n")]
+for k in ("production", "purpose"):
+    assert f"mark('{k}'" in foot, f"the foot no longer carries the '{k}' mark"
+print("  · the walk follows the page, and the foot carries the node's purpose on every view")
 
 # --- the gate fails when the documentation moves --------------------------------------------------
 tmp = tree()

@@ -2,7 +2,7 @@
 
 The pages in this folder are the source of `planetai.fab.city/docs`. `tools/build_docs.py` renders them,
 together with a few pages taken as they are from `docs/`, into static HTML on the programme layer's tokens.
-Nothing here is served by a node, with one exception: `tools/build_learn.py` cuts seventeen short quotes
+Nothing here is served by a node, with one exception: `tools/build_learn.py` cuts short quotes
 out of these pages into `app/static/learn.json`, which the dashboard's learn mode shows. Move one of those
 spans and `make lint` says so.
 

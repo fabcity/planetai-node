@@ -88,7 +88,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 | `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
 | `check_ui.py` | an element id the script referenced that was not in the markup; a network `url()` in a stylesheet; Fab Blue in the dark register |
 | `build_docs.py --check` | the same fifteen releases, seen as a site: a NAV entry whose source is gone, a page in `docs/site/` that NAV never lists, a link to no page, an `#anchor` to a heading the page does not have. Renders every page and writes nothing. Needs `markdown`; without it the gate says it skipped, and CI installs it so it never skips there |
-| `build_learn.py --check` | a docs edit that moved one of the seventeen spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
+| `build_learn.py --check` | a docs edit that moved one of the spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
 | `check_wire.py` | a top-level key added to or dropped from one of the five wire documents in a commit about something else. The key lists are frozen in `tests/data/wire/` |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt`, including in CI, where `planetai-design` is not checked out |
 | `check_requirements.sh` | `uvicorn` pinned against `mcp`; the image failed to build on the node |

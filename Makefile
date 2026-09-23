@@ -21,7 +21,7 @@ check-floors: ; @python3 tools/check_floors.py
 # The documentation site: docs/site/*.md plus the docs/ pages the sidebar lists, rendered on the dashboard's own tokens
 # into the site repo. Needs `pip install markdown` on the dev machine; a node never runs this.
 docs:    ; python3 tools/build_learn.py && python3 tools/build_docs.py --out ../planetai/docs
-# The learn layer's seventeen marks, cut out of docs/site. `make docs` runs it; lint checks it did.
+# The learn layer's marks, cut out of docs/site. `make docs` runs it; lint checks it did.
 learn:   ; python3 tools/build_learn.py
 released: ; @tools/ship.sh --check
 ship:    ; tools/ship.sh

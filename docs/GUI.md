@@ -91,7 +91,7 @@ Three modes, in the header:
 - **Advanced** — the whole page. This is the default.
 - **Learn** — the whole page with a small question mark at each part. Press one and a panel opens
   that quotes your node's own documentation for that part, word for word, says which page the words
-  came from, and offers to walk you to the next. Seventeen marks. The words are built into the page,
+  came from, and offers to walk you to the next. Every section has one, and so does the foot. The words are built into the page,
   so it works with no way out to the internet; the link is an offer, not the answer.
 
 The mode is remembered by the browser you chose it in, so a phone and a wall screen can disagree.

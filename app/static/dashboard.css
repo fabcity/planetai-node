@@ -1209,6 +1209,8 @@ h1.brand { font: inherit }
 .leadk { display: flex; gap: 12px; align-items: baseline; justify-content: space-between }
 .figmarks { display: flex; gap: 8px; justify-content: flex-end }
 .stagehead .q { align-self: center }
+/* Marks inside a line of text: the foot's purpose and doors, the make pack's row in Act. */
+.foot .q, .note .q { margin-left: 8px; vertical-align: middle }
 
 /* The bar under the header: where these words come from, and the way in for a reader who would
    rather be walked than hunt. */

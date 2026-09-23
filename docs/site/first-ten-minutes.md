@@ -121,7 +121,7 @@ machine the node runs on (Docker presents it as a network client), sees the node
 readings. Go to **Set up**, paste the admin token (or only the act token, in the field labelled "Token for
 closing a loop") and press **Unlock**. The header has six views, Now, Historical, Network, Wall, Arrange and
 Set up, and three modes, Simple, Advanced and Learn. Learn is the full page with a question mark at each
-part, which opens these pages at the passage that explains it. Set up is where sensors are added or changed
+part, which quotes the passage of these pages that explains it and links to it. Set up is where sensors are added or changed
 (Sources), where the bot's model lives (Agent), and where every runtime setting can be changed without
 touching `.env`. See [Dashboard](dashboard.md) and [Sharing](sharing.md).
 

@@ -1860,7 +1860,7 @@ COMPANIONS = {
     "tokens.css": (STATIC / "tokens.css", "text/css"),
     "signs.svg": (STATIC / "signs.svg", "image/svg+xml"),
     "kilometre-cells.json": (STATIC / "kilometre-cells.json", "application/json"),
-    # The learn layer: seventeen marks cut out of docs/site by tools/build_learn.py at build
+    # The learn layer: the marks cut out of docs/site by tools/build_learn.py at build
     # time, because a node does not carry the documentation site. Fetched only when a reader
     # turns learn mode on, and the quotes are inline so the mode works on a LAN with no route out.
     "learn.json": (STATIC / "learn.json", "application/json"),

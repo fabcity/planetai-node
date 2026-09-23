@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build app/static/learn.json — the learn layer's seventeen marks — out of docs/site.
+"""Build app/static/learn.json, the learn layer's marks, out of docs/site.
 
     python3 tools/build_learn.py            # write app/static/learn.json
     python3 tools/build_learn.py --check    # fail if the committed file is not what docs/site says
@@ -12,7 +12,13 @@ at the diff. That is the whole point: the tester guide cannot drift from the doc
 to be quoting, because it is not a copy of it, it is a cut of it.
 
 MARKS below names the cut, not the text: page, the `##` section it must sit inside, and the first and
-last few words of the span. Short markers survive a reflow; a pasted paragraph does not.
+last few words of the span. Short markers survive a reflow; a pasted paragraph does not. Each entry
+also carries the page's own `# Title` as `page_title`, so the panel can cite "From <title> · <section>"
+the way the site names it, rather than by a path in this repository.
+
+The marks explain what the node is FOR and what it PUBLISHES as well as how to read the ladder: the
+purpose and the DIDO rule from introduction.md sit on the foot and on the request ledger, and every
+registered section carries at least one mark (tests/test_learn.py holds the page to that).
 
 `more` is the only prose here, and it is the PAGE talking about itself — what this dashboard draws,
 in the dashboard's voice — never a paraphrase of the docs. The panel labels it as such.
@@ -34,7 +40,10 @@ DOCS = "https://planetai.fab.city/docs"
 MAX_WORDS = 60
 
 # key · title · page · section (None = the page's lead, above the first heading) · first words · last
-# words · the page's own line. Order is the order the panel walks, which is the order of the page.
+# words · the page's own line. The order here is only the order learn.json lists them in, and the
+# order Back and Next fall back to for a mark that is not on the view being read. The walk itself
+# follows the page: dashboard.js steps through the marks in the order the current view drew them,
+# top to bottom. Grouped below by where each mark is drawn.
 MARKS = [
     ("dial", "The ladder: one rung per resolution", "dashboard.md", "The lead",
      "The **ladder** sits above the lead", "are struck through.",
@@ -109,6 +118,141 @@ MARKS = [
      "No raw readings leave the instance", "not declared from above.",
      "The care label under Measure is those refusals as signs. Nothing to press on the wall is the "
      "wall's own refusal: it is an instruction, not a control."),
+
+    # --- Now: the sections that had no mark ------------------------------------------------------
+    ("counted", "Yours, here, and counted", "sensors.md", None,
+     "Once one is", "`local` and `custody`.",
+     "`planetai sensors` prints these stations one line each, with `yours` or `reference` beside the "
+     "id, and GET /sensors is the route a script reads them from. Only the ones in this node's "
+     "custody can make a cell say live."),
+    ("dido", "Data in, data out", "introduction.md", "What it is for",
+     "The rule it runs on", "moves between cities.",
+     "On this page the rule is small enough to check: every request this page made of anywhere but "
+     "this node is in the ledger below, and the plan base makes none. What the node itself sends "
+     "upward, and to whom, is on the Network view."),
+    ("forecast", "Context, not a prediction", "packs-reference.md", "forecast",
+     "Official and model weather for this point", "it never sends an alert.",
+     "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a "
+     "forecast point more than 10 km from the node is said to be another place. Nothing on this "
+     "card can raise an alert."),
+    ("recommend", "What this node suggests", "packs.md", "Rules",
+     "End a message with a paragraph that starts with", "the page will not invent one.",
+     "Record the decision posts `stage: decided` to POST /actions with your name and what will be "
+     "done; Take its word fills in the rule's own line. The act comes after it, under Act."),
+    ("looked", "A decision moves nothing", "first-ten-minutes.md", "When a real alert arrives",
+     "A decision closes no alert", "the record that somebody looked.",
+     "With DECISION_REQUIRED=1 (Set up → Node) the node refuses an act that has no decision "
+     "recorded before it, with 409, however the act arrives."),
+    ("agent", "An agent drafts, a person dispatches", "agents.md", None,
+     "An agent is a guest on the machine", "a person dispatches.",
+     "The `issues` tool an agent holds over POST /mcp returns the same object this card is drawn "
+     "from, so it may draft what to do. The decision recorded here carries the name of whoever is "
+     "deciding."),
+    ("claims", "One number, over how much ground", "dashboard.md", "The sections",
+     "\"Whose word, over how much ground\" covers", "that one number has to cover.",
+     "The line above the fold names the widest and the narrowest footprint; the fold holds all six. "
+     "Each card counts its cells at the rung you are on, so the count moves with the ladder."),
+    ("workshop", "The nearest place to make it", "introduction.md", "What it is for",
+     "The `make` pack names the nearest fab lab", "is the direction.",
+     "Under the alerts in Act, the row with the nearest fab lab is that sentence where the pack is "
+     "on: the lab, how far, and the dated archive it came from. With MAKE_ENABLED off, the row is "
+     "the node's own help text for that setting instead."),
+    ("note", "The note is the record", "cli.md", "Reading the node",
+     "`planetai act` is the terminal's way", "record of what was\ndone.",
+     "Each row here is one of those records, newest first: who, which stage, how long ago, and "
+     "decided first where a decision came before the act."),
+    ("bot", "An answer in the household's words", "bot.md", None,
+     "Somebody in the house asks", "in\ntheir words, as an act.",
+     "An act recorded through the bot lands in this ledger like one pressed on this page, with the "
+     "person's own words as its note."),
+    ("actions", "The table ρ is counted from", "schema.md", "Tables",
+     "The ρ instrument:", "one row per answer.",
+     "The note column is shown here only to a reader with a token, because GET /actions is on no "
+     "sharing allowlist."),
+    ("effect", "Elapsed time, not an effect", "rho.md", "What worked, per rule",
+     "It is elapsed time, not an effect.", "and the node cannot tell.",
+     "One row per rule, read from GET /effect over the whole record: how many acts, and how many "
+     "were followed by the condition stopping. A recovery time in hours appears only for a rule "
+     "that declares what it watches."),
+    ("figures", "One API, and no private path in", "api.md", None,
+     "Every node exposes the same API on port 8080.", "has a private path in.",
+     "Every row here arrived in GET /issues as provenance: the figure, its value, where it came "
+     "from, the node's word for it and its age. A script or a spreadsheet reads the same route, "
+     "with a token, or with none at SHARE_LEVEL=open."),
+
+    # --- Historical ------------------------------------------------------------------------------
+    ("shape", "The day this place usually has", "api.md", "Sensors and readings",
+     "The day this place usually has: one mean", "(`local`) count.",
+     "The page waits for seven local days before it draws a day, and until then says how many it "
+     "has. GET /shape?metric=pm25 returns the same hours, with how many hourly means went into each."),
+    ("earth", "It says something changed, never what", "packs-reference.md", "earth",
+     "The node's own copy of Google's AlphaEarth", "never what.",
+     "The years come from files this node already holds, read through GET /earth, and the node "
+     "fetches none of them while you look. `planetai run earth fetch` is how a year gets here."),
+    ("reach", "Where this node's own line starts", "install.md", None,
+     "This page puts the node itself on a machine", "keeps every reading it takes on this machine.",
+     "Each row is one kind of source, with the oldest and newest hourly mean this node holds for it, "
+     "from GET /reach. The climate normals the node pulled at install are dated years before it was "
+     "switched on; its own sensors start on the day they were first polled."),
+    ("trust", "Whether its own sensors tell the truth", "packs-reference.md", "trust",
+     "Whether the node's own sensors are telling it the truth", "all three\nwere wrong.",
+     "The figures here are GET /trust, one row per local sensor: its coverage over seven days, the "
+     "channels that stopped moving, and how old the sensor is, which explains a low coverage without "
+     "a fault."),
+
+    # --- Network ---------------------------------------------------------------------------------
+    ("parent", "One cell in a district's picture", "federation.md", None,
+     "With a parent set", "and nothing else.",
+     "The wires on the right are what leaves this node: hourly means to a parent, the Index cells "
+     "and ρ. A wire with nothing on it is dashed. `planetai config set PARENT_API_URL` and "
+     "`PARENT_TOKEN` give this node a parent."),
+    ("registry", "What could be measured here", "sources.md", None,
+     "A node measures what its adapters read.", "carried inside every node as a\npinned copy.",
+     "The counts here are GET /sources, read the first time somebody opens Network: what the pinned "
+     "registry lists for this place, how many entries have code on this node, and the places to make "
+     "things and the designs to build. `planetai sources` prints the same list."),
+    ("presence", "A coarse cell, and never finer", "channels.md", "Reticulum, LXMF",
+     "Presence is separate and off by default", "so an exact place never leaves.",
+     "The cell drawn here is the one this node would announce, and its area is the whole of what a "
+     "stranger on the radio learns. GET /presence answers with enabled false until "
+     "RETICULUM_PRESENCE=1."),
+    ("mesh", "Where there is no WiFi", "channels.md", "Meshtastic, the LoRa mesh",
+     "For sensors and alerts where there is no WiFi.", "when the\ninternet is down.",
+     "What this card counts arrives through the gateway radio's MQTT uplink to this node's own "
+     "broker. `planetai meshtastic` sets that up; with MESH_ALERTS=1 an act alert's first line goes "
+     "back out over the mesh."),
+    ("siting", "Named for its place, in a box made nearby", "sensors.md", "Siting",
+     "Name it after the place", "Fab Lab Bali\nprints it.",
+     "These are the devices on this node's own ground, with their source, indoors or out, what each "
+     "measures and when it last spoke. The row for an open hardware manager says what is not here "
+     "yet: design files, firmware, and where nearby a device could be made or mended."),
+
+    # --- Set up ----------------------------------------------------------------------------------
+    ("settings", "A setting is a decision", "configuration.md", None,
+     "A setting is a decision the household makes", "for an online model.",
+     "Each value here says where it came from. A value saved here is live within 20 seconds and wins "
+     "over .env, a blank returns the key to .env, and every save is a row in actions with the actor "
+     "dashboard."),
+
+    # --- the foot, on every view but the wall ----------------------------------------------------
+    ("production", "One computer per place", "introduction.md", None,
+     "PLANETAI is the hyperlocal compute", "the place already owns.",
+     "The foot of every view but the wall opens on this sentence and the purpose that goes with it, "
+     "quoted from the documentation rather than rewritten, so this page and the documentation say "
+     "the same thing."),
+    ("purpose", "What a node is for", "introduction.md", "What it is for",
+     "Its purpose is", "around each node.",
+     "Every number on this page answers to that purpose. The issues the lead can name are air, heat, "
+     "land and coast; water and soil are not among them in this version, so the page draws neither."),
+    ("health", "What every screen asks first", "api.md", "Status",
+     "What every screen in the house polls.", "outbound request of its own.",
+     "The version at the foot is the one GET /health reports. Open it from the foot to read what "
+     "every screen here asks first: the node, its version, its cell at resolution 8, its last poll."),
+    ("mcp", "The surface an agent holds", "mcp.md", None,
+     "This is the surface an agent holds.", "that somebody\nacted.",
+     "The foot names POST /mcp for an agent handed this node's address: streamable HTTP, with "
+     "Authorization: Bearer and the admin token on every call. `planetai agent` prints the snippet "
+     "to paste into a client."),
 ]
 
 
@@ -148,7 +292,9 @@ def build():
         if not src.exists():
             errs.append(f"{key}: docs/site/{page} does not exist")
             continue
-        body = section_body(src.read_text(encoding="utf-8"), heading)
+        text = src.read_text(encoding="utf-8")
+        head = re.match(r"# (.+)", text)
+        body = section_body(text, heading)
         if body is None:
             errs.append(f"{key}: docs/site/{page} has no section '{heading}'")
             continue
@@ -166,6 +312,9 @@ def build():
             "quote": quote,
             "more": more,
             "page": page,
+            # The page's own `# Title`, which is what the site's sidebar calls it and what the panel
+            # cites. A repository path means nothing to a household reading the panel.
+            "page_title": head.group(1).strip() if head else page[:-3],
             "section": heading or "",
             "anchor": anchor,
             "url": f"{DOCS}/{page[:-3]}/" + (f"#{anchor}" if anchor else ""),

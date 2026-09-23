@@ -436,7 +436,7 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    # Added 22 September 2026 with learn mode. Four rules, all of them chrome the
                    # page writes for itself: "Walk the page", "Close", "Back", "Next", "This page:",
                    # the mark's key (an identifier — `dial`, `share` — not a word of anybody's), and
-                   # "n of 17". The two places a learn panel carries prose are the quote and the
+                   # "n of N". The two places a learn panel carries prose are the quote and the
                    # `more` line, and neither is shouted: `.lpanel .qt` and `.lpanel .more` are set
                    # in the body face at their own case, because one is the documentation's sentence
                    # and the other is this page's.
@@ -482,7 +482,7 @@ for _i, _line in enumerate(JS_SRC.splitlines(), 1):
         errs.append(f"dashboard.js:{_i} writes a mu into the page outside .said. If a rule above it ever "
                     f"uppercases, that becomes MG/M³ and the household reads milligrams. Wrap it in .said.")
 
-# --- the learn layer: a mark the page draws and a mark the build wrote are the same seventeen -------------
+# --- the learn layer: a mark the page draws and a mark the build wrote are the same set ------------------
 # A `.q` with no entry behind it is a question mark that opens nothing; an entry nothing draws is a
 # quote maintained against a docs page for no reader. Both are silent — the page renders either way —
 # so they are counted here rather than discovered by a tester. build_learn.py's own --check holds the

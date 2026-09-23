@@ -2109,7 +2109,7 @@ window.PAI.register({
  * which address. A poll is made by the node, on your behalf, whether or not anyone is at the
  * screen. Rolling them into one count would say the same number means the same thing twice. */
 window.PAI.register({
-  id: 'requests', pack: 'place', stage: 'observe', order: 60, learn: ['share'],
+  id: 'requests', pack: 'place', stage: 'observe', order: 60, learn: ['share', 'dido'],
   title: 'What this page asked of the world',
   needs: ['H3.nav'],
   render(ctx) {
@@ -2184,7 +2184,7 @@ PAI_LOAD.push(function () {
 const { esc, fmt, pill, age } = window.K;
 
 window.PAI.register({
-  id: 'figures', pack: 'core', stage: 'measure', order: 90,
+  id: 'figures', pack: 'core', stage: 'measure', order: 90, learn: ['figures'],
   title: 'Every figure on this page, and where it came from',
   render(ctx) {
     const { ISS, ORDER } = ctx;
@@ -2714,6 +2714,7 @@ const CELLHEAD = (ctx, g) => g.cell ? ctx.KH.address(g.cell, ctx.RES)
 
 window.PAI.register({
   id: 'sensors', pack: 'air-quality', stage: 'observe', title: 'What the stations read', order: 20,
+  learn: ['counted'],
   needs: ['H3.sensors'],
 
   controls(ctx) {
@@ -2930,7 +2931,7 @@ function record(ctx) {
 }
 
 window.PAI.register({
-  id: 'satellite', pack: 'earth', stage: 'observe', order: 30,
+  id: 'satellite', pack: 'earth', stage: 'observe', order: 30, learn: ['earth'],
   /* Historical's short answer. The pack says the satellite loop leads this view, so it is what a
      reader gets when they ask for the short version of it — not Now's four sentences. */
   level: 'simple',
@@ -3137,7 +3138,7 @@ const day = iso => {
 };
 
 window.PAI.register({
-  id: 'reach', pack: 'core', stage: 'observe', order: 5,
+  id: 'reach', pack: 'core', stage: 'observe', order: 5, learn: ['reach'],
   title: 'How far back this node can be asked',
   needs: ['REACH'],
   render(ctx) {
@@ -3270,7 +3271,7 @@ function rows(side, items) {
 }
 
 window.PAI.register({
-  id: 'netmap', pack: 'core', stage: 'observe', order: 0,
+  id: 'netmap', pack: 'core', stage: 'observe', order: 0, learn: ['parent'],
   /* Network's short answer, for the same reason: this view is this node in relation to the network,
      and the map of that relation is the whole of the short version. */
   level: 'simple',
@@ -3386,7 +3387,7 @@ const ACT_WORDS = {
 const saysNoLicence = r => /^\s*(no licence published|not open\b)/i.test(String(r.license || ''));
 
 window.PAI.register({
-  id: 'registry', pack: 'core', stage: 'observe', order: 60,
+  id: 'registry', pack: 'core', stage: 'observe', order: 60, learn: ['registry'],
   title: 'What this place could read, and where it could go',
   needs: ['SOURCES'],
   render() {
@@ -3482,7 +3483,7 @@ const { H, address, km2, edge } = window.KH;
 const R = H.radio;
 
 window.PAI.register({
-  id: 'reticulum', pack: 'reticulum', stage: 'observe', order: 40,
+  id: 'reticulum', pack: 'reticulum', stage: 'observe', order: 40, learn: ['presence'],
   title: 'What leaves this house by radio',
   needs: ['H3.radio'],
   render(ctx) {
@@ -3585,7 +3586,7 @@ const R = H.radio;
 const READ = () => R.mesh_reads || [];
 
 window.PAI.register({
-  id: 'meshtastic', pack: 'meshtastic', stage: 'observe', order: 41,
+  id: 'meshtastic', pack: 'meshtastic', stage: 'observe', order: 41, learn: ['mesh'],
   title: 'The mesh in this house',
   needs: ['H3.radio.mesh'],
   render(ctx) {
@@ -3683,7 +3684,7 @@ function devices() {
 }
 
 window.PAI.register({
-  id: 'hardware', pack: 'hardware', stage: 'observe', order: 45,
+  id: 'hardware', pack: 'hardware', stage: 'observe', order: 45, learn: ['siting'],
   title: 'The hardware in this house',
   needs: ['H3.sensors'],
   render(ctx) {
@@ -3806,7 +3807,7 @@ function claimCard(ctx, c) {
 }
 
 window.PAI.register({
-  id: 'claims', pack: 'core', stage: 'decide', order: 10,
+  id: 'claims', pack: 'core', stage: 'decide', order: 10, learn: ['claims'],
   title: 'Whose word, over how much ground',
   needs: ['H3.claims'],
   render(ctx) {
@@ -4237,6 +4238,10 @@ function ringsFor(list, open) {
 function whereToGo() {
   const labs = (window.SENSORS || []).filter(x => x.kind === 'facility');
   const said = ((A() || {}).where || {})[LOC];
+  /* The learn mark for the thread from a reading to a place that makes things sits on this row
+     rather than in Act's kicker: it is about this row, and the row is where the pack's sentence is.
+     Drawn in both branches, because the pack being off is the case a reader most needs explained. */
+  const mark = ref => (window.PAI_LEARN ? window.PAI_LEARN.mark('workshop', ref) : '');
   if (!labs.length) {
     const h = ((window.SETTINGS_RAW || {}).runtime || [])
       .find(r => r.key === 'MAKE_ENABLED') || {};
@@ -4245,7 +4250,7 @@ function whereToGo() {
         ? `No place to get something made is listed here. <span class="said">${esc(h.help)}</span>`
         : `No place to get something made is listed here, and this node does not say why: it `
           + `carries no MAKE_ENABLED setting, so its image predates the pack that would.`)
-      + `</p>`;
+      + mark('where-off') + `</p>`;
   }
   const near = labs.slice().sort((a, b) =>
     ((a.meta || {}).distance_km ?? 1e9) - ((b.meta || {}).distance_km ?? 1e9))[0];
@@ -4264,7 +4269,7 @@ function whereToGo() {
         + `${m.attribution ? ` \u00b7 ${m.attribution}` : ''}` }] })
     + `<p class="note" id="where-prov" data-ref="where-to-go">${pill('cached')} A monthly archive `
     + `is neither live nor partial. ${labs.length > 1 ? `${labs.length} are stored; the nearest is `
-      + `drawn.` : ''}</p>`;
+      + `drawn.` : ''}${mark('where-to-go')}</p>`;
 }
 
 /* THE HOUSEHOLD'S OWN CAPACITY, where the node has any. A purifier's filter life is the first thing
@@ -4292,6 +4297,7 @@ function capacity() {
 
 window.PAI.register({
   id: 'asks', pack: 'core', stage: 'act', order: 10, learn: ['levels', 'current'],
+  /* `workshop` is drawn by whereToGo() on the row it explains, not in the kicker. */
   title: 'The alerts this node has sent',
   /* PORTED: the prototype also needed SNAP.funnel, which was one of its three synthetic
      contributions — no endpoint on this node computes a stage split or the 2x2. The ledger is the
@@ -4425,7 +4431,7 @@ const { esc, row } = window.K;
 function name(id) { return String(id).split('/').pop().replace(/_/g, ' '); }
 
 window.PAI.register({
-  id: 'effect', pack: 'core', stage: 'measure', order: 20,
+  id: 'effect', pack: 'core', stage: 'measure', order: 20, learn: ['effect'],
   title: 'Which of these worked',
   needs: ['EFFECT.rules'],
   anchor: 'effect',
@@ -4568,7 +4574,7 @@ function peak(hours, key) {
 const hh = h => `${String(h).padStart(2, '0')}:00`;
 
 window.PAI.register({
-  id: 'shape', pack: 'core', stage: 'observe', order: 15,
+  id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape'],
   title: 'The day this place usually has',
   needs: ['SHAPE.hours'],
   anchor: 'shape',
@@ -4703,6 +4709,7 @@ function card(ctx, key, d, a) {
 
 window.PAI.register({
   id: 'decide', pack: 'core', stage: 'decide', order: 5, level: 'simple',
+  learn: ['recommend', 'looked', 'agent'],
   title: 'What to do about it',
   needs: ['H3.asks'],
   anchor: 'decide',
@@ -4822,7 +4829,7 @@ function line(x, ctx, all) {
 }
 
 window.PAI.register({
-  id: 'ledger', pack: 'core', stage: 'act', order: 20,
+  id: 'ledger', pack: 'core', stage: 'act', order: 20, learn: ['note', 'bot', 'actions'],
   title: 'What was decided, and by whom',
   needs: ['H3.asks.actions'],
   anchor: 'ledger',
@@ -5047,7 +5054,7 @@ const { esc, row } = window.K;
 const T = () => window.TRUST || null;
 
 window.PAI.register({
-  id: 'trust', pack: 'trust', stage: 'decide', order: 30,
+  id: 'trust', pack: 'trust', stage: 'decide', order: 30, learn: ['trust'],
   title: 'What the node doubts about its own sensors',
   needs: ['TRUST'],
 
@@ -5195,7 +5202,7 @@ function drawForecast(ctx) {
 }
 
 window.PAI.register({
-  id: 'forecast', pack: 'forecast', stage: 'observe', order: 50,
+  id: 'forecast', pack: 'forecast', stage: 'observe', order: 50, learn: ['forecast'],
   title: 'The day it is about to have',
   needs: ['FORECAST'],
   render: drawForecast,
@@ -6513,9 +6520,15 @@ window.PAI_ASKING = ASKING;
 
 /* THE LEARN LAYER — the tester guide folded into the page.
  *
- * Seventeen marks. Each is a question mark floating at the part of the page it explains; pressing
- * one opens a panel that QUOTES this node's own documentation for that part, says which page and
- * which section the words come from, links out, and walks to the next.
+ * One or more marks on every registered section, and on the ladder, the lead and the foot. Each is a
+ * question mark floating at the part of the page it explains; pressing one opens a panel that QUOTES
+ * this node's own documentation for that part, names the page and the section the words come from by
+ * their titles, links out, and walks to the next. The marks say what the node is FOR and what it
+ * PUBLISHES as well as how to read the ladder: the purpose sits on the foot, on every view that has one.
+ *
+ * THE WALK FOLLOWS THE PAGE. Back and Next step through the marks in the order this view drew them,
+ * top to bottom, foot last, so the next panel is the next thing a reader's eye would reach. The order
+ * in learn.json is only the fallback, for a panel left open over a view that does not carry its mark.
  *
  * WHY THE QUOTE IS INLINE AND NOT A LINK. The node does not serve docs/site — the site build does,
  * onto planetai.fab.city — so there is nothing on this machine to fetch at read time and a link is
@@ -6534,8 +6547,8 @@ function askLearn() {
   fetch('static/learn.json', { headers: { accept: 'application/json' } })
     .then(r => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
     .then(d => { LEARN = d; route(); })
-    /* A node whose static file is missing says so in the bar rather than drawing seventeen marks
-       that open nothing. `order` empty is how every other reader of LEARN tells the two apart. */
+    /* A node whose static file is missing says so in the bar rather than drawing marks that open
+       nothing. `order` empty is how every other reader of LEARN tells the two apart. */
     .catch(e => { LEARN = { order: [], marks: {}, failed: String(e.message || e) }; route(); });
 }
 
@@ -6577,10 +6590,22 @@ function learnBar() {
       + `page itself is unchanged — learn mode adds marks, it never hides anything.</span>`);
   }
   /* The count is filled in by learnSync() from the marks this VIEW actually drew, because the bar
-     is built before the page under it is. Saying "17 marks on this page" on Network, where there
-     are none, is the page telling a reader to look for something that is not there. */
+     is built before the page under it is. Saying "all of them are on this page" on Network, where a
+     third are, is the page telling a reader to look for something that is not there. The walk starts
+     at the first mark this view drew, which is also only known once it has drawn. */
   return box(`<span class="ln">&nbsp;</span>`
-    + `<button type="button" class="walk" data-learn="${esc(LEARN.order[0])}">Walk the page</button>`);
+    + `<button type="button" class="walk" data-learn-walk="1">Walk the page</button>`);
+}
+
+/* The marks this view drew, in the order a reader meets them: document order, top to bottom, the
+   foot last. A key drawn twice counts once, at its first place. */
+function learnWalk() {
+  const seen = [];
+  document.querySelectorAll('#page .q[data-learn], #foot .q[data-learn]').forEach(b => {
+    const k = b.getAttribute('data-learn');
+    if (LEARN && LEARN.marks[k] && !seen.includes(k)) seen.push(k);
+  });
+  return seen;
 }
 
 /* Every render rewrites the marks, so the one that is open has to be told again that it is. */
@@ -6590,12 +6615,13 @@ function learnSync() {
   if (mode() !== 'learn') { if (LEARN_AT) learnClose(); return; }
   const ln = document.querySelector('#learnbar .ln');
   if (ln && LEARN && LEARN.order.length) {
-    const n = document.querySelectorAll('#page .q').length;
+    const n = learnWalk().length;
     ln.innerHTML = (n
       ? `<b data-num="learn.here" data-cmp="learn.total ${LEARN.order.length}">${n}</b> mark`
-        + `${n === 1 ? '' : 's'} on this view, of ${LEARN.order.length} on the page. Every one quotes `
-        + `this node&rsquo;s own documentation, word for word, built in so it reads with no route out.`
-      : `No marks on this view. All ${LEARN.order.length} are on Now; walking starts there and the `
+        + `${n === 1 ? '' : 's'} on this view, of ${LEARN.order.length} across the views. Every one `
+        + `quotes this node&rsquo;s own documentation, word for word, built in so it reads with no `
+        + `route out. Walking follows this view from the top.`
+      : `No marks on this view. Walking starts at the first of the ${LEARN.order.length} and the `
         + `words come with it, so the panel reads the same from here.`);
   }
   if (!LEARN_AT) return;
@@ -6618,9 +6644,13 @@ function learnOpen(key) {
   const p = document.getElementById('learnpanel');
   const m = LEARN && LEARN.marks[key];
   if (!p || !m) return;
-  const i = LEARN.order.indexOf(key);
+  /* "3 of 9" counts the marks on the view being read, in its own order; a mark opened over a view
+     that does not carry it counts against the whole list, which is where Back and Next take it. */
+  const walk = learnWalk();
+  const ring = walk.includes(key) ? walk : LEARN.order;
+  const i = ring.indexOf(key);
   p.innerHTML = `<div class="lh"><span class="k">${esc(key)}</span>`
-    + `<span class="n">${i + 1} of ${LEARN.order.length}</span>`
+    + `<span class="n">${i + 1} of ${ring.length}</span>`
     + `<button type="button" class="x" data-learn-close="1">Close</button></div>`
     + `<h2>${esc(plainly(m.title))}</h2>`
     + `<blockquote class="qt">${quoteHtml(m.quote)}</blockquote>`
@@ -6628,9 +6658,11 @@ function learnOpen(key) {
        time and not touched; the line under it is this page talking about what it draws, which is a
        thing the docs do not cover and must not be made to look as though they did. */
     + `<p class="more"><span class="who">This page:</span> ${esc(m.more)}</p>`
-    + `<p class="src">The words above are from <code>docs/site/${esc(m.page)}</code>`
-    + `${m.section ? ` &middot; ${esc(plainly(m.section))}` : ''}.<br>`
-    + `<a href="${esc(m.url)}" rel="noreferrer">${esc(m.url)}</a></p>`
+    /* Cited the way the documentation names itself: the page's title and the section, linked to
+       the page on the site. A repository path was a developer's citation in front of a household. */
+    + `<p class="src">From <a href="${esc(m.url)}" rel="noreferrer">`
+    + `${esc(plainly(m.page_title || m.page))}${m.section ? ` &middot; ${esc(plainly(m.section))}` : ''}`
+    + `</a>.</p>`
     + `<div class="nav"><button type="button" data-learn-step="-1">Back</button>`
     + `<button type="button" class="pri" data-learn-step="1">Next</button></div>`;
   p.classList.add('open');
@@ -6651,10 +6683,19 @@ document.addEventListener('click', e => {
   if (close) { learnClose(); return; }
   const step = t.closest('[data-learn-step]');
   if (step && LEARN && LEARN.order.length) {
-    const open = document.querySelector('.q[aria-expanded="true"]');
-    const n = LEARN.order.length;
-    const i = open ? LEARN.order.indexOf(open.getAttribute('data-learn')) : -1;
-    learnOpen(LEARN.order[((i + Number(step.getAttribute('data-learn-step'))) % n + n) % n]);
+    /* The next mark on THIS view, in the order it drew them. A panel left open over a view that
+       does not carry its mark steps through the whole list instead, from where it is. */
+    const walk = learnWalk();
+    const ring = walk.includes(LEARN_AT) || !LEARN_AT ? (walk.length ? walk : LEARN.order) : LEARN.order;
+    const n = ring.length;
+    const i = ring.indexOf(LEARN_AT);
+    const d = Number(step.getAttribute('data-learn-step'));
+    learnOpen(ring[i < 0 ? (d > 0 ? 0 : n - 1) : ((i + d) % n + n) % n]);
+    return;
+  }
+  const walkStart = t.closest('[data-learn-walk]');
+  if (walkStart && LEARN && LEARN.order.length) {
+    learnOpen(learnWalk()[0] || LEARN.order[0]);
     return;
   }
   const q = t.closest('[data-learn]');
@@ -6713,11 +6754,16 @@ const PURPOSE = 'PLANETAI is the hyperlocal compute and intelligence layer for d
 const DOCS_URL = 'https://planetai.fab.city/docs/';
 function foot(S) {
   const esc = window.K.esc, v = ((S && S.health) || {}).version || '';
+  /* The foot is on every view but the wall, so its marks are the ones every view has: what the
+     node is for, and the two doors an agent or a script needs first. In learn mode only. */
+  const mark = (k, ref) => (window.PAI_LEARN ? window.PAI_LEARN.mark(k, ref) : '');
   return `<footer class="foot" id="foot" data-component="foot" data-ref="footer"><div class="wrap">`
-    + `<p class="why">${esc(PURPOSE)} Raw readings stay on this machine; only summaries leave.</p>`
+    + `<p class="why">${esc(PURPOSE)} Raw readings stay on this machine; only summaries leave.`
+    + `${mark('production', 'foot')}${mark('purpose', 'foot')}</p>`
     + `<p class="doors"><span class="mono">${esc(v ? `planetai-node ${v}` : 'planetai-node')}</span>`
-    + `<a class="mono" href="/health">GET /health</a>`
+    + `<a class="mono" href="/health">GET /health</a>${mark('health', 'foot')}`
     + `<span class="mono" title="Model Context Protocol, streamable HTTP; needs ADMIN_TOKEN">POST /mcp</span>`
+    + mark('mcp', 'foot')
     + `<a class="mono" href="/llms.txt">/llms.txt</a>`
     + `<a href="${DOCS_URL}">Documentation</a>`
     + `<a href="https://planetai.fab.city/">The programme</a></p>`
@@ -7123,7 +7169,9 @@ function main() {
     const setup = VIEW === 'setup' && window.PAI_SETUP ? window.PAI_SETUP.markup() : '';
     const sections = VIEW === 'setup' ? sectionsBox() : '';
     el.innerHTML = head() + `<div class="wrap"><section class="band" id="view-${esc(VIEW)}">`
-      + `<div class="k">` + esc(VIEW) + `</div>` + setup + sections + `</section></div>` + foot(S);
+      + `<div class="k"><span>` + esc(VIEW) + `</span>`
+      + (VIEW === 'setup' ? mark('settings', `view-${esc(VIEW)}`) : '') + `</div>`
+      + setup + sections + `</section></div>` + foot(S);
     /* The pane draws itself locked, then asks the node what this reader may see. */
     if (VIEW === 'setup' && window.PAI_SETUP) window.PAI_SETUP.load();
   }

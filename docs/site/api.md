@@ -100,7 +100,7 @@ The files the dashboard cannot inline: the ground SVG, the fonts, the renderer's
 | `name` | path | required | One of `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json` |
 | `variant` | string | `dark` | Register for `node-ground.svg`; anything but `paper` is treated as `dark` |
 
-`node-ground.svg` is drawn live from `NODE_LAT` and `NODE_LON` when they are set, so the hero shows this node's own cell. Without coordinates the shipped file is served. `learn.json` holds the seventeen quotes `tools/build_learn.py` cuts out of this site for the dashboard's learn mode.
+`node-ground.svg` is drawn live from `NODE_LAT` and `NODE_LON` when they are set, so the hero shows this node's own cell. Without coordinates the shipped file is served. `learn.json` holds the quotes `tools/build_learn.py` cuts out of this site for the dashboard's learn mode.
 
 ### GET /briefing
 Access: token
