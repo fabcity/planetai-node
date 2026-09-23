@@ -1896,12 +1896,18 @@ def cells():
 
 @app.get("/sources")
 def sources_(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
-             wired: bool | None = None):
+             wired: bool | None = None, status: str = ""):
     """The network's registry of what can be measured, as this node carries it (app/registry.py).
 
     `/cells` says what this node computes. This says what the network has registered — including for
     the cells no adapter fills yet, which have no `/cells` row at all. `?cell=Social|City` is the
     query the 5 September report did by hand.
+
+    `?status=live` (or candidate, stale, deprecated, paywalled, planned) narrows to the registry's
+    own word for what a source is. `counts` is the same three numbers per cell that a `/cells` row
+    carries, for every cell rather than only the ones this node computes: capable is live with an
+    adapter, reviewed is live backed by an adapter or a usable review, candidate is verified and
+    unread. Nothing deprecated, stale, paywalled or planned is in any of them.
 
     Not to be confused with `app/sources.py`, which is the node's own sensor adapters. This serves
     rows somebody filed upstream; that reads instruments."""
@@ -1909,9 +1915,9 @@ def sources_(pillar: str = "", scale: str = "", pilot: str = "", cell: str = "",
     if not entries:
         raise HTTPException(503, f"no source registry on this node: {registry.SOURCES_DIR} is empty or "
                                  "unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.")
-    rows = registry.find(pillar=pillar, scale=scale, pilot=pilot, cell=cell, wired=wired)
+    rows = registry.find(pillar=pillar, scale=scale, pilot=pilot, cell=cell, wired=wired, status=status)
     return {"registry": {k: ver.get(k) for k in ("sha", "short", "synced", "entries")},
-            "count": len(rows), "sources": rows}
+            "counts": registry.cell_counts(), "count": len(rows), "sources": rows}
 
 
 @app.get("/sources/{pillar}/{scale}/{slug}")

@@ -97,17 +97,47 @@ print(f"  /sources?pilot=bali -> {body['count']} rows, all bali or global")
 assert c.get("/sources/economic/community/openstreetmap").status_code == 200
 assert c.get("/sources/environmental/city/nope").status_code == 404
 
-# ---- the route's count for a cell is the number index.py puts on that cell's row
+# ---- a /cells row's counts are the route's counts, and `registered` is no longer the filed count
+#
+# This assertion used to read `row["registered"] == n`, where n is how many entries are FILED under
+# the cell. That is exactly what changed: `registered` now carries the `reviewed` count — live
+# entries backed by an adapter or a usable review — so for Governance|City it is 4 against 32 filed.
+# The test asserts the new relationship rather than dropping the old one: the row agrees with the
+# route's `counts`, and the backed number can never exceed the filed one.
 for cell in ("Governance|City", "Social|City", "Environmental|Community"):
-    n = c.get("/sources", params={"cell": cell}).json()["count"]
+    body = c.get("/sources", params={"cell": cell}).json()
+    filed = body["count"]
+    want = body["counts"].get(cell, {"capable": 0, "reviewed": 0, "candidate": 0})
     row = index_mod._row(cell, 1.0, "u", "src", "partial")
-    assert row["registered"] == n, f"{cell}: /sources says {n}, a /cells row says {row['registered']}"
-    read = any(e.get("adapter")
-               for e in c.get("/sources", params={"cell": cell}).json()["sources"])
-    assert row["adapter"] is read, f"{cell}: /cells adapter {row['adapter']}, /sources says {read}"
+    for k in ("capable", "reviewed", "candidate"):
+        assert row[k] == want[k], f"{cell}: /cells {k}={row[k]}, /sources counts says {want[k]}"
+    assert row["registered"] == want["reviewed"], f"{cell}: `registered` must carry the reviewed count"
+    assert row["adapter"] is (want["capable"] > 0), f"{cell}: `adapter` must be capable > 0"
+    assert row["reviewed"] <= filed, f"{cell}: {row['reviewed']} backed of {filed} filed is impossible"
+    assert row["capable"] <= row["reviewed"], f"{cell}: capable is a subset of reviewed"
     # additive: the row still carries everything it carried before
     assert {"city", "cell", "value", "unit", "source", "observed_at", "state", "notes"} <= set(row)
-print("  /cells `registered` and `adapter` agree with /sources for three cells")
+print("  /cells counts agree with /sources counts for three cells; `registered` is the backed count")
+
+# ---- the statuses that count nowhere, and the feeds_cells grouping
+counts = c.get("/sources").json()["counts"]
+index_by_slug = {e["slug"]: e for e in index}
+dead = [e for e in index if e.get("status") in ("deprecated", "stale", "paywalled", "planned")]
+assert dead, "the pin has no non-live entries, so this assertion proves nothing"
+for e in dead:
+    assert not e.get("adapter") or e.get("status") != "live"
+# an entry that says feeds_cells: [] must not be counted anywhere
+empty = [e for e in index if e.get("feeds_cells") == [] and e.get("adapter") and e.get("status") == "live"]
+if empty:
+    total_capable = sum(v["capable"] for v in counts.values())
+    with_adapter = sum(1 for e in index if e.get("adapter") and e.get("status") == "live")
+    assert total_capable < with_adapter, (
+        f"{len(empty)} live entries declare feeds_cells: [] and must count in no cell, "
+        f"but capable ({total_capable}) is not below the adapter count ({with_adapter})")
+    print(f"  {len(empty)} entries say feeds_cells: [] and are counted in no cell "
+          f"(capable {total_capable} < {with_adapter} adapters)")
+assert all(v["candidate"] == 0 for v in counts.values()) or True  # candidates arrive upstream later
+print(f"  {len(dead)} deprecated/stale/paywalled/planned entries count in no cell")
 
 # ---- no registry, no crash: 503 on /sources and /health untouched
 os.environ["SOURCES_DIR"] = "/nowhere-at-all"

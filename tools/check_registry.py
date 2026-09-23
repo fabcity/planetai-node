@@ -3,7 +3,7 @@
 
     python3 tools/check_registry.py          # in `make lint`
 
-`data/sources/` is a snapshot of `awesome-fabcity-data` at one commit (tools/sync_registry.sh). Five
+`data/sources/` is a snapshot of `awesome-fabcity-data` at one commit (tools/sync_registry.sh). Seven
 things have to stay true about it, and one is only a warning.
 
   · REGISTRY_VERSION is there and parses — without it nothing downstream can say what it is serving.
@@ -14,6 +14,10 @@ things have to stay true about it, and one is only a warning.
   · Every entry sits in the directory its own `pillar`/`scale` name, because `slug` and `cell` are
     both derived from the path and a mismatch makes them lie.
   · Every `sources:` id in every packs/*/pack.yaml resolves to an entry.
+  · Every review under reviews/ names an `entry` that is one of the vendored entries. A review of a
+    source this pin does not carry is evidence about nothing, and it would fold onto no row.
+  · Every cells/<file>.yaml is named for its own `cell` key. Both are no-ops on a pin taken before
+    those trees existed upstream, which is every pin before 2026-09-22.
 
 **This replaced tools/check_sources.py, which asked the last question of a sibling checkout of the
 registry — and so answered it only on a laptop that had one.** In CI and on a node it printed a line
@@ -31,6 +35,8 @@ import json
 import re
 import sys
 from pathlib import Path
+
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from build_registry_index import build, render  # noqa: E402
@@ -103,6 +109,37 @@ def main() -> int:
             near = sorted(i for i in ids if slug in i or i.rsplit("/", 1)[1] in slug)
             hint = f"did you mean `{near[0]}`?" if near else "no entry in the registry"
             errs.append(f"{path.relative_to(ROOT)}: `{sid}` does not resolve — {hint}")
+
+    # reviews/ and cells/ arrived upstream 2026-09-22. Absent is fine and silent: a pin from before
+    # then simply has neither tree, and `rglob` over a directory that is not there yields nothing.
+    for rp in sorted((SOURCES / "reviews").rglob("*.yaml")) if (SOURCES / "reviews").is_dir() else []:
+        try:
+            r = yaml.safe_load(rp.read_text()) or {}
+        except yaml.YAMLError as e:  # noqa: PERF203
+            errs.append(f"{rp.relative_to(ROOT)}: does not parse — {e}")
+            continue
+        entry = r.get("entry") if isinstance(r, dict) else None
+        if not entry:
+            errs.append(f"{rp.relative_to(ROOT)}: no `entry:` — a review has to say what it reviewed")
+        elif entry not in ids:
+            errs.append(f"{rp.relative_to(ROOT)}: reviews `{entry}`, which this pin does not carry — "
+                        f"a review of a source that is not here folds onto no row")
+
+    for cp in sorted((SOURCES / "cells").glob("*.yaml")) if (SOURCES / "cells").is_dir() else []:
+        try:
+            c = yaml.safe_load(cp.read_text()) or {}
+        except yaml.YAMLError as e:  # noqa: PERF203
+            errs.append(f"{cp.relative_to(ROOT)}: does not parse — {e}")
+            continue
+        key = c.get("cell") if isinstance(c, dict) else None
+        if not key or "|" not in str(key):
+            errs.append(f"{cp.relative_to(ROOT)}: no `cell:` key of the form Pillar|Scale")
+        else:
+            pillar, _, scale = str(key).partition("|")
+            want = f"{pillar.lower()}-{scale.lower()}.yaml"
+            if cp.name != want:
+                errs.append(f"{cp.relative_to(ROOT)}: cell is {key!r}, so the file must be named "
+                            f"{want} — the name and the key are two spellings of one cell")
 
     try:
         age = (datetime.date.today() - datetime.date.fromisoformat(ver["synced"])).days

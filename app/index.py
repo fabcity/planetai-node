@@ -61,18 +61,22 @@ def _row(cell: str, value, unit: str, source: str, state: str, note: str = "") -
     # `GET /sources?cell=Social|City` and `planetai sources --cell`, which is the half of the 5
     # September table `/cells` structurally cannot answer.
     #
-    # `adapter` reads the registry's own `adapter` field, which arrived upstream on 2026-09-20 and
-    # names the code — `core:openmeteo_air`, `pack:coast`. The `wired_in_planetai` boolean it
-    # replaced is gone from here. One thing worth knowing about the grouping: both numbers group by
-    # an entry's OWN pillar/scale, and the registry now also carries `feeds_cells`, the cells a node
-    # actually fills from it. They are not the same question — bali-air-dispatch is filed under
-    # Environmental|Community and feeds Environmental|City — so if this row should say "something
-    # reads a source that FILLS this cell" rather than "…that is FILED under it", the grouping is
-    # what changes, and that is a decision, not a fix.
-    n, has_adapter = registry.counts_by_cell().get(cell, (0, False))
+    # THE GROUPING DECISION, TAKEN. The comment that stood here asked whether these numbers should
+    # say "something reads a source that FILLS this cell" rather than "…that is FILED under it", and
+    # said it was a decision rather than a fix. It is taken: registry.cell_counts() groups by
+    # `feeds_cells` and falls back to the path only when that key is absent, and it counts no
+    # deprecated, stale, paywalled or planned entry at all.
+    #
+    # `registered` KEEPS ITS NAME AND CHANGES ITS MEANING, which is the one thing here that is not
+    # purely additive. It was "entries filed under this cell, any status"; it is now the `reviewed`
+    # count — live entries backed by an adapter or a usable review. Governance|City goes from 32 to
+    # 4. The old number was not a smaller version of the new one, it was a different claim, and 32
+    # was the number that made the Index look answered when it was not.
+    c = registry.cell_counts().get(cell, {"capable": 0, "reviewed": 0, "candidate": 0})
     return {"city": CITY, "cell": cell, "value": None if value is None else round(float(value), 3), "unit": unit,
             "source": source, "observed_at": datetime.now(timezone.utc).isoformat(), "state": state, "notes": note,
-            "registered": n, "adapter": has_adapter}
+            "registered": c["reviewed"], "adapter": c["capable"] > 0,
+            "reviewed": c["reviewed"], "candidate": c["candidate"], "capable": c["capable"]}
 
 
 def _buckets(cur) -> dict:
