@@ -37,6 +37,14 @@ if [[ -d "$SITE_/.git" ]]; then
    to publish — and it refuses AFTER this script has tagged and pushed. Deal with those first."; }
 fi
 
+# And the programme page: it states this release's number, its pack and language counts and node #1's
+# rho, and on 23 Sep 2026 it was eight releases behind with every gate green (R25). Refuse to tag while
+# it describes another release; the fix is a commit in the site repo, before the tag, not after.
+if [[ -d "$SITE_/.git" ]]; then
+  python3 tools/check_site.py --site "$SITE_" --version "v${V}" \
+    || die "the programme page ($SITE_/web/src/data.js) does not describe v${V}. Update it, commit it, then release."
+fi
+
 say "lint + tests"
 make lint >/dev/null && make test >/dev/null || die "checks failed"
 

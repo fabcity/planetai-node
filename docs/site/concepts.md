@@ -211,8 +211,9 @@ fields behind them do not change.
 | ring | somebody else's public stations near here | `ring` | street |
 | region | a model or a portal for this point | `region` | model |
 
-These are the programme page's words, decided on 23 September 2026; `check_site.py`, in the programme
-site's own `tools/`, fails when a retired word comes back on the programme page.
+These are the programme page's words, decided on 23 September 2026. `tools/check_site.py` fails when a
+retired word comes back in these pages, and holds the programme page's release, counts and purpose to
+this repository.
 
 ## Where this leads
 

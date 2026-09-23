@@ -6,6 +6,13 @@
 the programme page's words; where every number on its page came from, as a link you can open; and, for a
 reader it does not know, nothing finer than the cell it stands in.*
 
+- **The programme page is held to the node.** `tools/check_site.py` compares the site repo's
+  `web/src/data.js` with this repository: the release it names, the pack counts by kind, the languages,
+  the documentation's page count, ρ's label, and the purpose sentence, which must be the one
+  `docs/site/introduction.md` carries (and the README, `llms.txt`, `AGENTS.md`, the dashboard and
+  `/llms.txt` must quote). `make lint` runs it; `tools/release.sh` runs it with the version and refuses
+  to tag while the page describes another release or a ρ read more than 30 days ago. It also fails when a
+  retired word comes back in docs/site.
 - **The node says what it is for.** The purpose the programme page leads with is now the lead of the
   documentation's introduction, and the README, `AGENTS.md`, `llms.txt`, `STYLE.md` and the dashboard
   quote it. Every view but the wall ends with a foot: that purpose, then the version and the doors a
