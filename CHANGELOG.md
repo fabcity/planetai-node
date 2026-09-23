@@ -1,7 +1,70 @@
 # Changelog
 
-## Unreleased
+## v0.73 — 2026-09-23 — the node says what it is for, and what it publishes is one press away
 
+*What your node measures did not change. What changed is what it says about itself: why it exists, in
+the programme page's words; where every number on its page came from, as a link you can open; and, for a
+reader it does not know, nothing finer than the cell it stands in.*
+
+- **The node says what it is for.** The purpose the programme page leads with is now the lead of the
+  documentation's introduction, and the README, `AGENTS.md`, `llms.txt`, `STYLE.md` and the dashboard
+  quote it. Every view but the wall ends with a foot: that purpose, then the version and the doors a
+  person or an agent needs (`GET /health`, `POST /mcp`, `/llms.txt`, the documentation, the programme).
+  `/llms.txt` is a route of its own that answers at every sharing level and says nothing about the house,
+  and `/health` carries `docs`, `mcp` and `llms`. ρ is named for what it counts: the share of act-level
+  alerts somebody answered within 24 hours.
+- **A stranger gets the cell, never the point.** A reader the node does not know (no token, not this
+  machine) is handed the centre of the resolution-8 cell the node stands in, in `/health`, and for the
+  household's own sensors in `/sensors` and `/stats`. `/export` carries the cell's centre for everyone,
+  because that file is CC BY and meant to travel. This machine and a token keep three decimals, which is
+  what the household's own plan is drawn from. `/health` says which
+  it handed out (`position`), and the ground drops the house dot when it is the cell. `/stats` no longer
+  hands out unrounded positions at `SHARE_LEVEL=open` (#113). **Exports already published keep their three
+  decimals**: files under `exports/` written before this release are not rewritten, and anything that
+  copied them has the finer position.
+- **One vocabulary with the programme page** (display only). What the node sends a person is an *alert*
+  everywhere a person reads it, and one nobody has answered is an *open alert*. The resolution control is
+  the *ladder* and each step a *rung*. The four distances are *house · street · ring · region*; Bahasa
+  *rumah · jalan · sekitar · wilayah*, Spanish *casa · calle · alrededores · región*, both waiting for a
+  native reader. Nothing a program reads changed: the wire keys `room`, `yard`, `ring` and `region`, every
+  API field, id and class stay as they were, and captured fixtures keep the words they were captured
+  with. `concepts.md` gains a "Words" table: the word, what it means, the key behind it, the word it retires.
+- **Learn mode explains the whole page, not six dials.** It was 17 marks on one view; it is 44, every
+  registered section carries at least one, and 22 of the 42 documentation pages are reachable from the
+  node. The marks say why the node exists and what it publishes, and their `more` texts name the route
+  each band reads. Back and Next walk the marks in the order the view drew them, and the panel cites a
+  page by its title and section, not its path in the repository.
+- **Every band says which routes it was drawn from.** The section contract gains `reads`, and all 24
+  sections declare one. The shell prints them beside each band's title, small, in mono and in their own
+  case, as links: `GET /effect`, `GET /issues`, `GET /actions`. `tools/check_ui.py` fails a section with no
+  `reads` or one naming a route `app/main.py` does not define.
+- **The figures band links the open data.** Under "Every figure on this page", one line: the day's export at
+  `GET /export?day=…` (CC BY 4.0) and the days before it at `GET /exports`.
+- **The registry band can be used, not only read.** The pin links to `awesome-fabcity-data` at that commit.
+  The three counts the node computes per cell (#105) are on the band, added up over the cells the way
+  `planetai sources` prints them: at `1010aa0`, 12 capable, 12 reviewed and 20 candidate across 19 cells.
+  A line links to `GET /sources?status=live`, `?status=candidate`, `GET /cells` and the documentation's
+  *Adding a source*. The licence row is unchanged. Its notes no longer describe an older pin, and the act
+  kinds `repair` and `match` have words instead of bare tokens.
+- **A refusal is the node's own sentence.** "I did this" and "Record the decision" print what the node
+  wrote when it refuses: the whole DECISION_REQUIRED sentence on a 409 instead of "The node refused it
+  (409)", the stage list on a 400, and a 401's `detail`, which the page used to drop. Before anybody
+  presses, a line under both forms says what a browser on another device needs: the act token, which
+  `planetai ui` prints and Set up → unlock holds. The 400 itself now names all three stages it accepts
+  (`acknowledged, acted or decided`). The ledger's note "No stage for a decision yet" is gone: it has been
+  false since the Decide card.
+- **`stale` is a word, not an empty square.** `signs.svg` is the design layer's and has no sign for
+  `stale`, so the pill drew a blank glyph beside the word. A provenance word the sprite has no sign for is
+  now printed alone; the sign is owed by planetai-design.
+- **The page and two alerts speak in their own voice.** The ground's notes give the page's reasons for
+  the live bases instead of a person's; two air-quality alerts no longer say "I will tell you" in any of
+  their three languages (and the one that promised a message when the outside air clears, which no rule
+  sends, now says to keep shut until it does); the digest and the headline rule lose their em dashes.
+- **The docs catch up with this release.** The reference is for v0.73. The ρ worked example is node #1's
+  published figure of 19 September 2026: 29 of 137 act-level alerts answered, ρ 0.212, median 112
+  minutes. The federation page and `registry.json` name node #1 `bayu-ungasan`. The gap notes this release
+  closes (`/stats` positions, the ledger's decided note, the registry band's stale notes) are gone; the
+  rest stand.
 - **The docs site cannot fall behind the node again without a gate saying so.** It did: from v0.57 to
   v0.72.1, fifteen releases, `planetai.fab.city/docs` described a node nobody was running, and every
   check stayed green because none of them read `docs/site/`. Three changes. `tools/check_docs.py` now
@@ -24,6 +87,19 @@
   registered entries, where the old single number read 238 for everything.
   `planetai sources --cell 'Governance|City'` shows 32 filed and 4 backed.
   The node also now carries the registry's `reviews/` and `cells/` trees when a pin has them.
+- **Every page of the documentation site was re-read against the code**, about 2,500 claims checked and
+  some 80 corrected, and rewritten for the person building a node one part at a time: each page says
+  which part it adds and what the node can do once it is there. The source registry has a page of its own.
+
+**For testers.** Lucas (node #2, Menorca), Tomas Vivanco (node #3) and Lars (node #4): after `planetai
+update`, every view but the wall ends with a foot naming what the node is for and linking `/health`,
+`/llms.txt` and the documentation. The page reads *alert* where it said *ask*, *ladder* and *rung* for the
+resolution control, and *house · street · ring · region* for the four distances; the alerts your node sends
+keep their wording, except the two air-quality messages above. Switch to Learn and every section has a mark,
+with Back and Next walking the page. Each band names the routes it read; press one to see the JSON. A
+phone on your WiFi without a token, at `SHARE_LEVEL=open`, now sees the centre of your cell rather than
+your point, and the ground draws no house dot for it: that is the change working, not a bug. Lucas, the
+Spanish distances are *casa · calle · alrededores · región*; say which of them reads wrong.
 
 ## v0.72.1 — 2026-09-23 — three things the page was drawing wrong
 
