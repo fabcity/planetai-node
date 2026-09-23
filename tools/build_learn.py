@@ -36,26 +36,26 @@ MAX_WORDS = 60
 # key · title · page · section (None = the page's lead, above the first heading) · first words · last
 # words · the page's own line. Order is the order the panel walks, which is the order of the page.
 MARKS = [
-    ("dial", "The dial: one stop per grain", "dashboard.md", "The lead",
-     "A **dial** sits under the header", "are struck through.",
+    ("dial", "The rail: one stop per grain", "dashboard.md", "The lead",
+     "The **grain rail** sits above the lead", "are struck through.",
      "The stops that may leave the machine are drawn as a dotted texture rather than the cells "
-     "blue, so blue keeps its one meaning on this page: an H3 cell. Under the dial, a fold draws "
+     "blue, so blue keeps its one meaning on this page: an H3 cell. Under the rail, a fold draws "
      "one cell at the stop you are on against the stops either side, to scale, and what each "
      "thing this node speaks for costs to cover at it."),
     ("lead", "The lead", "dashboard.md", "The lead",
-     "The first thing on Now", "if something is open.",
+     "The first thing on Now", "`live`, `stale` or `cached`.",
      "The node computes and the page draws. A number this page worked out for itself would be a "
      "bug, which is why the sentence, the numeral and the state word all arrive from GET /issues."),
     ("containment", "Exact in the index, approximate on the ground", "dashboard.md", "The lead",
-     "At resolution 8 one cell is", "of which 3 are its\nown.",
-     "That is the documentation's example grain line. The one under the lead is tonight's, read "
+     "At resolution 8 one cell is", "how many of those are its own.",
+     "That is the documentation's example grain line. The one under Decide is tonight's, read "
      "from this node, and when the neighbouring grains give the same answer the page says so."),
     ("distances", "Four distances, not four resolutions", "concepts.md", "Sources and sensors",
-     "**The four distances.**", "ruangan · halaman · sekitar · wilayah.",
+     "**The four distances.**", "jalan · model.",
      "The page prints them in the household's words — room, wall outside, street, model — on one "
      "scale, so the eye can answer whether it is me or everywhere without arithmetic."),
     ("prov", "Provenance words", "concepts.md", "Provenance words on the page",
-     "`live` — measured by this node", "the node's own engine.",
+     "`live`: measured by this node", "the node's own engine.",
      "Provenance is ink only and square on this page, never a coloured pill, and the full H3 id is "
      "printed once per object and never truncated."),
     ("cell", "The cell this node stands in", "concepts.md", "The node and its place",
@@ -63,12 +63,12 @@ MARKS = [
      "Resolution 8 is coarser than the rounding already applied to the node's position, so the "
      "cell drawn on the ground puts nothing back that the node had held out."),
     ("tiles", "What a map costs", "dashboard.md", "The ground",
-     "Three bases: `plan` — offline", "`osm` — OpenStreetMap tiles.",
+     "Three bases: `plan`, offline", "`osm`, OpenStreetMap tiles.",
      "The request count sits in the tab bar so the price of switching to satellite is visible "
      "before you pay it: live tiles need MAP_TILES=on, and a press may only ever reduce it."),
     ("stages", "The order the loop runs", "dashboard.md", "The sections",
      "Every section is registered with the page contract",
-     "in the\norder the loop runs",
+     "observe, decide, act, measure.",
      "Observe, decide, act, measure — the four stages this page is read in. A section whose data "
      "is not on this node prints one honest line in its place, never a blank and never a guess."),
     ("cards", "Four card kinds and no fifth", "dashboard.md", "The sections",
@@ -76,9 +76,9 @@ MARKS = [
      "Room is the solid line, the street dotted, the model dashed, the line itself dashed red. "
      "Where a distance has no source its trace is absent and the legend says which one."),
     ("states", "States, in weight not hue", "dashboard.md", "Issues, states and distances",
-     "For every issue the keeper declared", "`none`\n(no record)",
-     "State is carried by weight, fill and dash, never by hue — act is set at 800 and quiet at "
-     "400. Colour is argument only: blue a cell, green a loop closed, red a line crossed."),
+     "For every issue the keeper declared", "or `none` (no record).",
+     "State is carried by weight, fill and dash, never by hue: act is set at 700 and the other "
+     "states at 500. Colour is argument only: blue a cell, green a loop closed, red a line crossed."),
     ("custody", "Custody: who may be counted", "concepts.md", "Sources and sensors",
      "**`custody`.** A generated column", "still never be counted.",
      "Your own instruments are drawn in ink on this page, the borrowed ones faint, and what only "
@@ -92,21 +92,21 @@ MARKS = [
      "The barcode under Observe is hourly means of the room's PM2.5 — the finest grain this page "
      "shows, and still not a raw reading."),
     ("levels", "Three levels, one floor", "alerts.md", "Levels",
-     "`ALERT_LEVEL` (default `act`) is the floor", "still in the next\n[report](report.md).",
+     "`ALERT_LEVEL` (default `act`) is the floor", "is written from.",
      "An alert's acted_at stays null until a person acts and records it — this page's button, the "
      "CLI, the bot, a radio, or an agent. It is the one measurement the node cannot make itself."),
     ("current", "Conditions that are not events", "alerts.md", "Conditions that are not events",
      "The dashboard marks\nan open act-level ask", "the ask is still open.",
      "A heat alert is a condition that holds for hours; a cooking spike is an event with a "
      "cooldown. The schema does not yet know an alert can clear, so the page says which it is."),
-    ("rho", "ρ — the loop closed", "rho.md", None,
+    ("rho", "ρ: the loop closed", "rho.md", None,
      "ρ (rho) is the share", "rather than an app feature.",
      "The page draws it as the asks answered over the asks raised, with the median minutes to the "
      "first answer, and counts the rings rather than sizing them."),
     ("refusals", "Refusals that hold at every stage", "how-it-works.md",
      "Refusals that hold at every stage",
      "No raw readings leave the instance", "not declared from above.",
-     "The care label at the foot is those refusals as signs. Nothing to press on the wall is the "
+     "The care label under Measure is those refusals as signs. Nothing to press on the wall is the "
      "wall's own refusal: it is an instruction, not a control."),
 ]
 

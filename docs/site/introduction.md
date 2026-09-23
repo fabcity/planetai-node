@@ -1,11 +1,11 @@
 # Introduction
 
-A PLANETAI node is a small program for a computer in your home, lab or community centre. It connects
-everything that measures where you stand — a particle sensor on the wall, a radio in a field, the public
-station down the road, the city's open-data portal, the satellite overhead — into one picture of the place,
-sharp enough to act on: what to do about the air, the heat, the sea and the land, today, here. It tells the
-people there in plain sentences on Telegram, keeps every raw reading on the machine it was recorded on, and
-passes upward only what a city, a bioregion or a planetary model needs from the ground.
+A PLANETAI node is a small program for a computer in your home, lab or community centre. In the repo's own
+words, it "connects everything that measures where you stand, from a particle sensor on the wall to a
+satellite overhead, into one picture sharp enough to act on: what to do about the air, the heat, the sea, the
+land, today, here." It tells the people there in plain sentences on Telegram, keeps every raw reading on the
+machine that recorded it, and passes upward "what the models of a bioregion and a planet cannot see from
+above: what the ground is doing."
 
 ```bash
 curl -fsSL planetai.fab.city/install | bash
@@ -17,27 +17,77 @@ dashboard. The walk-through is [Install](install.md); the ten minutes after it a
 
 > **Note.** The node is alpha. Installing one makes you part of an experiment: things will break, some will
 > surprise you, and what you report decides what gets fixed first. Write to **info@fab.city** with what broke,
-> what helped and what did not. Node #1 has run in Kuta Selatan, Bali, since 2 September 2026; node #2 runs in
-> Menorca.
+> what helped and what did not. Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September
+> 2026. Node #2 runs in Menorca.
 
-## What these pages are
+## Why Fab City builds it
 
-This is the reference for the node as it is in the version named in the footer, read from the code of that
-version. The pages under *Get started* and *Operate* are for the person running one. *Alerts, reports and ρ*,
-*Packs*, *Dashboard* and *Agents* explain what the node does and how to change it. *Reference* is the
-[HTTP API](api.md), the [database](schema.md) and the [federation contracts](federation.md). *Project* holds
-the architecture and the spec, which are the canon the rest of this is measured against.
+The README states the problem in one sentence: "A city is measured today by satellites, by models with 11 km
+squares, and by a few reference stations; none of them know your kitchen at 3 am, the shade on your street, or
+which hour to open the windows." A node "fills that resolution gap from below, with the sensors people already
+own, and decides where it stands instead of sending readings away. Community scale first, then city, then
+region; upward, only summaries, to the Fab City Index and to the models that need ground truth."
 
-Where a page and the code disagree, the code wins and the page has a bug: the link at the foot of every page
-opens its source on GitHub.
+Each part you add to the node
+(a sensor, a rule, a channel, a pack, a parent) is a part of that instrument. A sensor in a living room
+becomes a row a cell of the Index may count, but only once it is yours and within `LOCAL_RADIUS_M` of the
+node. An alert becomes a person's act, and the acts become ρ, which `ARCHITECTURE.md` calls "the brick nobody
+else has": two generations of the Index measured a snapshot with ρ implicit at 1, and a node measures it for
+real, "because it's the thing sending the alert and the thing receiving the acknowledgement." A district's
+picture is built from nodes, never declared from above.
+
+## The loop a node runs
+
+Sensors, public stations, open-data portals and Earth models feed the node; that is *sense*. Everything after
+it is one loop in four stages, and the dashboard is laid out in the order the loop runs. The page describes
+each stage in its own words:
+
+| stage | what it holds |
+|---|---|
+| observe | what is read, seen and heard about this place |
+| decide | what may be said about it, and at what grain |
+| act | what has been asked, of whom |
+| measure | whether it worked, and how long it took |
+
+The README says what the alerts are for: they "say what is happening, what it means, what to do. Then the
+node measures whether anything changed: ρ, the share of alerts that led to an action, a number the Index never had." ρ can
+only be measured where the alert is sent and the answer comes back, which is here. [ρ](rho.md) has the
+definition.
+
+In v0.72.1 the loop closes on the dashboard itself. An open act-level alert about one of the place's issues
+shows under Decide as "What to do about it", with the rule's own recommendation beside what was seen. A person records a decision there, then
+presses **I did this** under Act when it is done, and Measure shows ρ and, per rule, which acts were followed
+by the condition clearing. After a week of its own readings the node also draws "The day this place usually
+has" on the Historical view. [How it works](how-it-works.md) follows a reading through every step.
+
+## What stays, and what goes up
+
+Raw readings stay on the machine. A parent node, if you name one, receives hourly means and the timestamps of
+this node's alerts. The daily open export carries hourly means with your own sensors named by role, the Index
+cells, the first line of each alert and ρ, under CC BY 4.0. A node that nobody has told otherwise sends no
+question to a model outside your network (`AGENT_PREFER=private` is the default), and the dashboard fetches no
+live map tiles until a keeper sets `MAP_TILES=on`. The full list is in
+[How it works](how-it-works.md#what-leaves-the-machine-and-what-never-does).
 
 ## What a node is not
 
-It does not send your readings anywhere. It does not switch anything on or off; connect it to Home Assistant
-if you want that. It does not replace a reference instrument: low-cost sensors drift and disagree, and the
-node says so where it matters. It does not need the internet to keep working, only to send you messages. And
-it is not a cloud service: two containers on a machine you own, a database on a local disk, nothing that
-requires a provider to function.
+It sends none of your readings anywhere, and it switches nothing on or off; connect it to Home Assistant if
+you want that. It does not act for you either. An agent may draft, but every act is a person's row in the
+`actions` table. Low-cost sensors drift and disagree, so it does not replace a reference instrument, and the
+node says so where it matters. Nor is it a cloud service: it is two containers on a machine you own, with a
+database on a local disk and nothing that requires a provider to function. The internet is how it reaches public stations,
+models and Telegram.
+
+## What is not built
+
+Some of what the canon describes is not in the code, and these pages do not pretend otherwise.
+`ARCHITECTURE.md` has an Act layer that ends, when the decision is physical, in a fabrication ticket. No such
+ticket exists: there is no `fabricate` stage, and no job has been handed to a workshop. The nearest the node
+comes is the `make` pack, which names the closest fab lab in a sentence and is off until `MAKE_ENABLED=1`.
+Nodes finding each other (`docs/SPEC_discovery.md`) is marked "Not built". A node as a key rather than a
+name (`docs/SPEC_identity.md`) and the second ρ, the one that asks whether the reading recovered
+(`docs/SPEC_rho.md`), are both "Phase 1. Nothing here is built." A decision on the dashboard is one person
+deciding for one node; how several households' decisions become a street's is not on a node at all.
 
 ## Who it is for
 
@@ -45,17 +95,35 @@ A household with a sensor in the living room that still does not know whether to
 that wants its own address on the [Fab City Index](https://index.fab.city). A school or clinic with a duty of
 care and a budget line for health and safety. A banjar or a desa that wants its own number on the island's map.
 And the people who keep sensors alive for all of them, which is the part of this that is a service rather than
-a program — the argument is in [`PRODUCT.md`](../../PRODUCT.md).
+a program. The argument is in [`PRODUCT.md`](../../PRODUCT.md): "someone whose job it is to keep the sensor
+alive and the alerts correct."
+
+## What these pages are
+
+This is the reference for the node at v0.72.1, read from the code of that version. The pages under *Get
+started* and *Operate* are for the person running one. *Alerts, reports and ρ*, *Packs*, *Dashboard* and
+*Agents* explain what the node does and how to change it. *Reference* is the [HTTP API](api.md), the
+[database](schema.md) and the [federation contracts](federation.md). *Project* holds the architecture and the
+spec, the canon the rest of this is measured against.
+
+Where a page and the code disagree, the code wins and the page has a bug: the link at the foot of every page
+opens its source on GitHub.
 
 ## Where to go next
+
+The path runs in the order a node is built: run it, connect what measures your place, read it, let it ask and
+answer, measure whether that worked, extend it, join the network, put an agent on it.
 
 | you want to | read |
 |---|---|
 | know whether your machine can run it | [Platforms](platforms.md) |
 | install it | [Install](install.md) |
+| get from a running node to a closed loop | [First ten minutes](first-ten-minutes.md) |
 | understand the words the rest of the pages use | [Concepts](concepts.md) |
 | see what it does with a reading | [How it works](how-it-works.md) |
 | add a sensor | [Sensors and sources](sensors.md) |
+| read the six views and the three modes of the page | [Dashboard](dashboard.md) |
 | write a rule for your place | [Packs](packs.md) |
+| join a district as a child node | [Federation](federation.md) |
 | connect Claude, Codex or a local model | [Agents](agents.md) |
 | read its API | [HTTP API](api.md) |

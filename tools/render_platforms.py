@@ -38,8 +38,9 @@ def rows(d: dict) -> str:
         f"{ram} GB | {disk} GB |",
         f"| **Windows via WSL2 (amd64)** | {win['docker_desktop_wsl2']['min_os']} | Docker Desktop, WSL2 "
         f"backend | {win['docker_desktop_wsl2']['min_ram_gb']} GB | {disk} GB |",
-        "| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no "
-        "arm64 build.** | — | — |",
+        "| **Raspberry Pi OS 64-bit (arm64)** | — | Docker Engine, installed by the script. The database "
+        "image is published for arm64 since v0.63; **no Pi has run a node yet.** 8 GB and an SSD, never an "
+        "SD card: see below. | — | — |",
         "",
         "### Where each number comes from",
         "",

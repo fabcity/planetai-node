@@ -1,10 +1,16 @@
 # Bring your own agent
 
-A node is a thing you operate, and most people who install one will do it with an agent beside them —
-Claude, Codex, a local model. The repository is written for that. `AGENTS.md` at its root is the front door:
-its first section is a table that routes an agent to one of four skills for what the person is actually
-asking, and the rest of it is what an agent must not break. `llms.txt` indexes every document for an agent
-arriving from outside. `make lint` fails if a skill names a command or a path that does not exist.
+An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the
+person in front of it operate the node; it drafts, and a person dispatches. The architecture puts it in one
+line: "Agents *draft, never dispatch*; every dispatch is a human approval written to a ledger", and its
+refusals include "No agent dispatches without a human row in `actions`." A node with an agent on it can be
+installed, diagnosed and asked about in plain language. The loop still closes only when a person says what
+they did.
+
+The repository is written for that. `AGENTS.md` at its root is the front door: its first section is a table
+that routes an agent to one of six skills, and the rest of it is what an agent must not break. `llms.txt`
+indexes every document for an agent arriving from outside. `make lint` fails if a skill names a command or a
+path that does not exist.
 
 Paste this to your agent and nothing else:
 
@@ -15,21 +21,76 @@ Paste this to your agent and nothing else:
 > Read that skill before you tell me to run anything. Never ask me for the contents of my `.env` file, and
 > never suggest exposing the node to the internet; the answer to reaching it from elsewhere is Tailscale.
 
-## The four skills
+## Connect Claude Desktop over the tailnet
+
+1. **Put the node on your tailnet.** On the node, `planetai mesh`. It says that afterwards "the node is
+   reachable by name from any of your devices, wherever they are, with no ports opened on any router." The
+   name is recorded as `MESH_NAME`.
+2. **Get the snippet.** On the node, `planetai agent`. It prints the twenty tools by class (read, act,
+   admin), the address on this machine (`http://localhost:8080/mcp`) and from the tailnet
+   (`http://<MESH_NAME>:8080/mcp`), the header every call must carry, `Authorization: Bearer <ADMIN_TOKEN>`
+   with the real token in it, and a ready-made block for
+   `mcp.json` or `claude_desktop_config.json`:
+
+   ```json
+   {"mcpServers": {"planetai-bayu-2": {"type": "http",
+     "url": "http://bayu-2:8080/mcp",
+     "headers": {"Authorization": "Bearer <ADMIN_TOKEN>", "X-Agent": "tomas-claude"}}}}
+   ```
+
+   Put it into Claude Desktop's configuration on a machine that is on the same tailnet. The token in it is
+   the admin token: treat the file like a password.
+3. **Tell the agent its name.** The audit trail records the name passed in each write tool's `agent`
+   argument, not the `X-Agent` header in the snippet. Say it once: "your name for this node is
+   tomas-claude; pass it as `agent` on every write." Nothing answers yet: the name first comes back as
+   `"by": "tomas-claude"` in the answer to the first write (step 5). A write that leaves it out is recorded
+   as `agent`, and the ledger then cannot say which agent it was.
+4. **Ask for status.** "Call `health_check`, then `status`." You should get back `ok` and a list of checks,
+   each failing one with its fix, then the node's name, version, last poll, per-loop errors and ρ. The agent
+   can now read the node.
+5. **Ask it to record an act.** "I closed the north windows about alert 361." The agent calls `act` with
+   `alert_id` 361, your words as `note` and its name as `agent`, and the tool answers
+   `{"recorded": true, "alert_id": 361, "by": "tomas-claude"}`. Asked to record an act with no words, or with
+   `acted`, `done` or `ok`, the tool refuses and tells the agent to ask you what you did. On a node set to
+   `DECISION_REQUIRED=1` it is refused with 409 until somebody records a decision on the dashboard.
+6. **Find the row.** On the dashboard, Act → "What was decided, and by whom" now shows `tomas-claude` with
+   `acted` at the top. The `alerts` tool shows the alert's `acted_at` filled in. The row is in `actions`,
+   written because a person said it happened, and it counts in ρ.
+
+The same node answers Claude Code, Codex and any client that speaks MCP over HTTP; [MCP](mcp.md) has the
+other clients and every tool.
+
+## The six skills
 
 | the person says | skill | what it makes the agent do |
 |---|---|---|
-| "help me install this", "will it run on my old laptop?" | `skills/setup-node` | Run the preflight first and read its exit code; never continue past exit 2. Install with the one line or `planetai setup --answers`. Then Telegram, the test alert — the only end-to-end proof — the dashboard, the doctor. Never a machine that sleeps, never print `.env`, never tune a threshold during setup, never pip on the host. |
-| "it stopped working", "no alerts since Tuesday", here is a log | `skills/troubleshoot-node` | Ask for exactly `planetai doctor --json`, `status --json` and twenty lines of logs; `sensors --json` if it is a sensor. Never `.env` — if one arrives, tell them to revoke the bot token. It may read, restart, update, back up; it may not change a threshold, record an action, move the database or edit `.env` without consent. "A node that is quiet because you raised its threshold is lying." |
-| "connect this to Claude / Codex", "reach it from outside" | `skills/connect-agent` | Get the URL, token and snippet from `planetai agent`. Tailscale, never a port forward, ngrok or a public reverse proxy. Name yourself in every write's `agent` argument. Call `health_check` first, then `status`. See [MCP](mcp.md). |
+| "help me install this", "will it run on my old laptop?" | `skills/setup-node` | Run the preflight first and read its exit code; never continue past exit 2. Install with the one line or `planetai setup --answers`. Then Telegram, the test alert (the only end-to-end proof), the dashboard, the doctor. Never a machine that sleeps, never print `.env`, never tune a threshold during setup, never pip on the host. |
+| "it stopped working", "no alerts since Tuesday", here is a log | `skills/troubleshoot-node` | Ask for exactly `planetai doctor --json`, `status --json` and twenty lines of logs; `sensors --json` if it is a sensor. Never `.env`; if one arrives, tell them to revoke the bot token. It may read, restart, update, back up; it may not change a threshold, record an action, move the database or edit `.env` without consent. "A node that is quiet because you raised its threshold is lying." |
+| "connect this to Claude / Codex", "reach it from outside" | `skills/connect-agent` | Get the URL, token and snippet from `planetai agent`. Tailscale, never a port forward, ngrok or a public reverse proxy. Name yourself in every write's `agent` argument. Call `health_check` first, then `status`. |
 | "put our city on the Fab City Index" | `skills/publish-to-index` | Establish the tier first: one node per pilot writes, a home node never does. `planetai cells --json`; the state must be honest. The writer lives with the Index and needs a per-pilot token issued by hand. See [Federation](federation.md). |
+| you are about to change this repository | `skills/preflight` | `tools/session.sh preflight` first. Your own worktree, your own branch; never the one holding `main`. |
+| you are about to end a session that changed this repository | `skills/land` | `tools/session.sh land`. Nothing exists only on this machine, and the gates ran, not were assumed. |
 
-All four end the same way: when a document and the skill disagree, the document wins and the skill has a bug.
+The first four are for an agent operating a node; the last two are for an agent changing the code. The first
+four end the same way: when a document and the skill disagree, the document wins and the skill has a bug.
+
+## What each tool is allowed to be
+
+Every one of the twenty MCP tools has a class in `app/tool_classes.py`, and `planetai agent` prints them:
+
+| class | what it may do | tools |
+|---|---|---|
+| `read` | ask the node a question; nothing changes | `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_bundle`, `history`, `alerts`, `settings_get`, `packs`, `cells`, `issues`, `series`, `export_day` |
+| `act` | record that a person did something, in their own words | `act` |
+| `admin` | change the node, run code on it, or make it speak to the household unprompted | `settings_set`, `run_pack_script`, `maintenance`, `report_now` |
+
+A person driving an agent over the tailnet gets all twenty, because somebody is reading what it proposes. The
+model running unattended on the node gets `read` and `act` only.
 
 ## Two ways in
 
-**MCP**, from this machine or anywhere on the tailnet: `http://<node>:8080/mcp`, header `Authorization: Bearer <ADMIN_TOKEN>`; pass your name in the write tools' `agent` argument so the audit trail knows who acted. Twenty tools, listed on
-[MCP](mcp.md). Start with `health_check`; every failing check names its fix.
+**MCP**, from this machine or anywhere on the tailnet: `http://<node>:8080/mcp`, header `Authorization:
+Bearer <ADMIN_TOKEN>`. Start with `health_check`; every failing check names its fix.
 
 **A shell on the node**, for what needs Docker or git:
 
@@ -45,10 +106,16 @@ Docker and no git. An agent with no shell tells the person which to run.
 
 ## A local model may already be running
 
-`planetai agent local` puts Ollama on the node with a small model and a loop that answers the household on
-Telegram using the same tools; it appears in the audit trail as `local-model/<rung>`. A remote agent is not
-alone on the node: read the alerts and the actions before acting, and do not undo what the household's own
-model did without asking. See [The bot](bot.md).
+`planetai agent local` puts Ollama on the node and a loop that answers the household on Telegram. It
+downloads no model: it prints the recommendation for the machine's memory, `qwen3.5:4b` (3.4 GB) or
+`qwen3.5:9b` (6.6 GB) at 16 GB and up, and `planetai agent local pull <tag>` fetches it. `docs/MODELS.md` is
+the catalogue, and its first sentence is "A node needs none of this." That model gets 16 of the 20 tools, the
+`read` and `act` ones, and appears in the audit trail as `local-model/<rung>`. A remote agent is not alone on
+the node: read the alerts and the actions before acting, and do not undo what the household's own model did
+without asking. See [The bot](bot.md).
+
+`actions` also holds `decided` rows, written from the dashboard's Decide card. A decision records what
+somebody said they would do and moves nothing: it closes no ask and is not in ρ. No MCP tool writes one.
 
 ## Invariants an agent must not break
 
@@ -63,21 +130,28 @@ model did without asking. See [The bot](bot.md).
 - The dashboard names no metric. Issues are declared in `app/issues/*.yml`, ordered by `NODE_ISSUES`, served
   at `GET /issues`. The node computes; the page draws.
 - Do not put the node's database on IPFS. Only the daily export goes to the commons.
-- Peers never roll up, and never drive an alert or a report line. Custody — `local OR kind='child'` — is the
-  only thing a cell may count.
+- Peers never roll up, and never drive an alert or a report line. Custody, a generated column
+  (`kind='child' OR (local AND kind<>'peer')`), is the only thing a cell may count.
 - State is never upgraded by aggregation. A parent's cell is `partial` if any input was.
 - Exact place never leaves; a coarse cell may, and says how coarse. The Reticulum announce is an H3 cell
   rounded up with a floor of resolution 6.
 - Exactly one node per pilot writes to the Index's spine.
-- `alerts[].acted_at` is the person's note on what they did, not the node's measurement: ask them, record
-  it in their words with `act`, never invent one.
+- **`act` needs the person's own words.** It has no default note and refuses a placeholder. ρ is the share of
+  act-level alerts a human answered, and a row written without anything a human said is a model measuring
+  itself. If they did not tell you what they did, ask.
 
 ## Reading the node well
 
 `status.errors` is per loop: a key present means that loop failed on its last run. `sensors[].local` means
 the person's own **and** at this node. "Outside" means their own outdoor sensors, else the three nearest
-public references, else the model — the same order everywhere. `cells[].state`: green is measured, blue
-derived or modelled, absent has no source; do not fill what cannot be measured.
+public references, else the model, the same order everywhere. `cells[].state` is provenance: `live` is
+measured here, `partial` is derived, modelled or not yet backed by enough data, and a cell with no source is
+absent. Do not fill what cannot be measured.
 
-Tone: plain sentences, one at a time. Say what you know, say what you do not. The person is not a user;
-they live here.
+`AGENTS.md` sets the tone: "Plain sentences. One at a time. Say what you know, say what you do not. The
+person is not a user; they live here."
+
+## Where this leads
+
+[MCP](mcp.md) lists every tool with its arguments and what it records. [The bot](bot.md) is the model that
+lives on the node and answers the household on Telegram.

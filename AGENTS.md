@@ -120,7 +120,7 @@ came from and which place they were written for.
   measurement: ask them, record it with `act` in their words, and never invent one.
 - "Outside" means: the person's own outdoor sensors, else the three nearest public references, else the model. Same order
   everywhere.
-- `cells[].state`: green is measured, blue derived or modelled, absent has no source. Do not fill what cannot be measured.
+- `cells[].state` is provenance, never a colour: `live` is measured here, `partial` is derived, modelled or not yet backed by enough data, and a cell with no source is absent. Do not fill what cannot be measured.
 
 ## Tone
 

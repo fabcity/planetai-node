@@ -1,64 +1,69 @@
 # HTTP API
 
-Every node exposes the same read API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it; none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
+Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
-This page was read from the code of the version in the footer. Where an older document disagrees, the code wins.
+This page was read from the code at v0.72.1. Where an older document disagrees, the code wins.
 
 ## Access rules
 
-Two middlewares run before any handler. `/mcp` is checked by the first against `ADMIN_TOKEN` and passed straight through the second. Everything else is checked by the second: a request is *trusted* when it comes from loopback or carries any of the four node tokens; a trusted request reaches every handler. An untrusted request is looked up against an allowlist for the current `SHARE_LEVEL` and refused with 403 if its path is not on it. The handler then applies its own token check, if it has one. The pages on this site name the result with one of these classes.
+Two middlewares run before any handler. The first registered checks `/mcp` against `ADMIN_TOKEN`, and the second passes `/mcp` straight through. Everything else is checked by the second. A request is *trusted* when it comes from loopback or carries any of the four node tokens, and a trusted request reaches every handler. An untrusted request is looked up against the allowlist for the current `SHARE_LEVEL` and refused with 403 if its path is not on it. The handler then applies its own token check, if it has one. The pages on this site name the result with one of these classes.
 
 | Class | Who is answered |
 |---|---|
 | `public` | On the `off` allowlist. Answers anyone, at every `SHARE_LEVEL`, with no token. |
 | `open` | On the `open` allowlist only. Without a token, answers only when `SHARE_LEVEL=open`. Always answers loopback or any node token. |
 | `token` | On neither allowlist. Answers loopback or a request carrying any of the four node tokens (`ADMIN_TOKEN`, `BACKUP_TOKEN`, `AGGREGATE_TOKEN`, `ACT_TOKEN`); then the handler's own check, if any. |
-| `admin` | `token`, then the handler requires `ADMIN_TOKEN`. |
+| `admin` | The handler requires `ADMIN_TOKEN`, whatever the allowlists let through. |
 | `pull` | `token`, then the handler requires `ADMIN_TOKEN` or `BACKUP_TOKEN`. The read-only token for a NAS. |
-| `act` | Loopback needs no token. From anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
+| `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `token`, then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
 
 The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/history`, `/exports`, and any path under `/static/`, `/exports/` or `/issues`.
+The `open` allowlist is the `off` list plus 24 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 30 exact paths and 4 prefixes in all.
 
-A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist is applied to reads and writes alike: `POST /readings` and `POST /actions` are on neither list, so a request with no token is refused before it reaches the handler, at both levels.
+A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
-**How a token travels.** In the `Authorization` header only, as `Bearer <token>`. There is no query parameter and no `X-Token` form. The node strips one leading `Bearer `, then compares the rest against every candidate token in constant time, without returning early, so the time taken does not say which token matched. `ADMIN_TOKEN` is read from the environment (`.env`); the other three come from settings, which the dashboard may overlay on `.env`. An optional `X-Agent` header names the caller in the audit trail; `PUT /settings` writes it into the `actions` ledger and defaults it to `gui`.
+**How a token travels.** In the `Authorization` header only, as `Bearer <token>`. There is no query parameter and no `X-Token` form. The node strips one `Bearer `, then compares the rest against every candidate token in constant time, without returning early, so the time taken does not say which token matched. `ADMIN_TOKEN` is read from the environment (`.env`). The other three come from settings, which the dashboard may overlay on `.env`. An optional `X-Agent` header names the caller: `PUT /settings` writes it into the `actions` ledger and defaults it to `gui`.
 
-**What loopback means.** The peer address of the socket, never a header: `X-Forwarded-For` is not read and uvicorn runs without `--proxy-headers`. Inside Docker, loopback is true for the node's own MCP tools (they call `http://127.0.0.1:8080`) and for a shell inside the container. It is false for a browser on the machine that hosts the node, which arrives as the Docker bridge gateway. That is deliberate: on a Docker that forwards through a VM, a LAN client arrives as the gateway too, so trusting it would trust the whole network. A browser on the host is treated like any other client on the network and must carry a token or be let in by `SHARE_LEVEL=open`.
+**What loopback means.** The peer address of the socket, never a header: `X-Forwarded-For` is not read and uvicorn runs without `--proxy-headers`. Inside Docker, loopback is true for the node's own MCP tools (they call `http://127.0.0.1:8080`) and for a shell inside the container. It is false for a browser on the machine that hosts the node, which arrives as the Docker bridge gateway. On a Docker that forwards through a VM, a LAN client arrives as the gateway too, so trusting it would trust the whole network. A browser on the host is treated like any other client on the network and must carry a token or be let in by `SHARE_LEVEL=open`.
 
-**The two refusal shapes.** The middlewares answer with `{"error": ...}`:
+**The refusal shapes.** The middlewares answer with `{"error": ...}`. The 403 from the share check has two endings, and the node picks the one that is true for the path asked:
 
-- 403 from `_share_level`: `{"error": "this node is set to SHARE_LEVEL=off, so /alerts answers only this machine or a request carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your network read it."}` — the level and the path are filled in from the request.
+- A path that `SHARE_LEVEL=open` would answer: `{"error": "this node is set to SHARE_LEVEL=off, so /alerts answers only this machine or a request carrying a token. Set SHARE_LEVEL to open in the dashboard's Set up view to let anything on your network read it."}`
+- A path no level answers: `{"error": "this node is set to SHARE_LEVEL=off, so /actions answers only this machine or a request carrying a token. No share level opens this one, so it always needs a token from anywhere but the node itself."}`
 - 401 from `/mcp`: `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`.
+
+The level and the path in the 403 are filled in from the request.
 
 Handlers answer with FastAPI's default `{"detail": "..."}`. The handler checks and their texts:
 
 | Check | Missing on the node | Wrong or absent in the request |
 |---|---|---|
-| `admin` | 403 `ADMIN_TOKEN is not set in .env; run planetai ui to create one` | 401 `bad or missing admin token` |
+| `admin` | 403 ``ADMIN_TOKEN is not set in .env; run `planetai ui` to create one`` | 401 `bad or missing admin token` |
 | `pull` | 403 `no BACKUP_TOKEN or ADMIN_TOKEN set on this node` | 401 `bad or missing token` |
-| `act` | 403 `no ACT_TOKEN or ADMIN_TOKEN set on this node; run planetai ui to create one` | 401 `closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>` |
+| `act` | 403 ``no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one`` | 401 `closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>` |
 | `children` | 403 `this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them` | 401 `bad or missing Authorization: Bearer <AGGREGATE_TOKEN>` |
 
-Timestamps in every response are ISO 8601 strings in UTC. Positions are rounded to 3 decimals (about 110 m) in `/health`, `/export` and, for an untrusted caller, `/sensors`; they are unrounded in `/forecast`, `/earth`, `/place/geojson` and `/stats`.
+Timestamps are ISO 8601 strings with an offset. A timestamp the node read from the database carries the offset of `NODE_TZ`, because every connection sets the session time zone from it; one the node stamped itself (`last_poll`, `generated`, `as_of`, `observed_at`) is UTC. Positions are rounded to 3 decimals (about 110 m) in `/health`, `/export` and, for an untrusted caller, `/sensors`. They are unrounded in `/forecast`, `/earth`, `/place/geojson` and `/stats`.
 
 ## Status
+
+What a screen asks first: is the node up, which version, which cell.
 
 ### GET /health
 Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NODE_VERSION`, or `?`), `schema` (the latest applied schema version, or `pre-0.4 (run ./update.sh)`), `uptime_s`, `lat` and `lon` rounded to 3 decimals for every caller at every level, `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (a map of loop name to its last error line), `bootstrap` (only if the first-start bootstrap ran in this process), `locale` (`ALERT_LOCALE`), `tz` (`NODE_TZ`), `cell` (the node's H3 cell facts, or null before setup), `mesh` (`{root_topic, gateway, packets, last}`, only when `MQTT_HOST` is set) and `reticulum` (`{ok, address, destinations, announce_s, announcing, peers, last}`, only when `RETICULUM_URL` is set).
+Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NODE_VERSION`, or `?`), `schema` (the latest applied schema version, or `pre-0.4 (run ./update.sh)`), `uptime_s`, `lat` and `lon` rounded to 3 decimals for every caller at every level, `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (a map of loop name to its last error line), `bootstrap` (only if the first-start bootstrap ran in this process), `locale` (`ALERT_LOCALE`), `tz` (`NODE_TZ`), `cell` (`{id, res, edge_m, caption}` for the node's H3 cell at resolution 8, or null before setup), `mesh` (`{root_topic, gateway, packets, last}`, only when `MQTT_HOST` is set) and `reticulum` (`{ok, address, destinations, announce_s, announcing, peers, last}`, only when `RETICULUM_URL` is set).
 
 ```json
-{"ok": true, "node": "bayu-2", "version": "v0.57", "schema": "0.51", "uptime_s": 86121,
+{"ok": true, "node": "bayu-ungasan", "version": "v0.72.1", "schema": "0.51", "uptime_s": 86121,
  "lat": -8.827, "lon": 115.157, "city": "bali",
- "polls": 287, "last_poll": "2026-09-16T08:35:02+00:00", "last_error": null, "ingested": 41230,
+ "polls": 287, "last_poll": "2026-09-22T08:35:02+00:00", "last_error": null, "ingested": 41230,
  "errors": {}, "locale": "id", "tz": "Asia/Makassar",
- "cell": {"id": "...", "res": 8, "edge_m": 525, "...": "..."}}
+ "cell": {"id": "...", "res": 8, "...": "..."}}
 ```
 
 ### GET /presence
@@ -79,30 +84,32 @@ The dashboard: `app/static/index.html`, one file, no build step, sent with `cach
 ### GET /static/{name}
 Access: public
 
-The files the dashboard cannot inline: the ground SVG, the fonts, the renderer's script and stylesheets, the signs and the kilometre-cells JSON. Named one by one; a name that is not on the list is 404 `no such asset`. Sent with the same no-cache header.
+The files the dashboard cannot inline: the ground SVG, the fonts, the renderer's script and stylesheets, the signs, the kilometre-cells JSON and the learn-mode quotes. Named one by one; a name that is not on the list is 404 `no such asset`. Sent with the same no-cache header.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
-| `name` | path | — | One of `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json` |
+| `name` | path | required | One of `node-ground.svg`, `jetbrains-mono-latin.woff2`, `FunnelSans-VariableFont_wght.ttf`, `Figtree-VariableFont_wght.ttf`, `Figtree-Italic-VariableFont_wght.ttf`, `dashboard.js`, `dashboard.css`, `planetai-theme.css`, `tokens.css`, `signs.svg`, `kilometre-cells.json`, `learn.json` |
 | `variant` | string | `dark` | Register for `node-ground.svg`; anything but `paper` is treated as `dark` |
 
-`node-ground.svg` is drawn live from `NODE_LAT` and `NODE_LON` when they are set, so the hero shows this node's own cell. Without coordinates the shipped file is served.
+`node-ground.svg` is drawn live from `NODE_LAT` and `NODE_LON` when they are set, so the hero shows this node's own cell. Without coordinates the shipped file is served. `learn.json` holds the seventeen quotes `tools/build_learn.py` cuts out of this site for the dashboard's learn mode.
 
 ### GET /briefing
 Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.57.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.72.1.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 ## Sensors and readings
+
+These are the routes a screen, a script or a spreadsheet builds against to read what the node has measured: the sensors, their raw readings, hourly means, and how long the record is.
 
 ### GET /sensors
 Access: open
 
 Every sensor this node reads, its position, and where its numbers come from. One row per sensor with `sensor_id`, `source`, `name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`, ordered by custody, then local, then name. The columns are named rather than `SELECT *`, so a column added to the table stays private until someone lists it here.
 
-For a caller that is neither loopback nor carrying a token, `lat` and `lon` are rounded to 3 decimals and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A trusted caller gets the full rows.
+For a caller that is neither loopback nor carrying a token, `lat` and `lon` are rounded to 3 decimals and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A row with `kind = 'facility'` (a fab lab the `make` pack stored) keeps ten more keys, because they describe somebody else's published building and not this household: `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched`. A trusted caller gets the full rows.
 
 ### GET /readings
 Access: open
@@ -120,14 +127,14 @@ Returns a list of `{ts, sensor_id, metric, value}`.
 ### POST /readings
 Access: admin
 
-A contributor on the LAN (a phone, a DIY pod) posts raw readings. The sensor is upserted as `local=TRUE`; on conflict only `lat`, `lon` and `indoor` are updated. Admin token because a posted reading becomes a local sensor whose values fire act-level alerts and enter live cells.
+A contributor on the LAN (a phone, a DIY pod) posts raw readings. The sensor is upserted as `local=TRUE`; on conflict only `lat`, `lon` and `indoor` are updated. Admin token because a posted reading becomes a local sensor whose values fire act-level alerts and enter live cells. The path is on the `open` list, so at `SHARE_LEVEL=open` a post with no token reaches this handler and gets 401 `bad or missing admin token`.
 
 Body:
 
 ```json
 {"sensor": {"sensor_id": "phone-abc", "source": "mobile", "name": "kitchen phone",
             "lat": -8.827, "lon": 115.157, "indoor": true, "meta": {}},
- "readings": [{"ts": "2026-09-16T08:30:00+00:00", "metric": "pm25", "value": 12.3}]}
+ "readings": [{"ts": "2026-09-22T08:30:00+00:00", "metric": "pm25", "value": 12.3}]}
 ```
 
 `sensor.sensor_id` is required (422 `sensor.sensor_id is required` otherwise). `source` defaults to `contributor`, `name` to the id, `indoor` to false. Each reading needs `metric` and `value`; `ts` defaults to now. A duplicate `(sensor_id, metric, ts)` is ignored. Returns `{"accepted": <number of readings in the body>}`.
@@ -137,7 +144,7 @@ Access: open
 
 Rolling statistics per sensor and metric over the last 24 hours, sensors only (`kind = 'sensor'`). This is the `stats` view: `sensor_id`, `metric`, `indoor`, `local`, `kind`, `scale`, `lat`, `lon`, `name`, `last`, `last_ts`, `silent_minutes`, `mean_15m`, `mean_1h`, `mean_24h`. Ordered local first, then sensor and metric. Slow sources are in `/observations`.
 
-> **Careful.** `/stats` is `SELECT *` on the view and carries each sensor's `lat` and `lon` unrounded. At `SHARE_LEVEL=open` a caller with no token reads them here even though `/sensors` rounds them for the same caller.
+> **Gap in v0.72.1.** `/stats` is `SELECT *` on the view and carries each sensor's `lat` and `lon` unrounded. At `SHARE_LEVEL=open` a caller with no token reads them here even though `/sensors` rounds them for the same caller.
 
 ### GET /observations
 Access: open
@@ -149,7 +156,7 @@ Access: open
 
 One row per local sensor, for the dashboard's trust card and the agent's health check, computed once here so the two never drift from `packs/trust/rules.yml`.
 
-Returns a list of `{sensor_id, name, coverage_7d, frozen_channels, age_hours}`: `coverage_7d` is the percentage of the last 168 hourly buckets its comparable ambient channels reported in; `frozen_channels` counts channels flat for 6 or more of the last 24 hours, still flat in the latest bucket, while the kit itself still produced raw readings in the last 2 hours; `age_hours` is the time since its first reading, so a value under 168 explains a low coverage without a fault.
+Returns a list of `{sensor_id, name, coverage_7d, frozen_channels, age_hours}`. `coverage_7d` is the percentage of the last 168 hourly buckets its comparable ambient channels reported in. `frozen_channels` counts channels flat for 6 or more of the last 24 hours, still flat in the latest bucket, while the kit itself still produced raw readings in the last 2 hours. `age_hours` is the time since its first reading, so a value under 168 explains a low coverage without a fault.
 
 ### GET /history
 Access: open
@@ -167,7 +174,7 @@ Returns a list of `{ts, value}`.
 ### GET /series
 Access: open
 
-Hourly means for the dashboard's strip, as aligned arrays: local indoor sensors, everything outdoor (yours and the references), and the model (`cams-point`, metric `<metric>_model`).
+Hourly means as aligned arrays: local indoor sensors, everything outdoor (yours and the references), and the model (`cams-point`, metric `<metric>_model`).
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -179,7 +186,7 @@ Returns `{metric, hours, buckets, indoor, outdoor, model}`; the four arrays have
 ### GET /sparks
 Access: open
 
-Per-sensor hourly means on the same buckets, for the small traces in the dashboard's sensor tiles.
+Per-sensor hourly means on the same buckets.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -188,12 +195,34 @@ Per-sensor hourly means on the same buckets, for the small traces in the dashboa
 
 Returns `{hours: [bucket, ...], series: {sensor_id: [mean or null, ...]}}`; the buckets travel with the values so a trace can draw its own time axis.
 
+### GET /reach
+Access: open
+
+How far back this node's own record goes, per kind of source, so a page drawing years of satellite record beside a node switched on last week can say where the node's line starts. Read from `readings_1h`, the hourly means every chart is drawn from.
+
+Returns a list of `{kind, oldest, newest, buckets, sources, days}`, one per `sensors.kind`, ordered by kind. `sources` is the number of distinct sensors; `days` is `newest - oldest` rounded to whole days.
+
+### GET /shape
+Access: open
+
+The day this place usually has: one mean per local hour of day, over the whole record, indoor apart from outdoor. Only this node's own sensors (`local`) count. The hours are local because every connection sets the session time zone from `NODE_TZ`.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `metric` | string | `pm25` | The metric |
+
+Returns `{metric, days, first, last, hours, windows}`. Each `hours` entry is `{hour, indoor, outdoor, n}`, with `n` the number of hourly means pooled into it. `days` is the number of distinct local days this node's own sensors have for the metric. `windows` says what that record can support, decided here so the page never draws a pattern the node has not seen: `day` is true from 7 days, `week` from 14, `month` from 60, `year` from 365.
+
+> **Careful.** `/shape` is on the `open` list. At `SHARE_LEVEL=open` a caller with no token reads the hour-by-hour indoor means of this house's own sensors.
+
 ## Context
+
+What surrounds the node's own numbers: other people's stations, the weather forecast, the satellite record and the buildings around the address.
 
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.57 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.72.1 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -204,7 +233,7 @@ Returns `{ring, stations, lowest, p25, median, p75, highest, nearest_km, mine, m
 ### GET /forecast
 Access: open
 
-Official and model weather for this point: wind, expected rain, and when the forecast was issued. Context for reading the node's own air; the node fetches it, it does not predict.
+Official and model weather for this point: wind, expected rain, and when the forecast was issued. Context for reading the node's own air. The node fetches the forecast and makes none of its own.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -215,9 +244,9 @@ Returns `{point: {lat, lon}, sources: [{sensor_id, name, lat, lon, issued, fetch
 ### GET /earth
 Access: open
 
-What the earth pack has: the years of AlphaEarth embeddings cached for this node's square, the comparisons it computed from them, and the frames the earth-engine pack fetched. Empty until `planetai run earth fetch`; never an error, so the card can say what is missing.
+What the earth pack has: the years of AlphaEarth embeddings cached for this node's square, the comparisons it computed from them, and the frames the earth-engine pack fetched. Empty until `planetai run earth fetch`, and never an error, so the card can say what is missing.
 
-Returns `{node, enabled, years, bytes, latest, changes, frames, dir, imagery: {sentinel, landsat, credit}, png, lat, lon, radius_m, attribution, hint}`. Each entry in `changes` is the pack's own JSON with a `png_url` added (`/earth/change.png?pair=<a>_<b>`). `frames` are the years with a `year_<year>.png`; `imagery.sentinel` and `imagery.landsat` are the years with real satellite frames, kept separate because a model output is not a photograph. `radius_m` is `EARTH_RADIUS_M` (default 5000). `hint` says the next command when something is missing. `lat` and `lon` are unrounded.
+Returns `{node, enabled, years, bytes, latest, changes, frames, dir, imagery: {sentinel, landsat, credit}, png, lat, lon, radius_m, attribution, hint}`. Each entry in `changes` is the pack's own JSON with a `png_url` added (`/earth/change.png?pair=<a>_<b>`). `frames` are the years with a `year_<year>.png`. `imagery.sentinel` and `imagery.landsat` are the years with real satellite frames, kept separate because a model output is not a photograph. `radius_m` is `EARTH_RADIUS_M` (default 5000). `hint` says the next command when something is missing. `lat` and `lon` are unrounded.
 
 ### GET /earth/change.png
 Access: open
@@ -251,12 +280,12 @@ One year from the other record: a Sentinel-2 or Landsat annual median fetched th
 | `year` | int | required | 1972..2200 |
 | `source` | string | `sentinel` | `sentinel` or `landsat` |
 
-Returns a PNG, or 404 naming the years this node has.
+Returns a PNG, or 404 naming the years this node has, or the command that fetches them when it has none.
 
 ### GET /place/geojson
 Access: token
 
-The geometry the place pack stored: OpenStreetMap buildings, uses, green and roads within `PLACE_RADIUS_M` of the node, and the satellite footprints (`sat`) with no mapped building within 3 m, as one FeatureCollection for the dashboard's plan. Empty until the place pack has run; never an error.
+The geometry the place pack stored: OpenStreetMap buildings, uses, green and roads within `PLACE_RADIUS_M` of the node, and the satellite footprints (`sat`) with no mapped building within 3 m, as one FeatureCollection for the dashboard's plan. Empty until the place pack has run, and never an error.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -265,16 +294,22 @@ The geometry the place pack stored: OpenStreetMap buildings, uses, green and roa
 
 Returns `{type: "FeatureCollection", features, diag: {tables, rows, error, hint}, center: [lon, lat], radius_m}`. Each feature's properties are `{kind, category, name, building, highway}`, or `{kind: "sat", confidence}` for a satellite footprint.
 
-This route is on no allowlist at any level: loopback or a token, and nothing else. It is the exact building footprints and roads around the address, drawn; unlike a coordinate there is no rounded version of it that is safe to hand to the network. The dashboard's plan card is therefore empty on a screen with no token, and says so.
+This route is on no allowlist at any level: loopback or a token, and nothing else. It is the exact building footprints and roads around the address, drawn, and unlike a coordinate there is no rounded version of it that is safe to hand to the network. The dashboard's plan card is therefore empty on a screen with no token, and says so.
 
 ## Issues
+
+The one document a client draws. A page, a Telegram handler or a wall screen that wants the node's whole answer builds against `/issues` and does no arithmetic of its own.
 
 ### GET /issues
 Access: open
 
 Every issue this node declares, computed: state, stack by distance, the line it is compared against, attribution, a sentence in each locale, open asks, series. The order is `NODE_ISSUES`; an issue not declared still appears with `watched: false`, so a stranger can see what the node could report. The node computes and the page draws: nothing in the response needs arithmetic to render and nothing in it came from a model. `/issues/` answers the same.
 
-Returns `{order, undeclared, dropped, headline, as_of, distances, labels, issues, stations, metrics, asks, mesh, geometry}`. `headline` is the key of the issue with the highest state, ties going to the declared order. Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `open_asks`, `series`, `buckets`, `readouts`, `provenance` and `sentence` (keyed by locale). The full key set is defined in `app/issues/engine.py`.
+Returns `{schema, order, undeclared, dropped, headline, as_of, headline_rule, distances, labels, issues, stations, metrics, asks, digest, mesh, geometry}`, with `schema` set to `issues-v0`.
+
+- `headline` is the key of the issue with the highest state. Within a state, the tie goes to the issue that has `moved` most, and an exact tie to the declared order. `headline_rule` states that rule in `en`, `id` and `es`, so a page can print why that issue leads.
+- `digest` is keyed by locale, and each locale holds one sentence per stage, `observe`, `decide`, `act` and `measure`. The dashboard's simple mode draws these.
+- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance` and `sentence` (keyed by locale). The full key set is defined in `app/issues/engine.py`.
 
 The whole `/issues` prefix is on the `open` list and never on the `off` list: a snapshot carries 15-minute means, alert texts and sensor names, which are the household's own data.
 
@@ -290,27 +325,42 @@ One committed snapshot with its issues recomputed at the hour it was captured, t
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
-| `name` | path | — | Matches `^[a-z0-9][a-z0-9._-]{0,63}$`; a name, never a path |
+| `name` | path | required | Matches `^[a-z0-9][a-z0-9._-]{0,63}$`; a name, never a path |
 
 Returns the snapshot JSON with `issues` replaced by the recomputation, or `{"error": ...}` in `issues` if the snapshot lacks a table the engine reads. 404 lists the names available.
 
-## Alerts, actions, reports
+## Alerts and answers
+
+The node asks; a person answers. A phone app, a Telegram handler, the dashboard's "I did this" and `curl` all build against the same two routes: `GET /alerts` for the asks and `POST /actions` for the answer. Each answer is a row in the `actions` ledger, and ρ is counted from that ledger.
 
 ### GET /alerts
 Access: open
 
-Alerts newest first, each with the id that `planetai act <id>` and the dashboard's Act button need, and whether anyone has acted.
+Alerts newest first, each with the id that `planetai act <id>` needs, and whether anyone has answered.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
 | `limit` | int | 50 | 0..1000 |
 
-Returns a list of `{id, ts, rule_id, sensor_id, level, text, acted_at}`; `acted_at` is the first `acknowledged` or `acted` row for that alert, or null.
+Returns a list of `{id, ts, rule_id, sensor_id, level, text, acted_at}`. `acted_at` is the time of the first `acknowledged` or `acted` row for that alert, or null. A `decided` row does not set it.
+
+### GET /actions
+Access: token
+
+Every answer a person gave an alert, newest first: which alert, which stage, who, and the note they left. `/alerts` says only whether somebody answered; this says what they said.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `limit` | int | 500 | 0..5000 |
+
+Returns a list of `{ts, alert_id, stage, actor, note}`. The node's own `settings` rows are left out. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
+
+> **Careful.** The handler has no token check of its own, so any of the four node tokens reads it. That includes `BACKUP_TOKEN`, `ACT_TOKEN` and this node's `AGGREGATE_TOKEN`, which every child of this node holds.
 
 ### POST /actions
 Access: act
 
-A human closes the loop. A mobile app, a Telegram reply handler or `curl` all make the same call. From loopback it needs no token, so the MCP `act` tool and a shell in the container keep working. From anywhere else it needs `ACT_TOKEN` or `ADMIN_TOKEN`: the weaker token on purpose, so someone in the house can be given the ability to close a loop without the key to `/settings/raw`. The check is made by the handler even at `SHARE_LEVEL=off`, because `BACKUP_TOKEN` gets past the middleware and a read-only NAS token must not be able to write rho.
+A person closes the loop. A mobile app, a Telegram reply handler or `curl` all make the same call. From loopback it needs no token, so the MCP `act` tool and a shell in the container keep working. From anywhere else it needs `ACT_TOKEN` or `ADMIN_TOKEN`: the weaker token on purpose, so someone in the house can be given the ability to close a loop without the key to `/settings/raw`. The check is made by the handler even at `SHARE_LEVEL=off`, because `BACKUP_TOKEN` gets past the middleware and a read-only NAS token must not be able to write ρ. The dashboard's "I did this" posts here with the token saved in the browser, `planetai_admin` first and then `planetai_act`; a browser is never loopback.
 
 Body:
 
@@ -318,19 +368,59 @@ Body:
 {"alert_id": 12, "stage": "acted", "actor": "ibu wayan", "note": "closed windows"}
 ```
 
-`stage` must be `acknowledged` or `acted` (400 `stage must be acknowledged or acted`); `settings` rows are written by the node itself and never posted. `actor` is cut to 80 characters, `note` to 500. 404 `no such alert` if the id is unknown. There is no one-action-per-alert cap: two people who both acted are both recording something true. Returns `{"ok": true}`.
+| `stage` | What the row does |
+|---|---|
+| `acknowledged` | Somebody saw it. Counts for ρ and sets `/alerts.acted_at` |
+| `acted` | Somebody did the thing. Counts for ρ, sets `acted_at`, closes the ask |
+| `decided` | Somebody said what they would do. Moves nothing: not in ρ, not in `acted_at`, not a funnel stage, closes no ask |
+
+Any other stage is 400 `stage must be acknowledged or acted`; the text predates `decided`, which is accepted. `measured` is refused: the node derives it (see [`/rho`](#get-rho)) and never takes it from a post. `settings` rows are written by the node itself. With `DECISION_REQUIRED=1`, an `acted` post for an alert that has no `decided` row yet is 409 `this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same ask first. Decide on the dashboard, then record what you did.` The default is `0`.
+
+`actor` is cut to 80 characters, `note` to 500. 404 `no such alert` if the id is unknown. There is no one-action-per-alert cap: two people who both acted are both recording something true. Returns `{"ok": true}`.
 
 ### POST /test-alert
 Access: admin
 
 Fires one act-level alert now, through every configured channel, the same as `planetai test-alert`. Writes an alert with rule `gui/test` and sends it with a hint on how to close the loop. Returns `{"ok": true, "alert_id": <id>}`.
 
+## Whether it worked
+
+The measure stage. These two routes read the ledger back against the alerts and say how many asks were answered, how fast, and which conditions stopped. ρ is measured here and nowhere else, because only the node holds both the ask and the answer.
+
+### GET /rho
+Access: open
+
+Action latency over the last 30 days: the share of act-level alerts that got an `acknowledged` or `acted` row within 24 hours, pooled over this node's own alerts and the events its children pushed. The child never sends a ratio; it sends timestamps and the definition stays here. See [rho](rho.md).
+
+Returns `{window_days: 30, days_ago: 0, alerts_act, acted, rho, median_minutes, funnel}`. `rho` is `acted / alerts_act` to 3 decimals, or null with no act-level alerts; `median_minutes` is the median detect-to-act time of the alerts answered within 24 hours, or null.
+
+`funnel` is how far this node's own asks got, stage by stage: `{stages: {asked, acknowledged, acted, measured}, latency_minutes: {acknowledged, acted, measured: null}, measured_derived: true, measured_window_minutes: 2880, self_only: true}`. `measured` is derived: an `acted` alert whose rule stayed silent on the same sensor for the next 2880 minutes (48 hours) counts as measured, because a rule re-fires as soon as its cooldown expires while its condition holds. Only a rule the node still evaluates can yield a derived `measured`; a `measured` row already in the ledger still counts. `measured` has no latency on purpose, because the silence proves the condition stopped and not when. The funnel is `self_only` because a child's events carry no stages. Its `acted` is the literal stage, so it will not agree with ρ's `acted`, which also counts `acknowledged`.
+
+### GET /effect
+Access: open
+
+Per rule, whether the acts worked and how long recovery took, over this node's record. Two questions with two kinds of evidence, reported apart.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `days` | int | 365 | 1..3650 |
+
+Returns `{window_hours, days, rules}`, with `window_hours` 48. Each `rules` entry is `{rule_id, acted, cleared, watch, hours, measured, already}`:
+
+- `acted` counts act-level alerts of that rule with an `acted` row whose 48-hour window has fully passed, and `cleared` those the rule did not re-fire on during the window.
+- `watch` is the rule's own `watch: {metric, over}`, or null. Only a rule that declares one has a line to recover under. For it, `hours` is the median time from the act to the first hourly mean back under `over`, `measured` the number of acts with such an hour, and `already` the number of acts made when the reading was already back under the line. For a rule without `watch`, `hours` is null and both counts are 0.
+- `hours` is elapsed time. Nothing here says the act caused the recovery.
+
+Retired rules are left out. If the node cannot read its rule set, the answer is `{window_hours, rules: [], note: "this node could not read its rule set"}`.
+
+## Reports
+
 ### GET /report/latest
 Access: open
 
-The last report this node wrote, sent or held. What the dashboard's Here band shows and what the MCP tool `report_latest` returns. Ordered by write time, not by due hour, so a report written on request shows here.
+The last report this node wrote, sent or held. The MCP tool `report_latest` returns this body as it is, and `planetai report last` prints its `text` followed by one line, `<ts> · <window_hours> hours · written by <rung>`, with `· HELD for quiet hours, folded into the next one` added when `sent` is false. Ordered by write time, not by due hour, so a report written on request shows here.
 
-Returns the latest `reports` row: `{id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason}`. Before the first report: `{text: null, ts: null, depth: null, rung: null, held_quiet: null, note: "no report yet; the first one lands at the next due hour"}`.
+Returns `{schema: "report-v0", id, ts, due_local, window_hours, depth, rung, text, sent, held_quiet, fallback_reason, note}`, the same keys whether or not a report exists. Before the first report every key but `schema` is null and `note` is `"no report yet; the first one lands at the next due hour"`. Once a report exists, `note` is null.
 
 ### GET /report/bundle
 Access: pull
@@ -341,7 +431,7 @@ Every number the node has about a window, as one document: what a report is writ
 |---|---|---|---|
 | `hours` | int | 0 | Window in hours, 0..168; 0 means `REPORT_EVERY` |
 
-Returns the bundle from `app/report.py`: `meta` (node, locale, timezone, local time, window), `series`, `observations`, `now`, `alerts`, `open_act`, `sensors_quiet`, `rho`, `previous`, `cells`, `rules`, `health`, plus one key per pack that contributes a report block. Series are dropped from the end if the document goes over the size cap, and `meta.truncated` counts them.
+Returns the bundle from `app/report.py`: `meta` (node, locale, timezone, local time, window), `series`, `observations`, `now`, `alerts`, `open_act`, `sensors_quiet`, `rho`, `previous`, `cells`, `rules`, `facility`, `health`, plus one key per pack that contributes a report block. Series are dropped from the end if the document goes over the size cap, and `meta.truncated` counts them.
 
 ### POST /report/now
 Access: admin
@@ -350,28 +440,53 @@ Write and send a report immediately, whatever the hour. `planetai report` and `/
 
 ## The Index contract
 
+What the node computes for the Fab City Index, and what the network has registered as measurable. A cell ingester builds against `/cells`; someone asking what could fill an empty cell builds against `/sources`.
+
 ### GET /cells
 Access: open
 
-The Index cells this node can honestly compute, in the fci-cells-v0 row shape used by the FCI Observations base. Domain cells come from packs (`cells.yml`); the core evaluates their SQL as a read-only role and polices the provenance. A `Governance|<Scale>` row is appended only when there has been at least one act-level alert in the last 30 days; it is `partial` while fewer than 5 have been acted on. A pack may not claim `live` before its `min_buckets` of in-custody hourly data exist, nor off too few instruments: a node with children needs two sensors from two different children.
+The Index cells this node can compute from data it holds, in the fci-cells-v0 row shape used by the FCI Observations base. Domain cells come from packs (`cells.yml`); the core evaluates their SQL as a read-only role and polices the provenance. A `Governance|<Scale>` row is appended only when there has been at least one act-level alert in the last 30 days; it is `partial` while fewer than 5 have been answered. A pack may not claim `live` before its `min_buckets` of in-custody hourly data exist, nor off too few instruments: a node with children needs two sensors from two different children.
 
 Each row:
 
 ```json
 {"city": "bali", "cell": "Environmental|Community", "value": 18.4,
  "unit": "µg/m³ PM2.5 (24h mean, sensors in this node's custody)",
- "source": "planetai-node · pack:air-quality", "observed_at": "2026-09-16T08:35:02+00:00",
- "state": "live", "notes": "this node's own sensors and its children's hourly means; indoor and outdoor kept separate by the rules · 24/12 hourly buckets"}
+ "source": "planetai-node · pack:air-quality", "observed_at": "2026-09-22T08:35:02+00:00",
+ "state": "live", "notes": "this node's own sensors and its children's hourly means; indoor and outdoor kept separate by the rules · 24/12 hourly buckets",
+ "registered": 4, "adapter": true}
 ```
 
-`value` is rounded to 3 decimals or null; `state` is `live`, `partial` or `mock` and is never upgraded here or downstream; `source` is `planetai-node · pack:<id>` or `planetai-node actions ledger`.
+`value` is rounded to 3 decimals or null; `state` is `live`, `partial` or `mock` and is never upgraded here or downstream; `source` is `planetai-node · pack:<id>` or `planetai-node actions ledger`. In v0.72.1 `registered` is how many registry entries are filed under that cell, and `adapter` is true when any of them names code that reads it. Both come from the registry this node carries and change nothing about `state` or `value`. A cell with registered sources and no adapter has no row here at all; `/sources?cell=` answers for it.
 
-### GET /rho
+On `main` after v0.72.1 (the changelog's Unreleased section), the row ends with five registry fields, and the same row at pin `1010aa0` ends:
+
+```
+ "registered": 2, "adapter": true, "reviewed": 2, "candidate": 0, "capable": 2}
+```
+
+`registered` keeps its name and now carries the `reviewed` count, so it is not the v0.72.1 number: `Governance|City` goes from 32 to 4. `adapter` is true when `capable` is above 0. `capable`, `reviewed` and `candidate` are the three counts `GET /sources` returns under `counts`, grouped by `feeds_cells` rather than by where an entry is filed; see [the source registry](sources.md).
+
+### GET /sources
 Access: open
 
-Action latency over the last 30 days: the share of act-level alerts that got an `acknowledged` or `acted` row within 24 hours, pooled over this node's own alerts and the events its children pushed. The child never sends a ratio; it sends timestamps and the definition stays here. See [rho](rho.md).
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.72.1 the pin is `1010aa0`, with 238 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
-Returns `{window_days: 30, days_ago: 0, alerts_act, acted, rho, median_minutes}`: `rho` is `acted / alerts_act` to 3 decimals, or null with no act-level alerts; `median_minutes` is the median detect-to-act time of the alerts acted within 24 hours, or null.
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `pillar` | string | any | Only this pillar |
+| `scale` | string | any | Only this scale |
+| `cell` | string | any | Only this cell, written as the Index names it |
+| `pilot` | string | any | This pilot's entries and every entry relevant to `global` |
+| `wired` | bool | any | `true`: only entries whose `adapter` names code that reads them; `false`: only those without |
+| `status` | string | any | On `main` only. `live`, `candidate`, `stale`, `deprecated`, `paywalled` or `planned`: only entries with that status |
+
+Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. On `main` the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `1010aa0` the counts cover 19 cells and sum to 12 capable, 12 reviewed and 20 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
+
+### GET /sources/{pillar}/{scale}/{slug}
+Access: open
+
+One registry entry by its full slug, such as `economic/community/fablabs-io`. 404 `<pillar>/<scale>/<slug> is not in the registry this node carries (<short>). Ask /sources for the list.`
 
 ### GET /packs
 Access: open
@@ -379,6 +494,8 @@ Access: open
 What this node has loaded beyond the core. Returns a list of pack manifests: each `pack.yaml` as parsed, with `id`, `path` and `kind` (`data` for rules and cells only, `code` for a pack with an `adapter.py`).
 
 ## Federation
+
+What a child sends its parent, and what a parent asks of its children. Raw readings never travel this path: a child pushes hourly means and alert timestamps, and the parent computes the district's cells and ρ from them. See [federation](federation.md).
 
 ### GET /aggregates
 Access: token
@@ -394,39 +511,44 @@ Returns a list of `{bucket, sensor_id, metric, mean, min, max, n}`.
 ### POST /aggregates
 Access: children
 
-The parent side. A child pushes its hourly means; raw readings never travel this path.
+The parent side. A child pushes its hourly means.
 
 Body:
 
 ```json
-{"node": "bayu-2", "scale": "community",
- "rows": [{"bucket": "2026-09-16T07:00:00+00:00", "sensor_id": "sc-1234", "metric": "pm25", "mean": 18.4}]}
+{"schema": "aggregates-v0", "node": "bayu-ungasan", "scale": "community",
+ "rows": [{"bucket": "2026-09-22T07:00:00+00:00", "sensor_id": "sc-1234", "metric": "pm25",
+           "mean": 18.4, "min": 12.0, "max": 25.1, "n": 12}]}
 ```
 
-The parent stores each row as one reading at the child's bucket under the namespaced sensor id `<node>/<sensor_id>`, and upserts that sensor with `source='child'`, `kind='child'`, `cadence='PT1H'`, `local=FALSE` and the body's `scale` (default `community`). The metric keeps its own name; the cadence is in the sensor row, not the key. A re-push of the same hour is ignored by the readings table's unique constraint. `min`, `max` and `n` in a row are not stored. Returns `{"accepted": <number of rows in the body>}`.
+The parent stores each row as one reading at the child's bucket under the namespaced sensor id `<node>/<sensor_id>`, and upserts that sensor with `source='child'`, `kind='child'`, `cadence='PT1H'`, `local=FALSE` and the body's `scale` (default `community`). The metric keeps its own name; the cadence is in the sensor row, not the key. A re-push of the same hour is ignored by the readings table's unique constraint. `min`, `max` and `n` are not stored. An unknown or missing `schema` is logged once and read anyway. Returns `{"accepted": <number of rows in the body>}`.
 
 ### POST /events
 Access: children
 
-The parent side of rho. A child pushes one row per alert it raised, as timestamps only: no text, no actor, no sensor id, no note. The parent computes rho over its own alerts and these together.
+The parent side of ρ. A child pushes one row per alert it raised, as timestamps only: no text, no actor, no sensor id, no note. The parent computes ρ over its own alerts and these together.
 
 Body:
 
 ```json
-{"node": "bayu-2", "scale": "community",
- "rows": [{"alert_id": "812", "raised_at": "2026-09-16T06:12:00+00:00", "rule": "air-quality/indoor_pm25_high",
+{"schema": "events-v0", "node": "bayu-ungasan", "scale": "community",
+ "rows": [{"alert_id": "812", "raised_at": "2026-09-22T06:12:00+00:00", "rule": "air-quality/indoor_pm25_high",
            "level": "act", "kind": "air-quality", "responded_at": null,
-           "acted_at": "2026-09-16T06:40:00+00:00", "measured_at": null}]}
+           "acted_at": "2026-09-22T06:40:00+00:00", "measured_at": null}]}
 ```
 
-The parent stores `child`, `alert_id`, `rule`, `level`, `kind`, `scale`, `raised_at`, `responded_at`, `acted_at`, `measured_at` and `received_at`, upserting on `(child, alert_id)`, so a row re-sent with new timestamps is an update. Any other key in a row is dropped rather than stored. A row without `alert_id` or `raised_at` is skipped. Returns `{"accepted": <rows kept>}`.
+The parent stores `child`, `alert_id`, `rule`, `level`, `kind`, `scale`, `raised_at`, `responded_at`, `acted_at`, `measured_at` and `received_at`, upserting on `(child, alert_id)`, so a row re-sent with new timestamps is an update. Any other key in a row is dropped rather than stored. A row without `alert_id` or `raised_at` is skipped. An unknown or missing `schema` is logged once and read anyway. Returns `{"accepted": <rows kept>}`.
+
+`measured_at` is null in practice: a child fills it from posted `measured` rows, and `POST /actions` no longer takes one.
 
 ## Open data and backups
+
+What the node publishes, and how its dumps reach a NAS.
 
 ### GET /export
 Access: public
 
-One day of this node as open data, licensed CC BY 4.0: hourly means per sensor and metric, the Index cells, the alerts and rho. Never raw readings, never secrets. The node's own sensors are named by role (`indoor-1`, `outdoor-1`), not by device id; public references and models keep their ids. `backup.sh` fetches this nightly over `http://localhost:${APP_PORT}` and writes `exports/<node>/YYYY-MM-DD.json`, which is why the route is on the `off` list.
+One day of this node as open data, licensed CC BY 4.0: hourly means per sensor and metric, the Index cells, the alerts and ρ. Never raw readings, never secrets. The node's own sensors are named by role (`indoor-1`, `outdoor-1`), not by device id; public references and models keep their ids. `backup.sh` fetches this nightly over `http://localhost:${APP_PORT}` and writes `exports/<node>/YYYY-MM-DD.json`, which is why the route is on the `off` list.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -435,11 +557,11 @@ One day of this node as open data, licensed CC BY 4.0: hourly means per sensor a
 Returns:
 
 ```json
-{"node": "bayu-2", "city": "bali", "scale": "community", "lat": -8.827, "lon": 115.157,
- "day": "2026-09-15", "generated": "2026-09-16T00:05:11+00:00", "version": "v0.57", "licence": "CC BY 4.0",
- "hourly": [{"t": "2026-09-15T00:00:00+00:00", "sensor": "indoor-1", "local": true, "indoor": true,
+{"schema": "export-v0", "node": "bayu-ungasan", "city": "bali", "scale": "community", "lat": -8.827, "lon": 115.157,
+ "day": "2026-09-21", "generated": "2026-09-22T00:05:11+00:00", "version": "v0.72.1", "licence": "CC BY 4.0",
+ "hourly": [{"t": "2026-09-21T00:00:00+08:00", "sensor": "indoor-1", "local": true, "indoor": true,
              "kind": "sensor", "metric": "pm25", "mean": 11.2, "min": 9.0, "max": 14.1, "n": 12}],
- "alerts": [{"t": "2026-09-15T06:12:00+00:00", "rule": "air-quality/indoor_pm25_high", "level": "act", "text": "..."}],
+ "alerts": [{"t": "2026-09-21T06:12:00+08:00", "rule": "air-quality/indoor_pm25_high", "level": "act", "text": "..."}],
  "cells": [], "rho": {}}
 ```
 
@@ -472,9 +594,11 @@ Access: public
 
 Every runtime setting with its group, label, help and current value, plus the bootstrap keys read-only. Secrets are always masked as `•••• set`. Without the admin token, every value outside the public set is masked too: chat ids, sensor hosts, account names and remote URLs are the household's. A wrong token reads as no token, with no error, so the dashboard's layout read keeps working on every screen.
 
-At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token sees the values of `UI_LAYOUT` and `SHARE_LEVEL` only. Every other row is still present, masked, so the Set up view still renders and says what would be unlocked. At `SHARE_LEVEL=open`, or from loopback, or with any node token, the anonymous reader sees the public set (`REPORT_EVERY`, `ALERT_LEVEL`, `QUIET_HOURS`, `SHARE_LEVEL`, `NODE_ISSUES`, `MAP_TILES`, `PACKS_ENABLED` and the rest of `settings.PUBLIC`).
+At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token sees the values of `UI_LAYOUT` and `SHARE_LEVEL` only. Every other row is still present, masked, so the Set up view still renders and says what a token would show. A reader without the admin token sees the values of the public set when `SHARE_LEVEL=open`, from loopback, or with one of the other three node tokens (`REPORT_EVERY`, `ALERT_LEVEL`, `QUIET_HOURS`, `SHARE_LEVEL`, `NODE_ISSUES`, `MAP_TILES`, `UI_MODE`, `PACKS_ENABLED` and the rest of `settings.PUBLIC`).
 
-Returns `{unlocked, runtime: [{key, group, label, secret, restart, help, value, set, source, choices, outward}], bootstrap: [{key, label, value}]}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `outward` marks a key that changes what leaves the machine.
+Returns `{unlocked, runtime: [...], bootstrap: [{key, label, value}]}`. Each node row in `runtime` is `{key, group, label, secret, restart, help, value, set, source, choices, default, outward}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `default` is the shipped default, or null when the image has no defaults file; `outward` marks a key that changes what leaves the machine.
+
+After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: 21 rows in v0.72.1. Each has `group: "packs"`, `restart: true`, `secret: false`, `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack.
 
 ### PUT /settings
 Access: admin
@@ -483,7 +607,9 @@ Change runtime settings. Blank returns a key to its `.env` value. Effective with
 
 Body: `{"KEY": "value", ...}`. Header `X-Agent` names the caller (default `gui`).
 
-400 `<KEY> is not a runtime setting` for a key outside the runtime set; 400 with the validation message for a value outside the key's choices. Every call writes one row to the `actions` ledger with `stage='settings'`, `actor` = the `X-Agent` value and `note` = the keys changed. Returns `{changed: [keys], by, effective_within_s: 20}`.
+400 `<KEY> is not a runtime setting` for a key outside `settings.RUNTIME`; 400 with the validation message for a value outside the key's choices. Every call writes one row to the `actions` ledger with `stage='settings'`, `actor` = the `X-Agent` value and `note` = the keys changed. Returns `{changed: [keys], by, effective_within_s: 20}`.
+
+> **Note.** `GET /settings` lists more than `PUT` accepts. Of the 21 pack rows, 18 are not runtime keys and are refused with 400 (`MAKE_ENABLED`, the `FORECAST_*` keys, `PLACE_RADIUS_M` and the rest); set them in `.env` and restart. The other three, `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`, are also node runtime keys, appear twice in the list, and can be set here.
 
 ### GET /settings/raw
 Access: admin
@@ -495,7 +621,23 @@ Every runtime setting unmasked, as `{KEY: value}`, for the node's own processes:
 ### /mcp
 Access: admin
 
-The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, since it has already been decided. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback. In v0.57 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`; the [MCP page](mcp.md) describes each.
+The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
+
+In v0.72.1 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+
+## Wire formats
+
+Five documents travel between nodes or are kept for good, and each names its format in a `schema` key.
+
+| `schema` | Document |
+|---|---|
+| `issues-v0` | `GET /issues` |
+| `export-v0` | `GET /export`, and so the daily files `backup.sh` writes from it |
+| `report-v0` | `GET /report/latest` |
+| `aggregates-v0` | The body a child posts to `POST /aggregates` |
+| `events-v0` | The body a child posts to `POST /events` |
+
+A receiver never refuses on this key. A parent one release behind keeps accepting a child one release ahead: an unknown value is logged once, the fields the parent knows are read, and the rest are dropped. A document with no `schema` predates the key and is read as `-v0`. `tools/check_wire.py` holds the top-level keys of each format to `tests/data/wire/<format>.json`, so changing one is two edits in the same commit.
 
 ## What the node calls out
 
@@ -503,9 +645,9 @@ The API is the read side. These are the requests the node makes of other machine
 
 | To | When | What travels |
 |---|---|---|
-| `POST {PARENT_API_URL}/aggregates` | Hourly, if `PARENT_API_URL` is set | `{node, rows, scale}`: hourly means from the last 2 hours, with `Authorization: Bearer <PARENT_TOKEN>` if set |
-| `POST {PARENT_API_URL}/events` | Hourly, if `PARENT_API_URL` is set | `{node, rows, scale}`: one row per alert from the last 36 hours as timestamps (`alert_id`, `rule`, `level`, `kind`, `raised_at`, `responded_at`, `acted_at`, `measured_at`), same header |
-| Telegram `sendMessage` | Each alert or report, per chat id | The message text, to `api.telegram.org` with `TELEGRAM_BOT_TOKEN` |
+| `POST {PARENT_API_URL}/aggregates` | Hourly, if `PARENT_API_URL` is set | `{schema, node, rows, scale}`: hourly means from the last 2 hours, with `Authorization: Bearer <PARENT_TOKEN>` if set |
+| `POST {PARENT_API_URL}/events` | Hourly, if `PARENT_API_URL` is set and an alert was raised in the last 36 hours | `{schema, node, rows, scale}`: one row per alert from the last 36 hours as timestamps (`alert_id`, `rule`, `level`, `kind`, `raised_at`, `responded_at`, `acted_at`, `measured_at`), same header |
+| Telegram `sendMessage` | Each alert at or above `ALERT_LEVEL` (quiet hours hold all but `act`), and each report not held by quiet hours, per chat id | The message text, to `api.telegram.org` with `TELEGRAM_BOT_TOKEN` |
 | `POST {RETICULUM_URL}/send` | Each act-level alert, if `RETICULUM_URL` is set | `{"text": ...}` to the bridge container |
 | MQTT publish | Each act-level alert (`MESH_ALERTS=1`), and Home Assistant discovery (`HA_DISCOVERY=1`) | The first line of the alert to the mesh downlink; discovery and state topics to the broker at `MQTT_HOST` |
 
@@ -514,5 +656,10 @@ The sources the node polls (Smart Citizen, Bali Air Dispatch, Open-Meteo, CKAN p
 ## Not in this version
 
 - `/plan.png` and `/provenance` do not exist. Provenance travels inside `/cells` rows (`state`, `source`, `notes`) and in the `meta` of `/sensors` (`licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected`).
+- There is no decisions endpoint and no decisions table. A decision is `POST /actions` with `stage: "decided"`, read back through `GET /actions`.
 - There is no query-parameter or `X-Token` form of authentication, and no per-route token other than the ones named above.
 - `X-Forwarded-For` is never read; a proxy in front of the node does not make its clients loopback.
+
+## Where this leads
+
+The rows these routes return live in one Postgres database, and the [schema page](schema.md) says what each table and view holds. To point a child at a parent, read [federation](federation.md). To put an agent on the node through `/mcp`, read [MCP](mcp.md).

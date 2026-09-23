@@ -28,7 +28,7 @@ drift from what the installer asserts.
 | **macOS, Apple Silicon (arm64)** | **13.0** | OrbStack, Docker Desktop or Colima. Colima reaches 13.0 here; since v0.63 the database image is native arm64, not emulated. | 4 GB | 3 GB |
 | **macOS, Intel (x86_64)** | **13.5** | ≥14.0: all three · 13.5–13.7: **Colima only** (`--vm-type vz`) · **below 13.5: none, and Linux is the route** | 4 GB | 3 GB |
 | **Windows via WSL2 (amd64)** | 10 22H2 (build 19045) | Docker Desktop, WSL2 backend | 8 GB | 3 GB |
-| **Raspberry Pi OS 64-bit (arm64)** | — | **none. Untested, and the database image has no arm64 build.** | — | — |
+| **Raspberry Pi OS 64-bit (arm64)** | — | Docker Engine, installed by the script. The database image is published for arm64 since v0.63; **no Pi has run a node yet.** 8 GB and an SSD, never an SD card: see below. | — | — |
 
 ### Where each number comes from
 

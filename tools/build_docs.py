@@ -57,6 +57,7 @@ NAV = [
     ]),
     ("Sensors and sources", [
         ("sensors", "docs/site/sensors.md"),
+        ("sources", "docs/site/sources.md", "The source registry"),
         ("before-a-sensor", "docs/PREFILL.md", "Before a sensor"),
         ("use-cases", "docs/USE_CASES.md", "What node #1 can tell you"),
     ]),

@@ -1,9 +1,16 @@
 # MCP server and tools
 
-The node is an MCP server. `app/agent.py` mounts it on the API at exactly `/mcp`, streamable HTTP, twenty
-tools over the existing endpoints. The tools call the node's own API back on `127.0.0.1`, so they arrive as loopback; `report_now`, `settings_set` and `report_bundle` carry the admin token, and every write records who did it from the tool's own `agent` argument. The same tools
-serve Claude Code on a laptop across the tailnet, the household's own local model on Telegram, and any
-client that speaks MCP over HTTP.
+This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it
+how the place is doing in the household's own words, and record, in a person's own words, that somebody
+acted. The server's own instructions to a model describe the node as "a small computer that connects
+everything measuring one place, from sensors on the wall to satellites overhead, decides where it stands, and
+tells the people there what to do. Raw readings never leave it." Nothing an agent does through it takes a
+reading off the machine.
+
+`app/agent.py` mounts it on the API at exactly `/mcp`, streamable HTTP, twenty tools over the existing
+endpoints. The tools call the node's own API back on `127.0.0.1`, so they arrive as loopback; `report_now`,
+`settings_set` and `report_bundle` also carry the admin token. The same tools serve Claude Desktop or Claude
+Code on a laptop across the tailnet, the household's own model on Telegram, and any other MCP client.
 
 ## Connecting
 
@@ -11,9 +18,9 @@ client that speaks MCP over HTTP.
 planetai agent
 ```
 
-prints the endpoint on this machine (`http://localhost:8080/mcp`) and on the tailnet
-(`http://<name>.<your-tailnet>.ts.net:8080/mcp`, the MagicDNS name recorded as `MESH_NAME` once `planetai mesh` has run), the header every call must carry —
-`Authorization: Bearer <ADMIN_TOKEN>` — and a ready-made snippet:
+prints the tools by class, the endpoint on this machine (`http://localhost:8080/mcp`) and on the tailnet
+(`http://<MESH_NAME>:8080/mcp`, the MagicDNS name recorded once `planetai mesh` has run), the header every
+call must carry, `Authorization: Bearer <ADMIN_TOKEN>`, and a ready-made snippet:
 
 ```json
 {"mcpServers": {"planetai-bayu-2": {"type": "http",
@@ -21,9 +28,12 @@ prints the endpoint on this machine (`http://localhost:8080/mcp`) and on the tai
   "headers": {"Authorization": "Bearer <ADMIN_TOKEN>", "X-Agent": "tomas-claude"}}}}
 ```
 
-For Claude Code, from a clone of the repository, `.mcp.json` is already there and reads the values from
-the shell — `PLANETAI_MCP_URL` (default `http://localhost:8080/mcp`), `PLANETAI_ADMIN_TOKEN`,
-`PLANETAI_AGENT_NAME` — so nothing secret is in the file. Or from anywhere:
+[Bring your own agent](agents.md) walks through it with Claude Desktop, from the snippet to the first row an
+agent writes.
+
+For Claude Code, from a clone of the repository, `.mcp.json` is already there and reads the values from the
+shell: `PLANETAI_MCP_URL` (default `http://localhost:8080/mcp`), `PLANETAI_ADMIN_TOKEN` and
+`PLANETAI_AGENT_NAME`, so nothing secret is in the file. Or from anywhere:
 
 ```bash
 claude mcp add --transport http planetai "$PLANETAI_MCP_URL" \
@@ -35,58 +45,91 @@ with an MCP client (mcphost, oterm) uses the same URL on localhost.
 
 Access: the whole of `/mcp` needs the admin token and nothing else; it bypasses `SHARE_LEVEL`. A missing or
 wrong token is `401 {"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. DNS-rebinding
-protection is off on purpose, because the node is reached by LAN IP, `.local` name and tailnet name — the
+protection is off on purpose, because the node is reached by LAN IP, `.local` name and tailnet name: the
 token is the access control, not the Host header. Reaching it from off the tailnet is a port forward, and the
 answer to that is no.
 
+## Read, act, admin
+
+Every tool has one class, in `app/tool_classes.py`:
+
+| class | means | tools |
+|---|---|---|
+| `read` | asks the node a question; nothing changes | `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_bundle`, `history`, `alerts`, `settings_get`, `packs`, `cells`, `issues`, `series`, `export_day` |
+| `act` | records that a person did something, in their own words | `act` |
+| `admin` | changes the node, runs code on it, or makes it speak to the household unprompted | `settings_set`, `run_pack_script`, `maintenance`, `report_now` |
+
+A remote agent, driven by a person, has all twenty. The household's own model on the node is handed the 16
+`read` and `act` tools and nothing else (`app/agent_loop.py`); see [The bot](bot.md). Four tools write:
+`act`, `report_now`, `settings_set` and `run_pack_script`. `maintenance` is `admin` and writes nothing: it
+answers with a command for a person to run.
+
 ## The tools
 
-Start with `health_check`, then `status`. Four tools write; the rest read.
+Start with `health_check`, then `status`.
 
 | tool | arguments | returns |
 |---|---|---|
-| `status` | — | node, version, schema, uptime, last poll, readings ingested, polls, per-loop errors, mesh, ρ (the `/rho` body), whether the last backup succeeded |
-| `health_check` | — | `{ok, checks: [{check, ok, fix}]}` — polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix |
-| `issues` | `issue?` | the whole `/issues` object, or one issue — how the place is doing in the household's own words: state, the four distances with provenance, the sentence, the open asks |
-| `sensors` | — | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
-| `context` | — | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |
-| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | hourly means oldest first; or an error naming the sensors that have that metric |
+| `status` | none | node, version, schema, uptime, last poll, readings ingested, polls, per-loop errors, mesh, ρ (the `/rho` body), whether the last backup succeeded |
+| `health_check` | none | `{ok, checks: [{check, ok, fix}]}`: polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix |
+| `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations`, `metrics`, the `asks` ledger, the four-sentence `digest`, `geometry`), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
+| `sensors` | none | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
+| `context` | none | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |
+| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.72.1 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
 | `history` | `sensor_id`, `metric` | every `{ts, value}` oldest first, for slow series such as `place-point / sat_buildings_yearly` |
 | `series` | `metric="pm25"`, `hours=24` (≤168) | aligned hourly arrays: indoor, outdoor, model |
-| `alerts` | `limit=10` (≤100) | the most recent alerts with id, level and `acted_at` |
-| `report_latest` | — | the last report row |
-| `report_bundle` | `hours=6` (1–168) | every number the report was written from |
-| `cells` | — | the Fab City Index cells with value, unit and state |
-| `packs` | — | the loaded packs: id, kind, description |
+| `alerts` | `limit=10` (≤100) | the most recent alerts: `id`, `ts`, `rule_id`, `sensor_id`, `level`, `text` and `acted_at` |
+| `report_latest` | none | the last report row |
+| `report_bundle` | `hours=6` (1 to 168) | every number the report was written from |
+| `cells` | none | the Fab City Index cells with value, unit and state |
+| `packs` | none | the loaded packs: id, kind, description |
 | `export_day` | `day?` (default yesterday) | the open-data export for that day |
-| `settings_get` | — | every runtime setting with its group, help and value, secrets masked; bootstrap keys read-only |
-| `maintenance` | `task` — update, backup, restore, restart, logs, doctor, storage, ui, telegram | the `planetai` command to run on the node, what it does and where. It runs nothing |
-| **`act`** | `alert_id`, `note="acted"`, `agent="agent"` | records `stage: acted` for that alert with the agent as actor — **writes** |
-| **`report_now`** | `agent="agent"` | writes and sends a report now — **writes** |
-| **`settings_set`** | `changes: {KEY: value}`, `agent` | changes runtime settings; live within 20 seconds; a blank returns the key to `.env` — **writes** |
-| **`run_pack_script`** | `pack`, `script`, `args?`, `agent` | runs `packs/<pack>/<script>.py` inside the container (15-minute limit) and returns exit code, stdout and stderr — **runs code** |
+| `settings_get` | none | every runtime setting with its group, help and value, secrets masked; bootstrap keys read-only |
+| `maintenance` | `task`: update, backup, restore, restart, logs, doctor, storage, ui, telegram | the `planetai` command to run on the node, what it does and where. It runs nothing |
+| **`act`** | `alert_id`, `note` (required), `agent="agent"` | records `stage: acted` for that alert with the agent as actor, and returns `{recorded, alert_id, by}`. **Writes** |
+| **`report_now`** | `agent="agent"` | writes and sends a report now. **Writes** |
+| **`settings_set`** | `changes: {KEY: value}`, `agent="agent"` | changes runtime settings; live within 20 seconds; a blank returns the key to `.env`. **Writes** |
+| **`run_pack_script`** | `pack`, `script`, `args?`, `agent="agent"` | runs `packs/<pack>/<script>.py` inside the container (15-minute limit) and returns exit code, stdout, stderr and `by`. **Runs code** |
 
-> **Gap in v0.57.** `llms.txt` and `skills/connect-agent/SKILL.md` still say nineteen tools; `issues` made it
-> twenty, and `AGENTS.md` and `planetai agent` say so.
+`act` refuses a blank note and any of the placeholders the repository once used in place of a person's words
+(`acted`, `acknowledged`, `done`, `ok`, `n/a`, `-`, `acted (via reticulum)`), and tells the agent to ask what
+the person did. On a node with `DECISION_REQUIRED=1` it is refused with 409 until a decision has been
+recorded on the dashboard against the same alert; no tool records a decision, and `act` always writes
+`acted`.
+
+The read routes `GET /shape`, `GET /effect` and `GET /reach` have no tool of their own.
+
+> **Gap in v0.72.1.** The `issues` tool's own description still says ties for `headline` go to the keeper's
+> order. The node breaks a tie within a state by which issue moved most in the last three hours, then by
+> the declared order, and `headline_rule` in the tool's answer says so.
 
 ## The audit trail
 
-Every write records who did it, from the tool's `agent` argument: `act` writes it as the action's actor,
-`settings_set` as the actor of the `actions` row with `stage='settings'`, and the tools pass it on to the API
-as the `X-Agent` header. The default is `agent`, so ask your client to pass its name — `tomas-claude` — in
-that argument; the household's bot appears as `local-model/<rung>` because its loop fills it in on every
-call. The `X-Agent` header a client sends on `/mcp` itself is not read by the tools. Two agents on one node
-read each other's rows before acting.
+The name that reaches the record is the tool's `agent` argument, and how it lands depends on the tool.
+`act` sends it to `POST /actions` as the row's `actor`. `settings_set` sends it as the `X-Agent` header, and
+`PUT /settings` writes it as the actor of an `actions` row with `stage='settings'`. `report_now` sends the
+header too, but `POST /report/now` records no actor, and `run_pack_script` records nothing: it only echoes
+the name back as `by`. The `X-Agent` header a client sends on `/mcp` itself is not read by any tool.
+
+The default is `agent`, so ask your client to pass its name, `tomas-claude` say, in that argument. The
+household's bot appears as `local-model/<rung>` because its loop fills the argument in whenever the model leaves it out. Two
+agents on one node read each other's rows before acting.
 
 ## What the tools will not do
 
-They will not print `.env` or any token; `settings_get` masks every secret as `•••• set`. They will not run
-Docker or git — the container has neither; `maintenance` hands the command back. They will not invent an
-action: `act` records what a person said they did. They will not expose the node: the server's own
-instructions to a model say to prefer one clear sentence to a list and never to reveal a token.
+No tool prints `.env` or a token; `settings_get` masks every secret as `•••• set`. The container has neither
+Docker nor git, so `maintenance` hands the command back instead of running it. `act` records what a person
+said they did and invents no action. Nor do the tools expose the node: the server's own instructions to a
+model say to prefer one clear sentence to a list and never to reveal a token.
 
 ## For a shell agent
 
 `planetai status --json`, `doctor --json`, `sensors --json`, `cells --json`, and `planetai setup --answers
-node.json` to install without a terminal. `planetai snapshot` writes one JSON of everything a stranger may
-see, with no raw readings and no token.
+node.json` to install without a terminal. `planetai snapshot` writes one JSON of everything the node answers,
+for a design round or a bug report. It asks with the admin token, so it holds more than a stranger sees
+(the alerts, the ledger with its notes taken out, 24 hours of aggregates), and it holds no raw readings and
+no token.
+
+## Where this leads
+
+The tools are the same ones the household's own model uses on Telegram, with fewer of them: [The bot](bot.md).

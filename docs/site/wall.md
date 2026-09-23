@@ -1,53 +1,94 @@
 # Wall mode
 
-A screen on a wall that nobody is standing at. The wall is the one surface that uses the dark register:
-`#wall` sets `data-theme="dark"` on the page — ink ground, paper type, the lifted blue `#7FA5E8` for cells
-because Fab Blue is 1.72:1 on ink — and it is laid out to fill one viewport (`min-height: 100vh`), with the foot — node, as-of, stamp — inside it rather than below the fold.
+A screen on a wall that nobody is standing at. With the wall, the node is read by people walking past: a
+household sees one number, one sentence and whether the loop closed, and a lab sees which cells around it
+have a station and which do not. It observes and measures. It asks nothing, because an answer belongs where
+somebody can write one.
 
 ```
 http://<node>:8080/#wall
 ```
 
-A wall screen carries no token, so it needs `SHARE_LEVEL=open`; at `off` the wall draws the refused page in
-the dark register — "<node> · refused" and the node's own sentence — because a black screen would be the node
-lying about being broken.
+`planetai ui` prints the same thing: "On a wall screen: add #wall — the dark register, turns its own dial;
+needs SHARE_LEVEL=open".
+
+## Putting one up
+
+1. **Let the house read the node.** A wall screen carries no token, so it needs `SHARE_LEVEL=open`:
+   `planetai config set SHARE_LEVEL open`, or Set up → Node. At `off` the wall draws the refused page in the
+   dark register ("This node is not sharing its readings with the network" and the node's own sentence),
+   because a black screen would be the node lying about being broken.
+2. **Open `#wall` on the screen.** You should see the top bar, the grid of nineteen cells on the left and
+   the headline issue on the right, all inside one viewport, in the dark register. The grid is the node's
+   own cell and the cells around it, each holding what is read there; an empty cell means no station the
+   node hears is reading there.
+3. **Check the foot.** The as-of line should read "As of" and a time. If it reads "Read at … · the node has
+   not answered for N min", the screen is up and the node is not answering it.
+4. **Leave it.** The top bar says "the dial turns every 8 s" and the foot "the dial turns by itself every
+   8 s". Watch one turn: the filled stop moves on and the grid re-draws at the next resolution, so the
+   stations gather into fewer cells at a coarse stop and spread out at a fine one. The page re-reads the
+   node on its own `POLL_SECONDS`, as every view does. If the bar says "the dial stands still", the screen
+   has reduced motion on and the dial turns only when a stop is pressed.
+
+## The register
+
+The wall is always dark, whatever register the rest of the page is in: `#wall` sets `data-theme="dark"` on
+the page. Ink ground, paper type, and the lifted blue `#7FA5E8` for cells, because Fab Blue is 1.72:1 on ink.
+It is laid out to fill one viewport (`min-height: 100vh`), so nothing a passer-by needs sits below the fold.
+
+## The top bar
+
+The bar answers the questions asked before any reading is read. From the left: a **back** button, drawn first
+so it is first in keyboard order; up to four variable chips; the node's name, its city, `#wall`, a share
+level (always `off` in v0.72.1, because `/health` carries no share level) and how often the dial turns ("the dial turns every 8 s", or "the dial stands still" under reduced
+motion); and at the right what the numbers are: the variable, its unit, and `15-min means`.
+
+The chips offer only metrics at least one station on this node carries. The one being shown is always first,
+then the node's own order, four at most; a "+N more" link opens `?vars=all`. `?var=` picks one directly
+(default `pm25`). A metric no station reads is not offered, because an empty field would claim a measurement
+the node does not make.
 
 ## The wall is the grid
 
-Nineteen H3 cells — the node's own and two rings around it — at the current resolution, each holding what
-is read in it, with no map under them. One station in a cell: its 15-minute mean of the variable and its
-name. Several: how many, and the range low–high. The node's own cell: each of its own stations' values. An
+Nineteen H3 cells (the node's own and two rings around it) at the current resolution, each holding what is
+read in it, with no map under them. One station in a cell: its 15-minute mean of the variable and its name.
+Several: how many, and the range low to high. The node's own cell: each of its own stations' values. An
 empty cell is drawn and left empty.
-
-The variable strip offers every metric at least one station carries, in the node's declared order; `?var=`
-picks one (default `pm25`).
 
 ## The dial turns itself
 
 The dial's stops are the resolutions the node's grain table knows, drawn as hexagons: the current stop
 filled ink, a stop coarse enough that the cell may leave the machine filled in the cells blue at 0.16, a stop
 finer than the published resolution dashed. Every eight seconds the dial steps to the next stop and the grid
-re-draws; at the finest it wraps to the coarsest. There is no tween — there is no place between 7 and 8, so
+re-draws; at the finest it wraps to the coarsest. There is no tween: there is no place between 7 and 8, so
 nothing morphs. Pressing a stop or a cell, or an arrow key, holds the dial for thirty seconds and pauses the
 clock bar. Under `prefers-reduced-motion: reduce` nothing turns.
 
 ## The right column
 
-The headline issue — kicker, sentence, why, the ask — the dial, the variable strip, the grain counts (cells
-with a station of the nineteen; stations in this node's own cell; of them, its own) and the ρ row. Under the
-field, the fragments each section contributes through its `wall()` in one row, the first five, then
-"+N more in Now".
+The headline issue: kicker, sentence, why and the ask. Under the ask, "Answer on Telegram, not here." The
+wall shows an ask and never the button that answers it. Then the dial, with its key under it ("current stop
+filled ink · may-leave stops filled `--cells` at .16 · finer than published, dashed"), the grain counts ("Cells
+with a station" of 19 drawn; "In this node's cell" of n stations; "Of them, its own") and the ρ row. Under the
+field, the fragments each section contributes through its `wall()`, in one row: the first five, then "+N more
+in Now".
+
+The ρ row is the one object that is not a typed number: the rings are counted, never sized. More signs, never
+a bigger sign. When there are too many asks to count at three metres the unit changes instead: one ring per
+ask up to 40, one per 10 up to 400, then one per 100, and the caption under the row names the unit and gives
+the exact counts.
 
 ## The foot
 
-The node's name, the as-of time, the version stamp, the word `stale` in bold ink (a fixed label in this version; the page does not yet judge staleness), "Answer on Telegram, not here." and the motion caption. The exit button is drawn first so it is
-first in keyboard order.
+The as-of time, the version stamp, the word `stale` in bold ink, and the motion caption. The bold word is a
+fixed label in v0.72.1. The as-of time beside it does judge: when the page's last poll got no answer it reads
+"Read at … · the node has not answered for N min".
 
-## What it is for
+If the wall throws while it draws, the screen says "The wall did not render:" and the reason, rather than
+going black.
 
-A household walking past reads one number, one sentence and whether the loop closed. A lab reads which
-cells around it have a station and which do not. What it does not do is ask for anything: an act alert is
-answered on Telegram, Sideband or the dashboard, not on the wall.
+## Where this leads
 
-The ρ sign on the wall is the one object that is not a typed number: the closed rings, counted rather than
-sized — more signs, never a bigger sign — the rule the FAB26 exhibition faces set and the page keeps.
+The wall only shows the ask. The answer is given on Telegram, over the radio or on the dashboard, and all of
+them write the same row in `actions`: see [Channels](channels.md) and [the dashboard](dashboard.md). What the
+ρ row counts is [ρ](rho.md).
