@@ -58,9 +58,9 @@
     FROM inside i, best b
     WHERE b.v > 35.5 AND b.v > 1.5 * i.mean_1h
   message:
-    en: "🌫️🚪 Outside is worse than inside at {name}.\n\nThe street air is carrying more smoke or dust than your rooms right now, and your building is holding it out. Opening up would let it in.\n\n👉 Keep windows and doors shut for now. I will tell you when outside clears."
-    id: "🌫️🚪 Di luar lebih buruk daripada di dalam di {name}.\n\nUdara jalan membawa lebih banyak asap atau debu daripada ruangan Anda, dan bangunan Anda menahannya. Membuka jendela akan memasukkannya.\n\n👉 Tutup jendela dan pintu dulu. Saya kabari kalau di luar sudah bersih."
-    es: "🌫️🚪 Fuera está peor que dentro en {name}.\n\nEl aire de la calle lleva más humo o polvo que tus habitaciones, y el edificio lo está dejando fuera. Abrir lo dejaría entrar.\n\n👉 Mantén ventanas y puertas cerradas por ahora. Te aviso cuando fuera despeje."
+    en: "🌫️🚪 Outside is worse than inside at {name}.\n\nThe street air is carrying more smoke or dust than your rooms right now, and your building is holding it out. Opening up would let it in.\n\n👉 Keep windows and doors shut until the air outside clears."
+    id: "🌫️🚪 Di luar lebih buruk daripada di dalam di {name}.\n\nUdara jalan membawa lebih banyak asap atau debu daripada ruangan Anda, dan bangunan Anda menahannya. Membuka jendela akan memasukkannya.\n\n👉 Tutup jendela dan pintu sampai udara di luar bersih."
+    es: "🌫️🚪 Fuera está peor que dentro en {name}.\n\nEl aire de la calle lleva más humo o polvo que tus habitaciones, y el edificio lo está dejando fuera. Abrir lo dejaría entrar.\n\n👉 Mantén ventanas y puertas cerradas hasta que el aire de fuera despeje."
 
 - id: inside_worse_ventilate
   level: act
@@ -120,9 +120,9 @@
       AND mean_15m IS NOT NULL AND mean_24h IS NOT NULL
       AND mean_15m >= 12 AND mean_15m >= 2.5 * greatest(mean_24h, 2)
   message:
-    en: "📈🏠 Something just changed the air at {name}.\n\nFine particles indoors rose quickly in the last few minutes. It is not unhealthy yet, but a jump like this usually has a cause you can see: a pan on the fire, incense, a candle, smoke drifting in from outside.\n\n👉 Worth a look. If it keeps climbing I will say so."
-    id: "📈🏠 Ada yang mengubah udara di {name}.\n\nPartikel halus di dalam naik cepat beberapa menit terakhir. Belum tidak sehat, tapi lonjakan seperti ini biasanya ada sebabnya: wajan di api, dupa, lilin, asap masuk dari luar.\n\n👉 Coba lihat. Kalau terus naik, saya kabari."
-    es: "📈🏠 Algo acaba de cambiar el aire en {name}.\n\nLas partículas finas dentro subieron rápido en los últimos minutos. Todavía no es insalubre, pero un salto así suele tener una causa a la vista: una sartén al fuego, incienso, una vela, humo que entra de fuera.\n\n👉 Vale la pena echar un vistazo. Si sigue subiendo, te lo digo."
+    en: "📈🏠 Something just changed the air at {name}.\n\nFine particles indoors rose quickly in the last few minutes. It is not unhealthy yet, but a jump like this usually has a cause you can see: a pan on the fire, incense, a candle, smoke drifting in from outside.\n\n👉 Worth a look. If it keeps climbing to an unhealthy level, the node sends an alert."
+    id: "📈🏠 Ada yang mengubah udara di {name}.\n\nPartikel halus di dalam naik cepat beberapa menit terakhir. Belum tidak sehat, tapi lonjakan seperti ini biasanya ada sebabnya: wajan di api, dupa, lilin, asap masuk dari luar.\n\n👉 Coba lihat. Kalau terus naik sampai tidak sehat, node ini mengirim peringatan."
+    es: "📈🏠 Algo acaba de cambiar el aire en {name}.\n\nLas partículas finas dentro subieron rápido en los últimos minutos. Todavía no es insalubre, pero un salto así suele tener una causa a la vista: una sartén al fuego, incienso, una vela, humo que entra de fuera.\n\n👉 Vale la pena echar un vistazo. Si sigue subiendo hasta un nivel insalubre, el nodo envía una alerta."
 
 - id: outdoor_spike
   level: warn

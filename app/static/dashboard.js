@@ -117,13 +117,27 @@ const sign = (id, cls = '') =>
 /* PORTED: the prototype coerced `live` to `cached` because every number in it came off a committed
  * snapshot. This page reads a live node OR a fixture and knows which, so the caller passes the word
  * and this prints it. `?fixture=` is what says `cached` (see lead()). */
+/* THE WORDS signs.svg HAS A SIGN FOR. The sprite is the design layer's, frozen here byte for byte
+ * (tools/check_theme.py), and it draws five provenance signs. A word outside them, `stale` above
+ * all, is printed as the word alone: a <use> pointing at a symbol the sprite does not have draws an
+ * empty square, and lending it another word's sign would make one glyph mean two things. The sign
+ * for `stale` is owed by planetai-design, not drawn here. */
+const PROV_SIGNS = new Set(['live', 'partial', 'model', 'cached', 'example']);
 const pill = (word, note = '') => {
   if (!word) return '';
   const w = String(word);
   return `<span class="pill prov" title="${esc(note)}">`
-    + `<svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(w)}"/></svg>`
+    + (PROV_SIGNS.has(w)
+      ? `<svg class="sg" aria-hidden="true"><use href="static/signs.svg#sign-prov-${esc(w)}"/></svg>`
+      : '')
     + esc(w) + `</span>`;
 };
+
+/* Under both forms that post to /actions, before anybody presses: what a browser needs to be let
+ * through. The node's own refusal says the same after the press; this says it before. */
+const TOKEN_FINE = `<p class="fine">From another device this needs the act token: `
+  + `<span class="mono">planetai ui</span> prints it on the node, and Set up \u2192 unlock holds it `
+  + `in this browser.</p>`;
 
 const age = m => m == null ? '' : m < 1 ? 'just now' : m < 60 ? `${Math.round(m)} min ago`
   : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
@@ -467,7 +481,7 @@ function barcode(o = {}) {
     + `<b>Every row is on its own scale</b>, because a micrograph and a degree are not the same `
     + `quantity \u2014 read a row across the day, never one row against another. `
     + `<b>Hourly, not quarter-hourly</b>: this node keeps fifteen-minute means for now only, never `
-    + `for a day, so an hour is the finest grain it can honestly publish for one.</p></div>`;
+    + `for a day, so an hour is the finest grain it keeps for a whole day.</p></div>`;
 }
 
 /* --------------------------------------------------------------------------- 4 · row */
@@ -610,7 +624,7 @@ function ask(key, d, ref) {
     + `<label><span>What you did</span><input name="note" maxlength="500"`
     + ` placeholder="closed the windows on the north side"></label>`
     + `<div class="btns"><button type="submit" class="pri">Record it</button>`
-    + `<button type="button" class="cancel">Cancel</button></div></form></div>`;
+    + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form></div>`;
 }
 
 /* PORTED: `plan` is not an id on this page; the figure the caption belongs to is the ground map.
@@ -865,7 +879,7 @@ const interp = (str, vals) => String(str || '')
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, stamp, asof, rhoRow, funnel,
-  peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED };
+  peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -1432,6 +1446,14 @@ window.KMAP = { map, caption, frameOf, MAX_SPAN_M };
  *       title: 'The ground',     // the band's kicker, in the house voice
  *       order: 10,               // position within its stage; lower first
  *       needs: ['PLAN'],         // globals it reads. Absent → the band says so and does not fail
+ *       reads: ['/place/geojson', '/issues'],
+ *                                // the node's routes this band's data comes from, first the one it
+ *                                //   leans on most. The shell prints them beside the kicker as
+ *                                //   links, so a reader can fetch what the band drew. Only routes a
+ *                                //   GET without parameters answers: an image the band asks for by
+ *                                //   year is reached through the route that lists the years.
+ *                                //   tools/check_ui.py fails a section without one, or a route
+ *                                //   app/main.py does not define
  *       controls(ctx) → html,    // optional: a control strip for this section (a toggle, a selector)
  *       render(ctx)   → html,    // the body. Captions belong here; explanations do not
  *       wall(ctx)     → html,    // optional: what it contributes to the wall at ctx.RES
@@ -1489,7 +1511,7 @@ function register(mod) {
      this existed, or by a pack that has never heard of it, keeps the behaviour it had: drawn on the
      full page, absent from the short answer. A section opts INTO simple; it is never opted in for
      it, because what belongs in a four-sentence answer is a judgement its author has to make. */
-  sections.push({ order: 50, needs: [], level: 'advanced', learn: [], ...mod });
+  sections.push({ order: 50, needs: [], level: 'advanced', learn: [], reads: [], ...mod });
 }
 
 /* A global path like 'H3.nav.plates' resolves or does not. */
@@ -1529,9 +1551,14 @@ function bandFor(ctx, s) {
      carries none; simple mode draws no bands at all, so there is nothing here to suppress. */
   const marks = (s.learn || []).map(k => (window.PAI_LEARN ? window.PAI_LEARN.mark(k, s.id) : ''))
     .join('');
+  /* The routes the band's data came from, once per band, in their own case: the kicker shouts, and
+     a route uppercased is a route a reader cannot type back. Links, so the JSON is one press away. */
+  const reads = (s.reads || []).length
+    ? `<span class="routes">${s.reads.map(r => `<a href="${esc(r)}">GET ${esc(r)}</a>`).join('')}</span>`
+    : '';
   return `<section class="band" id="${esc(s.id)}" data-band="${esc(s.stage)}:${esc(s.id)}"`
     + ` data-pack="${esc(s.pack)}" data-stage="${esc(s.stage)}">`
-    + `<div class="k"><span>${esc(s.title)}</span>${marks}<span class="pack">${esc(s.pack)}</span></div>`
+    + `<div class="k"><span>${esc(s.title)}</span>${reads}${marks}<span class="pack">${esc(s.pack)}</span></div>`
     + controls + body + `</section>`;
 }
 
@@ -2034,19 +2061,19 @@ function notes(ctx) {
   return [
     { id: 'ground-rule', label: 'Where the plan takes over',
         text: `From resolution ${PLAN_FROM} inward the ground is this node’s own `
-      + 'plan unless a live base is pressed — Tomas’s rule. The plan is about 3 km across and the '
-      + 'resolution-9 plate is 1.6 km, so from 9 the plan fills the frame edge to edge; it is the '
-      + 'better drawing there, every vertex is the node’s own, and it sends nothing. At 8 the plate '
-      + 'is 4.2 km and the plan sits in the middle with paper round it, so the tiles show there and '
-      + `coarser — but only when a keeper has set MAP_TILES to on, which on this node it is `
+      + 'plan unless a live base is pressed. The plan is about 3 km across and the resolution-9 '
+      + 'plate is 1.6 km, so from 9 the plan fills the frame edge to edge; there it is the better '
+      + 'drawing, every vertex is the node’s own, and it sends nothing. At 8 the plate is 4.2 km and '
+      + 'the plan sits in the middle with paper round it, so the tiles show there and coarser, but '
+      + `only when a keeper has set MAP_TILES to on, which on this node it `
       + `${(window.SETTINGS || {}).MAP_TILES === 'on' ? 'is' : 'is not'}. Off, the plan is the ground `
       + 'at every rung and the page sends nothing at all.' },
     { id: 'ground-why-live', label: 'Why a live base at all',
-        text: 'The live bases are here because Tomas asked for them: a real map '
-      + 'with a satellite view that rescales when the ladder moves. He was told what it costs — a page '
+        text: 'The live bases show what the plan cannot: a real map, with a '
+      + 'satellite view that rescales when the ladder moves. They cost what the plan does not: a page '
       + 'that fetches tiles tells the tile server which square of the planet is being looked at, '
-      + 'every time anybody opens it — and asked for it anyway. So it is built, the cost is printed '
-      + 'beside the picture, and the offline plan is one press away in the same strip.' },
+      + 'every time anybody opens it. So they are off until a keeper turns them on, the cost is '
+      + 'printed beside the picture, and the offline plan is one press away in the same strip.' },
     { id: 'ground-cost', label: 'What a tile costs',
         text: `What leaves: one request per tile, ${f.tiles.length} for this view, `
       + `from the device the page is open on to ${BASES[f.base].host}. Each request names a tile by `
@@ -2064,7 +2091,7 @@ function notes(ctx) {
       + 'every rung within a factor of two.' },
     { id: 'ground-frames', label: 'Two frames, one drawing',
         text: 'Tiles are Web Mercator, EPSG:3857, because that is the only frame a '
-      + 'tile server speaks. The offline plan is drawn in the node\'s own local frame — metres east '
+      + 'tile server speaks. The offline plan is drawn in the node\'s own local frame: metres east '
       + 'and north of the node, which make-plan.mjs computed and kit-map.js places. At 8.8° south '
       + 'Mercator\'s scale is within 1.2% of true and constant to a part in a thousand across a 5 km '
       + 'frame, so the cells fall on the same pixels either way. At resolution 2 and 3 the frame is '
@@ -2092,6 +2119,7 @@ window.GROUND = { figure, frame, BASES, SIZE };
 
 window.PAI.register({
   id: 'ground', pack: 'place', stage: 'observe', title: 'The ground', order: 0, learn: ['tiles', 'cell'],
+  reads: ['/issues', '/place/geojson', '/settings', '/health'],
   needs: ['H3.nav'],
   anchor: 'ground-figure',   /* no band of its own, so its notes point at the drawing they explain */
   /* No `render`: the ledger that used to sit at this section's foot is its own section now (see
@@ -2110,6 +2138,7 @@ window.PAI.register({
  * screen. Rolling them into one count would say the same number means the same thing twice. */
 window.PAI.register({
   id: 'requests', pack: 'place', stage: 'observe', order: 60, learn: ['share', 'dido'],
+  reads: ['/health', '/sensors', '/settings', '/issues'],
   title: 'What this page asked of the world',
   needs: ['H3.nav'],
   render(ctx) {
@@ -2185,15 +2214,25 @@ const { esc, fmt, pill, age } = window.K;
 
 window.PAI.register({
   id: 'figures', pack: 'core', stage: 'measure', order: 90, learn: ['figures'],
+  reads: ['/issues'],
   title: 'Every figure on this page, and where it came from',
   render(ctx) {
     const { ISS, ORDER } = ctx;
     const rows = (ORDER || []).flatMap(k => ((ISS[k] || {}).provenance || [])
       .map(e => ({ ...e, issue: k })));
+    /* The same figures as a file anyone may take: the day's open export, and the days before it.
+       GET /export needs a day, and the day is the node's own, off the reading this page drew. */
+    const day = String(((ctx.S || {}).issues || {}).as_of || '').slice(0, 10);
+    const exported = `<p class="cap" id="figures-export" data-ref="figures-table">Today\u2019s open `
+      + `export, CC BY 4.0: `
+      + (/^\d{4}-\d{2}-\d{2}$/.test(day)
+        ? `<a class="mono" href="/export?day=${esc(day)}">GET /export?day=${esc(day)}</a>`
+        : `<span class="mono">GET /export?day=YYYY-MM-DD</span>`)
+      + `. Past days: <a class="mono" href="/exports">GET /exports</a>.</p>`;
     if (!rows.length) {
       return `<p class="note" id="figures-none" data-ref="care">This node sent no provenance for `
         + `its figures, so there is nothing to list. That is a gap in what it published, not an `
-        + `empty page: every figure above came from somewhere.</p>`;
+        + `empty page: every figure above came from somewhere.</p>` + exported;
     }
     return `<div class="figwrap" id="figures-table" data-ref="care">`
       + `<table class="figs"><thead><tr>`
@@ -2211,7 +2250,7 @@ window.PAI.register({
         + `</tr>`).join('')
       + `</tbody></table>`
       + `<p class="cap">${rows.length} figures, in loop order. The node computed this list; the `
-      + `page did not assemble it by reading itself.</p></div>`;
+      + `page did not assemble it by reading itself.</p>${exported}</div>`;
   },
   notes(ctx) {
     const n = (ctx.ORDER || []).reduce((a, k) => a + (((ctx.ISS[k] || {}).provenance) || []).length, 0);
@@ -2259,6 +2298,7 @@ const { esc, stack, pill } = window.K;
 
 window.PAI.register({
   id: 'matrix', pack: 'core', stage: 'observe', title: 'Every issue, at every distance', order: 10, learn: ['distances', 'states'],
+  reads: ['/issues'],
   /* No `needs`. It resolves paths against `window`, and the issues are file-scope in the kit, not
      global — `needs: ['ISS']` would have drawn "the core pack has nothing here yet" on every node
      that has issues. A node with none is a real state and the render says so itself. */
@@ -2325,6 +2365,7 @@ const hasDay = d => (window.K.DIST || []).some(x => Array.isArray((d.series || {
 
 window.PAI.register({
   id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw'],
+  reads: ['/issues'],
   render(ctx) {
     const { ISS, ORDER } = ctx;
     const drawn = ORDER.filter(k => ISS[k] && hasDay(ISS[k]));
@@ -2397,6 +2438,7 @@ const of20 = (pct, cls = '') => Array.from({ length: 20 }, (_, i) =>
 
 window.PAI.register({
   id: 'sources', pack: 'core', stage: 'observe', title: 'What this page is made of', order: 14, learn: ['custody'],
+  reads: ['/sensors', '/issues', '/place/geojson'],
   needs: ['SENSORS'],
   render(ctx) {
     const all = window.SENSORS || [];
@@ -2714,6 +2756,7 @@ const CELLHEAD = (ctx, g) => g.cell ? ctx.KH.address(g.cell, ctx.RES)
 
 window.PAI.register({
   id: 'sensors', pack: 'air-quality', stage: 'observe', title: 'What the stations read', order: 20,
+  reads: ['/issues', '/settings'],
   learn: ['counted'],
   needs: ['H3.sensors'],
 
@@ -2932,6 +2975,7 @@ function record(ctx) {
 
 window.PAI.register({
   id: 'satellite', pack: 'earth', stage: 'observe', order: 30, learn: ['earth'],
+  reads: ['/earth', '/issues', '/place/geojson'],
   /* Historical's short answer. The pack says the satellite loop leads this view, so it is what a
      reader gets when they ask for the short version of it — not Now's four sentences. */
   level: 'simple',
@@ -3139,6 +3183,7 @@ const day = iso => {
 
 window.PAI.register({
   id: 'reach', pack: 'core', stage: 'observe', order: 5, learn: ['reach'],
+  reads: ['/reach'],
   title: 'How far back this node can be asked',
   needs: ['REACH'],
   render(ctx) {
@@ -3272,6 +3317,7 @@ function rows(side, items) {
 
 window.PAI.register({
   id: 'netmap', pack: 'core', stage: 'observe', order: 0, learn: ['parent'],
+  reads: ['/sensors', '/cells', '/health', '/rho', '/settings'],
   /* Network's short answer, for the same reason: this view is this node in relation to the network,
      and the map of that relation is the whole of the short version. */
   level: 'simple',
@@ -3346,39 +3392,48 @@ window.PAI.register({
 /* ================================================================= h/mods/registry.js ==== */
 /* registry · core · observe (Network)
  *
- * What this place COULD read, and where it could go — the whole registry, not just the part this
- * node has wired up. `GET /sources` at the pin in `data/sources`: 217 entries, 14 with an adapter,
- * 8 that are somewhere to act rather than something to read.
+ * What this place COULD read, and where it could go: the whole registry, not just the part this
+ * node has wired up. `GET /sources` at the pin in `data/sources`.
  *
- * WHY IT IS FETCHED LATE. /sources is 417 kB, which is nearly what /issues costs, to draw three
- * numbers. Every other route the page reads is needed on the view a reader lands on; this one is
+ * WHY IT IS FETCHED LATE. /sources is 417 kB, which is nearly what /issues costs, to draw a handful
+ * of numbers. Every other route the page reads is needed on the view a reader lands on; this one is
  * needed on Network and nowhere else, so it is asked for the first time somebody goes there and the
  * page redraws when it arrives. A reader who never opens Network never pays for it.
+ *
+ * THE THREE COUNTS ARE THE NODE'S. /sources carries `counts`, `{cell: {capable, reviewed,
+ * candidate}}` from app/registry.py's cell_counts(), the same three every /cells row carries for
+ * its own cell. This band adds them up over the cells the way `planetai sources` does ("across N
+ * cells"), and decides nothing about what counts: the rule is in the node, in one place.
  *
  * THE PAGE DOES NOT JUDGE A LICENCE. The registry carries `license` as free text and publishes no
  * open/not flag, so the counts here are of what the rows SAY: how many state in the registry's own
  * words that no licence is published, against how many carry a licence text. Sorting "CC-BY-SA-4.0
  * (site default; proprietary licences on some pages)" into open or not-open is a judgement, and a
  * page that made it would be making it on the Foundation's behalf. The text is shown instead.
- *
- * ONE COUNT WILL LOOK WRONG AND IS NOT. `fablabs-io` has `adapter: null` at pin 85a194c although
- * `pack:make` reads it — the registry's CI checks adapter strings against this repository and the
- * pack landed the same day as the pin. This row reads `adapter` and never infers, so it says 14
- * until the registry is re-pinned upstream. A re-pin owed, not a page bug.
  */
 PAI_LOAD.push(function () {
 'use strict';
 
 const { esc, row } = window.K;
 
+/* Where the registry lives, and the documentation's steps for adding to it. The anchor is the
+   heading "Adding a source" in docs/site/sources.md, slugged the way tools/build_docs.py does;
+   tests/test_dashboard.py fails if the heading moves. */
+const REGISTRY_REPO = 'https://github.com/fabcity/awesome-fabcity-data';
+const ADD_A_SOURCE = 'https://planetai.fab.city/docs/sources/#adding-a-source';
+
 /* The registry's own words for what a place to act IS. `act_kind` is a token; these name it. */
 const ACT_WORDS = {
-  /* [one, many, what it is]. Both forms are written out because the plurals are irregular — one
-     directory, two directories; one library, two libraries — and "1 lists of places that pledged"
-     is what appending an s gets you. */
+  /* [one, many, what it is]. Both forms are written out because the plurals are irregular: one
+     directory, two directories; one library, two libraries. "1 lists of places that pledged" is
+     what appending an s gets you. */
   facility: ['directory of fab labs', 'directories of fab labs', 'places with machines in them'],
   design: ['library of open designs', 'libraries of open designs',
     'things somebody has already worked out'],
+  repair: ['directory of repair cafés', 'directories of repair cafés',
+    'places where things get fixed'],
+  match: ['matcher of designs to workshops', 'matchers of designs to workshops',
+    'which workshop could build which design'],
   network: ['list of places that pledged', 'lists of places that pledged', 'who else is doing this'],
 };
 
@@ -3386,8 +3441,17 @@ const ACT_WORDS = {
    OWN statement is reading; deciding whether "CC-BY-SA-4.0 (site default)" counts as open is not. */
 const saysNoLicence = r => /^\s*(no licence published|not open\b)/i.test(String(r.license || ''));
 
+/* The node's per-cell counts, summed over the cells, as `planetai sources` prints them. */
+function totals(counts) {
+  const cells = Object.values(counts || {});
+  const t = { cells: cells.length, capable: 0, reviewed: 0, candidate: 0 };
+  for (const c of cells) for (const k of ['capable', 'reviewed', 'candidate']) t[k] += Number(c[k]) || 0;
+  return t;
+}
+
 window.PAI.register({
   id: 'registry', pack: 'core', stage: 'observe', order: 60, learn: ['registry'],
+  reads: ['/sources'],
   title: 'What this place could read, and where it could go',
   needs: ['SOURCES'],
   render() {
@@ -3405,36 +3469,65 @@ window.PAI.register({
     const unlicensed = acts.filter(saysNoLicence).length;
     const kinds = Object.entries(byKind)
       .map(([k, v]) => `${v.length} ${(ACT_WORDS[k] || [k, k])[v.length === 1 ? 0 : 1]}`)
-      .join(' \u00b7 ');
+      .join(' · ');
     const codes = [...new Set(wired.map(r => r.adapter))].sort();
+    /* The pin is a commit of the registry, so it links to the registry at that commit: the files
+       this node carries, as they were when it was synced. */
+    const pin = reg.sha || reg.short;
+    const pinned = pin
+      ? `<a class="mono" href="${esc(`${REGISTRY_REPO}/tree/${pin}`)}">pin ${esc(reg.short || pin)}</a>`
+      : 'pin ?';
+    const t = totals(d.counts);
+    const cols = 'minmax(0,210px) minmax(0,1fr) auto';
     return `<div class="reads" id="registry-rows" data-ref="netmap-figure">`
-      + row({ id: 'registry-read', component: 'sourcesRead', ref: 'netmap-figure',
-        cols: 'minmax(0,210px) minmax(0,1fr) auto',
+      + row({ id: 'registry-read', component: 'sourcesRead', ref: 'netmap-figure', cols,
         left: `<span class="who"><b>Registered, and read</b>`
-          + `<span class="m">pin ${esc(reg.short || '?')} \u00b7 synced ${esc(reg.synced || '?')}`
-          + `</span></span>`,
+          + `<span class="m">${pinned} · synced ${esc(reg.synced || '?')}</span></span>`,
         line: `${rows.length} sources registered; ${wired.length} have code on this node that reads `
-          + `them \u2014 ${esc(codes.join(', '))}. The rest have no adapter yet, which is a thing `
-          + `nobody has written rather than a thing this node refuses.`,
+          + `them: ${codes.join(', ')}. The rest have no adapter yet, which is a thing nobody has `
+          + `written rather than a thing this node refuses.`,
         qty: [{ num: 'sources.read', value: `${wired.length}/${rows.length}`,
-          cmp: `registered sources this node has code for, at registry pin ${esc(reg.short || '?')}` }] })
-      + row({ id: 'registry-act', component: 'sourcesAct', ref: 'netmap-figure',
-        cols: 'minmax(0,210px) minmax(0,1fr) auto',
+          cmp: `registered sources this node has code for, at registry pin ${reg.short || '?'}` }] })
+      + (d.counts ? row({ id: 'registry-counts', component: 'sourcesCounts', ref: 'netmap-figure',
+        cols,
+        left: `<span class="who"><b>What a cell could use</b>`
+          + `<span class="m">across ${t.cells} cell${t.cells === 1 ? '' : 's'}</span></span>`,
+        line: 'Capable: live, and code here reads it. Reviewed: live, and backed by that code or by '
+          + 'a review that found it usable. Candidate: verified, and nobody has read it for a real '
+          + 'place yet. Counted once for every cell an entry feeds; nothing deprecated, stale, '
+          + 'paywalled or planned counts in any of them.',
+        qty: [
+          { num: 'sources.capable', value: `${t.capable} capable`,
+            cmp: `summed over the ${t.cells} cells the registry counts, at pin ${reg.short || '?'}` },
+          { num: 'sources.reviewed', value: `${t.reviewed} reviewed`,
+            cmp: `against ${t.capable} capable, which it always includes` },
+          { num: 'sources.candidate', value: `${t.candidate} candidate`,
+            cmp: `against ${t.reviewed} reviewed: verified and not yet read` },
+        ] }) : '')
+      + row({ id: 'registry-act', component: 'sourcesAct', ref: 'netmap-figure', cols,
         line: `${kinds}. ${unlicensed} of them say, in the registry's own words, that no licence is `
           + `published; the rest carry a licence text. This page does not sort a licence into open `
-          + `or not \u2014 it shows what the registry wrote.`,
+          + `or not: it shows what the registry wrote.`,
         left: `<span class="who"><b>Places to act</b><span class="m">not things to read</span></span>`,
         qty: [{ num: 'sources.act', value: String(acts.length),
           cmp: `of ${rows.length} registered are somewhere to go rather than something to read` }] })
       + `</div>`
+      /* Where to go from here: the two halves of the list the counts are made of, the per-cell
+         rows this node computes, and how an entry gets into the registry at all. */
+      + `<p class="cap" id="registry-how" data-ref="registry-rows">The live entries are at `
+      + `<a class="mono" href="/sources?status=live">GET /sources?status=live</a> and the candidates `
+      + `at <a class="mono" href="/sources?status=candidate">GET /sources?status=candidate</a>; each `
+      + `row of <a class="mono" href="/cells">GET /cells</a> carries the three counts for its own `
+      + `cell. An entry is added by a pull request to the registry and a re-pin: `
+      + `<a href="${ADD_A_SOURCE}">Adding a source</a>, in the documentation.</p>`
       /* COUNTED, NOT TYPED. This said "The eight" because there were eight at registry pin 85a194c.
-         The pin moved to 5998a64 and there are sixteen, and a fold that says eight over a list of
-         sixteen is the page telling a reader something it can see is false. A number in prose about
-         data that arrives over the wire is a number that will be wrong. */
+         The pin moved and the number with it, and a fold that says eight over a list of sixteen is
+         the page telling a reader something it can see is false. A number in prose about data
+         that arrives over the wire is a number that will be wrong. */
       + `<details class="fold" id="registry-fold"><summary>All ${acts.length}, and what each one's `
       + `licence says</summary><dl class="notelist">`
       + acts.map(r => `<div class="noteitem" id="src-${esc(r.slug || '').replace(/[^a-z0-9-]/gi, '-')}">`
-        + `<dt>${esc(r.name || r.slug)}<span class="m"> \u00b7 `
+        + `<dt>${esc(r.name || r.slug)}<span class="m"> · `
         + `${esc((ACT_WORDS[r.act_kind] || [])[2] || r.act_kind || '')}</span></dt>`
         + `<dd><span class="said">${esc(r.license || 'the registry records no licence text at all')}`
         + `</span></dd></div>`).join('')
@@ -3444,18 +3537,24 @@ window.PAI.register({
     return [
       { id: 'registry-read', label: 'Could read, against does',
         text: 'The registry is what this place COULD read; the adapters are what '
-        + 'it does. The gap between them is not a refusal — it is code nobody has written yet, and '
-        + 'naming it is how somebody comes to write it. One entry reads lower than it should: '
-        + '`fablabs-io` carries no adapter string at this pin although a pack reads it, because the '
-        + 'registry checks those strings against this repository and the pack landed the same day. '
-        + 'This row reads the field and never infers, so it will say so until the pin moves.' },
+        + 'it does. The gap between them is not a refusal: it is code nobody has written yet, and '
+        + 'naming it is how somebody comes to write it. This row reads each entry’s adapter '
+        + 'string and never infers one, so an adapter that exists here and is not yet named '
+        + 'upstream is not counted until the registry names it and the pin moves.' },
+      { id: 'registry-counts', label: 'Three counts, and why not one',
+        text: 'One number per cell used to count every entry filed under it, '
+        + 'deprecated and paywalled ones included, which made cells look answered that no node '
+        + 'could fill. These three are counted from what an entry feeds, not where it is filed, '
+        + 'and only live and candidate entries count at all. The node computes them; this page '
+        + 'only adds them up over the cells.' },
       { id: 'registry-act', label: 'A place to act is not a source',
-        text: 'A place to act is not a source of readings. Two are directories of '
-        + 'workshops, five are libraries of designs somebody has already worked out, one is a list '
-        + 'of places that pledged. What this page will not do is decide whether a licence is open: '
-        + 'the registry carries free text, some of it plainly saying no licence is published and '
-        + 'some of it a licence with conditions, and sorting the second kind into a yes or a no is '
-        + 'a judgement made on somebody else\u2019s behalf. The text is here instead.' },
+        text: 'A place to act is not a source of readings. They are directories '
+        + 'of workshops and repair cafés, libraries of designs somebody has already worked out, '
+        + 'a matcher between the two, and a list of places that pledged. What this page will not '
+        + 'do is decide whether a licence is open: the registry carries free text, some of it '
+        + 'plainly saying no licence is published and some of it a licence with conditions, and '
+        + 'sorting the second kind into a yes or a no is a judgement made on somebody '
+        + 'else’s behalf. The text is here instead.' },
     ];
   },
 });
@@ -3484,6 +3583,7 @@ const R = H.radio;
 
 window.PAI.register({
   id: 'reticulum', pack: 'reticulum', stage: 'observe', order: 40, learn: ['presence'],
+  reads: ['/issues'],
   title: 'What leaves this house by radio',
   needs: ['H3.radio'],
   render(ctx) {
@@ -3587,6 +3687,7 @@ const READ = () => R.mesh_reads || [];
 
 window.PAI.register({
   id: 'meshtastic', pack: 'meshtastic', stage: 'observe', order: 41, learn: ['mesh'],
+  reads: ['/issues'],
   title: 'The mesh in this house',
   needs: ['H3.radio.mesh'],
   render(ctx) {
@@ -3685,6 +3786,7 @@ function devices() {
 
 window.PAI.register({
   id: 'hardware', pack: 'hardware', stage: 'observe', order: 45, learn: ['siting'],
+  reads: ['/issues'],
   title: 'The hardware in this house',
   needs: ['H3.sensors'],
   render(ctx) {
@@ -3729,11 +3831,11 @@ window.PAI.register({
         + 'out, what each measures, when it last spoke. Smart Citizen and Meshtastic are both open '
         + 'hardware, which is a fact about the devices and not a claim this page makes for them.' },
       { id: 'hardware-manager', label: 'The manager row',
-        text: 'The manager row is the hook Tomas asked for and nothing more: '
-        + 'an open hardware manager and the capacity to make locally are the next packs, not this '
-        + 'one. When they exist they register a section the way every section here did, and this row '
-        + 'stops saying "not connected". Until then the contract’s rule holds — a missing pack is one '
-        + 'honest line, never a blank.' },
+        text: 'The manager row is a hook and nothing more: an open hardware '
+        + 'manager and the capacity to make locally are the next packs, not this one. When they '
+        + 'exist they register a section the way every section here did, and this row stops saying '
+        + '"not connected". Until then the contract’s rule holds: a missing pack is one line that '
+        + 'says so, never a blank.' },
       { id: 'hardware-shape', label: 'What a pack contributes',
         text: 'This is the shape a community pack’s contribution takes: a '
         + 'title, a stage, what it needs, what it says, and its notes. A node that adds a device adds '
@@ -3808,6 +3910,7 @@ function claimCard(ctx, c) {
 
 window.PAI.register({
   id: 'claims', pack: 'core', stage: 'decide', order: 10, learn: ['claims'],
+  reads: ['/issues'],
   title: 'Whose word, over how much ground',
   needs: ['H3.claims'],
   render(ctx) {
@@ -3854,7 +3957,7 @@ window.PAI.register({
         text: 'Every footprint here is a number a pack or a preset already '
         + 'declares — COAST_MAX_KM, BAD_RADIUS_KM, EARTH_RADIUS_M at 10 m a pixel, PLACE_RADIUS_M, '
         + 'LOCAL_RADIUS_M, and the three decimals GET /health rounds a coordinate to, which is about '
-        + '110 m and the finest resolution anything from this node may honestly be drawn at. Not one '
+        + '110 m and the finest resolution anything from this node may be drawn at. Not one '
         + 'radius on this page was chosen by it.' },
       { id: 'claims-order', label: 'Widest ground first',
         text: 'The cards are ordered by the ground one word covers, widest '
@@ -4106,6 +4209,7 @@ function template(ctx) {
 
 window.PAI.register({
   id: 'grain', pack: 'core', stage: 'decide', order: 20, learn: ['containment'],
+  reads: ['/issues'],
   title: 'What each rung is worth',
   needs: ['H3.grain_table'],
   render(ctx) {
@@ -4297,6 +4401,7 @@ function capacity() {
 
 window.PAI.register({
   id: 'asks', pack: 'core', stage: 'act', order: 10, learn: ['levels', 'current'],
+  reads: ['/issues', '/rho', '/sensors', '/settings', '/stats'],
   /* `workshop` is drawn by whereToGo() on the row it explains, not in the kicker. */
   title: 'The alerts this node has sent',
   /* PORTED: the prototype also needed SNAP.funnel, which was one of its three synthetic
@@ -4432,6 +4537,7 @@ function name(id) { return String(id).split('/').pop().replace(/_/g, ' '); }
 
 window.PAI.register({
   id: 'effect', pack: 'core', stage: 'measure', order: 20, learn: ['effect'],
+  reads: ['/effect'],
   title: 'Which of these worked',
   needs: ['EFFECT.rules'],
   anchor: 'effect',
@@ -4575,6 +4681,7 @@ const hh = h => `${String(h).padStart(2, '0')}:00`;
 
 window.PAI.register({
   id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape'],
+  reads: ['/shape'],
   title: 'The day this place usually has',
   needs: ['SHAPE.hours'],
   anchor: 'shape',
@@ -4704,11 +4811,13 @@ function card(ctx, key, d, a) {
     + `<button type="submit" class="pri">Record the decision</button></div>`
     + `<p class="fine">This closes no alert and moves no number. When it is done, press `
     + `<b>I did this</b> under Act.</p>`
+    + window.K.TOKEN_FINE
     + `</form></section>`;
 }
 
 window.PAI.register({
   id: 'decide', pack: 'core', stage: 'decide', order: 5, level: 'simple',
+  reads: ['/issues'],
   learn: ['recommend', 'looked', 'agent'],
   title: 'What to do about it',
   needs: ['H3.asks'],
@@ -4830,6 +4939,7 @@ function line(x, ctx, all) {
 
 window.PAI.register({
   id: 'ledger', pack: 'core', stage: 'act', order: 20, learn: ['note', 'bot', 'actions'],
+  reads: ['/issues', '/actions'],
   title: 'What was decided, and by whom',
   needs: ['H3.asks.actions'],
   anchor: 'ledger',
@@ -4884,12 +4994,6 @@ window.PAI.register({
         + 'rest of the page. The sentence they wrote is not: GET /actions is on neither sharing '
         + 'allowlist, because a note is what a household said about its own house, and it answers a '
         + 'token or this machine and nothing else.' },
-      { id: 'ledger-no-decision', label: 'No stage for a decision yet',
-        text: 'Every row here is an act \u2014 something that was done. A '
-        + 'decision that was made and never carried out has nowhere to go on this node yet: the '
-        + 'ledger has three stages and none of them is "decided". docs/SPEC_decide.md proposes the '
-        + 'fourth, and until it exists a household that looked, decided and could not manage it '
-        + 'leaves exactly the same trace as one that never looked, which is none.' },
     ];
   },
 });
@@ -4943,6 +5047,7 @@ function careLabel() {
 
 window.PAI.register({
   id: 'measure', pack: 'core', stage: 'measure', order: 10, learn: ['rho', 'refusals'],
+  reads: ['/rho', '/issues'],
   title: 'Whether it worked',
   needs: ['SNAP.rho'],
   render(ctx) {
@@ -5055,6 +5160,7 @@ const T = () => window.TRUST || null;
 
 window.PAI.register({
   id: 'trust', pack: 'trust', stage: 'decide', order: 30, learn: ['trust'],
+  reads: ['/trust'],
   title: 'What the node doubts about its own sensors',
   needs: ['TRUST'],
 
@@ -5203,6 +5309,7 @@ function drawForecast(ctx) {
 
 window.PAI.register({
   id: 'forecast', pack: 'forecast', stage: 'observe', order: 50, learn: ['forecast'],
+  reads: ['/forecast', '/issues'],
   title: 'The day it is about to have',
   needs: ['FORECAST'],
   render: drawForecast,
@@ -7344,6 +7451,17 @@ async function layoutSave(reset) {
    A capture is refused rather than posted. `open_asks` carries the alert ids of the node the
    capture came FROM, so a press while reading one would close somebody else's loop with this
    reader's name on it. `refresh()` guards itself the same way and for the same reason. */
+/* What the node said when it refused, in its own words. The share middleware answers `{error}`;
+   an HTTPException in app/main.py answers `{detail}`, a string for every refusal POST /actions
+   makes. A 422 from a body the schema refused carries a list, and its messages are joined. */
+async function nodeSaid(r) {
+  const b = await r.json().catch(() => null);
+  const d = b && (b.error || b.detail);
+  if (typeof d === 'string') return d.trim();
+  if (Array.isArray(d)) return d.map(x => (x && x.msg) || '').filter(Boolean).join('; ');
+  return '';
+}
+
 async function didThis(form) {
   const btn = form.querySelector('button[type="submit"]');
   const alert_id = Number(form.getAttribute('data-alert'));
@@ -7370,14 +7488,19 @@ async function didThis(form) {
        a node at SHARE_LEVEL=off answers 403 with a better sentence than any this page could
        compose, naming the setting and where to change it. So the page adds only what the node
        cannot know: where the token comes from. */
+    const said = r.ok ? '' : await nodeSaid(r);
     if (r.status === 401 || r.status === 403) {
-      const said = await r.json().then(b => b && b.error).catch(() => '');
       say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
         + `act token; Set up \u2192 unlock holds it.`, true);
     } else if (r.status === 404) {
       say('This node has no such alert any more. Reload and look again.', true);
+    } else if (r.status === 409 || r.status === 400) {
+      /* The node's own sentence and nothing else. A 409 is DECISION_REQUIRED, and the node's
+         sentence says what to do first; a 400 names the stages it takes. "Refused (409)" said
+         neither, to the one person standing at the screen wanting to know. */
+      say(said || `The node refused it (${r.status}).`, true);
     } else if (!r.ok) {
-      say(`The node refused it (${r.status}).`, true);
+      say(said ? `${said} (${r.status})` : `The node refused it (${r.status}).`, true);
     } else {
       say(decision
         ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'

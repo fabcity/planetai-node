@@ -212,8 +212,8 @@ def _funnel(cur, days_ago: int = 0) -> dict:
     """How far the asks got, stage by stage, and how long each step took.
 
     `measured` IS DERIVED, NOT POSTED. Nothing in the node writes a measured row — main.py::post_action takes
-    acknowledged and acted only — so counting posted rows would report a structural zero as a household that never
-    checks its work. What the node does have is the rule itself: run_rules re-fires an alert as soon as its cooldown
+    acknowledged, acted and decided, and refuses measured — so counting posted rows would report a structural
+    zero as a household that never checks its work. What the node does have is the rule itself: run_rules re-fires an alert as soon as its cooldown
     expires and the condition still holds. So an act followed by MEASURED_WINDOW_MIN of silence from the same rule on
     the same sensor is the condition having stopped being true, on every node, retroactively, with nobody asked to
     learn a new habit. A posted measured row still counts if one ever arrives.

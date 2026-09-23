@@ -2068,7 +2068,7 @@ def action(body: dict, request: Request, authorization: str = Header("")):
     # that looked at an observation, decided what to do and did not manage it leaves the same trace today as one that
     # never looked, and those are opposite facts. docs/SPEC_decide.md section 6.
     if stage not in ("acknowledged", "acted", "decided"):  # 'settings' rows are written by the node itself, never posted
-        raise HTTPException(400, "stage must be acknowledged or acted")
+        raise HTTPException(400, "stage must be acknowledged, acted or decided")
     with db() as con, con.cursor() as cur:
         cur.execute("SELECT 1 FROM alerts WHERE id = %s", (body.get("alert_id"),))
         if not cur.fetchone():

@@ -276,7 +276,12 @@ level("open")
 assert lan.post("/actions", json={"alert_id": 1, "stage": "acted"}).status_code == 403, "open: an anonymous action must be refused"
 assert lan.post("/actions", json={"alert_id": 1, "stage": "bad"}, headers=ACT).status_code == 400, "open: ACT_TOKEN gets past the gate and reaches the route"
 level("off")
-assert local.post("/actions", json={"alert_id": 1, "stage": "bad"}).status_code == 400, "off: this machine records an action with no token"
+_bad = local.post("/actions", json={"alert_id": 1, "stage": "bad"})
+assert _bad.status_code == 400, "off: this machine records an action with no token"
+# The dashboard prints this sentence as the node wrote it, so it must name every stage the route takes:
+# it said "acknowledged or acted" for a release after `decided` was accepted.
+assert _bad.json().get("detail") == "stage must be acknowledged, acted or decided", \
+    f"the 400 names the stages POST /actions accepts: {_bad.json()}"
 assert lan.post("/actions", json={"alert_id": 1, "stage": "acted"}).status_code == 403, "off: an action from the WiFi must be refused"
 print("actions: open on this machine, ACT_TOKEN from anywhere else")
 

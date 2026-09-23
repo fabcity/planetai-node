@@ -648,6 +648,93 @@ for _sec in ("satellite", "netmap"):
 assert "level: 'advanced'" in _js, \
     "the section contract lost its default level, so every section would vanish in simple mode"
 
+# --- what a node publishes, usable from its own page ------------------------------------------------
+# Every band names the routes its data came from, and the shell prints them beside the kicker as
+# links. check_ui.py checks each route exists; this checks every section carries some and that the
+# shell draws them in their own case rather than inside the shouted kicker text.
+_js_raw = (ROOT / "app/static/dashboard.js").read_text()
+_heads = re.findall(r"^window\.PAI\.register\(\{(.*?)\n  (?:render|lead|controls|wall|notes)\b", _js_raw,
+                    re.S | re.M)
+assert len(_heads) == len(re.findall(r"^window\.PAI\.register\(\{", _js_raw, re.M)) >= 24, \
+    "a registration the test cannot read the fields of, or fewer than the 24 sections this page draws"
+for _h in _heads:
+    _sid = re.search(r"\bid:\s*'([^']+)'", _h).group(1)
+    _r = re.search(r"\breads:\s*\[([^\]]*)\]", _h)
+    assert _r and re.findall(r"'(/[^']*)'", _r.group(1)), f"section '{_sid}' does not say which routes it reads"
+assert re.search(r'<span class="routes">\$\{s\.reads\.map\(r => `<a href="\$\{esc\(r\)\}">GET \$\{esc\(r\)\}</a>`\)', _js_raw), \
+    "the shell no longer prints a band's routes as links beside its kicker"
+assert re.search(r"\.band > \.k \.routes \{[^}]*text-transform: none", (ROOT / "app/static/dashboard.css").read_text()), \
+    "a band's routes inherit the kicker's uppercase, and a route uppercased cannot be typed back"
+
+# The ledger's note that said the node had no `decided` stage. It has had one since the Decide card.
+assert "ledger-no-decision" not in _js_raw and "No stage for a decision" not in _js_raw, \
+    "the ledger's note saying there is no decided stage is back, and it is false"
+
+# The registry band sends a reader to the documentation's "Adding a source". The anchor is what
+# tools/build_docs.py makes of that heading; a renamed heading is a link to the top of a page.
+_anchor = re.search(r"const ADD_A_SOURCE = 'https://planetai\.fab\.city/docs/sources/#([a-z0-9-]+)';", _js_raw)
+assert _anchor, "the registry band no longer links to the documentation's steps for adding a source"
+_slug = lambda t: re.sub(r"[\s_-]+", "-", re.sub(r"[^\w\s-]", "", t.lower()).strip())   # build_docs.slugify_for("")
+_heads_md = [_slug(h) for h in re.findall(r"^#{2,3} (.+)$", (ROOT / "docs/site/sources.md").read_text(), re.M)]
+assert _anchor.group(1) in _heads_md, f"#{_anchor.group(1)} is not a heading of docs/site/sources.md: {_heads_md}"
+
+# A provenance word signs.svg has no symbol for is printed as the word, never as an empty square.
+_svg = (ROOT / "app/static/signs.svg").read_text()
+_signs = re.search(r"const PROV_SIGNS = new Set\(\[([^\]]*)\]\);", _js_raw)
+assert _signs, "pill() no longer says which provenance words the sprite draws"
+for _w in re.findall(r"'([a-z]+)'", _signs.group(1)):
+    assert f'id="sign-prov-{_w}"' in _svg, f"PROV_SIGNS names {_w}, which signs.svg does not draw"
+
+if shutil.which("node"):
+    _pill = _node("\n".join((
+        re.search(r"const esc = s => .*?\);\n", _js_raw, re.S).group(0),
+        _signs.group(0),
+        re.search(r"const pill = \(word, note = ''\) => \{.*?\n\};", _js_raw, re.S).group(0),
+        "console.log(JSON.stringify({ stale: pill('stale', 'x'), live: pill('live') }))")))
+    assert "<use" not in _pill["stale"] and "stale" in _pill["stale"], \
+        f"pill('stale') must print the word with no sign, since signs.svg has none: {_pill['stale']}"
+    assert "sign-prov-live" in _pill["live"], f"pill('live') lost its sign: {_pill['live']}"
+
+    # "I did this" and "Record the decision" print what the node said when it refused, word for
+    # word. It printed "The node refused it (409)" over a node that had written, in full, what to
+    # do first (DECISION_REQUIRED) — the one sentence the person at the screen needed.
+    _did = "\n".join((
+        re.search(r"async function nodeSaid\(r\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"async function didThis\(form\) \{.*?\n\}", _js_raw, re.S).group(0),
+    ))
+    _409 = ("this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same "
+            "alert first. Decide on the dashboard, then record what you did.")
+    _cases = {
+        "409": [409, {"detail": _409}],
+        "400": [400, {"detail": "stage must be acknowledged, acted or decided"}],
+        "401": [401, {"detail": "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>"}],
+        "403": [403, {"error": "this node is not sharing"}],
+        "500": [500, None],
+        "422": [422, {"detail": [{"msg": "field required"}]}],
+    }
+    _t = _node(_did + "\nconst C = " + json.dumps(_cases) + r""";
+const auth_ = () => ({}); let said = null; const say = (m, bad) => { said = [m, !!bad]; };
+const refresh = async () => {};
+const form = { querySelector: () => ({ disabled: false }), getAttribute: () => '7',
+  classList: { contains: () => false }, elements: { note: { value: 'shut it' }, actor: { value: 'a' } },
+  hidden: false, reset() {} };
+(async () => {
+  const out = {};
+  for (const [k, [status, body]] of Object.entries(C)) {
+    globalThis.fetch = async () => ({ status, ok: status < 300,
+      json: async () => { if (body === null) throw new Error('no body'); return body; } });
+    said = null; await didThis(form); out[k] = said;
+  }
+  console.log(JSON.stringify(out));
+})();""")
+    assert _t["409"] == [_409, True], f"a 409 must print the node's own sentence and nothing else: {_t['409']}"
+    assert _t["400"] == ["stage must be acknowledged, acted or decided", True], f"so must a 400: {_t['400']}"
+    assert _t["401"][0].startswith("closing a loop from off this machine") and "planetai ui" in _t["401"][0], \
+        f"a 401 carries its sentence in `detail`, and the page adds where the token comes from: {_t['401']}"
+    assert _t["403"][0].startswith("this node is not sharing"), f"the middleware's 403 is `error`: {_t['403']}"
+    assert _t["500"] == ["The node refused it (500).", True], f"no body, no invented sentence: {_t['500']}"
+    assert _t["422"][0] == "field required (422)", f"a schema refusal's messages, joined: {_t['422']}"
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")

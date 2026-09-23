@@ -44,6 +44,24 @@ for p in sorted({x.rstrip("/") or "/" for x in _called}):
     if p not in routes:
         errs.append(f"page calls {p}, which app/main.py does not define")
 
+# Every section names the routes its band's data comes from (`reads:`), and the shell prints them
+# beside the kicker as links. A section with none is a band a reader cannot trace to the node, and a
+# route that is not in app/main.py is a link to a 404 printed as a citation.
+_heads = re.findall(r"^window\.PAI\.register\(\{(.*?)\n  (?:render|lead|controls|wall|notes)\b", js,
+                    re.S | re.M)
+if len(_heads) != len(re.findall(r"^window\.PAI\.register\(\{", js, re.M)):
+    errs.append("a section registration has no render, lead, controls, wall or notes, so its declared "
+                "fields cannot be read for `reads:`")
+for _head in _heads:
+    _sid = (re.search(r"\bid:\s*'([^']+)'", _head) or [None, "?"])[1]
+    _arr = re.search(r"\breads:\s*\[([^\]]*)\]", _head)
+    _got = re.findall(r"'([^']+)'", _arr.group(1)) if _arr else []
+    if not _got:
+        errs.append(f"section '{_sid}' declares no `reads:`, so its band does not say which route it drew")
+    for _r in _got:
+        if _r.split("?")[0] not in routes:
+            errs.append(f"section '{_sid}' reads {_r}, which app/main.py does not define")
+
 # `hidden` is an attribute the UA styles as display:none, and ANY display rule of our own beats it. This has
 # shipped twice: an empty orange act strip on every node with nothing to act on (.actstrip sets display:grid),
 # and a broken-image box with its alt text on every node that had not fetched satellite data yet (#earth-img

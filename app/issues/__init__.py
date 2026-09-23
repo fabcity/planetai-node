@@ -123,7 +123,7 @@ DIGEST_WORDS = {
                    "{headline} has the most to say: it is {phrase}.",
         "observe_none": "{issues} issues watched here, and no station is reading any of them.",
         "decide": "At resolution {res} one cell is {area} m\u00b2, and this node's {stations} stations "
-                  "fall in {occupied} of them \u2014 {mine} in its own cell. The node says where it is "
+                  "fall in {occupied} of them, {mine} in its own cell. The node says where it is "
                   "to about {metres} m, and {leave}.",
         "act": "{open} alerts are open, {top} of them about {issue}. "
                "Somebody in the house has answered {answered}.",
@@ -144,7 +144,7 @@ DIGEST_WORDS = {
                    "{headline} paling banyak bicara: {phrase}.",
         "observe_none": "{issues} isu dipantau di sini, dan tidak ada stasiun yang membacanya.",
         "decide": "Pada resolusi {res} satu sel seluas {area} m\u00b2, dan {stations} stasiun node ini "
-                  "jatuh di {occupied} di antaranya \u2014 {mine} di selnya sendiri. Node menyebut "
+                  "jatuh di {occupied} di antaranya, {mine} di selnya sendiri. Node menyebut "
                   "posisinya sampai sekitar {metres} m, dan {leave}.",
         "act": "{open} peringatan terbuka, {top} di antaranya tentang {issue}. "
                "Seseorang di rumah telah menjawab {answered}.",
@@ -165,7 +165,7 @@ DIGEST_WORDS = {
                    "{headline} es el que m\u00e1s dice: {phrase}.",
         "observe_none": "{issues} asuntos vigilados aqu\u00ed, y ninguna estaci\u00f3n lee ninguno.",
         "decide": "En la resoluci\u00f3n {res} una celda son {area} m\u00b2, y las {stations} estaciones "
-                  "de este nodo caen en {occupied} de ellas \u2014 {mine} en la suya propia. El nodo "
+                  "de este nodo caen en {occupied} de ellas, {mine} en la suya propia. El nodo "
                   "dice d\u00f3nde est\u00e1 con unos {metres} m, y {leave}.",
         "act": "{open} alertas abiertas, {top} de ellas sobre {issue}. "
                "Alguien en la casa ha respondido {answered}.",
@@ -188,13 +188,13 @@ DIGEST_WORDS = {
 # dashboard.js, where nothing connected the two. A ranking a reader cannot check is the one thing
 # this page does not do, so the explanation travels with the ranking.
 HEADLINE_RULE = {
-    "en": "The issue with most to say leads \u2014 and where two have as much to say, the one that has "
+    "en": "The issue with most to say leads. Where two have as much to say, the one that has "
           "moved most in the last three hours. An even tie goes to the order this place chose, under "
           "Set up \u2192 Issues.",
-    "id": "Isu yang paling banyak bicara memimpin \u2014 dan bila dua sama banyaknya, yang paling berubah "
+    "id": "Isu yang paling banyak bicara memimpin. Bila dua sama banyaknya, yang paling berubah "
           "dalam tiga jam terakhir. Bila tetap seri, urutannya mengikuti pilihan tempat ini, di "
           "Set up \u2192 Issues.",
-    "es": "Lidera el asunto que m\u00e1s tiene que decir \u2014 y si dos dicen otro tanto, el que m\u00e1s se ha "
+    "es": "Lidera el asunto que m\u00e1s tiene que decir. Si dos dicen otro tanto, el que m\u00e1s se ha "
           "movido en las \u00faltimas tres horas. Si hay empate exacto, manda el orden que eligi\u00f3 este "
           "lugar, en Set up \u2192 Issues.",
 }

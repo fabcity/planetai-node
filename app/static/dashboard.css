@@ -201,6 +201,7 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
   border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
 .ask form.did button.pri { background: var(--ink); color: var(--ground) }
 .ask form.did button[disabled] { opacity: .5 }
+.ask form.did .fine { grid-column: 1 / -1; font-size: 12.5px; color: var(--mute); max-width: 68ch; margin: 0 }
 /* ==== h/mods/shape.js — the day this place usually has ==== */
 /* Two lines told apart by dash and weight, never hue, like every other pair on this page. */
 .shapeplot { display: block; width: 100%; height: auto; max-height: 190px; margin: 10px 0 4px;
@@ -701,6 +702,13 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
   display: flex; justify-content: space-between; gap: 12px; align-items: baseline }
 .band > .k .pack { font: 500 10px var(--mono); letter-spacing: .12em; text-transform: lowercase;
   color: var(--mute); border: 1px solid var(--hair); padding: 1px 6px }
+/* The routes a band's data came from, beside its kicker. Quiet, and in their own case: the kicker
+   shouts, and a route uppercased is a route a reader cannot type back. */
+.band > .k { flex-wrap: wrap }
+.band > .k .routes { display: inline-flex; flex-wrap: wrap; gap: 2px 10px; font: 400 10.5px var(--mono);
+  letter-spacing: 0; text-transform: none }
+.band > .k .routes a { color: var(--mute); text-decoration: none; border-bottom: 1px solid var(--hair) }
+.band > .k .routes a:hover, .band > .k .routes a:focus-visible { color: var(--ink); border-bottom-color: var(--ink) }
 
 /* THE LOOP. Four stages, numbered, each a heading with the loop drawn beside it and the stage lit.
  * The page reads in the order the loop runs, and a section belongs to exactly one stage. */

@@ -209,4 +209,13 @@ assert rc == 0, f"prose mentioning <animate> was read as a violation:\n{out}"
 shutil.rmtree(tmp, ignore_errors=True)
 print("  · prose mentioning <animate> is left alone: the rule wants an attribute")
 
+# The routes a band prints beside its kicker. A section with no `reads:` is a band nobody can trace
+# back to the node; a route app/main.py does not define is a citation that answers 404.
+broken("a section with no reads",
+       sub("  reads: ['/effect'],\n", ""),
+       r"section 'effect' declares no `reads:`", where="dashboard.js")
+broken("a section that reads a route the node does not have",
+       sub("  reads: ['/effect'],", "  reads: ['/effects'],"),
+       r"section 'effect' reads /effects, which app/main\.py does not define", where="dashboard.js")
+
 print("check_ui: every visual-language gate fails when the page breaks its rule")
