@@ -6864,7 +6864,7 @@ function foot(S) {
   /* The foot is on every view but the wall, so its marks are the ones every view has: what the
      node is for, and the two doors an agent or a script needs first. In learn mode only. */
   const mark = (k, ref) => (window.PAI_LEARN ? window.PAI_LEARN.mark(k, ref) : '');
-  return `<footer class="foot" id="foot" data-component="foot" data-ref="footer"><div class="wrap">`
+  return `<footer class="foot" id="foot" data-component="foot" data-ref="header"><div class="wrap">`
     + `<p class="why">${esc(PURPOSE)} Raw readings stay on this machine; only summaries leave.`
     + `${mark('production', 'foot')}${mark('purpose', 'foot')}</p>`
     + `<p class="doors"><span class="mono">${esc(v ? `planetai-node ${v}` : 'planetai-node')}</span>`
