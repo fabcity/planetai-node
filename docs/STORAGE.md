@@ -74,7 +74,7 @@ you want that.
 
 `/export?day=YYYY-MM-DD`, written nightly to `exports/<node>/`. Hourly mean, min and max per sensor and metric; the
 Index cells; alerts (first line); ρ. Your sensors are named by role (`indoor-1`, `outdoor-2`), not device id.
-Coordinates are the node's, to three decimals. No raw rows, no tokens, no chat ids. CC BY 4.0, stated in the file.
+The position is the centre of the node's resolution-8 cell, not its point (since v0.73; earlier exports carry three decimals). No raw rows, no tokens, no chat ids. CC BY 4.0, stated in the file.
 
 This is what a parent node, the Index, a researcher or the commons should receive. The node keeps the raw and gives
 away the aggregate.

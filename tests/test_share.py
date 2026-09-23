@@ -57,9 +57,9 @@ for node in ast.walk(tree):
 assert not unguarded, f"numeric route parameters with no ge=/le= bounds: {unguarded}"
 print("routes: every numeric parameter is bounded")
 
-# A12 · /health rounds for every caller, at every level.
-assert re.search(r'"lat": round\(float\(os\.getenv\("NODE_LAT".*?\), 3\)', SRC), "/health must round lat to 3 decimals"
-assert re.search(r'"lon": round\(float\(os\.getenv\("NODE_LON".*?\), 3\)', SRC), "/health must round lon to 3 decimals"
+# A12, then R25 · /health and /export hand an untrusted reader the centre of the res-8 cell, never a point.
+assert "**_published_position(" in SRC, "/health must take its position from _published_position"
+assert "_pos = _published_position()" in SRC, "/export must publish the cell's centre, not a point"
 assert '"node": NODE' in SRC, "/health keeps the node name: /export publishes it by design and the dashboard prints it in five places"
 
 # The two paths that are on no allowlist at any level, and the one the middleware must not decide twice.
@@ -157,7 +157,7 @@ import main
 
 # One sensor row shaped like the AirGradient on the clean node: a hostname on the WiFi, a room name, 7 decimals.
 ROW = {"sensor_id": "ag-84fce6", "source": "airgradient", "name": "Kitchen, upstairs", "lat": -8.6478291,
-       "lon": 115.1385412, "indoor": True, "local": True, "kind": "sensor", "scale": "community", "cadence": "PT5M",
+       "lon": 115.1385412, "indoor": True, "local": True, "custody": True, "kind": "sensor", "scale": "community", "cadence": "PT5M",
        "meta": {"host": "airgradient_84fce6.local", "model": "I-9PSL", "firmware": "3.1.9", "licence": "CC BY 4.0",
                 "mesh_node": "!8f491db0", "gateway": "gw-1", "channel": "0", "root_topic": "msh", "topic": "msh/x"}}
 main.q = lambda sql, *a: [dict(ROW, meta=dict(ROW["meta"]))] if "FROM sensors" in sql else []
@@ -187,6 +187,11 @@ for lv in ("off", "open"):
     level(lv)
     h = lan.get("/health").json()
     assert dp(h["lat"]) <= 3 and dp(h["lon"]) <= 3, f"{lv}: /health hands out {h['lat']},{h['lon']}"
+    # R25: the stranger on the WiFi gets the cell's centre, and is told so.
+    assert h.get("position") == "cell", f"{lv}: an untrusted /health must say it carries the cell, got {h.get('position')!r}"
+    assert (h["lat"], h["lon"]) == main._coarse(-8.6478291, 115.1385412), f"{lv}: /health is not the cell's centre"
+    assert h.get("docs", "").startswith("https://planetai.fab.city/docs") and h.get("mcp") == "/mcp", \
+        f"{lv}: /health must say where the documentation and the tools are"
     assert h["node"] == "bayu-2", f"{lv}: /health keeps the node name"
     assert lan.get("/place/geojson").status_code == 403, f"{lv}: the building's shape needs a token"
     assert lan.get("/settings/raw").status_code == 403, f"{lv}: the unmasked keys need a token"
@@ -197,7 +202,14 @@ for lv in ("off", "open"):
     # household most needs in its own language — had nowhere else to read it from.
     assert h.get("locale") in ("en", "id", "es"), \
         f"{lv}: /health must carry the household's language, or the dashboard falls back to English: {h.get('locale')!r}"
-print("every level: 3 decimals in /health, the household's language, the plan and the raw settings refused")
+print("every level: the cell's centre in /health, the household's language, the plan and the raw settings refused")
+
+hl = local.get("/health").json()
+assert hl.get("position") == "point" and (hl["lat"], hl["lon"]) == (-8.648, 115.139), \
+    "this machine keeps three decimals: the household's own plan is drawn from it"
+assert lan.get("/llms.txt").status_code == 200 and "distributed production" in lan.get("/llms.txt").text, \
+    "/llms.txt answers at every level and says what the node is for"
+print("this machine: three decimals; /llms.txt readable by anyone")
 
 level("open")
 r = lan.get("/sensors")
@@ -207,8 +219,10 @@ for k in ("host", "firmware", "mesh_node", "gateway", "channel", "root_topic", "
     assert k not in s0["meta"], f"open: /sensors still hands out meta.{k}"
 assert s0["meta"]["licence"] == "CC BY 4.0", "open: provenance must survive the filter — it is what makes a reading citable"
 assert dp(s0["lat"]) <= 3 and dp(s0["lon"]) <= 3, f"open: /sensors hands out {s0['lat']},{s0['lon']}"
+assert (s0["lat"], s0["lon"]) == main._coarse(-8.6478291, 115.1385412), \
+    "open: the household's own sensor must stand at its cell's centre for an untrusted reader (R25)"
 assert s0["name"] == "Kitchen, upstairs", "open: the sensor's name is on the dashboard and stays"
-print("open: sensors readable, hostnames and firmware gone, position at 110 m")
+print("open: sensors readable, hostnames and firmware gone, own sensors at their cell's centre")
 
 # A FACILITY IS NOT A SENSOR, and the filter above was written about sensors. A fab lab is somebody
 # else's building, published by name and coordinate in a public directory this node read; `host` and

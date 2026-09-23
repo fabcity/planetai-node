@@ -49,7 +49,7 @@ def _admin_headers(agent: str) -> dict:
 
 @mcp.tool()
 def status() -> dict:
-    """Is the node alive, what has it read, what fired, and its rho (share of alerts that led to an action)."""
+    """Is the node alive, what has it read, what fired, and its rho (share of act-level alerts somebody answered within 24 h)."""
     h = _get("/health"); rho = _get("/rho")
     backups = Path("/app/backups")
     last_ok = (backups / "LAST_OK").read_text().strip() if (backups / "LAST_OK").exists() else None

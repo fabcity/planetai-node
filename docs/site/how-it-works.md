@@ -134,8 +134,8 @@ sentence when `PACKS_ALLOW_CODE=1` and `MAKE_ENABLED=1` are both set.
 
 Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if
 `PARENT_API_URL` names one; the daily [export](storage.md), with hourly means, your own sensors named by role
-(`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the node's position to three
-decimals, under CC BY 4.0. The export is readable at every [sharing level](sharing.md).
+(`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the centre of the node's
+resolution-8 cell (not its point), under CC BY 4.0. The export is readable at every [sharing level](sharing.md).
 
 Three more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
 node announces a coarse H3 cell on the Reticulum network: resolution 3 by default, never finer than 6. With
@@ -147,8 +147,10 @@ this machine or one on your own network, and nothing goes further.
 
 Exact coordinates and a household's own sentences never leave in a push or the export. The events push carries rule,
 level and timestamps and no alert text, actor, note or sensor id. Your own sensor ids leave only in the
-hourly means pushed to a parent you chose. `/health` rounds the node's position to about 110 m for everyone,
-and the shape of the building behind `/place/geojson` needs a token at every sharing level.
+hourly means pushed to a parent you chose. Since v0.73 nothing finer than the node's resolution-8 cell (about
+500 m to an edge) reaches a reader the node does not know: `/health`, `/export`, and the household's own sensors
+in `/sensors` and `/stats` give the centre of that cell, and only this machine or a token gets three decimals.
+The shape of the building behind `/place/geojson` needs a token at every sharing level.
 
 ## Where the decisions live
 

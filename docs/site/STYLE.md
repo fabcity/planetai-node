@@ -8,9 +8,13 @@ spans and `make lint` says so.
 
 ## What a page is for
 
-A person reads these pages to build a node one part at a time, and the node is an instrument: a place
-that measures itself, acts on what it measures, sends upward only what a district, a bioregion and the
-Fab City Index need, and keeps its raw readings at home. So every page that has steps says, in its first
+A person reads these pages to build a node one part at a time. The node is the local unit of the
+hyperlocal compute and intelligence layer for distributed production, and its purpose is fixed: clean
+air, water and soil for the people and the other living things around it. It measures its place, acts on
+what it measures, keeps its raw readings at home and sends upward only what a district, a bioregion and
+the Fab City Index need. The canonical wording is the lead and "What it is for" in `introduction.md`;
+the README, `llms.txt`, `AGENTS.md`, the dashboard's footer and the programme page quote it, and
+`tools/check_site.py` checks that they still do. So every page that has steps says, in its first
 lines, which part of the node the reader is adding and what the node can do once it is there. Steps are
 numbered when the order matters, and each one says what to do, what the screen shows when it worked, and
 what that means for the node. A step the reader cannot check is not a step. The page ends by naming the

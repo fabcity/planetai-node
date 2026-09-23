@@ -684,7 +684,7 @@ async def _mcp_auth(request, call_next):
 # would silently never announce. It is safe at every level by construction — it answers `{"enabled":
 # false}` until a household turns announcing on, and after that it returns the same handful of facts
 # the node is already broadcasting to every radio in reach.
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/settings", "/export", "/presence"}), ("/static/",))
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -762,7 +762,7 @@ def q(sql: str, *args):
 
 
 @app.get("/health")
-def health():
+def health(request: Request):
     schema = None
     try:
         with db() as con, con.cursor() as cur:
@@ -771,14 +771,17 @@ def health():
             schema = (cur.fetchone() or {}).get("v")
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
-    # A12: 3 decimals, for every caller at every level. /export has always rounded here (:838) and round(x, 3) is
+    # A12, superseded by R25 (v0.73): see _published_position. Before v0.73 this was 3 decimals for every caller.
+    # The rest of the old reasoning stands: round(x, 3) is
     # 110 m, which changes no answer a consumer computes from this — while five decimals is 1.1 m, i.e. the doorway.
     # `cell` is an H3 resolution 8 (~500 m edge), coarser than the rounding, so it does not put the position back.
     # `node` stays: /export publishes it under CC BY by design, /aggregates posts it to a parent, agent.py reads it
     # out of here, and the dashboard prints it in five places. If the name is ever sensitive it comes out of all of
     # them at once, which is a different change.
     return {"ok": state["last_poll"] is not None, "node": NODE, "version": os.getenv("NODE_VERSION", "?"),
-            "schema": schema, "uptime_s": int(time.time() - STARTED), "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3), "city": os.getenv("NODE_CITY", ""), **state,
+            "schema": schema, "uptime_s": int(time.time() - STARTED),
+            **_published_position(bool(getattr(request.state, "share_trusted", False))),
+            "city": os.getenv("NODE_CITY", ""), **state,
             # The household's own language, so the page can be written in it. /issues carries every
             # sentence in all three and carries no way to choose — `snap.locale` was read by the
             # dashboard and set by nothing, so the test fell through to 'en' on every node, in every
@@ -792,7 +795,11 @@ def health():
             # VIEWER's timezone, so a Madrid node polling at 17:35 read "As of 11:40 PM" on a laptop in
             # Bali and nothing on the page named a zone. A reading belongs to the place it was taken in.
             "tz": os.getenv("NODE_TZ", ""),
-            "cell": _cell(), **({"mesh": mesh_state} if MQTT_HOST else {}),
+            "cell": _cell(),
+            # Where to read about this node and how to reach its tools, so a reader holding only this answer
+            # can go further: the documentation, the MCP endpoint (token-gated) and this node's own /llms.txt.
+            "docs": DOCS_URL, "mcp": "/mcp", "llms": "/llms.txt",
+            **({"mesh": mesh_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
 
 
@@ -839,6 +846,35 @@ def presence():
             "version": os.getenv("NODE_VERSION", "?"), "kind": os.getenv("NODE_KIND", "") or None}
 
 
+def _published_position(trusted: bool = False) -> dict:
+    """The position this node hands to a reader it does not know: the centre of its resolution-8 cell, the same
+    cell `/health` has always named. Decided 23 Sep 2026 (R25): nothing finer than that cell leaves the node for
+    an untrusted reader or in the open export. Three decimals, which this route and /export carried before
+    v0.73, is about 110 m, finer than the ~500 m cell the programme page promises. A trusted reader (a token,
+    or this machine) still gets three decimals, because it can read /place/geojson anyway and the household's
+    own plan is drawn from it. `position` says which one the reader got, so a page can say so.
+
+    Without coordinates, or without h3 in an old image, it falls back to two decimals (~1.1 km), which is
+    coarser than the cell rather than finer: failing toward the household."""
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if trusted or not (lat or lon):
+        return {"lat": round(lat, 3), "lon": round(lon, 3), "position": "point"}
+    clat, clon = _coarse(lat, lon)
+    return {"lat": clat, "lon": clon, "position": "cell"}
+
+
+def _coarse(lat, lon):
+    """A point snapped to the centre of its resolution-8 cell, three decimals; two decimals without h3."""
+    if lat is None or lon is None:
+        return lat, lon
+    try:
+        import h3  # noqa: PLC0415
+        clat, clon = h3.cell_to_latlng(h3.latlng_to_cell(float(lat), float(lon), 8))
+        return round(clat, 3), round(clon, 3)
+    except Exception:  # noqa: BLE001
+        return round(float(lat), 2), round(float(lon), 2)
+
+
 def _cell() -> dict | None:
     """The H3 cell this node stands in: id, resolution, the mean edge of this cell in metres, and the
     line the dashboard prints under the hero. None before setup, when there is no place to name."""
@@ -879,8 +915,8 @@ def sensors_(request: Request):
     added to `sensors` on the day it landed, so the redaction below would have gone stale by itself. Add a column and
     it stays private until it is named here.
 
-    For a caller that is neither on this machine nor carrying a token, the position is rounded to 3 decimals (110 m,
-    the rounding /export has always used) and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
+    For a caller that is neither on this machine nor carrying a token, the position of this household's own sensors
+    (`custody`) is the centre of their resolution-8 cell and every other position is rounded to 3 decimals, and `meta` is cut to _META_PUBLIC. On a real node that drops `host`,
     `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic` — an AirGradient row otherwise hands a
     stranger on the WiFi `{"host": "airgradient_84fce6.local", "model": "I-9PSL", "firmware": "3.1.9"}` next to a
     room name and five decimals of position."""
@@ -890,8 +926,14 @@ def sensors_(request: Request):
     if getattr(request.state, "share_trusted", False):
         return rows
     for r in rows:
-        for k in ("lat", "lon"):
-            r[k] = round(r[k], 3) if r[k] is not None else None
+        # This household's own instruments stand in its house, so an untrusted reader gets the cell's centre
+        # for them (R25). Everything else here is a public station, a model point or a lab, whose position is
+        # public at its source; three decimals is what it always was.
+        if r.get("custody"):
+            r["lat"], r["lon"] = _coarse(r["lat"], r["lon"])
+        else:
+            for k in ("lat", "lon"):
+                r[k] = round(r[k], 3) if r[k] is not None else None
         allow = _META_PUBLIC_FACILITY if r.get("kind") == "facility" else _META_PUBLIC
         r["meta"] = {k: v for k, v in (r["meta"] or {}).items() if k in allow} or None
     return rows
@@ -905,9 +947,25 @@ def readings(sensor_id: str | None = None, metric: str | None = None, limit: int
 
 
 @app.get("/stats")
-def stats():
-    """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations."""
-    return q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+def stats(request: Request):
+    """Rolling 15m/1h/24h — sensors only. Slow sources (portals, models, surveys) are in /observations.
+
+    Positions follow /sensors (#113): unrounded for this machine or a token, and for anyone else the household's
+    own sensors at their cell's centre and the rest at three decimals. Before v0.73 this route handed every
+    reader at SHARE_LEVEL=open the positions /sensors had rounded."""
+    rows = q("SELECT * FROM stats ORDER BY local DESC, sensor_id, metric")
+    if getattr(request.state, "share_trusted", False):
+        return rows
+    own = {r["sensor_id"] for r in q("SELECT sensor_id FROM sensors WHERE custody")}
+    for r in rows:
+        if "lat" not in r:
+            continue
+        if r.get("sensor_id") in own:
+            r["lat"], r["lon"] = _coarse(r.get("lat"), r.get("lon"))
+        else:
+            r["lat"] = round(r["lat"], 3) if r.get("lat") is not None else None
+            r["lon"] = round(r["lon"], 3) if r.get("lon") is not None else None
+    return rows
 
 
 @app.get("/reach")
@@ -1292,9 +1350,11 @@ def export(day: str = Query(..., pattern=r"^\d{4}-\d{2}-\d{2}$")):
     alerts_ = q("SELECT ts, rule_id, level, text FROM alerts WHERE ts >= %s::date AND ts < %s::date + 1 ORDER BY ts", day, day)
     with db() as con, con.cursor() as cur:
         cells_ = index.cells(cur); rho_ = index.rho(cur)
+    _pos = _published_position()
     return {"schema": EXPORT_V0,
             "node": NODE, "city": os.getenv("NODE_CITY", ""), "scale": os.getenv("NODE_SCALE", "community"),
-            "lat": round(float(os.getenv("NODE_LAT", 0) or 0), 3), "lon": round(float(os.getenv("NODE_LON", 0) or 0), 3),
+            # The cell's centre, never a point: this file is CC BY and meant to travel (R25, 23 Sep 2026).
+            "lat": _pos["lat"], "lon": _pos["lon"],
             "day": day, "generated": datetime.now(timezone.utc).isoformat(), "version": os.getenv("NODE_VERSION", ""),
             "licence": "CC BY 4.0", "hourly": rows,
             "alerts": [{"t": a["ts"], "rule": a["rule_id"], "level": a["level"], "text": a["text"].split("\n")[0]} for a in alerts_],
@@ -1726,6 +1786,50 @@ def ui():
     f = STATIC / "index.html"
     body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
+
+
+# What this machine is for, in the words of docs/site/introduction.md; tools/check_site.py holds this, the
+# dashboard's foot and the programme page to that one lead. /llms.txt is the door an agent handed this node's
+# address knows to try first. It answers at every SHARE_LEVEL because it says nothing about the house: the
+# purpose, the version, and where the documented routes are. Before v0.73 the node served no such file and
+# `llms.txt` existed only on GitHub, so an agent pointed at a node found nothing to read.
+PURPOSE = ("PLANETAI is the hyperlocal compute and intelligence layer for distributed production. Its purpose is "
+           "fixed: clean air, water and soil for the people and the other living things around each node.")
+DOCS_URL = "https://planetai.fab.city/docs/"
+
+
+@app.get("/llms.txt", include_in_schema=False)
+def llms_txt():
+    from fastapi.responses import PlainTextResponse
+    v = os.getenv("NODE_VERSION", "?")
+    body = f"""# planetai-node {v}
+
+> {PURPOSE} Raw readings stay on this machine; only summaries leave.
+
+This is one PLANETAI node. Every route below is relative to the address you reached this file at.
+
+## Read it
+
+- [GET /health](/health): alive or not, the version, the node's H3 cell (resolution 8), and the share level. Answers at every level.
+- [GET /issues](/issues): the node's own reading of its place, one document, every sentence written by the node.
+- [GET /export](/export): the daily open export, hourly means and the Index cells, CC BY 4.0.
+- [GET /sources](/sources): the pinned source registry this node reads from.
+
+What answers without a token depends on SHARE_LEVEL, which the household sets. A 403 names the setting.
+
+## Work with it
+
+- POST /mcp: the node's twenty tools over MCP (streamable HTTP). Needs `Authorization: Bearer <ADMIN_TOKEN>`,
+  which `planetai ui` prints on the machine itself. Every write an agent makes is recorded under its name, and
+  `act` needs the person's own words: an agent may draft, a person acts.
+
+## Read about it
+
+- Documentation: {DOCS_URL} (HTTP API: {DOCS_URL}api/ · MCP tools: {DOCS_URL}mcp/ · agents: {DOCS_URL}agents/)
+- For agents working on the code: https://raw.githubusercontent.com/fabcity/planetai-node/main/AGENTS.md
+- The programme: https://planetai.fab.city/
+"""
+    return PlainTextResponse(body, headers={"cache-control": "no-cache"})
 
 
 # The two files index.html cannot hold. The dashboard is still one HTML document with no build step: the

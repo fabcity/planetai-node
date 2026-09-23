@@ -2,7 +2,7 @@
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer
-recorded against it, and the first value of ρ, the share of alerts that led to an action. By the end the
+recorded against it, and the first value of ρ, the share of act-level alerts somebody answered. By the end the
 node can do what `ARCHITECTURE.md` says only this layer can: measure whether anybody acted on what it said.
 
 Each step says what to type, what the screen shows when it worked, and which part of the node now exists.

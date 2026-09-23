@@ -180,7 +180,7 @@ who may read what, and nothing discovered enters `sensors`, `cells` or any count
 
 The daily export (`GET /export?day=`, written nightly to `exports/<node>/`, `schema: export-v0`) is what a
 parent, the Index, a researcher or the commons should receive: hourly mean, min, max and count per sensor and
-metric, the cells, the first line of each alert, ρ, the node's coordinates to three decimals. Your own sensors
+metric, the cells, the first line of each alert, ρ, and the centre of the node's resolution-8 cell rather than its coordinates. Your own sensors
 are named by role (`indoor-1`, `outdoor-2`) rather than id. There are no raw rows, no tokens and no chat ids, and
 CC BY 4.0 is stated in the file as `licence`. Each source's own attribution is in its sensor's `meta` on
 `/sensors`, not in the export. `planetai ipfs` pins it on IPFS; the database and its dumps never go there.

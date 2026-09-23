@@ -18,8 +18,8 @@ Two rungs in this version; `cell` and `means` are named in the help and refused 
 
 | level | a request with no token, from another machine, may read |
 |---|---|
-| `off` (default) | 6 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the node's position rounded to about 110 m, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 30 paths and 4 prefixes: the `off` list, and `/stats`, `/sensors` (coordinates rounded, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, and anything under `/exports/`, `/issues` and `/sources/`. What a wall screen with no token needs. |
+| `off` (default) | 7 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
+| `open` | 31 paths and 4 prefixes: the `off` list, and `/stats`, `/sensors` and `/stats` (the household's own sensors at their cell's centre, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, and anything under `/exports/`, `/issues` and `/sources/`. What a wall screen with no token needs. |
 
 A refused request gets 403 and one of two sentences. For a path that `open` would answer:
 
@@ -55,10 +55,6 @@ same entries on every node in a release, and it says nothing about this house.
 > **Note.** `/shape` at `open` is the house's usual day: one mean per local hour, indoor against outdoor,
 > over the whole record. It is what the page draws, and it is also a pattern of when the kitchen is in
 > use. Weigh that before opening a node on a network you share.
-
-> **Gap in v0.72.1.** `/stats` is a `SELECT *` on the view and carries each sensor's `lat` and `lon`
-> unrounded to any reader at `open`, unlike `/sensors`, which rounds them. At `open`, anyone on your LAN
-> can read where your kits are to the metre.
 
 ## What needs a token at every level
 
@@ -107,7 +103,7 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 
 | what | to whom | how exact |
 |---|---|---|
-| the node's position | `/health`, `/export`, `/sensors` for a reader without a token | rounded to three decimals, about 110 m; the res-8 H3 cell is coarser than that, so publishing it puts nothing back |
+| the node's position | `/health`, `/export`, and `/sensors` and `/stats` for the household's own sensors, for a reader without a token | the centre of the resolution-8 cell (about 500 m to an edge), since v0.73; this machine or a token gets three decimals |
 | hourly means and alert timestamps | a parent node, hourly, if `PARENT_API_URL` is set | values and timestamps; never where, never text, never who |
 | the daily export | anyone (CC BY 4.0) | your own sensors by role (`indoor-1`, `outdoor-2`), no raw rows, no chat ids |
 | a presence announce | the Reticulum network, every half hour, only with `RETICULUM_PRESENCE=1` | the H3 cell rounded up to `RETICULUM_PRESENCE_RES` (3), with a floor of resolution 6 no setting can go under |
@@ -176,7 +172,7 @@ and MCP, all four of which read over the LAN. It would be a third level, opted i
 ## Known debts
 
 Containers run as root. The first-start bootstrap and the `coast` and `forecast` packs send full-precision
-coordinates to Open-Meteo. `/stats` carries sensor coordinates unrounded at `open`. Each is in the tracker
+coordinates to Open-Meteo. Each is in the tracker
 as work, not as a decision.
 
 ## Where this leads

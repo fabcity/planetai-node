@@ -1,9 +1,12 @@
 # planetai-node
 
-> A small program for a computer in somebody's home, lab or community centre. It connects everything that
-> measures one place — a particle sensor on the wall, a radio in a field, the public station down the road,
-> the city's open data, the satellite overhead — into one picture sharp enough to act on, tells the people
-> there in plain sentences on Telegram, and keeps the raw readings on the machine. Apache-2.0, alpha.
+> The hyperlocal compute and intelligence layer for distributed production: one computer per place, in
+> somebody's home, lab or community centre. It connects everything that measures that place (a particle sensor
+> on the wall, a radio in a field, the public station down the road, the city's open data, the satellite
+> overhead) into one picture sharp enough to act on, tells the people there in plain sentences on Telegram,
+> records what they did and measures whether it worked. Its purpose is fixed: clean air, water and soil for the
+> people and the other living things around it. Raw readings stay on the machine. Apache-2.0, alpha.
+> Documentation: https://planetai.fab.city/docs/ · programme: https://planetai.fab.city/
 
 The node is also an MCP server with twenty tools. If you are an agent working for somebody, start with
 AGENTS.md: its first section routes you to the skill for what they are actually asking. Raw URLs below are

@@ -2,6 +2,10 @@
 
 Working draft, 2 September 2026. Not a grant. Someone pays or it dies.
 
+This is the business case in one market. What the node is for, in the programme's own words, is the lead and
+"What it is for" of `docs/site/introduction.md` (planetai.fab.city/docs/introduction/); this document does not
+restate it.
+
 This document argues the case in one market, Bali, because that is where the first node runs and where the numbers
 are real. The shape of the argument is portable: find a place with a measurement gap, an acute local decision, and a
 fab lab within driving distance of the hardware. The numbers are not portable, and anyone reusing this for Santiago

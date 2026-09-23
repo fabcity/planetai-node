@@ -18,7 +18,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 | `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `token`, then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
 
-The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
+The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
 
 The `open` allowlist is the `off` list plus 24 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 30 exact paths and 4 prefixes in all.
 
@@ -45,7 +45,7 @@ Handlers answer with FastAPI's default `{"detail": "..."}`. The handler checks a
 | `act` | 403 ``no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one`` | 401 `closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>` |
 | `children` | 403 `this node accepts no children: set AGGREGATE_TOKEN in .env and give it to them` | 401 `bad or missing Authorization: Bearer <AGGREGATE_TOKEN>` |
 
-Timestamps are ISO 8601 strings with an offset. A timestamp the node read from the database carries the offset of `NODE_TZ`, because every connection sets the session time zone from it; one the node stamped itself (`last_poll`, `generated`, `as_of`, `observed_at`) is UTC. Positions are rounded to 3 decimals (about 110 m) in `/health`, `/export` and, for an untrusted caller, `/sensors`. They are unrounded in `/forecast`, `/earth`, `/place/geojson` and `/stats`.
+Timestamps are ISO 8601 strings with an offset. A timestamp the node read from the database carries the offset of `NODE_TZ`, because every connection sets the session time zone from it; one the node stamped itself (`last_poll`, `generated`, `as_of`, `observed_at`) is UTC. A reader the node does not know (not this machine, no token) never gets a position finer than the node's resolution-8 cell: `/health` and `/export` carry the centre of that cell, and so do the household's own sensors (`custody`) in `/sensors` and `/stats`; other sensors there are rounded to 3 decimals. A trusted caller gets `/health` at 3 decimals and the other two unrounded. `/forecast`, `/earth` and `/place/geojson` are unrounded and are never readable without a token or `SHARE_LEVEL=open`.
 
 ## Status
 
@@ -56,15 +56,24 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NODE_VERSION`, or `?`), `schema` (the latest applied schema version, or `pre-0.4 (run ./update.sh)`), `uptime_s`, `lat` and `lon` rounded to 3 decimals for every caller at every level, `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (a map of loop name to its last error line), `bootstrap` (only if the first-start bootstrap ran in this process), `locale` (`ALERT_LOCALE`), `tz` (`NODE_TZ`), `cell` (`{id, res, edge_m, caption}` for the node's H3 cell at resolution 8, or null before setup), `mesh` (`{root_topic, gateway, packets, last}`, only when `MQTT_HOST` is set) and `reticulum` (`{ok, address, destinations, announce_s, announcing, peers, last}`, only when `RETICULUM_URL` is set).
+Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NODE_VERSION`, or `?`), `schema` (the latest applied schema version, or `pre-0.4 (run ./update.sh)`), `uptime_s`, `lat` and `lon` (the centre of the node's resolution-8 cell for an untrusted caller, 3 decimals for this machine or a token), `position` (`cell` or `point`, saying which), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (a map of loop name to its last error line), `bootstrap` (only if the first-start bootstrap ran in this process), `locale` (`ALERT_LOCALE`), `tz` (`NODE_TZ`), `cell` (`{id, res, edge_m, caption}` for the node's H3 cell at resolution 8, or null before setup), `docs` (the documentation's URL), `mcp` (`/mcp`), `llms` (`/llms.txt`), `mesh` (`{root_topic, gateway, packets, last}`, only when `MQTT_HOST` is set) and `reticulum` (`{ok, address, destinations, announce_s, announcing, peers, last}`, only when `RETICULUM_URL` is set).
 
 ```json
-{"ok": true, "node": "bayu-ungasan", "version": "v0.72.1", "schema": "0.51", "uptime_s": 86121,
- "lat": -8.827, "lon": 115.157, "city": "bali",
+{"ok": true, "node": "bayu-ungasan", "version": "v0.73", "schema": "0.51", "uptime_s": 86121,
+ "lat": -8.825, "lon": 115.159, "position": "cell", "city": "bali",
  "polls": 287, "last_poll": "2026-09-22T08:35:02+00:00", "last_error": null, "ingested": 41230,
  "errors": {}, "locale": "id", "tz": "Asia/Makassar",
- "cell": {"id": "...", "res": 8, "...": "..."}}
+ "cell": {"id": "...", "res": 8, "...": "..."},
+ "docs": "https://planetai.fab.city/docs/", "mcp": "/mcp", "llms": "/llms.txt"}
 ```
+
+### GET /llms.txt
+Access: public
+
+What this node is for and where its routes are, as plain text for an agent handed the node's address: the
+purpose, the version, the read routes, `/mcp` and what it needs, and the documentation's URLs. Answers at every
+`SHARE_LEVEL` and says nothing about the house. The repository's own `llms.txt`, for agents working on the
+code, stays on GitHub.
 
 ### GET /presence
 Access: public
@@ -109,7 +118,7 @@ Access: open
 
 Every sensor this node reads, its position, and where its numbers come from. One row per sensor with `sensor_id`, `source`, `name`, `lat`, `lon`, `indoor`, `local`, `custody`, `kind`, `scale`, `cadence`, `meta`, ordered by custody, then local, then name. The columns are named rather than `SELECT *`, so a column added to the table stays private until someone lists it here.
 
-For a caller that is neither loopback nor carrying a token, `lat` and `lon` are rounded to 3 decimals and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A row with `kind = 'facility'` (a fab lab the `make` pack stored) keeps ten more keys, because they describe somebody else's published building and not this household: `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched`. A trusted caller gets the full rows.
+For a caller that is neither loopback nor carrying a token, `lat` and `lon` are the centre of the resolution-8 cell for the household's own sensors (`custody`) and rounded to 3 decimals for every other row, and `meta` is cut to the provenance keys `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected` (null if none remain). That drops a unit's `host`, `firmware`, `mesh_node`, `gateway`, `channel`, `root_topic` and `topic`. A row with `kind = 'facility'` (a fab lab the `make` pack stored) keeps ten more keys, because they describe somebody else's published building and not this household: `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched`. A trusted caller gets the full rows.
 
 ### GET /readings
 Access: open

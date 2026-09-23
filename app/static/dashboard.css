@@ -1336,3 +1336,11 @@ h1.brand { font: inherit }
   text-transform: uppercase; margin: clamp(10px, 1vw, 18px) 0 0 }
 .wallbox .wcap i { font-style: normal; margin: 0 .5em; opacity: .55 }
 .wallbox .wcap code { font: inherit; color: var(--ink) }
+
+/* The foot: the purpose and the doors (dashboard.js foot()). Quiet, ink tiers only, no hue but
+   the links' own; every door is a path or a URL, so it is set in mono like every other path. */
+.foot { border-top: 1px solid var(--hair); margin-top: 48px; padding: 18px 0 28px }
+.foot .why { font-size: 14px; line-height: 1.5; color: var(--mute); max-width: 72ch; margin: 0 0 10px }
+.foot .doors { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--mute); margin: 0 }
+.foot .doors .mono { font-family: var(--mono); font-size: 12px }
+body.wall .foot { display: none }

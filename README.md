@@ -13,11 +13,11 @@
 
 # planetai-node
 
-**See your place at higher resolution.** A small program for a computer in your home, lab or community centre. It
-connects everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into
-one picture sharp enough to act on: what to do about the air, the heat, the sea, the land, today, here. It tells the
-people there in plain sentences, on Telegram, and passes upward what the models of a bioregion and a planet cannot see
-from above: what the ground is doing.
+**Hyperlocal compute and intelligence for distributed production.** A node is one computer per place, on
+hardware the place already owns. It reads what measures that place, from a particle sensor on the wall to a satellite
+overhead, tells the people there in plain sentences what to do about it, records what they did, and measures whether
+it worked. Its purpose is fixed: clean air, water and soil for the people and the other living things around each
+node. Raw readings stay on the machine; only summaries travel.
 
 > **Alpha.** This is an experiment. Installing a node makes you part of it: things will break, some will surprise you,
 > and what you report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
@@ -31,12 +31,16 @@ Walk-through in [`docs/START_HERE.md`](docs/START_HERE.md).
 
 ## What it is
 
-Hyperlocal awareness for climate and local challenges, built on distributed design and production. A city is measured
-today by satellites, by models with 11 km squares, and by a few reference stations; none of them know your kitchen at
-3 am, the shade on your street, or which hour to open the windows. A node fills that resolution gap from below, with the
-sensors people already own, and decides where it stands instead of sending readings away. Community scale first, then
-city, then region; upward, only summaries, to the [Fab City Index](https://index.fab.city) and to the models that need
-ground truth.
+Twenty years of fab labs and makerspaces built a distributed infrastructure for making things, and since 2014 the
+cities of the Fab City pledge have committed to producing half of what they consume by 2054. What that
+infrastructure never had is computing of its own: a machine at each place that reads the place, works out what it
+needs, and says why it should be made there rather than shipped in. A node is that machine.
+
+The rule it runs on is Fab City's rule for production, applied to data: DIDO, data in, data out. Raw readings stay on
+the machine; only summaries travel, to a parent node if you name one, to the [Fab City Index](https://index.fab.city),
+and to the models that need ground truth. Today a node reads air and heat from sensors, land and coast from public and
+satellite sources; water and soil have no pack yet, and no node has handed a job to a workshop yet. Programme:
+[planetai.fab.city](https://planetai.fab.city/) · documentation: [planetai.fab.city/docs](https://planetai.fab.city/docs/).
 
 ## What it does
 
@@ -45,7 +49,7 @@ ground truth.
   public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth Engine's view of the
   land. One schema from the room to the planet.
 - **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
-  whether anything changed: ρ, the share of alerts that led to an action, a number the Index never had.
+  whether anything changed: ρ, the share of act-level alerts somebody answered, a number the Index never had.
 - **Shows the place.** A dashboard with the room's number as a sentence, the day as an annotated chart, every source with
   a note, the sea, the land, the weather. Six views: Now, Historical, Network, Wall, Arrange, Set up.
 - **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node and explains

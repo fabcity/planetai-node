@@ -1871,7 +1871,8 @@ function figure(ctx, opts = {}) {
       + `${B.name} tiles at zoom ${f.z}: the cell this node stands in, the ${f.plate.cells.length - 1}`
       + ` around it, and every station in view`)}">`
     + `<g>${cells}</g><g>${pts}</g>`
-    + `<circle cx="${d1(f.X(H.node.lon))}" cy="${d1(f.Y(H.node.lat))}" r="7" fill="var(--cells)"/>`
+    + (H.node.position === 'cell' ? ''
+      : `<circle cx="${d1(f.X(H.node.lon))}" cy="${d1(f.Y(H.node.lat))}" r="7" fill="var(--cells)"/>`)
     + `</svg></div>`;
 }
 
@@ -5825,7 +5826,9 @@ function bind(issues, health, rho) {
     asks: issues.asks || null,
     radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
       mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
-    node: { lat: health.lat, lon: health.lon, name: health.node } };
+    /* `position` is 'cell' when this reader was handed the centre of the node's resolution-8 cell
+       rather than its point (GET /health, v0.73): then there is no house to put a dot on. */
+    node: { lat: health.lat, lon: health.lon, name: health.node, position: health.position || 'point' } };
 }
 
 async function boot() {
@@ -6696,6 +6699,31 @@ function chrome(node, city, view) {
     + `</div>${learnBar()}</header>`;
 }
 
+/* THE FOOT — what this machine is for, and where everything it publishes can be read.
+ *
+ * Every view but the wall ends here. Two lines, set small: the purpose, quoted from the lead of
+ * docs/site/introduction.md and checked against it by tools/check_site.py, so the node says the
+ * same thing the documentation and the programme page say; then the version and the four doors a
+ * person or an agent needs: this node's own /health, its /mcp endpoint, its /llms.txt, and the
+ * documentation. Before v0.73 none of them was named anywhere on the page, which left an agent
+ * handed this node's address with nothing to find and a household with no way to the docs. */
+const PURPOSE = 'PLANETAI is the hyperlocal compute and intelligence layer for distributed production. '
+  + 'Its purpose is fixed: clean air, water and soil for the people and the other living things '
+  + 'around each node.';
+const DOCS_URL = 'https://planetai.fab.city/docs/';
+function foot(S) {
+  const esc = window.K.esc, v = ((S && S.health) || {}).version || '';
+  return `<footer class="foot" id="foot" data-component="foot" data-ref="footer"><div class="wrap">`
+    + `<p class="why">${esc(PURPOSE)} Raw readings stay on this machine; only summaries leave.</p>`
+    + `<p class="doors"><span class="mono">${esc(v ? `planetai-node ${v}` : 'planetai-node')}</span>`
+    + `<a class="mono" href="/health">GET /health</a>`
+    + `<span class="mono" title="Model Context Protocol, streamable HTTP; needs ADMIN_TOKEN">POST /mcp</span>`
+    + `<a class="mono" href="/llms.txt">/llms.txt</a>`
+    + `<a href="${DOCS_URL}">Documentation</a>`
+    + `<a href="https://planetai.fab.city/">The programme</a></p>`
+    + `</div></footer>`;
+}
+
 /* SHARE_LEVEL=off and no token. /health still answers — it answers at every share level, which is
  * why the node's name and the nav are here at all — and every view draws the node's own sentence
  * about why. A blank would be the node lying about being broken, and a blank on the WALL is a black
@@ -7077,17 +7105,17 @@ function main() {
     if (window.WALL && window.WALL.start && STATE !== 'refused'
         && el.querySelector('#wall-lead')) window.WALL.start(ctx);
   } else if (STATE === 'refused') {
-    el.innerHTML = head() + `<div class="wrap">${refusedPage(SAID)}</div>`;
+    el.innerHTML = head() + `<div class="wrap">${refusedPage(SAID)}</div>` + foot(S);
   } else if (VIEW === 'now' || VIEW === 'arrange') {
     ARRANGING = VIEW === 'arrange';
     el.innerHTML = head() + `<div class="wrap">`
       + `${PAI.render(ctx, lead(), { only: want([...NOW, ...homeless]) })}</div>`
-      + (ARRANGING ? arrbar() : '');
+      + foot(S) + (ARRANGING ? arrbar() : '');
     if (ARRANGING) { arrangeControls(); fillRestore(); }
   } else if (VIEW === 'network') {
-    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(NETWORK) })}</div>`;
+    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(NETWORK) })}</div>` + foot(S);
   } else if (VIEW === 'historical') {
-    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(HISTORICAL) })}</div>`;
+    el.innerHTML = head() + `<div class="wrap">${PAI.render(ctx, '', { only: want(HISTORICAL) })}</div>` + foot(S);
   } else {
     /* Set up, in the modular page, gains one box the drawings did not have: the sections this node
        runs, by pack, drawn from the real registry — so the list is what this node has and not a
@@ -7095,7 +7123,7 @@ function main() {
     const setup = VIEW === 'setup' && window.PAI_SETUP ? window.PAI_SETUP.markup() : '';
     const sections = VIEW === 'setup' ? sectionsBox() : '';
     el.innerHTML = head() + `<div class="wrap"><section class="band" id="view-${esc(VIEW)}">`
-      + `<div class="k">` + esc(VIEW) + `</div>` + setup + sections + `</section></div>`;
+      + `<div class="k">` + esc(VIEW) + `</div>` + setup + sections + `</section></div>` + foot(S);
     /* The pane draws itself locked, then asks the node what this reader may see. */
     if (VIEW === 'setup' && window.PAI_SETUP) window.PAI_SETUP.load();
   }

@@ -283,6 +283,10 @@ _refs |= {m.split("#")[0] for m in re.findall(r'href="([^"${}]+)"', js) if "/" i
 _refs |= set(re.findall(r'src="([^"${}?]+)\?[^"]*"', js))
 for ref in sorted(_refs):
     ref = ref.strip("'\"").split("?")[0]
+    # A link OUT (the documentation, the programme) or to one of this node's own routes (the foot's
+    # GET /health and /llms.txt) is not an asset the page loads; the route half is checked above.
+    if ref.startswith(("https://", "http://")) or ref in routes:
+        continue
     if not ref.startswith("static/"):
         errs.append(f"the page loads {ref}, which is not under static/ — app/main.py serves nothing else")
     elif ref[len("static/"):] not in served:

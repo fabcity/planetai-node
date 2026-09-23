@@ -1,11 +1,10 @@
 # Introduction
 
-A PLANETAI node is a small program for a computer in your home, lab or community centre. In the repo's own
-words, it "connects everything that measures where you stand, from a particle sensor on the wall to a
-satellite overhead, into one picture sharp enough to act on: what to do about the air, the heat, the sea, the
-land, today, here." It tells the people there in plain sentences on Telegram, keeps every raw reading on the
-machine that recorded it, and passes upward "what the models of a bioregion and a planet cannot see from
-above: what the ground is doing."
+PLANETAI is the hyperlocal compute and intelligence layer for distributed production, and a node is its
+unit: one computer per place, on hardware the place already owns. It reads what measures that place, from a
+particle sensor on the wall to a satellite overhead, tells the people there in plain sentences what to do
+about it, records what they did, and measures whether it worked. Raw readings stay on the machine that
+recorded them.
 
 ```bash
 curl -fsSL planetai.fab.city/install | bash
@@ -20,21 +19,24 @@ dashboard. The walk-through is [Install](install.md); the ten minutes after it a
 > what helped and what did not. Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September
 > 2026. Node #2 runs in Menorca.
 
-## Why Fab City builds it
+## What it is for
 
-The README states the problem in one sentence: "A city is measured today by satellites, by models with 11 km
-squares, and by a few reference stations; none of them know your kitchen at 3 am, the shade on your street, or
-which hour to open the windows." A node "fills that resolution gap from below, with the sensors people already
-own, and decides where it stands instead of sending readings away. Community scale first, then city, then
-region; upward, only summaries, to the Fab City Index and to the models that need ground truth."
+Twenty years of fab labs and makerspaces built a distributed infrastructure for making things, and since 2014
+the cities of the Fab City pledge have committed to producing half of what they consume by 2054. What that
+infrastructure never had is computing of its own: a machine at each place that reads the place, works out what
+it needs, and says why it should be made there rather than shipped in. A node is that machine. Its purpose is
+fixed: clean air, water and soil for the people and the other living things around each node.
 
-Each part you add to the node
-(a sensor, a rule, a channel, a pack, a parent) is a part of that instrument. A sensor in a living room
-becomes a row a cell of the Index may count, but only once it is yours and within `LOCAL_RADIUS_M` of the
-node. An alert becomes a person's act, and the acts become ρ, which `ARCHITECTURE.md` calls "the brick nobody
-else has": two generations of the Index measured a snapshot with ρ implicit at 1, and a node measures it for
-real, "because it's the thing sending the alert and the thing receiving the acknowledgement." A district's
-picture is built from nodes, never declared from above.
+The rule it runs on is Fab City's rule for production, applied to data. Fab City calls the old pattern PITO,
+product in, trash out, and the one it builds DIDO, data in, data out: materials stay in the city and knowledge
+moves between cities. On a node, raw readings stay on the machine and only summaries travel, to a parent node
+if you name one, to the [Fab City Index](https://index.fab.city), and to the models that need ground truth.
+
+In v0.73 a node reads air and heat from the sensors in and around the house, and land and coast from public
+and satellite sources. Water and soil have no pack yet. The `make` pack names the nearest fab lab in a
+sentence, and no node has yet handed a job to a workshop. What runs today is the loop from a reading to a
+person acting and to a measured result; the loop from a reading to something made nearby is the direction.
+The programme behind it is at [planetai.fab.city](https://planetai.fab.city/).
 
 ## The loop a node runs
 
@@ -50,7 +52,7 @@ each stage in its own words:
 | measure | whether it worked, and how long it took |
 
 The README says what the alerts are for: they "say what is happening, what it means, what to do. Then the
-node measures whether anything changed: ρ, the share of alerts that led to an action, a number the Index never had." ρ can
+node measures whether anything changed: ρ, the share of act-level alerts somebody answered, a number the Index never had." ρ can
 only be measured where the alert is sent and the answer comes back, which is here. [ρ](rho.md) has the
 definition.
 
