@@ -21,7 +21,8 @@ reader it does not know, nothing finer than the cell it stands in.*
   it handed out (`position`), and the ground drops the house dot when it is the cell. `/stats` no longer
   hands out unrounded positions at `SHARE_LEVEL=open` (#113). **Exports already published keep their three
   decimals**: files under `exports/` written before this release are not rewritten, and anything that
-  copied them has the finer position.
+  copied them has the finer position. The node directory, `registry.json`, names node #1 by its cell and
+  the cell's centre instead of a point to seven decimals; the old figure stays in the repository's history.
 - **One vocabulary with the programme page** (display only). What the node sends a person is an *alert*
   everywhere a person reads it, and one nobody has answered is an *open alert*. The resolution control is
   the *ladder* and each step a *rung*. The four distances are *house · street · ring · region*; Bahasa
