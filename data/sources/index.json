@@ -2081,6 +2081,7 @@
       "barcelona",
       "global"
     ],
+    "reviews": [],
     "scale": "region",
     "slug": "economic/region/eurostat-sbs",
     "status": "candidate",
@@ -2417,6 +2418,7 @@
       "santiago",
       "global"
     ],
+    "reviews": [],
     "scale": "region",
     "slug": "economic/region/oecd-regional-metropolitan",
     "status": "candidate",
@@ -3085,6 +3087,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "environmental/city/cdp-iclei-track",
     "status": "candidate",
@@ -3655,6 +3658,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "planet",
     "slug": "environmental/planet/edgar",
     "status": "candidate",
@@ -5307,6 +5311,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "planet",
     "slug": "governance/planet/worldbank-wgi",
     "status": "candidate",
@@ -6083,6 +6088,7 @@
       "barcelona",
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "social/city/eurostat-urban-audit",
     "status": "candidate",
@@ -6114,6 +6120,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "social/city/ibge-sidra",
     "status": "candidate",
@@ -6146,6 +6153,7 @@
       "barcelona",
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "social/city/ine-spain",
     "status": "candidate",
@@ -6177,6 +6185,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "social/city/inegi-censo-iter",
     "status": "candidate",
@@ -6208,6 +6217,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "social/city/jrc-ghsl",
     "status": "candidate",
@@ -6293,6 +6303,7 @@
       "boston",
       "global"
     ],
+    "reviews": [],
     "scale": "city",
     "slug": "social/city/us-census-acs",
     "status": "candidate",
@@ -6554,6 +6565,7 @@
       "santiago",
       "global"
     ],
+    "reviews": [],
     "scale": "region",
     "slug": "social/region/ilostat",
     "status": "candidate",
@@ -6638,6 +6650,7 @@
     "pilot_relevance": [
       "global"
     ],
+    "reviews": [],
     "scale": "region",
     "slug": "social/region/worldpop",
     "status": "candidate",
