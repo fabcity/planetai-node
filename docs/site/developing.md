@@ -84,9 +84,10 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 | `extract_strings.py --check` | the installer's and the preflight's human-readable sentences out of step with `data/strings/en.yml` |
 | `check_sql.py` | a comment ate a closing bracket; a missing config Docker replaced with an empty directory; `.DS_Store` committed; `\| grep -q` under pipefail failing a good dump |
 | `check_cli_python.py` | f-strings that crashed on Python 3.9; PyYAML the node does not have; a `for` after a semicolon |
-| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved. It reads the root pages, `docs/*.md`, pack READMEs and skills; it does not read `docs/site/` |
+| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved. It reads the root pages, `docs/*.md`, `docs/site/*.md`, pack READMEs and skills. `docs/site/` joined the list after v0.72.1: until then the site could describe v0.57 while the node was at v0.72 and every gate stayed green |
 | `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
 | `check_ui.py` | an element id the script referenced that was not in the markup; a network `url()` in a stylesheet; Fab Blue in the dark register |
+| `build_docs.py --check` | the same fifteen releases, seen as a site: a NAV entry whose source is gone, a page in `docs/site/` that NAV never lists, a link to no page, an `#anchor` to a heading the page does not have. Renders every page and writes nothing. Needs `markdown`; without it the gate says it skipped, and CI installs it so it never skips there |
 | `build_learn.py --check` | a docs edit that moved one of the seventeen spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
 | `check_wire.py` | a top-level key added to or dropped from one of the five wire documents in a commit about something else. The key lists are frozen in `tests/data/wire/` |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt`, including in CI, where `planetai-design` is not checked out |
@@ -163,14 +164,18 @@ a node inside the tarball, and the tarball changes only when somebody builds, si
 
    Before it tags anything it asks `tools/ship.sh --check-key`, which refuses a key that is missing,
    inside the repository, or not the one `tools/allowed_signers` publishes, and prints `signing key
-   present, and it matches tools/allowed_signers` when it is right. It refuses a site repo
-   (`PLANETAI_SITE_REPO`, default `../planetai`) with uncommitted work outside `node0/get`. Then it runs
+   present, and it matches tools/allowed_signers` when it is right. Then `tools/ship.sh --check-docs`,
+   which refuses a machine where no `python3` has the `markdown` package (`the docs site can be built
+   here` when one does). It refuses a site repo (`PLANETAI_SITE_REPO`, default `../planetai`) with
+   uncommitted work outside `node0/get` and `docs/`. Then it runs
    `make lint` and `make test`, tags `v0.72.2`, and pushes `main --tags`.
 
 3. **Watch `ship.sh` publish it.** `release.sh` calls `tools/ship.sh` itself. It refuses a commit CI has
    not vouched for, builds the tarball, signs it with `ssh-keygen -Y sign -n planetai-node`, verifies the
    signature against `tools/allowed_signers` as principal `fabcity` (`signed, and the signature verifies
-   against tools/allowed_signers`), commits it into the site repo's `node0/get`, publishes the same
+   against tools/allowed_signers`), rebuilds the docs site from the same commit (`docs site rebuilt at
+   v0.72.2`), commits both into the site repo in one commit, `node0/get + docs: tester tarball and docs
+   site at v0.72.2`, publishes the same
    files as a GitHub Release when `gh` is present (`publishing the GitHub Release v0.72.2`), and deploys
    the site. `release.sh` then checks that `planetai-node.tar.gz`, `SHA256` and the `.sig` are not
    empty, and ends:
@@ -213,10 +218,16 @@ The pages under `docs/site/` and the pages of `docs/` and the root that the side
 
 ```bash
 pip install markdown                                   # on the dev machine only
+python3 tools/build_docs.py --check                    # what make lint runs: the map, every link, every anchor
 make docs                                              # build_learn.py, then build_docs.py --out ../planetai/docs
 python3 tools/build_docs.py --single /tmp/docs.html    # everything on one page, for review
 make -C ../planetai deploy
 ```
+
+A release does this on its own: `tools/ship.sh` rebuilds the site from the commit it ships and puts it
+in the same site-repo commit as the tarball, so the docs a tester reads describe the node a tester
+downloads. `SHIP_WITHOUT_DOCS=1` skips it, deliberately, for an urgent fix on a machine without
+`markdown`; `make docs` and a site deploy catch up afterwards.
 
 `make docs` regenerates `app/static/learn.json` before it renders, because `make lint` fails when the
 learn marks and the pages disagree. Move a span on purpose and update `MARKS` in `tools/build_learn.py` in
@@ -224,9 +235,11 @@ the same change; `make learn` rewrites the file on its own.
 
 `docs/site/STYLE.md` is how the pages are written: plain words, say what to do, only what the code says,
 and the conventions the renderer understands. The version and commit in every page's footer are read from
-git at build time, which says when the page was built and not what it was read against. Nothing checks
-these pages against the code: `build_docs.py` refuses a dead link and `make lint` checks the learn spans,
-and that is all. So a page says in its lead which version it was read against.
+git at build time, which says when the page was built and not what it was read against. What `make
+lint` checks is mechanical: the commands, settings, paths and endpoints a page names exist
+(`check_docs.py`), every link and anchor lands (`build_docs.py --check`), and the learn spans are still
+spans. Whether a sentence is still true is not mechanical. So a page says which version it was read
+against, and a change that alters what a page describes changes the page in the same commit.
 
 ## Layout of the repository
 

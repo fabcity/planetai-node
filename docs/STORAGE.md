@@ -29,14 +29,15 @@ is not mounted, it refuses rather than write to a local folder with the drive's 
 
 ```bash
 planetai backup                                    # now
-planetai restore backups/bayu-2-2026-09-05.sql.gz  # replaces the database; takes a safety backup first
+planetai restore backups/bayu-ungasan-2026-09-05.sql.gz  # replaces the database; takes a safety backup first
 ```
 
 ## A NAS that pulls (node #1's setup)
 
 Better than mounting the NAS on the node: the NAS fetches the dumps. The node serves `/backups` behind a read-only
-`BACKUP_TOKEN` (separate from the admin token) and `/exports` openly. On the NAS, one 60-line script in a small
-container asks every hour and fetches what it lacks. It opens each dump to check it is a database before keeping it.
+`BACKUP_TOKEN` (separate from the admin token), and `/exports` to anyone only at `SHARE_LEVEL=open`; at the default,
+`off`, `/exports` needs a token too. On the NAS, one 120-line script in a small container asks every hour and fetches
+what it lacks. It opens each dump to check it is a database before keeping it.
 Nothing is deleted there. The node holds no NAS credentials and mounts nothing.
 
 `tools/nas/` has the script and compose file. On the NAS:
@@ -44,11 +45,13 @@ Nothing is deleted there. The node holds no NAS credentials and mounts nothing.
 ```bash
 # put pull.py, docker-compose.yml and .env in one folder; write the node's token into .env
 docker compose -p planetai-backup up -d
-docker logs -f planetai-backup             # "bayu-2: 0 new, 3 dumps held"
+docker logs -f planetai-backup             # "bayu-ungasan: 0 new, 3 dumps held"
 ```
 
-`planetai storage` on the node prints the token. Node #1's dumps have been on TX-NAS-BALI at
-`/volume2/docker_1/agentic-os/backups/planetai/bayu-2/` since 5 September 2026, collected hourly.
+`planetai ui` on the node prints the token (`planetai storage` says only whether it is set). At `SHARE_LEVEL=off`
+`pull.py` still fetches the dumps, but it asks for `/exports` without the token, is refused, and logs `pull failed:
+HTTPError` where the line above should be: exports and the earth results are not collected until that is fixed.
+Node #1's dumps have been on TX-NAS-BALI at `/volume2/docker_1/agentic-os/backups/planetai/bayu-ungasan/` since 5 September 2026, collected hourly.
 
 ## Off the machine
 
@@ -57,7 +60,7 @@ Dropbox, SFTP, WebDAV, Nextcloud. After each backup the last three days of dumps
 
 ```bash
 brew install rclone && rclone config
-planetai storage set remote r2:planetai/bayu-2
+planetai storage set remote r2:planetai/bayu-ungasan
 ```
 
 B2 or R2 cost cents a month for a node's lifetime of dumps. Drive works but is a person's account, not infrastructure.
@@ -91,7 +94,7 @@ node pinning yours, or a pinning service.
 ```bash
 planetai ipfs            # starts Kubo (low-power profile), turns publishing on
 planetai backup          # publishes yesterday now
-cat exports/bayu-2/CIDS.txt
+cat exports/bayu-ungasan/CIDS.txt
 ```
 
 Anyone can fetch `ipfs://<cid>`. Turn this on when a second node or a partner wants the data; with one contributor

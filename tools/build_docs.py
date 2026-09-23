@@ -25,7 +25,7 @@ try:
     import markdown
     from markdown.extensions.toc import TocExtension
 except ImportError:  # pragma: no cover
-    sys.exit("pip install markdown   (the build needs it; a node never does)")
+    markdown = None     # main() says so: --check skips, a build refuses
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "docs" / "site"
@@ -376,15 +376,82 @@ def search_index(rendered, mode, base):
 TITLES = {}
 
 
+A_HREF = re.compile(r'<a [^>]*?href="([^"]+)"')
+ANCHOR = re.compile(r'\sid="([^"]+)"')
+
+
+def check():
+    """What `make lint` asks of the site: the map is whole, and every link on it lands.
+
+    The site fell fifteen releases behind the node while every gate stayed green, because no gate
+    read docs/site/. tools/check_docs.py now reads its pages for commands, settings, paths and
+    endpoints; this reads them as a site. Every NAV source exists; every page in docs/site/ is in
+    NAV (a page nobody can reach is a page nobody corrects); every link the renderer produces
+    resolves to a page, and every `#anchor` to a heading that page actually has. Writes nothing.
+    Needs `markdown`; without it the check says so and passes, the way the rule check does
+    without sqlglot, because a node never installs it."""
+    if markdown is None:
+        print("  - docs site check skipped (pip install markdown to enable)")
+        return 0
+    errs = []
+    for slug, src, _ in PAGES:
+        if not (ROOT / src).exists():
+            errs.append(f"NAV names {src} for /{slug}/, which does not exist")
+    in_nav = {src for _, src, _ in PAGES}
+    for f in sorted(SITE.glob("*.md")):
+        rel = f.relative_to(ROOT).as_posix()
+        if f.name != "STYLE.md" and rel not in in_nav:
+            errs.append(f"{rel} is not in NAV, so no page links to it and the site does not build it")
+    if errs:
+        print("\n".join(f"  x {e}" for e in errs))
+        return 1
+    base, commit = "/docs/", "HEAD"
+    rendered, ids = {}, {}
+    for slug, src, _ in PAGES:
+        title, body = read_page(src)
+        TITLES[slug] = (SHORT.get(slug, title), src)
+        body_html, _toc = render_md(body, "")
+        body_html = postprocess(body_html, src, slug, "multi", base, commit)
+        rendered[slug] = body_html
+        ids[slug] = set(ANCHOR.findall(body_html))
+        for href in dead_links(body_html, slug):
+            errs.append(f"{src}: links to {href}, which resolved to no page")
+    for slug, body_html in rendered.items():
+        src = BY_SLUG[slug][0]
+        for href in set(A_HREF.findall(body_html)):
+            href = html.unescape(href)
+            if href.startswith("#"):
+                if href[1:] and href[1:] not in ids[slug]:
+                    errs.append(f"{src}: links to {href}, which is no heading on this page")
+                continue
+            if not href.startswith(base):
+                continue
+            path, _, frag = href[len(base):].partition("#")
+            target = path.strip("/")
+            if target == "" or target.startswith("assets"):
+                continue
+            if target not in rendered:
+                errs.append(f"{src}: links to {href}, which is no page")
+            elif frag and frag not in ids[target]:
+                errs.append(f"{src}: links to {href}, and {BY_SLUG[target][0]} has no heading #{frag}")
+    print("\n".join(f"  x {e}" for e in errs) or f"  docs site: {len(PAGES)} pages, every link and anchor lands")
+    return 1 if errs else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", help="output folder for the multi-page site (e.g. ../planetai/docs)")
     ap.add_argument("--single", help="write everything into one HTML file at this path")
     ap.add_argument("--base", default="/docs/", help="URL prefix the site is served under (multi-page)")
     ap.add_argument("--bare", action="store_true", help="with --single: no html/head/body skeleton (for a host that adds its own)")
+    ap.add_argument("--check", action="store_true", help="render every page, write nothing, fail on a broken map, link or anchor (make lint)")
     args = ap.parse_args()
+    if args.check:
+        sys.exit(check())
     if not args.out and not args.single:
         ap.error("--out DIR or --single FILE")
+    if markdown is None:
+        sys.exit("pip install markdown   (the build needs it; a node never does)")
 
     ver = version()
     commit = git("rev-parse", "--short", "HEAD") or "unknown"

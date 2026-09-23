@@ -60,7 +60,8 @@ values already filled in.
 ## Name yourself in every write
 
 Every write — `act`, `settings_set`, `report_now`, `run_pack_script` — takes an `agent` argument, and that
-is the name the audit trail records; the tools pass it on to the node's API as `X-Agent`. The default is
+is how a name reaches the audit trail: `act` writes it as the action's `actor`, and `settings_set` passes it
+on to the node's API as `X-Agent`; `report_now` and `run_pack_script` record no name. The default is
 `agent`, which tells nobody anything. Pass your own name in that argument on every write (the `X-Agent`
 header you send on `/mcp` itself is not read by the tools in this version). A node may have a local model on
 it already, appearing as `local-model/<rung>`; without a name of your own, the trail cannot tell you apart.

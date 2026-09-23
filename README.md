@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-20388D?style=flat-square"></a>
-  <a href="CHANGELOG.md"><img alt="Version 0.31" src="https://img.shields.io/badge/version-0.31-171717?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="Version 0.72.1" src="https://img.shields.io/badge/version-0.72.1-171717?style=flat-square"></a>
   <img alt="Node #1 live" src="https://img.shields.io/badge/node%20%231-live%20in%20Bali-00A057?style=flat-square">
   <img alt="Containers: 2" src="https://img.shields.io/badge/containers-2-171717?style=flat-square">
   <img alt="Clouds required: 0" src="https://img.shields.io/badge/clouds%20required-0-171717?style=flat-square">
@@ -40,13 +40,14 @@ ground truth.
 
 ## What it does
 
-- **Connects every scale.** Sensors on WiFi (Smart Citizen, AirGradient, PurpleAir), radios over LoRa where there is no
-  WiFi (Meshtastic), public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth
-  Engine's view of the land. One schema from the room to the planet.
+- **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a pack; the AirGradient and
+  PurpleAir adapters are written and not polled in this version), radios over LoRa where there is no WiFi (Meshtastic),
+  public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth Engine's view of the
+  land. One schema from the room to the planet.
 - **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
   whether anything changed: ρ, the share of alerts that led to an action, a number the Index never had.
 - **Shows the place.** A dashboard with the room's number as a sentence, the day as an annotated chart, every source with
-  a note, the sea, the land, the weather. Four views: Now, Network, Set up, Wall.
+  a note, the sea, the land, the weather. Six views: Now, Historical, Network, Wall, Arrange, Set up.
 - **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node and explains
   it; point it at a bigger model when you have one.
 - **Keeps the data where it was made.** Local database, nightly backups a NAS can collect, an open daily export you decide
@@ -97,7 +98,7 @@ One person maintains it today, with a second holding access and a proposed scope
 ## Bring your own agent
 
 A node is a thing you operate, and most people who install one will do it with an agent beside them. This
-repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of four skills
+repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of six skills
 in `skills/`, and `make lint` fails if a skill names a command or a path that does not exist. Paste this
 to your agent and nothing else:
 
@@ -117,11 +118,12 @@ file. `planetai agent` on the node prints the three facts you need for any other
 ```
 app/       main.py · sources.py · index.py · packs.py · settings.py · agent.py · agent_loop.py · static/index.html
 bin/       planetai, the command line
-packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place · example
-config/    rules.yml · mosquitto · reticulum
+packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place ·
+           nearby · season · forecast · make · posidonia · thingdata · xiaomi-air · example-cooking-hours
+config/    rules.yml · channels.yml · mosquitto · reticulum
 tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
 tests/     offline suites
-presets/   bali · barcelona · boston · santiago · delhi
+presets/   bali · barcelona · boston · santiago · delhi · menorca
 ```
 
 ## Licence

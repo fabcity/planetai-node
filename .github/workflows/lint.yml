@@ -15,6 +15,9 @@ jobs:
       # boundary), test_ground, and `make lint`'s import-check — which exists because a function
       # called as if it were a string took the node down for an hour on 5 September.
       - run: pip install -r app/requirements.txt
+      # `markdown` is the docs site's only dependency. Without it `build_docs.py --check` skips, and a
+      # skip is how the site fell fifteen releases behind the node with this job green.
+      - run: pip install markdown
       - run: make lint
       - name: docs match the code
         run: python3 tools/check_docs.py

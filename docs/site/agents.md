@@ -33,8 +33,8 @@ Paste this to your agent and nothing else:
    `mcp.json` or `claude_desktop_config.json`:
 
    ```json
-   {"mcpServers": {"planetai-bayu-2": {"type": "http",
-     "url": "http://bayu-2:8080/mcp",
+   {"mcpServers": {"planetai-bayu-ungasan": {"type": "http",
+     "url": "http://bayu-ungasan:8080/mcp",
      "headers": {"Authorization": "Bearer <ADMIN_TOKEN>", "X-Agent": "tomas-claude"}}}}
    ```
 

@@ -1,7 +1,8 @@
 # A Mac mini as an always-on node
 
 The laptop is for trying it. The mini is for leaving it. An hour, once, with a monitor plugged in for the permission
-dialogs. Any Apple Silicon mini; an 8 GB base model idles under 10%. A 2018 Intel mini on macOS 13+ also works.
+dialogs. Any Apple Silicon mini; an 8 GB base model idles under 10%. A 2018 Intel mini on macOS 14+ also works
+(on 13.5 to 13.7, Colima is the only runtime that installs; see `PLATFORMS.md`).
 
 ## Physical
 
@@ -36,12 +37,12 @@ OrbStack (lighter) or Docker Desktop. **Start at login: on.** Then power returns
 ## Install
 
 `curl -fsSL planetai.fab.city/install | bash`, monitor still attached. Then `planetai mesh` so the mini is reachable
-from anywhere as `<name>.ts.net` with no open ports.
+from anywhere as `<name>.<tailnet>.ts.net` with no open ports.
 
 ## From your laptop
 
 ```bash
-ssh you@bayu-2.local          # or bayu-2.ts.net over Tailscale
+ssh you@bayu-ungasan.local    # or bayu-ungasan.<tailnet>.ts.net over Tailscale
 planetai status
 ```
 

@@ -9,7 +9,8 @@ This week, the street's. Indoor PM2.5 tracked the outdoor kit at r = 0.55, and t
 mean 5.8 against outdoor 9.6). No hour had indoor more than 10 above outdoor. Two indoor kits agreed at r = 0.73; the
 sensors can be trusted.
 
-The `insight` pack's daily `agreement` rule states this. When it changes, `inside_worse_ventilate` fires: open a window.
+The `insight` pack's daily `agreement` rule states this. When the room turns worse than the street, the `air-quality`
+pack's `inside_worse_ventilate` fires: open a window.
 
 ## When should I open the windows?
 
@@ -17,7 +18,8 @@ Around 15:00. The street was worst at 18:00 (12.6) and 06:00 (11.0), the evening
 mid-afternoon (7.5). Indoors peaked at 18:00 and 09:00, following the street with a lag. The model read a flat 11–14
 all day and missed the rhythm.
 
-The `rhythm` rule says this daily, in local time, ending with the hour to air the house.
+The `rhythm` rule says this daily, in local time, ending with the hour to air the house. It needs a local outdoor
+noise sensor, and without one it stays silent.
 
 ## Should I trust the satellite?
 
@@ -32,6 +34,6 @@ offline. The account was a six-sensor network already; the node was reading one.
 
 ## Automations
 
-The node switches nothing. `planetai homeassistant` puts every sensor and the latest alert into Home Assistant as
-entities. Build there: purifier on above 35 for ten minutes; a window reminder at the cleanest hour; a phone notification
-when the alert level is `act`.
+The node switches nothing. `planetai homeassistant` puts every sensor but the public stations, and the latest alert,
+into Home Assistant as entities. Build there: purifier on above 35 for ten minutes; a window reminder at the cleanest
+hour; a phone notification when the alert level is `act`.

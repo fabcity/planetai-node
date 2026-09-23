@@ -23,8 +23,8 @@ prints the tools by class, the endpoint on this machine (`http://localhost:8080/
 call must carry, `Authorization: Bearer <ADMIN_TOKEN>`, and a ready-made snippet:
 
 ```json
-{"mcpServers": {"planetai-bayu-2": {"type": "http",
-  "url": "http://bayu-2:8080/mcp",
+{"mcpServers": {"planetai-bayu-ungasan": {"type": "http",
+  "url": "http://bayu-ungasan:8080/mcp",
   "headers": {"Authorization": "Bearer <ADMIN_TOKEN>", "X-Agent": "tomas-claude"}}}}
 ```
 

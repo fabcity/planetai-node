@@ -1,7 +1,7 @@
 # Domains
 
 The core measures nothing in particular. It polls sources, stores readings, runs rules, fills Index cells. Which
-readings, which rules, which cells: that is a pack. `grep pm25 app/main.py` returns nothing.
+readings, which rules, which cells: that is a pack. `grep pm25 app/packs.py`, the loader, returns nothing.
 
 ## Issues: what a domain is called in the house
 
@@ -13,30 +13,33 @@ Not every domain is an issue. *Weather* feeds air and heat — wind for working 
 from, the forecast for the day ahead — but nobody asks how the weather is doing as a quality of their
 place. *Place* is the ground everything else sits on. *Governance* is the loop and the Index. *Trust*
 is the node's own instruments, not the place at all. *Repair* is a catalogue of what can be
-fixed, kept by people, not a measurement of the ground.
+fixed, kept by people, not a measurement of the ground. *Make* is where the nearest workshop is: a
+line on the report and on an ask, never a number.
 
 | issue | packs | kind | the line, and where it comes from |
 |---|---|---|---|
-| **air** | `air-quality`, `nearby` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
+| **air** | `air-quality`, `nearby`, `season`, `xiaomi-air` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
 | **heat** | `heat` | sensed | 35 °C apparent — measured at node #1, this place's line and not a global one |
 | **land** | `earth` (the change), `earth-engine` (built, trees) | context | none. A year-over-year change is not a threshold |
-| **coast** | `coast` | context | none |
+| **coast** | `coast`, `posidonia` | context | none |
 | — | `forecast` (weather) | | feeds air and heat |
 | — | `place` | | the ground, its own band on the dashboard |
 | — | `open-data-health` (governance) | | the loop and the Index |
 | — | `thingdata` (repair) | | a catalogue of repair knowledge somebody maintains, not a quality of this place |
+| — | `make` | | the nearest fab labs, as places; no metric, no rule, no cell |
 | — | `trust` | | the instruments |
-| — | `insight`, `cold-start` (cross-domain) | | each rule belongs to the issue it names |
+| — | `insight`, `cold-start` (cross-domain), `example-cooking-hours` (no domain) | | each rule belongs to the issue it names |
 
 A **sensed** issue has eyes on it and rules that can ask somebody to do something. A **context**
 issue informs and never asks: it has no act-level rules, and land's cadence is a year.
 
 The declarations are `app/issues/*.yml` — one file per issue, holding its name in three languages,
 its metric and unit, its line and that line's source, which packs feed it, how each of the four
-distances (room · yard · ring · region) is computed, and its sentence templates. **Adding a fifth
-issue is a fifth file plus a pack that declares its domain.** `tests/test_issues.py` asserts that by
-loading a synthetic `water.yml`, and it also asserts that every enabled pack reaches an issue or is
-named as deliberately not one — so a new pack cannot arrive unmapped and unnoticed.
+distances (room · yard · ring · region, printed on the page as room · wall outside · street · model)
+is computed, and its sentence templates. **Adding a fifth issue is a fifth file plus a pack that
+declares its domain.** `tests/test_issues.py` asserts that by loading a synthetic `water.yml`, and it
+also asserts that every enabled pack's alerts reach an issue or the pack is named as deliberately not
+one — so a new alert cannot arrive unmapped and unnoticed.
 
 `NODE_ISSUES` is the keeper's order, most important first. The presets guess per place (Bali:
 `air,heat,land,coast`; Barcelona and Boston: `heat,air`) and every preset says to change it. This is
@@ -62,7 +65,7 @@ Air was first because Bali has the sensors and the burn season. Everything below
 
 **Air** (`packs/air-quality`): PM2.5 inside and outside, spikes, WHO thresholds. **Heat** (`packs/heat`): apparent
 temperature from temp and humidity, heat stress, nights over 28 °C. **Coast** (`packs/coast`): waves and sea
-temperature. **Land** (`packs/earth-engine`): built-up, tree cover, change. **Governance** (`open-data-health`,
+temperature. **Land** (`packs/earth`, `packs/earth-engine`): change, built-up, tree cover. **Governance** (`open-data-health`,
 and ρ in the core). **Trust** (`packs/trust`): not a place, the node's own instruments — whether they are frozen,
 missing hours or disagreeing with a neighbour.
 
@@ -70,8 +73,8 @@ missing hours or disagreeing with a neighbour.
 
 **Water**: turbidity, TDS, tank level from a DIY probe over MQTT; is the well safe, will the tank last to the rain.
 **Energy**: grid up/down from a smart plug; outage hours as an Economic cell. **Noise**: Smart Citizen emits it already;
-school-hours rules. **Classroom CO₂**: AirGradient emits it; open the windows above 1,200 ppm. **Fire smoke**: NASA
-FIRMS detections crossed with wind direction. Details and effort in `PACK_IDEAS.md`.
+school-hours rules. **Classroom CO₂**: AirGradient emits it, once the core polls AirGradient; open the windows above
+1,200 ppm. **Fire smoke**: NASA FIRMS detections crossed with wind direction. Details and effort in `PACK_IDEAS.md`.
 
 ## Writing one
 

@@ -1,7 +1,7 @@
 # Packs
 
 A pack is a folder in `packs/`. It carries rules, Index cells, or an adapter for a new source. The core knows nothing
-about air, water or heat; the packs do. Node #1 runs twelve.
+about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
@@ -154,10 +154,10 @@ and a drawing is a drawing inside a card); colour a state by hue; print a numera
 body — that belongs in `notes()`, gathered at the bottom of the page where every note lives folded.
 None of this is enforced by the contract itself; all of it is measured by `tests/visual/gate.sh`.
 
-Today a section lives inline in `app/static/dashboard.js`, because the node serves exactly three
-static files and nothing else — `dashboard.js`, `dashboard.css`, `index.html`. The twelve sections
-shipped there are the reference for the shape above. Serving a pack's own `dashboard.js` — so a
-pack could carry its section as a file the node loads rather than code merged into the shell —
+Today a section lives inline in `app/static/dashboard.js`, because the node serves a fixed list of
+static files by name and nothing else — `index.html`, `dashboard.js`, three stylesheets, two SVGs, two
+JSON files and the fonts. The twenty-four sections shipped there are the reference for the shape
+above. Serving a pack's own `dashboard.js` — so a pack could carry its section as a file the node loads rather than code merged into the shell —
 needs a route the node does not have yet. That is the next phase, not this one. Proposing a section
 back today is sending the file with its `render()` and its `notes()`.
 
@@ -171,6 +171,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | pack | kind | issue | what |
 |---|---|---|---|
 | air-quality | data | air | PM2.5 rules (inside/outside, spikes), cells |
+| xiaomi-air | code | air | Xiaomi / Mi Home purifiers read on the LAN over miio/MIoT: PM2.5, temperature, humidity, filter life, indoor |
 | heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
 | nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
@@ -180,6 +181,7 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | cold-start | data | air (`modelled_air_today`, `sensor_vs_model`), heat (`hotter_than_normal`) | day one with no hardware: modelled air, normals |
 | open-data-health | data | — the loop and the Index | a CKAN portal's maintenance state → Governance\|City |
 | coast | code | coast | waves, swell, sea temperature (Open-Meteo Marine, key-free) |
+| posidonia | data | coast | thermal stress on the Posidonia seagrass meadow, from the sea temperature `coast` fetches; written for Menorca |
 | earth-engine | code | — Dynamic World, Sentinel-2, VIIRS | tree cover, built-up, NDVI, night lights (Google Earth Engine) |
 | earth | code | land | this node's own copy of the AlphaEarth embeddings: the land change computed here, and a picture of the place for every year |
 | place | code | — the ground, its own band | what is around the node from OpenStreetMap, in PostGIS: buildings, shops, schools, clinics, roads, green, walking distances |

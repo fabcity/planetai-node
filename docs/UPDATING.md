@@ -20,8 +20,7 @@ update, **that is the node doing its job** — it means the download was not sig
 right response is to stop, not to work around it.
 
 ```
-xx this download is not signed by the PLANETAI release key. Nothing was installed and nothing on this
-   machine changed.
+xx this download is not signed by the PLANETAI release key. Nothing was installed and nothing on this machine changed.
 ```
 
 Nothing on the machine changed when you see that. Try once more, in case you were on a captive-portal wifi that served
@@ -47,8 +46,8 @@ doctor` will show that the node took one.
 
 ## If it fails
 
-**`git pull failed`**: usually `.DS_Store`. `find . -name .DS_Store -delete`, then update again. If you edited files in
-the node folder, `git stash`.
+**`git pull failed`**: local changes. The update clears `.DS_Store` itself before it pulls, so if you edited files in
+the node folder, `git stash`, then update again.
 
 **`backup failed — not updating`**: the update refused on purpose. `planetai backup` alone shows why; `planetai storage`
 shows where it is trying to write.
@@ -59,15 +58,21 @@ shows where it is trying to write.
 
 ```bash
 git checkout v0.17        # or the tag before
+docker compose build app  # the code is inside the image; a restart alone keeps running the new one
 planetai restart
 planetai restore backups/<node>-<date>.sql.gz    # only if the schema went forward and you need the old shape
 ```
+
+A node installed from the tarball has no tags to check out. Point it at an earlier release on the mirror (below) and
+update: `PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/<tag> planetai update`. The same
+checksum and signature checks apply.
 
 ## Testers without repository access
 
 `update` downloads `planetai.fab.city/node0/get/planetai-node.tar.gz`, checks its checksum and its signature, and
 unpacks over the folder keeping `.env`, backups, exports and packs. Publish a new one with `tools/release.sh`, which
-builds it, signs it, commits it in the site repo, deploys, and mirrors the same three files to a GitHub Release.
+builds it, signs it, commits it in the site repo, deploys, and mirrors the same three files, with `VERSION`, to a
+GitHub Release.
 
 ### Reading from the mirror instead
 
@@ -75,9 +80,11 @@ Every release is published twice, from the same bytes with the same signature. `
 other copy — the site serves the files under `/get`, a GitHub Release serves them flat, and the same stub reads either:
 
 ```bash
-PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/v0.60 \
+PLANETAI_GET=https://github.com/fabcity/planetai-node/releases/download/<tag> \
   bash -c "$(curl -fsSL planetai.fab.city/install)"
 ```
+
+`<tag>` is the release you want, `v0.72.1` for example. The first signed release is v0.61; v0.60 never shipped.
 
 Useful when the site is unreachable, and useful when you would rather fetch from somewhere with a history anyone can
 read. The signature is what makes the two copies the same artefact rather than two things that look alike.

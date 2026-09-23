@@ -20,6 +20,8 @@ git rev-parse "v${V}" >/dev/null 2>&1 && die "tag v${V} already exists"
 # steps tag and push. Discovering a missing key after `git push --tags` leaves a public tag naming a
 # release nobody can publish.
 tools/ship.sh --check-key || exit 1
+# The docs site is rebuilt by ship.sh too, and needs the markdown package. Same reason, same place.
+tools/ship.sh --check-docs || exit 1
 
 # And the site repo, for exactly the same reason as the key above. ship.sh refuses to publish into a
 # site repo that has uncommitted work of its own — "I will not sweep them into a release" — but it
@@ -29,9 +31,9 @@ tools/ship.sh --check-key || exit 1
 # site repo mid-rebuild from a parallel session.
 SITE_="${PLANETAI_SITE_REPO:-../planetai}"
 if [[ -d "$SITE_/.git" ]]; then
-  OTHER_="$(git -C "$SITE_" status --porcelain -- . ':(exclude)node0/get' | head -5)"
+  OTHER_="$(git -C "$SITE_" status --porcelain -- . ':(exclude)node0/get' ':(exclude)docs' | head -5)"
   [[ -z "$OTHER_" ]] || { printf '%s\n' "$OTHER_" >&2
-    die "the site repo ($SITE_) has uncommitted work that is not node0/get, so ship.sh will refuse
+    die "the site repo ($SITE_) has uncommitted work that is not node0/get or docs/, so ship.sh will refuse
    to publish — and it refuses AFTER this script has tagged and pushed. Deal with those first."; }
 fi
 

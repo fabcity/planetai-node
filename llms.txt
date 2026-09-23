@@ -40,7 +40,7 @@ the files themselves.
 - [docs/sensors.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/sensors.md): every sensor the node can read, how it finds them, and what each one is good for.
 - [docs/DOMAINS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/DOMAINS.md): air, heat, coast, land and place — what each domain measures and where its thresholds come from.
 - [docs/COVERAGE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/COVERAGE.md): how much of a place a node can honestly claim to see, and how that is computed.
-- [docs/GUI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/GUI.md): the dashboard's four views and what each one is for.
+- [docs/GUI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/GUI.md): the dashboard's six views and what each one is for.
 
 ## Extending it
 
@@ -75,7 +75,7 @@ the files themselves.
 - [docs/HANDOFF_dashboard_violations.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_dashboard_violations.md): the dashboard's design rules and the checker that enforces them.
 - [docs/HANDOFF_earth_pack.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_earth_pack.md): the satellite view of the land, and what it can and cannot say.
 - [docs/HANDOFF_nearby_forecast.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_nearby_forecast.md): the ring of neighbouring stations and the forecast beside it.
-- [docs/HANDOFF_reports.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_reports.md): the morning brief and the other scheduled messages.
+- [docs/HANDOFF_reports.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_reports.md): the scheduled report, written by the node itself, and the other messages.
 - [docs/HANDOFF_trust.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_trust.md): how the node says how much to trust a number.
 
 ## Optional

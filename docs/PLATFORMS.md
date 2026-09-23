@@ -120,7 +120,7 @@ arm64 one kept all 16 tables, its geometry, its GiST index answers and its text 
 `bt_index_check`.
 
 The other three images the node can pull were already multi-arch: `python:3.12-slim` (the app's base),
-`eclipse-mosquitto:2` (the `mqtt` profile), `ipfs/kubo:latest` (the `ipfs` profile).
+`eclipse-mosquitto:2` (the `mqtt` profile), `ipfs/kubo:v0.43.0` (the `ipfs` profile).
 
 **Why not a Dockerfile of our own**, which would be better on every other count: `FROM postgres:16` plus
 PGDG's `postgresql-16-postgis-3` builds in two lines and runs — and it is Debian, so glibc, while the image
@@ -196,8 +196,8 @@ the database volume after the 4,476-row bootstrap (92 days of CAMS plus NASA POW
 
 **There is no `PROFILE=lite`, because there is nothing to take out.** A quarter of a gigabyte and under 5 % of
 a core is already the lean configuration, and the one heavy thing a node can run — a local language model — is
-opt-in behind `planetai agent local`, lives on the host rather than in a container, and is simply not installed
-until someone asks for it. Containers on macOS get CPU only, on Intel and on Apple Silicon alike; that matters
+opt-in: `planetai agent local` recommends one and downloads nothing, `planetai agent local pull <tag>` fetches
+it, and it lives on the host rather than in a container. Containers on macOS get CPU only, on Intel and on Apple Silicon alike; that matters
 for `planetai agent local` and for nothing else here.
 
 ## Any of them
@@ -217,5 +217,6 @@ planetai preflight                                    # on a node
 planetai preflight --json                             # to paste into an issue
 ```
 
-It prints one table: OS, architecture, memory, free disk, container runtime, egress and ports. Every failing row
+It prints one table: OS, architecture, memory, free disk, whether the disk can be written to, container
+runtime, python3, egress and ports. Every failing row
 carries the one command that fixes it *on that machine*, and it never asks a question.

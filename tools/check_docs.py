@@ -27,8 +27,13 @@ errs: list[str] = []
 # A skill is a document that tells somebody to run things, so it is held to the same gates as a doc:
 # a command it names must dispatch, a path it names must exist. That is the whole point of writing
 # them here rather than in a prompt somebody pastes.
+# docs/site/ is the source of planetai.fab.city/docs. It was outside this list until v0.72.1, which is
+# how its pages fell fifteen releases behind the node with every gate green. Its links are by page
+# name (`api.md`, `platforms.md`) and resolve through tools/build_docs.py's NAV, so the link check
+# here skips them; `build_docs.py --check` (also in `make lint`) is the one that knows the site's map.
+SITE = sorted(f for f in glob.glob("docs/site/*.md") if not f.endswith("STYLE.md"))
 DOCS = sorted(glob.glob("*.md") + glob.glob("docs/*.md") + glob.glob("packs/*/README.md")
-             + glob.glob("skills/*/SKILL.md"))
+             + glob.glob("skills/*/SKILL.md") + SITE)
 SKILLS = sorted(os.path.basename(os.path.dirname(f)) for f in glob.glob("skills/*/SKILL.md"))
 CLI = open("bin/planetai").read()
 MAIN = open("app/main.py").read()
@@ -79,6 +84,16 @@ PROPOSED = {
     # the spec itself makes: tests/test_rho.py lands with Phase 2's code and deletes this line.
     "docs/SPEC_rho.md": {"tests/test_rho.py"},
 }
+# Names a page uses on purpose that are not the tree's: a page saying a command does NOT exist, the
+# reticulum bridge's own routes, the worked example a reader builds. Same shape as PROPOSED, and the
+# same obligation: an entry whose name comes to exist is deleted by the release that makes it.
+ALLOWED = {
+    "docs/site/cli.md": {"publish"},                    # "There is no `planetai publish` ..."
+    "docs/site/configuration.md": {"/send"},            # the Reticulum bridge's route, not the app's
+}
+# names used as examples of packs someone might write, not packs that ship
+EXAMPLE_PACKS = {"_test", "my-pack", "monsoon", "monsoon-bali", "air-", "water", "example",
+                 "acme-sensor", "air", "yourplace", "district", "id", "my-room"}
 for _doc, _names in PROPOSED.items():
     if not os.path.exists(_doc):
         errs.append(f"check_docs.py: PROPOSED names {_doc}, which is gone — delete the entry")
@@ -89,7 +104,7 @@ for _doc, _names in PROPOSED.items():
 
 for doc in DOCS:
     text = open(doc).read()
-    proposed = PROPOSED.get(doc, set())
+    proposed = PROPOSED.get(doc, set()) | ALLOWED.get(doc, set())
     body = re.sub(r"```.*?```", lambda m: m.group(0) if "planetai " in m.group(0) or "docs/" in m.group(0) else "", text, flags=re.S)
 
     # `planetai <cmd>` at a command position: after a backtick, a prompt, or the start of a line — not
@@ -100,7 +115,7 @@ for doc in DOCS:
         if cmd not in CMDS and cmd not in proposed:
             errs.append(f"{doc}: mentions `planetai {cmd}`, which the CLI does not dispatch")
 
-    for link in set(re.findall(r"\]\((?!https?:|#|mailto:)([^)#]+)", text)):
+    for link in set() if doc in SITE else set(re.findall(r"\]\((?!https?:|#|mailto:)([^)#]+)", text)):
         target = os.path.normpath(os.path.join(os.path.dirname(doc), link))
         if not os.path.exists(target):
             errs.append(f"{doc}: link to `{link}` does not exist")
@@ -117,6 +132,8 @@ for doc in DOCS:
             continue
         if p in proposed or path in proposed:
             continue
+        if re.match(r"packs/([a-z0-9_-]+)/", path) and re.match(r"packs/([a-z0-9_-]+)/", path).group(1) in EXAMPLE_PACKS:
+            continue
         if not os.path.exists(p) and not glob.glob(p):
             errs.append(f"{doc}: names `{path}`, which does not exist")
 
@@ -128,15 +145,12 @@ for doc in DOCS:
 
     for ep in set(re.findall(r"`(/[a-z_]{3,})`|GET (/[a-z_]+)|POST (/[a-z_]+)", text)):
         ep = next((x for x in (ep if isinstance(ep, tuple) else (ep,)) if x), None)
-        if ep and ep not in ENDPOINTS and ep.count("/") == 1 and not os.path.exists(ep.lstrip("/")):
+        if ep and ep not in ENDPOINTS and ep not in proposed and ep.count("/") == 1 and not os.path.exists(ep.lstrip("/")):
             if ep in ("/health", "/sensors", "/readings", "/stats", "/alerts", "/cells", "/rho", "/packs",
                       "/actions", "/aggregates", "/observations", "/send", "/install"):
                 errs.append(f"{doc}: documents endpoint `{ep}`, which app/main.py does not define")
 
     for pk in set(re.findall(r"`packs/([a-z0-9-]+)/", text)) | set(re.findall(r"\bpacks/([a-z0-9-]+)\b", text)):
-        # names used as examples of packs someone might write, not packs that ship
-        EXAMPLE_PACKS = {"_test", "my-pack", "monsoon", "monsoon-bali", "air-", "water", "example",
-                         "acme-sensor", "air", "yourplace", "district", "id"}
         if pk not in PACKS and pk not in EXAMPLE_PACKS:
             errs.append(f"{doc}: refers to pack `{pk}`, which does not exist")
 

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **The docs site cannot fall behind the node again without a gate saying so.** It did: from v0.57 to
+  v0.72.1, fifteen releases, `planetai.fab.city/docs` described a node nobody was running, and every
+  check stayed green because none of them read `docs/site/`. Three changes. `tools/check_docs.py` now
+  reads those pages for the commands, settings, paths and endpoints they name, like every other doc.
+  `tools/build_docs.py --check`, in `make lint`, renders every page and fails on a NAV source that is
+  gone, a page NAV never lists, a link to no page and an anchor to no heading; CI installs `markdown` so
+  it never skips there. And `tools/ship.sh` rebuilds the site from the commit it ships and commits it
+  beside the tarball, so a release carries its own documentation. `SHIP_WITHOUT_DOCS=1` skips that on
+  purpose; `release.sh` asks `ship.sh --check-docs` before it tags, for the same reason it asks about the
+  signing key.
+- **The pages the site takes as they are from `docs/` and the root were read against the code too**,
+  after `docs/site/` was: UPDATING's rollback now rebuilds the image it rolls back to, STORAGE says the
+  backup token comes from `planetai ui`, COVERAGE shows node #1's real cells, PACK_IDEAS marks the three
+  that were built, and README, START_HERE, AGENTS, SPEC and ARCHITECTURE lose the counts and names that
+  had gone stale (four views, fourteen packs, Set up → Model, `X-Agent` on every write tool).
 - **The cell numbers say what a node could actually use.** A cell now carries three counts —
   `capable`, `reviewed`, `candidate` — counted from each source's `feeds_cells` rather than from
   where it happens to be filed, and no `deprecated`, `stale`, `paywalled` or `planned` source counts

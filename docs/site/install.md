@@ -152,8 +152,8 @@ Seven named steps, each printing its elapsed time and a heartbeat at least every
 7. **Checks.** Modules in the image, database healthy, app answering, Telegram set, `backup.sh` executable.
 
 Then it installs the nightly backup in your crontab (`17 3 * * *`), and, unless `--no-bootstrap`, the first
-start pulls about 2,200 rows of history for your coordinates (92 days of the Copernicus air model and NASA
-POWER's monthly normals), so `planetai status` has something to say within minutes. The installer prints one
+start pulls about 4,500 rows of history for your coordinates (92 days of hourly PM2.5 and PM10 from the
+Copernicus air model, and NASA POWER's monthly normals), so `planetai status` has something to say within minutes. The installer prints one
 line you can paste into an issue:
 
 ```

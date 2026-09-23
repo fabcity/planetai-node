@@ -18,7 +18,7 @@ ship too. Water, energy, noise and more are a folder of rules each.
 the city's open data, the satellite model overhead. The gap between them is the signal no map has.
 
 **Alerts you can act on.** Not "PM2.5 is 42." What is happening, what it means for the people in the house, and what to
-do. "Inside is worse than outside. Something is cooking or burning. Open a window." English or Bahasa Indonesia.
+do. "Inside is worse than outside. Something is cooking or burning. Open a window." English, Bahasa Indonesia or Spanish.
 
 **A dashboard that reads like a sentence.** "Falling to 9 micrograms, under the street, under the model, under the line."
 Then the day as a chart, every source with a note, the sea, the land, the weather. On your phone or on a screen on the wall.
@@ -71,7 +71,7 @@ planetai test-alert    # a real alert arrives on your phone within a minute
 planetai ui            # the dashboard's address, and the token for its settings pages
 ```
 
-Open the dashboard. Set up → Sources is where you add or change sensors. Set up → Model is where the bot's brain lives.
+Open the dashboard. Set up → Sources is where you add or change sensors. Set up → Agent is where the bot's brain lives.
 
 When an alert arrives that you act on, tell the node: with the button on the dashboard, with `planetai act 12` in the
 terminal, or by replying `/act 12 closed the windows` in Telegram once the bot runs (`planetai agent local`, below). The node keeps one score for itself: how many of its alerts led to someone doing something. That number is
@@ -80,11 +80,12 @@ called ρ, and it is the only one on the page that comes from a person.
 ## Talk to it
 
 ```bash
-planetai agent local   # installs Ollama and a small model on this machine; the bot answers from now on
+planetai agent local              # installs Ollama and starts the bot; it recommends a model and downloads none
+planetai agent local pull <tag>   # downloads that model; the bot answers with it from then on
 ```
 
 Then message your bot: "how is the air?", "how big is the swell?", "is the node healthy?". With a laptop or workstation
-on your network running a bigger model, set its address under Set up → Model and the bot uses that when it can reach it.
+on your network running a bigger model, set its address under Set up → Agent and the bot uses that when it can reach it.
 
 ## Everyday
 
@@ -98,7 +99,7 @@ planetai storage     where the data is, where the copies go
 
 `planetai` on its own lists the rest: mesh radios, Home Assistant, packs, IPFS, restore.
 
-A good week looks like this: a short note from the bot each morning, a handful of alerts rather than dozens, one or two
+A good week looks like this: a short report every six hours, a handful of alerts rather than dozens, one or two
 that changed what you did, and a fresh file in `backups/`. Dozens of alerts a day means the thresholds are wrong for
 your place; tell us which ones.
 
@@ -119,7 +120,7 @@ matters. It does not need the internet to keep working, only to send you message
 | `port is already in use` | `planetai config set APP_PORT 8081` — it writes `.env` and offers the restart. |
 | No alerts at all | Normal when the air is fine. `planetai test-alert` proves the path works. |
 | Alerts every few minutes | Thresholds wrong for your place. Tell us. |
-| A sensor shows nothing | `planetai sensors`. A Smart Citizen kit must be publishing; an AirGradient must be on the same network. |
+| A sensor shows nothing | `planetai sensors`. A Smart Citizen kit must be publishing; an AirGradient is not polled in this version (`sensors.md`). |
 | Telegram says nothing | Message the bot first; a bot cannot start a conversation. Then `planetai telegram` again. |
 | The bot does not answer | `planetai logs agent`. The first lines say whether Telegram is set and which model it found. |
 | Stopped after a power cut | The computer must boot and log in on its own. On a Mac: Login Items, and Energy → start after power failure. |

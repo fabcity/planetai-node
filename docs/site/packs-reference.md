@@ -1,7 +1,7 @@
 # Packs that ship
 
 Eighteen folders under `packs/` in v0.72.1: ten data packs and eight code packs. Between them they hold
-everything the node knows about a place. Nothing in `app/` knows what PM2.5 is, what a hot night is, where
+everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
 the nearest workshop are all in here, as SQL and YAML, and in eight cases as an adapter too. How a pack is
 built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.72.1.
@@ -36,9 +36,8 @@ That is 29 rules with a message, 4 report contributors and 13 cells. Every rule 
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
 
-> **Note.** `docs/PACKS.md` still says "Node #1 runs twelve". The folder holds eighteen: `posidonia` is
-> Menorca's, `example-cooking-hours` is the worked example, and `season`, `xiaomi-air`, `thingdata` and
-> `make` arrived in v0.61 and v0.65.
+> **Note.** `posidonia` is Menorca's, `example-cooking-hours` is the worked example, and `season`,
+> `xiaomi-air`, `thingdata` and `make` arrived in v0.61 and v0.65.
 
 ## air-quality
 

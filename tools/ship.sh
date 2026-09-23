@@ -3,6 +3,11 @@
 #   tools/ship.sh              rebuild the tarball, commit it in the site repo, deploy the site
 #   tools/ship.sh --no-deploy  everything except the deploy
 #   tools/ship.sh --check      say only whether the site is behind main, and exit 1 if it is
+#   tools/ship.sh --check-docs say only whether this machine can build the docs site
+#
+# The docs at planetai.fab.city/docs are rebuilt here too, from the same commit as the tarball, and go
+# into the site repo in the same commit. They were a separate step until v0.72.1, and nobody took it
+# for fifteen releases: the site described v0.57 while testers ran v0.72.
 #
 # A merge is not a release. `/install` and `/preflight` are stubs that fetch the current file from this
 # repository on every run, so those two are never stale — but `install.sh` and `bin/planetai` reach a
@@ -95,9 +100,24 @@ sign_tarball() {
   say "signed, and the signature verifies against tools/allowed_signers"
 }
 
+# The docs build needs the `markdown` package, which a node never has and a Mac's own python3 does not
+# either. Find an interpreter that has it rather than asking somebody to remember which one it is.
+docs_python() {
+  local p
+  for p in python3 /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+    command -v "$p" >/dev/null 2>&1 && "$p" -c 'import markdown' 2>/dev/null && { printf '%s' "$p"; return 0; }
+  done
+  return 1
+}
+NODOCS_MSG="no python3 on this machine has the markdown package, so the docs site cannot be rebuilt
+   and planetai.fab.city/docs would go on describing the last release. Install it once:
+     python3 -m pip install --user markdown
+   Or ship without the docs, deliberately, and rebuild them after with make docs:
+     SHIP_WITHOUT_DOCS=1 make ship"
+
 SITE="${PLANETAI_SITE_REPO:-../planetai}"
-DEPLOY=1; CHECK=0; KEYCHECK=0
-for a in "$@"; do case "$a" in --no-deploy) DEPLOY=0;; --check) CHECK=1;; --check-key) KEYCHECK=1;; *) die "unknown flag $a";; esac; done
+DEPLOY=1; CHECK=0; KEYCHECK=0; DOCSCHECK=0
+for a in "$@"; do case "$a" in --no-deploy) DEPLOY=0;; --check) CHECK=1;; --check-key) KEYCHECK=1;; --check-docs) DOCSCHECK=1;; *) die "unknown flag $a";; esac; done
 
 HERE="$(git describe --tags --always)"
 # Absolute, resolved before the fast-forward can rewrite anything, so the re-exec below does not depend on
@@ -111,6 +131,16 @@ if [[ $KEYCHECK -eq 1 ]]; then
     exit 0
   fi
   signing_key >/dev/null && say "signing key present, and it matches tools/allowed_signers"
+  exit 0
+fi
+
+if [[ $DOCSCHECK -eq 1 ]]; then
+  if [[ "${SHIP_WITHOUT_DOCS:-0}" == 1 ]]; then
+    printf '\033[1;33m!!\033[0m SHIP_WITHOUT_DOCS=1: this release will not rebuild planetai.fab.city/docs.\n' >&2
+    exit 0
+  fi
+  PY="$(docs_python)" || die "$NODOCS_MSG"
+  say "the docs site can be built here ($PY)"
   exit 0
 fi
 
@@ -247,16 +277,28 @@ say "building the tarball at ${HERE}"
 tools/bundle.sh "$SITE/node0/get"
 sign_tarball "$SITE/node0/get/planetai-node.tar.gz"
 
-# The site repo may hold work of its own. Only ever touch node0/get, and refuse if anything else is dirty.
-OTHER="$(git -C "$SITE" status --porcelain -- . ':(exclude)node0/get' | head -5)"
+# The docs, from the same commit. `make lint` has already refused a page with a broken link or anchor
+# (build_docs.py --check); this only renders. Into the site repo's docs/, which holds nothing else.
+if [[ "${SHIP_WITHOUT_DOCS:-0}" == 1 ]]; then
+  printf '\033[1;33m!!\033[0m SHIP_WITHOUT_DOCS=1: the docs site was not rebuilt. It still describes the last release it was built for.\n' >&2
+else
+  PY="$(docs_python)" || die "$NODOCS_MSG"
+  "$PY" tools/build_learn.py --check >/dev/null || die "app/static/learn.json is not what docs/site says. make learn, commit, then ship."
+  "$PY" tools/build_docs.py --out "$SITE/docs" >/dev/null || die "the docs site did not build. $PY tools/build_docs.py --check says why."
+  say "docs site rebuilt at ${HERE}"
+fi
+
+# The site repo may hold work of its own. Only ever touch node0/get and docs/, and refuse if anything
+# else is dirty.
+OTHER="$(git -C "$SITE" status --porcelain -- . ':(exclude)node0/get' ':(exclude)docs' | head -5)"
 [[ -z "$OTHER" ]] || { printf '%s\n' "$OTHER" >&2; die "the site repo has other uncommitted changes. Deal with those first; I will not sweep them into a release."; }
-if [[ -n "$(git -C "$SITE" status --porcelain -- node0/get)" ]]; then
-  say "committing the tarball into the site repo"
-  git -C "$SITE" add node0/get
-  git -C "$SITE" commit -q -m "node0/get: tester tarball at ${HERE}"
+if [[ -n "$(git -C "$SITE" status --porcelain -- node0/get docs)" ]]; then
+  say "committing the tarball and the docs into the site repo"
+  git -C "$SITE" add node0/get docs
+  git -C "$SITE" commit -q -m "node0/get + docs: tester tarball and docs site at ${HERE}"
   git -C "$SITE" push -q origin HEAD
 else
-  say "the site repo already has this tarball"
+  say "the site repo already has this tarball and these docs"
 fi
 
 # A second copy of the same bytes, somewhere with a provenance trail. planetai.fab.city is one Cloudflare

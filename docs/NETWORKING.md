@@ -11,7 +11,7 @@ Three layers, each doing one thing.
 ## Tailscale
 
 `planetai mesh` installs the client and joins the tailnet under the node's name. No open ports; the node is reachable
-as `<name>.ts.net` from any of your devices. `PARENT_API_URL` becomes a tailnet hostname when a district node exists.
+as `<name>.<tailnet>.ts.net` from any of your devices. `PARENT_API_URL` becomes a tailnet hostname when a district node exists.
 Tailscale SSH is Linux-only. On a Mac, ordinary `ssh` over the tailnet, with Remote Login on.
 
 Headscale, self-hosted, is the recorded exit if a partner's governance forbids a third-party coordinator. Swap the login
@@ -28,7 +28,9 @@ A LoRa frame is about 200 bytes, a few a minute. Telemetry and one-line alerts, 
 ## Reticulum
 
 The bridge container gives the node an LXMF address. Inbox: `act <id>` from Sideband records an action. Outbox: alerts
-to `RETICULUM_ALERT_DESTINATIONS`. TCP today; an RNode LoRa interface is a commented block in `config/reticulum/config.tpl`.
+to `RETICULUM_ALERT_DESTINATIONS`. Presence, only with `RETICULUM_PRESENCE=1`: every half hour it announces the node's
+name and its H3 cell rounded up to `RETICULUM_PRESENCE_RES` (3 by default, never finer than 6). TCP today; an RNode LoRa interface is a commented block in
+`config/reticulum/config.tpl`.
 Node-to-node data over Reticulum returns when a district and a community node have no internet between them (SPEC §6).
 
 ## What connects to what

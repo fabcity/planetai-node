@@ -105,9 +105,10 @@ decides what it keeps.
 Exactly the `FCI Observations` row. Every instance exposes `GET /cells`. The Index surface (or the aggregator above)
 pulls them. Provenance `state` travels end to end and is never upgraded on the way.
 
-**Actions**: `{alert_id, stage: acknowledged|acted|measured, ts, note}` via `POST /actions`. This is how ρ is
-measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`). Five FCC-era
-stages collapse to these four at an address; `fabricate` appears between decide and act when the action is a part.
+**Actions**: `{alert_id, stage: acknowledged|decided|acted, ts, note}` via `POST /actions`. This is how ρ is
+measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`, derived by the
+node and never posted). `decided` is a record and enters no ρ. Five FCC-era stages collapse to these four at an
+address; `fabricate` appears between decide and act when the action is a part.
 
 **Read API** (the Observe contract): `GET /sensors /readings /stats /aggregates /alerts /cells /rho /health`, plus
 `GET /report/latest` (the last report the node wrote) and `GET /report/bundle?hours=` (every number it was written
@@ -187,9 +188,9 @@ address running a node is a ρ instrument. That's the H0-A hypothesis reduced to
 
 Not a roadmap. Each stage names what exists, what it proves, and the trigger for the next.
 
-**Stage 0: now.** One node, two containers by default (a broker and a Reticulum bridge are optional profiles),
-Sense: adapters across sensor, portal, model and map classes, in the core and in packs. Observe: Postgres, hourly view,
-read API. Act: two domain-blind core rules plus whatever the loaded packs contribute — fourteen pack folders ship: to
+**Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge, the local model's loop and IPFS
+are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
+Observe: Postgres, hourly view, read API. Act: two domain-blind core rules plus whatever the loaded packs contribute — eighteen pack folders ship: to
 Telegram, the mesh, and Home Assistant; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.
@@ -218,7 +219,8 @@ No raw readings leave the instance that recorded them. No cell is upgraded from 
 aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to function.
 No scale is skipped: a city aggregator is built from nodes, not declared from above.
 
-The node's page is three static files served from `app/static/` and stays so — no framework, no build step,
-nothing loaded from anywhere else, because a node serves it to a household network that may have no route out.
+The node's page is `index.html` and a fixed list of companion files served by name from `app/static/`, and stays
+so — no framework, no build step, nothing loaded from anywhere else, because a node serves it to a household network
+that may have no route out.
 `planetai.fab.city` may use a framework; the two never share code, and both read the programme layer, which is
 published as [`docs/site/design.md`](docs/site/design.md).

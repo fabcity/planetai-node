@@ -27,7 +27,7 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 
 **Cells.** `fci-cells-v0`: `{city, cell:"Pillar|Scale", value, unit, source, observed_at, state}`. Exactly the `FCI Observations` row (base `appmNQaDGEFE9VcYh`). `state` is never upgraded by aggregation.
 
-**Actions.** `{alert_id, stage: acknowledged|acted|measured, actor, note}`. ρ is computed from these against `alerts`. This is the only place ρ can be measured, so this table is the Index's instrument, not an app feature.
+**Actions.** `{alert_id, stage: acknowledged|decided|acted, actor, note}`. ρ is computed from these against `alerts`; `decided` enters no ρ, and `measured` is derived by the node, never posted. This is the only place ρ can be measured, so this table is the Index's instrument, not an app feature.
 
 **Scale vocabulary.** `community | city | region | bioregion | planet`: the Full Stack Metrics Framework's scales. A node has one. It's metadata, not code.
 
@@ -35,16 +35,16 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 
 | | |
 |---|---|
-| `db` | postgres:16-alpine. Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
-| `app` | Python 3.12. Three timer threads (poll, rules, push) + FastAPI on :8080. ~210 lines. |
+| `db` | `imresamu/postgis:16-3.4-alpine` (Postgres 16 and PostGIS 3.4, for amd64 and arm64). Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
+| `app` | Python 3.12. Four timer threads (poll, rules, and the aggregates and events pushes) + FastAPI on :8080. `app/main.py` is ~2,080 lines. |
 
 `GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 
-Compute at node #1: an M-series Mac. Postgres and one Python process idle at under 200 MB. A Pi 4 with 2 GB does this without noticing.
+Compute at node #1: an M-series Mac. Postgres and one Python process idle at about 230 MiB. No Pi has run a node yet; `docs/PLATFORMS.md` says what one would need.
 
 ## 3. Sources (adapters)
 
-An adapter is a function returning `(sensors, readings)`. Two ship; see `docs/sensors.md` for the next four.
+An adapter is a function returning `(sensors, readings)`. Two are described here; `docs/sensors.md` has the rest.
 
 - `smartcitizen`: polls `api.smartcitizen.me/v0/devices/<id>`. Maps on measurement *name* so SCK 2.1 and 2.3 both work. Marks `indoor` from the kit's `exposure`. `local = TRUE`.
 - `baliairdispatch`: polls `baliairdispatch.com/api/v1/latest`. Drops `stale`, `suspected_indoor` and `suspected_malfunctioning`, keeps stations within `BAD_RADIUS_KM`, and excludes this node's own hardware three ways (ids it polls, `BAD_MIN_SEPARATION_M`, `BAD_EXCLUDE`) plus one device arriving under two networks' ids. Stores `pm25` and `pm25_raw`. `local = FALSE`, always. Attribution: Bali Air Dispatch + the row's network.
@@ -74,7 +74,7 @@ and a written migration.
 ## 6. Staged upgrades: retired pieces and their triggers
 
 Each was built, audited, and cut on 2 September 2026. None is lost; each returns on its named condition, not on a
-roadmap. Four triggers have since fired, and they are struck through below rather than deleted, so the record of
+roadmap. Six triggers have since fired, and they are struck through below rather than deleted, so the record of
 what was deferred and why stays legible.
 
 | piece | returns when | what it looks like |
@@ -86,14 +86,14 @@ what was deferred and why stays legible.
 | **Reticulum** node-to-node data transport | a district and a community node with no internet between them | Transport-enabled node + store-and-forward; see `docs/NETWORKING.md §3` |
 | **Node registry service + signed handshake** | `registry.json` PRs stop scaling: roughly 30 nodes or a second operator org | FastAPI + SQLite, Ed25519 identity, human approval |
 | **Federated learning (Flower)** | a model exists whose parameters can't be averaged by the hourly push, *and* the sovereignty claim is being examined by someone outside the team | self-hosted SuperLink at the district, SuperNodes at hubs; FedAvg first, FedProx when climates diverge |
-| **Local LLM (Ollama)** | someone asks the node a question the alert doesn't answer | a `/brief` endpoint that turns 24h stats into a paragraph in the local language |
+| **Local LLM (Ollama)** | ~~someone asks the node a question the alert doesn't answer~~ **fired, shipped v0.21**: `planetai agent local` | a `/brief` endpoint that turns 24h stats into a paragraph in the local language |
 | **Edge role / MQTT bridge** | a real network partition between sensors and the hub | a Pi with a broker forwarding upstream |
 | **TimescaleDB** | `readings` passes ~50M rows or `stats` takes over a second | swap the image, `create_hypertable`, the SQL is already compatible |
 | **A loopback-only node** (`SHARE_LEVEL=none`) | a node is on a network its household does not trust, *and* it can afford to lose the NAS pull, the phones, Home Assistant and MCP — all four of which read over the LAN | a third level, opted into, never a default; the socket keeps binding `0.0.0.0` and the middleware answers nothing without a token |
-| **Telegram reply → action** | the first operator who says "I did it" in the chat instead of curl | a 20-line webhook that maps a reply to `#<alert_id>` into `POST /actions` |
+| **Telegram reply → action** | ~~the first operator who says "I did it" in the chat instead of curl~~ **fired, shipped v0.21**: `/act <id> <what you did>` to the bot | a 20-line webhook that maps a reply to `#<alert_id>` into `POST /actions` |
 | **Cells → Airtable / index.fab.city** | the Index surface wants to pull from a node rather than read Airtable | aggregator (or a cron) pushes `GET /cells` rows into `FCI Observations`; states preserved |
 | **Upstream model / compute** | a rule or brief needs inference a Pi can't do | `UPSTREAM_MODEL_URL` (OpenAI-compatible) / `UPSTREAM_COMPUTE_URL`. Removed from `.env.example` in v0.9 because no code reads them: the names are the contract, the settings return with the code that uses them |
-| **Separate notifier service** | a second channel (WhatsApp Business) with its own auth lifecycle | until then, a function. Note: Telegram, the LoRa mesh, LXMF and Home Assistant are now four channels and all four are still functions in `notify()`. The trigger is an auth lifecycle, not a channel count. |
+| **Separate notifier service** | a second channel (WhatsApp Business) with its own auth lifecycle | until then, a function. Note: Telegram, the LoRa mesh, LXMF and Home Assistant are now four channels and all four are still functions, called from `notify()` and `ha_alert()`. The trigger is an auth lifecycle, not a channel count. |
 | **Artifacts from packs** | ~~-~~ **shipped v0.12**: `out/` is mounted writable and `planetai run <pack> <script>` executes a pack's scripts | `packs/earth-engine/timelapse.py` is the worked example |
 | **A native install, with no container runtime** | the database stops needing PostGIS — either an arm64/SQLite-able `place`, or `place` moved out of the app. Spiked and **dropped 8 September 2026**: `db` is a PostGIS image (`imresamu/postgis:16-3.4-alpine` from v0.63, `postgis/postgis:16-3.4-alpine` before it), and PostGIS is load-bearing outside the pack (`app/main.py:862` serves `/place/geojson` with `ST_AsGeoJSON`, `ST_SimplifyPreserveTopology` and `ST_DWithin` on a geography), so a native node is a SQL port, not a packaging change | uv-managed venv + launchd/systemd. Costed at 5–8 days plus a migration for the live nodes and a permanent second SQL dialect across 85 call sites, 17 psycopg importers, `config/rules.yml` and both lint gates. Not worth it while Colima installs with one command on every macOS ≥ 13.5 |
 | **`place` as an optional pack, and the plan view with it** | a machine that must run a node and cannot run PostGIS — an arm64 database image (a Pi), or an operator who does not want the plan view. **Approved in principle 8 September 2026, not built**: with the native path dropped, nothing calls for it | `/place/geojson` returns 410 and the dashboard says which card is absent and why, the way it already does for a missing source |

@@ -40,7 +40,7 @@ key and saves its URL; every later run imports it:
 tools/mesh-provision.sh /dev/cu.usbmodem1101 "Subak edge"    SBK SENSOR SG_923 ~/planetai-mesh.url
 tools/mesh-provision.sh /dev/cu.usbmodem1101 "kitchen shelf"  SHF CLIENT SG_923 ~/planetai-mesh.url
 GATEWAY=1 MQTT_ADDR=192.168.4.190:1883 MQTT_PASS=<from planetai meshtastic> WIFI_SSID=<ssid> WIFI_PSK=<pw> \
-  tools/mesh-provision.sh /dev/cu.usbmodem1101 "bayu-2 gateway" GW CLIENT SG_923 ~/planetai-mesh.url
+  tools/mesh-provision.sh /dev/cu.usbmodem1101 "bayu-ungasan gateway" GW CLIENT SG_923 ~/planetai-mesh.url
 ```
 
 Primary matters: radios send telemetry and position on channel 0 only. A private channel added as secondary never

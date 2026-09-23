@@ -163,11 +163,12 @@ the time. Stop both together, as the command in this page's first section does.
 
 ## Running
 
-### `already running a node` when you did not expect it
+### `This machine already runs a node` when you did not expect it
 
 `~/planetai` exists and contains a `VERSION` file or a git checkout, so the installer treats a re-run as
 an update and keeps your `.env` on purpose — that is how your node keeps its name and place across
-updates. If you wanted a genuinely new node, remove the old one first (above). To run a second node
+updates. `planetai setup` then offers to update it, reconfigure it, leave it running or remove it. If you
+wanted a genuinely new node, remove the old one first (that choice, or above). To run a second node
 somewhere else instead:
 
 ```bash

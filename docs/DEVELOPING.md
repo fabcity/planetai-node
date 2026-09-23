@@ -25,7 +25,8 @@ Every gate is a bug that shipped.
 | `check_sql.py` | a comment ate a closing bracket; a missing config Docker replaced with an empty directory; `.DS_Store` committed; `\| grep -q` under pipefail failing a good dump |
 | `check_cli_python.py` | f-strings that crashed on Python 3.9; PyYAML the node does not have; a `for` after a semicolon |
 | `check_rules.py` | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned |
-| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved |
+| `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved. Reads `docs/site/` too since v0.72.1, when the site was found fifteen releases behind |
+| `build_docs.py --check` | the docs site as a site: a NAV source that is gone, a page NAV never lists, a link to no page, an anchor to no heading |
 | `check_ui.py` | an element id the script referenced that was not in the markup |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt` on every lint — including CI and a node, where planetai-design is not checked out and the byte comparison cannot run |
 | `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
@@ -61,9 +62,9 @@ retyping hid the bug.
 ## Releasing
 
 ```bash
-tools/release.sh 0.19      # lint, tag v0.19, push. Needs a `## v0.19` section in CHANGELOG.md.
-tools/bundle.sh            # the tarball the website serves to testers without repo access
-cd ../planetai && make deploy
+PLANETAI_SIGNING_KEY=~/.planetai/release_key tools/release.sh 0.73
+# lint + test, tag v0.73, push, then tools/ship.sh: the signed tarball AND the docs site, from the
+# same commit, into the site repo, and deploy. Needs a `## v0.73` section in CHANGELOG.md.
 ```
 
 ## Agents

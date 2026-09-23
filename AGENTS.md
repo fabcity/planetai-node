@@ -1,6 +1,6 @@
 # Start here: what the person in front of you is asking for
 
-Four situations bring somebody to this repository with an agent. Find theirs in the first column, read
+Six situations bring somebody to this repository with an agent. Find theirs in the first column, read
 that skill, then do the third column. If none of them fits, read the rest of this file — it is written
 for an agent already inside a running node.
 
@@ -28,7 +28,7 @@ led to an action. Your job is to keep it healthy, useful and truthful. This file
 `planetai agent local` puts Ollama on the node and a loop (`app/agent_loop.py`) that answers the household on Telegram
 using these same tools. It downloads no model: it prints the recommendation for the machine's memory and stops, and
 `planetai agent local pull <tag>` fetches one when somebody asks. `docs/MODELS.md` is the catalogue, and its first line
-is that a node needs none of it. The loop appears in the audit trail as `local-model`.
+is that a node needs none of it. The loop appears in the audit trail as `local-model/<rung>`.
 
 **That local model gets `read` and `act` only.** It cannot change a setting, run a pack's code, or make the node
 message the household by itself — `app/tool_classes.py` is the table and `app/agent_loop.py` derives the allow-list
@@ -44,7 +44,8 @@ you they did a thing, record what they told you. If they did not, ask.
 
 **MCP**, from anywhere on the tailnet or from this machine: `http://<node>:8080/mcp`, header
 `Authorization: Bearer <ADMIN_TOKEN>`. Pass your name in every write tool's `agent` argument so the audit trail knows
-who acted (the tools forward it to the API as `X-Agent`; the header on `/mcp` itself is not read). Twenty tools:
+who acted (`act` writes it as the action's `actor`, `settings_set` forwards it to the API as `X-Agent`, and
+`report_now` and `run_pack_script` record no name; the header on `/mcp` itself is not read). Twenty tools:
 `status`, `health_check`, `issues` (how the place is doing, in the household's own words), `sensors`,
 `context` (sea, weather, satellite air, land), `readings`, `report_latest`,
 `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `series`,

@@ -29,8 +29,9 @@ Check the machine is worth it:
 curl -fsSL planetai.fab.city/preflight | bash
 ```
 
-If it prints *"This hardware is a capable node"*, the CPU, the memory and the OS are settled. It does
-not test the disk, which is the next section and the one that matters most on a machine this old.
+If it prints *"This hardware is a capable node"*, the CPU, the memory and the OS are settled. It checks
+that the disk has room and can be written to, not that it survives a long write, which is the next
+section and the one that matters most on a machine this old.
 
 ## 0.5. Test the disk before you trust the machine
 
