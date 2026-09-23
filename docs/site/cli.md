@@ -152,7 +152,7 @@ this node reads yet. The footer says so in the node's words:
 The snapshot at v0.72.1 is `awesome-fabcity-data` at `1010aa0`, 238 entries, synced 2026-09-22. `N` is how many
 of them are filed for your city or for everywhere. The same list is `GET /sources` on [the API](api.md).
 
-On `main` after v0.72.1 (the changelog's Unreleased section), two more lines follow the footer: the three
+Since v0.73 two more lines follow the footer: the three
 counts, summed over every cell or, with `--cell`, for that one cell, and what they mean. The counts are for
 the whole registry whatever the other filters, and are grouped by each entry's `feeds_cells`. At `1010aa0`:
 

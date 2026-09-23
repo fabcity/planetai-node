@@ -100,8 +100,8 @@ shape of an `FCI Observations` row, plus two fields from [the source registry](s
 ```
 
 `registered` is how many registry entries are filed under that cell (four for `Environmental|Community` at
-pin `1010aa0`) and `adapter` whether any of them has code that reads it. On `main` after v0.72.1 (the
-changelog's Unreleased section), `registered` carries the `reviewed` count instead (two for
+pin `1010aa0`) and `adapter` whether any of them has code that reads it. Since v0.73
+`registered` carries the `reviewed` count instead (two for
 `Environmental|Community`), `adapter` is true when `capable` is above 0, and the row adds `reviewed`,
 `candidate` and `capable`, counted from each entry's `feeds_cells`. [The source registry](sources.md) says how.
 
@@ -139,7 +139,7 @@ the copy every node carries is described on [the source registry](sources.md).
 
 `registry.json` in the repository is the node directory until there are too many nodes for a file: `name,
 scale, operator, place, lat, lon, sources, parent, since, contact`. Adding a node is a pull request; approval is
-a merge. It lists one node, under its old name `bayu-2`; the node itself runs as `bayu-ungasan`. A registry
+a merge. It lists one node, `bayu-ungasan`, node #1 in Ungasan. A registry
 service with a signed handshake returns when pull requests stop scaling, roughly thirty nodes or a second
 operator organisation, with its trigger written in [`SPEC.md`](spec.md) §6.
 

@@ -227,8 +227,8 @@ in-custody hourly buckets in 24 hours are fewer than `min_buckets`, or when too 
 report (two where the node has children or is above community scale, one otherwise), and appends
 `have/need hourly buckets` to the note. A `NULL` value omits the cell: absent, not zero. The cell's source is
 recorded as `planetai-node · pack:<id>`, and the core adds one cell of its own, `Governance|<Scale>` =
-[ρ](rho.md). Each row also carries `registered` and `adapter` from [the source registry](sources.md). On
-`main` after v0.72.1 (the changelog's Unreleased section), it also carries `reviewed`, `candidate` and
+[ρ](rho.md). Each row also carries `registered` and `adapter` from [the source registry](sources.md). Since
+v0.73 it also carries `reviewed`, `candidate` and
 `capable`, and `registered` means `reviewed`.
 
 ## Channel roles

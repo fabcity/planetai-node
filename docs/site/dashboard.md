@@ -139,7 +139,13 @@ not four resolutions.
 
 ## The sections
 
-Every section is registered with the page contract: `id`, `pack`, `stage`, `title` and `render` (or `lead`), and optionally `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. The shell draws each one in the stage it belongs to, in the order the loop runs: observe, decide, act, measure.
+Every section is registered with the page contract: `id`, `pack`, `stage`, `title`, `reads` and `render` (or `lead`), and optionally `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. The shell draws each one in the stage it belongs to, in the order the loop runs: observe, decide, act, measure.
+
+`reads` names the routes the band's data comes from, the one it leans on most first. The shell prints them
+beside the band's title, small, in mono and in their own case, as links: `GET /effect` on "Which of these
+worked", `GET /issues` and `GET /actions` on the ledger. Pressing one opens the JSON the band was drawn
+from, with whatever the sharing level allows that browser. `tools/check_ui.py`, in `make lint`, fails a
+section with no `reads` and a route `app/main.py` does not define.
 
 Each stage has a numbered head and a line saying what it holds, so a reader always knows which part of the
 loop they are in. Twenty-four sections are registered, in this order within each stage:
@@ -173,9 +179,13 @@ node's own stations hour by hour, inside and outside apart, in the node's own ti
 before it draws a day (`GET /shape` needs 14 for a week, 60 for a month, 365 for a year) and until then says
 how many days it has. "How far back this node can be asked" gives, per kind of source, the oldest and newest
 hourly reading (`GET /reach`). "What this place could read, and where it could go" reads the pinned source
-registry (`GET /sources`, fetched the first time somebody opens Network): how many sources are registered,
-how many have code on this node, and the places to make things and the designs to build that the registry
-lists.
+registry (`GET /sources`, fetched the first time somebody opens Network). Its pin links to the registry on
+GitHub at that commit. It says how many sources are registered and how many have code on this node; the
+three counts the node computes per cell (`capable`, `reviewed`, `candidate`, see
+[The source registry](sources.md#three-counts-per-cell)), added up over the cells; and the places to make
+things and the designs to build that the registry lists, with each licence as the registry wrote it. A line
+under the rows links to `GET /sources?status=live`, `GET /sources?status=candidate` and `GET /cells`, and to
+[Adding a source](sources.md#adding-a-source).
 
 ### Decide
 
@@ -184,7 +194,9 @@ first line of what was seen, and the rule's own recommendation (the paragraph it
 or a line saying the rule carries none and the page will not invent one. **Record the decision** posts
 `stage: decided` to `POST /actions`. A decision moves nothing: it is not in ρ, not in the funnel, and closes
 no alert. With `DECISION_REQUIRED=1` (Set up → Node, off by default) the node refuses an act with 409 unless a
-decision was recorded against the same alert first. The two resolution sections say at what resolution a
+decision was recorded against the same alert first, and the page prints the node's sentence as it wrote it:
+"this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same alert first.
+Decide on the dashboard, then record what you did." The two resolution sections say at what resolution a
 thing may be said, and the trust section says which of the node's own sensors it doubts.
 
 "Whose word, over how much ground" covers with H3 cells the six footprints this node already declares,
@@ -197,8 +209,10 @@ coverings and sends them in `GET /issues` as `geometry.claims`, widest first.
 
 What a person adds here is the act. "The alerts this node has sent" lists the alerts with **I did this** beside each
 open one. The form posts `stage: acted` with who and what was done. From a browser that needs `ACT_TOKEN` or
-`ADMIN_TOKEN`, entered once in Set up; the page shows the node's own refusal sentence if neither is there, and
-refuses outright on a fixture, whose alerts belong to another node. "What was decided, and by whom" is the
+`ADMIN_TOKEN`, entered once in Set up, and a line under this form and under the Decide form says so before
+anybody presses: "From another device this needs the act token: planetai ui prints it on the node, and Set
+up → unlock holds it in this browser." When the node refuses (401, 403, 400 or 409) the page prints the
+node's own sentence, and it refuses outright on a fixture, whose alerts belong to another node. "What was decided, and by whom" is the
 ledger, newest first, all of it in one fold: who, which stage, how long ago, and `decided first` on an
 act that had a decision before it. Its head counts how many acts had a decision first. The note somebody
 wrote is shown only to a reader with a token, because `GET /actions` is on no sharing allowlist.
@@ -213,7 +227,9 @@ under it is the five refusals of [Architecture](architecture.md) section 7, as s
 worked" reports per rule, over the whole record, how many acts there were and how many were followed by the
 condition stopping within that window; only a rule that declares `watch: {metric, over}` also gets a typical
 recovery time in hours. It is evidence that the condition ended, never that the act ended it. See
-[ρ](rho.md).
+[ρ](rho.md). "Every figure on this page, and where it came from" is the node's own provenance for each
+figure, from `GET /issues`, and under it one line links the same day as open data, CC BY 4.0:
+`GET /export?day=<the day of the reading>`, and the days before it at `GET /exports`.
 
 ## Issues, states and distances
 
@@ -286,9 +302,6 @@ empty.
 375, 768, 1440 and 1920 px. It needs Playwright from the sibling design repository and is not a gate a node
 runs. `tests/visual/gate.sh` measures what the section contract cannot enforce: the four card kinds and
 numerals carrying `data-num` with a comparison beside them.
-
-> **Gap in v0.72.1.** The ledger's own note in the notes band, "No stage for a decision yet", still says the
-> ledger has no `decided` stage. It has one: the Decide card writes it.
 
 ## Where this leads
 

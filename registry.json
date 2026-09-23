@@ -2,7 +2,7 @@
   "_": "PLANETAI node directory. Adding a node = a pull request. This file is the registry until there are too many nodes for a file.",
   "nodes": [
     {
-      "name": "bayu-2",
+      "name": "bayu-ungasan",
       "scale": "community",
       "operator": "Meaningful Design Group",
       "place": "Ungasan, Badung, Bali, ID",

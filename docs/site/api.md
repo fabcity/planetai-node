@@ -153,7 +153,7 @@ Access: open
 
 Rolling statistics per sensor and metric over the last 24 hours, sensors only (`kind = 'sensor'`). This is the `stats` view: `sensor_id`, `metric`, `indoor`, `local`, `kind`, `scale`, `lat`, `lon`, `name`, `last`, `last_ts`, `silent_minutes`, `mean_15m`, `mean_1h`, `mean_24h`. Ordered local first, then sensor and metric. Slow sources are in `/observations`.
 
-> **Gap in v0.72.1.** `/stats` is `SELECT *` on the view and carries each sensor's `lat` and `lon` unrounded. At `SHARE_LEVEL=open` a caller with no token reads them here even though `/sensors` rounds them for the same caller.
+Positions follow `/sensors`: for a caller that is neither loopback nor carrying a token, `lat` and `lon` are the centre of the resolution-8 cell for the household's own sensors and rounded to 3 decimals for every other row. Before v0.73 this route handed every reader at `SHARE_LEVEL=open` the positions `/sensors` had rounded (#113).
 
 ### GET /observations
 Access: open
@@ -383,7 +383,7 @@ Body:
 | `acted` | Somebody did the thing. Counts for ρ, sets `acted_at`, closes the alert |
 | `decided` | Somebody said what they would do. Moves nothing: not in ρ, not in `acted_at`, not a funnel stage, closes no alert |
 
-Any other stage is 400 `stage must be acknowledged or acted`; the text predates `decided`, which is accepted. `measured` is refused: the node derives it (see [`/rho`](#get-rho)) and never takes it from a post. `settings` rows are written by the node itself. With `DECISION_REQUIRED=1`, an `acted` post for an alert that has no `decided` row yet is 409 `this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same ask first. Decide on the dashboard, then record what you did.` The default is `0`.
+Any other stage is 400 `stage must be acknowledged, acted or decided`. `measured` is refused: the node derives it (see [`/rho`](#get-rho)) and never takes it from a post. `settings` rows are written by the node itself. With `DECISION_REQUIRED=1`, an `acted` post for an alert that has no `decided` row yet is 409 `this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same alert first. Decide on the dashboard, then record what you did.` The default is `0`.
 
 `actor` is cut to 80 characters, `note` to 500. 404 `no such alert` if the id is unknown. There is no one-action-per-alert cap: two people who both acted are both recording something true. Returns `{"ok": true}`.
 
@@ -468,7 +468,7 @@ Each row:
 
 `value` is rounded to 3 decimals or null; `state` is `live`, `partial` or `mock` and is never upgraded here or downstream; `source` is `planetai-node · pack:<id>` or `planetai-node actions ledger`. In v0.72.1 `registered` is how many registry entries are filed under that cell, and `adapter` is true when any of them names code that reads it. Both come from the registry this node carries and change nothing about `state` or `value`. A cell with registered sources and no adapter has no row here at all; `/sources?cell=` answers for it.
 
-On `main` after v0.72.1 (the changelog's Unreleased section), the row ends with five registry fields, and the same row at pin `1010aa0` ends:
+Since v0.73 the row ends with five registry fields, and the same row at pin `1010aa0` ends:
 
 ```
  "registered": 2, "adapter": true, "reviewed": 2, "candidate": 0, "capable": 2}
@@ -488,9 +488,9 @@ The network's registry of what can be measured, as this node carries it: a pinne
 | `cell` | string | any | Only this cell, written as the Index names it |
 | `pilot` | string | any | This pilot's entries and every entry relevant to `global` |
 | `wired` | bool | any | `true`: only entries whose `adapter` names code that reads them; `false`: only those without |
-| `status` | string | any | On `main` only. `live`, `candidate`, `stale`, `deprecated`, `paywalled` or `planned`: only entries with that status |
+| `status` | string | any | Since v0.73. `live`, `candidate`, `stale`, `deprecated`, `paywalled` or `planned`: only entries with that status |
 
-Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. On `main` the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `1010aa0` the counts cover 19 cells and sum to 12 capable, 12 reviewed and 20 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
+Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. Since v0.73 the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `1010aa0` the counts cover 19 cells and sum to 12 capable, 12 reviewed and 20 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
 
 ### GET /sources/{pillar}/{scale}/{slug}
 Access: open

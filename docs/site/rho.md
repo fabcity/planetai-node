@@ -24,14 +24,17 @@ answered within 24 hours. Both are computed by `index.rho()` from `alerts` joine
 earlier). A node with no children reads an empty `events` table. `days_ago` shifts the whole window back; the
 report's bundle uses 7 to carry what ρ was a week ago.
 
-`GET /rho`:
+`GET /rho` on node #1 as published on 19 September 2026, with the funnel's counts left out:
 
 ```json
-{"window_days": 30, "days_ago": 0, "alerts_act": 12, "acted": 8, "rho": 0.667, "median_minutes": 41,
- "funnel": {"stages": {"asked": 12, "acknowledged": 0, "acted": 8, "measured": 3},
-            "latency_minutes": {"acknowledged": null, "acted": 41, "measured": null},
+{"window_days": 30, "days_ago": 0, "alerts_act": 137, "acted": 29, "rho": 0.212, "median_minutes": 112,
+ "funnel": {"stages": {"asked": ..., "acknowledged": ..., "acted": ..., "measured": ...},
+            "latency_minutes": {"acknowledged": ..., "acted": ..., "measured": null},
             "measured_derived": true, "measured_window_minutes": 2880, "self_only": true}}
 ```
+
+Of 137 act-level alerts in 30 days, 29 were answered within 24 hours; among those 29 the median answer came
+112 minutes after the alert.
 
 `rho` and `median_minutes` are `null` when there is nothing to divide. `planetai status` and `planetai act` print
 ρ; the `status` MCP tool carries it; the dashboard's *Whether it worked* section draws it as "{closed} of {total}
@@ -39,8 +42,8 @@ alerts answered · median {n} min".
 
 ## Read it on your node
 
-1. **Run `planetai status`.** Its `rho` line reads, for example, `rho       0.667  (8/12 act-level alerts
-   answered, 30d)`: eight of the twelve alerts of the last 30 days had an answer within 24 hours. Before the
+1. **Run `planetai status`.** Its `rho` line reads, for example, `rho       0.212  (29/137 act-level alerts
+   answered, 30d)`: 29 of the 137 alerts of the last 30 days had an answer within 24 hours. Before the
    first act-level alert it reads `rho       not yet measured  (0/0 act-level alerts answered, 30d)`,
    because there is nothing to divide.
 2. **Ask the node for the whole record.** `curl http://<node>:8080/rho` (at `SHARE_LEVEL=open`, or with

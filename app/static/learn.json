@@ -395,7 +395,7 @@
    "more": "Observe, decide, act, measure: the four stages this page is read in. A section whose data is not on this node prints one honest line in its place, never a blank and never a guess.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
-   "quote": "Every section is registered with the page contract: `id`, `pack`, `stage`, `title` and `render` (or `lead`), and optionally `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. The shell draws each one in the stage it belongs to, in the order the loop runs: observe, decide, act, measure.",
+   "quote": "Every section is registered with the page contract: `id`, `pack`, `stage`, `title`, `reads` and `render` (or `lead`), and optionally `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. The shell draws each one in the stage it belongs to, in the order the loop runs: observe, decide, act, measure.",
    "section": "The sections",
    "title": "The order the loop runs",
    "url": "https://planetai.fab.city/docs/dashboard/#the-sections"

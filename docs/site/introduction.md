@@ -56,7 +56,7 @@ node measures whether anything changed: ρ, the share of act-level alerts somebo
 only be measured where the alert is sent and the answer comes back, which is here. [ρ](rho.md) has the
 definition.
 
-In v0.72.1 the loop closes on the dashboard itself. An open act-level alert about one of the place's issues
+Since v0.72 the loop closes on the dashboard itself. An open act-level alert about one of the place's issues
 shows under Decide as "What to do about it", with the rule's own recommendation beside what was seen. A person records a decision there, then
 presses **I did this** under Act when it is done, and Measure shows ρ and, per rule, which acts were followed
 by the condition clearing. After a week of its own readings the node also draws "The day this place usually
@@ -102,7 +102,7 @@ alive and the alerts correct."
 
 ## What these pages are
 
-This is the reference for the node at v0.72.1, read from the code of that version. The pages under *Get
+This is the reference for the node at v0.73, read from the code of that version. The pages under *Get
 started* and *Operate* are for the person running one. *Alerts, reports and ρ*, *Packs*, *Dashboard* and
 *Agents* explain what the node does and how to change it. *Reference* is the [HTTP API](api.md), the
 [database](schema.md) and the [federation contracts](federation.md). *Project* holds the architecture and the

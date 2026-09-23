@@ -28,7 +28,7 @@ modification time, so a re-pin that arrives with `planetai update` is picked up 
 directory is `SOURCES_DIR`, default `/app/data/sources`. Nothing in this repository edits an entry:
 `tools/check_registry.py` re-derives `index.json` from the YAML and fails `make lint` if they differ.
 
-On `main` after v0.72.1 (the changelog's Unreleased section), `tools/sync_registry.sh` also copies the
+Since v0.73 `tools/sync_registry.sh` also copies the
 registry's `reviews/` and `cells/` trees, with their schemas, when the pin has them, and `index.json` gives
 every entry a `reviews` list: the reviews filed for it, oldest first, `[]` when there are none.
 `tools/check_registry.py` then fails when a review names an entry the pin does not carry, or when a
@@ -71,7 +71,7 @@ its stations are other people's and fill the public-reference cell, never the in
 
 ## Three counts per cell
 
-On `main`, the node counts each cell three ways, from the entries a node could fill it from:
+Since v0.73 the node counts each cell three ways, from the entries a node could fill it from:
 
 | count | what it counts |
 |---|---|
@@ -101,7 +101,7 @@ code that reads it. By default it shows this node's pilot (`NODE_CITY`) plus the
   97 of 238 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
 ```
 
-On `main` two lines follow it, the three counts summed over every cell and what they mean:
+Since v0.73 two lines follow it, the three counts summed over every cell and what they mean:
 
 ```
   across 19 cells: capable 12 / reviewed 12 / candidate 20
@@ -120,12 +120,12 @@ release, not something the node works out.
 
 **2. Filter it to one cell.** `planetai sources --all --cell 'Social|City'` lists the 11 entries filed for that
 cell, from the Barcelona electoral sections to the US Census ACS, and the last column is blank on every
-one. That is the part of the Index no node fills yet, with the sources that could fill it named. On `main`
+one. That is the part of the Index no node fills yet, with the sources that could fill it named. Since v0.73
 the footer then says `Social|City: capable 0 / reviewed 0 / candidate 7`. The counts are the registry's
 whole count for that cell, whatever the other filters, and come from `feeds_cells`, so they include
 `social/region/worldpop`, which is filed under `Social|Region`. The `counted nowhere` line counts the whole
 registry too. The other filters are `--pillar`, `--scale` and `--json`. Over HTTP the same filters are query
-parameters, plus `wired`: `GET /sources?wired=false` is every registered source nothing reads. On `main`
+parameters, plus `wired`: `GET /sources?wired=false` is every registered source nothing reads. Since v0.73
 there is also `status`: `GET /sources?status=candidate`.
 
 **3. Read one entry.** Ask the node for it by slug:
@@ -142,19 +142,18 @@ The same text is in `data/sources/data/environmental/community/bali-air-dispatch
 in the pin answers 404 and names the pin.
 
 **4. See it on the Network view.** Open the dashboard's Network view. The section headed **What this place
-could read, and where it could go** has two rows. *Registered, and read* shows `pin 1010aa0 · synced
-2026-09-22` and says "238 sources registered; 16 have code on this node that reads them", naming the
-twelve adapter strings (`core:airgradient` to `pack:place`), then "The rest have no adapter yet, which is a
-thing nobody has written rather than a thing this node refuses." Its figure is `16/238`. *Places to act*
-counts the 16 act sources by kind: `6 directories of fab labs · 1 repair · 7 libraries of open designs ·
-1 match · 1 list of places that pledged`, and says how many state in the registry's own words that no
-licence is published (4). The fold under it lists all sixteen with each licence as the registry wrote it.
-The page fetches `/sources` the first time somebody opens Network, and never before.
-
-> **Gap in v0.72.1.** Two things on that section lag the pin. Its notes still describe an earlier pin:
-> `fablabs-io` "carries no adapter string" (at `1010aa0` it carries `pack:make`), and "Two are directories
-> of workshops, five are libraries of designs". And the kinds `repair` and `match` have no words in the page,
-> so they print as the bare token.
+could read, and where it could go** has three rows, with `GET /sources` beside its title. *Registered, and
+read* shows `pin 1010aa0 · synced 2026-09-22`, and the pin is a link to the registry on GitHub at that
+commit. It says "238 sources registered; 16 have code on this node that reads them", naming the twelve
+adapter strings (`core:airgradient` to `pack:place`), then "The rest have no adapter yet, which is a thing
+nobody has written rather than a thing this node refuses." Its figure is `16/238`. *What a cell could use*
+reads `across 19 cells` and shows the three counts the node computes, added up: `12 capable`,
+`12 reviewed`, `20 candidate`. *Places to act* counts the 16 act sources by kind: `6 directories of fab labs
+· 1 directory of repair cafés · 7 libraries of open designs · 1 matcher of designs to workshops · 1 list of
+places that pledged`, and says how many state in the registry's own words that no licence is published (4).
+A line under the rows links to `GET /sources?status=live`, `GET /sources?status=candidate`, `GET /cells` and
+[Adding a source](#adding-a-source). The fold under it lists all sixteen with each licence as the registry
+wrote it. The page fetches `/sources` the first time somebody opens Network, and never before.
 
 > **Gap in v0.72.1.** The registry counts `core:airgradient` among the sources that are read, and the
 > AirGradient function exists in `app/sources.py`, but the poll loop never calls it. The registry records
@@ -211,7 +210,7 @@ Access: open
 The registry as this node carries it. Query parameters, each optional and combined with AND: `pillar`,
 `scale`, `pilot`, `cell`, and `wired` (`true` or `false`, read from each entry's `adapter`). `pilot` also
 returns the `global` rows, because an entry relevant everywhere is relevant to every pilot. Returns
-`{registry: {sha, short, synced, entries}, count, sources}`. On `main` there is one more parameter,
+`{registry: {sha, short, synced, entries}, count, sources}`. Since v0.73 there is one more parameter,
 `status` (`live`, `candidate`, `stale`, `deprecated`, `paywalled` or `planned`), and the answer is
 `{registry, counts, count, sources}`: `counts` is `{cell: {capable, reviewed, candidate}}` for every cell
 the registry counts, whatever the filters. Answers 503 when `data/sources` is empty or
