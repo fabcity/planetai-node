@@ -138,7 +138,8 @@ the copy every node carries is described on [the source registry](sources.md).
 ## The node directory
 
 `registry.json` in the repository is the node directory until there are too many nodes for a file: `name,
-scale, operator, place, lat, lon, sources, parent, since, contact`. Adding a node is a pull request; approval is
+scale, operator, place, cell, lat, lon, sources, parent, since, contact`, where `cell` is the node's resolution-8 H3
+cell and `lat`/`lon` are that cell's centre, never the house (since v0.73). Adding a node is a pull request; approval is
 a merge. It lists one node, `bayu-ungasan`, node #1 in Ungasan. A registry
 service with a signed handshake returns when pull requests stop scaling, roughly thirty nodes or a second
 operator organisation, with its trigger written in [`SPEC.md`](spec.md) §6.
