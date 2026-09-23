@@ -312,7 +312,7 @@ The one document a client draws. A page, a Telegram handler or a wall screen tha
 ### GET /issues
 Access: open
 
-Every issue this node declares, computed: state, stack by distance, the line it is compared against, attribution, a sentence in each locale, open asks, series. The order is `NODE_ISSUES`; an issue not declared still appears with `watched: false`, so a stranger can see what the node could report. The node computes and the page draws: nothing in the response needs arithmetic to render and nothing in it came from a model. `/issues/` answers the same.
+Every issue this node declares, computed: state, stack by distance, the line it is compared against, attribution, a sentence in each locale, open alerts, series. The order is `NODE_ISSUES`; an issue not declared still appears with `watched: false`, so a stranger can see what the node could report. The node computes and the page draws: nothing in the response needs arithmetic to render and nothing in it came from a model. `/issues/` answers the same.
 
 Returns `{schema, order, undeclared, dropped, headline, as_of, headline_rule, distances, labels, issues, stations, metrics, asks, digest, mesh, geometry}`, with `schema` set to `issues-v0`.
 
@@ -340,7 +340,7 @@ Returns the snapshot JSON with `issues` replaced by the recomputation, or `{"err
 
 ## Alerts and answers
 
-The node asks; a person answers. A phone app, a Telegram handler, the dashboard's "I did this" and `curl` all build against the same two routes: `GET /alerts` for the asks and `POST /actions` for the answer. Each answer is a row in the `actions` ledger, and ρ is counted from that ledger.
+The node asks; a person answers. A phone app, a Telegram handler, the dashboard's "I did this" and `curl` all build against the same two routes: `GET /alerts` for the alerts and `POST /actions` for the answer. Each answer is a row in the `actions` ledger, and ρ is counted from that ledger.
 
 ### GET /alerts
 Access: open
@@ -380,8 +380,8 @@ Body:
 | `stage` | What the row does |
 |---|---|
 | `acknowledged` | Somebody saw it. Counts for ρ and sets `/alerts.acted_at` |
-| `acted` | Somebody did the thing. Counts for ρ, sets `acted_at`, closes the ask |
-| `decided` | Somebody said what they would do. Moves nothing: not in ρ, not in `acted_at`, not a funnel stage, closes no ask |
+| `acted` | Somebody did the thing. Counts for ρ, sets `acted_at`, closes the alert |
+| `decided` | Somebody said what they would do. Moves nothing: not in ρ, not in `acted_at`, not a funnel stage, closes no alert |
 
 Any other stage is 400 `stage must be acknowledged or acted`; the text predates `decided`, which is accepted. `measured` is refused: the node derives it (see [`/rho`](#get-rho)) and never takes it from a post. `settings` rows are written by the node itself. With `DECISION_REQUIRED=1`, an `acted` post for an alert that has no `decided` row yet is 409 `this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same ask first. Decide on the dashboard, then record what you did.` The default is `0`.
 
@@ -394,7 +394,7 @@ Fires one act-level alert now, through every configured channel, the same as `pl
 
 ## Whether it worked
 
-The measure stage. These two routes read the ledger back against the alerts and say how many asks were answered, how fast, and which conditions stopped. ρ is measured here and nowhere else, because only the node holds both the ask and the answer.
+The measure stage. These two routes read the ledger back against the alerts and say how many alerts were answered, how fast, and which conditions stopped. ρ is measured here and nowhere else, because only the node holds both the alert and the answer.
 
 ### GET /rho
 Access: open
@@ -403,7 +403,7 @@ Action latency over the last 30 days: the share of act-level alerts that got an 
 
 Returns `{window_days: 30, days_ago: 0, alerts_act, acted, rho, median_minutes, funnel}`. `rho` is `acted / alerts_act` to 3 decimals, or null with no act-level alerts; `median_minutes` is the median detect-to-act time of the alerts answered within 24 hours, or null.
 
-`funnel` is how far this node's own asks got, stage by stage: `{stages: {asked, acknowledged, acted, measured}, latency_minutes: {acknowledged, acted, measured: null}, measured_derived: true, measured_window_minutes: 2880, self_only: true}`. `measured` is derived: an `acted` alert whose rule stayed silent on the same sensor for the next 2880 minutes (48 hours) counts as measured, because a rule re-fires as soon as its cooldown expires while its condition holds. Only a rule the node still evaluates can yield a derived `measured`; a `measured` row already in the ledger still counts. `measured` has no latency on purpose, because the silence proves the condition stopped and not when. The funnel is `self_only` because a child's events carry no stages. Its `acted` is the literal stage, so it will not agree with ρ's `acted`, which also counts `acknowledged`.
+`funnel` is how far this node's own alerts got, stage by stage: `{stages: {asked, acknowledged, acted, measured}, latency_minutes: {acknowledged, acted, measured: null}, measured_derived: true, measured_window_minutes: 2880, self_only: true}`. `measured` is derived: an `acted` alert whose rule stayed silent on the same sensor for the next 2880 minutes (48 hours) counts as measured, because a rule re-fires as soon as its cooldown expires while its condition holds. Only a rule the node still evaluates can yield a derived `measured`; a `measured` row already in the ledger still counts. `measured` has no latency on purpose, because the silence proves the condition stopped and not when. The funnel is `self_only` because a child's events carry no stages. Its `acted` is the literal stage, so it will not agree with ρ's `acted`, which also counts `acknowledged`.
 
 ### GET /effect
 Access: open

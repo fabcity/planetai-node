@@ -121,6 +121,6 @@ sentences:
     state:
       none: "Aún no hay sensor de aire aquí, ni modelo para este punto."
 empty:
-  en: The node reads the model for these coordinates. Add a sensor under Set up and the room fills in.
-  id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan ruangan akan terisi.
-  es: El nodo lee el modelo para estas coordenadas. Añade un sensor en Set up y la habitación se rellena.
+  en: The node reads the model for these coordinates. Add a sensor under Set up and the house fills in.
+  id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan rumah akan terisi.
+  es: El nodo lee el modelo para estas coordenadas. Añade un sensor en Set up y la casa se rellena.

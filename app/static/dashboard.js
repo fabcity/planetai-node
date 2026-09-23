@@ -251,7 +251,7 @@ function stack(key, d, o = {}) {
         : line ? cmpText({ mode: 'line', line, unit, dp })
           : dist === 'room' || room == null
             ? cmpText({ mode: 'none', reason: `${d.name[LOC]} has no line: ${noLine(d)}` })
-            : cmpText({ mode: 'ring', other: room, otherLabel: 'the room', unit, dp });
+            : cmpText({ mode: 'ring', other: room, otherLabel: 'the house', unit, dp });
     return `<div class="col" id="${esc(id)}-col-${dist}"`
       + ` data-ref="src-${esc(key)}-${dist}">`
       + `<div class="k">${esc(LAB[dist])}</div>`
@@ -281,7 +281,7 @@ function stack(key, d, o = {}) {
     + `${_line == null ? '—' : esc(fmt(_line, d.dp))}</span>`
     + (_line == null ? '' : `<small>${esc(d.unit || '')}</small>`) + `</div>`
     + `<div class="cmp${_line == null ? ' none' : ''}">`
-    + `${esc(_line == null ? noLine(d) : 'crossing it is what raises an ask')}</div>`
+    + `${esc(_line == null ? noLine(d) : 'crossing it is what raises an alert')}</div>`
     + (_line == null ? '' : `<div class="src"><span class="said">${esc(d.line.source)}</span></div>`)
     + `</div>`;
   return `<div class="stack${meter ? ' meters' : ''}${o.line ? ' withline' : ''}" data-kind="stack"`
@@ -294,7 +294,7 @@ function stack(key, d, o = {}) {
 const noLine = d => d.kind === 'context'
   ? 'it informs, it never asks' : 'no threshold has been named for it here';
 const reasonFor = (d, dist) => ({
-  room: 'no sensor indoors', yard: 'no kit on the wall outside',
+  room: 'no sensor in the house', yard: 'no kit outside on the street',
   ring: 'no public station reporting', region: 'no model for this point',
 }[dist] || 'no source');
 
@@ -658,7 +658,7 @@ function rhoRow(small, ref) {
    * standing at. A dereference here took the whole wall down before innerHTML was ever assigned. */
   if (!S.rho) {
     return `<p class="note" data-component="rhoRow" id="rho" data-ref="${esc(ref || 'header')}">`
-      + `This node has not said how many of its asks were answered: GET /rho did not come back.</p>`;
+      + `This node has not said how many of its alerts were answered: GET /rho did not come back.</p>`;
   }
   const r = S.rho, total = r.alerts_act, closed = r.acted;
   /* ONE RING PER ASK UNTIL THAT STOPS BEING A ROW. This drew `total` rings unconditionally, so the
@@ -677,10 +677,10 @@ function rhoRow(small, ref) {
    * what carries the role and what the three-metre floor is measured against. A sign is measured
    * against --sign-floor; a cap height is measured against a distance. */
   return `<div class="rho${small ? ' small' : ''}" data-component="rhoRow"`
-    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="img" aria-label="${closed} of ${total} asks answered">${s}</div>`
+    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="img" aria-label="${closed} of ${total} alerts answered">${s}</div>`
     + `<p class="note" data-role="rho" data-num="rho"`
-    + ` data-cmp="against the ${total} asks this node sent in 30 days">`
-    + `${closed} of ${total} asks answered · median ${r.median_minutes} min`
+    + ` data-cmp="against the ${total} alerts this node sent in 30 days">`
+    + `${closed} of ${total} alerts answered · median ${r.median_minutes} min`
     + `${UNIT > 1 ? ` · one ring per ${UNIT}` : ''}</p>`;
 }
 
@@ -725,12 +725,12 @@ function funnel() {
     return `<div class="st${n ? '' : ' none'}"><span class="k">${esc(label[LOC] || label.en)}</span>`
       + `<span class="bar"><i style="width:${top ? (100 * n / top).toFixed(1) : 0}%"></i></span>`
       + `<span class="lat"><span data-num="funnel.${k}"`
-      + ` data-cmp="against ${top} asks the node sent">${n}</span>`
+      + ` data-cmp="against ${top} alerts the node sent">${n}</span>`
       + `${gap && lat[gap] != null ? ` · +${esc(mins(lat[gap]))}` : ''}</span>`
       + `${why[k] ? `<span class="m">${esc(why[k])}</span>` : ''}</div>`;
   }).join('');
   return `<div class="funnel" data-component="funnel" id="funnel" data-ref="rho">${rows}`
-    + `<p class="note">This node's own asks only, over ${S.rho.window_days} days. `
+    + `<p class="note">This node's own alerts only, over ${S.rho.window_days} days. `
     + `${esc(why.measured ? 'The last stage is derived, not recorded: nobody types it.' : '')}</p></div>`;
 }
 
@@ -1199,7 +1199,7 @@ const NAV_HONEST = {
     + `${km2(H.radio.area_m2)}, which is the whole of what a stranger on the radio learns `
     + `about where it is.`,
   perStation: () => `Each number here is one station’s own 15-minute mean. GET /issues publishes `
-    + `the street as a single fenced median and never a value per station, so a page that navigates `
+    + `the ring as a single fenced median and never a value per station, so a page that navigates `
     + `by cell is asking the node to publish something it currently does not.`,
 };
 
@@ -1462,7 +1462,7 @@ PAI_LOAD.push(function () {
 
 const STAGES = [
   ['observe', 'Observe', 'what is read, seen and heard about this place'],
-  ['decide', 'Decide', 'what may be said about it, and at what grain'],
+  ['decide', 'Decide', 'what may be said about it, and at what resolution'],
   ['act', 'Act', 'what has been asked, of whom'],
   ['measure', 'Measure', 'whether it worked, and how long it took'],
 ];
@@ -1919,7 +1919,7 @@ function lead(ctx) {
   const allowed = tilesAllowed(res, window.SETTINGS);
   const tilesOn = (window.SETTINGS || {}).MAP_TILES === 'on';
   const why = tilesOn
-    ? `the plan fills the frame from resolution ${PLAN_FROM} in — turn the dial out to offer this`
+    ? `the plan fills the frame from resolution ${PLAN_FROM} in — step the ladder out to offer this`
     : 'live tiles are off on this node — turn MAP_TILES on under Set up';
   /* WHAT EACH BASE COSTS, in the tab, before it is pressed. The request count was at the foot of
      the panel and only ever described the base already showing — so the one number a reader needs
@@ -2040,10 +2040,10 @@ function notes(ctx) {
       + 'is 4.2 km and the plan sits in the middle with paper round it, so the tiles show there and '
       + `coarser — but only when a keeper has set MAP_TILES to on, which on this node it is `
       + `${(window.SETTINGS || {}).MAP_TILES === 'on' ? 'is' : 'is not'}. Off, the plan is the ground `
-      + 'at every stop and the page sends nothing at all.' },
+      + 'at every rung and the page sends nothing at all.' },
     { id: 'ground-why-live', label: 'Why a live base at all',
         text: 'The live bases are here because Tomas asked for them: a real map '
-      + 'with a satellite view that rescales when the dial turns. He was told what it costs — a page '
+      + 'with a satellite view that rescales when the ladder moves. He was told what it costs — a page '
       + 'that fetches tiles tells the tile server which square of the planet is being looked at, '
       + 'every time anybody opens it — and asked for it anyway. So it is built, the cost is printed '
       + 'beside the picture, and the offline plan is one press away in the same strip.' },
@@ -2055,13 +2055,13 @@ function notes(ctx) {
       + `node itself stands beyond that square; it does learn that somebody at that address looks at `
       + `this ${edge(f.across_m)}${S.health.city ? ` of ${S.health.city}` : ''}, and how often. The `
       + `plan sends nothing.` },
-    { id: 'ground-zoom', label: 'Zoom follows the dial',
-        text: 'The zoom follows the dial because the frame is the cells, not the '
-      + 'map. The dial sets the resolution, the resolution sets the nineteen cells of the plate, and '
+    { id: 'ground-zoom', label: 'Zoom follows the ladder',
+        text: 'The zoom follows the ladder because the frame is the cells, not the '
+      + 'map. The ladder sets the resolution, the resolution sets the nineteen cells of the plate, and '
       + 'the zoom is the largest of 0 to 19 at which their bounding box fits nine tenths of the '
-      + 'square. H3 steps by seven in area and a tile zoom by four, so one stop on the dial moves the '
+      + 'square. H3 steps by seven in area and a tile zoom by four, so one rung on the ladder moves the '
       + 'zoom by one or two levels, and the cell in the middle stays the same size on the page at '
-      + 'every stop within a factor of two.' },
+      + 'every rung within a factor of two.' },
     { id: 'ground-frames', label: 'Two frames, one drawing',
         text: 'Tiles are Web Mercator, EPSG:3857, because that is the only frame a '
       + 'tile server speaks. The offline plan is drawn in the node\'s own local frame — metres east '
@@ -2238,7 +2238,7 @@ window.PAI.register({
 /* matrix · core · observe
  *
  * Every issue this node carries, at every distance it can read, against the line it is read
- * against. Four issues down, five columns across: room · wall outside · street · model · line.
+ * against. Four issues down, five columns across: house · street · ring · region · line.
  *
  * WHY IT IS ONE CARD AND NOT FOUR. The lead says one number about one issue. This says the same
  * kind of number about all of them at once, and the whole point is the comparison DOWN a column:
@@ -2282,13 +2282,13 @@ window.PAI.register({
     return [
       { id: 'matrix-grid', label: 'Why a grid and not a list',
         text: 'Four issues down, five columns across, and the column you can read '
-        + 'down is the reason this is a grid. Whether the street is worse than the room is a '
+        + 'down is the reason this is a grid. Whether the ring is worse than the house is a '
         + 'different question from whether the air is worse than the heat, and four separate cards '
         + 'would answer neither. The last column is the line — what the four readings to its left '
         + 'are read against — drawn once per row rather than repeated in every cell.' },
       { id: 'mrow-air', label: 'What an empty cell says',
         text: 'An empty cell is the commonest thing on this grid and it always says '
-        + 'which absence it is: no sensor indoors, no kit on the wall outside, no public station '
+        + 'which absence it is: no sensor in the house, no kit outside on the street, no public station '
         + 'reporting, no model for this point. Those are four different jobs for whoever keeps this '
         + 'node, and a blank would have been none of them.' },
     ];
@@ -2452,7 +2452,7 @@ window.PAI.register({
     return [
       { id: 'registry-rows', label: 'More is more signs',
         text: 'More is more signs, never a bigger sign. A row you can count is '
-        + 'a measurement; a bar you have to read off an axis is a picture of one. Three grains are '
+        + 'a measurement; a bar you have to read off an axis is a picture of one. Three units are '
         + 'mixed here and each row says which it is: a station is one sign because you could point '
         + 'at it, the ground is twentieths because a percentage counts nothing, and houses are one '
         + 'sign per 250 because 2,713 signs is not a row.' },
@@ -2778,8 +2778,8 @@ window.PAI.register({
           : `${s.km} km`}, ${Object.keys(s.series).map(k => H.metrics[k].label).join(', ')})`).join(' and ')}`
         + ` — so those rows have a trace with its min–max band and the others have one tick at the `
         + `15-minute mean, drawn at now. No trace was drawn where none was recorded.` },
-      { id: 'sensors-note-dial', label: 'The groups follow the dial',
-        text: `The groups follow the dial: at resolution 4 all `
+      { id: 'sensors-note-dial', label: 'The groups follow the ladder',
+        text: `The groups follow the ladder: at resolution 4 all `
         + `${H.sensors.length} stations are in ${gt(4).occupied} cell, at 9 they are in `
         + `${gt(9).occupied}, and this node’s own ${gt(9).mine_in_my_cell} share one cell at every `
         + `resolution because they carry one coordinate. Regrouping changes which header a row sits `
@@ -3023,7 +3023,7 @@ window.PAI.register({
       + (region.native
         ? row({ id: 'sat-grain', component: 'satGrain', ref: 'sat-map',
           cols: 'minmax(0,210px) minmax(0,1fr) auto',
-          left: `<span class="who"><b>At the grain its own data has</b>`
+          left: `<span class="who"><b>At the resolution its own data has</b>`
             + `<span class="m">resolution ${region.native.res}</span></span>`,
           line: `${region.native.cells.toLocaleString()} cells; compactCells leaves `
             + `${region.native.compact.toLocaleString()} covering the same ground exactly.`,
@@ -3031,7 +3031,7 @@ window.PAI.register({
             cmp: `smaller, for the same ground` }] })
         : `<p class="note" id="sat-grain" data-component="satGrain" data-ref="sat-map">`
           + `${esc(region.declared)} covers no ground, so there is no covering to compact and no `
-          + `grain to state.</p>`)
+          + `resolution to state.</p>`)
       /* `land_change_yoy` is a column in the observations table, not a thing to say to a household,
          and with no value it printed "land_change_yoy — %". The issue has a name and the node writes
          a source sentence for the figure; both are used instead, and a missing value says it is
@@ -3319,7 +3319,7 @@ window.PAI.register({
   notes(ctx) {
     const d = facts(ctx);
     const still = [['a parent', !!d.parentName], ['Index cells', d.cells.length > 0],
-                   ['answered asks', d.asks > 0]].filter(([, on]) => !on).map(([k]) => k);
+                   ['answered alerts', d.asks > 0]].filter(([, on]) => !on).map(([k]) => k);
     return [
       { id: 'netmap-motion', label: 'A wire with nothing on it',
         text: 'The wires carry a moving dot only where something actually '
@@ -3509,7 +3509,7 @@ window.PAI.register({
         line: `The cell, and nothing else. Never a coordinate, never finer than resolution `
           + `${H.settings.PRESENCE_RES_FLOOR}.`,
         qty: [{ num: 'nav.announce.km2', value: km2(R.area_m2),
-          cmp: `against ${km2(H.ladder[H.publication.res].own_area_m2)}, the grain GET /health rounds to` }],
+          cmp: `against ${km2(H.ladder[H.publication.res].own_area_m2)}, the resolution GET /health rounds to` }],
       })
       + `<div class="sub-addr">${address(R.mine, R.res)}</div>`
       + (pr ? row({ id: 'radio-peer', component: 'peers', ref: 'radio-map',
@@ -3786,8 +3786,8 @@ function claimCard(ctx, c) {
     + `km²</span></div>`
     + `<div class="fact"><span class="k">cells at resolution ${RES}</span><span class="v">`
     + `<span data-num="claim.${esc(c.key)}.cells" data-cmp="against 1 cell, which is what a probe `
-    + `in this room covers">${n.toLocaleString()}</span></span></div>`
-    + (c.native ? `<div class="fact"><span class="k">its own grain</span><span class="v">`
+    + `in this house covers">${n.toLocaleString()}</span></span></div>`
+    + (c.native ? `<div class="fact"><span class="k">its own resolution</span><span class="v">`
       + `<span data-num="claim.${esc(c.key)}.native" data-cmp="resolution ${c.native.res}, `
       + `${esc(km2(H.ladder[c.native.res].own_area_m2))} a cell">res ${c.native.res}</span>`
       + `</span></div>` : '')
@@ -3832,7 +3832,7 @@ window.PAI.register({
       + `<span data-num="claim.span" data-cmp="against ${esc(String(mine.area_km2))} km², `
       + `${esc(mine.name.toLowerCase())}, the smallest">${esc(String(widest.area_km2))}</span> km² `
       + `and the narrowest covers ${esc(String(mine.area_km2))}. Both produce one number. What that `
-      + `costs at the grain you are standing on is under the rail, and it moves when the rail does.`
+      + `costs at the rung you are standing on is under the ladder, and it moves when the ladder does.`
       + `</p>`
       + `<details class="fold"><summary>All ${H.claims.length}, and the ground each covers</summary>`
       + `<div class="claimgrid">${H.claims.map(c => claimCard(ctx, c)).join('')}</div></details>`;
@@ -3843,7 +3843,7 @@ window.PAI.register({
       `<div class="col" data-component="claim" data-ref="wall-lead">`
       + `<h3 data-role="wall-issue">${esc(c.name)}</h3>`
       + `<div class="line"><span class="num" data-num="claim.${esc(c.key)}.cells"`
-      + ` data-cmp="cells of resolution ${ctx.RES}; a probe in this room covers 1">`
+      + ` data-cmp="cells of resolution ${ctx.RES}; a probe in this house covers 1">`
       + `${c.cells_at[ctx.RES].toLocaleString()}</span><small>cells · ${esc(c.declared)}</small>`
       + `</div></div>`).join('');
   },
@@ -3853,25 +3853,25 @@ window.PAI.register({
         text: 'Every footprint here is a number a pack or a preset already '
         + 'declares — COAST_MAX_KM, BAD_RADIUS_KM, EARTH_RADIUS_M at 10 m a pixel, PLACE_RADIUS_M, '
         + 'LOCAL_RADIUS_M, and the three decimals GET /health rounds a coordinate to, which is about '
-        + '110 m and the finest grain anything from this node may honestly be drawn at. Not one '
+        + '110 m and the finest resolution anything from this node may honestly be drawn at. Not one '
         + 'radius on this page was chosen by it.' },
       { id: 'claims-order', label: 'Widest ground first',
         text: 'The cards are ordered by the ground one word covers, widest '
         + 'first. Reading down them is reading from a model that speaks for the sea to a probe on a '
-        + 'shelf, and the number that changes with the dial — cells at this resolution — is how many '
-        + 'cells of the grain you are standing on that word has to cover to say its one thing.' },
+        + 'shelf, and the number that changes with the ladder — cells at this resolution — is how many '
+        + 'cells of the rung you are standing on that word has to cover to say its one thing.' },
       { id: 'claims-note', label: 'What a source says of itself',
         text: H.claims.filter(c => c.note).map(c => `${c.name}: ${c.note}.`)
         .join(' ') },
       { id: 'claims-folded', label: 'Why the cards are folded',
-        text: 'The six cards are folded for the reason the eleven-row grain '
+        text: 'The six cards are folded for the reason the eleven-row resolution '
         + 'table is: they are evidence and not reading. The comparison they exist to make \u2014 what '
-        + 'each of these words costs to cover at one grain \u2014 is under the rail now, where turning '
+        + 'each of these words costs to cover at one rung \u2014 is under the ladder now, where turning '
         + 'the control is what changes it, which is the one thing these cards could never do.' },
       { id: 'claims-model', label: 'The one with no footprint',
         text: 'The one source with no declared footprint is the model point, '
         + `which covers ${H.claims[0].cells_at[8].toLocaleString()} cells at resolution 8 against `
-        + 'the one a probe in this room covers. Nothing in the product says how big a model point’s '
+        + 'the one a probe in this house covers. Nothing in the product says how big a model point’s '
         + 'word is, and the page will not guess for it.' },
     ];
   },
@@ -3899,7 +3899,7 @@ function table(ctx) {
   /* PORTED: the table is wider than 390 px and scrolls inside its own box. A box that scrolls and
      cannot be focused cannot be scrolled from a keyboard — the finding that put tabindex on the
      page before this one, re-made here. */
-  return `<div class="tblwrap" tabindex="0" role="region" aria-label="all eleven grains">`
+  return `<div class="tblwrap" tabindex="0" role="region" aria-label="all eleven rungs">`
     + `<table class="tbl" id="grain-table" data-component="grainTable" data-ref="rail">`
     + `<thead><tr><th>resolution</th><th>one cell</th><th>edge</th>`
     + `<th>cells the ${H.sensors.length} stations fall in</th><th>in this node's own cell</th>`
@@ -3911,7 +3911,7 @@ function table(ctx) {
       + `<td>${g.may_leave ? 'may leave' : ''}${g.finer_than_published
         ? 'finer than this node says where it is' : ''}</td></tr>`).join('')
     + `</tbody></table></div>`
-    + `<p class="cap">Grey rows are the flat run. The row in bold is where the dial stands.</p>`;
+    + `<p class="cap">Grey rows are the flat run. The row in bold is where the ladder stands.</p>`;
 }
 
 /* THE FLAT RUN, read off the table instead of written down.
@@ -3976,7 +3976,7 @@ function grainLine(ctx) {
        different true numbers on one page, and the shorter label made them look like a
        contradiction. */
     value: G.occupied, dp: 0, unit: `of ${n} with a coordinate`,
-    source: 'this node\u2019s own grain table',
+    source: 'this node\u2019s own resolution table',
     cmp: { text: `one cell is ${km2(G.area_m2)} here \u00b7 ${G.in_my_cell} station`
       + `${G.in_my_cell === 1 ? '' : 's'} sit in this node's own cell, of which `
       + `${G.mine_in_my_cell} ${G.mine_in_my_cell === 1 ? 'is' : 'are'} its own`
@@ -4014,10 +4014,10 @@ function fourGrain(ctx) {
         + `cannot spend: each step is seven times finer and finds nothing new.`
       : settles > 0
         ? `It stops changing at ${got[settles].res}. Finer than that, each step is seven times `
-          + `smaller and answers "who is near me" with the same cells \u2014 which is the grain that `
+          + `smaller and answers "who is near me" with the same cells \u2014 which is the resolution that `
           + `holds here, and it is a fact about how spread out this node's stations are, not about `
           + `H3.`
-        : `Still changing at every step, so the finest grain in this range is still earning its `
+        : `Still changing at every step, so the finest resolution in this range is still earning its `
           + `precision on this node today.`,
     qty: got.map(g => ({
       num: `grain.occupied.${g.res}`, value: String(g.occupied),
@@ -4105,7 +4105,7 @@ function template(ctx) {
 
 window.PAI.register({
   id: 'grain', pack: 'core', stage: 'decide', order: 20, learn: ['containment'],
-  title: 'What each grain is worth',
+  title: 'What each rung is worth',
   needs: ['H3.grain_table'],
   render(ctx) {
     const flat = flatRun(H);
@@ -4124,14 +4124,14 @@ window.PAI.register({
       : `<p class="honest" id="flat-run" data-component="finding" data-ref="rail">`
         + (H.sensors && H.sensors.length
           ? `On this node on this day the count of occupied cells is still changing at the finest `
-            + `resolution in the table, so there is no flat run to report: every stop of the dial is `
+            + `resolution in the table, so there is no flat run to report: every rung of the ladder is `
             + `still earning its precision. The table below is the whole of it.`
           : `No station on this node carries a coordinate, so every resolution files the same nothing `
-            + `and there is no grain to compare. The table below is still this node's own arithmetic: `
-            + `what one cell is worth at each of the ${rows} stops.`)
+            + `and there is no resolution to compare. The table below is still this node's own arithmetic: `
+            + `what one cell is worth at each of the ${rows} rungs.`)
         + `</p>`;
     return grainLine(ctx) + fourGrain(ctx) + leaves(ctx) + template(ctx) + finding
-      + `<details class="fold"><summary>All eleven grains, and what each is worth</summary>`
+      + `<details class="fold"><summary>All eleven rungs, and what each is worth</summary>`
       + table(ctx) + `</details>`;
   },
   notes() {
@@ -4140,15 +4140,15 @@ window.PAI.register({
       /* Every number in this note was node #1's, spelled out in words — "four stops", "the same
          nine cells", "the same three sensors". They are this node's now, and the note is only made
          at all where there is a flat run to make it about. */
-      ...(flat.length ? [{ id: 'grain-flat', label: 'Where grain stops saying anything',
+      ...(flat.length ? [{ id: 'grain-flat', label: 'Where resolution stops saying anything',
         text: `Past resolution ${flat[0].res}, on this node on `
-        + `this day, grain is precision with no information in it. ${flat.length} stops of the dial, `
+        + `this day, resolution is precision with no information in it. ${flat.length} rungs of the ladder, `
         + 'each seven times finer than the last, and the answer to "who is near me" does not change: '
         + `the same ${flat[0].occupied} cells hold something and the same ${flat[0].mine_in_my_cell} `
         + 'sensors sit in this node’s own cell. Nothing in the first two rounds of drawings could '
-        + 'have shown this, because nothing in them varied the grain.' }] : []),
-      { id: 'grain-lines', label: 'The two marks on the dial',
-        text: `The two marks on the dial are the product’s own lines, not this `
+        + 'have shown this, because nothing in them varied the resolution.' }] : []),
+      { id: 'grain-lines', label: 'The two marks on the ladder',
+        text: `The two marks on the ladder are the product’s own lines, not this `
         + `page’s. Resolution ${H.settings.PRESENCE_RES_FLOOR} and coarser may leave this machine — `
         + `it is PRESENCE_RES_FLOOR in app/main.py, the finest any node may announce. Past resolution `
         + `${H.publication.res} is finer than this node is willing to say where it is: GET /health `
@@ -4292,7 +4292,7 @@ function capacity() {
 
 window.PAI.register({
   id: 'asks', pack: 'core', stage: 'act', order: 10, learn: ['levels', 'current'],
-  title: 'What this node has asked',
+  title: 'The alerts this node has sent',
   /* PORTED: the prototype also needed SNAP.funnel, which was one of its three synthetic
      contributions — no endpoint on this node computes a stage split or the 2x2. The ledger is the
      node's own (GET /issues publishes `asks`), so the section stands on that and draws the funnel
@@ -4336,7 +4336,7 @@ window.PAI.register({
           line: String(latest.text || '').split('\n')[0].slice(0, 140),
           signs: r.html,
           qty: [{ num: `asks.${esc(name)}.sent`, value: `${r.closed}/${r.total}`,
-            cmp: `closed of asked in the window \u2014 an ask closes when somebody acted or the `
+            cmp: `closed of asked in the window \u2014 an alert closes when somebody acted or the `
               + `outcome was measured, never merely by being seen`
               + `${r.unit > 1 ? ` \u00b7 one ring per ${r.unit}` : ''}` }],
         });
@@ -4354,7 +4354,7 @@ window.PAI.register({
        either way, so it is printed, and the comparison says plainly what is not on this node. */
     const r = ctx.S.rho;
     return `<div class="col" data-component="asksCount" data-ref="wall-lead">`
-      + `<h3 data-role="wall-issue">Asks sent</h3>`
+      + `<h3 data-role="wall-issue">Alerts sent</h3>`
       + `<div class="line"><span class="num" data-num="asks.sent" data-cmp="${r
         ? `against ${r.acted} answered`
         : 'how many were answered is not on this node right now: GET /rho did not come back'}">`
@@ -4363,20 +4363,20 @@ window.PAI.register({
   },
   notes(ctx) {
     return [
-      { id: 'asks-what', label: 'What an ask is',
-        text: 'An ask is a rule crossing a line and the node saying so to a '
+      { id: 'asks-what', label: 'What an alert is',
+        text: 'An alert is a rule crossing a line and the node saying so to a '
         + 'person, on Telegram. It is the only thing on this page that is addressed to somebody; '
         + 'everything else is addressed to nobody in particular. "Nothing has been asked" and '
-        + '"nothing to do" are two different sentences, and the ask strip says which one is true.' },
-      { id: 'asks-rows', label: 'One ring, one ask',
-        text: 'One ring an ask, closed first. An ask closes when somebody acted '
+        + '"nothing to do" are two different sentences, and the alert strip says which one is true.' },
+      { id: 'asks-rows', label: 'One ring, one alert',
+        text: 'One ring an alert, closed first. An alert closes when somebody acted '
         + 'or the outcome was measured \u2014 being seen is not closing it, which is the node\u2019s rule '
-        + 'and not this page\u2019s: the page reads which asks are still open from the node\u2019s own '
+        + 'and not this page\u2019s: the page reads which alerts are still open from the node\u2019s own '
         + 'answer rather than keeping a copy of the rule that decides it. A rule that has asked '
         + 'more times than a person can count gets a coarser unit and says which, and the figure '
         + 'beside the strip is always exact.' },
       { id: 'where-to-go', label: 'The nearest place to get it made',
-        text: 'The nearest place you could get something made, under the ask it '
+        text: 'The nearest place you could get something made, under the alert it '
         + 'answers rather than as a tile of its own \u2014 the pack that stores it says the line belongs '
         + 'to the moment you have been told you need something made. The sentence is the pack\u2019s, '
         + 'including which lab and how far; the page draws it and does not compose it. The date is '
@@ -4390,8 +4390,8 @@ window.PAI.register({
         + 'words say why \u2014 never this page\u2019s summary of them.' },
       { id: 'asks-button', label: 'The green button',
         text: 'The green button is the one control on the page that is not the '
-        + 'dial. It is a response, so it is green — the layer’s rule is that orange means what only '
-        + 'the satellite knows and nothing else — and it is drawn in the ask strip and nowhere else.' },
+        + 'ladder. It is a response, so it is green — the layer’s rule is that orange means what only '
+        + 'the satellite knows and nothing else — and it is drawn in the alert strip and nowhere else.' },
     ];
   },
 });
@@ -4433,7 +4433,7 @@ window.PAI.register({
     const E = window.EFFECT, rules = E.rules || [];
     if (!rules.length) {
       return `<p class="note" id="effect-none" data-component="absent" data-ref="measure">`
-        + `Nobody has acted on an ask here yet, or not long enough ago to judge: this waits `
+        + `Nobody has acted on an alert here yet, or not long enough ago to judge: this waits `
         + `${E.window_hours} hours after an act before asking whether the condition stopped. `
         + `Nothing is missing.</p>`;
     }
@@ -4696,7 +4696,7 @@ function card(ctx, key, d, a) {
     + `<div class="btns">`
     + (sug ? `<button type="button" class="take">Take its word</button>` : '')
     + `<button type="submit" class="pri">Record the decision</button></div>`
-    + `<p class="fine">This closes no ask and moves no number. When it is done, press `
+    + `<p class="fine">This closes no alert and moves no number. When it is done, press `
     + `<b>I did this</b> under Act.</p>`
     + `</form></section>`;
 }
@@ -4728,8 +4728,8 @@ window.PAI.register({
         + 'recommendation the card says so, because a page that invents advice about somebody\u2019s '
         + 'air is a page that cannot be trusted about anything.' },
       { id: 'decide-moves-nothing', label: 'A decision moves nothing',
-        text: 'A decision moves nothing. It does not close the ask, it '
-        + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the ask stays open and the '
+        text: 'A decision moves nothing. It does not close the alert, it '
+        + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the alert stays open and the '
         + 'node keeps watching. What it changes is the record: a household that looked, decided and '
         + 'never managed it used to leave the same trace as one that never looked, which was none.' },
       { id: 'decide-collective', label: 'One person, one node',
@@ -4816,7 +4816,7 @@ function line(x, ctx, all) {
     /* The sentence if this reader may have it; otherwise the ask it answered, so the row still says
        what was closed. Never a blank and never a guess at what was written. */
     line: note || (a ? String(a.text || '').split('\n')[0].slice(0, 120)
-      : 'the ask this answered is older than the ledger this node keeps'),
+      : 'the alert this answered is older than the ledger this node keeps'),
     qty: [],
   });
 }
@@ -4831,7 +4831,7 @@ window.PAI.register({
       .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
     if (!rows.length) {
       return `<p class="note" id="ledger-none" data-component="absent" data-ref="asks-rows">`
-        + `Nobody has answered an ask on this node yet. When somebody does \u2014 from this page, `
+        + `Nobody has answered an alert on this node yet. When somebody does \u2014 from this page, `
         + `from Telegram, or from a terminal \u2014 what they did and who they are is recorded here.`
         + `</p>`;
     }
@@ -4873,7 +4873,7 @@ window.PAI.register({
     return [
       { id: 'ledger-two-sources', label: 'Two answers, and what stays here',
         text: 'This ledger is drawn from two answers, and the line '
-        + 'between them is the node\u2019s. Who acted, when, and on which ask are published with the '
+        + 'between them is the node\u2019s. Who acted, when, and on which alert are published with the '
         + 'rest of the page. The sentence they wrote is not: GET /actions is on neither sharing '
         + 'allowlist, because a note is what a household said about its own house, and it answers a '
         + 'token or this machine and nothing else.' },
@@ -4947,12 +4947,12 @@ window.PAI.register({
       + `<div class="reads" id="measure-rows" data-ref="rho">`
       + row({ id: 'measure-median', component: 'median', ref: 'rho',
         cols: 'minmax(0,210px) minmax(0,1fr) auto',
-        left: `<span class="who"><b>Ask to answer</b><span class="m">median, ${r.window_days} days`
+        left: `<span class="who"><b>Alert to answer</b><span class="m">median, ${r.window_days} days`
           + `</span></span>`,
         line: r.median_minutes == null ? 'Nothing has been answered yet in this window.'
-          : `Half the asks that were answered were answered inside this.`,
+          : `Half the alerts that were answered were answered inside this.`,
         qty: [{ num: 'rho.median', value: r.median_minutes == null ? null
-          : `${r.median_minutes} min`, cmp: `against ${r.acted} of ${r.alerts_act} asks answered` }],
+          : `${r.median_minutes} min`, cmp: `against ${r.acted} of ${r.alerts_act} alerts answered` }],
       })
       + row({ id: 'measure-rho', component: 'rhoValue', ref: 'rho',
         cols: 'minmax(0,210px) minmax(0,1fr) auto',
@@ -4978,7 +4978,7 @@ window.PAI.register({
     const r = ctx.S.rho;
     return [
       { id: 'measure-rho', label: 'ρ, and the one that does not exist',
-        text: `ρ is the share of asks answered — ${r.acted} of ${r.alerts_act} `
+        text: `ρ is the share of alerts answered — ${r.acted} of ${r.alerts_act} `
         + `in ${r.window_days} days here — and it is the one number a node reports about itself. It `
         + 'is drawn as a row of rings, answered first, because a row a person can count is a '
         + 'measurement and a dial needle is a mood. Its definition is not this page’s to touch. A '
@@ -4986,12 +4986,12 @@ window.PAI.register({
         + 'back under the line, and no rule has yet said what its own line is, so the page prints '
         + 'those words rather than a zero that would read as a node that looked and found nothing.' },
       { id: 'funnel', label: 'One thing counted four times',
-        text: 'The funnel counts one thing four times: how many asks the node sent, '
+        text: 'The funnel counts one thing four times: how many alerts the node sent, '
         + 'how many were acknowledged, how many led to something being done, and how many stopped '
         + 'coming back. Two of the four read zero here and each says why. Nobody has acknowledged '
         + 'anything on this node — the phone’s button records that something was done, which skips '
         + 'the middle stage — and that is a fact about the household, not a hole in the drawing. The '
-        + 'last stage is not typed by anyone: the node re-asks every rule on a cycle, so an ask '
+        + 'last stage is not typed by anyone: the node re-asks every rule on a cycle, so an alert '
         + 'followed by a long silence from the same rule on the same sensor is the condition having '
         + 'stopped being true. It says whether the loop closed, never how fast, which is why it is '
         + 'the one stage with no time beside it.' },
@@ -5000,7 +5000,7 @@ window.PAI.register({
         + 'because a promise repeated in a second place is a promise that can drift. They sit at the '
         + 'end of the loop rather than the top of the page: a reader meets what this node does '
         + 'first, and what it will not do once they have seen it. The row about the human row went '
-        + 'without a sign until one was drawn for it: borrowing the answered-ask ring would have '
+        + 'without a sign until one was drawn for it: borrowing the answered-alert ring would have '
         + 'made that ring mean two things twelve pixels apart.' },
       { id: 'measure-day', label: 'The headline issue’s own trace',
         text: 'The day is the headline issue’s own trace: the node supplies every '
@@ -5543,7 +5543,7 @@ function render(ctx, sel) {
     + vars(ctx)
     + `<span class="who">${esc(ctx.S.health.node)}<i>·</i>${esc(ctx.S.health.city || '')}`
     + `<i>·</i>#wall<i>·</i>share level ${esc(share)}<i>·</i>`
-    + `${STILL ? 'the dial stands still' : `the dial turns every ${DWELL_MS / 1000} s`}</span>`
+    + `${STILL ? 'the ladder stands still' : `the ladder moves every ${DWELL_MS / 1000} s`}</span>`
     + `<span class="what">${esc(m.label || VAR(ctx))}<i>·</i>${esc(m.unit || '')}`
     + `<i>·</i>15-min means</span></div>`
     + `<div class="wgrid">`
@@ -5556,11 +5556,11 @@ function render(ctx, sel) {
     + `<p class="wnoask" data-component="wallNoAsk" data-ref="wall-dial">`
     + `Answer on Telegram, not here.</p>`
     + `<div class="wdial" id="wall-dial" data-component="dial" data-ref="wall-field" role="group"`
-    + ` aria-label="the dial">${dial(ctx)}</div>`
+    + ` aria-label="the ladder">${dial(ctx)}</div>`
     /* And the dial says how to read itself, under itself. The foot's caption is about the MOTION;
        this one is about the marks, and a reader looking at the stops should not have to look away. */
     + `<p class="wcap" data-component="dialKey" data-ref="wall-dial">`
-    + `the dial<i>·</i>current stop filled ink<i>·</i>may-leave stops filled `
+    + `the ladder<i>·</i>current rung filled ink<i>·</i>may-leave rungs filled `
     + `<code>--cells</code> at .16<i>·</i>finer than published, dashed</p>`
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
     + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
@@ -5571,8 +5571,8 @@ function render(ctx, sel) {
        is about, and whether the node has stopped answering. Nothing is said twice. */
     + `<div class="foot">${K.asof()}${K.stamp()}<span class="st">stale</span>`
     + `<span class="wcap">${STILL
-      ? 'reduced motion is on, so the dial stands still · press a stop to turn it'
-      : `the dial turns by itself every ${DWELL_MS / 1000} s · nothing interpolates between stops · `
+      ? 'reduced motion is on, so the ladder stands still · press a rung to move it'
+      : `the ladder moves by itself every ${DWELL_MS / 1000} s · nothing interpolates between rungs · `
         + 'under reduced motion it stands still'}</span></div>`
     + `</div>`;
 }
@@ -6947,7 +6947,7 @@ function main() {
     return `<div class="railfold" id="railfold" data-component="railFold" data-ref="rail">`
       + `<div class="rh"><h2>What one cell at resolution ${RES} is worth</h2>`
       + `<a href="${ctx.qlink({ worth: null })}">Close</a></div>`
-      + `<div class="rf">${fig}<div class="rfx"><p>Each stop down is about seven times finer by `
+      + `<div class="rf">${fig}<div class="rfx"><p>Each rung down is about seven times finer by `
       + `area than the one above it, and the drawing is to scale: the filled cell is the one you `
       + `are standing on.${claims ? ` The table is what each thing this node speaks for costs to `
       + `cover at it — the number that moves when this control moves.` : ''}</p>${claims}</div>`
@@ -7036,8 +7036,8 @@ function main() {
            other branch says it in words rather than drawing nothing. */
         ? `<a class="askref" href="#stage-act" data-role="ask" data-component="askRef"`
           + ` data-ref="stage-act">`
-          + `<b data-num="asks.open" data-cmp="asks open across ${ORDER.length} issues">${openAll}</b>`
-          + ` ask${openAll === 1 ? '' : 's'} open`
+          + `<b data-num="asks.open" data-cmp="alerts open across ${ORDER.length} issues">${openAll}</b>`
+          + ` alert${openAll === 1 ? '' : 's'} open`
           + `${firstAsk != null ? ` · #${esc(String(firstAsk))}` : ''} · in 3 Act</a>`
         : `<span class="askref none" data-role="ask" data-component="askRef" data-ref="stage-act">`
           + `nothing open · 3 Act is empty</span>`)
@@ -7138,7 +7138,7 @@ function main() {
          controls because they are not sections — the rail is the page's one instrument, the lead is
          its answer, and the ground is the surface both stand on — and a reader who cannot see why a
          band has no arrows will assume the arrows are broken. */
-      + `<b>The rail, the lead and the ground are fixed</b> and carry no controls: the first is this `
+      + `<b>The ladder, the lead and the ground are fixed</b> and carry no controls: the first is this `
       + `page's instrument, the second its answer, the third the surface both stand on.</span>`
       + `<label class="vh" for="arr-restore">Put a hidden section back</label>`
       + `<select id="arr-restore"><option value="">Restore a hidden section…</option></select>`
@@ -7327,7 +7327,7 @@ async function didThis(form) {
       say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
         + `act token; Set up \u2192 unlock holds it.`, true);
     } else if (r.status === 404) {
-      say('This node has no such ask any more. Reload and look again.', true);
+      say('This node has no such alert any more. Reload and look again.', true);
     } else if (!r.ok) {
       say(`The node refused it (${r.status}).`, true);
     } else {
@@ -7348,7 +7348,7 @@ document.addEventListener('submit', ev => {
   if (!form) return;
   ev.preventDefault();
   if (FIXTURE || STATE !== 'populated') {
-    say('This is a capture, not a live node — its asks belong to the node it came from.', true);
+    say('This is a capture, not a live node — its alerts belong to the node it came from.', true);
     return;
   }
   didThis(form);
@@ -7762,13 +7762,13 @@ const route = () => window.PAI_ROUTE();
 const WORDS = {
   en: { leavesMachine: 'leaves this machine',
     openOnAnotherScreen: 'Open this on another screen in the house:',
-    net: { cellsN: '{n} of 20', cellsOut: 'Index cells', home: 'home', kept: '{n} readings kept, none of them leave', leaves: 'What leaves this house', leavesShort: 'what leaves', means: 'hourly means', model: 'model', models: 'the models', models_: 'models', parentNowhere: 'nowhere yet', reads: 'What this node reads', rhoN: '{closed} of {total}', rhoOut: 'answered asks', sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations', street: 'the street', sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.', title: 'This house is one node of a much larger instrument.', yours: 'your sensors' }, },
+    net: { cellsN: '{n} of 20', cellsOut: 'Index cells', home: 'home', kept: '{n} readings kept, none of them leave', leaves: 'What leaves this house', leavesShort: 'what leaves', means: 'hourly means', model: 'model', models: 'the models', models_: 'models', parentNowhere: 'nowhere yet', reads: 'What this node reads', rhoN: '{closed} of {total}', rhoOut: 'answered alerts', sensor: 'sensor', sensors: 'sensors', station: 'public station', stations: 'public stations', street: 'the ring', sub: 'Readings stay here. What travels up to the community node is hourly means, Index cells and \u03c1: enough to see the place, never enough to see the house.', title: 'This house is one node of a much larger instrument.', yours: 'your sensors' }, },
   id: { leavesMachine: 'keluar dari mesin ini',
     openOnAnotherScreen: 'Buka ini di layar lain di rumah:',
-    net: { cellsN: '{n} dari 20', cellsOut: 'sel Indeks', home: 'rumah', kept: '{n} bacaan disimpan, tidak satu pun keluar', leaves: 'Yang keluar dari rumah ini', leavesShort: 'yang keluar', means: 'rata-rata per jam', model: 'model', models: 'model', models_: 'model', parentNowhere: 'belum ke mana-mana', reads: 'Yang dibaca node ini', rhoN: '{closed} dari {total}', rhoOut: 'permintaan dijawab', sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik', street: 'jalan', sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.', title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.', yours: 'sensor Anda' }, },
+    net: { cellsN: '{n} dari 20', cellsOut: 'sel Indeks', home: 'rumah', kept: '{n} bacaan disimpan, tidak satu pun keluar', leaves: 'Yang keluar dari rumah ini', leavesShort: 'yang keluar', means: 'rata-rata per jam', model: 'model', models: 'model', models_: 'model', parentNowhere: 'belum ke mana-mana', reads: 'Yang dibaca node ini', rhoN: '{closed} dari {total}', rhoOut: 'peringatan dijawab', sensor: 'sensor', sensors: 'sensor', station: 'stasiun publik', stations: 'stasiun publik', street: 'sekitarnya', sub: 'Bacaan tetap di sini. Yang naik ke node komunitas adalah rata-rata per jam, sel Indeks dan \u03c1: cukup untuk melihat tempatnya, tidak pernah cukup untuk melihat rumahnya.', title: 'Rumah ini satu node dari instrumen yang jauh lebih besar.', yours: 'sensor Anda' }, },
   es: { leavesMachine: 'sale de esta máquina',
     openOnAnotherScreen: 'Abre esto en otra pantalla de la casa:',
-    net: { cellsN: '{n} de 20', cellsOut: 'celdas del \u00cdndice', home: 'casa', kept: '{n} lecturas guardadas, ninguna sale', leaves: 'Lo que sale de esta casa', leavesShort: 'lo que sale', means: 'medias horarias', model: 'modelo', models: 'los modelos', models_: 'modelos', parentNowhere: 'a ning\u00fan sitio todav\u00eda', reads: 'Lo que lee este nodo', rhoN: '{closed} de {total}', rhoOut: 'peticiones respondidas', sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas', street: 'la calle', sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.', title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.', yours: 'tus sensores' }, },
+    net: { cellsN: '{n} de 20', cellsOut: 'celdas del \u00cdndice', home: 'casa', kept: '{n} lecturas guardadas, ninguna sale', leaves: 'Lo que sale de esta casa', leavesShort: 'lo que sale', means: 'medias horarias', model: 'modelo', models: 'los modelos', models_: 'modelos', parentNowhere: 'a ning\u00fan sitio todav\u00eda', reads: 'Lo que lee este nodo', rhoN: '{closed} de {total}', rhoOut: 'alertas respondidas', sensor: 'sensor', sensors: 'sensores', station: 'estaci\u00f3n p\u00fablica', stations: 'estaciones p\u00fablicas', street: 'los alrededores', sub: 'Las lecturas se quedan aqu\u00ed. Lo que sube al nodo de la comunidad son medias horarias, celdas del \u00cdndice y \u03c1: suficiente para ver el lugar, nunca suficiente para ver la casa.', title: 'Esta casa es un nodo de un instrumento mucho m\u00e1s grande.', yours: 'tus sensores' }, },
 };
 const W = () => WORDS[(window.K || {}).LOC] || WORDS.en;
 window.W = W;

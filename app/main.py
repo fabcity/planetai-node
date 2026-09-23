@@ -2082,7 +2082,7 @@ def action(body: dict, request: Request, authorization: str = Header("")):
             cur.execute("SELECT 1 FROM actions WHERE alert_id = %s AND stage = 'decided' LIMIT 1", (body.get("alert_id"),))
             if not cur.fetchone():
                 raise HTTPException(409, "this node is set to DECISION_REQUIRED, so an act needs a decision recorded "
-                                         "against the same ask first. Decide on the dashboard, then record what you did.")
+                                         "against the same alert first. Decide on the dashboard, then record what you did.")
         cur.execute("INSERT INTO actions (alert_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
                     (body.get("alert_id"), stage, str(body.get("actor") or "")[:80], str(body.get("note") or "")[:500]))
     return {"ok": True}

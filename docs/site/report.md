@@ -69,7 +69,7 @@ Nearest place to make or fix something: {lab}, {distance} km ({up to three capab
 The distance reads `<0.1` for a node inside a lab, and the capabilities are in the report's language. The row
 comes from the `make` pack, which is off unless both `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1` are set, and
 which stores only the labs within `MAKE_RADIUS_KM` (50) that publish coordinates. The same line is offered on the
-asks in `GET /issues`, as `asks.where`. From v0.65 to v0.69 the line was silently absent on every node, because
+alerts in `GET /issues`, as `asks.where`. From v0.65 to v0.69 the line was silently absent on every node, because
 the report looked for the pack in the wrong folder; it appears from v0.70.
 
 > **Careful.** The pack's README states the licence this way: the Fab Lab Network directory "is **not openly
@@ -141,7 +141,7 @@ have been answered, and the usual wait was {median} minutes."
 That sentence does not say ρ. ρ has its own window and its own query in `app/index.py`, which the
 issues engine cannot make, and, in the code's words, "A second rho computed from a different window would be a
 second rho, and two of them disagreeing on one page is worse than one of them being absent." The measure
-sentence counts the Act stage's ledger instead: an ask counts as answered once it has an `acted` or `measured`
+sentence counts the Act stage's ledger instead: an alert counts as answered once it has an `acted` or `measured`
 row.
 
 ## Contributing to it from a pack

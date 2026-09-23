@@ -55,7 +55,7 @@ If the terminal says `command not found: planetai` afterwards, open a new termin
 
 ## 3. Minute five: what you should see
 
-Open `http://localhost:8080`. Across the top is the grain rail — eleven stops, one per size of map
+Open `http://localhost:8080`. Across the top is the ladder: eleven rungs, one per size of map
 cell your node knows, with the one it is standing on lit. Under it, the issue with most to say, as a
 sentence. With no sensor yet that sentence says so in as many words: **"No air sensor here yet, and
 no model for this point"**, or the model's own figure where there is one — CAMS, an 11 km square.
@@ -98,7 +98,7 @@ planetai act 3 "read it"
 ```
 
 The terminal answers with ρ ("rho"): the share of alerts that led to someone doing something. This one number is what
-the node exists to measure. On the dashboard the same button sits beside the ask itself, in **3 Act** — the third of the four
+the node exists to measure. On the dashboard the same button sits beside the alert itself, in **3 Act** — the third of the four
 stages the page is read in.
 
 Replying `/act 3` in Telegram only works if the node's bot is running (`planetai agent local`, which installs a small

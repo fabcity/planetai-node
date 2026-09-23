@@ -850,7 +850,7 @@ Nearest place to make or fix something: <lab>, <km> km (<up to three capabilitie
 
 in Indonesian and Spanish too, capability names included (`laser cutting`, `pemotongan laser`, `corte láser`). A
 lab under 0.05 km away prints as `<0.1 km`. The same sentence travels in `GET /issues` as `asks.where`, and the
-dashboard draws it under the ask it answers. With the pack off, the dashboard shows the help text the node
+dashboard draws it under the alert it answers. With the pack off, the dashboard shows the help text the node
 publishes for `MAKE_ENABLED` instead.
 
 ### Settings

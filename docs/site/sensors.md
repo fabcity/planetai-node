@@ -195,6 +195,6 @@ it the Index, knows it exists.
 ## Where this leads
 
 The node now has something of its own to read. Read it next: the [dashboard](dashboard.md) draws what the
-sensors say against the street and the model, and the [report](report.md) says it in sentences every few
+sensors say against the ring and the region, and the [report](report.md) says it in sentences every few
 hours. When a reading crosses a line, [alerts](alerts.md) is where the node starts asking somebody to do
 something.

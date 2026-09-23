@@ -17,7 +17,7 @@ overhead, decides where it stands, and tells the people there what to do. Raw re
    OBSERVE  ──▶  DECIDE  ──▶  ACT  ──▶  MEASURE  ──▶  OBSERVE …
    what is read    what may be    what has been   whether it worked,
    about this      said, and at   asked, of whom  and how long it took
-   place           what grain
+   place           what resolution
 ```
 
 `ARCHITECTURE.md` describes three layers, Sense, Observe and Act, measured against the Fab City Index. The
@@ -42,7 +42,7 @@ metric (15-minute, hourly and 24-hour means, and how long a sensor has been sile
 means over all history, and `observations` holds the latest value from every slow source: a portal, a model,
 a map. On top of them, `GET /issues` is the one document the dashboard draws. For every issue the keeper
 declared in `NODE_ISSUES` it computes a state, the four distances with their provenance, a sentence in
-English, Bahasa Indonesia and Spanish, the open asks and a 24-hour series, and it names a headline issue and
+English, Bahasa Indonesia and Spanish, the open alerts and a 24-hour series, and it names a headline issue and
 writes a digest of four sentences, one per stage.
 
 Two more reads sit beside it. `GET /shape` is "the day this place usually has", indoor against outdoor,
@@ -52,12 +52,12 @@ a year. `GET /reach` says how far back each kind of source can be asked. Every n
 
 ### Decide
 
-On the page, Decide holds "what may be said about it, and at what grain": whose word covers how much ground,
+On the page, Decide holds "what may be said about it, and at what resolution": whose word covers how much ground,
 what each H3 resolution is worth, and what the node doubts about its own sensors. Since v0.72 it opens with a
 card, "What to do about it", for each issue with an open act-level alert. The card shows what was seen and
 "what this node suggests", which is the rule's own last line, the one that begins with 👉, written by
 whoever wrote the rule. A person may record a decision there. It is written to `actions` with
-`stage: decided`, and it moves nothing: it closes no ask, it is not in ρ and it is not a stage in the funnel.
+`stage: decided`, and it moves nothing: it closes no alert, it is not in ρ and it is not a stage in the funnel.
 
 Two words are easy to confuse here. `ARCHITECTURE.md` maps decide to the `acknowledged` row of its ledger;
 the page's `decided` row is a separate record. With `DECISION_REQUIRED=1` (off by default) the node refuses
@@ -79,7 +79,7 @@ drafts and never dispatches: nothing is recorded as done without that row.
 [ρ](rho.md) is the share of act-level alerts in the last 30 days that had an `acknowledged` or `acted` row
 within 24 hours, pooled with the alert timestamps a node's children push up. It becomes the core's own Index
 cell, `Governance|<Scale>`, which reads `partial` until five act-level alerts have been answered within a
-day. Beside it the funnel counts the same asks four times: asked, acknowledged, acted, measured. Nothing posts `measured`. The node
+day. Beside it the funnel counts the same alerts four times: asked, acknowledged, acted, measured. Nothing posts `measured`. The node
 derives it: an act followed by 2,880 minutes (48 hours) of silence from the same rule on the same sensor,
 counted only for rules the node still runs. `GET /effect` asks the same question per rule over the whole
 record, how many acts and how many cleared, and gives a recovery time in hours only for a rule that declares

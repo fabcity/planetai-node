@@ -36,11 +36,11 @@ MAX_WORDS = 60
 # key · title · page · section (None = the page's lead, above the first heading) · first words · last
 # words · the page's own line. Order is the order the panel walks, which is the order of the page.
 MARKS = [
-    ("dial", "The rail: one stop per grain", "dashboard.md", "The lead",
-     "The **grain rail** sits above the lead", "are struck through.",
-     "The stops that may leave the machine are drawn as a dotted texture rather than the cells "
-     "blue, so blue keeps its one meaning on this page: an H3 cell. Under the rail, a fold draws "
-     "one cell at the stop you are on against the stops either side, to scale, and what each "
+    ("dial", "The ladder: one rung per resolution", "dashboard.md", "The lead",
+     "The **ladder** sits above the lead", "are struck through.",
+     "The rungs that may leave the machine are drawn as a dotted texture rather than the cells "
+     "blue, so blue keeps its one meaning on this page: an H3 cell. Under the ladder, a fold draws "
+     "one cell at the rung you are on against the rungs either side, to scale, and what each "
      "thing this node speaks for costs to cover at it."),
     ("lead", "The lead", "dashboard.md", "The lead",
      "The first thing on Now", "`live`, `stale` or `cached`.",
@@ -48,12 +48,12 @@ MARKS = [
      "bug, which is why the sentence, the numeral and the state word all arrive from GET /issues."),
     ("containment", "Exact in the index, approximate on the ground", "dashboard.md", "The lead",
      "At resolution 8 one cell is", "how many of those are its own.",
-     "That is the documentation's example grain line. The one under Decide is tonight's, read "
-     "from this node, and when the neighbouring grains give the same answer the page says so."),
+     "That is the documentation's example resolution line. The one under Decide is tonight's, read "
+     "from this node, and when the neighbouring rungs give the same answer the page says so."),
     ("distances", "Four distances, not four resolutions", "concepts.md", "Sources and sensors",
-     "**The four distances.**", "jalan · model.",
-     "The page prints them in the household's words — room, wall outside, street, model — on one "
-     "scale, so the eye can answer whether it is me or everywhere without arithmetic."),
+     "**The four distances.**", "sekitar · wilayah.",
+     "The page prints them as house, street, ring and region, on one scale, so the eye can answer "
+     "whether it is me or everywhere without arithmetic."),
     ("prov", "Provenance words", "concepts.md", "Provenance words on the page",
      "`live`: measured by this node", "the node's own engine.",
      "Provenance is ink only and square on this page, never a coloured pill, and the full H3 id is "
@@ -69,12 +69,13 @@ MARKS = [
     ("stages", "The order the loop runs", "dashboard.md", "The sections",
      "Every section is registered with the page contract",
      "observe, decide, act, measure.",
-     "Observe, decide, act, measure — the four stages this page is read in. A section whose data "
+     "Observe, decide, act, measure: the four stages this page is read in. A section whose data "
      "is not on this node prints one honest line in its place, never a blank and never a guess."),
     ("cards", "Four card kinds and no fifth", "dashboard.md", "The sections",
      "Four card kinds and no fifth:", "a factor of a thousand.",
-     "Room is the solid line, the street dotted, the model dashed, the line itself dashed red. "
-     "Where a distance has no source its trace is absent and the legend says which one."),
+     "The house is the solid line, the ring dotted, the street and the region dashed, the line "
+     "itself dashed red. Where a distance has no source its trace is absent and the legend says "
+     "which one."),
     ("states", "States, in weight not hue", "dashboard.md", "Issues, states and distances",
      "For every issue the keeper declared", "or `none` (no record).",
      "State is carried by weight, fill and dash, never by hue: act is set at 700 and the other "
@@ -89,19 +90,19 @@ MARKS = [
      "at it. The offline plan asks nothing; Telegram is reached by the node, never by this page."),
     ("raw", "Raw readings stay", "how-it-works.md", "What leaves the machine, and what never does",
      "Raw readings stay.", "under CC BY 4.0",
-     "The barcode under Observe is hourly means of the room's PM2.5 — the finest grain this page "
-     "shows, and still not a raw reading."),
+     "The barcode under Observe is hourly means of the house's PM2.5: the finest time step this "
+     "page shows, and still not a raw reading."),
     ("levels", "Three levels, one floor", "alerts.md", "Levels",
      "`ALERT_LEVEL` (default `act`) is the floor", "is written from.",
-     "An alert's acted_at stays null until a person acts and records it — this page's button, the "
-     "CLI, the bot, a radio, or an agent. It is the one measurement the node cannot make itself."),
+     "An alert's acted_at stays null until a person acts and records it, with this page's button, "
+     "the CLI, the bot, a radio or an agent. It is the one measurement the node cannot make itself."),
     ("current", "Conditions that are not events", "alerts.md", "Conditions that are not events",
-     "The dashboard marks\nan open act-level ask", "the ask is still open.",
+     "The dashboard marks\nan open act-level alert", "the alert is still open.",
      "A heat alert is a condition that holds for hours; a cooking spike is an event with a "
      "cooldown. The schema does not yet know an alert can clear, so the page says which it is."),
     ("rho", "ρ: the loop closed", "rho.md", None,
      "ρ (rho) is the share", "rather than an app feature.",
-     "The page draws it as the asks answered over the asks raised, with the median minutes to the "
+     "The page draws it as the alerts answered over the alerts raised, with the median minutes to the "
      "first answer, and counts the rings rather than sizing them."),
     ("refusals", "Refusals that hold at every stage", "how-it-works.md",
      "Refusals that hold at every stage",

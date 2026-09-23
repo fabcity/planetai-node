@@ -57,42 +57,38 @@ TRENDS = ("rising", "steady", "falling")
 # overrides one of these with its own `where:` block — land and coast both rename `region`, because
 # "over this square of the map" is not where a wave is.
 WHERE_WORDS = {
-    "en": {"room": "in the room", "yard": "on the wall outside", "ring": "on the street",
+    "en": {"room": "in the house", "yard": "on the street", "ring": "in the ring around it",
            "region": "over this square of the map"},
-    "id": {"room": "di dalam ruangan", "yard": "di dinding luar", "ring": "di jalan",
+    "id": {"room": "di dalam rumah", "yard": "di jalan", "ring": "di sekitarnya",
            "region": "di atas kotak peta ini"},
-    "es": {"room": "en la habitación", "yard": "en la pared de fuera", "ring": "en la calle",
+    "es": {"room": "dentro de casa", "yard": "en la calle", "ring": "en los alrededores",
            "region": "sobre este cuadrado del mapa"},
 }
 # The same four places as things a number can be compared WITH, which is a different phrase in every
 # language and in English too: "over on the street" is not a sentence.
 NOUN_WORDS = {
-    "en": {"room": "the room", "yard": "the wall outside", "ring": "the street", "region": "the model"},
-    "id": {"room": "ruangan", "yard": "dinding luar", "ring": "jalan", "region": "model"},
-    # Spanish contracts de + el into del, so "por encima de el modelo" is wrong and every other
-    # phrasing that fixes it breaks one of the three templates. "lo que dice el modelo" works in all
-    # three and reads better than any of them.
-    "es": {"room": "la habitación", "yard": "la pared de fuera", "ring": "la calle",
-           "region": "lo que dice el modelo"},
+    "en": {"room": "the house", "yard": "the street", "ring": "the ring", "region": "the region"},
+    "id": {"room": "rumah", "yard": "jalan", "ring": "sekitarnya", "region": "wilayah"},
+    # "la región" takes no contraction, so the three templates that forced "lo que dice el modelo"
+    # (por encima de + el) read correctly with the plain noun again.
+    "es": {"room": "la casa", "yard": "la calle", "ring": "los alrededores", "region": "la región"},
 }
 # The four distances as column headings: short, and the same four words wherever they appear.
 #
-# CHANGED 21 September 2026, and it reverses half of Decision 6. That decision gave English the
-# system's own words — room, yard, ring, region — and the other two languages the household's, and
-# the result was a page that labelled a column `YARD` above a sentence reading "on the wall
-# outside". Two vocabularies for one place, on one screen, in the one language that had them.
-# These are now the sentence's nouns in all three, so a heading and the line under it name the same
-# thing. `yard` was the worst of them: nothing at node #1 is a yard, it is a wall.
+# CHANGED 23 September 2026 (R25), following the programme page. The page names the four distances
+# house · street · ring · region, and Tomas decided the node and the documentation say the same, so
+# a reader moving between the programme page, the docs and this dashboard meets one vocabulary. The
+# rule from 21 September holds: a heading and the sentence under it name the same thing, in every
+# language, which is why WHERE_WORDS and NOUN_WORDS moved with this table. Indonesian and Spanish
+# translate the English words rather than borrowing them; both want a native reader's pass.
 #
 # The API KEYS do not change. `room/yard/ring/region` are what `/issues.distances` publishes, what
 # every issue's `stack` is keyed on and what a pack's `where:` block overrides; renaming those would
 # be a wire break for a wording problem. Only the words a person reads change.
 LABEL_WORDS = {
-    "en": {"room": "room", "yard": "wall outside", "ring": "street", "region": "model"},
-    "id": {"room": "ruangan", "yard": "dinding luar", "ring": "jalan", "region": "model"},
-    # NOUN_WORDS' Spanish for `region` is a clause — "lo que dice el modelo" — because the sentence
-    # templates need one. A column heading is not a sentence, so it takes the noun out of it.
-    "es": {"room": "habitación", "yard": "pared de fuera", "ring": "calle", "region": "modelo"},
+    "en": {"room": "house", "yard": "street", "ring": "ring", "region": "region"},
+    "id": {"room": "rumah", "yard": "jalan", "ring": "sekitar", "region": "wilayah"},
+    "es": {"room": "casa", "yard": "calle", "ring": "alrededores", "region": "región"},
 }
 # {cmp} is assembled from these. Never a bare number: a comparison a household can read.
 # "a, b and c". The list separator the sentences use when one comparison covers several distances.
@@ -129,7 +125,7 @@ DIGEST_WORDS = {
         "decide": "At resolution {res} one cell is {area} m\u00b2, and this node's {stations} stations "
                   "fall in {occupied} of them \u2014 {mine} in its own cell. The node says where it is "
                   "to about {metres} m, and {leave}.",
-        "act": "{open} asks are open, {top} of them about {issue}. "
+        "act": "{open} alerts are open, {top} of them about {issue}. "
                "Somebody in the house has answered {answered}.",
         "act_none": "Nothing is open. Somebody in the house has answered {answered}.",
         "measure": "Of the {acts} alerts here that asked for something, {answered} have been "
@@ -137,8 +133,8 @@ DIGEST_WORDS = {
         "measure_none": "Of the {acts} alerts here that asked for something, none have been "
                         "answered yet.",
         "measure_empty": "Nothing here has asked anybody to do anything.",
-        "stays": "nothing at this grain leaves the machine",
-        "leaves": "this grain may leave the machine",
+        "stays": "nothing at this resolution leaves the machine",
+        "leaves": "this resolution may leave the machine",
         "state": {"act": "over the line and asking for something", "notable": "worth a look",
                   "quiet": "quiet", "context": "context, and it never asks",
                   "none": "reading nothing"},
@@ -150,7 +146,7 @@ DIGEST_WORDS = {
         "decide": "Pada resolusi {res} satu sel seluas {area} m\u00b2, dan {stations} stasiun node ini "
                   "jatuh di {occupied} di antaranya \u2014 {mine} di selnya sendiri. Node menyebut "
                   "posisinya sampai sekitar {metres} m, dan {leave}.",
-        "act": "{open} permintaan terbuka, {top} di antaranya tentang {issue}. "
+        "act": "{open} peringatan terbuka, {top} di antaranya tentang {issue}. "
                "Seseorang di rumah telah menjawab {answered}.",
         "act_none": "Tidak ada yang terbuka. Seseorang di rumah telah menjawab {answered}.",
         "measure": "Dari {acts} peringatan di sini yang meminta sesuatu, {answered} telah dijawab, "
@@ -158,8 +154,8 @@ DIGEST_WORDS = {
         "measure_none": "Dari {acts} peringatan di sini yang meminta sesuatu, belum ada yang "
                         "dijawab.",
         "measure_empty": "Tidak ada di sini yang meminta siapa pun melakukan sesuatu.",
-        "stays": "tidak ada pada perincian ini yang keluar dari mesin",
-        "leaves": "perincian ini boleh keluar dari mesin",
+        "stays": "tidak ada pada resolusi ini yang keluar dari mesin",
+        "leaves": "resolusi ini boleh keluar dari mesin",
         "state": {"act": "di atas garis dan meminta sesuatu", "notable": "layak dilihat",
                   "quiet": "tenang", "context": "konteks, dan tidak pernah meminta",
                   "none": "tidak membaca apa pun"},
@@ -171,7 +167,7 @@ DIGEST_WORDS = {
         "decide": "En la resoluci\u00f3n {res} una celda son {area} m\u00b2, y las {stations} estaciones "
                   "de este nodo caen en {occupied} de ellas \u2014 {mine} en la suya propia. El nodo "
                   "dice d\u00f3nde est\u00e1 con unos {metres} m, y {leave}.",
-        "act": "{open} peticiones abiertas, {top} de ellas sobre {issue}. "
+        "act": "{open} alertas abiertas, {top} de ellas sobre {issue}. "
                "Alguien en la casa ha respondido {answered}.",
         "act_none": "No hay nada abierto. Alguien en la casa ha respondido {answered}.",
         "measure": "De las {acts} alertas de aqu\u00ed que ped\u00edan algo, {answered} han sido "
@@ -179,8 +175,8 @@ DIGEST_WORDS = {
         "measure_none": "De las {acts} alertas de aqu\u00ed que ped\u00edan algo, ninguna ha sido "
                         "respondida todav\u00eda.",
         "measure_empty": "Nada de aqu\u00ed ha pedido a nadie que haga nada.",
-        "stays": "nada de este grano sale de la m\u00e1quina",
-        "leaves": "este grano puede salir de la m\u00e1quina",
+        "stays": "nada a esta resoluci\u00f3n sale de la m\u00e1quina",
+        "leaves": "esta resoluci\u00f3n puede salir de la m\u00e1quina",
         "state": {"act": "por encima de la l\u00ednea y pide algo", "notable": "merece una mirada",
                   "quiet": "tranquilo", "context": "contexto, y nunca pide nada",
                   "none": "no lee nada"},
@@ -205,7 +201,7 @@ HEADLINE_RULE = {
 REASON_WORDS = {
     "en": {
         "open_ask_current": "asked at {when}, and still true",
-        "open_ask_stale":   "asked at {when}; the reading came back on its own, the ask is still open",
+        "open_ask_stale":   "asked at {when}; the reading came back on its own, the alert is still open",
         "alert_today":      "a {level} at {when}, over now",
         "over_line":        "over the line, and nobody has been asked to do anything",
         "over_line_peak":   "over the line since the day's high of {peak} at {peak_at}, and nobody has been asked to do anything",
@@ -218,7 +214,7 @@ REASON_WORDS = {
     },
     "id": {
         "open_ask_current": "diminta pada {when}, dan masih berlaku",
-        "open_ask_stale":   "diminta pada {when}; bacaannya sudah kembali sendiri, permintaannya masih terbuka",
+        "open_ask_stale":   "diminta pada {when}; bacaannya sudah kembali sendiri, peringatannya masih terbuka",
         "alert_today":      "{level} pada {when}, sudah lewat",
         "over_line":        "di atas batas, dan belum ada yang diminta melakukan apa pun",
         "over_line_peak":   "di atas batas sejak puncak hari ini {peak} pada {peak_at}, dan belum ada yang diminta melakukan apa pun",
@@ -231,7 +227,7 @@ REASON_WORDS = {
     },
     "es": {
         "open_ask_current": "pedido a las {when}, y sigue vigente",
-        "open_ask_stale":   "pedido a las {when}; la lectura volvió sola, la petición sigue abierta",
+        "open_ask_stale":   "pedido a las {when}; la lectura volvió sola, la alerta sigue abierta",
         "alert_today":      "un {level} a las {when}, ya pasado",
         "over_line":        "por encima del límite, y no se ha pedido nada a nadie",
         "over_line_peak":   "por encima del límite desde el máximo del día, {peak} a las {peak_at}, y no se ha pedido nada a nadie",

@@ -23,28 +23,28 @@ for itself is a bug.
    asked the node and how many milliseconds each answer took. Each row there is one route the page read,
    with its time or `no answer`; a `no answer` row is the part of the node that is not answering, and
    nothing in that panel is a reading yet.
-2. **Turn the rail.** The strip of eleven stops above everything is the grain rail (the wall and
-   `planetai ui` call the same control the dial). Press 6, then 10. The
-   ground, the station groups and the grain figures re-draw at each stop; stops 6 and coarser are dotted
+2. **Step the ladder.** The strip of eleven rungs above everything is the ladder (the wall and
+   `planetai ui` carry the same control under the same name). Press 6, then 10. The
+   ground, the station groups and the resolution figures re-draw at each rung; rungs 6 and coarser are dotted
    because a cell that coarse may leave the machine. This is the node telling you how coarse each thing you
    are about to read is.
-3. **Read the lead.** The sentence under the rail is the headline issue in the household's language, with
-   the four distances as meters. The why line says why this issue leads. The last line says how many asks are
-   open, for example `2 asks open · #361 · in 3 Act`, or `nothing open · 3 Act is empty`. The node chose
+3. **Read the lead.** The sentence under the ladder is the headline issue in the household's language, with
+   the four distances as meters. The why line says why this issue leads. The last line says how many alerts are
+   open, for example `2 alerts open · #361 · in 3 Act`, or `nothing open · 3 Act is empty`. The node chose
    this issue, not the page: the why line ends on the node's own `headline_rule`, and the pill at the end
    of the last line (`live`, `stale` or `cached`) says how current it is.
-4. **Find the open ask.** The link in that line goes to Act. Under Decide, "What to do about it" shows
-   "what was seen" and "what this node suggests" for each issue with an open ask. An open ask is the node
+4. **Find the open alert.** The link in that line goes to Act. Under Decide, "What to do about it" shows
+   "what was seen" and "what this node suggests" for each issue with an open alert. An open alert is the node
    asking a person to do something; it stays open until somebody records an act against it (step 6).
 5. **Decide.** Press **Decide about this**, put your name and what will be done (or press **Take its word**),
    then **Record the decision**. The page answers "Decided. Nothing has moved". A decision is a record, not
    an answer: ρ does not change.
-6. **Press "I did this".** In Act, under the ask, press **I did this**, say who and what you did, and
+6. **Press "I did this".** In Act, under the alert, press **I did this**, say who and what you did, and
    **Record it**. The page answers "Recorded. The node watches what happens next." If it answers with the
    node's own 401 or 403 sentence instead, go to Set up, paste the act token that `planetai ui` printed, and
    press it again.
 7. **Find the row.** "What was decided, and by whom", just below, now has your name at the top with `acted`
-   and, if you decided first, `decided first`. The act is in `actions`, the ask is closed, and it counts
+   and, if you decided first, `decided first`. The act is in `actions`, the alert is closed, and it counts
    towards ρ in Measure.
 
 ## Views
@@ -53,20 +53,20 @@ In the order the header draws them:
 
 | view | URL | what it shows |
 |---|---|---|
-| **Now** | `#now` | the rail, the lead, then the four stages: observe, decide, act, measure. The default view |
+| **Now** | `#now` | the ladder, the lead, then the four stages: observe, decide, act, measure. The default view |
 | **Historical** | `#historical` | the day this place usually has, what the satellite says year by year, how far back this node can be asked, and what the node doubts about its own sensors |
 | **Network** | `#network` | this node in relation to the network and nothing else: what moves through it, what this place could read and where it could go, what leaves by radio, the mesh in the house, the hardware |
 | **Wall** | `#wall` | the dark register, for a screen on a wall; see [Wall mode](wall.md) |
-| **Arrange** | `#arrange` | Now in another mode: move a section within its stage, hide one, restore it, Default, Done; saved as `UI_LAYOUT`. The rail, the lead and the ground are fixed and carry no controls |
+| **Arrange** | `#arrange` | Now in another mode: move a section within its stage, hide one, restore it, Default, Done; saved as `UI_LAYOUT`. The ladder, the lead and the ground are fixed and carry no controls |
 | **Set up** | `#setup` | the settings, behind a token, and every registered section with whether it is drawing |
 
-The rail is Now's (and Arrange's) control and is drawn nowhere else. The resolution still travels in the URL
-as `?res=`, so a link into any view keeps its grain. The header also carries the mode switch, the Paper /
+The ladder is Now's (and Arrange's) control and is drawn nowhere else. The resolution still travels in the URL
+as `?res=`, so a link into any view keeps its resolution. The header also carries the mode switch, the Paper /
 Dark register switch (kept in this browser; `?register=` reads first and remembers nothing) and **↻**, "Ask
 the node again".
 
 Other query keys: `?view=` works as the hash does, `?fixture=<name>` replays a committed snapshot (see
-below), `?state=empty` or `?state=refused` draws those states for a capture, `?worth=1` opens the rail's
+below), `?state=empty` or `?state=refused` draws those states for a capture, `?worth=1` opens the ladder's
 fold, and on the wall `?var=` and `?vars=all`.
 
 ## Modes
@@ -75,7 +75,7 @@ How much of the page is drawn. Three, in the header beside the register:
 
 | mode | what it draws |
 |---|---|
-| **simple** | offered on Now, Historical and Network only. On Now: the rail, the lead, the **digest** (four sentences, one per stage, each written by the node), then only the sections marked `level: 'simple'`, which on Now is the Decide card "What to do about it". On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it". The digest is Now's alone |
+| **simple** | offered on Now, Historical and Network only. On Now: the ladder, the lead, the **digest** (four sentences, one per stage, each written by the node), then only the sections marked `level: 'simple'`, which on Now is the Decide card "What to do about it". On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it". The digest is Now's alone |
 | **advanced** | every registered section, in loop order. The default |
 | **learn** | advanced, with a question mark at each part of the page. Pressing one opens a panel that quotes this node's own documentation for that part, says which page and section the words came from, links out, and walks to the next |
 
@@ -95,28 +95,28 @@ under the header says how many are on the view you are looking at, and *walk the
 
 ## The lead
 
-The **grain rail** sits above the lead: eleven stops, one per H3 resolution from 2 to 12, opening at 8. Stops coarse enough that the cell may leave the machine (resolution 6 and coarser, the presence floor) are dotted rather than blue; stops finer than the node says where it is are struck through.
+The **ladder** sits above the lead: eleven rungs, one per H3 resolution from 2 to 12, opening at 8. Rungs coarse enough that the cell may leave the machine (resolution 6 and coarser, the presence floor) are dotted rather than blue; rungs finer than the node says where it is are struck through.
 
-The zones are texture, not hue, so the cells blue keeps its one meaning and the rail survives being printed.
-Each stop names its edge length, and pressing one re-derives the whole page. Under the stops, above 860 px, a
-log ruler from 10 m to 200 km runs the same way as the rail, coarse on the left. The key under it names both
+The zones are texture, not hue, so the cells blue keeps its one meaning and the ladder survives being printed.
+Each rung names its edge length, and pressing one re-derives the whole page. Under the rungs, above 860 px, a
+log ruler from 10 m to 200 km runs the same way as the ladder, coarse on the left. The key under it names both
 zones; its last chip, "one cell here", opens a fold, *What one cell at resolution N is worth*: three hexagons to
-true relative scale (the stop you are on, filled, against the stops either side) and a table of what each
-thing the node speaks for costs to cover at it. Each stop is about seven times finer by area than the one
-above. The fold's state is `?worth=1`, so it survives the rail it is read against.
+true relative scale (the rung you are on, filled, against the rungs either side) and a table of what each
+thing the node speaks for costs to cover at it. Each rung is about seven times finer by area than the one
+above. The fold's state is `?worth=1`, so it survives the ladder it is read against.
 
-The first thing on Now is the rail, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many asks are open and in which stage, and a pill: `live`, `stale` or `cached`.
+The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.
 
 The meters carry a legend for the red tick, the issue's line. The why line ends on the node's own
-`headline_rule`, so a reader can check why this issue is on top. The ground's drawing follows. The ask strip
-sits in Act, beside the ledger it belongs to, and the **grain line** opens Decide's "What each grain is
-worth", as a readout of the cells occupied at the current stop.
+`headline_rule`, so a reader can check why this issue is on top. The ground's drawing follows. The alert strip
+sits in Act, beside the ledger it belongs to, and the **resolution line** opens Decide's "What each rung is
+worth", as a readout of the cells occupied at the current rung.
 
-At resolution 8 one cell is 639,778 m² on node #1, about 0.64 km², with an edge of 497 m. The grain line counts the cells this node's stations with a coordinate fall in, how many of those stations sit in the node's own cell, and how many of those are its own.
+At resolution 8 one cell is 639,778 m² on node #1, about 0.64 km², with an edge of 497 m. The resolution line counts the cells this node's stations with a coordinate fall in, how many of those stations sit in the node's own cell, and how many of those are its own.
 
 ## The ground
 
-The section behind the lead is the node's own ground at the current stop, drawn under the cells: the node's
+The section behind the lead is the node's own ground at the current rung, drawn under the cells: the node's
 own cell in the cells blue, its neighbours as ink hairlines, its own stations filled and other stations
 hollow. A node with no `NODE_LAT` and `NODE_LON` draws the grid from `/static/node-ground.svg` and says it
 stands for no particular place yet.
@@ -145,9 +145,9 @@ loop they are in. Twenty-four sections are registered, in this order within each
 | **observe** (what is read, seen and heard about this place) | Now | The ground (place) · Every issue, at every distance · The day this place just had · What this page is made of · What the stations read (air-quality) · The day it is about to have (forecast) · What this page asked of the world (place) |
 | | Historical | How far back this node can be asked · The day this place usually has · What the satellite says (earth) |
 | | Network | This node, and what moves through it · What leaves this house by radio (reticulum) · The mesh in this house (meshtastic) · The hardware in this house (hardware) · What this place could read, and where it could go |
-| **decide** (what may be said about it, and at what grain) | Now | What to do about it · Whose word, over how much ground · What each grain is worth |
+| **decide** (what may be said about it, and at what resolution) | Now | What to do about it · Whose word, over how much ground · What each rung is worth |
 | | Historical | What the node doubts about its own sensors (trust) |
-| **act** (what has been asked, of whom) | Now | What this node has asked · What was decided, and by whom |
+| **act** (what has been asked, of whom) | Now | The alerts this node has sent · What was decided, and by whom |
 | **measure** (whether it worked, and how long it took) | Now | Whether it worked · Which of these worked · Every figure on this page, and where it came from |
 
 Sections with no pack named are `core`. The stages hold observe 15, decide 4, act 2, measure 3. A section a pack
@@ -175,20 +175,20 @@ lists.
 
 ### Decide
 
-What a person adds here is a decision. "What to do about it" shows one card per issue with an open ask: the
+What a person adds here is a decision. "What to do about it" shows one card per issue with an open alert: the
 first line of what was seen, and the rule's own recommendation (the paragraph its author started with 👉),
 or a line saying the rule carries none and the page will not invent one. **Record the decision** posts
 `stage: decided` to `POST /actions`. A decision moves nothing: it is not in ρ, not in the funnel, and closes
-no ask. With `DECISION_REQUIRED=1` (Set up → Node, off by default) the node refuses an act with 409 unless a
-decision was recorded against the same ask first. The two grain sections say at what grain a thing may be
-said, and the trust section says which of the node's own sensors it doubts.
+no alert. With `DECISION_REQUIRED=1` (Set up → Node, off by default) the node refuses an act with 409 unless a
+decision was recorded against the same alert first. The two resolution sections say at what resolution a
+thing may be said, and the trust section says which of the node's own sensors it doubts.
 
 ### Act
 
-What a person adds here is the act. "What this node has asked" lists the asks with **I did this** beside each
+What a person adds here is the act. "The alerts this node has sent" lists the alerts with **I did this** beside each
 open one. The form posts `stage: acted` with who and what was done. From a browser that needs `ACT_TOKEN` or
 `ADMIN_TOKEN`, entered once in Set up; the page shows the node's own refusal sentence if neither is there, and
-refuses outright on a fixture, whose asks belong to another node. "What was decided, and by whom" is the
+refuses outright on a fixture, whose alerts belong to another node. "What was decided, and by whom" is the
 ledger, newest first, all of it in one fold: who, which stage, how long ago, and `decided first` on an
 act that had a decision before it. Its head counts how many acts had a decision first. The note somebody
 wrote is shown only to a reader with a token, because `GET /actions` is on no sharing allowlist.
@@ -196,7 +196,7 @@ wrote is shown only to a reader with a token, because `GET /actions` is on no sh
 ### Measure
 
 What the node measures about itself. "Whether it worked" draws ρ as a row of rings, answered first, with the
-median minutes from ask to answer, and the funnel beside it: `asked`, `acknowledged`, `acted`, `measured`,
+median minutes from alert to answer, and the funnel beside it: `asked`, `acknowledged`, `acted`, `measured`,
 each a count against `asked`. `measured` is derived, not recorded: an act followed by 48 hours of silence
 from the same rule on the same sensor, and the funnel says so. A zero says why it is a zero. The care label
 under it is the five refusals of [Architecture](architecture.md) section 7, as signs. "Which of these
@@ -210,9 +210,9 @@ recovery time in hours. It is evidence that the condition ended, never that the 
 `GET /issues` is the whole of what the page knows about the place. For every issue the keeper declared in `NODE_ISSUES` (an undeclared one is still shown, as `watched: false`), the node computes a `state`: `act` (something is asked), `notable` (something changed), `quiet`, `context` (an issue that informs and never asks) or `none` (no record).
 
 With it come the four distances, each with its value and its provenance word. The wire keys are `room`,
-`yard`, `ring` and `region`; the page prints them as room, wall outside, street and model. Then the sentence
-in three languages, the open asks, the series for the day, the `digest`, the geometry the rail is drawn
-from, and the `asks` ledger.
+`yard`, `ring` and `region`; the page prints them as house, street, ring and region. Then the sentence
+in three languages, the open alerts (`open_asks`), the series for the day, the `digest`, the geometry the
+ladder is drawn from, and the `asks` ledger.
 
 The `headline` is the issue with the highest state. Among issues in the same state, the one that moved most
 in the last three hours leads, and an exact tie goes to the declared order. The node sends that rule as
@@ -283,6 +283,6 @@ numerals carrying `data-num` with a comparison beside them.
 ## Where this leads
 
 The page answers when somebody is looking at it. [The report](report.md) is the same node speaking at the
-hours the household chose, and [Alerts](alerts.md) and [Channels](channels.md) are how an ask reaches a
+hours the household chose, and [Alerts](alerts.md) and [Channels](channels.md) are how an alert reaches a
 person who is not looking. What the Measure stage counts is explained in [ρ](rho.md). A screen on the wall
 is [Wall mode](wall.md).

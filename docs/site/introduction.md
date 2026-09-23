@@ -47,7 +47,7 @@ each stage in its own words:
 | stage | what it holds |
 |---|---|
 | observe | what is read, seen and heard about this place |
-| decide | what may be said about it, and at what grain |
+| decide | what may be said about it, and at what resolution |
 | act | what has been asked, of whom |
 | measure | whether it worked, and how long it took |
 

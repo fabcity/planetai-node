@@ -111,14 +111,14 @@ only form in which a place's measurements reach the Fab City Index: a mean with 
 reading (see [Federation](federation.md)).
 
 **5. Move the line to your place.** Change `20` in the SQL to the temperature this room should not pass,
-and say in a `README.md` where that number came from. To make it an ask rather than a note, set
-`level: act`, keep `cooldown_minutes` at or under 2880, and add `watch: {metric: temp, over: <the same
-number>}` so the node can later time how long an action took to work. At `act`, the alert becomes an
-open ask on the heat issue, and the sentence after 👉 is what the dashboard's Decide card shows as "what
+and say in a `README.md` where that number came from. To make it an alert that asks for something rather
+than a note, set `level: act`, keep `cooldown_minutes` at or under 2880, and add `watch: {metric: temp,
+over: <the same number>}` so the node can later time how long an action took to work. At `act`, the alert becomes an
+open alert on the heat issue, and the sentence after 👉 is what the dashboard's Decide card shows as "what
 this node suggests". The cooldown still counts from the `info` alert of step 3, so the first `act` alert
 comes once those 1440 minutes have passed with the room still over the line. Then a 🔴 message reaches
-Telegram if it is connected, the heat issue's state is `act`, and the lead's last line counts the ask
-(`1 ask open · #<id> · in 3 Act` when it is the only one).
+Telegram if it is connected, the heat issue's state is `act`, and the lead's last line counts the alert
+(`1 alert open · #<id> · in 3 Act` when it is the only one).
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack

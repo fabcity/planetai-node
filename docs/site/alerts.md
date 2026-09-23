@@ -121,13 +121,13 @@ An alert's `acted_at` is null until somebody answers it. An answer is a row in `
 |---|---|---|---|
 | `acknowledged` | somebody saw it | `POST /actions` | ρ, and the funnel |
 | `decided` | what somebody said would be done | the dashboard's Decide form, `POST /actions` | nothing |
-| `acted` | somebody did the thing | the dashboard's *I did this*, `planetai act`, Telegram `/act`, the MCP `act` tool, `act <id>` over LXMF, `POST /actions` | ρ, the funnel, and closes the ask |
-| `measured` | the condition stopped | derived by the node, never posted: an `acted` ask followed by 48 hours (`MEASURED_WINDOW_MIN`, 2880) with no new alert from the same live rule on the same sensor | the funnel; the ask was already closed by its `acted` row |
+| `acted` | somebody did the thing | the dashboard's *I did this*, `planetai act`, Telegram `/act`, the MCP `act` tool, `act <id>` over LXMF, `POST /actions` | ρ, the funnel, and closes the alert |
+| `measured` | the condition stopped | derived by the node, never posted: an `acted` alert followed by 48 hours (`MEASURED_WINDOW_MIN`, 2880) with no new alert from the same live rule on the same sensor | the funnel; the alert was already closed by its `acted` row |
 | `settings` | a setting was changed; an audit row with no alert | the node, on `PUT /settings` | nothing |
 
 `POST /actions` accepts `acknowledged`, `acted` and `decided` and refuses the rest with a 400.
 
-**A decision moves nothing.** It is not in ρ, not a stage of the funnel, and closes no ask; the node keeps
+**A decision moves nothing.** It is not in ρ, not a stage of the funnel, and closes no alert; the node keeps
 watching. What it changes is the record: a household that looked, decided and did not manage it no longer leaves
 the same trace as one that never looked. With `DECISION_REQUIRED=1` (Set up → Node, off by default), `POST
 /actions` answers an `acted` with no earlier `decided` row for the same alert with a 409, whichever way the act
@@ -155,8 +155,8 @@ agent to it.
 A heat alert is a condition that holds for hours; the ratio test between inside and outside cannot tell a
 stopped stove from an opened door. In this version every rule is an event with a cooldown; there is no
 `recovery` block and the schema has no notion of an alert clearing, only of cooldowns. The dashboard marks
-an open act-level ask as *current* only while its condition still holds (the room over the line, or the
-alert under two hours old), and otherwise says the reading came back on its own and the ask is still open.
+an open act-level alert as *current* only while its condition still holds (the house over the line, or the
+alert under two hours old), and otherwise says the reading came back on its own and the alert is still open.
 Turning conditions into their own kind of rule, with a reminder at 30 minutes and at two hours and then
 silence until the next report, is proposed in `docs/HANDOFF_reports.md` and not built. What the node does
 have is the derived `measured` stage above and `GET /effect`, which counts per rule how many acts were
@@ -167,7 +167,7 @@ followed by the condition stopping; neither is a `recovery` block.
 `GET /alerts?limit=50` lists the most recent with `id, ts, rule_id, sensor_id, level, text, acted_at`, and is
 where an alert's id comes from. `GET /actions` lists every answer with its stage, actor and note, and answers
 only a token or the machine itself, because a note is a household's own words about its own house. `planetai
-status` shows the last three alerts and ρ. On the dashboard, *What this node has asked* draws the asks with
+status` shows the last three alerts and ρ. On the dashboard, *The alerts this node has sent* draws the alerts with
 their state and *What was decided, and by whom* is the ledger of answers. The report's fourth part says what
 happened after the window's act alerts.
 

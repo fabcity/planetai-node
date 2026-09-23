@@ -35,12 +35,12 @@ report's bundle uses 7 to carry what ρ was a week ago.
 
 `rho` and `median_minutes` are `null` when there is nothing to divide. `planetai status` and `planetai act` print
 ρ; the `status` MCP tool carries it; the dashboard's *Whether it worked* section draws it as "{closed} of {total}
-asks answered · median {n} min".
+alerts answered · median {n} min".
 
 ## Read it on your node
 
 1. **Run `planetai status`.** Its `rho` line reads, for example, `rho       0.667  (8/12 act-level alerts
-   answered, 30d)`: eight of the twelve asks of the last 30 days had an answer within 24 hours. Before the
+   answered, 30d)`: eight of the twelve alerts of the last 30 days had an answer within 24 hours. Before the
    first act-level alert it reads `rho       not yet measured  (0/0 act-level alerts answered, 30d)`,
    because there is nothing to divide.
 2. **Ask the node for the whole record.** `curl http://<node>:8080/rho` (at `SHARE_LEVEL=open`, or with
@@ -64,12 +64,12 @@ asks answered · median {n} min".
 | `measured` | the condition stopped | never posted; derived in the funnel (below). A posted row would count, and `POST /actions` refuses one | no |
 | `settings` | a setting was changed; an audit row with no alert | the node, on `PUT /settings` | no |
 
-For ρ, `acknowledged` and `acted` both count as a response. For the dashboard's asks, only `acted` and `measured`
+For ρ, `acknowledged` and `acted` both count as a response. For the dashboard's alerts, only `acted` and `measured`
 close one: "`acknowledged` means somebody saw it. Only these two mean somebody did something." There is no cap of
 one action per alert; the first response is what the clock measures.
 
-**A decision moves nothing.** A `decided` row is not in ρ, not a stage of the funnel, and closes no ask. The Act
-stage's ledger (*What was decided, and by whom*) marks an act that had a decision recorded against the same ask
+**A decision moves nothing.** A `decided` row is not in ρ, not a stage of the funnel, and closes no alert. The Act
+stage's ledger (*What was decided, and by whom*) marks an act that had a decision recorded against the same alert
 beforehand as *decided first*, and counts how many did. With `DECISION_REQUIRED=1` (Set up → Node, off by
 default), `POST /actions` refuses an `acted` with a 409 unless a `decided` row exists for the same alert.
 
@@ -80,7 +80,7 @@ asked · acknowledged · acted · measured, with the median minutes between cons
 ρ. Its `acted` is the literal stage, and it does not pool the children, whose `events` carry no stages
 (`self_only: true`).
 
-`measured` is derived, not posted: an ask with an `acted` row, whose rule the node still evaluates, and which
+`measured` is derived, not posted: an alert with an `acted` row, whose rule the node still evaluates, and which
 that rule did not raise again on the same sensor for `MEASURED_WINDOW_MIN` (2880 minutes, 48 hours) after the
 act. The window outlasts every act-level rule's cooldown, so silence across it means the condition stopped
 being true. That says *whether*, never *when*, so `latency_minutes.measured` is always `null`. A retired rule is
@@ -102,9 +102,9 @@ may be the night, and the node cannot tell.
 
 ## What ρ is not
 
-ρ counts answers. It does not measure the room. The funnel's `measured` and `GET /effect` are the node's evidence
-about the room, and both say whether a condition stopped, not that the act stopped it. A second number read from
-the room's own recovery (ρ_observed, beside the reported ρ, with a `recovery:` block in the rules) is proposed in
+ρ counts answers. It does not measure the place. The funnel's `measured` and `GET /effect` are the node's evidence
+about the place, and both say whether a condition stopped, not that the act stopped it. A second number read from
+the place's own recovery (ρ_observed, beside the reported ρ, with a `recovery:` block in the rules) is proposed in
 `docs/SPEC_rho.md`. That spec is Phase 1, and these parts of it are not built: no rule carries a `recovery:` block, and
 `rho()` still counts `acknowledged` as a response, which the spec's §4 would change.
 

@@ -13,7 +13,7 @@ planetai ui        # the URLs, and the token that unlocks Set up
 The page is read in the order the node works, and the node works in a loop of four:
 
 1. **Observe** — what is read, seen and heard about this place.
-2. **Decide** — what may be said about it, and at how coarse a grain.
+2. **Decide** — what may be said about it, and at how coarse a resolution.
 3. **Act** — what has been asked, of whom.
 4. **Measure** — whether it worked, and how long it took.
 
@@ -23,21 +23,21 @@ and never a blank or a zero standing in for a reading nobody took.
 
 ## The first screen
 
-**The rail, across the top.** Eleven stops, one per grain your node knows: resolution 2 is 172 km to
-an edge, resolution 12 is 10 m, and the one you are standing on is lit. Stops coarse enough that the
-cell could leave your machine are textured; stops finer than your node is willing to say where it is
-are struck through. Press one and the whole page re-answers at that grain.
+**The ladder, across the top.** Eleven rungs, one per resolution your node knows: resolution 2 is 172 km
+to an edge, resolution 12 is 10 m, and the one you are standing on is lit. Rungs coarse enough that the
+cell could leave your machine are textured; rungs finer than your node is willing to say where it is
+are struck through. Press one and the whole page re-answers at that resolution.
 
-Under the rail, folded shut, is what one cell at that stop is worth: three hexagons to scale — the
-grain you are on against the one above and the one below — and what each thing your node speaks for
-costs to cover at it. Open it and turn the dial: at resolution 4 the sea takes five cells and your
-room takes one, and so does everything in between. That is the whole argument for grain in one
+Under the ladder, folded shut, is what one cell at that rung is worth: three hexagons to scale, the
+rung you are on against the one above and the one below, and what each thing your node speaks for
+costs to cover at it. Open it and step the ladder: at resolution 4 the sea takes five cells and your
+house takes one, and so does everything in between. That is the whole argument for resolution in one
 table.
 
 **Then the thing that matters.** The issue with most to say, as a sentence in your language, with its
-number beside it at the size of a headline — *"It feels like 33.9 °C in the room, under the line."*
+number beside it at the size of a headline — *"It feels like 33.9 °C in the house, under the line."*
 Under it, in smaller type, why that issue and not another. Then the four distances as bars on one
-scale: the room, the wall outside, the street, the model, with a red tick where the line is. One
+scale: the house, the street, the ring, the region, with a red tick where the line is. One
 scale for all four, so you can see at a glance whether it is you or whether it is everywhere.
 
 Beside it, the ground: the map cell this node stands in, its six neighbours and the seven smaller
@@ -47,9 +47,9 @@ readings find their place without anybody being told where you live.
 
 ## What you will find further down
 
-- **Every issue at every distance**, as a table. Where a cell is empty it says why: *no kit on the
-  wall outside*, *no public station reporting*.
-- **The day this place just had** — twenty-four hours of the room, the street and the model, with the
+- **Every issue at every distance**, as a table. Where a cell is empty it says why: *no kit outside
+  on the street*, *no public station reporting*.
+- **The day this place just had** — twenty-four hours of the house, the ring and the region, with the
   hours it was over the line marked under the axis, because eight hours over is the thing you act on
   and a curve does not tell you that.
 - **What this page is made of** — your own stations, the borrowed ones faint, what only the satellite
@@ -61,7 +61,7 @@ readings find their place without anybody being told where you live.
 - **What has been asked, of whom** — every alert that asked a person to do something, whether anybody
   answered, and the button that records it when you do. And, when your node knows one, the nearest
   place to make or fix something.
-- **Whether it worked** — the share of asks that got an answer, drawn as one ring per ask rather than
+- **Whether it worked** — the share of alerts that got an answer, drawn as one ring per alert rather than
   one long bar, with the median minutes to the first answer. It is the one number on the page that
   comes from a person.
 - **What this node will not do, at any stage** — five refusals, as signs, at the foot.
@@ -115,7 +115,7 @@ wall is an instruction, not a control.
 
 **Arrange** is Now in another mode. Each section grows three controls — move it within its stage,
 hide it, restore it — and *Done* saves the order to the node, for every screen in the house. The
-rail, the lead and the ground do not move, and the bar says so.
+ladder, the lead and the ground do not move, and the bar says so.
 
 That changes the order of the *sections*. To change which issues your node watches at all, and in
 what order, that is `NODE_ISSUES` under **Set up → Issues** — a list, most important first.
@@ -123,7 +123,7 @@ what order, that is `NODE_ISSUES` under **Set up → Issues** — a list, most i
 ## If something moves, it is because a reading moved
 
 Nothing on this page animates for its own sake. A number that has just arrived fades in over 120 ms
-and pulses once; a ring closes when somebody answers an ask; a satellite year holds for four seconds
+and pulses once; a ring closes when somebody answers an alert; a satellite year holds for four seconds
 before the next. Every one of those durations is named after the thing that drives it, and if you
 have asked your machine for less motion, all of them stop. The list is on the
 [Design](site/design.md) page.

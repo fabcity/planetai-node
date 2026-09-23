@@ -115,6 +115,6 @@ sentences:
     state:
       none: "Nada de aquí informa temperatura y humedad a la vez, así que no hay temperatura aparente que dar."
 empty:
-  en: Heat needs temperature and humidity from the same sensor. Add one indoors and the room fills in.
+  en: Heat needs temperature and humidity from the same sensor. Add one indoors and the house fills in.
   id: Panas memerlukan suhu dan kelembapan dari sensor yang sama. Tambahkan satu di dalam ruangan.
-  es: El calor necesita temperatura y humedad del mismo sensor. Añade uno dentro y la habitación se rellena.
+  es: El calor necesita temperatura y humedad del mismo sensor. Añade uno dentro y la casa se rellena.

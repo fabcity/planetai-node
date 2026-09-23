@@ -20,7 +20,7 @@ the city's open data, the satellite model overhead. The gap between them is the 
 **Alerts you can act on.** Not "PM2.5 is 42." What is happening, what it means for the people in the house, and what to
 do. "Inside is worse than outside. Something is cooking or burning. Open a window." English, Bahasa Indonesia or Spanish.
 
-**A dashboard that reads like a sentence.** "Falling to 9 micrograms, under the street, under the model, under the line."
+**A dashboard that reads like a sentence.** "Falling to 9 micrograms, under the ring, under the region, under the line."
 Then the day as a chart, every source with a note, the sea, the land, the weather. On your phone or on a screen on the wall.
 
 **A bot you can talk to.** Ask how the air is, how big the swell is, what the kitchen did overnight, or say you closed

@@ -213,7 +213,7 @@ data, what it loads.
 | `BAD_RADIUS_KM` | `15`; bali preset `8` | km | How far out the ring of other people's stations reaches. Also `/nearby.radius_km`. | runtime · public |
 | `BAD_MIN_SEPARATION_M` | `150` | metres | A station closer than this to the node is assumed to be the node's own hardware, not a neighbour. | runtime · public |
 | `BAD_EXCLUDE` | blank | comma-separated station ids | Stations that are ours and the identity and distance rules missed. | runtime · public |
-| `BAD_INCLUDE_INDOOR` | `0` | `1`, `0` | `1` keeps stations the archive suspects are indoors. Off by default: they are not the street. | runtime · public |
+| `BAD_INCLUDE_INDOOR` | `0` | `1`, `0` | `1` keeps stations the archive suspects are indoors. Off by default: they are not the ring. | runtime · public |
 | `BAD_BACKFILL_DAYS` | `0` | days | Size of the one-off history fetch by `planetai run nearby backfill`. Off by default: it is a large fetch against someone else's server. The script's argument overrides it. | env only |
 | `OPENMETEO_ENABLED` | `1` | `1`, `0` | Open-Meteo weather and CAMS air model point samples at the node's coordinates, two adapters. Free, key-free, anywhere. Context from the planet scale, never rolled into an index cell. Needs `NODE_LAT`. | runtime · public |
 | `BOOTSTRAP` | `1` | `1`, `0` | On first start, fill the database from 92 days of CAMS history and NASA POWER climatology at these coordinates. Skipped once `cams-point` history older than two days exists. `0` starts empty. | env only |
@@ -273,7 +273,7 @@ written once.
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `ACT_TOKEN` | blank; `planetai ui` generates one | string | Lets someone in the house record that they acted on an alert (`POST /actions`) from off this machine without holding the admin token. It cannot read a secret or change a setting. The dashboard's forms for recording an act or a decision send it, or the admin token, from the browser. The Reticulum bridge posts actions with the copy in its own environment. | runtime · secret |
-| `DECISION_REQUIRED` | `0` | `0`, `1` | `0` records an act whenever somebody says they did something. `1` refuses an act (409) unless a decision was recorded against the same ask first, which is what a node acting for a street rather than a room usually wants. It applies to every way in: the dashboard, Telegram, the radio and the terminal. Turn it on only where everybody answering has a screen to decide on. | runtime |
+| `DECISION_REQUIRED` | `0` | `0`, `1` | `0` records an act whenever somebody says they did something. `1` refuses an act (409) unless a decision was recorded against the same alert first, which is what a node acting for a street rather than a house usually wants. It applies to every way in: the dashboard, Telegram, the radio and the terminal. Turn it on only where everybody answering has a screen to decide on. | runtime |
 
 ## Which model it thinks with
 

@@ -51,7 +51,7 @@ RUNTIME = {
     "BAD_RADIUS_KM":      ("sources", "Bali Air Dispatch radius, km", False, False, "How far out the ring of other people's stations reaches."),
     "BAD_MIN_SEPARATION_M": ("sources", "Nearest a station may be, m", False, False, "A station closer than this to the node is assumed to be our own hardware, not a neighbour."),
     "BAD_EXCLUDE":        ("sources", "Stations to leave out", False, False, "Comma-separated station ids that are ours and the identity and distance rules missed."),
-    "BAD_INCLUDE_INDOOR": ("sources", "Keep indoor stations", False, False, "1 to keep stations the archive suspects are indoors. Off by default: they are not the street."),
+    "BAD_INCLUDE_INDOOR": ("sources", "Keep indoor stations", False, False, "1 to keep stations the archive suspects are indoors. Off by default: they are not the ring."),
     "LOCAL_RADIUS_M":     ("sources", "Local radius, m", False, False, "how far from the node a sensor can be and still count as this node's own, in metres"),
     "OPENMETEO_ENABLED":  ("sources", "Global models (Open-Meteo, CAMS)", False, False, "Free, key-free, anywhere. 1 or 0."),
     "CKAN_PORTALS":       ("sources", "Open-data portals", False, False, "slug=url pairs, comma-separated. Feeds Governance|City."),
@@ -124,8 +124,8 @@ RUNTIME = {
     # community says so. See docs/SPEC_decide.md section 10.
     "DECISION_REQUIRED":  ("node", "An act needs a decision first", False, False,
                            "0 (default) records an act whenever somebody says they did something. 1 refuses "
-                           "one unless a decision was recorded against the same ask first, which is what a "
-                           "node acting for a street rather than a room usually wants. It applies to every "
+                           "one unless a decision was recorded against the same alert first, which is what a "
+                           "node acting for a street rather than a house usually wants. It applies to every "
                            "way in -- the dashboard, Telegram, the radio and the terminal -- so turn it on "
                            "only where everybody answering has a screen to decide on."),
     "BACKUP_TOKEN":       ("node", "Token for collecting backups", True, False, "Read-only: lets a NAS fetch /backups. Separate from the admin token."),

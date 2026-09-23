@@ -35,7 +35,7 @@ registry entry is consent to be listed, not consent to be mailed by everybody wh
 right, because a fab lab five kilometres away is not this node's instrument and never becomes one.
 
 **Never an alert.** `rules.yml` is empty and says why. A lab opening is news on the scale of a
-year. The line this pack produces belongs in *other* packs' asks — the moment to hear where the fab
+year. The line this pack produces belongs in *other* packs' alerts — the moment to hear where the fab
 lab is, is the moment you have been told you need something made.
 
 **Never `deployed_at`.** Nothing here was deployed by anyone.

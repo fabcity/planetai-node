@@ -9,7 +9,7 @@ somebody can write one.
 http://<node>:8080/#wall
 ```
 
-`planetai ui` prints the same thing: "On a wall screen: add #wall — the dark register, turns its own dial;
+`planetai ui` prints the same thing: "On a wall screen: add #wall — the dark register, moves its own ladder;
 needs SHARE_LEVEL=open".
 
 ## Putting one up
@@ -24,11 +24,11 @@ needs SHARE_LEVEL=open".
    node hears is reading there.
 3. **Check the foot.** The as-of line should read "As of" and a time. If it reads "Read at … · the node has
    not answered for N min", the screen is up and the node is not answering it.
-4. **Leave it.** The top bar says "the dial turns every 8 s" and the foot "the dial turns by itself every
-   8 s". Watch one turn: the filled stop moves on and the grid re-draws at the next resolution, so the
-   stations gather into fewer cells at a coarse stop and spread out at a fine one. The page re-reads the
-   node on its own `POLL_SECONDS`, as every view does. If the bar says "the dial stands still", the screen
-   has reduced motion on and the dial turns only when a stop is pressed.
+4. **Leave it.** The top bar says "the ladder moves every 8 s" and the foot "the ladder moves by itself
+   every 8 s". Watch one step: the filled rung moves on and the grid re-draws at the next resolution, so the
+   stations gather into fewer cells at a coarse rung and spread out at a fine one. The page re-reads the
+   node on its own `POLL_SECONDS`, as every view does. If the bar says "the ladder stands still", the screen
+   has reduced motion on and the ladder moves only when a rung is pressed.
 
 ## The register
 
@@ -40,8 +40,8 @@ It is laid out to fill one viewport (`min-height: 100vh`), so nothing a passer-b
 
 The bar answers the questions asked before any reading is read. From the left: a **back** button, drawn first
 so it is first in keyboard order; up to four variable chips; the node's name, its city, `#wall`, a share
-level (always `off` in v0.72.1, because `/health` carries no share level) and how often the dial turns ("the dial turns every 8 s", or "the dial stands still" under reduced
-motion); and at the right what the numbers are: the variable, its unit, and `15-min means`.
+level (always `off` in v0.72.1, because `/health` carries no share level) and how often the ladder moves
+("the ladder moves every 8 s", or "the ladder stands still" under reduced motion); and at the right what the numbers are: the variable, its unit, and `15-min means`.
 
 The chips offer only metrics at least one station on this node carries. The one being shown is always first,
 then the node's own order, four at most; a "+N more" link opens `?vars=all`. `?var=` picks one directly
@@ -55,27 +55,27 @@ read in it, with no map under them. One station in a cell: its 15-minute mean of
 Several: how many, and the range low to high. The node's own cell: each of its own stations' values. An
 empty cell is drawn and left empty.
 
-## The dial turns itself
+## The ladder moves itself
 
-The dial's stops are the resolutions the node's grain table knows, drawn as hexagons: the current stop
-filled ink, a stop coarse enough that the cell may leave the machine filled in the cells blue at 0.16, a stop
-finer than the published resolution dashed. Every eight seconds the dial steps to the next stop and the grid
+The ladder's rungs are the resolutions the node's table knows, drawn as hexagons: the current rung filled
+ink, a rung coarse enough that the cell may leave the machine filled in the cells blue at 0.16, a rung finer
+than the published resolution dashed. Every eight seconds the ladder steps to the next rung and the grid
 re-draws; at the finest it wraps to the coarsest. There is no tween: there is no place between 7 and 8, so
-nothing morphs. Pressing a stop or a cell, or an arrow key, holds the dial for thirty seconds and pauses the
-clock bar. Under `prefers-reduced-motion: reduce` nothing turns.
+nothing morphs. Pressing a rung or a cell, or an arrow key, holds the ladder for thirty seconds and pauses the
+clock bar. Under `prefers-reduced-motion: reduce` nothing moves.
 
 ## The right column
 
-The headline issue: kicker, sentence, why and the ask. Under the ask, "Answer on Telegram, not here." The
-wall shows an ask and never the button that answers it. Then the dial, with its key under it ("current stop
-filled ink · may-leave stops filled `--cells` at .16 · finer than published, dashed"), the grain counts ("Cells
-with a station" of 19 drawn; "In this node's cell" of n stations; "Of them, its own") and the ρ row. Under the
-field, the fragments each section contributes through its `wall()`, in one row: the first five, then "+N more
-in Now".
+The headline issue: kicker, sentence, why and the alert. Under the alert, "Answer on Telegram, not here." The
+wall shows an alert and never the button that answers it. Then the ladder, with its key under it
+("the ladder · current rung filled ink · may-leave rungs filled `--cells` at .16 · finer than published,
+dashed"), the counts ("Cells with a station" of 19 drawn; "In this node's cell" of n stations; "Of them,
+its own") and the ρ row. Under the field, the fragments each section contributes through its `wall()`, in
+one row: the first five, then "+N more in Now".
 
 The ρ row is the one object that is not a typed number: the rings are counted, never sized. More signs, never
-a bigger sign. When there are too many asks to count at three metres the unit changes instead: one ring per
-ask up to 40, one per 10 up to 400, then one per 100, and the caption under the row names the unit and gives
+a bigger sign. When there are too many alerts to count at three metres the unit changes instead: one ring per
+alert up to 40, one per 10 up to 400, then one per 100, and the caption under the row names the unit and gives
 the exact counts.
 
 ## The foot
@@ -89,6 +89,6 @@ going black.
 
 ## Where this leads
 
-The wall only shows the ask. The answer is given on Telegram, over the radio or on the dashboard, and all of
+The wall only shows the alert. The answer is given on Telegram, over the radio or on the dashboard, and all of
 them write the same row in `actions`: see [Channels](channels.md) and [the dashboard](dashboard.md). What the
 ρ row counts is [ρ](rho.md).

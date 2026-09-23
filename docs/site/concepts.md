@@ -23,12 +23,11 @@ kilometre: 497 m for node #1's cell, measured from the cell itself. The page pri
 fifteen-character id such as `8895a4c843fffff`, with its edge length beside it. Resolution 8 is coarser than
 the three-decimal rounding of the node's position, so publishing the cell does not put the position back.
 
-**The rail.** The same place at eleven grains, resolution 2 to 12, opening at 8 (the wall and `planetai ui`
-call the same control the dial). Each stop carries one
-cell's size and how many stations fall in it. Stops at resolution 6 and coarser may leave the machine
-(that is the finest a node may announce over Reticulum); stops finer than about 110 m are finer than the
-node says where it is, because `/health` rounds its position to three decimals. The node computes the whole
-table and the page draws it.
+**The ladder.** The same place at eleven rungs, resolution 2 to 12, opening at 8. The wall and `planetai ui`
+carry the same control under the same name. Each rung carries one cell's size and how many stations fall in
+it. Rungs at resolution 6 and coarser may leave the machine (that is the finest a node may announce over
+Reticulum); rungs finer than about 110 m are finer than the node says where it is, because `/health` rounds
+its position to three decimals. The node computes the whole table and the page draws it.
 
 **Issue.** What a household calls a quality of its place: `air`, `heat`, `land`, `coast`, with water, noise
 and energy designed. Declared one file each in `app/issues/*.yml`, ordered by `NODE_ISSUES`, the keeper's
@@ -79,9 +78,9 @@ Raw is never overwritten.
 
 **The four distances.** Where a reading comes from, nearest first. The wire keys are `room` (local, indoor),
 `yard` (local, outdoor), `ring` (somebody else's device near here) and `region` (a model, a portal). The page
-prints them as room · wall outside · street · model; in Bahasa, ruangan · dinding luar · jalan · model.
-In Spanish they are habitación · pared de fuera · calle · modelo. A child node is a fifth place that is not a
-column. A distance is custody, not scale: nothing maps a distance to an H3 resolution.
+prints them as house · street · ring · region; in Bahasa, rumah · jalan · sekitar · wilayah. In Spanish
+they are casa · calle · alrededores · región. The keys stay as they are on the wire. A child node is a fifth
+place that is not a column. A distance is custody, not scale: nothing maps a distance to an H3 resolution.
 
 **Registry.** A pinned snapshot of `awesome-fabcity-data`, 238 entries at `1010aa0`, served at `/sources` and
 listed by `planetai sources`. Most entries are things this place could measure; some are places to go and
@@ -101,7 +100,7 @@ dashboard, still in the next report.
 
 **Alert.** A row in `alerts` (`ts`, `rule_id`, `sensor_id`, `level`, `text`), whether or not it was sent.
 Three paragraphs: what is happening, what it means, what to do. An act-level alert that no one has answered
-is an *open ask*.
+is an *open alert*.
 
 **Cooldown.** Per rule and sensor, enforced in SQL against `alerts`: a rule does not fire again for the same
 sensor until its cooldown has passed.
@@ -113,7 +112,7 @@ instead. `settings`: an audit row for a setting change, with no alert. `POST /ac
 `SPEC.md` calls this table "the Index's instrument, not an app feature": ρ is computed from it and nowhere
 else.
 
-**Decision.** A `decided` row, recorded from the dashboard's "What to do about it" card. It closes no ask, is
+**Decision.** A `decided` row, recorded from the dashboard's "What to do about it" card. It closes no alert, is
 not in ρ and is not a stage in the funnel. With `DECISION_REQUIRED=1` (off by default) an `acted` with no
 `decided` row before it is refused with HTTP 409.
 
@@ -121,7 +120,7 @@ not in ρ and is not a stage in the funnel. With `DECISION_REQUIRED=1` (off by d
 within 24 hours, pooled with the children's events. The one number on the page that comes from a person.
 See [ρ](rho.md).
 
-**Funnel.** The same asks counted four times: asked, acknowledged, acted, measured. `measured` is derived:
+**Funnel.** The same alerts counted four times: asked, acknowledged, acted, measured. `measured` is derived:
 an act followed by 2,880 minutes (48 hours) of silence from the same rule on the same sensor, for rules the
 node still runs. The funnel counts this node's own alerts only.
 
@@ -188,12 +187,32 @@ outside" is always this, never a port forward.
 
 ## Provenance words on the page
 
-`live`: measured by this node, room or yard. `partial`: derived, a portal, the street. `model`: a model
-row. `cached`: a committed fixture replayed through the node's own engine. `stale`: the last figures the
-node gave, once it has stopped answering. When a poll fails the lead's pill says `stale` and the as-of stamp
-says "Read at HH:MM · the node has not answered for N min"; the wall's foot carries a fixed `stale` label.
-`refused` is not a word but a page: what a reader without a token sees at `SHARE_LEVEL=off`, with the node's
-own sentence explaining why. Provenance is ink only and square, never a coloured pill.
+`live`: measured by this node, in the house or on the street. `partial`: derived, a portal, the ring.
+`model`: a model row. `cached`: a committed fixture replayed through the node's own engine. `stale`: the
+last figures the node gave, once it has stopped answering. When a poll fails the lead's pill says `stale`
+and the as-of stamp says "Read at HH:MM · the node has not answered for N min"; the wall's foot carries a
+fixed `stale` label. `refused` is not a word but a page: what a reader without a token sees at
+`SHARE_LEVEL=off`, with the node's own sentence explaining why. Provenance is ink only and square, never a coloured pill.
+
+## Words
+
+The dashboard and these pages use the programme page's words for what a person reads. The wire keys and
+fields behind them do not change.
+
+| The word a person reads | What it means | Wire key or field behind it | Retired word |
+|---|---|---|---|
+| alert | what the node sends a person when an act-level rule crosses its line | `alerts`, `asks` in `GET /issues` | ask |
+| open alert | an act-level alert no one has answered yet | `open_asks` on each issue | open ask |
+| ladder | the control that sets the H3 resolution, 2 to 12 | `geometry.grain_table`, the `res` query key | rail, grain rail, dial |
+| rung | one step of the ladder: one H3 resolution | `res` on each `grain_table` row | stop, grain |
+| resolution | how fine a cell is, as an H3 number | `res` | grain |
+| house | local and indoors | `room` | room |
+| street | local and outdoors: the household's own kit outside | `yard` | wall outside |
+| ring | somebody else's public stations near here | `ring` | street |
+| region | a model or a portal for this point | `region` | model |
+
+These are the programme page's words, decided on 23 September 2026; `check_site.py`, in the programme
+site's own `tools/`, fails when a retired word comes back on the programme page.
 
 ## Where this leads
 

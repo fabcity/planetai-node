@@ -115,7 +115,7 @@ the node: read the alerts and the actions before acting, and do not undo what th
 without asking. See [The bot](bot.md).
 
 `actions` also holds `decided` rows, written from the dashboard's Decide card. A decision records what
-somebody said they would do and moves nothing: it closes no ask and is not in ρ. No MCP tool writes one.
+somebody said they would do and moves nothing: it closes no alert and is not in ρ. No MCP tool writes one.
 
 ## Invariants an agent must not break
 

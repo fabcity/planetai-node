@@ -71,8 +71,8 @@ The five stages do different things, and two of them are never posted by a perso
 | stage | Written by | What it moves |
 |---|---|---|
 | `acknowledged` | `POST /actions` | ρ, and `/alerts.acted_at` |
-| `acted` | `POST /actions` | ρ, `acted_at`, and closes the ask |
-| `decided` | `POST /actions` | Nothing. It is a record that somebody said what they would do: not in ρ, not a funnel stage, closes no ask |
+| `acted` | `POST /actions` | ρ, `acted_at`, and closes the alert |
+| `decided` | `POST /actions` | Nothing. It is a record that somebody said what they would do: not in ρ, not a funnel stage, closes no alert |
 | `measured` | Nothing, in v0.72.1 | `POST /actions` refuses it. The node derives `measured` instead, from an `acted` alert whose rule stayed silent on the same sensor for 2880 minutes; see [rho](rho.md). A `measured` row already in the table still counts |
 | `settings` | `PUT /settings`, `planetai config set`, the `settings_set` tool | Nothing in ρ; it records who changed which keys |
 
@@ -104,7 +104,7 @@ With `DECISION_REQUIRED=1`, `POST /actions` refuses an `acted` row for an alert 
 | `raised_at`, `responded_at`, `acted_at`, `measured_at` | timestamptz | timestamps only: no text, no actor, no sensor, by design |
 | `received_at` | timestamptz | |
 
-`measured_at` is null in practice. A child fills it from posted `measured` rows, and `POST /actions` no longer takes one. The parent's funnel in `/rho` is computed from its own asks only, and says so with `self_only: true`. `cleared_at` was dropped in schema 0.51: a node has no notion of an alert clearing.
+`measured_at` is null in practice. A child fills it from posted `measured` rows, and `POST /actions` no longer takes one. The parent's funnel in `/rho` is computed from its own alerts only, and says so with `self_only: true`. `cleared_at` was dropped in schema 0.51: a node has no notion of an alert clearing.
 
 ### `channel_roles`
 

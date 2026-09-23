@@ -2,7 +2,7 @@
  "marks": {
   "cards": {
    "anchor": "the-sections",
-   "more": "Room is the solid line, the street dotted, the model dashed, the line itself dashed red. Where a distance has no source its trace is absent and the legend says which one.",
+   "more": "The house is the solid line, the ring dotted, the street and the region dashed, the line itself dashed red. Where a distance has no source its trace is absent and the legend says which one.",
    "page": "dashboard.md",
    "quote": "Four card kinds and no fifth: readout, stack, series, row. A gap in a series is a gap in the line, never a ramp across the WHO line nobody measured. The node's own words are never uppercased: `µg/m³` once became `MG/M³` on the hero, a factor of a thousand.",
    "section": "The sections",
@@ -20,9 +20,9 @@
   },
   "containment": {
    "anchor": "the-lead",
-   "more": "That is the documentation's example grain line. The one under Decide is tonight's, read from this node, and when the neighbouring grains give the same answer the page says so.",
+   "more": "That is the documentation's example resolution line. The one under Decide is tonight's, read from this node, and when the neighbouring rungs give the same answer the page says so.",
    "page": "dashboard.md",
-   "quote": "At resolution 8 one cell is 639,778 m² on node #1, about 0.64 km², with an edge of 497 m. The grain line counts the cells this node's stations with a coordinate fall in, how many of those stations sit in the node's own cell, and how many of those are its own.",
+   "quote": "At resolution 8 one cell is 639,778 m² on node #1, about 0.64 km², with an edge of 497 m. The resolution line counts the cells this node's stations with a coordinate fall in, how many of those stations sit in the node's own cell, and how many of those are its own.",
    "section": "The lead",
    "title": "Exact in the index, approximate on the ground",
    "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
@@ -31,7 +31,7 @@
    "anchor": "conditions-that-are-not-events",
    "more": "A heat alert is a condition that holds for hours; a cooking spike is an event with a cooldown. The schema does not yet know an alert can clear, so the page says which it is.",
    "page": "alerts.md",
-   "quote": "The dashboard marks\nan open act-level ask as *current* only while its condition still holds (the room over the line, or the\nalert under two hours old), and otherwise says the reading came back on its own and the ask is still open.",
+   "quote": "The dashboard marks\nan open act-level alert as *current* only while its condition still holds (the house over the line, or the\nalert under two hours old), and otherwise says the reading came back on its own and the alert is still open.",
    "section": "Conditions that are not events",
    "title": "Conditions that are not events",
    "url": "https://planetai.fab.city/docs/alerts/#conditions-that-are-not-events"
@@ -47,18 +47,18 @@
   },
   "dial": {
    "anchor": "the-lead",
-   "more": "The stops that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell. Under the rail, a fold draws one cell at the stop you are on against the stops either side, to scale, and what each thing this node speaks for costs to cover at it.",
+   "more": "The rungs that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell. Under the ladder, a fold draws one cell at the rung you are on against the rungs either side, to scale, and what each thing this node speaks for costs to cover at it.",
    "page": "dashboard.md",
-   "quote": "The **grain rail** sits above the lead: eleven stops, one per H3 resolution from 2 to 12, opening at 8. Stops coarse enough that the cell may leave the machine (resolution 6 and coarser, the presence floor) are dotted rather than blue; stops finer than the node says where it is are struck through.",
+   "quote": "The **ladder** sits above the lead: eleven rungs, one per H3 resolution from 2 to 12, opening at 8. Rungs coarse enough that the cell may leave the machine (resolution 6 and coarser, the presence floor) are dotted rather than blue; rungs finer than the node says where it is are struck through.",
    "section": "The lead",
-   "title": "The rail: one stop per grain",
+   "title": "The ladder: one rung per resolution",
    "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
   },
   "distances": {
    "anchor": "sources-and-sensors",
-   "more": "The page prints them in the household's words — room, wall outside, street, model — on one scale, so the eye can answer whether it is me or everywhere without arithmetic.",
+   "more": "The page prints them as house, street, ring and region, on one scale, so the eye can answer whether it is me or everywhere without arithmetic.",
    "page": "concepts.md",
-   "quote": "**The four distances.** Where a reading comes from, nearest first. The wire keys are `room` (local, indoor),\n`yard` (local, outdoor), `ring` (somebody else's device near here) and `region` (a model, a portal). The page\nprints them as room · wall outside · street · model; in Bahasa, ruangan · dinding luar · jalan · model.",
+   "quote": "**The four distances.** Where a reading comes from, nearest first. The wire keys are `room` (local, indoor),\n`yard` (local, outdoor), `ring` (somebody else's device near here) and `region` (a model, a portal). The page\nprints them as house · street · ring · region; in Bahasa, rumah · jalan · sekitar · wilayah.",
    "section": "Sources and sensors",
    "title": "Four distances, not four resolutions",
    "url": "https://planetai.fab.city/docs/concepts/#sources-and-sensors"
@@ -67,14 +67,14 @@
    "anchor": "the-lead",
    "more": "The node computes and the page draws. A number this page worked out for itself would be a bug, which is why the sentence, the numeral and the state word all arrive from GET /issues.",
    "page": "dashboard.md",
-   "quote": "The first thing on Now is the rail, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many asks are open and in which stage, and a pill: `live`, `stale` or `cached`.",
+   "quote": "The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.",
    "section": "The lead",
    "title": "The lead",
    "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
   },
   "levels": {
    "anchor": "levels",
-   "more": "An alert's acted_at stays null until a person acts and records it — this page's button, the CLI, the bot, a radio, or an agent. It is the one measurement the node cannot make itself.",
+   "more": "An alert's acted_at stays null until a person acts and records it, with this page's button, the CLI, the bot, a radio or an agent. It is the one measurement the node cannot make itself.",
    "page": "alerts.md",
    "quote": "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person. `planetai report level warn` lowers it\nwithout a restart. Below the floor an alert is still recorded, still drawn on the dashboard, and still in the\nbundle the next [report](report.md) is written from.",
    "section": "Levels",
@@ -85,14 +85,14 @@
    "anchor": "provenance-words-on-the-page",
    "more": "Provenance is ink only and square on this page, never a coloured pill, and the full H3 id is printed once per object and never truncated.",
    "page": "concepts.md",
-   "quote": "`live`: measured by this node, room or yard. `partial`: derived, a portal, the street. `model`: a model\nrow. `cached`: a committed fixture replayed through the node's own engine.",
+   "quote": "`live`: measured by this node, in the house or on the street. `partial`: derived, a portal, the ring.\n`model`: a model row. `cached`: a committed fixture replayed through the node's own engine.",
    "section": "Provenance words on the page",
    "title": "Provenance words",
    "url": "https://planetai.fab.city/docs/concepts/#provenance-words-on-the-page"
   },
   "raw": {
    "anchor": "what-leaves-the-machine-and-what-never-does",
-   "more": "The barcode under Observe is hourly means of the room's PM2.5 — the finest grain this page shows, and still not a raw reading.",
+   "more": "The barcode under Observe is hourly means of the house's PM2.5: the finest time step this page shows, and still not a raw reading.",
    "page": "how-it-works.md",
    "quote": "Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if\n`PARENT_API_URL` names one; the daily [export](storage.md), with hourly means, your own sensors named by role\n(`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the centre of the node's\nresolution-8 cell (not its point), under CC BY 4.0",
    "section": "What leaves the machine, and what never does",
@@ -110,7 +110,7 @@
   },
   "rho": {
    "anchor": "",
-   "more": "The page draws it as the asks answered over the asks raised, with the median minutes to the first answer, and counts the rings rather than sizing them.",
+   "more": "The page draws it as the alerts answered over the alerts raised, with the median minutes to the first answer, and counts the rings rather than sizing them.",
    "page": "rho.md",
    "quote": "ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the one\nnumber on the page that comes from a person, the Fab City Index's `Governance` cell at the node's scale, and\nthe reason the `actions` table is the Index's instrument rather than an app feature.",
    "section": "",
@@ -128,7 +128,7 @@
   },
   "stages": {
    "anchor": "the-sections",
-   "more": "Observe, decide, act, measure — the four stages this page is read in. A section whose data is not on this node prints one honest line in its place, never a blank and never a guess.",
+   "more": "Observe, decide, act, measure: the four stages this page is read in. A section whose data is not on this node prints one honest line in its place, never a blank and never a guess.",
    "page": "dashboard.md",
    "quote": "Every section is registered with the page contract: `id`, `pack`, `stage`, `title` and `render` (or `lead`), and optionally `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. The shell draws each one in the stage it belongs to, in the order the loop runs: observe, decide, act, measure.",
    "section": "The sections",

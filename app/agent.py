@@ -237,7 +237,7 @@ def issues(issue: str | None = None) -> dict:
     changed today · quiet = nothing to say · context = it informs and never asks · none = not
     watched or no source) and why; the same quantity at four distances (room, yard, ring, region)
     with a source and a provenance word for each; the line it is judged against and where that line
-    comes from; the open asks, and whether each is still true; and one sentence in English, Bahasa
+    comes from; the open alerts, and whether each is still true; and one sentence in English, Bahasa
     and Spanish.
 
     `headline` is the issue to lead with: the highest state present, ties going to the keeper's

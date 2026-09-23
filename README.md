@@ -47,10 +47,10 @@ satellite sources; water and soil have no pack yet, and no node has handed a job
 - **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a pack; the AirGradient and
   PurpleAir adapters are written and not polled in this version), radios over LoRa where there is no WiFi (Meshtastic),
   public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth Engine's view of the
-  land. One schema from the room to the planet.
+  land. One schema from the house to the planet.
 - **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
   whether anything changed: ρ, the share of act-level alerts somebody answered, a number the Index never had.
-- **Shows the place.** A dashboard with the room's number as a sentence, the day as an annotated chart, every source with
+- **Shows the place.** A dashboard with the house's number as a sentence, the day as an annotated chart, every source with
   a note, the sea, the land, the weather. Six views: Now, Historical, Network, Wall, Arrange, Set up.
 - **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node and explains
   it; point it at a bigger model when you have one.

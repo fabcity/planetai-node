@@ -102,7 +102,7 @@ set to Bahasa Indonesia they fall back to English, while the model's answers fol
 |---|---|
 | `/act 12 closed the windows` | records the action on alert 12 in those words, with the actor `<AGENT_NAME>/telegram`; replies "Recorded: you acted on #12." |
 | `/act 12` | records nothing and asks "What did you do about #12?", with the form to send it in: `/act 12 <what you did>` |
-| `/stack [issue]` | the issue's state, its sentence in your language, the four distances with their provenance and unit, and up to two open asks: a template over the `issues` tool, no model ever |
+| `/stack [issue]` | the issue's state, its sentence in your language, the four distances with their provenance and unit, and up to two open alerts: a template over the `issues` tool, no model ever |
 | `/model [local\|remote\|online\|auto]` | pins a rung for this chat and prints the ladder: each rung, its model, its host, whether it is currently skipped, and what `AGENT_PREFER` means (`private`: "the node's own machines only, nothing leaves the network") |
 
 ## What leaves the network

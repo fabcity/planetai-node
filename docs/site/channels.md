@@ -1,6 +1,6 @@
 # Channels
 
-A channel is how an ask leaves the node and reaches the people it is for. The repo's own description of a node
+A channel is how an alert leaves the node and reaches the people it is for. The repo's own description of a node
 ends with it: it "sends the people at that address one plain message when something should change". This page
 connects four ways of doing that. Two of them (Telegram and Reticulum) also carry the answer back, which is how
 an alert becomes a row in `actions` and, from there, part of [ρ](rho.md).
@@ -90,7 +90,7 @@ posts answers to `POST /actions` with `ACT_TOKEN`, and it reads that token when 
    the app. `planetai logs reticulum` then shows `bridge up: http :4243, announcing every 1800s, 1 alert
    destination(s), …` with your count. Every `act` alert is delivered, full text, to each address. To check, run `planetai test-alert`: Sideband shows a message from the node's
    address titled `planetai <NODE_NAME>`, carrying the whole test alert. If nothing arrives, `planetai logs
-   reticulum` says `no path to <hash> yet; is that client announced and reachable?`. The ask now reaches a
+   reticulum` says `no path to <hash> yet; is that client announced and reachable?`. The alert now reaches a
    person with no internet in the house, and step 2 carries the answer back.
 
 The bridge does not read `.env`. It receives exactly eight variables from `docker-compose.yml`: `LOG_LEVEL`,
@@ -143,6 +143,6 @@ its reports; only Telegram waits for the internet to come back.
 
 ## Where this leads
 
-The node can now ask, and hear the answer. [ρ](rho.md) is what it makes of the answers: the share of its asks
+The node can now ask, and hear the answer. [ρ](rho.md) is what it makes of the answers: the share of its alerts
 that somebody acted on, and whether the condition stopped afterwards. The [report](report.md) is the one
 message it sends on a schedule rather than on a line being crossed.

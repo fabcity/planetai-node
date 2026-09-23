@@ -117,7 +117,7 @@ came from and which place they were written for.
 ## Reading the node
 
 - `status.errors` is per loop. A key present means that loop failed on its last run.
-- `sensors[].local` means the person's own **and** at this node; a kit of theirs further than `LOCAL_RADIUS_M` is theirs but not this node's measurement. `indoor` is what the rules use to tell the room from the street.
+- `sensors[].local` means the person's own **and** at this node; a kit of theirs further than `LOCAL_RADIUS_M` is theirs but not this node's measurement. `indoor` is what the rules use to tell the house from the street.
 - `alerts[].acted_at` is null until someone acts. It is the person's note on what they did, not the node's own
   measurement: ask them, record it with `act` in their words, and never invent one.
 - "Outside" means: the person's own outdoor sensors, else the three nearest public references, else the model. Same order

@@ -106,7 +106,7 @@ planetai ui
 ```
   On this machine:      http://localhost:8080/
   On your network:      http://<lan ip>:8080/
-  On a wall screen:     add  #wall  — the dark register, turns its own dial; needs SHARE_LEVEL=open
+  On a wall screen:     add  #wall  — the dark register, moves its own ladder; needs SHARE_LEVEL=open
 
   SHARE_LEVEL is off, so a screen on your network gets the dashboard and the node's status and no readings.
 ```
@@ -128,9 +128,9 @@ touching `.env`. See [Dashboard](dashboard.md) and [Sharing](sharing.md).
 **Now there is:** observe, on a screen. The same `GET /issues` document the bot and the report read, drawn
 in the order the loop runs.
 
-## When a real ask arrives
+## When a real alert arrives
 
-The test alert belongs to no issue, so it counts in ρ but never appears as an open ask on the page. The first
+The test alert belongs to no issue, so it counts in ρ but never appears as an open alert on the page. The first
 real act-level alert from a pack rule about the air or the heat does, and the loop closes on the Now view. Until then Decide says:
 "Nothing is asking for a decision."
 
@@ -138,15 +138,15 @@ real act-level alert from a pack rule about the air or the heat does, and the lo
    first line, and *what this node suggests*, the rule's own 👉 recommendation. Press **Decide about this**,
    fill in "Who is deciding" and "What will be done" (or press **Take its word**), then **Record the
    decision**. The page answers: "Decided. Nothing has moved — press "I did this" under Act when it is
-   done." A decision closes no ask and does not enter ρ. It is the record that somebody looked.
-2. **Record it under Act when it is done.** "What this node has asked" lists the open ask with a button,
+   done." A decision closes no alert and does not enter ρ. It is the record that somebody looked.
+2. **Record it under Act when it is done.** "The alerts this node has sent" lists the open alert with a button,
    **I did this**. Fill in "Who" and "What you did", then **Record it**. The page answers: "Recorded. The
    node watches what happens next." This needs the act token or the admin token in this browser. Without
    one the node answers "this node is set to SHARE_LEVEL=<level>, so /actions answers only this machine or a
    request carrying a token." and the page adds where the token comes from. The same act can come from `planetai act`, from `/act <id>
    <what you did>` in Telegram, from an agent's `act` tool, or over Reticulum.
 3. **See it under Measure.** "Whether it worked" shows ρ reported, answered ÷ asked, and the median minutes
-   from ask to answer; `planetai status` prints the same figure on its `rho` line. The funnel beside it
+   from alert to answer; `planetai status` prints the same figure on its `rho` line. The funnel beside it
    counts asked, acknowledged, acted and measured. `measured` goes up 48 hours after the act if the same
    rule has stayed silent on the same sensor, and "Which of these worked" shows the same thing rule by rule.
 
@@ -154,8 +154,8 @@ real act-level alert from a pack rule about the air or the heat does, and the lo
 decided and who did what.
 
 > **Note.** `DECISION_REQUIRED=1` (Set up → Node, off by default) makes the node refuse an act with no
-> decision recorded against the same ask first, with HTTP 409, however the act arrives. It is for a node that
-> acts for a street rather than a room.
+> decision recorded against the same alert first, with HTTP 409, however the act arrives. It is for a node that
+> acts for a street rather than a house.
 
 ## 6. Talk to it
 

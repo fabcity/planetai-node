@@ -56,7 +56,7 @@ as it does anywhere else, so it is the same green by name rather than by coincid
 **State is carried by weight, fill and dash, never by hue.** A live node is a 2.5 stroke, a registered one
 a 1.5 dashed `5 4`, a pilot a 1 at 45% opacity. On the dashboard the same rule reads as type weight: the
 state word is set at 500 in the muted ink, and `act` alone at 700 in full ink. Nothing in a table is tinted.
-The grain rail follows it too: stops that may leave the machine are dotted, stops that stay are plain, stops
+The ladder follows it too: rungs that may leave the machine are dotted, rungs that stay are plain, rungs
 finer than the node says where it is are struck through. A reader who cannot separate blue from grey still
 sees three zones.
 
@@ -209,6 +209,6 @@ The node's page is `index.html` and the static files the node serves beside it, 
 
 ## Where this leads
 
-These rules are read on two surfaces. [The dashboard](dashboard.md) is where the rail, the lead and the four
+These rules are read on two surfaces. [The dashboard](dashboard.md) is where the ladder, the lead and the four
 stages draw them for a person at the page, and [Wall mode](wall.md) is the dark register for a screen read
 from three metres.
