@@ -78,6 +78,7 @@ NAV = [
         ("wall", "docs/site/wall.md"),
     ]),
     ("Agents", [
+        ("ask", "docs/site/ask.md"),
         ("agents", "docs/site/agents.md"),
         ("mcp", "docs/site/mcp.md"),
         ("bot", "docs/site/bot.md"),
