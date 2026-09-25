@@ -199,6 +199,59 @@ HERO_WORDS = {
            "months": ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
                       "septiembre", "octubre", "noviembre", "diciembre")},
 }
+# Simple mode's paragraph, `digest.simple`: three sentences for the three questions, written here and
+# never in the browser. Approved by Tomas 25 September 2026. Counts agree in number through the pairs
+# below (Indonesian has one form); `{when}` is a time of day for an alert raised today and a date
+# otherwise, and `{since}` is the later of thirty days ago and the oldest alert this read reached.
+SIMPLE_WORDS = {
+    "en": {"own": ("{n} station of its own", "{n} stations of its own"),
+           "near": ("{n} other station", "{n} other stations"),
+           "times": ("once", "{n} times"),
+           "stations": "This house has {own}, and {near} within a kilometre.",
+           "stations_far": "This house has {own}; the nearest other station is {km} km away.",
+           "stations_alone": "This house has {own}, and no other station is near enough to compare.",
+           "stations_none": "This house has no station of its own yet, so the node reads the model for "
+                            "this point.",
+           "ask": "The oldest open alert is #{id}, about {issue}, open since {when}.",
+           "ask_none": "Nothing is open.",
+           "loop": "Since {since} the node has asked {asked} and somebody answered {answered}; the usual "
+                   "wait was {median} minutes.",
+           "loop_none": "Since {since} the node has asked {asked} and nobody has answered yet.",
+           "loop_empty": "The node has not asked anybody for anything in the last 30 days.",
+           "today": "{t}", "date": "{d} {month}"},
+    "id": {"own": ("{n} stasiun sendiri", "{n} stasiun sendiri"),
+           "near": ("{n} stasiun lain", "{n} stasiun lain"),
+           "times": ("{n} kali", "{n} kali"),
+           "stations": "Rumah ini punya {own}, dan {near} dalam satu kilometer.",
+           "stations_far": "Rumah ini punya {own}; stasiun lain terdekat berjarak {km} km.",
+           "stations_alone": "Rumah ini punya {own}, dan tidak ada stasiun lain yang cukup dekat untuk "
+                             "dibandingkan.",
+           "stations_none": "Rumah ini belum punya stasiun sendiri, jadi node membaca model untuk titik ini.",
+           "ask": "Peringatan terbuka paling lama adalah #{id}, tentang {issue}, terbuka sejak {when}.",
+           "ask_none": "Tidak ada yang terbuka.",
+           "loop": "Sejak {since} node telah meminta {asked} dan seseorang menjawab {answered}; waktu "
+                   "tunggu biasanya {median} menit.",
+           "loop_none": "Sejak {since} node telah meminta {asked} dan belum ada yang menjawab.",
+           "loop_empty": "Node tidak meminta siapa pun melakukan apa pun dalam 30 hari terakhir.",
+           "today": "pukul {t}", "date": "{d} {month}"},
+    "es": {"own": ("{n} estaci\u00f3n propia", "{n} estaciones propias"),
+           "near": ("{n} estaci\u00f3n m\u00e1s", "{n} estaciones m\u00e1s"),
+           "times": ("{n} vez", "{n} veces"),
+           "stations": "Esta casa tiene {own}, y hay {near} a menos de un kil\u00f3metro.",
+           "stations_far": "Esta casa tiene {own}; la estaci\u00f3n m\u00e1s cercana que no es suya est\u00e1 "
+                           "a {km} km.",
+           "stations_alone": "Esta casa tiene {own}, y no hay otra estaci\u00f3n lo bastante cerca para "
+                             "comparar.",
+           "stations_none": "Esta casa a\u00fan no tiene estaci\u00f3n propia, as\u00ed que el nodo lee el "
+                            "modelo para este punto.",
+           "ask": "La alerta abierta m\u00e1s antigua es la #{id}, sobre {issue}, abierta desde {when}.",
+           "ask_none": "No hay nada abierto.",
+           "loop": "Desde {since} el nodo ha pedido algo {asked} y alguien respondi\u00f3 {answered}; la "
+                   "espera habitual fue de {median} minutos.",
+           "loop_none": "Desde {since} el nodo ha pedido algo {asked} y nadie ha respondido todav\u00eda.",
+           "loop_empty": "El nodo no ha pedido nada a nadie en los \u00faltimos 30 d\u00edas.",
+           "today": "las {t}", "date": "el {d} de {month}"},
+}
 # The hero's plain line: the other distances and the line in the household's words, under the
 # sentence. Approved by Tomas 25 September 2026. The place words are WHERE_WORDS and NOUN_WORDS, so
 # "on the street" means the same thing here as in the sentence above it.

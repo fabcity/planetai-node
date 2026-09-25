@@ -40,7 +40,7 @@ from datetime import datetime, timedelta, timezone
 import packs
 
 from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
-               LOCALES, NOUN_WORDS, PLAIN_WORDS, REASON_WORDS,
+               LOCALES, NOUN_WORDS, PLAIN_WORDS, REASON_WORDS, SIMPLE_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
@@ -206,7 +206,8 @@ def _group(n: int, loc: str) -> str:
     return f"{n:,}" if loc == "en" else f"{n:,}".replace(",", ".")
 
 
-def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: str | None) -> dict:
+def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: str | None,
+            now: datetime | None = None, clock=None, read_from: datetime | None = None) -> dict:
     """Four sentences, one per stage, in three languages, from figures already in this document.
 
     Simple mode draws these and nothing else, so they are the whole answer for a reader who wants
@@ -267,8 +268,81 @@ def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: s
             measure = w["measure_none"].format(acts=len(acts))
         digest[loc] = {"observe": observe, "decide": decide, "act": act, "measure": measure}
     # One key per stage, each a string per locale — the shape `dashboard.js::digest()` reads.
-    return {stage: {loc: digest[loc][stage] for loc in LOCALES}
-            for stage in ("observe", "decide", "act", "measure")}
+    got = {stage: {loc: digest[loc][stage] for loc in LOCALES}
+           for stage in ("observe", "decide", "act", "measure")}
+    got["simple"] = _simple(out, stations, asks, now or datetime.now(timezone.utc), clock, read_from, first)
+    return got
+
+
+def _ts(v):
+    if isinstance(v, datetime):
+        return v
+    try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _oldest(alerts: list[dict]) -> datetime | None:
+    got = [t for t in (_ts(a.get("ts")) for a in alerts) if t is not None]
+    return min(got) if got else None
+
+
+def _simple(out, stations, asks, now, clock, read_from, first) -> dict:
+    """Simple mode's paragraph: the house's own stations and its neighbours, the oldest open alert,
+    and how the last 30 days of asking went. Three sentences per locale, every figure already in this
+    document. `first` is the earliest closed action per alert, computed once by `_digest`.
+
+    `{since}` is the later of thirty days ago and the oldest alert the read reached, so a capture
+    holding ten days of alerts says ten days and never claims thirty.
+    """
+    local = lambda t: t.astimezone(clock) if clock is not None and t.tzinfo else t   # noqa: E731
+    today = local(now).date()
+    start = now - timedelta(days=30)
+    if read_from is not None and read_from > start:
+        start = read_from
+    own = sum(1 for s in stations if s.get("local"))
+    others = [s for s in stations if not s.get("local") and s.get("km") is not None]
+    near = [s for s in others if s["km"] <= 1]
+    opens = [(k, a) for k, v in out.items() for a in (v.get("open_asks") or []) if _ts(a.get("ts"))]
+    oldest = min(opens, key=lambda x: _ts(x[1]["ts"])) if opens else None
+    window = [a for a in asks.get("acts") or [] if (_ts(a.get("ts")) or start) >= start]
+    answered = [a for a in window if a.get("id") in first]
+    waits = [(_ts(first[a["id"]]) - _ts(a["ts"])).total_seconds() / 60 for a in answered
+             if _ts(first[a["id"]]) and _ts(a["ts"])]
+    said = {}
+    for loc in LOCALES:
+        w, months = SIMPLE_WORDS[loc], HERO_WORDS[loc]["months"]
+        count = lambda pair, n: pair[0 if n == 1 else 1].format(n=n)                  # noqa: E731
+
+        def when(t, allow_time=True):
+            t = local(t)
+            if allow_time and t.date() == today:
+                return w["today"].format(t=t.strftime("%H:%M"))
+            return w["date"].format(d=t.day, month=months[t.month - 1])
+        if not own:
+            st = w["stations_none"]
+        elif near:
+            st = w["stations"].format(own=count(w["own"], own), near=count(w["near"], len(near)))
+        elif others:
+            st = w["stations_far"].format(own=count(w["own"], own), km=f"{min(s['km'] for s in others):.1f}")
+        else:
+            st = w["stations_alone"].format(own=count(w["own"], own))
+        if oldest:
+            k, a = oldest
+            ask = w["ask"].format(id=a.get("id"), issue=((out[k].get("name") or {}).get(loc) or k).lower(),
+                                  when=when(_ts(a["ts"])))
+        else:
+            ask = w["ask_none"]
+        if not window:
+            loop = w["loop_empty"]
+        elif not waits:
+            loop = w["loop_none"].format(since=when(start, False), asked=count(w["times"], len(window)))
+        else:
+            loop = w["loop"].format(since=when(start, False), asked=count(w["times"], len(window)),
+                                    answered=len(answered), median=round(statistics.median(waits)))
+        said[loc] = f"{st} {ask} {loop}"
+    return said
 
 
 def _mesh(mesh: dict | None, stats: list[dict]) -> dict | None:
@@ -917,8 +991,13 @@ def _read(cur) -> dict:
                             "last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h FROM stats"),
         "obs": _rows(cur, "SELECT sensor_id, metric, value, ts, name, kind, scale, local, cadence, "
                           "meta FROM observations"),
+        # Every act-level alert of the last 30 days, plus the last 200 of anything. The 200 alone
+        # reached back ten days on node #1, so simple mode's "since" would have been ten days while
+        # its sentence said thirty; info notes stay capped, because nothing here counts them.
         "alerts": _rows(cur, "SELECT id, ts, rule_id, sensor_id, level, text FROM alerts "
-                             "ORDER BY ts DESC LIMIT 200"),
+                             "WHERE (level = 'act' AND ts > now() - interval '30 days') "
+                             "OR id IN (SELECT id FROM alerts ORDER BY ts DESC LIMIT 200) "
+                             "ORDER BY ts DESC"),
         "actions": _rows(cur, "SELECT ts, alert_id, stage, actor, note FROM actions "
                               "WHERE alert_id IS NOT NULL"),
         # min/max/n ride along for the station series' min-max band (Task 3); readings_1h already
@@ -1176,7 +1255,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "metrics": METRICS,
             "asks": asks,
             # simple mode's whole answer, written here because the page may not compose a sentence
-            "digest": _digest(out, stations, geom, asks, headline_issue),
+            "digest": _digest(out, stations, geom, asks, headline_issue, now, clock,
+                              _oldest(data["alerts"])),
             "mesh": _mesh(mesh, data["stats"]),
             "geometry": geom}
 

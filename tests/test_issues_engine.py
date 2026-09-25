@@ -578,6 +578,58 @@ check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u0
       f"hero: land on 21 Sep reads {_L21['value']} · {_L21['stamp']['en']!r}")
 
 
+# ---------------------------------------------------------------- simple mode's paragraph
+# digest.simple, as approved on 25 Sep against this capture. Its alerts reach back only to 11 Sep, so
+# "since" is 11 September and never "30 days"; a live read goes back the full thirty.
+_D21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["simple"]
+check(_D21["en"] == "This house has 5 stations of its own; the nearest other station is 3.2 km away. "
+      "The oldest open alert is #168, about heat, open since 11 September. Since 11 September the node "
+      "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
+      f"digest.simple reads {_D21['en']!r}")
+check(set(_D21) == set(I.LOCALES) and all(v and "{" not in v for v in _D21.values()),
+      f"digest.simple is not whole in every locale: {_D21}")
+_now = datetime(2026, 9, 25, 12, 0, tzinfo=timezone.utc)
+_st = lambda local, km: {"local": local, "km": km}                              # noqa: E731
+_iss = {"air": {"name": {"en": "Air", "id": "Udara", "es": "Aire"},
+                "open_asks": [{"id": 9, "ts": "2026-09-25T09:30:00+00:00"}]}}
+for _name, _stations, _asks, _want in [
+    ("one of its own, one near, an alert today, nothing asked in the window",
+     [_st(True, 0), _st(False, 0.4)], {"acts": [{"id": 1, "ts": "2026-08-01T00:00:00+00:00"}]},
+     "This house has 1 station of its own, and 1 other station within a kilometre. The oldest open "
+     "alert is #9, about air, open since 09:30. The node has not asked anybody for anything in the last "
+     "30 days."),
+    ("none of its own, asked once, nobody answered",
+     [_st(False, 5.0)], {"acts": [{"id": 9, "ts": "2026-09-25T09:30:00+00:00"}]},
+     "This house has no station of its own yet, so the node reads the model for this point. The oldest "
+     "open alert is #9, about air, open since 09:30. Since 26 August the node has asked once and nobody "
+     "has answered yet."),
+]:
+    _got = engine._simple(_iss, _stations, _asks, _now, timezone.utc, None, {})["en"]
+    check(_got == _want, f"digest.simple, {_name}: {_got!r}")
+check(engine._simple({}, [_st(True, 0)], {"acts": []}, _now, None, None, {})["en"].startswith(
+      "This house has 1 station of its own, and no other station is near enough to compare. Nothing is open."),
+      "digest.simple with nothing near and nothing open")
+
+
+class _Grab:
+    """A cursor that keeps the SQL it is handed, to ask what the live read asks Postgres for."""
+    def __init__(self):
+        self.sql = []
+
+    def execute(self, sql, args=()):
+        self.sql.append(sql)
+
+    def fetchall(self):
+        return []
+
+
+_g = _Grab()
+engine._read(_g)
+_alerts_sql = next(q for q in _g.sql if "FROM alerts" in q)
+check("level = 'act' AND ts > now() - interval '30 days'" in _alerts_sql and "LIMIT 200" in _alerts_sql,
+      f"the live read no longer takes 30 days of act alerts plus the last 200: {_alerts_sql}")
+
+
 # ---------------------------------------------------------------- the headline, and what moved
 # Asked 18 September 2026: lead with the data showing the most significant change. The rule was
 # state alone — act, notable, quiet, context, none — with the household's declared order as the only
