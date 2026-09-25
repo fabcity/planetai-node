@@ -630,6 +630,21 @@ check("level = 'act' AND ts > now() - interval '30 days'" in _alerts_sql and "LI
       f"the live read no longer takes 30 days of act alerts plus the last 200: {_alerts_sql}")
 
 
+# The two derived fixtures the visual rig draws the slot from. Each is 21 Sep with every reading but
+# one issue's removed, so the rule itself puts that issue first: coast with a rule and no line, land
+# with a date and no rule. If either stops leading, the page's own proof of a blind slot is gone.
+for _name, _want in (("coast-led-2026-09-21", "coast"), ("land-led-2026-09-21", "land")):
+    _o = engine.replay(json.loads((ROOT / f"app/issues/fixtures/{_name}.json").read_text()),
+                       Settings(NODE_ISSUES="air,heat,land,coast"), DECL)
+    _h = _o["issues"][_want]["hero"]
+    check(_o["lead"] == {"issue": _want, "by": "state"}, f"{_name}: lead is {_o['lead']}")
+    check(_h["value"] is not None, f"{_name}: the lead has no numeral")
+    if _want == "coast":
+        check(_h["rule"] and _h["rule"]["line"] is None and _h["rule"]["dots"], f"{_name}: {_h['rule']}")
+    else:
+        check(_h["rule"] is None and _h["stamp"]["en"].startswith("looked at in "), f"{_name}: {_h}")
+
+
 # ---------------------------------------------------------------- the headline, and what moved
 # Asked 18 September 2026: lead with the data showing the most significant change. The rule was
 # state alone — act, notable, quiet, context, none — with the household's declared order as the only

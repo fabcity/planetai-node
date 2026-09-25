@@ -29,7 +29,7 @@ for itself is a bug.
    because a cell that coarse may leave the machine. This is the node telling you how coarse each thing you
    are about to read is.
 3. **Read the lead.** The sentence under the ladder is the headline issue in the household's language, with
-   the four distances as meters. The why line says why this issue leads. The last line says how many alerts are
+   its rule under it, a dot per distance and the line in red. The why line says why this issue leads. The last line says how many alerts are
    open, for example `2 alerts open · #361 · in 3 Act`, or `nothing open · 3 Act is empty`. The node chose
    this issue, not the page: the why line ends on the node's own `headline_rule`, and the pill at the end
    of the last line (`live`, `stale` or `cached`) says how current it is.
@@ -109,9 +109,9 @@ true relative scale (the rung you are on, filled, against the rungs either side)
 thing the node speaks for costs to cover at it. Each rung is about seven times finer by area than the one
 above. The fold's state is `?worth=1`, so it survives the ladder it is read against.
 
-The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.
+The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the rule. The last line gives when the numeral was read, the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.
 
-The meters carry a legend for the red tick, the issue's line. The why line ends on the node's own
+The lead draws the issue's `hero` from `/issues` and nothing else there, so a new issue leads the page with no change to the page. The rule's two ends are the issue's own, so a reading looks the same size tomorrow as tonight; a reading past an end sits on it and prints its real number. Coast has a rule and no line. Land has no rule, and its last line says when the satellite looked and when it looks next. The four distances in full are in the matrix. The why line ends on the node's own
 `headline_rule`, so a reader can check why this issue is on top. The ground's drawing follows. The alert strip
 sits in Act, beside the ledger it belongs to, and the **resolution line** opens Decide's "What each rung is
 worth", as a readout of the cells occupied at the current rung.

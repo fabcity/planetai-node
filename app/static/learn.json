@@ -185,7 +185,7 @@
    "more": "The node computes and the page draws. A number this page worked out for itself would be a bug, which is why the sentence, the numeral and the state word all arrive from GET /issues.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
-   "quote": "The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.",
+   "quote": "The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the rule. The last line gives when the numeral was read, the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.",
    "section": "The lead",
    "title": "The lead",
    "url": "https://planetai.fab.city/docs/dashboard/#the-lead"
