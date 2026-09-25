@@ -75,12 +75,21 @@ How much of the page is drawn. Three, in the header beside the register:
 
 | mode | what it draws |
 |---|---|
-| **simple** | offered on Now, Historical and Network only. On Now: the ladder, the lead, the **digest** (four sentences, one per stage, each written by the node), then only the sections marked `level: 'simple'`, which on Now is the Decide card "What to do about it". On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it". The digest is Now's alone |
+| **simple** | offered on Now, Historical and Network only. On Now it is what a person in the house asks: is it fine, is anything changing, is there something to do. See below. On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it" |
 | **advanced** | every registered section, in loop order. The default |
 | **learn** | advanced, with a question mark at each part of the page: every section, the ladder, the lead and the foot. Pressing one opens a panel that quotes this node's own documentation for that part, names the page and section the words came from by their titles, links out, and walks to the next. Not on the wall, which has no header to switch it on |
 
-A node too old to send a digest gets a note instead: "This node has not sent a digest", naming the version
-it is talking to, rather than four sentences composed in the browser.
+**Simple on Now** draws, in order: the header and the modes; the lead, with the issue and when it was read
+in place of the kicker, the numeral and its pictogram, the node's sentence, one plain sentence of the other
+distances and the line, and the rule; the open alert, if there is one, with the sign of its issue, its first
+line, its number and **I did this**; the ground, with a one-line key (this house, and how many other stations
+are within a kilometre) in place of the cell, the plan caption and the resolution line; one paragraph the node
+writes, `digest.simple`; and **also watched here**, every other issue this node watches, its sign and value.
+Pressing one draws that issue in the lead and says so ("you are looking at this · the node's pick is heat"),
+with **back**. That choice is the reader's view, not a setting: it is kept only until the page reloads, and a
+poll in between does not undo it. There is no ladder, no matrix, no stage names, no provenance chips and no
+figures in simple; they are one press away in advanced. A node too old to send `digest.simple` gets a note
+naming the version it is talking to, never a paragraph composed in the browser.
 
 `UI_MODE` is what the page **opens** as, chosen by the household. A reader who switches is switching their
 own copy and nobody else's: the choice is kept in this browser, the way the register is. `?mode=simple` is
