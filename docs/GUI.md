@@ -85,9 +85,11 @@ interrupted.
 
 Three modes, in the header:
 
-- **Simple** — four sentences, one per stage, and your node writes all four. Nothing on the page
-  composes them; if your node is too old to send them, the page says so and names the version rather
-  than making them up.
+- **Simple** — the three things a person in the house asks: is it fine, is anything changing, is there
+  something to do. One number with its rule, one plain sentence, the open alert with its button, the
+  ground, and one paragraph your node writes. The other issues sit on one line under it; press one to
+  look at it, and **back** to return to the one your node picked. If your node is too old to send the
+  paragraph, the page says so and names the version rather than making one up.
 - **Advanced** — the whole page. This is the default.
 - **Learn** — the whole page with a small question mark at each part. Press one and a panel opens
   that quotes your node's own documentation for that part, word for word, says which page the words

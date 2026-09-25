@@ -1390,3 +1390,42 @@ h1.brand { font: inherit }
 .foot .doors { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--mute); margin: 0 }
 .foot .doors .mono { font-family: var(--mono); font-size: 12px }
 body.wall .foot { display: none }
+
+/* SIMPLE — the three questions. One switch on <body>: `data-lv="simple"` on Now in simple mode,
+   `adv` everywhere else. A component marked for one level is hidden in the other; nothing is
+   deleted, and advanced is drawn exactly as it was. */
+body[data-lv="simple"] [data-lv="adv"], body:not([data-lv="simple"]) [data-lv="simple"] { display: none !important }
+.lead .eb { font: 500 12px var(--mono); letter-spacing: .04em; display: flex; flex-wrap: wrap;
+  gap: 4px 10px; align-items: center }
+.lead .eb b { font-weight: 800 }
+.lead .eb .pin { border: 1px solid var(--ink); padding: 1px 6px; font-size: 10.5px }
+.lead .eb .back { font: 700 10.5px var(--mono); letter-spacing: .06em; background: none; color: var(--ink);
+  border: 1px solid var(--ink); padding: 2px 8px; cursor: pointer }
+.lead .plain { font: 400 16px/1.45 var(--fc-font-body); max-width: 40ch; margin: 0 }
+body[data-lv="simple"] .lead .big { font-size: clamp(18px, 1.8vw, 24px); max-width: 26ch }
+.askrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px 14px;
+  align-items: center; padding: 12px 14px; border: 1.5px solid var(--ink); max-width: 560px; min-width: 0 }
+.askrow .sgn { width: 28px; height: 28px; color: var(--ink) }
+.askrow .what { font: 600 15px/1.35 var(--fc-font-body); min-width: 0; overflow-wrap: anywhere }
+.askrow .what small { display: block; font: 400 11px var(--mono); color: var(--mute); margin-top: 3px }
+.askrow form.did { grid-column: 1 / -1 }
+@media (max-width: 520px) { .askrow { grid-template-columns: 26px minmax(0, 1fr) } .askrow .go { grid-column: 1 / -1 } }
+.plainkey { font: 400 14px/1.4 var(--fc-font-body); display: block }
+.plainkey .d { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle;
+  margin: 0 7px 0 2px; border: 1.5px solid var(--ink) }
+.plainkey .d.me { background: var(--cells); border-color: var(--cells) }
+.digestline { font: 400 17px/1.45 var(--fc-font-body); border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink); padding: 16px 0; margin: 22px 0 0; max-width: none }
+.also { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 14px 0 28px;
+  font: 500 12px var(--mono) }
+.also .lbl { font-size: 10.5px; letter-spacing: .1em; font-weight: 700 }
+.also button { font: inherit; color: var(--mute); background: none; border: 0; border-bottom: 1px dotted var(--ink);
+  padding: 4px 0; min-height: 32px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center }
+.also button b { color: var(--ink) }
+.also button:hover, .also button:focus-visible { color: var(--ink) }
+.also .sgn { width: 16px; height: 16px; color: var(--ink) }
+@media (min-width: 900px) {
+  body[data-lv="simple"] .lead { grid-template-areas: "e g" "n g" "s g" "p g" "m g" "a g" "t g" ". g";
+    grid-template-rows: repeat(7, auto) 1fr }
+  .lead > .eb { grid-area: e } .lead > .plain { grid-area: p } .lead > .askrow { grid-area: a }
+}

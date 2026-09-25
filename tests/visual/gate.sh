@@ -34,6 +34,8 @@ node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_po
 # and leaves every static number here exactly as it was. That is not hypothetical: v0.55 shipped
 # with the dial dead and this gate was green. This presses it.
 node tests/visual/measure.mjs press
+# Simple is the three questions: nothing of advanced in the DOM, and the also line swaps the lead and back.
+node tests/visual/measure.mjs simple
 
 # The loading state: it stops when the data is in, the canvas leaves the tree, and reduced motion
 # draws one still frame instead of subscribing to the loop. Prints what a frame cost, both ways.
