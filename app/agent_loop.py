@@ -188,14 +188,15 @@ def to_openai_tools(tools) -> list[dict]:
                                               "parameters": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None) or {"type": "object", "properties": {}}}} for t in kept]
 
 
-async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | None, final: bool = False) -> dict:
+async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | None, final: bool = False,
+               system: str | None = None) -> dict:
     body = {"model": rung.model, "messages": messages, "temperature": 0.2}
     if tools and not final:
         body["tools"] = tools
     if final and rung.small:            # a small model narrates its reasoning as prose; a schema stops that
         body["response_format"] = {"type": "json_schema", "json_schema": {"name": "answer", "schema": {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}}}
     if rung.small:
-        messages[0] = {"role": "system", "content": SYSTEM + "\n/no_think"}
+        messages[0] = {"role": "system", "content": (system or SYSTEM) + "\n/no_think"}
     r = await hc.post(f"{rung.url}/chat/completions", json=body, headers=rung.headers())
     r.raise_for_status()
     return r.json()["choices"][0]["message"]
@@ -256,7 +257,7 @@ def stack_text(data: dict, one: str = "") -> str:
 
 
 @asynccontextmanager
-async def node_session(hc: httpx.AsyncClient):
+async def node_session(hc: httpx.AsyncClient, url: str | None = None, keep=None):
     """One MCP session per question, not one per process. Yields (session, tools).
 
     A session held open for the life of the container dies with the first network blip or server-side expiry, and
@@ -270,10 +271,11 @@ async def node_session(hc: httpx.AsyncClient):
     it per question costs nothing anyone can feel. Reconnect logic would be more code and still lose the first call
     after a drop.
     """
-    async with streamable_http_client(MCP_URL, http_client=hc) as (r, w, *_):
+    async with streamable_http_client(url or MCP_URL, http_client=hc) as (r, w, *_):
         async with ClientSession(r, w) as session:
             await session.initialize()
-            yield session, to_openai_tools((await session.list_tools()).tools)
+            listed = (await session.list_tools()).tools
+            yield session, (keep(listed) if keep else to_openai_tools(listed))
 
 
 async def ask(session: ClientSession, tools: list[dict], user: str, history: list[dict] | None = None, pin: str | None = None) -> tuple[str, str]:
@@ -327,6 +329,114 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
     why = type(last_err).__name__ if last_err else 'none configured'
     return T(f"No model answered ({why}). On the node: `ollama list`, and check AGENT_* in .env.",
              es=f"Ningún modelo respondió ({why}). En el nodo: `ollama list`, y revisa AGENT_* en .env."), "none"
+
+
+# ---------------------------------------------------------------------------------------- the dashboard's pane
+#
+# The same local rung, asked from the dashboard instead of Telegram, with a narrower contract: it reads, and
+# everything else it would do is a PROPOSAL the person presses. `app/ask.py` serves it at POST /ask.
+#
+#   read   executed, and each result is scrubbed of positions, names and ids before the model sees it
+#   act    not executed: a proposal. The person presses it and the page writes the ledger row exactly as its
+#          own I-did-this button does, with the person's own words. A model recording an act is a model
+#          putting words in a household's mouth; the pane does not.
+#   admin  not executed: a proposal, with the setting, its current and proposed value, what would leave
+#          the house and how to undo it. The person presses it with the token the page holds for Set up.
+#
+# Withheld even from `read`: settings_get (chat ids, hostnames), report_bundle and export_day. The pane can be
+# open on a wall at SHARE_LEVEL=open, and the one who types is not always the one who set the node up.
+PANE_WITHHELD = frozenset({"settings_get", "report_bundle", "export_day"})
+PANE_RUNS = frozenset(n for n, c in TOOL_CLASS.items() if c == "read") - PANE_WITHHELD
+PANE_PROPOSES = frozenset(n for n, c in TOOL_CLASS.items() if c in ("act", "admin"))
+PANE_TOOLS = PANE_RUNS | PANE_PROPOSES
+AUDIT_PANE = "dashboard-chat"
+
+PANE_SYSTEM = """You are PLANETAI node '{node}', answering a person reading this node's own dashboard, on the machine
+the node runs on. The page's context is below: what the page is showing right now. Use it first; call a tool
+only when the question needs more.
+- You may read. You may not change anything. To record that somebody did something, or to change a setting,
+  call the tool anyway: nothing happens, the person is shown a card and decides. Say that is what you did.
+- Never guess a number. Say what you know and what you do not.
+- Answer in {lang}. Plain sentences, no Markdown, under 90 words unless asked for more.
+
+The page's context:
+{context}"""
+
+
+def pane_tools(listed) -> list[dict]:
+    """The pane's menu: the reads it runs and the writes it may only propose, in the OpenAI shape."""
+    return [{"type": "function", "function": {
+        "name": t.name,
+        "description": (t.description or "") + (" (PROPOSAL ONLY: nothing is changed; the person is shown a card)"
+                                                if t.name in PANE_PROPOSES else ""),
+        "parameters": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None)
+        or {"type": "object", "properties": {}}}} for t in listed if t.name in PANE_TOOLS]
+
+
+def local_rung() -> Rung:
+    """The rung on this machine and no other. The pane says `runs on this machine`, so it may not fall
+    through to a tailnet box or an online key the way the Telegram ladder does."""
+    return Rung("local", os.getenv("OLLAMA_URL", "http://host.docker.internal:11434") + "/v1",
+                os.getenv("AGENT_MODEL") or os.getenv("MODEL") or "qwen3:4b", small=True)
+
+
+async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub, chat_fn=None):
+    """One answer for the dashboard's pane, as a stream of (event, data).
+
+    `call(name, args)` runs a read tool and returns its text; `scrub(text)` is what every result passes through
+    before the model sees it. Events: `tools` per read (name and ms), `proposal` per write the model reached for
+    (tool and args; app/ask.py adds the setting's words), `token` for the answer, `done`, or `error`.
+
+    NOTHING IS LOGGED BUT THE TOOL'S NAME AND ITS TIME. Not the question, not the answer, not the arguments:
+    the pane keeps no transcript anywhere, and a log line is a transcript by another name.
+    """
+    chat_fn = chat_fn or chat
+    rung = local_rung()
+    convo = [{"role": "system", "content": system}, *messages]
+    try:
+        async with httpx.AsyncClient(timeout=240) as hc:
+            for _ in range(MAX_ROUNDS):
+                msg = await chat_fn(hc, rung, convo, tools, system=system)
+                convo.append(msg)
+                calls = msg.get("tool_calls") or []
+                if not calls:
+                    text = clean(msg.get("content"))
+                    if rung.small and not text:
+                        fin = await chat_fn(hc, rung, convo, None, final=True, system=system)
+                        try:
+                            text = clean(json.loads(fin.get("content") or "{}").get("answer", ""))
+                        except ValueError:
+                            text = clean(fin.get("content"))
+                    for word in (text or "(no answer)").split(" "):
+                        yield "token", {"text": word + " "}
+                    yield "done", {"rung": rung.name, "model": rung.model}
+                    return
+                for c in calls:
+                    fn = c["function"]["name"]
+                    args = c["function"].get("arguments") or {}
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except ValueError:
+                            args = {}
+                    if fn in PANE_PROPOSES:
+                        yield "proposal", {"tool": fn, "args": args}
+                        text = "Not done. The person has been shown this as a card and will decide."
+                    elif fn in PANE_RUNS:
+                        t0 = time.time()
+                        try:
+                            text = scrub(await call(fn, args))[:8000]
+                        except Exception as e:  # noqa: BLE001
+                            text = f"tool error: {type(e).__name__}"
+                        ms = round((time.time() - t0) * 1000)
+                        log.info("[pane] tool %s %d ms", fn, ms)
+                        yield "tools", {"tool": fn, "ms": ms}
+                    else:
+                        text = "That tool is not offered here."
+                    convo.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
+            yield "error", {"message": "ran out of steps; ask something narrower"}
+    except httpx.HTTPError as e:
+        yield "error", {"message": f"the model on this machine did not answer ({type(e).__name__})"}
 
 
 class TelegramError(Exception):

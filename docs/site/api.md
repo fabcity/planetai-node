@@ -20,7 +20,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 
 The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 24 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 30 exact paths and 4 prefixes in all.
+The `open` allowlist is the `off` list plus 27 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 33 exact paths and 4 prefixes in all.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
@@ -635,6 +635,27 @@ Access: admin
 The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
 
 In v0.72.1 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+
+## The ask pane
+
+The dashboard's pane asks this node's own model, on this machine, about what the page shows. It reads and changes nothing: an `act` or an admin tool comes back as a proposal the person presses. Nothing asked or answered is kept, on disk, in the database or in a log line.
+
+### GET /ask/status
+Access: open
+
+`{model, rung, running, why, tools, stored}`: the model tag the pane would ask, `rung` (always `local`, Ollama on this machine), whether that model is answering, why not when it is not, the tools it is offered as `{name, class}`, and `stored`, which is always `false`. 404 when no loop is set up (the `agent` profile is not on; `planetai agent local` adds it). With Ollama installed and down, `running` is `false` and the tag is still named.
+
+### POST /ask
+Access: open
+
+Takes `{messages, view, mode, focus?}`: the thread so far (at most 24 messages of 4,000 characters, `user` or `assistant`), the view and mode the page is in, and a learn mark's key when one is in focus. The browser sends no readings; the node builds the model's context itself from `/issues` (the lead and its hero, the digest, every watched issue's state and values, the open alerts) and the learn entry for `focus`. That context, and every tool result, carries no coordinate, no sensor or station name, no sensor id and no `meta`: they are dropped or replaced before the model reads them.
+
+Answers `text/event-stream` with five events: `token` (`{text}`, the answer in pieces), `tools` (`{tool, ms}`, one per read the model made), `proposal` (`{tool, args, setting, current, proposed, group, leaves, undo}`, one per change it reached for; `leaves` is the setting's own help text and `undo` says how to set it back, both per locale), `done` (`{rung, model}`) and `error` (`{message}`). The model is offered the `read` tools except `settings_get`, `report_bundle` and `export_day`, and it runs them through `/mcp` as `dashboard-chat`; it is also offered `act` and the admin tools, and calling one does nothing but emit a `proposal`. 404 when no loop is set up.
+
+### GET /docs/search
+Access: open
+
+`?q=` (2 to 80 characters). A case-insensitive substring search over this node's documentation, with no model: the learn marks and `data/docs_site.json`, which `make learn` cuts out of `docs/site` at build time because the container does not carry `docs/`. Returns at most 20 `{page, anchor, title, snippet}`.
 
 ## Wire formats
 

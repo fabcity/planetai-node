@@ -34,7 +34,11 @@ for fn in ("config_list()", "config_wizard()"):
     assert not re.search(r"config_rows\s*\|\s*sort|cfg_groups\s*\|\s*sort", body), (
         f"{fn} sorts the rows again; the order is settings.RUNTIME's and nothing else re-decides it")
 
-_groups = re.findall(r'^\s*"[A-Z0-9_]+":\s*\(\s*"([a-z]+)"', settings, re.M)
+# RUNTIME's own block only: CHOICES below it has the same `"KEY": ("word"` shape, and its values read as
+# groups — `("on", "off")` beside `("off", "on")` looked like a group split in two.
+_runtime = settings[settings.index("RUNTIME = {"):]
+_runtime = _runtime[:_runtime.index("\n}\n")]
+_groups = re.findall(r'^\s*"[A-Z0-9_]+":\s*\(\s*"([a-z]+)"', _runtime, re.M)
 assert _groups, "could not read the group of a single RUNTIME key — has the tuple shape changed?"
 _runs = [g for i, g in enumerate(_groups) if i == 0 or _groups[i - 1] != g]
 assert len(_runs) == len(set(_runs)), (

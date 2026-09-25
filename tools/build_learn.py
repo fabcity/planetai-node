@@ -32,6 +32,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SITE = ROOT / "docs" / "site"
 OUT = ROOT / "app" / "static" / "learn.json"
+# The documentation as the node can read it: every page of docs/site cut at its `##` headings, for
+# GET /docs/search. data/ is mounted into the container and docs/ is not, so this is the copy made at
+# build time rather than at request time. It is a copy, not an index: the route reads it with a substring.
+DOCS_OUT = ROOT / "data" / "docs_site.json"
 DOCS = "https://planetai.fab.city/docs"
 
 # A quote is a counting unit like a sign: it has to be readable on its own, at the size the panel
@@ -322,6 +326,27 @@ def build():
     return {"order": [m[0] for m in MARKS], "marks": marks}, errs
 
 
+def docs_copy():
+    """Every page of docs/site, one row per `##` section and one for the page's lead."""
+    rows = []
+    for src in sorted(SITE.glob("*.md")):
+        text = src.read_text(encoding="utf-8")
+        head = re.match(r"# (.+)", text)
+        title = head.group(1).strip() if head else src.stem
+        heads = [None] + [m.group(1).strip() for m in re.finditer(r"^## (.+)$", text, re.M)]
+        for h in heads:
+            try:
+                body = section_body(text, h)
+            except ValueError:
+                body = None
+            if not body or not body.strip():
+                continue
+            rows.append({"page": src.name, "anchor": slugify(h) if h else "",
+                         "title": f"{title} · {h}" if h else title,
+                         "text": re.sub(r"\s+", " ", re.sub(r"^## .+$", "", body, count=1, flags=re.M)).strip()})
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true",
@@ -336,15 +361,23 @@ def main():
                    "now. Do not paraphrase: the quote is a cut of the page, not a copy.")
 
     text = json.dumps(out, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+    docs = docs_copy()
+    docs_text = json.dumps(docs, ensure_ascii=False, separators=(",", ":")) + "\n"
     if args.check:
         have = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
         if have != text:
             sys.exit("app/static/learn.json is not what docs/site says. Run `make learn` and look "
                      "at the diff: a quote moved because the documentation moved.")
-        print(f"  learn.json: {len(out['marks'])} marks, every quote still a span of its page")
+        if (DOCS_OUT.read_text(encoding="utf-8") if DOCS_OUT.exists() else "") != docs_text:
+            sys.exit("data/docs_site.json is not what docs/site says. Run `make learn`: GET /docs/search "
+                     "reads that copy, and a stale one answers with last week's documentation.")
+        print(f"  learn.json: {len(out['marks'])} marks, every quote still a span of its page; "
+              f"docs_site.json: {len(docs)} sections")
         return
     OUT.write_text(text, encoding="utf-8")
-    print(f"  wrote {OUT.relative_to(ROOT)}: {len(out['marks'])} marks")
+    DOCS_OUT.write_text(docs_text, encoding="utf-8")
+    print(f"  wrote {OUT.relative_to(ROOT)}: {len(out['marks'])} marks, "
+          f"and {DOCS_OUT.relative_to(ROOT)}: {len(docs)} sections")
 
 
 if __name__ == "__main__":
