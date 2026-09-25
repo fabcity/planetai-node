@@ -51,6 +51,9 @@ WHERE_FROM = ("stats", "observations", "earth")
 AGGREGATES = ("mean", "median", "fenced_median")
 FUNCTIONS = ("apparent",)
 COMPARE_MODES = ("ratio", "difference")
+# A hero's stamp is a time of day for anything read every few minutes, and a date plus the next look
+# for anything read once a year: "at 21:24" about land would be a claim about this evening's ground.
+HERO_CLOCKS = ("time", "date")
 TRENDS = ("rising", "steady", "falling")
 
 # The words shared by every issue, so four files do not carry four copies of "the street". An issue
@@ -182,6 +185,105 @@ DIGEST_WORDS = {
                   "none": "no lee nada"},
     },
 }
+# The hero's stamp and its line's name. `time` is when the numeral was read; `date` is when a yearly
+# record looked and when it looks next, because the satellite does not look again tomorrow.
+HERO_WORDS = {
+    "en": {"time": "read at {t}", "date": "looked at in {d} · next look {n}", "line": "the line",
+           "months": ("January", "February", "March", "April", "May", "June", "July", "August",
+                      "September", "October", "November", "December")},
+    "id": {"time": "dibaca pukul {t}", "date": "dilihat pada {d} · berikutnya {n}", "line": "batas",
+           "months": ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus",
+                      "September", "Oktober", "November", "Desember")},
+    "es": {"time": "leído a las {t}", "date": "visto en {d} · la próxima vez, {n}",
+           "line": "el límite",
+           "months": ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+                      "septiembre", "octubre", "noviembre", "diciembre")},
+}
+# Simple mode's paragraph, `digest.simple`: three sentences for the three questions, written here and
+# never in the browser. Approved by Tomas 25 September 2026. Counts agree in number through the pairs
+# below (Indonesian has one form); `{when}` is a time of day for an alert raised today and a date
+# otherwise, and `{since}` is the later of thirty days ago and the oldest alert this read reached.
+SIMPLE_WORDS = {
+    "en": {"own": ("{n} station of its own", "{n} stations of its own"),
+           "near": ("{n} other station", "{n} other stations"),
+           "times": ("once", "{n} times"),
+           "stations": "This house has {own}, and {near} within a kilometre.",
+           "stations_far": "This house has {own}; the nearest other station is {km} km away.",
+           "stations_alone": "This house has {own}, and no other station is near enough to compare.",
+           "stations_none": "This house has no station of its own yet, so the node reads the model for "
+                            "this point.",
+           "ask": "The oldest open alert is #{id}, about {issue}, open since {when}.",
+           "ask_none": "Nothing is open.",
+           "loop": "Since {since} the node has asked {asked} and somebody answered {answered}; the usual "
+                   "wait was {median} minutes.",
+           "loop_none": "Since {since} the node has asked {asked} and nobody has answered yet.",
+           "loop_empty": "The node has not asked anybody for anything in the last 30 days.",
+           "today": "{t}", "date": "{d} {month}"},
+    "id": {"own": ("{n} stasiun sendiri", "{n} stasiun sendiri"),
+           "near": ("{n} stasiun lain", "{n} stasiun lain"),
+           "times": ("{n} kali", "{n} kali"),
+           "stations": "Rumah ini punya {own}, dan {near} dalam satu kilometer.",
+           "stations_far": "Rumah ini punya {own}; stasiun lain terdekat berjarak {km} km.",
+           "stations_alone": "Rumah ini punya {own}, dan tidak ada stasiun lain yang cukup dekat untuk "
+                             "dibandingkan.",
+           "stations_none": "Rumah ini belum punya stasiun sendiri, jadi node membaca model untuk titik ini.",
+           "ask": "Peringatan terbuka paling lama adalah #{id}, tentang {issue}, terbuka sejak {when}.",
+           "ask_none": "Tidak ada yang terbuka.",
+           "loop": "Sejak {since} node telah meminta {asked} dan seseorang menjawab {answered}; waktu "
+                   "tunggu biasanya {median} menit.",
+           "loop_none": "Sejak {since} node telah meminta {asked} dan belum ada yang menjawab.",
+           "loop_empty": "Node tidak meminta siapa pun melakukan apa pun dalam 30 hari terakhir.",
+           "today": "pukul {t}", "date": "{d} {month}"},
+    "es": {"own": ("{n} estaci\u00f3n propia", "{n} estaciones propias"),
+           "near": ("{n} estaci\u00f3n m\u00e1s", "{n} estaciones m\u00e1s"),
+           "times": ("{n} vez", "{n} veces"),
+           "stations": "Esta casa tiene {own}, y hay {near} a menos de un kil\u00f3metro.",
+           "stations_far": "Esta casa tiene {own}; la estaci\u00f3n m\u00e1s cercana que no es suya est\u00e1 "
+                           "a {km} km.",
+           "stations_alone": "Esta casa tiene {own}, y no hay otra estaci\u00f3n lo bastante cerca para "
+                             "comparar.",
+           "stations_none": "Esta casa a\u00fan no tiene estaci\u00f3n propia, as\u00ed que el nodo lee el "
+                            "modelo para este punto.",
+           "ask": "La alerta abierta m\u00e1s antigua es la #{id}, sobre {issue}, abierta desde {when}.",
+           "ask_none": "No hay nada abierto.",
+           "loop": "Desde {since} el nodo ha pedido algo {asked} y alguien respondi\u00f3 {answered}; la "
+                   "espera habitual fue de {median} minutos.",
+           "loop_none": "Desde {since} el nodo ha pedido algo {asked} y nadie ha respondido todav\u00eda.",
+           "loop_empty": "El nodo no ha pedido nada a nadie en los \u00faltimos 30 d\u00edas.",
+           "today": "las {t}", "date": "el {d} de {month}"},
+}
+# The hero's plain line: the other distances and the line in the household's words, under the
+# sentence. Approved by Tomas 25 September 2026. The place words are WHERE_WORDS and NOUN_WORDS, so
+# "on the street" means the same thing here as in the sentence above it.
+PLAIN_WORDS = {
+    "en": {"first": "{where} it is {n}", "more": ", and {where} {n}",
+           "under": "The line is {line}, and nothing here is over it.",
+           "over_one": "The line is {line}, and {over} is over it.",
+           "over_many": "The line is {line}, and {over} are over it.",
+           "alone": "Nothing else near here reads it.",
+           "model": "The node reads this from a model, not from anything here, and it never asks you "
+                    "to do anything about it.",
+           "yearly": "The satellite looks once a year, and the node never asks you to do anything "
+                     "about it."},
+    "id": {"first": "{where} angkanya {n}", "more": ", {where} {n}",
+           "under": "Batasnya {line}, dan tidak ada yang melewatinya di sini.",
+           "over_one": "Batasnya {line}, dan {over} sudah melewatinya.",
+           "over_many": "Batasnya {line}, dan {over} sudah melewatinya.",
+           "alone": "Tidak ada yang lain di dekat sini yang membacanya.",
+           "model": "Node membaca ini dari model, bukan dari apa pun di sini, dan tidak pernah meminta "
+                    "Anda melakukan apa pun tentangnya.",
+           "yearly": "Satelit melihat setahun sekali, dan node tidak pernah meminta Anda melakukan apa "
+                     "pun tentangnya."},
+    "es": {"first": "{where} marca {n}", "more": " y {where} {n}",
+           "under": "El l\u00edmite es {line}, y aqu\u00ed nada lo supera.",
+           "over_one": "El l\u00edmite es {line}, y {over} lo supera.",
+           "over_many": "El l\u00edmite es {line}, y {over} lo superan.",
+           "alone": "Nada m\u00e1s cerca de aqu\u00ed lo mide.",
+           "model": "El nodo lo lee de un modelo, no de nada que haya aqu\u00ed, y nunca te pide que "
+                    "hagas nada al respecto.",
+           "yearly": "El sat\u00e9lite mira una vez al a\u00f1o, y el nodo nunca te pide que hagas nada "
+                     "al respecto."},
+}
 # Why THIS issue is at the top, in the household's language. The node ranks them, so the node says
 # how — a page that keeps its own copy of the rule goes stale the moment the ranking changes, which
 # is not hypothetical: v0.59 changed it on 18 September and the sentence describing it lived in
@@ -306,6 +408,9 @@ def _problems(key: str, d: dict) -> list[str]:
         elif not all((r.get("label") or {}).get(loc) for loc in LOCALES):
             p.append(f"{key}: the {r['metric']} readout needs a label in every locale")
 
+    if "hero" in d:
+        p += _hero_problems(key, d)
+
     want = set(STATE_SENTENCES) if kind == "context" else {"none"}
     for loc in LOCALES:
         s = (d.get("sentences") or {}).get(loc)
@@ -340,6 +445,66 @@ def _problems(key: str, d: dict) -> list[str]:
         for w in (d.get("where") or {}).get(loc, {}):
             if w not in DISTANCES:
                 p.append(f"{key}: where.{loc}.{w} is not one of {', '.join(DISTANCES)}")
+    return p
+
+
+def _sign_ids() -> set[str]:
+    """Every symbol id in the frozen signs.svg. A hero naming anything else draws an empty box."""
+    try:
+        return set(re.findall(r'<symbol[^>]*\bid="([^"]+)"', (HERE.parent / "static" / "signs.svg").read_text()))
+    except OSError:
+        return set()
+
+
+def _hero_problems(key: str, d: dict) -> list[str]:
+    """The hero contract: what the page draws when this issue leads, checked against what exists.
+
+    Optional — an issue without one is watched and never leads — but a hero that is present has to
+    be drawable: its sign is in signs.svg, its numeral is a distance or readout this issue has, and
+    its rule only names distances this issue fills.
+    """
+    h = d["hero"]
+    if not isinstance(h, dict):
+        return [f"{key}: hero must be a mapping"]
+    p: list[str] = []
+    signs = _sign_ids()
+    for f in ("sign", "pictogram"):
+        if (f == "sign" or h.get(f) is not None) and h.get(f) not in signs:
+            p.append(f"{key}: hero.{f} is {h.get(f)!r}, which is not a symbol in app/static/signs.svg")
+    have = [x for x in DISTANCES if (d.get("distances") or {}).get(x)]
+    readouts = [r.get("metric") for r in d.get("readouts") or [] if isinstance(r, dict)]
+    numeral = h.get("numeral", "headline")
+    if numeral != "headline" and numeral not in have and numeral not in readouts:
+        p.append(f"{key}: hero.numeral is {numeral!r}; it must be a distance this issue fills "
+                 f"({', '.join(have)}) or one of its readouts ({', '.join(readouts) or 'none'})")
+    if not h.get("unit"):
+        p.append(f"{key}: hero.unit is missing")
+    if not isinstance(h.get("dp"), int):
+        p.append(f"{key}: hero.dp must be an integer number of decimal places")
+    if h.get("clock") not in HERO_CLOCKS:
+        p.append(f"{key}: hero.clock is {h.get('clock')!r}; it must be one of {HERO_CLOCKS}")
+    rule = h.get("rule")
+    if rule is not None:
+        if not isinstance(rule, dict):
+            return p + [f"{key}: hero.rule must be a mapping or absent"]
+        lo, hi = rule.get("min"), rule.get("max")
+        if not all(isinstance(v, (int, float)) and v is not True for v in (lo, hi)) or lo >= hi:
+            p.append(f"{key}: hero.rule needs a numeric min below its max")
+        for loc in LOCALES:
+            ends = (rule.get("ends") or {}).get(loc)
+            if not (isinstance(ends, list) and len(ends) == 2 and all(ends)):
+                p.append(f"{key}: hero.rule.ends.{loc} must be two words, the low end and the high end")
+        dots = rule.get("dots")
+        if not isinstance(dots, list) or not dots:
+            p.append(f"{key}: hero.rule.dots must list at least one distance")
+        for x in dots or []:
+            if x not in have:
+                p.append(f"{key}: hero.rule.dots names {x!r}, a distance this issue does not have "
+                         f"({', '.join(have)})")
+        if not isinstance(rule.get("line"), bool):
+            p.append(f"{key}: hero.rule.line must be true or false")
+        elif rule["line"] and not d.get("line"):
+            p.append(f"{key}: hero.rule.line is true and the issue declares no line to draw")
     return p
 
 

@@ -35,12 +35,12 @@ import math
 import os
 import statistics
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import packs
 
-from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, JOIN_WORDS, LABEL_WORDS, LOCALES,
-               NOUN_WORDS, REASON_WORDS,
+from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
+               LOCALES, NOUN_WORDS, PLAIN_WORDS, REASON_WORDS, SIMPLE_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
@@ -206,7 +206,8 @@ def _group(n: int, loc: str) -> str:
     return f"{n:,}" if loc == "en" else f"{n:,}".replace(",", ".")
 
 
-def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: str | None) -> dict:
+def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: str | None,
+            now: datetime | None = None, clock=None, read_from: datetime | None = None) -> dict:
     """Four sentences, one per stage, in three languages, from figures already in this document.
 
     Simple mode draws these and nothing else, so they are the whole answer for a reader who wants
@@ -267,8 +268,81 @@ def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: s
             measure = w["measure_none"].format(acts=len(acts))
         digest[loc] = {"observe": observe, "decide": decide, "act": act, "measure": measure}
     # One key per stage, each a string per locale — the shape `dashboard.js::digest()` reads.
-    return {stage: {loc: digest[loc][stage] for loc in LOCALES}
-            for stage in ("observe", "decide", "act", "measure")}
+    got = {stage: {loc: digest[loc][stage] for loc in LOCALES}
+           for stage in ("observe", "decide", "act", "measure")}
+    got["simple"] = _simple(out, stations, asks, now or datetime.now(timezone.utc), clock, read_from, first)
+    return got
+
+
+def _ts(v):
+    if isinstance(v, datetime):
+        return v
+    try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _oldest(alerts: list[dict]) -> datetime | None:
+    got = [t for t in (_ts(a.get("ts")) for a in alerts) if t is not None]
+    return min(got) if got else None
+
+
+def _simple(out, stations, asks, now, clock, read_from, first) -> dict:
+    """Simple mode's paragraph: the house's own stations and its neighbours, the oldest open alert,
+    and how the last 30 days of asking went. Three sentences per locale, every figure already in this
+    document. `first` is the earliest closed action per alert, computed once by `_digest`.
+
+    `{since}` is the later of thirty days ago and the oldest alert the read reached, so a capture
+    holding ten days of alerts says ten days and never claims thirty.
+    """
+    local = lambda t: t.astimezone(clock) if clock is not None and t.tzinfo else t   # noqa: E731
+    today = local(now).date()
+    start = now - timedelta(days=30)
+    if read_from is not None and read_from > start:
+        start = read_from
+    own = sum(1 for s in stations if s.get("local"))
+    others = [s for s in stations if not s.get("local") and s.get("km") is not None]
+    near = [s for s in others if s["km"] <= 1]
+    opens = [(k, a) for k, v in out.items() for a in (v.get("open_asks") or []) if _ts(a.get("ts"))]
+    oldest = min(opens, key=lambda x: _ts(x[1]["ts"])) if opens else None
+    window = [a for a in asks.get("acts") or [] if (_ts(a.get("ts")) or start) >= start]
+    answered = [a for a in window if a.get("id") in first]
+    waits = [(_ts(first[a["id"]]) - _ts(a["ts"])).total_seconds() / 60 for a in answered
+             if _ts(first[a["id"]]) and _ts(a["ts"])]
+    said = {}
+    for loc in LOCALES:
+        w, months = SIMPLE_WORDS[loc], HERO_WORDS[loc]["months"]
+        count = lambda pair, n: pair[0 if n == 1 else 1].format(n=n)                  # noqa: E731
+
+        def when(t, allow_time=True):
+            t = local(t)
+            if allow_time and t.date() == today:
+                return w["today"].format(t=t.strftime("%H:%M"))
+            return w["date"].format(d=t.day, month=months[t.month - 1])
+        if not own:
+            st = w["stations_none"]
+        elif near:
+            st = w["stations"].format(own=count(w["own"], own), near=count(w["near"], len(near)))
+        elif others:
+            st = w["stations_far"].format(own=count(w["own"], own), km=f"{min(s['km'] for s in others):.1f}")
+        else:
+            st = w["stations_alone"].format(own=count(w["own"], own))
+        if oldest:
+            k, a = oldest
+            ask = w["ask"].format(id=a.get("id"), issue=((out[k].get("name") or {}).get(loc) or k).lower(),
+                                  when=when(_ts(a["ts"])))
+        else:
+            ask = w["ask_none"]
+        if not window:
+            loop = w["loop_empty"]
+        elif not waits:
+            loop = w["loop_none"].format(since=when(start, False), asked=count(w["times"], len(window)))
+        else:
+            loop = w["loop"].format(since=when(start, False), asked=count(w["times"], len(window)),
+                                    answered=len(answered), median=round(statistics.median(waits)))
+        said[loc] = f"{st} {ask} {loop}"
+    return said
 
 
 def _mesh(mesh: dict | None, stats: list[dict]) -> dict | None:
@@ -782,8 +856,104 @@ def _readouts(d, obs, loc_all=LOCALES) -> list[dict]:
         out.append({"metric": r["metric"], "value": v, "dp": dp, "unit": r["unit"],
                     "label": r["label"], "source": row.get("name") or r["sensor_id"],
                     "provenance": "model" if row.get("kind") == "model" else "partial",
+                    "_ts": row.get("ts"),
                     "_text": {loc: f"{r['label'][loc]} {shown} {r['unit']}" for loc in loc_all}})
     return out
+
+
+# ----------------------------------------------------------------------------------------------- hero
+def _hero(d, stack, headline, sentence, now, clock) -> dict | None:
+    """The lead slot filled with tonight's values, from the issue's `hero:` contract.
+
+    The page draws this and nothing else when the issue leads, so every word and every number in it
+    is decided here: which figure is the numeral, which distances sit on the rule and where the line
+    is, and a stamp that is a time for a reading and a date for a yearly record. None when the issue
+    declares no hero, which is also what keeps it from leading (see `_lead`).
+    """
+    h = d.get("hero")
+    if not h:
+        return None
+    dp = h["dp"]
+    numeral = h.get("numeral", "headline")
+    if numeral == "headline":
+        numeral = headline
+    if numeral in DISTANCES:
+        cell = stack.get(numeral) or {}
+        value = cell.get("value")
+        age = cell.get("age_minutes")
+        at = now - timedelta(minutes=age) if value is not None and age is not None else now
+    else:
+        r = next((x for x in d.get("_readouts") or [] if x["metric"] == numeral), {})
+        value, at = r.get("value"), r.get("_ts")
+        # A readout can outlive the record the issue reads: node #1 on 6 September had its built
+        # share and no satellite comparison, and the hero read "91 %" over "No satellite record yet".
+        # An issue with nothing in its stack is `none`, and its numeral says so too.
+        if not any(stack.values()):
+            value = None
+    if isinstance(at, str):
+        try:
+            at = datetime.fromisoformat(at.replace("Z", "+00:00"))
+        except ValueError:
+            at = None
+    if isinstance(at, datetime) and clock is not None and at.tzinfo is not None:
+        at = at.astimezone(clock)
+
+    def stamp(loc):
+        w = HERO_WORDS[loc]
+        if not isinstance(at, datetime) or value is None:
+            return ""
+        if h["clock"] == "time":
+            return w["time"].format(t=at.strftime("%H:%M"))
+        month = w["months"][at.month - 1]
+        return w["date"].format(d=f"{month} {at.year}", n=f"{month} {at.year + 1}")
+
+    rule = None
+    r = h.get("rule")
+    if r:
+        rule = {"min": r["min"], "max": r["max"], "ends": r["ends"],
+                "dots": [{"distance": x, "value": round(stack[x]["value"], dp)} for x in r["dots"]
+                         if (stack.get(x) or {}).get("value") is not None],
+                "line": ({"value": d["line"]["value"], "name": {loc: HERO_WORDS[loc]["line"] for loc in LOCALES}}
+                         if r["line"] and d.get("line") else None)}
+    return {"sign": h["sign"], "pictogram": h.get("pictogram"), "numeral": numeral,
+            "value": None if value is None else round(value, dp), "unit": h["unit"], "dp": dp,
+            "sentence": sentence,
+            "plain": {loc: _plain(d, numeral, value, stack, rule, loc) for loc in LOCALES},
+            "rule": rule, "clock": h["clock"],
+            "stamp": {loc: stamp(loc) for loc in LOCALES}}
+
+
+def _plain(d, numeral, value, stack, rule, loc) -> str:
+    """One more sentence under the hero's: the other distances and the line, in the household's words.
+
+    A context issue has no distances to set beside each other and nothing to cross, so it says where
+    its number comes from and that it never asks. A sensed one names the other distances on its rule
+    and says whether anything here is over the line. Every figure is one the rule already draws.
+    """
+    if value is None:
+        return ""
+    w = PLAIN_WORDS[loc]
+    if d["kind"] == "context":
+        return w["yearly"] if d["hero"]["clock"] == "date" else w["model"]
+    dp = d["hero"]["dp"]
+    fmt = lambda v: f"{v:.{dp}f}"                                              # noqa: E731
+    dists = [x["distance"] for x in rule["dots"]] if rule else [x for x in DISTANCES if stack.get(x)]
+    others = [x for x in dists if x != numeral and (stack.get(x) or {}).get("value") is not None]
+    if others:
+        parts = [w["first" if i == 0 else "more"].format(where=_where(d, x, loc), n=fmt(stack[x]["value"]))
+                 for i, x in enumerate(others)]
+        said = "".join(parts)
+        said = said[0].upper() + said[1:] + "."
+    else:
+        said = w["alone"]
+    line = (rule or {}).get("line")
+    if line:
+        over = [x for x in [numeral] + others if stack[x]["value"] > float(line["value"])]
+        nouns = NOUN_WORDS.get(loc, NOUN_WORDS["en"])
+        key = "under" if not over else "over_one" if len(over) == 1 else "over_many"
+        said += " " + w[key].format(line=fmt(float(line["value"])),
+                                    over=_join([nouns.get(x, x) for x in over], JOIN_WORDS[loc]))
+    return said
 
 
 # --------------------------------------------------------------------------------------------- series
@@ -821,8 +991,13 @@ def _read(cur) -> dict:
                             "last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h FROM stats"),
         "obs": _rows(cur, "SELECT sensor_id, metric, value, ts, name, kind, scale, local, cadence, "
                           "meta FROM observations"),
+        # Every act-level alert of the last 30 days, plus the last 200 of anything. The 200 alone
+        # reached back ten days on node #1, so simple mode's "since" would have been ten days while
+        # its sentence said thirty; info notes stay capped, because nothing here counts them.
         "alerts": _rows(cur, "SELECT id, ts, rule_id, sensor_id, level, text FROM alerts "
-                             "ORDER BY ts DESC LIMIT 200"),
+                             "WHERE (level = 'act' AND ts > now() - interval '30 days') "
+                             "OR id IN (SELECT id FROM alerts ORDER BY ts DESC LIMIT 200) "
+                             "ORDER BY ts DESC"),
         "actions": _rows(cur, "SELECT ts, alert_id, stage, actor, note FROM actions "
                               "WHERE alert_id IS NOT NULL"),
         # min/max/n ride along for the station series' min-max band (Task 3); readings_1h already
@@ -1021,7 +1196,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                         # true thing: nobody here asked for it.
                         "sentence": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
                                           + _reason_text({"code": "not_watched"}, loc)[1:] + "."
-                                     for loc in LOCALES}}
+                                     for loc in LOCALES},
+                        "hero": None}
             continue
 
         compare = d.get("compare") or {"mode": "ratio", "margin": 1.5}
@@ -1045,17 +1221,19 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "name": d["name"], "kind": d["kind"], "metric": d["metric"], "unit": d["unit"], "dp": d["dp"],
             "headline": headline, "stack": stack, "line": line, "attribution": attribution,
             "trend": verb_key,
-            # How far it moved, beside which way it went. The page shows it; _headline ranks on it.
+            # How far it moved, beside which way it went. The page shows it; _headline ranks on it (_lead).
             "moved": round(_moved(series.get("room") or series.get(headline)), 4),
             "open_asks": open_asks,
             "series": series, "buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
-            "readouts": [{k: v for k, v in r.items() if k != "_text"} for r in d["_readouts"]],
+            "readouts": [{k: v for k, v in r.items() if not k.startswith("_")} for r in d["_readouts"]],
             "provenance": _provenance(d, stack, earth),
             "sentence": {loc: _sentence(d, stack, state, headline, verb_key, loc, compare, attribution)
                          for loc in LOCALES},
         }
+        out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
 
-    headline_issue = _headline(out, declared)
+    lead = _lead(out, declared)
+    headline_issue = lead["issue"] if lead else None
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
     geom = _safe_geometry(lat, lon, settings, stations, peers)
     asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
@@ -1065,6 +1243,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     return {"schema": "issues-v0",
             "order": declared, "undeclared": undeclared, "dropped": dropped,
             "headline": headline_issue, "as_of": now.isoformat(),
+            # the same pick, and which step of HEADLINE_RULE made it: state, moved or order
+            "lead": lead,
             # why that one is at the top, in three languages — see HEADLINE_RULE
             "headline_rule": HEADLINE_RULE,
             # the column headings, so the page and Telegram both take their words from the node
@@ -1075,7 +1255,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "metrics": METRICS,
             "asks": asks,
             # simple mode's whole answer, written here because the page may not compose a sentence
-            "digest": _digest(out, stations, geom, asks, headline_issue),
+            "digest": _digest(out, stations, geom, asks, headline_issue, now, clock,
+                              _oldest(data["alerts"])),
             "mesh": _mesh(mesh, data["stats"]),
             "geometry": geom}
 
@@ -1083,7 +1264,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}
 
 
-def _headline(out: dict, declared: list[str]) -> str | None:
+def _lead(out: dict, declared: list[str]) -> dict | None:
     """The issue with the highest state; among equals, the one that has moved most; then declared order.
 
     STATE STILL WINS OUTRIGHT, and that is the whole shape of this. Something that needs doing cannot
@@ -1097,20 +1278,27 @@ def _headline(out: dict, declared: list[str]) -> str | None:
     Deterministic: `moved` is a rounded float off the same six buckets every time, and the declared
     order still breaks an exact tie, so the same capture always produces the same headline. And still
     printable in one sentence, which is the reason the old rule was worth keeping the shape of.
+
+    Only an issue with a hero can lead: the page draws the lead blind from `hero`, so an issue that
+    declares none has nothing to draw there. It is still watched, and still in the also line.
+
+    Returns `{issue, by}`, where `by` is the step that separated the leader from the runner-up —
+    `state`, `moved`, or `order` when the two were level on both (or there was nobody else).
     """
-    best = None
-    for key in declared:                                   # declared order IS the final tie-break
-        if best is None:
-            best = key
-            continue
-        rank, top = STATE_RANK.get(out[key]["state"], 0), STATE_RANK.get(out[best]["state"], 0)
-        if rank != top:
-            if rank > top:
-                best = key
-            continue
-        if out[key].get("moved", 0.0) > out[best].get("moved", 0.0):
-            best = key
-    return best
+    cands = [k for k in declared if out[k].get("hero")]
+    if not cands:
+        return None
+    rank = lambda k: (STATE_RANK.get(out[k]["state"], 0), out[k].get("moved", 0.0))  # noqa: E731
+    best = max(cands, key=rank)             # max keeps the first of equals: declared order breaks a tie
+    rest = [k for k in cands if k != best]
+    by = "order"
+    if rest:
+        runner = max(rest, key=rank)
+        if rank(best)[0] > rank(runner)[0]:
+            by = "state"
+        elif rank(best)[1] > rank(runner)[1]:
+            by = "moved"
+    return {"issue": best, "by": by}
 
 
 def _provenance(d: dict, stack: dict, earth: dict | None) -> list[dict]:

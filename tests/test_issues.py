@@ -69,6 +69,32 @@ for name, break_it in BREAKS.items():
     if not I._problems("air", d):
         fails.append(f"the validator accepts a declaration with {name}")
 
+# --- the hero contract refuses what the page could not draw -------------------------------------
+# Coast, because it is the issue with distances missing: a rule dot or a numeral naming the room is
+# a hero the page would have to invent a number for.
+HERO_BREAKS = {
+    "a sign that is not in signs.svg": lambda d: d["hero"].__setitem__("sign", "sign-surf"),
+    "a pictogram that is not in signs.svg": lambda d: d["hero"].__setitem__("pictogram", "pix-surf"),
+    "a rule dot at a distance it lacks": lambda d: d["hero"]["rule"]["dots"].append("room"),
+    "a numeral that is neither a distance nor a readout": lambda d: d["hero"].__setitem__("numeral", "tide"),
+    "a numeral at a distance it lacks": lambda d: d["hero"].__setitem__("numeral", "yard"),
+    "a line on the rule with no line declared": lambda d: d["hero"]["rule"].__setitem__("line", True),
+    "a clock that is neither": lambda d: d["hero"].__setitem__("clock", "tide"),
+    "one end word": lambda d: d["hero"]["rule"]["ends"].__setitem__("es", ["en calma"]),
+}
+for name, break_it in HERO_BREAKS.items():
+    d = yaml.safe_load((ROOT / "app/issues/coast.yml").read_text())
+    break_it(d)
+    if not I._problems("coast", d):
+        fails.append(f"the validator accepts a hero with {name}")
+_ok = yaml.safe_load((ROOT / "app/issues/coast.yml").read_text())
+_ok["hero"]["numeral"] = "swell_height_m"
+if I._problems("coast", _ok):
+    fails.append("the validator refuses a hero whose numeral is one of the issue's own readouts")
+_ok.pop("hero")
+if I._problems("coast", _ok):
+    fails.append("the validator refuses an issue with no hero; it is optional, and such an issue never leads")
+
 # --- every pack reaches an issue, or is named as not one ------------------------------------------
 # A pack domain that is deliberately outside the environmental picture. Weather feeds air and heat
 # (wind for attribution, the forecast for the day ahead) but is not itself something a place is

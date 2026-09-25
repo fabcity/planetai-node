@@ -87,6 +87,18 @@ sentences:
     state:
       context: "{n} {unit} {where} cambió {span}. {since} {cmp}"
       none: "Aún no hay registro satelital para este cuadrado."
+
+# No rule and a date: the satellite looks once a year, so the stamp says when it looked and when it
+# looks next. The numeral is the built share, the number a household recognises about its ground;
+# the change the sentence reports stays in the sentence.
+hero:
+  sign: sign-land
+  pictogram: pix-land
+  numeral: built_frac
+  unit: "%"
+  dp: 0
+  clock: date
+
 empty:
   en: "No satellite record yet. To fetch one: planetai run earth fetch, then planetai run earth change."
   id: "Belum ada rekaman satelit. Untuk mengambilnya: planetai run earth fetch, lalu planetai run earth change."

@@ -114,6 +114,20 @@ sentences:
       unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Nada de aquí informa temperatura y humedad a la vez, así que no hay temperatura aparente que dar."
+
+hero:
+  sign: sign-heat
+  pictogram: pix-heat
+  unit: °C
+  dp: 1
+  rule:
+    min: 20
+    max: 45
+    ends: { en: [cool, dangerous], id: [sejuk, berbahaya], es: [fresco, peligroso] }
+    dots: [room, yard, ring]
+    line: true
+  clock: time
+
 empty:
   en: Heat needs temperature and humidity from the same sensor. Add one indoors and the house fills in.
   id: Panas memerlukan suhu dan kelembapan dari sensor yang sama. Tambahkan satu di dalam ruangan.
