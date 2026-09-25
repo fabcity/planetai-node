@@ -40,7 +40,7 @@ from datetime import datetime, timedelta, timezone
 import packs
 
 from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
-               LOCALES, NOUN_WORDS, REASON_WORDS,
+               LOCALES, NOUN_WORDS, PLAIN_WORDS, REASON_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
@@ -843,8 +843,43 @@ def _hero(d, stack, headline, sentence, now, clock) -> dict | None:
                          if r["line"] and d.get("line") else None)}
     return {"sign": h["sign"], "pictogram": h.get("pictogram"), "numeral": numeral,
             "value": None if value is None else round(value, dp), "unit": h["unit"], "dp": dp,
-            "sentence": sentence, "rule": rule, "clock": h["clock"],
+            "sentence": sentence,
+            "plain": {loc: _plain(d, numeral, value, stack, rule, loc) for loc in LOCALES},
+            "rule": rule, "clock": h["clock"],
             "stamp": {loc: stamp(loc) for loc in LOCALES}}
+
+
+def _plain(d, numeral, value, stack, rule, loc) -> str:
+    """One more sentence under the hero's: the other distances and the line, in the household's words.
+
+    A context issue has no distances to set beside each other and nothing to cross, so it says where
+    its number comes from and that it never asks. A sensed one names the other distances on its rule
+    and says whether anything here is over the line. Every figure is one the rule already draws.
+    """
+    if value is None:
+        return ""
+    w = PLAIN_WORDS[loc]
+    if d["kind"] == "context":
+        return w["yearly"] if d["hero"]["clock"] == "date" else w["model"]
+    dp = d["hero"]["dp"]
+    fmt = lambda v: f"{v:.{dp}f}"                                              # noqa: E731
+    dists = [x["distance"] for x in rule["dots"]] if rule else [x for x in DISTANCES if stack.get(x)]
+    others = [x for x in dists if x != numeral and (stack.get(x) or {}).get("value") is not None]
+    if others:
+        parts = [w["first" if i == 0 else "more"].format(where=_where(d, x, loc), n=fmt(stack[x]["value"]))
+                 for i, x in enumerate(others)]
+        said = "".join(parts)
+        said = said[0].upper() + said[1:] + "."
+    else:
+        said = w["alone"]
+    line = (rule or {}).get("line")
+    if line:
+        over = [x for x in [numeral] + others if stack[x]["value"] > float(line["value"])]
+        nouns = NOUN_WORDS.get(loc, NOUN_WORDS["en"])
+        key = "under" if not over else "over_one" if len(over) == 1 else "over_many"
+        said += " " + w[key].format(line=fmt(float(line["value"])),
+                                    over=_join([nouns.get(x, x) for x in over], JOIN_WORDS[loc]))
+    return said
 
 
 # --------------------------------------------------------------------------------------------- series

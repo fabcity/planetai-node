@@ -199,6 +199,38 @@ HERO_WORDS = {
            "months": ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
                       "septiembre", "octubre", "noviembre", "diciembre")},
 }
+# The hero's plain line: the other distances and the line in the household's words, under the
+# sentence. Approved by Tomas 25 September 2026. The place words are WHERE_WORDS and NOUN_WORDS, so
+# "on the street" means the same thing here as in the sentence above it.
+PLAIN_WORDS = {
+    "en": {"first": "{where} it is {n}", "more": ", and {where} {n}",
+           "under": "The line is {line}, and nothing here is over it.",
+           "over_one": "The line is {line}, and {over} is over it.",
+           "over_many": "The line is {line}, and {over} are over it.",
+           "alone": "Nothing else near here reads it.",
+           "model": "The node reads this from a model, not from anything here, and it never asks you "
+                    "to do anything about it.",
+           "yearly": "The satellite looks once a year, and the node never asks you to do anything "
+                     "about it."},
+    "id": {"first": "{where} angkanya {n}", "more": ", {where} {n}",
+           "under": "Batasnya {line}, dan tidak ada yang melewatinya di sini.",
+           "over_one": "Batasnya {line}, dan {over} sudah melewatinya.",
+           "over_many": "Batasnya {line}, dan {over} sudah melewatinya.",
+           "alone": "Tidak ada yang lain di dekat sini yang membacanya.",
+           "model": "Node membaca ini dari model, bukan dari apa pun di sini, dan tidak pernah meminta "
+                    "Anda melakukan apa pun tentangnya.",
+           "yearly": "Satelit melihat setahun sekali, dan node tidak pernah meminta Anda melakukan apa "
+                     "pun tentangnya."},
+    "es": {"first": "{where} marca {n}", "more": " y {where} {n}",
+           "under": "El l\u00edmite es {line}, y aqu\u00ed nada lo supera.",
+           "over_one": "El l\u00edmite es {line}, y {over} lo supera.",
+           "over_many": "El l\u00edmite es {line}, y {over} lo superan.",
+           "alone": "Nada m\u00e1s cerca de aqu\u00ed lo mide.",
+           "model": "El nodo lo lee de un modelo, no de nada que haya aqu\u00ed, y nunca te pide que "
+                    "hagas nada al respecto.",
+           "yearly": "El sat\u00e9lite mira una vez al a\u00f1o, y el nodo nunca te pide que hagas nada "
+                     "al respecto."},
+}
 # Why THIS issue is at the top, in the household's language. The node ranks them, so the node says
 # how — a page that keeps its own copy of the rule goes stale the moment the ranking changes, which
 # is not hypothetical: v0.59 changed it on 18 September and the sentence describing it lived in

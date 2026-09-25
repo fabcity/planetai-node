@@ -535,7 +535,8 @@ for k in ("air", "heat", "land", "coast"):
     check(isinstance(h, dict), f"hero: {k} is watched and has no hero")
     if not isinstance(h, dict):
         continue
-    check(set(h) == {"sign", "pictogram", "numeral", "value", "unit", "dp", "sentence", "rule", "clock", "stamp"},
+    check(set(h) == {"sign", "pictogram", "numeral", "value", "unit", "dp", "sentence", "plain", "rule", "clock",
+                     "stamp"},
           f"hero: {k} carries {sorted(h)}")
     check(h["sentence"] == OUT["issues"][k]["sentence"], f"hero: {k}'s sentence is not the issue's own")
     check(set(h["stamp"]) == set(I.LOCALES), f"hero: {k}'s stamp is not in every locale")
@@ -558,6 +559,21 @@ check(OUT["lead"] == {"issue": OUT["headline"], "by": OUT["lead"]["by"]}
 # year on, because the pack's cadence is P1Y.
 _F21 = json.loads((ROOT / "app/issues/fixtures/node1-2026-09-21d.json").read_text())
 _L21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]["land"]["hero"]
+# The plain line, as approved on 25 Sep against this same capture: air has the street and the ring
+# over the line, heat has nothing over it, and the context issues say where their number comes from.
+_O21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+for _k, _want in (
+        ("air", "On the street it is 18, and in the ring around it 19. The line is 15, and the street "
+                "and the ring are over it."),
+        ("heat", "On the street it is 30.7, and in the ring around it 32.7. The line is 35.0, and "
+                 "nothing here is over it."),
+        ("coast", "The node reads this from a model, not from anything here, and it never asks you to "
+                  "do anything about it."),
+        ("land", "The satellite looks once a year, and the node never asks you to do anything about it.")):
+    check(_O21[_k]["hero"]["plain"]["en"] == _want, f"plain: {_k} reads {_O21[_k]['hero']['plain']['en']!r}")
+    for _loc in I.LOCALES:
+        _p = _O21[_k]["hero"]["plain"][_loc]
+        check(_p and "{" not in _p and "\u2014" not in _p, f"plain: {_k}.{_loc} is {_p!r}")
 check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u00b7 next look July 2026",
       f"hero: land on 21 Sep reads {_L21['value']} · {_L21['stamp']['en']!r}")
 
