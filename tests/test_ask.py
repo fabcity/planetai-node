@@ -140,7 +140,8 @@ async def fake_chat(hc, rung, messages, tools, final=False, system=None):
     if len(SCRIPT) == 1:
         return {"role": "assistant", "content": "", "tool_calls": [
             {"id": "a", "function": {"name": "sensors", "arguments": "{}"}},
-            {"id": "b", "function": {"name": "settings_set", "arguments": json.dumps({"changes": {"MAP_TILES": "on"}})}}]}
+            {"id": "b", "function": {"name": "settings_set", "arguments": json.dumps({"changes": {"MAP_TILES": "on"}})}},
+            {"id": "c", "function": {"name": "act", "arguments": json.dumps({"alert_id": 367, "note": "I opened the windows"})}}]}
     return {"role": "assistant", "content": ANSWER}
 
 
@@ -166,6 +167,8 @@ check(r.status_code == 200 and r.headers["content-type"].startswith("text/event-
 ev = events(r.text)
 kinds = [e for e, _ in ev]
 prop = next((d for e, d in ev if e == "proposal"), None)
+check(ask._proposal({"tool": "settings_set", "args": {"changes": {"MAP_TILES": "1"}}}, "en")["proposed"] is None,
+      "a value the key would refuse must not be proposed")
 check(prop and prop["setting"] == "MAP_TILES" and prop["current"] == "off" and prop["proposed"] == "on",
       f"MAP_TILES did not become a proposal card: {prop}")
 check(prop and "tile server" in prop["leaves"]["en"] and "Set up" in prop["undo"]["en"],
@@ -173,6 +176,10 @@ check(prop and "tile server" in prop["leaves"]["en"] and "Set up" in prop["undo"
 check("settings_set" not in SESSION.called and "sensors" in SESSION.called,
       f"the loop ran {SESSION.called}: an admin tool was executed, or a read was not")
 check(not written and settings._cache["rows"]["MAP_TILES"] == "off", f"a setting changed: {written}")
+actp = next((d for e, d in ev if e == "proposal" and d["tool"] == "act"), None)
+check(actp and actp["args"] == {"alert_id": 367} and "opened the windows" not in r.text,
+      f"an act card must carry the alert and never the model's words for what the person did: {actp}")
+check("act" not in SESSION.called, "the loop ran act")
 check(kinds[-1] == "done" and "tools" in kinds and "token" in kinds, f"the stream was {kinds}")
 check("".join(d["text"] for e, d in ev if e == "token").strip() == ANSWER, "the answer did not arrive as tokens")
 menu = SCRIPT[0]["tools"]
@@ -196,7 +203,9 @@ logging.disable(logging.WARNING)
 
 # ---------------------------------------------------------------- status
 os.environ["COMPOSE_PROFILES"] = "mqtt"
-check(local.get("/ask/status").status_code == 404, "with no agent profile /ask/status must be 404")
+_nf = local.get("/ask/status")
+check(_nf.status_code == 404 and _nf.json()["detail"]["recommend"]["pull"].startswith("planetai agent local pull ")
+      and _nf.json()["detail"]["mcp"] == "/mcp", f"the 404 must carry what to pull and the other way in: {_nf.text}")
 check(local.post("/ask", json={"messages": [{"role": "user", "content": "hi"}]}).status_code == 404,
       "with no agent profile /ask must be 404")
 os.environ["COMPOSE_PROFILES"] = "mqtt,agent"

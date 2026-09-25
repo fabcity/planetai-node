@@ -354,8 +354,10 @@ AUDIT_PANE = "dashboard-chat"
 PANE_SYSTEM = """You are PLANETAI node '{node}', answering a person reading this node's own dashboard, on the machine
 the node runs on. The page's context is below: what the page is showing right now. Use it first; call a tool
 only when the question needs more.
-- You may read. You may not change anything. To record that somebody did something, or to change a setting,
-  call the tool anyway: nothing happens, the person is shown a card and decides. Say that is what you did.
+- You may read. You may not change anything. To change a setting, call settings_set with
+  {{"changes": {{"KEY": "value"}}}}; nothing changes, the person is shown a card and decides. Say that is what you did.
+- Call act only when the person says they did something about an alert, and only with the alert's id. The
+  person writes what they did on the card, in their own words; never write it for them.
 - Never guess a number. Say what you know and what you do not.
 - Answer in {lang}. Plain sentences, no Markdown, under 90 words unless asked for more.
 
@@ -380,6 +382,35 @@ def local_rung() -> Rung:
                 os.getenv("AGENT_MODEL") or os.getenv("MODEL") or "qwen3:4b", small=True)
 
 
+def _text_call(content) -> list[dict]:
+    """A tool call a small model wrote as its answer: `{"name": "issues", "arguments": {...}}` as plain text.
+
+    qwen2.5-coder does this on Ollama's OpenAI endpoint instead of filling `tool_calls`, and the pane then
+    printed the JSON to the person as its answer. Read as a call only when the name is a tool it was offered."""
+    try:
+        j = json.loads(clean(content or ""))
+    except ValueError:
+        return []
+    if isinstance(j, dict) and j.get("name") in PANE_TOOLS:
+        return [{"id": "text-call", "function": {"name": j["name"], "arguments": j.get("arguments") or {}}}]
+    return []
+
+
+def recommend() -> dict:
+    """The tag `planetai agent local` recommends for this machine's memory, and its size on disk.
+
+    The same two rows as bin/planetai::cmd_agent_local, measured against the registry on 20 September 2026.
+    Inside a container /proc/meminfo is the machine the container runs on, which under Colima is the VM and
+    not the Mac, so this errs small, never large."""
+    try:
+        kb = next(int(l.split()[1]) for l in open("/proc/meminfo") if l.startswith("MemTotal"))
+        gb = kb // 1048576
+    except (OSError, StopIteration, ValueError):
+        gb = 0
+    tag, size = ("qwen3.5:9b", "6.6 GB") if gb >= 16 else ("qwen3.5:4b", "3.4 GB")
+    return {"tag": tag, "size": size, "memory_gb": gb or None, "pull": f"planetai agent local pull {tag}"}
+
+
 async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub, chat_fn=None):
     """One answer for the dashboard's pane, as a stream of (event, data).
 
@@ -398,7 +429,7 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
             for _ in range(MAX_ROUNDS):
                 msg = await chat_fn(hc, rung, convo, tools, system=system)
                 convo.append(msg)
-                calls = msg.get("tool_calls") or []
+                calls = msg.get("tool_calls") or _text_call(msg.get("content"))
                 if not calls:
                     text = clean(msg.get("content"))
                     if rung.small and not text:
@@ -421,7 +452,7 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
                             args = {}
                     if fn in PANE_PROPOSES:
                         yield "proposal", {"tool": fn, "args": args}
-                        text = "Not done. The person has been shown this as a card and will decide."
+                        text = "Nothing was changed. It is on a card in front of the person, who decides."
                     elif fn in PANE_RUNS:
                         t0 = time.time()
                         try:

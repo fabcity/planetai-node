@@ -119,7 +119,7 @@ def context(doc: dict, loc: str, view: str, mode: str, focus: str | None = None,
         "view": view, "mode": mode, "node_version": version,
         "lead": {"issue": lead, "picked_by": (doc.get("lead") or {}).get("by"),
                  "value": h.get("value"), "unit": h.get("unit"), "stamp": L(h.get("stamp")),
-                 "sentence": L(h.get("sentence")), "plain": L(h.get("plain")), "rule": h.get("rule")},
+                 "sentence": L(h.get("sentence")), "plain": L(h.get("plain"))},
         "digest": {k: L(v) for k, v in (doc.get("digest") or {}).items()},
         "issues": [{"issue": k, "name": L(v.get("name")), "state": v.get("state"), "why": L(v.get("reason_text")),
                     "unit": v.get("unit"), "line": (v.get("line") or {}).get("value"),
@@ -155,7 +155,11 @@ def _probe(model: str) -> tuple[bool, str]:
 def ask_status():
     """Which model the pane would ask, whether it is running, and what it may do. 404 when no loop is set up."""
     if not configured():
-        raise HTTPException(404, "no model is set up on this node; `planetai agent local` sets one up")
+        # The page draws its no-model state from this body: what to pull for this machine, and the
+        # other way in, a person's own agent over MCP.
+        raise HTTPException(404, {"error": "no model is set up on this node; `planetai agent local` sets one up",
+                                  "recommend": agent_loop.recommend(), "mcp": "/mcp",
+                                  "token_hint": "planetai agent"})
     rung = agent_loop.local_rung()
     running, why = _probe(rung.model)
     return {"model": rung.model, "rung": rung.name, "running": running, "why": why or None,
@@ -177,13 +181,23 @@ class AskBody(BaseModel):
 
 def _proposal(p: dict, loc: str) -> dict:
     """Add a setting's own words to a proposal: its current value, what would leave, how to undo it."""
-    out = dict(p, setting=None, current=None, proposed=None, group=None, leaves=None, undo=None)
+    out = dict(p, setting=None, current=None, proposed=None, choices=None, group=None, leaves=None, undo=None)
+    if p.get("tool") == "act":
+        # The id only. A note is the person's own sentence about what they did; a model's draft of it on the card
+        # would be words put in their mouth, and ρ is built out of those sentences. The card asks them to write it.
+        out["args"] = {"alert_id": (p.get("args") or {}).get("alert_id")}
     if p.get("tool") == "settings_set":
         changes = (p.get("args") or {}).get("changes") or {}
         key = next(iter(changes), None)
         row = next((r for r in settings.describe()["runtime"] if r["key"] == key), None)
         if row:
-            out.update(setting=key, proposed=str(changes[key]), current=row["value"], group=row["group"],
+            proposed = str(changes[key])
+            # A value the key would refuse is not proposed; the card offers the values it takes instead. A small
+            # model asked to "turn on" MAP_TILES proposed "1", which PUT /settings refuses.
+            if row.get("choices") and proposed not in row["choices"]:
+                proposed = None
+            out.update(setting=key, proposed=proposed, choices=row.get("choices"), current=row["value"],
+                       group=row["group"],
                        leaves={l: row["help"] for l in LOCALES},
                        undo={l: UNDO[l].format(key=key, value=row["value"] or "blank", group=row["group"])
                              for l in LOCALES})
