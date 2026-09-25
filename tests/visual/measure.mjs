@@ -449,6 +449,42 @@ async function serveNodeAPI(route, u) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: r });
     return true;
   }
+  /* THE ASK PANE'S THREE ROUTES, stood in for. The node's own answers are held by tests/test_ask.py;
+     these only give the page something shaped like them to draw. PAI_ASK_MODEL set = a node with a
+     model running; unset = a node with no loop, which answers 404 with what to pull. /ask streams one
+     canned answer that reaches for MAP_TILES, so the page's proposal card can be looked at. */
+  if (u.pathname === '/ask/status') {
+    await (process.env.PAI_ASK_MODEL
+      ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+          model: process.env.PAI_ASK_MODEL, rung: 'local', running: true, why: null, stored: false,
+          tools: [{ name: 'issues', class: 'read' }, { name: 'act', class: 'act' }, { name: 'settings_set', class: 'admin' }] }) })
+      : route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: {
+          error: 'no model is set up on this node; `planetai agent local` sets one up', mcp: '/mcp', token_hint: 'planetai agent',
+          recommend: { tag: 'qwen3.5:4b', size: '3.4 GB', memory_gb: 8, pull: 'planetai agent local pull qwen3.5:4b' } } }) }));
+    return true;
+  }
+  if (u.pathname === '/ask') {
+    const sse = (e, d) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`;
+    const words = 'I have put MAP_TILES on a card. Nothing changed; you decide.'.split(' ');
+    await route.fulfill({ status: 200, contentType: 'text/event-stream', body:
+      sse('tools', { tool: 'issues', ms: 12 })
+      + sse('proposal', { tool: 'settings_set', args: { changes: { MAP_TILES: 'on' } }, setting: 'MAP_TILES',
+          current: 'off', proposed: 'on', choices: ['off', 'on'], group: 'node',
+          leaves: { en: 'Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at.' },
+          undo: { en: 'Set MAP_TILES back to off under Set up \u2192 node.' } })
+      + words.map(w => sse('token', { text: w + ' ' })).join('')
+      + sse('done', { rung: 'local', model: process.env.PAI_ASK_MODEL || 'qwen3.5:4b' }) });
+    return true;
+  }
+  if (u.pathname === '/docs/search') {
+    const qq = (u.searchParams.get('q') || '').toLowerCase();
+    const rows = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/docs_site.json'), 'utf8'));
+    const hits = rows.filter(r => (r.title + ' ' + r.text).toLowerCase().includes(qq)).slice(0, 20)
+      .map(r => ({ page: r.page, anchor: r.anchor, title: r.title,
+        snippet: r.text.slice(Math.max(0, r.text.toLowerCase().indexOf(qq) - 80)).slice(0, 240) }));
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(hits) });
+    return true;
+  }
   if (u.pathname === '/place/geojson') {
     await (fs.existsSync(PLACE_GEOJSON)
       ? route.fulfill({ status: 200, contentType: 'application/geo+json', body: fs.readFileSync(PLACE_GEOJSON) })
@@ -610,6 +646,8 @@ async function open(job, opts = {}, stranger = null) {
   const uiMode = job.mode || process.env.PAI_MODE;
   if (uiMode) q.push(`mode=${uiMode}`);
   if (job.register) q.push(`register=${job.register}`);
+  /* `?ask=1` opens the ask pane without remembering it; a job may ask for it, PAI_ASK=1 for a run. */
+  if (job.ask || process.env.PAI_ASK === '1') q.push('ask=1');
   await page.goto(base + '/' + (q.length ? '?' + q.join('&') : ''), { waitUntil: 'networkidle' });
 
   // ?theme=dark boots straight to the wall and body.wallview hides the header, so there is no nav
@@ -2483,19 +2521,23 @@ async function asking() {
  *   node tests/visual/measure.mjs overflow            every combination
  *   node tests/visual/measure.mjs overflow now wall   named views only
  */
-const OVER_W = [390, 768, 1440];
+/* PAI_OVER_W=1180 measures another width, e.g. the 340 px pane between 860 and 1279. */
+const OVER_W = (process.env.PAI_OVER_W || '390,768,1440').split(',').map(Number);
 const OVER_V = ['now', 'historical', 'network', 'wall', 'arrange', 'setup'];
 const OVER_M = ['simple', 'advanced', 'learn'];
 const OVER_R = ['paper', 'dark'];
+/* The ask pane takes 400 px, 340 px or the bottom of the screen; every view it opens on is measured with it open too. */
+const OVER_ASK = [false, true];
 
 async function overflow(views) {
   const want = views && views.length && views[0] !== 'all' ? views : OVER_V;
   const bad = [];
   let n = 0;
   for (const view of want) {
-    for (const w of OVER_W) for (const mode of OVER_M) for (const reg of OVER_R) {
-      const job = { name: `overflow_${view}_${w}_${mode}_${reg}`, view, w,
-        state: 'populated', mode, register: reg };
+    for (const w of OVER_W) for (const mode of OVER_M) for (const reg of OVER_R) for (const ask of OVER_ASK) {
+      if (ask && view === 'wall') continue;             /* the wall has no header and never draws the pane */
+      const job = { name: `overflow_${view}_${w}_${mode}_${reg}${ask ? '_ask' : ''}`, view, w,
+        state: 'populated', mode, register: reg, ask };
       const { browser, page } = await open(job);
       try {
         const got = await page.evaluate(() => ({
@@ -2506,11 +2548,11 @@ async function overflow(views) {
         /* One pixel of slack: a sub-pixel layout can report 390.5 as 391 and that is a rounding
            artefact, not a page a thumb can push sideways. Two is a bug. */
         if (got.scroll > got.client + 1) {
-          bad.push({ view, w, mode, reg, over: got.scroll - got.client, scroll: got.scroll });
+          bad.push({ view, w, mode, reg, ask, over: got.scroll - got.client, scroll: got.scroll });
         }
       } finally { await browser.close(); }
     }
-    process.stderr.write(`  ${view} \u00b7 ${OVER_W.length * OVER_M.length * OVER_R.length} combinations\n`);
+    process.stderr.write(`  ${view} \u00b7 ${view === 'wall' ? OVER_W.length * OVER_M.length * OVER_R.length : OVER_W.length * OVER_M.length * OVER_R.length * OVER_ASK.length} combinations\n`);
   }
   if (!bad.length) {
     console.log(`  no horizontal overflow in ${n} combinations `
@@ -2519,7 +2561,7 @@ async function overflow(views) {
   }
   console.error(`  ${bad.length} of ${n} combinations scroll sideways:`);
   for (const b of bad) {
-    console.error(`    ${b.view} @ ${b.w} \u00b7 ${b.mode} \u00b7 ${b.reg}`
+    console.error(`    ${b.view} @ ${b.w} \u00b7 ${b.mode} \u00b7 ${b.reg}${b.ask ? ' \u00b7 pane open' : ''}`
       + ` \u2014 document is ${b.scroll}px, ${b.over}px past the viewport`);
   }
   process.exit(1);
@@ -2578,12 +2620,91 @@ async function simple() {
   process.exit(fails.length ? 1 : 0);
 }
 
+/* ------------------------------------------------------------------ the ask pane
+ *
+ * Three things the page owes the pane, asked of the page itself: with no model it still searches the
+ * documentation and shows the two ways to give it a voice; with one, a request that reaches for a
+ * setting draws a card saying what it is now, what it would be, what leaves and how to undo it, and
+ * asks for the token rather than writing; and nothing the pane does sends a write to /settings.
+ * Horizontal scroll with the pane open is `overflow`'s, which runs every view and mode with it on. */
+async function askpane() {
+  const fails = [];
+  delete process.env.PAI_ASK_MODEL;
+  let h = await open(tagged({ name: 'askpane_none', view: 'now', w: 1440, state: 'populated', ask: true }));
+  const none = await h.page.evaluate(async () => {
+    const p = document.getElementById('askpane');
+    const f = p && p.querySelector('[data-ask-find]');
+    if (f) { f.elements.q.value = 'map_tiles'; f.requestSubmit(); }
+    await new Promise(r => setTimeout(r, 400));
+    return { shown: !!(p && !p.hidden && p.getClientRects().length), body: document.body.classList.contains('askopen'),
+      cards: p ? p.querySelectorAll('.nomodel .card pre').length : 0, find: !!f,
+      pull: p ? /agent local pull qwen3\.5:4b/.test(p.textContent) : false,
+      mcp: p ? /claude mcp add/.test(p.textContent) : false,
+      hits: p ? p.querySelectorAll('#ask-hits .hit').length : 0 };
+  });
+  await h.browser.close();
+  if (!none.shown || !none.body) fails.push('with ?ask=1 the pane is not drawn');
+  if (none.cards !== 2 || !none.pull || !none.mcp) fails.push(`the no-model state lacks its two cards: ${JSON.stringify(none)}`);
+  if (!none.find || !none.hits) fails.push(`the no-model state's search found nothing for map_tiles: ${JSON.stringify(none)}`);
+
+  process.env.PAI_ASK_MODEL = 'qwen3.5:4b';
+  h = await open(tagged({ name: 'askpane_model', view: 'now', w: 1440, state: 'populated', ask: true }));
+  const writes = [];
+  h.page.on('request', r => { if (r.method() !== 'GET' && /\/settings|\/actions/.test(r.url())) writes.push(`${r.method()} ${r.url()}`); });
+  const got = await h.page.evaluate(async () => {
+    try { localStorage.removeItem('planetai_admin'); } catch (e) { /* none to remove */ }
+    for (let i = 0; i < 20 && !document.querySelector('#askpane [data-ask-send]'); i++) await new Promise(r => setTimeout(r, 100));
+    const f = document.querySelector('#askpane [data-ask-send]');
+    if (!f) return { composer: false };
+    const chips = f.querySelectorAll('[data-ask-chip]').length;
+    f.elements.q.value = 'turn the satellite map on';
+    f.requestSubmit();
+    for (let i = 0; i < 30 && !document.querySelector('#askpane [data-ask-set]'); i++) await new Promise(r => setTimeout(r, 100));
+    const card = document.querySelector('#askpane [data-ask-set]');
+    const p = document.getElementById('askpane');
+    return { composer: true, chips, head: /qwen3\.5:4b · runs on this machine/.test(p.textContent),
+      card: card && card.dataset.askSet, text: card ? card.textContent : '',
+      ledger: /on this machine/.test((p.querySelector('.ledger') || {}).textContent || ''),
+      kept: (sessionStorage.getItem('planetai_ask_thread') || '').includes('turn the satellite map on'),
+      answer: /Nothing changed/.test(p.textContent) };
+  });
+  await h.page.screenshot({ path: path.join(OUT, 'askpane_model_1440.png') });
+  await h.browser.close();
+  if (!got.composer) fails.push('with a model running the pane draws no composer');
+  else {
+    if (got.chips !== 3) fails.push(`the composer should open with three of the node's questions, got ${got.chips}`);
+    if (!got.head) fails.push('the header does not say which model and that it runs on this machine');
+    if (got.card !== 'MAP_TILES' || !/off/.test(got.text) || !/on/.test(got.text) || !/tile server/.test(got.text)
+      || !/Set MAP_TILES back to off/.test(got.text)) fails.push(`MAP_TILES did not become a card with now, proposed, what leaves and undo: ${got.text.slice(0, 200)}`);
+    if (!/needs your token/.test(got.text)) fails.push('with no token held the card does not ask for one');
+    if (!got.ledger || !got.answer) fails.push('the answer or its ledger line did not arrive');
+    if (!got.kept) fails.push('the thread is not in sessionStorage, so a reload in this tab loses it');
+  }
+  if (writes.length) fails.push(`the pane wrote: ${writes.join(', ')}`);
+  delete process.env.PAI_ASK_MODEL;
+  for (const f of fails) console.log('FAIL askpane:', f);
+  if (!fails.length) console.log(`  askpane: no model = search (${none.hits} hits) and two cards; with one, MAP_TILES is a card `
+    + 'with now, proposed, what leaves and undo, asking for the token; nothing written');
+  process.exit(fails.length ? 1 : 0);
+}
+
+async function probe(expr) {
+  const h = await open(tagged({ name: 'probe', view: 'now', w: 1440, state: 'populated' }));
+  const errs = [];
+  h.page.on('pageerror', e => errs.push(String(e)));
+  await h.page.waitForTimeout(500);
+  console.log(JSON.stringify(await h.page.evaluate(expr)), errs.join(' | '));
+  await h.browser.close();
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
 else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
 else if (cmd === 'press') await press();
 else if (cmd === 'simple') await simple();
+else if (cmd === 'askpane') await askpane();
+else if (cmd === 'probe') await probe(rest.join(' '));
 else if (cmd === 'asking') await asking();
 else if (cmd === 'plates') await plateShots(rest.length ? rest : ['all']);
 else if (cmd === 'extend') await extend();

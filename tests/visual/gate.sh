@@ -36,6 +36,8 @@ node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_po
 node tests/visual/measure.mjs press
 # Simple is the three questions: nothing of advanced in the DOM, and the also line swaps the lead and back.
 node tests/visual/measure.mjs simple
+# The ask pane: with no model it searches and shows two ways in; with one, a change is a card, never a write.
+node tests/visual/measure.mjs askpane
 
 # The loading state: it stops when the data is in, the canvas leaves the tree, and reduced motion
 # draws one still frame instead of subscribing to the loop. Prints what a frame cost, both ways.

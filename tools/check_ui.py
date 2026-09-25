@@ -37,9 +37,11 @@ routes = set(re.findall(r'@app\.(?:get|post|put)\("(/[a-z_./{}-]*)"', main))   #
 _api = open("app/issues/api.py").read()
 _prefix = (re.search(r'APIRouter\(prefix="([^"]+)"', _api) or [None, ""])[1]
 routes |= {(_prefix + p) or "/" for p in re.findall(r'@router\.(?:get|post|put)\("([^"]*)"', _api)}
+# app/ask.py is a router with no prefix: GET /ask/status, POST /ask, GET /docs/search.
+routes |= set(re.findall(r'@router\.(?:get|post|put)\("(/[^"]*)"', open("app/ask.py").read()))
 # `fetch('/x')`, and `get('/x')` — snapshot()'s own helper, which is how most of them are called
 _called = set(re.findall(r"(?:api|fetch|get)\('(/[a-z_/.-]+)", js))
-_called |= set(re.findall(r"[\"'`](/(?:earth|issues|actions|settings|packs|health|alerts|rho|report)[a-z_/.-]*)", js))
+_called |= set(re.findall(r"[\"'`](/(?:earth|issues|actions|settings|packs|health|alerts|rho|report|ask|docs)[a-z_/.-]*)", js))
 for p in sorted({x.rstrip("/") or "/" for x in _called}):
     if p not in routes:
         errs.append(f"page calls {p}, which app/main.py does not define")
