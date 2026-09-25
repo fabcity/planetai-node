@@ -527,11 +527,39 @@ else:
     if [body["stations"][i]["sensor_id"] for i in own_cell["sensors"]] != ["sc-19849", "sc-19880", "sc-19897"]:
         fails.append("the plate's sensor indices index into the published stations")
 
-print("\n".join(f"  x {f}" for f in fails if f) or
-      f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "
-      f"attribution in six classes, and {len(OUT['issues']) * len(I.LOCALES)} sentences with every "
-      f"placeholder filled — replayed against node #1, 6 Sep 14:08 UTC")
-sys.exit(1 if [f for f in fails if f] else 0)
+# ---------------------------------------------------------------- the hero, a slot the page draws blind
+# Every watched core issue declares a hero, and the engine fills it with tonight's values. The page
+# reads `hero` and nothing else in the lead, so what the page must not work out for itself is here.
+for k in ("air", "heat", "land", "coast"):
+    h = OUT["issues"][k].get("hero")
+    check(isinstance(h, dict), f"hero: {k} is watched and has no hero")
+    if not isinstance(h, dict):
+        continue
+    check(set(h) == {"sign", "pictogram", "numeral", "value", "unit", "dp", "sentence", "rule", "clock", "stamp"},
+          f"hero: {k} carries {sorted(h)}")
+    check(h["sentence"] == OUT["issues"][k]["sentence"], f"hero: {k}'s sentence is not the issue's own")
+    check(set(h["stamp"]) == set(I.LOCALES), f"hero: {k}'s stamp is not in every locale")
+_air, _coast, _land = (OUT["issues"][k]["hero"] for k in ("air", "coast", "land"))
+check(_air["value"] == round(OUT["issues"]["air"]["stack"]["room"]["value"], 0), "hero: air's numeral is not the room")
+check(_air["rule"]["line"] and _air["rule"]["line"]["value"] == 15, "hero: air's rule has lost its line")
+check({x["distance"] for x in _air["rule"]["dots"]} <= {"room", "yard", "ring"},
+      "hero: air's rule put the region on it, which its contract leaves off")
+check(_air["stamp"]["en"].startswith("read at "), f"hero: air's stamp is {_air['stamp']['en']!r}")
+check(_coast["rule"] and _coast["rule"]["line"] is None, "hero: coast draws a rule and no line")
+check([x["distance"] for x in _coast["rule"]["dots"]] == ["region"], "hero: coast's one dot is the region")
+check(_land["rule"] is None and _land["clock"] == "date", "hero: land draws no rule and a date")
+# 6 Sep: the built share was there and the satellite comparison was not. The sentence says there is
+# no record, so the numeral cannot say 91 %.
+check(OUT["issues"]["land"]["state"] != "none" or _land["value"] is None,
+      "hero: land is `none` and its numeral still carries a readout")
+check(OUT["lead"] == {"issue": OUT["headline"], "by": OUT["lead"]["by"]}
+      and OUT["lead"]["by"] in ("state", "moved", "order"), f"lead: {OUT['lead']} against headline {OUT['headline']}")
+# The land fixture of 21 Sep has the record: a date stamp from the observation, and the next look a
+# year on, because the pack's cadence is P1Y.
+_F21 = json.loads((ROOT / "app/issues/fixtures/node1-2026-09-21d.json").read_text())
+_L21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]["land"]["hero"]
+check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u00b7 next look July 2026",
+      f"hero: land on 21 Sep reads {_L21['value']} · {_L21['stamp']['en']!r}")
 
 
 # ---------------------------------------------------------------- the headline, and what moved
@@ -541,30 +569,38 @@ sys.exit(1 if [f for f in fails if f] else 0)
 #
 # State still wins outright. That is the load-bearing half: something that needs doing cannot be
 # pushed down the page by something that merely moved a lot. Change is the tie-break INSIDE a state.
-from issues.engine import _headline, _moved            # noqa: E402
+from issues.engine import _lead, _moved                 # noqa: E402
 
 _DECLARED = ["air", "heat", "land", "coast"]
+_HERO = {"sign": "sign-air"}                            # any hero at all: _lead only asks whether there is one
 
 
-def _iss(state, moved):
-    return {"state": state, "moved": moved}
+def _iss(state, moved, hero=_HERO):
+    return {"state": state, "moved": moved, "hero": hero}
 
 
-for _name, _out, _want in [
+for _name, _out, _want, _by in [
     ("an act is never demoted by something that merely moved",
      {"air": _iss("notable", 0.90), "heat": _iss("act", 0.0),
-      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat"),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat", "state"),
     ("among equals, the one that moved most leads",
      {"air": _iss("notable", 0.02), "heat": _iss("notable", 0.40),
-      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat"),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat", "moved"),
     ("an exact tie still goes to the order this place chose",
      {"air": _iss("notable", 0.20), "heat": _iss("notable", 0.20),
-      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air"),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air", "order"),
     ("a big move in a lower state does not outrank a quiet higher one",
      {"air": _iss("notable", 0.0), "heat": _iss("context", 0.99),
-      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air"),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "air", "state"),
+    # The hero is a slot the page draws blind. An issue that declares none has nothing to put there,
+    # so it cannot lead however much it has to say: here it is the only `act` on the page.
+    ("a declared issue without a hero never leads",
+     {"air": _iss("act", 0.90, hero=None), "heat": _iss("quiet", 0.0),
+      "land": _iss("context", 0.0), "coast": _iss("context", 0.0)}, "heat", "state"),
 ]:
-    assert _headline(_out, _DECLARED) == _want, f"headline: {_name}"
+    got = _lead(_out, _DECLARED)
+    assert got == {"issue": _want, "by": _by}, f"lead: {_name}: {got}"
+assert _lead({"air": _iss("act", 1.0, hero=None)}, ["air"]) is None, "no hero anywhere is no lead, not a crash"
 
 # The size is read off the same six buckets the trend verb already uses, relative to the issue's own
 # recent level — micrograms and degrees are not comparable quantities, and ranking them against each
@@ -574,4 +610,11 @@ assert _moved([2, 2, 2, 1, 1, 1]) == 0.5, "a halving is as much news as a doubli
 assert _moved([5] * 6) == 0.0, "a flat run has not moved"
 assert _moved([1, 2, 3]) == 0.0, "fewer than six buckets is not a small move, it is no evidence"
 assert _moved([]) == 0.0 and _moved(None) == 0.0, "no series at all is not an error here"
-print("  the headline leads on state, then on what moved, then on the order this place chose")
+print("  the lead is the headline rule, says which step decided it, and skips an issue with no hero")
+
+
+print("\n".join(f"  x {f}" for f in fails if f) or
+      f"  issues/engine: the stack, the fence, the five states on eight cases, the headline rule, "
+      f"attribution in six classes, and {len(OUT['issues']) * len(I.LOCALES)} sentences with every "
+      f"placeholder filled — replayed against node #1, 6 Sep 14:08 UTC")
+sys.exit(1 if [f for f in fails if f] else 0)

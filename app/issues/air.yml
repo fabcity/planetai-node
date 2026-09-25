@@ -120,6 +120,26 @@ sentences:
       unknown:       "{verb} {n} {unit} {where}. {cmp}"
     state:
       none: "Aún no hay sensor de aire aquí, ni modelo para este punto."
+
+# The hero: what this issue draws when it leads the page. The page draws it blind, so everything it
+# needs to know about air is here: the sign and the hero-size pictogram (ids in signs.svg), which
+# figure is the numeral, and the rule under it. `rule.dots` names the distances that may appear on
+# the rule, and the region is left off on purpose: nobody in a kitchen needs the model's number next
+# to the room's. `max` is the end of the drawing, not a limit: a reading past it sits on the end.
+# An issue with no `hero:` can be watched but can never lead. See docs/PACKS.md §The hero.
+hero:
+  sign: sign-air
+  pictogram: pix-air
+  unit: µg/m³
+  dp: 0
+  rule:
+    min: 0
+    max: 20
+    ends: { en: [clean, bad], id: [bersih, buruk], es: [limpio, malo] }
+    dots: [room, yard, ring]
+    line: true
+  clock: time
+
 empty:
   en: The node reads the model for these coordinates. Add a sensor under Set up and the house fills in.
   id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan rumah akan terisi.

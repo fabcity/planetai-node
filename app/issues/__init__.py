@@ -51,6 +51,9 @@ WHERE_FROM = ("stats", "observations", "earth")
 AGGREGATES = ("mean", "median", "fenced_median")
 FUNCTIONS = ("apparent",)
 COMPARE_MODES = ("ratio", "difference")
+# A hero's stamp is a time of day for anything read every few minutes, and a date plus the next look
+# for anything read once a year: "at 21:24" about land would be a claim about this evening's ground.
+HERO_CLOCKS = ("time", "date")
 TRENDS = ("rising", "steady", "falling")
 
 # The words shared by every issue, so four files do not carry four copies of "the street". An issue
@@ -182,6 +185,20 @@ DIGEST_WORDS = {
                   "none": "no lee nada"},
     },
 }
+# The hero's stamp and its line's name. `time` is when the numeral was read; `date` is when a yearly
+# record looked and when it looks next, because the satellite does not look again tomorrow.
+HERO_WORDS = {
+    "en": {"time": "read at {t}", "date": "looked at in {d} · next look {n}", "line": "the line",
+           "months": ("January", "February", "March", "April", "May", "June", "July", "August",
+                      "September", "October", "November", "December")},
+    "id": {"time": "dibaca pukul {t}", "date": "dilihat pada {d} · berikutnya {n}", "line": "batas",
+           "months": ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus",
+                      "September", "Oktober", "November", "Desember")},
+    "es": {"time": "leído a las {t}", "date": "visto en {d} · la próxima vez, {n}",
+           "line": "el límite",
+           "months": ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
+                      "septiembre", "octubre", "noviembre", "diciembre")},
+}
 # Why THIS issue is at the top, in the household's language. The node ranks them, so the node says
 # how — a page that keeps its own copy of the rule goes stale the moment the ranking changes, which
 # is not hypothetical: v0.59 changed it on 18 September and the sentence describing it lived in
@@ -306,6 +323,9 @@ def _problems(key: str, d: dict) -> list[str]:
         elif not all((r.get("label") or {}).get(loc) for loc in LOCALES):
             p.append(f"{key}: the {r['metric']} readout needs a label in every locale")
 
+    if "hero" in d:
+        p += _hero_problems(key, d)
+
     want = set(STATE_SENTENCES) if kind == "context" else {"none"}
     for loc in LOCALES:
         s = (d.get("sentences") or {}).get(loc)
@@ -340,6 +360,66 @@ def _problems(key: str, d: dict) -> list[str]:
         for w in (d.get("where") or {}).get(loc, {}):
             if w not in DISTANCES:
                 p.append(f"{key}: where.{loc}.{w} is not one of {', '.join(DISTANCES)}")
+    return p
+
+
+def _sign_ids() -> set[str]:
+    """Every symbol id in the frozen signs.svg. A hero naming anything else draws an empty box."""
+    try:
+        return set(re.findall(r'<symbol[^>]*\bid="([^"]+)"', (HERE.parent / "static" / "signs.svg").read_text()))
+    except OSError:
+        return set()
+
+
+def _hero_problems(key: str, d: dict) -> list[str]:
+    """The hero contract: what the page draws when this issue leads, checked against what exists.
+
+    Optional — an issue without one is watched and never leads — but a hero that is present has to
+    be drawable: its sign is in signs.svg, its numeral is a distance or readout this issue has, and
+    its rule only names distances this issue fills.
+    """
+    h = d["hero"]
+    if not isinstance(h, dict):
+        return [f"{key}: hero must be a mapping"]
+    p: list[str] = []
+    signs = _sign_ids()
+    for f in ("sign", "pictogram"):
+        if (f == "sign" or h.get(f) is not None) and h.get(f) not in signs:
+            p.append(f"{key}: hero.{f} is {h.get(f)!r}, which is not a symbol in app/static/signs.svg")
+    have = [x for x in DISTANCES if (d.get("distances") or {}).get(x)]
+    readouts = [r.get("metric") for r in d.get("readouts") or [] if isinstance(r, dict)]
+    numeral = h.get("numeral", "headline")
+    if numeral != "headline" and numeral not in have and numeral not in readouts:
+        p.append(f"{key}: hero.numeral is {numeral!r}; it must be a distance this issue fills "
+                 f"({', '.join(have)}) or one of its readouts ({', '.join(readouts) or 'none'})")
+    if not h.get("unit"):
+        p.append(f"{key}: hero.unit is missing")
+    if not isinstance(h.get("dp"), int):
+        p.append(f"{key}: hero.dp must be an integer number of decimal places")
+    if h.get("clock") not in HERO_CLOCKS:
+        p.append(f"{key}: hero.clock is {h.get('clock')!r}; it must be one of {HERO_CLOCKS}")
+    rule = h.get("rule")
+    if rule is not None:
+        if not isinstance(rule, dict):
+            return p + [f"{key}: hero.rule must be a mapping or absent"]
+        lo, hi = rule.get("min"), rule.get("max")
+        if not all(isinstance(v, (int, float)) and v is not True for v in (lo, hi)) or lo >= hi:
+            p.append(f"{key}: hero.rule needs a numeric min below its max")
+        for loc in LOCALES:
+            ends = (rule.get("ends") or {}).get(loc)
+            if not (isinstance(ends, list) and len(ends) == 2 and all(ends)):
+                p.append(f"{key}: hero.rule.ends.{loc} must be two words, the low end and the high end")
+        dots = rule.get("dots")
+        if not isinstance(dots, list) or not dots:
+            p.append(f"{key}: hero.rule.dots must list at least one distance")
+        for x in dots or []:
+            if x not in have:
+                p.append(f"{key}: hero.rule.dots names {x!r}, a distance this issue does not have "
+                         f"({', '.join(have)})")
+        if not isinstance(rule.get("line"), bool):
+            p.append(f"{key}: hero.rule.line must be true or false")
+        elif rule["line"] and not d.get("line"):
+            p.append(f"{key}: hero.rule.line is true and the issue declares no line to draw")
     return p
 
 

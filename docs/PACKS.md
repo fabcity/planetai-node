@@ -161,6 +161,43 @@ above. Serving a pack's own `dashboard.js` — so a pack could carry its section
 needs a route the node does not have yet. That is the next phase, not this one. Proposing a section
 back today is sending the file with its `render()` and its `notes()`.
 
+## The hero
+
+The lead of the page is a slot. Whichever issue the node's rule puts first, the page draws its
+`hero` from `GET /issues` and nothing else there, so the page knows nothing about air, heat or the
+sea. The contract belongs to the **issue**, not the pack: air is fed by three packs and has one hero.
+A core issue declares it in its `app/issues/<issue>.yml`:
+
+```yaml
+hero:
+  sign: sign-coast          # required; a symbol id in app/static/signs.svg
+  pictogram: pix-coast      # optional; a symbol drawn at hero size. Absent: the sign, at hero size
+  numeral: region           # optional; a distance or one of the issue's readouts. Default: the
+                            #   nearest distance with a value, the same one the sentence leads with
+  unit: m                   # required
+  dp: 1                     # required; keep it the issue's own, or the sentence and the numeral
+                            #   print the same reading two ways
+  rule:                     # optional; absent means no rule under the numeral
+    min: 0
+    max: 4                  # the end of the drawing, not a limit; a reading past it sits on the end
+    ends: { en: [flat, rough], id: [tenang, bergelombang], es: [en calma, picado] }
+    dots: [region]          # the distances that may appear on the rule
+    line: false             # true draws the issue's own line; it must declare one
+  clock: time               # time · date. A yearly record says date, and the stamp prints when it
+                            #   looked and when it looks next
+```
+
+The engine fills it every poll into `issues[<issue>].hero` with tonight's values, and names the
+leader in `lead: {issue, by}`. **An issue with no `hero:` is watched, drawn in the matrix and listed
+under the lead, and never leads**: the rule skips it. `make test` refuses a hero whose sign or
+pictogram is not in `signs.svg`, whose numeral is neither a distance the issue fills nor one of its
+readouts, whose rule dots name a distance the issue does not have, or whose rule draws a line the
+issue does not declare.
+
+A pack that brings an issue of its own will declare its hero the same way, in the `issue.yml` beside
+its `pack.yaml`. The node does not load an issue from a pack yet; until it does, a new issue is a new
+file in `app/issues/`.
+
 ## What ships
 
 The `issue` column is which band of the dashboard a pack feeds. It comes from the pack's `domain:`,

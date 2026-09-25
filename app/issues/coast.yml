@@ -71,6 +71,21 @@ sentences:
       context: "{n} {unit} {where}. {cmp}"
       none: "No hay modelo marino para este punto: la celda de océano más cercana está más lejos de lo que el pack informa."
 
+
+# A rule and no line: the sea has a scale a fisher reads, and nothing on it for a household to cross.
+hero:
+  sign: sign-coast
+  pictogram: pix-coast
+  unit: m
+  dp: 1
+  rule:
+    min: 0
+    max: 4
+    ends: { en: [flat, rough], id: [tenang, bergelombang], es: [en calma, picado] }
+    dots: [region]
+    line: false
+  clock: time
+
 empty:
   en: The coast pack reports nothing inland. It needs an ocean cell within COAST_MAX_KM of this node.
   id: Pack coast tidak melaporkan apa pun di pedalaman. Perlu sel laut dalam COAST_MAX_KM dari node ini.
