@@ -37,6 +37,13 @@ from it. You, a remote agent driven by a person, have all twenty; the difference
 propose. If you are a remote agent, you are not alone on this node; read `alerts` and the actions before acting, and do
 not undo what the person's local model did without asking.
 
+**The dashboard has a pane that asks the same local model** (`POST /ask`, `app/ask.py`). It is narrower still: it
+runs the `read` tools except `settings_get`, `report_bundle` and `export_day`, through `/mcp` as `dashboard-chat`, and
+an `act` or an admin tool it reaches for is not run at all. It becomes a card the person presses. Its context and every
+tool result are scrubbed of coordinates, sensor and station names, sensor ids and `meta`, and nothing asked or answered
+is kept anywhere, a log line included. If you change `app/ask.py` or `agent_loop.pane`, `tests/test_ask.py` holds you to
+all three.
+
 **`act` needs the person's own words.** It has no default `note` and refuses a placeholder. ρ is the share of act-level
 alerts a human answered, and a row written without anything a human said is a model measuring itself. If somebody told
 you they did a thing, record what they told you. If they did not, ask.

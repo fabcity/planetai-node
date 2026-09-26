@@ -32,6 +32,7 @@ def tree():
               "signs.svg", "node-ground.svg"):
         shutil.copy(ROOT / "app" / "static" / f, tmp / "app" / "static" / f)
     shutil.copy(ROOT / "app" / "main.py", tmp / "app" / "main.py")
+    shutil.copy(ROOT / "app" / "ask.py", tmp / "app" / "ask.py")
     (tmp / "app" / "issues").mkdir(parents=True, exist_ok=True)
     shutil.copy(ROOT / "app" / "issues" / "api.py", tmp / "app" / "issues" / "api.py")
     shutil.copy(ROOT / "init.sql", tmp / "init.sql")

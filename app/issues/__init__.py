@@ -252,6 +252,19 @@ SIMPLE_WORDS = {
            "loop_empty": "El nodo no ha pedido nada a nadie en los \u00faltimos 30 d\u00edas.",
            "today": "las {t}", "date": "el {d} de {month}"},
 }
+# The ask pane's three first questions, `digest.prompts`: written from tonight's bundle so the first thing
+# a person does in the pane is press rather than face a blank box. A question, never an answer.
+PROMPT_WORDS = {
+    "en": {"lead": "Why is {issue} what the node leads with?", "ask": "What should I do about alert #{id}?",
+           "quiet": "Is anything here asking for attention?", "line": "What does the line for {issue} mean?",
+           "model": "Where does the {issue} number come from?"},
+    "id": {"lead": "Mengapa {issue} yang ditampilkan paling depan?", "ask": "Apa yang harus saya lakukan dengan peringatan #{id}?",
+           "quiet": "Apakah ada yang perlu diperhatikan di sini?", "line": "Apa arti batas untuk {issue}?",
+           "model": "Dari mana angka {issue} berasal?"},
+    "es": {"lead": "\u00bfPor qu\u00e9 el nodo empieza por {issue}?", "ask": "\u00bfQu\u00e9 hago con la alerta #{id}?",
+           "quiet": "\u00bfHay algo aqu\u00ed que pida atenci\u00f3n?", "line": "\u00bfQu\u00e9 significa el l\u00edmite de {issue}?",
+           "model": "\u00bfDe d\u00f3nde sale la cifra de {issue}?"},
+}
 # The hero's plain line: the other distances and the line in the household's words, under the
 # sentence. Approved by Tomas 25 September 2026. The place words are WHERE_WORDS and NOUN_WORDS, so
 # "on the street" means the same thing here as in the sentence above it.

@@ -690,6 +690,10 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
     "/report/latest", "/readings", "/reach", "/shape", "/effect",
     "/history", "/exports", "/sources",
+    # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so
+    # it tells a reader nothing /issues does not; it is here, and not on `off`, because it spends this machine's
+    # CPU on whoever asks, and `open` is the household saying the WiFi may.
+    "/ask", "/ask/status", "/docs/search",
 }), ("/static/", "/exports/", "/issues", "/sources/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
@@ -750,6 +754,8 @@ async def _share_level(request, call_next):
 
 
 app.include_router(issues.api.router)  # GET /issues and /issues/fixtures/<name>; see app/issues/
+import ask  # noqa: E402 — GET /ask/status, POST /ask, GET /docs/search: the dashboard's ask pane
+app.include_router(ask.router)
 
 for _r in agent.http_routes():        # MCP at exactly /mcp, no trailing-slash redirect
     app.router.routes.append(_r)

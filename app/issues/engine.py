@@ -40,7 +40,7 @@ from datetime import datetime, timedelta, timezone
 import packs
 
 from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
-               LOCALES, NOUN_WORDS, PLAIN_WORDS, REASON_WORDS, SIMPLE_WORDS,
+               LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS,
                SPAN_WORDS, WHERE_WORDS, order)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
@@ -271,7 +271,26 @@ def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: s
     got = {stage: {loc: digest[loc][stage] for loc in LOCALES}
            for stage in ("observe", "decide", "act", "measure")}
     got["simple"] = _simple(out, stations, asks, now or datetime.now(timezone.utc), clock, read_from, first)
+    got["prompts"] = _prompts(out, headline)
     return got
+
+
+def _prompts(out: dict, headline: str | None) -> dict:
+    """Three questions for the ask pane's composer: why the lead leads, the oldest open alert (or whether
+    anything is asking), and what the lead's line means (or, with no line, where its number comes from)."""
+    opens = [a for v in out.values() for a in (v.get("open_asks") or []) if a.get("id") is not None]
+    oldest = min(opens, key=lambda a: str(a.get("ts"))) if opens else None
+    said = {}
+    for loc in LOCALES:
+        w = PROMPT_WORDS[loc]
+        name = ((out.get(headline) or {}).get("name") or {}).get(loc, headline or "").lower()
+        qs = [w["lead"].format(issue=name)] if headline else []
+        qs.append(w["ask"].format(id=oldest["id"]) if oldest else w["quiet"])
+        if headline:
+            qs.append(w["line" if (out[headline].get("line") or {}).get("value") is not None else "model"]
+                      .format(issue=name))
+        said[loc] = qs
+    return said
 
 
 def _ts(v):

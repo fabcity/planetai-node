@@ -48,13 +48,15 @@ def run(cwd, *args):
 
 
 def tree():
-    """A throwaway copy of the three things build_learn.py touches."""
+    """A throwaway copy of the four things build_learn.py touches."""
     tmp = Path(tempfile.mkdtemp(prefix="planetai-learn-"))
     (tmp / "tools").mkdir()
     (tmp / "app" / "static").mkdir(parents=True)
+    (tmp / "data").mkdir()
     shutil.copy(ROOT / "tools" / "build_learn.py", tmp / "tools" / "build_learn.py")
     shutil.copytree(ROOT / "docs" / "site", tmp / "docs" / "site")
     shutil.copy(LEARN, tmp / "app" / "static" / "learn.json")
+    shutil.copy(ROOT / "data" / "docs_site.json", tmp / "data" / "docs_site.json")
     return tmp
 
 

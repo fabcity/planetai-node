@@ -111,7 +111,12 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 | a request for the fab lab directory | gitlab.fabcloud.org (`MAKE_SOURCE=archive`) or api.fablabs.io (`live`), only with `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | no coordinates: the whole directory comes down and the distances are worked out on the node |
 | the square being looked at | a tile server, per tile, only with `MAP_TILES=on` | the tile's own square; `off` (the default) draws from the node's local copy of OpenStreetMap |
 | the question you asked the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
+| a question asked in the dashboard's pane | nobody: the model on this machine | the context carries no position, name or id; the node keeps no transcript |
 | raw readings | nobody | nothing |
+
+The dashboard's ask pane talks to the model on this machine and reads what the page reads, less positions, names
+and ids; it never sends the conversation anywhere, and the node never stores it. A remote agent gets the MCP
+surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 
 `/forecast`, `/earth` and `/place/geojson` carry the node's exact coordinates and are
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`

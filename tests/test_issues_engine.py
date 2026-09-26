@@ -586,6 +586,10 @@ check(_D21["en"] == "This house has 5 stations of its own; the nearest other sta
       "The oldest open alert is #168, about heat, open since 11 September. Since 11 September the node "
       "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
       f"digest.simple reads {_D21['en']!r}")
+_P21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["prompts"]
+check(_P21["en"] == ["Why is heat what the node leads with?", "What should I do about alert #168?",
+                     "What does the line for heat mean?"], f"digest.prompts reads {_P21['en']}")
+check(all(len(_P21[l]) == 3 and all("{" not in q for q in _P21[l]) for l in I.LOCALES), f"digest.prompts: {_P21}")
 check(set(_D21) == set(I.LOCALES) and all(v and "{" not in v for v in _D21.values()),
       f"digest.simple is not whole in every locale: {_D21}")
 _now = datetime(2026, 9, 25, 12, 0, tzinfo=timezone.utc)

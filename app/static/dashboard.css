@@ -1429,3 +1429,74 @@ body[data-lv="simple"] .lead .big { font-size: clamp(18px, 1.8vw, 24px); max-wid
     grid-template-rows: repeat(7, auto) 1fr }
   .lead > .eb { grid-area: e } .lead > .plain { grid-area: p } .lead > .askrow { grid-area: a }
 }
+
+/* THE ASK PANE — the right column of the page when it is open: 400 px at 1280 and up, 340 below that,
+   and under 860 a sheet from the bottom, opened from the foot. The page keeps the rest of the width,
+   and every grid in it reflows in the track that is left. Drawn outside #page, so a poll does not
+   wipe the thread. */
+#askpane { display: none }
+body.askopen { padding-right: 400px }
+body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: fixed; z-index: 20;
+  top: 0; right: 0; bottom: 0; width: 400px; box-sizing: border-box; padding: 16px 20px 16px 22px;
+  background: var(--ground); border-left: 1.5px solid var(--ink); overflow: auto }
+@media (max-width: 1279px) { body.askopen { padding-right: 340px } body.askopen #askpane { width: 340px } }
+@media (max-width: 859px) {
+  body.askopen { padding-right: 0 }
+  body.askopen #askpane { top: auto; left: 0; width: auto; height: 72vh; border-left: 0; border-top: 1.5px solid var(--ink);
+    padding: 12px 16px 16px }
+  header .asktoggle { display: none }
+}
+@media (min-width: 860px) { .askfoot { display: none } }
+.asktoggle { font: 700 11px var(--mono); letter-spacing: .06em; background: none; color: var(--ink);
+  border: 1.5px solid var(--ink); padding: 6px 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center }
+.asktoggle i { width: 9px; height: 9px; border: 1.5px solid currentColor; border-radius: 50% }
+.asktoggle[aria-pressed="true"] { background: var(--ink); color: var(--ground) }
+#askpane .ah { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start;
+  border-bottom: 1px solid var(--ink); padding-bottom: 8px; font: 500 10.5px var(--mono); letter-spacing: .04em }
+#askpane .ah b { display: block; font-size: 12px; font-weight: 800 }
+#askpane .ah .m { display: block; color: var(--mute); line-height: 1.6 }
+#askpane .ah .m i { display: inline-block; width: 8px; height: 8px; background: var(--rings); vertical-align: middle; margin-right: 6px }
+#askpane .ah .m i.none { background: none; border: 1.5px solid var(--mute) }
+#askpane .ah .x { font: 500 11px var(--mono); background: none; color: var(--ink); border: 1px solid var(--ink); padding: 3px 8px; cursor: pointer }
+#askpane .thread { overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; padding: 14px 0 10px; min-height: 0 }
+#askpane .msg .who { font: 500 10px var(--mono); letter-spacing: .08em; color: var(--mute); margin-bottom: 4px }
+#askpane .msg .who b { color: var(--ink) }
+#askpane .msg .bd { font: 400 14px/1.45 var(--fc-font-body); overflow-wrap: anywhere }
+#askpane .msg.you .bd { border: 1px solid var(--ink); padding: 8px 11px; display: inline-block; max-width: 100% }
+#askpane .msg.node .bd { border-left: 3px solid var(--ink); padding-left: 11px }
+#askpane .err { color: var(--signal-worse); margin: 6px 0 0 }
+#askpane .ledger { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 10.5px var(--mono); color: var(--mute);
+  border-top: 1px dotted var(--ink); border-bottom: 1px dotted var(--ink); padding: 4px 0; margin-top: 8px }
+#askpane .ledger b { color: var(--ink); font-weight: 600 }
+#askpane .ledger i { display: inline-block; width: 6px; height: 6px; background: var(--rings); vertical-align: middle; margin-right: 4px }
+#askpane .card { border: 1.5px solid var(--ink); padding: 11px 13px; margin-top: 10px; display: block; min-width: 0 }
+#askpane .card .ch { display: flex; justify-content: space-between; gap: 8px; font: 800 10px var(--mono); letter-spacing: .08em; margin-bottom: 6px }
+#askpane .card .ch span + span { font-weight: 400; color: var(--mute) }
+#askpane .card .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font: 500 11.5px var(--mono);
+  margin: 6px 0 10px; align-items: baseline }
+#askpane .card .kv > span:nth-child(odd) { color: var(--mute); font-size: 10px }
+#askpane .card .more, #askpane .plead { font: 400 13px/1.45 var(--fc-font-body); color: var(--mute); margin: 0 0 8px }
+#askpane .plead { color: var(--ink); font-size: 14px }
+#askpane .card pre { font: 500 11px/1.5 var(--mono); background: var(--raise); padding: 8px 10px; margin: 6px 0 8px;
+  white-space: pre-wrap; overflow-wrap: anywhere }
+#askpane .bt { display: flex; gap: 6px; flex-wrap: wrap }
+#askpane .bt button, #askpane .askfind button, #askpane .compose .box button { font: 700 10.5px var(--mono);
+  letter-spacing: .06em; background: none; color: var(--ink); border: 1.5px solid var(--ink); padding: 7px 10px; cursor: pointer }
+#askpane .bt button.pri, #askpane .compose .box button { background: var(--ink); color: var(--ground) }
+#askpane .card input, #askpane .card select { font: 500 12px var(--mono); border: 1px solid var(--ink); background: none;
+  color: var(--ink); padding: 5px 7px; margin: 0 0 8px; max-width: 100% }
+#askpane .compose { border-top: 1px solid var(--ink); padding-top: 10px }
+#askpane .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px }
+#askpane .chips button { font: 500 11px var(--mono); background: none; color: var(--ink); border: 1px solid var(--ink);
+  padding: 5px 8px; cursor: pointer; text-align: left }
+#askpane .compose .box, #askpane .askfind { display: grid; grid-template-columns: minmax(0, 1fr) auto; border: 1.5px solid var(--ink) }
+#askpane .compose .box input, #askpane .askfind input { font: 400 14px var(--fc-font-body); border: 0; background: none;
+  color: var(--ink); padding: 9px 11px; min-width: 0 }
+#askpane .compose .fine { font: 500 10px/1.6 var(--mono); color: var(--mute); margin: 6px 0 0 }
+#askpane .compose .fine b { color: var(--ink) }
+#askpane .nomodel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-content: start; padding-top: 12px; overflow: auto; min-height: 0 }
+#askpane .nomodel .or { font: 500 10px var(--mono); letter-spacing: .1em; color: var(--mute); text-align: center; margin: 0 }
+#askpane .askhits { display: grid; gap: 8px }
+#askpane .hit { display: block; color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink); padding-bottom: 6px }
+#askpane .hit b { display: block; font: 700 11px var(--mono) }
+#askpane .hit span { font: 400 12.5px/1.4 var(--fc-font-body); color: var(--mute) }

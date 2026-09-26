@@ -109,6 +109,11 @@ RUNTIME = {
                            "the node's own documentation for it. This is what the page opens as; anyone reading it "
                            "can switch from the header, and their choice is remembered by their browser and changes "
                            "nothing for anybody else."),
+    "UI_ASK":             ("node", "Ask the node, on the dashboard", False, False,
+                           "on (default) = a toggle on the dashboard opens a pane that asks this node's own model, on "
+                           "this machine, about what the page shows. It reads and never changes anything; a change "
+                           "it suggests is a card somebody presses. Nothing anybody types is kept. off = no toggle "
+                           "and no pane."),
     "MAP_TILES":          ("node", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
     "STATIONS_SHOWN":     ("node", "Other people's stations listed", False, False,
                            "How many of the neighbourhood's stations the dashboard lists, nearest first. Default 3; "
@@ -146,7 +151,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
@@ -166,6 +171,7 @@ CHOICES = {
     # publishes this tuple and the dashboard's select and `planetai config` both walk it as given.
     "AGENT_PREFER":  ("private", "fallback", "strongest"),   # a typo here would fail open: not-"private" sends household data off the network
     "SHARE_LEVEL":   ("off", "open"),                        # cell and means are named in the help and refused here, so a node cannot sit at a level that does nothing
+    "UI_ASK":        ("on", "off"),
     "MAP_TILES":     ("off", "on"),                          # live tiles leave the house; off by default, a keeper turns them on in Set up
 }
 

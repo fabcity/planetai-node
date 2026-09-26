@@ -21,6 +21,9 @@
   <header><div class="wrap"><h1 class="brand"><b>PLANETAI</b></h1></div></header>
   <div class="wrap"><p class="note">Asking the node&hellip;</p></div>
 </div>
+<!-- The ask pane. Outside #page, so a poll that redraws the page does not wipe a thread somebody is in.
+     Hidden until a reader opens it; UI_ASK=off never shows it. -->
+<aside id="askpane" aria-label="ask the node" hidden></aside>
 <!-- What the Set up pane says back. Chrome, not content: the renderer writes only #page. -->
 <div class="toast" id="toast"></div>
 <!-- ASKING THE NODE. The loading state, over the page rather than instead of it: the renderer writes

@@ -960,7 +960,7 @@ const interp = (str, vals) => String(str || '')
   .replace(/\{(\w+)\}/g, (_, k) => (vals[k] == null ? '' : vals[k]));
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, meterBar, METER_CELLS, msToken,
-  readout, stack, series, row, kicker, sentence, why, ask, stamp, asof, rhoRow, funnel,
+  readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
@@ -5898,6 +5898,7 @@ const FIXTURE = new URLSearchParams(location.search).get('fixture');
 /* ------------------------------------------------------------------ the one thing that fetches */
 const tok_ = () => localStorage.getItem('planetai_admin') || localStorage.getItem('planetai_act') || '';
 const auth_ = () => (tok_() ? { authorization: 'Bearer ' + tok_() } : {});
+window.PAI_AUTH = auth_;          /* the ask pane asks with the same token every other read carries */
 
 /* At SHARE_LEVEL=off a reader with no token gets the shell, /health and nothing else. That is a
  * real state a phone on the house WiFi will be in, not an error: the node answers 403 with its own
@@ -6949,6 +6950,10 @@ window.PAI_LEARN = { mark: qmark, bar: learnBar, open: learnOpen, close: learnCl
    is the view id and none of those changed, so every link anybody has saved still lands. */
 const VIEWS = [['now', 'Now'], ['historical', 'Historical'], ['network', 'Network'],
   ['wall', 'Wall'], ['arrange', 'Arrange'], ['setup', 'Set up']];
+const askOn = () => {
+  const row = ((window.SETTINGS || {}).runtime || []).find(x => x.key === 'UI_ASK');
+  return !row || String(row.value || 'on').trim() !== 'off';
+};
 function chrome(node, city, view) {
   const esc = window.K.esc;
   const reg = register(), md = mode(view);
@@ -6971,6 +6976,9 @@ function chrome(node, city, view) {
     /* Ask again. The page polls on the node's own cadence and says how old its figures are, but a
        reader who has just fixed something at the other end should not have to wait out an interval
        to find out it worked. This is also the only control that plays the loading state on purpose. */
+    /* The ask pane's toggle, right of the modes. UI_ASK off draws none; a phone opens it from the foot. */
+    + (askOn() ? `<button type="button" class="asktoggle" data-ask-toggle aria-pressed="false">`
+      + `<i aria-hidden="true"></i>ask the node</button>` : '')
     + `<button type="button" class="reask" data-reask="1" title="Ask the node again">`
     + `<span aria-hidden="true">\u21bb</span><span class="vh">Ask the node again</span></button>`
     + `</div>${learnBar()}</header>`;
@@ -7003,6 +7011,8 @@ function foot(S) {
     + `<a class="mono" href="/llms.txt">/llms.txt</a>`
     + `<a href="${DOCS_URL}">Documentation</a>`
     + `<a href="https://planetai.fab.city/">The programme</a></p>`
+    + (askOn() ? `<p class="askfoot"><button type="button" class="asktoggle" data-ask-toggle aria-pressed="false">`
+      + `<i aria-hidden="true"></i>ask the node</button></p>` : '')
     + `</div></footer>`;
 }
 
@@ -7558,6 +7568,8 @@ function route() {
   const page = document.getElementById('page');
   if (page) wireSat(page);
   learnSync();
+  /* The pane lives outside #page and keeps its thread; it only needs telling the body was reset. */
+  if (window.PAI_ASK) window.PAI_ASK.draw();
   /* The renderer has just replaced #page, so the browser's own jump to an anchor happened against
      markup that no longer exists. Do it again, now that the thing being linked to is on the page. */
   const anchor = (location.hash || '').replace(/^#/, '');
@@ -7802,6 +7814,8 @@ document.addEventListener('click', ev => {
   if (mb && mb.dataset.mode) {
     ev.preventDefault();
     try { localStorage.setItem(MODE_KEY, mb.dataset.mode); } catch (e) { /* see register() */ }
+    /* Learn opens the pane: a mark's quote lands in the thread, and the reader asks after it. */
+    if (mb.dataset.mode === 'learn' && window.PAI_ASK) window.PAI_ASK.open();
     /* Unlike the register, this one IS a re-render: which sections draw is the whole of the mode,
        and that is decided in render(), not in a stylesheet. */
     return route();
@@ -8380,4 +8394,282 @@ document.addEventListener('click', ev => {
 /* `dirty` is read by refresh(): a poll must never re-render a group with a typed value in it. */
 window.PAI_SETUP = { markup, load: loadSetup, toast, dirty: () => DIRTY };
 
+})();
+
+/* ================================================================= h/ask.js — the ask pane ==== */
+/* A person reading the page asks the node's own model, on this machine, about what the page shows.
+ *
+ * It is drawn OUTSIDE #page, once, so a poll that redraws the page never wipes a thread somebody is
+ * in the middle of. The thread lives in sessionStorage and dies with the tab; the node keeps nothing
+ * (GET /ask/status says `stored: false`, and tests/test_ask.py holds it to that). The model reads and
+ * changes nothing: a change it reaches for arrives as a `proposal` event and is drawn as a card the
+ * person presses, with the token the page already holds, the same way Set up and "I did this" write.
+ *
+ * Every figure and sentence in an answer is the model's; every word around it is this page's. */
+(function () {
+'use strict';
+const esc = s => window.K.esc(s);
+const OPEN = 'planetai_ask_open', THREAD = 'planetai_ask_thread';
+const ss = {
+  get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* a browser that stores nothing still asks */ } },
+};
+let STATUS;              /* undefined: not asked yet · {ok, ...}: /ask/status answered · {missing, ...}: 404 */
+let BUSY = false;
+const thread = () => { try { return JSON.parse(ss.get(THREAD) || '[]'); } catch (e) { return []; } };
+const keep = t => ss.set(THREAD, JSON.stringify(t.slice(-40)));
+const loc = () => (window.K && window.K.LOC) || 'en';
+const docsUrl = h => `https://planetai.fab.city/docs/${String(h.page || '').replace(/\.md$/, '')}/`
+  + (h.anchor ? `#${h.anchor}` : '');
+
+/* UI_ASK off: no toggle, and the pane never draws. The wall has no header, so it never has one. */
+function enabled() {
+  const row = ((window.SETTINGS || {}).runtime || []).find(x => x.key === 'UI_ASK');
+  return !row || String(row.value || 'on').trim() !== 'off';
+}
+function isOpen() {
+  if (new URLSearchParams(location.search).get('ask') === '1') return true;   /* the rig's switch; remembers nothing */
+  return ss.get(OPEN) === '1';
+}
+function view() { return (window.K && window.K.VIEW) || 'now'; }
+
+async function status() {
+  try {
+    const r = await fetch('/ask/status', { headers: (window.PAI_AUTH ? window.PAI_AUTH() : {}) });
+    if (r.status === 404) {
+      const j = await r.json().catch(() => ({}));
+      STATUS = { missing: true, ...((j && typeof j.detail === 'object') ? j.detail : {}) };
+    } else if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      STATUS = { refused: true, said: (j && (j.error || j.detail)) || `refused (${r.status})` };
+    } else STATUS = { ok: true, ...(await r.json()) };
+  } catch (e) { STATUS = { missing: true }; }
+  draw();
+}
+
+function head() {
+  const s = STATUS || {};
+  const who = s.ok ? `${esc(s.model)} · runs on this machine`
+    : s.missing ? 'no model on this node yet' : s.refused ? 'not answering this page' : 'asking the node…';
+  return `<div class="ah"><div><b>ask the node</b><span class="m"><i class="${s.ok && s.running ? '' : 'none'}"></i>`
+    + `${who}</span><span class="m">reads the page · records what you did · changes nothing</span></div>`
+    + `<button type="button" class="x" data-ask-toggle aria-label="close the pane">close</button></div>`;
+}
+
+function search() {
+  return `<form class="askfind" data-ask-find><label class="vh" for="ask-find">search this node's documentation</label>`
+    + `<input id="ask-find" name="q" minlength="2" maxlength="80" placeholder="search the documentation" autocomplete="off">`
+    + `<button type="submit">search</button></form><div class="askhits" id="ask-hits"></div>`;
+}
+
+function nomodel() {
+  const s = STATUS || {};
+  const rec = s.recommend || {};
+  const url = `${location.protocol}//${location.host}${s.mcp || '/mcp'}`;
+  const mcp = `claude mcp add --transport http planetai "${url}" \\\n  --header "Authorization: Bearer $PLANETAI_ADMIN_TOKEN"`;
+  const card = (title, lead, code) => `<div class="card"><div class="ch"><span>${esc(title)}</span></div>`
+    + `<p class="more">${esc(lead)}</p><pre>${esc(code)}</pre>`
+    + `<div class="bt"><button type="button" data-copy="${esc(code)}">copy</button></div></div>`;
+  const first = s.running === false
+    ? `<p class="plead">${esc(s.model || 'The model')} is on this node and not answering: ${esc(s.why || 'Ollama is down')}. `
+      + `On the node, <code>planetai doctor</code> says why. Until then this pane searches the documentation.</p>`
+    : `<p class="plead">This node has no model to ask yet. The documentation still answers from here, and either `
+      + `of the two cards below gives it a voice.</p>`;
+  return `<div class="nomodel">${first}${search()}`
+    + (s.running === false ? '' :
+      card('a model on this machine', `${rec.tag ? `${rec.tag}, ${rec.size || ''} on disk, is what this node suggests for its memory. ` : ''}`
+        + 'On the node:', rec.pull || 'planetai agent local')
+      + `<p class="or">or</p>`
+      + card('your own agent, over MCP', 'From your own machine. `planetai agent` on the node prints the token.', mcp))
+    + `</div>`;
+}
+
+function ledger(m) {
+  const ts = m.ledger || [];
+  if (!ts.length && !m.done) return '';
+  return `<div class="ledger">${ts.map(t => `<span><b>${esc(t.tool)}</b> ${esc(String(t.ms))} ms</span>`).join('')}`
+    + `<span><i></i>on this machine</span>${m.done ? `<span>${esc(m.done.model)}</span>` : ''}</div>`;
+}
+
+function proposal(p, i) {
+  if (p.tool === 'act') {
+    const id = (p.args || {}).alert_id;
+    return `<div class="card ask" data-component="askProposal"><div class="ch"><span>record what you did</span>`
+      + `<span>#${esc(String(id))}</span></div><p class="more">Say it in your own words; the node keeps them `
+      + `as yours.</p>${id != null && window.K.didButton ? window.K.didButton(id) : ''}</div>`;
+  }
+  if (p.tool !== 'settings_set' || !p.setting) {
+    return `<div class="card" data-component="askProposal"><div class="ch"><span>${esc(p.tool)}</span></div>`
+      + `<p class="more">The model reached for ${esc(p.tool)}. The pane does not run it; Set up or the node's `
+      + `own shell does.</p></div>`;
+  }
+  const tok = (() => { try { return localStorage.getItem('planetai_admin') || ''; } catch (e) { return ''; } })();
+  const pick = p.proposed != null ? `<b>${esc(p.proposed)}</b>`
+    : `<select name="v" aria-label="the value">${(p.choices || []).map(c =>
+      `<option${c === p.current ? '' : ' selected'}>${esc(c)}</option>`).join('')}</select>`;
+  return `<form class="card" data-ask-set="${esc(p.setting)}" data-proposed="${esc(p.proposed || '')}"`
+    + ` data-component="askProposal"><div class="ch"><span>a setting</span><span>${esc(p.setting)}</span></div>`
+    + `<div class="kv"><span>now</span><b>${esc(p.current || 'blank')}</b><span>proposed</span>${pick}`
+    + `<span>what leaves</span><span>${esc((p.leaves || {})[loc()] || (p.leaves || {}).en || '')}</span>`
+    + `<span>undo</span><span>${esc((p.undo || {})[loc()] || (p.undo || {}).en || '')}</span></div>`
+    + (tok ? '' : `<p class="more">needs your token · <code>planetai ui</code> prints it</p>`
+      + `<label class="vh" for="ask-tok-${i}">admin token</label><input id="ask-tok-${i}" name="tok" type="password" `
+      + `autocomplete="off" placeholder="admin token">`)
+    + `<div class="bt"><button type="submit" class="pri">turn it on</button>`
+    + `<button type="button" data-ask-setup="${esc(p.group || '')}">open Set up → ${esc(p.group || '')}</button></div>`
+    + `<p class="said" hidden></p></form>`;
+}
+
+function msg(m, i) {
+  if (m.role === 'user') return `<div class="msg you"><div class="who"><b>you</b></div><div class="bd">${esc(m.content)}</div></div>`;
+  return `<div class="msg node"><div class="who"><b>the node</b></div><div class="bd" id="ask-m-${i}">`
+    + `${esc(m.content || (m.error ? '' : '…'))}${m.error ? `<p class="err">${esc(m.error)}</p>` : ''}</div>`
+    + (m.proposals || []).map(proposal).join('') + ledger(m) + `</div>`;
+}
+
+function composer() {
+  const d = ((window.K && window.K.S && window.K.S.issues) || {}).digest || {};
+  const chips = ((d.prompts || {})[loc()] || (d.prompts || {}).en || []).slice(0, 3);
+  const fixture = new URLSearchParams(location.search).get('fixture');
+  return `<form class="compose" data-ask-send>`
+    + `<div class="chips">${chips.map(c => `<button type="button" data-ask-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>`
+    + `<div class="box"><label class="vh" for="ask-q">ask the node</label>`
+    + `<input id="ask-q" name="q" maxlength="4000" autocomplete="off" placeholder="ask about what this page shows"${BUSY ? ' disabled' : ''}>`
+    + `<button type="submit"${BUSY ? ' disabled' : ''}>ask</button></div>`
+    + `<p class="fine">${fixture ? '<b>This page is a capture, and the pane asks the live node</b>: its answers are about '
+      + 'tonight, not about what is drawn here. ' : ''}This conversation lives in this tab and is gone when you close it. `
+      + `<b>The node keeps no transcript.</b></p></form>`;
+}
+
+function draw() {
+  const on = enabled() && isOpen() && view() !== 'wall';
+  document.body.classList.toggle('askopen', on);
+  document.querySelectorAll('[data-ask-toggle]').forEach(b => {
+    if (!b.classList.contains('x')) b.setAttribute('aria-pressed', String(on));
+  });
+  const el = document.getElementById('askpane');
+  if (!el) return;
+  el.hidden = !on;
+  if (!on) return;
+  if (STATUS === undefined) { el.innerHTML = head(); status(); return; }
+  const t = thread();
+  el.innerHTML = head() + (STATUS.ok && STATUS.running
+    ? `<div class="thread" id="ask-thread">${t.map(msg).join('')}</div>${composer()}`
+    : STATUS.refused ? `<p class="plead">${esc(STATUS.said)}</p>` : nomodel());
+  const th = el.querySelector('#ask-thread');
+  if (th) th.scrollTop = th.scrollHeight;
+}
+
+async function send(text) {
+  if (BUSY || !text.trim()) return;
+  const t = thread();
+  t.push({ role: 'user', content: text.trim() });
+  const me = { role: 'assistant', content: '', ledger: [], proposals: [] };
+  t.push(me);
+  keep(t); BUSY = true; draw();
+  const i = t.length - 1;
+  try {
+    const r = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...(window.PAI_AUTH ? window.PAI_AUTH() : {}) },
+      body: JSON.stringify({
+        messages: t.filter(m => m.content).map(m => ({ role: m.role, content: m.content })).slice(-24),
+        view: view(), mode: window.PAI_MODE ? window.PAI_MODE() : 'advanced'
+      }),
+    });
+    if (!r.ok || !r.body) throw new Error(`the node answered ${r.status}`);
+    const rd = r.body.getReader(), dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await rd.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let cut;
+      while ((cut = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
+        const ev = (block.match(/^event: (.+)$/m) || [])[1];
+        const data = JSON.parse((block.match(/^data: (.+)$/m) || [])[1] || '{}');
+        if (ev === 'token') {
+          me.content += data.text;
+          const box = document.querySelector(`#ask-m-${i}`);
+          if (box) box.textContent = me.content;
+          continue;
+        }
+        if (ev === 'tools') me.ledger.push(data);
+        else if (ev === 'proposal') me.proposals.push(data);
+        else if (ev === 'done') me.done = data;
+        else if (ev === 'error') me.error = data.message;
+        keep(t); draw();
+      }
+    }
+  } catch (e) {
+    me.error = `The node did not answer: ${String((e && e.message) || e)}`;
+  } finally {
+    me.content = me.content.trim();
+    BUSY = false; keep(t); draw();
+  }
+}
+
+async function setIt(form) {
+  const key = form.dataset.askSet;
+  const v = form.dataset.proposed || (form.elements.v && form.elements.v.value);
+  const typed = form.elements.tok && form.elements.tok.value;
+  if (typed) { try { localStorage.setItem('planetai_admin', typed); } catch (e) { /* kept for this press only */ } }
+  const tok = typed || (() => { try { return localStorage.getItem('planetai_admin') || ''; } catch (e) { return ''; } })();
+  const said = form.querySelector('.said');
+  const say = s => { said.textContent = s; said.hidden = false; };
+  if (!tok) return say('needs your token');
+  const r = await fetch('/settings', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json', authorization: 'Bearer ' + tok, 'X-Agent': 'dashboard' },
+    body: JSON.stringify({ [key]: v }),
+  }).catch(() => null);
+  if (!r) return say('The node did not answer.');
+  if (r.status === 401) return say('That token is not right.');
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) return say((j && j.detail) || `The node refused it (${r.status}).`);
+  say(`${key} is ${v} now. It takes effect within 20 seconds.`);
+}
+
+document.addEventListener('click', ev => {
+  const t = ev.target && ev.target.closest ? ev.target : null;
+  if (!t) return;
+  if (t.closest('[data-ask-toggle]')) {
+    ev.preventDefault();
+    ss.set(OPEN, isOpen() ? '0' : '1');
+    return draw();
+  }
+  const chip = t.closest('[data-ask-chip]');
+  if (chip) return send(chip.getAttribute('data-ask-chip'));
+  const cp = t.closest('[data-copy]');
+  if (cp) {
+    const text = cp.getAttribute('data-copy');
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(
+      () => { cp.textContent = 'copied'; }, () => { cp.textContent = 'select it and copy'; });
+    return;
+  }
+  const su = t.closest('[data-ask-setup]');
+  if (su) { history.pushState({ view: 'setup' }, '', '#setup'); window.dispatchEvent(new PopStateEvent('popstate')); }
+});
+document.addEventListener('submit', async ev => {
+  const f = ev.target;
+  if (f.matches && f.matches('[data-ask-send]')) {
+    ev.preventDefault();
+    const q = f.elements.q.value; f.elements.q.value = '';
+    return send(q);
+  }
+  if (f.matches && f.matches('[data-ask-set]')) { ev.preventDefault(); return setIt(f); }
+  if (f.matches && f.matches('[data-ask-find]')) {
+    ev.preventDefault();
+    const box = document.querySelector('#askpane #ask-hits');
+    const r = await fetch('/docs/search?q=' + encodeURIComponent(f.elements.q.value)).catch(() => null);
+    const hits = r && r.ok ? await r.json() : [];
+    box.innerHTML = hits.length ? hits.map(h => `<a class="hit" href="${esc(docsUrl(h))}">`
+      + `<b>${esc(h.title)}</b><span>${esc(h.snippet)}</span></a>`).join('')
+      : `<p class="more">${r && r.ok ? 'Nothing in the documentation says that.' : 'The node did not answer.'}</p>`;
+  }
+});
+
+/* The page tells the pane when it has drawn, so a toggle drawn by chrome() picks up the pane's state. */
+window.PAI_ASK = { draw, open: () => { ss.set(OPEN, '1'); draw(); } };
 })();
