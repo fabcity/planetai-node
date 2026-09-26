@@ -1805,7 +1805,7 @@ def ui():
 # address knows to try first. It answers at every SHARE_LEVEL because it says nothing about the house: the
 # purpose, the version, and where the documented routes are. Before v0.73 the node served no such file and
 # `llms.txt` existed only on GitHub, so an agent pointed at a node found nothing to read.
-PURPOSE = ("PLANETAI is the hyperlocal compute and intelligence layer for distributed production. Its purpose is "
+PURPOSE = ("PLANETAI is hyperlocal compute and intelligence for distributed production. Its purpose is "
            "fixed: clean air, water and soil for the people and the other living things around each node.")
 DOCS_URL = "https://planetai.fab.city/docs/"
 

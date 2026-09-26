@@ -643,7 +643,7 @@
      "Apa arti produksi terdistribusi bagi rumah ini?"
     ]
    },
-   "quote": "PLANETAI is the hyperlocal compute and intelligence layer for distributed production, and a node is its\nunit: one computer per place, on hardware the place already owns.",
+   "quote": "PLANETAI is hyperlocal compute and intelligence for distributed production, and a node is its\nunit: one computer per place, on hardware the place already owns.",
    "section": "",
    "title": "One computer per place",
    "url": "https://planetai.fab.city/docs/introduction/"

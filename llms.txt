@@ -1,6 +1,6 @@
 # planetai-node
 
-> The hyperlocal compute and intelligence layer for distributed production: one computer per place, in
+> Hyperlocal compute and intelligence for distributed production: one computer per place, in
 > somebody's home, lab or community centre. It connects everything that measures that place (a particle sensor
 > on the wall, a radio in a field, the public station down the road, the city's open data, the satellite
 > overhead) into one picture sharp enough to act on, tells the people there in plain sentences on Telegram,

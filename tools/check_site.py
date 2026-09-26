@@ -28,7 +28,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PURPOSE = ("Its purpose is fixed: clean air, water and soil for the people and the other living things "
            "around each node.")
-LEAD = "PLANETAI is the hyperlocal compute and intelligence layer for distributed production"
+# 26 Sep 2026 (R31b): the lead follows the programme page. The site's LINE is its h1, and it sits inside LEAD word
+# for word; before this, LEAD said "the … layer for" and LINE did not, and nothing compared them.
+LEAD = "PLANETAI is hyperlocal compute and intelligence for distributed production"
 RHO_MAX_AGE_DAYS = 30
 
 # Words the node retired on 23 Sep 2026 for the programme page's (docs/site/concepts.md, "Words").
@@ -116,6 +118,9 @@ def main():
     m = grab(r"docsPages:\s*(\d+)", "RELEASE.docsPages")
     if m and int(m.group(1)) != facts["docs"]:
         errs.append(f"the page says {m.group(1)} documentation pages; tools/build_docs.py NAV has {facts['docs']}")
+    m = grab(r"export const LINE\s*=\s*'([^']+)'", "LINE")
+    if m and m.group(1) not in LEAD:
+        errs.append(f"the programme page's LINE ('{m.group(1)}') is not inside the lead ('{LEAD}'); the two are one sentence")
     m = grab(r"export const PURPOSE\s*=\s*'([^']+)'", "PURPOSE")
     if m and m.group(1) != PURPOSE:
         errs.append("the programme page's PURPOSE is not the canonical sentence in docs/site/introduction.md")
@@ -133,7 +138,7 @@ def main():
         sys.exit("programme page and node disagree:\n" + "\n".join(f"  x {e}" for e in errs))
     print(f"  programme page matches the node: {want or 'untagged'}, {facts['packs']} packs "
           f"({facts['data']} data, {facts['code']} code), {facts['languages']} languages, "
-          f"{facts['docs']} docs pages, one purpose" + (f", ρ read within {RHO_MAX_AGE_DAYS} days" if want else ""))
+          f"{facts['docs']} docs pages, one lead, one purpose" + (f", ρ read within {RHO_MAX_AGE_DAYS} days" if want else ""))
 
 
 if __name__ == "__main__":

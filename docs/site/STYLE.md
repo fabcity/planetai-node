@@ -8,8 +8,8 @@ spans and `make lint` says so.
 
 ## What a page is for
 
-A person reads these pages to build a node one part at a time. The node is the local unit of the
-hyperlocal compute and intelligence layer for distributed production, and its purpose is fixed: clean
+A person reads these pages to build a node one part at a time. The node is the local unit of
+PLANETAI, hyperlocal compute and intelligence for distributed production, and its purpose is fixed: clean
 air, water and soil for the people and the other living things around it. It measures its place, acts on
 what it measures, keeps its raw readings at home and sends upward only what a district, a bioregion and
 the Fab City Index need. The canonical wording is the lead and "What it is for" in `introduction.md`;
