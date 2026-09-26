@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.75.1 — 2026-09-26 — the ask pane answers on a live node
+
+*One fix. On v0.75 every question in the ask pane came back as "the node answered 500".*
+
+- **A live node's timestamps are dates, not text.** The context the pane gives the model carries the open
+  alerts, and on a running node their times arrive from the database as date objects that the JSON writer
+  refused. The committed captures the tests replay hold the same times as text, so every test passed. The
+  context and the answer stream now write dates as ISO text, and a test sends the route the live shape.
+  Checked on node #1's own data, read-only: the context is built, and it carries none of its 31 sensor
+  names or ids, nor its position.
+
 ## v0.75 — 2026-09-26 — the page draws what the node leads with, answers in three questions, and can be asked
 
 *What your node measures did not change. The page did: the lead is drawn from whatever issue the node puts
