@@ -671,6 +671,37 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
 /* The pictogram belongs to the monument, beside the figure, at the size the sketch draws it. */
 .pix { flex: 0 0 auto; width: clamp(92px, 10.4vw, 150px); height: auto; aspect-ratio: 15 / 11;
   color: var(--ink) }
+/* A hero with no pictogram draws its sign at hero size, which is square. */
+.pix.sign { aspect-ratio: 1; width: clamp(64px, 7vw, 104px) }
+/* THE HERO'S RULE. One line, the issue's own ends, a dot per distance and the line where there is
+   one. Labels alternate above and below so two readings a few units apart do not print on each
+   other; the track is drawn in HTML so it reflows with the column instead of scaling its type. */
+.herorule { max-width: 520px; min-width: 0; padding: 32px 0 0; font: 500 10.5px var(--mono);
+  letter-spacing: .04em }
+.herorule .track { position: relative; height: 20px; margin: 0 8px }
+.herorule .axis { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible }
+.herorule .axis line { stroke: var(--ink); stroke-width: 1.5; vector-effect: non-scaling-stroke }
+.herorule .dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--ground); border: 2px solid var(--ink) }
+.herorule .dot.own { width: 16px; height: 16px; background: var(--ink) }
+.herorule .dot.ring { border-style: dashed }
+.herorule .ln { position: absolute; top: -6px; bottom: -6px; width: 2.5px; transform: translateX(-50%);
+  background: var(--signal-worse) }
+.herorule .labels { position: relative; height: 0; margin: 0 8px }
+.herorule .dl { position: absolute; bottom: 22px; transform: translateX(-50%); white-space: nowrap;
+  color: var(--mute) }
+.herorule .dl.t1 { bottom: 36px }
+/* at the ends the label hangs inward, so a reading past the rule cannot widen the page */
+.herorule .dl.start { transform: none } .herorule .dl.end { transform: translateX(-100%) }
+.herorule .dl.lo { bottom: auto; top: 4px }
+.herorule .dl.lo.t1 { top: 17px }
+/* the line's own label hangs to the right of the line, so the red stroke does not run through it */
+.herorule .dl.lnl { transform: translateX(6px) } .herorule .dl.lnl.end { transform: translateX(calc(-100% - 6px)) }
+.herorule .dl b { color: var(--ink); font-weight: 700 }
+.herorule .dl.own b { font-weight: 800 }
+.herorule .dl.lnl, .herorule .dl.lnl b { color: var(--signal-worse) }
+.herorule .ends { display: flex; justify-content: space-between; margin-top: 32px; color: var(--mute) }
+.lead .whenline .stamp { font: 500 10.5px var(--mono); letter-spacing: .04em }
 .lead .why { max-width: 54ch; font-size: 14.5px }
 .lead .whenline { display: flex; gap: 12px; align-items: center; flex-wrap: wrap }
 @media (min-width: 900px) {
@@ -685,15 +716,20 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
   .lead { grid-template-columns: minmax(0, 56ch) minmax(340px, 1fr);
     /* 7px and not 9: six rows of it is 45px of the first screen, and the as-of line was sitting
        five pixels above the fold before the ground panel gained one sentence. */
-    grid-template-areas: "k g" "n g" "s g" "w g" "m g" "l g" "t g"; gap: 7px clamp(20px, 3vw, 40px);
+    /* The last row is the only flexible one, so a map taller than the text column hands its extra
+       height to the empty row under the stamp line instead of spreading it between the sentence, the
+       rule and the stamp. With the legend's row gone, spreading pushed the stamp 1 px under a 900 px
+       fold at 1440 (T1). */
+    grid-template-areas: "k g" "n g" "s g" "w g" "m g" "t g" ". g"; grid-template-rows: repeat(6, auto) 1fr;
+    gap: 7px clamp(20px, 3vw, 40px);
     align-items: start }
   .lead > .k { grid-area: k } .lead > .num { grid-area: n } .lead > .big { grid-area: s }
   /* `.why` matched the why line AND the headline rule, which both landed in `w` and printed on top
      of each other at every width over 900. The rule is a span inside the why line now, so there is
      one element here and nothing to collide with. `a` was the ask strip's; the strip is in Act and
      the meters take the row. */
-  .lead > .why { grid-area: w } .lead > .stack { grid-area: m }
-  .lead > .legend { grid-area: l } .lead > .whenline { grid-area: t }
+  .lead > .why { grid-area: w } .lead > .stack, .lead > .herorule { grid-area: m }
+  .lead > .whenline { grid-area: t }
   .lead > .mapwrap { grid-area: g; align-self: start }
 }
 
@@ -1354,3 +1390,42 @@ h1.brand { font: inherit }
 .foot .doors { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--mute); margin: 0 }
 .foot .doors .mono { font-family: var(--mono); font-size: 12px }
 body.wall .foot { display: none }
+
+/* SIMPLE — the three questions. One switch on <body>: `data-lv="simple"` on Now in simple mode,
+   `adv` everywhere else. A component marked for one level is hidden in the other; nothing is
+   deleted, and advanced is drawn exactly as it was. */
+body[data-lv="simple"] [data-lv="adv"], body:not([data-lv="simple"]) [data-lv="simple"] { display: none !important }
+.lead .eb { font: 500 12px var(--mono); letter-spacing: .04em; display: flex; flex-wrap: wrap;
+  gap: 4px 10px; align-items: center }
+.lead .eb b { font-weight: 800 }
+.lead .eb .pin { border: 1px solid var(--ink); padding: 1px 6px; font-size: 10.5px }
+.lead .eb .back { font: 700 10.5px var(--mono); letter-spacing: .06em; background: none; color: var(--ink);
+  border: 1px solid var(--ink); padding: 2px 8px; cursor: pointer }
+.lead .plain { font: 400 16px/1.45 var(--fc-font-body); max-width: 40ch; margin: 0 }
+body[data-lv="simple"] .lead .big { font-size: clamp(18px, 1.8vw, 24px); max-width: 26ch }
+.askrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px 14px;
+  align-items: center; padding: 12px 14px; border: 1.5px solid var(--ink); max-width: 560px; min-width: 0 }
+.askrow .sgn { width: 28px; height: 28px; color: var(--ink) }
+.askrow .what { font: 600 15px/1.35 var(--fc-font-body); min-width: 0; overflow-wrap: anywhere }
+.askrow .what small { display: block; font: 400 11px var(--mono); color: var(--mute); margin-top: 3px }
+.askrow form.did { grid-column: 1 / -1 }
+@media (max-width: 520px) { .askrow { grid-template-columns: 26px minmax(0, 1fr) } .askrow .go { grid-column: 1 / -1 } }
+.plainkey { font: 400 14px/1.4 var(--fc-font-body); display: block }
+.plainkey .d { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle;
+  margin: 0 7px 0 2px; border: 1.5px solid var(--ink) }
+.plainkey .d.me { background: var(--cells); border-color: var(--cells) }
+.digestline { font: 400 17px/1.45 var(--fc-font-body); border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink); padding: 16px 0; margin: 22px 0 0; max-width: none }
+.also { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 14px 0 28px;
+  font: 500 12px var(--mono) }
+.also .lbl { font-size: 10.5px; letter-spacing: .1em; font-weight: 700 }
+.also button { font: inherit; color: var(--mute); background: none; border: 0; border-bottom: 1px dotted var(--ink);
+  padding: 4px 0; min-height: 32px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center }
+.also button b { color: var(--ink) }
+.also button:hover, .also button:focus-visible { color: var(--ink) }
+.also .sgn { width: 16px; height: 16px; color: var(--ink) }
+@media (min-width: 900px) {
+  body[data-lv="simple"] .lead { grid-template-areas: "e g" "n g" "s g" "p g" "m g" "a g" "t g" ". g";
+    grid-template-rows: repeat(7, auto) 1fr }
+  .lead > .eb { grid-area: e } .lead > .plain { grid-area: p } .lead > .askrow { grid-area: a }
+}

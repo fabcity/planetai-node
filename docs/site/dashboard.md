@@ -29,7 +29,7 @@ for itself is a bug.
    because a cell that coarse may leave the machine. This is the node telling you how coarse each thing you
    are about to read is.
 3. **Read the lead.** The sentence under the ladder is the headline issue in the household's language, with
-   the four distances as meters. The why line says why this issue leads. The last line says how many alerts are
+   its rule under it, a dot per distance and the line in red. The why line says why this issue leads. The last line says how many alerts are
    open, for example `2 alerts open · #361 · in 3 Act`, or `nothing open · 3 Act is empty`. The node chose
    this issue, not the page: the why line ends on the node's own `headline_rule`, and the pill at the end
    of the last line (`live`, `stale` or `cached`) says how current it is.
@@ -75,12 +75,21 @@ How much of the page is drawn. Three, in the header beside the register:
 
 | mode | what it draws |
 |---|---|
-| **simple** | offered on Now, Historical and Network only. On Now: the ladder, the lead, the **digest** (four sentences, one per stage, each written by the node), then only the sections marked `level: 'simple'`, which on Now is the Decide card "What to do about it". On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it". The digest is Now's alone |
+| **simple** | offered on Now, Historical and Network only. On Now it is what a person in the house asks: is it fine, is anything changing, is there something to do. See below. On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it" |
 | **advanced** | every registered section, in loop order. The default |
 | **learn** | advanced, with a question mark at each part of the page: every section, the ladder, the lead and the foot. Pressing one opens a panel that quotes this node's own documentation for that part, names the page and section the words came from by their titles, links out, and walks to the next. Not on the wall, which has no header to switch it on |
 
-A node too old to send a digest gets a note instead: "This node has not sent a digest", naming the version
-it is talking to, rather than four sentences composed in the browser.
+**Simple on Now** draws, in order: the header and the modes; the lead, with the issue and when it was read
+in place of the kicker, the numeral and its pictogram, the node's sentence, one plain sentence of the other
+distances and the line, and the rule; the open alert, if there is one, with the sign of its issue, its first
+line, its number and **I did this**; the ground, with a one-line key (this house, and how many other stations
+are within a kilometre) in place of the cell, the plan caption and the resolution line; one paragraph the node
+writes, `digest.simple`; and **also watched here**, every other issue this node watches, its sign and value.
+Pressing one draws that issue in the lead and says so ("you are looking at this · the node's pick is heat"),
+with **back**. That choice is the reader's view, not a setting: it is kept only until the page reloads, and a
+poll in between does not undo it. There is no ladder, no matrix, no stage names, no provenance chips and no
+figures in simple; they are one press away in advanced. A node too old to send `digest.simple` gets a note
+naming the version it is talking to, never a paragraph composed in the browser.
 
 `UI_MODE` is what the page **opens** as, chosen by the household. A reader who switches is switching their
 own copy and nobody else's: the choice is kept in this browser, the way the register is. `?mode=simple` is
@@ -109,9 +118,9 @@ true relative scale (the rung you are on, filled, against the rungs either side)
 thing the node speaks for costs to cover at it. Each rung is about seven times finer by area than the one
 above. The fold's state is `?worth=1`, so it survives the ladder it is read against.
 
-The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the four distances as meters. The last line gives the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.
+The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the rule. The last line gives when the numeral was read, the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.
 
-The meters carry a legend for the red tick, the issue's line. The why line ends on the node's own
+The lead draws the issue's `hero` from `/issues` and nothing else there, so a new issue leads the page with no change to the page. The rule's two ends are the issue's own, so a reading looks the same size tomorrow as tonight; a reading past an end sits on it and prints its real number. Coast has a rule and no line. Land has no rule, and its last line says when the satellite looked and when it looks next. The four distances in full are in the matrix. The why line ends on the node's own
 `headline_rule`, so a reader can check why this issue is on top. The ground's drawing follows. The alert strip
 sits in Act, beside the ledger it belongs to, and the **resolution line** opens Decide's "What each rung is
 worth", as a readout of the cells occupied at the current rung.

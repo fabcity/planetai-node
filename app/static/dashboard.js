@@ -523,18 +523,78 @@ const kicker = (key, d) =>
  *
  * It carries `data-role="numeral"` and the id the why line points at, because it is the reading;
  * the copy inside the sentence is the sentence's own word for the same number. */
+/* THE HERO IS A SLOT. The numeral, its unit, its places and the figure beside it are the issue's
+ * `hero` on /issues, filled by the node from the issue's own declaration. Nothing here knows which
+ * issue it is drawing, so a sixth issue leads the page with no line of this file changed. */
 function monument(key, d, pix = '') {
-  const cell = (d.stack || {})[d.headline];
-  const n = cell && cell.value != null ? fmt(cell.value, d.dp) : null;
+  const h = d.hero || {};
+  const n = h.value != null ? fmt(h.value, h.dp) : null;
   if (n == null) return '';
-  const crossed = !!(d.line && cell.value > d.line.value && (d.state === 'act' || d.state === 'notable'));
+  const crossed = !!(d.line && h.numeral === d.headline && h.value > d.line.value
+    && (d.state === 'act' || d.state === 'notable'));
   const cmp = d.line
     ? cmpText({ mode: 'line', line: d.line, unit: d.unit, dp: d.dp })
     : cmpText({ mode: 'none', reason: noLine(d) });
   return `<div class="num" data-component="monument" data-ref="sentence-${esc(key)}">${pix}`
     + `<b class="v${crossed ? ' crossed' : ''}" data-role="numeral" id="num-${esc(key)}"`
     + ` data-num="${esc(key)}.headline" data-cmp="${esc(cmp.text)}">${esc(n)}</b>`
-    + `<span class="u">${esc(d.unit || '')}</span></div>`;
+    + `<span class="u">${esc(h.unit || '')}</span></div>`;
+}
+
+/* The pictogram the hero declares, at hero size; an issue with none gets its sign at hero size. Both
+ * are <use> of a symbol already in signs.svg, and the validator refused any id that is not there. */
+function heroPix(key, d) {
+  const h = d.hero || {};
+  const id = h.pictogram || h.sign;
+  if (!id) return '';
+  return `<svg class="pix${h.pictogram ? '' : ' sign'}" viewBox="${h.pictogram ? '0 0 15 11' : '0 0 24 24'}"`
+    + ` data-component="pictogram" data-ref="num-${esc(key)}" role="img" aria-label="${esc(d.name[LOC])}">`
+    + `<use href="static/signs.svg#${esc(id)}"/></svg>`;
+}
+
+/* THE RULE: one line from the hero's min to its max, a dot per distance the hero lets on it, and the
+ * line where there is one. Ours is filled, the street's outlined, the ring's dashed. A reading past
+ * either end sits on the end and says its real number. No rule in the contract, no rule here. The
+ * numbers are HTML under the drawing so each carries its comparison like every numeral on the page. */
+function heroRule(key, d) {
+  const h = d.hero || {};
+  const r = h.rule;
+  if (!r) return '';
+  const at = v => Math.max(0, Math.min(1, (v - r.min) / (r.max - r.min))) * 100;
+  const kind = { room: 'own', yard: 'out', ring: 'ring', region: 'out' };
+  const cmp = r.line ? v => `${fmt(v, h.dp)} against ${fmt(r.line.value, h.dp)}, the line`
+    : () => `on a scale from ${fmt(r.min, h.dp)} to ${fmt(r.max, h.dp)}`;
+  const marks = r.dots.map(x => `<i class="dot ${kind[x.distance] || 'out'}" style="left:${at(x.value).toFixed(2)}%"></i>`);
+  const items = r.dots.map(x => ({ x: at(x.value), cls: x.distance === 'room' ? ' own' : '',
+    num: `${key}.${x.distance}`, cmp: cmp(x.value), v: x.value, word: LAB[x.distance] || x.distance }));
+  if (r.line) {
+    marks.unshift(`<i class="ln" style="left:${at(r.line.value).toFixed(2)}%"></i>`);
+    items.push({ x: at(r.line.value), cls: ' lnl', num: `${key}.line`, v: r.line.value,
+      cmp: 'crossing it is what raises an alert', word: r.line.name[LOC] });
+  }
+  /* Readings a few units apart would print on top of each other, and on a phone the rule is 330 px.
+     In order along the rule the labels alternate above and below, and one that would land within a
+     quarter of the rule of its neighbour on the same side steps out to a second tier. */
+  items.sort((p, q) => p.x - q.x);
+  const last = {};
+  const labels = items.map((it, i) => {
+    const side = i % 2 ? 'lo' : 'hi';
+    const prev = last[side];
+    const tier = prev && prev.tier === 0 && it.x - prev.x < 25 ? 1 : 0;
+    last[side] = { x: it.x, tier };
+    const edge = it.x > 85 ? ' end' : it.x < 15 ? ' start' : '';
+    return `<span class="dl ${side}${tier ? ' t1' : ''}${edge}${it.cls}" style="left:${it.x.toFixed(2)}%">`
+      + `<b data-num="${esc(it.num)}" data-cmp="${esc(it.cmp)}">${esc(fmt(it.v, h.dp))}</b>`
+      + ` ${esc(it.word)}</span>`;
+  });
+  const ends = r.ends[LOC] || r.ends.en;
+  return `<div class="herorule" data-component="heroRule" id="rule-${esc(key)}" data-ref="num-${esc(key)}">`
+    + `<div class="track" aria-hidden="true"><svg class="axis" viewBox="0 0 100 20" preserveAspectRatio="none">`
+    + `<line x1="0" y1="10" x2="100" y2="10"/><line x1="0" y1="4" x2="0" y2="16"/>`
+    + `<line x1="100" y1="4" x2="100" y2="16"/></svg>${marks.join('')}</div>`
+    + `<div class="labels">${labels.join('')}</div>`
+    + `<div class="ends"><span>${esc(fmt(r.min, h.dp))} \u00b7 ${esc(ends[0])}</span>`
+    + `<span>${esc(fmt(r.max, h.dp))} \u00b7 ${esc(ends[1])}</span></div></div>`;
 }
 
 function sentence(key, d, cls = 'big') {
@@ -617,15 +677,37 @@ function ask(key, d, ref) {
        and the wrong one here, on a screen with the button on it. The node's words are unchanged;
        this surface says what this surface offers. */
     + `<small>${esc(a.says[LOC])}</small></div>`
-    + `<button type="button" class="go" data-did="${esc(String(a.id))}">I did this</button>`
-    + `<form class="did" hidden data-alert="${esc(String(a.id))}">`
-    + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
-    + ` placeholder="your name"></label>`
-    + `<label><span>What you did</span><input name="note" maxlength="500"`
-    + ` placeholder="closed the windows on the north side"></label>`
-    + `<div class="btns"><button type="submit" class="pri">Record it</button>`
-    + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form></div>`;
+    + didButton(a.id) + `</div>`;
 }
+
+/* The one button the page offers on an open alert, and the form it opens. Shared by the ask strip in
+ * Act and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
+const didButton = id =>
+  `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
+  + `<form class="did" hidden data-alert="${esc(String(id))}">`
+  + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
+  + ` placeholder="your name"></label>`
+  + `<label><span>What you did</span><input name="note" maxlength="500"`
+  + ` placeholder="closed the windows on the north side"></label>`
+  + `<div class="btns"><button type="submit" class="pri">Record it</button>`
+  + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
+
+/* SIMPLE MODE'S ASK ROW: the third of the three questions, is there something to do, answered in the
+ * lead. The sign of the issue it belongs to, the alert's first line, its id, and the button. Act-level
+ * only, because `open_asks` is act-level by construction. Advanced keeps the strip in Act. */
+function askRow(key, d, a) {
+  const h = d.hero || {};
+  return `<div class="ask askrow" data-lv="simple" data-component="askRow" data-role="ask"`
+    + ` id="askrow-${esc(String(a.id))}" data-ref="num-${esc(key)}">`
+    + (h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="${esc(d.name[LOC])}">`
+      + `<use href="static/signs.svg#${esc(h.sign)}"/></svg>` : '')
+    + `<div class="what">${esc(String(a.text || '').split('\n')[0])}<small>#${esc(String(a.id))}</small></div>`
+    + didButton(a.id) + `</div>`;
+}
+
+/* Hide a component in one mode and not the other, by marking its outermost tag. The CSS on
+ * body[data-lv] does the hiding; nothing is deleted, so switching mode is a redraw and not a refetch. */
+const lv = (html, level) => String(html || '').replace(/^<([a-z]+)/, `<$1 data-lv="${level}"`);
 
 /* PORTED: `plan` is not an id on this page; the figure the caption belongs to is the ground map.
  * A node with no coordinates yet has no cell and no caption, and prints neither. */
@@ -1597,6 +1679,39 @@ function digest(ctx) {
     + `</div></div>`;
 }
 
+/* SIMPLE, UNDER THE LEAD: the node's own paragraph, then the other watched issues as buttons.
+ *
+ * The paragraph is `digest.simple`, three sentences the node writes; this page composes none of it.
+ * The also line is the switcher: pressing an issue draws its hero in the lead, stamped so that nobody
+ * mistakes a reader's choice for the node's. It is page state and nothing else, cleared on reload,
+ * and a poll that lands in the meantime draws the same choice again. */
+function simpleTail(ctx) {
+  const { esc, fmt } = window.K;
+  const dg = (ctx.S.issues || {}).digest || {};
+  const said = dg.simple ? (dg.simple[ctx.LOC] || dg.simple.en || '') : '';
+  const para = said
+    ? `<p class="digestline" id="digest" data-component="digestSimple" data-ref="header">${esc(said)}</p>`
+    : `<p class="note" data-component="digestAbsent" id="digest-absent" data-ref="header">This node has `
+      + `not sent its short answer. It is written by the node, not by this page, and the node answering `
+      + `here (${esc((ctx.S.health || {}).version || 'unknown version')}) does not write it yet.</p>`;
+  const shown = window.PAI_HERO_SHOWN;
+  const others = ctx.ORDER.filter(k => k !== shown && ctx.ISS[k] && ctx.ISS[k].watched !== false
+    && ctx.ISS[k].hero);
+  if (!others.length) return para;
+  return para + `<div class="also" id="also" data-component="alsoLine" data-ref="header">`
+    + `<span class="lbl">also watched here</span>`
+    + others.map(k => {
+      const d = ctx.ISS[k], h = d.hero, name = d.name[ctx.LOC];
+      return `<button type="button" data-hero="${esc(k)}" aria-label="${esc(`show ${name}`)}">`
+        + `<svg class="sgn" viewBox="0 0 24 24" aria-hidden="true"><use href="static/signs.svg#${esc(h.sign)}"/></svg>`
+        + (h.value != null
+          ? `<b data-num="${esc(k)}.hero" data-cmp="${esc(`${name}, ${(h.stamp || {})[ctx.LOC] || 'the node’s reading'}`)}">`
+            + `${esc(fmt(h.value, h.dp))}</b> ${esc(h.unit)}`
+          : `${esc(name)} \u00b7 nothing read`)
+        + `</button>`;
+    }).join('') + `</div>`;
+}
+
 function render(ctx, lead, opts = {}) {
   const { esc } = window.K;
   /* THE DIGEST IS NOW'S, AND ONLY NOW'S.
@@ -1615,6 +1730,8 @@ function render(ctx, lead, opts = {}) {
   const ordered = sections.filter(s => (!keep || keep.has(s.id))
     && (!simple || s.level === 'simple')).slice().sort((a, b) =>
     STAGE_INDEX[a.stage] - STAGE_INDEX[b.stage] || a.order - b.order || a.id.localeCompare(b.id));
+  /* Simple on Now is the three questions and nothing else: no sections, no stage names, no notes. */
+  if (simple && onNow) return (lead || '') + simpleTail(ctx);
   let html = (lead || '') + (simple && onNow ? digest(ctx) : '');
   for (const [key, name, what] of STAGES) {
     const mine = ordered.filter(s => s.stage === key);
@@ -2003,10 +2120,22 @@ function lead(ctx) {
       + `serves">${f.z}</span> · <span data-num="ground.tiles" data-cmp="against 0 for the offline `
       + `plan">${f.tiles.length}</span> tiles from ${esc(B.host)} · ${esc(B.credit)}`;
   }
-  return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="rail">`
-    + strip + figure(ctx, { base, size: SIZE })
-    + `<div class="gridkey">${key}</div>`
-    + `<figcaption class="cap">${cap}</figcaption></figure>`;
+  /* Simple's key is one sentence a household reads: its own station, and how many others are within a
+     kilometre. The cell, the plan caption and the rule about resolutions are the keeper's. */
+  const st = ctx.S.issues.stations || [];
+  const own = st.filter(x => x.local).length;
+  const near = st.filter(x => !x.local && x.km != null && x.km <= 1).length;
+  const plainKey = `<p class="gridkey plainkey" data-lv="simple" data-component="groundKey" data-ref="ground-figure">`
+    + `<span class="d me"></span>${own ? 'this house' : 'no station of this house\u2019s own yet'} \u00b7 `
+    + `<span class="d"></span>${near ? `<b data-num="ground.near" data-cmp="stations not this house\u2019s, `
+      + `within 1 km">${near}</b> other station${near === 1 ? '' : 's'} within a kilometre`
+      : 'no other station within a kilometre'}</p>`;
+  /* Simple draws no ladder, so the figure answers to the header there instead of pointing at nothing. */
+  const up = (window.PAI_MODE && window.PAI_MODE() === 'simple' && ctx.VIEW === 'now') ? 'header' : 'rail';
+  return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="${up}">`
+    + strip.replace('<p class="ctlrule">', '<p class="ctlrule" data-lv="adv">') + figure(ctx, { base, size: SIZE })
+    + `<div class="gridkey" data-lv="adv">${key}</div>` + plainKey
+    + `<figcaption class="cap" data-lv="adv">${cap}</figcaption></figure>`;
 }
 
 /* ------------------------------------------------------------------ what this map sends out */
@@ -6970,7 +7099,8 @@ function main() {
       ? `<p class="note" data-component="wireNote" id="wire-note" data-ref="header">`
         + `${esc(window.WIRE_NOTE)}</p>`
       : '')
-    + (VIEW === 'now' || VIEW === 'arrange'
+    + ((VIEW === 'now' && mode(VIEW) !== 'simple') || VIEW === 'arrange'
+      /* Simple draws no ladder: the node picks the resolution and a household is not asked to. */
       /* Arrange draws Now's own sections — same registry, same want(NOW) — so it is Now in another
          mode and keeps the dial with them. Taking it away there left the ground, the station
          groups, the claims, the grain and the grain line all pointing at a control that was not on
@@ -7139,7 +7269,11 @@ function main() {
      figure a module offers for it (the ground module offers the map). A household opens the page to
      be told something, and that sentence is not a module's to move. */
   function lead() {
-    const hk = S.issues.headline, d = ISS[hk];
+    /* In simple a reader may be looking at another issue than the node's pick (the also line). The
+       pick is page state; advanced always draws the node's own. */
+    const simple = mode(VIEW) === 'simple', pick = window.PAI_HERO_PICK, nodePick = S.issues.headline;
+    const hk = simple && pick && ISS[pick] && ISS[pick].hero ? pick : nodePick, d = ISS[hk];
+    window.PAI_HERO_SHOWN = hk;
     const leads = PAI.sections.filter(s => s.lead && (s.needs || []).every(PAI.has));
     const fig = leads.map(s => { try { return s.lead(ctx) || ''; } catch { return ''; } }).join('');
     /* A lead-only section draws no band, so the marks it declares have nowhere to sit but beside
@@ -7161,28 +7295,35 @@ function main() {
        why it is 15x11 rather than on the 24-unit grid. A <use> of a symbol already in signs.svg, so
        nothing is redrawn per reading. An issue with no pictogram yet simply has none: the lead is
        not going to invent a mark for it. */
-    const pix = ['air', 'heat', 'land', 'coast'].includes(hk)
-      ? `<svg class="pix" viewBox="0 0 15 11" data-component="pictogram" data-ref="num-${esc(hk)}"`
-        + ` role="img" aria-label="${esc(d.name[LOC])}"><use href="static/signs.svg#pix-${esc(hk)}"/></svg>`
-      : '';
+    const pix = heroPix(hk, d);
+    const stamp = ((d.hero || {}).stamp || {})[LOC] || '';
+    const plain = ((d.hero || {}).plain || {})[LOC] || '';
+    /* Simple's eyebrow: the issue and when it was read, in words, with no state word in capitals. */
+    const eb = `<div class="eb" data-lv="simple" data-component="heroEyebrow" data-ref="num-${esc(hk)}">`
+      + `<b>${esc(d.name[LOC])}</b>${stamp ? ` \u00b7 ${esc(stamp)}` : ''}`
+      + (hk !== nodePick
+        ? `<span class="pin">you are looking at this \u00b7 the node\u2019s pick is `
+          + `${esc(ISS[nodePick].name[LOC])}</span><button type="button" class="back" data-hero="">back</button>`
+        : '') + `</div>`;
+    const askAt = (d.open_asks || []).length ? hk : ORDER.find(k => (ISS[k].open_asks || []).length);
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
-      + `<div class="leadk">${kicker(hk, d)}${mark('lead', `sentence-${esc(hk)}`)}</div>`
-      + monument(hk, d, pix) + sentence(hk, d, 'big')
-      + why(hk, d, (S.issues.headline_rule || {})[LOC] || '')
-      + stack(hk, d, { id: `meters-${hk}`, meter: true, ref: `sentence-${hk}` })
-      /* The sketch explains the red tick once, under the meters. Without it the one mark on the
-         page that means "a line was crossed" is the only mark nobody is told the meaning of. */
-      + (d.line
-        ? `<p class="legend" data-component="meterLegend" data-ref="meters-${esc(hk)}">`
-          + `<i></i>the line, at ${esc(fmt(d.line.value, d.dp))} ${esc(d.line.unit || d.unit)}, `
-          + `on every row at the same place</p>`
-        : '')
+      + lv(`<div class="leadk">${kicker(hk, d)}${mark('lead', `sentence-${esc(hk)}`)}</div>`, 'adv')
+      + eb + monument(hk, d, pix) + sentence(hk, d, 'big')
+      + lv(why(hk, d, (S.issues.headline_rule || {})[LOC] || ''), 'adv')
+      + (plain ? `<p class="plain" data-lv="simple" data-component="heroPlain" data-ref="sentence-${esc(hk)}">`
+        + `${esc(plain)}</p>` : '')
+      /* The rule the hero declares, where the four meters were. They drew every issue on a scale
+         worked out from tonight's numbers; the rule's ends are the issue's own, so a reading of 12
+         looks the same size tomorrow as tonight. The four distances in full are in the matrix. */
+      + heroRule(hk, d)
+      + (askAt ? askRow(askAt, ISS[askAt], ISS[askAt].open_asks[0]) : '')
       /* WHY THIS ONE IS AT THE TOP is in the why line above, not in a paragraph of its own. The
          words are the node's now (`headline_rule` on /issues) rather than three strings in this file:
          v0.59 changed the ranking on 18 September and the page's copy of the explanation had no way
          of knowing. A ranking a reader cannot check is the one thing this page does not do. */
-      + `<div class="whenline">${asof()}`
-      + (openAll
+      + `<div class="whenline">${stamp ? `<span class="stamp" data-lv="adv" data-component="heroStamp"`
+        + ` data-ref="num-${esc(hk)}">${esc(stamp)}</span>` : ''}${asof()}`
+      + lv(openAll
         /* `data-role="ask"` is what T1's fourth leg looks for. The strip itself is in Act now, and
            this line is the lead's statement about it — the count, the id and where to go. A reader
            who has to infer "nothing to do" from an absence has not been told anything, so the
@@ -7193,11 +7334,11 @@ function main() {
           + ` alert${openAll === 1 ? '' : 's'} open`
           + `${firstAsk != null ? ` · #${esc(String(firstAsk))}` : ''} · in 3 Act</a>`
         : `<span class="askref none" data-role="ask" data-component="askRef" data-ref="stage-act">`
-          + `nothing open · 3 Act is empty</span>`)
-            + `${window.K.stamp()}`
-      + (S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
+          + `nothing open · 3 Act is empty</span>`, 'adv')
+            + lv(`${window.K.stamp()}`, 'adv')
+      + lv(S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
         : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
-        : pill('live', 'measured by this node, and kept up to date'))
+        : pill('live', 'measured by this node, and kept up to date'), 'adv')
       + mark('prov', `band-${esc(hk)}`) + `</div>`
       + fig + (figMarks ? `<div class="figmarks">${figMarks}</div>` : '') + `</section>`;
   }
@@ -7237,6 +7378,8 @@ function main() {
 
   const el = document.getElementById('page');
   document.body.classList.toggle('wallview', VIEW === 'wall');
+  /* What the CSS hides by: `simple` only on Now, where simple is the three questions. */
+  document.body.dataset.lv = VIEW === 'now' && mode(VIEW) === 'simple' ? 'simple' : 'adv';
   applyRegister(VIEW);
   if (VIEW === 'wall') {
     document.body.classList.add('wall');
@@ -7528,6 +7671,15 @@ document.addEventListener('submit', ev => {
 document.addEventListener('click', ev => {
   if (ev.target.id === 'btn-arr-reset') return layoutSave(true);
   if (ev.target.id === 'btn-arr-done') return layoutSave(false);
+  /* The also line and its way back. Page state, never a setting: nothing is stored or sent. */
+  const hb = ev.target.closest && ev.target.closest('[data-hero]');
+  if (hb) {
+    window.PAI_HERO_PICK = hb.getAttribute('data-hero') || null;
+    redraw();
+    const lead = document.querySelector('.lead');
+    if (lead && lead.getBoundingClientRect().top < 0) lead.scrollIntoView();
+    return;
+  }
   const go = ev.target.closest && ev.target.closest('.ask .go');
   if (go) {
     const form = go.parentElement.querySelector('form.did');

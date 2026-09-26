@@ -2525,11 +2525,65 @@ async function overflow(views) {
   process.exit(1);
 }
 
+/* ------------------------------------------------------------------ simple, the three questions
+ *
+ * Simple on Now is the lead, the ask, the ground, the node's paragraph and the also line, and nothing
+ * the keeper reads: no ladder, no matrix, no figures, no stage headings. Hiding them with CSS would
+ * pass a screenshot and still hand a screen reader the whole advanced page, so this asks the DOM.
+ * Then it presses the also line: the lead must become that issue's hero, say it is the reader's
+ * choice and not the node's, survive a poll, and go back to the node's pick on `back`.
+ * Horizontal scroll in simple at 390/768/1440 in both registers is `overflow`'s job, not this one's. */
+async function simple() {
+  const fails = [];
+  for (const w of [390, 1440]) {
+    const job = tagged({ name: `simple_${w}`, view: 'now', w, state: 'populated', mode: 'simple' });
+    const h = await open(job);
+    const got = await h.page.evaluate(() => ({
+      lv: document.body.dataset.lv,
+      banned: ['#rail', '.rail', '#matrix', '#figures', '.stagehead']
+        .filter(q => document.querySelector(q)).join(' '),
+      /* hidden by data-lv, not deleted: in the DOM, drawn nowhere */
+      shown: ['.pill.prov', '.lead .leadk', '.lead .why', '.lead .askref', '.gridkey:not(.plainkey)', '.ctlrule']
+        .filter(q => [...document.querySelectorAll(q)].some(e => e.getClientRects().length)).join(' '),
+      lead: (document.querySelector('.lead') || {}).id || null,
+      also: [...document.querySelectorAll('#also [data-hero]')].map(b => b.getAttribute('data-hero')),
+    }));
+    if (got.lv !== 'simple') fails.push(`${w}: body is data-lv=${got.lv}, not simple`);
+    if (got.banned) fails.push(`${w}: simple still has ${got.banned} in the DOM`);
+    if (got.shown) fails.push(`${w}: simple still draws ${got.shown}`);
+    if (!got.also.length) { fails.push(`${w}: no also line to press`); await h.browser.close(); continue; }
+    const want = got.also[0];
+    await h.page.click(`#also [data-hero="${want}"]`);
+    await h.page.waitForTimeout(400);
+    const swapped = await h.page.evaluate(() => ({
+      lead: (document.querySelector('.lead') || {}).id,
+      pin: !!document.querySelector('.lead .eb .pin'),
+      rule: !!document.querySelector('.lead .herorule'),
+    }));
+    if (swapped.lead !== `band-${want}`) fails.push(`${w}: pressing ${want} drew ${swapped.lead}`);
+    if (!swapped.pin) fails.push(`${w}: the lead does not say it is the reader's choice`);
+    await h.page.evaluate(() => window.PAI_REFRESH.now());
+    await h.page.waitForTimeout(700);
+    const polled = await h.page.evaluate(() => (document.querySelector('.lead') || {}).id);
+    if (polled !== `band-${want}`) fails.push(`${w}: a poll undid the choice (${polled})`);
+    await h.page.evaluate(() => { const b = document.querySelector('.lead .eb .back'); if (b) b.click(); });
+    await h.page.waitForTimeout(400);
+    const back = await h.page.evaluate(() => (document.querySelector('.lead') || {}).id);
+    if (back !== got.lead) fails.push(`${w}: back drew ${back}, not the node's pick ${got.lead}`);
+    if (!fails.length) console.log(`  simple @ ${w}: nothing of advanced in the DOM; ${got.lead} -> `
+      + `band-${want}${swapped.rule ? ' (with its rule)' : ''}, held across a poll, back to ${back}`);
+    await h.browser.close();
+  }
+  for (const f of fails) console.log('FAIL simple:', f);
+  process.exit(fails.length ? 1 : 0);
+}
+
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === 'render') await render(rest.length ? rest : ['all']);
 else if (cmd === 'steps') await steps();
 else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
 else if (cmd === 'press') await press();
+else if (cmd === 'simple') await simple();
 else if (cmd === 'asking') await asking();
 else if (cmd === 'plates') await plateShots(rest.length ? rest : ['all']);
 else if (cmd === 'extend') await extend();
