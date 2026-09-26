@@ -77,7 +77,7 @@ How much of the page is drawn. Three, in the header beside the register:
 |---|---|
 | **simple** | offered on Now, Historical and Network only. On Now it is what a person in the house asks: is it fine, is anything changing, is there something to do. See below. On Historical it draws "What the satellite says"; on Network, "This node, and what moves through it" |
 | **advanced** | every registered section, in loop order. The default |
-| **learn** | advanced, with a question mark at each part of the page: every section, the ladder, the lead and the foot. Pressing one opens a panel that quotes this node's own documentation for that part, names the page and section the words came from by their titles, links out, and walks to the next. Not on the wall, which has no header to switch it on |
+| **learn** | advanced, with a question mark at each part of the page: every section, the ladder, the lead and the foot. Learn opens the ask pane, and pressing a mark puts a card in it that quotes this node's own documentation for that part, names the page and section the words came from by their titles, links out, and walks to the next. The chips under it become two questions about that part. Not on the wall, which has no header to switch it on |
 
 **Simple on Now** draws, in order: the header and the modes; the lead, with the issue and when it was read
 in place of the kicker, the numeral and its pictogram, the node's sentence, one plain sentence of the other
@@ -96,13 +96,13 @@ own copy and nobody else's: the choice is kept in this browser, the way the regi
 read first and remembers nothing. It is how one person sends another the short answer without changing
 their page, and how the measuring rig renders all three.
 
-The learn panels are quotations, not summaries. The node does not serve this documentation (the site build
+The learn cards are quotations, not summaries. The node does not serve this documentation (the site build
 does), so `tools/build_learn.py` cuts the spans out of these pages at build time into `app/static/learn.json`,
 which the page fetches only when somebody turns learn mode on. The quote therefore reads on a network with
 no route out, and `make lint` fails when a span is no longer in the page it names. Every registered section
 carries at least one mark, and the foot carries the node's purpose and its doors on every view but the wall.
 The bar under the header says how many marks are on the view you are looking at; *walk the page* starts at
-the first of them, and **Back** and **Next** follow the view from top to bottom. The quotes are in English
+the first of them, and **previous** and **next** on the card follow the view from top to bottom, in the order the marks are drawn; walking replaces the card rather than stacking one per mark. With a model on the node, a question asked while a card is last in the thread is sent with that part's documentation. Without one, the card stands alone and its chip searches the documentation for its title. The quotes are in English
 only, whatever language the rest of the page is drawn in, because the documentation is. The wall has no
 Learn mode: it draws no header, so there is nothing on it to switch one on, and no marks.
 

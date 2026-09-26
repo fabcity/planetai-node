@@ -6807,7 +6807,7 @@ function qmark(key, ref) {
   const esc = window.K.esc;
   if (mode() !== 'learn' || !LEARN || !LEARN.marks[key]) return '';
   return `<button type="button" class="q" data-component="learnMark" data-learn="${esc(key)}"`
-    + ` data-ref="${esc(ref)}" aria-expanded="false" aria-controls="learnpanel">`
+    + ` data-ref="${esc(ref)}" aria-expanded="false" aria-controls="askpane">`
     + `<span class="vh">What is ${esc(plainly(LEARN.marks[key].title))}?</span>`
     + `<span aria-hidden="true">?</span></button>`;
 }
@@ -6857,7 +6857,8 @@ function learnSync() {
       ? `<b data-num="learn.here" data-cmp="learn.total ${LEARN.order.length}">${n}</b> mark`
         + `${n === 1 ? '' : 's'} on this view, of ${LEARN.order.length} across the views. Every one `
         + `quotes this node&rsquo;s own documentation, word for word, built in so it reads with no `
-        + `route out. Walking follows this view from the top.`
+        + `route out. Press one and the words land in the pane, where the node answers questions `
+        + `about them. Walking follows this view from the top.`
       : `No marks on this view. Walking starts at the first of the ${LEARN.order.length} and the `
         + `words come with it, so the panel reads the same from here.`);
   }
@@ -6869,47 +6870,31 @@ function learnSync() {
 }
 
 function learnClose() {
-  const p = document.getElementById('learnpanel');
-  if (p) { p.classList.remove('open'); p.innerHTML = ''; }
   LEARN_AT = null;
   document.querySelectorAll('.q[aria-expanded="true"]')
     .forEach(b => b.setAttribute('aria-expanded', 'false'));
 }
 
+/* A pressed mark lands in the ask pane as a card: the documentation's words, this page's line about
+ * them, where they come from by title, and Back and Next. The pane opens if it was closed; walking
+ * replaces the card it is on rather than stacking forty-four of them. The walk is the page's own
+ * order, read from the marks this view drew at the moment of the press. */
 function learnOpen(key) {
-  const esc = window.K.esc;
-  const p = document.getElementById('learnpanel');
   const m = LEARN && LEARN.marks[key];
-  if (!p || !m) return;
-  /* "3 of 9" counts the marks on the view being read, in its own order; a mark opened over a view
-     that does not carry it counts against the whole list, which is where Back and Next take it. */
+  if (!m || !window.PAI_ASK) return;
   const walk = learnWalk();
   const ring = walk.includes(key) ? walk : LEARN.order;
-  const i = ring.indexOf(key);
-  p.innerHTML = `<div class="lh"><span class="k">${esc(key)}</span>`
-    + `<span class="n">${i + 1} of ${ring.length}</span>`
-    + `<button type="button" class="x" data-learn-close="1">Close</button></div>`
-    + `<h2>${esc(plainly(m.title))}</h2>`
-    + `<blockquote class="qt">${quoteHtml(m.quote)}</blockquote>`
-    /* Two voices, and the panel says which is which. The quote is the documentation's, cut at build
-       time and not touched; the line under it is this page talking about what it draws, which is a
-       thing the docs do not cover and must not be made to look as though they did. */
-    + `<p class="more"><span class="who">This page:</span> ${esc(m.more)}</p>`
-    /* Cited the way the documentation names itself: the page's title and the section, linked to
-       the page on the site. A repository path was a developer's citation in front of a household. */
-    + `<p class="src">From <a href="${esc(m.url)}" rel="noreferrer">`
-    + `${esc(plainly(m.page_title || m.page))}${m.section ? ` &middot; ${esc(plainly(m.section))}` : ''}`
-    + `</a>.</p>`
-    + `<div class="nav"><button type="button" data-learn-step="-1">Back</button>`
-    + `<button type="button" class="pri" data-learn-step="1">Next</button></div>`;
-  p.classList.add('open');
+  window.PAI_ASK.card(key, ring.indexOf(key) + 1, ring.length);
   LEARN_AT = key;
   document.querySelectorAll('.q').forEach(b =>
     b.setAttribute('aria-expanded', String(b.getAttribute('data-learn') === key)));
   const at = document.querySelector(`.q[data-learn="${key}"]`);
   if (at) at.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  p.focus();
 }
+
+/* What the pane needs to draw a card: the mark, and the four inline markers rendered. */
+window.PAI_LEARN_MARK = key => (LEARN && LEARN.marks[key]) || null;
+window.PAI_LEARN_QUOTE = quoteHtml;
 
 /* One listener, on the document, installed once — the marks are rewritten on every render and a
    listener bound to a button dies with it. */
@@ -8520,7 +8505,29 @@ function proposal(p, i) {
     + `<p class="said" hidden></p></form>`;
 }
 
+const plain = s => String(s || '').replace(/`/g, '');
+/* The mark whose card is the latest thing in the thread is the part in focus: its questions are the
+   chips, and a question asked now is sent with it, so the node reads that part's documentation too. */
+function focusKey() {
+  const t = thread();
+  const last = t[t.length - 1];
+  return last && last.role === 'card' ? last.key : null;
+}
+function learnCard(c) {
+  const m = window.PAI_LEARN_MARK ? window.PAI_LEARN_MARK(c.key) : null;
+  if (!m) return '';
+  return `<div class="card mark" data-component="learnCard" data-learn-card="${esc(c.key)}">`
+    + `<div class="ch"><span>${esc(plain(m.title))}</span><span>${esc(String(c.i))} of ${esc(String(c.n))}</span></div>`
+    + `<blockquote class="qt">${window.PAI_LEARN_QUOTE ? window.PAI_LEARN_QUOTE(m.quote) : esc(m.quote)}</blockquote>`
+    + `<p class="more"><span class="who">This page:</span> ${esc(m.more)}</p>`
+    + `<p class="src">From <a href="${esc(m.url)}" rel="noreferrer">${esc(plain(m.page_title || m.page))}`
+    + `${m.section ? ` \u00b7 ${esc(plain(m.section))}` : ''}</a>.</p>`
+    + `<div class="bt"><button type="button" data-learn-step="-1">previous</button>`
+    + `<button type="button" class="pri" data-learn-step="1">next</button></div></div>`;
+}
+
 function msg(m, i) {
+  if (m.role === 'card') return learnCard(m);
   if (m.role === 'user') return `<div class="msg you"><div class="who"><b>you</b></div><div class="bd">${esc(m.content)}</div></div>`;
   return `<div class="msg node"><div class="who"><b>the node</b></div><div class="bd" id="ask-m-${i}">`
     + `${esc(m.content || (m.error ? '' : '…'))}${m.error ? `<p class="err">${esc(m.error)}</p>` : ''}</div>`
@@ -8529,7 +8536,9 @@ function msg(m, i) {
 
 function composer() {
   const d = ((window.K && window.K.S && window.K.S.issues) || {}).digest || {};
-  const chips = ((d.prompts || {})[loc()] || (d.prompts || {}).en || []).slice(0, 3);
+  const fm = focusKey() && window.PAI_LEARN_MARK ? window.PAI_LEARN_MARK(focusKey()) : null;
+  const qs = fm && fm.questions ? (fm.questions[loc()] || fm.questions.en) : null;
+  const chips = (qs || (d.prompts || {})[loc()] || (d.prompts || {}).en || []).slice(0, 3);
   const fixture = new URLSearchParams(location.search).get('fixture');
   return `<form class="compose" data-ask-send>`
     + `<div class="chips">${chips.map(c => `<button type="button" data-ask-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>`
@@ -8553,9 +8562,17 @@ function draw() {
   if (!on) return;
   if (STATUS === undefined) { el.innerHTML = head(); status(); return; }
   const t = thread();
+  const cards = t.filter(m => m.role === 'card');
+  const fm = focusKey() && window.PAI_LEARN_MARK ? window.PAI_LEARN_MARK(focusKey()) : null;
   el.innerHTML = head() + (STATUS.ok && STATUS.running
     ? `<div class="thread" id="ask-thread">${t.map(msg).join('')}</div>${composer()}`
-    : STATUS.refused ? `<p class="plead">${esc(STATUS.said)}</p>` : nomodel());
+    : STATUS.refused ? `<p class="plead">${esc(STATUS.said)}</p>`
+    /* Without a model the card stands alone, and the chips search the documentation for its title. */
+    : `<div class="askbody">`
+      + (cards.length ? learnCard(cards[cards.length - 1]) : '')
+      + (fm ? `<div class="chips"><button type="button" data-ask-find-q="${esc(plain(fm.title))}">`
+        + `search the documentation for \u201c${esc(plain(fm.title))}\u201d</button></div>` : '')
+      + nomodel() + `</div>`);
   const th = el.querySelector('#ask-thread');
   if (th) th.scrollTop = th.scrollHeight;
 }
@@ -8573,8 +8590,9 @@ async function send(text) {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...(window.PAI_AUTH ? window.PAI_AUTH() : {}) },
       body: JSON.stringify({
-        messages: t.filter(m => m.content).map(m => ({ role: m.role, content: m.content })).slice(-24),
-        view: view(), mode: window.PAI_MODE ? window.PAI_MODE() : 'advanced'
+        messages: t.filter(m => m.content && m.role !== 'card').map(m => ({ role: m.role, content: m.content })).slice(-24),
+        view: view(), mode: window.PAI_MODE ? window.PAI_MODE() : 'advanced',
+        focus: t.filter(m => m.role === 'card').map(m => m.key).pop() || null,
       }),
     });
     if (!r.ok || !r.body) throw new Error(`the node answered ${r.status}`);
@@ -8639,6 +8657,12 @@ document.addEventListener('click', ev => {
     ss.set(OPEN, isOpen() ? '0' : '1');
     return draw();
   }
+  const fq = t.closest('[data-ask-find-q]');
+  if (fq) {
+    const f = document.querySelector('#askpane [data-ask-find]');
+    if (f) { f.elements.q.value = fq.getAttribute('data-ask-find-q'); f.requestSubmit(); }
+    return;
+  }
   const chip = t.closest('[data-ask-chip]');
   if (chip) return send(chip.getAttribute('data-ask-chip'));
   const cp = t.closest('[data-copy]');
@@ -8671,5 +8695,16 @@ document.addEventListener('submit', async ev => {
 });
 
 /* The page tells the pane when it has drawn, so a toggle drawn by chrome() picks up the pane's state. */
-window.PAI_ASK = { draw, open: () => { ss.set(OPEN, '1'); draw(); } };
+function card(key, i, n) {
+  const t = thread();
+  const c = { role: 'card', key, i, n };
+  if (t.length && t[t.length - 1].role === 'card') t[t.length - 1] = c; else t.push(c);
+  keep(t);
+  ss.set(OPEN, '1');
+  draw();
+  const el = document.querySelector('#askpane [data-learn-card]');
+  if (el) el.scrollIntoView({ block: 'nearest' });
+}
+
+window.PAI_ASK = { draw, card, open: () => { ss.set(OPEN, '1'); draw(); } };
 })();

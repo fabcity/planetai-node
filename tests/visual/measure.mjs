@@ -2688,6 +2688,58 @@ async function askpane() {
   process.exit(fails.length ? 1 : 0);
 }
 
+/* ------------------------------------------------------------------ learn, walked in the pane
+ *
+ * Learn's marks land in the ask pane as cards. From the first mark, Next must visit every mark this
+ * view drew in the order a reader meets them (document order, foot last), each card must cite its
+ * page by title and never by a repository path, and there is no learn panel of its own any more. */
+async function learnwalk() {
+  const fails = [];
+  delete process.env.PAI_ASK_MODEL;
+  const h = await open(tagged({ name: 'learnwalk', view: 'now', w: 1440, state: 'populated', mode: 'learn' }));
+  const got = await h.page.evaluate(async () => {
+    for (let i = 0; i < 30 && !document.querySelector('#page .q[data-learn]'); i++) await new Promise(r => setTimeout(r, 100));
+    const order = [];
+    document.querySelectorAll('#page .q[data-learn], #foot .q[data-learn]').forEach(b => {
+      const k = b.getAttribute('data-learn'); if (!order.includes(k)) order.push(k);
+    });
+    const walk = document.querySelector('[data-learn-walk]');
+    if (!walk) return { order, visited: [], srcs: [], panel: !!document.getElementById('learnpanel') };
+    walk.click();
+    const visited = [], srcs = [];
+    for (let i = 0; i < order.length; i++) {
+      await new Promise(r => setTimeout(r, 60));
+      const card = document.querySelector('#askpane [data-learn-card]');
+      if (!card) break;
+      visited.push(card.getAttribute('data-learn-card'));
+      srcs.push((card.querySelector('.src') || {}).textContent || '');
+      const next = card.querySelector('[data-learn-step="1"]');
+      if (next) next.click();
+    }
+    const cards = document.querySelectorAll('#askpane [data-learn-card]').length;
+    return { order, visited, srcs, cards, panel: !!document.getElementById('learnpanel'),
+      pane: document.body.classList.contains('askopen') };
+  });
+  await h.page.waitForTimeout(800);
+  await h.page.screenshot({ path: path.join(OUT, 'learnwalk_1440.png') });
+  await h.browser.close();
+  if (got.panel) fails.push('the learn panel is still in the markup');
+  if (!got.pane) fails.push('pressing a mark did not open the pane');
+  if (!got.order.length) fails.push('learn mode drew no marks on Now');
+  if (JSON.stringify(got.visited) !== JSON.stringify(got.order)) {
+    const i = got.visited.findIndex((k, j) => k !== got.order[j]);
+    fails.push(`the walk left page order at step ${i + 1}: page ${got.order.slice(Math.max(0, i - 1), i + 2)}, `
+      + `walk ${got.visited.slice(Math.max(0, i - 1), i + 2)} (${got.visited.length} of ${got.order.length} visited)`);
+  }
+  const bad = got.srcs.filter(t => /\.md\b|docs\/site|^From \.?$/.test(t.trim()));
+  if (bad.length || got.srcs.some(t => !/^From .+\.$/.test(t.trim()))) fails.push(`a card cites a path, not a title: ${bad[0] || got.srcs.find(t => !/^From .+\.$/.test(t.trim()))}`);
+  if (got.cards !== 1) fails.push(`walking stacked ${got.cards} cards; it should replace the one it is on`);
+  for (const f of fails) console.log('FAIL learnwalk:', f);
+  if (!fails.length) console.log(`  learnwalk: ${got.order.length} marks on Now, visited in page order from the first, `
+    + 'each card cited by its page title; one card, replaced as it walks');
+  process.exit(fails.length ? 1 : 0);
+}
+
 async function probe(expr) {
   const h = await open(tagged({ name: 'probe', view: 'now', w: 1440, state: 'populated' }));
   const errs = [];
@@ -2704,6 +2756,7 @@ else if (cmd === 'stall') await stall(rest[0] || 'now_populated_1440');
 else if (cmd === 'press') await press();
 else if (cmd === 'simple') await simple();
 else if (cmd === 'askpane') await askpane();
+else if (cmd === 'learnwalk') await learnwalk();
 else if (cmd === 'probe') await probe(rest.join(' '));
 else if (cmd === 'asking') await asking();
 else if (cmd === 'plates') await plateShots(rest.length ? rest : ['all']);

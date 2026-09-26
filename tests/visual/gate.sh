@@ -38,6 +38,8 @@ node tests/visual/measure.mjs press
 node tests/visual/measure.mjs simple
 # The ask pane: with no model it searches and shows two ways in; with one, a change is a card, never a write.
 node tests/visual/measure.mjs askpane
+# Learn lands in the pane: the walk visits every mark in page order and each card cites its page by title.
+node tests/visual/measure.mjs learnwalk
 
 # The loading state: it stops when the data is in, the canvas leaves the tree, and reduced motion
 # draws one still frame instead of subscribing to the loop. Prints what a frame cost, both ways.

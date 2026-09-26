@@ -460,7 +460,7 @@ UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss",
                    # `more` line, and neither is shouted: `.lpanel .qt` and `.lpanel .more` are set
                    # in the body face at their own case, because one is the documentation's sentence
                    # and the other is this page's.
-                   ".learnbar .walk", ".lpanel .lh", ".lpanel .more .who", ".lpanel .nav button",
+                   ".learnbar .walk", "#askpane .card.mark .ch",
                    # Added 22 September 2026 with the loading state. Its heading is one of three
                    # sentences this file writes — "Asking the node", "Asking the node again", "The
                    # node stopped answering. Asking again" — and a count. The endpoint paths beside

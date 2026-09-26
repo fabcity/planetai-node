@@ -5,6 +5,20 @@
    "more": "The note column is shown here only to a reader with a token, because GET /actions is on no sharing allowlist.",
    "page": "schema.md",
    "page_title": "Database schema",
+   "questions": {
+    "en": [
+     "What is recorded when someone acts?",
+     "How is ρ counted from these rows?"
+    ],
+    "es": [
+     "¿Qué se registra cuando alguien actúa?",
+     "¿Cómo se cuenta ρ a partir de estas filas?"
+    ],
+    "id": [
+     "Apa yang dicatat saat seseorang bertindak?",
+     "Bagaimana ρ dihitung dari baris-baris ini?"
+    ]
+   },
    "quote": "The ρ instrument: what happened after an alert, one row per answer.",
    "section": "Tables",
    "title": "The table ρ is counted from",
@@ -15,6 +29,20 @@
    "more": "The `issues` tool an agent holds over POST /mcp returns the same object this card is drawn from, so it may draft what to do. The decision recorded here carries the name of whoever is deciding.",
    "page": "agents.md",
    "page_title": "Bring your own agent",
+   "questions": {
+    "en": [
+     "What may an agent do on this node?",
+     "How do I connect my own agent?"
+    ],
+    "es": [
+     "¿Qué puede hacer un agente en este nodo?",
+     "¿Cómo conecto mi propio agente?"
+    ],
+    "id": [
+     "Apa yang boleh dilakukan agen di node ini?",
+     "Bagaimana cara menghubungkan agen saya sendiri?"
+    ]
+   },
    "quote": "An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the\nperson in front of it operate the node; it drafts, and a person dispatches.",
    "section": "",
    "title": "An agent drafts, a person dispatches",
@@ -25,6 +53,20 @@
    "more": "An act recorded through the bot lands in this ledger like one pressed on this page, with the person's own words as its note.",
    "page": "bot.md",
    "page_title": "The bot and the model ladder",
+   "questions": {
+    "en": [
+     "How do I ask the bot on Telegram?",
+     "Which model answers, and where does it run?"
+    ],
+    "es": [
+     "¿Cómo pregunto al bot en Telegram?",
+     "¿Qué modelo responde, y dónde se ejecuta?"
+    ],
+    "id": [
+     "Bagaimana cara bertanya ke bot di Telegram?",
+     "Model mana yang menjawab, dan di mana ia berjalan?"
+    ]
+   },
    "quote": "Somebody in the house asks \"is the air bad right now?\" on Telegram and\ngets an answer read from the node's own tools; somebody says \"I closed the windows\" and that is recorded, in\ntheir words, as an act.",
    "section": "",
    "title": "An answer in the household's words",
@@ -35,6 +77,20 @@
    "more": "The house is the solid line, the ring dotted, the street and the region dashed, the line itself dashed red. Where a distance has no source its trace is absent and the legend says which one.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which kind of card is this?",
+     "Why are there only four kinds?"
+    ],
+    "es": [
+     "¿Qué tipo de tarjeta es esta?",
+     "¿Por qué hay solo cuatro tipos?"
+    ],
+    "id": [
+     "Kartu jenis apa ini?",
+     "Mengapa hanya ada empat jenis?"
+    ]
+   },
    "quote": "Four card kinds and no fifth: readout, stack, series, row. A gap in a series is a gap in the line, never a ramp across the WHO line nobody measured. The node's own words are never uppercased: `µg/m³` once became `MG/M³` on the hero, a factor of a thousand.",
    "section": "The sections",
    "title": "Four card kinds and no fifth",
@@ -45,6 +101,20 @@
    "more": "Resolution 8 is coarser than the rounding already applied to the node's position, so the cell drawn on the ground puts nothing back that the node had held out.",
    "page": "concepts.md",
    "page_title": "Concepts",
+   "questions": {
+    "en": [
+     "How big is the cell this node stands in?",
+     "Who can see this cell and who cannot?"
+    ],
+    "es": [
+     "¿Qué tamaño tiene la celda donde está este nodo?",
+     "¿Quién puede ver esta celda y quién no?"
+    ],
+    "id": [
+     "Seberapa besar sel tempat node ini berdiri?",
+     "Siapa yang bisa melihat sel ini dan siapa yang tidak?"
+    ]
+   },
    "quote": "**The H3 cell.** The node stands in a hexagon of the H3 grid at resolution 8, with an edge of about half a\nkilometre: 497 m for node #1's cell, measured from the cell itself. The page prints it in the mono as a\nfifteen-character id such as `8895a4c843fffff`, with its edge length beside it.",
    "section": "The node and its place",
    "title": "The cell this node stands in",
@@ -55,6 +125,20 @@
    "more": "The line above the fold names the widest and the narrowest footprint; the fold holds all six. Each card counts its cells at the rung you are on, so the count moves with the ladder.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How much ground does this number cover?",
+     "Why does the number change with the rung?"
+    ],
+    "es": [
+     "¿Cuánto terreno cubre esta cifra?",
+     "¿Por qué la cifra cambia con el peldaño?"
+    ],
+    "id": [
+     "Seberapa luas wilayah yang dicakup angka ini?",
+     "Mengapa angkanya berubah dengan anak tangga?"
+    ]
+   },
    "quote": "\"Whose word, over how much ground\" covers with H3 cells the six footprints this node already declares,\nfrom `COAST_MAX_KM` for the sea to the three decimals `/health` rounds a position to. Each produces one\nnumber, and its card says how many cells of the rung you are on that one number has to cover.",
    "section": "The sections",
    "title": "One number, over how much ground",
@@ -65,6 +149,20 @@
    "more": "That is the documentation's example resolution line. The one under Decide is tonight's, read from this node, and when the neighbouring rungs give the same answer the page says so.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "How many stations fall in this node's cell?",
+     "Why is a cell exact in the index and not on the ground?"
+    ],
+    "es": [
+     "¿Cuántas estaciones caen en la celda de este nodo?",
+     "¿Por qué una celda es exacta en el índice y no sobre el terreno?"
+    ],
+    "id": [
+     "Berapa stasiun yang jatuh di sel node ini?",
+     "Mengapa sel tepat di indeks tetapi tidak di lapangan?"
+    ]
+   },
    "quote": "At resolution 8 one cell is 639,778 m² on node #1, about 0.64 km², with an edge of 497 m. The resolution line counts the cells this node's stations with a coordinate fall in, how many of those stations sit in the node's own cell, and how many of those are its own.",
    "section": "The lead",
    "title": "Exact in the index, approximate on the ground",
@@ -75,6 +173,20 @@
    "more": "`planetai sensors` prints these stations one line each, with `yours` or `reference` beside the id, and GET /sensors is the route a script reads them from. Only the ones in this node's custody can make a cell say live.",
    "page": "sensors.md",
    "page_title": "Sensors and sources",
+   "questions": {
+    "en": [
+     "Which of these stations are ours and here?",
+     "What makes a sensor counted?"
+    ],
+    "es": [
+     "¿Cuáles de estas estaciones son nuestras y están aquí?",
+     "¿Qué hace que un sensor cuente?"
+    ],
+    "id": [
+     "Stasiun mana yang milik kita dan ada di sini?",
+     "Apa yang membuat sebuah sensor dihitung?"
+    ]
+   },
    "quote": "Once one is\npolled, the rules have a room to fire on, and its hourly means can count toward this place's cell in the Fab\nCity Index. Whether they count is decided by two fields on the sensor's row, `local` and `custody`.",
    "section": "",
    "title": "Yours, here, and counted",
@@ -85,6 +197,20 @@
    "more": "A heat alert is a condition that holds for hours; a cooking spike is an event with a cooldown. The schema does not yet know an alert can clear, so the page says which it is.",
    "page": "alerts.md",
    "page_title": "Alerts",
+   "questions": {
+    "en": [
+     "Is this a condition or an event?",
+     "Why does the node not alert on every reading?"
+    ],
+    "es": [
+     "¿Es una condición o un evento?",
+     "¿Por qué el nodo no avisa con cada lectura?"
+    ],
+    "id": [
+     "Apakah ini keadaan atau kejadian?",
+     "Mengapa node tidak memberi peringatan untuk setiap bacaan?"
+    ]
+   },
    "quote": "The dashboard marks\nan open act-level alert as *current* only while its condition still holds (the house over the line, or the\nalert under two hours old), and otherwise says the reading came back on its own and the alert is still open.",
    "section": "Conditions that are not events",
    "title": "Conditions that are not events",
@@ -95,6 +221,20 @@
    "more": "Your own instruments are drawn in ink on this page, the borrowed ones faint, and what only the satellite knows in orange.",
    "page": "concepts.md",
    "page_title": "Concepts",
+   "questions": {
+    "en": [
+     "Which sensors does this node count as its own?",
+     "Why is a neighbour's sensor not counted?"
+    ],
+    "es": [
+     "¿Qué sensores cuenta este nodo como suyos?",
+     "¿Por qué no se cuenta el sensor de un vecino?"
+    ],
+    "id": [
+     "Sensor mana yang dihitung node ini sebagai miliknya?",
+     "Mengapa sensor tetangga tidak dihitung?"
+    ]
+   },
    "quote": "**`custody`.** A generated column: `kind = 'child' OR (local AND kind <> 'peer')`. The only thing a cell may\ncount. Custody splits geography from responsibility: a peer's station can be closer than your own kit and\nstill never be counted.",
    "section": "Sources and sensors",
    "title": "Custody: who may be counted",
@@ -105,6 +245,20 @@
    "more": "The rungs that may leave the machine are drawn as a dotted texture rather than the cells blue, so blue keeps its one meaning on this page: an H3 cell. Under the ladder, a fold draws one cell at the rung you are on against the rungs either side, to scale, and what each thing this node speaks for costs to cover at it.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Which rung is this page reading at?",
+     "Why may the coarse rungs leave the machine?"
+    ],
+    "es": [
+     "¿En qué peldaño está leyendo esta página?",
+     "¿Por qué los peldaños gruesos pueden salir de la máquina?"
+    ],
+    "id": [
+     "Di anak tangga mana halaman ini membaca?",
+     "Mengapa anak tangga yang kasar boleh keluar dari mesin?"
+    ]
+   },
    "quote": "The **ladder** sits above the lead: eleven rungs, one per H3 resolution from 2 to 12, opening at 8. Rungs coarse enough that the cell may leave the machine (resolution 6 and coarser, the presence floor) are dotted rather than blue; rungs finer than the node says where it is are struck through.",
    "section": "The lead",
    "title": "The ladder: one rung per resolution",
@@ -115,6 +269,20 @@
    "more": "On this page the rule is small enough to check: every request this page made of anywhere but this node is in the ledger below, and the plan base makes none. What the node itself sends upward, and to whom, is on the Network view.",
    "page": "introduction.md",
    "page_title": "Introduction",
+   "questions": {
+    "en": [
+     "What data comes in to this node?",
+     "What data goes out, and how coarse is it?"
+    ],
+    "es": [
+     "¿Qué datos entran en este nodo?",
+     "¿Qué datos salen, y con qué detalle?"
+    ],
+    "id": [
+     "Data apa yang masuk ke node ini?",
+     "Data apa yang keluar, dan seberapa kasar?"
+    ]
+   },
    "quote": "The rule it runs on is Fab City's rule for production, applied to data. Fab City calls the old pattern PITO,\nproduct in, trash out, and the one it builds DIDO, data in, data out: materials stay in the city and knowledge\nmoves between cities.",
    "section": "What it is for",
    "title": "Data in, data out",
@@ -125,6 +293,20 @@
    "more": "The page prints them as house, street, ring and region, on one scale, so the eye can answer whether it is me or everywhere without arithmetic.",
    "page": "concepts.md",
    "page_title": "Concepts",
+   "questions": {
+    "en": [
+     "What are the four distances for this house?",
+     "Which distance is missing here, and why?"
+    ],
+    "es": [
+     "¿Cuáles son las cuatro distancias de esta casa?",
+     "¿Qué distancia falta aquí, y por qué?"
+    ],
+    "id": [
+     "Apa empat jarak untuk rumah ini?",
+     "Jarak mana yang tidak ada di sini, dan mengapa?"
+    ]
+   },
    "quote": "**The four distances.** Where a reading comes from, nearest first. The wire keys are `room` (local, indoor),\n`yard` (local, outdoor), `ring` (somebody else's device near here) and `region` (a model, a portal). The page\nprints them as house · street · ring · region; in Bahasa, rumah · jalan · sekitar · wilayah.",
    "section": "Sources and sensors",
    "title": "Four distances, not four resolutions",
@@ -135,6 +317,20 @@
    "more": "The years come from files this node already holds, read through GET /earth, and the node fetches none of them while you look. `planetai run earth fetch` is how a year gets here.",
    "page": "packs-reference.md",
    "page_title": "Packs that ship",
+   "questions": {
+    "en": [
+     "What changed on the ground around here?",
+     "Why can the satellite not say what changed?"
+    ],
+    "es": [
+     "¿Qué cambió en el terreno de alrededor?",
+     "¿Por qué el satélite no puede decir qué cambió?"
+    ],
+    "id": [
+     "Apa yang berubah di tanah sekitar sini?",
+     "Mengapa satelit tidak bisa mengatakan apa yang berubah?"
+    ]
+   },
    "quote": "The node's own copy of Google's AlphaEarth Satellite Embedding layers for its square of the planet, and the\nyear-over-year per-pixel change computed here from them: cosine distance at 10 m. Downloaded once on command, kept\nas files, compared with arithmetic. It says something changed, never what.",
    "section": "earth",
    "title": "It says something changed, never what",
@@ -145,6 +341,20 @@
    "more": "One row per rule, read from GET /effect over the whole record: how many acts, and how many were followed by the condition stopping. A recovery time in hours appears only for a rule that declares what it watches.",
    "page": "rho.md",
    "page_title": "ρ: the loop closed",
+   "questions": {
+    "en": [
+     "Which of our actions seem to work?",
+     "Why is elapsed time not an effect?"
+    ],
+    "es": [
+     "¿Cuáles de nuestras acciones parecen funcionar?",
+     "¿Por qué el tiempo transcurrido no es un efecto?"
+    ],
+    "id": [
+     "Tindakan kita mana yang tampaknya berhasil?",
+     "Mengapa waktu yang berlalu bukan efek?"
+    ]
+   },
    "quote": "It is elapsed time, not an effect. A window opened at 21:00 and air that cleared at 03:00 may be the window or\nmay be the night, and the node cannot tell.",
    "section": "What worked, per rule",
    "title": "Elapsed time, not an effect",
@@ -155,6 +365,20 @@
    "more": "Every row here arrived in GET /issues as provenance: the figure, its value, where it came from, the node's word for it and its age. A script or a spreadsheet reads the same route, with a token, or with none at SHARE_LEVEL=open.",
    "page": "api.md",
    "page_title": "HTTP API",
+   "questions": {
+    "en": [
+     "Where does each number on this page come from?",
+     "Can I read these figures from my own tools?"
+    ],
+    "es": [
+     "¿De dónde sale cada cifra de esta página?",
+     "¿Puedo leer estas cifras con mis propias herramientas?"
+    ],
+    "id": [
+     "Dari mana setiap angka di halaman ini berasal?",
+     "Bisakah saya membaca angka ini dari alat saya sendiri?"
+    ]
+   },
    "quote": "Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in.",
    "section": "",
    "title": "One API, and no private path in",
@@ -165,6 +389,20 @@
    "more": "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a forecast point more than 10 km from the node is said to be another place. Nothing on this card can raise an alert.",
    "page": "packs-reference.md",
    "page_title": "Packs that ship",
+   "questions": {
+    "en": [
+     "What is the forecast for the next hours?",
+     "Why is a forecast context and not a prediction?"
+    ],
+    "es": [
+     "¿Cuál es el pronóstico para las próximas horas?",
+     "¿Por qué un pronóstico es contexto y no una predicción?"
+    ],
+    "id": [
+     "Apa prakiraan untuk beberapa jam ke depan?",
+     "Mengapa prakiraan adalah konteks, bukan ramalan?"
+    ]
+   },
    "quote": "Official and model weather for this point over the next day, wind direction and rain, as context for reading the\nnode's own air. It fetches; it does not predict; it never sends an alert.",
    "section": "forecast",
    "title": "Context, not a prediction",
@@ -175,6 +413,20 @@
    "more": "The version at the foot is the one GET /health reports. Open it from the foot to read what every screen here asks first: the node, its version, its cell at resolution 8, its last poll.",
    "page": "api.md",
    "page_title": "HTTP API",
+   "questions": {
+    "en": [
+     "Is this node healthy right now?",
+     "What does a screen check first?"
+    ],
+    "es": [
+     "¿Está sano este nodo ahora mismo?",
+     "¿Qué comprueba primero una pantalla?"
+    ],
+    "id": [
+     "Apakah node ini sehat sekarang?",
+     "Apa yang diperiksa layar pertama kali?"
+    ]
+   },
    "quote": "What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.",
    "section": "Status",
    "title": "What every screen asks first",
@@ -185,6 +437,20 @@
    "more": "The node computes and the page draws. A number this page worked out for itself would be a bug, which is why the sentence, the numeral and the state word all arrive from GET /issues.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Why does this issue lead tonight?",
+     "What would make another issue lead?"
+    ],
+    "es": [
+     "¿Por qué este asunto va primero esta noche?",
+     "¿Qué haría que otro asunto fuera primero?"
+    ],
+    "id": [
+     "Mengapa isu ini memimpin malam ini?",
+     "Apa yang membuat isu lain memimpin?"
+    ]
+   },
    "quote": "The first thing on Now is the ladder, and under it the lead: the headline issue's kicker, its numeral and pictogram, the sentence, a why line and the rule. The last line gives when the numeral was read, the as-of time, how many alerts are open and in which stage, and a pill: `live`, `stale` or `cached`.",
    "section": "The lead",
    "title": "The lead",
@@ -195,6 +461,20 @@
    "more": "An alert's acted_at stays null until a person acts and records it, with this page's button, the CLI, the bot, a radio or an agent. It is the one measurement the node cannot make itself.",
    "page": "alerts.md",
    "page_title": "Alerts",
+   "questions": {
+    "en": [
+     "What is the difference between act, warn and info?",
+     "Which alerts reach me on Telegram?"
+    ],
+    "es": [
+     "¿Qué diferencia hay entre act, warn e info?",
+     "¿Qué alertas me llegan por Telegram?"
+    ],
+    "id": [
+     "Apa beda act, warn dan info?",
+     "Peringatan mana yang sampai ke saya di Telegram?"
+    ]
+   },
    "quote": "`ALERT_LEVEL` (default `act`) is the floor for interrupting a person. `planetai report level warn` lowers it\nwithout a restart. Below the floor an alert is still recorded, still drawn on the dashboard, and still in the\nbundle the next [report](report.md) is written from.",
    "section": "Levels",
    "title": "Three levels, one floor",
@@ -205,6 +485,20 @@
    "more": "With DECISION_REQUIRED=1 (Set up → Node) the node refuses an act that has no decision recorded before it, with 409, however the act arrives.",
    "page": "first-ten-minutes.md",
    "page_title": "First ten minutes",
+   "questions": {
+    "en": [
+     "What is the difference between deciding and doing?",
+     "What should I record when I act?"
+    ],
+    "es": [
+     "¿Qué diferencia hay entre decidir y hacer?",
+     "¿Qué debo anotar cuando actúo?"
+    ],
+    "id": [
+     "Apa beda memutuskan dan melakukan?",
+     "Apa yang harus saya catat saat bertindak?"
+    ]
+   },
    "quote": "A decision closes no alert and does not enter ρ. It is the record that somebody looked.",
    "section": "When a real alert arrives",
    "title": "A decision moves nothing",
@@ -215,6 +509,20 @@
    "more": "The foot names POST /mcp for an agent handed this node's address: streamable HTTP, with Authorization: Bearer and the admin token on every call. `planetai agent` prints the snippet to paste into a client.",
    "page": "mcp.md",
    "page_title": "MCP server and tools",
+   "questions": {
+    "en": [
+     "What can an agent do through MCP here?",
+     "Which tools are read, act and admin?"
+    ],
+    "es": [
+     "¿Qué puede hacer un agente por MCP aquí?",
+     "¿Qué herramientas son read, act y admin?"
+    ],
+    "id": [
+     "Apa yang bisa dilakukan agen lewat MCP di sini?",
+     "Alat mana yang read, act dan admin?"
+    ]
+   },
    "quote": "This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it\nhow the place is doing in the household's own words, and record, in a person's own words, that somebody\nacted.",
    "section": "",
    "title": "The surface an agent holds",
@@ -225,6 +533,20 @@
    "more": "What this card counts arrives through the gateway radio's MQTT uplink to this node's own broker. `planetai meshtastic` sets that up; with MESH_ALERTS=1 an act alert's first line goes back out over the mesh.",
    "page": "channels.md",
    "page_title": "Channels",
+   "questions": {
+    "en": [
+     "How does the mesh work without WiFi?",
+     "Which radios can hear this node?"
+    ],
+    "es": [
+     "¿Cómo funciona la malla sin WiFi?",
+     "¿Qué radios pueden oír a este nodo?"
+    ],
+    "id": [
+     "Bagaimana mesh bekerja tanpa WiFi?",
+     "Radio mana yang bisa mendengar node ini?"
+    ]
+   },
    "quote": "For sensors and alerts where there is no WiFi. One gateway radio with WiFi uplinks the mesh to an MQTT broker on\nthe node; field radios carry a sensor on a battery; a shelf radio paired to a phone receives alerts when the\ninternet is down.",
    "section": "Meshtastic, the LoRa mesh",
    "title": "Where there is no WiFi",
@@ -235,6 +557,20 @@
    "more": "Each row here is one of those records, newest first: who, which stage, how long ago, and decided first where a decision came before the act.",
    "page": "cli.md",
    "page_title": "Command line",
+   "questions": {
+    "en": [
+     "What should my note say?",
+     "Who reads the notes I write?"
+    ],
+    "es": [
+     "¿Qué debería decir mi nota?",
+     "¿Quién lee las notas que escribo?"
+    ],
+    "id": [
+     "Apa yang harus ditulis dalam catatan saya?",
+     "Siapa yang membaca catatan yang saya tulis?"
+    ]
+   },
    "quote": "`planetai act` is the terminal's way of closing a loop, and the note is the only record of what was\ndone.",
    "section": "Reading the node",
    "title": "The note is the record",
@@ -245,6 +581,20 @@
    "more": "The wires on the right are what leaves this node: hourly means to a parent, the Index cells and ρ. A wire with nothing on it is dashed. `planetai config set PARENT_API_URL` and `PARENT_TOKEN` give this node a parent.",
    "page": "federation.md",
    "page_title": "Federation and the Index",
+   "questions": {
+    "en": [
+     "What does this node send to its district?",
+     "How does this cell join the Index?"
+    ],
+    "es": [
+     "¿Qué envía este nodo a su distrito?",
+     "¿Cómo entra esta celda en el Índice?"
+    ],
+    "id": [
+     "Apa yang dikirim node ini ke distriknya?",
+     "Bagaimana sel ini bergabung dengan Index?"
+    ]
+   },
    "quote": "With a parent set, a house becomes one cell in a district's picture\nwithout its readings leaving the house: every hour it sends up hourly means and the timestamps of its alerts,\nand nothing else.",
    "section": "",
    "title": "One cell in a district's picture",
@@ -255,6 +605,20 @@
    "more": "The cell drawn here is the one this node would announce, and its area is the whole of what a stranger on the radio learns. GET /presence answers with enabled false until RETICULUM_PRESENCE=1.",
    "page": "channels.md",
    "page_title": "Channels",
+   "questions": {
+    "en": [
+     "What does this node announce over radio?",
+     "How coarse is the cell it announces?"
+    ],
+    "es": [
+     "¿Qué anuncia este nodo por radio?",
+     "¿Con qué detalle anuncia su celda?"
+    ],
+    "id": [
+     "Apa yang diumumkan node ini lewat radio?",
+     "Seberapa kasar sel yang diumumkannya?"
+    ]
+   },
    "quote": "Presence is separate and off by default: with `RETICULUM_PRESENCE=1` the bridge announces the node's name and a\ncoarse H3 cell every half hour, at `RETICULUM_PRESENCE_RES` (3) and never finer than resolution 6, whatever the\nsetting says, so an exact place never leaves.",
    "section": "Reticulum, LXMF",
    "title": "A coarse cell, and never finer",
@@ -265,6 +629,20 @@
    "more": "The foot of every view but the wall opens on this sentence and the purpose that goes with it, quoted from the documentation rather than rewritten, so this page and the documentation say the same thing.",
    "page": "introduction.md",
    "page_title": "Introduction",
+   "questions": {
+    "en": [
+     "Why one computer per place?",
+     "What does distributed production mean for this house?"
+    ],
+    "es": [
+     "¿Por qué un ordenador por lugar?",
+     "¿Qué significa la producción distribuida para esta casa?"
+    ],
+    "id": [
+     "Mengapa satu komputer untuk satu tempat?",
+     "Apa arti produksi terdistribusi bagi rumah ini?"
+    ]
+   },
    "quote": "PLANETAI is the hyperlocal compute and intelligence layer for distributed production, and a node is its\nunit: one computer per place, on hardware the place already owns.",
    "section": "",
    "title": "One computer per place",
@@ -275,6 +653,20 @@
    "more": "Provenance is ink only and square on this page, never a coloured pill, and the full H3 id is printed once per object and never truncated.",
    "page": "concepts.md",
    "page_title": "Concepts",
+   "questions": {
+    "en": [
+     "Which numbers here are live and which are modelled?",
+     "What does partial mean on this page?"
+    ],
+    "es": [
+     "¿Qué cifras son en vivo y cuáles son de un modelo?",
+     "¿Qué significa parcial en esta página?"
+    ],
+    "id": [
+     "Angka mana yang langsung dan mana yang dimodelkan?",
+     "Apa arti sebagian di halaman ini?"
+    ]
+   },
    "quote": "`live`: measured by this node, in the house or on the street. `partial`: derived, a portal, the ring.\n`model`: a model row. `cached`: a committed fixture replayed through the node's own engine.",
    "section": "Provenance words on the page",
    "title": "Provenance words",
@@ -285,6 +677,20 @@
    "more": "Every number on this page answers to that purpose. The issues the lead can name are air, heat, land and coast; water and soil are not among them in this version, so the page draws neither.",
    "page": "introduction.md",
    "page_title": "Introduction",
+   "questions": {
+    "en": [
+     "What is this node for?",
+     "How does it help the air, water and soil here?"
+    ],
+    "es": [
+     "¿Para qué sirve este nodo?",
+     "¿Cómo ayuda al aire, el agua y el suelo de aquí?"
+    ],
+    "id": [
+     "Untuk apa node ini?",
+     "Bagaimana node ini membantu udara, air dan tanah di sini?"
+    ]
+   },
    "quote": "Its purpose is\nfixed: clean air, water and soil for the people and the other living things around each node.",
    "section": "What it is for",
    "title": "What a node is for",
@@ -295,6 +701,20 @@
    "more": "The barcode under Observe is hourly means of the house's PM2.5: the finest time step this page shows, and still not a raw reading.",
    "page": "how-it-works.md",
    "page_title": "How it works",
+   "questions": {
+    "en": [
+     "What leaves this machine, and what never does?",
+     "Where are the raw readings kept?"
+    ],
+    "es": [
+     "¿Qué sale de esta máquina, y qué nunca sale?",
+     "¿Dónde se guardan las lecturas en bruto?"
+    ],
+    "id": [
+     "Apa yang keluar dari mesin ini, dan apa yang tidak pernah?",
+     "Di mana bacaan mentah disimpan?"
+    ]
+   },
    "quote": "Raw readings stay. What travels is a summary: hourly means and alert timestamps to a parent node, if\n`PARENT_API_URL` names one; the daily [export](storage.md), with hourly means, your own sensors named by role\n(`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the centre of the node's\nresolution-8 cell (not its point), under CC BY 4.0",
    "section": "What leaves the machine, and what never does",
    "title": "Raw readings stay",
@@ -305,6 +725,20 @@
    "more": "Each row is one kind of source, with the oldest and newest hourly mean this node holds for it, from GET /reach. The climate normals the node pulled at install are dated years before it was switched on; its own sensors start on the day they were first polled.",
    "page": "install.md",
    "page_title": "Install",
+   "questions": {
+    "en": [
+     "Where does this node's own line start?",
+     "Who does this node reach?"
+    ],
+    "es": [
+     "¿Dónde empieza la línea propia de este nodo?",
+     "¿A quién llega este nodo?"
+    ],
+    "id": [
+     "Di mana garis node ini sendiri dimulai?",
+     "Siapa yang dijangkau node ini?"
+    ]
+   },
    "quote": "This page puts the node itself on a machine: two containers, a database on this disk, and the loops that read\nyour place every five minutes. Once it is done the node has pulled the air model and the climate normals for\nyour coordinates, answers on port 8080, and keeps every reading it takes on this machine.",
    "section": "",
    "title": "Where this node's own line starts",
@@ -315,6 +749,20 @@
    "more": "Record the decision posts `stage: decided` to POST /actions with your name and what will be done; Take its word fills in the rule's own line. The act comes after it, under Act.",
    "page": "packs.md",
    "page_title": "Packs",
+   "questions": {
+    "en": [
+     "What does this node suggest I do?",
+     "Where does that suggestion come from?"
+    ],
+    "es": [
+     "¿Qué me sugiere hacer este nodo?",
+     "¿De dónde sale esa sugerencia?"
+    ],
+    "id": [
+     "Apa yang disarankan node ini untuk saya lakukan?",
+     "Dari mana saran itu berasal?"
+    ]
+   },
    "quote": "End a message with a paragraph that starts with 👉 and says what a person does. The dashboard's Decide card\nlifts that paragraph out and shows it on its own as \"what this node suggests\"; a rule without one gets a line\nsaying the rule carries no recommendation, because the page will not invent one.",
    "section": "Rules",
    "title": "What this node suggests",
@@ -325,6 +773,20 @@
    "more": "The care label under Measure is those refusals as signs. Nothing to press on the wall is the wall's own refusal: it is an instruction, not a control.",
    "page": "how-it-works.md",
    "page_title": "How it works",
+   "questions": {
+    "en": [
+     "What will this node always refuse to do?",
+     "Can an agent change a setting here?"
+    ],
+    "es": [
+     "¿Qué se negará siempre a hacer este nodo?",
+     "¿Puede un agente cambiar un ajuste aquí?"
+    ],
+    "id": [
+     "Apa yang selalu ditolak node ini?",
+     "Bisakah agen mengubah pengaturan di sini?"
+    ]
+   },
    "quote": "No raw readings leave the instance that recorded them. No cell is upgraded from `mock` or `partial` to `live`\nby aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to\nfunction. No scale is skipped: a city aggregator is built from nodes, not declared from above.",
    "section": "Refusals that hold at every stage",
    "title": "Refusals that hold at every stage",
@@ -335,6 +797,20 @@
    "more": "The counts here are GET /sources, read the first time somebody opens Network: what the pinned registry lists for this place, how many entries have code on this node, and the places to make things and the designs to build. `planetai sources` prints the same list.",
    "page": "sources.md",
    "page_title": "The source registry",
+   "questions": {
+    "en": [
+     "What else could be measured here?",
+     "Which open sources cover this place?"
+    ],
+    "es": [
+     "¿Qué más se podría medir aquí?",
+     "¿Qué fuentes abiertas cubren este lugar?"
+    ],
+    "id": [
+     "Apa lagi yang bisa diukur di sini?",
+     "Sumber terbuka mana yang mencakup tempat ini?"
+    ]
+   },
    "quote": "A node measures what its adapters read. The registry is the network's shared list of what could be measured\nat each pillar and scale, and of the places a person could go to act on it, carried inside every node as a\npinned copy.",
    "section": "",
    "title": "What could be measured here",
@@ -345,6 +821,20 @@
    "more": "The page draws it as the alerts answered over the alerts raised, with the median minutes to the first answer, and counts the rings rather than sizing them.",
    "page": "rho.md",
    "page_title": "ρ: the loop closed",
+   "questions": {
+    "en": [
+     "What is this node's ρ, and what counts toward it?",
+     "How do I close the loop on an alert?"
+    ],
+    "es": [
+     "¿Cuál es la ρ de este nodo, y qué cuenta para ella?",
+     "¿Cómo cierro el ciclo de una alerta?"
+    ],
+    "id": [
+     "Berapa ρ node ini, dan apa yang dihitung?",
+     "Bagaimana saya menutup lingkaran pada sebuah peringatan?"
+    ]
+   },
    "quote": "ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the one\nnumber on the page that comes from a person, the Fab City Index's `Governance` cell at the node's scale, and\nthe reason the `actions` table is the Index's instrument rather than an app feature.",
    "section": "",
    "title": "ρ: the loop closed",
@@ -355,6 +845,20 @@
    "more": "Each value here says where it came from. A value saved here is live within 20 seconds and wins over .env, a blank returns the key to .env, and every save is a row in actions with the actor dashboard.",
    "page": "configuration.md",
    "page_title": "Configuration",
+   "questions": {
+    "en": [
+     "Which setting should I look at first?",
+     "Who can change a setting, and how is it recorded?"
+    ],
+    "es": [
+     "¿Qué ajuste debería mirar primero?",
+     "¿Quién puede cambiar un ajuste, y cómo queda registrado?"
+    ],
+    "id": [
+     "Pengaturan mana yang harus saya lihat dulu?",
+     "Siapa yang bisa mengubah pengaturan, dan bagaimana dicatat?"
+    ]
+   },
    "quote": "A setting is a decision the household makes about its node: which sensors count as its own, what it\nwatches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question\nmay leave the house for an online model.",
    "section": "",
    "title": "A setting is a decision",
@@ -365,6 +869,20 @@
    "more": "The page waits for seven local days before it draws a day, and until then says how many it has. GET /shape?metric=pm25 returns the same hours, with how many hourly means went into each.",
    "page": "api.md",
    "page_title": "HTTP API",
+   "questions": {
+    "en": [
+     "What does a usual day look like here?",
+     "Is today different from the usual day?"
+    ],
+    "es": [
+     "¿Cómo es un día normal aquí?",
+     "¿Es hoy distinto de un día normal?"
+    ],
+    "id": [
+     "Seperti apa hari biasa di sini?",
+     "Apakah hari ini berbeda dari biasanya?"
+    ]
+   },
    "quote": "The day this place usually has: one mean per local hour of day, over the whole record, indoor apart from outdoor. Only this node's own sensors (`local`) count.",
    "section": "Sensors and readings",
    "title": "The day this place usually has",
@@ -375,6 +893,20 @@
    "more": "The request ledger below is this page confessing what it asked of the world while you looked at it. The offline plan asks nothing; Telegram is reached by the node, never by this page.",
    "page": "sharing.md",
    "page_title": "Sharing and security",
+   "questions": {
+    "en": [
+     "Who can read this page without a token?",
+     "What changes if SHARE_LEVEL is open?"
+    ],
+    "es": [
+     "¿Quién puede leer esta página sin token?",
+     "¿Qué cambia si SHARE_LEVEL está en open?"
+    ],
+    "id": [
+     "Siapa yang bisa membaca halaman ini tanpa token?",
+     "Apa yang berubah jika SHARE_LEVEL terbuka?"
+    ]
+   },
    "quote": "`SHARE_LEVEL` is reach, not publishing: it says who on your network may read; it never sends anything\nanywhere. Change it in Set up, with `planetai config set SHARE_LEVEL open`, or over MCP; it is live within 20\nseconds.",
    "section": "`SHARE_LEVEL`",
    "title": "Reach, not publishing",
@@ -385,6 +917,20 @@
    "more": "These are the devices on this node's own ground, with their source, indoors or out, what each measures and when it last spoke. The row for an open hardware manager says what is not here yet: design files, firmware, and where nearby a device could be made or mended.",
    "page": "sensors.md",
    "page_title": "Sensors and sources",
+   "questions": {
+    "en": [
+     "Where should a sensor go in this house?",
+     "Why is a sensor named for its place?"
+    ],
+    "es": [
+     "¿Dónde debería ir un sensor en esta casa?",
+     "¿Por qué un sensor lleva el nombre de su lugar?"
+    ],
+    "id": [
+     "Di mana sebaiknya sensor ditaruh di rumah ini?",
+     "Mengapa sensor dinamai menurut tempatnya?"
+    ]
+   },
    "quote": "Name it after the place: the name becomes the sensor's name on the page and in\nevery message. For an enclosure, the outdoor-sensor-enclosure work is the printable answer, and Fab Lab Bali\nprints it.",
    "section": "Siting",
    "title": "Named for its place, in a box made nearby",
@@ -395,6 +941,20 @@
    "more": "Observe, decide, act, measure: the four stages this page is read in. A section whose data is not on this node prints one honest line in its place, never a blank and never a guess.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "Where is this house in the loop right now?",
+     "What happens between deciding and acting?"
+    ],
+    "es": [
+     "¿En qué punto del ciclo está esta casa ahora?",
+     "¿Qué pasa entre decidir y actuar?"
+    ],
+    "id": [
+     "Di mana rumah ini dalam lingkaran sekarang?",
+     "Apa yang terjadi antara memutuskan dan bertindak?"
+    ]
+   },
    "quote": "Every section is registered with the page contract: `id`, `pack`, `stage`, `title`, `reads` and `render` (or `lead`), and optionally `order`, `needs`, `controls`, `wall`, `learn`, `notes`, `level` and `anchor`. The shell draws each one in the stage it belongs to, in the order the loop runs: observe, decide, act, measure.",
    "section": "The sections",
    "title": "The order the loop runs",
@@ -405,6 +965,20 @@
    "more": "State is carried by weight, fill and dash, never by hue: act is set at 700 and the other states at 500. Colour is argument only: blue a cell, green a loop closed, red a line crossed.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What state is each issue in tonight?",
+     "Why are states not shown in colour?"
+    ],
+    "es": [
+     "¿En qué estado está cada asunto esta noche?",
+     "¿Por qué los estados no se muestran con color?"
+    ],
+    "id": [
+     "Dalam keadaan apa setiap isu malam ini?",
+     "Mengapa keadaan tidak ditunjukkan dengan warna?"
+    ]
+   },
    "quote": "For every issue the keeper declared in `NODE_ISSUES` (an undeclared one is still shown, as `watched: false`), the node computes a `state`: `act` (something is asked), `notable` (something changed), `quiet`, `context` (an issue that informs and never asks) or `none` (no record).",
    "section": "Issues, states and distances",
    "title": "States, in weight not hue",
@@ -415,6 +989,20 @@
    "more": "The request count sits in the tab bar so the price of switching to satellite is visible before you pay it: live tiles need MAP_TILES=on, and a press may only ever reduce it.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What does the satellite map send, and to whom?",
+     "Why is the offline plan the default?"
+    ],
+    "es": [
+     "¿Qué envía el mapa satelital, y a quién?",
+     "¿Por qué el plano sin conexión es el predeterminado?"
+    ],
+    "id": [
+     "Apa yang dikirim peta satelit, dan kepada siapa?",
+     "Mengapa denah luring menjadi bawaan?"
+    ]
+   },
    "quote": "Three bases: `plan`, offline, from `/place/geojson`: the building footprints within `PLACE_RADIUS_M`, projected in the browser with every vertex kept, nothing leaving the house; `sat`, Sentinel-2 cloudless tiles; `osm`, OpenStreetMap tiles.",
    "section": "The ground",
    "title": "What a map costs",
@@ -425,6 +1013,20 @@
    "more": "The figures here are GET /trust, one row per local sensor: its coverage over seven days, the channels that stopped moving, and how old the sensor is, which explains a low coverage without a fault.",
    "page": "packs-reference.md",
    "page_title": "Packs that ship",
+   "questions": {
+    "en": [
+     "Are this node's sensors telling the truth?",
+     "Which sensor looks stuck or silent?"
+    ],
+    "es": [
+     "¿Dicen la verdad los sensores de este nodo?",
+     "¿Qué sensor parece atascado o callado?"
+    ],
+    "id": [
+     "Apakah sensor node ini jujur?",
+     "Sensor mana yang tampak macet atau diam?"
+    ]
+   },
    "quote": "Whether the node's own sensors are telling it the truth: coverage over the last week, channels that have stopped\nchanging under a kit that still reports, and collocated sensors that disagree about the level. Written from node\n#1, Ungasan, after it sent that household three warnings on Telegram on 7 September 2026 at 21:17 and all three\nwere wrong.",
    "section": "trust",
    "title": "Whether its own sensors tell the truth",
@@ -435,6 +1037,20 @@
    "more": "Under the alerts in Act, the row with the nearest fab lab is that sentence where the pack is on: the lab, how far, and the dated archive it came from. With MAKE_ENABLED off, the row is the node's own help text for that setting instead.",
    "page": "introduction.md",
    "page_title": "Introduction",
+   "questions": {
+    "en": [
+     "Where is the nearest place to make something?",
+     "Why does the node point to a workshop?"
+    ],
+    "es": [
+     "¿Dónde está el lugar más cercano para fabricar algo?",
+     "¿Por qué el nodo señala un taller?"
+    ],
+    "id": [
+     "Di mana tempat terdekat untuk membuat sesuatu?",
+     "Mengapa node menunjuk ke bengkel?"
+    ]
+   },
    "quote": "The `make` pack names the nearest fab lab in a\nsentence, and no node has yet handed a job to a workshop. What runs today is the loop from a reading to a\nperson acting and to a measured result; the loop from a reading to something made nearby is the direction.",
    "section": "What it is for",
    "title": "The nearest place to make it",
