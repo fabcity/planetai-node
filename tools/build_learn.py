@@ -243,7 +243,7 @@ MARKS = [
 
     # --- the foot, on every view but the wall ----------------------------------------------------
     ("production", "One computer per place", "introduction.md", None,
-     "PLANETAI is the hyperlocal compute", "the place already owns.",
+     "PLANETAI is hyperlocal compute", "the place already owns.",
      "The foot of every view but the wall opens on this sentence and the purpose that goes with it, "
      "quoted from the documentation rather than rewritten, so this page and the documentation say "
      "the same thing."),

@@ -9,7 +9,8 @@ ROOT = Path(__file__).resolve().parent.parent
 TOOL = [sys.executable, str(ROOT / "tools/check_site.py")]
 PURPOSE = ("Its purpose is fixed: clean air, water and soil for the people and the other living things "
            "around each node.")
-GOOD = f"""export const PURPOSE = '{PURPOSE}';
+GOOD = f"""export const LINE = 'hyperlocal compute and intelligence for distributed production';
+export const PURPOSE = '{PURPOSE}';
 export const RHO = {{
   asked: 137, answered: 29, rho: 0.212, medianMinutes: 112,
   window: '30 days', asOf: '{{asof}}', prov: 'cached',
@@ -48,6 +49,7 @@ for what, js, extra, needle in [
     ("a language", good.replace(", 'Spanish'", ""), [], "languages"),
     ("the docs count", good.replace(f"docsPages: {f['docs']}", "docsPages: 40"), [], "documentation pages"),
     ("the purpose", good.replace("clean air, water and soil", "clean air"), [], "PURPOSE"),
+    ("the line", good.replace("for distributed production';", "for regenerative local production';"), [], "not inside the lead"),
     ("a stale rho at release", good.replace(today, "2026-01-01"), ["--version", "v0.73"], "days ago"),
     ("rho's name", good.replace("alerts answered", "alerts acted on"), [], "answered"),
 ]:

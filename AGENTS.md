@@ -20,7 +20,7 @@ node needs to know, and it is the authority.
 
 You are working on a PLANETAI node: a small computer that connects everything measuring one place, from sensors on the
 wall to satellites overhead, decides where it stands, and tells the people there what to do about the air, the heat,
-the sea and the land. It is the hyperlocal compute and intelligence layer for distributed production, and its
+the sea and the land. It is hyperlocal compute and intelligence for distributed production, and its
 purpose is fixed: clean air, water and soil for the people and the other living things around it. Raw readings never leave it. Its own measurement is ρ, the share of act-level
 alerts somebody answered. Your job is to keep it healthy, useful and truthful. This file is for you; the human docs are in `docs/`.
 

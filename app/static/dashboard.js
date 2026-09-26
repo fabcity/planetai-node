@@ -6977,7 +6977,7 @@ function chrome(node, city, view) {
  * person or an agent needs: this node's own /health, its /mcp endpoint, its /llms.txt, and the
  * documentation. Before v0.73 none of them was named anywhere on the page, which left an agent
  * handed this node's address with nothing to find and a household with no way to the docs. */
-const PURPOSE = 'PLANETAI is the hyperlocal compute and intelligence layer for distributed production. '
+const PURPOSE = 'PLANETAI is hyperlocal compute and intelligence for distributed production. '
   + 'Its purpose is fixed: clean air, water and soil for the people and the other living things '
   + 'around each node.';
 const DOCS_URL = 'https://planetai.fab.city/docs/';

@@ -1,6 +1,6 @@
 # Introduction
 
-PLANETAI is the hyperlocal compute and intelligence layer for distributed production, and a node is its
+PLANETAI is hyperlocal compute and intelligence for distributed production, and a node is its
 unit: one computer per place, on hardware the place already owns. It reads what measures that place, from a
 particle sensor on the wall to a satellite overhead, tells the people there in plain sentences what to do
 about it, records what they did, and measures whether it worked. Raw readings stay on the machine that
