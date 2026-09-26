@@ -1,5 +1,39 @@
 # Changelog
 
+## v0.75 — 2026-09-26 — the page draws what the node leads with, answers in three questions, and can be asked
+
+*What your node measures did not change. The page did: the lead is drawn from whatever issue the node puts
+first, simple mode is cut to what a person in the house asks, and a pane beside the page asks the node's own
+model, on this machine, about what it shows. It reads, it changes nothing, and nothing asked there is kept.*
+
+- **The lead draws the hero it is handed.** The numeral, its pictogram (or the issue's sign) and a rule
+  under it all come from `issues[lead].hero` (v0.74), so the page no longer knows anything about air. The
+  rule replaces the four meters in the lead: one line between the issue's own two ends, a dot per distance,
+  and the line in red where the issue has one. Coast draws a rule with no line; land draws a date and no rule.
+  The four distances in full stay in the matrix.
+- **Simple is the three questions.** Is it fine, is anything changing, is there something to do. On Now it
+  draws the lead with its plain sentence, the open alert with **I did this**, the ground with a one-line key,
+  the node's own paragraph (`digest.simple`), and **also watched here**: press another issue to look at it,
+  **back** to return to the node's pick. That choice is the reader's, kept until the page reloads. No ladder,
+  no sections, no stage names; advanced is drawn exactly as before.
+- **Ask the node.** A toggle right of the modes, or the foot on a phone, opens a pane that asks the model
+  `planetai agent local` set up, on this machine only. It runs the read tools through `/mcp` as
+  `dashboard-chat`; a setting change or an "I did this" it reaches for is a card the person presses, with the
+  token the page already holds. Its context and every tool result carry no coordinate, sensor or station
+  name, sensor id or `meta`. The thread lives in the browser tab and dies with it; the node writes no
+  transcript, no row and no log line with a word in it. With no model, the pane searches the documentation
+  and shows the two ways to give it a voice. New: `GET /ask/status`, `POST /ask`, `GET /docs/search`
+  (`open` share level), `UI_ASK` (default `on`), `digest.prompts`. The app container can now reach Ollama on
+  the host, like the agent container.
+- **Learn lands in the pane.** The learn panel is gone. A pressed mark is a card in the pane's thread,
+  quoting the documentation and citing its page by title; **next** walks the marks in the order the page
+  draws them. Each mark carries two questions that become the pane's chips while its card is in focus.
+- **New documentation page:** [Ask the node](docs/site/ask.md), 43 pages in all. `sharing.md` says what the
+  pane never sends.
+
+The Indonesian and Spanish words from v0.74 and this release (the plain line, the paragraph, the prompts,
+the learn questions) are assistant-written and want a native reader.
+
 ## v0.74 — 2026-09-26 — the node says what leads, and why, in a shape any issue can fill
 
 *A node release: nothing on the page moves yet. What changed is what `/issues` hands the page. Every issue
