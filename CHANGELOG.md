@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.74 — 2026-09-26 — the node says what leads, and why, in a shape any issue can fill
+
+*A node release: nothing on the page moves yet. What changed is what `/issues` hands the page. Every issue
+now says how it should be drawn when it leads, the node says which step of its rule picked the lead, and it
+writes three new things in the household's words for the page to draw next release.*
+
+- **The hero is a slot.** Each issue's `.yml` declares `hero:`: its sign and pictogram, which figure is the
+  numeral, the rule under it (two ends, which distances sit on it, whether its line is drawn) and whether
+  its stamp is a time or a date. The engine fills `issues[k].hero` with tonight's values. `make test`
+  refuses a hero the page could not draw: a sign not in `signs.svg`, a numeral the issue does not have, a
+  rule dot at a distance it lacks. An issue with no hero is watched and never leads.
+- **`lead: {issue, by}`.** The same pick as `headline`, by the same rule (state, then what moved, then the
+  order this place chose), and which of the three steps made it. The rule did not change.
+- **Three things written in the household's words**, in English, Bahasa Indonesia and Spanish:
+  `hero.plain`, one sentence of the other distances and the line; `hero.stamp`, when the numeral was read,
+  or for land when the satellite looked and when it looks next; and `digest.simple`, a paragraph of three
+  sentences (the house's own stations and the nearest others, the oldest open alert, how the last 30 days
+  of asking went). The Indonesian and Spanish want a native reader.
+- **The engine reads 30 days of act-level alerts.** It read the last 200 alerts of any level, which on
+  node #1 reached back only ten days. It now reads every act-level alert of the last 30 days plus the last
+  200 of anything. **The number of open alerts a node reports can rise**: an act-level alert from the last
+  30 days that nobody answered now counts as open, where before it had fallen out of the read.
+- **The headline tests run.** They sat below `sys.exit()` in `tests/test_issues_engine.py` from 18 Sep and
+  never ran; they run now, with the no-hero case added.
+
 ## v0.73 — 2026-09-23 — the node says what it is for, and what it publishes is one press away
 
 *What your node measures did not change. What changed is what it says about itself: why it exists, in
