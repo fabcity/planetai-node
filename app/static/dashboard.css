@@ -1487,3 +1487,8 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .askbody { overflow: auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px;
   align-content: start; padding-top: 6px }
 #askpane .askbody > .nomodel { overflow: visible }
+/* The one line that says a question may leave the house. Ink and weight, not the red of a crossed line:
+   it is a fact about where the answer comes from, chosen under Set up, not an alarm. */
+#askpane .ah .m.out { color: var(--ink); font-weight: 700 }
+#askpane .ledger .out { color: var(--ink); font-weight: 700 }
+#askpane .ledger .out i { background: none; border: 1.5px solid var(--ink) }

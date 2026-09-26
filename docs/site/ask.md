@@ -1,24 +1,26 @@
 # Ask the node
 
-The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model on this
-machine: the one `planetai agent local` set up for Telegram, asked through the same tools. It reads the page and
+The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names
+for this node, the same one the Telegram bot uses, asked through the same tools. It reads the page and
 the node, it explains, and it changes nothing. When a question needs a change, it puts the change on a card and
 the person presses it. Nothing asked or answered is kept.
 
-This is the part of the node that answers in sentences. It needs a model on the machine; without one the pane
+This is the part of the node that answers in sentences. It needs a model; without one the pane
 still searches this documentation.
 
 ## Opening it
 
 1. Press **ask the node**, right of the modes in the header. On a phone the button is in the foot, and the pane
    opens as a sheet from the bottom. Learn mode opens it by itself.
-2. The pane's header names the model, says `runs on this machine`, and says what it may do: `reads the page ·
-   records what you did · changes nothing`. When it says `no model on this node yet`, see the last section.
+2. The pane's header names the model and where it runs (`runs on this machine`, `runs on <host>, on your
+   network`, or `runs online at <host>`), and says what it may do: `reads the page · records what you did ·
+   changes nothing`. When it says `no model on this node yet`, see the last section.
 3. Press one of the three questions under the thread, or type one. The questions are written by the node from
    tonight's figures: why the lead leads, the oldest open alert, what the lead's line means.
 
 An answer arrives word by word. Under it a ledger line names every read the model made, how many milliseconds
-each took, and `on this machine`.
+each took, and which model answered and where it runs. When the first model does not answer, the next one does,
+and the ledger says so.
 
 `UI_ASK` under Set up turns the pane off for everybody: no toggle, no pane. It is `on` by default. The wall never
 shows it.
@@ -56,16 +58,36 @@ Nothing is stored. The thread is in the browser tab and goes when the tab closes
 no database row and no log line with a word in it: the log says which tool ran and for how long. `GET
 /ask/status` answers `stored: false`.
 
-The pane asks the local rung only, never a tailnet model and never an online one, whatever `AGENT_PREFER` says
-for Telegram. That is what `runs on this machine` means.
+## Which model answers
 
-## Two ways to give it a voice
+Set up → agent decides, for the pane and the Telegram bot alike, and so does `planetai config`:
 
-With no model set up, the pane says so, offers the documentation search, and shows two cards with a copy button.
+| setting | what it does |
+|---|---|
+| `AGENT_REMOTE_URL`, `AGENT_REMOTE_MODEL` | a bigger model on another machine of yours. Ollama on a laptop is `http://<laptop>.local:11434/v1`, with `OLLAMA_HOST=0.0.0.0` set on the laptop so it listens beyond itself |
+| `AGENT_ONLINE_URL`, `AGENT_ONLINE_MODEL`, `AGENT_ONLINE_KEY` | an online model, Anthropic, OpenAI or any other that speaks the OpenAI chat API |
+| `AGENT_PREFER` | `private` (the default): the model on your network, then this machine's, and never online. `fallback`: your network, then online, then this machine. `strongest`: online first |
+
+The pane tries them in that order and skips a model that does not answer for five minutes. It reaches the model on
+this machine only when `planetai agent local` set one up, so a node with no local model can still answer from a
+laptop on its network.
+
+**An online model is a choice to give up sovereignty over what is asked.** With `fallback` or `strongest`, the
+question and the page's context go to the provider named in `AGENT_ONLINE_URL`: its own sentences and numbers,
+never a coordinate, a sensor's name or its id, because the pane removes those before any model reads them. The
+header says so in bold whenever an online model is in the order, every answer that came from it says `runs online
+at <host>`, and the fine print says the provider keeps what its own terms say it keeps. The node still keeps
+nothing.
+
+## Three ways to give it a voice
+
+With no model set up, the pane says so, offers the documentation search, and shows three cards with a copy button.
 
 - **A model on this machine.** The card names the tag `planetai agent local` suggests for this machine's memory
   and its size, with the line to run on the node: `planetai agent local pull <tag>`. `planetai agent local` sets up
   Ollama and the loop first; neither downloads anything until you pull.
+- **A model on another machine of yours.** Under Set up → agent, `AGENT_REMOTE_URL` and `AGENT_REMOTE_MODEL`: see
+  "Which model answers" above. It stays on your network.
 - **Your own agent, over MCP.** The card prints the `claude mcp add` line with this node's address. `planetai
   agent` on the node prints the token. A remote agent gets the whole MCP surface, which rounds positions,
   refuses what it must and records every write; see [Bring your own agent](agents.md).

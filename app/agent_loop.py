@@ -351,8 +351,8 @@ PANE_PROPOSES = frozenset(n for n, c in TOOL_CLASS.items() if c in ("act", "admi
 PANE_TOOLS = PANE_RUNS | PANE_PROPOSES
 AUDIT_PANE = "dashboard-chat"
 
-PANE_SYSTEM = """You are PLANETAI node '{node}', answering a person reading this node's own dashboard, on the machine
-the node runs on. The page's context is below: what the page is showing right now. Use it first; call a tool
+PANE_SYSTEM = """You are PLANETAI node '{node}', answering a person reading this node's own dashboard. The page's
+context is below: what the page is showing right now. Use it first; call a tool
 only when the question needs more.
 - You may read. You may not change anything. To change a setting, call settings_set with
   {{"changes": {{"KEY": "value"}}}}; nothing changes, the person is shown a card and decides. Say that is what you did.
@@ -411,63 +411,110 @@ def recommend() -> dict:
     return {"tag": tag, "size": size, "memory_gb": gb or None, "pull": f"planetai agent local pull {tag}"}
 
 
-async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub, chat_fn=None):
+def where_of(rung: Rung) -> dict:
+    """Where a rung runs, in the words the pane prints: this machine, your network, or online.
+
+    `online` is the one that leaves the house: the pane says so in its header and on every answer it gives."""
+    from urllib.parse import urlparse
+    host = urlparse(rung.url).hostname or rung.url
+    return {"rung": rung.name, "model": rung.model, "host": host,
+            "where": {"local": "this machine", "remote": "your network"}.get(rung.name, "online")}
+
+
+def pane_rungs(cfg: dict, with_local: bool = True) -> list[Rung]:
+    """The ladder the pane walks: the same settings and the same AGENT_PREFER as the Telegram bot, so one
+    choice under Set up → agent governs both. `private` (the default) never includes the online rung.
+    `with_local` is False when no loop was set up here, so no Ollama is assumed on this machine."""
+    rungs = []
+    for r in ladder(cfg):
+        if r.name == "local":
+            if not with_local:
+                continue
+            r = local_rung()
+            r.skip_until = _SKIPS.get("local", 0.0)
+        rungs.append(r)
+    return rungs
+
+
+async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub, chat_fn=None,
+               rungs: list[Rung] | None = None):
     """One answer for the dashboard's pane, as a stream of (event, data).
 
     `call(name, args)` runs a read tool and returns its text; `scrub(text)` is what every result passes through
     before the model sees it. Events: `tools` per read (name and ms), `proposal` per write the model reached for
-    (tool and args; app/ask.py adds the setting's words), `token` for the answer, `done`, or `error`.
+    (tool and args; app/ask.py adds the setting's words), `token` for the answer, `done` with where the answer
+    was produced, or `error`.
 
-    NOTHING IS LOGGED BUT THE TOOL'S NAME AND ITS TIME. Not the question, not the answer, not the arguments:
-    the pane keeps no transcript anywhere, and a log line is a transcript by another name.
+    The rungs are tried in order, and a rung that fails is skipped for five minutes, as on Telegram. What a
+    failed attempt produced is dropped, not streamed: a proposal from a rung that then fell over must not sit
+    on the page beside the same proposal from the rung that answered.
+
+    NOTHING IS LOGGED BUT THE TOOL'S NAME, ITS TIME AND WHICH RUNG ANSWERED. Not the question, not the answer,
+    not the arguments: the pane keeps no transcript anywhere, and a log line is a transcript by another name.
     """
     chat_fn = chat_fn or chat
-    rung = local_rung()
-    convo = [{"role": "system", "content": system}, *messages]
-    try:
-        async with httpx.AsyncClient(timeout=240) as hc:
-            for _ in range(MAX_ROUNDS):
-                msg = await chat_fn(hc, rung, convo, tools, system=system)
-                convo.append(msg)
-                calls = msg.get("tool_calls") or _text_call(msg.get("content"))
-                if not calls:
-                    text = clean(msg.get("content"))
-                    if rung.small and not text:
-                        fin = await chat_fn(hc, rung, convo, None, final=True, system=system)
-                        try:
-                            text = clean(json.loads(fin.get("content") or "{}").get("answer", ""))
-                        except ValueError:
-                            text = clean(fin.get("content"))
-                    for word in (text or "(no answer)").split(" "):
-                        yield "token", {"text": word + " "}
-                    yield "done", {"rung": rung.name, "model": rung.model}
-                    return
-                for c in calls:
-                    fn = c["function"]["name"]
-                    args = c["function"].get("arguments") or {}
-                    if isinstance(args, str):
-                        try:
-                            args = json.loads(args)
-                        except ValueError:
-                            args = {}
-                    if fn in PANE_PROPOSES:
-                        yield "proposal", {"tool": fn, "args": args}
-                        text = "Nothing was changed. It is on a card in front of the person, who decides."
-                    elif fn in PANE_RUNS:
-                        t0 = time.time()
-                        try:
-                            text = scrub(await call(fn, args))[:8000]
-                        except Exception as e:  # noqa: BLE001
-                            text = f"tool error: {type(e).__name__}"
-                        ms = round((time.time() - t0) * 1000)
-                        log.info("[pane] tool %s %d ms", fn, ms)
-                        yield "tools", {"tool": fn, "ms": ms}
-                    else:
-                        text = "That tool is not offered here."
-                    convo.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
-            yield "error", {"message": "ran out of steps; ask something narrower"}
-    except httpx.HTTPError as e:
-        yield "error", {"message": f"the model on this machine did not answer ({type(e).__name__})"}
+    rungs = rungs if rungs is not None else [local_rung()]
+    now = time.time()
+    order = [r for r in rungs if r.skip_until < now] or list(rungs)
+    last = None
+    async with httpx.AsyncClient(timeout=240) as hc:
+        for rung in order:
+            convo = [{"role": "system", "content": system}, *messages]
+            events: list[tuple[str, dict]] = []
+            try:
+                for _ in range(MAX_ROUNDS):
+                    msg = await chat_fn(hc, rung, convo, tools, system=system)
+                    convo.append(msg)
+                    calls = msg.get("tool_calls") or _text_call(msg.get("content"))
+                    if not calls:
+                        text = clean(msg.get("content"))
+                        if rung.small and not text:
+                            fin = await chat_fn(hc, rung, convo, None, final=True, system=system)
+                            try:
+                                text = clean(json.loads(fin.get("content") or "{}").get("answer", ""))
+                            except ValueError:
+                                text = clean(fin.get("content"))
+                        for e in events:
+                            yield e
+                        for word in (text or "(no answer)").split(" "):
+                            yield "token", {"text": word + " "}
+                        log.info("[pane] answered by %s", rung.name)
+                        yield "done", where_of(rung)
+                        return
+                    for c in calls:
+                        fn = c["function"]["name"]
+                        args = c["function"].get("arguments") or {}
+                        if isinstance(args, str):
+                            try:
+                                args = json.loads(args)
+                            except ValueError:
+                                args = {}
+                        if fn in PANE_PROPOSES:
+                            events.append(("proposal", {"tool": fn, "args": args}))
+                            text = "Nothing was changed. It is on a card in front of the person, who decides."
+                        elif fn in PANE_RUNS:
+                            t0 = time.time()
+                            try:
+                                text = scrub(await call(fn, args))[:8000]
+                            except Exception as e:  # noqa: BLE001
+                                text = f"tool error: {type(e).__name__}"
+                            ms = round((time.time() - t0) * 1000)
+                            log.info("[pane] tool %s %d ms", fn, ms)
+                            events.append(("tools", {"tool": fn, "ms": ms}))
+                        else:
+                            text = "That tool is not offered here."
+                        convo.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
+                for e in events:
+                    yield e
+                yield "error", {"message": "ran out of steps; ask something narrower"}
+                return
+            except (httpx.HTTPError, KeyError, ValueError) as e:
+                last = e
+                rung.skip_until = time.time() + SKIP_FOR
+                _SKIPS[rung.name] = rung.skip_until
+                log.warning("[pane] %s did not answer (%s); trying the next rung", rung.name, type(e).__name__)
+    w = ", ".join(f"{where_of(r)['model']} ({where_of(r)['where']})" for r in order) or "none set up"
+    yield "error", {"message": f"no model answered ({type(last).__name__ if last else 'none'}): tried {w}"}
 
 
 class TelegramError(Exception):

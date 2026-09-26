@@ -136,33 +136,63 @@ def context(doc: dict, loc: str, view: str, mode: str, focus: str | None = None,
     return out
 
 
+AGENT_KEYS = ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY",
+              "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY")
+
+
 def configured() -> bool:
-    """A loop is configured when the agent profile is on: `planetai agent local` adds it."""
+    """A loop on this machine is set up when the agent profile is on: `planetai agent local` adds it."""
     return "agent" in (os.getenv("COMPOSE_PROFILES") or "").replace(" ", "").split(",")
 
 
-def _probe(model: str) -> tuple[bool, str]:
+def rungs() -> list:
+    """The models the pane may ask, in order: the same Set up → agent settings and AGENT_PREFER the Telegram
+    bot reads, so one choice governs both. The local rung only when a loop is set up on this machine; a
+    remote model on the network works without one, and an online one only when AGENT_PREFER allows it."""
+    return agent_loop.pane_rungs({k: settings.get(k, "") for k in AGENT_KEYS}, with_local=configured())
+
+
+def _probe(rung) -> tuple[bool, str]:
+    """Whether a rung would answer now. Local asks Ollama for its tags; a remote server is asked for its
+    models, the OpenAI-compatible way; an online one is not probed, because a key that is set is a choice
+    somebody made, and a request to check it would be a request off the network nobody asked for."""
+    if rung.name == "online":
+        return True, ""
+    if rung.name == "remote":
+        try:
+            ok = httpx.get(rung.url + "/models", headers=rung.headers(), timeout=3).status_code < 400
+        except httpx.HTTPError:
+            ok = False
+        return (True, "") if ok else (False, f"{agent_loop.where_of(rung)['host']} is not answering")
     url = os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
     try:
         tags = httpx.get(url + "/api/tags", timeout=3).json().get("models") or []
     except (httpx.HTTPError, ValueError):
         return False, "Ollama is installed and not answering"
     names = {t.get("name") for t in tags} | {str(t.get("name", "")).removesuffix(":latest") for t in tags}
-    return (True, "") if model in names else (False, f"{model} is not on this machine yet")
+    return (True, "") if rung.model in names else (False, f"{rung.model} is not on this machine yet")
 
 
 @router.get("/ask/status")
 def ask_status():
-    """Which model the pane would ask, whether it is running, and what it may do. 404 when no loop is set up."""
-    if not configured():
+    """Which model the pane asks first, where it runs, whether it answers, and what it may do. 404 when no model
+    is set up at all: none on this machine, none on the network, and no online one AGENT_PREFER allows."""
+    order = rungs()
+    if not order:
         # The page draws its no-model state from this body: what to pull for this machine, and the
         # other way in, a person's own agent over MCP.
         raise HTTPException(404, {"error": "no model is set up on this node; `planetai agent local` sets one up",
                                   "recommend": agent_loop.recommend(), "mcp": "/mcp",
                                   "token_hint": "planetai agent"})
-    rung = agent_loop.local_rung()
-    running, why = _probe(rung.model)
-    return {"model": rung.model, "rung": rung.name, "running": running, "why": why or None,
+    first = order[0]
+    running, why = _probe(first)
+    here = agent_loop.where_of(first)
+    return {"model": first.model, "rung": first.name, "where": here["where"], "host": here["host"],
+            "running": running, "why": why or None,
+            "rungs": [agent_loop.where_of(r) for r in order],
+            # True when the question and the page's context may leave the house: an online rung is in the
+            # order, which only AGENT_PREFER fallback or strongest allows.
+            "leaves": any(r.name == "online" for r in order),
             "tools": [{"name": n, "class": TOOL_CLASS[n]} for n in sorted(agent_loop.PANE_TOOLS)],
             "stored": False}
 
@@ -223,7 +253,8 @@ def _sse(event: str, data: dict) -> str:
 @router.post("/ask")
 async def ask(body: AskBody):
     """One answer, streamed as server-sent events: token · tools · proposal · done · error. Nothing is kept."""
-    if not configured():
+    order = rungs()
+    if not order:
         raise HTTPException(404, "no model is set up on this node; `planetai agent local` sets one up")
     import main                                    # noqa: PLC0415 — main includes this router at the bottom of itself
     from issues import api as issues_api           # noqa: PLC0415
@@ -249,7 +280,7 @@ async def ask(body: AskBody):
                     res = await session.call_tool(name, args)
                     return "\n".join(getattr(x, "text", "") for x in res.content)
                 async for event, data in agent_loop.pane([m.model_dump() for m in body.messages], system, tools,
-                                                         call, scrub):
+                                                         call, scrub, rungs=order):
                     yield _sse(event, _proposal(data, loc) if event == "proposal" else data)
         except Exception as e:  # noqa: BLE001
             log.warning("ask: %s", type(e).__name__)                  # the kind of failure, never the words
