@@ -1481,3 +1481,9 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .card.mark .more .who { font: 700 10px var(--mono); letter-spacing: .08em; color: var(--ink) }
 #askpane .card.mark .src { font: 500 10.5px/1.6 var(--mono); color: var(--mute); margin: 0 0 10px }
 #askpane .card.mark .src a { color: var(--cells); overflow-wrap: anywhere }
+/* With no model the pane is one scrolling column: the card in focus, its search chip, then the
+   no-model sentence, the search and the two cards. As separate grid rows the card was squeezed to
+   whatever the first row had left. */
+#askpane .askbody { overflow: auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px;
+  align-content: start; padding-top: 6px }
+#askpane .askbody > .nomodel { overflow: visible }

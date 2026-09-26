@@ -8568,10 +8568,11 @@ function draw() {
     ? `<div class="thread" id="ask-thread">${t.map(msg).join('')}</div>${composer()}`
     : STATUS.refused ? `<p class="plead">${esc(STATUS.said)}</p>`
     /* Without a model the card stands alone, and the chips search the documentation for its title. */
-    : (cards.length ? `<div class="thread">${learnCard(cards[cards.length - 1])}</div>` : '')
+    : `<div class="askbody">`
+      + (cards.length ? learnCard(cards[cards.length - 1]) : '')
       + (fm ? `<div class="chips"><button type="button" data-ask-find-q="${esc(plain(fm.title))}">`
         + `search the documentation for \u201c${esc(plain(fm.title))}\u201d</button></div>` : '')
-      + nomodel());
+      + nomodel() + `</div>`);
   const th = el.querySelector('#ask-thread');
   if (th) th.scrollTop = th.scrollHeight;
 }

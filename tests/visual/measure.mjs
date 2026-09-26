@@ -2720,6 +2720,8 @@ async function learnwalk() {
     return { order, visited, srcs, cards, panel: !!document.getElementById('learnpanel'),
       pane: document.body.classList.contains('askopen') };
   });
+  await h.page.waitForTimeout(800);
+  await h.page.screenshot({ path: path.join(OUT, 'learnwalk_1440.png') });
   await h.browser.close();
   if (got.panel) fails.push('the learn panel is still in the markup');
   if (!got.pane) fails.push('pressing a mark did not open the pane');
