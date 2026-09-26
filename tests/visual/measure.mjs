@@ -454,9 +454,15 @@ async function serveNodeAPI(route, u) {
      model running; unset = a node with no loop, which answers 404 with what to pull. /ask streams one
      canned answer that reaches for MAP_TILES, so the page's proposal card can be looked at. */
   if (u.pathname === '/ask/status') {
+    /* PAI_ASK_ONLINE=1: the node's Set up puts an online model first (AGENT_PREFER=strongest). */
+    const online = process.env.PAI_ASK_ONLINE === '1';
+    const top = online ? { rung: 'online', model: 'claude-x', host: 'api.anthropic.com', where: 'online' }
+      : { rung: 'local', model: process.env.PAI_ASK_MODEL, host: 'host.docker.internal', where: 'this machine' };
     await (process.env.PAI_ASK_MODEL
       ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
-          model: process.env.PAI_ASK_MODEL, rung: 'local', running: true, why: null, stored: false,
+          model: top.model, rung: top.rung, where: top.where, host: top.host, leaves: online,
+          rungs: online ? [top, { rung: 'local', model: process.env.PAI_ASK_MODEL, host: 'host.docker.internal', where: 'this machine' }] : [top],
+          running: true, why: null, stored: false,
           tools: [{ name: 'issues', class: 'read' }, { name: 'act', class: 'act' }, { name: 'settings_set', class: 'admin' }] }) })
       : route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ detail: {
           error: 'no model is set up on this node; `planetai agent local` sets one up', mcp: '/mcp', token_hint: 'planetai agent',
@@ -473,7 +479,9 @@ async function serveNodeAPI(route, u) {
           leaves: { en: 'Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at.' },
           undo: { en: 'Set MAP_TILES back to off under Set up \u2192 node.' } })
       + words.map(w => sse('token', { text: w + ' ' })).join('')
-      + sse('done', { rung: 'local', model: process.env.PAI_ASK_MODEL || 'qwen3.5:4b' }) });
+      + sse('done', process.env.PAI_ASK_ONLINE === '1'
+        ? { rung: 'online', model: 'claude-x', host: 'api.anthropic.com', where: 'online' }
+        : { rung: 'local', model: process.env.PAI_ASK_MODEL || 'qwen3.5:4b', host: 'host.docker.internal', where: 'this machine' }) });
     return true;
   }
   if (u.pathname === '/docs/search') {
@@ -2644,7 +2652,7 @@ async function askpane() {
   });
   await h.browser.close();
   if (!none.shown || !none.body) fails.push('with ?ask=1 the pane is not drawn');
-  if (none.cards !== 2 || !none.pull || !none.mcp) fails.push(`the no-model state lacks its two cards: ${JSON.stringify(none)}`);
+  if (none.cards !== 3 || !none.pull || !none.mcp) fails.push(`the no-model state lacks its three cards: ${JSON.stringify(none)}`);
   if (!none.find || !none.hits) fails.push(`the no-model state's search found nothing for map_tiles: ${JSON.stringify(none)}`);
 
   process.env.PAI_ASK_MODEL = 'qwen3.5:4b';
@@ -2681,10 +2689,31 @@ async function askpane() {
     if (!got.kept) fails.push('the thread is not in sessionStorage, so a reload in this tab loses it');
   }
   if (writes.length) fails.push(`the pane wrote: ${writes.join(', ')}`);
+
+  /* An online model first: the header, every answer's ledger line and the fine print must say so. */
+  process.env.PAI_ASK_ONLINE = '1';
+  h = await open(tagged({ name: 'askpane_online', view: 'now', w: 1440, state: 'populated', ask: true }));
+  const on = await h.page.evaluate(async () => {
+    try { sessionStorage.removeItem('planetai_ask_thread'); } catch (e) { /* none */ }
+    for (let i = 0; i < 20 && !document.querySelector('#askpane [data-ask-send]'); i++) await new Promise(r => setTimeout(r, 100));
+    const f = document.querySelector('#askpane [data-ask-send]');
+    if (!f) return {};
+    f.elements.q.value = 'how is it'; f.requestSubmit();
+    for (let i = 0; i < 30 && !document.querySelector('#askpane .ledger .out'); i++) await new Promise(r => setTimeout(r, 100));
+    const p = document.getElementById('askpane');
+    return { head: (p.querySelector('.ah') || {}).textContent || '', ledger: (p.querySelector('.ledger') || {}).textContent || '',
+      fine: (p.querySelector('.fine') || {}).textContent || '' };
+  });
+  await h.browser.close();
+  delete process.env.PAI_ASK_ONLINE;
+  if (!/runs online at api\.anthropic\.com/.test(on.head || '') || !/leave your network/.test(on.head || ''))
+    fails.push(`with an online model first the header does not say so: ${(on.head || '').slice(0, 160)}`);
+  if (!/claude-x · runs online at api\.anthropic\.com/.test(on.ledger || '')) fails.push(`the answer's ledger does not say it came from online: ${on.ledger}`);
+  if (!/provider/.test(on.fine || '')) fails.push('the fine print does not say an online provider keeps what its terms say');
   delete process.env.PAI_ASK_MODEL;
   for (const f of fails) console.log('FAIL askpane:', f);
-  if (!fails.length) console.log(`  askpane: no model = search (${none.hits} hits) and two cards; with one, MAP_TILES is a card `
-    + 'with now, proposed, what leaves and undo, asking for the token; nothing written');
+  if (!fails.length) console.log(`  askpane: no model = search (${none.hits} hits) and three cards; with one, MAP_TILES is a card `
+    + 'with now, proposed, what leaves and undo, asking for the token; nothing written; an online model says so in the header, the ledger and the fine print');
   process.exit(fails.length ? 1 : 0);
 }
 

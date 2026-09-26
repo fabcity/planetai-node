@@ -94,8 +94,11 @@ RUNTIME = {
                            "private \u2014 nothing leaves your network, and it is what this node does until somebody "
                            "here chooses otherwise. fallback \u2014 your own remote model, then online, then the "
                            "small local one. strongest \u2014 online first, so every question goes to the online "
-                           "model whenever a key is set."),
-    "AGENT_REMOTE_URL":   ("agent", "Remote model URL", False, True, "A bigger local model on your tailnet, OpenAI-compatible: http://<host>:8082/v1"),
+                           "model whenever a key is set. It decides for the Telegram bot and the dashboard's ask "
+                           "pane alike. With fallback or strongest, what somebody asks, and the page's own "
+                           "sentences and numbers (never a position, a sensor's name or its id), go to the online "
+                           "model's provider, and that is a choice to give up this house's sovereignty over them."),
+    "AGENT_REMOTE_URL":   ("agent", "Remote model URL", False, True, "A bigger model on another machine of yours, on this network or your tailnet, OpenAI-compatible. Ollama on a laptop: http://<laptop>.local:11434/v1, with Ollama listening beyond the laptop (OLLAMA_HOST=0.0.0.0). exo: http://<host>:8082/v1. Nothing leaves your network."),
     "AGENT_REMOTE_MODEL": ("agent", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
     "AGENT_REMOTE_KEY":   ("agent", "Remote model key", True, True, "If that server asks for one."),
     "AGENT_ONLINE_URL":   ("agent", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),

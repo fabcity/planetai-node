@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.75.2 — 2026-09-26 — the ask pane answers from the model you choose, and says where it runs
+
+*In v0.75 the pane only ever asked the small model on the node's own machine. It now asks the models Set up
+names for the Telegram bot: a bigger one on a laptop on your network, or an online one if somebody here
+chooses to, and every answer says which model gave it and where that model runs.*
+
+- **One choice, under Set up → agent** (or `planetai config`), for the bot and the pane alike:
+  `AGENT_REMOTE_URL` and `AGENT_REMOTE_MODEL` for a model on another machine of yours (Ollama on a laptop is
+  `http://<laptop>.local:11434/v1`, with `OLLAMA_HOST=0.0.0.0` on the laptop), the `AGENT_ONLINE_*` keys for an
+  online one, and `AGENT_PREFER` for the order. `private`, the default, never goes online.
+- **The pane says where every answer came from.** The header names the model and `runs on this machine`,
+  `runs on <host>, on your network` or `runs online at <host>`; when an online model is in the order it adds,
+  in bold, that the question and the page's context leave your network. Each answer's ledger line names the
+  model that gave it. When one does not answer the next is tried, and nothing the failed one produced reaches
+  the page.
+- **An online model is a choice to give up sovereignty over what is asked**, and the Set up help for
+  `AGENT_PREFER` now says so for the pane too. What it would receive is the question and the page's own
+  sentences and numbers: the pane removes positions, sensor names and ids before any model reads them.
+- A node with no model of its own can answer from a laptop on its network: the pane no longer needs
+  `planetai agent local` when a remote model is set.
+
 ## v0.75.1 — 2026-09-26 — the ask pane answers on a live node
 
 *One fix. On v0.75 every question in the ask pane came back as "the node answered 500".*

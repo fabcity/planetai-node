@@ -8432,12 +8432,24 @@ async function status() {
   draw();
 }
 
+/* Where a model runs, in the pane's words. Set up → agent decides which models the pane may ask (the same
+   settings as the Telegram bot); the pane's job is to say, every time, which one answered and where. */
+const whereWords = w => (!w || !w.where || w.where === 'this machine') ? 'runs on this machine'
+  : w.where === 'your network' ? `runs on ${w.host}, on your network` : `runs online at ${w.host}`;
+function leaves(s) {
+  const out = (s.rungs || []).find(r => r.where === 'online');
+  if (!s.leaves || !out) return '';
+  return `<span class="m out">${s.where === 'online'
+    ? `your question and this page’s context leave your network, to ${esc(out.host)}`
+    : `if the models before it do not answer, your question and this page’s context go online, to ${esc(out.host)}`}`
+    + ` · Set up → agent decides</span>`;
+}
 function head() {
   const s = STATUS || {};
-  const who = s.ok ? `${esc(s.model)} · runs on this machine`
+  const who = s.ok ? `${esc(s.model)} · ${esc(whereWords(s))}`
     : s.missing ? 'no model on this node yet' : s.refused ? 'not answering this page' : 'asking the node…';
   return `<div class="ah"><div><b>ask the node</b><span class="m"><i class="${s.ok && s.running ? '' : 'none'}"></i>`
-    + `${who}</span><span class="m">reads the page · records what you did · changes nothing</span></div>`
+    + `${who}</span>${s.ok ? leaves(s) : ''}<span class="m">reads the page · records what you did · changes nothing</span></div>`
     + `<button type="button" class="x" data-ask-toggle aria-label="close the pane">close</button></div>`;
 }
 
@@ -8465,6 +8477,9 @@ function nomodel() {
       card('a model on this machine', `${rec.tag ? `${rec.tag}, ${rec.size || ''} on disk, is what this node suggests for its memory. ` : ''}`
         + 'On the node:', rec.pull || 'planetai agent local')
       + `<p class="or">or</p>`
+      + card('a model on another machine of yours', 'Under Set up \u2192 agent, the remote model\u2019s address '
+        + 'and tag. Ollama on a laptop on this network:', 'AGENT_REMOTE_URL=http://<laptop>.local:11434/v1')
+      + `<p class="or">or</p>`
       + card('your own agent, over MCP', 'From your own machine. `planetai agent` on the node prints the token.', mcp))
     + `</div>`;
 }
@@ -8473,7 +8488,8 @@ function ledger(m) {
   const ts = m.ledger || [];
   if (!ts.length && !m.done) return '';
   return `<div class="ledger">${ts.map(t => `<span><b>${esc(t.tool)}</b> ${esc(String(t.ms))} ms</span>`).join('')}`
-    + `<span><i></i>on this machine</span>${m.done ? `<span>${esc(m.done.model)}</span>` : ''}</div>`;
+    + (m.done ? `<span class="${m.done.where === 'online' ? 'out' : ''}"><i></i>${esc(m.done.model)} · `
+      + `${esc(whereWords(m.done))}</span>` : '') + `</div>`;
 }
 
 function proposal(p, i) {
@@ -8547,7 +8563,8 @@ function composer() {
     + `<button type="submit"${BUSY ? ' disabled' : ''}>ask</button></div>`
     + `<p class="fine">${fixture ? '<b>This page is a capture, and the pane asks the live node</b>: its answers are about '
       + 'tonight, not about what is drawn here. ' : ''}This conversation lives in this tab and is gone when you close it. `
-      + `<b>The node keeps no transcript.</b></p></form>`;
+      + `<b>The node keeps no transcript.</b>${(STATUS || {}).leaves ? ' An online model keeps what its provider’s own '
+        + 'terms say it keeps.' : ''}</p></form>`;
 }
 
 function draw() {

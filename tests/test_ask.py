@@ -235,6 +235,57 @@ check({t["class"] for t in st["tools"]} == {"read", "act", "admin"} and "setting
       f"/ask/status lists {st['tools']}")
 print("  status: 404 with no loop, running:false with the tag when Ollama is down")
 
+# ---------------------------------------------------------------- which model, and where it runs
+# The pane follows Set up → agent and AGENT_PREFER, the same settings as the Telegram bot. What it must never
+# do is reach an online model at `private`, or answer from one without saying so.
+ROWS = settings._cache["rows"]
+ROWS.update(AGENT_REMOTE_URL="http://macbook.local:11434/v1", AGENT_REMOTE_MODEL="qwen3:14b",
+            AGENT_ONLINE_URL="https://api.anthropic.com/v1", AGENT_ONLINE_MODEL="claude-x", AGENT_ONLINE_KEY="k")
+_probe_was, ask._probe = ask._probe, (lambda r: (True, ""))      # no network: macbook.local is not in this test
+for prefer, want, leaves_, first_where in (
+        ("private", ["remote", "local"], False, "your network"),
+        ("fallback", ["remote", "online", "local"], True, "your network"),
+        ("strongest", ["online", "remote", "local"], True, "online")):
+    ROWS["AGENT_PREFER"] = prefer
+    st = local.get("/ask/status").json()
+    got = [r["rung"] for r in st["rungs"]]
+    check(got == want, f"{prefer}: the pane would ask {got}, not {want}")
+    check(st["leaves"] is leaves_ and st["where"] == first_where, f"{prefer}: status says {st['where']}, leaves={st['leaves']}")
+    check(prefer != "private" or all(r["where"] != "online" for r in st["rungs"]), "private reached the online model")
+st = local.get("/ask/status").json()
+check(st["host"] == "api.anthropic.com" and st["model"] == "claude-x", f"strongest names {st['host']} {st['model']}")
+ROWS["AGENT_PREFER"] = "private"
+os.environ["COMPOSE_PROFILES"] = "mqtt"
+st = local.get("/ask/status")
+check(st.status_code == 200 and [r["rung"] for r in st.json()["rungs"]] == ["remote"]
+      and st.json()["host"] == "macbook.local", f"a remote model with no loop on this node: {st.text[:200]}")
+os.environ["COMPOSE_PROFILES"] = "mqtt,agent"
+ask._probe = _probe_was
+
+# A model that fails hands over to the next, and nothing from the failed attempt reaches the page: a card it
+# proposed before falling over must not stand beside the card from the model that answered.
+import httpx                                          # noqa: E402
+async def flaky_chat(hc, rung, messages, tools, final=False, system=None):
+    if rung.name == "remote":
+        if not any(m.get("role") == "tool" for m in messages):
+            return {"role": "assistant", "content": "", "tool_calls": [
+                {"id": "p", "function": {"name": "settings_set", "arguments": json.dumps({"changes": {"UI_ASK": "off"}})}}]}
+        raise httpx.ConnectError("macbook asleep")
+    return {"role": "assistant", "content": "The local model answered."}
+agent_loop.chat = flaky_chat
+r3 = local.post("/ask", json={"messages": [{"role": "user", "content": "anything"}]})
+ev3 = events(r3.text)
+done = next((d for e, d in ev3 if e == "done"), {})
+check(done.get("rung") == "local" and done.get("where") == "this machine",
+      f"after the remote model failed, the answer should come from this machine: {done}")
+check(not any(e == "proposal" for e, _ in ev3), "a proposal from the model that failed reached the page")
+check("".join(d["text"] for e, d in ev3 if e == "token").strip() == "The local model answered.", "the answer is not the local one's")
+agent_loop.chat = fake_chat
+agent_loop._SKIPS.clear()
+for k in ("AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY", "AGENT_PREFER"):
+    ROWS.pop(k, None)
+print("  ladder: private never goes online, strongest says it does, a failed model hands over and leaves nothing behind")
+
 # ---------------------------------------------------------------- docs search, and the share level
 hits = local.get("/docs/search", params={"q": "map_tiles"}).json()
 check(hits and all({"page", "anchor", "title", "snippet"} <= set(h) for h in hits)
