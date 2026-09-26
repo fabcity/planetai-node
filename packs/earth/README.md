@@ -208,5 +208,5 @@ The AlphaEarth Foundations Satellite Embedding dataset is produced by Google and
 This is the wording the dataset's licence asks for, and it travels with every derivative: the pack manifest,
 the `/earth` endpoint, the dashboard card, the PNG's own metadata, and the daily export.
 
-This pack is alpha, like the rest of the node. If the numbers look wrong for your place, that is worth an
+This pack is beta, like the rest of the node. If the numbers look wrong for your place, that is worth an
 email: info@fab.city.

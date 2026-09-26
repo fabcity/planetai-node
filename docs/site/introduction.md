@@ -14,9 +14,9 @@ Four questions, two minutes, running. Then `planetai telegram` for the alerts an
 dashboard. The walk-through is [Install](install.md); the ten minutes after it are
 [First ten minutes](first-ten-minutes.md).
 
-> **Note.** The node is alpha. Installing one makes you part of an experiment: things will break, some will
-> surprise you, and what you report decides what gets fixed first. Write to **info@fab.city** with what broke,
-> what helped and what did not. Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September
+> **Note.** The node is beta: `main` is the beta channel and every update is signed. Installing one still makes
+> you part of an experiment: things will break, some will surprise you, and what you report decides what gets
+> fixed first. Write to **info@fab.city** with what broke, what helped and what did not. Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September
 > 2026. Node #2 runs in Menorca.
 
 ## What it is for

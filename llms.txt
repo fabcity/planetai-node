@@ -5,7 +5,7 @@
 > on the wall, a radio in a field, the public station down the road, the city's open data, the satellite
 > overhead) into one picture sharp enough to act on, tells the people there in plain sentences on Telegram,
 > records what they did and measures whether it worked. Its purpose is fixed: clean air, water and soil for the
-> people and the other living things around it. Raw readings stay on the machine. Apache-2.0, alpha.
+> people and the other living things around it. Raw readings stay on the machine. Apache-2.0 today, AGPL-3.0-or-later once every contributor has consented; beta.
 > Documentation: https://planetai.fab.city/docs/ · programme: https://planetai.fab.city/
 
 The node is also an MCP server with twenty tools. If you are an agent working for somebody, start with

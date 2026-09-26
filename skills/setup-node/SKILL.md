@@ -69,7 +69,7 @@ planetai doctor    # every check, with the fix written next to any failure
 ```
 
 Then say the three things `docs/START_HERE.md` says: what a good week looks like, that ρ only moves when a
-person tells the node they acted, and that this is alpha and info@fab.city wants to hear what broke.
+person tells the node they acted, and that this is beta and info@fab.city wants to hear what broke.
 
 ## Never
 

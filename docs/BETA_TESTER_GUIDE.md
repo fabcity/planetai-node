@@ -1,6 +1,6 @@
 # Beta tester guide
 
-> **Alpha.** This is an experiment and you are joining it. Things will break. What you report decides what gets fixed
+> **Beta.** This is still an experiment and you are joining it. Things will break. What you report decides what gets fixed
 > first. Write to **info@fab.city** with what broke, what helped, and what did not.
 
 This is the path two testers follow in September 2026, rehearsed on a clean Ubuntu machine on 6 September with the

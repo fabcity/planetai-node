@@ -1,5 +1,10 @@
 # Changelog
 
+- 2026-09-26 · **Beta, where it still said alpha, and the licence on record.** `main` has been the beta channel since
+  20 September, and every update is signed. The README, the docs, the install screen and llms.txt still said
+  alpha. They now say beta, and they still say it is an experiment. Tomas's licence decision of 25 September is
+  recorded in `docs/decisions/2026-09-25-licence.md`: AGPL-3.0-or-later once every contributor has consented,
+  Apache-2.0 until then. `LICENSE` has not changed.
 - 2026-09-26 · **Set up saves only what you changed.** Saving a group used to write back every field in it,
   so a page opened earlier undid whatever the CLI, an agent or another screen had set since: on node #1 it put
   `AGENT_PREFER` back to `strongest` over a `private` chosen twenty minutes before, and the ask pane sent a
