@@ -802,6 +802,65 @@ const field = k => F.find(x => x.dataset.key === k);
     assert _st["again"] == [{"AGENT_PREFER": "fallback"}], \
         f"a second press, once the keeper has been shown, writes the keeper's value and only it: {_st['again']}"
 
+# The packs group sends its own fields, not only the switches.
+#
+# formValues() used to return PACKS_ENABLED from the pack switches and stop, so PACKS_ALLOW_CODE and every
+# key a pack declares were drawn in the packs group and never sent: "Saved." with nothing written, then
+# "Nothing to save" once saves diffed. PACKS_ENABLED has two controls there; the switches win only when
+# somebody moved one, so a text field naming a pack that is not installed survives an unrelated save.
+_pack_fn = re.search(r"function packSwitches\(\) \{.*?\n\}", _js_raw, re.S)
+assert _pack_fn, "Set up no longer defines packSwitches()"
+assert "DRAWN_PACKS = packSwitches();\n  LOADED = formValues();" in _setup_fns[3].group(0), \
+    "loadSetup() must record what the pack switches read before it records the form, or a switch can never be told from the field"
+if shutil.which("node"):
+    _pk = _node(_pack_fn.group(0) + "\n" + "\n".join(g.group(0) for g in _setup_fns[:3]) + "\nconst DRAWN = "
+                + json.dumps({"unlocked": True, "runtime": [
+                    {"key": "PACKS_ENABLED", "value": "make,local", "set": True, "secret": False},
+                    {"key": "PACKS_ALLOW_CODE", "value": "0", "set": False, "secret": False},
+                    {"key": "MAKE_RADIUS_KM", "value": "10", "set": False, "secret": False, "pack": "make"}]}) + r""";
+const window = { K: { age: m => Math.round(m) + ' min ago' } };
+const localStorage = { getItem: () => 'tok' };
+let GROUP = 'packs', DESC = DRAWN, LOADED = {}, DRAWN_PACKS = '', DIRTY = false, puts = [], said = [];
+const cls = on => ({ on, contains(c) { return c === 'on' && this.on; } });
+let F = [], S = [];
+const qa = sel => sel === '[data-key]' ? F : sel === '[data-pack]' ? S : [];
+const q = () => null;
+const toast = (m, bad) => said.push([m, !!bad]);
+const lock = () => {}, route = () => {};
+const loadSetup = () => {};
+globalThis.fetch = async (url, o = {}) => {
+  if (o.method === 'PUT') { puts.push(JSON.parse(o.body)); return { ok: true, status: 200, json: async () => ({}) }; }
+  if (url.startsWith('/actions')) return { ok: true, json: async () => [] };
+  return { ok: true, json: async () => DRAWN };
+};
+// The node's two installed packs are make and earth; `local` is named in the field and not installed.
+const draw = () => {
+  S = [{ dataset: { pack: 'make' }, classList: cls(true) }, { dataset: { pack: 'earth' }, classList: cls(false) }];
+  F = [{ dataset: { key: 'PACKS_ENABLED' }, type: 'text', value: 'make,local', classList: cls(false) },
+       { dataset: { key: 'PACKS_ALLOW_CODE', bool: '1' }, classList: cls(false) },
+       { dataset: { key: 'MAKE_RADIUS_KM' }, type: 'text', value: '10', classList: cls(false) }];
+  DRAWN_PACKS = packSwitches(); LOADED = formValues(); puts = []; said = [];
+};
+const field = k => F.find(x => x.dataset.key === k);
+(async () => {
+  const out = {};
+  draw(); field('PACKS_ALLOW_CODE').classList.on = true; await saveSettings(); out.code = puts;
+  draw(); field('MAKE_RADIUS_KM').value = '25'; await saveSettings(); out.packkey = puts;
+  draw(); field('PACKS_ENABLED').value = 'make'; await saveSettings(); out.text = puts;
+  draw(); S[1].classList.on = true; await saveSettings(); out.switch = puts;
+  draw(); await saveSettings(); out.untouched = { puts, said };
+  console.log(JSON.stringify(out));
+})();""")
+    assert _pk["code"] == [{"PACKS_ALLOW_CODE": "1"}], \
+        f"allowing code packs must write PACKS_ALLOW_CODE and nothing else, not the switches' PACKS_ENABLED: {_pk['code']}"
+    assert _pk["packkey"] == [{"MAKE_RADIUS_KM": "25"}], f"a pack's own key must be sent when it is edited: {_pk['packkey']}"
+    assert _pk["text"] == [{"PACKS_ENABLED": "make"}], \
+        f"with the switches untouched, the PACKS_ENABLED field is what is sent: {_pk['text']}"
+    assert _pk["switch"] == [{"PACKS_ENABLED": ""}], \
+        f"a moved switch wins over the field, and every pack on is blank: {_pk['switch']}"
+    assert _pk["untouched"]["puts"] == [] and "Nothing to save" in _pk["untouched"]["said"][0][0], \
+        f"a packs save with nothing edited must write nothing: {_pk['untouched']}"
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")
