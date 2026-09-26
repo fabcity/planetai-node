@@ -8156,23 +8156,33 @@ let DIRTY = false;
  * also wrote back the AGENT_PREFER it had drawn: node #1, 26 September 2026, `strongest` over the
  * `private` somebody had set at 18:07, and the ask pane sent a question online. */
 let LOADED = {};
+// What the pack switches read when the packs group was drawn.
+let DRAWN_PACKS = '';
+
+/* The pack switches as a PACKS_ENABLED value: blank when every pack is on. */
+function packSwitches() {
+  const all = [...qa('[data-pack]')];
+  const on = all.filter(c => c.classList.contains('on')).map(c => c.dataset.pack);
+  return on.length === all.length ? '' : on.join(',');
+}
 
 /* What the open group's fields say, key by key, read the same way when it is drawn and when it is
- * saved, so the difference is exactly what somebody changed. A secret left blank says nothing. */
+ * saved, so the difference is exactly what somebody changed. A secret left blank says nothing.
+ *
+ * The packs group used to return PACKS_ENABLED from the switches and nothing else, so its own
+ * fields — PACKS_ALLOW_CODE and every key a pack declares — were drawn and never sent: a keeper
+ * could not allow code packs or set a pack's key from here, though `planetai config` offers both.
+ * PACKS_ENABLED has two controls there, the switches and the text field; the switches win when
+ * somebody moved one, and otherwise the field says what it says. */
 function formValues() {
   const out = {};
-  if (GROUP === 'packs') {
-    const all = [...qa('[data-pack]')];
-    const on = all.filter(c => c.classList.contains('on')).map(c => c.dataset.pack);
-    out.PACKS_ENABLED = on.length === all.length ? '' : on.join(',');
-    return out;
-  }
   qa('[data-key]').forEach(el => {
     const k = el.dataset.key;
     if (el.dataset.bool) out[k] = el.classList.contains('on') ? '1' : '0';
     else if (el.type === 'password') { if (el.value) out[k] = el.value; }
     else out[k] = el.value;
   });
+  if (GROUP === 'packs' && packSwitches() !== DRAWN_PACKS) out.PACKS_ENABLED = packSwitches();
   return out;
 }
 
@@ -8315,6 +8325,7 @@ async function loadSetup() {
         : ` type="text" value="${esc(r.value)}" placeholder="${r.source === 'default' ? "not set; the node's own default applies" : ''}"`)
       + ` autocomplete="off">${err}</div></div>`;
   }).join('') || `<div class="empty">Nothing to set in this group.</div>`;
+  DRAWN_PACKS = packSwitches();
   LOADED = formValues();
   DIRTY = false;
 }
