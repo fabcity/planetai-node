@@ -735,6 +735,73 @@ const form = { querySelector: () => ({ disabled: false }), getAttribute: () => '
     assert _t["500"] == ["The node refused it (500).", True], f"no body, no invented sentence: {_t['500']}"
     assert _t["422"][0] == "field required (422)", f"a schema refusal's messages, joined: {_t['422']}"
 
+# Set up writes only what somebody changed, and never over a key that moved while it was open.
+#
+# Node #1, 26 September 2026: AGENT_PREFER was set to `private` over PUT /settings at 18:07. Two saves of
+# the agent group from a form drawn before that, made to change AGENT_REMOTE_URL, wrote every field in
+# the group back, AGENT_PREFER's stale `strongest` with them, and the ask pane sent a question online.
+# This runs the page's own saveSettings() against that morning, with the node's describe() shape.
+_setup_fns = [re.search(p, _js_raw, re.S) for p in (
+    r"function formValues\(\) \{.*?\n\}", r"function movedSince\(before, after, keys\) \{.*?\n\}",
+    r"async function saveSettings\(\) \{.*?\n\}", r"async function loadSetup\(\) \{.*?\n\}")]
+assert all(_setup_fns), "Set up no longer defines formValues(), movedSince(), saveSettings() or loadSetup()"
+assert "LOADED = formValues();" in _setup_fns[3].group(0), \
+    "loadSetup() no longer records what the form was drawn with, so a save cannot tell an edit from a stale value"
+if shutil.which("node"):
+    _rows = lambda prefer, url="": {"unlocked": True, "runtime": [
+        {"key": "AGENT_PREFER", "value": prefer, "set": True, "secret": False},
+        {"key": "AGENT_REMOTE_URL", "value": url, "set": bool(url), "secret": False},
+        {"key": "AGENT_ONLINE_KEY", "value": "•••• set", "set": True, "secret": True},
+        {"key": "QUIET_HOURS", "value": "0", "set": False, "secret": False}]}
+    _st = _node("\n".join(g.group(0) for g in _setup_fns[:3]) + "\nconst DRAWN = " + json.dumps(_rows("strongest"))
+                + "\nconst NOW = " + json.dumps(_rows("private")) + r""";
+const window = { K: { age: m => Math.round(m) + ' min ago' } };
+const localStorage = { getItem: () => 'tok' };
+let GROUP = 'agent', DESC = DRAWN, LOADED = {}, DIRTY = false, puts = [], said = [], boxes = {};
+const f = (key, value, extra = {}) => ({ dataset: { key }, type: 'text', value, classList: { contains: () => false }, ...extra });
+let F = [];
+const qa = sel => sel === '[data-key]' ? F : [];
+const q = sel => sel.startsWith('#err-') ? (boxes[sel.slice(5)] = boxes[sel.slice(5)] || { hidden: true }) : null;
+const toast = (m, bad) => said.push([m, !!bad]);
+const lock = () => {}, route = () => {};
+const loadSetup = () => {};
+globalThis.fetch = async (url, o = {}) => {
+  if (o.method === 'PUT') { puts.push(JSON.parse(o.body)); return { ok: true, status: 200, json: async () => ({}) }; }
+  if (url.startsWith('/actions')) return { ok: true, json: async () => [
+    { ts: new Date(Date.now() - 24 * 60000).toISOString(), stage: 'settings', actor: 'mcp', note: 'AGENT_PREFER' }] };
+  return { ok: true, json: async () => NOW };
+};
+const draw = () => {
+  F = [f('AGENT_PREFER', 'strongest'), f('AGENT_REMOTE_URL', ''), f('AGENT_ONLINE_KEY', '', { type: 'password' }),
+       f('QUIET_HOURS', '', { dataset: { key: 'QUIET_HOURS', bool: '1' } })];
+  DESC = DRAWN; LOADED = formValues(); puts = []; said = []; boxes = {};
+};
+const field = k => F.find(x => x.dataset.key === k);
+(async () => {
+  const out = {};
+  draw(); field('AGENT_REMOTE_URL').value = 'http://laptop.local:11434/v1';
+  await saveSettings(); out.incident = puts;
+  draw(); await saveSettings(); out.untouched = { puts, said };
+  draw(); field('AGENT_ONLINE_KEY').value = 'sk-new';
+  await saveSettings(); out.secret = puts;
+  draw(); field('AGENT_PREFER').value = 'fallback';
+  await saveSettings(); out.clash = { puts: [...puts], box: boxes.AGENT_PREFER, said };
+  await saveSettings(); out.again = puts;
+  console.log(JSON.stringify(out));
+})();""")
+    assert _st["incident"] == [{"AGENT_REMOTE_URL": "http://laptop.local:11434/v1"}], \
+        f"a save must send the one field that was edited, not the group's stale AGENT_PREFER with it: {_st['incident']}"
+    assert _st["untouched"]["puts"] == [] and "Nothing to save" in _st["untouched"]["said"][0][0], \
+        f"a save with nothing edited must write nothing, and say so: {_st['untouched']}"
+    assert _st["secret"] == [{"AGENT_ONLINE_KEY": "sk-new"}], f"a typed secret is sent, and only it: {_st['secret']}"
+    _box = _st["clash"].get("box") or {}
+    assert _st["clash"]["puts"] == [] and not _box.get("hidden", True), \
+        f"an edited key that moved on the node since the form was drawn must not be written over unseen: {_st['clash']}"
+    assert '"private"' in _box["textContent"] and "mcp, 24 min ago" in _box["textContent"], \
+        f"the page must say what the node holds now and who changed it, from the ledger: {_box}"
+    assert _st["again"] == [{"AGENT_PREFER": "fallback"}], \
+        f"a second press, once the keeper has been shown, writes the keeper's value and only it: {_st['again']}"
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")

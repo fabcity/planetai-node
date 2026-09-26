@@ -8151,6 +8151,36 @@ let GROUP = null, DESC = null, PACKS = [];
 // Whether this pane holds an edit nobody has saved. Changing tab used to re-render the pane from the
 // last describe(), so a typed value vanished with no warning and no way back.
 let DIRTY = false;
+/* What every field in the open group read when it was drawn. A save sends only what differs from it.
+ * It used to send every field, so a form opened at 18:00 and saved at 18:31 to change AGENT_REMOTE_URL
+ * also wrote back the AGENT_PREFER it had drawn: node #1, 26 September 2026, `strongest` over the
+ * `private` somebody had set at 18:07, and the ask pane sent a question online. */
+let LOADED = {};
+
+/* What the open group's fields say, key by key, read the same way when it is drawn and when it is
+ * saved, so the difference is exactly what somebody changed. A secret left blank says nothing. */
+function formValues() {
+  const out = {};
+  if (GROUP === 'packs') {
+    const all = [...qa('[data-pack]')];
+    const on = all.filter(c => c.classList.contains('on')).map(c => c.dataset.pack);
+    out.PACKS_ENABLED = on.length === all.length ? '' : on.join(',');
+    return out;
+  }
+  qa('[data-key]').forEach(el => {
+    const k = el.dataset.key;
+    if (el.dataset.bool) out[k] = el.classList.contains('on') ? '1' : '0';
+    else if (el.type === 'password') { if (el.value) out[k] = el.value; }
+    else out[k] = el.value;
+  });
+  return out;
+}
+
+/* The keys the node now holds differently from the describe() the form was drawn from. */
+function movedSince(before, after, keys) {
+  const row = (d, k) => ((d && d.runtime) || []).find(r => r.key === k) || {};
+  return keys.filter(k => row(before, k).value !== row(after, k).value || row(before, k).set !== row(after, k).set);
+}
 
 /* The groups this node has, in the order it declares them, with bootstrap last because it is the
  * one that is read at start and cannot be changed from here. */
@@ -8285,23 +8315,41 @@ async function loadSetup() {
         : ` type="text" value="${esc(r.value)}" placeholder="${r.source === 'default' ? "not set; the node's own default applies" : ''}"`)
       + ` autocomplete="off">${err}</div></div>`;
   }).join('') || `<div class="empty">Nothing to set in this group.</div>`;
+  LOADED = formValues();
   DIRTY = false;
 }
 
 async function saveSettings() {
   const tok = localStorage.getItem('planetai_admin');
-  const body = {};
-  if (GROUP === 'packs') {
-    const all = [...qa('[data-pack]')];
-    const on = all.filter(c => c.classList.contains('on')).map(c => c.dataset.pack);
-    body.PACKS_ENABLED = on.length === all.length ? '' : on.join(',');
-  } else {
-    qa('[data-key]').forEach(el => {
-      const k = el.dataset.key;
-      if (el.dataset.bool) body[k] = el.classList.contains('on') ? '1' : '0';
-      else if (el.type === 'password') { if (el.value) body[k] = el.value; }
-      else body[k] = el.value;
-    });
+  const now = formValues(), body = {};
+  for (const k of Object.keys(now)) if (now[k] !== LOADED[k]) body[k] = now[k];
+  const keys = Object.keys(body);
+  qa('#pane .err').forEach(e => { e.textContent = ''; e.hidden = true; });
+  if (!keys.length) { toast('Nothing to save: no setting here was changed.'); return; }
+  /* The CLI, an agent over MCP and another browser write the same keys. Before this page overwrites
+   * one, it asks the node whether that key moved since the form was drawn, and if it did, it says
+   * so beside the field and writes nothing. Pressing Save again replaces it: the keeper has seen. */
+  const auth = { authorization: 'Bearer ' + tok };
+  const fresh = await fetch('/settings', { headers: auth }).then(x => x.ok ? x.json() : null).catch(() => null);
+  const moved = fresh && fresh.unlocked ? movedSince(DESC, fresh, keys) : [];
+  if (moved.length) {
+    const ledger = await fetch('/actions?stage=settings&limit=200', { headers: auth })
+      .then(x => x.ok ? x.json() : []).catch(() => []);
+    for (const k of moved) {
+      const r = fresh.runtime.find(x => x.key === k);
+      const last = (Array.isArray(ledger) ? ledger : []).find(a => String(a.note || '').split(', ').includes(k));
+      const who = last ? ` The last change the ledger has: ${last.actor}, ${window.K.age((Date.now() - Date.parse(last.ts)) / 60000)}.` : '';
+      const was = r.secret ? (r.set ? 'It is set now.' : 'It is cleared now.') : `It is now "${r.value}".`;
+      const box = q('#err-' + k);
+      if (box) {
+        box.textContent = `${k} changed on the node after this page drew it. ${was}${who} `
+          + `Save again to replace it with what you chose, or reload the page to keep the node's.`;
+        box.hidden = false;
+      }
+    }
+    DESC = fresh;   // the keeper has now been shown these; a second press writes
+    toast(`Nothing was saved. ${moved.join(', ')} changed on the node while this was open.`, true);
+    return;
   }
   const r = await fetch('/settings', {
     method: 'PUT',
@@ -8316,7 +8364,6 @@ async function saveSettings() {
    * Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day." app/settings.py
    * writes that refusal by quoting the key's own help text rather than keeping a second copy of it,
    * so it is the best sentence anybody has; it belongs beside the field it is about. */
-  qa('#pane .err').forEach(e => { e.textContent = ''; e.hidden = true; });
   if (!r.ok) {
     const detail = await r.json().then(j => j && j.detail).catch(() => null);
     const said = typeof detail === 'string' ? detail : '';
