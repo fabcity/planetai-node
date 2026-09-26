@@ -283,7 +283,16 @@ assert _bad.status_code == 400, "off: this machine records an action with no tok
 assert _bad.json().get("detail") == "stage must be acknowledged, acted or decided", \
     f"the 400 names the stages POST /actions accepts: {_bad.json()}"
 assert lan.post("/actions", json={"alert_id": 1, "stage": "acted"}).status_code == 403, "off: an action from the WiFi must be refused"
-print("actions: open on this machine, ACT_TOKEN from anywhere else")
+# Set up reads who last changed a key from the node's own `settings` rows. Plain GET /actions leaves them out.
+_prev, _sql = main.q, []
+main.q = lambda sql, *a: _sql.append((sql, a)) or []
+assert lan.get("/actions?stage=settings", headers=ACT).status_code == 200
+assert lan.get("/actions?stage=settings").status_code == 403, "off: who changed which setting is not for the WiFi"
+lan.get("/actions", headers=ACT)
+main.q = _prev
+assert "stage = %s" in _sql[0][0] and _sql[0][1][0] == "settings", f"?stage=settings must read the settings rows: {_sql[0]}"
+assert "alert_id IS NOT NULL" in _sql[1][0], f"a plain read must still leave the settings rows out: {_sql[1]}"
+print("actions: open on this machine, ACT_TOKEN from anywhere else, ?stage=settings for Set up")
 
 # The reduced settings read: the layout, because every screen in the house needs it, and the level, so a screen can say why.
 level("off")

@@ -1170,7 +1170,7 @@ def alerts(limit: int = Query(50, ge=0, le=1000)):
 
 
 @app.get("/actions")
-def actions(limit: int = Query(500, ge=0, le=5000)):
+def actions(limit: int = Query(500, ge=0, le=5000), stage: str = ""):
     """Every answer a person gave an alert, newest first: which alert, which stage, who, and the note they left.
 
     `/alerts` says only *whether* somebody acted, as one timestamp. The stage is the thing the Act ledger and
@@ -1181,7 +1181,13 @@ def actions(limit: int = Query(500, ge=0, le=5000)):
 
     On neither share allowlist, deliberately: `actor` and `note` are the household's own words about what they
     did in their own house. This answers a token or the machine itself, and nothing else.
+
+    `stage` narrows it to one stage, and `stage=settings` is the only way to read the node's own rows: who changed
+    which settings, and when. The dashboard's Set up reads them to say who moved a key while its form was open.
     """
+    if stage:
+        return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s ORDER BY ts DESC LIMIT %s",
+                 stage, limit)
     return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE alert_id IS NOT NULL "
              "ORDER BY ts DESC LIMIT %s", limit)
 

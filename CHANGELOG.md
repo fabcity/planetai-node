@@ -1,5 +1,13 @@
 # Changelog
 
+- 2026-09-26 · **Set up saves only what you changed.** Saving a group used to write back every field in it,
+  so a page opened earlier undid whatever the CLI, an agent or another screen had set since: on node #1 it put
+  `AGENT_PREFER` back to `strongest` over a `private` chosen twenty minutes before, and the ask pane sent a
+  question online. It also turned defaults into settings nobody chose. Now only an edited field is sent, and if
+  that same key changed on the node while the page was open, nothing is saved: the page says what the node
+  holds now and who last changed it, and a second press replaces it. `GET /actions?stage=settings` reads that
+  ledger.
+
 ## v0.75.2 — 2026-09-26 — the ask pane answers from the model you choose, and says where it runs
 
 *In v0.75 the pane only ever asked the small model on the node's own machine. It now asks the models Set up
