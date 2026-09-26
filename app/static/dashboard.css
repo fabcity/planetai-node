@@ -1268,38 +1268,6 @@ h1.brand { font: inherit }
   padding: 7px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
   cursor: pointer }
 
-/* The panel. Outside #page, because the renderer replaces #page and the panel has to outlive a
-   re-render. Closed is display:none — a reader who never presses a mark never has it in the tree
-   as a thing to tab through. */
-.lpanel { display: none }
-.lpanel.open { display: block; position: fixed; inset: 0 0 0 auto; width: min(420px, 100%);
-  z-index: 9; background: var(--ground); border-left: 1.5px solid var(--ink);
-  padding: 20px 22px 28px; overflow: auto }
-.lpanel .lh { display: flex; gap: 12px; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--ink); padding-bottom: 8px;
-  font: 500 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--mute) }
-.lpanel .lh .k { font-weight: 700; color: var(--ink); letter-spacing: .1em }
-.lpanel .lh .x { background: none; border: 1px solid var(--ink); color: var(--ink);
-  padding: 3px 8px; font: 500 11px var(--mono); cursor: pointer }
-.lpanel h2 { font: 800 clamp(1.15rem, 2vw, 1.5rem) var(--fc-font-display); letter-spacing: -.02em;
-  margin: 16px 0 10px }
-/* The documentation's words, marked as a quotation and set apart from the page's own line. */
-.lpanel .qt { margin: 0 0 14px; border-left: 3px solid var(--ink); padding-left: 14px;
-  font: 400 15px/1.5 var(--fc-font-body) }
-.lpanel .qt code { font: 500 .9em var(--mono) }
-.lpanel .more { font: 400 13.5px/1.55 var(--fc-font-body); color: var(--mute); margin: 0 0 16px }
-.lpanel .more .who { font: 700 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink) }
-.lpanel .src { font: 500 11px/1.7 var(--mono); border-top: 1px dotted var(--ink); padding-top: 10px;
-  color: var(--mute) }
-.lpanel .src code { font: inherit; color: var(--ink) }
-.lpanel .src a { color: var(--cells); overflow-wrap: anywhere }
-.lpanel .nav { display: flex; gap: 8px; margin-top: 16px }
-.lpanel .nav button { flex: 1; background: none; border: 1.5px solid var(--ink); color: var(--ink);
-  padding: 9px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
-  cursor: pointer }
-.lpanel .nav button.pri { background: var(--ink); color: var(--ground) }
-
 /* ------------------------------------------------------------------ ASKING THE NODE
  * The loading state, over the page and not instead of it. `.on` is the whole of its visibility, the
  * way the learn panel works and for the same reason: a reader who never waits never has it in the
@@ -1500,3 +1468,16 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .hit { display: block; color: var(--ink); text-decoration: none; border-bottom: 1px dotted var(--ink); padding-bottom: 6px }
 #askpane .hit b { display: block; font: 700 11px var(--mono) }
 #askpane .hit span { font: 400 12.5px/1.4 var(--fc-font-body); color: var(--mute) }
+
+/* A learn mark's card in the ask pane: the documentation's words as a quotation, the page's own line
+   under them, and where they come from by title. The bullet is the mark's own question mark. */
+#askpane .card.mark { position: relative; margin-top: 16px }
+#askpane .card.mark::before { content: "?"; position: absolute; top: -12px; left: 12px; width: 22px; height: 22px;
+  border-radius: 50%; border: 1.5px solid var(--ink); background: var(--ink); color: var(--ground);
+  font: 800 12px/19px var(--mono); text-align: center }
+#askpane .card.mark .qt { margin: 4px 0 8px; border-left: 3px solid var(--ink); padding-left: 12px;
+  font: 400 14px/1.45 var(--fc-font-body) }
+#askpane .card.mark .qt code { font: 500 .9em var(--mono) }
+#askpane .card.mark .more .who { font: 700 10px var(--mono); letter-spacing: .08em; color: var(--ink) }
+#askpane .card.mark .src { font: 500 10.5px/1.6 var(--mono); color: var(--mute); margin: 0 0 10px }
+#askpane .card.mark .src a { color: var(--cells); overflow-wrap: anywhere }

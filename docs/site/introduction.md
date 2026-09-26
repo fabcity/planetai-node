@@ -62,6 +62,8 @@ presses **I did this** under Act when it is done, and Measure shows ρ and, per 
 by the condition clearing. After a week of its own readings the node also draws "The day this place usually
 has" on the Historical view. [How it works](how-it-works.md) follows a reading through every step.
 
+The dashboard also explains itself and answers questions: learn mode puts a question mark at each part of the page that quotes these pages for it, and the pane beside the page asks the node's own model, on this machine, about what the page shows ([Ask the node](ask.md)).
+
 ## What stays, and what goes up
 
 Raw readings stay on the machine. A parent node, if you name one, receives hourly means and the timestamps of

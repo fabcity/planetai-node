@@ -13,7 +13,7 @@ to be quoting, because it is not a copy of it, it is a cut of it.
 
 MARKS below names the cut, not the text: page, the `##` section it must sit inside, and the first and
 last few words of the span. Short markers survive a reflow; a pasted paragraph does not. Each entry
-also carries the page's own `# Title` as `page_title`, so the panel can cite "From <title> · <section>"
+also carries the page's own `# Title` as `page_title`, so the card can cite "From <title> · <section>"
 the way the site names it, rather than by a path in this repository.
 
 The marks explain what the node is FOR and what it PUBLISHES as well as how to read the ladder: the
@@ -21,7 +21,10 @@ purpose and the DIDO rule from introduction.md sit on the foot and on the reques
 registered section carries at least one mark (tests/test_learn.py holds the page to that).
 
 `more` is the only prose here, and it is the PAGE talking about itself — what this dashboard draws,
-in the dashboard's voice — never a paraphrase of the docs. The panel labels it as such.
+in the dashboard's voice — never a paraphrase of the docs. The card labels it as such.
+
+`questions` is two short questions per mark in each locale, the ask pane's chips while that mark's card
+is in focus. They are the page asking, never the documentation answering.
 """
 import argparse
 import json
@@ -260,6 +263,144 @@ MARKS = [
 ]
 
 
+# Two short questions per mark, in each locale: the ask pane's chips while that mark's card is in focus.
+# A question the pane can answer from the page and the quote, never a quiz. The id and es strings
+# are assistant-written and want a native reader. build() refuses a mark without two in every locale.
+QUESTIONS = {
+    'dial': {"en": ['Which rung is this page reading at?', 'Why may the coarse rungs leave the machine?'],
+        "id": ['Di anak tangga mana halaman ini membaca?', 'Mengapa anak tangga yang kasar boleh keluar dari mesin?'],
+        "es": ['¿En qué peldaño está leyendo esta página?', '¿Por qué los peldaños gruesos pueden salir de la máquina?']},
+    'lead': {"en": ['Why does this issue lead tonight?', 'What would make another issue lead?'],
+        "id": ['Mengapa isu ini memimpin malam ini?', 'Apa yang membuat isu lain memimpin?'],
+        "es": ['¿Por qué este asunto va primero esta noche?', '¿Qué haría que otro asunto fuera primero?']},
+    'containment': {"en": ["How many stations fall in this node's cell?", 'Why is a cell exact in the index and not on the ground?'],
+        "id": ['Berapa stasiun yang jatuh di sel node ini?', 'Mengapa sel tepat di indeks tetapi tidak di lapangan?'],
+        "es": ['¿Cuántas estaciones caen en la celda de este nodo?', '¿Por qué una celda es exacta en el índice y no sobre el terreno?']},
+    'distances': {"en": ['What are the four distances for this house?', 'Which distance is missing here, and why?'],
+        "id": ['Apa empat jarak untuk rumah ini?', 'Jarak mana yang tidak ada di sini, dan mengapa?'],
+        "es": ['¿Cuáles son las cuatro distancias de esta casa?', '¿Qué distancia falta aquí, y por qué?']},
+    'prov': {"en": ['Which numbers here are live and which are modelled?', 'What does partial mean on this page?'],
+        "id": ['Angka mana yang langsung dan mana yang dimodelkan?', 'Apa arti sebagian di halaman ini?'],
+        "es": ['¿Qué cifras son en vivo y cuáles son de un modelo?', '¿Qué significa parcial en esta página?']},
+    'cell': {"en": ['How big is the cell this node stands in?', 'Who can see this cell and who cannot?'],
+        "id": ['Seberapa besar sel tempat node ini berdiri?', 'Siapa yang bisa melihat sel ini dan siapa yang tidak?'],
+        "es": ['¿Qué tamaño tiene la celda donde está este nodo?', '¿Quién puede ver esta celda y quién no?']},
+    'tiles': {"en": ['What does the satellite map send, and to whom?', 'Why is the offline plan the default?'],
+        "id": ['Apa yang dikirim peta satelit, dan kepada siapa?', 'Mengapa denah luring menjadi bawaan?'],
+        "es": ['¿Qué envía el mapa satelital, y a quién?', '¿Por qué el plano sin conexión es el predeterminado?']},
+    'stages': {"en": ['Where is this house in the loop right now?', 'What happens between deciding and acting?'],
+        "id": ['Di mana rumah ini dalam lingkaran sekarang?', 'Apa yang terjadi antara memutuskan dan bertindak?'],
+        "es": ['¿En qué punto del ciclo está esta casa ahora?', '¿Qué pasa entre decidir y actuar?']},
+    'cards': {"en": ['Which kind of card is this?', 'Why are there only four kinds?'],
+        "id": ['Kartu jenis apa ini?', 'Mengapa hanya ada empat jenis?'],
+        "es": ['¿Qué tipo de tarjeta es esta?', '¿Por qué hay solo cuatro tipos?']},
+    'states': {"en": ['What state is each issue in tonight?', 'Why are states not shown in colour?'],
+        "id": ['Dalam keadaan apa setiap isu malam ini?', 'Mengapa keadaan tidak ditunjukkan dengan warna?'],
+        "es": ['¿En qué estado está cada asunto esta noche?', '¿Por qué los estados no se muestran con color?']},
+    'custody': {"en": ['Which sensors does this node count as its own?', "Why is a neighbour's sensor not counted?"],
+        "id": ['Sensor mana yang dihitung node ini sebagai miliknya?', 'Mengapa sensor tetangga tidak dihitung?'],
+        "es": ['¿Qué sensores cuenta este nodo como suyos?', '¿Por qué no se cuenta el sensor de un vecino?']},
+    'share': {"en": ['Who can read this page without a token?', 'What changes if SHARE_LEVEL is open?'],
+        "id": ['Siapa yang bisa membaca halaman ini tanpa token?', 'Apa yang berubah jika SHARE_LEVEL terbuka?'],
+        "es": ['¿Quién puede leer esta página sin token?', '¿Qué cambia si SHARE_LEVEL está en open?']},
+    'raw': {"en": ['What leaves this machine, and what never does?', 'Where are the raw readings kept?'],
+        "id": ['Apa yang keluar dari mesin ini, dan apa yang tidak pernah?', 'Di mana bacaan mentah disimpan?'],
+        "es": ['¿Qué sale de esta máquina, y qué nunca sale?', '¿Dónde se guardan las lecturas en bruto?']},
+    'levels': {"en": ['What is the difference between act, warn and info?', 'Which alerts reach me on Telegram?'],
+        "id": ['Apa beda act, warn dan info?', 'Peringatan mana yang sampai ke saya di Telegram?'],
+        "es": ['¿Qué diferencia hay entre act, warn e info?', '¿Qué alertas me llegan por Telegram?']},
+    'current': {"en": ['Is this a condition or an event?', 'Why does the node not alert on every reading?'],
+        "id": ['Apakah ini keadaan atau kejadian?', 'Mengapa node tidak memberi peringatan untuk setiap bacaan?'],
+        "es": ['¿Es una condición o un evento?', '¿Por qué el nodo no avisa con cada lectura?']},
+    'rho': {"en": ["What is this node's ρ, and what counts toward it?", 'How do I close the loop on an alert?'],
+        "id": ['Berapa ρ node ini, dan apa yang dihitung?', 'Bagaimana saya menutup lingkaran pada sebuah peringatan?'],
+        "es": ['¿Cuál es la ρ de este nodo, y qué cuenta para ella?', '¿Cómo cierro el ciclo de una alerta?']},
+    'refusals': {"en": ['What will this node always refuse to do?', 'Can an agent change a setting here?'],
+        "id": ['Apa yang selalu ditolak node ini?', 'Bisakah agen mengubah pengaturan di sini?'],
+        "es": ['¿Qué se negará siempre a hacer este nodo?', '¿Puede un agente cambiar un ajuste aquí?']},
+    'counted': {"en": ['Which of these stations are ours and here?', 'What makes a sensor counted?'],
+        "id": ['Stasiun mana yang milik kita dan ada di sini?', 'Apa yang membuat sebuah sensor dihitung?'],
+        "es": ['¿Cuáles de estas estaciones son nuestras y están aquí?', '¿Qué hace que un sensor cuente?']},
+    'dido': {"en": ['What data comes in to this node?', 'What data goes out, and how coarse is it?'],
+        "id": ['Data apa yang masuk ke node ini?', 'Data apa yang keluar, dan seberapa kasar?'],
+        "es": ['¿Qué datos entran en este nodo?', '¿Qué datos salen, y con qué detalle?']},
+    'forecast': {"en": ['What is the forecast for the next hours?', 'Why is a forecast context and not a prediction?'],
+        "id": ['Apa prakiraan untuk beberapa jam ke depan?', 'Mengapa prakiraan adalah konteks, bukan ramalan?'],
+        "es": ['¿Cuál es el pronóstico para las próximas horas?', '¿Por qué un pronóstico es contexto y no una predicción?']},
+    'recommend': {"en": ['What does this node suggest I do?', 'Where does that suggestion come from?'],
+        "id": ['Apa yang disarankan node ini untuk saya lakukan?', 'Dari mana saran itu berasal?'],
+        "es": ['¿Qué me sugiere hacer este nodo?', '¿De dónde sale esa sugerencia?']},
+    'looked': {"en": ['What is the difference between deciding and doing?', 'What should I record when I act?'],
+        "id": ['Apa beda memutuskan dan melakukan?', 'Apa yang harus saya catat saat bertindak?'],
+        "es": ['¿Qué diferencia hay entre decidir y hacer?', '¿Qué debo anotar cuando actúo?']},
+    'agent': {"en": ['What may an agent do on this node?', 'How do I connect my own agent?'],
+        "id": ['Apa yang boleh dilakukan agen di node ini?', 'Bagaimana cara menghubungkan agen saya sendiri?'],
+        "es": ['¿Qué puede hacer un agente en este nodo?', '¿Cómo conecto mi propio agente?']},
+    'claims': {"en": ['How much ground does this number cover?', 'Why does the number change with the rung?'],
+        "id": ['Seberapa luas wilayah yang dicakup angka ini?', 'Mengapa angkanya berubah dengan anak tangga?'],
+        "es": ['¿Cuánto terreno cubre esta cifra?', '¿Por qué la cifra cambia con el peldaño?']},
+    'workshop': {"en": ['Where is the nearest place to make something?', 'Why does the node point to a workshop?'],
+        "id": ['Di mana tempat terdekat untuk membuat sesuatu?', 'Mengapa node menunjuk ke bengkel?'],
+        "es": ['¿Dónde está el lugar más cercano para fabricar algo?', '¿Por qué el nodo señala un taller?']},
+    'note': {"en": ['What should my note say?', 'Who reads the notes I write?'],
+        "id": ['Apa yang harus ditulis dalam catatan saya?', 'Siapa yang membaca catatan yang saya tulis?'],
+        "es": ['¿Qué debería decir mi nota?', '¿Quién lee las notas que escribo?']},
+    'bot': {"en": ['How do I ask the bot on Telegram?', 'Which model answers, and where does it run?'],
+        "id": ['Bagaimana cara bertanya ke bot di Telegram?', 'Model mana yang menjawab, dan di mana ia berjalan?'],
+        "es": ['¿Cómo pregunto al bot en Telegram?', '¿Qué modelo responde, y dónde se ejecuta?']},
+    'actions': {"en": ['What is recorded when someone acts?', 'How is ρ counted from these rows?'],
+        "id": ['Apa yang dicatat saat seseorang bertindak?', 'Bagaimana ρ dihitung dari baris-baris ini?'],
+        "es": ['¿Qué se registra cuando alguien actúa?', '¿Cómo se cuenta ρ a partir de estas filas?']},
+    'effect': {"en": ['Which of our actions seem to work?', 'Why is elapsed time not an effect?'],
+        "id": ['Tindakan kita mana yang tampaknya berhasil?', 'Mengapa waktu yang berlalu bukan efek?'],
+        "es": ['¿Cuáles de nuestras acciones parecen funcionar?', '¿Por qué el tiempo transcurrido no es un efecto?']},
+    'figures': {"en": ['Where does each number on this page come from?', 'Can I read these figures from my own tools?'],
+        "id": ['Dari mana setiap angka di halaman ini berasal?', 'Bisakah saya membaca angka ini dari alat saya sendiri?'],
+        "es": ['¿De dónde sale cada cifra de esta página?', '¿Puedo leer estas cifras con mis propias herramientas?']},
+    'shape': {"en": ['What does a usual day look like here?', 'Is today different from the usual day?'],
+        "id": ['Seperti apa hari biasa di sini?', 'Apakah hari ini berbeda dari biasanya?'],
+        "es": ['¿Cómo es un día normal aquí?', '¿Es hoy distinto de un día normal?']},
+    'earth': {"en": ['What changed on the ground around here?', 'Why can the satellite not say what changed?'],
+        "id": ['Apa yang berubah di tanah sekitar sini?', 'Mengapa satelit tidak bisa mengatakan apa yang berubah?'],
+        "es": ['¿Qué cambió en el terreno de alrededor?', '¿Por qué el satélite no puede decir qué cambió?']},
+    'reach': {"en": ["Where does this node's own line start?", 'Who does this node reach?'],
+        "id": ['Di mana garis node ini sendiri dimulai?', 'Siapa yang dijangkau node ini?'],
+        "es": ['¿Dónde empieza la línea propia de este nodo?', '¿A quién llega este nodo?']},
+    'trust': {"en": ["Are this node's sensors telling the truth?", 'Which sensor looks stuck or silent?'],
+        "id": ['Apakah sensor node ini jujur?', 'Sensor mana yang tampak macet atau diam?'],
+        "es": ['¿Dicen la verdad los sensores de este nodo?', '¿Qué sensor parece atascado o callado?']},
+    'parent': {"en": ['What does this node send to its district?', 'How does this cell join the Index?'],
+        "id": ['Apa yang dikirim node ini ke distriknya?', 'Bagaimana sel ini bergabung dengan Index?'],
+        "es": ['¿Qué envía este nodo a su distrito?', '¿Cómo entra esta celda en el Índice?']},
+    'registry': {"en": ['What else could be measured here?', 'Which open sources cover this place?'],
+        "id": ['Apa lagi yang bisa diukur di sini?', 'Sumber terbuka mana yang mencakup tempat ini?'],
+        "es": ['¿Qué más se podría medir aquí?', '¿Qué fuentes abiertas cubren este lugar?']},
+    'presence': {"en": ['What does this node announce over radio?', 'How coarse is the cell it announces?'],
+        "id": ['Apa yang diumumkan node ini lewat radio?', 'Seberapa kasar sel yang diumumkannya?'],
+        "es": ['¿Qué anuncia este nodo por radio?', '¿Con qué detalle anuncia su celda?']},
+    'mesh': {"en": ['How does the mesh work without WiFi?', 'Which radios can hear this node?'],
+        "id": ['Bagaimana mesh bekerja tanpa WiFi?', 'Radio mana yang bisa mendengar node ini?'],
+        "es": ['¿Cómo funciona la malla sin WiFi?', '¿Qué radios pueden oír a este nodo?']},
+    'siting': {"en": ['Where should a sensor go in this house?', 'Why is a sensor named for its place?'],
+        "id": ['Di mana sebaiknya sensor ditaruh di rumah ini?', 'Mengapa sensor dinamai menurut tempatnya?'],
+        "es": ['¿Dónde debería ir un sensor en esta casa?', '¿Por qué un sensor lleva el nombre de su lugar?']},
+    'settings': {"en": ['Which setting should I look at first?', 'Who can change a setting, and how is it recorded?'],
+        "id": ['Pengaturan mana yang harus saya lihat dulu?', 'Siapa yang bisa mengubah pengaturan, dan bagaimana dicatat?'],
+        "es": ['¿Qué ajuste debería mirar primero?', '¿Quién puede cambiar un ajuste, y cómo queda registrado?']},
+    'production': {"en": ['Why one computer per place?', 'What does distributed production mean for this house?'],
+        "id": ['Mengapa satu komputer untuk satu tempat?', 'Apa arti produksi terdistribusi bagi rumah ini?'],
+        "es": ['¿Por qué un ordenador por lugar?', '¿Qué significa la producción distribuida para esta casa?']},
+    'purpose': {"en": ['What is this node for?', 'How does it help the air, water and soil here?'],
+        "id": ['Untuk apa node ini?', 'Bagaimana node ini membantu udara, air dan tanah di sini?'],
+        "es": ['¿Para qué sirve este nodo?', '¿Cómo ayuda al aire, el agua y el suelo de aquí?']},
+    'health': {"en": ['Is this node healthy right now?', 'What does a screen check first?'],
+        "id": ['Apakah node ini sehat sekarang?', 'Apa yang diperiksa layar pertama kali?'],
+        "es": ['¿Está sano este nodo ahora mismo?', '¿Qué comprueba primero una pantalla?']},
+    'mcp': {"en": ['What can an agent do through MCP here?', 'Which tools are read, act and admin?'],
+        "id": ['Apa yang bisa dilakukan agen lewat MCP di sini?', 'Alat mana yang read, act dan admin?'],
+        "es": ['¿Qué puede hacer un agente por MCP aquí?', '¿Qué herramientas son read, act y admin?']},
+}
+
 def slugify(value):
     """build_docs.py's own slug, for the page-per-folder build where the prefix is empty."""
     s = re.sub(r"[^\w\s-]", "", value.lower(), flags=re.U).strip()
@@ -310,8 +451,13 @@ def build():
         if n > MAX_WORDS:
             errs.append(f"{key}: the span is {n} words, over the {MAX_WORDS} the panel holds")
             continue
+        qs = QUESTIONS.get(key) or {}
+        if not all(isinstance(qs.get(l), list) and len(qs[l]) == 2 and all(qs[l]) for l in ("en", "id", "es")):
+            errs.append(f"{key}: QUESTIONS needs two questions in each of en, id and es")
+            continue
         anchor = slugify(heading) if heading else ""
         marks[key] = {
+            "questions": qs,
             "title": title,
             "quote": quote,
             "more": more,
