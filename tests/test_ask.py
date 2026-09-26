@@ -190,6 +190,25 @@ check(len(SCRIPT) > 1 and "sensor" in SCRIPT[1]["seen"] and not leaks(SCRIPT[1][
       f"the sensors result reached the model carrying {leaks(SCRIPT[-1]['seen'])}")
 print("  proposal: MAP_TILES on is a card with its current value, what leaves and the way back; nothing changed")
 
+# ---------------------------------------------------------------- the shape a live node hands it
+# A capture's timestamps are strings; the live engine's are datetimes straight from Postgres. v0.75 was
+# tested on captures only and answered every question on node #1 with a 500 (datetime is not JSON
+# serializable). The same request, on the live shape.
+import copy                                          # noqa: E402
+LIVE = copy.deepcopy(DOC)
+for _v in LIVE["issues"].values():
+    for _a in _v.get("open_asks") or []:
+        _a["ts"] = datetime.fromisoformat(_a["ts"])
+check(any(isinstance(a["ts"], datetime) for v in LIVE["issues"].values() for a in v.get("open_asks") or []),
+      "the live-shaped bundle has no datetime in it, so this proves nothing")
+issues_api.issues_now = lambda: LIVE
+SCRIPT.clear()
+r2 = local.post("/ask", json={"messages": [{"role": "user", "content": "how is it"}]})
+check(r2.status_code == 200 and [e for e, _ in events(r2.text)][-1] == "done",
+      f"on a live node's bundle /ask answered {r2.status_code}: {r2.text[:200]}")
+issues_api.issues_now = lambda: DOC
+print("  live shape: datetimes from Postgres reach the model as ISO strings, not a 500")
+
 # ---------------------------------------------------------------- nothing is stored
 logged = LOG.getvalue()
 check(ASKED not in logged and ANSWER not in logged and "satellite map" not in logged,

@@ -210,8 +210,14 @@ UNDO = {"en": "Set {key} back to {value} under Set up → {group}.",
         "es": "Vuelve a poner {key} en {value} en Set up → {group}."}
 
 
+def _json(v) -> str:
+    """JSON for the model and the stream. On a live node an alert's `ts` is a datetime from Postgres, where a
+    capture carries a string; v0.75 met the first on node #1 and answered every question with a 500."""
+    return json.dumps(v, ensure_ascii=False, default=lambda o: o.isoformat() if hasattr(o, "isoformat") else str(o))
+
+
 def _sse(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+    return f"event: {event}\ndata: {_json(data)}\n\n"
 
 
 @router.post("/ask")
@@ -231,7 +237,7 @@ async def ask(body: AskBody):
     learn = json.loads(LEARN.read_text()) if body.focus and LEARN.exists() else None
     ctx = scrub.value(context(doc, loc, body.view, body.mode, body.focus, learn, os.getenv("NODE_VERSION", "")))
     system = agent_loop.PANE_SYSTEM.format(node=os.getenv("NODE_NAME", "node"),
-                                           lang=agent_loop.LANG_NAME, context=json.dumps(ctx, ensure_ascii=False))
+                                           lang=agent_loop.LANG_NAME, context=_json(ctx))
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {os.getenv('ADMIN_TOKEN', '')}",
                                     "X-Agent": agent_loop.AUDIT_PANE}, timeout=60)
     url = f"http://127.0.0.1:{os.getenv('PORT', '8080')}/mcp"
