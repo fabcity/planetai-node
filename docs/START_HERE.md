@@ -1,6 +1,6 @@
 # Start here
 
-> **Alpha.** This is an experiment and you are joining it. Things will break; what you report decides what gets fixed
+> **Beta.** This is still an experiment and you are joining it. Things will break; what you report decides what gets fixed
 > first. Write to **info@fab.city** with what broke, what helped, and what did not.
 
 PLANETAI node is a small program that runs on a computer in your home, lab or community centre. It connects everything

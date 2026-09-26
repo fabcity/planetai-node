@@ -19,8 +19,9 @@ overhead, tells the people there in plain sentences what to do about it, records
 it worked. Its purpose is fixed: clean air, water and soil for the people and the other living things around each
 node. Raw readings stay on the machine; only summaries travel.
 
-> **Alpha.** This is an experiment. Installing a node makes you part of it: things will break, some will surprise you,
-> and what you report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
+> **Beta.** `main` is the beta channel: every update is signed, and a node refuses one that does not verify. It is still
+> an experiment, and installing a node makes you part of it: things will break, some will surprise you, and what you
+> report decides what gets fixed first. Write to **info@fab.city** with what broke, what helped, what did not.
 
 ```bash
 curl -fsSL planetai.fab.city/install | bash
@@ -132,4 +133,6 @@ presets/   bali · barcelona · boston · santiago · delhi · menorca
 
 ## Licence
 
-Apache 2.0. Fab City Foundation, 2026. Alpha; feedback to info@fab.city.
+Apache 2.0 today; AGPL-3.0-or-later once every contributor has consented
+([docs/decisions/2026-09-25-licence.md](docs/decisions/2026-09-25-licence.md)). Fab City Foundation, 2026. Beta; feedback
+to info@fab.city.
