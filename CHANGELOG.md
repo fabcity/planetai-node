@@ -1,17 +1,30 @@
 # Changelog
 
-- 2026-09-26 · **Beta, where it still said alpha, and the licence on record.** `main` has been the beta channel since
-  20 September, and every update is signed. The README, the docs, the install screen and llms.txt still said
-  alpha. They now say beta, and they still say it is an experiment. Tomas's licence decision of 25 September is
-  recorded in `docs/decisions/2026-09-25-licence.md`: AGPL-3.0-or-later once every contributor has consented,
-  Apache-2.0 until then. `LICENSE` has not changed.
-- 2026-09-26 · **Set up saves only what you changed.** Saving a group used to write back every field in it,
-  so a page opened earlier undid whatever the CLI, an agent or another screen had set since: on node #1 it put
+## v0.75.3 — 2026-09-27 — Set up saves what you changed, and nothing else
+
+*Saving a Set up group used to write back every field in it, and in the packs group it wrote none of the
+fields at all. Now a save sends exactly the fields somebody edited, in every group. Also: the node's lead
+sentence now matches the programme page, and the docs say beta.*
+
+- **Only what you changed is saved.** A save used to write back every field in the group, so a page opened
+  earlier undid whatever the CLI, an agent or another screen had set since. On node #1 it put
   `AGENT_PREFER` back to `strongest` over a `private` chosen twenty minutes before, and the ask pane sent a
-  question online. It also turned defaults into settings nobody chose. Now only an edited field is sent, and if
+  question online. It also turned defaults into settings nobody chose. Now only an edited field is sent. If
   that same key changed on the node while the page was open, nothing is saved: the page says what the node
   holds now and who last changed it, and a second press replaces it. `GET /actions?stage=settings` reads that
   ledger.
+- **The packs group saves its own settings.** Code packs could not be allowed (`PACKS_ALLOW_CODE`), and no
+  pack's own keys could be set, from Set up: they were drawn, and a save sent only the pack switches. They
+  are sent now. If you move a pack switch, it decides `PACKS_ENABLED`; otherwise the text field does, so an
+  unrelated save no longer overwrites a list you typed.
+- **One lead sentence.** The node now opens its docs, `/llms.txt` and the dashboard with the programme page's
+  sentence: hyperlocal compute and intelligence for distributed production. `tools/check_site.py` fails if
+  the two drift apart again.
+- **Beta, where it still said alpha, and the licence on record.** `main` has been the beta channel since
+  20 September, and every update is signed. The README, the docs, the install screen and llms.txt still said
+  alpha. They now say beta, and they still say it is an experiment. Tomas's licence decision of 25 September is
+  recorded in `docs/decisions/2026-09-25-licence.md`: AGPL-3.0-or-later once every contributor has consented,
+  Apache-2.0 until then. `LICENSE` has not changed, and this release is Apache-2.0.
 
 ## v0.75.2 — 2026-09-26 — the ask pane answers from the model you choose, and says where it runs
 
