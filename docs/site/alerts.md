@@ -129,7 +129,7 @@ An alert's `acted_at` is null until somebody answers it. An answer is a row in `
 
 **A decision moves nothing.** It is not in ρ, not a stage of the funnel, and closes no alert; the node keeps
 watching. What it changes is the record: a household that looked, decided and did not manage it no longer leaves
-the same trace as one that never looked. With `DECISION_REQUIRED=1` (Set up → Node, off by default), `POST
+the same trace as one that never looked. With `DECISION_REQUIRED=1` (Set up → Alerts, off by default), `POST
 /actions` answers an `acted` with no earlier `decided` row for the same alert with a 409, whichever way the act
 came in. Turn it on only where everybody answering has a screen to decide on: the radio, the terminal and the
 bot have none.

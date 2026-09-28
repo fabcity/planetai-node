@@ -57,13 +57,13 @@ were checked; the table is not a permission list.
 
 ## Not on this machine
 
-The local rung is the floor, not the ceiling. Set up → Agent (or `planetai config`) configures two more,
+The local rung is the floor, not the ceiling. Set up → Model (or `planetai config`) configures two more,
 for the Telegram bot and the dashboard's ask pane alike:
 
 - **remote** — a bigger model on your own tailnet: a laptop's Ollama, an exo cluster. Private, no key.
 - **online** — Anthropic, OpenAI or Gemini, with a key. The only rung that sends anything off your
   network, and `AGENT_PREFER` decides whether it is used at all. **Since v0.63 the default is `private`**,
-  so a node that has never chosen sends nothing anywhere. The setting's help under Set up → Agent has the
+  so a node that has never chosen sends nothing anywhere. The setting's help under Set up → Model has the
   three options.
 
 A node with `private` and no model, on this machine or on your network, still answers alerts, writes

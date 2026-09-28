@@ -71,7 +71,7 @@ planetai test-alert    # a real alert arrives on your phone within a minute
 planetai ui            # the dashboard's address, and the token for its settings pages
 ```
 
-Open the dashboard. Set up → Sources is where you add or change sensors. Set up → Agent is where the bot's brain lives.
+Open the dashboard. Set up → Sources is where you add or change sensors. Set up → Model is where the bot's brain lives.
 
 When an alert arrives that you act on, tell the node: with the button on the dashboard, with `planetai act 12` in the
 terminal, or by replying `/act 12 closed the windows` in Telegram once the bot runs (`planetai agent local`, below). The node keeps one score for itself: how many of its alerts led to someone doing something. That number is
@@ -85,7 +85,7 @@ planetai agent local pull <tag>   # downloads that model; the bot answers with i
 ```
 
 Then message your bot: "how is the air?", "how big is the swell?", "is the node healthy?". With a laptop or workstation
-on your network running a bigger model, set its address under Set up → Agent and the bot uses that when it can reach it.
+on your network running a bigger model, set its address under Set up → Model and the bot uses that when it can reach it.
 
 ## Everyday
 

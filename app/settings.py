@@ -30,35 +30,42 @@ TTL = 20
 # together: all three surfaces print a heading when the group changes, and a key that strays into
 # another group's block prints a second heading for a group that already had one.
 #
-# `issues` is first because it is the one setting that says what this place is for. The rest follow
-# what the node does with that: what it reads, when it interrupts, what it loads, who it talks to.
+# The groups are the tasks of the person setting a node up, not the modules of the code (28 Sep 2026: Set up had
+# nine tabs in the code's own order, and a keeper looking for "the tokens" found them in three of them). `basics`
+# is first and NODE_ISSUES leads it, because it is the one setting that says what this place is for. Every secret
+# is in `keys`, everything that leaves the machine in `sharing`, and the numbers nobody needs on day one in
+# `system`.
 RUNTIME = {
-    # issues — the political layer. What matters here is decided by the people who live here.
-    "NODE_ISSUES":        ("issues", "What this place watches, in order", False, False,
+    # basics — what this place is, what it watches, and how its page opens. What matters here is decided by the people who live here.
+    "NODE_ISSUES":        ("basics", "What this place watches, in order", False, False,
                            "The issues this node reports, most important first: air, heat, land, coast. The first "
                            "one is where the page starts, and the one with something to say takes the top of it. A "
                            "name nothing declares is ignored with a line in the log; blank means every issue there "
                            "is, in the packs' own order. Your preset guessed for this place \u2014 change it: what "
                            "matters here is decided by the people who live here, not by which pack was written first."),
-
-    # sources
+    "NODE_KIND":          ("basics", "Kind", False, False, "home | business | community | district."),
+    "ALERT_LOCALE":       ("basics", "Alert language", False, False, "en, id or es. The alert rules, the reports, the test alert and the bot's own replies; the dashboard and the terminal stay in English. Anything else falls back to English."),
+    "UI_MODE":            ("basics", "How much of the page is shown", False, False,
+                           "simple = one sentence per stage, written by this node, and nothing else: for a phone, "
+                           "a visitor, or anybody who wants the answer rather than the working. advanced (default) = "
+                           "every section. learn = the advanced page with a question mark at each part, which opens "
+                           "the node's own documentation for it. This is what the page opens as; anyone reading it "
+                           "can switch from the header, and their choice is remembered by their browser and changes "
+                           "nothing for anybody else."),
+    # sources — sensors and data: what the node reads. Sources that come as packs keep their settings in their pack's card.
     "SC_USER":            ("sources", "Smart Citizen username", False, False, "Every kit on the account is read as yours, indoor or outdoor from each kit's own setting."),
     "SC_DEVICES":         ("sources", "Smart Citizen kit ids", False, False, "Comma-separated. Always treated as yours, at this address."),
     "SC_EXCLUDE":         ("sources", "Smart Citizen kits to leave out", False, False, "Comma-separated ids of account kits that belong to another site."),
     "AIRGRADIENT_HOSTS":  ("sources", "AirGradient hosts", False, False, "Hostnames or IPs on your WiFi, comma-separated. Read directly, no cloud."),
     "PURPLEAIR_HOSTS":    ("sources", "PurpleAir hosts", False, False, "IP addresses on your WiFi."),
     "SENSOR_INDOOR":      ("sources", "LAN sensors are indoors", False, False, "1 if the AirGradient/PurpleAir units are inside."),
+    "MESH_INDOOR_NODES":  ("sources", "Indoor mesh radios", False, False, "Meshtastic node ids that are inside, e.g. !8f491db0,!64e0bfd1."),
     "BAD_ENABLED":        ("sources", "Bali Air Dispatch", False, False, "Bali only: the island's public stations as outdoor reference. 1 or 0."),
-    "BAD_RADIUS_KM":      ("sources", "Bali Air Dispatch radius, km", False, False, "How far out the ring of other people's stations reaches."),
-    "BAD_MIN_SEPARATION_M": ("sources", "Nearest a station may be, m", False, False, "A station closer than this to the node is assumed to be our own hardware, not a neighbour."),
     "BAD_EXCLUDE":        ("sources", "Stations to leave out", False, False, "Comma-separated station ids that are ours and the identity and distance rules missed."),
     "BAD_INCLUDE_INDOOR": ("sources", "Keep indoor stations", False, False, "1 to keep stations the archive suspects are indoors. Off by default: they are not the ring."),
-    "LOCAL_RADIUS_M":     ("sources", "Local radius, m", False, False, "how far from the node a sensor can be and still count as this node's own, in metres"),
     "OPENMETEO_ENABLED":  ("sources", "Global models (Open-Meteo, CAMS)", False, False, "Free, key-free, anywhere. 1 or 0."),
     "CKAN_PORTALS":       ("sources", "Open-data portals", False, False, "slug=url pairs, comma-separated. Feeds Governance|City."),
-    "MESH_INDOOR_NODES":  ("sources", "Indoor mesh radios", False, False, "Meshtastic node ids that are inside, e.g. !8f491db0,!64e0bfd1."),
-    # alerts
-    "TELEGRAM_BOT_TOKEN": ("alerts", "Telegram bot token", True, False, "From @BotFather. Never shown again once saved."),
+    # alerts — alerts and reports: when the node speaks, what interrupts, and how a loop is closed.
     "TELEGRAM_CHAT_IDS":  ("alerts", "Telegram chat ids", False, False, "Comma-separated. planetai telegram finds yours."),
     "REPORT_EVERY":       ("alerts", "Report every", False, False, "Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day."),
     "REPORT_ANCHOR":      ("alerts", "First report of the day", False, False, "The local hour the rhythm starts from, 0-23. Default 6: with a 6-hour interval that is 06, 12, 18 and 00."),
@@ -67,31 +74,21 @@ RUNTIME = {
     "QUIET_HOURS":        ("alerts", "Quiet hours", False, False, "1 = between the hours below, only act-level alerts are sent; the rest wait for the morning report."),
     "QUIET_FROM":         ("alerts", "Quiet from", False, False, "Local hour, default 22."),
     "QUIET_TO":           ("alerts", "Quiet until", False, False, "Local hour, default 6."),
-    "ALERT_LOCALE":       ("alerts", "Alert language", False, False, "en, id or es. The alert rules, the reports, the test alert and the bot's own replies; the dashboard and the terminal stay in English. Anything else falls back to English."),
     "MESH_ALERTS":        ("alerts", "Alerts over the LoRa mesh", False, False, "1 to send act-level alerts through the gateway radio."),
     "MESH_GATEWAY_NODE_NUM": ("alerts", "Gateway node number", False, False, "Decimal, for mesh downlink."),
-    # integrations
-    "HA_DISCOVERY":       ("integrations", "Home Assistant", False, False, "1 publishes sensors and alerts as HA entities over MQTT (needs the broker)."),
-    "RETICULUM_ALERT_DESTINATIONS": ("integrations", "Reticulum alert addresses", False, False, "LXMF hashes, comma-separated."),
-    # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
-    # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
-    "RETICULUM_PRESENCE":  ("integrations", "Announce this node on Reticulum", False, False,
-                            "1 announces the node's name and a COARSE map cell every half hour, so other "
-                            "PLANETAI nodes can see that it exists and how far away it is. No readings, no "
-                            "address, nothing else — and nothing at all while this is 0."),
-    "RETICULUM_PRESENCE_RES": ("integrations", "How exactly the announce places this node", False, False,
-                               "The H3 resolution the announced cell is rounded to, and the whole of the "
-                               "privacy decision. 3 is about 60 km across and says the island; 4 is about "
-                               "22 km; 5 about 8 km; 8 is this street. Default 3. Anything finer than 6 is "
-                               "refused, because a node announcing its street to an open radio network is "
-                               "not a thing to do by typing a number."),
-    "PACKS_ENABLED":      ("packs", "Enabled packs", False, False, "Empty = every pack in packs/. Or a comma-separated list of ids."),
-    "PACKS_ALLOW_CODE":   ("packs", "Allow code packs", False, False, "1 lets packs with adapter.py run. Read them first."),
-    # pack keys
-    "EE_PROJECT":         ("keys", "Earth Engine project", False, False, "Project id, not the service account number. Blank reads it from the key file."),
-    "EE_KEY_FILE":        ("keys", "Earth Engine key file", False, False, "Path inside the container; the file goes in config/."),
-    "COAST_MAX_KM":       ("keys", "Coast: max distance to sea, km", False, False, ""),
-    "AGENT_PREFER":       ("agent", "Model preference", False, True,
+    # Off by default, and a community's switch rather than the software's. A node in a house records
+    # an act whether or not anybody deliberated first -- somebody smells smoke and opens a window,
+    # and a node that refused to record that would be asserting a deliberation that did not happen.
+    # A node that acts for more than one household is a different case, and this is where that
+    # community says so. See docs/SPEC_decide.md section 10.
+    "DECISION_REQUIRED":  ("alerts", "An act needs a decision first", False, False,
+                           "0 (default) records an act whenever somebody says they did something. 1 refuses "
+                           "one unless a decision was recorded against the same alert first, which is what a "
+                           "node acting for a street rather than a house usually wants. It applies to every "
+                           "way in -- the dashboard, Telegram, the radio and the terminal -- so turn it on "
+                           "only where everybody answering has a screen to decide on."),
+    # model — ask and model: which model answers, on the dashboard's ask pane and on Telegram alike.
+    "AGENT_PREFER":       ("model", "Model preference", False, True,
                            "private \u2014 nothing leaves your network, and it is what this node does until somebody "
                            "here chooses otherwise. fallback \u2014 your own remote model, then online, then the "
                            "small local one. strongest \u2014 online first, so every question goes to the online "
@@ -99,55 +96,63 @@ RUNTIME = {
                            "pane alike. With fallback or strongest, what somebody asks, and the page's own "
                            "sentences and numbers (never a position, a sensor's name or its id), go to the online "
                            "model's provider, and that is a choice to give up this house's sovereignty over them."),
-    "AGENT_REMOTE_URL":   ("agent", "Remote model URL", False, True, "A bigger model on another machine of yours, on this network or your tailnet, OpenAI-compatible. Ollama on a laptop: http://<laptop>.local:11434/v1, with Ollama listening beyond the laptop (OLLAMA_HOST=0.0.0.0). exo: http://<host>:8082/v1. Nothing leaves your network."),
-    "AGENT_REMOTE_MODEL": ("agent", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
-    "AGENT_REMOTE_KEY":   ("agent", "Remote model key", True, True, "If that server asks for one."),
-    "AGENT_ONLINE_URL":   ("agent", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
-    "AGENT_ONLINE_MODEL": ("agent", "Online model", False, True, "e.g. claude-sonnet-4-6"),
-    "AGENT_ONLINE_KEY":   ("agent", "Online model key", True, True, "The only thing that lets household data leave your network. Your choice."),
-    "UI_LAYOUT":          ("node", "Dashboard layout", False, False, "Order and visibility of the dashboard's cards, as JSON. Managed by the dashboard's Arrange mode; blank restores the default."),
-    "UI_MODE":            ("node", "How much of the page is shown", False, False,
-                           "simple = one sentence per stage, written by this node, and nothing else: for a phone, "
-                           "a visitor, or anybody who wants the answer rather than the working. advanced (default) = "
-                           "every section. learn = the advanced page with a question mark at each part, which opens "
-                           "the node's own documentation for it. This is what the page opens as; anyone reading it "
-                           "can switch from the header, and their choice is remembered by their browser and changes "
-                           "nothing for anybody else."),
-    "UI_ASK":             ("node", "Ask the node, on the dashboard", False, False,
+    "AGENT_REMOTE_URL":   ("model", "Remote model URL", False, True, "A bigger model on another machine of yours, on this network or your tailnet, OpenAI-compatible. Ollama on a laptop: http://<laptop>.local:11434/v1, with Ollama listening beyond the laptop (OLLAMA_HOST=0.0.0.0). exo: http://<host>:8082/v1. Nothing leaves your network."),
+    "AGENT_REMOTE_MODEL": ("model", "Remote model", False, True, "e.g. gpt-oss-120b or qwen3:8b"),
+    "AGENT_ONLINE_URL":   ("model", "Online model URL", False, True, "https://api.anthropic.com/v1 or https://api.openai.com/v1"),
+    "AGENT_ONLINE_MODEL": ("model", "Online model", False, True, "e.g. claude-sonnet-4-6"),
+    "UI_ASK":             ("model", "Ask the node, on the dashboard", False, False,
                            "on (default) = a toggle on the dashboard opens a pane that asks this node's own model, on "
                            "this machine, about what the page shows. It reads and never changes anything; a change "
                            "it suggests is a card somebody presses. Nothing anybody types is kept. off = no toggle "
                            "and no pane."),
-    "MAP_TILES":          ("node", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
-    "STATIONS_SHOWN":     ("node", "Other people's stations listed", False, False,
+    # packs — which load, and each pack's own settings, which describe() adds after these from every pack.yaml.
+    "PACKS_ENABLED":      ("packs", "Enabled packs", False, False, "Empty = every pack in packs/. Or a comma-separated list of ids."),
+    "PACKS_ALLOW_CODE":   ("packs", "Allow code packs", False, False, "1 lets packs with adapter.py run. Read them first."),
+    "EE_PROJECT":         ("packs", "Earth Engine project", False, False, "Project id, not the service account number. Blank reads it from the key file."),
+    "EE_KEY_FILE":        ("packs", "Earth Engine key file", False, False, "Path inside the container; the file goes in config/."),
+    "COAST_MAX_KM":       ("packs", "Coast: max distance to sea, km", False, False, ""),
+    # keys — every secret in one place. Each is masked once saved and never shown again.
+    "TELEGRAM_BOT_TOKEN": ("keys", "Telegram bot token", True, False, "From @BotFather. Never shown again once saved."),
+    "AGENT_REMOTE_KEY":   ("keys", "Remote model key", True, True, "If that server asks for one."),
+    "AGENT_ONLINE_KEY":   ("keys", "Online model key", True, True, "The only thing that lets household data leave your network. Your choice."),
+    "AGGREGATE_TOKEN":    ("keys", "Token children must present", True, False, "Set this before pointing another node at this one."),
+    "BACKUP_TOKEN":       ("keys", "Token for collecting backups", True, False, "Read-only: lets a NAS fetch /backups. Separate from the admin token."),
+    "PARENT_TOKEN":       ("keys", "Token for the parent", True, False, ""),
+    "ACT_TOKEN":          ("keys", "Token for closing a loop", True, False,
+                           "Lets someone in the house record that they acted on an alert (POST /actions) without holding the admin token: it cannot read a secret or change a setting. `planetai ui` prints it."),
+    # sharing — sharing and network: who may read this node, and everything it sends or announces beyond this machine.
+    "SHARE_LEVEL":        ("sharing", "What a reader without a token may see", False, False,
+                           "off (default) = the dashboard shell, /health with the position rounded, the daily export and the layout, and nothing else. "
+                           "open = the whole read API to anyone on your network, so a wall screen or a phone works with no token; writes still need one. "
+                           "cell and means are reserved and refused today: cell will answer the neighbouring H3 cells that ask, means will hand hourly means to a parent node. "
+                           "This never changes what a request carrying a token may read, from anywhere \u2014 the NAS, Home Assistant and the agent are unaffected at every level."),
+    "MAP_TILES":          ("sharing", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
+    # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
+    # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
+    "RETICULUM_PRESENCE":  ("sharing", "Announce this node on Reticulum", False, False,
+                            "1 announces the node's name and a COARSE map cell every half hour, so other "
+                            "PLANETAI nodes can see that it exists and how far away it is. No readings, no "
+                            "address, nothing else — and nothing at all while this is 0."),
+    "RETICULUM_PRESENCE_RES": ("sharing", "How exactly the announce places this node", False, False,
+                               "The H3 resolution the announced cell is rounded to, and the whole of the "
+                               "privacy decision. 3 is about 60 km across and says the island; 4 is about "
+                               "22 km; 5 about 8 km; 8 is this street. Default 3. Anything finer than 6 is "
+                               "refused, because a node announcing its street to an open radio network is "
+                               "not a thing to do by typing a number."),
+    "RETICULUM_ALERT_DESTINATIONS": ("sharing", "Reticulum alert addresses", False, False, "LXMF hashes, comma-separated."),
+    "HA_DISCOVERY":       ("sharing", "Home Assistant", False, False, "1 publishes sensors and alerts as HA entities over MQTT (needs the broker)."),
+    "PARENT_API_URL":     ("sharing", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
+    # system — tuning numbers, and the layout Arrange mode writes. Not "advanced": that is a page mode, and the header has its switch.
+    "LOCAL_RADIUS_M":     ("system", "Local radius, m", False, False, "how far from the node a sensor can be and still count as this node's own, in metres"),
+    "BAD_RADIUS_KM":      ("system", "Bali Air Dispatch radius, km", False, False, "How far out the ring of other people's stations reaches."),
+    "BAD_MIN_SEPARATION_M": ("system", "Nearest a station may be, m", False, False, "A station closer than this to the node is assumed to be our own hardware, not a neighbour."),
+    "STATIONS_SHOWN":     ("system", "Other people's stations listed", False, False,
                            "How many of the neighbourhood's stations the dashboard lists, nearest first. Default 3; "
                            "0 lists every one. This node's own hardware is always listed and is never counted here \u2014 "
                            "a house hiding its own sensors behind a press would be absurd. Nothing is discarded or "
                            "stopped: the page says how many it is not listing and one press lists them all. To collect "
                            "fewer stations in the first place, turn the Bali Air Dispatch radius down instead."),
-    "AGGREGATE_TOKEN":    ("node", "Token children must present", True, False, "Set this before pointing another node at this one."),
-    # Off by default, and a community's switch rather than the software's. A node in a house records
-    # an act whether or not anybody deliberated first -- somebody smells smoke and opens a window,
-    # and a node that refused to record that would be asserting a deliberation that did not happen.
-    # A node that acts for more than one household is a different case, and this is where that
-    # community says so. See docs/SPEC_decide.md section 10.
-    "DECISION_REQUIRED":  ("node", "An act needs a decision first", False, False,
-                           "0 (default) records an act whenever somebody says they did something. 1 refuses "
-                           "one unless a decision was recorded against the same alert first, which is what a "
-                           "node acting for a street rather than a house usually wants. It applies to every "
-                           "way in -- the dashboard, Telegram, the radio and the terminal -- so turn it on "
-                           "only where everybody answering has a screen to decide on."),
-    "BACKUP_TOKEN":       ("node", "Token for collecting backups", True, False, "Read-only: lets a NAS fetch /backups. Separate from the admin token."),
-    "PARENT_API_URL":     ("node", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
-    "PARENT_TOKEN":       ("node", "Token for the parent", True, False, ""),
-    "NODE_KIND":          ("node", "Kind", False, False, "home | business | community | district."),
-    "SHARE_LEVEL":        ("node", "What a reader without a token may see", False, False,
-                           "off (default) = the dashboard shell, /health with the position rounded, the daily export and the layout, and nothing else. "
-                           "open = the whole read API to anyone on your network, so a wall screen or a phone works with no token; writes still need one. "
-                           "cell and means are reserved and refused today: cell will answer the neighbouring H3 cells that ask, means will hand hourly means to a parent node. "
-                           "This never changes what a request carrying a token may read, from anywhere \u2014 the NAS, Home Assistant and the agent are unaffected at every level."),
-    "ACT_TOKEN":          ("node", "Token for closing a loop", True, False,
-                           "Lets someone in the house record that they acted on an alert (POST /actions) without holding the admin token: it cannot read a secret or change a setting. `planetai ui` prints it."),
+    "UI_LAYOUT":          ("system", "Dashboard layout", False, False, "Order and visibility of the dashboard's cards, as JSON. Managed by the dashboard's Arrange mode; blank restores the default."),
 }
 # What an anonymous reader on the LAN may see the value of. Everything else shows as "•••• set" until the admin token is
 # presented (the dashboard's Set up view sends it once unlocked). Chat ids, sensor hosts, account names and remote URLs
@@ -157,6 +162,9 @@ PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
           "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
+# Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
+BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
+
 BOOTSTRAP = {
     "NODE_NAME": "Name", "NODE_CITY": "City key", "NODE_LAT": "Latitude", "NODE_LON": "Longitude", "NODE_TZ": "Time zone",
     "NODE_SCALE": "Scale", "APP_PORT": "Port", "COMPOSE_PROFILES": "Extra containers", "MQTT_HOST": "Broker",
@@ -427,8 +435,16 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
     # image is built from `app/`, so the container cannot see it.
     # `db` is already the dict of gui-set rows and `set` is this module's own setter, so the
     # obvious `set(db)` calls it with one argument and raises.
+    by_key = {r["key"]: r for r in out["runtime"]}
     for r in pack_settings():
         k = r["key"]
+        if k in by_key:
+            # EE_PROJECT, EE_KEY_FILE and COAST_MAX_KM are RUNTIME keys a pack also declares. They were drawn twice,
+            # once in the node's own group and once in the pack's; now once, in the pack's card, with the pack's
+            # words where the node has none.
+            by_key[k].update(pack=r["pack"], help=by_key[k]["help"] or r["help"],
+                             default=by_key[k]["default"] if by_key[k]["default"] is not None else r["default"])
+            continue
         v = get(k, "")
         hide = not unlocked and k not in public
         out["runtime"].append({
@@ -440,5 +456,6 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
             "choices": None, "outward": k in OUTWARD,
             "default": r["default"], "pack": r["pack"]})
     for k, label in BOOTSTRAP.items():
-        out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, "")})
+        out["bootstrap"].append({"key": k, "label": label, "value": os.getenv(k, ""),
+                                 "group": BOOTSTRAP_GROUP.get(k, "system")})
     return out

@@ -148,7 +148,7 @@ MARKS = [
      "done; Take its word fills in the rule's own line. The act comes after it, under Act."),
     ("looked", "A decision moves nothing", "first-ten-minutes.md", "When a real alert arrives",
      "A decision closes no alert", "the record that somebody looked.",
-     "With DECISION_REQUIRED=1 (Set up → Node) the node refuses an act that has no decision "
+     "With DECISION_REQUIRED=1 (Set up → Alerts) the node refuses an act that has no decision "
      "recorded before it, with 409, however the act arrives."),
     ("agent", "An agent drafts, a person dispatches", "agents.md", None,
      "An agent is a guest on the machine", "a person dispatches.",

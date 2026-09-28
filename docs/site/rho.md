@@ -73,7 +73,7 @@ one action per alert; the first response is what the clock measures.
 
 **A decision moves nothing.** A `decided` row is not in ρ, not a stage of the funnel, and closes no alert. The Act
 stage's ledger (*What was decided, and by whom*) marks an act that had a decision recorded against the same alert
-beforehand as *decided first*, and counts how many did. With `DECISION_REQUIRED=1` (Set up → Node, off by
+beforehand as *decided first*, and counts how many did. With `DECISION_REQUIRED=1` (Set up → Alerts, off by
 default), `POST /actions` refuses an `acted` with a 409 unless a `decided` row exists for the same alert.
 
 ## The funnel

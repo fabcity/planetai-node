@@ -118,7 +118,7 @@ variables in its top bar. That is deliberate: the wall is an instruction, not a 
 ## Ask the node
 
 Right of the modes (in the foot on a phone), **ask the node** opens a pane that asks the model named
-under Set up → Agent, the one the Telegram bot uses, about what the page shows. It reads and changes
+under Set up → Model, the one the Telegram bot uses, about what the page shows. It reads and changes
 nothing: a change it suggests is a card somebody presses. Its header says which model answers and where
 that model runs, and nothing asked there is kept. With no model it still searches the documentation.
 `UI_ASK=off` removes it for everybody. [Ask the node](site/ask.md) has the rest.
@@ -130,7 +130,7 @@ hide it, restore it — and *Done* saves the order to the node, for every screen
 ladder, the lead and the ground do not move, and the bar says so.
 
 That changes the order of the *sections*. To change which issues your node watches at all, and in
-what order, that is `NODE_ISSUES` under **Set up → Issues** — a list, most important first.
+what order, that is `NODE_ISSUES` under **Set up → Basics** — a list, most important first.
 
 ## If something moves, it is because a reading moved
 

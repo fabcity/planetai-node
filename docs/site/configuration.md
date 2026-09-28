@@ -48,8 +48,8 @@ within 20 s. Blank takes the key back to `.env`. A node that answers a pack key 
 setting` is older than this: update it, or set the key in `.env` and run `planetai restart`. `planetai packs install` appends the keys a `.env` is missing,
 under a dated marker.
 
-Three pack keys are also runtime keys: `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`. They appear twice in
-`GET /settings`, once in `keys` and once in `packs`, and both rows are the same value.
+Three pack keys are also runtime keys: `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`. `GET /settings` carries
+each once, in `packs` with the pack's name beside it, so Set up draws it in that pack's card.
 
 ### Settings that take effect only at a restart
 
@@ -134,7 +134,7 @@ and falls back to `.env` when the node is down. Runtime keys are written through
 | Command | What it does |
 |---|---|
 | `planetai config` | Guided walk: categories, then the settings in one. Changes are staged; `s` saves them in one call, `q` cancels, `b` goes back. Needs a terminal. |
-| `planetai config --section G` | Straight into one category. The categories are the groups of `GET /settings`, in its order: `issues`, `sources`, `alerts`, `integrations`, `packs`, `keys`, `agent`, `node`, and then `bootstrap`. `packs` holds the two pack switches and every key the packs declare. |
+| `planetai config --section G` | Straight into one category. The categories are the groups of `GET /settings`, in its order: `basics`, `sources`, `alerts`, `model`, `packs`, `keys`, `sharing`, `system`, and then `bootstrap`, which the dashboard shows read-only inside Basics and System instead. `packs` holds the two pack switches and every key the packs declare; every secret is in `keys`. |
 | `planetai config list [--section G]` | Every setting, its value in force and where it came from. Red means `.env` holds something else and is being ignored; a value set from the dashboard says so. |
 | `planetai config get KEY` | One setting: its help, the value in force, its source, and whether `.env` disagrees. Says when a restart is needed. |
 | `planetai config set KEY VALUE` | A runtime key goes to the database and the node has it within 20 s. A bootstrap key goes to `.env`, and the command offers `planetai restart`. A pack key goes to the database too, and the pack has it at its next run. |
@@ -197,7 +197,7 @@ data, what it loads.
 | Setting | Default | Values | Meaning | Kind |
 |---|---|---|---|---|
 | `UI_MODE` | `advanced` | `simple`, `advanced`, `learn` | What the page opens as. `simple` = what a person in the house asks: is it fine, is anything changing, is there something to do. `advanced` = every section. `learn` = the advanced page with a question mark at each part; a pressed mark quotes the node's own documentation for it in the ask pane. Anyone reading can switch from the header; their browser remembers it and nothing changes for anybody else. | runtime · public |
-| `UI_ASK` | `on` | `on`, `off` | `on` = a toggle on the dashboard opens the ask pane, which asks the model Set up → Agent names about what the page shows, reads, changes nothing and keeps nothing. `off` = no toggle and no pane. See [Ask the node](ask.md). | runtime · public |
+| `UI_ASK` | `on` | `on`, `off` | `on` = a toggle on the dashboard opens the ask pane, which asks the model Set up → Model names about what the page shows, reads, changes nothing and keeps nothing. `off` = no toggle and no pane. See [Ask the node](ask.md). | runtime · public |
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards. Managed by the dashboard's Arrange mode; blank restores the default. Readable by every screen in the house at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | Live satellite and street tiles under the cells. Each tile request tells a tile server which square of the planet this house is looking at. `off` = tiles from the node's local copy of OpenStreetMap; `on` = live tiles. A keeper turns this on in Set up. | runtime · public |
 | `STATIONS_SHOWN` | `3` | integer, `0` = all | How many of the neighbourhood's stations the dashboard lists, nearest first. This node's own hardware is always listed and never counted. Nothing is discarded: the page says how many it is not listing. To collect fewer stations, turn `BAD_RADIUS_KM` down instead. | runtime · public |
@@ -282,7 +282,7 @@ written once.
 
 Read by the agent loop in the `agent` container (compose profile `agent`), which builds its ladder of
 models from `/settings/raw`, with the environment as fallback, and re-reads it every minute, so a change on
-Set up → Agent on the dashboard reaches the bot within about a minute although `GET /settings` flags these keys
+Set up → Model on the dashboard reaches the bot within about a minute although `GET /settings` flags these keys
 `restart`. `planetai agent local` installs Ollama and starts the container. The dashboard's ask pane reads
 the same keys in the app container on every question, so one choice governs both; the pane asks the model on
 this machine only when `planetai agent local` set one up. See [Ask the node](ask.md).

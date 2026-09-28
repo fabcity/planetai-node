@@ -15,7 +15,7 @@ needs SHARE_LEVEL=open".
 ## Putting one up
 
 1. **Let the house read the node.** A wall screen carries no token, so it needs `SHARE_LEVEL=open`:
-   `planetai config set SHARE_LEVEL open`, or Set up → Node. At `off` the wall draws the refused page in the
+   `planetai config set SHARE_LEVEL open`, or Set up → Sharing. At `off` the wall draws the refused page in the
    dark register ("This node is not sharing its readings with the network" and the node's own sentence),
    because a black screen would be the node lying about being broken.
 2. **Open `#wall` on the screen.** You should see the top bar, the grid of nineteen cells on the left and

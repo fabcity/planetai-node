@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **2026-09-28 · Set up is eight tabs, in the order you set a node up.** It was nine tabs in the code's own order:
+  the tokens were in three of them, the settings for how the page looks sat beside the ones that decide who may
+  read the node, and three pack settings appeared twice. Now: **Basics** (what this place watches, its kind,
+  language, how the page opens, and its name, city, position and time zone read-only), **Sources**, **Alerts**,
+  **Model**, **Packs** (one card per pack, with its own settings inside), **Keys** (every secret), **Sharing**
+  (everything that reaches beyond this machine) and **System** (tuning numbers, and what is read once at
+  start). There is no Bootstrap tab: those rows are read-only in Basics and System. `planetai config` walks
+  the same groups in the same order. Nothing is renamed and no value moves.
+
 ## v0.75.7 — 2026-09-28 — the ask pane starts again when you want it to
 
 *The ask pane's conversation never ended: it survived reloads, grew to 40 messages, and sent 24 of them back
