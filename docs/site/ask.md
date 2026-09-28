@@ -18,8 +18,8 @@ still searches this documentation.
 3. Press one of the three questions under the thread, or type one. The questions are written by the node from
    tonight's figures: why the lead leads, the oldest open alert, what the lead's line means.
 
-An answer arrives word by word. Under it a ledger line names every read the model made, how many milliseconds
-each took, and which model answered and where it runs. When the first model does not answer, the next one does,
+An answer arrives word by word. Under it a ledger line says which model answered and where it runs, and **read
+3 things** (or however many) opens to name every read the model made and how many milliseconds each took. When the first model does not answer, the next one does,
 and the ledger says so.
 
 `UI_ASK` under Set up turns the pane off for everybody: no toggle, no pane. It is `on` by default. The wall never
@@ -48,13 +48,14 @@ their own words, because ρ is built out of those sentences.
 
 The node builds the model's context itself, from the `/issues` bundle the page already has: the lead and its
 sentence, the digest, every watched issue's state and values, the open alerts, and the documentation for the part
-in focus. The browser sends only the thread.
+in focus. The browser sends only the end of the thread: the question and the three exchanges before it.
 
 That context, and every tool result the model reads, has no coordinate, no sensor or station name, no sensor id
 and no `meta`. They are removed or replaced before the model sees them; `tests/test_ask.py` checks the context
 built on node #1's own capture for each of them.
 
-Nothing is stored. The thread is in the browser tab and goes when the tab closes. The node writes no transcript,
+Nothing is stored. The thread is in the browser tab. It survives a reload, and goes when the tab closes, when
+somebody presses **new conversation** in the pane's header, or after half an hour with no question. The node writes no transcript,
 no database row and no log line with a word in it: the log says which tool ran and for how long. `GET
 /ask/status` answers `stored: false`.
 

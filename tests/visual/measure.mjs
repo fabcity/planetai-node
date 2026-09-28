@@ -2674,9 +2674,23 @@ async function askpane() {
       card: card && card.dataset.askSet, text: card ? card.textContent : '',
       ledger: /on this machine/.test((p.querySelector('.ledger') || {}).textContent || ''),
       kept: (sessionStorage.getItem('planetai_ask_thread') || '').includes('turn the satellite map on'),
-      answer: /Nothing changed/.test(p.textContent) };
+      answer: /Nothing changed/.test(p.textContent),
+      folded: !!p.querySelector('.ledger details:not([open]) summary'),
+      fresh: !!p.querySelector('[data-ask-new]') };
   });
   await h.page.screenshot({ path: path.join(OUT, 'askpane_model_1440.png') });
+  // New conversation: one press, and the pane is as it was before the first question (Tomas, 28 Sep).
+  const cleared = await h.page.evaluate(async () => {
+    const b = document.querySelector('#askpane [data-ask-new]');
+    if (!b) return null;
+    b.click();
+    await new Promise(r => setTimeout(r, 50));
+    const p = document.getElementById('askpane');
+    return { msgs: p.querySelectorAll('.msg').length, button: !!p.querySelector('[data-ask-new]'),
+      composer: !!p.querySelector('[data-ask-send]'), stored: sessionStorage.getItem('planetai_ask_thread'),
+      focus: document.activeElement && document.activeElement.id };
+  });
+  await h.page.screenshot({ path: path.join(OUT, 'askpane_cleared_1440.png') });
   await h.browser.close();
   if (!got.composer) fails.push('with a model running the pane draws no composer');
   else {
@@ -2687,6 +2701,11 @@ async function askpane() {
     if (!/needs your token/.test(got.text)) fails.push('with no token held the card does not ask for one');
     if (!got.ledger || !got.answer) fails.push('the answer or its ledger line did not arrive');
     if (!got.kept) fails.push('the thread is not in sessionStorage, so a reload in this tab loses it');
+    if (!got.folded) fails.push('the tools an answer read are not folded behind one line');
+    if (!got.fresh) fails.push('a thread with an answer in it offers no new conversation');
+    if (!cleared) fails.push('new conversation could not be pressed');
+    else if (cleared.msgs || cleared.button || !cleared.composer || cleared.stored !== '[]' || cleared.focus !== 'ask-q')
+      fails.push(`new conversation did not leave an empty pane ready for a question: ${JSON.stringify(cleared)}`);
   }
   if (writes.length) fails.push(`the pane wrote: ${writes.join(', ')}`);
 
