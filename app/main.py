@@ -1161,12 +1161,13 @@ def observations():
 
 
 @app.get("/alerts")
-def alerts(limit: int = Query(50, ge=0, le=1000)):
+def alerts(limit: int = Query(50, ge=0, le=1000), since_hours: int = Query(0, ge=0, le=2160)):
     """Alerts newest first, each with its id (what `planetai act <id>` and the GUI's Act button need) and whether
-    anyone has already acted on it."""
+    anyone has already acted on it. `since_hours` keeps only those of the last that many hours; 0 is no bound."""
     return q("""SELECT a.id, a.ts, a.rule_id, a.sensor_id, a.level, a.text,
                        (SELECT min(x.ts) FROM actions x WHERE x.alert_id = a.id AND x.stage IN ('acknowledged','acted')) AS acted_at
-                FROM alerts a ORDER BY a.ts DESC LIMIT %s""", limit)
+                FROM alerts a WHERE %s = 0 OR a.ts > now() - make_interval(hours => %s)
+                ORDER BY a.ts DESC LIMIT %s""", since_hours, since_hours, limit)
 
 
 @app.get("/actions")

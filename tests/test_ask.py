@@ -41,6 +41,7 @@ settings._cache = {"at": time.time() + 1e9, "rows": {}}
 import main                                         # noqa: E402
 import ask                                          # noqa: E402
 import agent_loop                                   # noqa: E402
+REAL_CHAT = agent_loop.chat                          # the fakes below replace it; the thinking checks need the real one
 import issues as I                                  # noqa: E402
 from issues import engine                           # noqa: E402
 from issues import api as issues_api                # noqa: E402
@@ -297,6 +298,60 @@ check(all(lan.get(p, params={"q": "air"}).status_code == 403 for p in ("/ask/sta
 settings._cache["rows"]["SHARE_LEVEL"] = "open"
 check(lan.get("/docs/search", params={"q": "air"}).status_code == 200, "at open the WiFi may search the docs")
 print("  docs: searched with no model; the routes follow SHARE_LEVEL")
+
+# ---------------------------------------------------------------- the answer after a tool: no thinking, nothing cut silently
+# Node #1, 28 Sep: "how many alerts in the last 24 hours" took 165 s. The tool took 73 ms; gemma4:31b then wrote
+# 1,162 to 1,871 tokens of hidden thinking to count a list that had been cut at 8,000 characters, and got it wrong.
+import httpx                                                       # noqa: E402
+SEEN = []
+def _server(refuse):
+    def handle(req):
+        b = json.loads(req.content)
+        SEEN.append(b.get("reasoning_effort"))
+        if refuse and "reasoning_effort" in b:
+            return httpx.Response(400, json={"error": "Unrecognized request argument supplied: reasoning_effort"})
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": "ok"}}]})
+    return httpx.AsyncClient(transport=httpx.MockTransport(handle))
+_q = [{"role": "system", "content": "s"}, {"role": "user", "content": "how many alerts today?"}]
+_t = _q + [{"role": "assistant", "content": "", "tool_calls": []}, {"role": "tool", "content": "[]"}]
+async def _thinking():
+    big = agent_loop.Rung("remote", "http://m.test/v1", "gemma4:31b")
+    await REAL_CHAT(_server(False), big, list(_q), [{"type": "function"}])
+    await REAL_CHAT(_server(False), big, list(_t), [{"type": "function"}])
+    picky = agent_loop.Rung("online", "http://o.test/v1", "picky")
+    got = await REAL_CHAT(_server(True), picky, list(_t), [{"type": "function"}])
+    await REAL_CHAT(_server(True), picky, list(_t), [{"type": "function"}])
+    small = agent_loop.Rung("local", "http://l.test/v1", "qwen3:4b", small=True)
+    await REAL_CHAT(_server(False), small, list(_t), [{"type": "function"}])
+    return got
+_got = asyncio.run(_thinking())
+check(SEEN[:2] == [None, "none"], f"thinking must choose the tool and be off after its result: {SEEN[:2]}")
+check(SEEN[2:5] == ["none", None, None] and _got.get("content") == "ok",
+      f"a server that refuses reasoning_effort must be asked again without it, and not sent it next time: {SEEN[2:5]}")
+check(SEEN[5:] == [None], f"a small model has /no_think already and must not be sent reasoning_effort: {SEEN[5:]}")
+check(agent_loop.cap("x" * 10) == "x" * 10, "a tool result under the cap must reach the model unchanged")
+_c = agent_loop.cap("y" * 9000)
+check(_c.startswith("y" * agent_loop.TOOL_CAP) and "[cut: this result is 9000 characters" in _c and "incomplete" in _c,
+      "a tool result over the cap must say it was cut, or the model takes half a list for all of it")
+
+import agent                                                       # noqa: E402
+_URLS = []
+_ROWS = [{"id": i, "ts": "2026-09-28T07:00:00Z", "rule_id": "heat/act", "level": "act", "text": "t" * 400,
+          "acted_at": None} for i in range(18)]
+agent._get = lambda path: (_URLS.append(path), _ROWS)[1]
+_a = agent.alerts(since_hours=24)
+check(_URLS[-1] == "/alerts?since_hours=24&limit=1000", f"since_hours must ask the node for the whole window: {_URLS[-1]}")
+check(_a["count"] == 18 and len(_a["alerts"]) == 10 and all(len(r["text"]) <= 160 for r in _a["alerts"]),
+      f"since_hours must count every alert in the window and send the newest ten, shortened: "
+      f"{_a['count']}, {len(_a['alerts'])}")
+check(len(json.dumps(_a)) < agent_loop.TOOL_CAP, "a day's alerts must fit in one tool result, uncut")
+check(agent.alerts() == _ROWS and _URLS[-1] == "/alerts?limit=10", "without since_hours, alerts must be as it was")
+_sql = []
+main.q = lambda sql, *a: (_sql.append((sql, a)), [])[1]
+local.get("/alerts", params={"since_hours": 24})
+check(_sql and "make_interval(hours => %s)" in _sql[-1][0] and _sql[-1][1] == (24, 24, 50),
+      f"/alerts?since_hours must bound the query by hours: {_sql[-1:] and _sql[-1][1]}")
+print("  after a tool: no thinking, a cut result says so, alerts counts a window")
 
 # ---------------------------------------------------------------- the pane's thread: how long it lasts, what is sent
 # Tomas, 28 Sep: the pane got busy and never cleared. The thread lived in sessionStorage with no way to end it, and

@@ -176,9 +176,17 @@ def history(sensor_id: str, metric: str) -> list:
 
 
 @mcp.tool()
-def alerts(limit: int = 10) -> list:
-    """Recent alerts, newest first, each with its id, level (info/warn/act) and whether anyone acted on it."""
-    return _get(f"/alerts?limit={min(limit, 100)}")
+def alerts(limit: int = 10, since_hours: int = 0) -> dict | list:
+    """Recent alerts, newest first, each with its id, level (info/warn/act) and whether anyone acted on it.
+
+    For "how many in the last day", pass since_hours=24: that returns {since_hours, count, alerts}, where `count` is
+    every alert in the window and `alerts` the newest `limit` of them with their text shortened. Answer a count from
+    `count`, never by counting a list."""
+    if not since_hours:
+        return _get(f"/alerts?limit={min(limit, 100)}")
+    rows = _get(f"/alerts?since_hours={int(since_hours)}&limit=1000")
+    return {"since_hours": since_hours, "count": len(rows),
+            "alerts": [{**r, "text": (r.get("text") or "")[:160]} for r in rows[:min(limit, 100)]]}
 
 
 @mcp.tool()
