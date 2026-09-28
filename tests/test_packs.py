@@ -98,6 +98,29 @@ sys.modules["ee"] = types.ModuleType("ee")     # importable, but _init will fail
 eepack._state["last"] = 0
 assert eepack.fetch(None) == ([], []) and eepack._state["warned"]
 
+# verify.py, run end to end against a fake ee. Its step 6 named adapter.EMB for a year after the AlphaEarth score
+# left the adapter, so the one script a tester runs to check their setup died with AttributeError on a good setup.
+import contextlib, io, json, tempfile   # noqa: E401,E402
+class _Q:                                # every call chains; getInfo() is the only answer
+    def __getattr__(s, name): return lambda *a, **k: s
+    def getInfo(s): return {"elevation": 42}
+_seen = []
+_vee = types.ModuleType("ee")
+_vee.Initialize = _vee.ServiceAccountCredentials = lambda *a, **k: None
+_vee.Image = lambda cid: _Q(); _vee.ImageCollection = lambda cid: (_seen.append(cid), _Q())[1]
+_vee.Reducer = _vee.Geometry = _Q()
+with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as _kf:
+    json.dump({"project_id": "p", "client_email": "sa@p"}, _kf)
+os.environ.update(EE_PROJECT="p", EE_SERVICE_ACCOUNT="sa@p", EE_KEY_FILE=_kf.name)
+sys.modules["ee"] = _vee; sys.modules.pop("adapter", None)
+_out = io.StringIO()
+with contextlib.redirect_stdout(_out):
+    load("packs/earth-engine/verify.py", "ee_verify")     # an AttributeError here is the bug
+os.unlink(_kf.name); sys.modules.pop("adapter", None); [os.environ.pop(k) for k in ("EE_PROJECT", "EE_SERVICE_ACCOUNT", "EE_KEY_FILE")]
+assert "Setup is good" in _out.getvalue(), _out.getvalue()
+assert _seen == [eepack.DW, eepack.S2, eepack.VIIRS], f"verify.py checks {_seen}, the adapter reads DW, S2, VIIRS"
+print("earth-engine verify.py runs all six steps and checks only the datasets the adapter reads")
+
 print("all pack tests pass")
 
 # ---------------------------------------------------------------- place: a node that moved

@@ -728,9 +728,7 @@ v0.33.1 (see below).
 
 ### Know this
 
-The README is behind the folder. It still describes "two `Environmental|Bioregion` cells and a monthly rule that
-says the land changed" and a land-change score from the AlphaEarth embeddings. In v0.75.3 the folder still ships one cell
-and no `rules.yml`. The `earth` pack's README records why: the Earth Engine score (1 − cosine similarity of the
+The folder ships one cell and no `rules.yml`; land change is not here. The `earth` pack's README records why: the Earth Engine score (1 − cosine similarity of the
 mean embedding over 1 km, behind a key) and the per-pixel distance over 10 km from the public bucket are different
 quantities that did not agree (0.037 against 0.041 at node #1), so the Earth Engine one was retired and the
 `land_changed` alert moved with it. `earth-engine` keeps what only Earth Engine can give: Dynamic World, Sentinel-2
