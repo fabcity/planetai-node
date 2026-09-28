@@ -1,12 +1,19 @@
 # Changelog
 
-## Unreleased
+## v0.75.6 — 2026-09-28 — `planetai run` sees what Set up saved
 
-- **2026-09-28 · `planetai run` sees what Set up saved.** A pack script started with `planetai run <pack>
+*v0.75.5 made a pack's own settings save from Set up, and the pack's adapter read them, but a pack script
+started from the terminal still read `.env` alone. It reads the saved settings now. Also: the source registry
+is synced again.*
+
+- **`planetai run` sees what Set up saved.** A pack script started with `planetai run <pack>
   <script>` is a new process in the container, and it read only `.env`: `planetai run earth-engine verify`
   called `EE_PROJECT` missing while Set up held it. The command now loads the node's settings before the
   script starts, so a pack key saved from Set up, the CLI or an agent is in its environment, the same as for
   the pack's adapter. With the database down it falls back to `.env`, as before.
+- **The source registry, synced to `awesome-fabcity-data` at `1d12b7b`** (from `2b00195` in v0.75.5): still
+  268 entries. IBGE SIDRA now names Recife and São Paulo among the places it covers, and the schema has the
+  fields an agent uses to file a source together with the person responsible for it.
 
 ## v0.75.5 — 2026-09-28 — a pack's own settings save from Set up, and reach the pack
 
