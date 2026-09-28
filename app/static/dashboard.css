@@ -31,12 +31,14 @@
   --hair: var(--fc-grid-line);
   --raise: rgba(23, 23, 23, .035);
   --on-rings: #171717;      /* 5.26:1 on --rings in both registers; it must not flip */
+  --doc: var(--fc-neutral-200);  /* the documentation's panel, not the data's ground: --mute on it is 5.3:1 */
 }
 :root[data-theme="dark"] {
   --mute: #A3A19F;
   --dim: #8A8886;
   --hair: rgba(249, 245, 242, .14);
   --raise: rgba(249, 245, 242, .05);
+  --doc: var(--fc-neutral-800);  /* --mute on it is 5.5:1 */
 }
 
 * { box-sizing: border-box }
@@ -1445,6 +1447,11 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .ledger b { color: var(--ink); font-weight: 600 }
 #askpane .ledger i { display: inline-block; width: 6px; height: 6px; background: var(--rings); vertical-align: middle; margin-right: 4px }
 #askpane .card { border: 1.5px solid var(--ink); padding: 11px 13px; margin-top: 10px; display: block; min-width: 0 }
+/* A learn card is the documentation talking, not the node's data, and in an ink frame it read as one
+   more reading. It gets a panel of its own. A neutral, not a hue: every hue on this page is a role
+   (check_ui.py), and blue would say "data", which is the one thing this card is not. */
+#askpane .card.mark { background: var(--doc); border-color: transparent }
+#askpane .card.mark .qt { margin: 0 0 8px; font: 400 14px/1.5 var(--fc-font-body) }
 #askpane .card .ch { display: flex; justify-content: space-between; gap: 8px; font: 800 10px var(--mono); letter-spacing: .08em; margin-bottom: 6px }
 #askpane .card .ch span + span { font-weight: 400; color: var(--mute) }
 #askpane .card .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font: 500 11.5px var(--mono);

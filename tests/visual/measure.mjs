@@ -2795,9 +2795,51 @@ async function learnwalk() {
   const bad = got.srcs.filter(t => /\.md\b|docs\/site|^From \.?$/.test(t.trim()));
   if (bad.length || got.srcs.some(t => !/^From .+\.$/.test(t.trim()))) fails.push(`a card cites a path, not a title: ${bad[0] || got.srcs.find(t => !/^From .+\.$/.test(t.trim()))}`);
   if (got.cards !== 1) fails.push(`walking stacked ${got.cards} cards; it should replace the one it is on`);
+
+  /* Leaving learn takes back what it brought. Pressed through the mode buttons, as a person does: the
+     job above pins ?mode=learn in the URL, and the URL's mode outranks a press. Each case runs twice,
+     because a switch that works once and not on the way back in is the usual way this page breaks.
+     A: learn opened the pane, so leaving closes it. B: the person opened it first, so it stays open,
+     without the card. */
+  const h2 = await open(tagged({ name: 'learnoff', view: 'now', w: 1440, state: 'populated' }));
+  const off = await h2.page.evaluate(async () => {
+    const wait = async f => { for (let i = 0; i < 40 && !f(); i++) await new Promise(r => setTimeout(r, 50)); return f(); };
+    const press = m => document.querySelector(`.seg.mode button[data-mode="${m}"]`).click();
+    /* Cards are counted in the thread, not the markup: a closed pane keeps its last drawing hidden. */
+    const state = () => ({ open: document.body.classList.contains('askopen'),
+      cards: JSON.parse(sessionStorage.getItem('planetai_ask_thread') || '[]').filter(m => m.role === 'card').length });
+    const walk = async () => {
+      press('learn');
+      await wait(() => document.querySelector('[data-learn-walk]'));
+      document.querySelector('[data-learn-walk]').click();
+      await wait(() => state().cards);
+      return state();
+    };
+    const out = {};
+    for (const round of [1, 2]) {
+      out[`A${round} in`] = await walk();
+      press('advanced'); await wait(() => !state().open);
+      out[`A${round} out`] = state();
+    }
+    document.querySelector('.asktoggle[data-ask-toggle]').click();
+    for (const round of [1, 2]) {
+      out[`B${round} in`] = await walk();
+      press('advanced'); await wait(() => !state().cards);
+      out[`B${round} out`] = state();
+    }
+    return out;
+  });
+  await h2.browser.close();
+  for (const [k, v] of Object.entries(off)) {
+    const want = k.endsWith(' in') ? { open: true, cards: 1 } : { open: k[0] === 'B', cards: 0 };
+    if (v.open !== want.open || v.cards !== want.cards)
+      fails.push(`${k} of learn: the pane is ${v.open ? 'open' : 'closed'} with ${v.cards} card(s); `
+        + `it should be ${want.open ? 'open' : 'closed'} with ${want.cards}`);
+  }
   for (const f of fails) console.log('FAIL learnwalk:', f);
   if (!fails.length) console.log(`  learnwalk: ${got.order.length} marks on Now, visited in page order from the first, `
-    + 'each card cited by its page title; one card, replaced as it walks');
+    + 'each card cited by its page title; one card, replaced as it walks. Leaving learn closes the pane it '
+    + 'opened and keeps one the person opened, without the card, twice each');
   process.exit(fails.length ? 1 : 0);
 }
 
