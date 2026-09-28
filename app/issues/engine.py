@@ -275,21 +275,34 @@ def _digest(out: dict, stations: list[dict], geom: dict, asks: dict, headline: s
     return got
 
 
+PROMPTS_MAX = 12
+
+
 def _prompts(out: dict, headline: str | None) -> dict:
-    """Three questions for the ask pane's composer: why the lead leads, the oldest open alert (or whether
-    anything is asking), and what the lead's line means (or, with no line, where its number comes from)."""
-    opens = [a for v in out.values() for a in (v.get("open_asks") or []) if a.get("id") is not None]
-    oldest = min(opens, key=lambda a: str(a.get("ts"))) if opens else None
+    """The ask pane's questions. The first three are the ones it opens with: why the lead leads, the oldest
+    open alert (or whether anything is asking), and what the lead's line means (or, with no line, where its
+    number comes from). After them, the pool the pane rotates through: every other issue with a reading as
+    it is now, the two newest of the other open alerts, and every other issue's line. Only two more alerts,
+    because node #1 had ten open and the pool became six copies of one question. An issue that is context
+    (land, coast: the satellite's year) is not asked about "right now". Nothing repeats, and there are at
+    most PROMPTS_MAX. The order is the same in every locale, so a rotation lands on the same question in each."""
+    opens = sorted((a for v in out.values() for a in (v.get("open_asks") or []) if a.get("id") is not None),
+                   key=lambda a: str(a.get("ts")))
+    oldest = opens[0] if opens else None
+    others = [k for k, v in out.items() if k != headline and v.get("state") not in (None, "none")]
     said = {}
     for loc in LOCALES:
         w = PROMPT_WORDS[loc]
-        name = ((out.get(headline) or {}).get("name") or {}).get(loc, headline or "").lower()
-        qs = [w["lead"].format(issue=name)] if headline else []
+        nm = lambda k: ((out.get(k) or {}).get("name") or {}).get(loc, k or "").lower()  # noqa: E731
+        line = lambda k: w["line" if (out[k].get("line") or {}).get("value") is not None else "model"].format(issue=nm(k))  # noqa: E731
+        qs = [w["lead"].format(issue=nm(headline))] if headline else []
         qs.append(w["ask"].format(id=oldest["id"]) if oldest else w["quiet"])
         if headline:
-            qs.append(w["line" if (out[headline].get("line") or {}).get("value") is not None else "model"]
-                      .format(issue=name))
-        said[loc] = qs
+            qs.append(line(headline))
+        qs += [w["now"].format(issue=nm(k)) for k in others if out[k].get("state") != "context"]
+        qs += [w["ask"].format(id=a["id"]) for a in list(reversed(opens[1:]))[:2]]
+        qs += [line(k) for k in others]
+        said[loc] = list(dict.fromkeys(qs))[:PROMPTS_MAX]
     return said
 
 

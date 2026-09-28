@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **2026-09-28 · The pane is its own surface, and its questions turn.** Everything the node says in the ask
+  pane now sits on one grey surface: its answers, learn's quotes, and the globe while it works. The page's
+  paper is only ever the data. It is a neutral, not a colour, because every colour on the page already means
+  something about the data. Errors in the pane are ink beside a red rule, not red text, which was too faint
+  to read. The three questions under the thread come from a bigger pool now, still written by the node from
+  tonight's figures. After the three it opens with come the other issues, the two newest other open alerts,
+  and each other issue's line. A new three shows each time the pane opens and after each answer, never one
+  already asked. The new question's Bahasa and Spanish wording has not yet been read by a native speaker.
 - **2026-09-28 · The pane shows the node working, and the loading screen fits a phone.** While the node works on
   an answer, the pane draws the loading screen's globe, small and turning, with which model was asked and how
   many seconds it has been. Each read the model makes appears as it finishes, not with the answer at the end;

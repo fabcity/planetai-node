@@ -137,7 +137,7 @@ the page draws is registered under one of them.
 
 **Digest.** Four sentences, one per stage, written by the node in English, Bahasa Indonesia and Spanish from
 figures already in `GET /issues`. Beside them, `digest.simple` is the paragraph simple mode draws, and
-`digest.prompts` the three questions the ask pane offers.
+`digest.prompts` the questions the ask pane offers, three at a time.
 
 **Headline.** The issue the lead is about. The highest state wins; where two issues are in the same state,
 the one that moved most in the last three hours; an exact tie goes to the order in `NODE_ISSUES`. Only an issue that declares a `hero`,

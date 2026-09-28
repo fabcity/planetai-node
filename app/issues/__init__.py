@@ -252,18 +252,21 @@ SIMPLE_WORDS = {
            "loop_empty": "El nodo no ha pedido nada a nadie en los \u00faltimos 30 d\u00edas.",
            "today": "las {t}", "date": "el {d} de {month}"},
 }
-# The ask pane's three first questions, `digest.prompts`: written from tonight's bundle so the first thing
-# a person does in the pane is press rather than face a blank box. A question, never an answer.
+# The ask pane's questions, `digest.prompts`: written from tonight's bundle so the first thing a person
+# does in the pane is press rather than face a blank box. A question, never an answer. The first three are
+# the ones the pane opens with; the rest are the pool it rotates through (Tomas, 28 Sep 2026). Every one is
+# about this node's own issues and alerts, which is all the model is there to answer. `now` is new on
+# 28 Sep and its id and es wording has not yet been read by a native speaker.
 PROMPT_WORDS = {
     "en": {"lead": "Why is {issue} what the node leads with?", "ask": "What should I do about alert #{id}?",
            "quiet": "Is anything here asking for attention?", "line": "What does the line for {issue} mean?",
-           "model": "Where does the {issue} number come from?"},
+           "model": "Where does the {issue} number come from?", "now": "What is {issue} like right now?"},
     "id": {"lead": "Mengapa {issue} yang ditampilkan paling depan?", "ask": "Apa yang harus saya lakukan dengan peringatan #{id}?",
            "quiet": "Apakah ada yang perlu diperhatikan di sini?", "line": "Apa arti batas untuk {issue}?",
-           "model": "Dari mana angka {issue} berasal?"},
+           "model": "Dari mana angka {issue} berasal?", "now": "Bagaimana {issue} saat ini?"},
     "es": {"lead": "\u00bfPor qu\u00e9 el nodo empieza por {issue}?", "ask": "\u00bfQu\u00e9 hago con la alerta #{id}?",
            "quiet": "\u00bfHay algo aqu\u00ed que pida atenci\u00f3n?", "line": "\u00bfQu\u00e9 significa el l\u00edmite de {issue}?",
-           "model": "\u00bfDe d\u00f3nde sale la cifra de {issue}?"},
+           "model": "\u00bfDe d\u00f3nde sale la cifra de {issue}?", "now": "\u00bfQu\u00e9 dicen ahora mismo los datos de {issue}?"},
 }
 # The hero's plain line: the other distances and the line in the household's words, under the
 # sentence. Approved by Tomas 25 September 2026. The place words are WHERE_WORDS and NOUN_WORDS, so

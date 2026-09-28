@@ -2740,13 +2740,16 @@ async function askpane() {
        would cancel the globe's one subscriber out. */
     for (let i = 0; i < 60 && window.PAI_ASKING.up(); i++) await new Promise(r => setTimeout(r, 100));
     const before = window.PAI_RAF.size;
-    f.elements.q.value = 'what is the air like'; f.requestSubmit();
+    const chipsOf = () => [...document.querySelectorAll('#askpane [data-ask-chip]')].map(b => b.getAttribute('data-ask-chip'));
+    const chips0 = chipsOf();
+    document.querySelector('#askpane [data-ask-chip]').click();
     await new Promise(r => setTimeout(r, 1100));
     const cv = document.querySelector('#askpane .msg.node:last-child canvas.askglobe');
     const during = { globe: !!cv, drawn: !!(cv && cv.width > 1), subs: window.PAI_RAF.size - before, reduced: window.PAI_RAF.reduced(),
       says: ((document.querySelector('#askpane .thinking') || {}).textContent || '').trim() };
     for (let i = 0; i < 40 && document.querySelector('#askpane canvas.askglobe'); i++) await new Promise(r => setTimeout(r, 100));
-    return { during, after: { globe: !!document.querySelector('#askpane canvas.askglobe'), subs: window.PAI_RAF.size - before,
+    await new Promise(r => setTimeout(r, 50));
+    return { chips0, chips1: chipsOf(), during, after: { globe: !!document.querySelector('#askpane canvas.askglobe'), subs: window.PAI_RAF.size - before,
       answer: /Nothing changed/.test(document.querySelector('#askpane .msg.node:last-child').textContent) } };
   });
   delete process.env.PAI_ASK_SLOW;
@@ -2756,6 +2759,9 @@ async function askpane() {
   if (wait.during.subs !== (wait.during.reduced ? 0 : 1))
     fails.push(`the waiting globe has ${wait.during.subs} subscriber(s) on the page's loop with reduced motion ${wait.during.reduced ? 'on' : 'off'}`);
   if (!/^asking qwen3\.5:4b · \d+ s$/.test(wait.during.says)) fails.push(`the waiting line should say which model and how long: "${wait.during.says}"`);
+  /* The three questions turn when an answer lands, and the one just asked is not offered again. */
+  if (wait.chips1.length !== 3 || wait.chips1.includes(wait.chips0[0]) || wait.chips1.join('|') === wait.chips0.join('|'))
+    fails.push(`after an answer the questions should turn and drop the one asked: before ${JSON.stringify(wait.chips0)}, after ${JSON.stringify(wait.chips1)}`);
   if (wait.after.globe || wait.after.subs !== 0 || !wait.after.answer)
     fails.push(`once the answer landed the globe should be gone and off the loop: ${JSON.stringify(wait.after)}`);
   if (!got.composer) fails.push('with a model running the pane draws no composer');

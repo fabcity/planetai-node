@@ -8503,6 +8503,11 @@ const OPEN = 'planetai_ask_open', THREAD = 'planetai_ask_thread', AT = 'planetai
 /* 'learn' when learn mode opened the pane, so leaving the mode can close what it opened and nothing
    the person opened themselves. */
 const BY = 'planetai_ask_by';
+/* Where the composer's three questions start in the node's pool. It moves when the pane opens and when an
+   answer lands, and at nothing else: a poll redraws the pane every few minutes, and a chip that changed
+   under a finger on its way to it would be pressed as the wrong question. */
+const ROT = 'planetai_ask_rot';
+const turn = () => ss.set(ROT, String(Number(ss.get(ROT) || 0) + 3));
 /* A thread nobody has added to for half an hour is over: the next person at a wall screen does not inherit the
    last one's conversation. It still survives a reload and every poll, which is why it is in sessionStorage. */
 const IDLE_MS = 30 * 60 * 1000;
@@ -8704,11 +8709,21 @@ function spin() {
   if (cv && window.PAI_ASKING) window.PAI_RAF.add(cv, window.PAI_ASKING.globe);
 }
 
-function composer() {
+/* Three of the node's questions, from where the rotation stands, leaving out any already asked in this
+   conversation. A learn mark in focus puts its own two first. */
+function chipsFor(mine) {
   const d = ((window.K && window.K.S && window.K.S.issues) || {}).digest || {};
+  const pool = (d.prompts || {})[loc()] || (d.prompts || {}).en || [];
+  const asked = new Set(thread().filter(m => m.role === 'user').map(m => m.content));
+  const left = pool.filter(q => !asked.has(q) && !(mine || []).includes(q));
+  const from = left.length ? left : pool;
+  const r = from.length ? Number(ss.get(ROT) || 0) % from.length : 0;
+  return [...(mine || []).slice(0, 2), ...from.slice(r), ...from.slice(0, r)].slice(0, 3);
+}
+
+function composer() {
   const fm = focusKey() && window.PAI_LEARN_MARK ? window.PAI_LEARN_MARK(focusKey()) : null;
-  const qs = fm && fm.questions ? (fm.questions[loc()] || fm.questions.en) : null;
-  const chips = (qs || (d.prompts || {})[loc()] || (d.prompts || {}).en || []).slice(0, 3);
+  const chips = chipsFor(fm && fm.questions ? (fm.questions[loc()] || fm.questions.en) : null);
   const fixture = new URLSearchParams(location.search).get('fixture');
   return `<form class="compose" data-ask-send>`
     + `<div class="chips">${chips.map(c => `<button type="button" data-ask-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>`
@@ -8807,6 +8822,7 @@ async function send(text) {
   } finally {
     clearInterval(ticking);
     me.content = me.content.trim();
+    turn();
     BUSY = false; keep(t); draw();
   }
 }
@@ -8841,6 +8857,7 @@ document.addEventListener('click', ev => {
   }
   if (t.closest('[data-ask-toggle]')) {
     ev.preventDefault();
+    if (!isOpen()) turn();
     ss.set(OPEN, isOpen() ? '0' : '1');
     ss.set(BY, '');
     return draw();
@@ -8899,7 +8916,7 @@ function card(key, i, n) {
    thread, and the pane closes if learn is what opened it. Before this, turning learn off left the
    documentation's card standing in the pane over a page that no longer had the mark it quoted. */
 function learnOn() {
-  if (!isOpen()) ss.set(BY, 'learn');
+  if (!isOpen()) { ss.set(BY, 'learn'); turn(); }
   ss.set(OPEN, '1');
   draw();
 }
