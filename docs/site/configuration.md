@@ -37,17 +37,19 @@ interval. The dashboard shows these read-only. To change one, edit `.env` and ru
 
 A pack lists its own keys under `env:` in its `pack.yaml`, with a comment above each. `GET /settings`
 shows every installed pack's keys, whether the pack is switched on or not, in the group `packs`, with
-the key as its label, the pack's default and help, and `restart: true`. They are there so a keeper can
+the key as its label, the pack's default and help, and `restart: false`. They are there so a keeper can
 see a pack's switch before turning it on.
 
-They cannot be set through the API. `PUT /settings` answers 400 `<KEY> is not a runtime setting`, and
-`planetai config set` prints that and then `<KEY> was not changed.` Set up draws them in the packs group
-and sends one you edit, and the node refuses it the same way. Set them in `.env` and run
-`planetai restart`. `planetai packs install` appends the keys a `.env` is missing, under a dated marker.
+They are set like a runtime key: from Set up, with `planetai config set`, or with `PUT /settings`, which
+accepts any key an installed pack declares, switched on or not, and still answers 400 for a key nothing
+declares. The save is one row in the actions ledger, the same as any other. A pack reads its keys from the
+environment, so the node puts the database value there as well, and the pack has it the next time it runs,
+within 20 s. Blank takes the key back to `.env`. A node that answers a pack key with 400 `<KEY> is not a runtime
+setting` is older than this: update it, or set the key in `.env` and run `planetai restart`. `planetai packs install` appends the keys a `.env` is missing,
+under a dated marker.
 
 Three pack keys are also runtime keys: `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`. They appear twice in
-`GET /settings`, once in `keys` and once in `packs`, and `PUT /settings` accepts them. The pack code reads
-the environment, though, so the override does not reach it. See the next section.
+`GET /settings`, once in `keys` and once in `packs`, and both rows are the same value.
 
 ### Settings that take effect only at a restart
 
@@ -58,8 +60,7 @@ container restarts:
 | key | the reader that ignores the override |
 |---|---|
 | `NODE_KIND` | `/presence`, its only reader |
-| `EE_PROJECT`, `EE_KEY_FILE` | the place pack's satellite code and the earth-engine scripts |
-| `COAST_MAX_KM` | the coast adapter's refusal distance. The dashboard's drawn coast footprint does read the override, so an override moves the drawing and not the refusal |
+| any pack key | a pack script started with `planetai run <pack> <script>`, which `docker compose exec` starts as a new process with only the container's environment. The same script run through MCP's `run_pack_script` has the override |
 | `ACT_TOKEN`, `RETICULUM_ALERT_DESTINATIONS` | the Reticulum bridge, which reads its own environment. The app itself reads the `ACT_TOKEN` override |
 
 The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v0753).
@@ -137,7 +138,7 @@ and falls back to `.env` when the node is down. Runtime keys are written through
 | `planetai config --section G` | Straight into one category. The categories are the groups of `GET /settings`, in its order: `issues`, `sources`, `alerts`, `integrations`, `packs`, `keys`, `agent`, `node`, and then `bootstrap`. `packs` holds the two pack switches and every key the packs declare. |
 | `planetai config list [--section G]` | Every setting, its value in force and where it came from. Red means `.env` holds something else and is being ignored; a value set from the dashboard says so. |
 | `planetai config get KEY` | One setting: its help, the value in force, its source, and whether `.env` disagrees. Says when a restart is needed. |
-| `planetai config set KEY VALUE` | A runtime key goes to the database and the node has it within 20 s. A bootstrap key goes to `.env`, and the command offers `planetai restart`. A pack key is refused by the node, and the command says it was not changed. |
+| `planetai config set KEY VALUE` | A runtime key goes to the database and the node has it within 20 s. A bootstrap key goes to `.env`, and the command offers `planetai restart`. A pack key goes to the database too, and the pack has it at its next run. |
 | `planetai config unset KEY` | Removes the database override, back to `.env` or the built-in default. |
 | `planetai config edit` | Opens `.env` in `$EDITOR` (nano by default) and offers a restart. This is what `planetai config` used to be. |
 
@@ -157,8 +158,8 @@ Shortcuts for the settings people change most:
 ## Reference
 
 Kind is `runtime` (database overlay, live within 20 s), `bootstrap` (read at start, edit `.env` and
-restart), `pack` (declared in a `pack.yaml`, listed by `GET /settings`, refused by `PUT /settings`; edit
-`.env` and restart) or `env only` (read from the environment, not listed and not editable through the
+restart), `pack` (declared in a `pack.yaml`, listed by `GET /settings`, set like a runtime key and put into
+the pack's environment) or `env only` (read from the environment, not listed and not editable through the
 API). `public` means an anonymous `GET /settings` may see the value; `outward` means the key changes what
 leaves the machine; `secret` means the value is always masked; `restart` means `GET /settings` flags the key
 as needing a restart.
@@ -345,8 +346,8 @@ each and `planetai storage set` changes the first three.
 ## What the packs declare
 
 Every key a `pack.yaml` declares, with the default it ships. All are kind `pack`: listed by
-`GET /settings` in group `packs`, refused by `PUT /settings`, read from the environment by the pack's own
-code, so set them in `.env` and run `planetai restart`. A code pack reads none of them until
+`GET /settings` in group `packs` and set like a runtime key; the pack's own code reads them from the
+environment, where the node puts the database value. A code pack reads none of them until
 `PACKS_ALLOW_CODE=1`.
 
 | Setting | Pack | Default | Meaning |
@@ -368,10 +369,10 @@ code, so set them in `.env` and run `planetai restart`. A code pack reads none o
 | `EARTH_YEARS` | earth | blank = every year | Which years to fetch, comma-separated. The dataset has 2017 to 2025. |
 | `PLACE_RADIUS_M` | place | `1000` | The radius around the node to describe from OpenStreetMap. Also `/place/geojson.radius_m`. |
 | `PLACE_REFRESH_DAYS` | place | `30` | How often to fetch from Overpass again. A moved node refetches at once. |
-| `EE_PROJECT` | earth-engine | blank = read from the key file | Earth Engine project id, not the service account number. Also a runtime key; the code reads the environment. |
+| `EE_PROJECT` | earth-engine | blank = read from the key file | Earth Engine project id, not the service account number. Also a runtime key. |
 | `EE_SERVICE_ACCOUNT` | earth-engine | blank = the key file names it | The Earth Engine service account. |
-| `EE_KEY_FILE` | earth-engine | `/app/config/ee-key.json` | The service-account JSON key; copy it to `config/ee-key.json` on the node. Also a runtime key; the code reads the environment. |
-| `COAST_MAX_KM` | coast | `30` | Refuse to report if the nearest ocean grid cell is further away than this, in km. Also a runtime key (public): the override moves the dashboard's drawn footprint, and the adapter reads the environment. |
+| `EE_KEY_FILE` | earth-engine | `/app/config/ee-key.json` | The service-account JSON key; copy it to `config/ee-key.json` on the node. Also a runtime key. |
+| `COAST_MAX_KM` | coast | `30` | Refuse to report if the nearest ocean grid cell is further away than this, in km. Also a runtime key (public): the override moves both the dashboard's drawn footprint and the adapter's refusal. |
 
 > **Gap in v0.75.3.** `FORECAST_POLL_HOURS` is declared and read by nothing.
 
@@ -408,12 +409,12 @@ or santiago bounding box.
 - `SENSOR_INDOOR` has no reader anywhere in the app or the packs.
 - `REPORT_DEPTH` is declared and validated but read by nothing outside the settings module.
 - `FORECAST_POLL_HOURS` is declared by the forecast pack and read by nothing.
-- `NODE_KIND`, `EE_PROJECT` and `EE_KEY_FILE` accept a runtime override that their readers never see, and
-  `COAST_MAX_KM`'s override reaches the drawing but not the coast adapter. Set them in `.env` and restart.
+- `NODE_KIND` accepts a runtime override that `/presence`, its only reader, never sees. Set it in `.env`
+  and restart.
+- A pack script started with `planetai run <pack> <script>` reads `.env`, not a pack key set from Set up.
+  `run_pack_script` over MCP reads the override.
 - `ACT_TOKEN` and `RETICULUM_ALERT_DESTINATIONS` set from the dashboard do not reach the Reticulum bridge,
   which reads its own environment. Set them in `.env` and restart the bridge.
-- `GET /settings` lists the 21 pack keys, and `PUT /settings` refuses 18 of them; the three that are
-  also runtime keys are accepted and then ignored by the pack.
 - `FCI_PUBLISHER`, `ALLOWED_CITIES` and `PEERS` are named in other documents and are not present in this
   code.
 

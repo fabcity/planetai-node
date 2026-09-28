@@ -296,10 +296,9 @@ screen), nothing is saved: the field says what the node holds now and the last c
 read from `GET /actions?stage=settings`, and a second press of Save replaces it. In the packs group a pack
 switch decides `PACKS_ENABLED` only when one was moved; otherwise the text field does.
 
-> **Gap in v0.75.3.** Set up draws each pack's own keys in the packs group and sends one when it is edited,
-> but `PUT /settings` refuses every pack key that is not also a runtime key with 400 `<KEY> is not a runtime
-> setting`. The page prints that beside the field and saves nothing. Set those keys in `.env` and run
-> `planetai restart`; see [Configuration](configuration.md#keys-the-packs-declare).
+A pack's own keys save the same way, and the pack has the new value at its next run, whether or not the pack
+is switched on yet. A node older than this refuses them with 400 `<KEY> is not a runtime setting`; see
+[Configuration](configuration.md#keys-the-packs-declare).
 
 ## What a reader without a token sees
 
