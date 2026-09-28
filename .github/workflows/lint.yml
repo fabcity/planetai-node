@@ -48,8 +48,13 @@ jobs:
   # The deploy key is required. A missing key FAILS this job instead of skipping it: a gate that
   # quietly skips wherever its input is missing is green in exactly the place it is meant to guard.
   # The one exception is a pull request from a fork, because GitHub does not give those the secret.
+  #
+  # macOS, not Linux: the baselines in gate.sh were measured on a Mac, and Linux draws the same page
+  # differently enough to matter. On 28 Sep 2026 (v0.75.7), Now at 390 measured 42.9% empty on
+  # macOS and 45.0% on ubuntu-latest, against a limit of 43.7%. One set of numbers has to hold on a
+  # laptop and in CI, so CI runs where they were measured.
   visual:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     env:
       DESIGN_KEY: ${{ secrets.PLANETAI_DESIGN_DEPLOY_KEY }}
       FORK: ${{ github.event.pull_request.head.repo.fork || false }}
