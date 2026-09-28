@@ -14,7 +14,7 @@ pilot_relevance: [global]
 tags: [unesco, uis, education, gender-parity, open-api]
 added: 2026-09-09
 auth: none
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 with two live calls, no API key required. CR.3 for

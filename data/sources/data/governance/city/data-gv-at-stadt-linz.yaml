@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: null
 pilot_relevance: []
+places: [linz]
 tags: [open-data-portal, transparency, austria, procurement]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: [Governance|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8). data.linz.gv.at

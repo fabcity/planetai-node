@@ -12,7 +12,7 @@ api: null
 pilot_relevance: [global]
 tags: [material-flow, mfa, un, resource-extraction, circular-economy]
 added: 2026-05-04
-wired_in_planetai: true
+feeds_cells: [Economic|Bioregion]
 upstream_listed_in: []
 notes: |
   Methodologically aligned with Eurostat EW-MFA. Used as the

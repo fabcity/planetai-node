@@ -3,22 +3,21 @@ url: https://atlas.hks.harvard.edu/
 description: |
   Global trade + economic-complexity indicators (ECI, product-space,
   diversification metrics) for ~250 countries × ~6,000 products.
-  Bulk download via Dataverse; interactive web tool for exploration.
+  Public GraphQL API plus bulk tables on Harvard Dataverse.
 pillar: economic
 scale: planet
 status: live
-license: CC-BY-4.0
-api: null
+license: CC0-1.0
+api: https://atlas.hks.harvard.edu/api/graphql
 pilot_relevance: [global]
-tags: [trade, economic-complexity, eci, harvard]
+tags: [trade, economic-complexity, eci, harvard, imports, exports, material-flow]
 added: 2026-05-04
-updated: '2026-09-19'
-wired_in_planetai: true
+auth: key-free-rate-limited
+feeds_cells: []
+updated: '2026-09-26'
 upstream_listed_in: [awesome-public-datasets]
 notes: |
-  MOVED 2026-09-19. Harvard moved the Atlas from the Center for International Development to the Kennedy School: atlas.cid.harvard.edu now redirects to atlas.hks.harvard.edu, and the documented API host api-docs.atlas.cid.harvard.edu no longer resolves at all. The new host does not answer at api-docs.atlas.hks.harvard.edu either and the landing page links no API, so api is set to null rather than guessed. Somebody wiring this needs to find the endpoint and put it back. Flagged wired_in_planetai, though no pack declares it - see issue #3.
-  CORS is unreliable from browser origins — pre-fetch and serve as a
-  static snapshot for production. Dataverse mirror at
-  dataverse.harvard.edu carries the full bulk dump.
-  The methodological predecessor of Metroverse (city scale) and
-  Boeing 2024 Fab City Index.
+  API FOUND AGAIN 2026-09-26. The Atlas moved from the Center for International Development to the Kennedy School on 2026-09-19. The old API host api-docs.atlas.cid.harvard.edu no longer resolves. The new endpoint is documented at github.com/harvard-growth-lab/api-docs (atlas.md, last updated January 2026): POST GraphQL to atlas.hks.harvard.edu/api/graphql, no authentication, 120 requests per minute. It answered on 2026-09-26: Spain's countryYear returned 2022–2024 export and import values with ECI, and Indonesia–China countryCountryYear returned 2023. dataAvailability gives HS92 1995–2024, HS12 2012–2024, HS22 2022–2024 and SITC 1962–2024. Product and location IDs are internal. Location IDs follow UN M49 where possible (724 Spain, 840 US, 152 Chile, 360 Indonesia). Product IDs are not HS codes, so join through productHs92 and the other classification queries. The docs say the API exists for the Atlas itself and "endpoints or data values may change suddenly and without warning". For anything a node depends on, prefer the bulk tables.
+  LICENCE CORRECTED from CC-BY-4.0 to CC0-1.0, read from the Dataverse dataset records on 2026-09-26. International Trade Data (HS 92) is doi:10.7910/DVN/T4CHWJ, HS 12 is doi:10.7910/DVN/YAVJDF, and Classifications is doi:10.7910/DVN/3BAL1O. All three say CC0 1.0 and have no separate terms of use. The API publishes no licence of its own; it serves the same tables. Upstream, these are the Growth Lab's reconciled mirror statistics built from UN Comtrade reports, and the licence question for the raw records belongs to Comtrade, not to this entry. The api-docs repository is Apache-2.0, which covers the docs, not the data. Academic use asks for the citation given in atlas.md.
+  WHY feeds_cells IS EMPTY. The resolution is a country, and no cell is a country. For Fab City's import-versus-export question, this is the national bracket a city's own trade sits inside: what the country buys and sells, by product, and how much of it is flagged naturalResource or greenProduct. It is not a city's or region's trade. Nothing reads this today; the retired wired_in_planetai claim was dropped on 2026-09-23 (issue #3).
+  The methodological predecessor of Metroverse (city scale) and Boeing 2024 Fab City Index.

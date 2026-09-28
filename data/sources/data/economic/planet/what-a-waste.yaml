@@ -1,8 +1,8 @@
 name: World Bank What a Waste 2.0
 url: https://datacatalog.worldbank.org/search/dataset/0039597
 description: |
-  National-level municipal solid waste accounts: per-capita generation,
-  composition, collection, treatment. Coverage for ~217 economies.
+  Municipal solid waste accounts: per-capita generation, composition,
+  collection and treatment for ~217 economies, plus a city-level table.
 pillar: economic
 scale: planet
 status: live
@@ -11,7 +11,7 @@ api: null
 pilot_relevance: [global]
 tags: [waste, msw, world-bank, circular-economy]
 added: 2026-05-04
-wired_in_planetai: true
+feeds_cells: [Economic|Planet]
 upstream_listed_in: []
 notes: |
   Used in PLANETAI Wave 16 Sankey triptych as the right-hand panel
@@ -19,3 +19,10 @@ notes: |
   update 2018, partial updates since. Combine with PLANETAI's
   HS->material crosswalk to bridge imports (Atlas of Economic
   Complexity) into waste outputs.
+
+  CITY TABLE, verified 2026-09-26. The catalogue also publishes city-level data:
+  datacatalogfiles.worldbank.org/ddh-published/0039597/DR0049200/city_level_data_0_0.csv
+  (HTTP 200, 368 rows). Paris and Santiago have waste figures. Hamburg is listed with
+  population only. Barcelona, Boston and Denpasar are absent. City rows carry no year
+  field, so every figure needs its vintage checked before use. The licence is the World
+  Bank's CC-BY 4.0 (datacatalog.worldbank.org/public-licenses).

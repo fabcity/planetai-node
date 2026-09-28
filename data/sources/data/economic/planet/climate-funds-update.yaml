@@ -12,7 +12,7 @@ api: null
 pilot_relevance: [global]
 tags: [climate-finance, odi, sustainable-finance, download-only, licence-undeclared]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. Data current as of February 2026, covering

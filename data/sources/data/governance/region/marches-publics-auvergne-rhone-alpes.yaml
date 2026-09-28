@@ -10,10 +10,11 @@ status: live
 license: Licence Ouverte
 api: https://www.data.gouv.fr/api/1/datasets/?organization=60784425bed18cfaefe5e653
 pilot_relevance: []
+places: [auvergne-rhone-alpes]
 tags: [procurement, transparency, france, auvergne-rhone-alpes, region, commande-publique]
 added: 2026-09-09
+feeds_cells: [Governance|Region]
 updated: 2026-09-09
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09: organisation API and the -1956 dataset page opened, HTTP 200, most

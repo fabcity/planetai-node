@@ -14,7 +14,7 @@ pilot_relevance: [global]
 tags: [who, gho, life-expectancy, health, odata, open-api]
 added: 2026-09-09
 auth: none
-wired_in_planetai: false
+feeds_cells: [Social|Planet]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 with a live call returning OData JSON. Spatial codes

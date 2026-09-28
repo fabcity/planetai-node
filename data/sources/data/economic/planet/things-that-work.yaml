@@ -13,6 +13,7 @@ pilot_relevance: [global]
 tags: [open-design, repair, resilience, appropriate-technology, fab-city, act]
 added: 2026-09-20
 auth: none
+feeds_cells: [Economic|Planet]
 role: [act]
 act_kind: design
 upstream_listed_in: []

@@ -1,66 +1,77 @@
-name: EDGAR — Emissions Database for Global Atmospheric Research
-url: https://edgar.jrc.ec.europa.eu/
+name: EDGAR non-CO2 greenhouse gases (CH4, N2O, F-gases)
+url: https://edgar.jrc.ec.europa.eu/dataset_ghg2024
 description: |
-  The JRC's global greenhouse-gas inventory: CO2, CH4, N2O and F-gases by
-  country and sector back to 1970, plus 0.1° gridded maps. The reference
-  emissions dataset when a national inventory does not exist.
+  The JRC's global inventory of methane, nitrous oxide and fluorinated gases by
+  country and sector, 1970–2023, plus 0.1° gridded maps. Scoped deliberately to
+  the gases the European Union owns and licenses openly.
 pillar: environmental
 scale: planet
 status: candidate
-license: "SPLIT, and one half is not open. EDGAR CH4, N2O and F-gases are CC-BY-4.0. The IEA-EDGAR CO2 component is CC BY-NC-ND 4.0 — non-commercial AND no-derivatives, which fails criterion 1 and cannot back a derived Index. See notes."
-api: https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/datasets/EDGAR_2024_GHG/
+license: CC-BY-4.0
+api: https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/datasets/EDGAR_2024_GHG/EDGAR_CH4_1970_2023.zip
 pilot_relevance: [global]
-tags: [emissions, ghg, co2, methane, inventory, jrc, gridded]
-added: 2026-09-23
+tags: [emissions, methane, nitrous-oxide, f-gases, inventory, jrc, gridded]
+added: 2026-09-22
+updated: 2026-09-23
 auth: none
 feeds_cells: [Environmental|Planet]
 upstream_listed_in: []
 notes: |
-  **THE LICENCE IS SPLIT AND THE CO2 HALF IS THE PROBLEM.** Read from EDGAR's
-  own release page 2026-09-23. The general statement is the usual EC one:
-  "Unless otherwise noted, all material owned by the European Union is licensed
-  under the Creative Commons Attribution 4.0 International (CC BY 4.0) licence."
-  That covers EDGAR CH4, EDGAR N2O and EDGAR F-gases.
+  **THIS ENTRY IS DELIBERATELY NOT ALL OF EDGAR.** Re-scoped 2026-09-23 after the
+  C′ licence pass (issue #17). Fossil CO2 is excluded because it is not the
+  European Union's to license openly, and an Index cell computed from it could
+  not be redistributed.
 
-  Fossil CO2 is not owned by the European Union. Verbatim from the same page:
-  "IEA-EDGAR CO2 data are based on data from IEA (2023) Greenhouse Gas Emissions
-  from Energy, www.iea.org/data-and-statistics, as modified by the Joint
-  Research Centre, **licensed under CC BY-NC-ND 4.0**. Users of the IEA-EDGAR
-  CO2 data should contact the IEA at compliance@iea.org if they wish to use such
-  data outside the terms of the CC-BY-NC-ND 4.0 licence."
+  WHAT IS IN, all CC-BY-4.0: `EDGAR_CH4_1970_2023.zip` and the `CH4/` tree,
+  `EDGAR_N2O_1970_2023.zip` and `N2O/`, `EDGAR_F-gases_1990_2023.zip` /
+  `EDGAR_AR5g_F-gases_1990_2023.zip` and `Fgases/`, the `_m_` monthly variants of
+  each, and `EDGAR_CO2bio_1970_2023.zip` — biogenic CO2, which is EDGAR's own
+  and not IEA's.
 
-  NC-ND is neither open nor usable here, on two counts. **NonCommercial** fails
-  CONTRIBUTING criterion 1 outright. **NoDerivatives** is the sharper one: an
-  Index cell is a derived aggregate, which is exactly what ND forbids, so a
-  cell computed from IEA-EDGAR CO2 is not a licensing edge case — it is the
-  thing the licence names. The irony is that CO2 is the series anybody comes to
-  EDGAR for.
+  WHAT IS OUT: `IEA_EDGAR_CO2_1970_2023.zip`, its monthly variant and the `CO2/`
+  tree. The release page, verbatim: "IEA-EDGAR CO2 data are based on data from
+  IEA (2023) Greenhouse Gas Emissions from Energy ... as modified by the Joint
+  Research Centre, **licensed under CC BY-NC-ND 4.0**." NonCommercial fails
+  criterion 1; NoDerivatives is the harder one, because an Index cell is a
+  derived aggregate and that is exactly what ND forbids.
 
-  WHAT IS ACTUALLY USABLE, then: CH4, N2O and F-gases under CC-BY-4.0, which is
-  a real and unusual offer — methane by country and sector back to 1970 is hard
-  to get elsewhere openly. A node or an Index may use those. It may not publish
-  a derived fossil-CO2 number from here without writing to compliance@iea.org
-  first, and that email is a decision for the Foundation, not a session.
+  **AND THE AGGREGATE IS OUT TOO — this is the part that will catch someone.**
+  `EDGAR_AR5_GHG_1970_2023.zip` and the `GWP_100_AR5_GHG/` tree are the
+  all-gases products, and the release page describes "IEA-EDGAR CO2, **a
+  component of** the EDGAR Community GHG database version 2024". A total-GHG
+  number therefore contains the NC-ND component, so the headline file anybody
+  would reach for first is the one that cannot be used. Reach for the individual
+  gases instead.
 
-  ENDPOINT VERIFIED 2026-09-23, no key and no account: the JRC open-data tree at
-  `jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/datasets/EDGAR_2024_GHG/`
-  answers 200. Bulk ZIPs per gas, not a query API.
+  THE PROVIDER CONTRADICTS ITSELF, and the wrong answer is the one sitting next
+  to the data. `EDGAR_2024_GHG/copyright.txt`, in the download directory,
+  re-read 2026-09-23: "Any copyright and/or sui generis right on the dataset is
+  licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0)
+  licence" — no IEA carve-out at all. The release page carries the carve-out and
+  is the specific statement, so it governs; `copyright.txt` is the generic EU
+  notice shipped beside every JRC dataset. Anyone who goes straight to the FTP
+  tree and reads the notice beside the files gets the wrong answer, which is why
+  both are quoted here.
 
-  VINTAGE: release EDGAR_2024_GHG, covering data through 2023.
+  ENDPOINT VERIFIED 2026-09-23, no key and no account: the directory listing at
+  `.../EDGAR_2024_GHG/` is open and the per-gas zips are beside the excluded
+  ones. Bulk files, not a query API.
 
-  SPATIAL: country totals in kt/year, and a 0.1° × 0.1° grid. Countries carry
-  ISO codes; the grid carries none. **Not federatable below the country without
-  a crosswalk** — a city's emissions are not in here, and downscaling a 0.1°
-  cell to a municipality is a modelling choice somebody has to own.
+  VINTAGE: release EDGAR_2024_GHG, data through 2023.
 
-  INDICATOR: greenhouse-gas emissions by country and gas — the
-  environmental-pillar planet row, and the fallback denominator for any
-  territory whose own inventory does not exist. I could not read the landing
-  plan's Table 2 in this session, so this names the indicator in plain words
-  rather than a row id.
+  SPATIAL: country totals in kt/year with ISO codes, plus a 0.1° grid that
+  carries none. **Not federatable below the country without a crosswalk.**
 
-  Promotes to live when somebody confirms which gases a cell would actually be
-  built from, and that no IEA-EDGAR CO2 value is in the chain — or when the
-  Foundation has written to compliance@iea.org and has an answer in hand. A
-  review that says "usable" without separating the gases has not read the
-  licence.
+  INDICATOR: methane, N2O and F-gas emissions by country — and methane is the
+  one worth having, because it is where a bioregion's agriculture and waste
+  actually show up and it is far less covered by open national inventories than
+  CO2. I could not read the landing plan's Table 2 in this session, so this names
+  the indicator in plain words rather than a row id.
+
+  Promotes to live when somebody reads one of the non-CO2 gases for a real
+  territory and confirms the file they used is one of the CC-BY ones named
+  above — not the AR5 aggregate. A review that says "EDGAR, usable" without
+  naming the file has not done the check this entry exists for.
+
+  If the network ever needs fossil CO2 at this resolution, the route is written
+  permission from compliance@iea.org, tracked in issue #17.

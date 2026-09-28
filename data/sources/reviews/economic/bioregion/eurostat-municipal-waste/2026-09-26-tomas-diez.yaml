@@ -1,0 +1,14 @@
+entry: economic/bioregion/eurostat-municipal-waste
+by: Tomas Diez
+org: Fab City
+date: 2026-09-26
+territory: Barcelona
+checked:
+  - licence
+  - endpoint
+  - admin-code
+  - vintage
+  - field-fit
+verdict: usable
+self_declared: false
+issue: 59

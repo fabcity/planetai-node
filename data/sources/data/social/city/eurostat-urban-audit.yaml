@@ -10,6 +10,7 @@ status: candidate
 license: "Commission Decision 2011/833/EU — reuse for commercial or non-commercial purposes authorised with the source acknowledged. NOT CC-BY-4.0, which covers the site's editorial content only. See notes for the non-commercial exception."
 api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/urb_cpop1
 pilot_relevance: [barcelona, global]
+places: [barcelona, hamburg, paris]
 tags: [urban-audit, eurostat, population, city-statistics, lau, sdmx]
 added: 2026-09-22
 auth: none
@@ -35,9 +36,14 @@ notes: |
   countries other than: Member States of the European Union (EU) ... EFTA ...
   official EU acceding and candidate countries", where "the user will need to
   eliminate these data from the tables before reusing them commercially".
-  Urban Audit covers EU, EFTA and candidate cities, so the restriction does not
-  bite here — but a node that generalises "Eurostat is open" to a table with
-  US or Japanese rows in it inherits a non-commercial clause on those rows.
+  **AND IT DOES BITE HERE, which the first version of this entry got wrong.**
+  The C' licence pass (2026-09-23) caught it and it is confirmed: `urb_cpop1`
+  for 2023 carries **136 UK-coded members** — `UK001C` London, `UK002C`
+  Birmingham, `UK003C` Leeds and so on. The United Kingdom is not an EU member,
+  not EFTA and not a candidate, so every UK row in this table falls under the
+  exception: non-commercial reuse without restriction, commercial reuse only
+  after eliminating them. A node filtering to a partner city is unaffected; an
+  Index that aggregates the table whole is not.
 
   ENDPOINT VERIFIED 2026-09-22, no key and no account: `GET
   .../1.0/data/urb_cpop1?format=JSON&lang=EN&time=2023&indic_ur=DE1001V`

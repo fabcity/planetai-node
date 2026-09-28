@@ -10,11 +10,12 @@ status: live
 license: Open Government Licence v3.0
 api: https://services1.arcgis.com/ESMARspQHYMw9BZ9/arcgis/rest/services/Local_Authority_Districts_December_2024_Boundaries_UK_BFC/FeatureServer/0/query
 pilot_relevance: []
+places: [plymouth]
 tags: [admin-codes, gss-codes, arcgis, boundaries, geography, lsoa, uk]
 added: 2026-09-11
 updated: 2026-09-11
 auth: none
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).

@@ -1,0 +1,30 @@
+cell: Environmental|City
+indicator_categories:
+- air quality
+- greenhouse gas inventory
+- municipal waste
+- urban land change
+minimum_indicators:
+- name: PM2.5 annual mean
+  unit: ug/m3
+  aggregation: annual-mean
+- name: Days over the WHO 24h PM2.5 guideline
+  unit: count
+  aggregation: annual-total
+- name: Municipal greenhouse gas emissions
+  unit: tCO2e/yr
+  aggregation: annual-total
+- name: Municipal solid waste generated per capita
+  unit: kg/capita/yr
+  aggregation: annual-total
+- name: Annual urban land change
+  unit: mean per-pixel cosine distance 0-1
+  aggregation: annual-mean
+does_not_claim: Reference-station air quality describes a city's regulatory compliance, not where
+  a child walks to school — neighbourhood exposure is `Environmental|Community` and needs a different
+  kind of source. A municipal GHG inventory is an accounting exercise with a declared scope, so two
+  cities' inventories are not comparable unless both declare the same scopes; an Index that ranks
+  them without checking is comparing methodologies. And waste collected is not waste generated.
+notes: '16 entries filed. The node computes reference-station PM2.5 (packs/air-quality, `partial`
+  — "never live: it isn''t our measurement") and a land-change figure from AlphaEarth embeddings (packs/earth,
+  `partial` for good).'

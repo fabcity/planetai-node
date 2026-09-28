@@ -13,7 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [material-flow, material-footprint, resource-extraction, ckan, unep]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Environmental|Planet]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. The EnergyData.info CKAN mirror covers 1970-2019;

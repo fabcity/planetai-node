@@ -9,6 +9,7 @@ status: live
 license: '공공저작물 : 출처표시 (제 1유형) - KOGL Type 1, attribution only'
 api: null
 pilot_relevance: []
+places: [seoul]
 tags:
 - statistics
 - indicators
@@ -16,8 +17,8 @@ tags:
 - national-statistics
 - korea
 added: '2026-09-11'
+feeds_cells: []
 updated: '2026-09-11'
-wired_in_planetai: false
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). JSON + XML, cadence
 

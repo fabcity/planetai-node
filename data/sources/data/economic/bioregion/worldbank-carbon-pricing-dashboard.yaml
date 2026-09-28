@@ -13,7 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [world-bank, carbon-pricing, ets, carbon-tax, subnational]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. 121 instruments, revenue series 1990-2025,

@@ -10,10 +10,11 @@ status: live
 license: Otvorena dozvola (OD)
 api: null
 pilot_relevance: []
+places: [zagreb]
 tags: [budget, public-finance, zagreb, croatia, participatory, neighbourhood]
 added: 2026-09-11
+feeds_cells: []
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Resource URLs

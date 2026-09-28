@@ -1,0 +1,32 @@
+name: Servicio Nacional de Aduanas (Chile) — import and export declarations
+url: https://datos.gob.cl/organization/servicio_nacional_de_aduanas
+description: |
+  Chile's customs service publishes every import and export declaration line
+  as monthly files on datos.gob.cl: port of loading and unloading, HS code,
+  partner country, weight and FOB/CIF value, 2003 to 2026.
+pillar: economic
+scale: region
+status: candidate
+license: ODC-By-1.0 (2019+ and most imports); ODbL-1.0 for some 2009–2018 years; CC-BY for aggregates
+api: https://datos.gob.cl/api/3/action/package_show?id=registro-de-exportacion-2026
+pilot_relevance: [santiago]
+places: [santiago-de-chile]
+tags: [trade, imports, exports, ports, customs, material-flow, tonnes, chile]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, nothing read for a real territory yet. Filed for the gateway-flows row proposed in #36.
+
+  LICENCE, PER YEAR. The licence is set per dataset, one per year and direction, and it changes (shape 2 in the licence-trap list, though every variant passes). Read from each dataset's CKAN `license_id` on 2026-09-26: exports 2003–2008 and 2019–2026 are `odc-by`, exports 2009–2018 are `odc-odbl`; imports are mostly `odc-by`, with `odc-odbl` for 2009, 2010, 2014 and 2015 and `cc-by` for 2020. The aggregate dataset `registros-de-comercio-exterior-datos-agregados` is `cc-by`. The portal's terms page, rendered by JavaScript and read in a headless browser, makes CC0 the default and allows CC0, PDDL, CC-BY-4.0 and ODC-By-1.0. ODbL is not on that list, although it is what those years carry. An index mixing years inherits ODbL share-alike for those years.
+
+  ENDPOINT. CKAN `package_show` for `registro-de-exportacion-2026` and `registro-de-importacion-2026` returned 200. Each month is a separate resource, plus a structure file (`descripcion-y-estructura-de-datos-.xlsx`) and separate "Bultos" and "Documentos de Transporte" files. **Formats are mixed within one year:** January, March and April 2026 are `.rar`, February is `.zip`. Files are `;`-separated and Latin-1. February 2026 exports: about 94k lines, 8.3 MB.
+
+  FIELDS. `PTO_EMB` (port of loading) and `PTO_DESEM` (port of unloading), with codes 906 San Antonio, 905 Valparaíso and 992 Arturo Merino Benítez airport. `TOT_PESO` is weight, and FOB/CIF value is in USD. February 2026 export lines: 22,456 through San Antonio, 20,871 through Valparaíso.
+
+  WHY THIS CELL. Economic|Bioregion's category is material flow accounting. This is the richest open flow data found for any pilot: every declaration, with weight, value, port and partner.
+
+  WHAT IT DOES NOT CLAIM. The port is where goods cleared customs. San Antonio and Valparaíso serve the whole central zone and Argentine transit, not the Santiago metropolitan region alone. A declaration line is not a shipment, so aggregate by weight, never by counting lines.
+
+  STILL MISSING. A parser that handles both archive formats, and a first monthly aggregate by port.

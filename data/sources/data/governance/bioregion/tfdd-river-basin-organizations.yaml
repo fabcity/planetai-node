@@ -13,7 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [river-basin-organisations, governance-body, institutional-design, stale, transboundary-water]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Governance|Bioregion]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 and filed as STALE: the last substantive update was

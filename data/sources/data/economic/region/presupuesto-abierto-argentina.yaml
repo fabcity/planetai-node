@@ -10,10 +10,11 @@ status: live
 license: CC-BY-4.0
 api: https://www.presupuestoabierto.gob.ar/api/v1
 pilot_relevance: []
+places: [cordoba]
 tags: [public-finance, national-budget, budget-execution, argentina]
 added: 2026-09-10
 auth: api-key
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   VERIFIED 2026-09-10. Four documented POST endpoints: consulta de crédito,

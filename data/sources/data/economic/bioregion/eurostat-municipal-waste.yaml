@@ -1,0 +1,40 @@
+name: Eurostat — Municipal waste by waste management operations (env_wasmun) and recycling rate (cei_wm011)
+url: https://ec.europa.eu/eurostat/databrowser/view/env_wasmun/default/table
+description: |
+  Municipal waste per country, generated and by treatment (recycling, composting,
+  energy recovery, incineration, landfill), in tonnes and kg per inhabitant, 1995–2024,
+  with the recycling rate derived from it (2000–2024).
+pillar: economic
+scale: bioregion
+status: live
+license: Eurostat reuse policy (Commission Decision 2011/833/EU), reuse authorised with acknowledgement
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/env_wasmun
+pilot_relevance: [barcelona]
+places: [barcelona, hamburg]
+tags: [waste, msw, recycling, landfill, eurostat, europe-only, open-api, circular-economy]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. Eurostat's copyright notice authorises reuse "provided the source is
+  acknowledged" (Commission Decision of 12 December 2011, 2011/833/EU). The CC-BY-4.0 on
+  the website covers editorial content, not the statistics.
+
+  ENDPOINT. Key-free JSON-stat. env_wasmun, kg per inhabitant, 2024: Germany generated 628
+  and recycled 420; Spain 456 and 194 (216 landfilled); France 530 and 217. cei_wm011,
+  recycling rate 2024: Germany 66.9%, Spain 42.5%, France 40.9%, EU27 48.1%. Operations
+  include landfill, incineration, energy recovery, material recycling, composting and
+  preparing for reuse.
+
+  WHY THIS CELL. Economic|Bioregion's "circularity" category. It is not one of the cell's
+  minimum indicators; the circular material use rate is. Its use is as the national
+  benchmark for the city and region waste rows (Environmental|City, Environmental|Region):
+  generated minus recycled is the national counterpart of residual waste per capita, e.g.
+  Spain 262 kg against Catalonia's 253 kg of residual (2024; the two count differently).
+
+  WHAT IT DOES NOT CLAIM. A national figure hides every city and region inside it.
+  Countries report under the EU Waste Framework Directive; Eurostat's flags mark estimates
+  and breaks in series, and a comparison across a break is not a trend. EU and EFTA only.

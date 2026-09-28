@@ -1,0 +1,28 @@
+name: Statistikamt Nord exports and imports of Hamburg (G III 1 / G III 3)
+url: https://suche.transparenz.hamburg.de/dataset?q=G_III_1_G_III_3
+description: |
+  Annual and quarterly exports and imports of the Land Hamburg in thousand
+  euro, by product group and by partner country, from the Statistical Office
+  for Hamburg and Schleswig-Holstein, published through the Transparenzportal.
+pillar: economic
+scale: region
+status: candidate
+license: "dl-de-by-2.0 on the Transparenzportal; the files' own imprint permits extracts with attribution and reserves other rights"
+api: https://suche.transparenz.hamburg.de/api/3/action/package_search?q=G_III_1_G_III_3
+pilot_relevance: []
+places: [hamburg]
+tags: [trade, imports, exports, value, products, partner-countries, hamburg, xlsx, ckan]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory. Filed for #42 and for Hamburg, the Index's reference city.
+
+  LICENCE, SPLIT. Every edition on the Transparenzportal (CKAN) carries `license_id: dl-de-by-2.0`. The XLSX's own imprint says "Auszugsweise Vervielfältigung und Verbreitung mit Quellenangabe gestattet ... Alle übrigen Rechte bleiben vorbehalten." This is the same split as statistikamt-nord-abfall-einsammlung-hamburg. Cite the portal's licence and keep this note.
+
+  ENDPOINT. CKAN package_search, key-free. Annual editions `G_III_1_G_III_3_jYY_HH_nach_Waren.xlsx` and `..._nach_Laendern.xlsx` are on statistik-nord.de, to 2025, and quarterly editions run to Q2 2026. Each edition holds two years. 2025: imports 76,596,838 and exports 56,763,799 thousand EUR, identical to Destatis. Aircraft are 43.7% of exports.
+
+  WHY THIS CELL. Economic|Region's external-trade row. It adds the product and partner split that the Destatis report does not have.
+
+  WHAT IT DOES NOT CLAIM. Footnotes 1 and 2: imports are general trade and exports special trade, so the balance is not meaningful. Values only, no tonnes. The port's transhipment is not trade of Hamburg's economy, and much of it is not here at all.

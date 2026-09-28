@@ -7,17 +7,27 @@ description: |
 pillar: governance
 scale: region
 status: live
-license: CC-BY-4.0
+license: Llicència oberta d'ús d'informació – Catalunya (reuse, redistribution and derived works; cite the source and the date of last update; do not alter or distort)
 api: https://analisi.transparenciacatalunya.cat/resource/
 pilot_relevance: [barcelona]
+places: [barcelona]
 tags: [open-data, catalonia, regional, generalitat, waste]
 added: 2026-05-04
-wired_in_planetai: true
+feeds_cells: [Governance|Region]
 upstream_listed_in: []
 notes: |
   Wired in PLANETAI Wave 21 + Wave 29. Socrata-powered API.
   Dataset 69zu-w48s (residus municipals) is the canonical
-  Barcelona-bioregion waste signal; 8idm-becu carries
-  per-capita generation by waste stream. Crosswalks downward
+  Barcelona-bioregion waste signal, now its own entry:
+  environmental/city/generalitat-residus-municipals. Crosswalks downward
   to Open Data BCN for city-tier and upward to Eurostat EW-MFA
   for EU-comparable material flow accounts.
+
+  CORRECTED 2026-09-26, both read from the portal's own metadata:
+  - 8idm-becu is not waste. It is "Consum d'energia elèctrica per municipis i sectors
+    de Catalunya" (ICAEN), electricity consumption. This entry used to say it carried
+    per-capita waste by stream.
+  - The licence is not CC-BY-4.0. Datasets say "See Terms of Use", which is the
+    Llicència oberta d'ús d'informació – Catalunya: reuse, redistribution and derived works
+    worldwide, on condition of citing the source and the date of last update and not
+    altering or distorting the information.

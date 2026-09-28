@@ -10,10 +10,11 @@ status: live
 license: Google Maps Platform terms (free tier)
 api: https://floodforecasting.googleapis.com/v1
 pilot_relevance: [bali, barcelona, santiago, global]
+places: [bali, barcelona, santiago-de-chile]
 tags: [flooding, forecasting, water, google]
 added: 2026-05-04
 auth: key-free-rate-limited
-wired_in_planetai: true
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Coverage is not uniform — basins included are listed in the

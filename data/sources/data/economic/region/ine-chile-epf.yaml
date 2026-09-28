@@ -1,0 +1,30 @@
+name: INE Chile household budget survey, Gran Santiago spending by COICOP group (EPF)
+url: https://www.ine.gob.cl/estadisticas-por-tema/sociedad-y-condiciones-de-vida/encuesta-de-presupuestos-familiares
+description: |
+  INE Chile's Encuesta de Presupuestos Familiares: mean household spending per month by COICOP
+  division, group and product for Gran Santiago and the other regional capitals, with households and
+  persons. VIII EPF (2016-17, COICOP 1999) and IX EPF (2021-22, COICOP 2018); tables and microdata.
+pillar: economic
+scale: region
+status: candidate
+license: "INE Chile's terms: CC BY-SA 4.0 (ine.gob.cl/terminos-de-uso-y-licencia-de-datos-abiertos); datos.gob.cl's cc-nc label contradicts the publisher"
+api: https://www.ine.gob.cl/docs/default-source/encuesta-de-presupuestos-familiares/cuadros-estadisticos/ix-epf/tabulados-principales-resultados-ix-epf-(estimaciones).xlsx
+pilot_relevance: [santiago]
+places: [santiago-de-chile]
+tags: [consumption, household-spending, coicop, epf, chile, santiago, gran-santiago, xlsx, microdata]
+added: 2026-09-28
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-28 and read for a real territory: fabcity/fci-index (santiago_trade_adjusted), Gran Santiago, IX and VIII EPF. Filed for #42: the consumption side of Santiago's goods index.
+
+  LICENCE. INE's terms, as for economic/region/ine-chile-enia: CC BY-SA 4.0.
+
+  ENDPOINT. The published tables (`tabulados-principales-resultados-*-epf-(estimaciones).xlsx`). Group spending is in the CUADRO 6 sheet whose header names GRAN SANTIAGO (6C in IX, 6B in VIII). Households and persons are in the CUADROS 3 block for Gran Santiago. The microdata (`base-gastos-ix-epf-(formato-csv).csv`, 152 MB, with the expansion factor `fe` and a 5-level `ccif`) are also published.
+
+  FIGURES, Gran Santiago, IX EPF: 2,492,868 households and 7,440,518 persons. Spending in CLP per household per month: 1,590,105 in total, food 265,347, clothing 28,523, medicines and health products 46,660, information and communication equipment 36,615.
+
+  WHY THIS CELL. Economic|Region's regional accounts: household spending by purpose, which the goods index sets production against.
+
+  WHAT IT DOES NOT CLAIM. The survey covers Gran Santiago, the urban area, not the whole Región Metropolitana. The two rounds use different COICOP editions, so groups 08 and 09 do not match across them. Spending is in the survey period's prices and excludes imputed rent.

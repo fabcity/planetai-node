@@ -18,7 +18,6 @@ feeds_cells: []
 auth: none
 role: [observe, act]
 act_kind: facility
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   NOT OPEN, read anyway by decision. Criterion 1 is unmet; the basis is

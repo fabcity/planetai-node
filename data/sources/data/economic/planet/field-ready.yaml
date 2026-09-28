@@ -12,6 +12,7 @@ api: null
 pilot_relevance: [global]
 tags: [open-design, humanitarian, 3d-printing, supply-chain, repair, act]
 added: 2026-09-20
+feeds_cells: [Economic|Planet]
 role: [act]
 act_kind: design
 upstream_listed_in: [things-that-work]

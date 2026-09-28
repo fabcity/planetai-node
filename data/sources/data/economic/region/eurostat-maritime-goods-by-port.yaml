@@ -1,0 +1,33 @@
+name: Eurostat maritime transport of goods by port
+url: https://ec.europa.eu/eurostat/web/transport/database
+description: |
+  Gross weight of goods handled in EU and EFTA ports, inwards and outwards,
+  by cargo type and partner port, quarterly and annual, from Eurostat's
+  maritime transport statistics (Directive 2009/42/EC).
+pillar: economic
+scale: region
+status: candidate
+license: "Eurostat reuse policy: commercial and non-commercial reuse authorised with acknowledgement (Decision 2011/833/EU)"
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/mar_go_qm_es
+pilot_relevance: [barcelona]
+places: [barcelona, hamburg]
+tags: [trade, imports, exports, ports, maritime, material-flow, tonnes, eurostat]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, nothing read for a real territory yet. Filed for the gateway-flows row proposed in #36.
+
+  LICENCE. Eurostat's copyright notice: "Reuse of statistical data ... for commercial or non-commercial purposes is authorised provided the source is acknowledged", implemented by the Commission Decision of 12 December 2011 (2011/833/EU). The CC-BY-4.0 on the same page covers the website's editorial content, not the statistics (shape 4 in the licence-trap list), so do not file this as CC-BY. Data "identified as belonging to sources other than Eurostat" carries a non-commercial exception. These tables are collected under Directive 2009/42/EC and are Eurostat's own.
+
+  ENDPOINTS, both 200 on 2026-09-26, key-free JSON-stat. Barcelona is `rep_mar=ES_2ESBCN`.
+  - `mar_mg_aa_pwhd`: annual, top 20 EU ports. Barcelona 2024: 55,512 thousand t total, 29,852 inwards, 25,660 outwards. Updated 2026-09-14.
+  - `mar_go_qm_es`: quarterly, Spain's main ports, by direction, cargo type (liquid bulk, dry bulk, containers, ro-ro...) and partner country. Runs to 2026-Q1; updated 2026-08-12.
+  Every other member state has its own `mar_go_qm_<cc>` table, and `mar_go_am_<cc>` carries annual detail.
+
+  WHY THIS CELL. Economic|Bioregion's category is material flow accounting. Domestic material consumption is extraction plus imports minus exports, and this table is the physical inwards and outwards at the gateway, measured rather than modelled.
+
+  WHAT IT DOES NOT CLAIM. Port throughput is not the hinterland's consumption: Barcelona's inwards feed Aragon and southern France, and transhipment never enters the local economy. It is gross weight in tonnes, with no value in money. Road and rail crossings are not in it. No cargo-type split separates goods made locally from goods passing through.
+
+  STILL MISSING. A choice of which Spanish ports make up the Barcelona bioregion (Tarragona `ES_2ESTAR` is the other large one), and a first pull.

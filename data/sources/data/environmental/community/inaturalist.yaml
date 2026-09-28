@@ -12,7 +12,7 @@ api: https://api.inaturalist.org/v1
 pilot_relevance: [global]
 tags: [biodiversity, citizen-science, species-observation]
 added: 2026-05-04
-wired_in_planetai: true
+feeds_cells: []
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   Wired in PLANETAI observatory. Note: per-observation licenses vary;

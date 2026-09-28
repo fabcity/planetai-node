@@ -11,7 +11,7 @@ api: https://www.who.int/data/gho/info/gho-odata-api
 pilot_relevance: [global]
 tags: [health, who, indicators, odata]
 added: 2026-05-04
-wired_in_planetai: false
+feeds_cells: [Social|Planet]
 upstream_listed_in: []
 notes: |
   Lighter-weight than IHME GBD; OData API is convenient for

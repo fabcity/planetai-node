@@ -10,9 +10,10 @@ status: live
 license: Declared per distribution in DCAT-AP.de; sampled distribution is CC0-1.0
 api: https://open.bydata.de/api/hub/search/search
 pilot_relevance: []
+places: [augsburg]
 tags: [open-data-portal, transparency, piveau, dcat-ap, germany]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: [Governance|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8) against the portal's

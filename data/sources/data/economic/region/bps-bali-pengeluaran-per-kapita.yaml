@@ -1,0 +1,29 @@
+name: BPS Bali average monthly spending per person by non-food group (Susenas)
+url: https://bali.bps.go.id/id/statistics-table/2/MzA1IzI=/rata-rata-pengeluaran-per-kapita-sebulan-menurut-kelompok-bukan-makanan-provinsi-bali--rupiah-.html
+description: |
+  Average monthly spending per person in Bali by non-food group (housing, energy,
+  health, education, transport, clothing and footwear, durable goods and others),
+  in rupiah, from BPS's Susenas household survey, 2019 onwards; a matching table
+  covers food groups.
+pillar: economic
+scale: region
+status: candidate
+license: "BPS website terms (bps.go.id/id/term-of-use): free, worldwide, perpetual, non-exclusive use including commercial, copying, distribution and derivatives, with citation; content stays subject to copyright and BPS may change the terms without notice. The BPS WebAPI (non-commercial, key) is excluded. Used from the website only by maintainer decision (Tomas Diez, 2026-09-27)"
+api: null
+pilot_relevance: [bali]
+places: [bali]
+tags: [consumption, household-spending, susenas, bali, indonesia, bps]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27 in a browser, not yet read for a real territory. Filed for #42: the consumption side of a Bali goods index.
+
+  LICENCE, BY DECISION. BPS website terms, as for bps-bali-nilai-output-industri: usable from the website, not the API, by Tomas Diez's decision of 2026-09-27.
+
+  ENDPOINT. HTML table only; bali.bps.go.id returns 403 to scripts. 2025, rupiah per person per month: clothing, footwear and headwear 31,504; durable goods 97,727; health costs 57,685; housing rent 303,709. Food groups are in a separate table.
+
+  WHY THIS CELL. Economic|Region's regional accounts: household spending by purpose.
+
+  WHAT IT DOES NOT CLAIM. Broad groups: medicines are mixed with health services, and electronics, furniture and recreational goods are all inside durables, so they cannot be set against their industries one by one. Only Susenas microdata splits them, and it needs registration. Per person, so totals need the population.

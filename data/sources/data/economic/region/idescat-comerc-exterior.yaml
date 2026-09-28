@@ -1,0 +1,31 @@
+name: Idescat external trade of Catalonia by province (comest)
+url: https://www.idescat.cat/pub/?id=comest&lang=en
+description: |
+  Imports and exports of goods for Catalonia and its four provinces, in value
+  and weight, by partner country, TARIC product and transport mode, monthly
+  from 1994 and annual 1994-2025, from AEAT customs records via Idescat.
+pillar: economic
+scale: region
+status: live
+license: "Idescat reuse conditions: reuse allowed if the source is cited, the content is not altered and the update date is stated (no named licence)"
+api: https://api.idescat.cat/taules/v2/comest/18132/5/prov/data?lang=en&TOD=TOTAL&TARIC=TOTAL&MOD_TRANS=TOTAL&CONCEPT=VALUE_IMP,VALUE_EXP,WEIGHT_IMP,WEIGHT_EXP
+pilot_relevance: [barcelona]
+places: [barcelona]
+tags: [trade, imports, exports, tonnes, value, provinces, catalonia, open-api]
+added: 2026-09-26
+updated: 2026-09-26
+auth: none
+feeds_cells: [Economic|Region, Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  LIVE 2026-09-26. Read for a real territory by fabcity/fci-index `compute/trade.py` `regional()` (fci-index#19): the province of Barcelona and Catalonia, 2019 and 2024, in the Index's regional_trade output. There is no `adapter`, because that field names only planetai-node readers. What backs `live` is Tomas Diez's review for Barcelona (usable-with-caveats, #54, reviews/). Filed for #42.
+
+  LICENCE. Idescat's legal notice (idescat.cat/institut/web) allows reuse "provided that its source is quoted, that the content of the information is not altered or denatured and that the date of the latest update ... is mentioned". These are Spain's default public-sector reuse conditions (Ley 37/2007), and no licence is named. Idescat may limit reuse to protect personal data or third-party rights, and users may not imply that Idescat endorses them. A reviewer should confirm this counts as open-equivalent.
+
+  ENDPOINT. Key-free JSON-stat, table 18132 (annual) and 18136 (monthly), updated 2026-02-24. Province of Barcelona (PROV=08), 2024: imports 87.45 bn EUR and 25.33 Mt, exports 77.17 bn EUR and 19.85 Mt. Values are thousand EUR and weights are kg. Idescat flags 2024 and 2025 as provisional (status "p"), so both years can still move.
+
+  WHY THESE CELLS. Economic|Region's external-trade row, in value. The weight columns are the regional import and export terms of a material-flow account (Economic|Bioregion), and MOD_TRANS splits them by sea, air, road and rail, which the gateway row cannot do.
+
+  WHAT IT DOES NOT CLAIM. Customs attribute trade to the declarant's address, not to where goods are made or used. Trade with the rest of Spain is not in it.
+
+  BLOCKED ALTERNATIVE. DataComex (Ministerio de Economía) has the same data for every province, but its API needs an email and password, and its footer reads "Todos los derechos reservados".

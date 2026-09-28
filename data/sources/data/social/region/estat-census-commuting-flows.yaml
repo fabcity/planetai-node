@@ -9,6 +9,7 @@ status: live
 license: 政府標準利用規約（第2.0版）- explicitly CC BY 4.0 compatible
 api: https://api.e-stat.go.jp/rest/3.0/app/
 pilot_relevance: []
+places: [kamakura]
 tags:
 - commuting
 - origin-destination
@@ -18,8 +19,8 @@ tags:
 - japan
 - e-stat
 added: '2026-09-11'
+feeds_cells: []
 updated: '2026-09-11'
-wired_in_planetai: false
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12).
 

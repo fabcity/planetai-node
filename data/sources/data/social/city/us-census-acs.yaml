@@ -10,6 +10,7 @@ status: candidate
 license: "No named licence. Published as open data under OMB M-10-06 and EO 13642; the API terms require a specific attribution notice, quoted in notes. US federal works carry no domestic copyright, which is the usual basis — but the Bureau names no licence of its own."
 api: https://api.census.gov/data/2024/acs/acs5
 pilot_relevance: [boston, global]
+places: [boston]
 tags: [census, acs, united-states, fips, demographics, housing]
 added: 2026-09-23
 auth: api-key

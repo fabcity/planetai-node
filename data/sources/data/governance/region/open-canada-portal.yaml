@@ -11,11 +11,12 @@ status: live
 license: Open Government Licence - Canada
 api: https://open.canada.ca/data/api/3/action/package_search
 pilot_relevance: []
+places: [bas-saint-laurent, montreal]
 tags: [open-data-portal, ckan, transparency, catalogue, canada]
 added: 2026-09-11
 updated: '2026-09-19'
 auth: none
-wired_in_planetai: false
+feeds_cells: [Governance|Region]
 upstream_listed_in: []
 notes: |
   URL updated 2026-09-19: open.canada.ca/data/en/dataset now redirects to search.open.canada.ca/opendata/. The CKAN API under open.canada.ca is unchanged.

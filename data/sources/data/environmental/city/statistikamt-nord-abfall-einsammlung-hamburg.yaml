@@ -1,0 +1,40 @@
+name: Statistikamt Nord — Abfallentsorgung in Hamburg, Teil 3 Einsammlung von Abfällen (Q II 9)
+url: https://suche.transparenz.hamburg.de/dataset/abfallentsorgung-in-hamburg-2024-teil-3-einsammlung-von-abfaellen
+description: |
+  Waste collected by Hamburg's public collection, 2012–2024, in tonnes and kg per
+  inhabitant, split into residual household and bulky waste, separately collected
+  organics, recyclables (Wertstoffe), electrical equipment and other waste.
+pillar: environmental
+scale: city
+status: candidate
+license: dl-de-by-2.0
+api: https://www.statistik-nord.de/fileadmin/Dokumente/Q_II_9_j_24_HH.xlsx
+pilot_relevance: []
+places: [hamburg]
+tags: [waste, household-waste, recycling, hamburg, germany, statistikamt-nord, transparenzportal, xlsx]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|City, Environmental|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE, TWO STATEMENTS FOR ONE FILE. The report's own notice reads "Auszugsweise
+  Vervielfältigung und Verbreitung mit Quellenangabe gestattet ... Alle übrigen Rechte bleiben
+  vorbehalten": extracts only, all other rights reserved, which is not an open licence. The
+  same workbook is published on Hamburg's Transparenzportal (dataset
+  abfallentsorgung-in-hamburg-2024-teil-3-einsammlung-von-abfaellen, and the 2019 edition) under dl-de-by-2.0,
+  Datenlizenz Deutschland Namensnennung 2.0. This entry reads it under the portal's licence.
+
+  ENDPOINT. Key-free XLSX (88 KB), sheet T1_1, 2012–2024 in one table. 2024: 775,113 t
+  collected, 417.4 kg per inhabitant; Haus- und Sperrmüll 464,507 t; separately collected
+  organics 100,526 t, Wertstoffe 195,766 t, electrical 9,220 t. Separate collection 39.4%
+  (40.0% in 2019). Cells carry flags such as "413,6 r" (corrected, decimal comma).
+
+  WHY THESE CELLS. Environmental|City's waste row, and Environmental|Region's too, since
+  Hamburg is a city-state. Residual per capita is 250.1 kg (2024). fabcity/fci-index's
+  compute/ pipeline reads it.
+
+  WHAT IT DOES NOT CLAIM. Public collection only, not all municipal-type waste. Separate
+  collection is not recycling: Boeing (2024) scored Hamburg's recycling share at 24.8% for
+  2019, a different measure from the 40.0% here.

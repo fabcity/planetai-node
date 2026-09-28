@@ -9,6 +9,7 @@ status: live
 license: CC-BY-4.0 (763 datasets); CC-BY-NC (24 datasets)
 api: null
 pilot_relevance: []
+places: [kamakura]
 tags:
 - catalogue
 - ckan
@@ -17,8 +18,8 @@ tags:
 - kanagawa
 - regional-platform
 added: '2026-09-11'
+feeds_cells: [Governance|Region]
 updated: '2026-09-11'
-wired_in_planetai: false
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Dataset count 811
 

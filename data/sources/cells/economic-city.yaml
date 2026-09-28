@@ -1,0 +1,23 @@
+cell: Economic|City
+indicator_categories:
+- municipal finance
+- local economic activity
+- repair and reuse
+minimum_indicators:
+- name: Municipal budget execution rate
+  unit: percent
+  aggregation: annual
+- name: Registered economic activities
+  unit: count
+  aggregation: latest
+- name: Catalogued things with a repair route
+  unit: percent
+  aggregation: latest
+- name: Gross domestic product
+  unit: USD PPP
+  aggregation: annual-total
+does_not_claim: 'Budget execution measures administrative throughput, not outcomes: a city that spends
+  its budget has spent its budget. A register of businesses omits informal work, which in many partner
+  cities is most of the economy, so a low count is as likely to mean weak registration as weak activity.'
+notes: 35 entries filed, the largest cell in the matrix and overwhelmingly municipal budgets. packs/thingdata
+  computes the repair-route share, `partial`.

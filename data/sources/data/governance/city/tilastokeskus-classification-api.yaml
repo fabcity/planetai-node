@@ -10,10 +10,11 @@ status: live
 license: CC-BY-4.0
 api: https://data.stat.fi/api/classifications/v2/classifications/kunta_1_20260101/classificationItems
 pilot_relevance: []
+places: [oulu]
 tags: [admin-codes, classification, crosswalk, finland, api]
 added: 2026-09-11
+feeds_cells: []
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Oulu).

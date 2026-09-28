@@ -15,7 +15,6 @@ added: 2026-05-04
 adapter: core:openmeteo
 feeds_cells: []
 auth: none
-wired_in_planetai: true
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   Most generous free tier in the weather-API space. Used for

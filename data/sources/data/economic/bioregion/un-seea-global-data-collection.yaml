@@ -13,7 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [un, seea, unsd, environmental-accounts, planned]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 and deliberately filed as PLANNED, not live. It is a

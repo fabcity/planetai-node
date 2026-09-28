@@ -12,7 +12,7 @@ api: null
 pilot_relevance: [global]
 tags: [foundation-model, earth-ai, atmospheric, deep-learning]
 added: 2026-05-04
-wired_in_planetai: true
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Not an API but a model checkpoint. PLANETAI uses pre-computed

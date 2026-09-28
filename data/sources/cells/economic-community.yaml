@@ -1,0 +1,22 @@
+cell: Economic|Community
+indicator_categories:
+- production capacity where people are
+- repair access
+- workshop activity
+minimum_indicators:
+- name: Fab labs and open workshops within reach
+  unit: count
+  aggregation: latest
+- name: Businesses per km2 within the radius
+  unit: count/km2
+  aggregation: latest
+- name: Listed spaces reporting open now
+  unit: percent
+  aggregation: latest
+does_not_claim: 'A directory entry is not an open door. A listed lab may have closed years ago — of
+  500 sampled hackerspace records only 37 percent are active — so a count of listings is a count of
+  listings. Capacity is not use: a lab that exists and a lab that is used are the same row here, and
+  this cell does not distinguish them.'
+notes: '9 entries filed and it is where the act sources live: fablabs.io, hackerspaces.org, SpaceAPI,
+  Maps of Making, Precious Plastic, Repair Cafe. packs/place computes businesses per km2, `partial`.
+  SpaceAPI is the only source in the list carrying a real-time open/closed signal.'

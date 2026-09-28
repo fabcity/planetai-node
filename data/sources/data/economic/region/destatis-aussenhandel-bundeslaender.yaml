@@ -1,0 +1,30 @@
+name: Destatis foreign trade by federal state (Statistischer Bericht Außenhandel)
+url: https://www.destatis.de/DE/Themen/Wirtschaft/Aussenhandel/Publikationen/Downloads-Aussenhandel/statistischer-bericht-aussenhandel-2070100251125.html
+description: |
+  Monthly statistical report on German foreign trade, with exports and
+  imports for each of the 16 Länder, monthly and annual, in thousand euro,
+  published as an XLSX with machine-readable CSV sheets.
+pillar: economic
+scale: region
+status: candidate
+license: "Destatis: reproduction and distribution, also in extracts, permitted with source attribution; GENESIS-Online content under dl-de/by-2-0"
+api: null
+pilot_relevance: []
+places: [hamburg]
+tags: [trade, imports, exports, value, lander, germany, hamburg, xlsx]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory. Filed for #42 and for Hamburg, the Index's reference city.
+
+  LICENCE. The report's imprint reads "Vervielfältigung und Verbreitung, auch auszugsweise, mit Quellenangabe gestattet." The Destatis imprint puts GENESIS-Online database content under Datenlizenz Deutschland Namensnennung 2.0. The report itself names no licence.
+
+  ENDPOINT. The XLSX (about 16 MB, no login) answered 200 on 2026-09-26. Sheets `csv-51000-14` and `csv-51000-15` hold annual exports and imports by Land; `csv-51000-07` and `-08` hold monthly. Hamburg 2025: exports 56,763,799 and imports 76,596,838 thousand EUR, the same as Statistikamt Nord's own report. The file name changes every month, so a reader has to find the current one on the listing page.
+
+  BLOCKED ALTERNATIVE. GENESIS table 51000-0034 has the same series, but its REST API returned 401 without credentials, and a guest login is still a login. It is not used here.
+
+  WHY THIS CELL. Economic|Region's external-trade row, all 16 Länder in one file.
+
+  WHAT IT DOES NOT CLAIM. Imports by Land are general trade (they include goods entering warehouses whose destination is not yet known), while exports are special trade (goods made or substantially processed in the Land). Their balance is therefore not meaningful, which is Boeing's reason for leaving trade out of Hamburg's 37. Values only, no tonnes in these sheets. Trade with other Länder is not in it.

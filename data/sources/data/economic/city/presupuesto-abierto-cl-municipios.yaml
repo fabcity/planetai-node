@@ -10,9 +10,10 @@ status: live
 license: CC-BY-SA-4.0
 api: https://api.presupuestoabierto.gob.cl/api/v1/data/municipios.csv
 pilot_relevance: [santiago]
+places: [renca, santiago-de-chile]
 tags: [public-finance, municipal-budget, expenditure, chile, comuna]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   VERIFIED 2026-09-10 against Renca (comuna 13128). A query with

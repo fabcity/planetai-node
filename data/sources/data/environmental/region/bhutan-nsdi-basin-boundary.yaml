@@ -10,6 +10,7 @@ license: 'Open (Geo-Information Policy 2018 §6.3.1 open tier: "Open data shall 
   freely accessible")'
 api: null
 pilot_relevance: []
+places: [bhutan]
 tags:
 - water
 - basin
@@ -18,8 +19,8 @@ tags:
 - nsdi
 - bhutan
 added: '2026-09-11'
+feeds_cells: []
 updated: '2026-09-11'
-wired_in_planetai: false
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Item id
 

@@ -12,8 +12,8 @@ api: https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/jmete
 pilot_relevance: []
 tags: [budget, cofog, expenditure, national, finland, pxweb]
 added: 2026-09-11
+feeds_cells: []
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Oulu).

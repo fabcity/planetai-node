@@ -12,8 +12,8 @@ api: https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/balances-co
 pilot_relevance: []
 tags: [public-finance, budget, dgfip, france, region]
 added: 2026-09-09
+feeds_cells: [Economic|Region]
 updated: 2026-09-09
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09: dataset page and API metadata opened, HTTP 200. Last update 2026-07-13.

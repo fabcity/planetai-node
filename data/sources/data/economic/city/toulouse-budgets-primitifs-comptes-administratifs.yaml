@@ -10,9 +10,10 @@ status: live
 license: Licence Ouverte v2.0 (Etalab)
 api: https://data.toulouse-metropole.fr/api/explore/v2.1/catalog/datasets?where=theme%3D%22Finance%22
 pilot_relevance: []
+places: [toulouse]
 tags: [public-budget, municipal-finance, budget-execution, open-budget, france]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 in the FCI Regime 1 harvest (wave 2, France) via the

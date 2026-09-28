@@ -14,7 +14,6 @@ tags: [land, satellite, embeddings, earth-observation, remote-sensing, foundatio
 added: 2026-09-18
 adapter: pack:earth
 feeds_cells: [Environmental|City]
-wired_in_planetai: true
 upstream_listed_in: []
 notes: |
   Available in Earth Engine (GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL) and as

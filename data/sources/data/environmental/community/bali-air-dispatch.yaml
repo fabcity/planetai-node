@@ -10,12 +10,12 @@ status: live
 license: Public-interest archive; redistribution encouraged with attribution to Bali Air Dispatch and to the originating network named in each row. Upstream readings remain under their networks' terms.
 api: https://baliairdispatch.com/api/v1
 pilot_relevance: [bali]
+places: [bali]
 tags: [air-quality, pm25, aggregator, peer-observatory, humidity-corrected, bali]
 added: 2026-09-18
 adapter: core:baliairdispatch
 feeds_cells: [Environmental|City]
 auth: none
-wired_in_planetai: true
 upstream_listed_in: []
 notes: |
   A peer observatory, not a sensor network: credit both the archive and the

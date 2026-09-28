@@ -10,9 +10,10 @@ status: live
 license: custom open
 api: null
 pilot_relevance: [bali]
+places: [bali]
 tags: [productivity, klems, sectoral, asia, indonesia]
 added: 2026-05-04
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   Indonesia included since 2010. The single most relevant

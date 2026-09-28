@@ -16,7 +16,6 @@ added: 2026-05-04
 updated: 2026-09-18
 adapter: core:airgradient
 feeds_cells: [Environmental|Community, Social|Community]
-wired_in_planetai: true
 upstream_listed_in: []
 notes: |
   Strong fit for the Community-tier indoor environment signal that

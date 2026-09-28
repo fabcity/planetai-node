@@ -10,10 +10,11 @@ status: live
 license: Open Data Commons Open Database License (ODbL)
 api: null
 pilot_relevance: []
+places: [recife]
 tags: [open-data, recife, brazil, ckan, municipal]
 added: 2026-09-10
+feeds_cells: [Governance|City]
 updated: 2026-09-10
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-10 in the FCI Regime 1 harvest (wave 5, Brazil).

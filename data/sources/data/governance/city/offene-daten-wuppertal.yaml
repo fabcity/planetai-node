@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: https://offenedaten-wuppertal.de/api/3/action/package_list
 pilot_relevance: []
+places: [bergisches]
 tags: [open-data-portal, transparency, dkan, public-budget, germany]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: [Governance|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8) by calling

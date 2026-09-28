@@ -13,7 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [exiobase, mrio, input-output, footprint, circular-economy, zenodo]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Economic|Bioregion]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. THIS ENTRY DELIBERATELY PINS v3.8.2 (Zenodo record

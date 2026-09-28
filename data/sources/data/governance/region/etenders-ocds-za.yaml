@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: https://ocds-api.etenders.gov.za/
 pilot_relevance: []
+places: [cape-town, ekurhuleni]
 tags: [procurement, open-contracting, ocds, south-africa, transparency]
 added: 2026-09-11
-wired_in_planetai: false
+feeds_cells: [Governance|Region]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 11, South Africa).

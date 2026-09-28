@@ -1,0 +1,23 @@
+cell: Social|Region
+indicator_categories:
+- population
+- labour and informality
+- health burden
+- education provision
+- commuting
+minimum_indicators:
+- name: Resident population
+  unit: count
+  aggregation: latest
+- name: Employment-to-population ratio
+  unit: percent
+  aggregation: latest
+- name: Informal employment share
+  unit: percent
+  aggregation: latest
+does_not_claim: 'A regional labour figure does not locate the work: people are counted where they
+  live or where they are surveyed, not where they produce. Informality measured by survey is a definition
+  as much as a count, and the definitions differ by country. A national series displayed at region
+  scale is the country''s number wearing a region''s name — check the geography before believing it.'
+notes: 8 entries filed. ILOSTAT is the only open source here that measures informal work, which is
+  most of the production a Fab City in Indonesia or Chile is surrounded by — and it is national.

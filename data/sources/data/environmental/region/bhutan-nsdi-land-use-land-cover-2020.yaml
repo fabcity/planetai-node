@@ -10,6 +10,7 @@ license: 'Open (Geo-Information Policy 2018 §6.3.1 open tier: "Open data shall 
   freely accessible")'
 api: https://nsdi.systems.gov.bt/server/rest/services/Hosted/lulc_2020_src_view/FeatureServer
 pilot_relevance: []
+places: [bhutan]
 tags:
 - land-use
 - land-cover
@@ -21,7 +22,7 @@ tags:
 added: '2026-09-11'
 updated: '2026-09-11'
 auth: none
-wired_in_planetai: false
+feeds_cells: [Environmental|Region]
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). Item id
 

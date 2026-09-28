@@ -10,10 +10,11 @@ status: live
 license: CC0-1.0
 api: https://api.scb.se/OV0104/v1/doris/sv/ssd/OE/OE0107/OE0107B/KostnDR
 pilot_relevance: []
+places: [veberod]
 tags: [budget, expenditure-by-function, municipal-finance, sweden, pxweb, scb]
 added: 2026-09-11
+feeds_cells: [Economic|City]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Veberod/Lund).

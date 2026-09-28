@@ -10,10 +10,11 @@ status: live
 license: dl-de/by-2-0 (Datenlizenz Deutschland - Namensnennung - Version 2.0)
 api: https://www.regionalstatistik.de/genesis/online
 pilot_relevance: []
+places: [augsburg, bergisches, hamburg]
 tags: [public-budget, municipal-finance, budget-execution, open-budget, germany]
 added: 2026-09-10
 auth: registration
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8, Germany + Austria).

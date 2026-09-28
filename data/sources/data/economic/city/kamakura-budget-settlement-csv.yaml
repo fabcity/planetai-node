@@ -9,6 +9,7 @@ status: live
 license: CC-BY-4.0
 api: null
 pilot_relevance: []
+places: [kamakura]
 tags:
 - budget
 - settlement
@@ -19,8 +20,8 @@ tags:
 - kamakura
 - timeseries
 added: '2026-09-11'
+feeds_cells: [Economic|City]
 updated: '2026-09-11'
-wired_in_planetai: false
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12, Asia). Licence
 

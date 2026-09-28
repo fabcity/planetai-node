@@ -12,7 +12,7 @@ api: null
 pilot_relevance: [global]
 tags: [water-stress, water-risk, hydrological-basin, wri, geospatial]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Environmental|Bioregion]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. Direct download:
