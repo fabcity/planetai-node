@@ -136,7 +136,7 @@ tags.
 | `planetai packs` | What is loaded (from the node) or on disk (when it is down), and whether `packs install` has anything to do. |
 | `planetai packs install` | Adds every pack's missing `env:` keys to `.env` under a dated marker, writes the union of their `pip:` lists, rebuilds the image once. |
 | `planetai run` | Lists every pack script with its first line. |
-| `planetai run <pack> <script> [args]` | Runs it inside the app container with `PACK_OUT=/app/out`. |
+| `planetai run <pack> <script> [args]` | Runs it inside the app container with `PACK_OUT=/app/out`, and with the pack keys saved from Set up in its environment. |
 | `planetai sources [--all] [--pillar P] [--scale S] [--cell 'Pillar\|Scale'] [--json]` | What the source registry has filed for this place: the entries whose pilot relevance is `NODE_CITY` or `global`, or every entry with `--all`. Reads the node, or `data/sources/index.json` when the node is down. |
 
 `planetai sources` answers "what could this place measure", which is the question somebody asks with the

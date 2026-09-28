@@ -205,16 +205,3 @@ carries the date and the node it ran on.
 That is why these can go out two or three to a release while item 1 cannot.
 
 ---
-
----
-
-## 3. `planetai run <pack> <script>` does not see a pack key set from Set up
-
-Asked 28 September 2026, found while fixing pack keys in `PUT /settings`. The node copies a saved pack key
-into the app process's environment (`settings._overlay_packs`), which is what the adapters and MCP's
-`run_pack_script` read. `planetai run` is `docker compose exec app python …` (`bin/planetai`, `cmd_run`), a
-new process with only the container's `.env`, so `planetai run earth-engine verify` reports `EE_PROJECT`
-missing when Set up holds it. The fix most likely belongs in `cmd_run`: have it load the settings rows before
-running the script (for example `python -c` that calls `settings._rows()` and then `runpy.run_path`), rather
-than teaching every pack script about the database. `tests/test_pack_settings.py` is where a check for it goes.
-

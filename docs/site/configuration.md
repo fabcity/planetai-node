@@ -60,7 +60,6 @@ container restarts:
 | key | the reader that ignores the override |
 |---|---|
 | `NODE_KIND` | `/presence`, its only reader |
-| any pack key | a pack script started with `planetai run <pack> <script>`, which `docker compose exec` starts as a new process with only the container's environment. The same script run through MCP's `run_pack_script` has the override |
 | `ACT_TOKEN`, `RETICULUM_ALERT_DESTINATIONS` | the Reticulum bridge, which reads its own environment. The app itself reads the `ACT_TOKEN` override |
 
 The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v0753).
@@ -411,8 +410,6 @@ or santiago bounding box.
 - `FORECAST_POLL_HOURS` is declared by the forecast pack and read by nothing.
 - `NODE_KIND` accepts a runtime override that `/presence`, its only reader, never sees. Set it in `.env`
   and restart.
-- A pack script started with `planetai run <pack> <script>` reads `.env`, not a pack key set from Set up.
-  `run_pack_script` over MCP reads the override.
 - `ACT_TOKEN` and `RETICULUM_ALERT_DESTINATIONS` set from the dashboard do not reach the Reticulum bridge,
   which reads its own environment. Set them in `.env` and restart the bridge.
 - `FCI_PUBLISHER`, `ALLOWED_CITIES` and `PEERS` are named in other documents and are not present in this

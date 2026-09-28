@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **2026-09-28 · `planetai run` sees what Set up saved.** A pack script started with `planetai run <pack>
+  <script>` is a new process in the container, and it read only `.env`: `planetai run earth-engine verify`
+  called `EE_PROJECT` missing while Set up held it. The command now loads the node's settings before the
+  script starts, so a pack key saved from Set up, the CLI or an agent is in its environment, the same as for
+  the pack's adapter. With the database down it falls back to `.env`, as before.
+
 ## v0.75.5 — 2026-09-28 — a pack's own settings save from Set up, and reach the pack
 
 *Set up drew each pack's settings and sent them, and the node refused every one. It takes them now, and the pack
