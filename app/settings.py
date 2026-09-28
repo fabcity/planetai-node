@@ -1,7 +1,8 @@
 """Runtime settings: the database overlays the environment.
 
   get(key, default)   the DB value if the GUI set one, else the environment, else default. Cached 20 s.
-  set(key, value)     write; the next get() sees it within 20 s. No restart for anything in RUNTIME.
+  set(key, value)     write; the next get() sees it within 20 s. No restart for anything in RUNTIME, or for a key an
+                      installed pack declares, which is also put into the environment the pack reads.
   describe()          what the GUI shows: every editable key with its group, label, whether it is a secret,
                       whether it needs a restart, and its current (masked) value.
 
@@ -214,10 +215,40 @@ def _rows() -> dict:
         with psycopg.connect(DB, row_factory=dict_row, autocommit=True) as con, con.cursor() as cur:
             cur.execute("SELECT key, value FROM settings")
             _cache["rows"] = {r["key"]: r["value"] for r in cur.fetchall()}
+        _overlay_packs(_cache["rows"])
     except Exception:  # noqa: BLE001 — before the table exists, or db down: fall through to the environment
         pass
     _cache["at"] = time.time()
     return _cache["rows"]
+
+
+# A pack key's environment value from before a GUI row overrode it; None = it was unset.
+_env_before: dict = {}
+
+
+def _overlay_packs(rows: dict) -> None:
+    """Put the GUI's value of every pack-declared key into the process environment, and take it back out when the row
+    is deleted. Packs read their keys with os.getenv — that is the pack contract, and their verify and refresh scripts
+    run outside the app where this module is not importable — so a row in `settings` that stopped here reached no pack:
+    Set up saved MAKE_ENABLED=1 and the make pack went on reading the 0 in .env. A key the GUI never touched is left
+    exactly as the environment has it."""
+    declared = {r["key"] for r in pack_settings()}
+    for k in declared & rows.keys():
+        _env_before.setdefault(k, os.environ.get(k))
+        os.environ[k] = rows[k]
+    for k in _env_before.keys() - rows.keys():
+        v = _env_before.pop(k)
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
+def writable(key: str) -> bool:
+    """RUNTIME, or a key an installed pack's pack.yaml declares: the same rows describe() publishes as editable. Every
+    installed pack, not only the enabled ones, because a pack's own switch (MAKE_ENABLED) is a key of a pack that is
+    off, and refusing it would leave the page offering a field the node will not take."""
+    return key in RUNTIME or key in {r["key"] for r in pack_settings()}
 
 
 def get(key: str, default: str = "") -> str:
@@ -228,8 +259,8 @@ def get(key: str, default: str = "") -> str:
 
 
 def set(key: str, value: str) -> None:  # noqa: A001
-    if key not in RUNTIME:
-        raise KeyError(f"{key} is not a runtime setting")
+    if not writable(key):
+        raise KeyError(f"{key} is not a runtime setting, and no installed pack declares it")
     if value and key in CHOICES and value not in CHOICES[key]:
         raise ValueError(f"{value!r} is not a value {key} accepts. {RUNTIME[key][4]}")
     import psycopg
@@ -401,7 +432,9 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
         v = get(k, "")
         hide = not unlocked and k not in public
         out["runtime"].append({
-            "key": k, "group": "packs", "label": k, "secret": False, "restart": True,
+            # restart False: _overlay_packs puts a GUI value into the environment the pack reads, so it is in
+            # force at the pack's next run, within 20 s, like any RUNTIME key.
+            "key": k, "group": "packs", "label": k, "secret": False, "restart": False,
             "help": r["help"], "value": _mask(v) if hide else v, "set": bool(v),
             "source": "gui" if k in db else ("env" if os.getenv(k) else "default"),
             "choices": None, "outward": k in OUTWARD,

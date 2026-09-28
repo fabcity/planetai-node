@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **2026-09-28 · A pack's own keys save from Set up, and the pack reads them.** Since v0.75.3 Set up sent
+  `MAKE_ENABLED`, `PLACE_RADIUS_M` and the other keys a `pack.yaml` declares, and the node answered each with
+  400 `is not a runtime setting`. Now `PUT /settings`, Set up and `planetai config set` accept any key an
+  installed pack declares, switched on or not, and still refuse a key nothing declares. Packs read their keys
+  from the environment, so the node puts the saved value there too, and the pack has it at its next run with
+  no restart. That also makes a saved `COAST_MAX_KM`, `EE_PROJECT` or `EE_KEY_FILE` reach its pack, which it
+  never did. Not yet: a script started with `planetai run <pack> <script>` still reads only `.env`.
+
 ## v0.75.3 — 2026-09-27 — Set up saves what you changed, and nothing else
 
 *Saving a Set up group used to write back every field in it, and in the packs group it wrote none of the

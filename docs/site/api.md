@@ -615,13 +615,13 @@ After the node's own rows come the keys the installed packs declare in their `pa
 ### PUT /settings
 Access: admin
 
-Change runtime settings. Blank returns a key to its `.env` value. Effective within about 20 seconds (the settings cache TTL).
+Change runtime settings, and the keys an installed pack declares. Blank returns a key to its `.env` value. Effective within about 20 seconds (the settings cache TTL).
 
 Body: `{"KEY": "value", ...}`. Header `X-Agent` names the caller (default `gui`).
 
-400 `<KEY> is not a runtime setting` for a key outside `settings.RUNTIME`; 400 with the validation message for a value outside the key's choices. Every call writes one row to the `actions` ledger with `stage='settings'`, `actor` = the `X-Agent` value and `note` = the keys changed. Returns `{changed: [keys], by, effective_within_s: 20}`.
+400 `<KEY> is not a runtime setting, and no installed pack declares it` for a key outside `settings.RUNTIME` and every `pack.yaml`; 400 with the validation message for a value outside the key's choices. Every call writes one row to the `actions` ledger with `stage='settings'`, `actor` = the `X-Agent` value and `note` = the keys changed. Returns `{changed: [keys], by, effective_within_s: 20}`.
 
-> **Note.** `GET /settings` lists more than `PUT` accepts. Of the 21 pack rows, 18 are not runtime keys and are refused with 400 (`MAKE_ENABLED`, the `FORECAST_*` keys, `PLACE_RADIUS_M` and the rest); set them in `.env` and restart. The other three, `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`, are also node runtime keys, appear twice in the list, and can be set here.
+> **Note.** Every row `GET /settings` lists can be set here. A pack key is accepted whether or not its pack is switched on, so `MAKE_ENABLED` can turn the make pack on, and the node also puts the value into the environment the pack reads. A node that answers 400 `<KEY> is not a runtime setting` to a pack key is older than this; update it.
 
 ### GET /settings/raw
 Access: admin

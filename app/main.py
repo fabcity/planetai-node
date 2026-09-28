@@ -1967,8 +1967,8 @@ def put_settings(body: dict, authorization: str = Header(""), x_agent: str = Hea
     _admin(authorization)
     changed = []
     for k, v in body.items():
-        if k not in settings.RUNTIME:
-            raise HTTPException(400, f"{k} is not a runtime setting")
+        if not settings.writable(k):       # RUNTIME, or a key an installed pack declares
+            raise HTTPException(400, f"{k} is not a runtime setting, and no installed pack declares it")
         try:
             settings.set(k, str(v).strip())
         except ValueError as e:            # a key with a fixed set of values says so; a 500 would read as the node's fault
