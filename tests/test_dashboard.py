@@ -861,6 +861,30 @@ const field = k => F.find(x => x.dataset.key === k);
     assert _pk["untouched"]["puts"] == [] and "Nothing to save" in _pk["untouched"]["said"][0][0], \
         f"a packs save with nothing edited must write nothing: {_pk['untouched']}"
 
+# Two bugs node #1 showed on 28 September 2026 at v0.75.7, both in how the page read the node's own lists.
+#
+# Act printed "asks did not render: Cannot read properties of undefined (reading 'replace')". Its ledger keeps
+# four alerts from before packs named their rules (`indoor_pm25_high`, `inside_worse_ventilate`), and the section
+# split every rule id as `pack/rule`, so the rule came out undefined and the whole stage went blank. Every split
+# now goes through rulePack(), which returns '' for an id with no pack.
+assert "const [pack, name] = rule.split('/')" not in _js, "Act is splitting rule ids as pack/rule again"
+assert "String(r.rule_id).split('/')[0]" not in _js, "the effect rows name an old rule id as its own pack again"
+assert "rulePack(rule)" in _js and "rulePack(r.rule_id)" in _js, "a rule id no longer goes through rulePack()"
+# Each section is its own PAI_LOAD closure, so a helper defined in one is not defined in another: the first fix put
+# rulePack beside name() and Act died of "rulePack is not defined". It lives on window.K, which every section reads.
+assert "interp, rulePack, meterBar" in _js, "rulePack is not on window.K, where every section can reach it"
+if shutil.which("node"):
+    _rp = _node(re.search(r"const rulePack = id => \{.*?\};", _js).group(0)
+                + "\nconsole.log(JSON.stringify(['heat/heat_stress_now', 'indoor_pm25_high', '_test/hello', '']"
+                + ".map(rulePack)))")
+    assert _rp == ["heat", "", "_test", ""], f"rulePack must return the pack, or '' when there is none: {_rp}"
+#
+# Network's "Index cells 10 of 20" counted /cells rows. A cell can carry several values (three packs feed
+# Environmental|Bioregion on node #1), so 10 rows were 6 cells. "N of 20" is a count of cells.
+assert "cellCount: new Set(cells.map(c => c.cell)).size" in _js, "facts() no longer counts distinct cells"
+assert "interp(w.cellsN, { n: d.cellCount })" in _js and "{ n: d.cells.length }" not in _js, \
+    "Network's N of 20 is counting /cells rows again"
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")
