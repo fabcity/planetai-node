@@ -10,10 +10,11 @@ status: live
 license: CC0-1.0
 api: null
 pilot_relevance: []
+places: [amsterdam, velsen]
 tags: [open-data, netherlands, ckan, national-portal, dcat]
 added: 2026-09-11
+feeds_cells: [Governance|Region]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10).

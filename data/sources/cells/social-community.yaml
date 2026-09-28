@@ -1,0 +1,15 @@
+cell: Social|Community
+indicator_categories:
+- exposure at the dwelling
+- thermal comfort
+- local wellbeing
+minimum_indicators:
+- name: Hours with indoor apparent temperature at or above 32 degC
+  unit: count
+  aggregation: 30d-total
+does_not_claim: One household is not a community. This cell measures the dwellings whose instruments
+  report into this node, and describes the people in them and nobody else. A low figure is not evidence
+  that the street is comfortable; it is evidence about the rooms that were measured.
+notes: 'No registry entry is filed here, and the node computes it anyway: packs/heat is `state: live`
+  and counts hours at or above 32 degC indoors. A cell can be measurable and unregistered — which
+  is the opposite of the usual gap and worth seeing.'

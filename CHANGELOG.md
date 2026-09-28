@@ -1,14 +1,24 @@
 # Changelog
 
-## Unreleased
+## v0.75.5 — 2026-09-28 — a pack's own settings save from Set up, and reach the pack
 
-- **2026-09-28 · A pack's own keys save from Set up, and the pack reads them.** Since v0.75.3 Set up sent
+*Set up drew each pack's settings and sent them, and the node refused every one. It takes them now, and the pack
+has the new value at its next run with no restart. Also: the source registry moves from 238 entries to 268.*
+
+- **A pack's own keys save from Set up, and the pack reads them.** Since v0.75.3 Set up sent
   `MAKE_ENABLED`, `PLACE_RADIUS_M` and the other keys a `pack.yaml` declares, and the node answered each with
   400 `is not a runtime setting`. Now `PUT /settings`, Set up and `planetai config set` accept any key an
   installed pack declares, switched on or not, and still refuse a key nothing declares. Packs read their keys
   from the environment, so the node puts the saved value there too, and the pack has it at its next run with
   no restart. That also makes a saved `COAST_MAX_KM`, `EE_PROJECT` or `EE_KEY_FILE` reach its pack, which it
   never did. Not yet: a script started with `planetai run <pack> <script>` still reads only `.env`.
+- **The source registry, synced to `awesome-fabcity-data` at `2b00195`** (from `1010aa0`, 22 September): 268
+  entries, 30 more than before, with one removed. Most of the new ones are measured production, exports and
+  household spending for the pilots: Idescat's trade, industrial turnover and material flow accounts for
+  Catalonia, Statistikamt Nord for Hamburg, BPS tables for Bali, INE Chile for Santiago, and São Paulo and
+  Recife. There are also Eurostat's waste and air-freight tables, and a `places` field that says which pilot
+  each entry covers. `environmental/city/cdp-iclei-track` is gone: it is non-commercial only, and nothing in
+  the node read it.
 
 ## v0.75.4 — 2026-09-28 — the Earth Engine check runs to the end, and the docs match v0.75.3
 

@@ -1,0 +1,28 @@
+name: French customs regional foreign trade (DGDDI, le kiosque)
+url: https://lekiosque.finances.gouv.fr/site_fr/regions/Region_index.asp
+description: |
+  Exports and imports of goods for each French region and département, in
+  thousand euro, by A129 product and partner country, annual and quarterly,
+  from the customs directorate's statistics site.
+pillar: economic
+scale: region
+status: candidate
+license: "DGDDI: reuse allowed with the integrity of the data respected and the source and reference date cited (Licence Ouverte not named)"
+api: null
+pilot_relevance: []
+places: [paris]
+tags: [trade, imports, exports, value, regions, departements, france, paris]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory. Filed for #42 and for Paris, whose 37.58 comes from a closed model.
+
+  LICENCE. The site's legal notice: "La réutilisation est toutefois subordonnée au respect de l'intégrité de l'information et des données et à la mention précise de la source et de la date de référence", cited as "source : douanes françaises, résultats de [mois année]". This is France's default public-data reuse condition, but Licence Ouverte is not named. DGDDI data on data.gouv.fr is national only (lov2, last updated 2024-06). A reviewer should confirm that it counts as open-equivalent.
+
+  ENDPOINT. HTML tables, no login: `comparaison_region.asp` and `data_region.asp?lreg=...`. Île-de-France 2025: exports 146,670,355 and imports 184,417,609 thousand EUR. Paris (75), Q3 2025 to Q2 2026: exports 24.2 bn and imports 36.7 bn EUR. The downloadable ZIPs (département x product x country, three years annual or 16 quarters) sit behind a POST form, which was not submitted. No API.
+
+  WHY THIS CELL. Economic|Region's external-trade row, down to département.
+
+  WHAT IT DOES NOT CLAIM. Trade is attributed to the declaring firm's establishment, so a département holding head offices can show trade made elsewhere. Values only. Trade with other French regions is not in it.

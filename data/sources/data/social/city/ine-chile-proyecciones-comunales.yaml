@@ -1,0 +1,39 @@
+name: INE Chile — Estimaciones y proyecciones de población 2002–2035 por comuna (base 2017)
+url: https://www.ine.gob.cl/estadisticas-por-tema/demografia-y-poblacion/estimaciones-y-proyecciones-de-poblacion
+description: |
+  Population for every Chilean comuna, by sex, urban/rural area and age group, for
+  30 June of each year 2002–2035, projected from the 2017 census.
+pillar: social
+scale: city
+status: candidate
+license: CC-BY-SA-4.0
+api: https://www.ine.gob.cl/docs/default-source/proyecciones-de-poblacion/cuadros-estadisticos/base-2017/estimaciones-y-proyecciones-2002-2035-comuna-y-%C3%A1rea-urbana-y-rural.xlsx
+pilot_relevance: [santiago]
+places: [santiago-de-chile]
+tags: [population, projections, chile, ine, comuna, census, denominator]
+added: 2026-09-26
+auth: none
+feeds_cells: [Social|City, Social|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. INE's page "Términos de uso y licencia de datos abiertos" says the site's content
+  is under "Creative Commons Reconocimiento-CompartirIgual 4.0 Internacional", free to adapt
+  "para cualquier finalidad, incluso comercial", with attribution and share-alike. So a figure
+  derived from it (waste per capita, say) must be shared under CC BY-SA 4.0. datos.gob.cl
+  lists the same series as "cc-nc", which contradicts the publisher's own terms.
+
+  ENDPOINT. Key-free, no API. The file carries an .xlsx name but is a ';'-separated
+  Latin-1 CSV, 4.8 MB, 24,912 rows, 346 comunas, 16 regions. INE's server delivered about
+  7 KB/s on the day it was read. Comuna Santiago (13101): 486,838 in 2019, 527,014 in 2022.
+  Región Metropolitana (region 13): 7,915,199 and 8,310,984.
+
+  WHY THIS CELL. The resident-population row of Social|City and Social|Region, and the
+  denominator for every per-capita figure in Chile. fabcity/fci-index's compute/ pipeline
+  divides RETC's waste tonnes by it and keeps a per-comuna extract.
+
+  WHAT IT DOES NOT CLAIM. These are projections from the 2017 census, not counts. The
+  2024 census has since counted Chile and will replace them when INE rebases the series.
+  Until then a comuna that grew or shrank faster than projected is off, and the error grows
+  with the distance from 2017.

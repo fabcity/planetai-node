@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: https://ted.europa.eu/api/v3.0/
 pilot_relevance: [barcelona]
+places: [barcelona, hamburg]
 tags: [procurement, eu, public-tender, action-latency, open-data-portal-eu]
 added: 2026-05-04
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   The cleanest H_0-A action-latency baseline for the Barcelona pilot.

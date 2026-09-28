@@ -10,10 +10,11 @@ status: live
 license: CC0-1.0
 api: https://www.tenderned.nl/papi/tenderned-rs-tns/publicaties?page=0&size=20
 pilot_relevance: []
+places: [amsterdam, velsen]
 tags: [procurement, netherlands, tenderned, open-contracting, public-sector]
 added: 2026-09-11
+feeds_cells: [Governance|Region]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Licence CC-0

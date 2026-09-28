@@ -12,7 +12,7 @@ api: null
 pilot_relevance: []
 tags: [public-budget, national-finance, open-budget, germany]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 8). This is the national

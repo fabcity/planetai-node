@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: https://opendata-ajuntament.barcelona.cat/data/api/action/package_search
 pilot_relevance: [barcelona]
+places: [barcelona]
 tags: [public-budget, municipal-finance, budget-execution, open-budget, spain]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1) via the CKAN action

@@ -14,6 +14,7 @@ pilot_relevance: [global]
 tags: [open-hardware, okw, matcher, supply-chain, fab-lab, act]
 added: 2026-09-22
 auth: none
+feeds_cells: [Economic|Community]
 role: [act]
 act_kind: match
 upstream_listed_in: []

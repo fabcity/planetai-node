@@ -1,0 +1,29 @@
+name: Idescat industrial turnover by destination of sales (EIE)
+url: https://www.idescat.cat/indicadors/?id=aec&n=15464&lang=en
+description: |
+  Turnover of industrial companies in Catalonia by activity group (CCAE-2009) and
+  geographic destination of sales (Spain, rest of the EU, rest of the world), in
+  thousand euro, annual 1999-2024, from Idescat's Structural Business Statistics in
+  the Industrial Sector, based on INE's survey.
+pillar: economic
+scale: region
+status: candidate
+license: "Idescat reuse conditions: reuse allowed if the source is cited, the content is not altered and the update date is stated (no named licence); built on INE's Structural Business Statistics, CC BY 4.0 at INE"
+api: https://www.idescat.cat/indicadors/?id=aec&n=15464&lang=en&f=csv&t=201900
+pilot_relevance: [barcelona]
+places: [barcelona]
+tags: [manufacturing, production, turnover, exports, sales-destination, catalonia, csv]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27, not yet read for a real territory. Filed for #42: measured production and the share sold abroad, which the Index otherwise models.
+
+  LICENCE. Idescat's legal notice, as for idescat-comerc-exterior (reviewed usable-with-caveats, #54): reuse allowed if the source is cited, the content is not altered and the update date is stated, and no licence is named. The underlying survey is INE's, whose own terms are CC BY 4.0.
+
+  ENDPOINT. CSV, no key: `&f=csv&t=YYYY00` picks the year (t=201900 is 2019; plain t=2019 is ignored and returns the latest year). Thousand euro. 2019, food products: 26,975 M total, of which 19,690 M sold in Spain, 4,848 M to the rest of the EU and 2,437 M to the rest of the world. 2024 total industry: 185,304 M.
+
+  WHY THIS CELL. Economic|Region's manufacturing capacity, measured: turnover by activity group, and the part sold abroad. The pipeline otherwise scales national production by employment.
+
+  WHAT IT DOES NOT CLAIM. "Spain" includes Catalonia and the rest of Spain together, so sales that leave Catalonia for other Spanish regions still look local. Groups do not all match NACE divisions: beverages come with tobacco, and "furniture and other manufacturing" joins C31 and C32. Turnover is sales, not production value. Company-level survey, so a firm is placed where it is registered.

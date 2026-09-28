@@ -1,0 +1,30 @@
+name: INE Chile annual industrial survey, establishment microdata (ENIA)
+url: https://www.ine.gob.cl/estadisticas-por-tema/industria-energia-y-construccion
+description: |
+  Chile's census-type annual industrial survey (Encuesta Nacional Industrial Anual), one row per
+  manufacturing establishment with region and CIIU Rev.4 industry: gross value of production,
+  total income and export income, inputs and employment. CSV 2017-2024, Access back to 1995.
+pillar: economic
+scale: region
+status: candidate
+license: "INE Chile's terms: CC BY-SA 4.0 (ine.gob.cl/terminos-de-uso-y-licencia-de-datos-abiertos), with a rule against re-identifying people or firms in microdata; datos.gob.cl's cc-nc label contradicts the publisher"
+api: https://www.ine.gob.cl/docs/default-source/estructura-de-la-industria/bbdd/encuesta-nacional-industrial-anual/csv/base-enia-2022.csv
+pilot_relevance: [santiago]
+places: [santiago-de-chile]
+tags: [manufacturing, production, production-value, exports, microdata, chile, santiago, region-metropolitana, csv]
+added: 2026-09-28
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-28 and read for a real territory: fabcity/fci-index (santiago_trade_adjusted), Región Metropolitana, 2019 and 2022. Filed for #42.
+
+  LICENCE. INE's own terms page, section III: "El contenido de este sitio Web se rige bajo una licencia de Creative Commons Reconocimiento-CompartirIgual 4.0 Internacional". Section II forbids re-identifying informants in microdata. datos.gob.cl's entry is tagged non-commercial, has no files and was last changed in 2021; the publisher's terms apply, as for social/city/ine-chile-proyecciones-comunales.
+
+  ENDPOINT. `base-enia-{year}.csv`, `;`-separated, Latin-1, one row per establishment, no expansion factor. The key columns are REGION (13 = RM), CIIU4, K009 (gross value of production), K003 (export income) and A005 (4 = thousand CLP, 5 = thousand US$). The descriptor is `.../metadatos/encuesta-nacional-industrial-anual/descritpor-de-campos/descriptor-de-variables-enia-2024.xlsx`. www.ine.gob.cl drops connections for minutes at a time, so fci-index commits an extract.
+
+  FIGURES, RM, bn CLP (2019, then 2022): food (C10) 5,094.2 and 7,388.3; pharmaceuticals (C21) 931.5 and 1,306.1. The 2019 divisions plus one hidden row come to 19,549 bn, which is INE's published regional total.
+
+  WHY THIS CELL. Economic|Region's manufacturing capacity, measured, with the same plants' export sales: the only open source for Santiago that gives both.
+
+  WHAT IT DOES NOT CLAIM. About 5% of rows are in US$ and must be converted. INE hides some rows' industry by cutting CIIU4 to "C". Small divisions are a handful of plants (C26: 8 in 2022). Exports are sales abroad; sales to the rest of Chile count as regional.

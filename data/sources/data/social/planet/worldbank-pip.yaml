@@ -14,7 +14,7 @@ pilot_relevance: [global]
 tags: [world-bank, poverty, gini, inequality, household-survey, open-api]
 added: 2026-09-09
 auth: none
-wired_in_planetai: false
+feeds_cells: [Social|Planet]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 with a live call: ?country=BRA&year=2022&format=json

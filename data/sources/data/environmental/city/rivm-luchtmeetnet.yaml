@@ -10,11 +10,12 @@ status: live
 license: CC-BY-4.0
 api: https://api.luchtmeetnet.nl/open_api/stations
 pilot_relevance: []
+places: [amsterdam, velsen]
 tags: [air-quality, netherlands, rivm, pm25, monitoring-stations, rest-api]
 added: 2026-09-11
 updated: 2026-09-11
 auth: none
-wired_in_planetai: false
+feeds_cells: [Environmental|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). The open API was

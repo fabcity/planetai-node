@@ -12,7 +12,7 @@ api: null
 pilot_relevance: [global]
 tags: [open-government, ogp, commitments, irm, transparency, csv]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. 73 countries, 141 local members, 479 national and

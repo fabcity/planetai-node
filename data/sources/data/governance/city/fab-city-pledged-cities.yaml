@@ -13,6 +13,7 @@ pilot_relevance: [global]
 tags: [fab-city, pledge, network, commitment, governance, act]
 added: 2026-09-20
 auth: none
+feeds_cells: []
 role: [act]
 act_kind: network
 upstream_listed_in: []

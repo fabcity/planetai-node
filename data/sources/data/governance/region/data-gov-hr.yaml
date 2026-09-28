@@ -10,10 +10,11 @@ status: live
 license: Otvorena dozvola (OD)
 api: https://data.gov.hr/ckan/api/3/action/package_search
 pilot_relevance: []
+places: [zadar, zagreb]
 tags: [open-data, croatia, ckan, national-portal]
 added: 2026-09-11
+feeds_cells: [Governance|Region]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). The CKAN API

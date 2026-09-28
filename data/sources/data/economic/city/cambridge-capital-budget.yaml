@@ -10,9 +10,10 @@ status: live
 license: Open Data Commons Public Domain Dedication and License (PDDL)
 api: https://data.cambridgema.gov/resource/9chi-2ed3.json
 pilot_relevance: [boston]
+places: [boston, cambridge]
 tags: [budget, capital-investment, municipal-finance, geospatial, united-states]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).

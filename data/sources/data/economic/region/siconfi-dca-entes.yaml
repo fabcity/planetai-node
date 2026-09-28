@@ -10,10 +10,11 @@ status: live
 license: Open Data Commons Open Database License (ODbL)
 api: https://apidatalake.tesouro.gov.br/ords/siconfi/tt/dca
 pilot_relevance: []
+places: [belo-horizonte, curitiba, recife, sao-paulo, sorocaba]
 tags: [budget, public-finance, brazil, siconfi, regional-accounts, ibge]
 added: 2026-09-10
+feeds_cells: [Economic|Region, Economic|City]
 updated: 2026-09-10
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-10 in the FCI Regime 1 harvest (wave 5, Brazil). Companion to

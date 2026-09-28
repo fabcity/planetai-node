@@ -14,7 +14,7 @@ tags: [health, mortality, morbidity, ihme, gbd]
 added: 2026-05-04
 updated: '2026-09-19'
 auth: registration
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   URL updated 2026-09-19: ghdx.healthdata.org/gbd-results-tool redirects to vizhub.healthdata.org/gbd-results/ - recorded over https, since the redirect lands on http.

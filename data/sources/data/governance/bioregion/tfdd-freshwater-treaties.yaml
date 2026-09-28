@@ -13,7 +13,7 @@ api: null
 pilot_relevance: [global]
 tags: [water-treaties, transboundary-water, excel, basin-id-join, cross-jurisdictional, no-licence-stated]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Governance|Bioregion]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. Filed as STALE: the most recent Excel is version

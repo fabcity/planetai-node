@@ -10,10 +10,11 @@ status: live
 license: Open Government Licence v3.0
 api: https://www.find-tender.service.gov.uk/apidocumentation/1.0/ocdsReleasePackages
 pilot_relevance: []
+places: [plymouth]
 tags: [procurement, ocds, open-contracting, json, api, uk]
 added: 2026-09-11
+feeds_cells: [Governance|Region]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).

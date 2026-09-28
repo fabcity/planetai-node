@@ -1,0 +1,28 @@
+name: IBGE annual industrial survey by state and CNAE division (PIA-Empresa, SIDRA 1849)
+url: https://sidra.ibge.gov.br/tabela/1849
+description: |
+  Brazil's annual industrial survey, local units with 5 or more persons employed, by
+  state (UF) and CNAE 2.0 division, 2007-2023: gross value of industrial production,
+  net sales revenue, industrial net sales and persons employed, in thousand reais.
+pillar: economic
+scale: region
+status: candidate
+license: "IBGE terms: data from IBGE publications and databases may be used by third parties with IBGE cited as the source; a transformed table must say who transformed it"
+api: https://apisidra.ibge.gov.br/values/t/1849/n3/35,26/v/810,836,631/p/2019/c12762/116911/f/n
+pilot_relevance: []
+places: [recife, sao-paulo]
+tags: [manufacturing, production, production-value, employment, brazil, sao-paulo, pernambuco, recife, sidra, open-api]
+added: 2026-09-27
+auth: none
+feeds_cells: [Economic|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-27, not yet read for a real territory. Filed for #42: measured production by state for São Paulo and Recife (Pernambuco), which the Index otherwise has no way to get.
+
+  LICENCE. IBGE's library services page (biblioteca.ibge.gov.br/biblioteca-servicos.html, read through a 2025 Wayback capture because www.ibge.gov.br refuses scripts): "Dados selecionados de publicações do IBGE ... podem ser utilizados por terceiros em publicações, devendo ser citado como fonte o IBGE", and a transformed table must name who transformed it. No non-commercial clause, no date bound, no named licence.
+
+  ENDPOINT. SIDRA API, no key. Variables 810 (gross value of production, VBP), 835 (net sales), 836 (industrial net sales), 631 (persons employed); classification c12762 (CNAE divisions: 116911 = C10, 116952 = C11, 116965 = C13, 116985 = C14, 116994 = C15, 117082 = C21, 117099 = C23, 117159 = C26, 117267 = C32); states n3 35 (SP), 26 (PE). 2019 VBP: SP food (C10) 149,455,273 and electronics (C26) 47,524,215; PE food 14,111,293 and electronics 28,262 (thousand R$). Nothing suppressed for SP or PE in these divisions, 2019 or 2022. Table 10457 (new series) holds 2024 only.
+
+  WHY THIS CELL. Economic|Region's manufacturing capacity: persons employed by division (the minimum row) and measured production value.
+
+  WHAT IT DOES NOT CLAIM. Local units with 5 or more persons only. State level only, no municipalities, so São Paulo and Recife are read as their states. Nominal reais.

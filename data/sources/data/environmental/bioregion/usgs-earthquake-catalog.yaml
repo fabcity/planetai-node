@@ -1,0 +1,52 @@
+name: USGS Earthquake Catalog (ComCat) — real-time feeds and FDSN event API
+url: https://earthquake.usgs.gov/earthquakes/search/
+description: |
+  The US Geological Survey's comprehensive earthquake catalogue: location,
+  depth, magnitude, felt reports and shaking estimates for events worldwide,
+  as key-free GeoJSON feeds refreshed every minute and a query API over the
+  full archive.
+pillar: environmental
+scale: bioregion
+status: candidate
+license: US public domain (USGS-authored data)
+api: https://earthquake.usgs.gov/fdsnws/event/1/query
+pilot_relevance: [santiago, bali, global]
+places: [bali, santiago-de-chile]
+tags: [earthquakes, seismic, hazard, near-real-time, geojson, usgs]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|Bioregion]
+updated: 2026-09-26
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, nothing read for a real territory yet.
+
+  LICENCE. The USGS copyrights page says "USGS-authored or produced data and
+  information are considered to be in the U.S. Public Domain". That sentence covers
+  what USGS authored, and ComCat is an aggregator. Each event carries a `sources`
+  field naming the networks that contributed. Outside the US most solutions come
+  from USGS's own NEIC (`us`), but check `sources` before assuming a record is
+  USGS's. For Chile the national authority is the Centro Sismológico Nacional, and
+  for Indonesia it is BMKG. Their catalogues are more complete locally, and their
+  licences have not been checked here.
+
+  ENDPOINTS. Summary feeds are at
+  `/earthquakes/feed/v1.0/summary/{significant|4.5|2.5|1.0|all}_{hour|day|week|month}.geojson`
+  and are updated every minute. `all_day` returned 200 and 145 KB on 2026-09-26.
+  `/fdsnws/event/1/count` and `/query` take `starttime`, `minmagnitude` and a
+  lat/lon box or radius. The Bali box (114.3,-9.2 to 116,-7.9) counted 4 events
+  since 2026-01-01, with maxAllowed 20000 per query. The feed life-cycle policy
+  promises at least 6 months for any production feed and 30 days' notice before
+  deprecation.
+
+  WHY THIS CELL. Environmental|Bioregion's natural-hazards category (added 2026-09-26) carries
+  "Earthquakes of magnitude 4.5 and above, count/yr". M4.5 is the threshold because that is where
+  global completeness holds; below it, the count measures the local network as much as the ground.
+  Seismic exposure matters to two pilots, Santiago and Bali. Until that row existed this entry had
+  `feeds_cells: []` and bent the candidate rule, because no cell had a hazards row.
+
+  WHAT IT DOES NOT CLAIM. Global completeness is only about M4.5 and above. Below
+  that the catalogue is only as complete as the local network that feeds it. An
+  event count is not risk: risk needs exposure, meaning buildings and people, which
+  this source does not carry. The ShakeMap and PAGER products do carry them, for
+  significant events only.

@@ -10,10 +10,11 @@ status: deprecated
 license: CC0-1.0
 api: https://odapi.spa.ge/api/swagger.ui
 pilot_relevance: []
+places: [georgia]
 tags: [georgia, procurement, ocds, open-contracting, stale]
 added: 2026-09-11
+feeds_cells: [Governance|Region]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: [Open Contracting Partnership Data Registry]
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Georgia).

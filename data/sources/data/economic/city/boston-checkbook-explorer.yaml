@@ -10,9 +10,10 @@ status: live
 license: Open Data Commons Public Domain Dedication and License (PDDL)
 api: null
 pilot_relevance: [boston]
+places: [boston]
 tags: [budget-execution, municipal-finance, spending, united-states]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Per-FY CSVs

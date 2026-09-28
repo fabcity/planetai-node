@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: null
 pilot_relevance: [barcelona, boston, santiago]
+places: [barcelona, boston, santiago-de-chile]
 tags: [economic-complexity, metro-area, harvard, urban-economics]
 added: 2026-05-04
-wired_in_planetai: true
+feeds_cells: [Economic|Region]
 upstream_listed_in: []
 notes: |
   No public API; bulk download via the site's research portal.

@@ -11,9 +11,10 @@ status: live
 license: Eurostat re-use policy (Commission Decision 2011/833/EU) — free re-use with attribution, equivalent to CC-BY-4.0
 api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/env_ac_egss1
 pilot_relevance: [barcelona, global]
+places: [barcelona, hamburg]
 tags: [eurostat, egss, green-jobs, environmental-economy, europe-only, open-api]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 with a live call returning real values: Spain 2022,

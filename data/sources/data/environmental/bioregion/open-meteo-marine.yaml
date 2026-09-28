@@ -10,12 +10,12 @@ status: live
 license: CC-BY-4.0 (Open-Meteo) with mandatory attribution to the model providers (DWD, ECMWF, Meteo-France, NCEP)
 api: https://marine-api.open-meteo.com/v1/marine
 pilot_relevance: [bali, barcelona, boston, santiago, global]
+places: [bali, barcelona, boston, santiago-de-chile]
 tags: [marine, waves, sea-surface-temperature, coast, tides, model, forecast]
 added: 2026-09-18
 adapter: pack:coast
 feeds_cells: [Environmental|Bioregion]
 auth: none
-wired_in_planetai: true
 upstream_listed_in: []
 notes: |
   Resolution 5-50 km depending on model; a point query is snapped to the

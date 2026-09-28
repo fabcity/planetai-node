@@ -12,7 +12,7 @@ api: null
 pilot_relevance: []
 tags: [budget, public-finance, south-africa, provincial, expenditure]
 added: 2026-09-11
-wired_in_planetai: false
+feeds_cells: [Economic|Region]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 11, South Africa). This

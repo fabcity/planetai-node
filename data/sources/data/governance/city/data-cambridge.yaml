@@ -10,9 +10,10 @@ status: live
 license: Open Data Commons Public Domain Dedication and License (PDDL)
 api: https://api.us.socrata.com/api/catalog/v1?domains=data.cambridgema.gov
 pilot_relevance: [boston]
+places: [boston, cambridge]
 tags: [open-data-portal, socrata, transparency, united-states]
 added: 2026-09-10
-wired_in_planetai: false
+feeds_cells: [Governance|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-10 in the FCI Regime 1 harvest (wave 7, United States).

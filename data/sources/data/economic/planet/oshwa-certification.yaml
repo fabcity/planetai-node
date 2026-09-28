@@ -13,6 +13,7 @@ pilot_relevance: [global]
 tags: [open-design, open-hardware, certification, oshwa, registry, act]
 added: 2026-09-20
 auth: api-key
+feeds_cells: [Economic|Planet]
 role: [act]
 act_kind: design
 upstream_listed_in: []

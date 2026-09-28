@@ -14,6 +14,7 @@ pilot_relevance: [global]
 tags: [fab-lab, makerspace, open-workshop, aggregator, geojson, act]
 added: 2026-09-22
 auth: none
+feeds_cells: [Economic|Community]
 role: [act]
 act_kind: facility
 upstream_listed_in: []

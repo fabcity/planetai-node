@@ -10,6 +10,7 @@ status: candidate
 license: "CC-BY-4.0 for databases and datasets published from 3 May 2023. Anything produced before that date is NOT automatically Creative Commons and must be checked per work; microdata is excluded entirely. See notes."
 api: https://rplumber.ilo.org/data/indicator/
 pilot_relevance: [bali, santiago, global]
+places: [bali, santiago-de-chile]
 tags: [labour, employment, informality, ilo, wages, decent-work]
 added: 2026-09-22
 auth: none

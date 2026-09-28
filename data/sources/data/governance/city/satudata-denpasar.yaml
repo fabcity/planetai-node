@@ -10,9 +10,10 @@ status: live
 license: Lainnya (Domain Publik)
 api: https://satudata.denpasarkota.go.id/api/3
 pilot_relevance: [bali]
+places: [bali]
 tags: [open-data, denpasar, indonesia, ckan, municipal]
 added: 2026-09-09
-wired_in_planetai: false
+feeds_cells: [Governance|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). CKAN 2.8.3

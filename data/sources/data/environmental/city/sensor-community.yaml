@@ -10,9 +10,10 @@ status: live
 license: DbCL-1.0
 api: https://data.sensor.community/airrohr/v1/
 pilot_relevance: [barcelona, global]
+places: [barcelona]
 tags: [air-quality, citizen-science, particulate-matter, eu]
 added: 2026-05-04
-wired_in_planetai: false
+feeds_cells: [Environmental|City]
 upstream_listed_in: []
 notes: |
   Formerly known as luftdaten.info. Coverage densest in Germany,

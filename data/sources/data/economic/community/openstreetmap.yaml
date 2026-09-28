@@ -15,7 +15,6 @@ added: 2026-09-18
 adapter: pack:place
 feeds_cells: [Economic|Community]
 auth: key-free-rate-limited
-wired_in_planetai: true
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   ODbL: derived databases must be shared under ODbL; produced works need

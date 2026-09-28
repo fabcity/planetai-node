@@ -10,12 +10,12 @@ status: live
 license: Open Data Commons Public Domain Dedication and License (PDDL)
 api: null
 pilot_relevance: [boston]
+places: [boston]
 tags: [open-data, boston, ckan, municipal]
 added: 2026-05-04
 updated: 2026-09-18
 adapter: core:ckan
 feeds_cells: [Governance|City]
-wired_in_planetai: true
 upstream_listed_in: []
 notes: |
   Re-verified 2026-09-09 in the FCI Regime 1 harvest (wave 1). Three

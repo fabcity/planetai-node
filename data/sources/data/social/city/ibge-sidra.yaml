@@ -23,9 +23,18 @@ notes: |
   Commons", no reuse clause of any kind** — and the API docs at
   `servicodados.ibge.gov.br/api/docs` state no terms either.
 
-  Same shape as social/city/us-census-acs: open by federal policy, with nothing
-  named. Criterion 1 is met in substance and a reviewer wanting an SPDX id will
-  not find one. (IBGE's *journal*, the Revista Brasileira de Geografia, adopted
+  **What the decree actually mandates** — the C' licence pass supplied the
+  operative sentence this entry was missing. Decreto 8.777/2016, art. 2 III,
+  verbatim: dados abertos are those "disponibilizados sob licença aberta que
+  permita sua livre utilização, consumo ou cruzamento, limitando-se a creditar
+  a autoria ou a fonte". So it is not merely a policy of publishing openly — it
+  is a policy that *requires an open licence* and caps the condition at
+  attribution. That is the difference between "open by policy" and "a policy
+  mandating openness", and it is why criterion 1 is met under "or equivalent".
+
+  Same shape as social/city/us-census-acs: open by federal instrument, with no
+  licence named on the page. A reviewer wanting an SPDX id will not find one;
+  say so and move on. (IBGE's *journal*, the Revista Brasileira de Geografia, adopted
   CC BY 4.0 in 2023 — that is the journal, not the statistics, and is the wrong
   thing to cite for this data.)
 

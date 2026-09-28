@@ -10,10 +10,11 @@ status: live
 license: Creative Commons 4.0 Attribution (CC-BY) licence - Quebec (qc-cc-by)
 api: null
 pilot_relevance: []
+places: [bas-saint-laurent, montreal]
 tags: [municipal-finance, ratios, mrc, region-administrative, quebec, bas-saint-laurent]
 added: 2026-09-11
+feeds_cells: [Economic|City]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13,

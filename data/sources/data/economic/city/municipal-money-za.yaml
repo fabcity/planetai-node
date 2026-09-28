@@ -13,7 +13,7 @@ pilot_relevance: []
 tags: [budget, municipal-finance, south-africa, public-finance, api]
 added: 2026-09-11
 auth: none
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 11, South Africa).

@@ -10,6 +10,7 @@ status: candidate
 license: "Commission Decision 2011/833/EU — reuse for commercial or non-commercial purposes authorised with the source acknowledged. NOT CC-BY-4.0, which covers the site's editorial content only. See notes."
 api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/sbs_r_nuts2021
 pilot_relevance: [barcelona, global]
+places: [barcelona, hamburg]
 tags: [sbs, eurostat, manufacturing, enterprises, employment, nuts]
 added: 2026-09-23
 auth: none

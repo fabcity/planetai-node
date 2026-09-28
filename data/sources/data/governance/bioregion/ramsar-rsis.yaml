@@ -14,7 +14,7 @@ pilot_relevance: [global]
 tags: [ramsar, wetlands, protected-areas, site-level, gis-boundaries, no-api]
 added: 2026-09-09
 auth: none
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   Verified 2026-09-09. Site records carry name, country, designation date,

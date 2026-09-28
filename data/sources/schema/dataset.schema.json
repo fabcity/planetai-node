@@ -7,6 +7,12 @@
   "required": ["name", "url", "description", "pillar", "scale", "status", "license"],
   "additionalProperties": false,
   "properties": {
+    "places": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+      "description": "The Fab City places (slugs from places.yaml) this source can serve, for the cells in feeds_cells. What the site's ranking, city list and city cells count as 'found'. Name only places the source was checked for: a national source that could serve every place in its country lists the ones somebody verified."
+    },
     "name": {
       "type": "string",
       "minLength": 3,
@@ -66,10 +72,6 @@
       "type": "string",
       "format": "date",
       "description": "ISO date of the last review of this entry's status / metadata."
-    },
-    "wired_in_planetai": {
-      "type": "boolean",
-      "description": "DEPRECATED, derived — read `adapter` instead. A hand-set boolean in this repository asserting runtime state in another one, which is why it drifted. The validator warns when this is true and `adapter` is absent. Kept only until the Airtable Data Sources mirror reads `adapter`; removed in the release after that."
     },
     "adapter": {
       "type": "string",

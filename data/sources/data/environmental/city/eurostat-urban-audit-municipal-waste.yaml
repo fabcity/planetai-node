@@ -1,0 +1,38 @@
+name: Eurostat Urban Audit — Municipal waste generated (urb_cenv, EN4008V)
+url: https://ec.europa.eu/eurostat/databrowser/view/urb_cenv/default/table
+description: |
+  Municipal waste generated (domestic and commercial) per city, in thousand tonnes,
+  for the Urban Audit cities of the EU and EFTA, 2007–2024.
+pillar: environmental
+scale: city
+status: candidate
+license: Eurostat reuse policy (Commission Decision 2011/833/EU), reuse authorised with acknowledgement
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/urb_cenv?indic_ur=EN4008V
+pilot_relevance: []
+places: [hamburg, paris]
+tags: [waste, msw, eurostat, urban-audit, europe-only, open-api]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|City]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. Eurostat's copyright notice authorises reuse "provided the source is
+  acknowledged" (Commission Decision of 12 December 2011, 2011/833/EU). The CC-BY-4.0 on
+  the website covers editorial content, not the statistics. Data "identified as belonging
+  to sources other than Eurostat" is excluded, and that applies here: Urban Audit figures
+  come from national statistical offices and cities.
+
+  ENDPOINT. Key-free JSON-stat. Hamburg (cities=DE002C): 749.2 kt in 2022, 750.4 in
+  2023, 765.9 in 2024. Barcelona (ES002C) returns no values for this variable. Paris
+  (FR001C) returns 4,188 kt for 2023, about four times the Ville de Paris household
+  figure, so the boundary or scope differs. Urban Audit codes distinguish city (C),
+  greater city and functional urban area.
+
+  WHY THIS CELL. Environmental|City's waste row. Divide by the Urban Audit population for kg
+  per capita. For Hamburg, statistikamt-nord-abfall-einsammlung-hamburg now gives the split
+  this total lacks (775.1 kt collected in 2024, against 765.9 kt here).
+
+  WHAT IT DOES NOT CLAIM. A total only: no recycling or disposal split, so residual waste
+  cannot be derived from it. Coverage varies by city and year.

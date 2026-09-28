@@ -10,10 +10,11 @@ status: live
 license: Otvorena dozvola (OD)
 api: https://opendata.arcgis.com/api/v3/datasets/ed9898e63ec94770a8fb37713c36f8ca_0/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1
 pilot_relevance: []
+places: [zagreb]
 tags: [air-quality, zagreb, croatia, arcgis-hub, monitoring-stations, geojson]
 added: 2026-09-11
+feeds_cells: []
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Verified 2026-09-11 in the FCI Regime 1 harvest (wave 10). Last modified

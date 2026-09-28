@@ -1,0 +1,31 @@
+cell: Economic|Region
+indicator_categories:
+- manufacturing and enterprise capacity
+- regional accounts
+- public finance
+- external trade
+minimum_indicators:
+- name: Persons employed in manufacturing local units
+  unit: count
+  aggregation: latest
+- name: Enterprises per 1000 inhabitants
+  unit: rate
+  aggregation: latest
+- name: Subnational government expenditure, executed
+  unit: currency/yr
+  aggregation: annual-total
+- name: Goods exported and imported by the region, by value
+  unit: currency/yr, exports and imports reported separately
+  aggregation: annual-total
+does_not_claim: Enterprise counts measure registration, not production — a region can register many
+  firms and make little, and informal production appears in neither number. Regional accounts locate
+  activity by the reporting unit's address, which for a multi-site firm is a headquarters and not
+  a workshop. Regional trade is attributed to the exporter's or importer's registered address,
+  not to where goods were made or used, and a region's imports and exports can follow different
+  concepts (Germany reports general-trade imports against special-trade exports), so their balance
+  is not a measure of self-supply.
+notes: >-
+  30 entries filed, mostly public-finance series. Eurostat SBS by NUTS 2 is the one that reaches
+  manufacturing capacity directly. The external-trade row (added 2026-09-26, #42) has five candidates:
+  Idescat (Catalonia by province, value and weight), Destatis and Statistikamt Nord (Hamburg), French
+  customs by region and département, and Census metro exports (Boston, exports only). Blocked leads: #50.

@@ -12,7 +12,7 @@ pilot_relevance: [global]
 tags: [air-quality, gridded, google, paywalled-tier]
 added: 2026-05-04
 auth: paid
-wired_in_planetai: true
+feeds_cells: [Environmental|City]
 upstream_listed_in: []
 notes: |
   Free quota of 10k requests/month per project; sufficient for

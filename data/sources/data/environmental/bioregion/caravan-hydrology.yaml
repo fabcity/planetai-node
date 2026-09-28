@@ -10,9 +10,10 @@ status: live
 license: CC-BY-4.0
 api: null
 pilot_relevance: [bali, barcelona, boston, santiago]
+places: [bali, barcelona, boston, santiago-de-chile]
 tags: [hydrology, streamflow, watershed, benchmark, machine-learning]
 added: 2026-05-04
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   Bulk download via Zenodo. Catchments include Tukad Badung

@@ -10,10 +10,11 @@ status: live
 license: custom open (ENTSO-E terms; free for non-commercial)
 api: https://transparency.entsoe.eu/api
 pilot_relevance: [barcelona]
+places: [barcelona, hamburg]
 tags: [electricity, grid, energy, eu, entso-e, renewable]
 added: 2026-05-04
 auth: api-key
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   The European equivalent of PUDL. Spain bidding zone (ES)

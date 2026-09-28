@@ -9,6 +9,7 @@ status: live
 license: 이용허락범위 제한 없음 (no restriction on scope of use)
 api: null
 pilot_relevance: []
+places: [seoul]
 tags:
 - fiscal-transparency
 - local-finance
@@ -16,8 +17,8 @@ tags:
 - inter-municipal
 - korea
 added: '2026-09-11'
+feeds_cells: []
 updated: '2026-09-11'
-wired_in_planetai: false
 upstream_listed_in: []
 notes: 'Verified 2026-09-11 in the FCI Regime 1 harvest (wave 12). JSON + XML.
 

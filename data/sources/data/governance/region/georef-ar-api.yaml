@@ -10,10 +10,11 @@ status: live
 license: CC-BY-4.0
 api: https://apis.datos.gob.ar/georef/api
 pilot_relevance: []
+places: [cordoba]
 tags: [admin-boundaries, geocoding, identifiers, argentina, federation]
 added: 2026-09-10
 auth: key-free-rate-limited
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: []
 notes: |
   VERIFIED 2026-09-10. A live query to

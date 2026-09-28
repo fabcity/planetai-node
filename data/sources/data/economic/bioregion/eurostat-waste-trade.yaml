@@ -1,0 +1,40 @@
+name: Eurostat — Trade in waste by type of material and partner (env_wastrdmp)
+url: https://ec.europa.eu/eurostat/databrowser/view/env_wastrdmp/default/table
+description: |
+  Imports and exports of waste by material (paper, plastics, rubber, wood, textiles, glass,
+  organic, mineral and metals) per country, by partner, in tonnes and euros, 2004–2025,
+  including trade within and outside the EU.
+pillar: economic
+scale: bioregion
+status: candidate
+license: Eurostat reuse policy (Commission Decision 2011/833/EU), reuse authorised with acknowledgement
+api: https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/env_wastrdmp?rawmat=TOTAL&unit=T
+pilot_relevance: [barcelona]
+places: [barcelona, hamburg]
+tags: [waste, trade, imports, exports, material-flow, eurostat, europe-only, open-api]
+added: 2026-09-26
+auth: none
+feeds_cells: [Economic|Bioregion]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. Eurostat's copyright notice authorises reuse "provided the source is
+  acknowledged" (2011/833/EU). The CC-BY-4.0 on the website covers editorial content only.
+
+  ENDPOINT. Key-free JSON-stat, updated 2026-05-20. An unfiltered call returns HTTP 413:
+  filter by geo, rawmat, unit and partner. Dimensions: stk_flow (IMP, EXP), rawmat (TOTAL
+  and material groups), partner (215, including INT_EU27_2020 and EXT_EU27_2020), unit (T,
+  THS_EUR). 2025, rawmat TOTAL, tonnes: Germany exported 12.2 Mt within the EU and 3.7 Mt
+  outside, and imported 13.8 Mt and 2.0 Mt. Spain exported 1.5 + 2.1 Mt and imported 5.3 +
+  1.8 Mt. France exported 10.4 + 2.2 Mt and imported 3.8 + 0.9 Mt.
+
+  WHY THIS CELL. Economic|Bioregion's "material flow accounting" category, and the
+  "trash out" half of PITO as a boundary flow: what a country ships out as waste and takes
+  in. Not one of the cell's minimum indicators. It is national only, so it qualifies a
+  territory's residual waste rather than measuring it (awesome-fabcity-data#42).
+
+  WHAT IT DOES NOT CLAIM. This is waste traded as goods, recorded in customs trade
+  statistics. Notified shipments of hazardous waste are a separate table (env_wasship),
+  not read here. A tonne exported for recycling is not a tonne recycled, and a country's
+  net import can be recycling capacity or a disposal market; the table cannot say which.

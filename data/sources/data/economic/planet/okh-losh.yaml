@@ -13,6 +13,7 @@ pilot_relevance: [global]
 tags: [open-hardware, okh, losh, linked-data, sparql, act]
 added: 2026-09-22
 auth: none
+feeds_cells: []
 role: [act]
 act_kind: design
 upstream_listed_in: []

@@ -1,0 +1,42 @@
+name: RETC Chile — Generación municipal de residuos no peligrosos (SINADER)
+url: https://datosretc.mma.gob.cl/dataset/generacion-municipal-de-residuos-no-peligrosos
+description: |
+  Non-hazardous municipal waste declared through SINADER for every Chilean comuna,
+  2014–2024, in tonnes, with the destination (sanitary landfill, other disposal,
+  recovery).
+pillar: environmental
+scale: city
+status: candidate
+license: CC-BY-4.0
+api: https://datosretc.mma.gob.cl/api/3/action/package_show?id=generacion-municipal-de-residuos-no-peligrosos
+pilot_relevance: [santiago]
+places: [santiago-de-chile]
+tags: [waste, msw, landfill, chile, retc, sinader, comuna, ckan]
+added: 2026-09-26
+auth: none
+feeds_cells: [Environmental|City, Environmental|Region]
+upstream_listed_in: []
+notes: |
+  VERIFIED 2026-09-26, not yet read for a real territory.
+
+  LICENCE. The CKAN package on datosretc.mma.gob.cl gives license_title "Creative Commons
+  Attribution" (license_id cc-by, linking opendefinition.org/licenses/cc-by). The mirror
+  on datos.gob.cl carries the same licence. The version is not stated; CC-BY-4.0 is
+  recorded as the current CC-BY, and a reviewer should confirm it. Publisher: RETC,
+  Ministerio del Medio Ambiente.
+
+  ENDPOINT. Key-free CKAN, one file per year: CSV for 2014–2022, XLSX for 2023 and 2024,
+  plus a combined 2014–2017 CSV. Comuna Santiago, 2022: 116.2 kt declared, 114.1 kt to
+  sanitary landfill. Región Metropolitana, 2022: 3.60 Mt (3.25 disposal, 0.06 recovered,
+  0.28 with no treatment recorded). Filter by id_comuna, not the region text: 0.28 Mt of rows
+  spell "Metropolitana de Santiago" with non-breaking spaces, and a text match reads 3.32 Mt.
+
+  WHY THIS CELL. The Coverage Tracker called SINADER "the best waste-tonnage source in the
+  wave" for Santiago but never filed it. It serves Environmental|City's waste row per
+  comuna, and the destination split gives residual waste (awesome-fabcity-data#42). The
+  region serves Environmental|Region. Per capita: social/city/ine-chile-proyecciones-comunales.
+
+  WHAT IT DOES NOT CLAIM. These are declarations by municipalities and operators, not
+  measurements. A comuna that declares late or not at all is missing, not zero. The
+  2019 file leaves the treatment column empty: recovery is unknown that year, not 0%. Santiago
+  the comuna is not Gran Santiago: the metropolitan figure is the sum of its comunas.

@@ -10,10 +10,11 @@ status: live
 license: Open Government Licence v3.0
 api: null
 pilot_relevance: []
+places: [plymouth]
 tags: [gdp, gva, ons, xlsx, annual, itl3, uk]
 added: 2026-09-11
+feeds_cells: [Economic|City]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Plymouth).

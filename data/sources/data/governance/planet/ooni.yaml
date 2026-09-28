@@ -14,7 +14,7 @@ api: https://api.ooni.io/
 pilot_relevance: [global]
 tags: [internet-freedom, censorship, sovereignty, network-interference]
 added: 2026-05-04
-wired_in_planetai: false
+feeds_cells: []
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   Direct relevance to PLANETAI's sovereignty-by-architecture frame.

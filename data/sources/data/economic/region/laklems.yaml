@@ -10,10 +10,11 @@ status: stale
 license: custom open (IDB terms)
 api: null
 pilot_relevance: [santiago]
+places: [santiago-de-chile]
 tags: [productivity, klems, sectoral, latin-america, chile, idb]
 added: 2026-05-04
+feeds_cells: []
 updated: '2026-09-19'
-wired_in_planetai: false
 upstream_listed_in: [awesome-public-datasets]
 notes: |
   2026-09-19: the recorded landing page 404s - iadb.org/research/latin-american-klems-database, read in a browser and not only by a link checker. No successor URL was found, and iadb.org answers 403 to a script, so the search has to be done by a person. Marked stale rather than deprecated: the database may well still exist under a different path. It is the only Latin American productivity source in the list and pilot_relevance names Santiago, so it is worth the ten minutes.

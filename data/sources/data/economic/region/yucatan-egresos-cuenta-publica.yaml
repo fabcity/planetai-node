@@ -10,10 +10,11 @@ status: live
 license: Datos digitales puestos a disposicion de cualquier persona para ser usados, reutilizados y redistribuidos libremente
 api: null
 pilot_relevance: []
+places: [yucatan]
 tags: [budget, public-finance, yucatan, mexico, budget-execution, cuenta-publica, state-government]
 added: 2026-09-10
+feeds_cells: [Economic|Region]
 updated: 2026-09-10
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-10, FCI Regime 1 harvest (wave 6, Mexico). Budget|Region for

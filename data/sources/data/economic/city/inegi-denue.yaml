@@ -10,11 +10,12 @@ status: live
 license: INEGI Terminos de Libre Uso de la Informacion
 api: https://www.inegi.org.mx/app/api/denue/v1/consulta/
 pilot_relevance: []
+places: [guanajuato, mexico-city, monterrey, puebla, yucatan]
 tags: [business-registry, mexico, inegi, denue, economic-census, geocoded, establishments]
 added: 2026-09-10
 updated: 2026-09-10
 auth: api-key
-wired_in_planetai: false
+feeds_cells: [Economic|City]
 upstream_listed_in: []
 notes: |
   Added 2026-09-10, FCI Regime 1 harvest (wave 6, Mexico). Fills the

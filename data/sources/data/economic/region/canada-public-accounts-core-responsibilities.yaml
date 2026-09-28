@@ -10,10 +10,11 @@ status: live
 license: Open Government Licence - Canada
 api: https://open.canada.ca/data/api/3/action/package_show?id=c9675417-100a-433a-92d4-79b710408def
 pilot_relevance: []
+places: [montreal]
 tags: [expenditure-by-function, core-responsibilities, public-accounts, canada, csv]
 added: 2026-09-11
+feeds_cells: []
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13). Canada

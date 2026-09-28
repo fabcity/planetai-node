@@ -10,10 +10,11 @@ status: live
 license: CC-BY-4.0
 api: null
 pilot_relevance: []
+places: [bas-saint-laurent, montreal]
 tags: [procurement, tenders, contracts, transparency, quebec, municipalities]
 added: 2026-09-11
+feeds_cells: [Governance|Region]
 updated: 2026-09-11
-wired_in_planetai: false
 upstream_listed_in: []
 notes: |
   Added 2026-09-11 in the FCI Regime 1 harvest (wave 13, Montreal and

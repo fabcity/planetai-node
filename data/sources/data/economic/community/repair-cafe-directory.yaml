@@ -13,6 +13,7 @@ pilot_relevance: [global]
 tags: [repair, circular-economy, directory, volunteer, act]
 added: 2026-09-22
 auth: none
+feeds_cells: [Economic|Community]
 role: [act]
 act_kind: repair
 upstream_listed_in: []
