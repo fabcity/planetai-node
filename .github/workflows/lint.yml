@@ -39,3 +39,61 @@ jobs:
       # Was one suite of twenty-five. tests/all runs all of them, keeps going, and counts.
       - name: every suite
         run: make test
+
+  # tests/visual/gate.sh: the page rendered from the committed fixture and measured. It is not in
+  # `make test` because Playwright and the place plan live in planetai-design, which is private, so
+  # it is its own job, with the design repo checked out at the commit data/frozen_layer.txt pins.
+  # It was red from v0.73 to v0.75.6 while every job above was green, because nothing ran it.
+  #
+  # The deploy key is required. A missing key FAILS this job instead of skipping it: a gate that
+  # quietly skips wherever its input is missing is green in exactly the place it is meant to guard.
+  # The one exception is a pull request from a fork, because GitHub does not give those the secret.
+  #
+  # macOS, not Linux: the baselines in gate.sh were measured on a Mac, and Linux draws the same page
+  # differently enough to matter. On 28 Sep 2026 (v0.75.7), Now at 390 measured 42.9% empty on
+  # macOS and 45.0% on ubuntu-latest, against a limit of 43.7%. One set of numbers has to hold on a
+  # laptop and in CI, so CI runs where they were measured.
+  visual:
+    runs-on: macos-15
+    env:
+      DESIGN_KEY: ${{ secrets.PLANETAI_DESIGN_DEPLOY_KEY }}
+      FORK: ${{ github.event.pull_request.head.repo.fork || false }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: the deploy key for planetai-design
+        run: |
+          [ -n "$DESIGN_KEY" ] && exit 0
+          if [ "$FORK" = "true" ]; then echo "::notice::a fork's pull request gets no secrets; the visual gate did not run"; exit 0; fi
+          echo "::error::PLANETAI_DESIGN_DEPLOY_KEY is not set, so the visual gate cannot check out planetai-design"; exit 1
+      - name: the design commit the frozen layer is pinned to
+        id: pin
+        run: echo "sha=$(sed -n 's/^design_sha=//p' data/frozen_layer.txt)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        if: env.DESIGN_KEY != ''
+        with:
+          repository: fabcity/planetai-design
+          ref: ${{ steps.pin.outputs.sha }}
+          ssh-key: ${{ secrets.PLANETAI_DESIGN_DEPLOY_KEY }}
+          persist-credentials: false
+          path: planetai-design
+      - uses: actions/setup-python@v5
+        if: env.DESIGN_KEY != ''
+        with: { python-version: "3.12" }
+      # measure.mjs replays the fixture through app/settings.py and app/issues, as the node would.
+      - if: env.DESIGN_KEY != ''
+        run: pip install pyyaml numpy duckdb -r app/requirements.txt
+      - uses: actions/setup-node@v4
+        if: env.DESIGN_KEY != ''
+        with: { node-version: "22" }
+      - name: playwright, at planetai-design's lockfile
+        if: env.DESIGN_KEY != ''
+        working-directory: planetai-design
+        run: npm ci && npx playwright install --with-deps chromium
+      - name: the visual gate
+        if: env.DESIGN_KEY != ''
+        env:
+          PAI_DESIGN_REPO: planetai-design
+          PAI_OUT: ${{ runner.temp }}/pai-gate
+        # No artifact upload: this repo is public, so anyone can download its artifacts, and the
+        # screenshots draw node #1's place plan, the one thing this job goes to a private repo for.
+        run: bash tests/visual/gate.sh

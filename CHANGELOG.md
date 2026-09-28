@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **2026-09-28 · Set up is eight tabs, in the order you set a node up.** It was nine tabs in the code's own order:
+  the tokens were in three of them, the settings for how the page looks sat beside the ones that decide who may
+  read the node, and three pack settings appeared twice. Now: **Basics** (what this place watches, its kind,
+  language, how the page opens, and its name, city, position and time zone read-only), **Sources**, **Alerts**,
+  **Model**, **Packs** (one card per pack, with its own settings inside), **Keys** (every secret), **Sharing**
+  (everything that reaches beyond this machine) and **System** (tuning numbers, and what is read once at
+  start). There is no Bootstrap tab: those rows are read-only in Basics and System. `planetai config` walks
+  the same groups in the same order. Nothing is renamed and no value moves.
 - **2026-09-28 · A question that needs a tool answers in seconds, and counts right.** On node #1, "how many
   alerts in the last 24 hours" took 165 seconds and answered 17 with 18 in the table. The tool took 73 ms. The
   model then spent one to three minutes thinking in hidden text, counting a list that had been cut at 8,000

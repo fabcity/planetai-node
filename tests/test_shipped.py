@@ -34,7 +34,7 @@ assert "agent" in compose["services"] and compose["services"]["agent"]["command"
 for k in ("AGENT_PREFER", "AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_REMOTE_KEY", "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY"):
     assert f'"{k}"' in settings, f"settings.py: {k}"
     assert re.search(rf"^{k}=", env, re.M), f".env.example: {k}"
-assert re.search(r"^\s*agent: \['", gui, re.M), "gui: a tab for the agent group"
+assert re.search(r"^\s*model: \['", gui, re.M), "gui: a tab for the model group, where the AGENT_* keys are"
 # v0.63: `local` dispatches to the setup OR to `pull`, which is the whole point of that release — the
 # setup no longer fetches weights. Both halves must exist and `local)` must reach both.
 assert "cmd_agent_local()" in cli and "cmd_agent_local_pull()" in cli

@@ -109,7 +109,7 @@ Learn mode: it draws no header, so there is nothing on it to switch one on, and 
 ## Ask the node
 
 **ask the node**, right of the modes (in the foot on a phone), opens a pane beside the page that asks a model
-about what the page shows: the one Set up → agent names, the same as the Telegram bot's. That is the model
+about what the page shows: the one Set up → Model names, the same as the Telegram bot's. That is the model
 `planetai agent local` set up on this machine, one on another machine of yours, or an online one only when
 `AGENT_PREFER` allows it; the pane's header names the model and where it runs. It runs the read tools and
 changes nothing: a setting or an **I did this** it reaches for is a card the person presses. The thread lives
@@ -214,7 +214,7 @@ What a person adds here is a decision. "What to do about it" shows one card per 
 first line of what was seen, and the rule's own recommendation (the paragraph its author started with 👉),
 or a line saying the rule carries none and the page will not invent one. **Record the decision** posts
 `stage: decided` to `POST /actions`. A decision moves nothing: it is not in ρ, not in the funnel, and closes
-no alert. With `DECISION_REQUIRED=1` (Set up → Node, off by default) the node refuses an act with 409 unless a
+no alert. With `DECISION_REQUIRED=1` (Set up → Alerts, off by default) the node refuses an act with 409 unless a
 decision was recorded against the same alert first, and the page prints the node's sentence as it wrote it:
 "this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same alert first.
 Decide on the dashboard, then record what you did." The two resolution sections say at what resolution a
@@ -284,8 +284,20 @@ it is not held at all.
 ## Set up
 
 Behind a token, once per browser. The admin token is kept in the browser's local storage as `planetai_admin`;
-the act token, the weaker one that can only close a loop, as `planetai_act`. Nine groups: Issues · Sources ·
-Alerts · Packs · Integrations · Keys · Agent · Node · Bootstrap (the last read-only). A value set here is live
+the act token, the weaker one that can only close a loop, as `planetai_act`. Eight tabs, in the order
+somebody setting up a node needs them:
+
+| tab | what is in it |
+|---|---|
+| **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are shown read-only: edit `.env`, then `planetai restart` |
+| **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Bali Air Dispatch, Open-Meteo, open-data portals. A source that comes as a pack is set in its card under Packs |
+| **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, mesh alerts, whether an act needs a decision first |
+| **Model** | ask and model: which model answers, on the ask pane and on Telegram alike; the remote and online models |
+| **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings |
+| **Keys** | every secret: the Telegram bot token, the two model keys, and the backup, parent, aggregate and act tokens |
+| **Sharing** | sharing and network: who may read this node, live map tiles, the Reticulum announce and alerts, Home Assistant, the parent node |
+| **System** | tuning numbers, the layout Arrange writes, and what is read once at start (port, extra containers, backups, poll interval), read-only |
+ A value set here is live
 within 20 seconds and wins over `.env`; the page says so beside it; a blank returns the key to `.env`. Every
 change is an `actions` row with `stage='settings'` and the actor `dashboard` (`planetai-cli` from the command
 line, the agent's name over MCP). The section list under it names every registered section by pack and

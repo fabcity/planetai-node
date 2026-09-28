@@ -10,7 +10,7 @@ Santiago (Providencia) and Barcelona (Poblenou) presets. It is written for someo
 reports, the test alert and the bot's own replies (`/act`). The Spanish and the Bahasa Indonesia were written by an
 assistant and no native reader has been through the whole set, so treat them as a draft and tell us which sentences
 are wrong or strange. The dashboard, the terminal and these documents are still in English. To switch: Set up →
-Alerts → Alert language, or `ALERT_LOCALE=es` in `.env`.
+Basics → Alert language, or `ALERT_LOCALE=es` in `.env`.
 
 ## 1. What you need
 

@@ -237,7 +237,7 @@ check({t["class"] for t in st["tools"]} == {"read", "act", "admin"} and "setting
 print("  status: 404 with no loop, running:false with the tag when Ollama is down")
 
 # ---------------------------------------------------------------- which model, and where it runs
-# The pane follows Set up → agent and AGENT_PREFER, the same settings as the Telegram bot. What it must never
+# The pane follows Set up → Model and AGENT_PREFER, the same settings as the Telegram bot. What it must never
 # do is reach an online model at `private`, or answer from one without saying so.
 ROWS = settings._cache["rows"]
 ROWS.update(AGENT_REMOTE_URL="http://macbook.local:11434/v1", AGENT_REMOTE_MODEL="qwen3:14b",

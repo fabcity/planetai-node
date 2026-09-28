@@ -65,7 +65,7 @@ Three rungs, all speaking the OpenAI-compatible chat protocol with tools:
 never chose sends nothing off the network. `fallback` tries remote, then online, then local, with online kept
 above local because a rung is skipped only when it *fails* and a 4B model never fails, it answers weakly.
 `strongest` tries online, remote, local. A rung that raises is skipped for five minutes. The ladder is
-rebuilt every 60 seconds from the node's settings, so a change in Set up → Agent takes effect without a
+rebuilt every 60 seconds from the node's settings, so a change in Set up → Model takes effect without a
 restart; a value in `AGENT_ONLINE_URL` that is not a URL (node #1 once had the example's comment there) is
 logged and ignored.
 

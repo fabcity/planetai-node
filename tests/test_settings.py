@@ -41,12 +41,7 @@ assert "UI_LAYOUT" in settings.PUBLIC and "ALERT_LOCALE" in settings.PUBLIC
 # reach the setting at all. The list is read out of the page rather than retyped here, so the two
 # cannot drift. NO_PANE_YET is for a group whose setting has shipped ahead of its pane; an entry there
 # needs the reason, and the release that adds the pane deletes the entry.
-NO_PANE_YET = {
-    # NODE_ISSUES ships with GET /issues (v0.44) and is set in .env or through PUT /settings. Its pane
-    # is Set up -> Issues, which arrives with the dashboard renderer: a new tab on the shipped page is
-    # a visible change, and nothing visible goes to a household before Tomas has looked at it (R9).
-    "issues",
-}
+NO_PANE_YET: set = set()   # NODE_ISSUES's entry went when the groups became tasks (28 Sep): it leads Basics
 panes = set(re.findall(r"(\w+):\s*\['", re.search(r"const GROUPS\s*=\s*\{(.*?)\n\};", 
             open("app/static/dashboard.js").read(), re.S).group(1)))
 for r in d["runtime"]:

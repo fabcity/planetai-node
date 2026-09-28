@@ -482,7 +482,7 @@
   },
   "looked": {
    "anchor": "when-a-real-alert-arrives",
-   "more": "With DECISION_REQUIRED=1 (Set up → Node) the node refuses an act that has no decision recorded before it, with 409, however the act arrives.",
+   "more": "With DECISION_REQUIRED=1 (Set up → Alerts) the node refuses an act that has no decision recorded before it, with 409, however the act arrives.",
    "page": "first-ten-minutes.md",
    "page_title": "First ten minutes",
    "questions": {

@@ -254,7 +254,7 @@ def stack_text(data: dict, one: str = "") -> str:
         issues, head = data.get("issues") or {}, data.get("headline")
         rows = [(k, issues[k]) for k in (data.get("order") or []) if k in issues]
     if not rows:
-        return "No issues are declared on this node yet. Set NODE_ISSUES under Set up → Issues."
+        return "No issues are declared on this node yet. Set NODE_ISSUES under Set up → Basics."
     out = []
     for key, iss in rows:
         name = (iss.get("name") or {}).get(LOCALE) or key
@@ -446,7 +446,7 @@ def where_of(rung: Rung) -> dict:
 
 def pane_rungs(cfg: dict, with_local: bool = True) -> list[Rung]:
     """The ladder the pane walks: the same settings and the same AGENT_PREFER as the Telegram bot, so one
-    choice under Set up → agent governs both. `private` (the default) never includes the online rung.
+    choice under Set up → Model governs both. `private` (the default) never includes the online rung.
     `with_local` is False when no loop was set up here, so no Ollama is assumed on this machine."""
     rungs = []
     for r in ladder(cfg):

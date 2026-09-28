@@ -146,7 +146,7 @@ def configured() -> bool:
 
 
 def rungs() -> list:
-    """The models the pane may ask, in order: the same Set up → agent settings and AGENT_PREFER the Telegram
+    """The models the pane may ask, in order: the same Set up → Model settings and AGENT_PREFER the Telegram
     bot reads, so one choice governs both. The local rung only when a loop is set up on this machine; a
     remote model on the network works without one, and an online one only when AGENT_PREFER allows it."""
     return agent_loop.pane_rungs({k: settings.get(k, "") for k in AGENT_KEYS}, with_local=configured())

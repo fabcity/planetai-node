@@ -219,7 +219,9 @@ from issues import load, engine
 snap = json.load(open(${JSON.stringify(`app/issues/fixtures/${name}.json`)}))
 snap['issues'] = engine.replay(snap, settings, load())
 desc = settings.describe(unlocked=False, public=settings.PUBLIC)
-print(json.dumps({'snapshot': snap, 'settings': desc}))`;
+admin = settings.describe(unlocked=True)
+import packs
+print(json.dumps({'snapshot': snap, 'settings': desc, 'settingsAdmin': admin, 'packs': packs.manifests()}, default=str))`;
     try {
       // maxBuffer, because the default is 1 MB and every snapshot taken from a node that has been
       // running a while is larger than that: node #1's 21 Sep fixture is 1.5 MB in and more out.
@@ -381,8 +383,19 @@ async function serveNodeAPI(route, u) {
   }
   if (u.pathname === '/settings') {
     const data = computeNodeData(FIXTURE);
+    // The unlocked body for the rig's own PAI_ADMIN_TOKEN, so setup-unlocked draws from a fixture and not
+    // only against a live node. Any other token gets the anonymous body, as a node answers a wrong one.
+    const t = process.env.PAI_ADMIN_TOKEN;
+    const admin = t && route.request().headers().authorization === `Bearer ${t}`;
     await (data.error ? failNodeAPI(route, '/settings', data)
-      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.settings) }));
+      : route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify(admin ? data.settingsAdmin : data.settings) }));
+    return true;
+  }
+  if (u.pathname === '/packs') {
+    const data = computeNodeData(FIXTURE);
+    await (data.error ? failNodeAPI(route, '/packs', data)
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.packs || []) }));
     return true;
   }
   if (u.pathname === '/earth') {
@@ -477,7 +490,7 @@ async function serveNodeAPI(route, u) {
       + sse('proposal', { tool: 'settings_set', args: { changes: { MAP_TILES: 'on' } }, setting: 'MAP_TILES',
           current: 'off', proposed: 'on', choices: ['off', 'on'], group: 'node',
           leaves: { en: 'Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at.' },
-          undo: { en: 'Set MAP_TILES back to off under Set up \u2192 node.' } })
+          undo: { en: 'Set MAP_TILES back to off under Set up \u2192 sharing.' } })
       + words.map(w => sse('token', { text: w + ' ' })).join('')
       + sse('done', process.env.PAI_ASK_ONLINE === '1'
         ? { rung: 'online', model: 'claude-x', host: 'api.anthropic.com', where: 'online' }
@@ -694,9 +707,9 @@ async function open(job, opts = {}, stranger = null) {
     await page.fill('#tok', t);
     await page.click('#btn-unlock');
     await page.waitForSelector('#setup-body:not([hidden])', { timeout: 10000 });
-    // The pane opens on Issues, which is one field. Alerts is the widest form in the product —
-    // eight inputs, two toggles and a select — and is what Part 1 shot. Measure that one.
-    await page.getByRole('button', { name: 'Alerts', exact: true }).click();
+    // The pane opens on Basics. Alerts is the widest form in the product — eight inputs, two toggles
+    // and a select — and is what Part 1 shot, so it is what is measured. PAI_SETUP_TAB shoots another.
+    await page.getByRole('button', { name: process.env.PAI_SETUP_TAB || 'Alerts', exact: true }).click();
     await page.waitForTimeout(400);
   }
   await page.waitForTimeout(1200);
