@@ -91,4 +91,28 @@ assert r.status_code == 400 and "no installed pack declares it" in r.text, r.tex
 assert STORE == before and len(LEDGER) == 2
 assert node.put("/settings", json={"APP_PORT": "9999"}, headers=ADMIN).status_code == 400, "bootstrap stays .env-only"
 
+# `planetai run <pack> <script>` is `docker compose exec`: a new process, whose environment is .env and nothing else.
+# cmd_run's preamble loads the settings rows first, so the overlay runs before the script does. Take that preamble
+# out of bin/planetai as it ships and run it the way the container would: a fresh environment, and a pack script
+# that reports what it sees.
+import json, re, sys, tempfile          # noqa: E401,E402
+m = re.search(r"cmd_run\(\) \{.*?python -c '([^']+)' \"/app/packs/\$pack/\$script\.py\"", open("bin/planetai").read(), re.S)
+assert m, "cmd_run no longer loads the settings before the pack script: `planetai run` would read .env only"
+node.put("/settings", json={"MAKE_ENABLED": "1"}, headers=ADMIN)
+os.environ["MAKE_ENABLED"] = "0"                    # what `docker compose exec` hands the new process
+settings._env_before.clear(); settings._cache["at"] = 0
+with tempfile.TemporaryDirectory() as d:
+    script, out = os.path.join(d, "verify.py"), os.path.join(d, "seen.json")
+    open(script, "w").write("import json, os, sys\n"
+                            f"json.dump([os.getenv('MAKE_ENABLED'), sys.argv, sys.path[0], __name__], open({out!r}, 'w'))\n")
+    argv, path0 = sys.argv[:], sys.path[0]
+    try:
+        sys.argv = ["-c", script, "--dry"]
+        exec(m.group(1), {})
+    finally:
+        sys.argv[:] = argv; sys.path[0] = path0
+    seen = json.load(open(out))
+assert seen[0] == "1", f"the pack script read MAKE_ENABLED={seen[0]!r} from .env, not the 1 saved from Set up"
+assert seen[1:] == [[script, "--dry"], d, "__main__"], f"not run the way `python {script}` runs it: {seen[1:]}"
+
 print("all pack settings tests pass")

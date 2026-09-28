@@ -1058,7 +1058,10 @@ cmd_run() {
     return 1
   fi
   [[ -f "packs/$pack/$script.py" ]] || fail "packs/$pack/$script.py does not exist"
-  docker compose exec -T -e PACK_OUT=/app/out app python "/app/packs/$pack/$script.py" "$@"
+  # `exec` starts a new process with only the container's .env, so a pack key saved in Set up would not reach the
+  # script. Loading the settings rows first puts those keys into its environment (settings._overlay_packs); then
+  # the script runs as `python <script>` would run it: its own argv, its own folder first on sys.path, as __main__.
+  docker compose exec -T -e PACK_OUT=/app/out app python -c 'import os, runpy, sys; import settings; settings._rows(); p = sys.argv[1]; sys.argv = sys.argv[1:]; sys.path[0] = os.path.dirname(p); runpy.run_path(p, run_name="__main__")' "/app/packs/$pack/$script.py" "$@"
 }
 
 
