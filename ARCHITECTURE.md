@@ -150,6 +150,11 @@ one generic adapter reads it. This is how the network grows without owning every
 > These two names are the contract, not settings yet: no code reads them, so they were removed from `.env.example`
 > rather than sit there pretending to do something. The first thing that needs upstream compute adds them back
 > along with the code that reads them.
+>
+> The model half shipped in v0.22 under other names: `AGENT_REMOTE_URL` (a model on the household's own network)
+> and `AGENT_ONLINE_URL` (an online one, only when `AGENT_PREFER` allows it), both OpenAI-compatible, read by
+> `app/agent_loop.py` for the Telegram bot and, since v0.75, by `app/ask.py` for the dashboard's ask pane.
+> `UPSTREAM_COMPUTE_URL` still has no code.
 
 ## 5. Where the Fab City Index plugs in
 

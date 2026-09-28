@@ -1,6 +1,6 @@
 # Concepts
 
-The words the rest of these pages use, each with what it means in the code at v0.72.1. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.75.3. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -136,11 +136,13 @@ six parts, under a hundred words, written by the node itself from SQL. See [The 
 the page draws is registered under one of them.
 
 **Digest.** Four sentences, one per stage, written by the node in English, Bahasa Indonesia and Spanish from
-figures already in `GET /issues`.
+figures already in `GET /issues`. Beside them, `digest.simple` is the paragraph simple mode draws, and
+`digest.prompts` the three questions the ask pane offers.
 
 **Headline.** The issue the lead is about. The highest state wins; where two issues are in the same state,
-the one that moved most in the last three hours; an exact tie goes to the order in `NODE_ISSUES`. The page
-prints that rule under the lead.
+the one that moved most in the last three hours; an exact tie goes to the order in `NODE_ISSUES`. Only an issue that declares a `hero`,
+how it is drawn when it leads, can lead. The page prints that rule under the lead, and `lead: {issue, by}`
+says which of the three steps picked it.
 
 ## Packs and cells
 

@@ -21,7 +21,7 @@ sensor arrives.
 ## Opt-in, because they need a key
 
 OpenAQ (global public sensors), Google Flood Hub, Sentinel-5P via Earth Engine, NASA FIRMS. None is written yet in
-v0.72.1; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
+v0.75.3; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
 unless you turn it on.
 
 ## Presets

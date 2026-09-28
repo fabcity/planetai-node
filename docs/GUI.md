@@ -36,9 +36,10 @@ table.
 
 **Then the thing that matters.** The issue with most to say, as a sentence in your language, with its
 number beside it at the size of a headline — *"It feels like 33.9 °C in the house, under the line."*
-Under it, in smaller type, why that issue and not another. Then the four distances as bars on one
-scale: the house, the street, the ring, the region, with a red tick where the line is. One
-scale for all four, so you can see at a glance whether it is you or whether it is everywhere.
+Under it, in smaller type, why that issue and not another. Then one rule between the issue's own two
+ends, a dot on it for each distance (the house, the street, the ring, the region) and the line in red
+where the issue has one, so you can see at a glance whether it is you or whether it is everywhere.
+The four distances in full are in the table further down.
 
 Beside it, the ground: the map cell this node stands in, its six neighbours and the seven smaller
 cells inside it, with the buildings and roads of your own square kept on your own disk. The line
@@ -91,10 +92,11 @@ Three modes, in the header:
   look at it, and **back** to return to the one your node picked. If your node is too old to send the
   paragraph, the page says so and names the version rather than making one up.
 - **Advanced** — the whole page. This is the default.
-- **Learn** — the whole page with a small question mark at each part. Press one and a panel opens
-  that quotes your node's own documentation for that part, word for word, says which page the words
-  came from, and offers to walk you to the next. Every section has one, and so does the foot. The words are built into the page,
-  so it works with no way out to the internet; the link is an offer, not the answer.
+- **Learn** — the whole page with a small question mark at each part. Press one and the ask pane
+  opens with a card that quotes your node's own documentation for that part, word for word, and says
+  which page the words came from; **next** walks you to the next mark. Every section has one, and so
+  does the foot. The words are built into the page, so it works with no way out to the internet;
+  the link is an offer, not the answer.
 
 The mode is remembered by the browser you chose it in, so a phone and a wall screen can disagree.
 `?mode=simple` on the end of any URL shows one without remembering it, which is how you send somebody
@@ -110,8 +112,16 @@ you want it dark at noon it stays dark. The choice is remembered by the browser 
 changes nothing for anybody else in the house.
 
 The Wall is the one exception: it is always dark, because a lit white rectangle in a dark room is a
-lamp, and nobody chose a lamp. There is also nothing to press on the wall. That is deliberate: the
-wall is an instruction, not a control.
+lamp, and nobody chose a lamp. There is also almost nothing to press on the wall: **back**, and the
+variables in its top bar. That is deliberate: the wall is an instruction, not a control.
+
+## Ask the node
+
+Right of the modes (in the foot on a phone), **ask the node** opens a pane that asks the model named
+under Set up → Agent, the one the Telegram bot uses, about what the page shows. It reads and changes
+nothing: a change it suggests is a card somebody presses. Its header says which model answers and where
+that model runs, and nothing asked there is kept. With no model it still searches the documentation.
+`UI_ASK=off` removes it for everybody. [Ask the node](site/ask.md) has the rest.
 
 ## Changing the order
 

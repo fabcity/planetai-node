@@ -46,7 +46,7 @@ tailnet still has all twenty; see [MCP](mcp.md).
 `act` needs the person's own words. A model cannot write `acted`, `done` or `ok` as the note: the tool
 refuses a placeholder and tells the model to ask.
 
-> **Gap in v0.72.1.** The bot's system prompt tells the model to "give the exact command from
+> **Gap in v0.75.3.** The bot's system prompt tells the model to "give the exact command from
 > `maintenance`" for a task that needs the node's shell, and `maintenance` is one of the four tools the loop
 > withholds. Asked to update or back up the node, the bot cannot look the command up; the commands are in
 > [The command line](cli.md).
@@ -69,7 +69,11 @@ rebuilt every 60 seconds from the node's settings, so a change in Set up → Age
 restart; a value in `AGENT_ONLINE_URL` that is not a URL (node #1 once had the example's comment there) is
 logged and ignored.
 
-> **Gap in v0.72.1.** The Agent group's description in Set up still reads "The strongest one the node can
+The dashboard's ask pane walks the same ladder, from the same settings and the same `AGENT_PREFER`, so one
+choice governs both. Its local rung is there only when `planetai agent local` set one up, and it runs
+read tools only, never a write; see [Ask the node](ask.md).
+
+> **Gap in v0.75.3.** The Agent group's description in Set up still reads "The strongest one the node can
 > reach is used." The default is `private`, and `/model` in Telegram prints the order in force.
 
 `tools/remote-model.sh gptoss` runs llama.cpp's server on a laptop or workstation with gpt-oss-120b (about

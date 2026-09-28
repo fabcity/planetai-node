@@ -15,7 +15,7 @@ from a random offset in the new file.
 
 ## Updates are signed
 
-Since v0.60 the tarball arrives with a signature, and a node checks it before it unpacks anything. If a node refuses an
+Since v0.61 the tarball arrives with a signature, and a node checks it before it unpacks anything. If a node refuses an
 update, **that is the node doing its job** — it means the download was not signed by the key the node trusts, and the
 right response is to stop, not to work around it.
 
@@ -57,7 +57,7 @@ shows where it is trying to write.
 ## Rollback
 
 ```bash
-git checkout v0.17        # or the tag before
+git checkout v0.75.2      # or whichever tag you want back
 docker compose build app  # the code is inside the image; a restart alone keeps running the new one
 planetai restart
 planetai restore backups/<node>-<date>.sql.gz    # only if the schema went forward and you need the old shape

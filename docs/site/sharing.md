@@ -19,7 +19,7 @@ Two rungs in this version; `cell` and `means` are named in the help and refused 
 | level | a request with no token, from another machine, may read |
 |---|---|
 | `off` (default) | 7 paths and the static files: `/` and `/ui` (the dashboard shell), `/health` with the centre of the node's resolution-8 cell, `/llms.txt`, `/settings` reduced to the layout and the sharing level, the daily CC BY 4.0 `/export`, `/presence`, and anything under `/static/`. Everything else is refused with a sentence naming the setting. |
-| `open` | 31 paths and 4 prefixes: the `off` list, and `/stats`, `/sensors` and `/stats` (the household's own sensors at their cell's centre, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, and anything under `/exports/`, `/issues` and `/sources/`. What a wall screen with no token needs. |
+| `open` | 34 paths and 4 prefixes: the `off` list, and `/sensors` and `/stats` (the household's own sensors at their cell's centre, the rest to three decimals, metadata cut to the provenance keys), `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, the ask pane's `/ask`, `/ask/status` and `/docs/search`, and anything under `/exports/`, `/issues` and `/sources/`. What a wall screen with no token needs. |
 
 A refused request gets 403 and one of two sentences. For a path that `open` would answer:
 
@@ -124,7 +124,7 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.72.1.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
+> **Gap in v0.75.3.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
 > full-precision coordinates to Open-Meteo; only the two core adapters round them.
 
 ## Signed updates
@@ -147,7 +147,7 @@ this download is not signed by the PLANETAI release key. Nothing was installed a
 `planetai version` prints what this node trusts, and `planetai doctor` says whether the last update checked:
 
 ```
-planetai-node v0.72.1  ·  a Fab City project  ·  <name> @ <city>
+planetai-node v0.75.3  ·  a Fab City project  ·  <name> @ <city>
   updates signed by  fabcity  SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4
 ```
 
@@ -158,7 +158,7 @@ bytes with the same signature, at `planetai.fab.city/node0/get` and as a GitHub 
 with a red warning, and the doctor's signature row stays red until a signed update. How to report a problem
 is in [SECURITY.md](../../SECURITY.md).
 
-> **Gap in v0.72.1.** SECURITY.md still shows the fingerprint as "not yet issued". The key was issued on
+> **Gap in v0.75.3.** SECURITY.md still shows the fingerprint as "not yet issued". The key was issued on
 > 19 September 2026, and `tools/allowed_signers` carries the fingerprint above.
 
 ## Reaching it from elsewhere

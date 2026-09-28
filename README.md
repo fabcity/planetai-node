@@ -1,10 +1,10 @@
 <p align="center">
-  <img src=".github/banner.png" alt="planetai-node — Sense. Observe. Act." width="100%">
+  <img src=".github/dashboard.webp" alt="The Now view of node #1, bayu-ungasan in Bali: air at 12 µg/m³ in the house, level with the street, under the WHO line; the resolution ruler at H3 resolution 8; the cell the node stands in and the 18 around it on a Sentinel-2 image" width="100%">
 </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-20388D?style=flat-square"></a>
-  <a href="CHANGELOG.md"><img alt="Version 0.73" src="https://img.shields.io/badge/version-0.73-171717?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="Version 0.75.3" src="https://img.shields.io/badge/version-0.75.3-171717?style=flat-square"></a>
   <img alt="Node #1 live" src="https://img.shields.io/badge/node%20%231-live%20in%20Bali-00A057?style=flat-square">
   <img alt="Containers: 2" src="https://img.shields.io/badge/containers-2-171717?style=flat-square">
   <img alt="Clouds required: 0" src="https://img.shields.io/badge/clouds%20required-0-171717?style=flat-square">
@@ -51,16 +51,21 @@ satellite sources; water and soil have no pack yet, and no node has handed a job
   land. One schema from the house to the planet.
 - **Turns awareness into action.** Alerts say what is happening, what it means, what to do. Then the node measures
   whether anything changed: ρ, the share of act-level alerts somebody answered, a number the Index never had.
-- **Shows the place.** A dashboard with the house's number as a sentence, the day as an annotated chart, every source with
-  a note, the sea, the land, the weather. Six views: Now, Historical, Network, Wall, Arrange, Set up.
-- **Answers questions.** A bot on your Telegram, running a small model on your own machine, reads the node and explains
-  it; point it at a bigger model when you have one.
+- **Shows the place.** A dashboard that leads with whatever the node puts first, as a number and a sentence, then the day
+  as an annotated chart, every source with a note, the sea, the land, the weather. Six views: Now, Historical, Network,
+  Wall, Arrange, Set up. Simple mode answers three questions (is it fine, is anything changing, is there something to
+  do); advanced draws everything; learn explains each mark. Paper or dark.
+- **Answers questions.** Ask the node from the dashboard's pane, or from a bot on your Telegram. Both run a small model on
+  your own machine by default, read the node and explain it; point them at a bigger model on your network when you have
+  one. Every answer says which model gave it and where that model runs, and nothing goes online unless somebody here
+  chooses it.
 - **Keeps the data where it was made.** Local database, nightly backups a NAS can collect, an open daily export you decide
   where to send.
 - **Grows by folders.** Air, heat, coast, land, place (what is around you, from OpenStreetMap, in PostGIS) and open-data packs ship. Water, energy, noise, classroom CO₂, fire smoke
   are a folder of rules each, written by whoever needs them, for their place.
 
-Node #1 has run in Kuta Selatan, Bali, since 2 September 2026.
+Node #1, `bayu-ungasan`, has run in Kuta Selatan, Bali, since 2 September 2026 (above). Node #2 has run in Menorca since
+10 September.
 
 ## Read next
 
@@ -121,7 +126,8 @@ file. `planetai agent` on the node prints the three facts you need for any other
 ## Layout
 
 ```
-app/       main.py · sources.py · index.py · packs.py · settings.py · agent.py · agent_loop.py · static/index.html
+app/       main.py · sources.py · index.py · issues/ · packs.py · settings.py · ask.py · agent.py · agent_loop.py · report.py ·
+           static/
 bin/       planetai, the command line
 packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place ·
            nearby · season · forecast · make · posidonia · thingdata · xiaomi-air · example-cooking-hours

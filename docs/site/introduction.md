@@ -32,7 +32,7 @@ product in, trash out, and the one it builds DIDO, data in, data out: materials 
 moves between cities. On a node, raw readings stay on the machine and only summaries travel, to a parent node
 if you name one, to the [Fab City Index](https://index.fab.city), and to the models that need ground truth.
 
-In v0.73 a node reads air and heat from the sensors in and around the house, and land and coast from public
+In v0.75.3 a node reads air and heat from the sensors in and around the house, and land and coast from public
 and satellite sources. Water and soil have no pack yet. The `make` pack names the nearest fab lab in a
 sentence, and no node has yet handed a job to a workshop. What runs today is the loop from a reading to a
 person acting and to a measured result; the loop from a reading to something made nearby is the direction.
@@ -62,7 +62,7 @@ presses **I did this** under Act when it is done, and Measure shows ρ and, per 
 by the condition clearing. After a week of its own readings the node also draws "The day this place usually
 has" on the Historical view. [How it works](how-it-works.md) follows a reading through every step.
 
-The dashboard also explains itself and answers questions: learn mode puts a question mark at each part of the page that quotes these pages for it, and the pane beside the page asks the node's own model, on this machine, about what the page shows ([Ask the node](ask.md)).
+The dashboard also explains itself and answers questions: learn mode puts a question mark at each part of the page, and pressing one quotes these pages for it in the pane beside the page. That pane asks the model Set up names about what the page shows: on this machine or on your own network, and online only when someone here chooses it ([Ask the node](ask.md)).
 
 ## What stays, and what goes up
 
@@ -104,7 +104,7 @@ alive and the alerts correct."
 
 ## What these pages are
 
-This is the reference for the node at v0.73, read from the code of that version. The pages under *Get
+This is the reference for the node at v0.75.3, read from the code of that version. The pages under *Get
 started* and *Operate* are for the person running one. *Alerts, reports and ρ*, *Packs*, *Dashboard* and
 *Agents* explain what the node does and how to change it. *Reference* is the [HTTP API](api.md), the
 [database](schema.md) and the [federation contracts](federation.md). *Project* holds the architecture and the

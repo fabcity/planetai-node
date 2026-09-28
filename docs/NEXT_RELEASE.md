@@ -1,20 +1,12 @@
 # Next release — collecting
 
-> **v0.66 shipped 20 September 2026**: `MAKE_ENABLED`, because v0.65 said `make` was opt-in and it was
-> not — an empty `PACKS_ENABLED` enables every pack. A correction shipped the same day as the mistake.
->
-> **v0.65 shipped 20 September 2026**: the registry's first act sources, and `packs/make` — the nearest
-> fab lab as a place a person can go. Off until `PACKS_ALLOW_CODE=1`, and the directory it reads is not
-> openly licensed; the pack's README says whose decision covers whom. Nothing on this page was owed by it.
->
-> **v0.64 shipped 20 September 2026**, hours after v0.63 and on purpose the opposite shape: one change,
-> the node reading the registry's `adapter` instead of a boolean it could not check. Nothing on this page
-> was owed by it.
->
-> **v0.63 shipped 20 September 2026** and took with it: the arm64 database image, the wire-format version
-> strings, `AGENT_PREFER=private` by default, the local model's read-and-act surface, Spanish, and the
-> registry at `9303adc`. It broke rule 3 below — one large change per release — and said so in its own
-> CHANGELOG rather than quietly. What is left on this page is what is still owed.
+> **Shipped through v0.75.3 (27 September 2026).** v0.63 to v0.66 took the arm64 database image, the
+> wire-format version strings, `AGENT_PREFER=private` by default, the local model's read-and-act surface,
+> Spanish (#67), the registry's `adapter`, the first act sources, `packs/make` and `MAKE_ENABLED`. v0.63
+> broke rule 3 below and said so in its CHANGELOG. **v0.71 shipped item 1**, the interface redrawn
+> (PR #106); v0.75 redrew the lead from `hero`, cut simple mode to three questions and added the ask pane.
+> The other releases in between were work this page did not list. What is left on this page is what is
+> still owed.
 
 Changes asked for after v0.60 and not yet built. Tomas is collecting. Each item says what was asked,
 what it touches, and what somebody picking it up needs to know that is not obvious from the code.
@@ -26,8 +18,9 @@ here, so this file is only ever what is still owed.
 
 ## How two large changes are staged
 
-Two things are coming that are larger than an item on this list: **the interface redrawn end to end**,
-and **new data sources**. They are staged differently on purpose, because they fail differently. A data
+Two things were coming that are larger than an item on this list: **the interface redrawn end to end**
+(shipped in v0.71), and **new data sources**. They are staged differently on purpose, because they fail
+differently, and the rules below still hold for any change to the page. A data
 source that is wrong is one pack saying something false and can be switched off with a blank `.env` key;
 a page that is wrong is every household reading it, on a wall, with no way back but an update.
 
@@ -66,11 +59,14 @@ Four rules for the queue while both are in flight:
 
 ---
 
-## 1. The interface, redrawn — the September design work landed on the node
+## 1. The interface, redrawn — shipped in v0.71
 
-**Asked, September 2026, and half-built already.** Direction H — the loop `observe · decide · act ·
+**Shipped in v0.71** (PR #106, "the page, rebuilt"), and redrawn again in v0.75. What is still owed from
+this item is 1b and the Grafana question at its end; the rest is kept for how the layer is re-pinned.
+
+**Asked, September 2026.** Direction H — the loop `observe · decide · act ·
 measure`, one dial, every section a module — was chosen out of nine drawings and its shell shipped in
-v0.54. What has not landed is the drawing itself: the graphic language the prototypes are in.
+v0.54. The drawing itself, the graphic language the prototypes are in, landed in v0.71.
 
 **Where the work already is — it is no longer on one laptop.** `dashboard-directions-2026-09` was
 merged into `planetai-design`'s `main` as its PR #4 (`10b15fa`), and main has moved past it since. The
@@ -119,18 +115,19 @@ before trusting the list — starting 1b from stale numbers is how a re-tokening
   it first, see above). Each is a one-line change from a literal to `var(--token)`, no visual change
   today, and `python3 tools/shots.py` proves it: the fixtures render identically at four widths or the
   change was not what it claimed. This is what turns the redesign from a rewrite into a re-tokening — after it, moving the language moves the page.
-- **1c · Port the modules, one section per PR, against the existing gates.** `tools/check_ui.py` and
+- ~~**1c · Port the modules, one section per PR, against the existing gates.**~~ **Moot** — the redraw
+  shipped in v0.71. What follows stays true of any change to the page. `tools/check_ui.py` and
   `check_theme.py` stay in `make lint`; `docs/design/UX_REVIEW_2026-09.md` (64 findings) and
   `_skeleton.md` (26 more) are the acceptance list, and the four P0s v0.53 fixed are the regressions to
   watch for — a unit the page shouts into a different unit, a gap in a series drawn as a line through it,
   a locale the page claims the node did not send.
-- **1d · Two containers, not one.** The review rig on `pai-clean` runs the old and the new side by side
+- ~~**1d · Two containers, not one.**~~ **Moot** since v0.71, and still how a page change is argued. The review rig on `pai-clean` runs the old and the new side by side
   on `:8081` and `:8082`. A screenshot of the new page alone proves nothing; the pair is the argument.
-- **1e · Node #1 last, and for a day before a tarball.** `planetai-design` is not a node and a fixture is
+- ~~**1e · Node #1 last, and for a day before a tarball.**~~ **Moot** since v0.71. `planetai-design` is not a node and a fixture is
   not node #1: `docs/design/fixtures/` is what the page does with data somebody chose.
 
 **Cost if wrong:** every household's page at once, including the wall at 1920 where nobody is standing
-next to it to notice. This is the one on this list that ships alone.
+next to it to notice. It was the one on this list that had to ship alone.
 
 
 ### The open question inside this item: Grafana, and which surface it is for
@@ -170,9 +167,9 @@ is. An evening's work to answer properly, and nothing shipped to households unti
 
 ## 2. New data sources
 
-**Asked, September 2026.** More of what a node can read. Three are already in flight and they are the
-pattern, not the exception: `xiaomi-air` (LAN purifiers, merged), `thingdata` (a repair commons, PR #70),
-`earth` (AlphaEarth, nine years a square).
+**Asked, September 2026.** More of what a node can read. Three were in flight when this was written and
+they are the pattern, not the exception: `xiaomi-air` (LAN purifiers) and `thingdata` (a repair commons,
+PR #70) shipped in v0.61, and `earth` (AlphaEarth, nine years a square) is on main.
 
 **A source is a pack, and the pack contract is the whole of the discipline.** `pack.yaml` declares
 `metrics`, `scales`, `requires: {node: ">=x"}`, its `env:` keys and, for a code pack, its `pip:` line;
@@ -184,9 +181,9 @@ pattern, not the exception: `xiaomi-air` (LAN purifiers, merged), `thingdata` (a
 
 1. **A test file and the suite count.** `tests/test_<pack>.py`, a line in `tests/all`, and the count at
    the bottom of that file moved. One pack per release, per rule 1 above.
-2. **Three languages.** Once #67 lands, `tests/test_packs.py` fails any message that does not carry `en`,
-   `id` and `es` with the same placeholders. Write all three when the rule is written; retrofitting a
-   language across nine packs is what #67 is.
+2. **Three languages.** Since #67 (v0.63), `tests/test_packs.py` fails any message that does not carry
+   `en`, `id` and `es` with the same placeholders. Write all three when the rule is written; retrofitting a
+   language across nine packs is what #67 was.
 3. **`contributes: report` or an alert, never both and never neither.** `tests/test_packs.py` checks it.
    A number that belongs in the daily report is not an interruption.
 4. **Provenance, or it cannot be drawn.** A number with no row in `_provenance()` cannot appear on the

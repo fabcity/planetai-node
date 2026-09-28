@@ -44,6 +44,9 @@ the files themselves.
 - [docs/DOMAINS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/DOMAINS.md): air, heat, coast, land and place — what each domain measures and where its thresholds come from.
 - [docs/COVERAGE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/COVERAGE.md): how much of a place a node can honestly claim to see, and how that is computed.
 - [docs/GUI.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/GUI.md): the dashboard's six views and what each one is for.
+- [docs/site/ask.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/site/ask.md): the dashboard's ask pane — which model answers and where it runs, what it may read, and why it changes nothing.
+- [docs/site/mcp.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/site/mcp.md): the twenty MCP tools, which are read, act or admin, and how a write names who made it.
+- [docs/MODELS.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/MODELS.md): the local models a node can run, and why it needs none of them.
 
 ## Extending it
 

@@ -10,7 +10,8 @@ reading off the machine.
 `app/agent.py` mounts it on the API at exactly `/mcp`, streamable HTTP, twenty tools over the existing
 endpoints. The tools call the node's own API back on `127.0.0.1`, so they arrive as loopback; `report_now`,
 `settings_set` and `report_bundle` also carry the admin token. The same tools serve Claude Desktop or Claude
-Code on a laptop across the tailnet, the household's own model on Telegram, and any other MCP client.
+Code on a laptop across the tailnet, the household's own model on Telegram, the dashboard's ask pane, and any
+other MCP client.
 
 ## Connecting
 
@@ -60,7 +61,9 @@ Every tool has one class, in `app/tool_classes.py`:
 | `admin` | changes the node, runs code on it, or makes it speak to the household unprompted | `settings_set`, `run_pack_script`, `maintenance`, `report_now` |
 
 A remote agent, driven by a person, has all twenty. The household's own model on the node is handed the 16
-`read` and `act` tools and nothing else (`app/agent_loop.py`); see [The bot](bot.md). Four tools write:
+`read` and `act` tools and nothing else (`app/agent_loop.py`); see [The bot](bot.md). The dashboard's
+[ask pane](ask.md) calls in as `dashboard-chat` and runs 12 of the `read` tools, never `settings_get`,
+`report_bundle` or `export_day`; `act` and the `admin` tools become cards a person presses, and the pane runs none of them. Four tools write:
 `act`, `report_now`, `settings_set` and `run_pack_script`. `maintenance` is `admin` and writes nothing: it
 answers with a command for a person to run.
 
@@ -72,10 +75,10 @@ Start with `health_check`, then `status`.
 |---|---|---|
 | `status` | none | node, version, schema, uptime, last poll, readings ingested, polls, per-loop errors, mesh, ρ (the `/rho` body), whether the last backup succeeded |
 | `health_check` | none | `{ok, checks: [{check, ok, fix}]}`: polled in the last 15 minutes; no source errors; a backup in the last two days; no local sensor's ambient channel frozen; with a broker, LoRa radios heard in the last hour. Every failing check names its fix |
-| `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations`, `metrics`, the `asks` ledger, the four-sentence `digest`, `geometry`), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
+| `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations`, `metrics`, the `asks` ledger, `lead`, the `digest` with its four sentences, `simple` and `prompts`, `geometry`), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
 | `sensors` | none | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
 | `context` | none | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |
-| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.72.1 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
+| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.75.3 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
 | `history` | `sensor_id`, `metric` | every `{ts, value}` oldest first, for slow series such as `place-point / sat_buildings_yearly` |
 | `series` | `metric="pm25"`, `hours=24` (≤168) | aligned hourly arrays: indoor, outdoor, model |
 | `alerts` | `limit=10` (≤100) | the most recent alerts: `id`, `ts`, `rule_id`, `sensor_id`, `level`, `text` and `acted_at` |
@@ -99,7 +102,7 @@ recorded on the dashboard against the same alert; no tool records a decision, an
 
 The read routes `GET /shape`, `GET /effect` and `GET /reach` have no tool of their own.
 
-> **Gap in v0.72.1.** The `issues` tool's own description still says ties for `headline` go to the keeper's
+> **Gap in v0.75.3.** The `issues` tool's own description still says ties for `headline` go to the keeper's
 > order. The node breaks a tie within a state by which issue moved most in the last three hours, then by
 > the declared order, and `headline_rule` in the tool's answer says so.
 

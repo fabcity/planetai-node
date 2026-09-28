@@ -28,8 +28,10 @@ token into an alert text or change a row.
   message:
     en: "Indoor PM2.5 at {name} is {mean_15m:.0f} µg/m³. Purifier on, windows shut."
     id: "PM2.5 dalam ruangan di {name} {mean_15m:.0f} µg/m³. Nyalakan pembersih udara, tutup jendela."
+    es: "PM2.5 en interiores en {name}: {mean_15m:.0f} µg/m³. Purificador encendido, ventanas cerradas."
 ```
 
+Every message carries `en`, `id` and `es` with the same placeholders; `make test` fails one that does not.
 Every column the message uses must come from the SQL. `make lint` checks that, plus unknown columns, cells without a
 `value`, and cooldowns over a fortnight (add `long_cooldown_ok: true` if that is deliberate).
 

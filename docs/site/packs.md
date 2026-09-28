@@ -122,7 +122,7 @@ Telegram if it is connected, the heat issue's state is `act`, and the lead's las
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack
-against `init.sql`. At v0.72.1 it prints `48 rules and cells check out against init.sql`; with your
+against `init.sql`. At v0.75.3 it prints `48 rules and cells check out against init.sql`; with your
 folder added the count is 50, one rule and one cell more. A `{placeholder}` the SQL does not return is
 refused here and named; on a running node the same mistake sends the raw template, braces and all.
 
@@ -130,7 +130,7 @@ refused here and named; on a running node the same mistake sends the raw templat
 
 Code reads `id` and `description` (the loader, `planetai packs`), `domain` (the issue engine), `env` (Set
 up and `planetai packs install`), `pip` (`planetai packs install`) and `sources` (`tools/check_registry.py`).
-`requires` and `needs` are for people and are read by no code in v0.72.1. `kind` is overwritten from the
+`requires` and `needs` are for people and are read by no code in v0.75.3. `kind` is overwritten from the
 presence of `adapter.py`.
 
 | field | used for |
@@ -282,7 +282,7 @@ window.PAI.register({
   title: 'The mesh in this house',  // required
   render(ctx) { … },           // render or lead is required; captions belong here, explanations do not
   order: 41,                   // within the stage, lower first (default 50)
-  level: 'advanced',           // default; 'simple' opts the section into simple mode
+  level: 'advanced',           // default; 'simple' keeps it in simple mode on Historical and Network (simple on Now draws no sections)
   needs: ['H3.radio.mesh'],    // dotted paths off window; absent → one honest line, never a blank
   learn: ['states'],           // learn marks this section carries
   controls(ctx) { … },         // optional control strip
@@ -292,7 +292,7 @@ window.PAI.register({
 ```
 
 A section may not invent a fifth card kind (readout · stack · series · row), colour a state by hue, print a
-numeral without `data-num`, or put its explanation in its body. In v0.72.1 a section lives inline in
+numeral without `data-num`, or put its explanation in its body. In v0.75.3 a section lives inline in
 `app/static/dashboard.js`, because the node serves its static files from a fixed allowlist by name, and
 serving a pack's own file needs a name on that list the node does not have. Proposing a section today is
 sending the code with its `render()` and its `notes()`. The page itself is described on
