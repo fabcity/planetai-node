@@ -1,13 +1,20 @@
 # Changelog
 
-## Unreleased
+## v0.75.7 — 2026-09-28 — the ask pane starts again when you want it to
 
-- **2026-09-28 · The ask pane starts again when you want it to.** The conversation stayed in the tab with no way
+*The ask pane's conversation never ended: it survived reloads, grew to 40 messages, and sent 24 of them back
+with every question. Now it has a new conversation button, starts fresh after half an hour, and sends only
+the last three exchanges. Also: the source registry is synced again.*
+
+- **The ask pane starts again when you want it to.** The conversation stayed in the tab with no way
   to end it: a reload kept it, it grew to 40 messages, and every question sent the last 24 back to the model, so
   answers got slower and vaguer the longer it ran, most of all on a small model on the node. Now **new
   conversation** in the pane's header clears it; a thread nobody has added to for half an hour starts fresh, so
   the next person at a wall screen does not inherit it; only the question and the three exchanges before it are
   sent; and the tools an answer read fold into one line, **read 3 things**, that opens on a press.
+- **The source registry, synced to `awesome-fabcity-data` at `88f5c73`** (from `1d12b7b` in v0.75.6): still
+  268 entries. BPS Bali's household spending per capita now carries its first review, usable with caveats for
+  Bali.
 
 ## v0.75.6 — 2026-09-28 — `planetai run` sees what Set up saved
 

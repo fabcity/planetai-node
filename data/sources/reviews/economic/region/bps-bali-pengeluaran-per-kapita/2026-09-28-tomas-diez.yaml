@@ -1,0 +1,21 @@
+entry: economic/region/bps-bali-pengeluaran-per-kapita
+by: Tomas Diez
+org: Fab City
+date: 2026-09-28
+territory: Bali
+checked:
+  - licence
+  - endpoint
+  - admin-code
+  - vintage
+  - field-fit
+verdict: usable-with-caveats
+self_declared: false
+assisted_by: Gemini
+issue: 76
+note: |
+  The BPS terms legally permit the calculation and publication of derived data with citation. The data maps exactly to the Economic|Region requirements. However, automation faces two primary hurdles:
+
+  The endpoint blocks simple HTTP fetch requests. Extracting the data requires handling JavaScript-rendered tables or utilizing a headless browser.
+
+  The geographic identifiers use BPS-specific codes (Kode Wilayah BPS). A crosswalk dataset is required to join these rows to standard Permendagri or ISO 3166-2:ID territory codes.

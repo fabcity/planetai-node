@@ -2383,7 +2383,27 @@
     "places": [
       "bali"
     ],
-    "reviews": [],
+    "reviews": [
+      {
+        "assisted_by": "Gemini",
+        "by": "Tomas Diez",
+        "checked": [
+          "licence",
+          "endpoint",
+          "admin-code",
+          "vintage",
+          "field-fit"
+        ],
+        "date": "2026-09-28",
+        "entry": "economic/region/bps-bali-pengeluaran-per-kapita",
+        "issue": 76,
+        "note": "The BPS terms legally permit the calculation and publication of derived data with citation. The data maps exactly to the Economic|Region requirements. However, automation faces two primary hurdles:\n\nThe endpoint blocks simple HTTP fetch requests. Extracting the data requires handling JavaScript-rendered tables or utilizing a headless browser.\n\nThe geographic identifiers use BPS-specific codes (Kode Wilayah BPS). A crosswalk dataset is required to join these rows to standard Permendagri or ISO 3166-2:ID territory codes.\n",
+        "org": "Fab City",
+        "self_declared": false,
+        "territory": "Bali",
+        "verdict": "usable-with-caveats"
+      }
+    ],
     "scale": "region",
     "slug": "economic/region/bps-bali-pengeluaran-per-kapita",
     "status": "candidate",
