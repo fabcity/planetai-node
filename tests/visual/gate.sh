@@ -152,7 +152,20 @@ function t1legs(d) {
 // would make that the new normal. It is a watch item, not a new standard.
 //
 // Previous, from 46018b0 on node1-2026-09-06: 390: 8267 px / 37.7%, 1440: 5261 px / 61.3%.
-const HEIGHT_SHIPPED = { now_populated_390: 15893, now_populated_1440: 10051 };
+//
+// Heights re-recorded 28 Sep 2026, against the page at v0.75.6 (ebefea8) on node1-2026-09-21d.
+// The 15893 and 10051 above them were NEVER this fixture's numbers. d9a9316 measured them on
+// node1-2026-09-21c, then in the same commit renamed the recapture to 21d and pointed PAI_Q at it
+// without measuring again: d9a9316 on 21c is 15893 / 10051, and on 21d it is 16520 / 10205. So 627 px
+// of the 390 "growth" was the fixture, and the gate started from a number it could not reproduce.
+// The rest is the page, all of it on purpose: e0262ca's ledger of what was decided (+567), f9e50c9
+// (-701), c46274f's effect per rule (+507), 04839d1's vocabulary, whose longer words wrap more at
+// 390 (+255), and 3c3a20d's route line under every band (+352). 390 has been over the margin since
+// v0.73 (17402), and nobody saw it because `make test` does not run this file. Emptiness is NOT
+// re-recorded here; see above for why 390's stays at 37.7.
+//
+// Previous, from d9a9316 on node1-2026-09-21c: 390: 15893 px, 1440: 10051 px.
+const HEIGHT_SHIPPED = { now_populated_390: 17357, now_populated_1440: 10764 };
 const EMPTY_SHIPPED = { now_populated_390: 37.7, now_populated_1440: 57.4 };
 const HEIGHT_MARGIN = 1.08, EMPTY_MARGIN = 6;
 
