@@ -33,8 +33,9 @@ Installs the pre-commit hook: blocks `.env`, credentials and `.git` contents, an
 
 ## Conventions
 
-- `make lint` must pass. That's `bash -n`, `py_compile`, and YAML parsing — deliberately cheap.
-- Schema changes go in `init.sql` additively (`IF NOT EXISTS`, `CREATE OR REPLACE VIEW`). A v0.1 node must update in place.
+- `make lint` must pass. It runs every gate that exists because something once shipped broken — SQL, docs,
+  dashboard, wire shapes, registry, pyflakes, the app import — and `docs/DEVELOPING.md` says what each one caught.
+- Schema changes go in `init.sql` additively (`IF NOT EXISTS`, and `DROP VIEW IF EXISTS` before every `CREATE VIEW`). A v0.1 node must update in place.
 - One dated line in `CHANGELOG.md` per change, saying why.
 - Code Apache 2.0, docs CC-BY 4.0. By opening a PR you agree to those terms.
 - **Sign off your commits.** `git commit -s` adds one line:

@@ -6,8 +6,9 @@ household updates by running `planetai update` and cannot review what arrives." 
 commit to a node is gated, signed and published twice, and this page walks it in order.
 
 Short version: run a node, report what broke, send the fix. The repository is
-[`fabcity/planetai-node`](https://github.com/fabcity/planetai-node), Apache-2.0 for the code and CC BY 4.0
-for the documentation. By opening a pull request you agree to those terms.
+[`fabcity/planetai-node`](https://github.com/fabcity/planetai-node), Apache-2.0 for the code today,
+AGPL-3.0-or-later once every contributor has consented ([the decision](../../docs/decisions/2026-09-25-licence.md)),
+and CC BY 4.0 for the documentation. By opening a pull request you agree to those terms.
 
 ## Two machines
 
@@ -88,6 +89,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 | `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
 | `check_ui.py` | an element id the script referenced that was not in the markup; a network `url()` in a stylesheet; Fab Blue in the dark register |
 | `build_docs.py --check` | the same fifteen releases, seen as a site: a NAV entry whose source is gone, a page in `docs/site/` that NAV never lists, a link to no page, an `#anchor` to a heading the page does not have. Renders every page and writes nothing. Needs `markdown`; without it the gate says it skipped, and CI installs it so it never skips there |
+| `check_site.py` | the programme page eight releases behind the node while every gate in both repos was green. Holds its release, pack and page counts, languages and ρ to this repository, holds the purpose and the lead sentence to `introduction.md`, and fails on a retired word in `docs/site/`. Skipped with a warning where the site repo is not checked out |
 | `build_learn.py --check` | a docs edit that moved one of the spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
 | `check_wire.py` | a top-level key added to or dropped from one of the five wire documents in a commit about something else. The key lists are frozen in `tests/data/wire/` |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt`, including in CI, where `planetai-design` is not checked out |
@@ -100,11 +102,11 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 45 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 47 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
-formats, the dashboard, the shell scripts (`preflight`, `remove`, `diagnose`, `sudo` prompting, release
+formats, the dashboard and its ask pane, the shell scripts (`preflight`, `remove`, `diagnose`, `sudo` prompting, release
 consistency).
 
 Two habits. **Test the file, not a copy typed into the test**: three times a test retyped the code it was
@@ -132,7 +134,7 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.72.1 it is `1010aa0`,
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.75.3 it is `1010aa0`,
 238 entries, synced 2026-09-22 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 
@@ -246,7 +248,7 @@ against, and a change that alters what a page describes changes the page in the 
 ```
 app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py
               registry.py (the source registry) · report.py · agent.py (MCP) · tool_classes.py · agent_loop.py (the bot)
-              bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
+              ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
 packs/        eighteen packs; see Packs
 config/       rules.yml (two domain-blind rules) · channels.yml · mosquitto · reticulum

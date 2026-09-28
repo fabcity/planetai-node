@@ -45,7 +45,7 @@ The parent keeps each `mean` as one reading on the child's own hour, under the s
 with `source='child'`, `kind='child'`, `cadence='PT1H'`, `local=FALSE`. Because custody is generated as
 `kind='child' OR (local AND kind<>'peer')`, those rows are in the parent's custody and count toward a `live`
 cell. The metric keeps its own name, so a parent's pack SQL matches it. `min`, `max` and `n` travel and are not
-stored in v0.72.1. A child's sensors have no coordinates at the parent, and a re-push of the same hour is a
+stored in v0.75.3. A child's sensors have no coordinates at the parent, and a re-push of the same hour is a
 no-op.
 
 ### POST /events
@@ -96,14 +96,13 @@ shape of an `FCI Observations` row, plus two fields from [the source registry](s
  "unit": "µg/m³ PM2.5 (24h mean, sensors in this node's custody)",
  "source": "planetai-node · pack:air-quality", "observed_at": "2026-09-16T06:00:00+00:00",
  "state": "live", "notes": "this node's own sensors and its children's hourly means; indoor and outdoor kept separate by the rules · <have>/12 hourly buckets",
- "registered": 4, "adapter": true}
+ "registered": 2, "adapter": true, "reviewed": 2, "candidate": 0, "capable": 2}
 ```
 
-`registered` is how many registry entries are filed under that cell (four for `Environmental|Community` at
-pin `1010aa0`) and `adapter` whether any of them has code that reads it. Since v0.73
-`registered` carries the `reviewed` count instead (two for
-`Environmental|Community`), `adapter` is true when `capable` is above 0, and the row adds `reviewed`,
-`candidate` and `capable`, counted from each entry's `feeds_cells`. [The source registry](sources.md) says how.
+`registered` carries the `reviewed` count (two for `Environmental|Community` at pin `1010aa0`), `adapter` is
+true when `capable` is above 0, and `reviewed`, `candidate` and `capable` are counted from each entry's
+`feeds_cells`. Before v0.73 `registered` was how many entries were filed under the cell (four here) and
+`adapter` whether any of them had code. [The source registry](sources.md) says how.
 
 `state` is provenance and travels end to end: `live`, measured here, in custody, in the last 24 hours;
 `partial`, derived, modelled, from a portal, or demoted for too few buckets or sensors; `mock`, a placeholder.
@@ -152,7 +151,7 @@ operator organisation, with its trigger written in [`SPEC.md`](spec.md) §6.
 An observatory the node does not run (Bali Air Dispatch today, a city's own portal tomorrow) is a source. Its
 readings enter through an adapter, flagged `local=FALSE`, credited. A `kind='peer'` row, another node's numbers
 shown for context, reaches no cell, no custody count, no aggregate and no alert, whatever its coordinates say.
-Listening to other nodes as peers (`PEERS`) is proposed and not built in v0.72.1.
+Listening to other nodes as peers (`PEERS`) is proposed and not built in v0.75.3.
 
 A `kind='facility'` row is the second kind of row that is not a measurement. The `make` pack writes one per fab
 lab within reach: a place with a name and a point, no readings, never in custody, never in a cell or an alert.
@@ -161,7 +160,7 @@ It is how the node can say where somebody could go and make or fix something (se
 
 ## Not built: identity and discovery
 
-Two specifications describe what the network would add next. Neither is built in v0.72.1.
+Two specifications describe what the network would add next. Neither is built in v0.75.3.
 
 **Identity** ([`docs/SPEC_identity.md`](../SPEC_identity.md), "Nothing here is built"). Today every child of a
 parent shares one `AGGREGATE_TOKEN`, and the child's name is `body["node"]`, a string the child declares about

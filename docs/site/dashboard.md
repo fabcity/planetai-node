@@ -61,8 +61,8 @@ In the order the header draws them:
 | **Set up** | `#setup` | the settings, behind a token, and every registered section with whether it is drawing |
 
 The ladder is Now's (and Arrange's) control and is drawn nowhere else. The resolution still travels in the URL
-as `?res=`, so a link into any view keeps its resolution. The header also carries the mode switch, the Paper /
-Dark register switch (kept in this browser; `?register=` reads first and remembers nothing) and **↻**, "Ask
+as `?res=`, so a link into any view keeps its resolution. The header also carries the mode switch,
+**ask the node** right of it (see [below](#ask-the-node)), the Paper / Dark register switch (kept in this browser; `?register=` reads first and remembers nothing) and **↻**, "Ask
 the node again".
 
 Other query keys: `?view=` works as the hash does, `?fixture=<name>` replays a committed snapshot (see
@@ -105,6 +105,17 @@ The bar under the header says how many marks are on the view you are looking at;
 the first of them, and **previous** and **next** on the card follow the view from top to bottom, in the order the marks are drawn; walking replaces the card rather than stacking one per mark. With a model on the node, a question asked while a card is last in the thread is sent with that part's documentation. Without one, the card stands alone and its chip searches the documentation for its title. The quotes are in English
 only, whatever language the rest of the page is drawn in, because the documentation is. The wall has no
 Learn mode: it draws no header, so there is nothing on it to switch one on, and no marks.
+
+## Ask the node
+
+**ask the node**, right of the modes (in the foot on a phone), opens a pane beside the page that asks a model
+about what the page shows: the one Set up → agent names, the same as the Telegram bot's. That is the model
+`planetai agent local` set up on this machine, one on another machine of yours, or an online one only when
+`AGENT_PREFER` allows it; the pane's header names the model and where it runs. It runs the read tools and
+changes nothing: a setting or an **I did this** it reaches for is a card the person presses. The thread lives
+in the browser tab, and the node keeps nothing asked or answered. With no model it still searches this
+documentation (`GET /docs/search`). `UI_ASK=off` removes the toggle and the pane, and the wall never shows
+it. The whole of it is on [Ask the node](ask.md).
 
 ## The lead
 
@@ -279,6 +290,17 @@ change is an `actions` row with `stage='settings'` and the actor `dashboard` (`p
 line, the agent's name over MCP). The section list under it names every registered section by pack and
 whether it is drawing or has nothing here yet.
 
+A save sends only the fields somebody edited, in every group. Before it writes, the page reads `/settings`
+again. If one of those keys changed on the node after the form was drawn (from the CLI, an agent or another
+screen), nothing is saved: the field says what the node holds now and the last change the ledger has for it,
+read from `GET /actions?stage=settings`, and a second press of Save replaces it. In the packs group a pack
+switch decides `PACKS_ENABLED` only when one was moved; otherwise the text field does.
+
+> **Gap in v0.75.3.** Set up draws each pack's own keys in the packs group and sends one when it is edited,
+> but `PUT /settings` refuses every pack key that is not also a runtime key with 400 `<KEY> is not a runtime
+> setting`. The page prints that beside the field and saves nothing. Set those keys in `.env` and run
+> `planetai restart`; see [Configuration](configuration.md#keys-the-packs-declare).
+
 ## What a reader without a token sees
 
 At `SHARE_LEVEL=off` a browser gets the dashboard shell, the node's name and city from `/health`, and the
@@ -288,7 +310,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.72.1.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.75.3.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`.
@@ -301,8 +323,9 @@ sharing level) and draws the issue sentences, labels and distances in English, B
 ## Looking at it without a node
 
 `?fixture=<name>` replays a committed snapshot through the node's own engine, `GET /issues/fixtures/<name>`,
-and the pill says `cached`. Four ship: `node1-2026-09-06`, `node1-2026-09-21`, `node1-2026-09-21b` and
-`node1-2026-09-21d`; `GET /issues/fixtures` lists them. `planetai snapshot` writes a new one from a running
+and the pill says `cached`. Six ship: four captures of node #1, `node1-2026-09-06`, `node1-2026-09-21`,
+`node1-2026-09-21b` and `node1-2026-09-21d`, and two derived from the last for the visual tests,
+`coast-led-2026-09-21` and `land-led-2026-09-21`, where coast and land lead; `GET /issues/fixtures` lists them. `planetai snapshot` writes a new one from a running
 node. A snapshot missing a table the engine reads comes back with an error in place of the issues rather
 than a half-drawn page, and the 6 September capture predates `planetai snapshot`, so some of its cards are
 empty.

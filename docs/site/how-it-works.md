@@ -141,8 +141,8 @@ Three more things can leave, and each only when somebody here turns it on. With 
 node announces a coarse H3 cell on the Reticulum network: resolution 3 by default, never finer than 6. With
 `MAP_TILES=on` the browser showing the dashboard fetches live map tiles at resolution 8 and coarser, and each
 tile request "tells a tile server which square of the planet this house is looking at". And a question to
-the bot goes to an online model, with the node's answers to the model's tool calls, only when `AGENT_PREFER`
-is `fallback` or `strongest` and an online key is set. At the default, `private`, the bot uses the model on
+the bot or the dashboard's ask pane goes to an online model, with the node's answers to the model's tool calls, only when `AGENT_PREFER`
+is `fallback` or `strongest` and an online key is set. At the default, `private`, both use the model on
 this machine or one on your own network, and nothing goes further.
 
 Exact coordinates and a household's own sentences never leave in a push or the export. The events push carries rule,
@@ -164,7 +164,7 @@ The shape of the building behind `/place/geojson` needs a token at every sharing
 | whether an act needs a decision first | `DECISION_REQUIRED` (default `0`) |
 | how much of the page opens, and in what order | `UI_MODE` (`simple`, `advanced`, `learn`) and `UI_LAYOUT` |
 | whether the page may fetch live tiles | `MAP_TILES` (default `off`) |
-| whether the bot may use an online model | `AGENT_PREFER` (default `private`) |
+| whether the bot and the ask pane may use an online model | `AGENT_PREFER` (default `private`) |
 | whether the node names the nearest fab lab | `MAKE_ENABLED` (default `0`) |
 | who may read it | `SHARE_LEVEL` and the tokens; see [Sharing and security](sharing.md) |
 | what is retired and when it returns | [`SPEC.md`](spec.md) §6 |
@@ -176,7 +176,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.72.1. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.75.3. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

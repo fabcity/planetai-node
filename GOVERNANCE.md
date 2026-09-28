@@ -103,8 +103,9 @@ What follows from that, and what a maintainer may not delegate:
 
 ## A second organisation running nodes under the name
 
-**Not decided.** `docs/decisions/2026-09-18-licence.md` is where it is being decided, together with the
-licence, and this section is a placeholder for its outcome. Until then: the name is the Foundation's,
+**Not decided.** The licence was decided on 25 September (`docs/decisions/2026-09-25-licence.md`); the
+trademark was not, and `docs/decisions/2026-09-18-licence.md` §6 still carries its recommendation. This
+section is a placeholder for that outcome. Until then: the name is the Foundation's,
 and nobody has been given permission to ship a thing called PLANETAI. What a conformance test would
 have to check is already written — `ARCHITECTURE.md §7`, the refusals.
 
@@ -122,7 +123,7 @@ things it would be passing on, and today it holds none of them.
 
 ## What this file does not do
 
-It does not decide the licence (`docs/decisions/2026-09-18-licence.md`), change branch protection,
+It does not decide the licence (that is `docs/decisions/2026-09-25-licence.md`), change branch protection,
 change who has access to anything, or name anybody as a maintainer who has not agreed to be one. It
 describes a shape, and the decision record beside it lists what a person has to do by hand before the
 shape is real.

@@ -77,7 +77,7 @@ node down.
 ## What ships
 
 The poll loop asks `sources.enabled()` which adapters to run: the core ones below, then every code pack's
-adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v0.72.1:
+adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v0.75.3:
 
 | source | enabled by | `kind` | `local` | what it reads |
 |---|---|---|---|---|
@@ -85,14 +85,14 @@ adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v
 | **Bali Air Dispatch** | `BAD_ENABLED=1` (the Bali preset; `planetai setup` sets `0` elsewhere) | `sensor` | never | The ring: other people's stations within `BAD_RADIUS_KM` (15; the Bali preset says 8), the outdoor reference this node is read against. Drops stations the archive suspects are indoor or malfunctioning (`BAD_INCLUDE_INDOOR=1` keeps the indoor ones). Keeps this node's own kit out of its own ring three ways: the ids it already polls, anything within `BAD_MIN_SEPARATION_M` (150) of the node, and `BAD_EXCLUDE` by hand; plus one rule against a single device arriving under two networks' ids. Stores `pm25` and `pm25_raw`. Attribution: Bali Air Dispatch and the row's network. |
 | **Open-Meteo** and **CAMS** | `OPENMETEO_ENABLED=1` (default) | `model` | never | Weather now at the node's coordinates; PM2.5, PM10, O₃, NO₂, dust and UV from the Copernicus model at 11 km, as `cams-point`. Free, key-free, anywhere on Earth. Never in an ambient average. |
 | **NASA POWER** | the first-start bootstrap (`BOOTSTRAP=1`) | `model` | never | Forty years of monthly temperature, humidity and rain normals, as `power-point`. |
-| **CKAN portals** | `CKAN_PORTALS=slug=url,…` (the presets name one per pilot) | `portal` | never | A portal's maintenance state (datasets total, share touched in 90 days) for the `open-data-health` pack's `Governance|City` cell. Scale from `CKAN_SCALE` (`city`). |
+| **CKAN portals** | `CKAN_PORTALS=slug=url,…` (five of the six presets name one; `delhi` leaves it blank) | `portal` | never | A portal's maintenance state (datasets total, share touched in 90 days) for the `open-data-health` pack's `Governance|City` cell. Scale from `CKAN_SCALE` (`city`). |
 | **Meshtastic radios** | `MQTT_HOST` (set by `planetai meshtastic`) | `sensor` | yes | Telemetry from field radios through the gateway's MQTT uplink, `msh/#`. `MESH_INDOOR_NODES=!id,!id` marks the indoor ones. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker. A radio's own temperature, humidity and pressure are its enclosure, not the street (see channel roles below). |
 | **Xiaomi purifiers** (`xiaomi-air` pack, v0.61) | `XIAOMI_PURIFIERS=Living Room@192.168.4.98=<token>,…`, then `planetai packs install` (installs python-miio) | `sensor` | yes (no coordinates, so it stays local) | Mi Home purifiers read on the LAN over miio/MIoT, always `indoor`: `pm25`, `temp`, `humidity`, `filter_life`, and `pm10` where the model reports it. Ids are `xm-<mac6>`. Each unit's 32-hex token is extracted once with xiaomi-cloud-tokens-extractor; after that nothing talks to the Xiaomi cloud. No EPA correction: the sensor is not a Plantower. |
 | **ThingData** (`thingdata` pack) | `THINGDATA_INSTANCES=slug=url,…` | `portal` | never | A repair-knowledge server's catalogue: things described, guides, stories, and whether anyone is still writing. Scale from `THINGDATA_SCALE` (`city`). |
 | **Fab labs** (`make` pack) | `MAKE_ENABLED=1` as well as `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50) from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a telephone. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before turning it on. |
 | **Other code packs** | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS). See [Packs that ship](packs-reference.md). |
 
-> **Gap in v0.72.1.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
+> **Gap in v0.75.3.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
 > (`AIRGRADIENT_HOSTS`, read on the LAN, EPA 2021 correction applied with raw kept as `pm25_raw`) and
 > **PurpleAir** (`PURPLEAIR_HOSTS`, `/json`, two Plantower channels averaged and corrected) have functions in
 > `app/sources.py` and rows in `config/channels.yml`, and `sources.enabled()` never calls them. The AirGradient
@@ -104,7 +104,7 @@ adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v
 ## What else this place could read
 
 The node carries a pinned copy of the network's registry, `awesome-fabcity-data` (238 entries at `1010aa0`
-in v0.72.1). `planetai sources` lists the entries for this node's pilot plus the global ones, with the adapter
+in v0.75.3). `planetai sources` lists the entries for this node's pilot plus the global ones, with the adapter
 that reads each where one exists; `--all`, `--pillar`, `--scale` and `--cell 'Environmental|City'` narrow or
 widen it. It answers from `data/sources` when the node is down. The same list is `GET /sources`. A row with no
 adapter is a source the network knows about and no code reads yet. [The source registry](sources.md) explains
@@ -161,7 +161,7 @@ reading of 3 next to the street's 15.
 Optical PM sensors over-read in humid air; Bali runs 45–70% RH. `epa_2021_correct(pm_raw, rh)` implements
 the US EPA 2021 Plantower correction: raw 28 at Bali humidity becomes about 15. Near-zero raw in dry air
 lifts to 1–2, a property of the regression with no health meaning. It is for Plantower lasers (PurpleAir,
-AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. In v0.72.1 the only
+AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. In v0.75.3 the only
 callers are the AirGradient and PurpleAir functions in the gap above, so no polled source applies it.
 
 ## Siting

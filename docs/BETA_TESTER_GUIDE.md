@@ -15,7 +15,8 @@ Alerts → Alert language, or `ALERT_LOCALE=es` in `.env`.
 ## 1. What you need
 
 - A computer that stays on: a Mac (Apple Silicon or Intel, macOS 13 or later), a Linux machine (x86), or Windows 10/11
-  with WSL2 (Ubuntu). **A Raspberry Pi does not work yet** (the database image has no arm64 build).
+  with WSL2 (Ubuntu). **A Raspberry Pi is untested**: the database image runs on arm64 since v0.63, and nobody
+  has run a node on one yet (`PLATFORMS.md`).
 - On a Mac: install [OrbStack](https://orbstack.dev) or Docker Desktop first and open it once. On Linux the installer
   installs Docker for you. On Windows: Docker Desktop with the WSL2 engine, and run everything inside the Ubuntu shell.
 - About 2 GB of disk, an internet connection, and 10 minutes.
@@ -157,4 +158,4 @@ understand, anything that took more than one try.
 
 Updating to a newer version: `planetai update`. It backs up first and refuses to continue if the backup fails.
 
-Removing it: `planetai stop` keeps the data; `docker compose down -v` in `~/planetai` removes everything.
+Removing it: `planetai stop` keeps the data; `planetai remove` removes everything, and asks twice first.

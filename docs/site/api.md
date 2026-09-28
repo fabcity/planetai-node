@@ -2,7 +2,7 @@
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
-This page was read from the code at v0.72.1. Where an older document disagrees, the code wins.
+This page was read from the code at v0.75.3. Where an older document disagrees, the code wins.
 
 ## Access rules
 
@@ -20,7 +20,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 
 The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 27 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 33 exact paths and 4 prefixes in all.
+The `open` allowlist is the `off` list plus 27 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 34 exact paths and 4 prefixes in all.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
@@ -107,7 +107,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.72.1.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.75.3.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 ## Sensors and readings
 
@@ -231,7 +231,7 @@ What surrounds the node's own numbers: other people's stations, the weather fore
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.72.1 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.75.3 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -482,7 +482,7 @@ Since v0.73 the row ends with five registry fields, and the same row at pin `101
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.72.1 the pin is `1010aa0`, with 238 entries. It says nothing about this house, which is why it is on the `open` list by name.
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.75.3 the pin is `1010aa0`, with 238 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -610,7 +610,7 @@ At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token see
 
 Returns `{unlocked, runtime: [...], bootstrap: [{key, label, value}]}`. Each node row in `runtime` is `{key, group, label, secret, restart, help, value, set, source, choices, default, outward}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `default` is the shipped default, or null when the image has no defaults file; `outward` marks a key that changes what leaves the machine.
 
-After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: 21 rows in v0.72.1. Each has `group: "packs"`, `restart: true`, `secret: false`, `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack.
+After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: 21 rows in v0.75.3. Each has `group: "packs"`, `restart: true`, `secret: false`, `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack.
 
 ### PUT /settings
 Access: admin
@@ -635,11 +635,11 @@ Access: admin
 
 The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
 
-In v0.72.1 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+In v0.75.3 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
 
 ## The ask pane
 
-The dashboard's pane asks this node's own model, on this machine, about what the page shows. It reads and changes nothing: an `act` or an admin tool comes back as a proposal the person presses. Nothing asked or answered is kept, on disk, in the database or in a log line.
+The dashboard's pane asks the model Set up → agent names, the same one the Telegram bot uses, about what the page shows: the one on this machine, one on another machine of yours, or an online one when `AGENT_PREFER` allows it. It reads and changes nothing: an `act` or an admin tool comes back as a proposal the person presses. Nothing asked or answered is kept, on disk, in the database or in a log line.
 
 ### GET /ask/status
 Access: open
@@ -651,7 +651,7 @@ Access: open
 
 Takes `{messages, view, mode, focus?}`: the thread so far (at most 24 messages of 4,000 characters, `user` or `assistant`), the view and mode the page is in, and a learn mark's key when one is in focus. The browser sends no readings; the node builds the model's context itself from `/issues` (the lead and its hero, the digest, every watched issue's state and values, the open alerts) and the learn entry for `focus`. That context, and every tool result, carries no coordinate, no sensor or station name, no sensor id and no `meta`: they are dropped or replaced before the model reads them.
 
-Answers `text/event-stream` with five events: `token` (`{text}`, the answer in pieces), `tools` (`{tool, ms}`, one per read the model made), `proposal` (`{tool, args, setting, current, proposed, choices, group, leaves, undo}`, one per change it reached for; an `act` proposal carries only the alert's id, because what the person did is theirs to write, and a value the setting would refuse is `null` with its `choices`; `leaves` is the setting's own help text and `undo` says how to set it back, both per locale), `done` (`{rung, model, host, where}`, the model that answered and where it runs; when one fails the next is tried, and nothing the failed one produced is sent) and `error` (`{message}`). The model is offered the `read` tools except `settings_get`, `report_bundle` and `export_day`, and it runs them through `/mcp` as `dashboard-chat`; it is also offered `act` and the admin tools, and calling one does nothing but emit a `proposal`. 404 when no loop is set up.
+Answers `text/event-stream` with five events: `token` (`{text}`, the answer in pieces), `tools` (`{tool, ms}`, one per read the model made), `proposal` (`{tool, args, setting, current, proposed, choices, group, leaves, undo}`, one per change it reached for; an `act` proposal carries only the alert's id, because what the person did is theirs to write, and a value the setting would refuse is `null` with its `choices`; `leaves` is the setting's own help text and `undo` says how to set it back, both per locale), `done` (`{rung, model, host, where}`, the model that answered and where it runs; when one fails the next is tried, and nothing the failed one produced is sent) and `error` (`{message}`). The model is offered the `read` tools except `settings_get`, `report_bundle` and `export_day`, and it runs them through `/mcp` as `dashboard-chat`; it is also offered `act` and the admin tools, and calling one does nothing but emit a `proposal`. 404 when no model is set up, by the same test as `GET /ask/status`.
 
 ### GET /docs/search
 Access: open

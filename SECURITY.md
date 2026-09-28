@@ -61,8 +61,7 @@ The signature is made with a key that is not on the web server and never was.
 afterwards:
 
 ```
-SHA256:…  — not yet issued. `planetai version` prints what your node actually carries; a release
-            published before this line is filled in did not exist.
+SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4   issued 19 September 2026
 ```
 
 Compare that fingerprint against a node with `planetai version`, from a machine that is not the node.

@@ -4,10 +4,10 @@ What the land within a kilometre of the node did last year, from Google Earth En
 and a credential; the worked example of both.
 
 **Adds**, once a day, computed server-side over a 1 km buffer: tree, built, crop and water fractions (Dynamic World);
-annual median NDVI (Sentinel-2, clouds masked); the latest night-lights radiance (VIIRS); a land-change score, 1 minus
-the cosine similarity between this year's and last year's mean AlphaEarth embedding. Stamped mid-year; a daily fetch
-inserts nothing new after the first. Two `Environmental|Bioregion` cells and a monthly rule that says the land changed
-without pretending to know how.
+annual median NDVI (Sentinel-2, clouds masked); the latest night-lights radiance (VIIRS). Stamped mid-year; a daily
+fetch inserts nothing new after the first. One `Environmental|Bioregion` cell, tree cover, and no rule. The
+land-change score that was here moved to the `earth` pack in v0.33.1, which reads the same AlphaEarth embeddings
+with no account.
 
 ## Setup
 
@@ -38,7 +38,7 @@ Indonesia is thin), the nearest year within three is used and said so. PNGs and 
 
 ## Node #1, 2025
 
-91% built, 9% trees, no crops, NDVI 0.51, night lights 14.5. Land-change score 0.037: little changed, because on the
+91% built, 9% trees, no crops, NDVI 0.51, night lights 14.5. Land-change score 0.037, before it moved to `earth`: little changed, because on the
 Bukit the change already happened.
 
 ## Not

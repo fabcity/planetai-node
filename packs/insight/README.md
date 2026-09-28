@@ -2,8 +2,9 @@
 
 Three rules that turn the node's own history into sentences. No Python: Postgres has `corr()` built in.
 
-**`digest`**, every three hours — inside, outside, model, 24h mean and peak, trend. Copy the folder and change
-`cooldown_minutes` to change the cadence; that is the whole configuration.
+**`digest`**, in every report — inside, outside, model, 24h mean and peak, trend. Not an alert since v0.37:
+`contributes: report` puts its numbers in each report under `digest` in the bundle, so its cadence is the
+report's (`REPORT_EVERY`).
 
 **`agreement`**, daily — Pearson r between indoor and outdoor, outdoor and the CAMS model, indoor and the model;
 how much of the street the house holds back; the model's bias. Needs 48 overlapping hours.

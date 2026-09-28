@@ -155,7 +155,7 @@ A line under the rows links to `GET /sources?status=live`, `GET /sources?status=
 [Adding a source](#adding-a-source). The fold under it lists all sixteen with each licence as the registry
 wrote it. The page fetches `/sources` the first time somebody opens Network, and never before.
 
-> **Gap in v0.72.1.** The registry counts `core:airgradient` among the sources that are read, and the
+> **Gap in v0.75.3.** The registry counts `core:airgradient` among the sources that are read, and the
 > AirGradient function exists in `app/sources.py`, but the poll loop never calls it. The registry records
 > that the code exists, not that a node runs it.
 
@@ -190,17 +190,16 @@ neither does this page: that is a judgement about somebody else's terms.
 
 ## Elsewhere in the node
 
-- **`GET /cells`.** In v0.72.1 every row carries `registered`, how many entries are filed under that cell, and
-  `adapter`, whether any of them has one. Both group by the entry's own `cell`, not by `feeds_cells`. On
-  `main`, `registered` keeps its name and carries the `reviewed` count, `adapter` is true when `capable` is
-  above 0, and the row also carries `reviewed`, `candidate` and `capable`, grouped as above. `Governance|City`
-  goes from 32 to 4. A cell
+- **`GET /cells`.** Every row carries `registered`, `adapter`, `reviewed`, `candidate` and `capable`, grouped
+  by `feeds_cells` as above. Since v0.73 `registered` keeps its name and carries the `reviewed` count, and
+  `adapter` is true when `capable` is above 0; before, both grouped by the entry's own `cell` and counted every
+  entry filed there, so `Governance|City` went from 32 to 4. A cell
   with registered sources and no adapter has no `/cells` row at all, because a node only emits rows it can
   compute; that half of the question is `planetai sources --cell`.
 - **`planetai doctor`.** One row: `source registry: 238 entries · awesome-fabcity-data @ 1010aa0 · synced
   2026-09-22`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and
-  names the id. At v0.72.1, 13 pack source ids resolve.
+  names the id. At v0.75.3, 13 pack source ids resolve.
 
 ## The endpoints
 
@@ -249,9 +248,9 @@ repository.
 > **Note.** "Registry" names two things in this repository. This page is the source registry, `data/sources/`.
 > `registry.json` at the repository root is the node directory, described on [Federation](federation.md).
 
-> **Gap in v0.72.1.** `docs/SOURCES.md` and comments in `app/registry.py`, `app/main.py` and `bin/planetai`
-> still say the registry holds 209 entries. The pin carries 238. On `main`, `docs/SOURCES.md` and a
-> docstring in `app/registry.py` also say sixteen of 225 entries count nowhere. Sixteen is right; the 225 is not.
+> **Gap in v0.75.3.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
+> holds 209 entries, and a docstring in `app/registry.py` says sixteen of 225 entries count nowhere. The pin
+> carries 238, and sixteen is right.
 
 ## Where this leads
 

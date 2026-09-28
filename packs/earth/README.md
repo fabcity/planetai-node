@@ -198,7 +198,7 @@ pack publishes the mean of the *per-pixel* distances over 10 km, computed here, 
 key. They are different quantities and they did not agree — averaging vectors first cancels the noise that
 averaging distances keeps, and on node #1 the two read 0.037 and 0.041 without any way for a reader to tell
 why. Two numbers for one idea with different provenance is worse than one, so the Earth Engine one was
-retired and the `land_changed` alert moved here with it. `earth-engine` keeps what only Earth Engine can
+retired. Its `land_changed` alert was not carried over, for the reason under *there is no alert* above. `earth-engine` keeps what only Earth Engine can
 give: Dynamic World, Sentinel-2 and VIIRS.
 
 ## Attribution

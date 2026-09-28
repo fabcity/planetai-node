@@ -133,8 +133,9 @@ entity. The mesh and Reticulum do not carry it.
 ## The digest on the page
 
 A second summary lives in `GET /issues`, not in the report: `digest`, four sentences, one per stage (observe,
-decide, act, measure), in English, Bahasa Indonesia and Spanish. The dashboard's simple mode draws these four and
-nothing else. Every figure in them is one the page already draws further down, and the node writes them, not
+decide, act, measure), in English, Bahasa Indonesia and Spanish. Since v0.74 it also carries `simple`, the
+paragraph simple mode draws on Now (the house's own stations and the nearest others, the oldest open alert,
+how the last 30 days of asking went), and `prompts`, the ask pane's first three questions. Every figure in the four is one the page already draws further down, and the node writes them, not
 the browser. The measure sentence has the form "Of the {acts} alerts here that asked for something, {answered}
 have been answered, and the usual wait was {median} minutes."
 

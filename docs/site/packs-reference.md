@@ -1,10 +1,10 @@
 # Packs that ship
 
-Eighteen folders under `packs/` in v0.72.1: ten data packs and eight code packs. Between them they hold
+Eighteen folders under `packs/` in v0.75.3: ten data packs and eight code packs. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
 the nearest workshop are all in here, as SQL and YAML, and in eight cases as an adapter too. How a pack is
-built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.72.1.
+built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.75.3.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
@@ -105,7 +105,7 @@ change the thresholds and the wording, publish it as `planetai-pack-air-<yourpla
 Xiaomi / Mi Home air purifiers read directly on the LAN over the miio/MIoT protocol: PM2.5, temperature,
 humidity and filter life, indoors. Written for a household in Kuta Selatan with two units, a living-room and a
 bedroom purifier. After setup nothing talks to the Xiaomi cloud: the only cloud step is extracting each unit's
-token, once. In v0.72.1 this is the only indoor PM reader on the LAN that the node polls; the
+token, once. In v0.75.3 this is the only indoor PM reader on the LAN that the node polls; the
 AirGradient and PurpleAir adapters exist in `app/sources.py` and are not called (see [Sensors](sensors.md)).
 
 | | |
@@ -729,7 +729,7 @@ v0.33.1 (see below).
 ### Know this
 
 The README is behind the folder. It still describes "two `Environmental|Bioregion` cells and a monthly rule that
-says the land changed" and a land-change score from the AlphaEarth embeddings. In v0.72.1 the folder still ships one cell
+says the land changed" and a land-change score from the AlphaEarth embeddings. In v0.75.3 the folder still ships one cell
 and no `rules.yml`. The `earth` pack's README records why: the Earth Engine score (1 − cosine similarity of the
 mean embedding over 1 km, behind a key) and the per-pixel distance over 10 km from the public bucket are different
 quantities that did not agree (0.037 against 0.041 at node #1), so the Earth Engine one was retired and the
@@ -810,7 +810,7 @@ After a move it takes `planetai restart`, `planetai run place refresh` and a das
 
 Where somebody can go to make or fix something: the active fab labs nearest this node, from the Fab Lab
 Network directory, with what each one can do. This pack is the first thread from a reading to a place that can
-make or fix something. In v0.72.1 it names the place and stops there: no node has handed a job to a workshop,
+make or fix something. In v0.75.3 it names the place and stops there: no node has handed a job to a workshop,
 and nothing in the code sends one.
 
 | | |

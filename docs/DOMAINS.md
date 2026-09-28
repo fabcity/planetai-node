@@ -35,7 +35,7 @@ issue informs and never asks: it has no act-level rules, and land's cadence is a
 
 The declarations are `app/issues/*.yml` — one file per issue, holding its name in three languages,
 its metric and unit, its line and that line's source, which packs feed it, how each of the four
-distances (room · yard · ring · region, printed on the page as room · wall outside · street · model)
+distances (room · yard · ring · region, printed on the page as house · street · ring · region)
 is computed, and its sentence templates. **Adding a fifth issue is a fifth file plus a pack that
 declares its domain.** `tests/test_issues.py` asserts that by loading a synthetic `water.yml`, and it
 also asserts that every enabled pack's alerts reach an issue or the pack is named as deliberately not

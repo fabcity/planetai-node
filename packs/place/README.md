@@ -66,7 +66,7 @@ drawing:
     planetai restart                  # the coordinates are read once, at start
     planetai run place refresh        # replaces every feature with the ones around the new point
 
-Then reload the dashboard; the plan is held in the page for its lifetime, so the 60-second refresh will not redraw it.
+Then reload the dashboard; the plan is held in the page for its lifetime, so the page's own refresh will not redraw it.
 
 The node also notices by itself: the next poll sees that the stored run was centred somewhere else and refetches,
 and it clears the satellite footprints and the yearly series, which described the old circle. A correction smaller
