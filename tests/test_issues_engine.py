@@ -587,9 +587,14 @@ check(_D21["en"] == "This house has 5 stations of its own; the nearest other sta
       "has asked 101 times and somebody answered 7; the usual wait was 112 minutes.",
       f"digest.simple reads {_D21['en']!r}")
 _P21 = engine.replay(_F21, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["digest"]["prompts"]
-check(_P21["en"] == ["Why is heat what the node leads with?", "What should I do about alert #168?",
-                     "What does the line for heat mean?"], f"digest.prompts reads {_P21['en']}")
-check(all(len(_P21[l]) == 3 and all("{" not in q for q in _P21[l]) for l in I.LOCALES), f"digest.prompts: {_P21}")
+# The three the pane opens with are unchanged; after them, the pool it rotates through (28 Sep 2026).
+check(_P21["en"][:3] == ["Why is heat what the node leads with?", "What should I do about alert #168?",
+                         "What does the line for heat mean?"], f"digest.prompts opens with {_P21['en'][:3]}")
+check(len(_P21["en"]) > 3 and "What is air like right now?" in _P21["en"]
+      and any(re.fullmatch(r"What should I do about alert #(?!168\b)\d+\?", q) for q in _P21["en"]),
+      f"digest.prompts has no pool to rotate through: {_P21['en']}")
+check(all(len(_P21[l]) == len(_P21["en"]) <= engine.PROMPTS_MAX and len(set(_P21[l])) == len(_P21[l])
+          and all("{" not in q for q in _P21[l]) for l in I.LOCALES), f"digest.prompts: {_P21}")
 check(set(_D21) == set(I.LOCALES) and all(v and "{" not in v for v in _D21.values()),
       f"digest.simple is not whole in every locale: {_D21}")
 _now = datetime(2026, 9, 25, 12, 0, tzinfo=timezone.utc)

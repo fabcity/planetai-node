@@ -31,7 +31,8 @@
   --hair: var(--fc-grid-line);
   --raise: rgba(23, 23, 23, .035);
   --on-rings: #171717;      /* 5.26:1 on --rings in both registers; it must not flip */
-  --doc: var(--fc-neutral-200);  /* the documentation's panel, not the data's ground: --mute on it is 5.3:1 */
+  --doc: var(--fc-neutral-200);  /* the pane's ground, not the data's: --mute on it is 5.3:1 */
+  --doc-line: var(--fc-neutral-400);  /* a hairline on --doc; --hair is the same grey as --doc here */
 }
 :root[data-theme="dark"] {
   --mute: #A3A19F;
@@ -39,6 +40,7 @@
   --hair: rgba(249, 245, 242, .14);
   --raise: rgba(249, 245, 242, .05);
   --doc: var(--fc-neutral-800);  /* --mute on it is 5.5:1 */
+  --doc-line: var(--fc-neutral-600);
 }
 
 * { box-sizing: border-box }
@@ -1419,7 +1421,7 @@ body[data-lv="simple"] .lead .big { font-size: clamp(18px, 1.8vw, 24px); max-wid
 body.askopen { padding-right: 400px }
 body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; position: fixed; z-index: 20;
   top: 0; right: 0; bottom: 0; width: 400px; box-sizing: border-box; padding: 16px 20px 16px 22px;
-  background: var(--ground); border-left: 1.5px solid var(--ink); overflow: auto }
+  background: var(--doc); border-left: 1.5px solid var(--ink); overflow: auto }
 @media (max-width: 1279px) { body.askopen { padding-right: 340px } body.askopen #askpane { width: 340px } }
 @media (max-width: 859px) {
   body.askopen { padding-right: 0 }
@@ -1448,7 +1450,8 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .msg .bd { font: 400 14px/1.45 var(--fc-font-body); overflow-wrap: anywhere }
 #askpane .msg.you .bd { border: 1px solid var(--ink); padding: 8px 11px; display: inline-block; max-width: 100% }
 #askpane .msg.node .bd { border-left: 3px solid var(--ink); padding-left: 11px }
-#askpane .err { color: var(--signal-worse); margin: 6px 0 0 }
+/* Ink beside a red rule, not red text: red text was 4.2:1 on paper and 3.5:1 on the pane's grey. */
+#askpane .err { color: var(--ink); border-left: 3px solid var(--signal-worse); padding-left: 8px; margin: 6px 0 0 }
 /* The node working on an answer: the loading state's globe, small, and how long it has been asked. */
 #askpane .thinking { display: flex; align-items: center; gap: 10px }
 #askpane .thinking canvas { flex: none; width: 76px; height: 64px; display: block }
@@ -1459,10 +1462,12 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .ledger b { color: var(--ink); font-weight: 600 }
 #askpane .ledger i { display: inline-block; width: 6px; height: 6px; background: var(--rings); vertical-align: middle; margin-right: 4px }
 #askpane .card { border: 1.5px solid var(--ink); padding: 11px 13px; margin-top: 10px; display: block; min-width: 0 }
-/* A learn card is the documentation talking, not the node's data, and in an ink frame it read as one
-   more reading. It gets a panel of its own. A neutral, not a hue: every hue on this page is a role
-   (check_ui.py), and blue would say "data", which is the one thing this card is not. */
-#askpane .card.mark { background: var(--doc); border-color: transparent }
+/* The whole pane is the node talking about the data, never the data, so all of it sits on --doc and the
+   page's paper is only ever readings (Tomas, 28 Sep 2026). A neutral, not a hue: every hue on this page
+   is a role (check_ui.py), and blue would say "data", which is the one thing the pane is not. A learn
+   card is the documentation inside that, so it drops its ink frame for a hairline: the frames left in
+   the pane are the person's own words and the controls. */
+#askpane .card.mark { border: 1px solid var(--doc-line) }
 #askpane .card.mark .qt { margin: 0 0 8px; font: 400 14px/1.5 var(--fc-font-body) }
 #askpane .card .ch { display: flex; justify-content: space-between; gap: 8px; font: 800 10px var(--mono); letter-spacing: .08em; margin-bottom: 6px }
 #askpane .card .ch span + span { font-weight: 400; color: var(--mute) }

@@ -16,7 +16,9 @@ still searches this documentation.
    network`, or `runs online at <host>`), and says what it may do: `reads the page · records what you did ·
    changes nothing`. When it says `no model on this node yet`, see the last section.
 3. Press one of the three questions under the thread, or type one. The questions are written by the node from
-   tonight's figures: why the lead leads, the oldest open alert, what the lead's line means.
+   tonight's figures: why the lead leads, the oldest open alert, what the lead's line means, and then the other
+   issues and alerts. A new three shows each time the pane opens and after each answer, and a question you have
+   already asked in this conversation is not offered again.
 
 An answer arrives word by word. Under it a ledger line says which model answered and where it runs, and **read
 3 things** (or however many) opens to name every read the model made and how many milliseconds each took. When the first model does not answer, the next one does,
