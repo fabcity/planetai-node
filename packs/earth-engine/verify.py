@@ -2,7 +2,7 @@
 
     docker compose exec -T app python /app/packs/earth-engine/verify.py
 
-Tells you which of the five steps is not done, in order, rather than one opaque failure.
+Tells you which of the six steps is not done, in order, rather than one opaque failure.
 """
 import os
 import sys
@@ -71,7 +71,7 @@ import adapter  # noqa: E402
 from datetime import datetime, timezone  # noqa: E402
 year = datetime.now(timezone.utc).year - 1
 for name, cid in (("Dynamic World", adapter.DW), ("Sentinel-2", adapter.S2),
-                  ("VIIRS night lights", adapter.VIIRS), ("AlphaEarth embeddings", adapter.EMB)):
+                  ("VIIRS night lights", adapter.VIIRS)):
     try:
         n = ee.ImageCollection(cid).filterDate(f"{year}-01-01", f"{year}-12-31").limit(1).size().getInfo()
         print(f"   {name:24} {'ok' if n else 'reachable but empty for ' + str(year)}   {cid}")

@@ -20,7 +20,7 @@ with no account.
    `EE_PROJECT`, use the project id (`planetai-node`), not the service account's 21-digit number; Earth Engine reports that
    mistake as "project not found".
 4. `planetai packs install` (installs `earthengine-api`), `planetai restart`.
-5. `planetai run earth-engine verify`: library, settings, key, credentials, a real query, the four datasets. Names the step
+5. `planetai run earth-engine verify`: library, settings, key, credentials, a real query, the three datasets. Names the step
    that failed.
 
 Until configured the pack logs one line and idles.
