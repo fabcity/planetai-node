@@ -153,7 +153,7 @@ real act-level alert from a pack rule about the air or the heat does, and the lo
 **Now there is:** the whole loop, observe · decide · act · measure, on one page, and a ledger of who
 decided and who did what.
 
-> **Note.** `DECISION_REQUIRED=1` (Set up → Node, off by default) makes the node refuse an act with no
+> **Note.** `DECISION_REQUIRED=1` (Set up → Alerts, off by default) makes the node refuse an act with no
 > decision recorded against the same alert first, with HTTP 409, however the act arrives. It is for a node that
 > acts for a street rather than a house.
 

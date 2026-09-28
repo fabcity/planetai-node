@@ -44,8 +44,10 @@ _runs = [g for i, g in enumerate(_groups) if i == 0 or _groups[i - 1] != g]
 assert len(_runs) == len(set(_runs)), (
     f"a settings group is split across RUNTIME rather than declared in one block: {_runs}. All three "
     "surfaces print a heading when the group changes, so a strayed key prints a second heading for it.")
-assert _runs[0] == "issues", (
-    "issues leads the settings, on every surface: it is the one setting that says what this place is for")
+assert _runs[0] == "basics" and re.search(r'^\s*"NODE_ISSUES":\s*\(\s*"basics"', _runtime, re.M) \
+    and _runtime.index('"NODE_ISSUES"') < min(_runtime.index(f'"{k}"') for k in ("NODE_KIND", "ALERT_LOCALE", "UI_MODE")), (
+    "basics leads the settings, and NODE_ISSUES leads basics, on every surface: it is the one setting that says "
+    "what this place is for")
 
 # The dashboard must take the list and the order from the node, not keep its own copy. A group the node
 # gains was unreachable in the UI and visible in the CLI, and nothing said so.
@@ -109,7 +111,7 @@ assert "--max-time" in stub[stub.index("a Fab City project") - 400:stub.index("a
 
 # ---- every group the wizard can be pointed at is a real group
 groups = set(re.findall(r'^\s*"[A-Z_]+":\s*\("(\w+)"', settings, re.M))
-assert {"sources", "alerts", "node"} <= groups, f"settings.py groups moved: {groups}"
+assert {"basics", "sources", "alerts", "model", "keys", "sharing", "system"} <= groups, f"settings.py groups moved: {groups}"
 # ---- a pack's own keys reach /settings, or nobody can turn the pack on -------------------------
 #
 # Until 21 September 2026 they did not reach it at all. settings.py listed only its own RUNTIME

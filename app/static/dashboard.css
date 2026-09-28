@@ -1137,6 +1137,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .savebar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding-top:20px;margin-top:8px;position:sticky;bottom:0;background:var(--ground);border-top:1px solid var(--hair)}
 .savebar .sub{margin:0}
 .pack{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
+.packcard{border-top:1px solid var(--ink);margin-top:8px}
+.packcard>.pack{border-top:0}
+.packcard .field{padding-left:52px}
 .pack b{font:700 15px var(--fc-font-body)}
 .pack .help{font-size:13px;color:var(--mute);margin-top:5px;max-width:60ch;line-height:1.55}
 .tag{display:inline-block;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--hair);color:var(--mute);margin-left:8px}
@@ -1147,6 +1150,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--cells);outline-offs
 .tabs button.on{border-left:0;border-bottom-color:var(--ink)}
 .tabs .acts{margin:0;padding:0;border:0}
 .field{grid-template-columns:1fr}
+.packcard .field{padding-left:0}
 }
 
 /* The toast the pane speaks through. It had no rule of its own on the page this replaces, so it is

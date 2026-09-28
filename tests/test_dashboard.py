@@ -303,10 +303,10 @@ for _g in _groups:
         "menus are meant to read alike")
 # No group may render instead of its keys. One early return is allowed and is bootstrap, which is
 # read-only by nature; everything else falls through to the row loop.
-assert "extra = PACKS.map" in _js and "pane.innerHTML = PACKS.map" not in _js, \
-    "the packs group renders switches instead of its own two settings again"
-assert "pane.innerHTML = extra + rows.map(r => {" in _js, \
-    "a group's keys are no longer rendered after whatever extra that group adds"
+assert "let body = rows.filter(r => !r.pack).map(field).join('');" in _js and "body += boot;" in _js, \
+    "a group's own keys (PACKS_ENABLED and PACKS_ALLOW_CODE among them) are no longer rendered in every group"
+assert "packCard(p, rows.filter(r => r.pack === p.id).map(field)" in _js and "pane.innerHTML = PACKS.map" not in _js, \
+    "the packs group no longer draws each pack's own settings in its card"
 
 # AN UNKNOWN HASH IS AN ANCHOR ON THIS PAGE, NOT A VIEW.
 #

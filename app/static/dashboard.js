@@ -2685,7 +2685,7 @@ const chosen = (ctx, metrics) => {
 const carried = H => Object.keys(H.metrics).filter(v => H.sensors.some(s => s.read[v]));
 
 /* THE CAP. Fourteen stations is a list nobody reads to the end; three is a neighbourhood.
- * STATIONS_SHOWN (Set up → node, default 3) says how many of OTHER PEOPLE'S stations the list
+ * STATIONS_SHOWN (Set up → System, default 3) says how many of OTHER PEOPLE'S stations the list
  * draws, nearest first. This node's own hardware is never counted against it and never hidden: a
  * house putting its own sensors behind a press would be concealing the one thing it certainly may
  * show.
@@ -8137,15 +8137,14 @@ function toast(msg, bad) {
 }
 
 const GROUPS = {
-  issues: ['Issues', "What this place watches, in order. The first one is where the page starts; whichever has something to say takes the top of it. Your preset guessed from a map — change it. What matters here is decided by the people who live here."],
-  sources: ['Sources', 'What the node reads: your sensors, your account, and the public references around you.'],
-  alerts: ['Alerts', "Reports at the hours you choose, in this node's own time zone. Between them, only what you asked to be interrupted for."],
-  packs: ['Packs', 'Which packs load. Code packs stay off until you allow them; read one before you do.'],
-  integrations: ['Integrations', 'Home Assistant over MQTT, and the Reticulum bridge.'],
-  keys: ['Keys', 'What packs need to reach outside services. Secrets are never shown again once saved.'],
-  agent: ['Agent', 'Which model answers on Telegram. The strongest one the node can reach is used.'],
-  node: ['Node', 'Who this node reports upward to, and who may report to it \u2014 the tree. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
-  bootstrap: ['Bootstrap', 'Read once at start. Edit .env on the node and run planetai restart.'],
+  basics: ['Basics', "This place: what it watches, in order, what kind of node it is, its language and how its page opens. Its name, city, position and time zone are read once at start: change them in .env on the node, then run planetai restart."],
+  sources: ['Sources', "Sensors and data: what the node reads \u2014 your sensors, your account, and the public stations and portals around you. Sources that come as packs (Xiaomi purifiers, ThingData, forecasts) are switched on and set under Packs."],
+  alerts: ['Alerts', "Alerts and reports: reports at the hours you choose, in this node's own time zone; between them, only what you asked to be interrupted for; and how a loop is closed."],
+  model: ['Model', "Ask and model: which model answers, on the dashboard's ask pane and on Telegram alike. The strongest one the node can reach is used, and its keys are under Keys."],
+  packs: ['Packs', 'Which packs load, each with its own settings in its card. Code packs stay off until you allow them; read one before you do.'],
+  keys: ['Keys', 'Every secret in one place: the Telegram bot token, the model keys, and the tokens other machines present to this one. Each is masked once saved and never shown again.'],
+  sharing: ['Sharing', 'Sharing and network: who may read this node, and everything it sends or announces beyond this machine. Readings stay here; hourly means, Index cells and \u03c1 travel.'],
+  system: ['System', 'Tuning numbers, the layout Arrange mode saves, and what is read once at start: the port, extra containers, backups, the poll interval. Change those in .env on the node, then run planetai restart.'],
 };
 let GROUP = null, DESC = null, PACKS = [];
 // Whether this pane holds an edit nobody has saved. Changing tab used to re-render the pane from the
@@ -8197,7 +8196,9 @@ function movedSince(before, after, keys) {
 function groupsOf(desc) {
   const seen = [];
   for (const r of (desc.runtime || [])) if (!seen.includes(r.group)) seen.push(r.group);
-  if ((desc.bootstrap || []).length) seen.push('bootstrap');
+  /* The settings read once at start are shown read-only in the tab they belong to (settings.BOOTSTRAP_GROUP),
+     not in a tab of their own: a keeper looks for the time zone under Basics, not under "Bootstrap". */
+  for (const b of (desc.bootstrap || [])) if (b.group && !seen.includes(b.group)) seen.push(b.group);
   return seen;
 }
 const groupTitle = g => (GROUPS[g] || [g.charAt(0).toUpperCase() + g.slice(1)])[0];
@@ -8246,37 +8247,34 @@ async function loadSetup() {
   // the CLI. location.host is the address THIS reader used, which is the one that works.
   const addr = q('#paddr');
   if (addr) {
-    const show = GROUP === 'node';
+    const show = GROUP === 'basics';
     addr.hidden = !show;
     if (show) addr.textContent = `${W().openOnAnotherScreen} http://${location.host}/`;
   }
 
   const pane = q('#pane');
-  if (GROUP === 'bootstrap') {
-    pane.innerHTML = (DESC.bootstrap || []).map(b =>
-      `<div class="field"><div><label for="set-${esc(b.key)}">${esc(b.label)}</label>`
-      + `<div class="help">${esc(b.key)}</div></div>`
-      + `<div><input id="set-${esc(b.key)}" type="text" readonly value="${esc(b.value || '')}"`
-      + ` placeholder="not set"></div></div>`).join('');
-    return;
-  }
+  /* Read once at start, so read-only here and never sent: these fields carry no data-key. */
+  const boot = (DESC.bootstrap || []).filter(b => (b.group || 'system') === GROUP).map(b =>
+    `<div class="field"><div><label for="set-${esc(b.key)}">${esc(b.label)}<span class="src">read at start</span></label>`
+    + `<div class="help">${esc(b.key)} \u00b7 edit .env on the node, then run planetai restart</div></div>`
+    + `<div><input id="set-${esc(b.key)}" type="text" readonly value="${esc(b.value || '')}"`
+    + ` placeholder="not set"></div></div>`).join('');
   /* The pack switches are an EXTRA, never a replacement. This branch used to render them and return,
      so PACKS_ENABLED and PACKS_ALLOW_CODE — the two settings the group actually declares, and the
      two `planetai config` offers under `packs` — could not be reached from the dashboard at all. A
      keeper who read the CLI and then went looking for them in Set up did not find them. Every group
      now renders every key the node declares, and the switches sit above the two they write. */
-  let extra = '';
-  if (GROUP === 'packs') {
-    const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
-    const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
-    extra = PACKS.map(p =>
-      `<div class="pack"><button type="button" role="switch" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
+  const enabled = ((DESC.runtime || []).find(r => r.key === 'PACKS_ENABLED') || {}).value || '';
+  const only = enabled ? enabled.split(',').map(x => x.trim()) : null;
+  /* One card per pack: its switch, what it is, and its own settings under it. A pack whose keys the node
+     publishes but which /packs does not list (it is off) still gets its card, without a switch to draw. */
+  const packCard = (p, fields, switchable) => `<section class="packcard">`
+    + `<div class="pack">${switchable ? `<button type="button" role="switch" class="switch ${!only || only.includes(p.id) ? 'on' : ''}"`
       + ` aria-checked="${!only || only.includes(p.id)}" aria-labelledby="pack-${esc(p.id)}"`
-      + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>`
-      + `<div><b id="pack-${esc(p.id)}">${esc(p.name || p.id)}</b> <span class="tag">${esc(p.kind)}</span>`
-      + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
-      + `<div class="help">${esc(p.description || '')}</div></div></div>`).join('');
-  }
+      + ` data-pack="${esc(p.id)}"><span class="tr"></span></button>` : '<span></span>'}`
+    + `<div><b id="pack-${esc(p.id)}">${esc(p.name || p.id)}</b>${p.kind ? ` <span class="tag">${esc(p.kind)}</span>` : ''}`
+    + (p.domain ? ` <span class="tag">${esc(p.domain)}</span>` : '')
+    + `<div class="help">${esc(p.description || '')}</div></div></div>${fields}</section>`;
   /* One field. Every control here carries a name a screen reader can read and a label a pointer can
    * hit, which none of them did: axe found `label` critical eight times in the alerts group alone,
    * `button-name` critical on every toggle and `select-name` on the one select. A household keeper
@@ -8288,7 +8286,7 @@ async function loadSetup() {
    * the page draws the answer.
    */
   const rows = (DESC.runtime || []).filter(r => r.group === GROUP);
-  pane.innerHTML = extra + rows.map(r => {
+  const field = r => {
     const id = 'set-' + r.key, lbl = 'lbl-' + r.key;
     const src = `<span class="src">${r.source === 'gui' ? 'set here · overrides .env' : r.source === 'env' ? 'from .env' : 'default'}</span>`;
     // The node says which settings change what leaves this machine (settings.OUTWARD). They were in
@@ -8324,7 +8322,16 @@ async function loadSetup() {
         ? ` type="password" placeholder="${r.set ? 'Set — type to replace' : 'Not set'}"`
         : ` type="text" value="${esc(r.value)}" placeholder="${r.source === 'default' ? "not set; the node's own default applies" : ''}"`)
       + ` autocomplete="off">${err}</div></div>`;
-  }).join('') || `<div class="empty">Nothing to set in this group.</div>`;
+  };
+  let body = rows.filter(r => !r.pack).map(field).join('');
+  if (GROUP === 'packs') {
+    const listed = PACKS.map(p => p.id);
+    body += PACKS.map(p => packCard(p, rows.filter(r => r.pack === p.id).map(field).join(''), true)).join('')
+      + [...new Set(rows.filter(r => r.pack && !listed.includes(r.pack)).map(r => r.pack))]
+        .map(id => packCard({ id }, rows.filter(r => r.pack === id).map(field).join(''), false)).join('');
+  }
+  body += boot;              /* read-only, so after what can be set: Basics still opens on what this place watches */
+  pane.innerHTML = body || `<div class="empty">Nothing to set in this group.</div>`;
   DRAWN_PACKS = packSwitches();
   LOADED = formValues();
   DIRTY = false;
@@ -8508,7 +8515,7 @@ async function status() {
   draw();
 }
 
-/* Where a model runs, in the pane's words. Set up → agent decides which models the pane may ask (the same
+/* Where a model runs, in the pane's words. Set up → Model decides which models the pane may ask (the same
    settings as the Telegram bot); the pane's job is to say, every time, which one answered and where. */
 const whereWords = w => (!w || !w.where || w.where === 'this machine') ? 'runs on this machine'
   : w.where === 'your network' ? `runs on ${w.host}, on your network` : `runs online at ${w.host}`;
@@ -8518,7 +8525,7 @@ function leaves(s) {
   return `<span class="m out">${s.where === 'online'
     ? `your question and this page’s context leave your network, to ${esc(out.host)}`
     : `if the models before it do not answer, your question and this page’s context go online, to ${esc(out.host)}`}`
-    + ` · Set up → agent decides</span>`;
+    + ` · Set up → Model decides</span>`;
 }
 function head() {
   const s = STATUS || {};
@@ -8555,7 +8562,7 @@ function nomodel() {
       card('a model on this machine', `${rec.tag ? `${rec.tag}, ${rec.size || ''} on disk, is what this node suggests for its memory. ` : ''}`
         + 'On the node:', rec.pull || 'planetai agent local')
       + `<p class="or">or</p>`
-      + card('a model on another machine of yours', 'Under Set up \u2192 agent, the remote model\u2019s address '
+      + card('a model on another machine of yours', 'Under Set up \u2192 Model, the remote model\u2019s address '
         + 'and tag. Ollama on a laptop on this network:', 'AGENT_REMOTE_URL=http://<laptop>.local:11434/v1')
       + `<p class="or">or</p>`
       + card('your own agent, over MCP', 'From your own machine. `planetai agent` on the node prints the token.', mcp))

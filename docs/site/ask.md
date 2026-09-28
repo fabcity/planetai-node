@@ -61,7 +61,7 @@ no database row and no log line with a word in it: the log says which tool ran a
 
 ## Which model answers
 
-Set up → agent decides, for the pane and the Telegram bot alike, and so does `planetai config`:
+Set up → Model decides, for the pane and the Telegram bot alike, and so does `planetai config`:
 
 | setting | what it does |
 |---|---|
@@ -87,7 +87,7 @@ With no model set up, the pane says so, offers the documentation search, and sho
 - **A model on this machine.** The card names the tag `planetai agent local` suggests for this machine's memory
   and its size, with the line to run on the node: `planetai agent local pull <tag>`. `planetai agent local` sets up
   Ollama and the loop first; neither downloads anything until you pull.
-- **A model on another machine of yours.** Under Set up → agent, `AGENT_REMOTE_URL` and `AGENT_REMOTE_MODEL`: see
+- **A model on another machine of yours.** Under Set up → Model, `AGENT_REMOTE_URL` and `AGENT_REMOTE_MODEL`: see
   "Which model answers" above. It stays on your network.
 - **Your own agent, over MCP.** The card prints the `claude mcp add` line with this node's address. `planetai
   agent` on the node prints the token. A remote agent gets the whole MCP surface, which rounds positions,
