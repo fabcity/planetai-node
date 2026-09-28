@@ -7949,6 +7949,10 @@
     "pilot_relevance": [
       "global"
     ],
+    "places": [
+      "recife",
+      "sao-paulo"
+    ],
     "reviews": [],
     "scale": "city",
     "slug": "social/city/ibge-sidra",

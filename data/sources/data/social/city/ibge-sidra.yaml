@@ -10,6 +10,7 @@ status: candidate
 license: "No named licence. Open by Decreto nº 8.777/2016, the Brazilian federal Open Data Policy, which IBGE's own Dados Abertos page cites and under which it publishes its Plano de Dados Abertos. No Creative Commons statement anywhere on that page or the API docs."
 api: https://servicodados.ibge.gov.br/api/v3/agregados
 pilot_relevance: [global]
+places: [recife, sao-paulo]
 tags: [ibge, brazil, sidra, municipal, census, open-data-decree]
 added: 2026-09-23
 auth: none
