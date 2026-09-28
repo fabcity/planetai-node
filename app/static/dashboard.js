@@ -958,8 +958,11 @@ function refusedPage(said) {
    is the only thing on this page whose copy is interpolated rather than assembled. */
 const interp = (str, vals) => String(str || '')
   .replace(/\{(\w+)\}/g, (_, k) => (vals[k] == null ? '' : vals[k]));
+/* The pack half of a `pack/rule` id, or '' for one from before packs named their rules: a node's ledger
+   keeps those (node #1: `indoor_pm25_high`), and every section that names a rule's pack reads it here. */
+const rulePack = id => { const s = String(id); return s.includes('/') ? s.split('/')[0] : ''; };
 
-window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, meterBar, METER_CELLS, msToken,
+window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
 
@@ -3410,6 +3413,9 @@ function facts(ctx) {
     ring: all.filter(s => !s.local && s.kind === 'sensor').length,
     models: all.filter(s => s.kind === 'model').length,
     cells,
+    /* /cells is one row per value, and a cell can carry several (node #1, 28 Sep 2026: 10 rows over 6
+       cells, three packs feeding Environmental|Bioregion). "N of 20" counts cells, so it counts keys. */
+    cellCount: new Set(cells.map(c => c.cell)).size,
     /* `set` is truthful at every share level even when the value is masked, so a screen with no
        token can say a parent exists without being told where it is. */
     parentName: parent.set && parent.value && !/^\u2022+/.test(parent.value) ? parent.value : '',
@@ -3460,7 +3466,7 @@ window.PAI.register({
                 [w.street, n(d.ring, w.station, w.stations), d.ring > 0],
                 [w.models, n(d.models, w.model, w.models_), d.models > 0]];
     const OUT = [[w.means, d.parentName || w.parentNowhere, !!d.parentName],
-                 [w.cellsOut, interp(w.cellsN, { n: d.cells.length }), d.cells.length > 0],
+                 [w.cellsOut, interp(w.cellsN, { n: d.cellCount }), d.cellCount > 0],
                  [w.rhoOut, interp(w.rhoN, { closed: d.acted, total: d.asks }), d.asks > 0]];
     const kept = interp(w.kept, { n: (h.ingested || 0).toLocaleString() });
 
@@ -4412,7 +4418,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, pill, row, ask, sign } = window.K;
+const { esc, fmt, age, pill, row, ask, sign, rulePack } = window.K;
 
 /* The alerts in the fixture that asked for something, most recent first. `level: act` is the rule
  * saying a person should do something; `info` and `warn` said something and asked nothing. They
@@ -4557,17 +4563,20 @@ window.PAI.register({
         : ask(S.issues.headline, ISS[S.issues.headline], 'asks-rows'))
       + `<div class="reads" id="asks-rows" data-ref="funnel">`
       + rules.map(([rule, list]) => {
-        const [pack, name] = rule.split('/');
-          const r = ringsFor(list, open);
+        /* A rule id is `pack/rule` today, but a node's ledger keeps alerts from before packs named their
+           rules (node #1: `indoor_pm25_high`, `inside_worse_ventilate`), and splitting those left the rule
+           undefined, which threw and took the whole section down on 28 Sep 2026. */
+        const pack = rulePack(rule), id = pack ? rule.slice(pack.length + 1) : rule;
+        const r = ringsFor(list, open);
         const latest = list[0];
         /* LEVEL IN WEIGHT, never hue: an `act` ask is one somebody was asked to do something about
            and a `warn` is one a keeper should know about, so the first is drawn at full weight and
            the rest quieter. The level is the node's, per alert. */
-        return row({ id: `ask-rule-${esc(name)}`, component: 'askRule', ref: 'asks-rows',
+        return row({ id: `ask-rule-${esc(id)}`, component: 'askRule', ref: 'asks-rows',
           cls: latest.level === 'act' ? '' : 'quiet',
           cols: 'minmax(0,210px) minmax(0,1fr) auto',
-          left: `<span class="who"><b>${esc(name.replace(/_/g, ' '))}</b>`
-            + `<span class="m">${esc(pack)} · last ${esc(age(Math.round((captured
+          left: `<span class="who"><b>${esc(id.replace(/_/g, ' '))}</b>`
+            + `<span class="m">${pack ? `${esc(pack)} · ` : ''}last ${esc(age(Math.round((captured
               - Date.parse(latest.ts)) / 60000)))}</span></span>`,
           /* RAW, not escaped: row() escapes `line` itself, so escaping here sends &quot; and &amp;
              through to the screen. Node #1's alert text has no such character today, which is why
@@ -4575,7 +4584,7 @@ window.PAI.register({
              it showed. */
           line: String(latest.text || '').split('\n')[0].slice(0, 140),
           signs: r.html,
-          qty: [{ num: `asks.${esc(name)}.sent`, value: `${r.closed}/${r.total}`,
+          qty: [{ num: `asks.${esc(id)}.sent`, value: `${r.closed}/${r.total}`,
             cmp: `closed of asked in the window \u2014 an alert closes when somebody acted or the `
               + `outcome was measured, never merely by being seen`
               + `${r.unit > 1 ? ` \u00b7 one ring per ${r.unit}` : ''}` }],
@@ -4660,7 +4669,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, row } = window.K;
+const { esc, row, rulePack } = window.K;
 
 function name(id) { return String(id).split('/').pop().replace(/_/g, ' '); }
 
@@ -4709,7 +4718,7 @@ window.PAI.register({
           cls: r.cleared ? '' : 'quiet',
           cols: 'minmax(0,210px) minmax(0,1fr) auto',
           left: `<span class="who"><b>${esc(name(r.rule_id))}</b>`
-            + `<span class="m">${esc(String(r.rule_id).split('/')[0])}</span></span>`,
+            + `<span class="m">${esc(rulePack(r.rule_id))}</span></span>`,
           line: timed,
           qty: [{ num: `effect.${esc(name(r.rule_id).replace(/ /g, '-'))}`,
             value: `${r.cleared}/${r.acted}`,
