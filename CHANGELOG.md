@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **2026-09-28 · The pane shows the node working, and the loading screen fits a phone.** While the node works on
+  an answer, the pane draws the loading screen's globe, small and turning, with which model was asked and how
+  many seconds it has been. Each read the model makes appears as it finishes, not with the answer at the end;
+  if a model fails after reading, the next one starts from nothing (`retry` in the stream). The loading screen
+  says **PLANETAI loading**. On a phone and on any portrait screen, its list of reads was drawn over the bottom
+  of the globe's frame, and on a phone the globe ran into its own caption. Now they stack cleanly.
+- **2026-09-28 · Leaving learn closes what learn opened.** Turning learn off left its card in the ask pane,
+  over a page that no longer drew the mark it quoted. Now the card goes, and the pane closes if learn opened
+  it. A pane you opened yourself stays open with your conversation. The card itself sits on a grey panel,
+  not in an ink frame, so it no longer reads as one more reading.
 - **2026-09-28 · Set up is eight tabs, in the order you set a node up.** It was nine tabs in the code's own order:
   the tokens were in three of them, the settings for how the page looks sat beside the ones that decide who may
   read the node, and three pack settings appeared twice. Now: **Basics** (what this place watches, its kind,

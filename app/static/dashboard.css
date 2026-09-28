@@ -1319,10 +1319,17 @@ h1.brand { font: inherit }
 .asking .meters .meter { height: 10px; width: 100% }
 .asking .rule { font: 400 11.5px/1.6 var(--fc-font-body); color: var(--mute); margin: 14px 0 0;
   max-width: 48ch }
-@media (max-width: 899px) {
+/* One column on a narrow screen and on any portrait one. The frame gets a height of its own here
+   rather than its 1.55 ratio under a max-height: with both, its row came out shorter than the frame
+   itself, so the heading and the first reads were drawn over its bottom edge and its labels. */
+@media (max-width: 899px), (orientation: portrait) {
   .asking.on { grid-template-columns: minmax(0, 1fr) }
-  .asking .frame { max-height: 38vh }
+  .asking .frame { aspect-ratio: auto; height: min(38vh, 72vw) }
 }
+/* What this screen is, before anything on it has answered. */
+.asking .brand { grid-column: 1 / -1; margin: 0; font: 500 11px var(--mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--mute) }
+.asking .brand b { color: var(--ink); font-weight: 800 }
 @media (prefers-reduced-motion: reduce) { .asking .hd .blink { animation: none } }
 
 /* The header's ↻. A control, so it is a button and it says what it does to a screen reader. */
@@ -1442,6 +1449,11 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .msg.you .bd { border: 1px solid var(--ink); padding: 8px 11px; display: inline-block; max-width: 100% }
 #askpane .msg.node .bd { border-left: 3px solid var(--ink); padding-left: 11px }
 #askpane .err { color: var(--signal-worse); margin: 6px 0 0 }
+/* The node working on an answer: the loading state's globe, small, and how long it has been asked. */
+#askpane .thinking { display: flex; align-items: center; gap: 10px }
+#askpane .thinking canvas { flex: none; width: 76px; height: 64px; display: block }
+#askpane .thinking .m { font: 500 11px var(--mono); color: var(--mute) }
+#askpane .thinking .m b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums }
 #askpane .ledger { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 500 10.5px var(--mono); color: var(--mute);
   border-top: 1px dotted var(--ink); border-bottom: 1px dotted var(--ink); padding: 4px 0; margin-top: 8px }
 #askpane .ledger b { color: var(--ink); font-weight: 600 }

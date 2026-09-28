@@ -484,6 +484,8 @@ async function serveNodeAPI(route, u) {
   }
   if (u.pathname === '/ask') {
     const sse = (e, d) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`;
+    /* A model that takes its time, so the pane's waiting state can be looked at. */
+    if (process.env.PAI_ASK_SLOW) await new Promise(r => setTimeout(r, Number(process.env.PAI_ASK_SLOW)));
     const words = 'I have put MAP_TILES on a card. Nothing changed; you decide.'.split(' ');
     await route.fulfill({ status: 200, contentType: 'text/event-stream', body:
       sse('tools', { tool: 'issues', ms: 12 })
@@ -2520,6 +2522,31 @@ async function asking() {
       + `worst ${r.cost.worst.toFixed(2)} ms`);
     await h.browser.close();
   }
+  /* THE LAYOUT, added 28 September: on a phone and on a portrait screen the frame and the list of reads
+     stack, and the list starts below the frame. They used to overlap: the frame kept its 1.55 ratio under
+     a max-height, its row came out shorter than it, and the heading and the first reads were drawn over
+     its bottom edge (Tomas). And the screen says what it is, PLANETAI loading, before anything answers. */
+  for (const [w, hgt] of [[390, 844], [768, 1024], [1080, 1920]]) {
+    /* A real first paint, with motion on so the floor holds it up long enough to measure: opened by hand
+       over a page that has already loaded, the phone's overlap did not happen, and the check passed on it. */
+    const h = await open(tagged({ name: `asking_${w}`, view: 'now', w, state: 'populated' }), { reducedMotion: 'no-preference' });
+    await h.page.setViewportSize({ width: w, height: hgt });
+    await h.page.reload({ waitUntil: 'commit' });
+    await h.page.waitForTimeout(1500);
+    const g = await h.page.evaluate(() => {
+      const r = s => document.querySelector(s).getBoundingClientRect();
+      const up = window.PAI_ASKING && window.PAI_ASKING.up();
+      const frame = r('#asking .frame'), aside = r('#asking .aside');
+      return { up, frameBottom: frame.bottom, asideTop: aside.top, frameH: frame.height,
+        brand: ((document.querySelector('#asking .brand') || {}).textContent || '').replace(/\s+/g, ' ').trim() };
+    });
+    await h.browser.close();
+    if (!g.up) { fails.push(`at ${w}x${hgt} the loading state was already gone at 1.5 s, inside its floor`); continue; }
+    if (g.asideTop < g.frameBottom - 0.5) fails.push(`at ${w}x${hgt} the reads start ${Math.round(g.frameBottom - g.asideTop)} px inside the frame`);
+    if (g.frameH < 160) fails.push(`at ${w}x${hgt} the frame is ${Math.round(g.frameH)} px tall, too short for the globe`);
+    if (!/^PLANETAI loading$/i.test(g.brand)) fails.push(`the loading state does not say PLANETAI loading: "${g.brand}"`);
+  }
+  said.push('the frame and the reads stack without overlapping at 390x844, 768x1024 and 1080x1920, under PLANETAI loading');
   for (const f of fails) console.log('FAIL asking:', f);
   if (!fails.length) said.forEach(s => console.log('  asking ·', s));
   process.exit(fails.length ? 1 : 0);
@@ -2704,7 +2731,33 @@ async function askpane() {
       focus: document.activeElement && document.activeElement.id };
   });
   await h.page.screenshot({ path: path.join(OUT, 'askpane_cleared_1440.png') });
+  /* While the node works on an answer the pane draws the loading state's globe, turning on the page's one
+     loop, with the model and the seconds; when the answer lands the globe goes, and so does its frame. */
+  process.env.PAI_ASK_SLOW = '1500';
+  const wait = await h.page.evaluate(async () => {
+    const f = document.querySelector('#askpane [data-ask-send]');
+    /* The page's own loading state holds its floor with motion on, and leaving the loop mid-count
+       would cancel the globe's one subscriber out. */
+    for (let i = 0; i < 60 && window.PAI_ASKING.up(); i++) await new Promise(r => setTimeout(r, 100));
+    const before = window.PAI_RAF.size;
+    f.elements.q.value = 'what is the air like'; f.requestSubmit();
+    await new Promise(r => setTimeout(r, 1100));
+    const cv = document.querySelector('#askpane .msg.node:last-child canvas.askglobe');
+    const during = { globe: !!cv, drawn: !!(cv && cv.width > 1), subs: window.PAI_RAF.size - before, reduced: window.PAI_RAF.reduced(),
+      says: ((document.querySelector('#askpane .thinking') || {}).textContent || '').trim() };
+    for (let i = 0; i < 40 && document.querySelector('#askpane canvas.askglobe'); i++) await new Promise(r => setTimeout(r, 100));
+    return { during, after: { globe: !!document.querySelector('#askpane canvas.askglobe'), subs: window.PAI_RAF.size - before,
+      answer: /Nothing changed/.test(document.querySelector('#askpane .msg.node:last-child').textContent) } };
+  });
+  delete process.env.PAI_ASK_SLOW;
   await h.browser.close();
+  if (!wait.during.globe || !wait.during.drawn) fails.push(`while the node worked the pane drew no globe: ${JSON.stringify(wait.during)}`);
+  /* Under reduced motion PAI_RAF draws the globe once, still, and subscribes nothing: `drawn` above is that frame. */
+  if (wait.during.subs !== (wait.during.reduced ? 0 : 1))
+    fails.push(`the waiting globe has ${wait.during.subs} subscriber(s) on the page's loop with reduced motion ${wait.during.reduced ? 'on' : 'off'}`);
+  if (!/^asking qwen3\.5:4b · \d+ s$/.test(wait.during.says)) fails.push(`the waiting line should say which model and how long: "${wait.during.says}"`);
+  if (wait.after.globe || wait.after.subs !== 0 || !wait.after.answer)
+    fails.push(`once the answer landed the globe should be gone and off the loop: ${JSON.stringify(wait.after)}`);
   if (!got.composer) fails.push('with a model running the pane draws no composer');
   else {
     if (got.chips !== 3) fails.push(`the composer should open with three of the node's questions, got ${got.chips}`);
@@ -2744,7 +2797,7 @@ async function askpane() {
   if (!/provider/.test(on.fine || '')) fails.push('the fine print does not say an online provider keeps what its terms say');
   delete process.env.PAI_ASK_MODEL;
   for (const f of fails) console.log('FAIL askpane:', f);
-  if (!fails.length) console.log(`  askpane: no model = search (${none.hits} hits) and three cards; with one, MAP_TILES is a card `
+  if (!fails.length) console.log(`  askpane: no model = search (${none.hits} hits) and three cards; while it works, the globe turns; with one, MAP_TILES is a card `
     + 'with now, proposed, what leaves and undo, asking for the token; nothing written; an online model says so in the header, the ledger and the fine print');
   process.exit(fails.length ? 1 : 0);
 }
