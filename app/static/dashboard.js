@@ -6858,7 +6858,12 @@ function learnWalk() {
 function learnSync() {
   /* Switching out of learn mode takes the marks away, so it takes the panel with them: a panel
      open over a page with nothing to point at is a thing the reader cannot get back to. */
-  if (mode() !== 'learn') { if (LEARN_AT) learnClose(); return; }
+  if (mode() !== 'learn') {
+    if (LEARN_AT) learnClose();
+    /* route() draws the pane straight after this, so the pane only has to change its state here. */
+    if (window.PAI_ASK) window.PAI_ASK.learnOff();
+    return;
+  }
   const ln = document.querySelector('#learnbar .ln');
   if (ln && LEARN && LEARN.order.length) {
     const n = learnWalk().length;
@@ -7809,7 +7814,7 @@ document.addEventListener('click', ev => {
     ev.preventDefault();
     try { localStorage.setItem(MODE_KEY, mb.dataset.mode); } catch (e) { /* see register() */ }
     /* Learn opens the pane: a mark's quote lands in the thread, and the reader asks after it. */
-    if (mb.dataset.mode === 'learn' && window.PAI_ASK) window.PAI_ASK.open();
+    if (mb.dataset.mode === 'learn' && window.PAI_ASK) window.PAI_ASK.learnOn();
     /* Unlike the register, this one IS a re-render: which sections draw is the whole of the mode,
        and that is decided in render(), not in a stylesheet. */
     return route();
@@ -8469,6 +8474,9 @@ window.PAI_SETUP = { markup, load: loadSetup, toast, dirty: () => DIRTY };
 'use strict';
 const esc = s => window.K.esc(s);
 const OPEN = 'planetai_ask_open', THREAD = 'planetai_ask_thread', AT = 'planetai_ask_at';
+/* 'learn' when learn mode opened the pane, so leaving the mode can close what it opened and nothing
+   the person opened themselves. */
+const BY = 'planetai_ask_by';
 /* A thread nobody has added to for half an hour is over: the next person at a wall screen does not inherit the
    last one's conversation. It still survives a reload and every poll, which is why it is in sessionStorage. */
 const IDLE_MS = 30 * 60 * 1000;
@@ -8773,6 +8781,7 @@ document.addEventListener('click', ev => {
   if (t.closest('[data-ask-toggle]')) {
     ev.preventDefault();
     ss.set(OPEN, isOpen() ? '0' : '1');
+    ss.set(BY, '');
     return draw();
   }
   const fq = t.closest('[data-ask-find-q]');
@@ -8818,11 +8827,26 @@ function card(key, i, n) {
   const c = { role: 'card', key, i, n };
   if (t.length && t[t.length - 1].role === 'card') t[t.length - 1] = c; else t.push(c);
   keep(t);
+  if (!isOpen()) ss.set(BY, 'learn');
   ss.set(OPEN, '1');
   draw();
   const el = document.querySelector('#askpane [data-learn-card]');
   if (el) el.scrollIntoView({ block: 'nearest' });
 }
 
-window.PAI_ASK = { draw, card, open: () => { ss.set(OPEN, '1'); draw(); } };
+/* Learn mode opens the pane, and leaving it takes back what it brought: its cards come out of the
+   thread, and the pane closes if learn is what opened it. Before this, turning learn off left the
+   documentation's card standing in the pane over a page that no longer had the mark it quoted. */
+function learnOn() {
+  if (!isOpen()) ss.set(BY, 'learn');
+  ss.set(OPEN, '1');
+  draw();
+}
+function learnOff() {
+  const t = thread();
+  if (t.some(m => m.role === 'card')) keep(t.filter(m => m.role !== 'card'));
+  if (ss.get(BY) === 'learn') { ss.set(OPEN, '0'); ss.set(BY, ''); }
+}
+
+window.PAI_ASK = { draw, card, learnOn, learnOff };
 })();
