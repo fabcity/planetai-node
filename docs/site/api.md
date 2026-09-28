@@ -352,6 +352,7 @@ Alerts newest first, each with the id that `planetai act <id>` needs, and whethe
 | Name | Type | Default | Meaning |
 |---|---|---|---|
 | `limit` | int | 50 | 0..1000 |
+| `since_hours` | int | 0 | only the alerts of the last that many hours, 0..2160; 0 is no bound |
 
 Returns a list of `{id, ts, rule_id, sensor_id, level, text, acted_at}`. `acted_at` is the time of the first `acknowledged` or `acted` row for that alert, or null. A `decided` row does not set it.
 

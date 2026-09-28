@@ -33,6 +33,12 @@ shows it.
 | `act` | `act` | not run: a card with the page's own **I did this** form |
 | `admin` | `settings_set`, `run_pack_script`, `maintenance`, `report_now` | not run: a card, or a sentence naming where it is done |
 
+A tool result the model reads is cut at 8,000 characters, and when it is cut the model is told so, with the
+full length, rather than handed half a list as though it were all of it. For a count, `alerts` takes
+`since_hours` and answers with the count itself. After a tool result the model answers without thinking
+(`reasoning_effort: none`): the thinking is what chooses the tool, and after the result it was a minute or more of
+hidden text for one sentence. A server that refuses the field is asked again without it, and not sent it again.
+
 `settings_get`, `report_bundle` and `export_day` are read tools the pane is not given. The pane can be open on a
 wall at `SHARE_LEVEL=open`, and the person typing is not always the person who set the node up.
 

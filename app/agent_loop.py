@@ -188,6 +188,20 @@ def to_openai_tools(tools) -> list[dict]:
                                               "parameters": getattr(t, "input_schema", None) or getattr(t, "inputSchema", None) or {"type": "object", "properties": {}}}} for t in kept]
 
 
+TOOL_CAP = 8000
+NO_EFFORT: set = set()      # (url, model) of the servers that answered `reasoning_effort` with a 400
+
+
+def cap(text: str) -> str:
+    """A tool result, cut to TOOL_CAP characters, saying so when it was. Cut silently it was half a list the model
+    took for all of it: asked how many alerts there were in a day, it counted the ~16 that fit and answered 17
+    with 18 in the table."""
+    if len(text) <= TOOL_CAP:
+        return text
+    return text[:TOOL_CAP] + (f"\n[cut: this result is {len(text)} characters and only the first {TOOL_CAP} are "
+                              "shown. It is incomplete; ask for less, or for a count.]")
+
+
 async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | None, final: bool = False,
                system: str | None = None) -> dict:
     body = {"model": rung.model, "messages": messages, "temperature": 0.2}
@@ -197,7 +211,16 @@ async def chat(hc: httpx.AsyncClient, rung: Rung, messages: list, tools: list | 
         body["response_format"] = {"type": "json_schema", "json_schema": {"name": "answer", "schema": {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}}}
     if rung.small:
         messages[0] = {"role": "system", "content": (system or SYSTEM) + "\n/no_think"}
+    # After a tool result, answer without thinking. The thinking is what chooses a tool, and it is short; after
+    # the result it was a model counting a list in hidden text: on node #1, gemma4:31b wrote 1,162 to 1,871
+    # tokens of it at 9 to 16 a second for a 42-character sentence, and the pane waited one to three minutes.
+    # Off for that round, it wrote 19. A server that does not take the field says so with a 400, once.
+    elif messages[-1].get("role") == "tool" and (rung.url, rung.model) not in NO_EFFORT:
+        body["reasoning_effort"] = "none"
     r = await hc.post(f"{rung.url}/chat/completions", json=body, headers=rung.headers())
+    if r.status_code == 400 and body.pop("reasoning_effort", None):
+        NO_EFFORT.add((rung.url, rung.model))   # module-level: the pane builds its rungs again for every question
+        r = await hc.post(f"{rung.url}/chat/completions", json=body, headers=rung.headers())
     r.raise_for_status()
     return r.json()["choices"][0]["message"]
 
@@ -313,7 +336,7 @@ async def ask(session: ClientSession, tools: list[dict], user: str, history: lis
                         log.info("[%s] tool %s %s", rung.name, fn, json.dumps(shown)[:160])   # never the values of settings_set: a Telegram token or an AI key would land in the container log
                         try:
                             res = await session.call_tool(fn, args)
-                            text = "\n".join(getattr(x, "text", "") for x in res.content)[:8000]
+                            text = cap("\n".join(getattr(x, "text", "") for x in res.content))
                         except Exception as e:  # noqa: BLE001
                             # Log it as well as handing it to the model. A tool error the model turns into "I cannot
                             # reach the node" is invisible otherwise: the line above logs the call, and nothing logs
@@ -495,7 +518,7 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
                         elif fn in PANE_RUNS:
                             t0 = time.time()
                             try:
-                                text = scrub(await call(fn, args))[:8000]
+                                text = cap(scrub(await call(fn, args)))
                             except Exception as e:  # noqa: BLE001
                                 text = f"tool error: {type(e).__name__}"
                             ms = round((time.time() - t0) * 1000)

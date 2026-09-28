@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **2026-09-28 · A question that needs a tool answers in seconds, and counts right.** On node #1, "how many
+  alerts in the last 24 hours" took 165 seconds and answered 17 with 18 in the table. The tool took 73 ms. The
+  model then spent one to three minutes thinking in hidden text, counting a list that had been cut at 8,000
+  characters without saying so. Now the answer after a tool result is written without thinking; a result that
+  had to be cut says so; and `alerts` takes `since_hours` and answers with the count itself (`GET
+  /alerts?since_hours=24` too). The same holds for the Telegram bot, which asks through the same code.
+
 ## v0.75.7 — 2026-09-28 — the ask pane starts again when you want it to
 
 *The ask pane's conversation never ended: it survived reloads, grew to 40 messages, and sent 24 of them back
