@@ -298,5 +298,51 @@ settings._cache["rows"]["SHARE_LEVEL"] = "open"
 check(lan.get("/docs/search", params={"q": "air"}).status_code == 200, "at open the WiFi may search the docs")
 print("  docs: searched with no model; the routes follow SHARE_LEVEL")
 
+# ---------------------------------------------------------------- the pane's thread: how long it lasts, what is sent
+# Tomas, 28 Sep: the pane got busy and never cleared. The thread lived in sessionStorage with no way to end it, and
+# every question sent the last 24 messages back to the model. The thread's own functions are lifted out of the page
+# and run in node against a fake sessionStorage and a clock this test moves.
+import re, shutil, subprocess                                     # noqa: E401,E402
+_js = open("app/static/dashboard.js").read()
+_pane = re.search(r"const OPEN = 'planetai_ask_open'.*?\nconst recent = t => \{.*?\n\};", _js, re.S)
+check(_pane, "the ask pane's thread functions (OPEN .. recent) are no longer together in dashboard.js")
+check("messages: recent(t)" in _js, "send() must post recent(t), not the whole thread")
+check("data-ask-new" in _js and "forget(); draw();" in _js, "the pane has no working new-conversation button")
+if _pane and shutil.which("node"):
+    _prog = """
+const store = {}; let now = 1e12;
+globalThis.sessionStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+Date.now = () => now;
+""" + _pane.group(0) + """
+const out = {};
+const t = [{ role: 'card', key: 'air' }];
+for (let i = 0; i < 12; i++) t.push({ role: 'user', content: 'q' + i }, { role: 'assistant', content: 'a' + i });
+t.push({ role: 'user', content: 'now' }, { role: 'assistant', content: '' });
+out.sent = recent(t).map(m => m.content);
+out.firstRole = recent(t)[0].role;
+out.afterError = recent([{ role: 'assistant', content: 'a' }, { role: 'user', content: 'q' }]).map(m => m.role);
+keep(t); out.kept = thread().length;
+now += 29 * 60 * 1000; out.at29 = thread().length;
+keep(thread()); now += 31 * 60 * 1000; out.at31 = thread().length;
+keep([{ role: 'user', content: 'x' }]); forget(); out.forgotten = thread().length;
+store[THREAD] = JSON.stringify([{ role: 'user', content: 'old tab' }]); store[AT] = '';
+now += 99 * 60 * 1000; out.legacy = thread().length;
+console.log(JSON.stringify(out));
+"""
+    _r = subprocess.run(["node"], input=_prog, capture_output=True, text=True)
+    check(_r.returncode == 0, f"the pane's thread functions did not run in node: {_r.stderr[-400:]}")
+    if _r.returncode == 0:
+        _o = json.loads(_r.stdout)
+        check(_o["sent"] == ["q9", "a9", "q10", "a10", "q11", "a11", "now"],
+              f"a question must go with the last three exchanges and nothing older: {_o['sent']}")
+        check(_o["firstRole"] == "user" and _o["afterError"] == ["user"],
+              f"what is sent must start at a question of the person's: {_o['firstRole']}, {_o['afterError']}")
+        check(_o["kept"] == 27, f"the thread must keep what was said, the learn card included: {_o['kept']}")
+        check(_o["at29"] == 27, "a thread 29 minutes old must still be there")
+        check(_o["at31"] == 0, "a thread nobody added to for 31 minutes must be over")
+        check(_o["forgotten"] == 0, "new conversation must leave nothing behind")
+        check(_o["legacy"] == 1, "a thread from before this change has no clock, and must not vanish on load")
+    print("  pane: new conversation, over after 30 idle minutes, three exchanges sent")
+
 print("\n".join(f"  x {f}" for f in fails) or "  ask: private context, proposals not changes, nothing kept")
 sys.exit(1 if fails else 0)

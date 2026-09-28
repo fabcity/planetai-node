@@ -113,7 +113,8 @@ about what the page shows: the one Set up → agent names, the same as the Teleg
 `planetai agent local` set up on this machine, one on another machine of yours, or an online one only when
 `AGENT_PREFER` allows it; the pane's header names the model and where it runs. It runs the read tools and
 changes nothing: a setting or an **I did this** it reaches for is a card the person presses. The thread lives
-in the browser tab, and the node keeps nothing asked or answered. With no model it still searches this
+in the browser tab until it closes, **new conversation** is pressed, or half an hour passes with no question, and
+the node keeps nothing asked or answered. With no model it still searches this
 documentation (`GET /docs/search`). `UI_ASK=off` removes the toggle and the pane, and the wall never shows
 it. The whole of it is on [Ask the node](ask.md).
 

@@ -8452,15 +8452,33 @@ window.PAI_SETUP = { markup, load: loadSetup, toast, dirty: () => DIRTY };
 (function () {
 'use strict';
 const esc = s => window.K.esc(s);
-const OPEN = 'planetai_ask_open', THREAD = 'planetai_ask_thread';
+const OPEN = 'planetai_ask_open', THREAD = 'planetai_ask_thread', AT = 'planetai_ask_at';
+/* A thread nobody has added to for half an hour is over: the next person at a wall screen does not inherit the
+   last one's conversation. It still survives a reload and every poll, which is why it is in sessionStorage. */
+const IDLE_MS = 30 * 60 * 1000;
+/* How many exchanges go back to the model with a question. Every one of them is read again on every question,
+   so a long thread made each answer slower and vaguer, most of all on a small local model. */
+const TURNS = 3;
 const ss = {
   get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* a browser that stores nothing still asks */ } },
 };
 let STATUS;              /* undefined: not asked yet · {ok, ...}: /ask/status answered · {missing, ...}: 404 */
 let BUSY = false;
-const thread = () => { try { return JSON.parse(ss.get(THREAD) || '[]'); } catch (e) { return []; } };
-const keep = t => ss.set(THREAD, JSON.stringify(t.slice(-40)));
+const forget = () => { ss.set(THREAD, '[]'); ss.set(AT, ''); };
+const thread = () => {
+  const at = Number(ss.get(AT) || 0);
+  if (at && Date.now() - at > IDLE_MS) { forget(); return []; }
+  try { return JSON.parse(ss.get(THREAD) || '[]'); } catch (e) { return []; }
+};
+const keep = t => { ss.set(THREAD, JSON.stringify(t.slice(-40))); ss.set(AT, String(Date.now())); };
+/* What is sent: the last TURNS exchanges and the question, starting at a question of the person's. */
+const recent = t => {
+  const m = t.filter(x => x.content && x.role !== 'card').map(x => ({ role: x.role, content: x.content }))
+    .slice(-(2 * TURNS + 1));
+  while (m.length && m[0].role !== 'user') m.shift();
+  return m;
+};
 const loc = () => (window.K && window.K.LOC) || 'en';
 const docsUrl = h => `https://planetai.fab.city/docs/${String(h.page || '').replace(/\.md$/, '')}/`
   + (h.anchor ? `#${h.anchor}` : '');
@@ -8508,7 +8526,9 @@ function head() {
     : s.missing ? 'no model on this node yet' : s.refused ? 'not answering this page' : 'asking the node…';
   return `<div class="ah"><div><b>ask the node</b><span class="m"><i class="${s.ok && s.running ? '' : 'none'}"></i>`
     + `${who}</span>${s.ok ? leaves(s) : ''}<span class="m">reads the page · records what you did · changes nothing</span></div>`
-    + `<button type="button" class="x" data-ask-toggle aria-label="close the pane">close</button></div>`;
+    + `<span class="hx">${thread().length && !BUSY
+      ? `<button type="button" class="x" data-ask-new>new conversation</button>` : ''}`
+    + `<button type="button" class="x" data-ask-toggle aria-label="close the pane">close</button></span></div>`;
 }
 
 function search() {
@@ -8545,7 +8565,9 @@ function nomodel() {
 function ledger(m) {
   const ts = m.ledger || [];
   if (!ts.length && !m.done) return '';
-  return `<div class="ledger">${ts.map(t => `<span><b>${esc(t.tool)}</b> ${esc(String(t.ms))} ms</span>`).join('')}`
+  /* The tools an answer used, folded to one line: they are there to be checked, not read on every answer. */
+  return `<div class="ledger">${ts.length ? `<details><summary>read ${ts.length} thing${ts.length === 1 ? '' : 's'}</summary>`
+      + ts.map(t => `<span><b>${esc(t.tool)}</b> ${esc(String(t.ms))} ms</span>`).join('') + `</details>` : ''}`
     + (m.done ? `<span class="${m.done.where === 'online' ? 'out' : ''}"><i></i>${esc(m.done.model)} · `
       + `${esc(whereWords(m.done))}</span>` : '') + `</div>`;
 }
@@ -8620,7 +8642,8 @@ function composer() {
     + `<input id="ask-q" name="q" maxlength="4000" autocomplete="off" placeholder="ask about what this page shows"${BUSY ? ' disabled' : ''}>`
     + `<button type="submit"${BUSY ? ' disabled' : ''}>ask</button></div>`
     + `<p class="fine">${fixture ? '<b>This page is a capture, and the pane asks the live node</b>: its answers are about '
-      + 'tonight, not about what is drawn here. ' : ''}This conversation lives in this tab and is gone when you close it. `
+      + 'tonight, not about what is drawn here. ' : ''}This conversation lives in this tab. It is gone when you close it, `
+      + `press new conversation, or ask nothing for half an hour. `
       + `<b>The node keeps no transcript.</b>${(STATUS || {}).leaves ? ' An online model keeps what its provider’s own '
         + 'terms say it keeps.' : ''}</p></form>`;
 }
@@ -8665,7 +8688,7 @@ async function send(text) {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...(window.PAI_AUTH ? window.PAI_AUTH() : {}) },
       body: JSON.stringify({
-        messages: t.filter(m => m.content && m.role !== 'card').map(m => ({ role: m.role, content: m.content })).slice(-24),
+        messages: recent(t),
         view: view(), mode: window.PAI_MODE ? window.PAI_MODE() : 'advanced',
         focus: t.filter(m => m.role === 'card').map(m => m.key).pop() || null,
       }),
@@ -8727,6 +8750,10 @@ async function setIt(form) {
 document.addEventListener('click', ev => {
   const t = ev.target && ev.target.closest ? ev.target : null;
   if (!t) return;
+  if (t.closest('[data-ask-new]')) {
+    if (!BUSY) { forget(); draw(); const q = document.querySelector('#askpane #ask-q'); if (q) q.focus(); }
+    return;
+  }
   if (t.closest('[data-ask-toggle]')) {
     ev.preventDefault();
     ss.set(OPEN, isOpen() ? '0' : '1');

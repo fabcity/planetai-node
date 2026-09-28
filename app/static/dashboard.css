@@ -1426,6 +1426,9 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .ah .m i { display: inline-block; width: 8px; height: 8px; background: var(--rings); vertical-align: middle; margin-right: 6px }
 #askpane .ah .m i.none { background: none; border: 1.5px solid var(--mute) }
 #askpane .ah .x { font: 500 11px var(--mono); background: none; color: var(--ink); border: 1px solid var(--ink); padding: 3px 8px; cursor: pointer }
+#askpane .ah .hx { display: flex; flex-direction: column; align-items: flex-end; gap: 6px }
+#askpane .ledger summary { cursor: pointer }
+#askpane .ledger details span { margin-right: 10px }
 #askpane .thread { overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; padding: 14px 0 10px; min-height: 0 }
 #askpane .msg .who { font: 500 10px var(--mono); letter-spacing: .08em; color: var(--mute); margin-bottom: 4px }
 #askpane .msg .who b { color: var(--ink) }

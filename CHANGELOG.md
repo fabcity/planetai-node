@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **2026-09-28 · The ask pane starts again when you want it to.** The conversation stayed in the tab with no way
+  to end it: a reload kept it, it grew to 40 messages, and every question sent the last 24 back to the model, so
+  answers got slower and vaguer the longer it ran, most of all on a small model on the node. Now **new
+  conversation** in the pane's header clears it; a thread nobody has added to for half an hour starts fresh, so
+  the next person at a wall screen does not inherit it; only the question and the three exchanges before it are
+  sent; and the tools an answer read fold into one line, **read 3 things**, that opens on a press.
+
 ## v0.75.6 — 2026-09-28 — `planetai run` sees what Set up saved
 
 *v0.75.5 made a pack's own settings save from Set up, and the pack's adapter read them, but a pack script
