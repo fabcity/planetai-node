@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.75.4 — 2026-09-28 — the Earth Engine check runs to the end, and the docs match v0.75.3
+
+*`planetai run earth-engine verify` died at its last step on a setup that was fine. It finishes now. Also: every
+page a reader acts on was read against the code, and the README shows the node as it is.*
+
+- **`earth-engine verify` checks the datasets the pack reads.** Step 6 still named the AlphaEarth embeddings,
+  which left this pack for `earth` in v0.33.1, so a correct setup ended in `AttributeError` instead of "Setup is
+  good". It now checks Dynamic World, Sentinel-2 and VIIRS, the three the adapter uses. The pack's description
+  and README stop promising a land-change score. `tests/test_packs.py` runs `verify.py` end to end against a
+  fake Earth Engine and fails if it names anything the adapter does not have.
+- **The docs, read against v0.75.3.** The README opens on node #1's Now view and lists the ask pane, the three
+  modes, paper and dark, the model choice and node #2 in Menorca. Across `docs/`, the site pages, the pack
+  READMEs and `llms.txt`, what a reader would act on now matches the code: the ask pane's model ladder, Set up
+  saving only edited fields, the signer fingerprint, the licence decision of 25 September. One gap found on the
+  way is written down, not fixed: Set up sends pack keys that `PUT /settings` refuses.
+
 ## v0.75.3 — 2026-09-27 — Set up saves what you changed, and nothing else
 
 *Saving a Set up group used to write back every field in it, and in the packs group it wrote none of the
