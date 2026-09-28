@@ -1,0 +1,221 @@
+# The vocabulary of what a place makes, uses, fixes and takes in. Read by `POST /flows` (refuses a class not
+# here), by cells.yml (sums by tag), and by nobody else. The metric a logged line becomes is
+# `<action>.<class>.<ring>`; everything that does not vary per line lives here instead, keyed by the class:
+# its unit, what kind of thing it is, and which framework each number belongs to.
+#
+# actions   the ValueFlows verbs, unchanged, so any VF reader parses the metric without knowing this node:
+#           produce · consume · use · work · modify · transfer · cite
+#           (a repair is `modify`; VF has no repair verb. taking a design in is `cite`, not consume.)
+# rings     where it came from or went to, in the Index's own scales: cell · city · region · beyond
+# nature    physical · digital · information · service      (Nondominium Layer 0's word; ours to reuse)
+#           physical from `beyond` is PITO. digital or information from anywhere, and physical made in
+#           the cell, is DIDO. the ring alone cannot tell the two apart; the class's nature can.
+# pillar    the Index pillar the class's numbers feed: economic · environmental · social
+# ceiling   the ecological ceiling the class draws on. the nine planetary boundaries (Richardson et al. 2023)
+#           by their short names — climate · biosphere · land_system · freshwater · biogeochemical ·
+#           ocean_acid · aerosols · ozone · novel_entities — plus `materials`, which is NOT one of the nine:
+#           it is the material-footprint ceiling the Index already uses (UNEP IRP, tonnes per capita), kept
+#           apart so nobody reads a tonne of steel as a planetary boundary. `none` when the class draws on
+#           nothing measurable here (a design file, an hour of teaching).
+# foundation the doughnut social foundation a locally met need counts toward (Raworth's twelve, short names):
+#           food · water · health · education · income_work · peace_justice · political_voice · social_equity ·
+#           gender_equality · housing · networks · energy. `none` for a material or a part.
+#
+# One ceiling and one foundation per class, on purpose: a cell is one SQL statement returning one value, and a
+# class that counted toward two would be summed twice. Where a second applies, the note says so and the pack
+# does not count it. Units are canonical: a line in grams is refused, not converted — the person converts, once,
+# and the row is what they said.
+#
+# 26 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
+
+# ---- inputs a workshop or a kitchen takes in (consume; physical unless said) --------------------------------
+filament:
+  unit: kg
+  nature: physical
+  pillar: economic
+  ceiling: novel_entities
+  foundation: none
+  note: 3D-printing filament of any polymer. PLA is a bioplastic and still a novel entity at end of life.
+plastic_waste:
+  unit: kg
+  nature: physical
+  pillar: economic
+  ceiling: novel_entities
+  foundation: none
+  note: collected plastic going INTO a process (Precious Plastic shredder, a mould). Consume it here; what comes out is a `part`.
+wood:
+  unit: kg
+  nature: physical
+  pillar: economic
+  ceiling: land_system
+  foundation: none
+  note: plywood, timber, bamboo. Weigh the sheet; a 12 mm 1220×2440 plywood sheet is about 17 kg.
+metal:
+  unit: kg
+  nature: physical
+  pillar: economic
+  ceiling: materials
+  foundation: none
+  note: sheet, bar, stock, fasteners by weight. Material footprint, not a planetary boundary.
+textile:
+  unit: kg
+  nature: physical
+  pillar: economic
+  ceiling: materials
+  foundation: none
+  note: fabric, yarn, offcuts taken in. Water and dye burden is real and not counted here.
+electronics:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: materials
+  foundation: none
+  note: boards, modules, sensors taken in, counted not weighed. Nearly always `beyond`; that is the point of logging it.
+packaging:
+  unit: kg
+  nature: physical
+  pillar: environmental
+  ceiling: materials
+  foundation: none
+  note: what arrived around the things above. Logged by the lab that unpacks, never by a household.
+
+# ---- things made or fixed (produce, modify; physical) -------------------------------------------------------
+part:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: a made thing with no better class below. A printed bracket, a laser-cut panel, a moulded tile.
+filter:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: health
+  note: an air or water filter built to a published design (the make pack's Corsi-Rosenthal example).
+furniture:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: housing
+  note: a stool, a shelf, a bed frame. Made, or `modify` when fixed.
+tool:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: a jig, a hand tool, a machine part that lets the place make more.
+appliance:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: a fan, a rice cooker, a phone, a laptop. `modify` = repaired; `produce` would be a lie for most of these.
+garment:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: clothing and textiles fixed (`modify`) or sewn (`produce`).
+bicycle:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: fixed (`modify`) far more often than made. A motorbike counts here too; the class is "the thing you ride".
+
+# ---- needs a household or a lab meets on its own ground (produce = made here; consume = taken in) ----------
+food:
+  unit: kg
+  nature: physical
+  pillar: social
+  ceiling: land_system
+  foundation: food
+  note: grown, harvested, cooked from local produce. Nutrient flows (biogeochemical) are the second ceiling, not counted.
+water:
+  unit: litre
+  nature: physical
+  pillar: social
+  ceiling: freshwater
+  foundation: water
+  note: rain harvested, greywater reused (`produce` = made available here); mains or trucked (`consume`, ring says from where).
+electricity:
+  unit: kWh
+  nature: physical
+  pillar: social
+  ceiling: climate
+  foundation: energy
+  note: one class. `produce.electricity.cell` is the roof; `consume.electricity.beyond` is the grid. Rooftop solar's climate draw is near zero and is not netted here.
+fuel:
+  unit: litre
+  nature: physical
+  pillar: environmental
+  ceiling: climate
+  foundation: energy
+  note: LPG, petrol, diesel, kerosene. Litres, whatever the fuel; the unit is the person's bottle, not a tonne of CO2.
+compost:
+  unit: kg
+  nature: physical
+  pillar: environmental
+  ceiling: biogeochemical
+  foundation: none
+  note: organic waste turned into soil here (`produce`). The kilograms that did not go to landfill.
+waste_residual:
+  unit: kg
+  nature: physical
+  pillar: environmental
+  ceiling: materials
+  foundation: none
+  note: what left for landfill or burning. `transfer.waste_residual.beyond`; the ring is where it went.
+
+# ---- what travels as bits (the DIDO half) -------------------------------------------------------------------
+design:
+  unit: count
+  nature: digital
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: a design file taken in (`cite`, ring = where it was published) or published (`produce.design.cell`). An OKH manifest is one of these.
+dataset:
+  unit: count
+  nature: information
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: a dataset taken in or published. The node's own daily export is one, and is not logged; this is for a person's.
+guide:
+  unit: count
+  nature: information
+  pillar: economic
+  ceiling: none
+  foundation: education
+  note: a repair guide, a how-to, a story of a fix (ThingData's three). Written here = produce; followed = cite.
+
+# ---- time and machines (use, work; service) -----------------------------------------------------------------
+machine_hours:
+  unit: hour
+  nature: service
+  pillar: economic
+  ceiling: none
+  foundation: none
+  note: any machine, one class, until a resources table names them (docs/decisions/2026-09-28-flows.md, the ceiling of A).
+work_hours:
+  unit: hour
+  nature: service
+  pillar: social
+  ceiling: none
+  foundation: income_work
+  note: a person's time on making or fixing. Not the machine's, not a class.
+training_hours:
+  unit: hour
+  nature: service
+  pillar: social
+  ceiling: none
+  foundation: education
+  note: hours taught or attended (Fab Academy, a repair café's how-to, a school visit). `work` is the action.
