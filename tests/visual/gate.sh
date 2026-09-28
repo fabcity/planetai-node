@@ -7,7 +7,9 @@
 #   bash tests/visual/gate.sh
 #
 # Not in tests/all: Playwright lives in planetai-design's node_modules, not this repo's, so `make
-# test` must not depend on it. Run this before shipping instead.
+# test` must not depend on it. CI runs it as its own job, `visual` in .github/workflows/lint.yml,
+# against planetai-design at data/frozen_layer.txt's pin. Until 28 Sep 2026 nothing did, and it
+# was red from v0.73 to v0.75.6 under a green release. Run it before shipping as well.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
