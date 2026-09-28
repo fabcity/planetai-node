@@ -281,8 +281,41 @@ check(done.get("rung") == "local" and done.get("where") == "this machine",
       f"after the remote model failed, the answer should come from this machine: {done}")
 check(not any(e == "proposal" for e, _ in ev3), "a proposal from the model that failed reached the page")
 check("".join(d["text"] for e, d in ev3 if e == "token").strip() == "The local model answered.", "the answer is not the local one's")
+agent_loop._SKIPS.clear()
+
+# A model that READ something before falling over: its read went to the page as it happened, so the page is
+# told to forget it (`retry`) before the next model starts, and the answer's reads are only the next one's.
+async def reads_then_fails(hc, rung, messages, tools, final=False, system=None):
+    if rung.name == "remote":
+        if not any(m.get("role") == "tool" for m in messages):
+            return {"role": "assistant", "content": "", "tool_calls": [{"id": "s", "function": {"name": "sensors", "arguments": "{}"}}]}
+        raise httpx.ConnectError("macbook asleep")
+    return {"role": "assistant", "content": "The local model answered."}
+agent_loop.chat = reads_then_fails
+ev4 = [e for e, _ in events(local.post("/ask", json={"messages": [{"role": "user", "content": "anything"}]}).text)]
+check("tools" in ev4 and "retry" in ev4 and ev4.index("tools") < ev4.index("retry") < ev4.index("token"),
+      f"a failed model's read should be followed by retry before the answer: {ev4}")
+check("retry" not in [e for e, _ in ev], f"one model that answered sent a retry: {[e for e, _ in ev]}")
 agent_loop.chat = fake_chat
 agent_loop._SKIPS.clear()
+
+# A read is news the moment it is done: the pane hears `tools` BEFORE the model is asked again, not with the
+# answer at the end. Driven through pane() itself, because an HTTP test client hands back the whole body at once.
+async def _live():
+    calls = []
+    async def chat2(hc, rung, messages, tools, final=False, system=None):
+        calls.append(1)
+        if len(calls) == 1:
+            return {"role": "assistant", "content": "", "tool_calls": [{"id": "s", "function": {"name": "sensors", "arguments": "{}"}}]}
+        return {"role": "assistant", "content": "Done."}
+    async def call(name, args):
+        return "[]"
+    async for e, _ in agent_loop.pane([{"role": "user", "content": "x"}], "system", [], call, lambda t: t,
+                                      chat_fn=chat2, rungs=[agent_loop.Rung("remote", "http://x/v1", "m")]):
+        if e == "tools":
+            return len(calls)
+    return None
+check(asyncio.run(_live()) == 1, "the read reached the page only after the model had been asked again")
 for k in ("AGENT_REMOTE_URL", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY", "AGENT_PREFER"):
     ROWS.pop(k, None)
 print("  ladder: private never goes online, strongest says it does, a failed model hands over and leaves nothing behind")

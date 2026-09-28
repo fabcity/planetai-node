@@ -468,9 +468,11 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
     (tool and args; app/ask.py adds the setting's words), `token` for the answer, `done` with where the answer
     was produced, or `error`.
 
-    The rungs are tried in order, and a rung that fails is skipped for five minutes, as on Telegram. What a
-    failed attempt produced is dropped, not streamed: a proposal from a rung that then fell over must not sit
-    on the page beside the same proposal from the rung that answered.
+    The rungs are tried in order, and a rung that fails is skipped for five minutes, as on Telegram. A
+    proposal from a failed attempt is dropped, not streamed: it must not sit on the page beside the same
+    proposal from the rung that answered. A `tools` event goes out the moment its read is done, because
+    while a model works it is the only news the pane has; if that rung then fails, `retry` tells the pane
+    to forget the reads it was shown before the next rung starts.
 
     NOTHING IS LOGGED BUT THE TOOL'S NAME, ITS TIME AND WHICH RUNG ANSWERED. Not the question, not the answer,
     not the arguments: the pane keeps no transcript anywhere, and a log line is a transcript by another name.
@@ -484,6 +486,7 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
         for rung in order:
             convo = [{"role": "system", "content": system}, *messages]
             events: list[tuple[str, dict]] = []
+            read = False
             try:
                 for _ in range(MAX_ROUNDS):
                     msg = await chat_fn(hc, rung, convo, tools, system=system)
@@ -523,7 +526,8 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
                                 text = f"tool error: {type(e).__name__}"
                             ms = round((time.time() - t0) * 1000)
                             log.info("[pane] tool %s %d ms", fn, ms)
-                            events.append(("tools", {"tool": fn, "ms": ms}))
+                            read = True
+                            yield "tools", {"tool": fn, "ms": ms}
                         else:
                             text = "That tool is not offered here."
                         convo.append({"role": "tool", "tool_call_id": c.get("id", fn), "content": text})
@@ -536,6 +540,8 @@ async def pane(messages: list[dict], system: str, tools: list[dict], call, scrub
                 rung.skip_until = time.time() + SKIP_FOR
                 _SKIPS[rung.name] = rung.skip_until
                 log.warning("[pane] %s did not answer (%s); trying the next rung", rung.name, type(e).__name__)
+                if read:
+                    yield "retry", {"rung": rung.name}
     w = ", ".join(f"{where_of(r)['model']} ({where_of(r)['where']})" for r in order) or "none set up"
     yield "error", {"message": f"no model answered ({type(last).__name__ if last else 'none'}): tried {w}"}
 

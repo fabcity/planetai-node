@@ -406,7 +406,8 @@ if _fills:
 
 # And if a new uppercasing rule appears, somebody has to look at it against the check above rather than find out on
 # a wall. This list is the recorded set, dated 14 September 2026; it may shrink and it may not grow silently.
-UPPERCASE_KNOWN = {".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
+UPPERCASE_KNOWN = {".asking .brand",               # "PLANETAI loading", the page's own two words (28 Sep 2026)
+                   ".k", ".chip", ".unit .lab", ".index .state", ".ledger .iss", "table.figs th", ".field .src",
                    ".tag", ".netnode .note", ".wall .wi .st", ".wall .exit",
                    # Added 15 September 2026 with the modular page. Each one was read against the rule
                    # above: every one of these carries the PAGE's own words, or a fixed vocabulary of

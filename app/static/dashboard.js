@@ -6531,15 +6531,12 @@ const ASKING = (function () {
     cv._dpr = dpr;
   }
 
-  function draw(now) {
-    const c0 = performance.now();
-    const W = cv.width, H = cv.height, dpr = cv._dpr || 1;
-    if (!W || !H) return;
-    const ctx = cv.getContext('2d');
+  /* The cell and the glyphs, on any canvas: the loading state's own frame, and the ask pane's
+     answer while the node is working on it. `every` thins the glyphs for a small canvas, where 560
+     of them at 9 px would be one grey blot. */
+  function globe(ctx, W, H, dpr, ang, k, s, every, px) {
     const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.36;
-    const ink = css('--ink') || '#171717', cells = css('--cells') || '#20388D',
-      mute = css('--mute') || css('--muted') || '#6B6864';
-    ctx.clearRect(0, 0, W, H);
+    const ink = css('--ink') || '#171717', cells = css('--cells') || '#20388D';
     /* The cell this node stands in, in the one colour that means an H3 cell and nothing else. */
     ctx.beginPath();
     hex.forEach((pp, i) => {
@@ -6547,16 +6544,13 @@ const ASKING = (function () {
       if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
     });
     ctx.closePath();
-    ctx.strokeStyle = cells; ctx.lineWidth = 2 * dpr; ctx.globalAlpha = 0.9; ctx.stroke();
+    ctx.strokeStyle = cells; ctx.lineWidth = (px < 9 ? 1.5 : 2) * dpr; ctx.globalAlpha = 0.9; ctx.stroke();
     ctx.globalAlpha = 1;
 
-    const s = settle0 ? Math.min(1, (now - settle0) / settleFor) : 0;
-    const k = 1 - s;                            // 1 = a globe, 0 = flat in the cell's plane
-    const ang = (now - t0) / 1000 * SPIN * k;   // and it stops turning as it flattens
     const ca = Math.cos(ang), sa = Math.sin(ang);
-    ctx.font = `${(9 * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+    ctx.font = `${(px * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (let i = 0; i < N; i++) {
+    for (let i = 0; i < N; i += every) {
       const pp = pts[i];
       const x = pp.x * ca + pp.z * sa, z = -pp.x * sa + pp.z * ca;
       const depth = (z + 1) / 2;
@@ -6565,6 +6559,35 @@ const ASKING = (function () {
       ctx.fillText(pp.g, cx + x * R * (1 + 0.02 * k), cy + pp.y * R * (0.92 + 0.08 * k));
     }
     ctx.globalAlpha = 1;
+    return { cx, cy, R };
+  }
+
+  /* The pane's globe: a PAI_RAF tick for a small canvas of its own. It only turns, because in the
+     pane there is no /issues to settle into, only an answer that has not come yet. */
+  const born = performance.now();
+  function paneGlobe(now, el) {
+    const r = el.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.max(1, Math.round(r.width * dpr)), h = Math.max(1, Math.round(r.height * dpr));
+    if (el.width !== w || el.height !== h) { el.width = w; el.height = h; }
+    const ctx = el.getContext('2d');
+    ctx.clearRect(0, 0, w, h);
+    globe(ctx, w, h, dpr, (now - born) / 1000 * SPIN * 2, 1, 0, 3, 7);
+  }
+
+  function draw(now) {
+    const c0 = performance.now();
+    const W = cv.width, H = cv.height, dpr = cv._dpr || 1;
+    if (!W || !H) return;
+    const ctx = cv.getContext('2d');
+    const mute = css('--mute') || css('--muted') || '#6B6864', ink = css('--ink') || '#171717';
+    ctx.clearRect(0, 0, W, H);
+    const s = settle0 ? Math.min(1, (now - settle0) / settleFor) : 0;
+    const k = 1 - s;                            // 1 = a globe, 0 = flat in the cell's plane
+    const ang = (now - t0) / 1000 * SPIN * k;   // and it stops turning as it flattens
+    /* The globe keeps out of the bottom strip, where the spec block is written: on a phone the frame
+       is short enough that the two were drawn over each other. */
+    const { cx, cy, R } = globe(ctx, W, H - 44 * dpr, dpr, ang, k, s, 1, 9);
 
     /* Two labels tethered from the frame's corners, naming the endpoint being read and the last one
        that answered. Not decoration: they are the only place on this surface that says what the
@@ -6572,7 +6595,9 @@ const ASKING = (function () {
     const last = reads.length ? reads[reads.length - 1].path : '';
     const tether = [[asking, -0.55, -0.42, 0], [last, 0.52, 0.38, 1]];
     for (const [name, lx, ly, right] of tether) {
-      if (!name) continue;
+      /* The bottom-right label shares its corner with the spec block, and on a narrow frame there is
+         not room for both. The list of reads under the frame says the same thing. */
+      if (!name || (right && W / dpr < 560)) continue;
       const px = cx + lx * R, py = cy + ly * R;
       const ex = right ? W - 24 * dpr : 24 * dpr, ey = right ? H - 24 * dpr : 24 * dpr;
       ctx.strokeStyle = ink; ctx.lineWidth = 1 * dpr; ctx.globalAlpha = 0.55;
@@ -6757,6 +6782,7 @@ const ASKING = (function () {
       return this.cost();
     },
     up: () => on,
+    globe: paneGlobe,
     reads: () => reads.slice(),
     cost: () => ({ frames: cost.frames, mean: cost.frames ? cost.total / cost.frames : 0,
       worst: cost.worst }),
@@ -8489,6 +8515,8 @@ const ss = {
 };
 let STATUS;              /* undefined: not asked yet · {ok, ...}: /ask/status answered · {missing, ...}: 404 */
 let BUSY = false;
+let ASKED_AT = 0;        /* when the question in flight was sent, for the seconds under the globe */
+let GLOBE = null;        /* the canvas the globe is turning on, so a redraw can hand it over */
 const forget = () => { ss.set(THREAD, '[]'); ss.set(AT, ''); };
 const thread = () => {
   const at = Number(ss.get(AT) || 0);
@@ -8586,11 +8614,12 @@ function nomodel() {
     + `</div>`;
 }
 
-function ledger(m) {
+function ledger(m, live) {
   const ts = m.ledger || [];
   if (!ts.length && !m.done) return '';
-  /* The tools an answer used, folded to one line: they are there to be checked, not read on every answer. */
-  return `<div class="ledger">${ts.length ? `<details><summary>read ${ts.length} thing${ts.length === 1 ? '' : 's'}</summary>`
+  /* The tools an answer used, folded to one line: they are there to be checked, not read on every answer.
+     Open while the node is still working, because then they are the only news there is. */
+  return `<div class="ledger">${ts.length ? `<details${live ? ' open' : ''}><summary>read ${ts.length} thing${ts.length === 1 ? '' : 's'}</summary>`
       + ts.map(t => `<span><b>${esc(t.tool)}</b> ${esc(String(t.ms))} ms</span>`).join('') + `</details>` : ''}`
     + (m.done ? `<span class="${m.done.where === 'online' ? 'out' : ''}"><i></i>${esc(m.done.model)} · `
       + `${esc(whereWords(m.done))}</span>` : '') + `</div>`;
@@ -8646,12 +8675,33 @@ function learnCard(c) {
     + `<button type="button" class="pri" data-learn-step="1">next</button></div></div>`;
 }
 
-function msg(m, i) {
+/* While the node is working: the page's own globe, turning, with which model was asked and for how
+   long. It is the loading state's drawing, not a spinner: the same glyphs and the same cell. */
+function waiting() {
+  const s = STATUS || {};
+  return `<div class="thinking"><canvas class="askglobe" aria-hidden="true"></canvas>`
+    + `<span class="m">asking ${esc(s.model || 'the node')} · <b data-ask-clock>${clock()}</b></span></div>`;
+}
+const clock = () => `${Math.max(0, Math.round((Date.now() - ASKED_AT) / 1000))} s`;
+
+function msg(m, i, all) {
   if (m.role === 'card') return learnCard(m);
   if (m.role === 'user') return `<div class="msg you"><div class="who"><b>you</b></div><div class="bd">${esc(m.content)}</div></div>`;
+  const live = BUSY && i === all.length - 1;
   return `<div class="msg node"><div class="who"><b>the node</b></div><div class="bd" id="ask-m-${i}">`
-    + `${esc(m.content || (m.error ? '' : '…'))}${m.error ? `<p class="err">${esc(m.error)}</p>` : ''}</div>`
-    + (m.proposals || []).map(proposal).join('') + ledger(m) + `</div>`;
+    + (live && !m.content && !m.error ? waiting() : esc(m.content || (m.error ? '' : '…')))
+    + `${m.error ? `<p class="err">${esc(m.error)}</p>` : ''}</div>`
+    + (m.proposals || []).map(proposal).join('') + ledger(m, live) + `</div>`;
+}
+
+/* A redraw replaces the pane's markup, so the globe's canvas is a new element each time: the loop
+   lets go of the old one and takes the new one, and lets go of both when the answer is in. */
+function spin() {
+  const cv = document.querySelector('#askpane canvas.askglobe');
+  if (cv === GLOBE) return;
+  if (GLOBE) window.PAI_RAF.remove(GLOBE);
+  GLOBE = cv;
+  if (cv && window.PAI_ASKING) window.PAI_RAF.add(cv, window.PAI_ASKING.globe);
 }
 
 function composer() {
@@ -8672,7 +8722,9 @@ function composer() {
         + 'terms say it keeps.' : ''}</p></form>`;
 }
 
-function draw() {
+function draw() { paint(); spin(); }
+
+function paint() {
   const on = enabled() && isOpen() && view() !== 'wall';
   document.body.classList.toggle('askopen', on);
   document.querySelectorAll('[data-ask-toggle]').forEach(b => {
@@ -8687,7 +8739,7 @@ function draw() {
   const cards = t.filter(m => m.role === 'card');
   const fm = focusKey() && window.PAI_LEARN_MARK ? window.PAI_LEARN_MARK(focusKey()) : null;
   el.innerHTML = head() + (STATUS.ok && STATUS.running
-    ? `<div class="thread" id="ask-thread">${t.map(msg).join('')}</div>${composer()}`
+    ? `<div class="thread" id="ask-thread">${t.map((m, i) => msg(m, i, t)).join('')}</div>${composer()}`
     : STATUS.refused ? `<p class="plead">${esc(STATUS.said)}</p>`
     /* Without a model the card stands alone, and the chips search the documentation for its title. */
     : `<div class="askbody">`
@@ -8705,8 +8757,12 @@ async function send(text) {
   t.push({ role: 'user', content: text.trim() });
   const me = { role: 'assistant', content: '', ledger: [], proposals: [] };
   t.push(me);
-  keep(t); BUSY = true; draw();
+  keep(t); BUSY = true; ASKED_AT = Date.now(); draw();
   const i = t.length - 1;
+  const ticking = setInterval(() => {
+    const c = document.querySelector('#askpane [data-ask-clock]');
+    if (c) c.textContent = clock();
+  }, 1000);
   try {
     const r = await fetch('/ask', {
       method: 'POST',
@@ -8730,12 +8786,16 @@ async function send(text) {
         const ev = (block.match(/^event: (.+)$/m) || [])[1];
         const data = JSON.parse((block.match(/^data: (.+)$/m) || [])[1] || '{}');
         if (ev === 'token') {
+          const first = !me.content;
           me.content += data.text;
           const box = document.querySelector(`#ask-m-${i}`);
-          if (box) box.textContent = me.content;
+          /* The first word takes the globe away, which is a redraw; the rest only add text. */
+          if (first) draw(); else if (box) box.textContent = me.content;
           continue;
         }
-        if (ev === 'tools') me.ledger.push(data);
+        /* A model that fell over after reading something: the next one starts from nothing. */
+        if (ev === 'retry') me.ledger = [];
+        else if (ev === 'tools') me.ledger.push(data);
         else if (ev === 'proposal') me.proposals.push(data);
         else if (ev === 'done') me.done = data;
         else if (ev === 'error') me.error = data.message;
@@ -8745,6 +8805,7 @@ async function send(text) {
   } catch (e) {
     me.error = `The node did not answer: ${String((e && e.message) || e)}`;
   } finally {
+    clearInterval(ticking);
     me.content = me.content.trim();
     BUSY = false; keep(t); draw();
   }

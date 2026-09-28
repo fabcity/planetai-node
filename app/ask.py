@@ -252,7 +252,7 @@ def _sse(event: str, data: dict) -> str:
 
 @router.post("/ask")
 async def ask(body: AskBody):
-    """One answer, streamed as server-sent events: token · tools · proposal · done · error. Nothing is kept."""
+    """One answer, streamed as server-sent events: token · tools · retry · proposal · done · error. Nothing is kept."""
     order = rungs()
     if not order:
         raise HTTPException(404, "no model is set up on this node; `planetai agent local` sets one up")
