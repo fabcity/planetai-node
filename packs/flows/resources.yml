@@ -41,6 +41,10 @@
 #
 # 29 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
 #
+# Status: version 1.0, UNDER REVISION, open for contributions. Written September 2026, read by one person.
+# Propose a class, a unit or a correction as an issue or a PR on github.com/fabcity/planetai-node. A class is
+# frozen the day a place logs it; until then everything here can move.
+#
 # This file is the Fab City profile of ValueFlows, version 1.0: the verbs are ValueFlows' (CC BY-SA 4.0,
 # https://www.valueflo.ws/), paraphrased here and never copied; the classes, rings and tags are Fab City's,
 # CC BY 4.0. Published at https://planetai.fab.city/vocab/flows/1.0/ ; this file is the source of truth and the
