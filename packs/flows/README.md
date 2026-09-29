@@ -16,9 +16,11 @@ modify.appliance.cell      1
 cite.design.beyond         1
 ```
 
-*action* is a ValueFlows verb, unchanged: `produce` `consume` `use` `work` `modify` `transfer` `cite`.
-A repair is `modify`; a design taken in is `cite`, because it is neither used up nor worn. *class* is one of
-the 26 in `packs/flows/resources.yml`, and the class carries everything that does not vary per line: the
+*action* is a ValueFlows verb, unchanged: `produce` `consume` `use` `work` `modify` `transfer` `cite`
+`raise` `lower`. A repair is `modify`; a design taken in is `cite`, because it is neither used up nor worn;
+`raise` and `lower` are an inventory that changed without a process, a hatch or a death, and exist for living
+things. *class* is one of
+the 29 in `packs/flows/resources.yml`, and the class carries everything that does not vary per line: the
 unit, the nature of the thing (physical, digital, information, service), the Index pillar, the
 planetary-boundary ceiling, the doughnut foundation, and the EW-MFA bin. *ring* is where it came from or went
 to, in the Index's scales: `cell` `city` `region` `beyond`. Unit, nature and every tag come from the class, so
@@ -28,6 +30,16 @@ the metric carries only what varies.
 single thing a place made. The ring says where; the class's nature says what kind of thing. Physical from
 `beyond` is a product in: PITO. Digital from anywhere, and physical made in the cell, is DIDO. The ring
 alone cannot tell a design file from a finished chair, both arriving from Hamburg; the nature can.
+
+**Nature, and what a plant becomes** — living things are classes like any other: `plant`, `animal` and
+`habitat` (square metres of ground made living), the three that draw on the `biosphere` and `land_system`
+ceilings from the giving side. `produce.plant.cell 40` is forty trees in the ground. A harvest is two lines,
+`consume.plant.cell 1` and `produce.wood.cell 30`, and the row does not link them; the class does. `yields:`
+on each living class names what a harvest of it can become, which is ValueFlows' knowledge layer, a recipe,
+in one line. The ring carries the accounting: wood that grew here is `produce.wood.cell`, wood that came in
+is `consume.wood.beyond`, and the same kilogram is never both. Nature as a named agent, this river or that
+mangrove receiving a flow, is what ValueFlows' ecology page describes and what the wire document's
+provider and receiver fields are for; on the node the ring is as much as a household will type.
 
 **The profile** — this pack's vocabulary is the Fab City profile of ValueFlows, `fabcity-flows` 1.0, published
 at https://planetai.fab.city/vocab/flows/1.0/ with one URI per class. ValueFlows is CC BY-SA 4.0 and its

@@ -4,8 +4,10 @@
 # its unit, what kind of thing it is, and which framework each number belongs to.
 #
 # actions   the ValueFlows verbs, unchanged, so any VF reader parses the metric without knowing this node:
-#           produce · consume · use · work · modify · transfer · cite
-#           (a repair is `modify`; VF has no repair verb. taking a design in is `cite`, not consume.)
+#           produce · consume · use · work · modify · transfer · cite · raise · lower
+#           (a repair is `modify`; VF has no repair verb. taking a design in is `cite`, not consume.
+#           raise and lower are an inventory that changed without a process: a hatch, a death, a count
+#           corrected. they exist for living things and should be rare on anything else.)
 # rings     where it came from or went to, in the Index's own scales: cell · city · region · beyond
 # nature    physical · digital · information · service      (Nondominium Layer 0's word; ours to reuse)
 #           physical from `beyond` is PITO. digital or information from anywhere, and physical made in
@@ -27,12 +29,17 @@
 #           Plastics sit under fossil_energy, as EW-MFA files them; a bioplastic filament is still logged there,
 #           because the bin is about the account, not the chemistry.
 #
+# yields    on a living class only: the classes a harvest of it can become. This is ValueFlows' knowledge layer
+#           (a recipe) in one line. The node stores no link between the two rows of a harvest — `consume.plant.cell 1`
+#           and `produce.wood.cell 30` are two lines, and the ring carries the accounting — but the list says
+#           which second lines make sense, and a process link, when one exists, is checked against it.
+#
 # One ceiling and one foundation per class, on purpose: a cell is one SQL statement returning one value, and a
 # class that counted toward two would be summed twice. Where a second applies, the note says so and the pack
-# does not count it. Units are canonical: a line in grams is refused, not converted — the person converts, once,
-# and the row is what they said.
+# does not count it. Units are canonical (kg · count · litre · kWh · hour · m2): a line in grams is refused, not
+# converted — the person converts, once, and the row is what they said.
 #
-# 26 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
+# 29 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
 #
 # This file is the Fab City profile of ValueFlows, version 1.0: the verbs are ValueFlows' (CC BY-SA 4.0,
 # https://www.valueflo.ws/), paraphrased here and never copied; the classes, rings and tags are Fab City's,
@@ -204,6 +211,35 @@ waste_residual:
   foundation: none
   mfa: none
   note: what left for landfill or burning. `transfer.waste_residual.beyond`; the ring is where it went.
+
+# ---- living things and ground (the side that gives back; produce = planted, made, born) --------------------
+plant:
+  unit: count
+  nature: physical
+  pillar: environmental
+  ceiling: biosphere
+  foundation: none
+  mfa: none
+  yields: [wood, food, textile, compost]
+  note: a tree, a seedling, a mangrove propagule put in the ground (`produce`) or given away (`transfer`). Harvesting one is `consume.plant`; what it became is a second line.
+animal:
+  unit: count
+  nature: physical
+  pillar: social
+  ceiling: biosphere
+  foundation: food
+  mfa: none
+  yields: [food, textile, compost]
+  note: kept. Born is `raise`, lost is `lower`, given is `transfer`, eaten is `consume`. Chickens and ducks by the head, a hive counts as one, fish in a pond by the hundred.
+habitat:
+  unit: m2
+  nature: physical
+  pillar: environmental
+  ceiling: land_system
+  foundation: none
+  mfa: none
+  yields: [food, plant, wood]
+  note: "ground made living, in whole square metres: a garden bed, a reef module, a replanted bank, a greened roof. What grows on it is logged as its own class."
 
 # ---- what travels as bits (the DIDO half) -------------------------------------------------------------------
 design:
