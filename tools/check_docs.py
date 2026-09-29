@@ -83,6 +83,10 @@ PROPOSED = {
     # same gate that fired for the licence record fires for this one. What replaces it is the promise
     # the spec itself makes: tests/test_rho.py lands with Phase 2's code and deletes this line.
     "docs/SPEC_rho.md": {"tests/test_rho.py"},
+    # docs/decisions/2026-09-28-flows.md decides the pack; its README and vocabulary land first, the
+    # pack.yaml with the code in v0.76 (check_site holds the pack count to the site's data.js, so the
+    # pack.yaml waits for the release that changes both). The commit that adds it deletes this line.
+    "packs/flows/README.md": {"packs/flows/pack.yaml"},
 }
 # Names a page uses on purpose that are not the tree's: a page saying a command does NOT exist, the
 # reticulum bridge's own routes, the worked example a reader builds. Same shape as PROPOSED, and the
@@ -151,7 +155,7 @@ for doc in DOCS:
                 errs.append(f"{doc}: documents endpoint `{ep}`, which app/main.py does not define")
 
     for pk in set(re.findall(r"`packs/([a-z0-9-]+)/", text)) | set(re.findall(r"\bpacks/([a-z0-9-]+)\b", text)):
-        if pk not in PACKS and pk not in EXAMPLE_PACKS:
+        if pk not in PACKS and pk not in EXAMPLE_PACKS and f"packs/{pk}/pack.yaml" not in proposed:
             errs.append(f"{doc}: refers to pack `{pk}`, which does not exist")
 
 # Every declared channel must be a metric some adapter actually produces. A declaration for a metric that does not
