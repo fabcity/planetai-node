@@ -39,7 +39,7 @@
 # does not count it. Units are canonical (kg · count · litre · kWh · hour · m2): a line in grams is refused, not
 # converted — the person converts, once, and the row is what they said.
 #
-# 29 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
+# 30 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
 #
 # Status: version 1.0, UNDER REVISION, open for contributions. Written September 2026, read by one person.
 # Propose a class, a unit or a correction as an issue or a PR on github.com/fabcity/planetai-node. A class is
@@ -165,6 +165,14 @@ bicycle:
   foundation: none
   mfa: none
   note: fixed (`modify`) far more often than made. A motorbike counts here too; the class is "the thing you ride".
+goods:
+  unit: count
+  nature: physical
+  pillar: economic
+  ceiling: materials
+  foundation: none
+  mfa: none
+  note: "a finished product with no better class: soap, a bucket, a battery, a charger. Bought is `consume` with the ring it came from; sold or given is `transfer`; on a shelf it is a stock. The class a shelf survey files most things under."
 
 # ---- needs a household or a lab meets on its own ground (produce = made here; consume = taken in) ----------
 food:
