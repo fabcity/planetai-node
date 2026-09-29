@@ -20,6 +20,12 @@
 # foundation the doughnut social foundation a locally met need counts toward (Raworth's twelve, short names):
 #           food · water · health · education · income_work · peace_justice · political_voice · social_equity ·
 #           gender_equality · housing · networks · energy. `none` for a material or a part.
+# mfa       the Eurostat economy-wide material flow account category the class rolls up to, so a cell's tonnage
+#           lands in the same four bins the Index compares regions against: biomass · metal_ores ·
+#           non_metallic_minerals · fossil_energy. `none` for a product counted not weighed, for water and
+#           electricity (EW-MFA excludes both), for an outflow, and for anything that is not a material.
+#           Plastics sit under fossil_energy, as EW-MFA files them; a bioplastic filament is still logged there,
+#           because the bin is about the account, not the chemistry.
 #
 # One ceiling and one foundation per class, on purpose: a cell is one SQL statement returning one value, and a
 # class that counted toward two would be summed twice. Where a second applies, the note says so and the pack
@@ -27,6 +33,11 @@
 # and the row is what they said.
 #
 # 26 classes. Add one by adding a block; check_rules.py refuses a metric whose class is not here.
+#
+# This file is the Fab City profile of ValueFlows, version 1.0: the verbs are ValueFlows' (CC BY-SA 4.0,
+# https://www.valueflo.ws/), paraphrased here and never copied; the classes, rings and tags are Fab City's,
+# CC BY 4.0. Published at https://planetai.fab.city/vocab/flows/1.0/ ; this file is the source of truth and the
+# site copy is made from it. The alignments per verb (EPCIS/CBV, PROV-O) are in README.md beside this file.
 
 # ---- inputs a workshop or a kitchen takes in (consume; physical unless said) --------------------------------
 filament:
@@ -35,6 +46,7 @@ filament:
   pillar: economic
   ceiling: novel_entities
   foundation: none
+  mfa: fossil_energy
   note: 3D-printing filament of any polymer. PLA is a bioplastic and still a novel entity at end of life.
 plastic_waste:
   unit: kg
@@ -42,6 +54,7 @@ plastic_waste:
   pillar: economic
   ceiling: novel_entities
   foundation: none
+  mfa: fossil_energy
   note: collected plastic going INTO a process (Precious Plastic shredder, a mould). Consume it here; what comes out is a `part`.
 wood:
   unit: kg
@@ -49,6 +62,7 @@ wood:
   pillar: economic
   ceiling: land_system
   foundation: none
+  mfa: biomass
   note: plywood, timber, bamboo. Weigh the sheet; a 12 mm 1220×2440 plywood sheet is about 17 kg.
 metal:
   unit: kg
@@ -56,6 +70,7 @@ metal:
   pillar: economic
   ceiling: materials
   foundation: none
+  mfa: metal_ores
   note: sheet, bar, stock, fasteners by weight. Material footprint, not a planetary boundary.
 textile:
   unit: kg
@@ -63,6 +78,7 @@ textile:
   pillar: economic
   ceiling: materials
   foundation: none
+  mfa: biomass
   note: fabric, yarn, offcuts taken in. Water and dye burden is real and not counted here.
 electronics:
   unit: count
@@ -70,6 +86,7 @@ electronics:
   pillar: economic
   ceiling: materials
   foundation: none
+  mfa: metal_ores
   note: boards, modules, sensors taken in, counted not weighed. Nearly always `beyond`; that is the point of logging it.
 packaging:
   unit: kg
@@ -77,6 +94,7 @@ packaging:
   pillar: environmental
   ceiling: materials
   foundation: none
+  mfa: biomass
   note: what arrived around the things above. Logged by the lab that unpacks, never by a household.
 
 # ---- things made or fixed (produce, modify; physical) -------------------------------------------------------
@@ -86,6 +104,7 @@ part:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: a made thing with no better class below. A printed bracket, a laser-cut panel, a moulded tile.
 filter:
   unit: count
@@ -93,6 +112,7 @@ filter:
   pillar: economic
   ceiling: none
   foundation: health
+  mfa: none
   note: an air or water filter built to a published design (the make pack's Corsi-Rosenthal example).
 furniture:
   unit: count
@@ -100,6 +120,7 @@ furniture:
   pillar: economic
   ceiling: none
   foundation: housing
+  mfa: none
   note: a stool, a shelf, a bed frame. Made, or `modify` when fixed.
 tool:
   unit: count
@@ -107,6 +128,7 @@ tool:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: a jig, a hand tool, a machine part that lets the place make more.
 appliance:
   unit: count
@@ -114,6 +136,7 @@ appliance:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: a fan, a rice cooker, a phone, a laptop. `modify` = repaired; `produce` would be a lie for most of these.
 garment:
   unit: count
@@ -121,6 +144,7 @@ garment:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: clothing and textiles fixed (`modify`) or sewn (`produce`).
 bicycle:
   unit: count
@@ -128,6 +152,7 @@ bicycle:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: fixed (`modify`) far more often than made. A motorbike counts here too; the class is "the thing you ride".
 
 # ---- needs a household or a lab meets on its own ground (produce = made here; consume = taken in) ----------
@@ -137,6 +162,7 @@ food:
   pillar: social
   ceiling: land_system
   foundation: food
+  mfa: biomass
   note: grown, harvested, cooked from local produce. Nutrient flows (biogeochemical) are the second ceiling, not counted.
 water:
   unit: litre
@@ -144,6 +170,7 @@ water:
   pillar: social
   ceiling: freshwater
   foundation: water
+  mfa: none
   note: rain harvested, greywater reused (`produce` = made available here); mains or trucked (`consume`, ring says from where).
 electricity:
   unit: kWh
@@ -151,6 +178,7 @@ electricity:
   pillar: social
   ceiling: climate
   foundation: energy
+  mfa: none
   note: one class. `produce.electricity.cell` is the roof; `consume.electricity.beyond` is the grid. Rooftop solar's climate draw is near zero and is not netted here.
 fuel:
   unit: litre
@@ -158,6 +186,7 @@ fuel:
   pillar: environmental
   ceiling: climate
   foundation: energy
+  mfa: fossil_energy
   note: LPG, petrol, diesel, kerosene. Litres, whatever the fuel; the unit is the person's bottle, not a tonne of CO2.
 compost:
   unit: kg
@@ -165,6 +194,7 @@ compost:
   pillar: environmental
   ceiling: biogeochemical
   foundation: none
+  mfa: biomass
   note: organic waste turned into soil here (`produce`). The kilograms that did not go to landfill.
 waste_residual:
   unit: kg
@@ -172,6 +202,7 @@ waste_residual:
   pillar: environmental
   ceiling: materials
   foundation: none
+  mfa: none
   note: what left for landfill or burning. `transfer.waste_residual.beyond`; the ring is where it went.
 
 # ---- what travels as bits (the DIDO half) -------------------------------------------------------------------
@@ -181,6 +212,7 @@ design:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: a design file taken in (`cite`, ring = where it was published) or published (`produce.design.cell`). An OKH manifest is one of these.
 dataset:
   unit: count
@@ -188,6 +220,7 @@ dataset:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: a dataset taken in or published. The node's own daily export is one, and is not logged; this is for a person's.
 guide:
   unit: count
@@ -195,6 +228,7 @@ guide:
   pillar: economic
   ceiling: none
   foundation: education
+  mfa: none
   note: a repair guide, a how-to, a story of a fix (ThingData's three). Written here = produce; followed = cite.
 
 # ---- time and machines (use, work; service) -----------------------------------------------------------------
@@ -204,6 +238,7 @@ machine_hours:
   pillar: economic
   ceiling: none
   foundation: none
+  mfa: none
   note: any machine, one class, until a resources table names them (docs/decisions/2026-09-28-flows.md, the ceiling of A).
 work_hours:
   unit: hour
@@ -211,6 +246,7 @@ work_hours:
   pillar: social
   ceiling: none
   foundation: income_work
+  mfa: none
   note: a person's time on making or fixing. Not the machine's, not a class.
 training_hours:
   unit: hour
@@ -218,4 +254,5 @@ training_hours:
   pillar: social
   ceiling: none
   foundation: education
+  mfa: none
   note: hours taught or attended (Fab Academy, a repair café's how-to, a school visit). `work` is the action.
