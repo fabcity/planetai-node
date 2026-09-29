@@ -157,14 +157,14 @@ garment:
   foundation: none
   mfa: none
   note: clothing and textiles fixed (`modify`) or sewn (`produce`).
-bicycle:
+micromobility:
   unit: count
   nature: physical
   pillar: economic
   ceiling: none
   foundation: none
   mfa: none
-  note: fixed (`modify`) far more often than made. A motorbike counts here too; the class is "the thing you ride".
+  note: "a bicycle, an e-bike, a scooter, a light electric vehicle: the thing you ride that is not a car. Fixed (`modify`) far more often than made; a battery swapped is `modify` too. A motorbike lands here for want of a better class, and this note says so."
 goods:
   unit: count
   nature: physical
