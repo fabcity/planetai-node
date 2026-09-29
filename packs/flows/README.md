@@ -20,7 +20,7 @@ cite.design.beyond         1
 `raise` `lower`. A repair is `modify`; a design taken in is `cite`, because it is neither used up nor worn;
 `raise` and `lower` are an inventory that changed without a process, a hatch or a death, and exist for living
 things. *class* is one of
-the 29 in `packs/flows/resources.yml`, and the class carries everything that does not vary per line: the
+the 30 in `packs/flows/resources.yml`, and the class carries everything that does not vary per line: the
 unit, the nature of the thing (physical, digital, information, service), the Index pillar, the
 planetary-boundary ceiling, the doughnut foundation, and the EW-MFA bin. *ring* is where it came from or went
 to, in the Index's scales: `cell` `city` `region` `beyond`. Unit, nature and every tag come from the class, so
