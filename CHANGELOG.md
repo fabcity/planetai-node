@@ -1,8 +1,12 @@
 # Changelog
 
-## Unreleased
+## v0.75.8 — 2026-09-29 — Set up in eight tabs, and an ask pane that answers faster
 
-- **2026-09-28 · The pane is its own surface, and its questions turn.** Everything the node says in the ask
+*Set up is regrouped into the eight things you do when you set a node up, with every secret in one tab and each
+pack's settings in its own card. The ask pane has its own surface, shows the node working while it answers, and
+a question that needs a tool answers in seconds and counts right. Also: two dashboard bugs node #1 showed.*
+
+- **The pane is its own surface, and its questions turn.** Everything the node says in the ask
   pane now sits on one grey surface: its answers, learn's quotes, and the globe while it works. The page's
   paper is only ever the data. It is a neutral, not a colour, because every colour on the page already means
   something about the data. Errors in the pane are ink beside a red rule, not red text, which was too faint
@@ -10,17 +14,17 @@
   tonight's figures. After the three it opens with come the other issues, the two newest other open alerts,
   and each other issue's line. A new three shows each time the pane opens and after each answer, never one
   already asked. The new question's Bahasa and Spanish wording has not yet been read by a native speaker.
-- **2026-09-28 · The pane shows the node working, and the loading screen fits a phone.** While the node works on
+- **The pane shows the node working, and the loading screen fits a phone.** While the node works on
   an answer, the pane draws the loading screen's globe, small and turning, with which model was asked and how
   many seconds it has been. Each read the model makes appears as it finishes, not with the answer at the end;
   if a model fails after reading, the next one starts from nothing (`retry` in the stream). The loading screen
   says **PLANETAI loading**. On a phone and on any portrait screen, its list of reads was drawn over the bottom
   of the globe's frame, and on a phone the globe ran into its own caption. Now they stack cleanly.
-- **2026-09-28 · Leaving learn closes what learn opened.** Turning learn off left its card in the ask pane,
+- **Leaving learn closes what learn opened.** Turning learn off left its card in the ask pane,
   over a page that no longer drew the mark it quoted. Now the card goes, and the pane closes if learn opened
   it. A pane you opened yourself stays open with your conversation. The card itself sits on a grey panel,
   not in an ink frame, so it no longer reads as one more reading.
-- **2026-09-28 · Set up is eight tabs, in the order you set a node up.** It was nine tabs in the code's own order:
+- **Set up is eight tabs, in the order you set a node up.** It was nine tabs in the code's own order:
   the tokens were in three of them, the settings for how the page looks sat beside the ones that decide who may
   read the node, and three pack settings appeared twice. Now: **Basics** (what this place watches, its kind,
   language, how the page opens, and its name, city, position and time zone read-only), **Sources**, **Alerts**,
@@ -28,12 +32,15 @@
   (everything that reaches beyond this machine) and **System** (tuning numbers, and what is read once at
   start). There is no Bootstrap tab: those rows are read-only in Basics and System. `planetai config` walks
   the same groups in the same order. Nothing is renamed and no value moves.
-- **2026-09-28 · A question that needs a tool answers in seconds, and counts right.** On node #1, "how many
+- **A question that needs a tool answers in seconds, and counts right.** On node #1, "how many
   alerts in the last 24 hours" took 165 seconds and answered 17 with 18 in the table. The tool took 73 ms. The
   model then spent one to three minutes thinking in hidden text, counting a list that had been cut at 8,000
   characters without saying so. Now the answer after a tool result is written without thinking; a result that
   had to be cut says so; and `alerts` takes `since_hours` and answers with the count itself (`GET
   /alerts?since_hours=24` too). The same holds for the Telegram bot, which asks through the same code.
+- **Act and Network draw what node #1 has.** Act failed with "asks did not render" on a node whose ledger keeps
+  alerts from before packs named their rules; those alerts now draw as rows of their own. Network said "Index
+  cells 10 of 20" by counting rows, and a cell can carry several values: it counts cells now, 6 of 20 on node #1.
 
 ## v0.75.7 — 2026-09-28 — the ask pane starts again when you want it to
 
