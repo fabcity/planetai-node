@@ -74,8 +74,10 @@ def bmkg(hc, adm4: str, node_lat: float, node_lon: float):
     return sensors, readings
 
 
-OM_HOURLY = ("temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m,cloud_cover")
+OM_HOURLY = ("temperature_2m,relative_humidity_2m,precipitation,precipitation_probability,wind_speed_10m,wind_direction_10m,"
+             "cloud_cover")
 OM_MAP = {"temperature_2m": "fc_temp", "relative_humidity_2m": "fc_humidity", "precipitation": "fc_rain",
+          "precipitation_probability": "fc_rain_prob",
           "wind_speed_10m": "fc_wind_speed", "wind_direction_10m": "fc_wind_direction", "cloud_cover": "fc_cloud"}
 
 
