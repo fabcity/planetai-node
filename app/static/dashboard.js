@@ -5550,7 +5550,7 @@ const DWELL_MS = 8000;
 const HOLD_MS = 30000;
 const STILL = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 let WALL_PAUSED = false;   /* survives a re-render: the wall is redrawn whenever the route runs */
-const MAX_FRAGMENTS = 5;
+const MAX_FRAGMENTS = 8;   /* the two Singapore rows carry eight between them; the rest go to "more in Now" */
 
 /* One hexagon, pointy-top, centred in a 100-unit box, for the dial's stops. A stop is pressed, it is
  * never pointed at: the strip is a control, not a gauge. */
@@ -6447,7 +6447,7 @@ PAI_LOAD.push(function () {
 'use strict';
 
 const REFRESH_MS = 60000;
-const SG = { at: 0, busy: false, sig: '', obs: [], stats: [], fc: null };
+const SG = { at: 0, busy: false, sig: '', obs: [], stats: [], fc: null, pm: [] };
 const SE_FROM = 101.25, SE_TO = 168.75;       // ESE to SSE, the arc packs/singapore-nea watches
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 
@@ -6457,13 +6457,15 @@ const get = path => fetch(path, { headers: auth_(), signal: AbortSignal.timeout(
 function ensure() {
   if (SG.busy || Date.now() - SG.at < REFRESH_MS) return;
   SG.busy = true;
-  Promise.all([get('/observations'), get('/stats'), get('/forecast?hours=6')]).then(([obs, stats, fc]) => {
+  Promise.all([get('/observations'), get('/stats'), get('/forecast?hours=6'),
+    get('/readings?sensor_id=nea-pm25&metric=pm25&limit=60')]).then(([obs, stats, fc, pm]) => {
     SG.busy = false; SG.at = Date.now();
     const first = SG.sig === '';
     if (obs) SG.obs = obs;
     if (stats) SG.stats = stats;
     if (fc) SG.fc = fc;
-    const sig = JSON.stringify([SG.obs, SG.stats, SG.fc]);
+    if (Array.isArray(pm)) SG.pm = pm;
+    const sig = JSON.stringify([SG.obs, SG.stats, SG.fc, SG.pm]);
     if (first || sig !== SG.sig) { SG.sig = sig; if (window.PAI_ROUTE) window.PAI_ROUTE(); }
   });
 }
@@ -6574,6 +6576,112 @@ window.PAI.register({
           + 'probability. NEA does not publish a probability: its two-hour forecast says rain or no rain for each of 49 areas, '
           + 'so the share of areas expecting rain is shown beside it as a measure of how widespread rain is expected to be, '
           + 'and the share of gauges that are wet right now is what is actually falling.' },
+    ];
+  },
+});
+
+/* ---- the second row: beach water, fires, and the haze 24 hours on ----
+ * Beach: NEA's weekly banding for the two followed beaches (singapore-beach pack), worst band large, each beach
+ * named beneath. It is a week old by construction (a lab result), and the caption says which week.
+ * Fires: NASA FIRMS hotspots within the pack's radius over the last 24 h, against the 24 h before that
+ * (`fires_prev_24h`), so the change is like for like and needs no stored history.
+ * Haze: FIRMS counts fires, not smoke, and NEA publishes no smoke count. What the node can say about smoke is what
+ * reached the air, so this is NEA's regional PM2.5 now against the same hour yesterday, from /readings. */
+const BEACHES = [['nea-beach-east-coast', 'East Coast'], ['nea-beach-changi', 'Changi']];
+const H24 = 24 * 3600e3;
+const tsMs = t => new Date(String(t).replace(' ', 'T')).getTime();
+
+function readCoast(ctx) {
+  const tz = (ctx.S.health || {}).tz;
+  const beaches = BEACHES.map(([sid, name]) => {
+    const b = ob(sid, 'beach_band'), a = ob(sid, 'beach_advisory'), e = ob(sid, 'beach_stretches_elevated');
+    return { name, band: b ? num(b.value) : null, adv: a ? num(a.value) : null, elev: e ? num(e.value) : null, ts: b && b.ts };
+  });
+  const bands = beaches.map(b => b.band).filter(v => v != null);
+  const fires = ob('firms-hotspots', 'fires_24h'), prev = ob('firms-hotspots', 'fires_prev_24h');
+  const near = ob('firms-hotspots', 'fires_nearest_km'), radius = fires && fires.meta ? fires.meta.radius_km : null;
+  const pm = (SG.pm || []).map(r => ({ t: tsMs(r.ts), v: num(r.value) })).filter(r => r.v != null && !isNaN(r.t));
+  let haze = null;
+  if (pm.length) {
+    const nowRow = pm.reduce((a, b) => (b.t > a.t ? b : a));
+    const target = nowRow.t - H24;
+    const ago = pm.filter(r => Math.abs(r.t - target) <= 2 * 3600e3)
+      .reduce((a, b) => (!a || Math.abs(b.t - target) < Math.abs(a.t - target) ? b : a), null);
+    const day = pm.filter(r => r.t > nowRow.t - H24);
+    haze = { now: nowRow.v, nowT: nowRow.t, ago: ago ? ago.v : null, peak: day.length ? Math.max(...day.map(r => r.v)) : null };
+  }
+  return { tz, beaches, worst: bands.length ? Math.max(...bands) : null, anyAdv: beaches.some(b => b.adv > 0),
+    week: (beaches.find(b => b.ts) || {}).ts,
+    fires: fires ? num(fires.value) : null, prev: prev ? num(prev.value) : null, firesTs: fires && fires.ts,
+    near: near ? num(near.value) : null, radius: radius ? Math.round(radius) : null, haze };
+}
+
+function coastCols(ctx) {
+  const { esc } = window.K;
+  const d = readCoast(ctx);
+  const sm = t => `<small>${esc(t)}</small>`;
+  const col = (id, title, big, small) => `<div class="col" id="sgw-${id}" data-component="sgwall" data-ref="wall-field">`
+    + `<h3 data-role="wall-issue">${esc(title)}</h3><div class="line">${big}${small}</div></div>`;
+  const numEl = (key, txt, cmp, cls) => `<span class="num${cls ? ' ' + cls : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">${esc(txt)}</span>`;
+  const none = '<span class="none">—</span>';
+  const sign = v => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(0);
+  const out = [];
+
+  const wk = d.week ? new Date(String(d.week).replace(' ', 'T')) : null;
+  const wkTxt = wk && !isNaN(wk) ? wk.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: d.tz || undefined }) : '';
+  out.push(col('beach', 'Beach water · NEA',
+    d.worst == null ? none : numEl('sgwall.beach.band', `${d.worst} of 3`, 'the worst band across the followed beaches, 1 is best', d.worst >= 2 || d.anyAdv ? 'crossed' : ''),
+    sm(d.worst == null ? 'no NEA banding yet'
+      : d.beaches.map(b => `${b.name} ${b.band == null ? '—' : b.band}`).join(' · ') + (d.anyAdv ? ' · advisory' : ''))
+    + (d.worst == null ? '' : sm(`lower is better · week ending ${wkTxt || '—'}`))));
+
+  if (d.fires == null) {
+    out.push(col('fires', 'Fires · last 24 h', none, sm('no FIRMS count yet')));
+  } else {
+    const delta = d.prev == null ? null : d.fires - d.prev;
+    const pct = d.prev ? (delta / d.prev) * 100 : null;
+    out.push(col('fires', 'Fires · last 24 h',
+      numEl('sgwall.fires.count', String(d.fires), `hotspots within ${d.radius || '—'} km in the last 24 h${d.prev != null ? `, against ${d.prev} in the 24 h before` : ''}`),
+      sm(d.prev == null ? 'hotspots · no earlier day to compare yet'
+        : `${sign(delta)}${pct == null ? '' : ' · ' + (pct > 0 ? '+' : pct < 0 ? '−' : '') + Math.abs(pct).toFixed(0) + '%'} on the 24 h before (${d.prev})`)
+      + sm(`hotspots within ${d.radius || '—'} km${d.near != null ? ' · nearest ' + d.near.toFixed(0) + ' km' : ''}`)));
+  }
+
+  const h = d.haze;
+  if (!h) {
+    out.push(col('haze', 'Haze · PM2.5 on 24 h ago', none, sm('no NEA readings yet')));
+  } else {
+    const delta = h.ago == null ? null : h.now - h.ago;
+    out.push(col('haze', 'Haze · PM2.5 on 24 h ago',
+      delta == null ? none : numEl('sgwall.haze.delta', sign(delta), `NEA regional PM2.5 now, ${h.now.toFixed(0)}, against ${h.ago.toFixed(0)} at the same hour yesterday`, delta > 0 ? 'crossed' : ''),
+      sm(delta == null ? 'no reading near this hour yesterday' : `µg/m³ · now ${h.now.toFixed(0)}, yesterday ${h.ago.toFixed(0)}`)
+      + sm(`NEA regional${h.peak != null ? ' · peak ' + h.peak.toFixed(0) + ' in the 24 h' : ''}`)));
+  }
+  return out.join('');
+}
+
+window.PAI.register({
+  id: 'sgcoast', pack: 'singapore-beach', stage: 'observe', title: 'Singapore beaches, fires and haze', order: -9,
+  reads: ['/observations', '/readings'],
+  render(ctx) {
+    ensure();
+    return `<div class="sgwall" data-component="sgwall" data-ref="sgcoast">${coastCols(ctx)}</div>`;
+  },
+  wall(ctx) { ensure(); return coastCols(ctx); },
+  notes() {
+    return [
+      { id: 'sgcoast-beach', label: 'Beach water',
+        text: 'NEA grades each beach stretch weekly by enterococci bacteria in the water, from band 1 (lowest) to band 3. The wall '
+          + 'shows the worst band of the two beaches this node follows, East Coast and Changi. Lab results take about a week, so '
+          + 'this describes the week ending on the date shown, not today; NEA’s own advisory, for example after heavy rain, is marked.' },
+      { id: 'sgcoast-fires', label: 'Fires',
+        text: 'NASA FIRMS satellite hotspots (VIIRS, low-confidence detections dropped) within the radius the fire-smoke pack is set to. '
+          + 'The change compares the last 24 hours with the 24 hours before them. A hotspot is a fire seen by a satellite, not smoke: '
+          + 'satellites pass several times a day, so a count can rise or fall with the passes as well as with the fires.' },
+      { id: 'sgcoast-haze', label: 'Haze',
+        text: 'Nothing measures smoke directly here. What the node can show is what reached the air: NEA’s regional PM2.5 now against the '
+          + 'same hour yesterday. Regional PM2.5 rising while fires are up and the wind is from the south or south-east is the pattern '
+          + 'the node’s wind rules watch for; a rise alone can have other causes.' },
     ];
   },
 });

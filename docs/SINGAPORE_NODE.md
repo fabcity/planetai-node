@@ -146,6 +146,12 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
 - **Wall.** A "Singapore air, wind and rain" row (`sgair`) compares the house's PM2.5 (Smart Citizen, 1 h mean) with
   NEA's regional figure, and shows wind direction and speed and rain (Open-Meteo probability plus NEA's share of areas
   forecast wet). Explainers sit behind an "i" icon, and a pause button stops the dial when reduced motion is off.
+- **Beaches, fires and haze row.** A second wall row (`sgcoast`) shows NEA's worst beach band (East Coast, Changi), NASA
+  FIRMS fire hotspots for the last 24 h with the change on the 24 h before, and NEA regional PM2.5 against the same hour
+  yesterday. FIRMS counts fires, not smoke, so haze is the PM2.5 change; it needs 24 h of NEA history before it can show.
+  The wall now carries up to eight of these columns before the rest go to "more in Now".
+- **fire-smoke fix.** FIRMS's last URL segment is UTC calendar days, so `/1` returned only today and `fires_24h` fell to zero
+  at 08:00 Singapore time. The pack now asks for three days, and publishes `fires_prev_24h` (the 24 h before) for the change.
 - **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
   (`app/static/coast-outline.json`, simplified to about 10 m, from geoBoundaries gbOpen SGP ADM0, Runfola et al. 2020,
   CC BY 4.0), served from the node itself, so it is offline, needs no token and reveals nothing about the household.
