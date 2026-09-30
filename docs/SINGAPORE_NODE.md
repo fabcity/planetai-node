@@ -1,0 +1,153 @@
+# Singapore node
+
+A [PlanetAI](https://github.com/fabcity/planetai-node) node in Geylang East, Singapore. It runs at home on a Windows
+PC under Docker Desktop, reads one outdoor Smart Citizen kit, and takes its outdoor reference from Singapore's
+national open data (NEA and PUB, via data.gov.sg) instead of a peer aggregator or a model alone.
+
+This folder documents what is specific to this node. The node itself is the upstream `planetai-node` repository
+(v0.75.8); nothing here replaces its own docs.
+
+## At a glance
+
+| | |
+|---|---|
+| Node name | `singapore-node` (home, community scale) |
+| Location | 1.317, 103.885, about Geylang East Library; time zone Asia/Singapore |
+| Alert language | English |
+| Issues, in order | air, coast, heat, land (`NODE_ISSUES`) |
+| Own sensor | Smart Citizen kit #18929, outdoors ("street"); no sensor in the house |
+| Outdoor reference | NEA and PUB (`singapore-nea` pack), NEA beach water quality (`singapore-beach` pack), CAMS, Open-Meteo, NASA FIRMS (`fire-smoke` pack) |
+| Bali Air Dispatch | off (`BAD_ENABLED=0`); it only covers Bali |
+| Forecast | Open-Meteo on, BMKG off |
+| Sharing | `SHARE_LEVEL=open` (alpha testing); Reticulum presence off; no LoRa hardware |
+| Dashboard | http://localhost:8080 |
+
+## What is different from other nodes
+
+- **National open data as the outdoor reference.** The `singapore-nea` pack reads 14 data.gov.sg feeds: PM2.5 and PSI
+  by region; air temperature, humidity, rainfall, wind speed and direction from the nearest station; island-wide UV;
+  WBGT heat stress; PUB flood alerts; dengue clusters; and the 2-hour, 24-hour and 4-day forecasts.
+- **Fire smoke.** The `fire-smoke` pack counts NASA FIRMS hotspots within `FIRE_RADIUS_KM` (500) by compass sector and
+  warns when smoke is upwind, using NEA wind direction.
+- **Rules written for this place.** Haze (PSI), heat stress (WBGT 31 °C and 33 °C), flooding, dengue clusters,
+  sensor-versus-NEA disagreement, fire smoke upwind, and `wind_southeast_rising`: south-east wind (east-south-east to south-south-east, 101.25° to 168.75°) for
+  at least 80% of the last three hours while its speed is up at least 1 knot, a pattern this node's keeper has seen precede
+  worse air. The thresholds are a first guess to tune against a season of PSI.
+  `wind_pm25_correlated` is the one that pages: over six hours, this node's own street PM2.5 correlates with the wind
+  swinging into the south-east (r >= 0.6, wind alignment varying, PM2.5 up at least 3 µg/m³ and at least 15). It is act level,
+  so at `ALERT_LEVEL=act` it ignores quiet hours (22:00 to 06:00); lower it to warn in `packs/singapore-nea/rules.yml` to keep
+  it on the dashboard.
+- **A borrowed heat line.** The 35 °C apparent-temperature line was measured indoors at the Bali node. It is kept here
+  until this node has its own data, and its label in `app/issues/heat.yml` says so.
+- **Beach health.** The `singapore-beach` pack reads NEA's weekly Enterococcus banding (Band 1 Normal, 2 Elevated, 3 High) for East Coast and Changi, and the Coast card shows it, with rules for Band 2, Band 3, NEA's bacteria advisory and heavy rain.
+- **Land and coast for an island city.** The `earth` pack uses a 5 km square (`EARTH_RADIUS_M=5000`); Earth Engine
+  reports built and tree cover; the coast row reads the sea off the island.
+
+## Layout
+
+```
+planetai-node/
+  .env                          node settings (git-ignored; never share it)
+  packs/singapore-nea/          NEA and PUB feeds, rules, README
+  packs/fire-smoke/             NASA FIRMS hotspots and upwind rules
+  packs/singapore-beach/        NEA weekly beach water quality (East Coast, Changi)
+  app/issues/air.yml            Air region row reads NEA PM2.5; PSI, PM10, ozone, wind direction and speed readouts; hero rule to 60
+  app/issues/coast.yml          beach band readouts
+  app/issues/heat.yml           Singapore label on the line; WBGT, temperature, humidity, UV readouts
+  tests/test_singapore_nea.py   offline tests for the NEA adapter
+  tests/test_fire_smoke.py      offline tests for the FIRMS adapter
+  tests/test_singapore_beach.py offline tests for the beach adapter
+  tests/test_singapore_wind_rule.py the south-east wind rule's SQL, in DuckDB
+```
+
+Sensor IDs from the NEA pack are stable, one per measure: `nea-pm25`, `nea-psi`, `nea-temp`, `nea-humidity`, `nea-rain`,
+`nea-windspeed`, `nea-winddir`, `nea-wbgt`, plus `nea-rain-island`, `nea-wbgt-island`, `nea-uv`, `nea-flood`,
+`nea-dengue`, `nea-fc2h-<area>`, `nea-fc24h` and `nea-fc4d`. The station or region a reading came from is in the
+sensor's name and metadata.
+
+## Settings that matter
+
+Set these in `.env`. Secrets stay there and are never committed.
+
+| Setting | Value here | Why |
+|---|---|---|
+| `NODE_LAT`, `NODE_LON` | 1.317, 103.885 | the house |
+| `NODE_TZ` | Asia/Singapore | local hours |
+| `PACKS_ALLOW_CODE` | 1 | the NEA and fire packs are code packs |
+| `BAD_ENABLED` | 0 | Bali Air Dispatch does not cover Singapore |
+| `FORECAST_BMKG` | 0 | BMKG is Indonesia's forecast |
+| `FORECAST_OPENMETEO` | 1 | day-ahead wind and rain |
+| `NEA_API_KEY` | blank (recommended) | a free data.gov.sg key raises the rate limit |
+| `FIRMS_MAP_KEY` | set | NASA FIRMS key, 5000 requests per 10 minutes |
+| `BEACH_AREAS` | East Coast,Changi | NEA beaches to follow |
+| `NODE_ISSUES` | air,coast,heat,land | Air and Coast lead the dashboard |
+| `FIRE_RADIUS_KM`, `FIRE_SOURCES` | 500, VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT | fire-smoke pack |
+| `SC_DEVICES` | 18929 | the Smart Citizen kit |
+| `MAP_TILES` | on | live satellite and street tiles; each tile request tells the tile server which square of the map the page is looking at |
+| `ALERT_LEVEL` | act | only act-level rules reach the phone |
+| `SHARE_LEVEL` | open | alpha testing; the whole read API is open to anyone who can reach port 8080 |
+| `EARTH_RADIUS_M` | 5000 | the AlphaEarth square around the house |
+
+## Running it
+
+From the `planetai-node` folder in PowerShell (Git Bash rewrites `/app/...` paths, so turn that off first):
+
+```powershell
+$env:MSYS_NO_PATHCONV = "1"
+planetai status                       # is everything up
+docker compose ps
+docker compose logs app --tail 50     # look for "singapore-nea" and "fire-smoke" lines
+docker compose restart app agent      # after a .env or pack change
+docker compose up -d --build app      # after a change under app/ (issue files, code)
+```
+
+Then open http://localhost:8080. NEA feeds arrive a few at a time: the adapter requests at most 4 feeds per poll, waits
+2.5 s between them, and stops a poll at the first 429, so the full set fills in over about 15 minutes.
+
+Tests, without Docker:
+
+```bash
+python3 tests/test_singapore_nea.py
+python3 tests/test_fire_smoke.py
+PACKS_DIR=packs python3 tests/test_issues.py
+```
+
+`make lint` needs the project's full toolchain and has not been run on this node's changes.
+
+## Known limits
+
+- The NEA test payloads have the right shape but invented values; replace them with real captures.
+- The dengue GeoJSON layout and the flood-alert record shape were not checked against live responses.
+- The Heat "region" row still reads Open-Meteo. NEA temperature and humidity are separate sensors, and the heat row
+  needs both on one sensor, which needs an engine change.
+- No indoor sensor, so the Social heat-exposure cell cannot fill.
+- Old NEA sensors with station names in the ID (`nea-temp-S109` and similar) stay in the database as stale rows.
+- Anonymous data.gov.sg access is rate limited; without `NEA_API_KEY` some feeds can still get 429s.
+
+## Open items
+
+- [ ] Rebuild the app and confirm the Air region row and the Figures readouts on the live page.
+- [ ] Get a data.gov.sg API key and set `NEA_API_KEY`.
+- [ ] Put a sensor in the house.
+- [ ] Measure a Singapore heat baseline (about fourteen days) and propose a local line.
+- [ ] Send the NEA and fire-smoke packs, a `presets/singapore.env`, and the issue drafts upstream.
+- [ ] Decide on a Reticulum link, and whether to close port 4242, which is open on all interfaces.
+
+## Attribution
+
+Contains information from the National Environment Agency and PUB on data.gov.sg, under the Singapore Open Data
+Licence. Fire data: NASA FIRMS. Land data: AlphaEarth Foundations Satellite Embedding (Google and Google DeepMind,
+CC BY 4.0). Forecast and air models: Open-Meteo and CAMS. Smart Citizen: smartcitizen.me.
+
+## Dashboard changes
+
+These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker compose up -d --build app`.
+
+- **Wall.** A "Singapore air, wind and rain" row (`sgair`) compares the house's PM2.5 (Smart Citizen, 1 h mean) with
+  NEA's regional figure, and shows wind direction and speed and rain (Open-Meteo probability plus NEA's share of areas
+  forecast wet). Explainers sit behind an "i" icon, and a pause button stops the dial when reduced motion is off.
+- **Resolution ladder.** Scale labels from planetai.fab.city/nodes (Region, City, Community, Home, Street, Room) sit under
+  the wall dial and Now's rail. Series charts mark the reading 24 h ago and the highest value in the 24 h drawn.
+- **Fixes.** Pressing a wall dial rung no longer drops `#wall` from the address; Historical and Network say how many
+  sections Simple mode hides, with a "Show all sections" button.
+- **Rain probability.** The forecast pack now publishes Open-Meteo's `precipitation_probability` as `fc_rain_prob`.
