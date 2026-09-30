@@ -599,6 +599,21 @@ print((datetime.date.today() - datetime.date.fromisoformat(sys.argv[1])).days)' 
   chk "$rline" "[ -f \"$rv\" ] && [ \"$rage\" -le 180 ]" \
     "$([[ -f "$rv" ]] && echo "the pin is ${rage} days old: re-pin on a dev machine with tools/sync_registry.sh <sha>, then planetai update" \
        || echo "this node ships no source registry, so planetai sources and GET /sources cannot answer. planetai update")" "$rsev"
+  # A newer release: what the app's daily check found (UPDATE_CHECK), read off /health. Amber, never red: an older
+  # node is not a broken one. Silent when the check is off or has not had an answer yet.
+  local rel rlatest rcur rnewer
+  rel="$(curl -sf "localhost:$p/health" 2>/dev/null | python3 -c 'import json, sys
+r = json.load(sys.stdin).get("release") or {}
+print("%s|%s|%s" % (r.get("latest", ""), r.get("current", ""), "1" if r.get("newer") else "0"))' 2>/dev/null || true)"
+  if [[ -n "${rel%%|*}" ]]; then
+    IFS='|' read -r rlatest rcur rnewer <<< "$rel"
+    if [[ "$rnewer" == 1 ]]; then
+      chk "PLANETAI $rlatest is out (this node runs ${rcur:-an older version})" "false" \
+        "planetai update   (it backs up first) · what changed: https://planetai.fab.city/docs/changelog/" "warn"
+    else
+      chk "on the current release ($rlatest)" "true" "" ""
+    fi
+  fi
   # packs/make, when it is on. A fact, not a check: the number of labs in the ring, where they came
   # from, and how many active labs the directory publishes with no coordinates — those can never be
   # placed and would otherwise vanish into a smaller number without anyone noticing.

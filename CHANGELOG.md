@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- **2026-09-30 · A node says when a new version is out.** Once a day the node asks planetai.fab.city which
+  version is current. When a newer one is out, the page's header says so ("PLANETAI v0.75.8 is out · on the
+  node: planetai update"), `planetai doctor` shows it as an amber line, and Telegram says it once per version,
+  after quiet hours. Nothing is installed: `planetai update` stays the household's to run, and it backs up
+  first. The request carries nothing about the house, but it shows this house's internet address to Fab
+  City's host, so it is a setting under Set up → Sharing, `UPDATE_CHECK`, on by default. `off` means the node
+  never asks. A node with no route out stays quiet and is not reported as broken. The Spanish and Bahasa
+  message has not yet been read by a native speaker.
+
 ## v0.75.8 — 2026-09-29 — Set up in eight tabs, and an ask pane that answers faster
 
 *Set up is regrouped into the eight things you do when you set a node up, with every secret in one tab and each

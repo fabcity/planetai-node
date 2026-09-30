@@ -87,6 +87,7 @@ instead of wrong.
 | `SHARE_LEVEL` | `off`, `open` |
 | `UI_ASK` | `on`, `off` |
 | `MAP_TILES` | `off`, `on` |
+| `UPDATE_CHECK` | `on`, `off` |
 
 `PUT /settings` answers 400 for anything else, and `GET /settings` publishes the list under `choices`, in
 this order, so the dashboard and `planetai config` offer the values instead of a text box. `SHARE_LEVEL`
@@ -200,6 +201,7 @@ data, what it loads.
 | `UI_ASK` | `on` | `on`, `off` | `on` = a toggle on the dashboard opens the ask pane, which asks the model Set up → Model names about what the page shows, reads, changes nothing and keeps nothing. `off` = no toggle and no pane. See [Ask the node](ask.md). | runtime · public |
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards. Managed by the dashboard's Arrange mode; blank restores the default. Readable by every screen in the house at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | Live satellite and street tiles under the cells. Each tile request tells a tile server which square of the planet this house is looking at. `off` = tiles from the node's local copy of OpenStreetMap; `on` = live tiles. A keeper turns this on in Set up. | runtime · public |
+| `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). `off` = the node never asks. | runtime · public |
 | `STATIONS_SHOWN` | `3` | integer, `0` = all | How many of the neighbourhood's stations the dashboard lists, nearest first. This node's own hardware is always listed and never counted. Nothing is discarded: the page says how many it is not listing. To collect fewer stations, turn `BAD_RADIUS_KM` down instead. | runtime · public |
 
 ## What it reads
