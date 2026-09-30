@@ -5624,6 +5624,62 @@ function centroid(d) {
 /* ------------------------------------------------------------------ the field */
 /* Nineteen cells, and in each the thing read there. State is weight, fill and dash; the hue is the
  * layer's one accent and it means "this node's own". */
+/* THE FADED LAND OUTLINE UNDER THE WALL'S CELLS. A public coastline that ships with the dashboard
+ * (static/coast-outline.json, geoBoundaries gbOpen, CC BY 4.0), so it is offline, needs no token and
+ * says nothing about the household: it is the island, not the place. It is fetched once, from this
+ * node, and drawn behind the cells at low opacity so the numbers stay the loudest thing on the wall.
+ * `?outline=off` hides it. The plate's own drawing space is a 600-unit box; the map from degrees to
+ * that box is fitted from the plate's cells, which exist in both frames, so nothing is assumed about
+ * how the node scaled them. */
+let OUTLINE = null, OUTLINE_ASKED = false;
+function outlineLoad() {
+  if (OUTLINE_ASKED) return;
+  OUTLINE_ASKED = true;
+  fetch('static/coast-outline.json').then(r => r.ok ? r.json() : null).then(j => {
+    if (!j || !Array.isArray(j.rings)) return;
+    OUTLINE = j;
+    /* Redraw the wall once, if it is what is on screen. */
+    if (document.querySelector('#page #wall-lead') && window.PAI_ROUTE) window.PAI_ROUTE();
+  }).catch(() => { /* no outline is a wall with no outline */ });
+}
+function outlineFit(plate) {
+  const xs = [], ys = [], lons = [], lats = [];
+  for (const ll of plate.cells_ll) {
+    const dc = plate.draw.cells.find(c => c.id === ll[0]);
+    if (!dc) continue;
+    const nums = dc.d.replace(/[MZ]/g, '').split('L').map(p => p.split(',').map(Number));
+    const n = Math.min(nums.length, (ll.length - 1) / 2);
+    for (let i = 0; i < n; i++) { lats.push(ll[1 + 2 * i]); lons.push(ll[2 + 2 * i]); xs.push(nums[i][0]); ys.push(nums[i][1]); }
+  }
+  if (xs.length < 4) return null;
+  const fit = (a, b) => {   /* least squares b = s*a + t */
+    const n = a.length, ma = a.reduce((p, q) => p + q, 0) / n, mb = b.reduce((p, q) => p + q, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (a[i] - ma) * (b[i] - mb); den += (a[i] - ma) ** 2; }
+    return den ? { s: num / den, t: mb - (num / den) * ma } : null;
+  };
+  const fx = fit(lons, xs), fy = fit(lats, ys);
+  return fx && fy ? { fx, fy } : null;
+}
+function outlineSvg(ctx, plate) {
+  outlineLoad();
+  if (!OUTLINE || ctx.Q.get('outline') === 'off') return '';
+  const f = outlineFit(plate);
+  if (!f) return '';
+  const box = plate.draw.box, m = box * 0.5;   /* cull rings that never come near the drawing */
+  let d = '';
+  for (const r of OUTLINE.rings) {
+    let s = '', any = false;
+    for (let i = 0; i < r.length; i += 2) {
+      const x = f.fx.s * r[i] + f.fx.t, y = f.fy.s * r[i + 1] + f.fy.t;
+      if (x > -m && x < box + m && y > -m && y < box + m) any = true;
+      s += `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
+    }
+    if (any) d += s + 'Z';
+  }
+  return d ? `<g class="outline" aria-hidden="true"><path d="${d}"/></g>` : '';
+}
+
 function field(ctx, sel) {
   const { esc, fmt } = ctx.K, { address, km2, edge } = ctx.KH, N = ctx.N;
   /* Unsited, the plate is nineteen cells of open water and the stations are placed in them. The wall
@@ -5714,7 +5770,7 @@ function field(ctx, sel) {
      they do not measure it. Count the thing that is drawn. */
   return `<svg viewBox="0 0 ${d.box} ${d.box}" role="img" aria-label="resolution ${res}: the nineteen cells `
     + `this node published, ${reading} of them with a station reading ${M.label}">`
-    + `<g class="cells">${cells}</g><g class="pts">${pts}</g><g class="labels">${labels}</g></svg>`
+    + outlineSvg(ctx, plate) + `<g class="cells">${cells}</g><g class="pts">${pts}</g><g class="labels">${labels}</g></svg>`
     + `<div class="cap"><span>${address(N.chain[res], res)}</span>`
     + `<span>one cell <b data-num="h3.res${res}.area" data-cmp="against ${esc(km2(H.ladder[res].own_area_m2))}, `
     + `this node's own cell at this resolution">${esc(km2(G.area_m2))}</b> · <b>${esc(edge(G.edge_m))}</b> to an edge</span>`
@@ -5866,7 +5922,7 @@ function render(ctx, sel) {
       + ` aria-pressed="${WALL_PAUSED}">${WALL_PAUSED ? 'play' : 'pause'}</button>`)
     + `<details class="winfo" data-component="wallInfo" data-ref="wall-dial"><summary aria-label="About this wall" title="About this wall">i</summary>`
     + `<div class="winfo-body"><p>Answer on Telegram, not here.</p>`
-    + `<p>The labels under the ladder (Region, City, Community, Home, Street, Room) are the scales from planetai.fab.city/nodes: home is about 1 km and one cell, community about 5 km, city about 15 km, region about 100 km. Street and room are finer than home. The row of numbered hexagons is the resolution ladder: each hexagon is one rung, coarse on the left, fine on the right. The solid dark one, marked “you are here”, is the rung the map is showing. Lightly filled rungs are coarse enough to leave this machine; dashed rungs are finer than this node publishes.</p>`
+    + `<p>The labels under the ladder (Region, City, Community, Home, Street, Room) are the scales from planetai.fab.city/nodes: home is about 1 km and one cell, community about 5 km, city about 15 km, region about 100 km. Street and room are finer than home. The faint island shape behind the cells is a public coastline that ships with the dashboard, so it works offline (add ?outline=off to hide it). The row of numbered hexagons is the resolution ladder: each hexagon is one rung, coarse on the left, fine on the right. The solid dark one, marked “you are here”, is the rung the map is showing. Lightly filled rungs are coarse enough to leave this machine; dashed rungs are finer than this node publishes.</p>`
     + `<p>${STILL ? 'Reduced motion is on, so the ladder stands still. Press a rung to move it.'
       : `The ladder moves by itself every ${DWELL_MS / 1000} s, with nothing interpolated between rungs. Under reduced motion it stands still.`}</p></div></details></div>`
     + `<div class="wgrid">`

@@ -1586,3 +1586,7 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 .modehint { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   border: 1px dashed var(--ink); padding: 10px 14px; margin: 16px 0 }
 .modehint p { margin: 0; font: 500 12.5px var(--mono) }
+
+/* Faded land outline under the wall's cells: a hint of where the ground is, never the loudest thing. */
+.wallbox .wfield svg .outline path { fill: var(--ink); fill-opacity: .05; stroke: var(--ink); stroke-opacity: .28;
+  stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }

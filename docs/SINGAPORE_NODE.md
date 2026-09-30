@@ -146,6 +146,10 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
 - **Wall.** A "Singapore air, wind and rain" row (`sgair`) compares the house's PM2.5 (Smart Citizen, 1 h mean) with
   NEA's regional figure, and shows wind direction and speed and rain (Open-Meteo probability plus NEA's share of areas
   forecast wet). Explainers sit behind an "i" icon, and a pause button stops the dial when reduced motion is off.
+- **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
+  (`app/static/coast-outline.json`, simplified to about 10 m, from geoBoundaries gbOpen SGP ADM0, Runfola et al. 2020,
+  CC BY 4.0), served from the node itself, so it is offline, needs no token and reveals nothing about the household.
+  Add `?outline=off` to the wall address to hide it.
 - **Resolution ladder.** Scale labels from planetai.fab.city/nodes (Region, City, Community, Home, Street, Room) sit under
   the wall dial and Now's rail. Series charts mark the reading 24 h ago and the highest value in the 24 h drawn.
 - **Fixes.** Pressing a wall dial rung no longer drops `#wall` from the address; Historical and Network say how many
