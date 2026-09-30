@@ -6979,7 +6979,19 @@ const askOn = () => {
   const row = ((window.SETTINGS || {}).runtime || []).find(x => x.key === 'UI_ASK');
   return !row || String(row.value || 'on').trim() !== 'off';
 };
-function chrome(node, city, view) {
+/* A newer release is out: /health carries what the node's daily check found (UPDATE_CHECK). News about
+   this machine, not about the place, so it is ink and no colour: every colour on the page is a reading's.
+   It stays until the node is updated, because the node only stops saying it once it is no longer true. */
+function releaseBar(h) {
+  const r = (h || {}).release || {};
+  if (!r.newer || !r.latest) return '';
+  const esc = window.K.esc;
+  return `<div class="wrap"><p class="release" id="release"><b>PLANETAI ${esc(r.latest)} is out</b>`
+    + `<span>this node runs ${esc(r.current || 'an older version')} \u00b7 on the node: <code>planetai update</code>`
+    + ` (it backs up first)</span><a href="https://planetai.fab.city/docs/changelog/" rel="noreferrer">what changed</a></p></div>`;
+}
+
+function chrome(node, city, view, health) {
   const esc = window.K.esc;
   const reg = register(), md = mode(view);
   return `<header id="header"><div class="wrap">`
@@ -7006,7 +7018,7 @@ function chrome(node, city, view) {
       + `<i aria-hidden="true"></i>ask the node</button>` : '')
     + `<button type="button" class="reask" data-reask="1" title="Ask the node again">`
     + `<span aria-hidden="true">\u21bb</span><span class="vh">Ask the node again</span></button>`
-    + `</div>${learnBar()}</header>`;
+    + `</div>${learnBar()}${releaseBar(health)}</header>`;
 }
 
 /* THE FOOT — what this machine is for, and where everything it publishes can be read.
@@ -7129,7 +7141,7 @@ function main() {
    * grain — it simply cannot be changed from a page that does not vary by it. The wall keeps its
    * own dial, which is a different control on a different surface: it re-fills the wall's field as
    * it turns, which is what a wall is for. */
-  const head = () => chrome(S.health.node, S.health.city, VIEW)
+  const head = () => chrome(S.health.node, S.health.city, VIEW, S.health)
     + (window.WIRE_NOTE
       ? `<p class="note" data-component="wireNote" id="wire-note" data-ref="header">`
         + `${esc(window.WIRE_NOTE)}</p>`

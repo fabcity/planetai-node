@@ -13,6 +13,7 @@ import json
 from zoneinfo import ZoneInfo
 import logging
 import os
+import re
 import secrets
 import threading
 import time
@@ -500,6 +501,68 @@ def push_events() -> None:
         log.warning("event push to parent failed: %s", e)
 
 
+# ---------------------------------------------------------------- is there a newer release
+# The file tools/ship.sh publishes beside the signed tarball: one line, the version a tester downloading now gets.
+# It is not signed, and it need not be: the most a forged one can do is say a version is out, and `planetai update`
+# still refuses a tarball the release key did not sign.
+RELEASE_URL = "https://planetai.fab.city/node0/get/VERSION"
+RELEASE_EVERY = 24 * 3600
+RELEASE_WORDS = {
+    "en": "PLANETAI {latest} is out; this node runs {here}. On the node: planetai update (it backs up first). "
+          "What changed: https://planetai.fab.city/docs/changelog/",
+    "es": "Ya está PLANETAI {latest}; este nodo tiene {here}. En el nodo: planetai update (antes hace una copia). "
+          "Qué cambia: https://planetai.fab.city/docs/changelog/",
+    "id": "PLANETAI {latest} sudah tersedia; node ini menjalankan {here}. Di node: planetai update (ia membuat cadangan "
+          "dulu). Apa yang berubah: https://planetai.fab.city/docs/changelog/",
+}
+
+
+def release_of(v: str) -> tuple | None:
+    """The release a version string is at: `v0.75.7`, and `v0.75.7-14-gafc298a` from a git checkout ahead of it,
+    are both (0, 75, 7). A checkout that is ahead of a release is still at that release: node #1 tracks main, and
+    on v0.75.7-14 it has not got v0.75.8. None for anything that names no release (a bare sha, `dev`, `?`)."""
+    m = re.match(r"v(\d+)\.(\d+)(?:\.(\d+))?(?=$|-)", v or "")
+    return tuple(int(x or 0) for x in m.groups()) if m else None
+
+
+def check_release() -> None:
+    """Once a day, ask which version is current; say so in /health, and once per version on Telegram, when it is
+    newer than this node. Runs hourly so a message held back by quiet hours goes out the next morning, but asks
+    the site only once in RELEASE_EVERY. UPDATE_CHECK=off asks nothing and forgets what it knew."""
+    if settings.get("UPDATE_CHECK", "on") == "off":
+        state.pop("release", None)
+        return
+    known = state.get("release") or {}
+    if time.time() - known.get("asked", 0) >= RELEASE_EVERY:
+        # Not raised: a node with no route out is a normal node, and a loop's error lands in /health's `errors`,
+        # which the agent's health check reads as a broken source. Kept here instead, and asked again in an hour.
+        try:
+            r = hc.get(RELEASE_URL, timeout=15)
+            r.raise_for_status()
+            latest = r.text.strip()
+            # A site that answers 200 with a page instead of the file must not become "v<html>" in a header.
+            if not re.fullmatch(r"v\d+\.\d+(?:\.\d+)?", latest):
+                raise ValueError("the answer is not a version")
+        except Exception as e:  # noqa: BLE001
+            state["release"] = {**known, "error": type(e).__name__, "asked": time.time() - RELEASE_EVERY + 3600}
+            return
+        here = os.getenv("NODE_VERSION", "")
+        mine, theirs = release_of(here), release_of(latest)
+        known = {"latest": latest, "current": here, "newer": bool(mine and theirs > mine),
+                 "checked": datetime.now(timezone.utc).isoformat(timespec="seconds"), "asked": time.time()}
+        state["release"] = known
+    if not known.get("newer") or _quiet("info"):
+        return
+    # One row per version, and the row is the lock: two checks racing, or a restart, cannot send it twice.
+    with db() as con, con.cursor() as cur:
+        cur.execute("INSERT INTO release_notices (version) VALUES (%s) ON CONFLICT DO NOTHING RETURNING version",
+                    (known["latest"],))
+        first = cur.fetchone()
+    if first:
+        words = RELEASE_WORDS.get(settings.get("ALERT_LOCALE", "en"), RELEASE_WORDS["en"])
+        notify("info", words.format(latest=known["latest"], here=known["current"] or "an older version"))
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -632,6 +695,7 @@ loop(poll_sources, POLL, delay=2)
 loop(run_rules, 60, delay=30)
 loop(push_aggregates, 3600, delay=120)
 loop(push_events, 3600, delay=150)
+loop(check_release, 3600, delay=300)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 

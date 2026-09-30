@@ -1276,6 +1276,15 @@ h1.brand { font: inherit }
   padding: 7px 12px; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
   cursor: pointer }
 
+/* A newer PLANETAI is out: a second row of the header, inside its own wrap and rule like the learn bar, with
+   no frame of its own. One fact about this machine, and it should not weigh what a reading does. */
+.release { flex: 1 1 100%; display: flex; gap: 4px 14px; align-items: baseline; flex-wrap: wrap; margin: 0;
+  font: 500 12px/1.5 var(--fc-font-body) }
+.release b { font: 800 11px var(--mono); letter-spacing: .06em }
+.release span { color: var(--mute); min-width: 0 }
+.release code { font: 600 11.5px var(--mono); color: var(--ink) }
+.release a { font: 600 11px var(--mono); color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink) }
+
 /* ------------------------------------------------------------------ ASKING THE NODE
  * The loading state, over the page and not instead of it. `.on` is the whole of its visibility, the
  * way the learn panel works and for the same reason: a reader who never waits never has it in the

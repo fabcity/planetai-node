@@ -127,6 +127,12 @@ RUNTIME = {
                            "cell and means are reserved and refused today: cell will answer the neighbouring H3 cells that ask, means will hand hourly means to a parent node. "
                            "This never changes what a request carrying a token may read, from anywhere \u2014 the NAS, Home Assistant and the agent are unaffected at every level."),
     "MAP_TILES":          ("sharing", "Live map tiles", False, False, "Satellite and street view tiles from the internet. Each tile request tells a tile server which square of the planet this house is looking at. off (default) = tiles from the node's local copy of OpenStreetMap; on = live tiles. A keeper turns this on in Set up."),
+    "UPDATE_CHECK":       ("sharing", "Tell me when a new version is out", False, False,
+                           "on (default) = once a day the node asks planetai.fab.city which version is current, with a plain "
+                           "request that carries nothing about this house. It does show Fab City's host this house's internet "
+                           "address and that a PLANETAI node lives there. When a newer version is out, the page's header says so, "
+                           "`planetai doctor` says so, and Telegram says so once per version. Nothing is installed: "
+                           "`planetai update` stays yours to run. off = the node never asks."),
     # Presence: the node saying "I am here" on Reticulum, and nothing else. Off by default, because
     # SHARE_LEVEL governs what this node ANSWERS when asked and this is the node speaking unprompted.
     "RETICULUM_PRESENCE":  ("sharing", "Announce this node on Reticulum", False, False,
@@ -160,7 +166,7 @@ RUNTIME = {
 PUBLIC = {"REPORT_EVERY", "REPORT_ANCHOR", "REPORT_DEPTH", "ALERT_LEVEL", "QUIET_HOURS", "QUIET_FROM", "QUIET_TO", "ALERT_LOCALE",
           "MESH_ALERTS", "HA_DISCOVERY", "PACKS_ENABLED", "PACKS_ALLOW_CODE", "OPENMETEO_ENABLED", "BAD_ENABLED", "BAD_RADIUS_KM",
           "BAD_MIN_SEPARATION_M", "BAD_EXCLUDE", "BAD_INCLUDE_INDOOR",
-          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "MAP_TILES", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
+          "LOCAL_RADIUS_M", "SENSOR_INDOOR", "COAST_MAX_KM", "AGENT_PREFER", "AGENT_REMOTE_MODEL", "AGENT_ONLINE_MODEL", "UI_LAYOUT", "UI_MODE", "UI_ASK", "MAP_TILES", "UPDATE_CHECK", "STATIONS_SHOWN", "NODE_KIND", "SHARE_LEVEL", "NODE_ISSUES",
           "RETICULUM_PRESENCE", "RETICULUM_PRESENCE_RES"}
 # Which Set up tab shows each bootstrap key, read-only. The place itself is Basics; the machinery is System.
 BOOTSTRAP_GROUP = {k: "basics" for k in ("NODE_NAME", "NODE_CITY", "NODE_LAT", "NODE_LON", "NODE_TZ", "NODE_SCALE")}
@@ -185,6 +191,7 @@ CHOICES = {
     "SHARE_LEVEL":   ("off", "open"),                        # cell and means are named in the help and refused here, so a node cannot sit at a level that does nothing
     "UI_ASK":        ("on", "off"),
     "MAP_TILES":     ("off", "on"),                          # live tiles leave the house; off by default, a keeper turns them on in Set up
+    "UPDATE_CHECK":  ("on", "off"),                          # a daily request to planetai.fab.city; on by default (Tomas, 30 Sep 2026)
 }
 
 # Keys that change what leaves this machine, as opposed to what it does with what it keeps.
@@ -206,6 +213,7 @@ OUTWARD = {
     "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY",  # the one path off the network
     "AGENT_PREFER",         # which decides whether the online path is used at all
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks
+    "UPDATE_CHECK",         # a daily request to planetai.fab.city for the current version
 }
 
 # Keys the reports release retired. Rows for them are left in `settings` and in .env, and nothing reads them: a

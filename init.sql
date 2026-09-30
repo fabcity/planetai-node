@@ -220,3 +220,11 @@ INSERT INTO schema_version (version) VALUES ('0.50') ON CONFLICT DO NOTHING;
 -- It comes back the day an alert learns it has stopped holding, and on that day it arrives with a writer.
 ALTER TABLE events DROP COLUMN IF EXISTS cleared_at;
 INSERT INTO schema_version (version) VALUES ('0.51') ON CONFLICT DO NOTHING;
+
+-- The releases this node has told its household about, one row each, so a restart or an hourly re-check never
+-- sends the same "a new version is out" twice. Written by check_release() in app/main.py; nothing else reads it.
+CREATE TABLE IF NOT EXISTS release_notices (
+  version  TEXT PRIMARY KEY,
+  told_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO schema_version (version) VALUES ('0.52') ON CONFLICT DO NOTHING;
