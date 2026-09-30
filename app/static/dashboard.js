@@ -386,6 +386,13 @@ function series(key, d, o = {}) {
     s += `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${H + 3}" y2="${H + OVER_BAND - 2}"`
       + ` stroke="var(--signal-worse)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
   });
+  /* Two marks on the traces themselves: a filled dot with a short stem at the highest value, and a hollow
+     ring where the day began. Non-scaling so they stay round-ish whatever the svg is stretched to. */
+  if (peak) s += `<line x1="${X(peak.i).toFixed(1)}" x2="${X(peak.i).toFixed(1)}" y1="${(Y(peak.v) - 1).toFixed(1)}" y2="${H - pad.b}"`
+    + ` stroke="var(--ink)" stroke-opacity=".35" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>`
+    + `<circle cx="${X(peak.i).toFixed(1)}" cy="${Y(peak.v).toFixed(1)}" r="3.2" fill="var(--signal-worse)" stroke="var(--ground)" stroke-width="1"/>`;
+  if (startI >= 0) s += `<circle cx="${X(startI).toFixed(1)}" cy="${Y(ser[sets[0]][startI]).toFixed(1)}" r="3.2" fill="var(--ground)"`
+    + ` stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
   s += `</svg>`;
   /* A distance with nothing to draw is NAMED, not silently dropped. Three traces where there
      should be four reads as a complete picture unless the fourth says it is missing and why — and
@@ -400,6 +407,13 @@ function series(key, d, o = {}) {
       + `</span>` : '');
   // The text alternative sits beside the drawing at every width, not behind it.
   const first = ser[sets[0]].find(v => v != null), last = [...ser[sets[0]]].reverse().find(v => v != null);
+  /* Highest value recorded in the 24 h drawn (any trace) and the reading 24 h ago (the first trace's first
+     hour), named beside the line: the axis already says how far back the drawing goes, and these say what
+     it went from and how high it got. */
+  let peak = null;
+  sets.forEach(k => ser[k].forEach((v, i) => { if (v != null && (peak == null || v > peak.v)) peak = { v, i, k }; }));
+  const hoursAgo = peak ? n - 1 - peak.i : null;
+  const startI = ser[sets[0]].findIndex(v => v != null);
   const altCmp = line != null
     ? `against the line, ${fmt(line, d.dp)} ${d.unit} · ${d.line.source}`
     : `no comparison yet · ${noLine(d)}`;
@@ -412,6 +426,10 @@ function series(key, d, o = {}) {
     + `${fmt(lo, d.dp) === fmt(0, d.dp) ? '<span class="floor">floor 0</span>'
       : `<span class="floor">floor ${esc(fmt(lo, d.dp))} ${esc(d.unit)}, not zero</span>`}`
     + `<span>now</span></div>`
+    + (peak ? `<div class="marks"><span class="mk start"><i></i>24 h ago ${esc(fmt(first, d.dp))} ${esc(d.unit)}</span>`
+      + `<span class="mk peak"><i></i>highest ${esc(fmt(peak.v, d.dp))} ${esc(d.unit)}, `
+      + `${hoursAgo === 0 ? 'now' : `${hoursAgo} h ago`}</span>`
+      + `${line != null ? `<span class="mk ln"><i></i>the line ${esc(fmt(line, d.dp))}</span>` : ''}</div>` : '')
     + `<p class="alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">`
     + `${esc(LAB[sets[0]])} opened the day at ${esc(fmt(first, d.dp))} and closed it at `
     + `${esc(fmt(last, d.dp))} ${esc(d.unit)}</span> — ${esc(altCmp)}.`
@@ -1749,6 +1767,18 @@ function render(ctx, lead, opts = {}) {
       + (key === ordered[0].stage && window.PAI_LEARN
         ? window.PAI_LEARN.mark('stages', `stage-${key}`) : '') + `</div>`
       + mine.map(s => bandFor(ctx, s)).join('') + `</div>`;
+  }
+  /* SIMPLE ON HISTORICAL OR NETWORK HIDES ALMOST EVERYTHING, AND USED TO SAY NOTHING ABOUT IT. Only one
+     section per view opts into simple, so a browser left on Simple (the choice is remembered) showed one
+     panel under "Observe" and no sign that six more existed. Say how many are held back and offer the
+     switch; the button sits in a `.seg.mode` group so the header's own mode handler takes the press. */
+  if (simple && !onNow && keep) {
+    const hidden = sections.filter(s => keep.has(s.id) && s.level !== 'simple').length;
+    if (hidden) html += `<div class="modehint" data-component="modeHint" data-ref="stage-observe">`
+      + `<p>Simple mode shows ${ordered.length} of ${ordered.length + hidden} sections on this view. `
+      + `${hidden} more ${hidden === 1 ? 'is' : 'are'} hidden.</p>`
+      + `<div class="seg mode" role="group" aria-label="Show more of this page">`
+      + `<button type="button" data-mode="advanced">Show all sections</button></div></div>`;
   }
   html += notesBand(ctx, ordered);
   if (problems.length) {
@@ -5519,6 +5549,7 @@ const H = window.H3;
 const DWELL_MS = 8000;
 const HOLD_MS = 30000;
 const STILL = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let WALL_PAUSED = false;   /* survives a re-render: the wall is redrawn whenever the route runs */
 const MAX_FRAGMENTS = 5;
 
 /* One hexagon, pointy-top, centred in a 100-unit box, for the dial's stops. A stop is pressed, it is
@@ -5695,6 +5726,34 @@ function field(ctx, sel) {
 /* Eleven stops. State is fill, weight and dash: the stop you are on is ink, the stops coarse enough
  * to leave this machine carry a light cells fill, the stops finer than this node says where it is
  * are dashed. */
+/* The scale names from planetai.fab.city/nodes ("five scales, one code"): home about 1 km and one cell,
+ * community about 5 km, city about 15 km, region about 100 km. The page names scales, not H3 resolutions,
+ * so each rung takes the nearest scale by cell size; region is about 100 km and the ladder's coarsest
+ * rung is res 4 (about 40 km across), so that rung is labelled as the nearest one. Finer than home, the
+ * page says a home node "reads the room and the street", which is what the last two bands say. */
+const SCALES = [
+  { key: 'region', label: 'Region', hint: 'about 100 km, a partner cluster (nearest rung)', res: [2, 3, 4] },
+  { key: 'city', label: 'City', hint: 'about 15 km, the host institution', res: [5] },
+  { key: 'community', label: 'Community', hint: 'about 5 km, a lab\u2019s reach', res: [6, 7] },
+  { key: 'home', label: 'Home', hint: 'about 1 km, one cell: where this node stands', res: [8] },
+  { key: 'street', label: 'Street', hint: 'finer than home: the street', res: [9, 10, 11] },
+  { key: 'room', label: 'Room', hint: 'finer than home: the room', res: [12, 13, 14] },
+];
+const scaleOf = r => SCALES.find(x => x.res.includes(r));
+/* The strip of scale names under a row of stops, one grid column per stop, shared by the wall's dial and
+   Now's rail so the same rung carries the same name everywhere. */
+const scaleStrip = (table, cur) => {
+  const e = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return `<div class="scales" aria-hidden="true" style="grid-template-columns:repeat(${table.length},minmax(0,1fr))">`
+    + SCALES.map(sc => {
+      const idx = table.map((g, i) => sc.res.includes(g.res) ? i : -1).filter(i => i >= 0);
+      if (!idx.length) return '';
+      return `<span class="sc${sc.res.includes(cur) ? ' on' : ''}" title="${e(sc.hint)}"`
+        + ` style="grid-column:${idx[0] + 1} / span ${idx.length}">${e(sc.label)}</span>`;
+    }).join('') + `</div>`;
+};
+window.PAI_SCALES = { SCALES, scaleOf, scaleStrip };
+
 function dial(ctx) {
   const { esc } = ctx.K, { km2, edge } = ctx.KH, N = ctx.N;
   const stops = H.grain_table.map((g, i) => {
@@ -5717,8 +5776,14 @@ function dial(ctx) {
       + `${esc(edge(g.edge_m))}</span>`
       + `</a>`;
   }).join('');
-  return `<div class="stops" role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
+  const cur = H.grain_table.find(g => g.res === ctx.RES);
+  return `<div class="dialhead" aria-hidden="true"><b>Resolution ladder</b>`
+    + `<span>coarse (wide cells)<i>→</i>fine (small cells)</span></div>`
+    + `<div class="stops" role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
     + `standing at ${ctx.RES}">${stops}</div>`
+    + scaleStrip(H.grain_table, ctx.RES)
+    + `<div class="dialnow" aria-hidden="true">you are here: resolution ${ctx.RES}${scaleOf(ctx.RES) ? ` · ${esc(scaleOf(ctx.RES).label)} scale` : ''}`
+    + `${cur ? `, ${esc(edge(cur.edge_m))} to a cell edge` : ''}</div>`
     + `<div class="clock" id="wall-clock" data-component="clock" data-ref="wall-dial"`
     + ` aria-hidden="true"><i></i></div>`;
 }
@@ -5794,10 +5859,16 @@ function render(ctx, sel) {
        wants every pixel. The wall's rule is that nothing falls below 1080, and that rule wins. */
     + vars(ctx)
     + `<span class="who">${esc(ctx.S.health.node)}<i>·</i>${esc(ctx.S.health.city || '')}`
-    + `<i>·</i>#wall<i>·</i>share level ${esc(share)}<i>·</i>`
-    + `${STILL ? 'the ladder stands still' : `the ladder moves every ${DWELL_MS / 1000} s`}</span>`
+    + `<i>·</i>#wall</span>`
     + `<span class="what">${esc(m.label || VAR(ctx))}<i>·</i>${esc(m.unit || '')}`
-    + `<i>·</i>15-min means</span></div>`
+    + `<i>·</i>15-min means</span>`
+    + (STILL ? '' : `<button type="button" class="wpause" id="wall-pause" data-component="wallPause" data-ref="wall-dial"`
+      + ` aria-pressed="${WALL_PAUSED}">${WALL_PAUSED ? 'play' : 'pause'}</button>`)
+    + `<details class="winfo" data-component="wallInfo" data-ref="wall-dial"><summary aria-label="About this wall" title="About this wall">i</summary>`
+    + `<div class="winfo-body"><p>Answer on Telegram, not here.</p>`
+    + `<p>The labels under the ladder (Region, City, Community, Home, Street, Room) are the scales from planetai.fab.city/nodes: home is about 1 km and one cell, community about 5 km, city about 15 km, region about 100 km. Street and room are finer than home. The row of numbered hexagons is the resolution ladder: each hexagon is one rung, coarse on the left, fine on the right. The solid dark one, marked “you are here”, is the rung the map is showing. Lightly filled rungs are coarse enough to leave this machine; dashed rungs are finer than this node publishes.</p>`
+    + `<p>${STILL ? 'Reduced motion is on, so the ladder stands still. Press a rung to move it.'
+      : `The ladder moves by itself every ${DWELL_MS / 1000} s, with nothing interpolated between rungs. Under reduced motion it stands still.`}</p></div></details></div>`
     + `<div class="wgrid">`
     + `<figure class="wfield" id="wall-field" data-component="wallField" data-ref="wall-dial">`
     + field(ctx, sel) + `</figure>`
@@ -5805,15 +5876,10 @@ function render(ctx, sel) {
     + `<div id="band-${esc(hk)}">${K.kicker(hk, d)}${K.sentence(hk, d, 'big')}${K.why(hk, d)}${K.ask(hk, d)}</div>`
     /* The sketch puts this where an ask would be, in the column, rather than in the foot. It is the
        wall's own refusal and it answers the question the ask above it raises. */
-    + `<p class="wnoask" data-component="wallNoAsk" data-ref="wall-dial">`
-    + `Answer on Telegram, not here.</p>`
     + `<div class="wdial" id="wall-dial" data-component="dial" data-ref="wall-field" role="group"`
     + ` aria-label="the ladder">${dial(ctx)}</div>`
     /* And the dial says how to read itself, under itself. The foot's caption is about the MOTION;
        this one is about the marks, and a reader looking at the stops should not have to look away. */
-    + `<p class="wcap" data-component="dialKey" data-ref="wall-dial">`
-    + `the ladder<i>·</i>current rung filled ink<i>·</i>may-leave rungs filled `
-    + `<code>--cells</code> at .16<i>·</i>finer than published, dashed</p>`
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
     + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
     + `</div></div>`
@@ -5822,10 +5888,7 @@ function render(ctx, sel) {
        Telegram line into the column, so the foot is what is left: when this was true, which cell it
        is about, and whether the node has stopped answering. Nothing is said twice. */
     + `<div class="foot">${K.asof()}${K.stamp()}<span class="st">stale</span>`
-    + `<span class="wcap">${STILL
-      ? 'reduced motion is on, so the ladder stands still · press a rung to move it'
-      : `the ladder moves by itself every ${DWELL_MS / 1000} s · nothing interpolates between rungs · `
-        + 'under reduced motion it stands still'}</span></div>`
+    + `</div>`
     + `</div>`;
 }
 
@@ -5839,6 +5902,9 @@ function start(ctx) {
   if (!box()) return;
   const N = ctx.N;
   let res = ctx.RES, sel = null, timer = null, holdUntil = 0;
+  /* start() runs on every route(); without this each run stacked another interval and another pair of
+     document listeners, so the dial stepped faster and pressed twice. */
+  if (window.__wallOff) window.__wallOff();
 
   function show(r) {
     const b = box();
@@ -5858,7 +5924,7 @@ function start(ctx) {
   if (!STILL) {
     timer = setInterval(() => {
       if (!box()) { clearInterval(timer); return; }
-      if (Date.now() < holdUntil) return;
+      if (WALL_PAUSED || Date.now() < holdUntil) return;
       step(1);
     }, DWELL_MS);
   }
@@ -5870,24 +5936,40 @@ function start(ctx) {
     holdUntil = Date.now() + HOLD_MS;
     const k = box() && box().querySelector('#wall-clock'); if (k) k.classList.add('held');
   }
-  document.addEventListener('click', e => {
+  const onClick = e => {
     if (!box()) return;
+    const pz = e.target.closest && e.target.closest('#wall-pause');
+    if (pz) {
+      WALL_PAUSED = !WALL_PAUSED;
+      pz.textContent = WALL_PAUSED ? 'play' : 'pause';
+      pz.setAttribute('aria-pressed', String(WALL_PAUSED));
+      return;
+    }
     const a = e.target.closest && e.target.closest('#wall-dial a.stop');
     if (a) {
-      e.preventDefault();
+      e.preventDefault(); e.stopImmediatePropagation();
       hold(); sel = null;
       show(+a.dataset.res);
-      try { history.replaceState(null, '', a.getAttribute('href')); } catch { /* a file:// page */ }
+      /* Keep the hash: the view IS the hash, and dropping it left the wall on the next route(). */
+      const href = a.getAttribute('href');
+      try { history.replaceState(null, '', href.includes('#') ? href : href + (location.hash || '#wall')); } catch { /* a file:// page */ }
       return;
     }
     const cel = e.target.closest && e.target.closest('#wall-field .cel');
     if (cel) { hold(); sel = cel.getAttribute('data-cell'); show(res); }
-  });
-  document.addEventListener('keydown', e => {
+  };
+  const onKey = e => {
     if (!box()) return;
     if (e.key === 'ArrowRight') { hold(); step(1); }
     else if (e.key === 'ArrowLeft') { hold(); step(-1); }
-  });
+  };
+  document.addEventListener('click', onClick, true);   /* capture: runs before the shell's ?-link handler */
+  document.addEventListener('keydown', onKey);
+  window.__wallOff = () => {
+    clearInterval(timer);
+    document.removeEventListener('click', onClick, true);
+    document.removeEventListener('keydown', onKey);
+  };
 }
 
 window.WALL = { render, start, field, dial, grain };
@@ -6286,6 +6368,160 @@ function initGeometry() {
   /* The drawings called a station's origin `label`; the node publishes the same string as `source`. */
   for (const s of (H.sensors || [])) s.label = s.source;
 }
+
+/* ================================================================= singapore-wall (this node's own) ==== */
+/* singapore-wall · singapore-nea · observe
+ *
+ * LOCAL TO THE SINGAPORE NODE. Not from the design repository: added on top of it, and a pack
+ * contribution in the sense the contract above describes (register, `reads`, `wall`, `notes`).
+ *
+ * Five columns for the wall and one row for Now: this house's PM2.5 beside NEA's, how far apart they
+ * are, the wind (from where, how hard), and the chance of rain. The node computes and the page draws:
+ * nothing here is a new number, it is /stats and /observations and /forecast laid side by side. The one
+ * subtraction, house minus NEA, is the gap the node's own rules already talk about.
+ *
+ * The comparison is like for like on purpose. This house's figure is the last HOUR's mean, not the wall's
+ * 15-minute mean, because NEA's PM2.5 is an hourly figure for a region: a 15-minute mean beside an hourly
+ * one would be the mistake air.yml warns about.
+ *
+ * It fetches its own three routes once a minute, because /issues carries neither the NEA wind nor the
+ * rain forecast, and re-draws when they change. All three are on the `open` list at SHARE_LEVEL=open.
+ */
+PAI_LOAD.push(function () {
+'use strict';
+
+const REFRESH_MS = 60000;
+const SG = { at: 0, busy: false, sig: '', obs: [], stats: [], fc: null };
+const SE_FROM = 101.25, SE_TO = 168.75;       // ESE to SSE, the arc packs/singapore-nea watches
+const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+
+const get = path => fetch(path, { headers: auth_(), signal: AbortSignal.timeout(15000) })
+  .then(r => (r.ok ? r.json() : null)).catch(() => null);
+
+function ensure() {
+  if (SG.busy || Date.now() - SG.at < REFRESH_MS) return;
+  SG.busy = true;
+  Promise.all([get('/observations'), get('/stats'), get('/forecast?hours=6')]).then(([obs, stats, fc]) => {
+    SG.busy = false; SG.at = Date.now();
+    const first = SG.sig === '';
+    if (obs) SG.obs = obs;
+    if (stats) SG.stats = stats;
+    if (fc) SG.fc = fc;
+    const sig = JSON.stringify([SG.obs, SG.stats, SG.fc]);
+    if (first || sig !== SG.sig) { SG.sig = sig; if (window.PAI_ROUTE) window.PAI_ROUTE(); }
+  });
+}
+
+const ob = (sid, metric) => SG.obs.find(o => o.sensor_id === sid && o.metric === metric);
+const obAny = (prefix, metric) => SG.obs.find(o => o.sensor_id.startsWith(prefix) && o.metric === metric);
+const num = v => (v == null || v === '' || isNaN(v) ? null : Number(v));
+const compass = deg => COMPASS[Math.round((((deg % 360) + 360) % 360) / 22.5) % 16];
+const clock = (ts, tz) => {
+  const d = new Date(String(ts).replace(' ', 'T'));
+  if (isNaN(d)) return '';
+  try { return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz || undefined }); }
+  catch { return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+};
+
+/* What each column needs, read from the routes. Every value may be null; the column then says so. */
+function read(ctx) {
+  const air = (ctx.ISS || {}).air || {};
+  const line = num(((air.line || {}).value)) ?? 15;
+  const tz = (ctx.S.health || {}).tz;
+  const kitRow = SG.stats.find(r => r.metric === 'pm25' && r.local && !r.indoor && r.kind === 'sensor');
+  const kit = kitRow ? num(kitRow.mean_1h) : null;
+  const nea = ob('nea-pm25', 'pm25');
+  const neaV = nea ? num(nea.value) : null;
+  const region = nea && nea.meta && nea.meta.region ? nea.meta.region : '';
+  const dir = ob('nea-winddir', 'wind_dir'), spd = ob('nea-windspeed', 'wind_speed');
+  const now = Date.now();
+  const om = ((SG.fc || {}).hours || []).filter(h => h.source === 'forecast-om' && h.fc_rain_prob != null
+    && new Date(String(h.ts).replace(' ', 'T')).getTime() > now - 3600e3
+    && new Date(String(h.ts).replace(' ', 'T')).getTime() <= now + 3 * 3600e3);
+  const prob = om.length ? Math.max(...om.map(h => Number(h.fc_rain_prob))) : null;
+  const areas = obAny('nea-fc2h-', 'fc_rain_areas_pct'), wet = ob('nea-rain-island', 'rain_wet_pct');
+  return { line, tz, kit, kitName: kitRow && kitRow.name, nea: neaV, neaTs: nea && nea.ts, region,
+    dir: dir ? num(dir.value) : null, spd: spd ? num(spd.value) : null, windTs: (dir || spd || {}).ts,
+    prob, areas: areas ? num(areas.value) : null, wet: wet ? num(wet.value) : null };
+}
+
+function cols(ctx) {
+  const { esc } = window.K;
+  const d = read(ctx);
+  const n0 = v => (v == null ? '—' : Number(v).toFixed(0));
+  const col = (id, title, big, small) => `<div class="col" id="sgw-${id}" data-component="sgwall" data-ref="wall-field">`
+    + `<h3 data-role="wall-issue">${esc(title)}</h3><div class="line">${big}${small}</div></div>`;
+  const val = (key, v, cmp, cls) => (v == null
+    ? '<span class="none">—</span>'
+    : `<span class="num${cls ? ' ' + cls : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">${esc(n0(v))}</span>`);
+  const sm = t => `<small>${esc(t)}</small>`;
+  const out = [];
+
+  out.push(col('house', 'PM2.5 · this house',
+    val('sgwall.house.pm25', d.kit, `against NEA's ${n0(d.nea)} for the region, and the ${d.line} line`, d.kit != null && d.kit > d.line ? 'crossed' : ''),
+    sm(d.kit == null ? 'nothing read from the kit in the last hour' : 'µg/m³ · Smart Citizen, 1 h mean')));
+
+  out.push(col('nea', `PM2.5 · NEA${d.region ? ' ' + d.region : ''}`,
+    val('sgwall.nea.pm25', d.nea, `against ${n0(d.kit)} at this house, and the ${d.line} line`, d.nea != null && d.nea > d.line ? 'crossed' : ''),
+    sm(d.nea == null ? 'no NEA reading yet' : `µg/m³ · hourly, region average${d.neaTs ? ' · ' + clock(d.neaTs, d.tz) : ''}`)));
+
+  if (d.kit != null && d.nea != null) {
+    const gap = d.kit - d.nea, pct = d.nea > 0 ? (gap / d.nea) * 100 : null;
+    const sign = gap > 0 ? '+' : gap < 0 ? '−' : '±';
+    const bigTxt = `<span class="num" data-num="sgwall.gap.pm25" data-cmp="this house's hour minus NEA's region, `
+      + `against ${n0(d.kit)} and ${n0(d.nea)}">${esc(sign + Math.abs(gap).toFixed(0))}</span>`;
+    out.push(col('gap', 'House against NEA', bigTxt,
+      sm(`µg/m³${pct == null ? '' : ` · ${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(0)}%`} · the house reads `
+        + `${gap > 0 ? 'higher' : gap < 0 ? 'lower' : 'the same'}`)));
+  } else {
+    out.push(col('gap', 'House against NEA', '<span class="none">—</span>', sm('needs both readings')));
+  }
+
+  const inArc = d.dir != null && d.dir >= SE_FROM && d.dir < SE_TO;
+  out.push(col('wind', 'Wind',
+    val('sgwall.wind.speed', d.spd, d.dir != null ? `from ${compass(d.dir)}, ${d.dir.toFixed(0)} degrees` : 'direction not read', inArc ? 'crossed' : ''),
+    sm(d.dir == null && d.spd == null ? 'no NEA wind reading yet'
+      : `${d.spd != null ? 'kn' : ''} · from ${d.dir == null ? '—' : compass(d.dir) + ' ' + d.dir.toFixed(0) + '°'}`
+        + (inArc ? ' · south-east: the pattern to watch' : ''))));
+
+  const haveProb = d.prob != null;
+  const rainBig = haveProb ? val('sgwall.rain.chance', d.prob, 'the highest hourly chance in the next 3 h, Open-Meteo, at this point')
+    : val('sgwall.rain.areas', d.areas, 'share of NEA forecast areas expecting rain in 2 h');
+  const rainSmall = [haveProb ? '% chance, next 3 h (Open-Meteo)' : (d.areas != null ? '% of NEA areas expect rain, 2 h' : 'no rain forecast yet')];
+  if (haveProb && d.areas != null) rainSmall.push(`NEA: ${n0(d.areas)}% of areas expect rain`);
+  if (d.wet != null) rainSmall.push(`${n0(d.wet)}% of stations wet now`);
+  out.push(col('rain', 'Rain', rainBig, rainSmall.map(sm).join('')));
+  return out.join('');
+}
+
+window.PAI.register({
+  id: 'sgair', pack: 'singapore-nea', stage: 'observe', title: 'Singapore air, wind and rain', order: -10,
+  reads: ['/observations', '/stats', '/forecast'],
+  render(ctx) {
+    ensure();
+    return `<div class="sgwall" data-component="sgwall" data-ref="sgair">${cols(ctx)}</div>`;
+  },
+  wall(ctx) { ensure(); return cols(ctx); },
+  notes() {
+    return [
+      { id: 'sgair-compare', label: 'This house against NEA',
+        text: 'This house’s figure is the mean of the last hour from the Smart Citizen kit, and NEA’s is its hourly PM2.5 '
+          + 'averaged over the region the node sits in. They are put side by side on the same hour so the difference means '
+          + 'something; a 15-minute mean beside an hourly one would not. The gap is this house minus NEA: positive means the '
+          + 'street here reads higher than the region, which is usually the local source and not the haze.' },
+      { id: 'sgair-wind', label: 'Wind',
+        text: 'Speed in knots and the bearing the wind blows FROM, a 10-minute mean at the nearest NEA station. It is marked '
+          + 'when it comes from east-south-east to south-south-east, the arc the node’s wind rules watch: south-east wind '
+          + 'that settles in and strengthens tends to come before worse air here.' },
+      { id: 'sgair-rain', label: 'Rain',
+        text: 'The big figure is Open-Meteo’s highest hourly chance of rain in the next three hours at this point, a model '
+          + 'probability. NEA does not publish a probability: its two-hour forecast says rain or no rain for each of 49 areas, '
+          + 'so the share of areas expecting rain is shown beside it as a measure of how widespread rain is expected to be, '
+          + 'and the share of gauges that are wet right now is what is actually falling.' },
+    ];
+  },
+});
+});
 
 /* ------------------------------------------------------------------ init */
 function init() {
@@ -7195,6 +7431,7 @@ function main() {
     return `<div class="rail" id="rail" data-component="rail" data-kind="row" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
+      + (window.PAI_SCALES ? window.PAI_SCALES.scaleStrip(H.grain_table, RES) : '')
       + ruler()
       + `<div class="railkey" data-component="railKey" data-ref="rail">`
       + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
