@@ -79,6 +79,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES
           what is still owed       NEXT_RELEASE
           radios and reachability  NETWORKING · MESHTASTIC
+          the experiments          FAB26_EXPERIMENT
           the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
           the earth pack           HANDOFF_earth_pack
           nodes finding nodes     SPEC_discovery

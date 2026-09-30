@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **2026-09-30 · The FAB26 experiment has a page.** `docs/FAB26_EXPERIMENT.md` is the participant-facing
+  instructions for the October–December workshop cohort experiment: the two all-hands calls, the biweekly
+  check-in through the experiment bot (@planetai_exp_bot), the build track, and a section for the workshop
+  sensor kit (XIAO ESP32-S3 + Wio-SX1262, Grove shield, BME680, HM3001) with the Making Sense Bali enclosure
+  link and the warning that stock Meshtastic firmware reads the BME680 but not the HM3001.
+
 - **2026-09-30 · A node says when a new version is out.** Once a day the node asks planetai.fab.city which
   version is current. When a newer one is out, the page's header says so ("PLANETAI v0.75.8 is out · on the
   node: planetai update"), `planetai doctor` shows it as an amber line, and Telegram says it once per version,
