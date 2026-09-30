@@ -29,6 +29,10 @@ API = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
 SOURCE = "nasa-firms"
 SENSOR = "firms-hotspots"
 EVERY_S = 3 * 3600          # FIRMS near-real-time data refreshes roughly every three hours
+# FIRMS's last path segment is a number of UTC calendar DAYS, not hours: "1" returns only today's date (UTC), so a
+# rolling "last 24 h" fell to zero at 00:00 UTC (08:00 in Singapore) and rebuilt through the day. Three days reaches
+# back over the 48 hours the count and the change against the day before both need.
+DAY_RANGE = 3
 SECTORS = ("n", "ne", "e", "se", "s", "sw", "w", "nw")
 _state = {"at": 0.0, "warned": False}
 
@@ -59,7 +63,7 @@ def _bbox(lat: float, lon: float, radius_km: float) -> str:
 def _get(hc, key: str, src: str, area: str) -> str:
     """One FIRMS request. Raises with the key removed from anything it says."""
     try:
-        r = hc.get(f"{API}/{key}/{src}/{area}/1", timeout=60)
+        r = hc.get(f"{API}/{key}/{src}/{area}/{DAY_RANGE}", timeout=60)
         r.raise_for_status()
         return r.text
     except Exception as e:  # noqa: BLE001
@@ -68,8 +72,8 @@ def _get(hc, key: str, src: str, area: str) -> str:
                            + (f", HTTP {status}" if status else "") + ")") from None
 
 
-def parse(text: str, lat: float, lon: float, radius_km: float, now: datetime) -> list[dict]:
-    """Hotspots from the last 24 h, within radius, not low-confidence. Columns are read by name: FIRMS's column set
+def parse(text: str, lat: float, lon: float, radius_km: float, now: datetime, hours: float = 24) -> list[dict]:
+    """Hotspots from the last `hours` (24 unless asked for more), within radius, not low-confidence. Columns are read by name: FIRMS's column set
     differs by instrument and has grown before."""
     if "latitude" not in text[:400]:
         raise RuntimeError("FIRMS answered something that is not a fire table: " + text.strip()[:60].replace("\n", " "))
@@ -81,7 +85,7 @@ def parse(text: str, lat: float, lon: float, radius_km: float, now: datetime) ->
             when = datetime.strptime(f"{row['acq_date']} {t}", "%Y-%m-%d %H%M").replace(tzinfo=timezone.utc)
         except (KeyError, ValueError):
             continue
-        if now - when > timedelta(hours=24) or when > now + timedelta(hours=1):
+        if now - when > timedelta(hours=hours) or when > now + timedelta(hours=1):
             continue
         conf = str(row.get("confidence") or "").strip().lower()
         if conf == "l" or (conf.isdigit() and int(conf) < 30):      # VIIRS: l/n/h. MODIS: 0-100.
@@ -93,12 +97,17 @@ def parse(text: str, lat: float, lon: float, radius_km: float, now: datetime) ->
             frp = float(row.get("frp") or 0)
         except ValueError:
             frp = 0.0
-        out.append({"km": d, "sector": sector(_bearing(lat, lon, la, lo)), "frp": frp})
+        out.append({"km": d, "sector": sector(_bearing(lat, lon, la, lo)), "frp": frp,
+                    "age_h": max(0.0, (now - when).total_seconds() / 3600)})
     return out
 
 
 def summarise(spots: list[dict], ts: datetime) -> list[tuple]:
-    out = [(ts, SENSOR, "fires_24h", float(len(spots))),
+    """The last 24 h in every metric but one: `fires_prev_24h` counts the day before that (24 to 48 h ago), so a
+    reader has the change without needing yesterday's own reading, which the count above does not preserve."""
+    prev = float(sum(1 for s in spots if 24 < s.get("age_h", 0) <= 48))
+    spots = [s for s in spots if s.get("age_h", 0) <= 24]
+    out = [(ts, SENSOR, "fires_24h", float(len(spots))), (ts, SENSOR, "fires_prev_24h", prev),
            (ts, SENSOR, "fires_250km_24h", float(sum(1 for s in spots if s["km"] <= 250))),
            (ts, SENSOR, "fires_frp_mw_24h", round(sum(s["frp"] for s in spots), 1))]
     for name in SECTORS:
@@ -126,7 +135,7 @@ def fetch(hc):
     failed = []
     for src in sources:
         try:
-            spots += parse(_get(hc, key, src, area), lat, lon, radius, now)
+            spots += parse(_get(hc, key, src, area), lat, lon, radius, now, hours=48)
         except Exception as e:  # noqa: BLE001 - one satellite down must not blank the other
             failed.append(str(e))
             log.warning("fire-smoke: %s", e)

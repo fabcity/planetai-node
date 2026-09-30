@@ -8,7 +8,7 @@ version: 0.1.0
 requires: { node: ">=0.40.0" }
 kind: code
 domain: air
-metrics: [fires_24h, fires_250km_24h, fires_frp_mw_24h, fires_nearest_km,
+metrics: [fires_24h, fires_prev_24h, fires_250km_24h, fires_frp_mw_24h, fires_nearest_km,
           fires_n, fires_ne, fires_e, fires_se, fires_s, fires_sw, fires_w, fires_nw]
 scales: [city, community]
 env:

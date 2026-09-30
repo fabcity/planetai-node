@@ -28,7 +28,7 @@ detections refresh.
 ## What it stores
 
 One sensor, `firms-hotspots`, `kind='model'`, `scale='city'`, every metric `derived` and not comparable:
-`fires_24h`, `fires_250km_24h`, `fires_frp_mw_24h` (summed fire radiative power), `fires_nearest_km`, and
+`fires_24h`, `fires_prev_24h` (the 24 hours before that, for the day-on-day change), `fires_250km_24h`, `fires_frp_mw_24h` (summed fire radiative power), `fires_nearest_km`, and
 `fires_n`, `fires_ne`, `fires_e`, `fires_se`, `fires_s`, `fires_sw`, `fires_w`, `fires_nw`: the count in each 45-degree
 compass sector **as seen from the node**. Low-confidence detections are dropped (VIIRS `l`, MODIS under 30).
 

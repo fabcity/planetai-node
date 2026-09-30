@@ -46,6 +46,17 @@ assert m["fires_nearest_km"] < 15
 z = {name: v for _, _, name, v in A.summarise([], NOW)}
 assert z["fires_24h"] == 0 and "fires_nearest_km" not in z
 
+# the day before, for the day-on-day change: parse asked for 48 h, summarise splits it at 24
+table48 = "\n".join([HDR, row(0.5, 101.0, "n", 2), row(0.6, 101.2, "h", 30), row(0.7, 101.3, "n", 40),
+                     row(0.8, 101.4, "n", 50)])       # 50 h ago: outside even the 48 h window
+sp48 = A.parse(table48, 1.317, 103.885, 500, NOW, hours=48)
+assert len(sp48) == 3, sp48
+m48 = {name: v for _, _, name, v in A.summarise(sp48, NOW)}
+assert m48["fires_24h"] == 1 and m48["fires_prev_24h"] == 2, m48
+assert {name: v for _, _, name, v in A.summarise(spots, NOW)}["fires_prev_24h"] == 0   # a 24 h parse has no previous day
+# FIRMS's last path segment is calendar days: one would cut the count at 00:00 UTC
+assert A.DAY_RANGE >= 3
+
 # a table that is not a table is an error, and says what came back
 try:
     A.parse("Invalid MAP_KEY", 1.3, 103.9, 500, NOW); raise AssertionError("should have raised")
