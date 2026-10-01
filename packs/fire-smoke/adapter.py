@@ -148,3 +148,16 @@ def fetch(hc):
               "cadence": "PT3H", "meta": {"attribution": "NASA FIRMS / LANCE, VIIRS 375 m", "radius_km": radius,
                                           "sources": sources, "sources_failed": len(failed)}}
     return [sensor], summarise(spots, ts)
+
+# Metrics this pack writes that tools/check_docs.py cannot see in the code above (names built from prefixes and loops).
+PRODUCES = (
+    "fires_prev_24h",
+    "fires_n",
+    "fires_ne",
+    "fires_e",
+    "fires_se",
+    "fires_s",
+    "fires_sw",
+    "fires_w",
+    "fires_nw",
+)

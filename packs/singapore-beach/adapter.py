@@ -144,3 +144,8 @@ def fetch(hc):
     if not sensors:
         log.warning("singapore-beach: the NEA response had no stretch matching %s", beaches)
     return sensors, readings
+
+# Metrics this pack writes that tools/check_docs.py cannot see in the code above (names built from prefixes and loops).
+PRODUCES = (
+    "beach_advisory",
+)

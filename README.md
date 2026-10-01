@@ -76,7 +76,7 @@ sidebar, search and the API reference, built from this repository by `tools/buil
 docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
           when it goes wrong       TROUBLESHOOTING
           what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
-          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES
+          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES · SINGAPORE_NODE
           what is still owed       NEXT_RELEASE
           radios and reachability  NETWORKING · MESHTASTIC
           the experiments          FAB26_EXPERIMENT

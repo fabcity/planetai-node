@@ -566,3 +566,42 @@ def fetch(hc):
     if tried and len(failed) == tried:
         raise RuntimeError("every NEA feed failed: " + " | ".join(failed[:3]))
     return sensors, readings
+
+# Metrics this pack writes that tools/check_docs.py cannot see in the code above (names built from prefixes and loops).
+PRODUCES = (
+    "rain",
+    "wind_dir",
+    "uv",
+    "fc_rain_expected",
+    "fc_temp_high",
+    "fc_temp_low",
+    "fc_humidity_high",
+    "fc_humidity_low",
+    "fc_wind_speed_high",
+    "fc_wind_speed_low",
+    "fc_d1_temp_high",
+    "fc_d1_temp_low",
+    "fc_d1_humidity_high",
+    "fc_d1_humidity_low",
+    "fc_d1_rain_expected",
+    "fc_d2_temp_high",
+    "fc_d2_temp_low",
+    "fc_d2_humidity_high",
+    "fc_d2_humidity_low",
+    "fc_d2_rain_expected",
+    "fc_d3_temp_high",
+    "fc_d3_temp_low",
+    "fc_d3_humidity_high",
+    "fc_d3_humidity_low",
+    "fc_d3_rain_expected",
+    "fc_d4_temp_high",
+    "fc_d4_temp_low",
+    "fc_d4_humidity_high",
+    "fc_d4_humidity_low",
+    "fc_d4_rain_expected",
+    "wbgt",
+    "heat_stress_level",
+    "dengue_cases_in_clusters",
+    "dengue_in_cluster",
+    "dengue_nearest_cases",
+)

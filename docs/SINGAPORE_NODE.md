@@ -130,7 +130,7 @@ PACKS_DIR=packs python3 tests/test_issues.py
 - [ ] Get a data.gov.sg API key and set `NEA_API_KEY`.
 - [ ] Put a sensor in the house.
 - [ ] Measure a Singapore heat baseline (about fourteen days) and propose a local line.
-- [ ] Send the NEA and fire-smoke packs, a `presets/singapore.env`, and the issue drafts upstream.
+- [ ] Send the NEA and fire-smoke packs, a Singapore preset (not written yet), and the issue drafts upstream.
 - [ ] Decide on a Reticulum link, and whether to close port 4242, which is open on all interfaces.
 
 ## Attribution
