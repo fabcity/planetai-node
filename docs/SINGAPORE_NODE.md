@@ -82,6 +82,7 @@ Set these in `.env`. Secrets stay there and are never committed.
 | `BEACH_AREAS` | East Coast,Changi | NEA beaches to follow |
 | `NODE_ISSUES` | air,coast,heat,land | Air and Coast lead the dashboard |
 | `FIRE_RADIUS_KM`, `FIRE_SOURCES` | 500, VIIRS_SNPP_NRT, VIIRS_NOAA20_NRT | fire-smoke pack |
+| `TUYA_ACCESS_ID`, `TUYA_ACCESS_SECRET`, `TUYA_REGION`, `TUYA_DEVICES`, `TUYA_EVERY_MIN` | blank, blank, eu, blank, 10 | tuya-indoor pack: Smart Life room sensors through the Tuya Cloud (Central Europe data centre for this account) |
 | `SC_DEVICES` | 18929 | the Smart Citizen kit |
 | `MAP_TILES` | on | live satellite and street tiles; each tile request tells the tile server which square of the map the page is looking at |
 | `ALERT_LEVEL` | act | only act-level rules reach the phone |
@@ -161,6 +162,7 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
 - **Icons and links.** Sign icons now name themselves on hover; rings on Now link to Act like the wall's; data routes open in a new tab, and routes that cannot be opened by a link (POST /actions, token-only /place/geojson) are shown as plain text saying why.
 - **Seen it.** Each open alert has a "Seen it" button beside "I did this". It records `acknowledged` (the name is kept in this browser, the act token is asked for only if refused). rho counts it as an answer, the alert stays open and shows "Seen" until somebody acts. There is still no bulk version.
 - **Wall layers.** Behind the cells the island now has a shallow-water halo as well as its coast, and a fainter outline of Southeast Asia sits around it (Natural Earth 1:50m, public domain, for the mainland and the Philippines; geoBoundaries gbOpen ADM0, Runfola et al. 2020, CC BY 4.0, for Malaysia and Indonesia, with the Johor and Riau coasts kept to about 50 m; `?outline=island` keeps only the island, `?outline=off` hides both). While the Singapore Grand Prix is on, the Marina Bay Street Circuit is drawn over the cells as a red loop with one dash running round it, with a hover tooltip about the track; the pause button and reduced-motion settings stop the dash. Dates and tooltip text live in `app/static/wall-layers.json` (`from`/`to`, so it appears 24 Sept and goes after 13 Oct 2026); `?track=on` or `?track=off` overrides. The circuit centreline is from bacinger/f1-circuits (`sg-2008.geojson`, the 4.93 km layout used since 2023); that repository publishes no licence file.
+- **Room sensors.** The `tuya-indoor` pack reads two Smart Life temperature and humidity sensors through the Tuya Cloud API and records them as local indoor sensors, so the existing indoor heat rules use them. See `packs/tuya-indoor/README.md`.
 - **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
   (`app/static/coast-outline.json`, from the URA Master Plan 2014 subzone boundaries, obtained through
   github.com/yinshanyang/singapore, with URA's SDCP Waterbody polygons cut out of it, so the reservoirs, the larger rivers
