@@ -8,6 +8,10 @@ for you; it does not control anything.
 - Metrics `temp` (°C) and `humidity` (%). The values are scaled from the device's own specification, so a status of
   `276` on a tenths-of-a-degree sensor is 27.6 °C; Fahrenheit sensors are converted.
 - Nothing else: the existing indoor rules (the heat pack's indoor heat index, for one) pick the sensors up by themselves.
+- A reference room and secondary rooms. List a device's id in `TUYA_SECONDARY` (an empty workshop that bakes behind big
+  windows, say) and it is still read and drawn among the sensors, but it is left out of the house's room number on the
+  Heat and Air cards and it never raises the indoor heat alerts. Every other device is the reference, and with one
+  reference the card shows exactly that room. The role is written to the sensor's `meta.role` on every poll.
 
 **Set up**
 1. A cloud project on platform.tuya.com in the data centre your Smart Life account lives in, with *IoT Core* and

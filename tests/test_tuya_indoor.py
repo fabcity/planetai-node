@@ -83,6 +83,13 @@ for path, h in hc.calls:
     assert h["client_id"] == "ID123" and h["sign"] == h["sign"].upper() and h["t"].isdigit() and h["sign_method"] == "HMAC-SHA256"
     assert ("access_token" in h) == (not path.startswith("/v1.0/token")), path
     assert SECRET not in json.dumps(h)
+# `TUYA_SECONDARY` marks a room as secondary; the others are the reference
+assert {x["name"]: x["meta"]["role"] for x in sensors} == {"Warm room": "reference", "Aircon room": "reference"}
+os.environ["TUYA_SECONDARY"] = "devA00001"; A._state["at"] = 0.0
+sensors2, _ = A.fetch(hc)
+assert {x["name"]: x["meta"]["role"] for x in sensors2} == {"Warm room": "secondary", "Aircon room": "reference"}
+del os.environ["TUYA_SECONDARY"]
+A._state["at"] = __import__("time").time()
 # polled again at once: nothing, because the interval has not passed
 assert A.fetch(hc) == ([], [])
 # the token and the specification are fetched once per process

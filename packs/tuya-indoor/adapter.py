@@ -177,6 +177,7 @@ def fetch(hc):
     every = max(5, int(float(os.getenv("TUYA_EVERY_MIN", "10") or 10))) * 60
     if time.time() - _state["at"] < every:
         return [], []
+    secondary = {x.strip() for x in os.getenv("TUYA_SECONDARY", "").split(",") if x.strip()}
     ts = datetime.now(timezone.utc).replace(microsecond=0)
     sensors, readings, failed = [], [], []
     for attempt in (1, 2):         # a second pass only if the token was refused as expired
@@ -201,7 +202,9 @@ def fetch(hc):
                 sensors.append({"sensor_id": sid, "source": SOURCE, "name": name, "lat": None, "lon": None,
                                 "indoor": True, "local": True, "kind": "sensor", "scale": "community",
                                 "cadence": f"PT{every // 60}M",
-                                "meta": {"vendor": "tuya", "device": did[-6:], "region": base.split("openapi")[-1]}})
+                                "meta": {"vendor": "tuya", "device": did[-6:], "region": base.split("openapi")[-1],
+                                         # `secondary`: read and drawn, but not the house's number and no heat pages
+                                         "role": "secondary" if did in secondary else "reference"}})
                 readings += [(ts, sid, m, v) for m, v in got.items()]
             break
         except TuyaError as e:

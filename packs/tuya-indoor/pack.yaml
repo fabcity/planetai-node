@@ -18,6 +18,8 @@ env:
   - "TUYA_REGION=eu"
   - "# tuya-indoor: devices as id=Room name, comma separated. Ids are in the project's Devices list."
   - "TUYA_DEVICES="
+  - "# tuya-indoor: device ids (from TUYA_DEVICES) that are secondary rooms: still read and drawn, but not the house's number and no heat alerts. An empty sun-baked workshop, say."
+  - "TUYA_SECONDARY="
   - "# tuya-indoor: minutes between polls (5 or more). Tuya's free tier limits the calls a month."
   - "TUYA_EVERY_MIN=10"
 needs:
