@@ -1764,14 +1764,21 @@ function render(ctx, lead, opts = {}) {
   /* Simple on Now is the three questions and nothing else: no sections, no stage names, no notes. */
   if (simple && onNow) return (lead || '') + simpleTail(ctx);
   let html = (lead || '') + (simple && onNow ? digest(ctx) : '');
+  const present = new Set(ordered.map(s => s.stage));
   for (const [key, name, what] of STAGES) {
     const mine = ordered.filter(s => s.stage === key);
     if (!mine.length) continue;
     html += `<div class="stage" id="stage-${key}" data-stage="${key}">`
       + `<div class="stagehead"><span class="n">${STAGE_INDEX[key] + 1}</span>`
       + `<h2>${esc(name)}</h2><span class="what">${esc(what)}</span>`
-      + `<span class="loop" aria-hidden="true">${STAGES.map(([k]) =>
-        `<i class="${k === key ? 'on' : ''}"></i>`).join('')}</span>`
+      /* THE FOUR SQUARES ARE THE LOOP'S MAP AND ITS NAVIGATION. A square for a stage this view draws is a
+         link to that stage; one for a stage it does not (Simple hides most, and Historical and Network
+         have only some) is greyed and says so, so the row never points at nothing. */
+      + `<span class="loop" role="navigation" aria-label="The four stages">${STAGES.map(([k, nm]) => present.has(k)
+        ? `<a class="sq${k === key ? ' on' : ''}" href="#stage-${k}" data-stage-go="${k}" title="${esc(nm)}"`
+          + ` aria-label="${esc(nm)}"${k === key ? ' aria-current="true"' : ''}><i class="${k === key ? 'on' : ''}"></i></a>`
+        : `<span class="sq off" title="${esc(nm)}: not on this view" role="img"`
+          + ` aria-label="${esc(nm)}, not on this view"><i class="off"></i></span>`).join('')}</span>`
       /* One mark for the loop, on the first stage a view draws. The same mark on all four would be
          the same quote four times, which is a page repeating itself rather than explaining itself. */
       + (key === ordered[0].stage && window.PAI_LEARN
@@ -8225,6 +8232,16 @@ addEventListener('hashchange', () => {
   route();
 });
 addEventListener('popstate', route);
+
+/* A square in a stage header scrolls to that stage. It is a scroll and not a navigation, so the address keeps
+   the view it is on (#historical must stay #historical). */
+document.addEventListener('click', ev => {
+  const a = ev.target.closest && ev.target.closest('a[data-stage-go]');
+  if (!a) return;
+  ev.preventDefault();
+  const el = document.querySelector(`#page [data-stage="${a.getAttribute('data-stage-go')}"]`);
+  if (el) { el.scrollIntoView({ block: 'start' }); const h = el.querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } }
+});
 
 /* A ring on the wall goes to Act: the wall's view is the hash, so this leaves it for Now and then scrolls to
    the Act stage. In Simple mode there is no Act stage, and the first open ask in the lead is the next best. */

@@ -155,6 +155,9 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
 - **Act.** "I did this" now asks for the act token in the form when the node refuses a browser (a browser is never "this
   machine" to the node), keeps it in the browser, and marks the alert as acted in place; the wall's alert rings link to
   the Act section; the rail's zone key is behind an "i" icon.
+- **Stage squares.** The four squares in each stage header link to the stage they stand for (scrolling, so the address keeps
+  its view), show the stage name on hover, and are greyed with "not on this view" for stages the view does not draw,
+  as in Simple mode.
 - **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
   (`app/static/coast-outline.json`, simplified to about 10 m, from geoBoundaries gbOpen SGP ADM0, Runfola et al. 2020,
   CC BY 4.0), served from the node itself, so it is offline, needs no token and reveals nothing about the household.
