@@ -707,6 +707,12 @@ const didButton = id =>
   + ` placeholder="your name"></label>`
   + `<label><span>What you did</span><input name="note" maxlength="500"`
   + ` placeholder="closed the windows on the north side"></label>`
+  /* Shown only when the node refuses for want of a token. A browser is never "this machine" to the
+     node (it arrives as the Docker gateway), so on a PC running the node the first press from the
+     dashboard always needs the act token once; asking for it here, where the press failed, beats a
+     toast that names a terminal command. Kept in this browser, the same key Set up -> unlock writes. */
+  + `<label class="tokfield" hidden><span>Act token</span><input name="token" type="password"`
+  + ` autocomplete="off" spellcheck="false" placeholder="ACT_TOKEN from planetai ui"></label>`
   + `<div class="btns"><button type="submit" class="pri">Record it</button>`
   + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
 
@@ -767,7 +773,7 @@ const asof = () => {
 /* rho as a row of rings, answered first, with the caption naming reported against observed. */
 /* PORTED: `ref` is new, for the same reason the ask strip's is. The row's link out was always the
  * funnel, and the wall has no funnel on it. */
-function rhoRow(small, ref) {
+function rhoRow(small, ref, actLink) {
   /* GET /rho may be slow, refused or absent, and this is called from the wall, which nobody is
    * standing at. A dereference here took the whole wall down before innerHTML was ever assigned. */
   if (!S.rho) {
@@ -786,12 +792,16 @@ function rhoRow(small, ref) {
   const UNIT = total <= 40 ? 1 : total <= 400 ? 10 : 100;
   const rings = Math.round(total / UNIT), full = Math.round(closed / UNIT);
   let s = '';
-  for (let i = 0; i < rings; i++) s += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
+  for (let i = 0; i < rings; i++) {
+    const one = sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
+    /* On the wall each ring is a way to the Act section, where the alerts themselves are. */
+    s += actLink ? `<a class="rl" href="#act" data-act-link aria-label="${i < full ? 'an answered alert' : 'an open alert'}: go to Act">${one}</a>` : one;
+  }
   /* The row is a texture of signs and the CAPTION is the readable part of it, so the caption is
    * what carries the role and what the three-metre floor is measured against. A sign is measured
    * against --sign-floor; a cap height is measured against a distance. */
   return `<div class="rho${small ? ' small' : ''}" data-component="rhoRow"`
-    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="img" aria-label="${closed} of ${total} alerts answered">${s}</div>`
+    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="${actLink ? 'group' : 'img'}" aria-label="${closed} of ${total} alerts answered">${s}</div>`
     + `<p class="note" data-role="rho" data-num="rho"`
     + ` data-cmp="against the ${total} alerts this node sent in 30 days">`
     + `${closed} of ${total} alerts answered · median ${r.median_minutes} min`
@@ -5937,7 +5947,7 @@ function render(ctx, sel) {
     /* And the dial says how to read itself, under itself. The foot's caption is about the MOTION;
        this one is about the marks, and a reader looking at the stops should not have to look away. */
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
-    + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
+    + `<div class="wrho">${K.rhoRow(false, 'wall-dial', true)}</div>`
     + `</div></div>`
     + `<div class="wmore" id="wall-more" data-component="wallMore" data-ref="wall-field">${more(ctx)}</div>`
     /* The node's name, the share level and the dial's cadence have gone to the top bar and the
@@ -6512,16 +6522,16 @@ function cols(ctx) {
   const val = (key, v, cmp, cls) => (v == null
     ? '<span class="none">—</span>'
     : `<span class="num${cls ? ' ' + cls : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">${esc(n0(v))}</span>`);
-  const sm = t => `<small>${esc(t)}</small>`;
+  const sm = t => `<small class="said">${esc(t)}</small>`;
   const out = [];
 
   out.push(col('house', 'PM2.5 · this house',
     val('sgwall.house.pm25', d.kit, `against NEA's ${n0(d.nea)} for the region, and the ${d.line} line`, d.kit != null && d.kit > d.line ? 'crossed' : ''),
-    sm(d.kit == null ? 'nothing read from the kit in the last hour' : 'µg/m³ · Smart Citizen, 1 h mean')));
+    sm(d.kit == null ? 'nothing read from the kit in the last hour' : '\u00b5g/m\u00b3 · Smart Citizen, 1 h mean')));
 
   out.push(col('nea', `PM2.5 · NEA${d.region ? ' ' + d.region : ''}`,
     val('sgwall.nea.pm25', d.nea, `against ${n0(d.kit)} at this house, and the ${d.line} line`, d.nea != null && d.nea > d.line ? 'crossed' : ''),
-    sm(d.nea == null ? 'no NEA reading yet' : `µg/m³ · hourly, region average${d.neaTs ? ' · ' + clock(d.neaTs, d.tz) : ''}`)));
+    sm(d.nea == null ? 'no NEA reading yet' : `\u00b5g/m\u00b3 · hourly, region average${d.neaTs ? ' · ' + clock(d.neaTs, d.tz) : ''}`)));
 
   if (d.kit != null && d.nea != null) {
     const gap = d.kit - d.nea, pct = d.nea > 0 ? (gap / d.nea) * 100 : null;
@@ -6529,7 +6539,7 @@ function cols(ctx) {
     const bigTxt = `<span class="num" data-num="sgwall.gap.pm25" data-cmp="this house's hour minus NEA's region, `
       + `against ${n0(d.kit)} and ${n0(d.nea)}">${esc(sign + Math.abs(gap).toFixed(0))}</span>`;
     out.push(col('gap', 'House against NEA', bigTxt,
-      sm(`µg/m³${pct == null ? '' : ` · ${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(0)}%`} · the house reads `
+      sm(`\u00b5g/m\u00b3${pct == null ? '' : ` · ${pct > 0 ? '+' : pct < 0 ? '−' : ''}${Math.abs(pct).toFixed(0)}%`} · the house reads `
         + `${gap > 0 ? 'higher' : gap < 0 ? 'lower' : 'the same'}`)));
   } else {
     out.push(col('gap', 'House against NEA', '<span class="none">—</span>', sm('needs both readings')));
@@ -6619,7 +6629,7 @@ function readCoast(ctx) {
 function coastCols(ctx) {
   const { esc } = window.K;
   const d = readCoast(ctx);
-  const sm = t => `<small>${esc(t)}</small>`;
+  const sm = t => `<small class="said">${esc(t)}</small>`;
   const col = (id, title, big, small) => `<div class="col" id="sgw-${id}" data-component="sgwall" data-ref="wall-field">`
     + `<h3 data-role="wall-issue">${esc(title)}</h3><div class="line">${big}${small}</div></div>`;
   const numEl = (key, txt, cmp, cls) => `<span class="num${cls ? ' ' + cls : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">${esc(txt)}</span>`;
@@ -6654,7 +6664,7 @@ function coastCols(ctx) {
     const delta = h.ago == null ? null : h.now - h.ago;
     out.push(col('haze', 'Haze · PM2.5 on 24 h ago',
       delta == null ? none : numEl('sgwall.haze.delta', sign(delta), `NEA regional PM2.5 now, ${h.now.toFixed(0)}, against ${h.ago.toFixed(0)} at the same hour yesterday`, delta > 0 ? 'crossed' : ''),
-      sm(delta == null ? 'no reading near this hour yesterday' : `µg/m³ · now ${h.now.toFixed(0)}, yesterday ${h.ago.toFixed(0)}`)
+      sm(delta == null ? 'no reading near this hour yesterday' : `\u00b5g/m\u00b3 · now ${h.now.toFixed(0)}, yesterday ${h.ago.toFixed(0)}`)
       + sm(`NEA regional${h.peak != null ? ' · peak ' + h.peak.toFixed(0) + ' in the 24 h' : ''}`)));
   }
   return out.join('');
@@ -7598,10 +7608,13 @@ function main() {
       + (window.PAI_SCALES ? window.PAI_SCALES.scaleStrip(H.grain_table, RES) : '')
       + ruler()
       + `<div class="railkey" data-component="railKey" data-ref="rail">`
+      /* The two zone explanations are one icon rather than two lines: the rail already says the zones in
+         texture, and the sentences are for the reader who asks what the texture means. */
+      + `<details class="rinfo" data-component="railKeyInfo" data-ref="rail"><summary aria-label="What the dotted and struck-through stops mean" title="What the dotted and struck-through stops mean">i</summary><div class="rinfo-body">`
       + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
       + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
       + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
-      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
+      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span></div></details>`
       /* `occupied`, `in_my_cell` and `mine_in_my_cell` are the rail's figures too, and they are
          drawn ONCE — in the grain line this rail re-derives and points at, where they are a
          sentence rather than three numbers in a key. Printing them here as well made the key three
@@ -8070,6 +8083,10 @@ async function didThis(form) {
     return;
   }
   btn.disabled = true;
+  /* A token typed into the form is kept in this browser before the request, so the press that needed it
+     is also the last one that does. */
+  const typedTok = val('token');
+  if (typedTok) { try { localStorage.setItem('planetai_act', typedTok); } catch (e) { /* this press only */ } }
   try {
     const r = await fetch('/actions', {
       method: 'POST',
@@ -8083,8 +8100,20 @@ async function didThis(form) {
        cannot know: where the token comes from. */
     const said = r.ok ? '' : await nodeSaid(r);
     if (r.status === 401 || r.status === 403) {
-      say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
-        + `act token; Set up \u2192 unlock holds it.`, true);
+      /* Ask for the token where the press failed, instead of naming a terminal command and leaving the
+         record unwritten. A wrong token comes back here too, so the field is cleared and shown again. */
+      const tf = form.querySelector('.tokfield');
+      if (tf) {
+        if (typedTok) { try { localStorage.removeItem('planetai_act'); } catch (e) { /* nothing kept */ } }
+        tf.hidden = false;
+        if (tf.querySelector('input')) { tf.querySelector('input').value = ''; tf.querySelector('input').focus(); }
+        say(typedTok ? 'The node did not accept that token. Check ACT_TOKEN (planetai ui prints it) and try again.'
+          : 'Nothing is recorded yet: this node needs its act token from a browser. Paste ACT_TOKEN in the new '
+            + 'field and press Record it again; it is kept in this browser after that.', true);
+      } else {
+        say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
+          + `act token; Set up \u2192 unlock holds it.`, true);
+      }
     } else if (r.status === 404) {
       say('This node has no such alert any more. Reload and look again.', true);
     } else if (r.status === 409 || r.status === 400) {
@@ -8098,8 +8127,19 @@ async function didThis(form) {
       say(decision
         ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
         : 'Recorded. The node watches what happens next.');
-      if (!decision) form.hidden = true;
-      else { form.reset(); }
+      if (!decision) {
+        form.hidden = true;
+        /* Mark the row as acted now, in place, before the redraw takes it off the list: the page used to
+           say "Recorded" in a toast and leave the ask looking exactly as it had. */
+        const row = form.closest('.ask');
+        if (row) {
+          row.classList.add('done');
+          const w = row.querySelector('.what');
+          const who = val('actor');
+          if (w) w.insertAdjacentHTML('afterbegin', `<span class="actedmark">\u2713 Marked as acted${who ? ' by ' + window.K.esc(who) : ''}: ${window.K.esc(val('note'))}</span> `);
+          const go = row.querySelector('.go'); if (go) go.hidden = true;
+        }
+      } else { form.reset(); }
       await refresh();
     }
   } catch (e) {
@@ -8185,6 +8225,20 @@ addEventListener('hashchange', () => {
   route();
 });
 addEventListener('popstate', route);
+
+/* A ring on the wall goes to Act: the wall's view is the hash, so this leaves it for Now and then scrolls to
+   the Act stage. In Simple mode there is no Act stage, and the first open ask in the lead is the next best. */
+document.addEventListener('click', ev => {
+  const a = ev.target.closest && ev.target.closest('a[data-act-link]');
+  if (!a) return;
+  ev.preventDefault();
+  history.pushState({ view: 'now' }, '', location.pathname + location.search);
+  route();
+  setTimeout(() => {
+    const el = document.querySelector('#page [data-stage="act"]') || document.querySelector('.ask') || document.getElementById('page');
+    if (el) el.scrollIntoView({ block: 'start' });
+  }, 80);
+});
 
 /* EVERY CONTROL ON THIS PAGE IS A QUERY LINK, AND EVERY ONE OF THEM RELOADED THE DOCUMENT.
  *

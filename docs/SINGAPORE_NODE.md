@@ -152,6 +152,9 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
   The wall now carries up to eight of these columns before the rest go to "more in Now".
 - **fire-smoke fix.** FIRMS's last URL segment is UTC calendar days, so `/1` returned only today and `fires_24h` fell to zero
   at 08:00 Singapore time. The pack now asks for three days, and publishes `fires_prev_24h` (the 24 h before) for the change.
+- **Act.** "I did this" now asks for the act token in the form when the node refuses a browser (a browser is never "this
+  machine" to the node), keeps it in the browser, and marks the alert as acted in place; the wall's alert rings link to
+  the Act section; the rail's zone key is behind an "i" icon.
 - **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
   (`app/static/coast-outline.json`, simplified to about 10 m, from geoBoundaries gbOpen SGP ADM0, Runfola et al. 2020,
   CC BY 4.0), served from the node itself, so it is offline, needs no token and reveals nothing about the household.

@@ -1555,24 +1555,24 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 /* Wall dial: name the ladder, and say where on it the map is. */
 .wallbox .dialhead { display: flex; justify-content: space-between; gap: 1em; margin: 0 0 .4em;
   font: 400 clamp(10px, .75vw, 14px) var(--mono); letter-spacing: .04em }
-.wallbox .dialhead b { text-transform: uppercase; letter-spacing: .08em }
+.wallbox .dialhead b { letter-spacing: .08em }
 .wallbox .dialhead i { font-style: normal; margin: 0 .5em; opacity: .6 }
 .wallbox .dialnow { margin: .4em 0 0; font: 700 clamp(10px, .8vw, 15px) var(--mono); letter-spacing: .04em }
 .wallbox .dialnow::before { content: "\25B2  " }
 .wallbox .stop.on { outline: 2px solid var(--ink); outline-offset: 2px }
 .wallbox .wpause { margin-left: auto; margin-right: .6em; cursor: pointer; font: 700 clamp(11px, .8vw, 15px) var(--mono);
-  text-transform: uppercase; letter-spacing: .06em; background: none; color: var(--ink); border: 1px solid var(--ink); padding: .2em .8em }
+  letter-spacing: .06em; background: none; color: var(--ink); border: 1px solid var(--ink); padding: .2em .8em }
 .wallbox .wpause + .winfo { margin-left: 0 }
 
 .wallbox .scales { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); margin-top: .3em }
 .wallbox .scales .sc { text-align: center; border-top: 2px solid var(--mute, #999); padding-top: .2em; margin: 0 .15em;
-  font: 400 clamp(9px, .7vw, 13px) var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--mute, #666) }
+  font: 400 clamp(9px, .7vw, 13px) var(--mono); letter-spacing: .06em; color: var(--mute, #666) }
 .wallbox .scales .sc.on { border-top-color: var(--ink); color: var(--ink); font-weight: 700 }
 
 /* Scale strip shared by the wall dial and Now's rail (also styled under .wallbox above). */
 .scales { display: grid; margin-top: 4px }
 .scales .sc { text-align: center; border-top: 2px solid var(--mute); padding-top: 2px; margin: 0 2px;
-  font: 500 9.5px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--mute) }
+  font: 500 9.5px var(--mono); letter-spacing: .06em; color: var(--mute) }
 .scales .sc.on { border-top-color: var(--ink); color: var(--ink); font-weight: 700 }
 @media (max-width: 600px) { .rail + .scales .sc { font-size: 8px; letter-spacing: 0 } }
 /* Series markers: 24 h ago, highest, the line. */
@@ -1590,3 +1590,18 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 /* Faded land outline under the wall's cells: a hint of where the ground is, never the loudest thing. */
 .wallbox .wfield svg .outline path { fill: var(--ink); fill-opacity: .05; stroke: var(--ink); stroke-opacity: .28;
   stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }
+
+/* "I did this": the token field it asks for on a refusal, and the row it marks. */
+.ask form.did .tokfield[hidden] { display: none }
+.ask.done .actedmark { display: block; font-weight: 700; color: var(--rings) }
+/* Wall rings are links to Act. */
+.rho a.rl { display: inline-flex; line-height: 0; color: inherit; text-decoration: none; border-radius: 2px }
+.rho a.rl:hover svg, .rho a.rl:focus-visible svg { color: var(--cells) }
+.rho a.rl:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+/* The rail's zone key behind an info icon. */
+.railkey .rinfo { position: relative; display: inline-block }
+.railkey .rinfo summary { list-style: none; cursor: pointer; width: 1.7em; height: 1.7em; border: 1px solid var(--ink);
+  border-radius: 50%; display: grid; place-items: center; font: 700 10.5px var(--mono) }
+.railkey .rinfo summary::-webkit-details-marker { display: none }
+.railkey .rinfo-body { position: absolute; left: 0; top: 2.3em; z-index: 5; width: min(34em, 86vw); display: grid; gap: 6px;
+  padding: .8em 1em; background: var(--ground); border: 1px solid var(--ink); font: 500 11px var(--mono) }
