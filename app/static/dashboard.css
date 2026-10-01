@@ -1588,8 +1588,23 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 .modehint p { margin: 0; font: 500 12.5px var(--mono) }
 
 /* Faded land outline under the wall's cells: a hint of where the ground is, never the loudest thing. */
-.wallbox .wfield svg .outline path { fill: var(--ink); fill-opacity: .05; stroke: var(--ink); stroke-opacity: .28;
-  stroke-width: 1.5; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }
+.wallbox .wfield svg .outline path { fill: var(--ink); fill-opacity: .07; stroke: var(--ink); stroke-opacity: .32;
+  stroke-width: 1.25; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }
+/* The shallows: a wide, very faint stroke under the coast, so the island has an edge rather than a line. */
+.wallbox .wfield svg .outline path.shore { fill: none; stroke-opacity: .06; stroke-width: 7 }
+/* Southeast Asia around it: lines and a breath of fill, quieter than the island. */
+.wallbox .wfield svg .region path { fill: var(--ink); fill-opacity: .025; stroke: var(--ink); stroke-opacity: .14;
+  stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }
+/* The street circuit while its event is on: the role red, a steady loop, and one short dash running round it. */
+.wallbox .wfield svg .track path { fill: none; stroke: var(--signal-worse); stroke-linejoin: round; stroke-linecap: round;
+}
+.wallbox .wfield svg .track .hit { stroke: transparent; stroke-width: 14; pointer-events: stroke }
+.wallbox .wfield svg .track .line { stroke-width: 2; stroke-opacity: .75; pointer-events: none }
+.wallbox .wfield svg .track .car { stroke-width: 4; stroke-dasharray: 3 97; pointer-events: none;
+  animation: trackrun 9s linear infinite }
+.wallbox .wfield svg .track:focus-visible .line { stroke-width: 3; stroke-opacity: 1 }
+.wallbox.paused .wfield svg .track .car { animation-play-state: paused }
+@keyframes trackrun { from { stroke-dashoffset: 0 } to { stroke-dashoffset: -100 } }
 
 /* "I did this": the token field it asks for on a refusal, and the row it marks. */
 .ask form.did .tokfield[hidden] { display: none }

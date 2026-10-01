@@ -1939,6 +1939,7 @@ COMPANIONS = {
     "kilometre-cells.json": (STATIC / "kilometre-cells.json", "application/json"),
     # The wall's faded land outline: a public coastline (geoBoundaries, CC BY 4.0), not the household's own place.
     "coast-outline.json": (STATIC / "coast-outline.json", "application/json"),
+    "wall-layers.json": (STATIC / "wall-layers.json", "application/json"),
     # The learn layer: the marks cut out of docs/site by tools/build_learn.py at build
     # time, because a node does not carry the documentation site. Fetched only when a reader
     # turns learn mode on, and the quotes are inline so the mode works on a LAN with no route out.

@@ -5667,7 +5667,7 @@ function centroid(d) {
  * `?outline=off` hides it. The plate's own drawing space is a 600-unit box; the map from degrees to
  * that box is fitted from the plate's cells, which exist in both frames, so nothing is assumed about
  * how the node scaled them. */
-let OUTLINE = null, OUTLINE_ASKED = false;
+let OUTLINE = null, LAYERS = null, OUTLINE_ASKED = false;
 function outlineLoad() {
   if (OUTLINE_ASKED) return;
   OUTLINE_ASKED = true;
@@ -5677,6 +5677,12 @@ function outlineLoad() {
     /* Redraw the wall once, if it is what is on screen. */
     if (document.querySelector('#page #wall-lead') && window.PAI_ROUTE) window.PAI_ROUTE();
   }).catch(() => { /* no outline is a wall with no outline */ });
+  /* The wider region and the event circuit are a second, optional file: without it the wall is the island alone. */
+  fetch('static/wall-layers.json').then(r => r.ok ? r.json() : null).then(j => {
+    if (!j) return;
+    LAYERS = j;
+    if (document.querySelector('#page #wall-lead') && window.PAI_ROUTE) window.PAI_ROUTE();
+  }).catch(() => { /* no layers is a wall without them */ });
 }
 function outlineFit(plate) {
   const xs = [], ys = [], lons = [], lats = [];
@@ -5697,23 +5703,58 @@ function outlineFit(plate) {
   const fx = fit(lons, xs), fy = fit(lats, ys);
   return fx && fy ? { fx, fy } : null;
 }
-function outlineSvg(ctx, plate) {
-  outlineLoad();
-  if (!OUTLINE || ctx.Q.get('outline') === 'off') return '';
-  const f = outlineFit(plate);
-  if (!f) return '';
-  const box = plate.draw.box, m = box * 0.5;   /* cull rings that never come near the drawing */
+/* Degrees to the plate's 600-unit box, as an SVG path. `close` joins the ends; `cull` drops a ring that never
+   comes near the drawing, which keeps the wide region cheap at the finest resolutions. */
+function outlinePath(f, plate, rings, close, cull) {
+  const box = plate.draw.box, m = box * 0.5;
   let d = '';
-  for (const r of OUTLINE.rings) {
-    let s = '', any = false;
+  for (const r of rings) {
+    let s = '', any = !cull;
     for (let i = 0; i < r.length; i += 2) {
       const x = f.fx.s * r[i] + f.fx.t, y = f.fy.s * r[i + 1] + f.fy.t;
       if (x > -m && x < box + m && y > -m && y < box + m) any = true;
       s += `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
     }
-    if (any) d += s + 'Z';
+    if (any) d += s + (close ? 'Z' : '');
   }
-  return d ? `<g class="outline" aria-hidden="true"><path d="${d}"/></g>` : '';
+  return d;
+}
+/* Behind the cells, back to front: the Southeast Asian mainland and islands (faint, lines only), then the
+   island itself (a shallow-water halo, a little fill, the coast). */
+function outlineSvg(ctx, plate) {
+  outlineLoad();
+  if (ctx.Q.get('outline') === 'off') return '';
+  const f = outlineFit(plate);
+  if (!f) return '';
+  let out = '';
+  const reg = LAYERS && Array.isArray(LAYERS.region) && ctx.Q.get('outline') !== 'island'
+    ? outlinePath(f, plate, LAYERS.region, true, true) : '';
+  if (reg) out += `<g class="region" aria-hidden="true"><path d="${reg}"/></g>`;
+  const d = OUTLINE ? outlinePath(f, plate, OUTLINE.rings, true, true) : '';
+  if (d) out += `<g class="outline" aria-hidden="true"><path class="shore" d="${d}"/><path d="${d}"/></g>`;
+  return out;
+}
+
+/* THE CIRCUIT. While an international event is on, its street circuit is drawn in the role red over the
+ * cells, with a short bright dash running round it. The dates are in static/wall-layers.json (`from` to
+ * `to`), so the wall puts it up and takes it down on its own, and `?track=on` / `?track=off` overrides
+ * that. It is a link to nothing: it is a drawing with a tooltip. The animation is CSS, so
+ * prefers-reduced-motion and the wall's pause button both stop it. */
+function trackSvg(ctx, plate) {
+  const T = LAYERS && LAYERS.track, q = ctx.Q.get('track');
+  if (!T || !Array.isArray(T.path) || q === 'off') return '';
+  const today = new Date().toISOString().slice(0, 10);
+  if (q !== 'on' && !(today >= T.from && today <= T.to)) return '';
+  const f = outlineFit(plate);
+  if (!f) return '';
+  const d = outlinePath(f, plate, [T.path], true, true);
+  if (!d) return '';
+  const tip = window.K.esc(T.tip || T.name);
+  /* The dash keeps its phase across the wall's redraws, which happen at every dial step. */
+  const delay = -((Date.now() % 9000) / 1000).toFixed(2);
+  return `<g class="track" tabindex="0" role="img" aria-label="${tip}"><title>${tip}</title>`
+    + `<path class="hit" d="${d}"/><path class="line" d="${d}"/>`
+    + `<path class="car" d="${d}" pathLength="100" style="animation-delay:${delay}s"/></g>`;
 }
 
 function field(ctx, sel) {
@@ -5806,7 +5847,7 @@ function field(ctx, sel) {
      they do not measure it. Count the thing that is drawn. */
   return `<svg viewBox="0 0 ${d.box} ${d.box}" role="img" aria-label="resolution ${res}: the nineteen cells `
     + `this node published, ${reading} of them with a station reading ${M.label}">`
-    + outlineSvg(ctx, plate) + `<g class="cells">${cells}</g><g class="pts">${pts}</g><g class="labels">${labels}</g></svg>`
+    + outlineSvg(ctx, plate) + `<g class="cells">${cells}</g>` + trackSvg(ctx, plate) + `<g class="pts">${pts}</g><g class="labels">${labels}</g></svg>`
     + `<div class="cap"><span>${address(N.chain[res], res)}</span>`
     + `<span>one cell <b data-num="h3.res${res}.area" data-cmp="against ${esc(km2(H.ladder[res].own_area_m2))}, `
     + `this node's own cell at this resolution">${esc(km2(G.area_m2))}</b> · <b>${esc(edge(G.edge_m))}</b> to an edge</span>`
@@ -5958,7 +5999,7 @@ function render(ctx, sel) {
       + ` aria-pressed="${WALL_PAUSED}">${WALL_PAUSED ? 'play' : 'pause'}</button>`)
     + `<details class="winfo" data-component="wallInfo" data-ref="wall-dial"><summary aria-label="About this wall" title="About this wall">i</summary>`
     + `<div class="winfo-body"><p>Answer on Telegram, not here.</p>`
-    + `<p>The labels under the ladder (Region, City, Community, Home, Street, Room) are the scales from planetai.fab.city/nodes: home is about 1 km and one cell, community about 5 km, city about 15 km, region about 100 km. Street and room are finer than home. The faint island shape behind the cells is a public coastline that ships with the dashboard, so it works offline (add ?outline=off to hide it). The row of numbered hexagons is the resolution ladder: each hexagon is one rung, coarse on the left, fine on the right. The solid dark one, marked “you are here”, is the rung the map is showing. Lightly filled rungs are coarse enough to leave this machine; dashed rungs are finer than this node publishes.</p>`
+    + `<p>The labels under the ladder (Region, City, Community, Home, Street, Room) are the scales from planetai.fab.city/nodes: home is about 1 km and one cell, community about 5 km, city about 15 km, region about 100 km. Street and room are finer than home. The faint island shape behind the cells, and the fainter outline of Southeast Asia around it, are public coastlines that ship with the dashboard, so they work offline (add ?outline=off to hide both, or ?outline=island to keep only the island). While the Singapore Grand Prix is on, the red loop is the Marina Bay street circuit; hover it for details, and the pause button stops its moving dash. The row of numbered hexagons is the resolution ladder: each hexagon is one rung, coarse on the left, fine on the right. The solid dark one, marked “you are here”, is the rung the map is showing. Lightly filled rungs are coarse enough to leave this machine; dashed rungs are finer than this node publishes.</p>`
     + `<p>${STILL ? 'Reduced motion is on, so the ladder stands still. Press a rung to move it.'
       : `The ladder moves by itself every ${DWELL_MS / 1000} s, with nothing interpolated between rungs. Under reduced motion it stands still.`}</p></div></details></div>`
     + `<div class="wgrid">`
@@ -6005,6 +6046,7 @@ function start(ctx) {
     const c = at(ctx, r);
     const fl = b.querySelector('#wall-field'), dl = b.querySelector('#wall-dial'),
       gr = b.querySelector('#wall-grain'), mo = b.querySelector('#wall-more');
+    b.classList.toggle('paused', WALL_PAUSED);
     if (fl) fl.innerHTML = field(c, sel);
     if (dl) dl.innerHTML = dial(c);
     if (gr) gr.innerHTML = grain(c);
@@ -6035,6 +6077,7 @@ function start(ctx) {
       WALL_PAUSED = !WALL_PAUSED;
       pz.textContent = WALL_PAUSED ? 'play' : 'pause';
       pz.setAttribute('aria-pressed', String(WALL_PAUSED));
+      const wb = box(); if (wb) wb.classList.toggle('paused', WALL_PAUSED);
       return;
     }
     const a = e.target.closest && e.target.closest('#wall-dial a.stop');
