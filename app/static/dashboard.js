@@ -5732,7 +5732,10 @@ function outlineSvg(ctx, plate) {
   const reg = LAYERS && Array.isArray(LAYERS.region) && ctx.Q.get('outline') !== 'island'
     ? outlinePath(f, plate, LAYERS.region, true, true) : '';
   if (reg) out += `<g class="region" aria-hidden="true"><path d="${reg}"/></g>`;
-  const d = OUTLINE ? outlinePath(f, plate, OUTLINE.rings, true, true) : '';
+  /* `water` are cut-outs drawn into the island's own path (even-odd), where the boundary data counts water as
+     land: today that is Marina Bay, traced approximately in wall-layers.json. */
+  const d = OUTLINE ? outlinePath(f, plate, OUTLINE.rings, true, true)
+    + (LAYERS && Array.isArray(LAYERS.water) ? outlinePath(f, plate, LAYERS.water, true, true) : '') : '';
   if (d) out += `<g class="outline" aria-hidden="true"><path class="shore" d="${d}"/><path d="${d}"/></g>`;
   return out;
 }

@@ -164,7 +164,7 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
 - **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
   (`app/static/coast-outline.json`, from the URA Master Plan 2014 subzone boundaries on data.gov.sg, contains information
   licensed under the Singapore Open Data Licence v1.0, obtained through github.com/yinshanyang/singapore, kept to about 1 m
-  around Marina Bay and the centre and about 7 m elsewhere; Marina Bay's water is inside the source's land shape, so it is drawn as land), served from the node itself, so it is offline, needs no token and reveals nothing about the household.
+  around Marina Bay and the centre and about 7 m elsewhere; the source counts Marina Bay's water as land, so a Marina Bay cut-out is traced approximately in `wall-layers.json` from landmark coordinates (Merlion Park, The Float, Helix Bridge, Marina Bay Sands, Singapore Flyer) and kept clear of the circuit's line; it is a rough shape, not a survey), served from the node itself, so it is offline, needs no token and reveals nothing about the household.
   Add `?outline=off` to the wall address to hide it.
 - **Resolution ladder.** Scale labels from planetai.fab.city/nodes (Region, City, Community, Home, Street, Room) sit under
   the wall dial and Now's rail. Series charts mark the reading 24 h ago and the highest value in the 24 h drawn.

@@ -1588,7 +1588,7 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 .modehint p { margin: 0; font: 500 12.5px var(--mono) }
 
 /* Faded land outline under the wall's cells: a hint of where the ground is, never the loudest thing. */
-.wallbox .wfield svg .outline path { fill: var(--ink); fill-opacity: .07; stroke: var(--ink); stroke-opacity: .32;
+.wallbox .wfield svg .outline path { fill-rule: evenodd; fill: var(--ink); fill-opacity: .07; stroke: var(--ink); stroke-opacity: .32;
   stroke-width: 1.25; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }
 /* The shallows: a wide, very faint stroke under the coast, so the island has an edge rather than a line. */
 .wallbox .wfield svg .outline path.shore { fill: none; stroke-opacity: .06; stroke-width: 7 }
