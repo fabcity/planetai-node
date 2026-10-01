@@ -145,7 +145,7 @@ def _status(hc, cid, secret, base, token, did) -> list:
     if did in _state["paths"]:
         order.remove(_state["paths"][did])
         order.insert(0, _state["paths"][did])
-    last = None
+    last, answered = None, None
     for path in order:
         try:
             res = _call(hc, cid, secret, base, path.format(id=did), token)
@@ -157,8 +157,13 @@ def _status(hc, cid, secret, base, token, did) -> list:
         # the thing-shadow call wraps the list: {"properties": [{code, value, ...}]}
         if isinstance(res, dict):
             res = res.get("properties") or res.get("status") or []
+        if not read_status(res, {}):       # answered, but with nothing we can use: try the next call
+            answered = answered if answered is not None else res
+            continue
         _state["paths"][did] = path
         return res
+    if answered is not None:
+        return answered
     raise last or TuyaError("Tuya answered no status call")
 
 

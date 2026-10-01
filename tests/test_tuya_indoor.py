@@ -45,7 +45,8 @@ class R:
 
 
 class Fake:
-    def __init__(self, offline=(), token_fails_once=False, no_classic=(), only_shadow=False):
+    def __init__(self, offline=(), token_fails_once=False, no_classic=(), only_shadow=False, empty_classic=()):
+        self.empty_classic = set(empty_classic)
         self.calls, self.offline, self.tf = [], set(offline), token_fails_once
         self.no_classic, self.only_shadow = set(no_classic), only_shadow
     def get(self, url, headers=None, timeout=None):
@@ -65,6 +66,8 @@ class Fake:
                 {"code": "va_humidity", "values": json.dumps({"unit": "%", "scale": 0})}]}})
         v = {"devA00001": (301, 71), "devB00002": (234, 52)}[did]
         rows = [{"code": "va_temperature", "value": v[0]}, {"code": "va_humidity", "value": v[1]}]
+        if did in self.empty_classic and not path.startswith("/v2.0"):
+            return R({"success": True, "result": []})
         if did in self.no_classic and path.startswith("/v1.0/devices/"):
             return R({"success": False, "code": 2003, "msg": "function not support"})
         if did in self.no_classic and path.startswith("/v1.0/iot-03") and self.only_shadow:
@@ -143,6 +146,12 @@ for only_shadow in (False, True):
     n = len(hc.calls); A._state["at"] = 0.0; A.fetch(hc)
     again = [p for p, _ in hc.calls[n:] if "devB00002" in p]
     assert again == [want], again
+
+# a call that answers with an empty list (an IR/LCD remote) is not the end: the shadow call is tried next
+fresh(); hc = Fake(empty_classic={"devB00002"})
+sensors, readings = A.fetch(hc)
+assert {(r[1], r[2]): r[3] for r in readings}[("tuya-devB00002", "temp")] == 23.4
+assert A._state["paths"]["devB00002"].startswith("/v2.0/cloud/thing")
 
 # not configured: idle and quiet
 fresh(); os.environ["TUYA_ACCESS_SECRET"] = ""
