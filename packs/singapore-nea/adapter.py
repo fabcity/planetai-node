@@ -561,6 +561,7 @@ def fetch(hc):
                 break  # the API is telling us to slow down: stop this poll, the rest wait their turn
             continue
         _next[name] = time.time() + EVERY.get(name, 300)
+        log.info("NEA feed %s: %d sensors, %d readings", name, len(s), len(r))
         sensors += s
         readings += r
     if tried and len(failed) == tried:
