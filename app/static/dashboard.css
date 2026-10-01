@@ -1593,7 +1593,7 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 /* The shallows: a wide, very faint stroke under the coast, so the island has an edge rather than a line. */
 .wallbox .wfield svg .outline path.shore { fill: none; stroke-opacity: .06; stroke-width: 7 }
 /* Southeast Asia around it: lines and a breath of fill, quieter than the island. */
-.wallbox .wfield svg .region path { fill: var(--ink); fill-opacity: .025; stroke: var(--ink); stroke-opacity: .14;
+.wallbox .wfield svg .region path { fill: var(--ink); fill-opacity: .03; stroke: var(--ink); stroke-opacity: .26;
   stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; pointer-events: none }
 /* The street circuit while its event is on: the role red, a steady loop, and one short dash running round it. */
 .wallbox .wfield svg .track path { fill: none; stroke: var(--signal-worse); stroke-linejoin: round; stroke-linecap: round;

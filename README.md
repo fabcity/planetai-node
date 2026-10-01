@@ -29,7 +29,7 @@ cd planetai-node-sg
 docker compose up -d --build app
 ```
 
-Then follow [`docs/SINGAPORE_NODE.md`](docs/SINGAPORE_NODE.md): it lists the settings for `.env` (including the NEA key). For the FIRMS fire key and the act token, `planetai ui` prints the tokens it generates. Singapore land outline: geoBoundaries gbOpen, CC BY 4.0. Licence: Apache-2.0, as upstream.
+Then follow [`docs/SINGAPORE_NODE.md`](docs/SINGAPORE_NODE.md): it lists the settings for `.env` (including the NEA key). For the FIRMS fire key and the act token, `planetai ui` prints the tokens it generates. Land outlines: URA Master Plan 2014 (Singapore Open Data Licence), geoBoundaries gbOpen (CC BY 4.0) and Natural Earth (public domain). Licence: Apache-2.0, as upstream.
 
 ---
 

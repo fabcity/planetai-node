@@ -5661,7 +5661,7 @@ function centroid(d) {
 /* Nineteen cells, and in each the thing read there. State is weight, fill and dash; the hue is the
  * layer's one accent and it means "this node's own". */
 /* THE FADED LAND OUTLINE UNDER THE WALL'S CELLS. A public coastline that ships with the dashboard
- * (static/coast-outline.json, geoBoundaries gbOpen, CC BY 4.0), so it is offline, needs no token and
+ * (static/coast-outline.json, URA Master Plan 2014 via data.gov.sg, Singapore Open Data Licence), so it is offline, needs no token and
  * says nothing about the household: it is the island, not the place. It is fetched once, from this
  * node, and drawn behind the cells at low opacity so the numbers stay the loudest thing on the wall.
  * `?outline=off` hides it. The plate's own drawing space is a 600-unit box; the map from degrees to
@@ -5709,13 +5709,15 @@ function outlinePath(f, plate, rings, close, cull) {
   const box = plate.draw.box, m = box * 0.5;
   let d = '';
   for (const r of rings) {
-    let s = '', any = !cull;
+    /* Cull on the ring's own box, not on its vertices: a coast simplified to a vertex every few km can run
+       straight across the drawing with none of its vertices in it, and was being dropped whole. */
+    let s = '', x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
     for (let i = 0; i < r.length; i += 2) {
       const x = f.fx.s * r[i] + f.fx.t, y = f.fy.s * r[i + 1] + f.fy.t;
-      if (x > -m && x < box + m && y > -m && y < box + m) any = true;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
       s += `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
     }
-    if (any) d += s + (close ? 'Z' : '');
+    if (!cull || (x1 > -m && x0 < box + m && y1 > -m && y0 < box + m)) d += s + (close ? 'Z' : '');
   }
   return d;
 }
