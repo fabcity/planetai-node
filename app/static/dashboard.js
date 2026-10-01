@@ -698,13 +698,17 @@ function ask(key, d, ref) {
        and the wrong one here, on a screen with the button on it. The node's words are unchanged;
        this surface says what this surface offers. */
     + `<small>${esc(a.says[LOC])}</small></div>`
-    + didButton(a.id) + `</div>`;
+    + didButton(a.id, a.seen) + `</div>`;
 }
 
 /* The one button the page offers on an open alert, and the form it opens. Shared by the ask strip in
  * Act and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
-const didButton = id =>
-  `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
+const didButton = (id, seen) =>
+  /* "Seen" records `acknowledged`: somebody has looked, nothing has been done. rho counts it as an answer
+     but the alert stays open here, because seeing it is not doing anything (app/issues/schema.py). */
+  (seen ? `<span class="seenmark" title="Somebody has acknowledged this alert. It stays open until somebody acts.">\u2713 Seen</span> ` : '')
+  + (seen ? '' : `<button type="button" class="seen" data-seen="${esc(String(id))}" title="Record that you have looked at this alert. It stays open until somebody acts.">Seen it</button>`)
+  + `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
   + `<form class="did" hidden data-alert="${esc(String(id))}">`
   + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
   + ` placeholder="your name"></label>`
@@ -729,7 +733,7 @@ function askRow(key, d, a) {
     + (h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="${esc(d.name[LOC])}">`
       + `<use href="static/signs.svg#${esc(h.sign)}"/></svg>` : '')
     + `<div class="what">${esc(String(a.text || '').split('\n')[0])}<small>#${esc(String(a.id))}</small></div>`
-    + didButton(a.id) + `</div>`;
+    + didButton(a.id, a.seen) + `</div>`;
 }
 
 /* Hide a component in one mode and not the other, by marking its outermost tag. The CSS on
@@ -8090,21 +8094,25 @@ async function nodeSaid(r) {
   return '';
 }
 
-async function didThis(form) {
+async function didThis(form, force) {
   const btn = form.querySelector('button[type="submit"]');
   const alert_id = Number(form.getAttribute('data-alert'));
   /* Which form it is IS which stage it writes. Decide records what somebody said they would do and
      moves nothing; Act records that it was done. Two surfaces, one endpoint, and the difference is
      the whole of docs/SPEC_decide.md section 6. */
-  const decision = form.classList.contains('decided');
-  const stage = decision ? 'decided' : 'acted';
+  const ack = force === 'acknowledged';
+  const decision = !ack && form.classList.contains('decided');
+  const stage = ack ? 'acknowledged' : decision ? 'decided' : 'acted';
   const val = n => String((form.elements[n] || {}).value || '').trim();
-  if (!val('note')) {
+  const actor = val('actor') || (() => { try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; } })();
+  if (!ack && !val('note')) {
     say(decision ? 'Say what will be done — that sentence is the decision.'
       : 'Say what you did — that sentence is the whole of the record.', true);
     return;
   }
   btn.disabled = true;
+  const seenBtn = form.closest('.ask') && form.closest('.ask').querySelector('.seen');
+  if (seenBtn) seenBtn.disabled = true;
   /* A token typed into the form is kept in this browser before the request, so the press that needed it
      is also the last one that does. */
   const typedTok = val('token');
@@ -8113,7 +8121,7 @@ async function didThis(form) {
     const r = await fetch('/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...auth_() },
-      body: JSON.stringify({ alert_id, stage, actor: val('actor'), note: val('note') }),
+      body: JSON.stringify({ alert_id, stage, actor, note: ack ? (val('note') || 'seen') : val('note') }),
     });
     /* THE NODE'S OWN SENTENCE FIRST. Proved on pai-clean: a browser is never `_is_local` — it
        arrives as the bridge gateway, deliberately, so trusting it would trust the whole WiFi — and
@@ -8125,13 +8133,14 @@ async function didThis(form) {
       /* Ask for the token where the press failed, instead of naming a terminal command and leaving the
          record unwritten. A wrong token comes back here too, so the field is cleared and shown again. */
       const tf = form.querySelector('.tokfield');
+      if (ack) form.hidden = false;
       if (tf) {
         if (typedTok) { try { localStorage.removeItem('planetai_act'); } catch (e) { /* nothing kept */ } }
         tf.hidden = false;
         if (tf.querySelector('input')) { tf.querySelector('input').value = ''; tf.querySelector('input').focus(); }
         say(typedTok ? 'The node did not accept that token. Check ACT_TOKEN (planetai ui prints it) and try again.'
           : 'Nothing is recorded yet: this node needs its act token from a browser. Paste ACT_TOKEN in the new '
-            + 'field and press Record it again; it is kept in this browser after that.', true);
+            + `field and press ${ack ? 'Seen it' : 'Record it'} again; it is kept in this browser after that.`, true);
       } else {
         say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
           + `act token; Set up \u2192 unlock holds it.`, true);
@@ -8146,6 +8155,18 @@ async function didThis(form) {
     } else if (!r.ok) {
       say(said ? `${said} (${r.status})` : `The node refused it (${r.status}).`, true);
     } else {
+      if (actor) { try { localStorage.setItem('planetai_actor', actor); } catch (e) { /* this press only */ } }
+      if (ack) {
+        say('Recorded as seen. It stays open until somebody acts on it.');
+        const row = form.closest('.ask');
+        if (row) {
+          const sb = row.querySelector('.seen'); if (sb) sb.remove();
+          const w = row.querySelector('.what');
+          if (w) w.insertAdjacentHTML('afterbegin', `<span class="seenmark">\u2713 Seen${actor ? ' by ' + window.K.esc(actor) : ''}</span> `);
+        }
+        await refresh();
+        return;
+      }
       say(decision
         ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
         : 'Recorded. The node watches what happens next.');
@@ -8166,7 +8187,7 @@ async function didThis(form) {
     }
   } catch (e) {
     say(`The node did not answer: ${String((e && e.message) || e)}`, true);
-  } finally { btn.disabled = false; }
+  } finally { btn.disabled = false; const sb2 = form.closest('.ask') && form.closest('.ask').querySelector('.seen'); if (sb2) sb2.disabled = false; }
 }
 
 document.addEventListener('submit', ev => {
@@ -8190,6 +8211,13 @@ document.addEventListener('click', ev => {
     redraw();
     const lead = document.querySelector('.lead');
     if (lead && lead.getBoundingClientRect().top < 0) lead.scrollIntoView();
+    return;
+  }
+  const sn = ev.target.closest && ev.target.closest('.ask .seen');
+  if (sn) {
+    if (FIXTURE || STATE !== 'populated') { say('This is a capture, not a live node — its alerts belong to the node it came from.', true); return; }
+    const f = sn.parentElement.querySelector('form.did');
+    if (f) didThis(f, 'acknowledged');
     return;
   }
   const go = ev.target.closest && ev.target.closest('.ask .go');
