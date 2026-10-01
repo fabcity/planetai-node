@@ -27,3 +27,7 @@ last value until Tuya reports it offline. The Access Secret and any device's loc
 
 **Tests:** `python3 tests/test_tuya_indoor.py` (offline; a fake Tuya, the signature, scaling, token refresh, and that no
 error carries a secret).
+
+## Devices that refuse the classic status call
+
+Some devices (for example IR/LCD remotes that carry a sensor) answer `function not support` (code 2003) on `/v1.0/devices/{id}/status`. The pack then tries `/v1.0/iot-03/devices/{id}/status` and the thing-shadow properties call, and remembers the one that answered. If all three are refused, the log line names the Tuya code; try "Query Properties" in the Tuya API Explorer for that device to see what it exposes.

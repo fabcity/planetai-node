@@ -45,8 +45,9 @@ class R:
 
 
 class Fake:
-    def __init__(self, offline=(), token_fails_once=False):
+    def __init__(self, offline=(), token_fails_once=False, no_classic=(), only_shadow=False):
         self.calls, self.offline, self.tf = [], set(offline), token_fails_once
+        self.no_classic, self.only_shadow = set(no_classic), only_shadow
     def get(self, url, headers=None, timeout=None):
         path = url.split("tuyaeu.com")[1]
         self.calls.append((path, dict(headers or {})))
@@ -55,19 +56,26 @@ class Fake:
         if self.tf and "/status" in path:
             self.tf = False
             return R({"success": False, "code": 1010, "msg": "token invalid"})
-        did = path.split("/")[3]
+        did = path.split("/")[3] if not path.startswith(("/v1.0/iot-03", "/v2.0")) else path.split("/")[-2 if path.endswith("/status") else -3]
         if did in self.offline:
             return R({"success": False, "code": 1106, "msg": "permission deny"})
-        if path.endswith("/specification"):
+        if path.endswith("/specifications"):
             return R({"success": True, "result": {"status": [
                 {"code": "va_temperature", "values": json.dumps({"unit": "℃", "scale": 1})},
                 {"code": "va_humidity", "values": json.dumps({"unit": "%", "scale": 0})}]}})
         v = {"devA00001": (301, 71), "devB00002": (234, 52)}[did]
-        return R({"success": True, "result": [{"code": "va_temperature", "value": v[0]}, {"code": "va_humidity", "value": v[1]}]})
+        rows = [{"code": "va_temperature", "value": v[0]}, {"code": "va_humidity", "value": v[1]}]
+        if did in self.no_classic and path.startswith("/v1.0/devices/"):
+            return R({"success": False, "code": 2003, "msg": "function not support"})
+        if did in self.no_classic and path.startswith("/v1.0/iot-03") and self.only_shadow:
+            return R({"success": False, "code": 1108, "msg": "uri path invalid"})
+        if path.startswith("/v2.0/cloud/thing"):
+            return R({"success": True, "result": {"properties": rows}})
+        return R({"success": True, "result": rows})
 
 
 def fresh():
-    A._state.update(token="", token_until=0.0, at=0.0, specs={}, warned=set())
+    A._state.update(token="", token_until=0.0, at=0.0, specs={}, paths={}, warned=set())
 
 
 fresh(); hc = Fake()
@@ -122,6 +130,19 @@ try:
     raise AssertionError("should raise")
 except RuntimeError as e:
     assert "OSError" in str(e) and SECRET not in str(e) and "client_id" not in str(e)
+
+# a device that refuses the classic status call ("function not support", 2003) is read through a newer one,
+# and the one that answered is remembered so the next poll goes straight to it
+for only_shadow in (False, True):
+    fresh(); hc = Fake(no_classic={"devB00002"}, only_shadow=only_shadow)
+    sensors, readings = A.fetch(hc)
+    got = {(r[1], r[2]): r[3] for r in readings}
+    assert got[("tuya-devB00002", "temp")] == 23.4 and got[("tuya-devA00001", "temp")] == 30.1, got
+    want = "/v2.0/cloud/thing/devB00002/shadow/properties" if only_shadow else "/v1.0/iot-03/devices/devB00002/status"
+    assert A._state["paths"]["devB00002"].format(id="devB00002") == want and A._state["paths"]["devA00001"].format(id="devA00001") == "/v1.0/devices/devA00001/status"
+    n = len(hc.calls); A._state["at"] = 0.0; A.fetch(hc)
+    again = [p for p, _ in hc.calls[n:] if "devB00002" in p]
+    assert again == [want], again
 
 # not configured: idle and quiet
 fresh(); os.environ["TUYA_ACCESS_SECRET"] = ""

@@ -41,7 +41,11 @@ EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
 # Status codes seen on Tuya temperature / humidity devices, most specific first.
 TEMP_CODES = ("va_temperature", "temp_current", "temperature", "temp_value")
 HUMIDITY_CODES = ("va_humidity", "humidity_value", "humidity_current", "humidity")
-_state = {"token": "", "token_until": 0.0, "at": 0.0, "specs": {}, "warned": set()}
+# Where a device's current values live differs by product: most answer the classic status call, and some (an infrared
+# remote with a built-in sensor, for one) refuse it with "function not support" and answer one of the newer calls. They
+# are tried in this order and the first that answers is remembered for the device.
+STATUS_PATHS = ("/v1.0/devices/{id}/status", "/v1.0/iot-03/devices/{id}/status", "/v2.0/cloud/thing/{id}/shadow/properties")
+_state = {"token": "", "token_until": 0.0, "at": 0.0, "specs": {}, "paths": {}, "warned": set()}
 
 
 def _warn_once(key: str, msg: str, *a) -> None:
@@ -123,7 +127,7 @@ def _spec(hc, cid, secret, base, token, did) -> dict:
         return _state["specs"][did]
     out = {}
     try:
-        res = _call(hc, cid, secret, base, f"/v1.0/devices/{did}/specification", token) or {}
+        res = _call(hc, cid, secret, base, f"/v1.0/devices/{did}/specifications", token) or {}
         for item in (res.get("status") or []) + (res.get("functions") or []):
             vals = item.get("values")
             vals = json.loads(vals) if isinstance(vals, str) and vals.strip().startswith("{") else (vals or {})
@@ -133,6 +137,29 @@ def _spec(hc, cid, secret, base, token, did) -> dict:
         return out                 # not cached: asked again next time
     _state["specs"][did] = out
     return out
+
+
+def _status(hc, cid, secret, base, token, did) -> list:
+    """The device's [{code, value}, ...], from the first status call it answers. An expired token is never swallowed."""
+    order = list(STATUS_PATHS)
+    if did in _state["paths"]:
+        order.remove(_state["paths"][did])
+        order.insert(0, _state["paths"][did])
+    last = None
+    for path in order:
+        try:
+            res = _call(hc, cid, secret, base, path.format(id=did), token)
+        except TuyaError as e:
+            if e.code in (1010, 1011):
+                raise
+            last = e
+            continue
+        # the thing-shadow call wraps the list: {"properties": [{code, value, ...}]}
+        if isinstance(res, dict):
+            res = res.get("properties") or res.get("status") or []
+        _state["paths"][did] = path
+        return res
+    raise last or TuyaError("Tuya answered no status call")
 
 
 def _number(code: str, raw, spec: dict, kind: str):
@@ -186,7 +213,7 @@ def fetch(hc):
             sensors, readings, failed = [], [], []
             for did, name in devices:
                 try:
-                    st = _call(hc, cid, secret, base, f"/v1.0/devices/{did}/status", token)
+                    st = _status(hc, cid, secret, base, token, did)
                     got = read_status(st, _spec(hc, cid, secret, base, token, did))
                 except TuyaError as e:
                     if e.code in (1010, 1011):          # token invalid or expired
