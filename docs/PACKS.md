@@ -13,6 +13,31 @@ packs/<id>/
   README.md     where the thresholds come from, what the pack assumes
 ```
 
+## A pack does not have to live in this repository
+
+The node loads every folder under `packs/` that has a `pack.yaml`, and it does not care where the folder came from.
+`packs/` is a bind mount into the container, so a pack kept in its own repository is installed by putting it there:
+
+```
+cd ~/planetai-node
+git clone https://github.com/<you>/planetai-pack-<id> packs/<id>
+planetai packs install      # its env: keys into .env, its pip: lines into the image (a rebuild)
+planetai restart
+```
+
+`planetai update` keeps it: the tarball is unpacked over the folder and the git path is a fast-forward pull, and
+neither touches a folder it does not track. A code pack still runs only with `PACKS_ALLOW_CODE=1`, wherever it came
+from.
+
+So do not fork this repository to write a pack for your city. Make a repository that *is* the pack folder, develop it
+in `packs/<id>` on your own node, and leave this repository as the released node it is. Run
+`python3 tools/check_rules.py` from the node's folder and it checks your rules against the schema with the rest; an
+offline test for an adapter imports it by path, the way `tests/test_forecast.py` does, and can live in your repository.
+
+Two things cannot travel this way yet, and come to this repository as their own pull request: a dashboard section
+(a section lives in `app/static/dashboard.js` until the node serves a pack's own file, see below) and a change to an
+issue under `app/issues/`. A preset for your city is one file in `presets/` and a pull request.
+
 ## Data packs
 
 YAML only. Anyone can write one. Rules read `stats` (24-hour rolling, per sensor and metric), `readings_1h` (hourly
@@ -256,5 +281,7 @@ Ten more ideas, with who might write them: [`PACK_IDEAS.md`](PACK_IDEAS.md).
 
 ## Contributing one
 
-Fork, add the folder, `make lint`, open a PR. The README must say where the thresholds came from and what the pack does
-not know. Thresholds for Kuta Selatan are not thresholds for Barcelona; say which place you wrote for.
+Start it in its own repository, cloned into `packs/<id>` on your node (see the top of this page). Send it here when it
+is general: a threshold a second city can use, a source other nodes read. Then the pull request adds the folder and
+nothing else, and `make lint && make test` run against it. The README must say where the thresholds came from and
+what the pack does not know. Thresholds for Kuta Selatan are not thresholds for Barcelona; say which place you wrote for.
