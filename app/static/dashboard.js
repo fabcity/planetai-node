@@ -109,8 +109,11 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
 /* The node already formatted every number it sent; this only sets the places the issue declared. */
 const fmt = (v, dp = 0) => (v == null || isNaN(v) ? '—' : Number(v).toFixed(dp));
 
-const sign = (id, cls = '') =>
-  `<svg class="sg ${cls}" aria-hidden="true"><use href="static/signs.svg#sign-${id}"/></svg>`;
+/* `tip` is the sign's name on hover. The signs are decorative to a screen reader (the row's own label says
+   it), but a pointer reader had nothing: a ring and a hexagon looked like they meant something and said
+   nothing. The same glyph means different things in different rows, so the name is the row's to give. */
+const sign = (id, cls = '', tip = '') =>
+  `<svg class="sg ${cls}" aria-hidden="true">${tip ? `<title>${esc(tip)}</title>` : ''}<use href="static/signs.svg#sign-${id}"/></svg>`;
 
 /* Provenance is a glyph and a word, ink only, square. A fixture is a committed snapshot, so nothing
  * on it was measured just now: `live` is coerced to `cached`, exactly as the node's own page does. */
@@ -793,15 +796,17 @@ function rhoRow(small, ref, actLink) {
   const rings = Math.round(total / UNIT), full = Math.round(closed / UNIT);
   let s = '';
   for (let i = 0; i < rings; i++) {
-    const one = sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
-    /* On the wall each ring is a way to the Act section, where the alerts themselves are. */
-    s += actLink ? `<a class="rl" href="#act" data-act-link aria-label="${i < full ? 'an answered alert' : 'an open alert'}: go to Act">${one}</a>` : one;
+    const said = i < full ? 'An answered alert' : 'An alert still open';
+    const one = sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '', said);
+    /* Each ring is a way to the Act section, where the alerts themselves are: from the wall it leaves the
+       wall for Now (data-act-link); on Now it scrolls to the stage (data-stage-go). */
+    s += `<a class="rl" href="#act" ${actLink ? 'data-act-link' : 'data-stage-go="act"'} title="${said}: go to Act" aria-label="${said}: go to Act">${one}</a>`;
   }
   /* The row is a texture of signs and the CAPTION is the readable part of it, so the caption is
    * what carries the role and what the three-metre floor is measured against. A sign is measured
    * against --sign-floor; a cap height is measured against a distance. */
   return `<div class="rho${small ? ' small' : ''}" data-component="rhoRow"`
-    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="${actLink ? 'group' : 'img'}" aria-label="${closed} of ${total} alerts answered">${s}</div>`
+    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="group" aria-label="${closed} of ${total} alerts answered">${s}</div>`
     + `<p class="note" data-role="rho" data-num="rho"`
     + ` data-cmp="against the ${total} alerts this node sent in 30 days">`
     + `${closed} of ${total} alerts answered · median ${r.median_minutes} min`
@@ -1666,8 +1671,17 @@ function bandFor(ctx, s) {
     .join('');
   /* The routes the band's data came from, once per band, in their own case: the kicker shouts, and
      a route uppercased is a route a reader cannot type back. Links, so the JSON is one press away. */
+  /* A route is a page the node answers, and pressing one used to replace the dashboard with raw JSON in
+     the same tab, with no way back but the browser's. It opens beside the dashboard instead. Two cannot
+     be opened by a page at all: /actions takes a POST, and /place/geojson is the exact footprint around
+     the house, which the node never serves to a page without a token, so those say so rather than 403. */
+  const routeLink = r => /^\/actions\b/.test(r)
+    ? `<span class="route off" title="This route takes a POST, so there is no page to open">POST ${esc(r)}</span>`
+    : /^\/place\/geojson\b/.test(r)
+      ? `<span class="route off" title="Needs a token: it is the exact footprint around this house, and the node never serves it to a page without one">GET ${esc(r)} · token</span>`
+      : `<a href="${esc(r)}" target="_blank" rel="noopener">GET ${esc(r)}</a>`;
   const reads = (s.reads || []).length
-    ? `<span class="routes">${s.reads.map(r => `<a href="${esc(r)}">GET ${esc(r)}</a>`).join('')}</span>`
+    ? `<span class="routes">${s.reads.map(routeLink).join('')}</span>`
     : '';
   return `<section class="band" id="${esc(s.id)}" data-band="${esc(s.stage)}:${esc(s.id)}"`
     + ` data-pack="${esc(s.pack)}" data-stage="${esc(s.stage)}">`
@@ -2405,9 +2419,9 @@ window.PAI.register({
     const exported = `<p class="cap" id="figures-export" data-ref="figures-table">Today\u2019s open `
       + `export, CC BY 4.0: `
       + (/^\d{4}-\d{2}-\d{2}$/.test(day)
-        ? `<a class="mono" href="/export?day=${esc(day)}">GET /export?day=${esc(day)}</a>`
+        ? `<a class="mono" target="_blank" rel="noopener" href="/export?day=${esc(day)}">GET /export?day=${esc(day)}</a>`
         : `<span class="mono">GET /export?day=YYYY-MM-DD</span>`)
-      + `. Past days: <a class="mono" href="/exports">GET /exports</a>.</p>`;
+      + `. Past days: <a class="mono" target="_blank" rel="noopener" href="/exports">GET /exports</a>.</p>`;
     if (!rows.length) {
       return `<p class="note" id="figures-none" data-ref="care">This node sent no provenance for `
         + `its figures, so there is nothing to list. That is a gap in what it published, not an `
@@ -2608,12 +2622,13 @@ PAI_LOAD.push(function () {
 const { esc, row, sign } = window.K;
 
 /* A run of the same sign, which is the whole grammar of a unit row. */
-const many = (id, n, cls = '') => Array.from({ length: Math.max(0, n) }, () => sign(id, cls)).join('');
+const many = (id, n, cls = '', tip = '') => Array.from({ length: Math.max(0, n) }, () => sign(id, cls, tip)).join('');
 
 /* A percentage as twentieths of the ground: filled for the share, hollow for the rest, so the row
    is countable both ways and the total is always the same width. */
 const of20 = (pct, cls = '') => Array.from({ length: 20 }, (_, i) =>
-  sign('cell', i < Math.round((pct || 0) / 5) ? `on ${cls}` : 'off')).join('');
+  sign('cell', i < Math.round((pct || 0) / 5) ? `on ${cls}` : 'off',
+    i < Math.round((pct || 0) / 5) ? 'One twentieth of the ground: covered' : 'One twentieth of the ground: not covered')).join('');
 
 window.PAI.register({
   id: 'sources', pack: 'core', stage: 'observe', title: 'What this page is made of', order: 14, learn: ['custody'],
@@ -2634,15 +2649,15 @@ window.PAI.register({
 
     let html = `<div class="reads units" id="registry-rows" data-ref="matrix-grid">`
       + R({ id: 'src-own', left: lab('This house\u2019s own', 'one sign, one station'),
-        signs: many('sensor', own),
+        signs: many('sensor', own, '', 'One of this house\u2019s own stations'),
         qty: [{ num: 'sources.own', value: String(own),
           cmp: `against ${own + ring} stations this node reads` }] })
       + R({ id: 'src-ring', left: lab('Other people\u2019s', 'one sign, one station'),
-        signs: many('sensor', ring, 'faint'),
+        signs: many('sensor', ring, 'faint', 'One station that belongs to somebody else'),
         qty: [{ num: 'sources.ring', value: String(ring),
           cmp: `against ${own + ring} stations this node reads` }] })
       + R({ id: 'src-models', left: lab('Models', 'one sign, one model'),
-        signs: many('planet', models),
+        signs: many('planet', models, '', 'One model: an estimate, never counted as a station'),
         qty: [{ num: 'sources.models', value: String(models),
           cmp: `against ${own + ring} stations \u2014 a model is not a station and is never counted `
             + `as one` }] });
@@ -2661,7 +2676,7 @@ window.PAI.register({
        says which fact is missing rather than quietly rounding the sources down to five. */
     html += plan && plan.counts
       ? R({ id: 'src-houses', left: lab('Houses', 'one sign per 250'),
-        signs: many('house', Math.round(plan.counts.buildings / 250)),
+        signs: many('house', Math.round(plan.counts.buildings / 250), '', 'About 250 buildings'),
         qty: [{ num: 'sources.houses', value: String(plan.counts.buildings),
           cmp: `buildings on the plan within this kilometre, drawn one sign per 250` }] })
       : `<p class="note" id="src-houses" data-ref="registry-rows">The buildings on this kilometre `
@@ -3697,9 +3712,9 @@ window.PAI.register({
       /* Where to go from here: the two halves of the list the counts are made of, the per-cell
          rows this node computes, and how an entry gets into the registry at all. */
       + `<p class="cap" id="registry-how" data-ref="registry-rows">The live entries are at `
-      + `<a class="mono" href="/sources?status=live">GET /sources?status=live</a> and the candidates `
-      + `at <a class="mono" href="/sources?status=candidate">GET /sources?status=candidate</a>; each `
-      + `row of <a class="mono" href="/cells">GET /cells</a> carries the three counts for its own `
+      + `<a class="mono" target="_blank" rel="noopener" href="/sources?status=live">GET /sources?status=live</a> and the candidates `
+      + `at <a class="mono" target="_blank" rel="noopener" href="/sources?status=candidate">GET /sources?status=candidate</a>; each `
+      + `row of <a class="mono" target="_blank" rel="noopener" href="/cells">GET /cells</a> carries the three counts for its own `
       + `cell. An entry is added by a pull request to the registry and a re-pin: `
       + `<a href="${ADD_A_SOURCE}">Adding a source</a>, in the documentation.</p>`
       /* COUNTED, NOT TYPED. This said "The eight" because there were eight at registry pin 85a194c.
@@ -4500,7 +4515,7 @@ function ringsFor(list, open) {
   const full = closed > 0 ? Math.max(1, Math.round(closed / UNIT)) : 0;
   let out = '';
   for (let i = 0; i < rings; i++) {
-    out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
+    out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '', i < full ? 'An answered alert' : 'An alert still open');
   }
   return { html: out, closed, total, unit: UNIT };
 }
@@ -7459,10 +7474,10 @@ function foot(S) {
     + `<p class="why">${esc(PURPOSE)} Raw readings stay on this machine; only summaries leave.`
     + `${mark('production', 'foot')}${mark('purpose', 'foot')}</p>`
     + `<p class="doors"><span class="mono">${esc(v ? `planetai-node ${v}` : 'planetai-node')}</span>`
-    + `<a class="mono" href="/health">GET /health</a>${mark('health', 'foot')}`
+    + `<a class="mono" target="_blank" rel="noopener" href="/health">GET /health</a>${mark('health', 'foot')}`
     + `<span class="mono" title="Model Context Protocol, streamable HTTP; needs ADMIN_TOKEN">POST /mcp</span>`
     + mark('mcp', 'foot')
-    + `<a class="mono" href="/llms.txt">/llms.txt</a>`
+    + `<a class="mono" target="_blank" rel="noopener" href="/llms.txt">/llms.txt</a>`
     + `<a href="${DOCS_URL}">Documentation</a>`
     + `<a href="https://planetai.fab.city/">The programme</a></p>`
     + (askOn() ? `<p class="askfoot"><button type="button" class="asktoggle" data-ask-toggle aria-pressed="false">`

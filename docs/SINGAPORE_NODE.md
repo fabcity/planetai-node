@@ -158,6 +158,7 @@ These edit `app/static/dashboard.js` and `dashboard.css`, so they need `docker c
 - **Stage squares.** The four squares in each stage header link to the stage they stand for (scrolling, so the address keeps
   its view), show the stage name on hover, and are greyed with "not on this view" for stages the view does not draw,
   as in Simple mode.
+- **Icons and links.** Sign icons now name themselves on hover; rings on Now link to Act like the wall's; data routes open in a new tab, and routes that cannot be opened by a link (POST /actions, token-only /place/geojson) are shown as plain text saying why.
 - **Land outline.** A faint island outline sits behind the wall's cells at every resolution. It is a public coastline
   (`app/static/coast-outline.json`, simplified to about 10 m, from geoBoundaries gbOpen SGP ADM0, Runfola et al. 2020,
   CC BY 4.0), served from the node itself, so it is offline, needs no token and reveals nothing about the household.
