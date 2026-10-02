@@ -419,10 +419,7 @@ def _problems(key: str, d: dict) -> list[str]:
             p += _distance_problems(f"{key}.distances.{name}", spec)
 
     for r in d.get("readouts") or []:
-        if not isinstance(r, dict) or not r.get("metric") or not r.get("sensor_id"):
-            p.append(f"{key}: a readout needs at least a metric and a sensor_id")
-        elif not all((r.get("label") or {}).get(loc) for loc in LOCALES):
-            p.append(f"{key}: the {r['metric']} readout needs a label in every locale")
+        p += [f"{key}: {x}" for x in _readout_problems(r)]
 
     if "hero" in d:
         p += _hero_problems(key, d)
@@ -462,6 +459,60 @@ def _problems(key: str, d: dict) -> list[str]:
             if w not in DISTANCES:
                 p.append(f"{key}: where.{loc}.{w} is not one of {', '.join(DISTANCES)}")
     return p
+
+
+def _readout_problems(r) -> list[str]:
+    """One readout: a number from one sensor's latest row, shown with a unit and a label in every locale. The engine
+    reads `unit` and `label` without a default, so a readout missing either would take the issue down with it."""
+    if not isinstance(r, dict) or not r.get("metric") or not r.get("sensor_id"):
+        return ["a readout needs at least a metric and a sensor_id"]
+    p = []
+    if not isinstance(r.get("unit"), str) or not r["unit"]:
+        p.append(f"the {r['metric']} readout needs a unit")
+    if "dp" in r and (not isinstance(r["dp"], int) or isinstance(r["dp"], bool)):
+        p.append(f"the {r['metric']} readout's dp must be a whole number of decimal places")
+    if not all((r.get("label") or {}).get(loc) for loc in LOCALES):
+        p.append(f"the {r['metric']} readout needs a label in every locale")
+    return p
+
+
+def pack_readouts(decl: dict[str, dict], manifests: list[dict]) -> dict[str, dict]:
+    """Readouts a pack adds to an issue, after the issue's own, in the order of the packs' ids.
+
+    A pack declares them in its pack.yaml as `readouts: {<issue>: [<readout>, ...]}`, in the shape an issue file
+    uses. A pack adds and never replaces (docs/decisions/2026-10-01-packs.md): a readout already shown for the same
+    sensor and metric is not shown twice, and one that names no declared issue, or is not well formed, is logged and
+    left out. Only the readout is dropped, never the issue: one pack's mistake must not cost the household a band.
+    A readout whose sensor has no row on this node shows nothing, as an issue's own does, so a pack that is on but
+    has not fetched yet adds no invented number.
+    """
+    for m in sorted(manifests, key=lambda m: str(m.get("id", ""))):
+        pid, ro = m.get("id", "?"), m.get("readouts")
+        if not ro:
+            continue
+        if not isinstance(ro, dict):
+            log.warning("pack %s: readouts must map an issue to a list of readouts; ignoring them", pid)
+            continue
+        for key, rows in ro.items():
+            if key not in decl:
+                log.warning("pack %s: readouts for %r, which no app/issues/*.yml declares; ignoring them", pid, key)
+                continue
+            if not isinstance(rows, list):
+                log.warning("pack %s: readouts.%s must be a list; ignoring it", pid, key)
+                continue
+            have = {(r.get("metric"), r.get("sensor_id")) for r in decl[key].get("readouts") or [] if isinstance(r, dict)}
+            for r in rows:
+                bad = _readout_problems(r)
+                if bad:
+                    log.warning("pack %s: readouts.%s: %s; leaving it out", pid, key, "; ".join(bad))
+                    continue
+                if (r["metric"], r["sensor_id"]) in have:
+                    log.warning("pack %s: readouts.%s: %s from %s is already shown; not twice", pid, key,
+                                r["metric"], r["sensor_id"])
+                    continue
+                decl[key].setdefault("readouts", []).append(dict(r))
+                have.add((r["metric"], r["sensor_id"]))
+    return decl
 
 
 def _sign_ids() -> set[str]:
@@ -562,7 +613,8 @@ def _distance_problems(where: str, spec) -> list[str]:
 
 
 def load(path: Path | str | None = None) -> dict[str, dict]:
-    """Every issue declared in `path` (this directory by default), keyed by file stem.
+    """Every issue declared in `path` (this directory by default), keyed by file stem. With the default, the
+    readouts the enabled packs add are merged in (`pack_readouts`).
 
     A file that does not parse or does not validate is logged and dropped: one bad issue must not
     cost the household the other three.
@@ -581,6 +633,14 @@ def load(path: Path | str | None = None) -> dict[str, dict]:
             continue
         d["key"] = f.stem
         out[f.stem] = d
+    if path is None:
+        # The node's own issues are what the files say plus what its enabled packs add. A validator or a test that
+        # names a directory gets the files alone.
+        try:
+            import packs  # app/packs.py: the one place that knows which packs are on
+            out = pack_readouts(out, packs.manifests())
+        except Exception as e:  # noqa: BLE001 — the packs are an addition; without them the issues still stand
+            log.warning("issues: could not read the packs' readouts (%s)", e)
     return out
 
 

@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **2026-10-02 · A pack can add readouts to an issue.** A pack's `pack.yaml` can declare `readouts:` for an issue,
+  in the shape an issue file uses, and the node adds them after the issue's own while the pack is enabled: rows in
+  Figures, and words in a context issue's sentence. This is how a wild pack shows its numbers on Air, Heat or Coast
+  without editing `app/issues/` (`docs/decisions/2026-10-01-packs.md`, point 4). It adds and never replaces: the same
+  sensor and metric is not shown twice, and a readout naming no issue, or missing its unit or a label, is left out
+  with a line in the log. No shipped pack declares readouts, so `/issues` on every node is unchanged.
+
 - **2026-10-02 · `planetai update` stops for a promoted wild pack.** When the version arriving ships a core pack
   with the same id as a wild pack on the node (one `planetai packs add` fetched), the update stops before anything
   moves, names the wild copy and where it came from, and asks for it to be deleted. Without this, the tarball path
