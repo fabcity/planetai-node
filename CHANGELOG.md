@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **2026-10-02 · `planetai update` stops for a promoted wild pack.** When the version arriving ships a core pack
+  with the same id as a wild pack on the node (one `planetai packs add` fetched), the update stops before anything
+  moves, names the wild copy and where it came from, and asks for it to be deleted. Without this, the tarball path
+  unpacked the core pack's files over the wild copy and left a folder that was neither, and the git path refused the
+  pull and blamed untracked files. The check runs after the release is downloaded and verified and before it is
+  copied over the node, and on a git checkout after the fetch and before the pull. The backup has already been taken.
+
 - **2026-10-02 · `planetai packs add` fetches a wild pack.** Packs in this repository are core; every other pack is
   wild, listed at fabcity/planetai-wild-packs (`docs/decisions/2026-10-01-packs.md`). `planetai packs add <id>` takes
   one from that list at the commit it was listed at; `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` takes any
