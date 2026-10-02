@@ -5,7 +5,7 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, kind (data | code), version, pip:, env:, readouts:
+  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, readouts:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
@@ -157,6 +157,16 @@ and never replaces: a readout for the same sensor and metric as one already show
 names no declared issue, or lacks a unit or a label, is left out with a line in the log. A readout whose sensor has
 no row on the node shows nothing. A pack cannot change an issue's line, its distances, its hero or its sentences.
 `tests/test_pack_readouts.py` holds this.
+
+### Which node versions
+
+`requires: { node: ">=0.40.0" }` says which nodes a pack was written for: one clause, or several joined by commas
+(`">=0.40.0, <0.90.0"`), each one of `>=`, `>`, `<=`, `<` or `==` and a version. A node that does not match does not
+load the pack at all, rules and adapter alike, says so once in its log, and lists it under "not loaded" in
+`planetai packs` with the reason. `planetai packs add` says it at once. A node that cannot name its release (a
+developer's checkout, `dev`) loads every pack; a `requires:` that is not a version range is refused. The rule is
+`app/requires.py`, which the loader and the CLI both run, and `tests/test_requires.py` also checks that no core pack
+asks for a node newer than the latest release.
 
 ## Code packs
 

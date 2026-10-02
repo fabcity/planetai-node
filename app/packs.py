@@ -30,17 +30,36 @@ def _allow_code() -> bool:
     return settings.get("PACKS_ALLOW_CODE", "0") == "1"
 
 
+# Packs this node will not load because their `requires:` rules it out, and why: what `planetai packs` reads back.
+REFUSED: dict[str, str] = {}
+
+
 def _enabled() -> list[Path]:
     if not PACKS_DIR.is_dir():
         return []
+    import requires
     import settings
     only = {p for p in settings.get("PACKS_ENABLED", "").replace(" ", "").split(",") if p}
+    here = os.getenv("NODE_VERSION", "")
     out = []
     for d in sorted(PACKS_DIR.iterdir()):
         if not (d / "pack.yaml").is_file():
             continue
         if only and d.name not in only:
             continue
+        # A pack written for a newer node may read a column, a route or a setting this one does not have. It is
+        # refused whole, rules and adapter alike, with one line in the log, and not half-loaded.
+        try:
+            spec = ((yaml.safe_load((d / "pack.yaml").read_text()) or {}).get("requires") or {}).get("node")
+        except Exception:  # noqa: BLE001 — a pack.yaml that does not parse is reported where it is read
+            spec = None
+        why = requires.check(spec, here)
+        if why:
+            if REFUSED.get(d.name) != why:
+                log.warning("pack %s not loaded: %s", d.name, why)
+            REFUSED[d.name] = why
+            continue
+        REFUSED.pop(d.name, None)
         out.append(d)
     return out
 

@@ -1028,6 +1028,11 @@ for head, rows in (("core", [p for p in d if p["id"] not in wild]), ("wild", [p 
   for id in $wild; do
     printf '    %s%s from %s at %s, added %s%s\n' "$D" "$id" "$(wildget "$id" source)" "$(wildget "$id" commit | cut -c1-12)" "$(wildget "$id" added)" "$N"
   done
+  local refused; refused="$(packs_refused)"
+  if [[ -n "$refused" ]]; then
+    echo "  not loaded, written for another node version:"
+    printf '%s\n' "$refused" | while IFS=$'\t' read -r id why; do printf '    %-16s %s\n' "$id" "$why"; done
+  fi
   echo
   # what `install` would do, said rather than done
   local reqs; reqs="$(pack_pips)"; local missing=0
@@ -1076,6 +1081,27 @@ packs_install() {
 WILD_INDEX="https://raw.githubusercontent.com/fabcity/planetai-wild-packs/main/packs.json"
 wild_ids() { local f; for f in packs/*/.wild; do [[ -f "$f" ]] && basename "$(dirname "$f")"; done; return 0; }
 wildget() { sed -n "s/^$2=//p" "packs/$1/.wild" 2>/dev/null | head -1; }
+# Packs on disk this node will not load, and why, one per line as `<id><TAB><reason>`; with an id, only that pack.
+# The rule is app/requires.py, the same one the loader applies, run here on the node's own Python. pack.yaml is
+# read with a pattern because that Python has no YAML: `requires: { node: ">=0.40.0" }` or the block form.
+packs_refused() {
+  python3 -c 'import glob, re, sys
+sys.path.insert(0, "app")
+try:
+    import requires
+except ImportError:
+    sys.exit(0)  # no app/ beside this script: nothing to say, rather than a traceback in a listing
+here, only = sys.argv[1], sys.argv[2]
+for f in sorted(glob.glob("packs/*/pack.yaml")):
+    pid = f.split("/")[1]
+    if only and pid != only:
+        continue
+    block = re.search(r"^requires:.*(?:\n[ \t]+.*)*", open(f, encoding="utf-8").read(), re.M)
+    m = re.search(r"\bnode:\s*[\"\x27]?([^\"\x27}\n]*)", block.group(0)) if block else None
+    why = requires.check(m.group(1).strip() if m else None, here)
+    if why:
+        print(pid + "\t" + why)' "$(envget NODE_VERSION)" "${1:-}"
+}
 
 packs_add() {
   FAIL_WHAT="The pack was not added."
@@ -1141,6 +1167,8 @@ print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "liste
   if [[ "$kind" == code ]]; then
     warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read packs/$id/adapter.py first."
   fi
+  local why; why="$(packs_refused "$id" | cut -f2-)"
+  if [[ -n "$why" ]]; then warn "it will not load on this node: $why."; fi
   packs_install
   say "planetai restart loads it. To remove it: delete packs/$id and restart."
 }
