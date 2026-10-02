@@ -661,8 +661,14 @@ for _h in _heads:
     _sid = re.search(r"\bid:\s*'([^']+)'", _h).group(1)
     _r = re.search(r"\breads:\s*\[([^\]]*)\]", _h)
     assert _r and re.findall(r"'(/[^']*)'", _r.group(1)), f"section '{_sid}' does not say which routes it reads"
-assert re.search(r'<span class="routes">\$\{s\.reads\.map\(r => `<a href="\$\{esc\(r\)\}">GET \$\{esc\(r\)\}</a>`\)', _js_raw), \
+assert re.search(r'<span class="routes">\$\{s\.reads\.map\(routeLink\)', _js_raw), \
     "the shell no longer prints a band's routes as links beside its kicker"
+# A route opens beside the dashboard (a new tab), and the two a page cannot open say so instead of answering 403/405.
+assert re.search(r'`<a href="\$\{esc\(r\)\}" target="_blank" rel="noopener">GET \$\{esc\(r\)\}</a>`', _js_raw), \
+    "a band's route links must open in a new tab, so the dashboard is not replaced by raw JSON"
+assert re.search(r'/\^\\/actions\\b/\.test\(r\)[^;]*route off[^;]*POST', _js_raw, re.S), "POST /actions must be marked as not openable"
+assert re.search(r'/\^\\/place\\/geojson\\b/\.test\(r\)[^;]*route off[^;]*token', _js_raw, re.S), \
+    "/place/geojson must be marked as needing a token, not offered as a link that 403s"
 assert re.search(r"\.band > \.k \.routes \{[^}]*text-transform: none", (ROOT / "app/static/dashboard.css").read_text()), \
     "a band's routes inherit the kicker's uppercase, and a route uppercased cannot be typed back"
 
@@ -700,7 +706,7 @@ if shutil.which("node"):
     # do first (DECISION_REQUIRED) — the one sentence the person at the screen needed.
     _did = "\n".join((
         re.search(r"async function nodeSaid\(r\) \{.*?\n\}", _js_raw, re.S).group(0),
-        re.search(r"async function didThis\(form\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"async function didThis\(form(?:, force)?\) \{.*?\n\}", _js_raw, re.S).group(0),
     ))
     _409 = ("this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same "
             "alert first. Decide on the dashboard, then record what you did.")
@@ -715,7 +721,10 @@ if shutil.which("node"):
     _t = _node(_did + "\nconst C = " + json.dumps(_cases) + r""";
 const auth_ = () => ({}); let said = null; const say = (m, bad) => { said = [m, !!bad]; };
 const refresh = async () => {};
-const form = { querySelector: () => ({ disabled: false }), getAttribute: () => '7',
+const tokfield = { hidden: true, querySelector: () => ({ value: '', focus() {} }) };
+let HAS_TOK = false;
+const form = { querySelector: sel => (sel === '.tokfield' ? (HAS_TOK ? tokfield : null) : { disabled: false }),
+  closest: () => null, getAttribute: () => '7',
   classList: { contains: () => false }, elements: { note: { value: 'shut it' }, actor: { value: 'a' } },
   hidden: false, reset() {} };
 (async () => {
@@ -725,8 +734,14 @@ const form = { querySelector: () => ({ disabled: false }), getAttribute: () => '
       json: async () => { if (body === null) throw new Error('no body'); return body; } });
     said = null; await didThis(form); out[k] = said;
   }
+  // A refusal for want of a token asks for it in the form, where the press failed.
+  HAS_TOK = true;
+  globalThis.fetch = async () => ({ status: 401, ok: false, json: async () => ({ detail: 'needs a token' }) });
+  said = null; await didThis(form); out.tok = [said, tokfield.hidden];
   console.log(JSON.stringify(out));
 })();""")
+    assert _t["tok"][1] is False and "ACT_TOKEN" in _t["tok"][0][0] and _t["tok"][0][1] is True, \
+        f"a 401 with a token field in the form must show the field and say what to paste: {_t['tok']}"
     assert _t["409"] == [_409, True], f"a 409 must print the node's own sentence and nothing else: {_t['409']}"
     assert _t["400"] == ["stage must be acknowledged, acted or decided", True], f"so must a 400: {_t['400']}"
     assert _t["401"][0].startswith("closing a loop from off this machine") and "planetai ui" in _t["401"][0], \

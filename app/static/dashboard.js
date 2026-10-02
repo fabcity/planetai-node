@@ -109,8 +109,11 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
 /* The node already formatted every number it sent; this only sets the places the issue declared. */
 const fmt = (v, dp = 0) => (v == null || isNaN(v) ? '—' : Number(v).toFixed(dp));
 
-const sign = (id, cls = '') =>
-  `<svg class="sg ${cls}" aria-hidden="true"><use href="static/signs.svg#sign-${id}"/></svg>`;
+/* `tip` is the sign's name on hover. The signs are decorative to a screen reader (the row's own label says
+   it), but a pointer reader had nothing: a ring and a hexagon looked like they meant something and said
+   nothing. The same glyph means different things in different rows, so the name is the row's to give. */
+const sign = (id, cls = '', tip = '') =>
+  `<svg class="sg ${cls}" aria-hidden="true">${tip ? `<title>${esc(tip)}</title>` : ''}<use href="static/signs.svg#sign-${id}"/></svg>`;
 
 /* Provenance is a glyph and a word, ink only, square. A fixture is a committed snapshot, so nothing
  * on it was measured just now: `live` is coerced to `cached`, exactly as the node's own page does. */
@@ -386,6 +389,13 @@ function series(key, d, o = {}) {
     s += `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${H + 3}" y2="${H + OVER_BAND - 2}"`
       + ` stroke="var(--signal-worse)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
   });
+  /* Two marks on the traces themselves: a filled dot with a short stem at the highest value, and a hollow
+     ring where the day began. Non-scaling so they stay round-ish whatever the svg is stretched to. */
+  if (peak) s += `<line x1="${X(peak.i).toFixed(1)}" x2="${X(peak.i).toFixed(1)}" y1="${(Y(peak.v) - 1).toFixed(1)}" y2="${H - pad.b}"`
+    + ` stroke="var(--ink)" stroke-opacity=".35" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>`
+    + `<circle cx="${X(peak.i).toFixed(1)}" cy="${Y(peak.v).toFixed(1)}" r="3.2" fill="var(--signal-worse)" stroke="var(--ground)" stroke-width="1"/>`;
+  if (startI >= 0) s += `<circle cx="${X(startI).toFixed(1)}" cy="${Y(ser[sets[0]][startI]).toFixed(1)}" r="3.2" fill="var(--ground)"`
+    + ` stroke="var(--ink)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
   s += `</svg>`;
   /* A distance with nothing to draw is NAMED, not silently dropped. Three traces where there
      should be four reads as a complete picture unless the fourth says it is missing and why — and
@@ -400,6 +410,13 @@ function series(key, d, o = {}) {
       + `</span>` : '');
   // The text alternative sits beside the drawing at every width, not behind it.
   const first = ser[sets[0]].find(v => v != null), last = [...ser[sets[0]]].reverse().find(v => v != null);
+  /* Highest value recorded in the 24 h drawn (any trace) and the reading 24 h ago (the first trace's first
+     hour), named beside the line: the axis already says how far back the drawing goes, and these say what
+     it went from and how high it got. */
+  let peak = null;
+  sets.forEach(k => ser[k].forEach((v, i) => { if (v != null && (peak == null || v > peak.v)) peak = { v, i, k }; }));
+  const hoursAgo = peak ? n - 1 - peak.i : null;
+  const startI = ser[sets[0]].findIndex(v => v != null);
   const altCmp = line != null
     ? `against the line, ${fmt(line, d.dp)} ${d.unit} · ${d.line.source}`
     : `no comparison yet · ${noLine(d)}`;
@@ -412,6 +429,10 @@ function series(key, d, o = {}) {
     + `${fmt(lo, d.dp) === fmt(0, d.dp) ? '<span class="floor">floor 0</span>'
       : `<span class="floor">floor ${esc(fmt(lo, d.dp))} ${esc(d.unit)}, not zero</span>`}`
     + `<span>now</span></div>`
+    + (peak ? `<div class="marks"><span class="mk start"><i></i>24 h ago ${esc(fmt(first, d.dp))} ${esc(d.unit)}</span>`
+      + `<span class="mk peak"><i></i>highest ${esc(fmt(peak.v, d.dp))} ${esc(d.unit)}, `
+      + `${hoursAgo === 0 ? 'now' : `${hoursAgo} h ago`}</span>`
+      + `${line != null ? `<span class="mk ln"><i></i>the line ${esc(fmt(line, d.dp))}</span>` : ''}</div>` : '')
     + `<p class="alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">`
     + `${esc(LAB[sets[0]])} opened the day at ${esc(fmt(first, d.dp))} and closed it at `
     + `${esc(fmt(last, d.dp))} ${esc(d.unit)}</span> — ${esc(altCmp)}.`
@@ -677,18 +698,28 @@ function ask(key, d, ref) {
        and the wrong one here, on a screen with the button on it. The node's words are unchanged;
        this surface says what this surface offers. */
     + `<small>${esc(a.says[LOC])}</small></div>`
-    + didButton(a.id) + `</div>`;
+    + didButton(a.id, a.seen) + `</div>`;
 }
 
 /* The one button the page offers on an open alert, and the form it opens. Shared by the ask strip in
  * Act and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
-const didButton = id =>
-  `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
+const didButton = (id, seen) =>
+  /* "Seen" records `acknowledged`: somebody has looked, nothing has been done. rho counts it as an answer
+     but the alert stays open here, because seeing it is not doing anything (app/issues/schema.py). */
+  (seen ? `<span class="seenmark" title="Somebody has acknowledged this alert. It stays open until somebody acts.">\u2713 Seen</span> ` : '')
+  + (seen ? '' : `<button type="button" class="seen" data-seen="${esc(String(id))}" title="Record that you have looked at this alert. It stays open until somebody acts.">Seen it</button>`)
+  + `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
   + `<form class="did" hidden data-alert="${esc(String(id))}">`
   + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name"`
   + ` placeholder="your name"></label>`
   + `<label><span>What you did</span><input name="note" maxlength="500"`
   + ` placeholder="closed the windows on the north side"></label>`
+  /* Shown only when the node refuses for want of a token. A browser is never "this machine" to the
+     node (it arrives as the Docker gateway), so on a PC running the node the first press from the
+     dashboard always needs the act token once; asking for it here, where the press failed, beats a
+     toast that names a terminal command. Kept in this browser, the same key Set up -> unlock writes. */
+  + `<label class="tokfield" hidden><span>Act token</span><input name="token" type="password"`
+  + ` autocomplete="off" spellcheck="false" placeholder="ACT_TOKEN from planetai ui"></label>`
   + `<div class="btns"><button type="submit" class="pri">Record it</button>`
   + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
 
@@ -702,7 +733,7 @@ function askRow(key, d, a) {
     + (h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="${esc(d.name[LOC])}">`
       + `<use href="static/signs.svg#${esc(h.sign)}"/></svg>` : '')
     + `<div class="what">${esc(String(a.text || '').split('\n')[0])}<small>#${esc(String(a.id))}</small></div>`
-    + didButton(a.id) + `</div>`;
+    + didButton(a.id, a.seen) + `</div>`;
 }
 
 /* Hide a component in one mode and not the other, by marking its outermost tag. The CSS on
@@ -749,7 +780,7 @@ const asof = () => {
 /* rho as a row of rings, answered first, with the caption naming reported against observed. */
 /* PORTED: `ref` is new, for the same reason the ask strip's is. The row's link out was always the
  * funnel, and the wall has no funnel on it. */
-function rhoRow(small, ref) {
+function rhoRow(small, ref, actLink) {
   /* GET /rho may be slow, refused or absent, and this is called from the wall, which nobody is
    * standing at. A dereference here took the whole wall down before innerHTML was ever assigned. */
   if (!S.rho) {
@@ -768,12 +799,18 @@ function rhoRow(small, ref) {
   const UNIT = total <= 40 ? 1 : total <= 400 ? 10 : 100;
   const rings = Math.round(total / UNIT), full = Math.round(closed / UNIT);
   let s = '';
-  for (let i = 0; i < rings; i++) s += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
+  for (let i = 0; i < rings; i++) {
+    const said = i < full ? 'An answered alert' : 'An alert still open';
+    const one = sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '', said);
+    /* Each ring is a way to the Act section, where the alerts themselves are: from the wall it leaves the
+       wall for Now (data-act-link); on Now it scrolls to the stage (data-stage-go). */
+    s += `<a class="rl" href="#act" ${actLink ? 'data-act-link' : 'data-stage-go="act"'} title="${said}: go to Act" aria-label="${said}: go to Act">${one}</a>`;
+  }
   /* The row is a texture of signs and the CAPTION is the readable part of it, so the caption is
    * what carries the role and what the three-metre floor is measured against. A sign is measured
    * against --sign-floor; a cap height is measured against a distance. */
   return `<div class="rho${small ? ' small' : ''}" data-component="rhoRow"`
-    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="img" aria-label="${closed} of ${total} alerts answered">${s}</div>`
+    + ` id="rho" data-ref="${esc(ref || 'funnel')}" role="group" aria-label="${closed} of ${total} alerts answered">${s}</div>`
     + `<p class="note" data-role="rho" data-num="rho"`
     + ` data-cmp="against the ${total} alerts this node sent in 30 days">`
     + `${closed} of ${total} alerts answered · median ${r.median_minutes} min`
@@ -1638,8 +1675,17 @@ function bandFor(ctx, s) {
     .join('');
   /* The routes the band's data came from, once per band, in their own case: the kicker shouts, and
      a route uppercased is a route a reader cannot type back. Links, so the JSON is one press away. */
+  /* A route is a page the node answers, and pressing one used to replace the dashboard with raw JSON in
+     the same tab, with no way back but the browser's. It opens beside the dashboard instead. Two cannot
+     be opened by a page at all: /actions takes a POST, and /place/geojson is the exact footprint around
+     the house, which the node never serves to a page without a token, so those say so rather than 403. */
+  const routeLink = r => /^\/actions\b/.test(r)
+    ? `<span class="route off" title="This route takes a POST, so there is no page to open">POST ${esc(r)}</span>`
+    : /^\/place\/geojson\b/.test(r)
+      ? `<span class="route off" title="Needs a token: it is the exact footprint around this house, and the node never serves it to a page without one">GET ${esc(r)} · token</span>`
+      : `<a href="${esc(r)}" target="_blank" rel="noopener">GET ${esc(r)}</a>`;
   const reads = (s.reads || []).length
-    ? `<span class="routes">${s.reads.map(r => `<a href="${esc(r)}">GET ${esc(r)}</a>`).join('')}</span>`
+    ? `<span class="routes">${s.reads.map(routeLink).join('')}</span>`
     : '';
   return `<section class="band" id="${esc(s.id)}" data-band="${esc(s.stage)}:${esc(s.id)}"`
     + ` data-pack="${esc(s.pack)}" data-stage="${esc(s.stage)}">`
@@ -1736,19 +1782,38 @@ function render(ctx, lead, opts = {}) {
   /* Simple on Now is the three questions and nothing else: no sections, no stage names, no notes. */
   if (simple && onNow) return (lead || '') + simpleTail(ctx);
   let html = (lead || '') + (simple && onNow ? digest(ctx) : '');
+  const present = new Set(ordered.map(s => s.stage));
   for (const [key, name, what] of STAGES) {
     const mine = ordered.filter(s => s.stage === key);
     if (!mine.length) continue;
     html += `<div class="stage" id="stage-${key}" data-stage="${key}">`
       + `<div class="stagehead"><span class="n">${STAGE_INDEX[key] + 1}</span>`
       + `<h2>${esc(name)}</h2><span class="what">${esc(what)}</span>`
-      + `<span class="loop" aria-hidden="true">${STAGES.map(([k]) =>
-        `<i class="${k === key ? 'on' : ''}"></i>`).join('')}</span>`
+      /* THE FOUR SQUARES ARE THE LOOP'S MAP AND ITS NAVIGATION. A square for a stage this view draws is a
+         link to that stage; one for a stage it does not (Simple hides most, and Historical and Network
+         have only some) is greyed and says so, so the row never points at nothing. */
+      + `<span class="loop" role="navigation" aria-label="The four stages">${STAGES.map(([k, nm]) => present.has(k)
+        ? `<a class="sq${k === key ? ' on' : ''}" href="#stage-${k}" data-stage-go="${k}" title="${esc(nm)}"`
+          + ` aria-label="${esc(nm)}"${k === key ? ' aria-current="true"' : ''}><i class="${k === key ? 'on' : ''}"></i></a>`
+        : `<span class="sq off" title="${esc(nm)}: not on this view" role="img"`
+          + ` aria-label="${esc(nm)}, not on this view"><i class="off"></i></span>`).join('')}</span>`
       /* One mark for the loop, on the first stage a view draws. The same mark on all four would be
          the same quote four times, which is a page repeating itself rather than explaining itself. */
       + (key === ordered[0].stage && window.PAI_LEARN
         ? window.PAI_LEARN.mark('stages', `stage-${key}`) : '') + `</div>`
       + mine.map(s => bandFor(ctx, s)).join('') + `</div>`;
+  }
+  /* SIMPLE ON HISTORICAL OR NETWORK HIDES ALMOST EVERYTHING, AND USED TO SAY NOTHING ABOUT IT. Only one
+     section per view opts into simple, so a browser left on Simple (the choice is remembered) showed one
+     panel under "Observe" and no sign that six more existed. Say how many are held back and offer the
+     switch; the button sits in a `.seg.mode` group so the header's own mode handler takes the press. */
+  if (simple && !onNow && keep) {
+    const hidden = sections.filter(s => keep.has(s.id) && s.level !== 'simple').length;
+    if (hidden) html += `<div class="modehint" data-component="modeHint" data-ref="stage-observe">`
+      + `<p>Simple mode shows ${ordered.length} of ${ordered.length + hidden} sections on this view. `
+      + `${hidden} more ${hidden === 1 ? 'is' : 'are'} hidden.</p>`
+      + `<div class="seg mode" role="group" aria-label="Show more of this page">`
+      + `<button type="button" data-mode="advanced">Show all sections</button></div></div>`;
   }
   html += notesBand(ctx, ordered);
   if (problems.length) {
@@ -2358,9 +2423,9 @@ window.PAI.register({
     const exported = `<p class="cap" id="figures-export" data-ref="figures-table">Today\u2019s open `
       + `export, CC BY 4.0: `
       + (/^\d{4}-\d{2}-\d{2}$/.test(day)
-        ? `<a class="mono" href="/export?day=${esc(day)}">GET /export?day=${esc(day)}</a>`
+        ? `<a class="mono" target="_blank" rel="noopener" href="/export?day=${esc(day)}">GET /export?day=${esc(day)}</a>`
         : `<span class="mono">GET /export?day=YYYY-MM-DD</span>`)
-      + `. Past days: <a class="mono" href="/exports">GET /exports</a>.</p>`;
+      + `. Past days: <a class="mono" target="_blank" rel="noopener" href="/exports">GET /exports</a>.</p>`;
     if (!rows.length) {
       return `<p class="note" id="figures-none" data-ref="care">This node sent no provenance for `
         + `its figures, so there is nothing to list. That is a gap in what it published, not an `
@@ -2561,12 +2626,13 @@ PAI_LOAD.push(function () {
 const { esc, row, sign } = window.K;
 
 /* A run of the same sign, which is the whole grammar of a unit row. */
-const many = (id, n, cls = '') => Array.from({ length: Math.max(0, n) }, () => sign(id, cls)).join('');
+const many = (id, n, cls = '', tip = '') => Array.from({ length: Math.max(0, n) }, () => sign(id, cls, tip)).join('');
 
 /* A percentage as twentieths of the ground: filled for the share, hollow for the rest, so the row
    is countable both ways and the total is always the same width. */
 const of20 = (pct, cls = '') => Array.from({ length: 20 }, (_, i) =>
-  sign('cell', i < Math.round((pct || 0) / 5) ? `on ${cls}` : 'off')).join('');
+  sign('cell', i < Math.round((pct || 0) / 5) ? `on ${cls}` : 'off',
+    i < Math.round((pct || 0) / 5) ? 'One twentieth of the ground: covered' : 'One twentieth of the ground: not covered')).join('');
 
 window.PAI.register({
   id: 'sources', pack: 'core', stage: 'observe', title: 'What this page is made of', order: 14, learn: ['custody'],
@@ -2587,15 +2653,15 @@ window.PAI.register({
 
     let html = `<div class="reads units" id="registry-rows" data-ref="matrix-grid">`
       + R({ id: 'src-own', left: lab('This house\u2019s own', 'one sign, one station'),
-        signs: many('sensor', own),
+        signs: many('sensor', own, '', 'One of this house\u2019s own stations'),
         qty: [{ num: 'sources.own', value: String(own),
           cmp: `against ${own + ring} stations this node reads` }] })
       + R({ id: 'src-ring', left: lab('Other people\u2019s', 'one sign, one station'),
-        signs: many('sensor', ring, 'faint'),
+        signs: many('sensor', ring, 'faint', 'One station that belongs to somebody else'),
         qty: [{ num: 'sources.ring', value: String(ring),
           cmp: `against ${own + ring} stations this node reads` }] })
       + R({ id: 'src-models', left: lab('Models', 'one sign, one model'),
-        signs: many('planet', models),
+        signs: many('planet', models, '', 'One model: an estimate, never counted as a station'),
         qty: [{ num: 'sources.models', value: String(models),
           cmp: `against ${own + ring} stations \u2014 a model is not a station and is never counted `
             + `as one` }] });
@@ -2614,7 +2680,7 @@ window.PAI.register({
        says which fact is missing rather than quietly rounding the sources down to five. */
     html += plan && plan.counts
       ? R({ id: 'src-houses', left: lab('Houses', 'one sign per 250'),
-        signs: many('house', Math.round(plan.counts.buildings / 250)),
+        signs: many('house', Math.round(plan.counts.buildings / 250), '', 'About 250 buildings'),
         qty: [{ num: 'sources.houses', value: String(plan.counts.buildings),
           cmp: `buildings on the plan within this kilometre, drawn one sign per 250` }] })
       : `<p class="note" id="src-houses" data-ref="registry-rows">The buildings on this kilometre `
@@ -3650,9 +3716,9 @@ window.PAI.register({
       /* Where to go from here: the two halves of the list the counts are made of, the per-cell
          rows this node computes, and how an entry gets into the registry at all. */
       + `<p class="cap" id="registry-how" data-ref="registry-rows">The live entries are at `
-      + `<a class="mono" href="/sources?status=live">GET /sources?status=live</a> and the candidates `
-      + `at <a class="mono" href="/sources?status=candidate">GET /sources?status=candidate</a>; each `
-      + `row of <a class="mono" href="/cells">GET /cells</a> carries the three counts for its own `
+      + `<a class="mono" target="_blank" rel="noopener" href="/sources?status=live">GET /sources?status=live</a> and the candidates `
+      + `at <a class="mono" target="_blank" rel="noopener" href="/sources?status=candidate">GET /sources?status=candidate</a>; each `
+      + `row of <a class="mono" target="_blank" rel="noopener" href="/cells">GET /cells</a> carries the three counts for its own `
       + `cell. An entry is added by a pull request to the registry and a re-pin: `
       + `<a href="${ADD_A_SOURCE}">Adding a source</a>, in the documentation.</p>`
       /* COUNTED, NOT TYPED. This said "The eight" because there were eight at registry pin 85a194c.
@@ -4453,7 +4519,7 @@ function ringsFor(list, open) {
   const full = closed > 0 ? Math.max(1, Math.round(closed / UNIT)) : 0;
   let out = '';
   for (let i = 0; i < rings; i++) {
-    out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
+    out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '', i < full ? 'An answered alert' : 'An alert still open');
   }
   return { html: out, closed, total, unit: UNIT };
 }
@@ -5519,6 +5585,7 @@ const H = window.H3;
 const DWELL_MS = 8000;
 const HOLD_MS = 30000;
 const STILL = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let WALL_PAUSED = false;   /* survives a re-render: the wall is redrawn whenever the route runs */
 const MAX_FRAGMENTS = 5;
 
 /* One hexagon, pointy-top, centred in a 100-unit box, for the dial's stops. A stop is pressed, it is
@@ -5695,6 +5762,34 @@ function field(ctx, sel) {
 /* Eleven stops. State is fill, weight and dash: the stop you are on is ink, the stops coarse enough
  * to leave this machine carry a light cells fill, the stops finer than this node says where it is
  * are dashed. */
+/* The scale names from planetai.fab.city/nodes ("five scales, one code"): home about 1 km and one cell,
+ * community about 5 km, city about 15 km, region about 100 km. The page names scales, not H3 resolutions,
+ * so each rung takes the nearest scale by cell size; region is about 100 km and the ladder's coarsest
+ * rung is res 4 (about 40 km across), so that rung is labelled as the nearest one. Finer than home, the
+ * page says a home node "reads the room and the street", which is what the last two bands say. */
+const SCALES = [
+  { key: 'region', label: 'Region', hint: 'about 100 km, a partner cluster (nearest rung)', res: [2, 3, 4] },
+  { key: 'city', label: 'City', hint: 'about 15 km, the host institution', res: [5] },
+  { key: 'community', label: 'Community', hint: 'about 5 km, a lab\u2019s reach', res: [6, 7] },
+  { key: 'home', label: 'Home', hint: 'about 1 km, one cell: where this node stands', res: [8] },
+  { key: 'street', label: 'Street', hint: 'finer than home: the street', res: [9, 10, 11] },
+  { key: 'room', label: 'Room', hint: 'finer than home: the room', res: [12, 13, 14] },
+];
+const scaleOf = r => SCALES.find(x => x.res.includes(r));
+/* The strip of scale names under a row of stops, one grid column per stop, shared by the wall's dial and
+   Now's rail so the same rung carries the same name everywhere. */
+const scaleStrip = (table, cur) => {
+  const e = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return `<div class="scales" aria-hidden="true" style="grid-template-columns:repeat(${table.length},minmax(0,1fr))">`
+    + SCALES.map(sc => {
+      const idx = table.map((g, i) => sc.res.includes(g.res) ? i : -1).filter(i => i >= 0);
+      if (!idx.length) return '';
+      return `<span class="sc${sc.res.includes(cur) ? ' on' : ''}" title="${e(sc.hint)}"`
+        + ` style="grid-column:${idx[0] + 1} / span ${idx.length}">${e(sc.label)}</span>`;
+    }).join('') + `</div>`;
+};
+window.PAI_SCALES = { SCALES, scaleOf, scaleStrip };
+
 function dial(ctx) {
   const { esc } = ctx.K, { km2, edge } = ctx.KH, N = ctx.N;
   const stops = H.grain_table.map((g, i) => {
@@ -5717,8 +5812,14 @@ function dial(ctx) {
       + `${esc(edge(g.edge_m))}</span>`
       + `</a>`;
   }).join('');
-  return `<div class="stops" role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
+  const cur = H.grain_table.find(g => g.res === ctx.RES);
+  return `<div class="dialhead" aria-hidden="true"><b>Resolution ladder</b>`
+    + `<span>coarse (wide cells)<i>→</i>fine (small cells)</span></div>`
+    + `<div class="stops" role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
     + `standing at ${ctx.RES}">${stops}</div>`
+    + scaleStrip(H.grain_table, ctx.RES)
+    + `<div class="dialnow" aria-hidden="true">you are here: resolution ${ctx.RES}${scaleOf(ctx.RES) ? ` · ${esc(scaleOf(ctx.RES).label)} scale` : ''}`
+    + `${cur ? `, ${esc(edge(cur.edge_m))} to a cell edge` : ''}</div>`
     + `<div class="clock" id="wall-clock" data-component="clock" data-ref="wall-dial"`
     + ` aria-hidden="true"><i></i></div>`;
 }
@@ -5794,10 +5895,16 @@ function render(ctx, sel) {
        wants every pixel. The wall's rule is that nothing falls below 1080, and that rule wins. */
     + vars(ctx)
     + `<span class="who">${esc(ctx.S.health.node)}<i>·</i>${esc(ctx.S.health.city || '')}`
-    + `<i>·</i>#wall<i>·</i>share level ${esc(share)}<i>·</i>`
-    + `${STILL ? 'the ladder stands still' : `the ladder moves every ${DWELL_MS / 1000} s`}</span>`
+    + `<i>·</i>#wall</span>`
     + `<span class="what">${esc(m.label || VAR(ctx))}<i>·</i>${esc(m.unit || '')}`
-    + `<i>·</i>15-min means</span></div>`
+    + `<i>·</i>15-min means</span>`
+    + (STILL ? '' : `<button type="button" class="wpause" id="wall-pause" data-component="wallPause" data-ref="wall-dial"`
+      + ` aria-pressed="${WALL_PAUSED}">${WALL_PAUSED ? 'play' : 'pause'}</button>`)
+    + `<details class="winfo" data-component="wallInfo" data-ref="wall-dial"><summary aria-label="About this wall" title="About this wall">i</summary>`
+    + `<div class="winfo-body"><p>Answer on Telegram, not here.</p>`
+    + `<p>The labels under the ladder (Region, City, Community, Home, Street, Room) are the scales from planetai.fab.city/nodes: home is about 1 km and one cell, community about 5 km, city about 15 km, region about 100 km. Street and room are finer than home. The row of numbered hexagons is the resolution ladder: each hexagon is one rung, coarse on the left, fine on the right. The solid dark one, marked “you are here”, is the rung the map is showing. Lightly filled rungs are coarse enough to leave this machine; dashed rungs are finer than this node publishes.</p>`
+    + `<p>${STILL ? 'Reduced motion is on, so the ladder stands still. Press a rung to move it.'
+      : `The ladder moves by itself every ${DWELL_MS / 1000} s, with nothing interpolated between rungs. Under reduced motion it stands still.`}</p></div></details></div>`
     + `<div class="wgrid">`
     + `<figure class="wfield" id="wall-field" data-component="wallField" data-ref="wall-dial">`
     + field(ctx, sel) + `</figure>`
@@ -5805,27 +5912,19 @@ function render(ctx, sel) {
     + `<div id="band-${esc(hk)}">${K.kicker(hk, d)}${K.sentence(hk, d, 'big')}${K.why(hk, d)}${K.ask(hk, d)}</div>`
     /* The sketch puts this where an ask would be, in the column, rather than in the foot. It is the
        wall's own refusal and it answers the question the ask above it raises. */
-    + `<p class="wnoask" data-component="wallNoAsk" data-ref="wall-dial">`
-    + `Answer on Telegram, not here.</p>`
     + `<div class="wdial" id="wall-dial" data-component="dial" data-ref="wall-field" role="group"`
     + ` aria-label="the ladder">${dial(ctx)}</div>`
     /* And the dial says how to read itself, under itself. The foot's caption is about the MOTION;
        this one is about the marks, and a reader looking at the stops should not have to look away. */
-    + `<p class="wcap" data-component="dialKey" data-ref="wall-dial">`
-    + `the ladder<i>·</i>current rung filled ink<i>·</i>may-leave rungs filled `
-    + `<code>--cells</code> at .16<i>·</i>finer than published, dashed</p>`
     + `<div class="wgrain" id="wall-grain" data-component="wallGrain" data-ref="wall-dial">${grain(ctx)}</div>`
-    + `<div class="wrho">${K.rhoRow(false, 'wall-dial')}</div>`
+    + `<div class="wrho">${K.rhoRow(false, 'wall-dial', true)}</div>`
     + `</div></div>`
     + `<div class="wmore" id="wall-more" data-component="wallMore" data-ref="wall-field">${more(ctx)}</div>`
     /* The node's name, the share level and the dial's cadence have gone to the top bar and the
        Telegram line into the column, so the foot is what is left: when this was true, which cell it
        is about, and whether the node has stopped answering. Nothing is said twice. */
     + `<div class="foot">${K.asof()}${K.stamp()}<span class="st">stale</span>`
-    + `<span class="wcap">${STILL
-      ? 'reduced motion is on, so the ladder stands still · press a rung to move it'
-      : `the ladder moves by itself every ${DWELL_MS / 1000} s · nothing interpolates between rungs · `
-        + 'under reduced motion it stands still'}</span></div>`
+    + `</div>`
     + `</div>`;
 }
 
@@ -5839,6 +5938,9 @@ function start(ctx) {
   if (!box()) return;
   const N = ctx.N;
   let res = ctx.RES, sel = null, timer = null, holdUntil = 0;
+  /* start() runs on every route(); without this each run stacked another interval and another pair of
+     document listeners, so the dial stepped faster and pressed twice. */
+  if (window.__wallOff) window.__wallOff();
 
   function show(r) {
     const b = box();
@@ -5847,6 +5949,7 @@ function start(ctx) {
     const c = at(ctx, r);
     const fl = b.querySelector('#wall-field'), dl = b.querySelector('#wall-dial'),
       gr = b.querySelector('#wall-grain'), mo = b.querySelector('#wall-more');
+    b.classList.toggle('paused', WALL_PAUSED);
     if (fl) fl.innerHTML = field(c, sel);
     if (dl) dl.innerHTML = dial(c);
     if (gr) gr.innerHTML = grain(c);
@@ -5858,7 +5961,7 @@ function start(ctx) {
   if (!STILL) {
     timer = setInterval(() => {
       if (!box()) { clearInterval(timer); return; }
-      if (Date.now() < holdUntil) return;
+      if (WALL_PAUSED || Date.now() < holdUntil) return;
       step(1);
     }, DWELL_MS);
   }
@@ -5870,24 +5973,41 @@ function start(ctx) {
     holdUntil = Date.now() + HOLD_MS;
     const k = box() && box().querySelector('#wall-clock'); if (k) k.classList.add('held');
   }
-  document.addEventListener('click', e => {
+  const onClick = e => {
     if (!box()) return;
+    const pz = e.target.closest && e.target.closest('#wall-pause');
+    if (pz) {
+      WALL_PAUSED = !WALL_PAUSED;
+      pz.textContent = WALL_PAUSED ? 'play' : 'pause';
+      pz.setAttribute('aria-pressed', String(WALL_PAUSED));
+      const wb = box(); if (wb) wb.classList.toggle('paused', WALL_PAUSED);
+      return;
+    }
     const a = e.target.closest && e.target.closest('#wall-dial a.stop');
     if (a) {
-      e.preventDefault();
+      e.preventDefault(); e.stopImmediatePropagation();
       hold(); sel = null;
       show(+a.dataset.res);
-      try { history.replaceState(null, '', a.getAttribute('href')); } catch { /* a file:// page */ }
+      /* Keep the hash: the view IS the hash, and dropping it left the wall on the next route(). */
+      const href = a.getAttribute('href');
+      try { history.replaceState(null, '', href.includes('#') ? href : href + (location.hash || '#wall')); } catch { /* a file:// page */ }
       return;
     }
     const cel = e.target.closest && e.target.closest('#wall-field .cel');
     if (cel) { hold(); sel = cel.getAttribute('data-cell'); show(res); }
-  });
-  document.addEventListener('keydown', e => {
+  };
+  const onKey = e => {
     if (!box()) return;
     if (e.key === 'ArrowRight') { hold(); step(1); }
     else if (e.key === 'ArrowLeft') { hold(); step(-1); }
-  });
+  };
+  document.addEventListener('click', onClick, true);   /* capture: runs before the shell's ?-link handler */
+  document.addEventListener('keydown', onKey);
+  window.__wallOff = () => {
+    clearInterval(timer);
+    document.removeEventListener('click', onClick, true);
+    document.removeEventListener('keydown', onKey);
+  };
 }
 
 window.WALL = { render, start, field, dial, grain };
@@ -7042,10 +7162,10 @@ function foot(S) {
     + `<p class="why">${esc(PURPOSE)} Raw readings stay on this machine; only summaries leave.`
     + `${mark('production', 'foot')}${mark('purpose', 'foot')}</p>`
     + `<p class="doors"><span class="mono">${esc(v ? `planetai-node ${v}` : 'planetai-node')}</span>`
-    + `<a class="mono" href="/health">GET /health</a>${mark('health', 'foot')}`
+    + `<a class="mono" target="_blank" rel="noopener" href="/health">GET /health</a>${mark('health', 'foot')}`
     + `<span class="mono" title="Model Context Protocol, streamable HTTP; needs ADMIN_TOKEN">POST /mcp</span>`
     + mark('mcp', 'foot')
-    + `<a class="mono" href="/llms.txt">/llms.txt</a>`
+    + `<a class="mono" target="_blank" rel="noopener" href="/llms.txt">/llms.txt</a>`
     + `<a href="${DOCS_URL}">Documentation</a>`
     + `<a href="https://planetai.fab.city/">The programme</a></p>`
     + (askOn() ? `<p class="askfoot"><button type="button" class="asktoggle" data-ask-toggle aria-pressed="false">`
@@ -7195,12 +7315,16 @@ function main() {
     return `<div class="rail" id="rail" data-component="rail" data-kind="row" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
+      + (window.PAI_SCALES ? window.PAI_SCALES.scaleStrip(H.grain_table, RES) : '')
       + ruler()
       + `<div class="railkey" data-component="railKey" data-ref="rail">`
+      /* The two zone explanations are one icon rather than two lines: the rail already says the zones in
+         texture, and the sentences are for the reader who asks what the texture means. */
+      + `<details class="rinfo" data-component="railKeyInfo" data-ref="rail"><summary aria-label="What the dotted and struck-through stops mean" title="What the dotted and struck-through stops mean">i</summary><div class="rinfo-body">`
       + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
       + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
       + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
-      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
+      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span></div></details>`
       /* `occupied`, `in_my_cell` and `mine_in_my_cell` are the rail's figures too, and they are
          drawn ONCE — in the grain line this rail re-derives and points at, where they are a
          sentence rather than three numbers in a key. Printing them here as well made the key three
@@ -7654,26 +7778,34 @@ async function nodeSaid(r) {
   return '';
 }
 
-async function didThis(form) {
+async function didThis(form, force) {
   const btn = form.querySelector('button[type="submit"]');
   const alert_id = Number(form.getAttribute('data-alert'));
   /* Which form it is IS which stage it writes. Decide records what somebody said they would do and
      moves nothing; Act records that it was done. Two surfaces, one endpoint, and the difference is
      the whole of docs/SPEC_decide.md section 6. */
-  const decision = form.classList.contains('decided');
-  const stage = decision ? 'decided' : 'acted';
+  const ack = force === 'acknowledged';
+  const decision = !ack && form.classList.contains('decided');
+  const stage = ack ? 'acknowledged' : decision ? 'decided' : 'acted';
   const val = n => String((form.elements[n] || {}).value || '').trim();
-  if (!val('note')) {
+  const actor = val('actor') || (() => { try { return localStorage.getItem('planetai_actor') || ''; } catch (e) { return ''; } })();
+  if (!ack && !val('note')) {
     say(decision ? 'Say what will be done — that sentence is the decision.'
       : 'Say what you did — that sentence is the whole of the record.', true);
     return;
   }
   btn.disabled = true;
+  const seenBtn = form.closest('.ask') && form.closest('.ask').querySelector('.seen');
+  if (seenBtn) seenBtn.disabled = true;
+  /* A token typed into the form is kept in this browser before the request, so the press that needed it
+     is also the last one that does. */
+  const typedTok = val('token');
+  if (typedTok) { try { localStorage.setItem('planetai_act', typedTok); } catch (e) { /* this press only */ } }
   try {
     const r = await fetch('/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...auth_() },
-      body: JSON.stringify({ alert_id, stage, actor: val('actor'), note: val('note') }),
+      body: JSON.stringify({ alert_id, stage, actor, note: ack ? (val('note') || 'seen') : val('note') }),
     });
     /* THE NODE'S OWN SENTENCE FIRST. Proved on pai-clean: a browser is never `_is_local` — it
        arrives as the bridge gateway, deliberately, so trusting it would trust the whole WiFi — and
@@ -7682,8 +7814,21 @@ async function didThis(form) {
        cannot know: where the token comes from. */
     const said = r.ok ? '' : await nodeSaid(r);
     if (r.status === 401 || r.status === 403) {
-      say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
-        + `act token; Set up \u2192 unlock holds it.`, true);
+      /* Ask for the token where the press failed, instead of naming a terminal command and leaving the
+         record unwritten. A wrong token comes back here too, so the field is cleared and shown again. */
+      const tf = form.querySelector('.tokfield');
+      if (ack) form.hidden = false;
+      if (tf) {
+        if (typedTok) { try { localStorage.removeItem('planetai_act'); } catch (e) { /* nothing kept */ } }
+        tf.hidden = false;
+        if (tf.querySelector('input')) { tf.querySelector('input').value = ''; tf.querySelector('input').focus(); }
+        say(typedTok ? 'The node did not accept that token. Check ACT_TOKEN (planetai ui prints it) and try again.'
+          : 'Nothing is recorded yet: this node needs its act token from a browser. Paste ACT_TOKEN in the new '
+            + `field and press ${ack ? 'Seen it' : 'Record it'} again; it is kept in this browser after that.`, true);
+      } else {
+        say(`${said || 'This node will not take that from here.'} \u00b7 \`planetai ui\` prints the `
+          + `act token; Set up \u2192 unlock holds it.`, true);
+      }
     } else if (r.status === 404) {
       say('This node has no such alert any more. Reload and look again.', true);
     } else if (r.status === 409 || r.status === 400) {
@@ -7694,16 +7839,39 @@ async function didThis(form) {
     } else if (!r.ok) {
       say(said ? `${said} (${r.status})` : `The node refused it (${r.status}).`, true);
     } else {
+      if (actor) { try { localStorage.setItem('planetai_actor', actor); } catch (e) { /* this press only */ } }
+      if (ack) {
+        say('Recorded as seen. It stays open until somebody acts on it.');
+        const row = form.closest('.ask');
+        if (row) {
+          const sb = row.querySelector('.seen'); if (sb) sb.remove();
+          const w = row.querySelector('.what');
+          if (w) w.insertAdjacentHTML('afterbegin', `<span class="seenmark">\u2713 Seen${actor ? ' by ' + window.K.esc(actor) : ''}</span> `);
+        }
+        await refresh();
+        return;
+      }
       say(decision
         ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
         : 'Recorded. The node watches what happens next.');
-      if (!decision) form.hidden = true;
-      else { form.reset(); }
+      if (!decision) {
+        form.hidden = true;
+        /* Mark the row as acted now, in place, before the redraw takes it off the list: the page used to
+           say "Recorded" in a toast and leave the ask looking exactly as it had. */
+        const row = form.closest('.ask');
+        if (row) {
+          row.classList.add('done');
+          const w = row.querySelector('.what');
+          const who = val('actor');
+          if (w) w.insertAdjacentHTML('afterbegin', `<span class="actedmark">\u2713 Marked as acted${who ? ' by ' + window.K.esc(who) : ''}: ${window.K.esc(val('note'))}</span> `);
+          const go = row.querySelector('.go'); if (go) go.hidden = true;
+        }
+      } else { form.reset(); }
       await refresh();
     }
   } catch (e) {
     say(`The node did not answer: ${String((e && e.message) || e)}`, true);
-  } finally { btn.disabled = false; }
+  } finally { btn.disabled = false; const sb2 = form.closest('.ask') && form.closest('.ask').querySelector('.seen'); if (sb2) sb2.disabled = false; }
 }
 
 document.addEventListener('submit', ev => {
@@ -7727,6 +7895,13 @@ document.addEventListener('click', ev => {
     redraw();
     const lead = document.querySelector('.lead');
     if (lead && lead.getBoundingClientRect().top < 0) lead.scrollIntoView();
+    return;
+  }
+  const sn = ev.target.closest && ev.target.closest('.ask .seen');
+  if (sn) {
+    if (FIXTURE || STATE !== 'populated') { say('This is a capture, not a live node — its alerts belong to the node it came from.', true); return; }
+    const f = sn.parentElement.querySelector('form.did');
+    if (f) didThis(f, 'acknowledged');
     return;
   }
   const go = ev.target.closest && ev.target.closest('.ask .go');
@@ -7784,6 +7959,30 @@ addEventListener('hashchange', () => {
   route();
 });
 addEventListener('popstate', route);
+
+/* A square in a stage header scrolls to that stage. It is a scroll and not a navigation, so the address keeps
+   the view it is on (#historical must stay #historical). */
+document.addEventListener('click', ev => {
+  const a = ev.target.closest && ev.target.closest('a[data-stage-go]');
+  if (!a) return;
+  ev.preventDefault();
+  const el = document.querySelector(`#page [data-stage="${a.getAttribute('data-stage-go')}"]`);
+  if (el) { el.scrollIntoView({ block: 'start' }); const h = el.querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); } }
+});
+
+/* A ring on the wall goes to Act: the wall's view is the hash, so this leaves it for Now and then scrolls to
+   the Act stage. In Simple mode there is no Act stage, and the first open ask in the lead is the next best. */
+document.addEventListener('click', ev => {
+  const a = ev.target.closest && ev.target.closest('a[data-act-link]');
+  if (!a) return;
+  ev.preventDefault();
+  history.pushState({ view: 'now' }, '', location.pathname + location.search);
+  route();
+  setTimeout(() => {
+    const el = document.querySelector('#page [data-stage="act"]') || document.querySelector('.ask') || document.getElementById('page');
+    if (el) el.scrollIntoView({ block: 'start' });
+  }, 80);
+});
 
 /* EVERY CONTROL ON THIS PAGE IS A QUERY LINK, AND EVERY ONE OF THEM RELOADED THE DOCUMENT.
  *

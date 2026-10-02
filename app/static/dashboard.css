@@ -1532,3 +1532,81 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .ah .m.out { color: var(--ink); font-weight: 700 }
 #askpane .ledger .out { color: var(--ink); font-weight: 700 }
 #askpane .ledger .out i { background: none; border: 1.5px solid var(--ink) }
+
+/* Wall info icon: the explainers (Telegram, ladder key, motion) live behind one "i". */
+.wallbox .winfo { position: relative; display: inline-block; margin-left: auto }
+.wallbox .winfo summary { list-style: none; cursor: pointer; width: 1.6em; height: 1.6em; border: 1px solid var(--ink);
+  border-radius: 50%; display: grid; place-items: center; font: 700 clamp(11px, .8vw, 15px) var(--mono) }
+.wallbox .winfo summary::-webkit-details-marker { display: none }
+.wallbox .winfo-body { position: absolute; right: 0; top: 2.2em; z-index: 5; width: min(30em, 80vw); padding: .8em 1em;
+  background: var(--paper, #fff); border: 1px solid var(--ink); font-size: clamp(11px, .8vw, 15px) }
+.wallbox .winfo-body p { margin: 0 0 .6em } .wallbox .winfo-body p:last-child { margin: 0 }
+
+/* Wall dial: name the ladder, and say where on it the map is. */
+.wallbox .dialhead { display: flex; justify-content: space-between; gap: 1em; margin: 0 0 .4em;
+  font: 400 clamp(10px, .75vw, 14px) var(--mono); letter-spacing: .04em }
+.wallbox .dialhead b { letter-spacing: .08em }
+.wallbox .dialhead i { font-style: normal; margin: 0 .5em; opacity: .6 }
+.wallbox .dialnow { margin: .4em 0 0; font: 700 clamp(10px, .8vw, 15px) var(--mono); letter-spacing: .04em }
+.wallbox .dialnow::before { content: "\25B2  " }
+.wallbox .stop.on { outline: 2px solid var(--ink); outline-offset: 2px }
+.wallbox .wpause { margin-left: auto; margin-right: .6em; cursor: pointer; font: 700 clamp(11px, .8vw, 15px) var(--mono);
+  letter-spacing: .06em; background: none; color: var(--ink); border: 1px solid var(--ink); padding: .2em .8em }
+.wallbox .wpause + .winfo { margin-left: 0 }
+
+.wallbox .scales { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); margin-top: .3em }
+.wallbox .scales .sc { text-align: center; border-top: 2px solid var(--mute, #999); padding-top: .2em; margin: 0 .15em;
+  font: 400 clamp(9px, .7vw, 13px) var(--mono); letter-spacing: .06em; color: var(--mute, #666) }
+.wallbox .scales .sc.on { border-top-color: var(--ink); color: var(--ink); font-weight: 700 }
+
+/* Scale strip shared by the wall dial and Now's rail (also styled under .wallbox above). */
+.scales { display: grid; margin-top: 4px }
+.scales .sc { text-align: center; border-top: 2px solid var(--mute); padding-top: 2px; margin: 0 2px;
+  font: 500 9.5px var(--mono); letter-spacing: .06em; color: var(--mute) }
+.scales .sc.on { border-top-color: var(--ink); color: var(--ink); font-weight: 700 }
+@media (max-width: 600px) { .rail + .scales .sc { font-size: 8px; letter-spacing: 0 } }
+/* Series markers: 24 h ago, highest, the line. */
+[data-kind="series"] .marks { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 4px;
+  font: 500 11px var(--mono); color: var(--ink) }
+[data-kind="series"] .marks .mk i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px;
+  vertical-align: -1px; border: 1.6px solid var(--ink); background: var(--ground) }
+[data-kind="series"] .marks .mk.peak i { background: var(--signal-worse); border-color: var(--signal-worse) }
+[data-kind="series"] .marks .mk.ln i { border: 0; border-radius: 0; height: 0; width: 14px; border-top: 2px dashed var(--signal-worse) }
+
+.modehint { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  border: 1px dashed var(--ink); padding: 10px 14px; margin: 16px 0 }
+.modehint p { margin: 0; font: 500 12.5px var(--mono) }
+
+
+/* "I did this": the token field it asks for on a refusal, and the row it marks. */
+.ask form.did .tokfield[hidden] { display: none }
+.ask.done .actedmark { display: block; font-weight: 700; color: var(--rings) }
+/* Wall rings are links to Act. */
+.rho a.rl { display: inline-flex; line-height: 0; color: inherit; text-decoration: none; border-radius: 2px }
+.rho a.rl:hover svg, .rho a.rl:focus-visible svg { color: var(--cells) }
+.rho a.rl:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px }
+/* The rail's zone key behind an info icon. */
+.railkey .rinfo { position: relative; display: inline-block }
+.railkey .rinfo summary { list-style: none; cursor: pointer; width: 1.7em; height: 1.7em; border: 1px solid var(--ink);
+  border-radius: 50%; display: grid; place-items: center; font: 700 10.5px var(--mono) }
+.railkey .rinfo summary::-webkit-details-marker { display: none }
+.railkey .rinfo-body { position: absolute; left: 0; top: 2.3em; z-index: 5; width: min(34em, 86vw); display: grid; gap: 6px;
+  padding: .8em 1em; background: var(--ground); border: 1px solid var(--ink); font: 500 11px var(--mono) }
+
+/* Stage squares: links to the stages this view draws, greyed for the ones it does not. */
+.stagehead .loop .sq { display: block; line-height: 0; padding: 3px; margin: -3px; color: inherit; text-decoration: none }
+.stagehead .loop a.sq { cursor: pointer }
+.stagehead .loop a.sq:hover i, .stagehead .loop a.sq:focus-visible i { background: var(--ink); opacity: .6 }
+.stagehead .loop a.sq:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px }
+.stagehead .loop i.off { border-color: var(--mute); opacity: .35 }
+.stagehead .loop .sq.off { cursor: not-allowed }
+
+/* Rings are links on Now as well as on the wall; routes that cannot be opened say so. */
+.rho a.rl { display: inline-flex; line-height: 0; color: inherit; text-decoration: none; border-radius: 2px }
+.routes .route.off { color: var(--mute); cursor: help }
+
+/* Seen it: a quieter sibling of "I did this", and the mark that says an alert was looked at and is still open. */
+.ask .seen { background: none; border: 1px solid var(--rings); color: inherit; border-radius: 4px; padding: .2em .6em; font: inherit; cursor: pointer; margin-right: .4em }
+.ask .seen:disabled { opacity: .5; cursor: default }
+.seenmark { font-size: .85em; opacity: .8; white-space: nowrap }
+.wallbox .ask .seen { display: none }
