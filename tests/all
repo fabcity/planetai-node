@@ -106,6 +106,8 @@ test_pack_settings|PYTHONPATH=app python3 tests/test_pack_settings.py
 test_ladder|PYTHONPATH=app python3 tests/test_ladder.py
 test_report_schedule|PYTHONPATH=/tmp/stub:app python3 tests/test_report_schedule.py
 test_report_templates|PYTHONPATH=/tmp/stub:app python3 tests/test_report_templates.py
+test_room_role|PYTHONPATH=app python3 tests/test_room_role.py
+test_pack_reload|PYTHONPATH=app python3 tests/test_pack_reload.py
 test_shipped|python3 tests/test_shipped.py
 test_share|PYTHONPATH=app python3 tests/test_share.py
 test_ask|PACKS_DIR=packs PYTHONPATH=app python3 tests/test_ask.py
@@ -137,11 +139,11 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Fifty-two is the number of suites in the list above (test_pack_readouts made it fifty-two, 2 Oct 2026). If the list and this number disagree, one of them
+# Fifty-four is the number of suites in the list above (test_pack_reload made it fifty-four). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 52 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 52 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 54 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 54 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1
