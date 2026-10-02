@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **2026-10-02 · A pack can declare a section of the dashboard.** A pack's `pack.yaml` can now list `sections:`, each
+  a stage, a title and the readouts it shows. The node fills them with its own rows and serves them in `/issues` as
+  `sections`, and the page draws each one as a band on Now with its own readout cards, and as columns on the wall
+  when the pack asks. The pack ships no code for the page: a script there could read the admin token, so only core
+  packs ship script (`docs/decisions/2026-10-01-packs.md`, point 5). A reading the node has no row for is not drawn,
+  and the band says how many have not arrived. No shipped pack declares a section, so every node's page is unchanged.
+  Also: a pack's malformed readout or section is now logged once, not on every `/issues` request.
+
 - **2026-10-02 · A pack written for a newer node is not loaded.** Every pack's `requires: { node: ... }` is now
   enforced: a node that does not match leaves the pack out whole, rules and adapter alike, says so once in its log,
   and `planetai packs` lists it under "not loaded" with the reason (`it needs a node >=0.80.0 and this node is

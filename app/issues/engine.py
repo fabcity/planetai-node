@@ -41,7 +41,7 @@ import packs
 
 from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
                LOCALES, NOUN_WORDS, PLAIN_WORDS, PROMPT_WORDS, REASON_WORDS, SIMPLE_WORDS,
-               SPAN_WORDS, WHERE_WORDS, order)
+               SPAN_WORDS, WHERE_WORDS, order, pack_sections)
 from . import geometry
 from .schema import CLOSED_STAGES, is_open, is_seen, place_of, stage_of
 
@@ -888,7 +888,7 @@ def _readouts(d, obs, loc_all=LOCALES) -> list[dict]:
         out.append({"metric": r["metric"], "value": v, "dp": dp, "unit": r["unit"],
                     "label": r["label"], "source": row.get("name") or r["sensor_id"],
                     "provenance": "model" if row.get("kind") == "model" else "partial",
-                    "_ts": row.get("ts"),
+                    "_ts": row.get("ts"), "_sid": r["sensor_id"],
                     "_text": {loc: f"{r['label'][loc]} {shown} {r['unit']}" for loc in loc_all}})
     return out
 
@@ -1200,7 +1200,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     data = _read(cur)
     declared, dropped = order(settings.get("NODE_ISSUES", ""), decl)
     undeclared = [k for k in sorted(decl) if k not in declared]
-    domain_of = {m["id"]: m.get("domain") for m in packs.manifests()}
+    manifests = packs.manifests()
+    domain_of = {m["id"]: m.get("domain") for m in manifests}
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
     clock = _clock(data)
 
@@ -1290,7 +1291,25 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "digest": _digest(out, stations, geom, asks, headline_issue, now, clock,
                               _oldest(data["alerts"])),
             "mesh": _mesh(mesh, data["stats"]),
-            "geometry": geom}
+            "geometry": geom,
+            # sections the enabled packs declare as data, with the node's own numbers in them; the page draws them
+            # with its readout cards (docs/decisions/2026-10-01-packs.md, point 5)
+            "sections": _sections(pack_sections(manifests), data["obs"], now)}
+
+
+def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:
+    """Each declared section with its readouts computed the way an issue's are: the latest row of each sensor and
+    metric, and nothing for a pair with no row. `expected` is how many it declared, so the page can say how many have
+    not arrived rather than drawing a short card as if it were whole."""
+    out = []
+    for sec in decl:
+        rows = _readouts(sec, obs)
+        out.append({"id": sec["id"], "pack": sec["pack"], "stage": sec["stage"], "title": sec["title"],
+                    "order": sec.get("order", 50), "wall": bool(sec.get("wall")), "note": sec.get("note"),
+                    "expected": len(sec["readouts"]),
+                    "readouts": [{**{k: v for k, v in r.items() if not k.startswith("_")}, "sensor_id": r["_sid"],
+                                  "age_minutes": _age_minutes(r.get("_ts"), now)} for r in rows]})
+    return out
 
 
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}

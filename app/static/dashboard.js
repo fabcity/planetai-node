@@ -1599,6 +1599,60 @@ function register(mod) {
   sections.push({ order: 50, needs: [], level: 'advanced', learn: [], reads: [], ...mod });
 }
 
+/* SECTIONS A PACK DECLARES AS DATA. A wild pack ships no script (docs/decisions/2026-10-01-packs.md, point 5):
+ * a page script reads the same storage the admin token is kept in, so a stranger's script on this page would hold
+ * admin rights on every node that ran it. It declares its section in its pack.yaml instead, and the node serves it
+ * in /issues as `sections`, with the node's own numbers already in it. This turns each one into a section of the
+ * same shape as every other, drawn with the page's own readout card: the node computes, the page draws, and the
+ * visual gate measures a declared section with the rest. Rebuilt on every render from what the node last said, into
+ * the same two arrays, so a refresh never draws a section twice and a section the node stops serving goes. */
+const fromNode = [];
+const fromNodeProblems = [];
+
+function declared(ctx) {
+  const K = window.K || {}, L = (ctx && ctx.LOC) || K.LOC || 'en';
+  const list = ((((ctx && ctx.S) || K.S || {}).issues || {}).sections) || [];
+  fromNode.length = 0; fromNodeProblems.length = 0;
+  const said = o => (o && (o[L] || o.en)) || '';
+  for (const x of list) {
+    if (!x || !x.id || !(x.stage in STAGE_INDEX)) { fromNodeProblems.push(`${(x && x.id) || '?'}: not a section the page can draw`); continue; }
+    if (sections.some(s => s.id === x.id) || fromNode.some(s => s.id === x.id)) {
+      fromNodeProblems.push(`${x.id}: the ${x.pack} pack declares an id the page already has`); continue;
+    }
+    const title = said(x.title) || x.id, rows = x.readouts || [], want = x.expected || rows.length;
+    const missing = want - rows.length;
+    const card = (r, i) => K.readout({
+      id: `${x.id}-r${i}`, num: `${x.id}.${r.sensor_id || 'x'}.${r.metric}`, component: 'declaredReadout',
+      ref: x.id, pack: x.pack, title: said(r.label) || r.metric, value: r.value, unit: r.unit, dp: r.dp,
+      source: r.source, prov: r.provenance, age: r.age_minutes,
+      cmp: K.cmpText({ mode: 'none', reason: `the ${x.pack} pack shows it beside nothing of this node’s` }),
+    });
+    fromNode.push({
+      id: x.id, pack: x.pack, stage: x.stage, title, order: Number.isInteger(x.order) ? x.order : 50,
+      needs: [], level: 'advanced', learn: ['cards', 'prov'], reads: ['/issues'], declared: true,
+      render() {
+        return `<div class="declared" data-component="declared" data-ref="${K.esc(x.id)}">${rows.map(card).join('')}`
+          + (missing > 0 ? `<p class="note" id="${K.esc(x.id)}-waiting" data-component="declaredWaiting" data-ref="${K.esc(x.id)}">`
+            + (rows.length
+              ? `${missing} of the ${want} readings the ${K.esc(x.pack)} pack declares ${missing === 1 ? 'has' : 'have'} not arrived on this node yet.`
+              : `None of the ${want} readings the ${K.esc(x.pack)} pack declares has arrived on this node yet.`) + `</p>` : '')
+          + `</div>`;
+      },
+      wall: x.wall ? () => rows.map((r, i) => `<div class="col" id="wall-${K.esc(x.id)}-${i}" data-component="declaredCol"`
+        + ` data-ref="wall-field"><h3>${K.esc(said(r.label) || r.metric)}</h3><div class="line">`
+        + `<span class="num" data-num="${K.esc(`${x.id}.${r.sensor_id || 'x'}.${r.metric}`)}"`
+        + ` data-cmp="${K.esc(`the ${x.pack} pack's figure, beside nothing of this node's`)}">${K.esc(K.fmt(r.value, r.dp))}</span>`
+        + `<small>${K.esc(r.unit || '')} · ${K.esc(r.source || x.pack)}</small></div></div>`).join('') : null,
+      notes() {
+        return [{ id: `${x.id}-note`, label: title,
+          text: (said(x.note) ? `${said(x.note)} ` : '') + `Declared by the ${x.pack} pack in its pack.yaml: the node `
+            + `reads these numbers and the page draws them with its own cards; the pack ships no code for this page.` }];
+      },
+    });
+  }
+  return fromNode;
+}
+
 /* A global path like 'H3.nav.plates' resolves or does not. */
 const has = path => path.split('.').reduce((o, k) => (o == null ? o : o[k]), window) != null;
 
@@ -1730,7 +1784,7 @@ function render(ctx, lead, opts = {}) {
      the foot then lists the sections on the view a reader is actually on. */
   const keep = opts.only ? new Set(opts.only) : null;
   const simple = (window.PAI_MODE ? window.PAI_MODE() : 'advanced') === 'simple';
-  const ordered = sections.filter(s => (!keep || keep.has(s.id))
+  const ordered = sections.concat(declared(ctx)).filter(s => (!keep || keep.has(s.id))
     && (!simple || s.level === 'simple')).slice().sort((a, b) =>
     STAGE_INDEX[a.stage] - STAGE_INDEX[b.stage] || a.order - b.order || a.id.localeCompare(b.id));
   /* Simple on Now is the three questions and nothing else: no sections, no stage names, no notes. */
@@ -1751,8 +1805,9 @@ function render(ctx, lead, opts = {}) {
       + mine.map(s => bandFor(ctx, s)).join('') + `</div>`;
   }
   html += notesBand(ctx, ordered);
-  if (problems.length) {
-    html += `<p class="note" id="pai-problems">Registration problems: ${esc(problems.join('; '))}</p>`;
+  const allProblems = problems.concat(fromNodeProblems);
+  if (allProblems.length) {
+    html += `<p class="note" id="pai-problems">Registration problems: ${esc(allProblems.join('; '))}</p>`;
   }
   return html;
 }
@@ -1811,13 +1866,16 @@ function notesBand(ctx, ordered) {
 
 /* The wall: whatever the registered sections say they can show at three metres, in loop order. */
 function wall(ctx) {
-  const ordered = sections.slice().sort((a, b) =>
+  const ordered = sections.concat(declared(ctx)).sort((a, b) =>
     STAGE_INDEX[a.stage] - STAGE_INDEX[b.stage] || a.order - b.order);
   return ordered.filter(s => s.wall && (s.needs || []).every(has))
     .map(s => { try { return s.wall(ctx) || ''; } catch { return ''; } }).join('');
 }
 
 window.PAI = { STAGES, register, render, wall, sections, problems, has };
+/* The kit's contract above, verbatim (tests/test_dashboard.py holds it), and one addition beside it rather than
+   inside it: the sections the node serves from the packs' declarations, which the router places on Now. */
+window.PAI.declared = declared;
 
 });
 
@@ -7420,7 +7478,7 @@ function main() {
    * the page about this place now, which is where a section about this place goes unless somebody
    * has said otherwise. Order is untouched: render() sorts by stage, then order, then id. */
   const placed = new Set([...NOW, ...NETWORK, ...HISTORICAL]);
-  const homeless = PAI.sections.map(s => s.id).filter(id => !placed.has(id));
+  const homeless = PAI.sections.concat(PAI.declared(ctx)).map(s => s.id).filter(id => !placed.has(id));
   applyOrder();
 
   const el = document.getElementById('page');
