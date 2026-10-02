@@ -24,6 +24,7 @@
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
+#   planetai packs add <id>  a wild pack from fabcity/planetai-wild-packs; or <owner>/<repo>[/<folder>][@<ref>] from GitHub
 #   planetai ui             the dashboard: where it is, and the token that unlocks its settings pages
 #   planetai storage        where the data lives, where backups and copies go, exports, IPFS; `set` to change
 #   planetai backup         dump + export + copy now, instead of waiting for 03:17
@@ -1001,16 +1002,32 @@ cmd_packs() {
   # `planetai packs` lists; `planetai packs install` writes (.env keys, the image). A listing that rebuilt the image and
   # appended to .env surprised the first tester who only wanted to see what was loaded (6 Sep 2026).
   if [[ "${1:-}" == "install" ]]; then packs_install; return; fi
+  if [[ "${1:-}" == "add" ]]; then shift; packs_add "$@"; return; fi
   step "Packs"
-  local loaded; loaded="$(api /packs || true)"
+  local loaded wild; loaded="$(api /packs || true)"; wild="$(wild_ids)"
   if [[ -z "$loaded" ]]; then
     warn "the node is not answering on port $(port) — the list below is what is on disk, not what is running."
     warn "check with: planetai doctor"
-    ls -d packs/*/ 2>/dev/null | sed 's|packs/||;s|/||' | sed 's/^/    /'
+    local d n core="" w=""
+    for d in packs/*/; do [[ -f "${d}pack.yaml" ]] || continue; n="$(basename "$d")"
+      if [[ -f "${d}.wild" ]]; then w=1; else core="$core    $n"$'\n'; fi; done
+    [[ -z "$core" ]] || printf '  core:\n%s' "$core"
+    [[ -z "$w" ]] || printf '  wild:\n'                 # each named once, with where it came from, below
   else
     echo "  loaded now:"
-    printf '%s' "$loaded" | json 'for p in d: print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10)," ")[:70]))'
+    printf '%s' "$loaded" | python3 -c 'import json, sys
+d = json.load(sys.stdin)
+wild = set(sys.argv[1].split())
+for head, rows in (("core", [p for p in d if p["id"] not in wild]), ("wild", [p for p in d if p["id"] in wild])):
+    if rows:
+        print("  " + head + ":")
+        for p in rows:
+            print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10), " ")[:70]))' "$wild"
   fi
+  local id
+  for id in $wild; do
+    printf '    %s%s from %s at %s, added %s%s\n' "$D" "$id" "$(wildget "$id" source)" "$(wildget "$id" commit | cut -c1-12)" "$(wildget "$id" added)" "$N"
+  done
   echo
   # what `install` would do, said rather than done
   local reqs; reqs="$(pack_pips)"; local missing=0
@@ -1048,6 +1065,84 @@ packs_install() {
   say "installing into the image: $(echo "$reqs" | paste -sd' ' -)  (rebuild, a minute or two)"
   docker compose build app >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "rebuild failed; see $LOG"
   say "done. Code packs also need PACKS_ALLOW_CODE=1 in .env to run. Read their adapter.py first."
+}
+
+# ---------------------------------------------------------------- packs add: a wild pack, fetched without git
+# Packs in this repository are core; every other pack is wild (docs/decisions/2026-10-01-packs.md). A node installed
+# the default way has curl and tar and no git, so a wild pack arrives as GitHub's archive of one commit. `.wild`
+# beside it says where it came from and at which commit: it is how `packs` tells core from wild, and how running
+# `packs add` again knows it may replace the folder. A folder without it is core, or put there by hand, and is
+# never replaced.
+WILD_INDEX="https://raw.githubusercontent.com/fabcity/planetai-wild-packs/main/packs.json"
+wild_ids() { local f; for f in packs/*/.wild; do [[ -f "$f" ]] && basename "$(dirname "$f")"; done; return 0; }
+wildget() { sed -n "s/^$2=//p" "packs/$1/.wild" 2>/dev/null | head -1; }
+
+packs_add() {
+  FAIL_WHAT="The pack was not added."
+  local spec="${1:-}" src="" ref="" status="" want=""
+  [[ -n "$spec" ]] || fail "say which pack:  planetai packs add <id>  (one on the wild list)  or  planetai packs add <owner>/<repo>[/<folder>][@<ref>]"
+  step "Packs: add $spec"
+  if [[ "$spec" != */* ]]; then
+    want="$spec"
+    local idx hit
+    idx="$(curl -fsSL "$WILD_INDEX")" || fail "could not read the wild list at $WILD_INDEX"
+    hit="$(printf '%s' "$idx" | python3 -c 'import json, sys
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    sys.exit("the wild list is not readable JSON")
+e = [x for x in d if isinstance(x, dict) and x.get("id") == sys.argv[1]]
+ids = sorted(x.get("id", "?") for x in d if isinstance(x, dict))
+if not e:
+    sys.exit("no pack called " + sys.argv[1] + " on the wild list, " + ("which is empty" if not ids else "which has " + ", ".join(ids)))
+print(e[0].get("source", ""), e[0].get("commit", "-"), e[0].get("status", "listed"))' "$spec" 2>&1)" || fail "$hit"
+    read -r src ref status <<< "$hit"
+    [[ "$ref" == "-" ]] && ref=""
+  else
+    src="${spec%%@*}"
+    if [[ "$spec" == *@* ]]; then ref="${spec#*@}"; fi
+  fi
+  [[ "$src" =~ ^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ && "/$src/" != */../* && "/$src/" != */./* ]] \
+    || fail "'$src' is not owner/repo or owner/repo/folder"
+  [[ -z "$ref" || "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || fail "'$ref' is not a commit, branch or tag"
+  local owner="${src%%/*}" rest="${src#*/}" repo path="" sha
+  repo="${rest%%/*}"; if [[ "$rest" == */* ]]; then path="${rest#*/}"; fi
+  # Always pin. A branch or tag is resolved to the commit it names now, and that commit is what is recorded.
+  if [[ "$ref" =~ ^[0-9a-f]{40}$ ]]; then sha="$ref"
+  else sha="$(curl -fsSL -H 'Accept: application/vnd.github.sha' "https://api.github.com/repos/$owner/$repo/commits/${ref:-HEAD}")" \
+         || fail "GitHub does not know $owner/$repo${ref:+ at $ref}"
+  fi
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub answered something that is not a commit for $owner/$repo${ref:+ at $ref}"
+
+  local tmp; tmp="$(mktemp -d)"; trap "rm -rf '$tmp'" EXIT   # expanded now: at exit, the local is gone
+  curl -fsSL "https://codeload.github.com/$owner/$repo/tar.gz/$sha" -o "$tmp/p.tgz" \
+    || fail "could not download $owner/$repo at ${sha:0:12}"
+  mkdir "$tmp/all"; tar xzf "$tmp/p.tgz" -C "$tmp/all" 2>>"$LOG" || fail "the download of $owner/$repo is not a readable archive"
+  local top; top="$(ls "$tmp/all")"
+  [[ -n "$top" && "$top" != *$'\n'* ]] || fail "the archive of $owner/$repo does not have the one folder GitHub's archives have"
+  local from="$tmp/all/$top${path:+/$path}"
+  [[ -f "$from/pack.yaml" ]] || fail "no pack.yaml at $src (commit ${sha:0:12}): a pack is a folder with a pack.yaml in it"
+  [[ -z "$(find "$from" -type l)" ]] || fail "$src carries symbolic links. A pack is plain files, so it was not added."
+  local id; id="$(sed -n 's/^id:[[:space:]]*//p' "$from/pack.yaml" | head -1 | sed 's/[[:space:]]*#.*$//' | tr -d "\"'[:space:]")"
+  [[ "$id" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
+    || fail "its pack.yaml says id '$id'. A pack's id is its folder name: lowercase letters, digits and hyphens."
+  [[ -z "$want" || "$id" == "$want" ]] || fail "the wild list calls it '$want', but its pack.yaml says '$id'"
+  if [[ -e "packs/$id" && ! -f "packs/$id/.wild" ]]; then
+    fail "packs/$id is already here and did not come from packs add: it is a core pack, or one put there by hand. A wild pack never replaces it."
+  fi
+  local kind=data verb=added; if [[ -f "$from/adapter.py" ]]; then kind=code; fi
+  if [[ -d "packs/$id" ]]; then verb="updated from $(wildget "$id" commit | cut -c1-12)"; rm -rf "packs/$id"; fi
+  mkdir -p packs && mv "$from" "packs/$id"
+  printf 'source=%s\ncommit=%s\nadded=%s\n' "$src" "$sha" "$(date +%F)" > "packs/$id/.wild"
+  say "$id: $verb, a $kind pack, from $src at ${sha:0:12}"
+  if [[ -z "$want" ]]; then warn "it is not on the wild list, so nobody has checked it against this node's release."
+  elif [[ "$status" != "reviewed" ]]; then warn "it is listed, not reviewed: nobody who keeps the wild list has read it."
+  fi
+  if [[ "$kind" == code ]]; then
+    warn "a code pack runs Python with this node's privileges, and only with PACKS_ALLOW_CODE=1. Read packs/$id/adapter.py first."
+  fi
+  packs_install
+  say "planetai restart loads it. To remove it: delete packs/$id and restart."
 }
 
 

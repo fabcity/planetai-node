@@ -25,26 +25,38 @@ also host one for an author who would rather not keep a repository. Anyone may l
 each entry says whether a maintainer has read it, and every entry is checked against this repository's `main` once a
 week.
 
-A node installed the default way has curl and tar and no git, so fetch the folder as an archive. When the
-repository *is* the pack:
+From the node's folder:
 
 ```
-cd ~/planetai-node
-mkdir packs/<id>
-curl -fsSL https://codeload.github.com/<owner>/<repo>/tar.gz/main | tar xz -C packs/<id> --strip-components=1
-planetai packs install      # its env: keys into .env, its pip: lines into the image (a rebuild)
+planetai packs add <id>                                  # a pack on the wild list, at the commit it was listed at
+planetai packs add <owner>/<repo>[/<folder>][@<ref>]      # any pack on GitHub; with no @<ref>, the default branch now
 planetai restart
+```
+
+It always pins: a branch or tag is resolved to the commit it names, and that commit is written to `packs/<id>/.wild`
+with where the pack came from. It refuses an id that is already a folder here and did not come from `packs add` (a
+core pack, or one you put there by hand), an id that is not the folder shape, a pack with symbolic links, and, for a
+pack from the list, an id the list and the pack disagree on. It runs `planetai packs install` afterwards. Running it
+again on the same pack replaces it with the new commit. `planetai packs` lists core and wild apart and says where
+each wild pack came from. To remove one, delete `packs/<id>` and restart.
+
+It fetches GitHub's archive of the commit with curl and tar, because a node installed the default way has no git.
+On a node older than this command, do the same by hand. When the repository *is* the pack:
+
+```
+mkdir packs/<id>
+curl -fsSL https://codeload.github.com/<owner>/<repo>/tar.gz/<commit> | tar xz -C packs/<id> --strip-components=1
+planetai packs install      # its env: keys into .env, its pip: lines into the image (a rebuild)
 ```
 
 When the pack is one folder, `<id>/`, at the top of a bigger repository, extract just that folder:
 
 ```
-curl -fsSL https://codeload.github.com/<owner>/<repo>/tar.gz/main | tar xz -C packs --strip-components=1 <repo>-main/<id>
+curl -fsSL https://codeload.github.com/<owner>/<repo>/tar.gz/<commit> | tar xz -C packs --strip-components=1 <repo>-<commit>/<id>
 ```
 
-Both work with the tar on macOS and on Linux. To pin the pack to the version you read, replace `main` with the
-full 40-character commit id; in the second form the folder inside the archive is then `<repo>-<commit id>/<id>`.
-On a node that has git, `git clone` into `packs/<id>` works too.
+Use the full 40-character commit id. Both work with the tar on macOS and on Linux. On a node that has git,
+`git clone` into `packs/<id>` works too, but then `planetai packs` counts it as core.
 
 `planetai update` keeps it: the tarball is unpacked over the folder and the git path is a fast-forward pull, and
 neither touches a folder it does not track. A code pack still runs only with `PACKS_ALLOW_CODE=1`, wherever it came

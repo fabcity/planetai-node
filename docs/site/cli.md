@@ -133,7 +133,9 @@ tags.
 
 | command | what it does |
 |---|---|
-| `planetai packs` | What is loaded (from the node) or on disk (when it is down), and whether `packs install` has anything to do. |
+| `planetai packs` | What is loaded (from the node) or on disk (when it is down), core and wild apart, where each wild pack came from, and whether `packs install` has anything to do. |
+| `planetai packs add <id>` | Fetches a wild pack from the list at fabcity/planetai-wild-packs, at the commit it was listed at, into `packs/<id>`, then runs `packs install`. |
+| `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` | The same for any pack on GitHub. A branch or tag is pinned to the commit it names. Refuses an id a core pack already has. |
 | `planetai packs install` | Adds every pack's missing `env:` keys to `.env` under a dated marker, writes the union of their `pip:` lists, rebuilds the image once. |
 | `planetai run` | Lists every pack script with its first line. |
 | `planetai run <pack> <script> [args]` | Runs it inside the app container with `PACK_OUT=/app/out`, and with the pack keys saved from Set up in its environment. |
