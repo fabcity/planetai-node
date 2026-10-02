@@ -35,7 +35,7 @@ def ro(metric="psi", sensor="nea-psi", **kw):
 
 
 def merged(*manifests):
-    logs.clear()
+    logs.clear(); I._said.clear()     # each case starts with a process that has said nothing yet
     return I.pack_readouts(copy.deepcopy(FILES), list(manifests))
 
 
@@ -76,6 +76,11 @@ for shape in (["psi"], "psi", {"air": "psi"}):
     assert d == FILES, shape
 assert merged({"id": "p"}, {"id": "q", "readouts": None}) == FILES
 print("  readouts that are not a mapping of lists are ignored, and a pack without them changes nothing")
+
+bad = {"id": "p", "readouts": {"water": [ro()]}}
+merged(bad); I.pack_readouts(copy.deepcopy(FILES), [bad]); I.pack_readouts(copy.deepcopy(FILES), [bad])
+assert sum("'water'" in m for m in logs) == 1, logs
+print("  a pack's mistake is logged once, not on every /issues request")
 
 # ---------------------------------------------------------------- load(), from a real packs folder
 pk = tmp / "packs" / "sg-test"

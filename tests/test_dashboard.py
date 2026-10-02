@@ -486,7 +486,9 @@ for _v in ("NOW", "NETWORK", "HISTORICAL"):
 # registered section not typed into one of those arrays was filtered out of all three and drawn
 # nowhere: it registered, Set up listed it as `drawing`, and it was on no page. Now is the default
 # home for anything the two named lists do not claim, and this is the line that says so.
-assert "const homeless = PAI.sections.map(s => s.id).filter(id => !placed.has(id))" in _js, \
+# Since 2 October 2026 a section can also arrive as data, declared in a pack.yaml and served in /issues; it is placed
+# on no view either, so the same line homes both.
+assert "const homeless = PAI.sections.concat(PAI.declared(ctx)).map(s => s.id).filter(id => !placed.has(id))" in _js, \
     ("a registered section that no view names is filtered out of every view again, so a pack can "
      "register a section and have it drawn nowhere — which is the contract this page publishes")
 assert "want([...NOW, ...homeless])" in _js, \

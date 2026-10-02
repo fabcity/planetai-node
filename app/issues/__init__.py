@@ -461,6 +461,17 @@ def _problems(key: str, d: dict) -> list[str]:
     return p
 
 
+_said: set[str] = set()
+
+
+def _warn_once(msg: str, *args) -> None:
+    """load() runs on every /issues request, so a pack's mistake is said once per process, not once per page view."""
+    text = msg % args if args else msg
+    if text not in _said:
+        _said.add(text)
+        log.warning(text)
+
+
 def _readout_problems(r) -> list[str]:
     """One readout: a number from one sensor's latest row, shown with a unit and a label in every locale. The engine
     reads `unit` and `label` without a default, so a readout missing either would take the issue down with it."""
@@ -491,28 +502,91 @@ def pack_readouts(decl: dict[str, dict], manifests: list[dict]) -> dict[str, dic
         if not ro:
             continue
         if not isinstance(ro, dict):
-            log.warning("pack %s: readouts must map an issue to a list of readouts; ignoring them", pid)
+            _warn_once("pack %s: readouts must map an issue to a list of readouts; ignoring them", pid)
             continue
         for key, rows in ro.items():
             if key not in decl:
-                log.warning("pack %s: readouts for %r, which no app/issues/*.yml declares; ignoring them", pid, key)
+                _warn_once("pack %s: readouts for %r, which no app/issues/*.yml declares; ignoring them", pid, key)
                 continue
             if not isinstance(rows, list):
-                log.warning("pack %s: readouts.%s must be a list; ignoring it", pid, key)
+                _warn_once("pack %s: readouts.%s must be a list; ignoring it", pid, key)
                 continue
             have = {(r.get("metric"), r.get("sensor_id")) for r in decl[key].get("readouts") or [] if isinstance(r, dict)}
             for r in rows:
                 bad = _readout_problems(r)
                 if bad:
-                    log.warning("pack %s: readouts.%s: %s; leaving it out", pid, key, "; ".join(bad))
+                    _warn_once("pack %s: readouts.%s: %s; leaving it out", pid, key, "; ".join(bad))
                     continue
                 if (r["metric"], r["sensor_id"]) in have:
-                    log.warning("pack %s: readouts.%s: %s from %s is already shown; not twice", pid, key,
+                    _warn_once("pack %s: readouts.%s: %s from %s is already shown; not twice", pid, key,
                                 r["metric"], r["sensor_id"])
                     continue
                 decl[key].setdefault("readouts", []).append(dict(r))
                 have.add((r["metric"], r["sensor_id"]))
     return decl
+
+
+SECTION_STAGES = ("observe", "decide", "act", "measure")
+SECTION_CARDS = ("readout",)
+
+
+def _section_problems(sec) -> list[str]:
+    """One section a pack declares in its pack.yaml, to be drawn by the page's own components."""
+    if not isinstance(sec, dict):
+        return ["a section must be a mapping"]
+    p = []
+    sid = sec.get("id")
+    if not isinstance(sid, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]*", sid):
+        p.append("its id must be lowercase letters, digits and hyphens")
+    if sec.get("stage") not in SECTION_STAGES:
+        p.append(f"its stage is {sec.get('stage')!r}; it must be one of {', '.join(SECTION_STAGES)}")
+    if not all((sec.get("title") or {}).get(loc) for loc in LOCALES):
+        p.append("it needs a title in every locale")
+    card = sec.get("card", "readout")
+    if card not in SECTION_CARDS:
+        p.append(f"its card is {card!r}. A declared section draws readout cards; a stack, a series or a row needs "
+                 f"the shell's own code, which is a reason to promote the pack")
+    rows = sec.get("readouts")
+    if not isinstance(rows, list) or not rows:
+        p.append("it needs at least one readout")
+    else:
+        for r in rows:
+            p += _readout_problems(r)
+    if "wall" in sec and not isinstance(sec["wall"], bool):
+        p.append("wall must be true or false")
+    if "order" in sec and (not isinstance(sec["order"], int) or isinstance(sec["order"], bool)):
+        p.append("order must be a whole number")
+    note = sec.get("note")
+    if note is not None and not (isinstance(note, dict) and all(note.get(loc) for loc in LOCALES)):
+        p.append("its note needs every locale, or no note at all")
+    return p
+
+
+def pack_sections(manifests: list[dict]) -> list[dict]:
+    """The sections the enabled packs declare (docs/decisions/2026-10-01-packs.md, point 5), in the order of the packs'
+    ids, each with the id of the pack that declared it. A wild pack ships no script: it says what its section is, and
+    the page draws it with its own readout cards, so it looks like the rest of the page and is measured with it. A
+    section that is not well formed, or whose id another pack already took, is left out with a line in the log."""
+    out, seen = [], set()
+    for m in sorted(manifests, key=lambda m: str(m.get("id", ""))):
+        pid, secs = m.get("id", "?"), m.get("sections")
+        if not secs:
+            continue
+        if not isinstance(secs, list):
+            _warn_once("pack %s: sections must be a list; ignoring them", pid)
+            continue
+        for sec in secs:
+            bad = _section_problems(sec)
+            if bad:
+                _warn_once("pack %s: section %s: %s; leaving it out", pid,
+                           (sec.get("id") if isinstance(sec, dict) else None) or "?", "; ".join(bad))
+                continue
+            if sec["id"] in seen:
+                _warn_once("pack %s: section %s is already declared by another pack; leaving it out", pid, sec["id"])
+                continue
+            seen.add(sec["id"])
+            out.append({**sec, "pack": pid})
+    return out
 
 
 def _sign_ids() -> set[str]:

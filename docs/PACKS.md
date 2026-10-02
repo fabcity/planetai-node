@@ -5,7 +5,7 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, readouts:
+  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
@@ -69,9 +69,9 @@ in `packs/<id>` on your own node, and leave this repository as the released node
 `python3 tools/check_rules.py` from the node's folder and it checks your rules against the schema with the rest; an
 offline test for an adapter imports it by path, the way `tests/test_earth.py` does, and can live in your repository.
 
-A wild pack can add readouts to an issue (see [Readouts on an issue](#readouts-on-an-issue)). Two things cannot
-travel this way yet, and come to this repository as their own pull request: a dashboard section (a section lives in
-`app/static/dashboard.js` until the node serves a pack's own file, see below) and any other change to an issue under
+A wild pack can add readouts to an issue (see [Readouts on an issue](#readouts-on-an-issue)) and declare a section
+of the dashboard (see [A declared section](#a-declared-section)). Two things cannot travel this way, and come to this
+repository as their own pull request: a section that needs script of its own, and any other change to an issue under
 `app/issues/`. A preset for your city is one file in `presets/` and a pull request.
 
 ## Data packs
@@ -248,12 +248,37 @@ and a drawing is a drawing inside a card); colour a state by hue; print a numera
 body — that belongs in `notes()`, gathered at the bottom of the page where every note lives folded.
 None of this is enforced by the contract itself; all of it is measured by `tests/visual/gate.sh`.
 
-Today a section lives inline in `app/static/dashboard.js`, because the node serves a fixed list of
-static files by name and nothing else — `index.html`, `dashboard.js`, three stylesheets, two SVGs, two
-JSON files and the fonts. The twenty-four sections shipped there are the reference for the shape
-above. Serving a pack's own `dashboard.js` — so a pack could carry its section as a file the node loads rather than code merged into the shell —
-needs a route the node does not have yet. That is the next phase, not this one. Proposing a section
-back today is sending the file with its `render()` and its `notes()`.
+A section with script of its own lives inline in `app/static/dashboard.js`: the node serves a fixed list of static
+files by name, and the twenty-four sections shipped there are the reference for the shape above. That is for core
+packs only, and it stays that way: a script on this page reads the same browser storage the admin token is kept in, so
+a pack's own script would hold admin rights on every node that installed it (docs/decisions/2026-10-01-packs.md,
+point 5). Proposing a scripted section is sending the code with its `render()` and its `notes()`, and it is a reason to
+promote the pack.
+
+### A declared section
+
+A wild pack declares its section as data in its `pack.yaml`, and the page draws it with its own readout card:
+
+```yaml
+sections:
+  - id: sg-air                          # unique on the page: lowercase letters, digits and hyphens
+    stage: observe                      # observe · decide · act · measure
+    title: { en: Singapore air, from NEA, id: Udara Singapura, dari NEA, es: Aire de Singapur, de NEA }
+    order: 40                           # optional, default 50: position within the stage
+    wall: true                          # optional: each reading is also a column on the wall
+    note: { en: NEA's regional figures., id: Angka regional NEA., es: Cifras regionales de NEA. }
+    readouts:                           # the shape an issue's readouts use
+      - { metric: psi, sensor_id: nea-psi, unit: PSI, dp: 0, label: { en: NEA PSI, id: PSI NEA, es: PSI de NEA } }
+```
+
+The node reads each readout's latest row, as it does an issue's, and serves the section in `/issues` as `sections`,
+with the numbers already in it and each one's age. The page turns it into a band in its stage, on Now, with the
+pack's name beside the title and `GET /issues` as its route. A reading the node has no row for is not drawn, and the
+band says how many have not arrived. Its note, at the foot of the page, says which pack declared it and that the pack
+ships no code for this page. A declared section draws readout cards only: a stack, a series or a row needs the
+shell's own code. One that is not well formed, or whose id another pack already took, is left out with a line in the
+log; one whose id the page already has is listed under "Registration problems". `tests/test_pack_sections.py` holds
+this, on both sides.
 
 ## The hero
 
