@@ -70,7 +70,7 @@ const PAI_LOAD = [];
  *
  * These are drawings. There is no fetch here, nothing is arranged, no button does anything, and
  * every number comes out of window.SNAP — which is node #1 on 6 September replayed through the real
- * engine, plus three synthetic contributions that say so.
+ * engine.
  *
  * The four kinds, and the whole of T3:
  *
@@ -168,7 +168,7 @@ function cmpText(o) {
 function readout(o) {
   const id = o.id || uid('readout');
   const c = o.cmp || { none: true, text: 'no comparison yet' };
-  return `<div class="readout${o.unplaced ? ' unplaced' : ''}" data-kind="readout"`
+  return `<div class="readout" data-kind="readout"`
     + ` data-component="${esc(o.component || 'readout')}" id="${esc(id)}"`
     + `${o.ref ? ` data-ref="${esc(o.ref)}"` : ''}>`
     /* PORTED: .lab is shouted, and a readout's title can be a PACK's own words — the water pack's
@@ -250,22 +250,16 @@ function stack(key, d, o = {}) {
   const cols = DIST.map(dist => {
     const c = (d.stack || {})[dist];
     const has = c && c.value != null;
-    /* A column a PACK filled carries the pack's own unit, decimal places and declared comparison.
-     * Water's region is metres below a water table and its room is turbidity in NTU; reading the
-     * issue's own unit and line for both painted 4.2 m red for crossing a 1.0 NTU line, which is
-     * two different quantities on one scale — the thing a stack exists not to do. */
-    const fill = (d.contributions || []).find(x => x.slot === `stack.${dist}` && x.placed !== false);
-    const unit = fill ? fill.data.unit : d.unit;
-    const dp = fill ? fill.data.dp : d.dp;
-    const line = fill ? (fill.data.compare === 'line' ? d.line : null) : d.line;
+    /* Every column is the issue's own quantity, in the issue's own unit, against the issue's own line. A pack
+     * never fills one (docs/decisions/2026-10-01-packs.md, point 4): a pack's number is a readout beside it. */
+    const unit = d.unit, dp = d.dp, line = d.line;
     const crossed = has && line && c.value > line.value;
     const room = ((d.stack || {}).room || {}).value;
     const cmp = !has ? { none: true, text: `nothing at this distance · ${reasonFor(d, dist)}` }
-      : fill ? cmpText({ mode: fill.data.compare, line, unit, dp, reason: fill.data.reason })
-        : line ? cmpText({ mode: 'line', line, unit, dp })
-          : dist === 'room' || room == null
-            ? cmpText({ mode: 'none', reason: `${d.name[LOC]} has no line: ${noLine(d)}` })
-            : cmpText({ mode: 'ring', other: room, otherLabel: 'the house', unit, dp });
+      : line ? cmpText({ mode: 'line', line, unit, dp })
+        : dist === 'room' || room == null
+          ? cmpText({ mode: 'none', reason: `${d.name[LOC]} has no line: ${noLine(d)}` })
+          : cmpText({ mode: 'ring', other: room, otherLabel: 'the house', unit, dp });
     return `<div class="col" id="${esc(id)}-col-${dist}"`
       + ` data-ref="src-${esc(key)}-${dist}">`
       + `<div class="k">${esc(LAB[dist])}</div>`
@@ -842,30 +836,6 @@ function peerRow() {
     + `<span class="note">${esc(p.never[LOC])}</span></div></div>`;
 }
 
-/* A slot the vocabulary does not contain. It lands on the page with the pack's name on it. */
-function unplaced(c) {
-  return readout({
-    id: `unplaced-${c.pack}`, num: `${c.pack}.unplaced`, component: 'unplaced', unplaced: true,
-    pack: c.pack,
-    title: c.data.title[LOC], value: c.data.value, unit: c.data.unit, dp: c.data.dp,
-    source: `${c.pack} asked for ${c.slot}, which this page has no place for`,
-    prov: c.provenance, ref: 'band-water',
-    cmp: cmpText({ mode: 'none', reason: c.data.reason }),
-  });
-}
-
-/* A contribution a pack made to a slot that does exist. */
-function contribution(c, key) {
-  if (c.slot !== 'band.readout') return '';
-  return readout({
-    id: `contrib-${c.pack}-readout`, num: `${key}.${c.data.metric || 'readout'}`,
-    component: 'readout', pack: c.pack,
-    title: c.data.title[LOC], value: c.data.value, unit: c.data.unit, dp: c.data.dp,
-    source: c.data.source, prov: c.provenance, ref: `stack-${key}`,
-    cmp: cmpText({ mode: c.data.compare, reason: c.data.reason }),
-  });
-}
-
 /* The Phase 1 wireframes are gone from the shipped page.
  *
  * They were grey bars standing in for text and outlined boxes standing in for controls, with a note
@@ -913,7 +883,7 @@ function readView() {
 function emptySnapshot() {
   for (const k of Object.keys(ISS)) {
     const d = ISS[k];
-    d.state = 'none'; d.open_asks = []; d.contributions = [];
+    d.state = 'none'; d.open_asks = [];
     d.stack = { room: null, yard: null, ring: null, region: null };
     d.series = { room: null, yard: null, ring: null, region: null };
     d.readouts = []; d.provenance = [];
@@ -964,7 +934,7 @@ const rulePack = id => { const s = String(id); return s.includes('/') ? s.split(
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
-  peerRow, unplaced, contribution, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
+  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -5212,7 +5182,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, row, rhoRow, series, peerRow, unplaced, funnel, sign } = window.K;
+const { esc, fmt, row, rhoRow, series, peerRow, funnel, sign } = window.K;
 
 /* The care label: the refusals that hold across every stage, from ARCHITECTURE.md §7, drawn where the
  * loop closes because a refusal is the last thing a reader should meet, not the first.
@@ -5276,11 +5246,7 @@ window.PAI.register({
           cmp: `${r.acted} answered of ${r.alerts_act} asked in ${r.window_days} days` }],
       })
       + `</div>${funnel()}${careLabel()}</div>`
-      + `<div>${series(hk, ISS[hk])}`
-      + `${(S.issues.undeclared_slots || []).map(u => {
-        const c = (ISS.water && ISS.water.contributions || []).find(x => x.slot === u.slot);
-        return c ? unplaced(c) : '';
-      }).join('')}</div></div>`;
+      + `<div>${series(hk, ISS[hk])}</div></div>`;
   },
   notes(ctx) {
     const r = ctx.S.rho;
@@ -5320,11 +5286,6 @@ window.PAI.register({
         + 'the page; decide said how far that number may be trusted; act asked somebody to do '
         + 'something; measure is the reading coming back after they did, or did not, and how long it '
         + 'took. The next observation is the first section again.' },
-      { id: 'measure-unplaced', label: 'A slot this page has no place for',
-        text: 'A pack that asks for a slot this page has no place for lands '
-        + 'here with the pack’s name on it, rather than being dropped — the water pack’s gauge is the '
-        + 'example. That is how a pack finds out the vocabulary has a gap without its '
-        + 'reading disappearing.' },
     ];
   },
 });

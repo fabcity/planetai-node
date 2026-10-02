@@ -110,9 +110,11 @@ and one slot mechanism:
 | `level: 'simple'` | opts into the four-sentence digest |
 | `anchor` | where its notes point when it draws no band of its own |
 
-A pack may also fill a slot inside another section's card, through `contributions[]` on the issue:
-`slot: 'stack.<distance>'` puts a value in one column of a stack with the pack's own unit, decimal
-places and declared comparison. That is the one place a stranger's number joins a core drawing.
+A pack could also fill a slot inside another section's card, through `contributions[]` on the issue
+(`slot: 'stack.<distance>'`, `band.readout`, and an "unplaced" card for a slot the page lacked). No node
+ever produced it; only the prototypes' synthetic data did. **It was removed on 2 October 2026**: a pack's
+number on an issue is a readout (`readouts:` in its pack.yaml), a pack's own band is a declared section
+(`sections:`), and no pack fills a distance column (docs/decisions/2026-10-01-packs.md, point 4).
 
 ### The twenty sections
 
