@@ -25,6 +25,19 @@
   it refuses symbolic links, an id that is not the folder shape, and an id the list and the pack disagree on.
   `planetai packs` now lists core and wild apart. Removing one is deleting its folder.
 
+- **2026-10-02 · Dashboard fixes from a Singapore node.** "Seen it" records `acknowledged` without closing the
+  alert; "I did this" asks for the act token in the form when the node refuses for want of one, and marks the row;
+  the four squares in a stage header go to that stage and grey out on a view that does not draw it; rings on the
+  wall and on Now link to Act; the wall's dial keeps `#wall`, no longer stacks listeners on every redraw, and can
+  be paused; series traces mark the day's start, the peak and the line; signs say what they are on hover; a data
+  route opens in a new tab and says when a page cannot open it; Simple mode on a view that hides most sections
+  says how many; the ladder carries its scale names (Region to Room). `fc_rain_prob` is a forecast channel.
+  A pack's adapter module is now kept between polls, so state a pack keeps about what is next due survives (a
+  pack that paced its feeds was asking for the same four every time). A room whose `meta.role` is `secondary` is
+  drawn but is not the house's number and raises no heat alert, and the Telegram report counts a room
+  thermometer as a sensor inside. `tools/check_docs.py` reads a `PRODUCES = (...)` tuple in an adapter, for
+  metrics built from prefixes.
+
 - **2026-09-30 · The FAB26 experiment has a page.** `docs/FAB26_EXPERIMENT.md` is the participant-facing
   instructions for the October–December workshop cohort experiment: the two all-hands calls, the biweekly
   check-in through the experiment bot (@planetai_exp_bot), the build track, and a section for the workshop
@@ -1016,7 +1029,6 @@ documentation:
   It was merged upstream days ago; the file had not been told.
 
 ## v0.61 — 2026-09-19 — the node carries the network's list of what can be measured, and four packs more to measure it with
-
 
 *Staged together on purpose.* `docs/NEXT_RELEASE.md` asks that `app/static/*` and `packs/*` reach a
 node in separate releases, so that "was it the page or the data" has one answer when something comes
@@ -2250,7 +2262,6 @@ day. A fresh install gets 6 and 6.
 The 13:03 event on 7 September — one pot, three sensors in one room, six act alerts in five minutes — is still six
 alerts. One event, one alert, and ρ measured from the sensors instead of asked for, are v0.39.
 
-
 ### local means here, not just yours
 
 Node #1 moved to Ungasan in August. Three of its six Smart Citizen kits stayed behind at the old address, 1.2 km
@@ -2320,7 +2331,6 @@ Two things this release has not done. The trust pack's three thresholds were cho
 site (6–10 µg/m³, 1–7 September) and have never been tested against a burn season, when PM2.5 swings far wider and
 disagreement between units may widen with it. And the new dashboard card has not been checked by eye at 375, 768
 or 1440 px — only against the data it renders.
-
 
 ### the ground under the hero is the cell this node stands in
 
