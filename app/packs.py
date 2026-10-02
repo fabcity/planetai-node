@@ -178,6 +178,11 @@ def channels() -> list[dict]:
     return out
 
 
+_loaded: dict = {}   # pack name -> (adapter.py mtime, module). Adapters keep pacing state (what is next due, tokens) in
+                     # module globals; executing the file afresh on every poll threw that away, so the NEA pack asked for
+                     # its first four feeds every time and never reached wind or rain.
+
+
 def adapters(hc):
     """Source adapters from code packs. Off unless PACKS_ALLOW_CODE=1 — a pack's adapter.py runs with this
     node's privileges and network access. Read it before you enable it."""
@@ -190,9 +195,14 @@ def adapters(hc):
             log.warning("pack %s ships code; set PACKS_ALLOW_CODE=1 to run it (read %s first)", d.name, f)
             continue
         try:
-            spec = importlib.util.spec_from_file_location(f"planetai_pack_{d.name}", f)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+            stamp = f.stat().st_mtime
+            if d.name in _loaded and _loaded[d.name][0] == stamp:
+                mod = _loaded[d.name][1]
+            else:
+                spec = importlib.util.spec_from_file_location(f"planetai_pack_{d.name}", f)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)  # type: ignore[union-attr]
+                _loaded[d.name] = (stamp, mod)
             out.append((d.name, lambda m=mod: m.fetch(hc)))
         except Exception as e:  # noqa: BLE001
             log.warning("pack %s: adapter failed to load (%s)", d.name, e)
