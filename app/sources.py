@@ -319,7 +319,7 @@ def purpleair(hc: httpx.Client, hosts: list[str], lat: float | None, lon: float 
 # ---------------------------------------------------------------- registry
 def enabled(hc: httpx.Client):
     """Yield (name, fetch) for every configured source. Failures are per-source, never fatal.
-    Core adapters first, then any from community packs (docs/PACKS.md)."""
+    Core adapters first, then any from packs, core and wild (docs/PACKS.md)."""
     out = []
     ids = {int(x) for x in settings.get("SC_DEVICES", "").replace(" ", "").split(",") if x}
     if settings.get("SC_USER", "").strip():

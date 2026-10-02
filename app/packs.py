@@ -1,4 +1,5 @@
-"""Packs — the community extension point.
+"""Packs — the extension point. Core packs ship in packs/ with the release; wild packs are added by whoever runs
+the node (`planetai packs add`, docs/decisions/2026-10-01-packs.md).
 
 A pack is a folder in packs/ with a pack.yaml and any of:
     rules.yml    extra alert rules (SQL + message)      DATA — no code, safe to merge from anyone

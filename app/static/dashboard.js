@@ -1522,7 +1522,7 @@ window.KMAP = { map, caption, frameOf, MAX_SPAN_M };
  *
  * WHY THIS IS A CONTRACT AND NOT A LAYOUT. Tomas asked for a structure a node can extend and then
  * propose back — Meshtastic and Reticulum today, an open hardware manager and local making next,
- * community packs after that. So the page does not know what its sections are. Packs register them:
+ * wild packs after that. So the page does not know what its sections are. Packs register them:
  *
  *     window.PAI.register({
  *       id: 'ground',            // unique; becomes the band's DOM id
@@ -3706,7 +3706,7 @@ window.PAI.register({
  * for, and the thing a drawing of it has to show rather than tidy away with a pin.
  *
  * This is the first pack section in the folder that is not the renderer's own: it registers with the
- * page contract exactly the way a Meshtastic section, an open hardware manager, or a community pack
+ * page contract exactly the way a Meshtastic section, an open hardware manager, or a wild pack
  * would, and the page knows nothing about it except what it declares here.
  */
 PAI_LOAD.push(function () {
@@ -3870,7 +3870,7 @@ window.PAI.register({
         + 'to turn it on.' },
       { id: 'mesh-pack', label: 'A small pack on purpose',
         text: 'A pack section, and a small one on purpose: it shows the shape a '
-        + 'community pack’s contribution takes — a file that registers a title, a stage, what it '
+        + 'pack’s section takes — a file that registers a title, a stage, what it '
         + 'needs, and what it says.' },
     ];
   },
@@ -3972,7 +3972,7 @@ window.PAI.register({
         + '"not connected". Until then the contract’s rule holds: a missing pack is one line that '
         + 'says so, never a blank.' },
       { id: 'hardware-shape', label: 'What a pack contributes',
-        text: 'This is the shape a community pack’s contribution takes: a '
+        text: 'This is the shape a pack’s contribution takes: a '
         + 'title, a stage, what it needs, what it says, and its notes. A node that adds a device adds '
         + 'a row; a node that writes a pack adds a file; proposing either back is sending the file.' },
     ];
@@ -5265,7 +5265,7 @@ window.PAI.register({
       { id: 'measure-unplaced', label: 'A slot this page has no place for',
         text: 'A pack that asks for a slot this page has no place for lands '
         + 'here with the pack’s name on it, rather than being dropped — the water pack’s gauge is the '
-        + 'example. That is how a community pack finds out the vocabulary has a gap without its '
+        + 'example. That is how a pack finds out the vocabulary has a gap without its '
         + 'reading disappearing.' },
     ];
   },
