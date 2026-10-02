@@ -5,7 +5,7 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, kind (data | code), version, pip:, env:
+  pack.yaml     id, name, description, kind (data | code), version, pip:, env:, readouts:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
@@ -69,9 +69,10 @@ in `packs/<id>` on your own node, and leave this repository as the released node
 `python3 tools/check_rules.py` from the node's folder and it checks your rules against the schema with the rest; an
 offline test for an adapter imports it by path, the way `tests/test_earth.py` does, and can live in your repository.
 
-Two things cannot travel this way yet, and come to this repository as their own pull request: a dashboard section
-(a section lives in `app/static/dashboard.js` until the node serves a pack's own file, see below) and a change to an
-issue under `app/issues/`. A preset for your city is one file in `presets/` and a pull request.
+A wild pack can add readouts to an issue (see [Readouts on an issue](#readouts-on-an-issue)). Two things cannot
+travel this way yet, and come to this repository as their own pull request: a dashboard section (a section lives in
+`app/static/dashboard.js` until the node serves a pack's own file, see below) and any other change to an issue under
+`app/issues/`. A preset for your city is one file in `presets/` and a pull request.
 
 ## Data packs
 
@@ -135,6 +136,27 @@ never averaged as ambient), `device_health` (the instrument talking about itself
 else's). `config/channels.yml` has the core declarations; `make lint` checks every metric against `app/sources.py`.
 A role is keyed per source and metric, not per device: every sensor an adapter drives shares it, so a node whose
 hardware differs from that adapter's usual shape (an external probe on a Meshtastic pod) cannot override it yet.
+
+### Readouts on an issue
+
+A pack can add numbers to an issue it has something to say about, in its own `pack.yaml`, in the shape an issue file
+uses. A readout is one sensor's latest row, with a unit and a label in every locale:
+
+```yaml
+readouts:
+  air:
+    - { metric: psi, sensor_id: nea-psi, unit: PSI, dp: 0, label: { en: NEA PSI, id: PSI NEA, es: PSI de NEA } }
+  coast:
+    - { metric: beach_band, sensor_id: nea-beach-changi, unit: of 3, dp: 0,
+        label: { en: Changi beach water band, id: pita air pantai Changi, es: banda del agua de Changi } }
+```
+
+They come after the issue's own readouts, in the order of the packs' ids, while the pack is enabled. Every issue
+shows its readouts as rows in Figures; a context issue (`coast`, `land`) also reads them in its sentence. A pack adds
+and never replaces: a readout for the same sensor and metric as one already shown is not shown twice, and one that
+names no declared issue, or lacks a unit or a label, is left out with a line in the log. A readout whose sensor has
+no row on the node shows nothing. A pack cannot change an issue's line, its distances, its hero or its sentences.
+`tests/test_pack_readouts.py` holds this.
 
 ## Code packs
 
