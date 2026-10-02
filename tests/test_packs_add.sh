@@ -30,6 +30,8 @@ mk heatclone "$S3" "" heat >/dev/null                                           
 mk underscored "$S3" "" under_score >/dev/null
 p="$(mk links "$S3" "" links)"; ln -s /etc/hosts "$p/rules.yml"
 mkdir -p "$d/src/nopack-$S3"; echo "just a readme" > "$d/src/nopack-$S3/README.md"
+p="$(mk future "$S3" "" future)"; printf 'requires: { node: ">=99.0.0" }\n' >> "$p/pack.yaml"             # written for a node far ahead
+p="$(mk blockfuture "$S3" "" block-future)"; printf 'requires:\n  node: ">=99.0.0"\n' >> "$p/pack.yaml"  # the same, block form
 mkdir -p "$d/tgz"
 for top in "$d"/src/*; do n="$(basename "$top")"; tar czf "$d/tgz/$n.tgz" -C "$d/src" "$n"; done
 
@@ -62,8 +64,9 @@ printf '#!/bin/sh\necho "docker $*" >> "%s/docker.log"\n' "$d" > "$d/bin/docker"
 chmod +x "$d/bin/curl" "$d/bin/docker"
 
 # ---------------------------------------------------------------- a node: one core pack and an .env
-N="$d/node"; mkdir -p "$N/packs/heat"; printf 'id: heat\nname: Heat\n' > "$N/packs/heat/pack.yaml"
-echo "core, untouched" > "$N/packs/heat/SENTINEL"; printf 'APP_PORT=1\n' > "$N/.env"
+N="$d/node"; mkdir -p "$N/packs/heat" "$N/app"; printf 'id: heat\nname: Heat\n' > "$N/packs/heat/pack.yaml"
+cp app/requires.py "$N/app/"     # the rule the CLI runs, the real file, as every node carries it
+echo "core, untouched" > "$N/packs/heat/SENTINEL"; printf 'APP_PORT=1\nNODE_VERSION=v0.75.8\n' > "$N/.env"
 pa() { PATH="$d/bin:$PATH" PLANETAI_HOME="$N" bash bin/planetai packs "$@" 2>&1; }
 
 # ---------------------------------------------------------------- a whole repository, at whatever HEAD is now
@@ -95,6 +98,13 @@ grep -q "updated from ${S1:0:12}" <<< "$out" && ok "the update names the commit 
 grep -q "api.github.com/repos/someone/rain/commits/$S1B" "$d/curl.log" \
   && bad "a full 40-character commit was looked up anyway" || ok "a full commit is used as given, with no lookup"
 
+# ---------------------------------------------------------------- a pack for a newer node: added, and told at once
+for spec in someone/future someone/blockfuture; do
+  out="$(pa add "$spec")"; rc=$?
+  [ $rc -eq 0 ] && grep -q "will not load on this node: it needs a node >=99.0.0 and this node is v0.75.8; planetai update first" <<< "$out" \
+    && ok "$spec: added, and says at once it will not load here and what to do" || bad "$spec gave no requires warning (exit $rc): $out"
+done
+
 # ---------------------------------------------------------------- refused, and nothing written
 expect_refused() { # expect_refused <what> <text in the refusal> <path that must not exist> -- args to packs
   local what="$1" text="$2" absent="$3"; shift 4
@@ -111,7 +121,7 @@ expect_refused "a folder with no pack.yaml is refused" "no pack.yaml" "" -- add 
 expect_refused "an id that is not on the list is refused, and the list's ids are named" "which has liar, tide" "" -- add nosuch
 expect_refused "a path that climbs out is refused before anything is fetched" "is not owner/repo" "" -- add someone/rain/../../etc
 expect_refused "no argument says how to call it" "say which pack" "" -- add
-[ -z "$(ls -A "$N/packs" | grep -vxE 'heat|rain-gauge|tide')" ] && ok "after every refusal, packs/ holds heat, rain-gauge and tide and nothing else" \
+[ -z "$(ls -A "$N/packs" | grep -vxE 'heat|rain-gauge|tide|future|block-future')" ] && ok "after every refusal, packs/ holds what was added and nothing else" \
   || bad "a refusal left something in packs/: $(ls -A "$N/packs")"
 
 # ---------------------------------------------------------------- the listing tells core from wild
@@ -124,6 +134,10 @@ if [ -n "$core_at" ] && [ -n "$wild_at" ] && [ "$core_at" -lt "$wild_at" ] \
 else bad "the listing does not separate core from wild: $out"; fi
 grep -q "rain-gauge from someone/rain at ${S1B:0:12}" <<< "$out" && ok "and says where each wild pack came from, and at which commit" \
   || bad "no provenance line for rain-gauge: $out"
+nl="$(sed -n '/not loaded, written for another node version:/,$p' <<< "$out")"
+grep -qE "^    future +it needs a node >=99.0.0 and this node is v0.75.8" <<< "$nl" && grep -qE "^    block-future +it needs a node >=99.0.0" <<< "$nl" \
+  && ! grep -qE "^    (heat|rain-gauge|tide) " <<< "$nl" \
+  && ok "and lists the packs this node will not load, with why, in either form of requires:" || bad "no 'not loaded' section, or a wrong one: $out"
 
 # ---------------------------------------------------------------- and when the node is running, from what it loaded
 cat > "$d/packs-api.json" <<'J'

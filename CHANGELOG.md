@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **2026-10-02 · A pack written for a newer node is not loaded.** Every pack's `requires: { node: ... }` is now
+  enforced: a node that does not match leaves the pack out whole, rules and adapter alike, says so once in its log,
+  and `planetai packs` lists it under "not loaded" with the reason (`it needs a node >=0.80.0 and this node is
+  v0.75.8; planetai update first`). `planetai packs add` warns at once. A node that cannot name its release, such as
+  a developer's checkout, loads everything. The rule is `app/requires.py`, shared by the loader and the CLI, which
+  runs it on the node's own Python 3.9. Every shipped pack loads on v0.75.8, and a test keeps it that way.
+
 - **2026-10-02 · A pack can add readouts to an issue.** A pack's `pack.yaml` can declare `readouts:` for an issue,
   in the shape an issue file uses, and the node adds them after the issue's own while the pack is enabled: rows in
   Figures, and words in a context issue's sentence. This is how a wild pack shows its numbers on Air, Heat or Coast

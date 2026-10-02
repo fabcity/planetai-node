@@ -517,12 +517,9 @@ RELEASE_WORDS = {
 }
 
 
-def release_of(v: str) -> tuple | None:
-    """The release a version string is at: `v0.75.7`, and `v0.75.7-14-gafc298a` from a git checkout ahead of it,
-    are both (0, 75, 7). A checkout that is ahead of a release is still at that release: node #1 tracks main, and
-    on v0.75.7-14 it has not got v0.75.8. None for anything that names no release (a bare sha, `dev`, `?`)."""
-    m = re.match(r"v(\d+)\.(\d+)(?:\.(\d+))?(?=$|-)", v or "")
-    return tuple(int(x or 0) for x in m.groups()) if m else None
+# The release a version string is at. It lives in requires.py because the packs loader and the CLI need it too,
+# and nothing may import this module to get it (a second import starts a second MQTT client).
+from requires import release_of  # noqa: E402
 
 
 def check_release() -> None:
