@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **2026-10-02 · `planetai packs add` fetches a wild pack.** Packs in this repository are core; every other pack is
+  wild, listed at fabcity/planetai-wild-packs (`docs/decisions/2026-10-01-packs.md`). `planetai packs add <id>` takes
+  one from that list at the commit it was listed at; `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` takes any
+  pack on GitHub, and a branch or tag is pinned to the commit it names. It fetches with curl and tar, because a node
+  installed the default way has no git, writes where the pack came from and at which commit to `packs/<id>/.wild`, and
+  runs `packs install`. It never replaces a folder that did not come from it, so a core pack cannot be overwritten, and
+  it refuses symbolic links, an id that is not the folder shape, and an id the list and the pack disagree on.
+  `planetai packs` now lists core and wild apart. Removing one is deleting its folder.
+
 - **2026-09-30 · The FAB26 experiment has a page.** `docs/FAB26_EXPERIMENT.md` is the participant-facing
   instructions for the October–December workshop cohort experiment: the two all-hands calls, the biweekly
   check-in through the experiment bot (@planetai_exp_bot), the build track, and a section for the workshop
