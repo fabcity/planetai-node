@@ -38,7 +38,9 @@ with where the pack came from. It refuses an id that is already a folder here an
 core pack, or one you put there by hand), an id that is not the folder shape, a pack with symbolic links, and, for a
 pack from the list, an id the list and the pack disagree on. It runs `planetai packs install` afterwards. Running it
 again on the same pack replaces it with the new commit. `planetai packs` lists core and wild apart and says where
-each wild pack came from. To remove one, delete `packs/<id>` and restart.
+each wild pack came from. To remove one, delete `packs/<id>` and restart. If a later release ships a core pack with
+the same id (a wild pack promoted into the release), `planetai update` stops before it changes anything, names the
+wild copy and where it came from, and asks you to delete it; run the update again and the core pack takes its place.
 
 It fetches GitHub's archive of the commit with curl and tar, because a node installed the default way has no git.
 On a node older than this command, do the same by hand. When the repository *is* the pack:
