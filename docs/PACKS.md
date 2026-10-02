@@ -20,6 +20,11 @@ anywhere else is a **wild** pack ([decision](decisions/2026-10-01-packs.md)). Th
 `packs/` that has a `pack.yaml` and does not care where the folder came from. `packs/` is a bind mount into the
 container, so a wild pack is installed by putting it there.
 
+Wild packs are listed in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), which can
+also host one for an author who would rather not keep a repository. Anyone may list a pack there by pull request;
+each entry says whether a maintainer has read it, and every entry is checked against this repository's `main` once a
+week.
+
 A node installed the default way has curl and tar and no git, so fetch the folder as an archive. When the
 repository *is* the pack:
 
