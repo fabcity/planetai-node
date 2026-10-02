@@ -160,7 +160,7 @@ RETICULUM_ALERT_DESTINATIONS:
   help: "Reticulum bridge (LXMF). Alert destinations: LXMF address hashes from Sideband, comma-separated, no spaces."
 PACKS_ENABLED:
   default: ""
-  help: "---- packs (community extensions — docs/PACKS.md) ---- Empty = load every pack in packs/. Or list ids to load only those."
+  help: "---- packs: core ones ship here, wild ones are added with planetai packs add (docs/PACKS.md) ---- Empty = load every pack in packs/. Or list ids to load only those."
 PACKS_ALLOW_CODE:
   default: "0"
   help: "Data packs (rules/cells) always load. Code packs (adapter.py) run Python with this node's privileges: read the code, then set this to 1."
