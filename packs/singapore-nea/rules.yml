@@ -161,8 +161,8 @@
     es: "🌊 Hay una alerta de inundación de la PUB a {km:.1f} km de ti.\n\nEl agua puede subir deprisa en desagües y zonas bajas.\n\n👉 No camines ni conduzcas por calles inundadas, sube las cosas del suelo si vives en planta baja y consulta el mapa de inundaciones de la PUB."
 
 - id: dengue_cluster_here
-  level: act
-  cooldown_minutes: 10080
+  level: warn            # not act: an act rule's cooldown may not exceed index.MEASURED_WINDOW_MIN (2880), and a week-long
+  cooldown_minutes: 10080  # cluster should not page again every two days
   sql: |
     SELECT o.sensor_id, o.name, coalesce(o.meta->>'nearest_locality', 'your area') AS locality,
            coalesce((SELECT value FROM observations c WHERE c.sensor_id = o.sensor_id AND c.metric = 'dengue_nearest_cases'), 0)::float AS cases

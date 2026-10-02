@@ -3,7 +3,8 @@
 # node is coming from, which is the early part of the story.
 #
 # Wind: a 10-minute mean bearing the wind blows FROM, from NEA's station feed (singapore-nea pack) when it is present,
-# otherwise the forecast pack's fc_wind_direction. Sector k is bearing k*45 (0 = north). "Upwind" is that sector and
+# otherwise the forecast pack's fc_wind_direction. The forecast pack stores values at their VALID time, which is in
+# the future, so both are bounded to ts <= now() and the measured row is preferred over any forecast. Sector k is bearing k*45 (0 = north). "Upwind" is that sector and
 # its two neighbours: a 135 degree arc, because a single instant's wind bearing wanders by more than 45 degrees.
 #
 # THE THRESHOLDS ARE A FIRST GUESS, not a calibration. 50 and 200 hotspots in a day are round numbers chosen so a
@@ -16,14 +17,17 @@
   sql: |
     WITH w AS (SELECT value FROM observations
                WHERE ((sensor_id = 'nea-winddir' AND metric = 'wind_dir') OR metric = 'fc_wind_direction')
-                 AND ts > now() - interval '3 hours'
-               ORDER BY ts DESC LIMIT 1),
-         d AS (SELECT (round(value / 45.0)::int % 8) AS k FROM w),
+                 AND ts <= now() AND ts > now() - interval '3 hours'
+               ORDER BY (sensor_id = 'nea-winddir') DESC, ts DESC LIMIT 1),
+         d AS (SELECT k,
+                      'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[((k + 7) % 8) + 1] AS m1,
+                      'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[(k % 8) + 1] AS m2,
+                      'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[((k + 1) % 8) + 1] AS m3
+               FROM (SELECT (round(value / 45.0)::int % 8) AS k FROM w) x),
          u AS (SELECT sum(o.value) AS n, d.k
-               FROM d CROSS JOIN LATERAL (VALUES (-1), (0), (1)) v(i)
-               JOIN observations o
+               FROM d JOIN observations o
                  ON o.sensor_id = 'firms-hotspots'
-                AND o.metric = 'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[((d.k + v.i + 8) % 8) + 1]
+                AND o.metric IN (d.m1, d.m2, d.m3)
                 AND o.ts > now() - interval '8 hours'
                GROUP BY d.k)
     SELECT 'fire-smoke' AS sensor_id, n::float AS fires,
@@ -40,14 +44,17 @@
   sql: |
     WITH w AS (SELECT value FROM observations
                WHERE ((sensor_id = 'nea-winddir' AND metric = 'wind_dir') OR metric = 'fc_wind_direction')
-                 AND ts > now() - interval '3 hours'
-               ORDER BY ts DESC LIMIT 1),
-         d AS (SELECT (round(value / 45.0)::int % 8) AS k FROM w),
+                 AND ts <= now() AND ts > now() - interval '3 hours'
+               ORDER BY (sensor_id = 'nea-winddir') DESC, ts DESC LIMIT 1),
+         d AS (SELECT k,
+                      'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[((k + 7) % 8) + 1] AS m1,
+                      'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[(k % 8) + 1] AS m2,
+                      'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[((k + 1) % 8) + 1] AS m3
+               FROM (SELECT (round(value / 45.0)::int % 8) AS k FROM w) x),
          u AS (SELECT sum(o.value) AS n, d.k
-               FROM d CROSS JOIN LATERAL (VALUES (-1), (0), (1)) v(i)
-               JOIN observations o
+               FROM d JOIN observations o
                  ON o.sensor_id = 'firms-hotspots'
-                AND o.metric = 'fires_' || (ARRAY['n','ne','e','se','s','sw','w','nw'])[((d.k + v.i + 8) % 8) + 1]
+                AND o.metric IN (d.m1, d.m2, d.m3)
                 AND o.ts > now() - interval '8 hours'
                GROUP BY d.k)
     SELECT 'fire-smoke' AS sensor_id, n::float AS fires,
