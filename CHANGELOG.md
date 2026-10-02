@@ -2,36 +2,15 @@
 
 ## Unreleased
 
-- **2026-10-02 · A pack can declare a section of the dashboard.** A pack's `pack.yaml` can now list `sections:`, each
-  a stage, a title and the readouts it shows. The node fills them with its own rows and serves them in `/issues` as
-  `sections`, and the page draws each one as a band on Now with its own readout cards, and as columns on the wall
-  when the pack asks. The pack ships no code for the page: a script there could read the admin token, so only core
-  packs ship script (`docs/decisions/2026-10-01-packs.md`, point 5). A reading the node has no row for is not drawn,
-  and the band says how many have not arrived. No shipped pack declares a section, so every node's page is unchanged.
-  Also: a pack's malformed readout or section is now logged once, not on every `/issues` request.
+## v0.76 — 2026-10-02 — Wild packs: added from anywhere, drawn on the page, refused when too new
 
-- **2026-10-02 · A pack written for a newer node is not loaded.** Every pack's `requires: { node: ... }` is now
-  enforced: a node that does not match leaves the pack out whole, rules and adapter alike, says so once in its log,
-  and `planetai packs` lists it under "not loaded" with the reason (`it needs a node >=0.80.0 and this node is
-  v0.75.8; planetai update first`). `planetai packs add` warns at once. A node that cannot name its release, such as
-  a developer's checkout, loads everything. The rule is `app/requires.py`, shared by the loader and the CLI, which
-  runs it on the node's own Python 3.9. Every shipped pack loads on v0.75.8, and a test keeps it that way.
+*Packs in this repository are core; every other pack is wild, listed at fabcity/planetai-wild-packs and added to a
+node with `planetai packs add`, pinned to a commit, without git. A pack can now add readouts to an issue and
+declare a section of the dashboard as data, drawn with the page's own cards and never with the pack's own code.
+A pack written for a newer node is refused whole, and an update stops before it would overwrite a wild pack that
+became core. Also: a node says when a new version is out, and the FAB26 experiment has a page.*
 
-- **2026-10-02 · A pack can add readouts to an issue.** A pack's `pack.yaml` can declare `readouts:` for an issue,
-  in the shape an issue file uses, and the node adds them after the issue's own while the pack is enabled: rows in
-  Figures, and words in a context issue's sentence. This is how a wild pack shows its numbers on Air, Heat or Coast
-  without editing `app/issues/` (`docs/decisions/2026-10-01-packs.md`, point 4). It adds and never replaces: the same
-  sensor and metric is not shown twice, and a readout naming no issue, or missing its unit or a label, is left out
-  with a line in the log. No shipped pack declares readouts, so `/issues` on every node is unchanged.
-
-- **2026-10-02 · `planetai update` stops for a promoted wild pack.** When the version arriving ships a core pack
-  with the same id as a wild pack on the node (one `planetai packs add` fetched), the update stops before anything
-  moves, names the wild copy and where it came from, and asks for it to be deleted. Without this, the tarball path
-  unpacked the core pack's files over the wild copy and left a folder that was neither, and the git path refused the
-  pull and blamed untracked files. The check runs after the release is downloaded and verified and before it is
-  copied over the node, and on a git checkout after the fetch and before the pull. The backup has already been taken.
-
-- **2026-10-02 · `planetai packs add` fetches a wild pack.** Packs in this repository are core; every other pack is
+- **`planetai packs add` fetches a wild pack.** Packs in this repository are core; every other pack is
   wild, listed at fabcity/planetai-wild-packs (`docs/decisions/2026-10-01-packs.md`). `planetai packs add <id>` takes
   one from that list at the commit it was listed at; `planetai packs add <owner>/<repo>[/<folder>][@<ref>]` takes any
   pack on GitHub, and a branch or tag is pinned to the commit it names. It fetches with curl and tar, because a node
@@ -40,13 +19,36 @@
   it refuses symbolic links, an id that is not the folder shape, and an id the list and the pack disagree on.
   `planetai packs` now lists core and wild apart. Removing one is deleting its folder.
 
-- **2026-09-30 · The FAB26 experiment has a page.** `docs/FAB26_EXPERIMENT.md` is the participant-facing
-  instructions for the October–December workshop cohort experiment: the two all-hands calls, the biweekly
-  check-in through the experiment bot (@planetai_exp_bot), the build track, and a section for the workshop
-  sensor kit (XIAO ESP32-S3 + Wio-SX1262, Grove shield, BME680, HM3001) with the Making Sense Bali enclosure
-  link and the warning that stock Meshtastic firmware reads the BME680 but not the HM3001.
+- **A pack can add readouts to an issue.** A pack's `pack.yaml` can declare `readouts:` for an issue,
+  in the shape an issue file uses, and the node adds them after the issue's own while the pack is enabled: rows in
+  Figures, and words in a context issue's sentence. This is how a wild pack shows its numbers on Air, Heat or Coast
+  without editing `app/issues/` (`docs/decisions/2026-10-01-packs.md`, point 4). It adds and never replaces: the same
+  sensor and metric is not shown twice, and a readout naming no issue, or missing its unit or a label, is left out
+  with a line in the log. No shipped pack declares readouts, so `/issues` on every node is unchanged.
 
-- **2026-09-30 · A node says when a new version is out.** Once a day the node asks planetai.fab.city which
+- **A pack can declare a section of the dashboard.** A pack's `pack.yaml` can now list `sections:`, each
+  a stage, a title and the readouts it shows. The node fills them with its own rows and serves them in `/issues` as
+  `sections`, and the page draws each one as a band on Now with its own readout cards, and as columns on the wall
+  when the pack asks. The pack ships no code for the page: a script there could read the admin token, so only core
+  packs ship script (`docs/decisions/2026-10-01-packs.md`, point 5). A reading the node has no row for is not drawn,
+  and the band says how many have not arrived. No shipped pack declares a section, so every node's page is unchanged.
+  Also: a pack's malformed readout or section is now logged once, not on every `/issues` request.
+
+- **A pack written for a newer node is not loaded.** Every pack's `requires: { node: ... }` is now
+  enforced: a node that does not match leaves the pack out whole, rules and adapter alike, says so once in its log,
+  and `planetai packs` lists it under "not loaded" with the reason (`it needs a node >=0.80.0 and this node is
+  v0.75.8; planetai update first`). `planetai packs add` warns at once. A node that cannot name its release, such as
+  a developer's checkout, loads everything. The rule is `app/requires.py`, shared by the loader and the CLI, which
+  runs it on the node's own Python 3.9. Every shipped pack loads on v0.75.8, and a test keeps it that way.
+
+- **`planetai update` stops for a promoted wild pack.** When the version arriving ships a core pack
+  with the same id as a wild pack on the node (one `planetai packs add` fetched), the update stops before anything
+  moves, names the wild copy and where it came from, and asks for it to be deleted. Without this, the tarball path
+  unpacked the core pack's files over the wild copy and left a folder that was neither, and the git path refused the
+  pull and blamed untracked files. The check runs after the release is downloaded and verified and before it is
+  copied over the node, and on a git checkout after the fetch and before the pull. The backup has already been taken.
+
+- **A node says when a new version is out.** Once a day the node asks planetai.fab.city which
   version is current. When a newer one is out, the page's header says so ("PLANETAI v0.75.8 is out · on the
   node: planetai update"), `planetai doctor` shows it as an amber line, and Telegram says it once per version,
   after quiet hours. Nothing is installed: `planetai update` stays the household's to run, and it backs up
@@ -54,6 +56,20 @@
   City's host, so it is a setting under Set up → Sharing, `UPDATE_CHECK`, on by default. `off` means the node
   never asks. A node with no route out stays quiet and is not reported as broken. The Spanish and Bahasa
   message has not yet been read by a native speaker.
+- **The FAB26 experiment has a page.** `docs/FAB26_EXPERIMENT.md` is the participant-facing
+  instructions for the October–December workshop cohort experiment: the two all-hands calls, the biweekly
+  check-in through the experiment bot (@planetai_exp_bot), the build track, and a section for the workshop
+  sensor kit (XIAO ESP32-S3 + Wio-SX1262, Grove shield, BME680, HM3001) with the Making Sense Bali enclosure
+  link and the warning that stock Meshtastic firmware reads the BME680 but not the HM3001.
+
+- **Two command hints said nothing where they meant a word.** `planetai doctor` printed "a space after = makes
+  the shell run the value, and a  after it hands the container the comment": the `#` was in backticks inside
+  double quotes, so bash ran it as a command. `planetai agent` printed "note: command not found" the same way.
+  Both are escaped now, and a search found no others.
+- **A test no longer writes its git identity into the checkout it runs from.** `tests/test_ship_gate.sh` set a
+  placeholder author after a `cd` it never checked; when the `cd` failed, the placeholder landed in the real
+  repository's settings. The tests now take their identity from the environment and never write git config,
+  and the suite checks the invoking repository's identity is unchanged.
 
 ## v0.75.8 — 2026-09-29 — Set up in eight tabs, and an ask pane that answers faster
 
