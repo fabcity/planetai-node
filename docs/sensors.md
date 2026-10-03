@@ -40,7 +40,7 @@ EPA 2021 correction applied, raw kept as `pm25_raw`.
 > **Not polled in this version.** Both adapters are written and tested, but `sources.enabled()` does not register
 > them, so a host you set is used only to keep your own kit out of the Bali Air Dispatch ring. A regression to be
 > fixed, not a decision; until then the sensors a node reads on its own are a Smart Citizen kit, Meshtastic radios and,
-> through the `xiaomi-air` pack, Xiaomi purifiers.
+> through the `xiaomi-air` wild pack, Xiaomi purifiers.
 
 **Meshtastic** (`planetai meshtastic`). Telemetry from radios via the gateway's MQTT uplink. `MESH_INDOOR_NODES` marks the
 indoor ones. DIY pods publish to `planetai/sensors/<id>/<metric>` on the same broker.

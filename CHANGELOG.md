@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **2026-10-03 · xiaomi-air is a wild pack.** The Xiaomi purifier pack leaves the release and is listed at
+  fabcity/planetai-wild-packs, with its test. Only a household with Mi Home purifiers needs it, and it installs
+  python-miio, which is GPL-3.0-only. **If you use it:** after updating, run `planetai packs add xiaomi-air`. Your
+  `XIAOMI_PURIFIERS` line stays. A node that updates with git loses the folder on update, and the purifiers go
+  quiet until the pack is added. A node updated from a tarball keeps the old folder, which `packs add` will not
+  replace: delete `packs/xiaomi-air` first. Stored readings are untouched.
+
 - **2026-10-03 · Xiaomi purifier tokens are masked.** `XIAOMI_PURIFIERS` holds each purifier's device token, and the
   xiaomi-air pack did not list it under `secrets:`, so Set up and the agent's `settings_get` showed the tokens in full
   to anyone holding the admin token. The pack-secrets entry below was wrong to say no shipped pack holds a secret. It is listed
