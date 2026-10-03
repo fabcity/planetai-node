@@ -5,7 +5,7 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, readouts:, sections:
+  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, secrets:, readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
@@ -185,6 +185,18 @@ env:
 ```
 
 No padding after `=`: a value pasted after spaces becomes `VAR= value`, which the shell runs as a command.
+
+Every key a pack declares appears in its card under Set up → Packs. A key that is a secret (a token, a password, an
+API key) is listed under `secrets:`, and Set up then treats it like the node's own tokens: masked once saved, and
+never shown again, to the admin token or to the agent's settings tool. A key that is not listed is shown to anyone
+holding the admin token.
+
+```yaml
+env:
+  - "# camera: only if the bridge's API is protected"
+  - "CAMERA_WYZE_BRIDGE_TOKEN="
+secrets: [CAMERA_WYZE_BRIDGE_TOKEN]
+```
 
 A pack that needs a key or a service must log once and return nothing when it is missing. It must never take the node
 down. `packs/earth-engine` is the worked example: a dependency, a credential, four remote datasets, and it idles until

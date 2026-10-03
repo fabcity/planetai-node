@@ -411,8 +411,17 @@ def pack_settings() -> list[dict]:
             log.warning("settings: %s has a pack.yaml that will not parse (%s), so none of its "
                         "keys reach Set up", name, e)
             continue
+        # A pack names the keys that are secrets (`secrets: [CAMERA_WYZE_BRIDGE_TOKEN]`), and they are treated like the
+        # node's own tokens: masked once saved, even to the admin token and the agent's settings tool. Every pack key
+        # used to be published as plain text to anyone holding the admin token, a FIRMS key or a bridge token included.
+        # frozenset and a list, not set(): this module defines its own set(key, value), which shadows the builtin.
+        secrets = frozenset(k for k in m.get("secrets") if isinstance(k, str)) if isinstance(m.get("secrets"), list) else frozenset()
+        declared = []
         for key, default, help_ in _env_lines(m.get("env") or []):
-            rows.append({"key": key, "pack": name, "default": default, "help": help_})
+            declared.append(key)
+            rows.append({"key": key, "pack": name, "default": default, "help": help_, "secret": key in secrets})
+        for key in sorted(k for k in secrets if k not in declared):
+            log.warning("settings: %s lists %s under secrets: but declares no such key under env:", name, key)
     return rows
 
 
@@ -452,13 +461,16 @@ def describe(unlocked: bool = False, public: frozenset | set = PUBLIC) -> dict:
             # words where the node has none.
             by_key[k].update(pack=r["pack"], help=by_key[k]["help"] or r["help"],
                              default=by_key[k]["default"] if by_key[k]["default"] is not None else r["default"])
+            if r.get("secret") and not by_key[k]["secret"]:
+                by_key[k].update(secret=True, value=_mask(get(k, "")))
             continue
         v = get(k, "")
-        hide = not unlocked and k not in public
+        secret = bool(r.get("secret"))
+        hide = secret or (not unlocked and k not in public)
         out["runtime"].append({
             # restart False: _overlay_packs puts a GUI value into the environment the pack reads, so it is in
             # force at the pack's next run, within 20 s, like any RUNTIME key.
-            "key": k, "group": "packs", "label": k, "secret": False, "restart": False,
+            "key": k, "group": "packs", "label": k, "secret": secret, "restart": False,
             "help": r["help"], "value": _mask(v) if hide else v, "set": bool(v),
             "source": "gui" if k in db else ("env" if os.getenv(k) else "default"),
             "choices": None, "outward": k in OUTWARD,
