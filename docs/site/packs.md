@@ -135,7 +135,7 @@ refused here and named; on a running node the same mistake sends the raw templat
 
 Code reads `id` and `description` (the loader, `planetai packs`), `requires` (the loader and the CLI),
 `domain`, `readouts` and `sections` (the issue engine), `env` and `secrets` (Set up and `planetai packs
-install`), `pip` (`planetai packs install`) and `sources` (`tools/check_registry.py`). `needs` is for people.
+install`), `agent_scripts` (the `run_pack_script` tool), `pip` (`planetai packs install`) and `sources` (`tools/check_registry.py`). `needs` is for people.
 `kind` is overwritten from the presence of `adapter.py`.
 
 | field | used for |
@@ -148,6 +148,7 @@ install`), `pip` (`planetai packs install`) and `sources` (`tools/check_registry
 | `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of every pack folder's list |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; a comment line travels with the key under it. No space after `=` |
 | `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token |
+| `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open. `planetai run` runs every script either way |
 | `readouts: {air: [ … ]}` | numbers the pack adds to an issue, in the shape an issue file uses; shown in Figures, and in the sentence of a context issue. It adds, never replaces. See [PACKS.md](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#readouts-on-an-issue) |
 | `sections: [ … ]` | a band the pack declares on the dashboard as data, drawn with the page's own readout cards. See [A dashboard section](#a-dashboard-section) |
 | `needs: [api.bmkg.go.id]` | hosts the pack reaches |

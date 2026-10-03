@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **2026-10-03 · A wild pack's scripts reach an agent only when it says so** (#168). The agent's `run_pack_script`
+  ran any pack's script and handed back what it printed. A wild camera pack keeps motion off the readings on
+  purpose, and its `events` script printed a year of the household's motion to whoever asked. A wild pack's
+  scripts now reach an agent only when its pack.yaml lists them under `agent_scripts:`; the refusal says to run it
+  from the node's terminal, where `planetai run` runs every script as before. Core packs are unchanged, except that
+  an agent can no longer run a pack's `adapter.py` as if it were a script.
+
 - **2026-10-03 · A pack's secrets are masked like the node's own.** Every key a pack declared reached Set up as
   plain text, so a pack's API key or token was shown to anyone holding the admin token, and through the agent's
   settings tool. A pack now lists its secret keys under `secrets:` in its pack.yaml, and Set up masks them once

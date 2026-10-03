@@ -24,6 +24,8 @@ code pack: start from the core pack whose source looks most like theirs, and rea
 - `id:` in `pack.yaml` equals the folder name, and is not the name of a core pack (`ls packs/`).
 - `requires: { node: ">=0.76" }` if it uses `readouts:` or `sections:`; an older node ignores both silently.
 - A token or key goes in `env:` blank and its name under `secrets:`. Never a value, anywhere.
+- A script an agent should be able to run (a `verify`, a `status`) is named under `agent_scripts:`; a wild pack's
+  other scripts reach only the node's own terminal.
 - Every source it reads is an entry in the registry (`fabcity/awesome-fabcity-data`) and named in `sources:`.
   No entry yet: that repository's `AGENTS.md` says how to file one, as a `candidate`.
 - The README says where each threshold came from, which place it was written for, what it does not know, and its

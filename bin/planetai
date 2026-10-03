@@ -1022,7 +1022,11 @@ for head, rows in (("core", [p for p in d if p["id"] not in wild]), ("wild", [p 
     if rows:
         print("  " + head + ":")
         for p in rows:
-            print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10), " ")[:70]))' "$wild"
+            print("    %-16s %-5s %s" % (p["id"], p["kind"], (p.get("description") or "").replace(chr(10), " ")[:70]))
+            if head == "wild":
+                a = p.get("agent_scripts")
+                a = [s for s in a if isinstance(s, str)] if isinstance(a, list) else []
+                print("    %-16s agents may run: %s" % ("", ", ".join(a)) if a else "    %-16s agents run none of its scripts" % "")' "$wild"
   fi
   local id
   for id in $wild; do

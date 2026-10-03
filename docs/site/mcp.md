@@ -92,7 +92,7 @@ Start with `health_check`, then `status`.
 | **`act`** | `alert_id`, `note` (required), `agent="agent"` | records `stage: acted` for that alert with the agent as actor, and returns `{recorded, alert_id, by}`. **Writes** |
 | **`report_now`** | `agent="agent"` | writes and sends a report now. **Writes** |
 | **`settings_set`** | `changes: {KEY: value}`, `agent="agent"` | changes runtime settings; live within 20 seconds; a blank returns the key to `.env`. **Writes** |
-| **`run_pack_script`** | `pack`, `script`, `args?`, `agent="agent"` | runs `packs/<pack>/<script>.py` inside the container (15-minute limit) and returns exit code, stdout, stderr and `by`. **Runs code** |
+| **`run_pack_script`** | `pack`, `script`, `args?`, `agent="agent"` | runs `packs/<pack>/<script>.py` inside the container (15-minute limit) and returns exit code, stdout, stderr and `by`. A wild pack's script runs only if its pack.yaml lists it under `agent_scripts:`. **Runs code** |
 
 `act` refuses a blank note and any of the placeholders the repository once used in place of a person's words
 (`acted`, `acknowledged`, `done`, `ok`, `n/a`, `-`, `acted (via reticulum)`), and tells the agent to ask what
