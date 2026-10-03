@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-20388D?style=flat-square"></a>
-  <a href="CHANGELOG.md"><img alt="Version 0.75.3" src="https://img.shields.io/badge/version-0.75.3-171717?style=flat-square"></a>
+  <a href="CHANGELOG.md"><img alt="Version 0.76" src="https://img.shields.io/badge/version-0.76-171717?style=flat-square"></a>
   <img alt="Node #1 live" src="https://img.shields.io/badge/node%20%231-live%20in%20Bali-00A057?style=flat-square">
   <img alt="Containers: 2" src="https://img.shields.io/badge/containers-2-171717?style=flat-square">
   <img alt="Clouds required: 0" src="https://img.shields.io/badge/clouds%20required-0-171717?style=flat-square">
@@ -73,29 +73,18 @@ The documentation site is **[planetai.fab.city/docs](https://planetai.fab.city/d
 sidebar, search and the API reference, built from this repository by `tools/build_docs.py`. The files themselves:
 
 ```
-docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
+docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE · ARM64
           when it goes wrong       TROUBLESHOOTING
-          what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
-          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES
-          what is still owed       NEXT_RELEASE
+          what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI · MODELS
           radios and reachability  NETWORKING · MESHTASTIC
-          the experiments          FAB26_EXPERIMENT
-          the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
-          the earth pack           HANDOFF_earth_pack
-          nodes finding nodes     SPEC_discovery
-          deciding, and measuring it SPEC_decide
-          the dashboard's design    HANDOFF_dashboard_violations · design/shots/
-          the page redesign        HANDOFF_dashboard_redesign · design/shots/redesign/
-          reports and messages     HANDOFF_reports
-          the trust pack           HANDOFF_trust
-          the ring and the forecast HANDOFF_nearby_forecast
-          air, heat, land, coast   HANDOFF_issues · DOMAINS
-          the dashboard renderer  HANDOFF_dashboard_renderer · GUI
-          a model on the node      MODELS
-          three directions, picked HANDOFF_dashboard_directions · design/DIRECTIONS_2026-09 · design/REDESIGN_2026-09_ground
-          signing the releases     HANDOFF_signing
-          arm64, and the Pi        HANDOFF_arm64
-          proposed, not decided   SPEC_custody · SPEC_identity · SPEC_rho · decisions/
+          extending it             PACKS · PACK_IDEAS · SOURCES · DEVELOPING
+          testing a beta           BETA_TESTER_GUIDE · FAB26_EXPERIMENT
+          releasing it             NEXT_RELEASE · SIGNING
+          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide
+          proposed, then decided   proposals/ · decisions/
+          the documentation site   site/ (planetai.fab.city/docs)
+          the page's design rounds design/ (not shipped to nodes)
+          history                  archive/ (handoffs, reviews, plans: what was true then, not now)
 SECURITY.md       reporting a vulnerability, and the key a node checks an update against
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what
@@ -109,7 +98,7 @@ One person maintains it today, with a second holding access and a proposed scope
 ## Bring your own agent
 
 A node is a thing you operate, and most people who install one will do it with an agent beside them. This
-repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of six skills
+repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of seven skills
 in `skills/`, and `make lint` fails if a skill names a command or a path that does not exist. Paste this
 to your agent and nothing else:
 

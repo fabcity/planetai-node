@@ -1,9 +1,9 @@
 # Improvement plan — September 2026
 
 Written against `4f96a38` (main, `v0.41.2-92-g4f96a38`, the tree the v0.42 CHANGELOG entry describes),
-10 September 2026. It closes the 24 open findings of `docs/reviews/CODE_REVIEW_2026-09.md` and the 29 of
-`docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md`, minus the four reserved for prompt A.
-Status of every finding at this commit: `docs/reviews/RECONCILIATION_2026-09-09.md`.
+10 September 2026. It closes the 24 open findings of `docs/archive/reviews/CODE_REVIEW_2026-09.md` and the 29 of
+`docs/archive/reviews/CODE_REVIEW_2026-09-10_second_pass.md`, minus the four reserved for prompt A.
+Status of every finding at this commit: `docs/archive/reviews/RECONCILIATION_2026-09-09.md`.
 
 **28 pull requests, about 10 working days (≈75 h) of honest work.** Of that, 2 days are blocked on a
 decision and 3½ on `docs/SPEC_custody.md` being accepted, so roughly 4½ days can start immediately after

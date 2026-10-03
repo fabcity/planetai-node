@@ -32,7 +32,7 @@ product in, trash out, and the one it builds DIDO, data in, data out: materials 
 moves between cities. On a node, raw readings stay on the machine and only summaries travel, to a parent node
 if you name one, to the [Fab City Index](https://index.fab.city), and to the models that need ground truth.
 
-In v0.75.3 a node reads air and heat from the sensors in and around the house, and land and coast from public
+In v0.76 a node reads air and heat from the sensors in and around the house, and land and coast from public
 and satellite sources. Water and soil have no pack yet. The `make` pack names the nearest fab lab in a
 sentence, and no node has yet handed a job to a workshop. What runs today is the loop from a reading to a
 person acting and to a measured result; the loop from a reading to something made nearby is the direction.
@@ -70,7 +70,9 @@ Raw readings stay on the machine. A parent node, if you name one, receives hourl
 this node's alerts. The daily open export carries hourly means with your own sensors named by role, the Index
 cells, the first line of each alert and ρ, under CC BY 4.0. A node that nobody has told otherwise sends no
 question to a model outside your network (`AGENT_PREFER=private` is the default), and the dashboard fetches no
-live map tiles until a keeper sets `MAP_TILES=on`. The full list is in
+live map tiles until a keeper sets `MAP_TILES=on`. Once a day it asks planetai.fab.city whether a newer version
+is out, which shows the house's internet address and nothing else about it; `UPDATE_CHECK=off` stops that. The
+full list is in
 [How it works](how-it-works.md#what-leaves-the-machine-and-what-never-does).
 
 ## What a node is not
@@ -104,7 +106,7 @@ alive and the alerts correct."
 
 ## What these pages are
 
-This is the reference for the node at v0.75.3, read from the code of that version. The pages under *Get
+This is the reference for the node at v0.76, read from the code of that version. The pages under *Get
 started* and *Operate* are for the person running one. *Alerts, reports and ρ*, *Packs*, *Dashboard* and
 *Agents* explain what the node does and how to change it. *Reference* is the [HTTP API](api.md), the
 [database](schema.md) and the [federation contracts](federation.md). *Project* holds the architecture and the

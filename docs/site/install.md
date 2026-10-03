@@ -101,7 +101,7 @@ inside which a sensor counts as this node's own. Without a sensor the node still
 satellite air model for your district and forty years of climate for your coordinates; see
 [Before a sensor](before-a-sensor.md).
 
-> **Gap in v0.75.3.** The AirGradient and PurpleAir adapters exist in `app/sources.py` and are tested, but this
+> **Gap in v0.76.** The AirGradient and PurpleAir adapters exist in `app/sources.py` and are tested, but this
 > version does not register them for polling; the AirGradient hosts you enter are used to keep your own kit out of the
 > Bali Air Dispatch ring and for nothing else. A Smart Citizen kit is read. Details on the [sensors](sensors.md)
 > page.
@@ -208,8 +208,8 @@ buy. A Mac works ([Mac mini](mac-mini.md) has the settings that stop it sleeping
 database runs natively. Windows through WSL2.
 
 A Raspberry Pi passes the preflight since v0.63, because the database image is now published for arm64, and
-the preflight row says `arm64 (untested on hardware — docs/HANDOFF_arm64.md)`. Untested is the word that
-matters. Nobody has run a node on a Pi, a Jetson or a reComputer yet, and `docs/HANDOFF_arm64.md` is the test
+the preflight row says `arm64 (untested on hardware — docs/ARM64.md)`. Untested is the word that
+matters. Nobody has run a node on a Pi, a Jetson or a reComputer yet, and `docs/ARM64.md` is the test
 plan for whoever goes first. If that is you: 64-bit Raspberry Pi OS, 8 GB, and boot from an NVMe hat or a USB
 SSD, never an SD card, because Postgres writes on every commit and an SD card dies under that within a year.
 The floors, with where each number comes from, are on [Platforms](platforms.md).

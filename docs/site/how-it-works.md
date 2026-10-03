@@ -1,7 +1,7 @@
 # How it works
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
-one Python process that answers the HTTP API on port 8080 and runs four loops in the background, a fifth when
+one Python process that answers the HTTP API on port 8080 and runs five loops in the background, a sixth when
 the Reticulum bridge is on. An `agent` container for the Telegram bot and a Reticulum bridge are optional.
 Everything a node does is one of those loops or one of the API's answers, and this page follows a reading
 through the whole of it. The node's own description of itself, the one it hands every agent that connects,
@@ -98,6 +98,7 @@ the thing receiving the answer.
 | rules and report | 60 s | writes the [report](report.md) if its hour is due, then runs every rule as the read-only role `planetai_ro` |
 | push aggregates | hourly | if `PARENT_API_URL` is set, posts the last two hours of hourly means to the parent's `/aggregates` |
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
+| release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city once a day which version is current, says so in `/health` and the page's header, and once per version on Telegram. It installs nothing |
 | Reticulum | 300 s | only with `RETICULUM_URL` set: asks the bridge for its health and the peers it has heard, for `/health.reticulum`. An `act <id>` message is turned into `POST /actions` by the bridge itself |
 
 One more thread runs when `MQTT_HOST` is set. It subscribes to the broker for Meshtastic radios and DIY
@@ -125,7 +126,7 @@ portal; and anywhere, sampling a global model at its coordinates. Same contracts
 Aggregation of Index cells stops at Region. Bioregion and Planet enter as boundary conditions, context
 published downward and never rolled up, which is the Index's own methodology and the architecture keeps it.
 
-The node also carries a pinned snapshot of the `awesome-fabcity-data` registry, 238 entries at `1010aa0`,
+The node also carries a pinned snapshot of the `awesome-fabcity-data` registry, 268 entries at `88f5c73`,
 served at `/sources` and listed by `planetai sources`. Most of it is what this place could measure. Some of
 it is where people could go to make or fix something, and the `make` pack turns the nearest fab lab into a
 sentence when `PACKS_ALLOW_CODE=1` and `MAKE_ENABLED=1` are both set.
@@ -137,7 +138,9 @@ Raw readings stay. What travels is a summary: hourly means and alert timestamps 
 (`indoor-1`, `outdoor-2`), the Index cells, the first line of each alert, ρ and the centre of the node's
 resolution-8 cell (not its point), under CC BY 4.0. The export is readable at every [sharing level](sharing.md).
 
-Three more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
+Once a day the node asks planetai.fab.city which version is current. The request carries nothing about the
+house, but it shows the house's internet address to Fab City's host; `UPDATE_CHECK=off` in Set up → Sharing
+stops it. Three more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
 node announces a coarse H3 cell on the Reticulum network: resolution 3 by default, never finer than 6. With
 `MAP_TILES=on` the browser showing the dashboard fetches live map tiles at resolution 8 and coarser, and each
 tile request "tells a tile server which square of the planet this house is looking at". And a question to
@@ -164,6 +167,7 @@ The shape of the building behind `/place/geojson` needs a token at every sharing
 | whether an act needs a decision first | `DECISION_REQUIRED` (default `0`) |
 | how much of the page opens, and in what order | `UI_MODE` (`simple`, `advanced`, `learn`) and `UI_LAYOUT` |
 | whether the page may fetch live tiles | `MAP_TILES` (default `off`) |
+| whether the node asks which version is current | `UPDATE_CHECK` (default `on`) |
 | whether the bot and the ask pane may use an online model | `AGENT_PREFER` (default `private`) |
 | whether the node names the nearest fab lab | `MAKE_ENABLED` (default `0`) |
 | who may read it | `SHARE_LEVEL` and the tokens; see [Sharing and security](sharing.md) |
@@ -176,7 +180,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.75.3. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.76. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

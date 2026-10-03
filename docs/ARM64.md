@@ -1,4 +1,4 @@
-# Handoff — arm64: the wall is down, now somebody has to plug one in
+# arm64: the wall is down, now somebody has to plug one in
 
 Two sentences, and the whole of this document is about keeping them apart:
 

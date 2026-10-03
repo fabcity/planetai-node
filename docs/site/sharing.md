@@ -125,7 +125,7 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.75.3.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
+> **Gap in v0.76.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
 > full-precision coordinates to Open-Meteo; only the two core adapters round them.
 
 ## Signed updates
@@ -148,7 +148,7 @@ this download is not signed by the PLANETAI release key. Nothing was installed a
 `planetai version` prints what this node trusts, and `planetai doctor` says whether the last update checked:
 
 ```
-planetai-node v0.75.3  ·  a Fab City project  ·  <name> @ <city>
+planetai-node v0.76  ·  a Fab City project  ·  <name> @ <city>
   updates signed by  fabcity  SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4
 ```
 
@@ -158,9 +158,6 @@ bytes with the same signature, at `planetai.fab.city/node0/get` and as a GitHub 
 `PLANETAI_GET` points an install at the second. `PLANETAI_UNSIGNED=1` installs a tarball nobody signed,
 with a red warning, and the doctor's signature row stays red until a signed update. How to report a problem
 is in [SECURITY.md](../../SECURITY.md).
-
-> **Gap in v0.75.3.** SECURITY.md still shows the fingerprint as "not yet issued". The key was issued on
-> 19 September 2026, and `tools/allowed_signers` carries the fingerprint above.
 
 ## Reaching it from elsewhere
 

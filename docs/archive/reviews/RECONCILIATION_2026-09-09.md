@@ -3,7 +3,7 @@
 Reconciled at `4f96a38` (main, `v0.41.2-92-g4f96a38`), clean tree, 10 September 2026.
 
 > **Update, 10 September.** The plan was blocked on the missing review. Tomas's answer was to write it
-> rather than reconstruct or fabricate it, so `docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md` now
+> rather than reconstruct or fabricate it, so `docs/archive/reviews/CODE_REVIEW_2026-09-10_second_pass.md` now
 > exists — 28 findings at `4f96a38`, with the ten IDs this brief pinned keeping their numbers. The section
 > below is left as written, because how a missing document was established still matters; the 54-row table
 > is superseded and says so.
@@ -12,20 +12,20 @@ Reconciled at `4f96a38` (main, `v0.41.2-92-g4f96a38`), clean tree, 10 September 
 
 The task named two reviews and 79 findings. **Only one review exists.**
 
-`docs/reviews/CODE_REVIEW_2026-09.md` is here — 25 findings, F1–F25, written at `9d0ac57`, committed as
+`docs/archive/reviews/CODE_REVIEW_2026-09.md` is here — 25 findings, F1–F25, written at `9d0ac57`, committed as
 `b075471` ("docs: code review, September 2026"). Those 25 are reconciled below, line by line.
 
-`docs/reviews/CODE_REVIEW_2026-09-09_omarchy.md` — the 54 findings A1–A15 · S1–S17 · P1–P12 · D1–D10 — is
+`docs/archive/reviews/CODE_REVIEW_2026-09-09_omarchy.md` — the 54 findings A1–A15 · S1–S17 · P1–P12 · D1–D10 — is
 not in this repository, in any branch, in any remote, or anywhere on this machine. Searched:
 
 ```
 $ find . -iname '*omarchy*' -not -path './.git/*'                      (nothing)
-$ git log --all --oneline --name-only -- 'docs/reviews/*omarchy*'      (nothing)
-$ git fetch --all --tags && git log --all -- 'docs/reviews/*'
-    e3f6e1e  docs/reviews/AGENT_READY_2026-09.md
-    b075471  docs/reviews/CODE_REVIEW_2026-09.md
-    3ed7a1a  docs/reviews/INSIGHTS_DESIGN_2026-09.md
-    7e4b2b9  docs/reviews/BETA_READINESS_2026-09.md
+$ git log --all --oneline --name-only -- 'docs/archive/reviews/*omarchy*'      (nothing)
+$ git fetch --all --tags && git log --all -- 'docs/archive/reviews/*'
+    e3f6e1e  docs/archive/reviews/AGENT_READY_2026-09.md
+    b075471  docs/archive/reviews/CODE_REVIEW_2026-09.md
+    3ed7a1a  docs/archive/reviews/INSIGHTS_DESIGN_2026-09.md
+    7e4b2b9  docs/archive/reviews/BETA_READINESS_2026-09.md
 $ grep -rlE "^### (A[0-9]+|S[0-9]+|P[0-9]+|D[0-9]+) ·" --include="*.md" ~/Documents   (nothing)
 $ git branch -a         (11 local, 8 remote — none holds it)
 $ git stash list        (empty)
@@ -36,7 +36,7 @@ the 54 are partly known because the task itself describes them (A1, A2, A3, A5, 
 eight of those ten were reproduced and are recorded in full. The other 44 have no text, so they have no
 file, no line, no claim and no proposed fix — there is nothing to check against HEAD.
 
-**`docs/plans/IMPROVEMENT_PLAN_2026-09.md` was not written on the 9th, for these reasons.** Its structure comes from the missing
+**`docs/archive/plans/IMPROVEMENT_PLAN_2026-09.md` was not written on the 9th, for these reasons.** Its structure comes from the missing
 review's §6 (the six group headings), its "do not touch" list comes from both reviews' over-engineering
 sections, and 54 of the findings its PRs must close are unknown. A plan built on 44 invented findings, in a
 repository whose rule is that every claim carries the line that proves it, would be worse than no plan.
@@ -96,7 +96,7 @@ gate: `tests/test_sudo_prompt.sh` no longer asserts a line number. It walks the 
 
 **Superseded by a second pass, 10 September.** Tomas's instruction on reading the above was to write the
 missing review rather than reconstruct it or fabricate it. That review is
-`docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md`, written against `4f96a38` — this commit — so every
+`docs/archive/reviews/CODE_REVIEW_2026-09-10_second_pass.md`, written against `4f96a38` — this commit — so every
 finding in it is by definition open, and there is nothing to reconcile. It carries **28** findings, not 54:
 the ten IDs this brief pinned by content keep their numbers and their claims, eighteen were found in this
 pass, and nothing was added to reach a number.
@@ -542,7 +542,7 @@ Three, with the run or the read that proves each.
 ### 1 · `version_gap` still runs before the preflight, which the September review told them to fix before committing
 
 `bin/planetai:261` is `version_gap`; the preflight block is `bin/planetai:267-272`. The first review read
-this hunk while it was uncommitted (`docs/reviews/CODE_REVIEW_2026-09.md`, §"The withdrawn hunk") and left
+this hunk while it was uncommitted (`docs/archive/reviews/CODE_REVIEW_2026-09.md`, §"The withdrawn hunk") and left
 one instruction:
 
 > **One thing to change before committing:** it runs *before* `tools/preflight.sh` (line 242). A machine
@@ -621,4 +621,4 @@ missing review turns up. What is blocked on it:
   F8's, F9's and F11's proposed fixes are said to be corrected there, which changes what those PRs do.
 - Part 3's decisions 2 and 4, which the brief leaves owed and which quote that review's F12/P5 and D-series.
 
-Supply `docs/reviews/CODE_REVIEW_2026-09-09_omarchy.md` and the rest follows from what is above.
+Supply `docs/archive/reviews/CODE_REVIEW_2026-09-09_omarchy.md` and the rest follows from what is above.

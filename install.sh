@@ -332,7 +332,7 @@ elif ! need docker && need podman; then
   # alone — works unchanged, which is why this is two lines of instruction and not a refactor.
   #
   # NOT TESTED ON A NODE. No CI leg runs under Podman and nobody has carried a node on it, so this says
-  # what to do and stops rather than installing something and claiming it works. docs/HANDOFF_arm64.md
+  # what to do and stops rather than installing something and claiming it works. docs/ARM64.md
   # carries what proving it would take.
   warn "Podman is installed here and Docker is not. Not installing Docker over it."
   echo "     The node drives a runtime through the 'docker' command, and Podman can provide one:"

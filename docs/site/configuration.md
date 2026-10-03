@@ -2,8 +2,8 @@
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
-may leave the house for an online model. This page lists every setting a node has at v0.75.3, where its
-value comes from, and what each group lets the node do. It was read against the code of v0.75.3: 57
+may leave the house for an online model. This page lists every setting a node has at v0.76, where its
+value comes from, and what each group lets the node do. It was read against the code of v0.76: 58
 runtime keys, 16 bootstrap keys, 21 keys declared by packs, and the keys read only from the environment.
 
 ## How a setting is read
@@ -38,7 +38,9 @@ interval. The dashboard shows these read-only. To change one, edit `.env` and ru
 A pack lists its own keys under `env:` in its `pack.yaml`, with a comment above each. `GET /settings`
 shows every installed pack's keys, whether the pack is switched on or not, in the group `packs`, with
 the key as its label, the pack's default and help, and `restart: false`. They are there so a keeper can
-see a pack's switch before turning it on.
+see a pack's switch before turning it on. A key the pack also lists under `secrets:` in its `pack.yaml` is
+masked like the node's own tokens, once saved and to everyone; every other pack key is shown in full to the
+admin token and to the agent's `settings_get`. No shipped pack lists one.
 
 They are set like a runtime key: from Set up, with `planetai config set`, or with `PUT /settings`, which
 accepts any key an installed pack declares, switched on or not, and still answers 400 for a key nothing
@@ -62,7 +64,7 @@ container restarts:
 | `NODE_KIND` | `/presence`, its only reader |
 | `ACT_TOKEN`, `RETICULUM_ALERT_DESTINATIONS` | the Reticulum bridge, which reads its own environment. The app itself reads the `ACT_TOKEN` override |
 
-The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v0753).
+The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v076).
 
 ### Keys read only from the environment
 
@@ -73,7 +75,7 @@ setting this node has. Edit them in `.env` and restart. The tables below mark th
 
 ### Validated values
 
-Most settings are free text on purpose: a node has to keep running through a typo. Eight keys refuse a
+Most settings are free text on purpose: a node has to keep running through a typo. Nine keys refuse a
 value they cannot honour, because a report interval the scheduler cannot keep would make the node silent
 instead of wrong.
 
@@ -201,7 +203,7 @@ data, what it loads.
 | `UI_ASK` | `on` | `on`, `off` | `on` = a toggle on the dashboard opens the ask pane, which asks the model Set up → Model names about what the page shows, reads, changes nothing and keeps nothing. `off` = no toggle and no pane. See [Ask the node](ask.md). | runtime · public |
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards. Managed by the dashboard's Arrange mode; blank restores the default. Readable by every screen in the house at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | Live satellite and street tiles under the cells. Each tile request tells a tile server which square of the planet this house is looking at. `off` = tiles from the node's local copy of OpenStreetMap; `on` = live tiles. A keeper turns this on in Set up. | runtime · public |
-| `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). `off` = the node never asks. | runtime · public |
+| `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). `off` = the node never asks. | runtime · public · outward |
 | `STATIONS_SHOWN` | `3` | integer, `0` = all | How many of the neighbourhood's stations the dashboard lists, nearest first. This node's own hardware is always listed and never counted. Nothing is discarded: the page says how many it is not listing. To collect fewer stations, turn `BAD_RADIUS_KM` down instead. | runtime · public |
 
 ## What it reads
@@ -211,9 +213,9 @@ data, what it loads.
 | `SC_DEVICES` | blank | comma-separated kit ids | Smart Citizen kits read directly from the cloud API, the number in `smartcitizen.me/kits/<id>`. Always treated as yours, at this address. Any id enables the adapter. | runtime |
 | `SC_USER` | blank | username | Discover every kit on a Smart Citizen account instead of listing ids. Indoor or outdoor comes from each kit's own setting. Also used by `/nearby?audit=1`. | runtime |
 | `SC_EXCLUDE` | blank | comma-separated kit ids | Account kits that belong to another site. | runtime |
-| `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.75.3 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v0753). | runtime |
-| `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.75.3. | runtime |
-| `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.75.3. | runtime · public |
+| `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.76 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v076). | runtime |
+| `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.76. | runtime |
+| `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.76. | runtime · public |
 | `BAD_ENABLED` | `0`; `.env.example` and the bali preset ship `1` | `1`, `0` | Bali only: the island's public stations from Bali Air Dispatch as outdoor reference. Needs `NODE_LAT`. `planetai setup` sets `0` outside Bali. | runtime · public |
 | `BAD_RADIUS_KM` | `15`; bali preset `8` | km | How far out the ring of other people's stations reaches. Also `/nearby.radius_km`. | runtime · public |
 | `BAD_MIN_SEPARATION_M` | `150` | metres | A station closer than this to the node is assumed to be the node's own hardware, not a neighbour. | runtime · public |
@@ -230,7 +232,7 @@ data, what it loads.
 | `MQTT_USER`, `MQTT_PASS` | blank | strings | Broker credentials. `planetai meshtastic` generates them and writes the broker's password file. | env only · secret |
 | `SOURCES_DIR` | `/app/data/sources` | path inside the container | Where the app reads the vendored source registry that `GET /sources` serves. Mounted read-only from `./data`. | env only |
 
-> **Gap in v0.75.3.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
+> **Gap in v0.76.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
 > only keeps those units out of the Bali Air Dispatch ring. The AirGradient and PurpleAir adapters exist
 > and are tested; the node does not register them for polling.
 
@@ -268,9 +270,9 @@ written once.
 |---|---|---|---|---|
 | `REPORT_EVERY` | blank = `6` | `3`, `4`, `6`, `8`, `12`, `24` | Hours between reports. `6` is four a day. Each accepted value divides 24, so the rhythm does not walk round the clock. Also the default window of `/report/bundle`. | runtime · public |
 | `REPORT_ANCHOR` | blank = `6` | `0` to `23` | The local hour the rhythm starts from. With a 6-hour interval, `6` gives 06, 12, 18 and 00. | runtime · public |
-| `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.75.3. | runtime · public |
+| `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.76. | runtime · public |
 
-> **Gap in v0.75.3.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.76.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 > Changing it changes nothing.
 
 ## How it closes a loop
@@ -361,11 +363,11 @@ environment, where the node puts the database value. A code pack reads none of t
 | `THINGDATA_INSTANCES` | thingdata | blank | The ThingData servers to read, `slug=url`, comma-separated. Blank and the pack idles. |
 | `THINGDATA_SCALE` | thingdata | `city` | The scale of what those servers cover, `city` or `region`. |
 | `THINGDATA_MAX` | thingdata | `5000` | Refuse to count a collection larger than this (one page is 100 rows), rather than report a truncated total as a total. |
-| `XIAOMI_PURIFIERS` | xiaomi-air | blank | Purifiers on your LAN, comma-separated, each `name@ip=token` (the name and `name@` are optional). The tokens come from xiaomi-cloud-tokens-extractor, one Mi Home login, once. |
+| `XIAOMI_PURIFIERS` | xiaomi-air | blank | Purifiers on your LAN, comma-separated, each `name@ip=token` (the name and `name@` are optional). The tokens come from xiaomi-cloud-tokens-extractor, one Mi Home login, once. The pack does not list the key under `secrets:`, so the tokens show in full to the admin token. |
 | `FORECAST_BMKG` | forecast | `1` | Read BMKG, Indonesia's meteorological agency. |
 | `FORECAST_BMKG_ADM4` | forecast | blank | The village code BMKG needs for this point. `planetai run forecast verify` proves it resolves to somewhere near the node. |
 | `FORECAST_OPENMETEO` | forecast | `0` | Read Open-Meteo. It works anywhere, but its free tier is non-commercial only, so it is the operator's decision. Off until you turn it on. |
-| `FORECAST_POLL_HOURS` | forecast | `6` | Declared as how often to ask. Nothing reads it in v0.75.3. |
+| `FORECAST_POLL_HOURS` | forecast | `6` | Declared as how often to ask. Nothing reads it in v0.76. |
 | `EARTH_RADIUS_M` | earth | `5000` | Half-width of the square around the node. 5000 is a 10 km square, about 64 MB on disk and 103 MB pulled per year. Also `/earth.radius_m`. |
 | `EARTH_YEARS` | earth | blank = every year | Which years to fetch, comma-separated. The dataset has 2017 to 2025. |
 | `PLACE_RADIUS_M` | place | `1000` | The radius around the node to describe from OpenStreetMap. Also `/place/geojson.radius_m`. |
@@ -375,7 +377,7 @@ environment, where the node puts the database value. A code pack reads none of t
 | `EE_KEY_FILE` | earth-engine | `/app/config/ee-key.json` | The service-account JSON key; copy it to `config/ee-key.json` on the node. Also a runtime key. |
 | `COAST_MAX_KM` | coast | `30` | Refuse to report if the nearest ocean grid cell is further away than this, in km. Also a runtime key (public): the override moves both the dashboard's drawn footprint and the adapter's refusal. |
 
-> **Gap in v0.75.3.** `FORECAST_POLL_HOURS` is declared and read by nothing.
+> **Gap in v0.76.** `FORECAST_POLL_HOURS` is declared and read by nothing.
 
 `OVERPASS_URL` (default `https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) is
 read by the place pack but declared in no `pack.yaml`, so it is `env only`.
@@ -402,7 +404,7 @@ preset guesses `NODE_ISSUES`: change it, because what matters here is decided by
 `planetai setup` picks the preset itself when the geocoded place falls inside the bali, barcelona, boston
 or santiago bounding box.
 
-## Known gaps in v0.75.3
+## Known gaps in v0.76
 
 - `AIRGRADIENT_HOSTS` and `PURPLEAIR_HOSTS` are declared and the adapters exist and are tested, but the
   node does not register them for polling. `AIRGRADIENT_HOSTS` is used only to keep those units out of
@@ -414,6 +416,8 @@ or santiago bounding box.
   and restart.
 - `ACT_TOKEN` and `RETICULUM_ALERT_DESTINATIONS` set from the dashboard do not reach the Reticulum bridge,
   which reads its own environment. Set them in `.env` and restart the bridge.
+- `XIAOMI_PURIFIERS` carries device tokens and is not listed under `secrets:` in the xiaomi-air pack, so Set up
+  and `settings_get` show it in full to anyone holding the admin token.
 - `FCI_PUBLISHER`, `ALLOWED_CITIES` and `PEERS` are named in other documents and are not present in this
   code.
 

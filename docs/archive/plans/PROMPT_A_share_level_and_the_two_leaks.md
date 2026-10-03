@@ -2,7 +2,7 @@
 
 **Branch:** `share-level-and-the-two-leaks` · **release:** v0.43 · **written against** `4f96a38`, 10 September 2026.
 
-This is one pull request. It lands **before** PR 1 of `docs/plans/IMPROVEMENT_PLAN_2026-09.md`, and it is the
+This is one pull request. It lands **before** PR 1 of `docs/archive/plans/IMPROVEMENT_PLAN_2026-09.md`, and it is the
 only PR that may touch `app/main.py` until PR 6 — from PR 1 onward the improvement plan owns that file and
 you are the exception. Do not do anything the plan lists; do not do anything this prompt does not list.
 
@@ -28,8 +28,8 @@ PR 1). And nothing in the improvement plan's "do not touch" list.
 ## Findings this closes
 
 F10, F11, A7, A12, and SPEC's argument-from-absence. Full text and the transcripts:
-`docs/reviews/CODE_REVIEW_2026-09.md` (F10, F11) and
-`docs/reviews/CODE_REVIEW_2026-09-10_second_pass.md` (A7, A12). Do not re-derive them; they were
+`docs/archive/reviews/CODE_REVIEW_2026-09.md` (F10, F11) and
+`docs/archive/reviews/CODE_REVIEW_2026-09-10_second_pass.md` (A7, A12). Do not re-derive them; they were
 reproduced on `pai-clean` and the lines are current.
 
 ---

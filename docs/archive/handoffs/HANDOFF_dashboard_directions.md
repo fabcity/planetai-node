@@ -73,10 +73,10 @@ wireframes are `?view=network`, `?view=setup`, `?view=arrange`.
 Every render is also a JPEG, at one device pixel, in
 `planetai-design/prototypes/dashboard-directions/shots/<a…i>/` — `_fold.jpg` is the first screen
 and `_full.jpg` the whole page. The shipped page, measured the same way on the same afternoon, is the
-baseline in [`docs/design/REDESIGN_2026-09_ground.md`](design/REDESIGN_2026-09_ground.md).
+baseline in [`docs/design/REDESIGN_2026-09_ground.md`](../../design/REDESIGN_2026-09_ground.md).
 
 The argument, reader by reader, and every number:
-[`docs/design/DIRECTIONS_2026-09.md`](design/DIRECTIONS_2026-09.md).
+[`docs/design/DIRECTIONS_2026-09.md`](../../design/DIRECTIONS_2026-09.md).
 
 ---
 

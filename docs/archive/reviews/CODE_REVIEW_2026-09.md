@@ -188,7 +188,7 @@ which publishes nothing. Both host-side callers use `localhost:4243`:
 - `bin/planetai:518` is the doctor's `reticulum bridge up` check
 
 The app is fine — `RETICULUM_URL=http://reticulum:4243` (`bin/planetai:781`) is container-network. So the
-bridge works and the CLI says it doesn't. `docs/reviews/BETA_READINESS_2026-09.md:336` records the address
+bridge works and the CLI says it doesn't. `docs/archive/reviews/BETA_READINESS_2026-09.md:336` records the address
 being read out of the log, not out of `/health`, which is consistent with the curl having failed then too.
 
 **Shorter diff:** `ports: ["4242:4242", "127.0.0.1:4243:4243"]`.
@@ -658,7 +658,7 @@ Nothing else came out dead. Specifically checked and found **live**:
   inside the style block itself).
 - All 19 MCP tools in `app/agent.py` are listed in `bin/planetai:1050` and `docs/DEVELOPING.md:52`, and
   `tools/check_docs.py:155` gates the count in words. The "17" in the prompt is from
-  `docs/reviews/BETA_READINESS_2026-09.md`, which records v0.30 and is correct about v0.30.
+  `docs/archive/reviews/BETA_READINESS_2026-09.md`, which records v0.30 and is correct about v0.30.
 - `settings.RETIRED` is not dead: `tools/check_docs.py:43` requires the changelog and the tester guide to
   keep naming those keys, on purpose.
 

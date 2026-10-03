@@ -158,7 +158,7 @@ stopped stove from an opened door. In this version every rule is an event with a
 an open act-level alert as *current* only while its condition still holds (the house over the line, or the
 alert under two hours old), and otherwise says the reading came back on its own and the alert is still open.
 Turning conditions into their own kind of rule, with a reminder at 30 minutes and at two hours and then
-silence until the next report, is proposed in `docs/HANDOFF_reports.md` and not built. What the node does
+silence until the next report, is proposed in `docs/archive/handoffs/HANDOFF_reports.md` and not built. What the node does
 have is the derived `measured` stage above and `GET /effect`, which counts per rule how many acts were
 followed by the condition stopping; neither is a `recovery` block.
 

@@ -1,12 +1,13 @@
 # Next release — collecting
 
-> **Shipped through v0.75.3 (27 September 2026).** v0.63 to v0.66 took the arm64 database image, the
+> **Shipped through v0.76 (2 October 2026).** v0.63 to v0.66 took the arm64 database image, the
 > wire-format version strings, `AGENT_PREFER=private` by default, the local model's read-and-act surface,
 > Spanish (#67), the registry's `adapter`, the first act sources, `packs/make` and `MAKE_ENABLED`. v0.63
 > broke rule 3 below and said so in its CHANGELOG. **v0.71 shipped item 1**, the interface redrawn
 > (PR #106); v0.75 redrew the lead from `hero`, cut simple mode to three questions and added the ask pane.
-> The other releases in between were work this page did not list. What is left on this page is what is
-> still owed.
+> The other releases in between were work this page did not list. v0.76 (2 October) made packs core or wild
+> (`docs/decisions/2026-10-01-packs.md`): `planetai packs add`, readouts, declared sections and `requires:`
+> enforced; none of it was an item here. What is left on this page is what is still owed.
 
 Changes asked for after v0.60 and not yet built. Tomas is collecting. Each item says what was asked,
 what it touches, and what somebody picking it up needs to know that is not obvious from the code.
@@ -169,13 +170,16 @@ is. An evening's work to answer properly, and nothing shipped to households unti
 
 **Asked, September 2026.** More of what a node can read. Three were in flight when this was written and
 they are the pattern, not the exception: `xiaomi-air` (LAN purifiers) and `thingdata` (a repair commons,
-PR #70) shipped in v0.61, and `earth` (AlphaEarth, nine years a square) is on main.
+PR #70) shipped in v0.61, and `earth` (AlphaEarth, nine years a square) has shipped since.
 
 **A source is a pack, and the pack contract is the whole of the discipline.** `pack.yaml` declares
 `metrics`, `scales`, `requires: {node: ">=x"}`, its `env:` keys and, for a code pack, its `pip:` line;
 `channels.yml` declares each channel's *role* — `ambient`, `enclosure`, `device_health`, `derived`,
 `index` — which is what stops a radio's own warm box being pooled into the street's temperature;
 `cells.yml` is what it may publish; `rules.yml` is what it may say. Nothing new is needed to add one.
+
+These are the bars for a **core** pack, one that ships in the release. A pack for one place is wild: it clears its
+own tests and the weekly check at fabcity/planetai-wild-packs, and is merged nowhere here.
 
 **What a new source has to clear before it is merged, in this order:**
 
