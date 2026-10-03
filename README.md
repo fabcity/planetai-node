@@ -45,7 +45,7 @@ satellite sources; water and soil have no pack yet, and no node has handed a job
 
 ## What it does
 
-- **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a pack; the AirGradient and
+- **Connects every scale.** Sensors on WiFi (Smart Citizen, and Xiaomi purifiers through a wild pack; the AirGradient and
   PurpleAir adapters are written and not polled in this version), radios over LoRa where there is no WiFi (Meshtastic),
   public stations nearby, the city's open-data portal, Copernicus atmosphere and ocean models, Earth Engine's view of the
   land. One schema from the house to the planet.
@@ -120,7 +120,7 @@ app/       main.py · sources.py · index.py · issues/ · packs.py · settings.
            static/
 bin/       planetai, the command line
 packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place ·
-           nearby · season · forecast · make · posidonia · thingdata · xiaomi-air · example-cooking-hours
+           nearby · season · forecast · make · posidonia · thingdata · example-cooking-hours
 config/    rules.yml · channels.yml · mosquitto · reticulum
 tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
 tests/     offline suites
