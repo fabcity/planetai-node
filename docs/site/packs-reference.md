@@ -14,7 +14,6 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | pack | kind | domain | rules | report | cells | scripts | settings |
 |---|---|---|---|---|---|---|---|
 | `air-quality` | data | air | 4 act, 2 warn | — | 3 | — | — |
-| `xiaomi-air` | code | air | 1 warn | — | — | — | `XIAOMI_PURIFIERS` |
 | `heat` | data | heat | 2 act, 1 info | — | 1 | — | — |
 | `nearby` | data | air | 1 act, 1 info | `alone` | — | `stations` `status` `verify` `backfill` | `BAD_*` |
 | `season` | data | air | 1 info | `record` | — | `window` | — |
@@ -38,7 +37,8 @@ v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns 
 `(rule, sensor_id)`.
 
 > **Note.** `posidonia` is Menorca's, `example-cooking-hours` is the worked example, and `season`,
-> `xiaomi-air`, `thingdata` and `make` arrived in v0.61 and v0.65.
+> `thingdata` and `make` arrived in v0.61 and v0.65. `xiaomi-air` was core from v0.61 to v0.76 and is now a
+> wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs).
 
 ## air-quality
 
@@ -101,57 +101,6 @@ The README says "Fork it": the numbers that matter in Kerobokan are not the numb
 sentence that gets someone to close a window is different in every language and every building. Copy the folder,
 change the thresholds and the wording, publish it as `planetai-pack-air-<yourplace>`, and list it at
 [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) so other nodes can add it.
-
-## xiaomi-air
-
-Xiaomi / Mi Home air purifiers read directly on the LAN over the miio/MIoT protocol: PM2.5, temperature,
-humidity and filter life, indoors. Written for a household in Kuta Selatan with two units, a living-room and a
-bedroom purifier. After setup nothing talks to the Xiaomi cloud: the only cloud step is extracting each unit's
-token, once. In v0.76 this is the only indoor PM reader on the LAN that the node polls; the
-AirGradient and PurpleAir adapters exist in `app/sources.py` and are not called (see [Sensors](sensors.md)).
-
-| | |
-|---|---|
-| Kind | code |
-| Domain | `air` |
-| Requires node | `>=0.50.0` |
-| Metrics | `pm25`, `temp`, `humidity`, `filter_life` (`pm10` where the model reports it) |
-| Scales | community |
-| Needs | `PACKS_ALLOW_CODE=1`; `planetai packs install` for `python-miio`, pinned to a commit tarball; each purifier's 32-hex device token, extracted once with `xiaomi-cloud-tokens-extractor` (one Mi Home login); a fixed IP or DHCP reservation per unit; units on 2.4 GHz WiFi the node can reach |
-| Cells | none |
-| Scripts | none |
-
-The adapter polls every purifier in `XIAOMI_PURIFIERS` once per node cycle over UDP port 54321, MIoT first and
-legacy miio after. Each unit becomes one sensor, `xm-<last six hex of its MAC>` (its IP when the MAC cannot be read), with `source='xiaomi-air'`,
-`local` and `indoor` true, and no coordinates. Because the units are local and indoor, the `air-quality`
-indoor rules and the `trust` checks read them like any other kit, and they stay out of outdoor averages.
-`channels.yml` declares `pm25`, `temp` and `humidity` as `ambient` and comparable, and `filter_life` as
-`device_health`: the instrument talking about its own consumable, never a measurement.
-
-### Rules
-
-| rule | level | cooldown | fires when | languages |
-|---|---|---|---|---|
-| `purifier_filter_low` | warn | 10080 | a local indoor sensor's 15-minute mean of `filter_life` is under 10 (%) | en, es, id |
-
-The rules file gives the reason for 10%: Xiaomi's own app warns at about 5%, which is late when a replacement
-filter takes a week to arrive.
-
-### Settings
-
-| setting | default | meaning |
-|---|---|---|
-| `XIAOMI_PURIFIERS` | empty | comma-separated units, each `name@ip=token`; the name and `name@` are optional. Blank, the pack logs once and reads nothing |
-
-After `planetai packs install` and the first poll, `planetai sensors --json` lists each unit as `xm-<mac6>`.
-
-### Know this
-
-No humidity correction is applied. The node's EPA 2021 correction was derived for Plantower lasers, and
-Xiaomi's optical sensor is not one, so `pm25` here is the raw density and the sensor's `meta` says so. The
-vendor "AQI" property on these models is the PM2.5 density itself, so nothing extra is stored. Fan speed, mode
-and motor RPM are not emitted. The pack reads and never controls a purifier. Dehumidifiers, humidifiers and
-fans speak the same protocol family with different properties and are not covered.
 
 ## heat
 

@@ -236,7 +236,7 @@ data, what it loads.
 > only keeps those units out of the Bali Air Dispatch ring. The AirGradient and PurpleAir adapters exist
 > and are tested; the node does not register them for polling.
 
-The sources that come in packs (the xiaomi purifiers, ThingData servers, the forecast, the earth and place
+The sources that come in packs (ThingData servers, the forecast, the earth and place
 data, the nearest fab lab) are set with the pack keys in [What the packs declare](#what-the-packs-declare).
 
 ## How it speaks
@@ -363,7 +363,6 @@ environment, where the node puts the database value. A code pack reads none of t
 | `THINGDATA_INSTANCES` | thingdata | blank | The ThingData servers to read, `slug=url`, comma-separated. Blank and the pack idles. |
 | `THINGDATA_SCALE` | thingdata | `city` | The scale of what those servers cover, `city` or `region`. |
 | `THINGDATA_MAX` | thingdata | `5000` | Refuse to count a collection larger than this (one page is 100 rows), rather than report a truncated total as a total. |
-| `XIAOMI_PURIFIERS` | xiaomi-air | blank | Purifiers on your LAN, comma-separated, each `name@ip=token` (the name and `name@` are optional). The tokens come from xiaomi-cloud-tokens-extractor, one Mi Home login, once. The pack does not list the key under `secrets:`, so the tokens show in full to the admin token. |
 | `FORECAST_BMKG` | forecast | `1` | Read BMKG, Indonesia's meteorological agency. |
 | `FORECAST_BMKG_ADM4` | forecast | blank | The village code BMKG needs for this point. `planetai run forecast verify` proves it resolves to somewhere near the node. |
 | `FORECAST_OPENMETEO` | forecast | `0` | Read Open-Meteo. It works anywhere, but its free tier is non-commercial only, so it is the operator's decision. Off until you turn it on. |
@@ -416,8 +415,6 @@ or santiago bounding box.
   and restart.
 - `ACT_TOKEN` and `RETICULUM_ALERT_DESTINATIONS` set from the dashboard do not reach the Reticulum bridge,
   which reads its own environment. Set them in `.env` and restart the bridge.
-- `XIAOMI_PURIFIERS` carries device tokens and is not listed under `secrets:` in the xiaomi-air pack, so Set up
-  and `settings_get` show it in full to anyone holding the admin token.
 - `FCI_PUBLISHER`, `ALLOWED_CITIES` and `PEERS` are named in other documents and are not present in this
   code.
 

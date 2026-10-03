@@ -18,7 +18,7 @@ line on the report and on an ask, never a number.
 
 | issue | packs | kind | the line, and where it comes from |
 |---|---|---|---|
-| **air** | `air-quality`, `nearby`, `season`, `xiaomi-air` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
+| **air** | `air-quality`, `nearby`, `season` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
 | **heat** | `heat` | sensed | 35 °C apparent — measured at node #1, this place's line and not a global one |
 | **land** | `earth` (the change), `earth-engine` (built, trees) | context | none. A year-over-year change is not a threshold |
 | **coast** | `coast`, `posidonia` | context | none |
