@@ -1,4 +1,5 @@
 # Where the data lives
+<!-- checked: v0.76 -->
 
 `planetai storage` shows all of this on one screen.
 

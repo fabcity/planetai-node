@@ -1,4 +1,5 @@
 # Sensors and sources
+<!-- checked: v0.76 -->
 
 This page gives the node its senses. The repo's own sentence for what a node does is that it "connects
 everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into one

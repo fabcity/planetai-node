@@ -1,4 +1,5 @@
 # Domains
+<!-- checked: v0.76 -->
 
 The core measures nothing in particular. It polls sources, stores readings, runs rules, fills Index cells. Which
 readings, which rules, which cells: that is a pack. `grep pm25 app/packs.py`, the loader, returns nothing.
@@ -73,8 +74,8 @@ missing hours or disagreeing with a neighbour.
 
 **Water**: turbidity, TDS, tank level from a DIY probe over MQTT; is the well safe, will the tank last to the rain.
 **Energy**: grid up/down from a smart plug; outage hours as an Economic cell. **Noise**: Smart Citizen emits it already;
-school-hours rules. **Classroom CO₂**: AirGradient emits it, once the core polls AirGradient; open the windows above
-1,200 ppm. **Fire smoke**: NASA FIRMS detections crossed with wind direction. Details and effort in `PACK_IDEAS.md`.
+school-hours rules. **Classroom CO₂**: the core already polls AirGradient and stores its `co2`; no pack reads it
+yet. Open the windows above 1,200 ppm. **Fire smoke**: NASA FIRMS detections crossed with wind direction. Details and effort in `PACK_IDEAS.md`.
 
 ## Writing one
 

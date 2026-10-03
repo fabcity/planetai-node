@@ -1,4 +1,5 @@
 # Bring your own agent
+<!-- checked: v0.76 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the
 person in front of it operate the node; it drafts, and a person dispatches. The architecture puts it in one
@@ -8,7 +9,7 @@ installed, diagnosed and asked about in plain language. The loop still closes on
 they did.
 
 The repository is written for that. `AGENTS.md` at its root is the front door: its first section is a table
-that routes an agent to one of seven skills, and the rest of it is what an agent must not break. `llms.txt`
+that routes an agent to one of eight skills, and the rest of it is what an agent must not break. `llms.txt`
 indexes every document for an agent arriving from outside. `make lint` fails if a skill names a command or a
 path that does not exist.
 
@@ -60,7 +61,7 @@ Paste this to your agent and nothing else:
 The same node answers Claude Code, Codex and any client that speaks MCP over HTTP; [MCP](mcp.md) has the
 other clients and every tool.
 
-## The seven skills
+## The eight skills
 
 | the person says | skill | what it makes the agent do |
 |---|---|---|
@@ -70,10 +71,11 @@ other clients and every tool.
 | "put our city on the Fab City Index" | `skills/publish-to-index` | Establish the tier first: one node per pilot writes, a home node never does. `planetai cells --json`; the state must be honest. The writer lives with the Index and needs a per-pilot token issued by hand. See [Federation](federation.md). |
 | "I want a pack for my city", "share our pack" | `skills/write-a-pack` | Decide the tier first: a pack for one place is wild, in its own repository, never a fork of this one. Start from a core pack of the same kind; `id` equals the folder; keys under `secrets:`, never a value. Test with `tools/check_rules.py` and `planetai packs` on the person's node, then list it at fabcity/planetai-wild-packs from their account. See [Packs](packs.md). |
 | you are about to change this repository | `skills/preflight` | `tools/session.sh preflight` first. Your own worktree, your own branch; never the one holding `main`. |
+| you are cutting a release | `skills/release-docs` | Re-read every page of this site against the code, fix what changed, and move each page's checked stamp to the release; `make lint` refuses the release until every page is done. |
 | you are about to end a session that changed this repository | `skills/land` | `tools/session.sh land`. Nothing exists only on this machine, and the gates ran, not were assumed. |
 
 The first four are for an agent operating a node, the fifth for one writing a pack with its author, and the last
-two for an agent changing the code. The first
+three for an agent changing the code. The first
 four end the same way: when a document and the skill disagree, the document wins and the skill has a bug.
 
 ## What each tool is allowed to be
@@ -136,7 +138,7 @@ somebody said they would do and moves nothing: it closes no alert and is not in 
   (`kind='child' OR (local AND kind<>'peer')`), is the only thing a cell may count.
 - State is never upgraded by aggregation. A parent's cell is `partial` if any input was.
 - Exact place never leaves; a coarse cell may, and says how coarse. The Reticulum announce is an H3 cell
-  rounded up with a floor of resolution 6.
+  never finer than resolution 6, roughly 3 km across.
 - Exactly one node per pilot writes to the Index's spine.
 - **`act` needs the person's own words.** It has no default note and refuses a placeholder. ρ is the share of
   act-level alerts a human answered, and a row written without anything a human said is a model measuring

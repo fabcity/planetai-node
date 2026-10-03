@@ -1,4 +1,5 @@
 # Alerts
+<!-- checked: v0.76 -->
 
 An alert is the node asking a person to do something. This is the Act stage, which the architecture describes
 as the one that "turns an observation into a human decision", and it is "the only place ρ can be measured".
@@ -89,7 +90,7 @@ returned. A rule may not print a number its SQL did not compute.
 ## Languages
 
 `ALERT_LOCALE` is `en`, `id` or `es`. Since v0.63 every rule with a message carries all three, the two core rules
-and all 29 messaged pack rules. The report, the test alert and the Telegram bot's own replies follow the same
+and all 28 messaged rules in the packs that ship. The report, the test alert and the Telegram bot's own replies follow the same
 setting; the bot's few fixed lines fall back to English for `id`. A language a template lacks falls back to
 English. The presets set `id` for Bali, `es` for Menorca, Barcelona and Santiago, and `en` for Boston and Delhi.
 

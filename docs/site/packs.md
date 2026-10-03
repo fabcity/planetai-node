@@ -1,4 +1,5 @@
 # Packs
+<!-- checked: v0.76 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all
@@ -6,8 +7,8 @@ written in a pack. A data pack is SQL and words. A code pack also fetches: it ad
 read. The loader's own description of the point is one line: "most useful contributions are a rule and a
 threshold that someone learned the hard way in their city."
 
-Packs come in two tiers. The eighteen in the release are **core**. Any other pack is **wild**: it lives in its
-author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
+Packs come in two tiers. The seventeen in the release are **core** (eighteen in v0.76, before `xiaomi-air` became
+wild). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
 and is added to a node with `planetai packs add`. A wild pack that a second place can use may be promoted to core.
 The rules for both are the [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md).
 
@@ -33,8 +34,8 @@ list: blank means every pack, otherwise a comma list of ids. The loader reads th
 
 A pack is a **code pack** if its folder has an `adapter.py`. The loader sets `kind` from that file and
 ignores the `kind:` line in `pack.yaml`. An adapter runs only when `PACKS_ALLOW_CODE=1`, because it runs
-with the node's privileges and network access: read it first. Without that setting the node logs
-`pack <id> ships code; set PACKS_ALLOW_CODE=1 to run it` and loads the pack's rules and cells anyway.
+with the node's privileges and network access: read it first. Without that setting the node logs `pack <id> ships
+code; set PACKS_ALLOW_CODE=1 to run it (read <path> first)` and loads the pack's rules and cells anyway.
 
 Because blank `PACKS_ENABLED` means every pack, a pack that must stay off by default needs its own switch.
 One pack has one: `make` reads a directory that is not openly licensed, so it does nothing until
@@ -127,9 +128,9 @@ Telegram if it is connected, the heat issue's state is `act`, and the lead's las
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack
-against `init.sql`. At v0.76 it prints `48 rules and cells check out against init.sql`; with your
-folder added the count is 50, one rule and one cell more. A `{placeholder}` the SQL does not return is
-refused here and named; on a running node the same mistake sends the raw template, braces and all.
+against `init.sql`. It prints `47 rules and cells check out against init.sql` (48 at v0.76, which still carried
+`xiaomi-air`'s rule); with your folder added the count is two more, one rule and one cell. A `{placeholder}` the SQL
+does not return is refused here and named; on a running node the same mistake sends the raw template, braces and all.
 
 ## Fields in pack.yaml
 
@@ -141,17 +142,23 @@ install`), `agent_scripts` (the `run_pack_script` tool), `pip` (`planetai packs 
 | field | used for |
 |---|---|
 | `id` | the pack's name; defaults to the folder |
+| `name` | what a person calls it; the Packs card in Set up shows it, and falls back to `id` |
 | `description` | shown by `planetai packs` and `GET /packs` |
+| `kind: data` | `data` or `code`; overwritten from the presence of `adapter.py`, so it only documents the intent |
+| `version: 0.1.0` | the pack's own version, returned in `GET /packs`; nothing compares it |
 | `requires: {node: ">=0.76"}` | the node versions the pack loads on. A node outside the range does not load it, says so once in its log, and lists it under "not loaded" in `planetai packs`. Declare `>=0.76` when the pack uses `readouts` or `sections`: an older node ignores both without a word |
 | `domain` | which dashboard issue the pack feeds (`air`, `heat`, `land`, `coast`, …). A cross-domain pack's rules are claimed one by one in `app/issues/*.yml`; a pack that reaches no issue and is not on the list of domains outside them (`weather`, `place`, `governance`, `repair`) fails `tests/test_issues.py` |
 | `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources it reads. `make lint` runs `tools/check_registry.py`, which fails and names any id that is not an entry in the registry the node carries. See [The source registry](sources.md) |
 | `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of every pack folder's list |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; a comment line travels with the key under it. No space after `=` |
-| `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token |
-| `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open. `planetai run` runs every script either way |
+| `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token. (Not in v0.76: arrives with the next release; until then no pack key is masked.) |
+| `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open. `planetai run` runs every script either way. (Not in v0.76: arrives with the next release; until then every pack script reaches the agent.) |
 | `readouts: {air: [ … ]}` | numbers the pack adds to an issue, in the shape an issue file uses; shown in Figures, and in the sentence of a context issue. It adds, never replaces. See [PACKS.md](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#readouts-on-an-issue) |
 | `sections: [ … ]` | a band the pack declares on the dashboard as data, drawn with the page's own readout cards. See [A dashboard section](#a-dashboard-section) |
 | `needs: [api.bmkg.go.id]` | hosts the pack reaches |
+| `author`, `attribution` | who wrote it and answers for it; the licence line a source asks to be credited with |
+| `metrics: [pm25, pm10]`, `scales: [community, city]` | what it measures and at which scales, for a reader choosing a pack. No code reads either: the channels a pack really produces are `channels.yml`, and the cells it fills are `cells.yml` |
+| `thresholds: US EPA / WHO 2021` | one line on where its numbers come from; the README says the rest |
 
 An issue file under `app/issues/` may carry its own `where:` block, which replaces the shared phrase for a
 distance in each language (`coast.yml` says "at the nearest ocean cell", `land.yml` "of the square this

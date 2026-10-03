@@ -1,4 +1,5 @@
 # Updating
+<!-- checked: v0.76 -->
 
 ```bash
 planetai update
@@ -9,6 +10,10 @@ node has no repository access, check its checksum **and its signature**, and sto
 `init.sql`, which is idempotent, to the live database; merge new keys from
 `.env.example` into `.env` under a dated marker; rebuild the image; restart; run the doctor; report the schema before
 and after.
+
+If the version arriving ships a core pack with the same id as a wild pack on the node (one `planetai packs add`
+fetched), it stops after the backup and before anything moves, names the wild copy and where it came from, and asks
+for it to be deleted (`rm -rf packs/<id>`); run the update again and the core pack takes its place.
 
 `update.sh` runs from a copy of itself, because pulling rewrites the file bash is reading and it would otherwise continue
 from a random offset in the new file.
@@ -57,7 +62,7 @@ shows where it is trying to write.
 ## Rollback
 
 ```bash
-git checkout v0.75.2      # or whichever tag you want back
+git checkout v0.75.8      # or whichever tag you want back
 docker compose build app  # the code is inside the image; a restart alone keeps running the new one
 planetai restart
 planetai restore backups/<node>-<date>.sql.gz    # only if the schema went forward and you need the old shape

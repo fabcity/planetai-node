@@ -1,4 +1,5 @@
 # The dashboard
+<!-- checked: v0.76 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -189,7 +190,7 @@ here yet: … is not on this node.", never a blank and never a guess. A
 section that throws prints that it did not render and why, and every other section still draws: a failure
 is not an answer. The explanations every section wants to make are gathered into one folded band at the
 foot, *Where these numbers come from*: one fold per section, and every note in it names its own subject
-(84 labelled notes in `dashboard.js`).
+(83 labelled notes in `dashboard.js`; v0.76 has 84, one of them about a water pack that does not exist).
 
 Four card kinds and no fifth: readout, stack, series, row. A gap in a series is a gap in the line, never a ramp across the WHO line nobody measured. The node's own words are never uppercased: `µg/m³` once became `MG/M³` on the hero, a factor of a thousand.
 
@@ -293,7 +294,7 @@ somebody setting up a node needs them:
 | **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Bali Air Dispatch, Open-Meteo, open-data portals. A source that comes as a pack is set in its card under Packs |
 | **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, mesh alerts, whether an act needs a decision first |
 | **Model** | ask and model: which model answers, on the ask pane and on Telegram alike; the remote and online models |
-| **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings |
+| **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings; a key the pack lists under `secrets:` is masked once saved (not in v0.76; arrives with the next release) |
 | **Keys** | every secret: the Telegram bot token, the two model keys, and the backup, parent, aggregate and act tokens |
 | **Sharing** | sharing and network: who may read this node, live map tiles, the Reticulum announce and alerts, Home Assistant, the parent node |
 | **System** | tuning numbers, the layout Arrange writes, and what is read once at start (port, extra containers, backups, poll interval), read-only |

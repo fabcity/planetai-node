@@ -1,4 +1,5 @@
 # How it works
+<!-- checked: v0.76 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
 one Python process that answers the HTTP API on port 8080 and runs five loops in the background, a sixth when

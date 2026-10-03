@@ -1,4 +1,5 @@
 # First ten minutes
+<!-- checked: v0.76 -->
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer
@@ -122,7 +123,7 @@ readings. Go to **Set up**, paste the admin token (or only the act token, in the
 closing a loop") and press **Unlock**. The header has six views, Now, Historical, Network, Wall, Arrange and
 Set up, and three modes, Simple, Advanced and Learn. Learn is the full page with a question mark at each
 part; pressing one puts the passage of these pages that explains it, and a link to it, in the ask pane beside the page. Set up is where sensors are added or changed
-(Sources), where the bot's model lives (Agent), and where every runtime setting can be changed without
+(Sources), where the bot's model lives (Model), and where every runtime setting can be changed without
 touching `.env`. See [Dashboard](dashboard.md) and [Sharing](sharing.md).
 
 **Now there is:** observe, on a screen. The same `GET /issues` document the bot and the report read, drawn
@@ -197,8 +198,9 @@ planetai update      backup, fetch the latest version, check its signature, migr
 planetai storage     where the data is, where the copies go
 ```
 
-`planetai doctor` prints one line per check, `✓` or `✗`, with the fix under every `✗` after a `→`, and ends
-with `all good` or `fix the marked lines, then run planetai doctor again`. A tarball node also shows
+`planetai doctor` prints one line per check, `✓` or `✗`, or an amber `!` for something worth saying that does not
+fail the run, such as a new version being out; the fix is under every `✗` and `!` after a `→`. It ends with
+`all good` or `fix the marked lines, then run planetai doctor again`. A tarball node also shows
 `release signature verified on last update` and the source registry it carries.
 
 A good week looks like this: a short report from the node a few times a day, a handful of alerts rather

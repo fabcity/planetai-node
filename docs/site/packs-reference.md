@@ -1,4 +1,5 @@
 # Packs that ship
+<!-- checked: v0.76 -->
 
 Eighteen core packs ship in `packs/` in v0.76: ten data packs and eight code packs. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold

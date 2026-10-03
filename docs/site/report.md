@@ -1,4 +1,5 @@
 # The report
+<!-- checked: v0.76 -->
 
 The report is the node telling the household what the ground is doing, in their language, on a schedule. The
 repo's own sentence for a node ends there: "It tells the people there in plain sentences, on Telegram, and passes

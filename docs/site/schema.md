@@ -1,4 +1,5 @@
 # Database schema
+<!-- checked: v0.76 -->
 
 Everything the node knows sits in one Postgres database, `planetai`, on the machine itself. A pack's rules and cells are SQL written against the tables and views on this page, and a person debugging a node at 9 pm reads the same ones with `psql`. The raw readings live in `readings` and stay here: "No raw readings leave the instance that recorded them" (ARCHITECTURE.md). What goes up to a parent is `readings_1h`, the hourly means, and the timestamps in `alerts` and `actions`.
 

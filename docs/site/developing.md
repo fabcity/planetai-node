@@ -1,4 +1,5 @@
 # Developing and contributing
+<!-- checked: v0.76 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -26,10 +27,11 @@ docker compose logs app | tail -50`. Never `.env`.
 [the contract](sensors.md). Test it against a saved payload from the real device before opening a PR. Set
 `local` and `indoor` to what is true; every rule depends on them.
 
-**Write a rule, a cell, a pack.** [Packs](packs.md). For one place it is a wild pack in its own repository,
-listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), not a pull request here; the 18 in `packs/` are core, and a pack joins
-them by promotion. Copy `packs/heat`; say in the README where the thresholds came from and which place you wrote for. A rule should end in something a
-person does.
+**Write a rule, a cell, a pack.** [Packs](packs.md). For one place it is a wild pack in its own repository, listed at
+[fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), not a pull request here; the 17 in
+`packs/` are core, and a pack joins them by promotion. (v0.76 ships 18: `xiaomi-air` left core after it and arrives as
+a wild pack with the next release.) Copy `packs/heat`; say in the README where the thresholds came from and which
+place you wrote for. A rule should end in something a person does.
 
 ## What will not be merged
 
@@ -69,7 +71,7 @@ git commit -s
 The hook refuses a commit that stages `.env`, anything under `.git/`, `backups/` or a `*.before-update`
 file; a diff that carries a Telegram bot URL, a `…TOKEN=` or `…API_KEY=` value, or a database password
 other than the placeholder; and `.DS_Store`, `__pycache__` or `.pyc` files. Then it runs `make lint` and
-`make test`, both. ([CONTRIBUTING.md](../../CONTRIBUTING.md) says it runs lint; it runs both.)
+`make test`, both.
 
 `-s` adds the `Signed-off-by:` line of the Developer Certificate of Origin: a person saying they wrote the
 change or have the right to contribute it. Most changes need one maintainer. `init.sql`, the contracts in
@@ -103,7 +105,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 56 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 55 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
@@ -157,7 +159,9 @@ a node inside the tarball, and the tarball changes only when somebody builds, si
 1. **Write the CHANGELOG section, commit, push, and wait for CI.** `release.sh` refuses a dirty tree, a
    `CHANGELOG.md` with no `## v<version>` section, and a tag that already exists. Push `main` and let the
    `lint` and `install-smoke` workflows finish green before the next step; the Careful note below says
-   why.
+   why. Renaming `## Unreleased` to `## v<version>` makes `make lint` fail on every docs page until each
+   has been read again against the code and its `<!-- checked: v<version> -->` stamp moved:
+   `skills/release-docs/SKILL.md` is the procedure, and the pages go in the same pull request.
 
 2. **Run the release with the signing key.**
 
@@ -239,22 +243,27 @@ the same change; `make learn` rewrites the file on its own.
 `docs/site/STYLE.md` is how the pages are written: plain words, say what to do, only what the code says,
 and the conventions the renderer understands. The version and commit in every page's footer are read from
 git at build time, which says when the page was built and not what it was read against. What `make
-lint` checks is mechanical: the commands, settings, paths and endpoints a page names exist
-(`check_docs.py`), every link and anchor lands (`build_docs.py --check`), and the learn spans are still
-spans. Whether a sentence is still true is not mechanical. So a page says which version it was read
-against, and a change that alters what a page describes changes the page in the same commit.
+lint` checks is mechanical, in both directions: the commands, settings, paths and endpoints a page names
+exist, and every command, MCP tool, route, setting and `pack.yaml` field the code has is on its page
+(`check_docs.py`); every link and anchor lands (`build_docs.py --check`); and the learn spans are still spans.
+Whether a sentence is still true is not mechanical. So every page carries `<!-- checked: vX -->`, the
+release it was last read against, and lint holds that to the newest release in `CHANGELOG.md`: a release
+cannot pass lint until every page has been read for it. A change that alters what a page describes changes
+the page in the same commit.
 
 ## Layout of the repository
 
 ```
 app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py
               registry.py (the source registry) · report.py · agent.py (MCP) · tool_classes.py · agent_loop.py (the bot)
+              requires.py (which node a pack needs)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
-packs/        eighteen packs; see Packs
+packs/        seventeen core packs; see Packs
 config/       rules.yml (two domain-blind rules) · channels.yml · mosquitto · reticulum
 data/         sources/ (the pinned registry) · strings/ · env_defaults.yml · frozen_layer.txt · platform_floors.yml · mac_ceilings.yml
-skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land
+skills/       setup-node · troubleshoot-node · connect-agent · publish-to-index · preflight · land · write-a-pack
+              · release-docs
 tools/        the gates, hooks, bundle, ship and release scripts, session.sh, sweep.py, sync_registry.sh, build_docs.py
 tests/        offline suites
 docs/         the pages; docs/site/ the ones written for this site; design/ the visual language and its reviews

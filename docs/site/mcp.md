@@ -1,4 +1,5 @@
 # MCP server and tools
+<!-- checked: v0.76 -->
 
 This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it
 how the place is doing in the household's own words, and record, in a person's own words, that somebody
@@ -87,12 +88,12 @@ Start with `health_check`, then `status`.
 | `cells` | none | the Fab City Index cells with value, unit and state |
 | `packs` | none | the loaded packs: id, kind, description |
 | `export_day` | `day?` (default yesterday) | the open-data export for that day |
-| `settings_get` | none | every runtime setting with its group, help and value, the node's secrets and the keys a pack lists under `secrets:` masked; bootstrap keys read-only |
+| `settings_get` | none | every runtime setting with its group, help and value, the node's secrets and the keys a pack lists under `secrets:` masked (pack keys: not in v0.76); bootstrap keys read-only |
 | `maintenance` | `task`: update, backup, restore, restart, logs, doctor, storage, ui, telegram | the `planetai` command to run on the node, what it does and where. It runs nothing |
 | **`act`** | `alert_id`, `note` (required), `agent="agent"` | records `stage: acted` for that alert with the agent as actor, and returns `{recorded, alert_id, by}`. **Writes** |
 | **`report_now`** | `agent="agent"` | writes and sends a report now. **Writes** |
 | **`settings_set`** | `changes: {KEY: value}`, `agent="agent"` | changes runtime settings; live within 20 seconds; a blank returns the key to `.env`. **Writes** |
-| **`run_pack_script`** | `pack`, `script`, `args?`, `agent="agent"` | runs `packs/<pack>/<script>.py` inside the container (15-minute limit) and returns exit code, stdout, stderr and `by`. A wild pack's script runs only if its pack.yaml lists it under `agent_scripts:`. **Runs code** |
+| **`run_pack_script`** | `pack`, `script`, `args?`, `agent="agent"` | runs `packs/<pack>/<script>.py` inside the container (15-minute limit) and returns exit code, stdout, stderr and `by`. A wild pack's script runs only if its pack.yaml lists it under `agent_scripts:` (Not in v0.76: arrives with the next release; until then every pack script reaches the agent.) **Runs code** |
 
 `act` refuses a blank note and any of the placeholders the repository once used in place of a person's words
 (`acted`, `acknowledged`, `done`, `ok`, `n/a`, `-`, `acted (via reticulum)`), and tells the agent to ask what
@@ -122,7 +123,7 @@ agents on one node read each other's rows before acting.
 
 No tool prints `.env` or a token; `settings_get` masks the node's own secrets as `•••• set`. A pack's key is masked
 only when that pack lists it under `secrets:` in its `pack.yaml`; a key a pack does not list there is shown in
-full, so a wild pack that holds a token should list it. The container has neither
+full, so a wild pack that holds a token should list it. (Not in v0.76: arrives with the next release; until then no pack key is masked.) The container has neither
 Docker nor git, so `maintenance` hands the command back instead of running it. `act` records what a person
 said they did and invents no action. Nor do the tools expose the node: the server's own instructions to a
 model say to prefer one clear sentence to a list and never to reveal a token.

@@ -1,4 +1,5 @@
 # Sharing and security
+<!-- checked: v0.76 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will

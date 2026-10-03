@@ -6,7 +6,8 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 ```
 packs/<id>/
   pack.yaml     id, name, description, kind (data | code), version, requires:, domain:, sources:, needs:, pip:, env:,
-                secrets:, agent_scripts:, readouts:, sections:
+                secrets:, agent_scripts:, readouts:, sections:, (read by people only) author:, attribution:,
+                metrics:, scales:, thresholds:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only

@@ -1,4 +1,5 @@
 # Radios
+<!-- checked: v0.76 -->
 
 Three boards, three jobs. The board decides the job.
 
