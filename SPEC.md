@@ -1,4 +1,5 @@
 # PLANETAI Node. Spec v0.1
+<!-- checked: v0.76 -->
 
 2 September 2026. Two containers. This document is the brick; `ARCHITECTURE.md` is the building. Everything here is
 either a contract that must survive rewrites, or a retired piece with the condition that brings it back.
@@ -21,9 +22,9 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 
 **Rules.** A rule is SQL that returns rows plus a message template. Cooldown is enforced in SQL against the `alerts` table. No rules engine, no expression language. If Postgres can't express the condition, the condition is wrong.
 
-**Up-link.** Child → parent is `POST /aggregates {node, rows:[{bucket, sensor_id, metric, mean, min, max, n}]}`, hourly. Raw never travels it. The parent stores rows as `<child>/<sensor_id>`, metric `<metric>_1h`.
+**Up-link.** Child → parent is `POST /aggregates {schema, node, scale, rows:[{bucket, sensor_id, metric, mean, min, max, n}]}`, hourly. Raw never travels it. The parent stores rows as `<child>/<sensor_id>` with `sensors.cadence = 'PT1H'`, the metric under its own name (until v0.50 it was `<metric>_1h`).
 
-**Registry.** `registry.json` in this repo. Fields: name, scale, operator, place, lat, lon, sources, parent, since, contact. Adding a node is a PR. Approval is a merge.
+**Registry.** `registry.json` in this repo. Fields: name, scale, operator, place, lat, lon, cell, sources, parent, since, contact. Adding a node is a PR. Approval is a merge.
 
 **Cells.** `fci-cells-v0`: `{city, cell:"Pillar|Scale", value, unit, source, observed_at, state}`. Exactly the `FCI Observations` row (base `appmNQaDGEFE9VcYh`). `state` is never upgraded by aggregation.
 
@@ -36,7 +37,7 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 | | |
 |---|---|
 | `db` | `imresamu/postgis:16-3.4-alpine` (Postgres 16 and PostGIS 3.4, for amd64 and arm64). Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
-| `app` | Python 3.12. Four timer threads (poll, rules, and the aggregates and events pushes) + FastAPI on :8080. `app/main.py` is ~2,190 lines. |
+| `app` | Python 3.12. Five timer threads (poll, rules, the aggregates and events pushes, and the release check), a sixth for Reticulum when it is on, + FastAPI on :8080. `app/main.py` is ~2,250 lines. |
 
 `GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 
@@ -51,7 +52,7 @@ An adapter is a function returning `(sensors, readings)`. Two are described here
 
 ## 4. Security, v0.43
 
-`app:8080` is published on every interface, because the things that read this node are on the network: the NAS that pulls hourly dumps from `/backups` — the only off-machine copy of readings that exist nowhere else — the phones and wall screens in the house, Home Assistant, and the agent's MCP surface on the tailnet. Postgres is not: `db` binds `127.0.0.1:5432`, and so do IPFS's two ports.
+`app:8080` is published on every interface, because the things that read this node are on the network: the NAS that pulls hourly dumps from `/backups` — the only off-machine copy of readings that exist nowhere else — the phones and wall screens in the house, Home Assistant, and the agent's MCP surface on the tailnet. Postgres is not: `db` binds `127.0.0.1:5432`, and so do IPFS's API and gateway ports (its swarm port, 4001, is public).
 
 A token guards every write and every secret read. **`SHARE_LEVEL` decides what an unauthenticated reader on that LAN may see** — `off` by default, which answers such a reader the dashboard, `/health` with the node's position rounded to 110 m, the daily CC-BY export and the layout, and refuses the rest with a sentence naming the setting; `open` answers the whole read API, which is what a wall screen with no token needs. A request carrying a token reads what it always read, from anywhere, at either level. The building's own geometry (`/place/geojson`) needs a token at every level. `.env` is `chmod 600`, never committed.
 

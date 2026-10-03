@@ -1,4 +1,5 @@
 # Configuration
+<!-- checked: v0.76 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
@@ -40,7 +41,7 @@ shows every installed pack's keys, whether the pack is switched on or not, in th
 the key as its label, the pack's default and help, and `restart: false`. They are there so a keeper can
 see a pack's switch before turning it on. A key the pack also lists under `secrets:` in its `pack.yaml` is
 masked like the node's own tokens, once saved and to everyone; every other pack key is shown in full to the
-admin token and to the agent's `settings_get`. No shipped pack lists one.
+admin token and to the agent's `settings_get`. No shipped pack lists one. (Not in v0.76: arrives with the next release; until then no pack key is masked.)
 
 They are set like a runtime key: from Set up, with `planetai config set`, or with `PUT /settings`, which
 accepts any key an installed pack declares, switched on or not, and still answers 400 for a key nothing

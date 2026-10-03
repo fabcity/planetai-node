@@ -1,6 +1,6 @@
 # Start here: what the person in front of you is asking for
 
-Seven situations bring somebody to this repository with an agent. Find theirs in the first column, read
+Eight situations bring somebody to this repository with an agent. Find theirs in the first column, read
 that skill, then do the third column. If none of them fits, read the rest of this file — it is written
 for an agent already inside a running node.
 
@@ -12,6 +12,7 @@ for an agent already inside a running node.
 | "put our city on the Fab City Index", "how do we publish cells?" | `skills/publish-to-index/SKILL.md` | Establish the tier first. One node per pilot writes; a home node never does. |
 | "I want a pack for my city", "add this sensor / source / threshold", "share our pack" | `skills/write-a-pack/SKILL.md` | A pack for one place is wild: its own repository, listed at fabcity/planetai-wild-packs. Never a fork of this repository, never a folder in `packs/` here. |
 | you are about to change this repository — any task, any size | `skills/preflight/SKILL.md` | `tools/session.sh preflight` first. Your own worktree, your own branch; never the one holding `main`. |
+| you are cutting a release, or `make lint` says a docs page was "checked against" an older release | `skills/release-docs/SKILL.md` | Re-read every page of the docs site against the code, fix it, then move its `<!-- checked: vX -->` stamp. Never move a stamp on a page you did not read. |
 | you are about to end a session that changed this repository | `skills/land/SKILL.md` | `tools/session.sh land`. Nothing exists only on this machine, and the gates ran, not were assumed. |
 
 The skills order the documents; they do not replace them. Everything below is what an agent operating a

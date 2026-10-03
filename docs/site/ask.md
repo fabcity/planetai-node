@@ -1,4 +1,5 @@
 # Ask the node
+<!-- checked: v0.76 -->
 
 The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names
 for this node, the same one the Telegram bot uses, asked through the same tools. It reads the page and
@@ -69,7 +70,8 @@ no database row and no log line with a word in it: the log says which tool ran a
 
 ## Which model answers
 
-Set up → Model decides, for the pane and the Telegram bot alike, and so does `planetai config`:
+Set up → Model decides, with the online key under Keys, for the pane and the Telegram bot alike, and so does
+`planetai config`:
 
 | setting | what it does |
 |---|---|

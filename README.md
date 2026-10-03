@@ -98,7 +98,7 @@ One person maintains it today, with a second holding access and a proposed scope
 ## Bring your own agent
 
 A node is a thing you operate, and most people who install one will do it with an agent beside them. This
-repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of seven skills
+repository is written for that: `AGENTS.md` opens with a table that routes an agent to one of eight skills
 in `skills/`, and `make lint` fails if a skill names a command or a path that does not exist. Paste this
 to your agent and nothing else:
 

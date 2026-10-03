@@ -26,6 +26,7 @@ the files themselves.
 - [skills/publish-to-index/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/publish-to-index/SKILL.md): the tier contract for writing cells to the Fab City Index, and why most nodes never do.
 - [skills/write-a-pack/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/write-a-pack/SKILL.md): writing a pack for somebody's place, testing it on their node, and sharing it as a wild pack without forking this repository.
 - [skills/preflight/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/preflight/SKILL.md): the first minute of a session that will change this repository — where main is, what is open, what is red.
+- [skills/release-docs/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/release-docs/SKILL.md): bringing the docs site up to a release — every page re-read against the code, its checked stamp moved.
 - [skills/land/SKILL.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/skills/land/SKILL.md): the last minute — nothing exists only on this machine, and the gates ran rather than were assumed.
 
 ## Getting a node running

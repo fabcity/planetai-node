@@ -1,4 +1,5 @@
 # Command line
+<!-- checked: v0.76 -->
 
 The command line is how the person who keeps a node looks after it: install it, ask whether it is alive,
 record what somebody did about an alert, move its data somewhere safe. The repo names that person as the

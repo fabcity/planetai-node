@@ -1,4 +1,5 @@
 # The source registry
+<!-- checked: v0.76 -->
 
 A node measures what its adapters read. The registry is the network's shared list of what could be measured
 at each pillar and scale, and of the places a person could go to act on it, carried inside every node as a

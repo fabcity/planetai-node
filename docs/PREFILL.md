@@ -1,4 +1,5 @@
 # What a node knows before it has a sensor
+<!-- checked: v0.76 -->
 
 On first start, with an empty database, the node pulls for its coordinates:
 
@@ -27,8 +28,8 @@ unless you turn it on.
 ## Presets
 
 `presets/<city>.env`: bali, barcelona, boston, santiago, menorca, delhi. Coordinates, time zone, city key, the
-open-data portal, and for Bali the public station feed. `planetai setup` picks one when your place falls inside a
-pilot city.
+open-data portal where there is one, and for Bali the public station feed. `planetai setup` picks one when your place
+falls inside one of the four Index pilots (Bali, Barcelona, Boston, Santiago); `./install.sh --preset <city>` takes any.
 
 ## Not embedded
 

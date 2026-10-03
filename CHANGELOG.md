@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **2026-10-03 · The docs site cannot fall behind a release again.** v0.76's site still described v0.75.3 on its
+  packs pages: four pack.yaml fields, the wild tier and `requires` enforcement were in the code and in PACKS.md,
+  and every gate was green. `make lint` now checks both directions: every CLI command, MCP tool, route, setting
+  and pack.yaml field the code has must be on its docs page. And every page of the site carries
+  `<!-- checked: vX -->`, the release it was last read against, which must equal the newest release in this file;
+  the release pull request fails until each page has been read again (`skills/release-docs/`). Every page was
+  read against v0.76 and main for this change; features on main and not in v0.76 say so where they are described.
+
 - **2026-10-03 · xiaomi-air is a wild pack.** The Xiaomi purifier pack leaves the release and is listed at
   fabcity/planetai-wild-packs, with its test. Only a household with Mi Home purifiers needs it, and it installs
   python-miio, which is GPL-3.0-only. **If you use it:** after updating, run `planetai packs add xiaomi-air`. Your

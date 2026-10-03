@@ -476,7 +476,7 @@ def docs_copy():
     """Every page of docs/site, one row per `##` section and one for the page's lead."""
     rows = []
     for src in sorted(SITE.glob("*.md")):
-        text = src.read_text(encoding="utf-8")
+        text = re.sub(r"^<!-- checked: v[0-9.]+ -->\n?", "", src.read_text(encoding="utf-8"), flags=re.M)
         head = re.match(r"# (.+)", text)
         title = head.group(1).strip() if head else src.stem
         heads = [None] + [m.group(1).strip() for m in re.finditer(r"^## (.+)$", text, re.M)]

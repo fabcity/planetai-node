@@ -1,4 +1,5 @@
 # The bot and the model ladder
+<!-- checked: v0.76 -->
 
 The bot adds conversation to a node. Somebody in the house asks "is the air bad right now?" on Telegram and
 gets an answer read from the node's own tools; somebody says "I closed the windows" and that is recorded, in
