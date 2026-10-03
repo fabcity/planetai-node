@@ -8,7 +8,7 @@ running a node built from that commit.
 
 The improvement-plan brief names a second review — `CODE_REVIEW_2026-09-09_omarchy.md`, 54 findings across
 A/S/P/D, written at `b075471`. **That document does not exist** and never has; the search is recorded in
-`docs/reviews/RECONCILIATION_2026-09-09.md`. This is a second pass written to stand in its place. It is not
+`docs/archive/reviews/RECONCILIATION_2026-09-09.md`. This is a second pass written to stand in its place. It is not
 a reconstruction of it and does not pretend to be one: different author, different day, different commit,
 and 25 findings' worth of the first review already fixed nothing in between.
 

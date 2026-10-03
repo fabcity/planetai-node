@@ -198,7 +198,7 @@ a node inside the tarball, and the tarball changes only when somebody builds, si
 > pushed and green before step 2, the script stops with the tag public and nothing published. Wait for
 > CI, then run `make ship`: it builds from the tag and publishes it.
 
-The key is the Foundation's and lives outside the repository; [docs/HANDOFF_signing.md](../../docs/HANDOFF_signing.md)
+The key is the Foundation's and lives outside the repository; [docs/SIGNING.md](../../docs/SIGNING.md)
 has where, the command that made it, and the rotation. A passphrase-protected key goes into the agent
 first with `ssh-add`. `PLANETAI_UNSIGNED=1` builds a tarball nobody signed, which a node installs only when it is given
 `PLANETAI_UNSIGNED=1` too; it is for a throwaway build. `make ship` on its own publishes whatever `main`

@@ -1,9 +1,9 @@
-# Handoff: the release signing key
+# The release signing key
 
-Since v0.60 a node refuses an update it cannot attribute. The key that makes that work does not exist
-yet, and this session could not make it: a private key that an agent generated is a private key that
-was in a transcript. This is the half only you can do, and until it is done every signed release path
-refuses — which is the safe direction, and why nothing is blocked by the order of these steps.
+Since v0.60 a node refuses an update it cannot attribute. The key that makes that work was issued on 19
+September 2026 and lives outside this repository (§3). This is the runbook for the person who holds it:
+how it was made, where its public half is copied, how a release is signed, and how to rotate it. An agent
+never makes or handles this key: a private key an agent generated is a private key that was in a transcript.
 
 ## 1. Make the key
 

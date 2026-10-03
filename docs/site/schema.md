@@ -142,7 +142,7 @@ The session time zone is `NODE_TZ`, so `date_trunc('day', ts)` and `extract(hour
 
 ## The database image
 
-The `db` service runs `imresamu/postgis:16-3.4-alpine`, Postgres 16 with PostGIS 3.4, since v0.63. It publishes `linux/amd64` and `linux/arm64` for the same tag; the `postgis/postgis` tag it replaced published amd64 only. It stays on Alpine because an existing node's data directory was created by musl. Opening one with a glibc build was measured on 19 September 2026: the node started, and its text indexes failed an integrity check with no warning from Postgres. Postgres is published on `127.0.0.1:5432` only. [HANDOFF_arm64.md](../HANDOFF_arm64.md) has the arm64 detail.
+The `db` service runs `imresamu/postgis:16-3.4-alpine`, Postgres 16 with PostGIS 3.4, since v0.63. It publishes `linux/amd64` and `linux/arm64` for the same tag; the `postgis/postgis` tag it replaced published amd64 only. It stays on Alpine because an existing node's data directory was created by musl. Opening one with a glibc build was measured on 19 September 2026: the node started, and its text indexes failed an integrity check with no warning from Postgres. Postgres is published on `127.0.0.1:5432` only. [ARM64.md](../ARM64.md) has the arm64 detail.
 
 ## Backups and restore
 

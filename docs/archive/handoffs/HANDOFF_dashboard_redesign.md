@@ -148,7 +148,7 @@ and the stages strip, and their four learn marks.
 
 Nine motions, each named after its datum, all in the frozen layer's table
 (`planetai-design/references/planetai-layer.md`, design log R24) and published in
-[`docs/site/design.md`](site/design.md). Three are new in prompt 6: `--motion-meter-fill` (40 ms),
+[`docs/site/design.md`](../../site/design.md). Three are new in prompt 6: `--motion-meter-fill` (40 ms),
 `--motion-mark-float` (3.2 s) and `--motion-asking`, which is the word `until-data` because the
 loading state lasts as long as the node takes to answer.
 

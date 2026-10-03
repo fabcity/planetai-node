@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3 / FastAPI / psycopg (existing), `h3==4.*` (already in `app/requirements.txt`), vanilla JS classic scripts (no build, no framework, no CDN), Playwright via `planetai-design/node_modules` for the visual gates only.
 
-**Spec:** `docs/design/DIRECTIONS_2026-09.md` Part Three, section *H, revised again* and *H, revised · the ground under the dial*; `docs/HANDOFF_dashboard_directions.md` section *If the answer is H, the modular one*; the prototype at `planetai-design/prototypes/dashboard-directions/` (`kit-page.js` is the contract; `h/index.html` the shell; `h/mods/*.js` the ten sections; `h/wall.js` the wall). Decisions taken 15 Sep 2026: **per-station values are published**; **live tiles are off by default and opt-in in Set up** (`MAP_TILES`); **Now keeps ground · stations · claims · grain · asks · measure; satellite · reticulum · meshtastic · hardware go to Network**; h3 is already a dependency.
+**Spec:** `docs/design/DIRECTIONS_2026-09.md` Part Three, section *H, revised again* and *H, revised · the ground under the dial*; `docs/archive/handoffs/HANDOFF_dashboard_directions.md` section *If the answer is H, the modular one*; the prototype at `planetai-design/prototypes/dashboard-directions/` (`kit-page.js` is the contract; `h/index.html` the shell; `h/mods/*.js` the ten sections; `h/wall.js` the wall). Decisions taken 15 Sep 2026: **per-station values are published**; **live tiles are off by default and opt-in in Set up** (`MAP_TILES`); **Now keeps ground · stations · claims · grain · asks · measure; satellite · reticulum · meshtastic · hardware go to Network**; h3 is already a dependency.
 
 ## Global Constraints
 
@@ -43,7 +43,7 @@
 | `tests/all` (modify) | registers `test_issues_geometry` |
 | `tests/visual/gate.sh` (create) | renders the production page from the fixture and fails on regression |
 | `docs/PACKS.md` (modify) | the section contract, for a pack author |
-| `docs/HANDOFF_dashboard_directions.md` (modify) | points at this plan and at what shipped |
+| `docs/archive/handoffs/HANDOFF_dashboard_directions.md` (modify) | points at this plan and at what shipped |
 
 ---
 
@@ -1216,7 +1216,7 @@ EOF
 ### Task 9: prove on `pai-clean`, never on node #1
 
 **Files:**
-- none in the repo; a note in `docs/HANDOFF_dashboard_directions.md` (Task 10)
+- none in the repo; a note in `docs/archive/handoffs/HANDOFF_dashboard_directions.md` (Task 10)
 
 - [ ] **Step 1: Deploy the branch to the VM** — per `pai-clean-proving-workflow`: the VM's node is at `~/planetai`, the repo is mounted; `git fetch && git checkout dashboard-redesign-2026-09 && planetai restart` inside the VM (the exact commands the memory records). Node #1 is not touched.
 
@@ -1229,7 +1229,7 @@ EOF
 ### Task 10: the pack author's contract, and the handoff
 
 **Files:**
-- Modify: `docs/PACKS.md` (new section *A dashboard section*), `docs/HANDOFF_dashboard_directions.md` (*Shipped* section), `README.md` if its docs index needs a line (only for new top-level `docs/*.md`, which this plan does not add)
+- Modify: `docs/PACKS.md` (new section *A dashboard section*), `docs/archive/handoffs/HANDOFF_dashboard_directions.md` (*Shipped* section), `README.md` if its docs index needs a line (only for new top-level `docs/*.md`, which this plan does not add)
 
 - [ ] **Step 1: Write the contract section in `docs/PACKS.md`**
 
@@ -1263,13 +1263,13 @@ not have yet, and that is the next phase. Proposing a section back is sending th
 render.
 ```
 
-- [ ] **Step 2: Handoff** — add a section *Shipped, 15–16 September* to `docs/HANDOFF_dashboard_directions.md` with: the branch's commit list for Phase 2; the gate's numbers from Task 8; the VM's numbers from Task 9; the three things deliberately not built (a pack-served `dashboard.js`, the open hardware manager, per-section switches in Set up) and the STOP each would touch.
+- [ ] **Step 2: Handoff** — add a section *Shipped, 15–16 September* to `docs/archive/handoffs/HANDOFF_dashboard_directions.md` with: the branch's commit list for Phase 2; the gate's numbers from Task 8; the VM's numbers from Task 9; the three things deliberately not built (a pack-served `dashboard.js`, the open hardware manager, per-section switches in Set up) and the STOP each would touch.
 
 - [ ] **Step 3: Gates and commit**
 
 ```bash
 make lint && make test
-git add docs/PACKS.md docs/HANDOFF_dashboard_directions.md
+git add docs/PACKS.md docs/archive/handoffs/HANDOFF_dashboard_directions.md
 git commit -m "$(cat <<'EOF'
 docs: the section contract for a pack author, and what shipped
 

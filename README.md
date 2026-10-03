@@ -73,29 +73,18 @@ The documentation site is **[planetai.fab.city/docs](https://planetai.fab.city/d
 sidebar, search and the API reference, built from this repository by `tools/build_docs.py`. The files themselves:
 
 ```
-docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
+docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE · ARM64
           when it goes wrong       TROUBLESHOOTING
-          what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
-          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES
-          what is still owed       NEXT_RELEASE
+          what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI · MODELS
           radios and reachability  NETWORKING · MESHTASTIC
-          the experiments          FAB26_EXPERIMENT
-          the beta review          BETA_TESTER_GUIDE · HANDOFF_beta_review · reviews/
-          the earth pack           HANDOFF_earth_pack
-          nodes finding nodes     SPEC_discovery
-          deciding, and measuring it SPEC_decide
-          the dashboard's design    HANDOFF_dashboard_violations · design/shots/
-          the page redesign        HANDOFF_dashboard_redesign · design/shots/redesign/
-          reports and messages     HANDOFF_reports
-          the trust pack           HANDOFF_trust
-          the ring and the forecast HANDOFF_nearby_forecast
-          air, heat, land, coast   HANDOFF_issues · DOMAINS
-          the dashboard renderer  HANDOFF_dashboard_renderer · GUI
-          a model on the node      MODELS
-          three directions, picked HANDOFF_dashboard_directions · design/DIRECTIONS_2026-09 · design/REDESIGN_2026-09_ground
-          signing the releases     HANDOFF_signing
-          arm64, and the Pi        HANDOFF_arm64
-          proposed, not decided   SPEC_custody · SPEC_identity · SPEC_rho · decisions/
+          extending it             PACKS · PACK_IDEAS · SOURCES · DEVELOPING
+          testing a beta           BETA_TESTER_GUIDE · FAB26_EXPERIMENT
+          releasing it             NEXT_RELEASE · SIGNING
+          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide
+          proposed, then decided   proposals/ · decisions/
+          the documentation site   site/ (planetai.fab.city/docs)
+          the page's design rounds design/ (not shipped to nodes)
+          history                  archive/ (handoffs, reviews, plans: what was true then, not now)
 SECURITY.md       reporting a vulnerability, and the key a node checks an update against
 AGENTS.md         for an AI agent operating the node
 ARCHITECTURE.md   how it is built; SPEC.md   what was left out and when it returns; PRODUCT.md   who pays for what

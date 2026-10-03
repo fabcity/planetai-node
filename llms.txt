@@ -70,19 +70,19 @@ the files themselves.
 ## The beta and the reviews
 
 - [docs/BETA_TESTER_GUIDE.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/BETA_TESTER_GUIDE.md): what a beta tester is being asked to do and what to report.
-- [docs/reviews/BETA_READINESS_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/BETA_READINESS_2026-09.md): whether the node was ready for testers, and what had to change first.
-- [docs/reviews/CODE_REVIEW_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/CODE_REVIEW_2026-09.md): a full read of the code with the findings that were acted on.
-- [docs/reviews/INSIGHTS_DESIGN_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/INSIGHTS_DESIGN_2026-09.md): how the node decides what is worth saying.
-- [docs/reviews/AGENT_READY_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/reviews/AGENT_READY_2026-09.md): the strategy this agent-facing layer implements, and the risks it accepts.
+- [docs/archive/reviews/BETA_READINESS_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/reviews/BETA_READINESS_2026-09.md): whether the node was ready for testers, and what had to change first.
+- [docs/archive/reviews/CODE_REVIEW_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/reviews/CODE_REVIEW_2026-09.md): a full read of the code with the findings that were acted on.
+- [docs/archive/reviews/INSIGHTS_DESIGN_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/reviews/INSIGHTS_DESIGN_2026-09.md): how the node decides what is worth saying.
+- [docs/archive/reviews/AGENT_READY_2026-09.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/reviews/AGENT_READY_2026-09.md): the strategy this agent-facing layer implements, and the risks it accepts.
 
 ## Handoffs — one feature each, in detail
 
-- [docs/HANDOFF_beta_review.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_beta_review.md): the beta review and what it changed.
-- [docs/HANDOFF_dashboard_violations.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_dashboard_violations.md): the dashboard's design rules and the checker that enforces them.
-- [docs/HANDOFF_earth_pack.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_earth_pack.md): the satellite view of the land, and what it can and cannot say.
-- [docs/HANDOFF_nearby_forecast.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_nearby_forecast.md): the ring of neighbouring stations and the forecast beside it.
-- [docs/HANDOFF_reports.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_reports.md): the scheduled report, written by the node itself, and the other messages.
-- [docs/HANDOFF_trust.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/HANDOFF_trust.md): how the node says how much to trust a number.
+- [docs/archive/handoffs/HANDOFF_beta_review.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/handoffs/HANDOFF_beta_review.md): the beta review and what it changed.
+- [docs/archive/handoffs/HANDOFF_dashboard_violations.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/handoffs/HANDOFF_dashboard_violations.md): the dashboard's design rules and the checker that enforces them.
+- [docs/archive/handoffs/HANDOFF_earth_pack.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/handoffs/HANDOFF_earth_pack.md): the satellite view of the land, and what it can and cannot say.
+- [docs/archive/handoffs/HANDOFF_nearby_forecast.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/handoffs/HANDOFF_nearby_forecast.md): the ring of neighbouring stations and the forecast beside it.
+- [docs/archive/handoffs/HANDOFF_reports.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/handoffs/HANDOFF_reports.md): the scheduled report, written by the node itself, and the other messages.
+- [docs/archive/handoffs/HANDOFF_trust.md](https://raw.githubusercontent.com/fabcity/planetai-node/main/docs/archive/handoffs/HANDOFF_trust.md): how the node says how much to trust a number.
 
 ## Optional
 

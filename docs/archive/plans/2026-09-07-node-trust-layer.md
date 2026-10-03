@@ -14,7 +14,7 @@ collocated disagreement into three alerts, in SQL, with no new dependency and no
 
 **Tech Stack:** Postgres 16 (views + `corr()`), FastAPI, psycopg 3, PyYAML. No new dependencies.
 
-**Spec:** [`docs/reviews/INSIGHTS_DESIGN_2026-09.md`](../../reviews/INSIGHTS_DESIGN_2026-09.md) — read it first. This
+**Spec:** [`docs/archive/reviews/INSIGHTS_DESIGN_2026-09.md`](../reviews/INSIGHTS_DESIGN_2026-09.md) — read it first. This
 plan implements §3 (L0 and the rhythm half of L3), §4 (the role registry), and steps 1, 2, 3, 5 and 6 of §6.
 `fleet_reference` and the `Environmental|Community` repoint (§3 L1, §6 step 7) are **out of scope** and get their own
 release.
@@ -33,7 +33,7 @@ release.
 - `tools/check_docs.py`: every unit-bearing threshold in a pack README (`>= 35 °C`, `60 %`, `50 m`) must appear
   literally somewhere else in that pack's folder. Write the number in `rules.yml` too, or lint fails.
 - `tools/check_docs.py`: README's `docs/` index must list exactly the `.md` files in `docs/`. Dated documents go in
-  `docs/reviews/` (not globbed). Do not add a dated file to `docs/`.
+  `docs/archive/reviews/` (not globbed). Do not add a dated file to `docs/`.
 - `tools/check_rules.py` validates every rule and cell's SQL against `init.sql`. New columns must exist there first.
 - House voice: plain verbs, short sentences. No "genuinely / honestly / straightforward / seamless / robust /
   leverage", no rule-of-three padding, no em-dash chains. **Statistics stay out of alert messages** — the number
@@ -1071,7 +1071,7 @@ that its kit still reports, and that any figure including it is about the hours 
 
 `app/static/index.html`, one file, cards by `data-card`. Add `data-card="trust"` in the **room** band: one line per
 local sensor with its 7-day coverage and the count of frozen channels. Empty state when every sensor is above the
-floor: "Every sensor reported all week." Never render an empty box — `docs/reviews/BETA_READINESS_2026-09.md`
+floor: "Every sensor reported all week." Never render an empty box — `docs/archive/reviews/BETA_READINESS_2026-09.md`
 records that bug in the act strip.
 
 The card needs coverage per sensor, which no endpoint returns. Add it to the existing `/stats` rows as

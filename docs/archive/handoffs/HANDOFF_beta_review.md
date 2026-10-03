@@ -1,7 +1,7 @@
 # Handoff: beta-readiness review, 6 September 2026 (second pass)
 
 For a fresh session that continues this work. The full findings, scores and evidence are in
-`docs/reviews/BETA_READINESS_2026-09.md` (statuses updated in this pass); the tester-facing path is
+`docs/archive/reviews/BETA_READINESS_2026-09.md` (statuses updated in this pass); the tester-facing path is
 `docs/BETA_TESTER_GUIDE.md`; what changed is the `v0.32` section of `CHANGELOG.md`.
 
 ## State

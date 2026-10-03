@@ -9,7 +9,7 @@ reached a beta tester.** §2.9's rule stands.
 What is left is at the bottom, under "Still open".
 
 Release 1 (`GET /issues`, the four issue declarations, the engine) shipped in **v0.44** and is live
-on node #1. Read `docs/HANDOFF_issues.md` first — it carries the information model, the five things
+on node #1. Read `docs/archive/handoffs/HANDOFF_issues.md` first — it carries the information model, the five things
 the original brief had wrong, and the decisions this release is built on.
 
 ## Where to stand

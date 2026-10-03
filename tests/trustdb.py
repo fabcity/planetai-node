@@ -79,7 +79,7 @@ def readings(sensor: str | None = None, metric: str | None = None) -> list[tuple
 
 def sensors() -> list[tuple]:
     """The five kits as node #1 held them. `local` is TRUE for all five: the live node had Ungasan Kit and BAYU NEW
-    ENCLOSURE local when it named them at 21:17, though the 21:43 dump has them FALSE — docs/HANDOFF_trust.md (c)."""
+    ENCLOSURE local when it named them at 21:17, though the 21:43 dump has them FALSE — docs/archive/handoffs/HANDOFF_trust.md (c)."""
     rows = []
     with open(os.path.join(ROOT, "tests/data/node1-sensors.tsv")) as f:
         for line in f:
