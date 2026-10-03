@@ -478,6 +478,10 @@ def _ambient(row: dict, place: str) -> bool:
     own capture is why: two of its eleven ring stations are other people's indoor kits, one reading
     0.3 µg/m³, and leaving them in moved the street from 7.0 to 6.1.
     """
+    # A room the owner has marked `secondary` (a sun-baked workshop, a store room) is still read and still drawn
+    # among the sensors, but it is not what "the house" feels like, so it stays out of the room number.
+    if place == "room" and row.get("role") == "secondary":
+        return False
     return place_of(row) == place and (place == "room" or not row.get("indoor"))
 
 
@@ -1020,7 +1024,9 @@ def _read(cur) -> dict:
     """Five reads, once, for every issue. Nothing here is per-issue: an eighth issue costs no query."""
     return {
         "stats": _rows(cur, "SELECT sensor_id, metric, indoor, local, kind, scale, lat, lon, name, "
-                            "last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h FROM stats"),
+                            "last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h, "
+                            "(SELECT s.meta->>'role' FROM sensors s WHERE s.sensor_id = stats.sensor_id) AS role "
+                            "FROM stats"),
         "obs": _rows(cur, "SELECT sensor_id, metric, value, ts, name, kind, scale, local, cadence, "
                           "meta FROM observations"),
         # Every act-level alert of the last 30 days, plus the last 200 of anything. The 200 alone
@@ -1035,7 +1041,7 @@ def _read(cur) -> dict:
         # min/max/n ride along for the station series' min-max band (Task 3); readings_1h already
         # carries them, the same three columns app/main.py:452 and :1724 already select off it.
         "hourly": _rows(cur, "SELECT h.bucket, h.sensor_id, h.metric, h.mean, h.min, h.max, h.n, "
-                             "s.indoor, s.local, s.kind FROM readings_1h h JOIN sensors s "
+                             "s.indoor, s.local, s.kind, s.meta->>'role' AS role FROM readings_1h h JOIN sensors s "
                              "USING (sensor_id) WHERE h.bucket > now() - interval '24 hours'"),
     }
 

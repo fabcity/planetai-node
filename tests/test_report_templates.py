@@ -170,7 +170,7 @@ for loc, d in report.T.items():
     # The report's whole placeholder vocabulary. A phrase may only ask for something the code fills,
     # so a typo like {palce} fails here rather than reaching a person as a literal brace. Growing this
     # tuple is how the vocabulary grows — {where} arrived with packs/make.
-    PLACEHOLDERS = ("{place}", "{what}", "{n}", "{clauses}", "{fix}", "{where}")
+    PLACEHOLDERS = ("{place}", "{what}", "{n}", "{clauses}", "{fix}", "{where}", "{t}", "{h}", "{dir}", "{kn}")
     for k, v in d.items():
         bare = v
         for ph in PLACEHOLDERS:
@@ -269,3 +269,19 @@ assert "back under" in report.sheet(CASES["the room came back down"], "en")
 assert "still above" in report.sheet(CASES["a pot still on the stove"], "en")
 assert report.sheet(CASES["a node at minute five"], "es").startswith("🛰️"), "a node with no readings still speaks"
 print(f"the sheet renders in three languages across {len(CASES)} states, under 100 words, with nothing unfilled")
+
+# Thermometers in a room count as "a sensor inside", the secondary room does not speak for the house, and the wind shows
+def _now(**kw):
+    base = {"local": True, "indoor": True, "kind": "sensor", "mean_15m": None, "mean_1h": None, "silent_minutes": 3, "role": None}
+    return {**base, **kw}
+nowrows = [_now(sensor_id="tuya-a", name="Living room", metric="temp", last=24.6, mean_15m=24.6, role="reference"),
+           _now(sensor_id="tuya-a", name="Living room", metric="humidity", last=58.0, mean_15m=58.0, role="reference"),
+           _now(sensor_id="tuya-b", name="Workshop", metric="temp", last=33.0, mean_15m=33.0, role="secondary"),
+           {"sensor_id": "nea-windspeed", "metric": "wind_speed", "local": False, "indoor": False, "kind": "model", "last": 3.9, "silent_minutes": 4},
+           {"sensor_id": "nea-winddir", "metric": "wind_dir", "local": False, "indoor": False, "kind": "model", "last": 225.0, "silent_minutes": 4}]
+txt = report.sheet({"meta": {}, "now": nowrows, "series": [], "rules": [], "alerts": [], "open_act": [], "observations": []}, "en")
+assert "24.6°C and 58% humidity" in txt and "No sensor inside" not in txt and "33" not in txt, txt
+assert "Wind from the SW, 4 knots." in txt, txt
+only_workshop = [r for r in nowrows if r.get("sensor_id") != "tuya-a"]
+assert "No sensor inside" in report.sheet({"meta": {}, "now": only_workshop, "series": [], "rules": [], "alerts": [], "open_act": [], "observations": []}, "en")
+print("report indoor climate and wind: ok")

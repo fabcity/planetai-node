@@ -162,7 +162,8 @@ for doc in DOCS:
 def _metrics(src: str) -> set:
     return (set(re.findall(r'"[^"]+":\s*"([a-z0-9_]+)"', src))            # {"pm25": "pm25"}
             | set(re.findall(r'\("[^"]+",\s*"([a-z0-9_]+)"\)', src))       # ("t", "fc_temp")
-            | set(re.findall(r',\s*"([a-z0-9_]+)",\s*(?:float|round|max|abs)\b', src)))  # append((ts, sid, "x", float(v)))
+            | set(re.findall(r',\s*"([a-z0-9_]+)",\s*(?:float|round|max|abs)\b', src))  # append((ts, sid, "x", float(v)))
+            | set(re.findall(r'"([a-z0-9_]+)"', ''.join(re.findall(r'^PRODUCES\s*=\s*\((.*?)\)', src, re.M | re.S)))))  # PRODUCES = ("x", ...)
 
 
 # pm25, pm25_raw and aqi are written by readings.append(...) tuples in core that none of the shapes above catch.

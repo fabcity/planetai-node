@@ -12,7 +12,9 @@
       FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
       -- indoor only: the no-wind Steadman form is the indoor form, and the 32 °C line was measured on two indoor
       -- kits. Outdoors, with wind unaccounted for, the same arithmetic overstates the load.
-      WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
+      -- A room the owner marked `secondary` (an empty sun-baked workshop) is not one anybody is in: no page.
+      WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL
+        AND t.sensor_id NOT IN (SELECT sensor_id FROM sensors WHERE meta->>'role' = 'secondary'))
     SELECT sensor_id, name, round(t::numeric, 1) AS t, round(rh::numeric) AS rh,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
     FROM x
@@ -32,8 +34,9 @@
       SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
       FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
       -- indoor only: the no-wind Steadman form is the indoor form. Outdoors, with wind unaccounted for, the same
-      -- arithmetic overstates the load.
-      WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
+      -- arithmetic overstates the load. A room marked `secondary` is not one anybody is in: no page.
+      WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL
+        AND t.sensor_id NOT IN (SELECT sensor_id FROM sensors WHERE meta->>'role' = 'secondary'))
     SELECT sensor_id, name,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
     FROM x
@@ -50,6 +53,7 @@
     SELECT r.sensor_id, s.name, round(min(r.min)::numeric, 1) AS night_min
     FROM readings_1h r JOIN sensors s USING (sensor_id)
     WHERE s.local AND s.indoor AND r.metric = 'temp'
+      AND COALESCE(s.meta->>'role', '') <> 'secondary'
       AND r.bucket > now() - interval '12 hours'
       AND extract(hour FROM r.bucket AT TIME ZONE current_setting('TimeZone')) NOT BETWEEN 7 AND 21
     GROUP BY r.sensor_id, s.name

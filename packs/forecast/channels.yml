@@ -14,6 +14,7 @@
 - { source: forecast-om,   metric: fc_wind_direction, role: derived, comparable: false, unit: "°" }
 - { source: forecast-om,   metric: fc_cloud,          role: derived, comparable: false, unit: "%" }
 - { source: forecast-om,   metric: fc_rain,           role: derived, comparable: false, unit: "mm" }
+- { source: forecast-om,   metric: fc_rain_prob,      role: derived, comparable: false, unit: "%" }
 - { source: forecast-om,   metric: fc_lead_hours,     role: derived, comparable: false, unit: "h" }
 - { source: forecast-gap,  metric: fc_temp_gap,       role: derived, comparable: false, unit: "°C" }
 - { source: forecast-gap,  metric: fc_wind_speed_gap, role: derived, comparable: false, unit: "km/h" }

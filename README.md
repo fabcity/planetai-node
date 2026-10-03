@@ -11,6 +11,28 @@
   <a href="https://planetai.fab.city/node0/"><img alt="Landing page" src="https://img.shields.io/badge/planetai.fab.city-node0-20388D?style=flat-square"></a>
 </p>
 
+# PlanetAI Singapore node
+
+> **This is a community fork of [fabcity/planetai-node](https://github.com/fabcity/planetai-node)**, run as `singapore-node` (v0.75.8) by [@saadcaffeine](https://github.com/saadcaffeine). The `singapore-node` branch carries the Singapore work on top of upstream; everything under the next heading is upstream's own README, unchanged.
+
+**What it adds**
+
+- **Singapore data packs:** NEA weather, air, UV, heat stress and dengue clusters (`packs/singapore-nea`); beach water quality (`packs/singapore-beach`); and 24 h fire and smoke counts from NASA FIRMS (`packs/fire-smoke`).
+- **Dashboard work:** a wall view with a faded island outline, beach, fire and haze rows, a resolution ladder with Fab City scale labels, a pause button, stage squares that navigate, "Seen it" and "I did this" for alerts, and tooltips and links that behave the same everywhere.
+- **The write-up:** [`docs/SINGAPORE_NODE.md`](docs/SINGAPORE_NODE.md) is the setup guide, the dashboard change log, the data credits and the to-do list, including what is still to be sent upstream.
+
+**Run it**
+
+```bash
+git clone -b singapore-node https://github.com/saadcaffeine/planetai-node-sg
+cd planetai-node-sg
+docker compose up -d --build app
+```
+
+Then follow [`docs/SINGAPORE_NODE.md`](docs/SINGAPORE_NODE.md): it lists the settings for `.env` (including the NEA key). For the FIRMS fire key and the act token, `planetai ui` prints the tokens it generates. Land outlines: URA Master Plan 2014 (Singapore Open Data Licence), geoBoundaries gbOpen (CC BY 4.0) and Natural Earth (public domain). Licence: Apache-2.0, as upstream.
+
+---
+
 # planetai-node
 
 **Hyperlocal compute and intelligence for distributed production.** A node is one computer per place, on
@@ -76,7 +98,7 @@ sidebar, search and the API reference, built from this repository by `tools/buil
 docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP · MAC_MINI · UPDATING · STORAGE
           when it goes wrong       TROUBLESHOOTING
           what it can tell you     USE_CASES · sensors · DOMAINS · COVERAGE · PREFILL · GUI
-          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES
+          extending it             PACKS · PACK_IDEAS · DEVELOPING · SOURCES · SINGAPORE_NODE
           what is still owed       NEXT_RELEASE
           radios and reachability  NETWORKING · MESHTASTIC
           the experiments          FAB26_EXPERIMENT

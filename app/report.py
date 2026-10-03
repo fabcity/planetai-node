@@ -185,7 +185,8 @@ SELECT s.sensor_id, s.name,
 NOW_SQL = """
 SELECT sensor_id, name, metric, indoor, local, kind,
        round(last::numeric, 2) AS last, round(mean_15m::numeric, 2) AS mean_15m,
-       round(mean_1h::numeric, 2) AS mean_1h, round(silent_minutes) AS silent_minutes
+       round(mean_1h::numeric, 2) AS mean_1h, round(silent_minutes) AS silent_minutes,
+       (SELECT s.meta->>'role' FROM sensors s WHERE s.sensor_id = stats.sensor_id) AS role
   FROM stats ORDER BY local DESC, indoor DESC, sensor_id, metric
 """
 
@@ -256,7 +257,8 @@ def bundle(cur, hours: int, held_hours: int = 0) -> dict:
 
     b["now"] = [{"sensor_id": r["sensor_id"], "name": r["name"], "metric": r["metric"], "indoor": r["indoor"],
                  "local": r["local"], "kind": r["kind"], "last": _f(r["last"], 2), "mean_15m": _f(r["mean_15m"], 2),
-                 "mean_1h": _f(r["mean_1h"], 2), "silent_minutes": int(r["silent_minutes"]) if r["silent_minutes"] is not None else None}
+                 "mean_1h": _f(r["mean_1h"], 2), "silent_minutes": int(r["silent_minutes"]) if r["silent_minutes"] is not None else None,
+                 "role": r.get("role")}
                 for r in index.run_ro(cur, NOW_SQL)]
 
     b["alerts"] = [{"id": r["id"], "at": r["ts"].isoformat(), "rule": r["rule_id"], "sensor_id": r["sensor_id"],
@@ -369,6 +371,8 @@ T = {
         "state_warm": "🌫️ The air inside is middling: not clean, not unhealthy.",
         "state_clean": "✅ The air inside is clean.",
         "state_no_sensor": "🛰️ No sensor inside yet, so what follows is the district and not your rooms.",
+        "state_climate": "🏠 Inside it is {t}°C and {h}% humidity.", "state_climate_t": "🏠 Inside it is {t}°C.",
+        "wind": "Wind from the {dir}, {kn} knots.",
         "changed": "What changed: {clauses}.",
         "changed_high": "{place}: the {what} ran higher than usual",
         "changed_low": "{place}: the {what} sat lower than usual",
@@ -393,6 +397,8 @@ T = {
         "state_warm": "🌫️ Udara di dalam sedang-sedang: belum bersih, belum tidak sehat.",
         "state_clean": "✅ Udara di dalam bersih.",
         "state_no_sensor": "🛰️ Belum ada sensor di dalam, jadi ini kecamatan, bukan ruangan Anda.",
+        "state_climate": "🏠 Di dalam {t}°C, kelembapan {h}%.", "state_climate_t": "🏠 Di dalam {t}°C.",
+        "wind": "Angin dari {dir}, {kn} knot.",
         "changed": "Yang berubah: {clauses}.",
         "changed_high": "{place}: {what}nya lebih tinggi dari biasanya",
         "changed_low": "{place}: {what}nya lebih rendah dari biasanya",
@@ -416,6 +422,8 @@ T = {
         "state_warm": "🌫️ El aire de dentro está a medias: ni limpio ni insalubre.",
         "state_clean": "✅ El aire de dentro está limpio.",
         "state_no_sensor": "🛰️ Aún no hay sensor dentro, así que esto es la comuna y no tus habitaciones.",
+        "state_climate": "🏠 Dentro hay {t}°C y {h}% de humedad.", "state_climate_t": "🏠 Dentro hay {t}°C.",
+        "wind": "Viento del {dir}, {kn} nudos.",
         "changed": "Lo que cambió: {clauses}.",
         "changed_high": "{place}: el {what} estuvo más alto de lo habitual",
         "changed_low": "{place}: el {what} estuvo más bajo de lo habitual",
@@ -462,7 +470,16 @@ def sheet(b: dict, locale: str = "en") -> str:
     if any((a.get("rule") or "").startswith("heat/") for a in b.get("open_act") or []):
         parts.append(lead + t["state_hot"])
     elif not indoor:
-        parts.append(lead + t["state_no_sensor"])
+        # No indoor air sensor, but a room with a thermometer is still "a sensor inside". The one the household chose
+        # as its reference (not a `secondary` room) speaks for the house.
+        room = {r["metric"]: (r.get("mean_15m") or r.get("mean_1h") or r.get("last"))
+                for r in now if r.get("local") and r.get("indoor") and r.get("role") != "secondary"
+                and r["metric"] in ("temp", "humidity") and (r.get("silent_minutes") or 0) <= 180}
+        if room.get("temp") is not None:
+            parts.append(lead + (t["state_climate"].format(t=round(room["temp"], 1), h=round(room["humidity"]))
+                                 if room.get("humidity") is not None else t["state_climate_t"].format(t=round(room["temp"], 1))))
+        else:
+            parts.append(lead + t["state_no_sensor"])
     else:
         worst = max(indoor)
         parts.append(lead + t["state_bad" if worst >= ACT else "state_warm" if worst >= CLEAN else "state_clean"])
@@ -489,6 +506,12 @@ def sheet(b: dict, locale: str = "en") -> str:
         if rule in rules and crossed(obs):
             body.append(t[key])
             break                       # one clause, not a weather report
+    spd = next((r for r in now if r["sensor_id"] == "nea-windspeed" and r["metric"] == "wind_speed"), None)
+    dr = next((r for r in now if r["sensor_id"] == "nea-winddir" and r["metric"] == "wind_dir"), None)
+    if spd and dr and spd.get("last") is not None and dr.get("last") is not None \
+            and (spd.get("silent_minutes") or 0) <= 180 and (dr.get("silent_minutes") or 0) <= 180:
+        pts = ("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW")
+        body.append(t["wind"].format(dir=pts[int((dr["last"] % 360) / 22.5 + 0.5) % 16], kn=_n(round(spd["last"]))))
     if body:
         parts.append(" ".join(body))
 
