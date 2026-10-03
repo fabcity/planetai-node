@@ -22,6 +22,8 @@ env:
   - "# Tokens come from xiaomi-cloud-tokens-extractor (one Mi Home login, once); the LAN handshake does not expose them on current firmware."
   - "# Example: XIAOMI_PURIFIERS=Living Room@192.168.4.98=0123456789abcdef0123456789abcdef,Bedroom@192.168.4.109=fedcba9876543210fedcba9876543210"
   - "XIAOMI_PURIFIERS="
+# Each entry carries a device token, which controls the purifier on the LAN: masked once saved, even to the admin token.
+secrets: [XIAOMI_PURIFIERS]
 needs: >-
   Each purifier's 32-hex device token (extract once with xiaomi-cloud-tokens-extractor) and a fixed IP or
   DHCP reservation per unit on the node's LAN. Devices must be on 2.4 GHz WiFi reachable from the node.

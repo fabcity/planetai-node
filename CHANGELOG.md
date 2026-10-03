@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **2026-10-03 · Xiaomi purifier tokens are masked.** `XIAOMI_PURIFIERS` holds each purifier's device token, and the
+  xiaomi-air pack did not list it under `secrets:`, so Set up and the agent's `settings_get` showed the tokens in full
+  to anyone holding the admin token. The entry below was wrong to say no shipped pack holds a secret. It is listed
+  now, and a test fails if any shipped pack key whose name or description says token, key or password is not.
+
 - **2026-10-03 · A pack's secrets are masked like the node's own.** Every key a pack declared reached Set up as
   plain text, so a pack's API key or token was shown to anyone holding the admin token, and through the agent's
   settings tool. A pack now lists its secret keys under `secrets:` in its pack.yaml, and Set up masks them once

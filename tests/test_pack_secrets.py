@@ -9,6 +9,7 @@ Run: PYTHONPATH=app python3 tests/test_pack_secrets.py
 import json
 import logging
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -63,4 +64,17 @@ pack("cam-test", "id: cam-test\nenv:\n  - \"CAMERA_WYZE_BRIDGE_TOKEN=\"\nsecrets
 r = rows(True)
 assert r["CAMERA_WYZE_BRIDGE_TOKEN"]["secret"] is False
 print("  secrets: that is not a list is ignored rather than guessed at")
+# Every pack this repo ships: a key whose name or words say token, key or password is listed under secrets:.
+# XIAOMI_PURIFIERS carried device tokens and was shown in full to the admin token until it was listed.
+# Exempt by name, with the reason: these say "key" because they point at the key, they are not it.
+NOT_SECRET = {"EE_PROJECT": "a Cloud project id", "EE_SERVICE_ACCOUNT": "an account's address",
+              "EE_KEY_FILE": "the path to the key file, not its contents"}
+os.environ["PACKS_DIR"] = str(Path(__file__).resolve().parents[1] / "packs")
+shipped = settings.pack_settings()
+assert shipped, "no shipped packs were read"
+assert NOT_SECRET.keys() <= {r["key"] for r in shipped}, "an exemption names a key no pack declares any more"
+leaks = [f'{r["pack"]}: {r["key"]}' for r in shipped if r["key"] not in NOT_SECRET and not r["secret"]
+         and re.search(r"token|key|password", f'{r["key"]} {r["help"]}', re.I)]
+assert not leaks, f"these shipped pack keys look like secrets and are not listed under secrets: {leaks}"
+print("  every shipped pack key that says token, key or password is listed under secrets:")
 print("pack secrets: masked like the node's own tokens, everywhere describe() answers")
