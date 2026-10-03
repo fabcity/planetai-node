@@ -5,7 +5,8 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, secrets:, readouts:, sections:
+  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, secrets:, agent_scripts:,
+                readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
@@ -212,6 +213,18 @@ planetai run earth-engine timelapse --n 4 --gap 5
 
 They run inside the app container, where the dependencies are, and write to `out/`, the one writable path. `planetai run`
 alone lists them.
+
+A connected agent with the admin token can run them too, through the `run_pack_script` tool, and reads what they
+print. A core pack's scripts are all open to it. A wild pack's are open only when its pack.yaml names them, because a
+wild script may print what its pack keeps off the readings, and the node's own terminal is the one place that should
+see it:
+
+```yaml
+agent_scripts: [verify]      # a wild pack: only these reach an agent; leave it out and none do
+```
+
+`planetai run` runs every script either way. A pack copied into `packs/` by hand, without `planetai packs add`, has no
+`.wild` and counts as core here.
 
 ## A dashboard section
 
