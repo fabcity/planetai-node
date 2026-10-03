@@ -46,7 +46,7 @@ are one setting away: `Governance|City` from the `open-data-health` pack once `C
 | Economic \| Region, Bioregion | procurement feeds (TED, ChileCompra, LKPP); material-flow accounts | an institution |
 
 `planetai sources --all --cell 'Social|City'` lists what the registry files for a cell, and ends with its three
-counts. At the `1010aa0` pin every row above counts capable 0, except Economic|Community, whose one is the
+counts. At the `88f5c73` pin every row above counts capable 0, except Economic|Community, whose one is the
 OpenStreetMap proxy the `place` pack reads.
 
 The Social column has the fewest sources of any in the registry. Heat-exposure hours is the first number in it.

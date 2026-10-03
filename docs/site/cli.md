@@ -13,7 +13,7 @@ and talks to the node over its own [API](api.md) on `localhost:$APP_PORT` with t
 predates the word says "there is no `planetai <word>` in this node", names the node's version and
 suggests `planetai update`. Commands arrive in releases.
 
-> **Gap in v0.75.3.** The list `planetai` prints leaves out four commands that exist: `preflight`,
+> **Gap in v0.76.** The list `planetai` prints leaves out four commands that exist: `preflight`,
 > `sources`, `config unset` and `agent local pull`. The tables below are complete.
 
 Nothing here needs `sudo` except `mesh` (installing and joining Tailscale), `agent local` on a machine with

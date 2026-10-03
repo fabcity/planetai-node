@@ -40,7 +40,7 @@ It is laid out to fill one viewport (`min-height: 100vh`), so nothing a passer-b
 
 The bar answers the questions asked before any reading is read. From the left: a **back** button, drawn first
 so it is first in keyboard order; up to four variable chips; the node's name, its city, `#wall`, a share
-level (always `off` in v0.75.3, because `/health` carries no share level) and how often the ladder moves
+level (always `off` in v0.76, because `/health` carries no share level) and how often the ladder moves
 ("the ladder moves every 8 s", or "the ladder stands still" under reduced motion); and at the right what the numbers are: the variable, its unit, and `15-min means`.
 
 The chips offer only metrics at least one station on this node carries. The one being shown is always first,
@@ -81,7 +81,7 @@ the exact counts.
 ## The foot
 
 The as-of time, the version stamp, the word `stale` in bold ink, and the motion caption. The bold word is a
-fixed label in v0.75.3. The as-of time beside it does judge: when the page's last poll got no answer it reads
+fixed label in v0.76. The as-of time beside it does judge: when the page's last poll got no answer it reads
 "Read at … · the node has not answered for N min".
 
 If the wall throws while it draws, the screen says "The wall did not render:" and the reason, rather than

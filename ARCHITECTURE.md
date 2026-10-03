@@ -168,17 +168,16 @@ named sources for whatever your place has, and where it has none, the global mod
 |---|---|---|
 | `Environmental\|Community` | local sensors: PM2.5 24h mean; days over WHO 24h in last 30d; sensor count | **live** as soon as node #1 runs 24h |
 | `Governance\|Community` | ρ from the actions table; is a council/operator acknowledging alerts | **partial** until someone acts |
-| `Economic\|Community` | fablabs.io activity for Fab Lab Bali (Fab Lab Activity Index, Boeing 2024) | adapter not written; **planned** |
+| `Economic\|Community` | businesses per km² within the kilometre, from OpenStreetMap (`packs/place`); `packs/make` reads fablabs.io to name workshops and fills no cell | **partial** |
 | `Social\|Community` | participation: WhatsApp group size, campaign responses (Making Sense Bali pattern) | operator-entered; **mock → partial** |
 | `Environmental\|City` | Bali Air Dispatch ambient means (peer observatory) + OpenAQ | **partial** (reference, not ours) |
-| `Governance\|City` | Bali Satu Data open-data health | adapter not written; registry entry exists |
+| `Governance\|City` | Bali Satu Data open-data health, through the CKAN adapter (`CKAN_PORTALS` in `presets/bali.env`, `packs/open-data-health`) | **partial** |
 
 `GET /cells` emits whatever the node can compute, each row carrying its `state`. The rows it cannot
 compute are the more interesting half of the table, and the node carries the answer to them: a pinned
 snapshot of `awesome-fabcity-data` lives at `data/sources/` and is served at `GET /sources`, so a cell
 with no row can still say whether a source for it is registered and whether an adapter reads it. That
-is what the "adapter not written; registry entry exists" lines above are, as a query rather than as a
-sentence somebody wrote once.
+is how a cell with no adapter says so, as a query rather than as a sentence somebody wrote once.
 
 A source entry is upstream's to change. Add one by PR to `awesome-fabcity-data`, wait for the merge,
 then re-pin here with `tools/sync_registry.sh <merge sha>` and commit the diff — `docs/SOURCES.md`.
@@ -195,7 +194,7 @@ Not a roadmap. Each stage names what exists, what it proves, and the trigger for
 
 **Stage 0: now.** One node, two containers by default (a broker, a Reticulum bridge, the local model's loop and IPFS
 are optional profiles), Sense: adapters across sensor, portal, model and map classes, in the core and in packs.
-Observe: Postgres, hourly view, read API. Act: two domain-blind core rules plus whatever the loaded packs contribute — eighteen pack folders ship: to
+Observe: Postgres, hourly view, read API. Act: two domain-blind core rules plus whatever the loaded packs contribute — eighteen core packs ship, and wild packs are added per node: to
 Telegram, the mesh, and Home Assistant; `POST /actions` records what a person did.
 Index: `GET /cells` emits `Environmental|Community` live and ρ partial. Compute: one Mac mini. *Proves:* a reading
 becomes a message someone acts on, and the node reports that fact as a cell.

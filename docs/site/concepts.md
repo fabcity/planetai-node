@@ -1,6 +1,6 @@
 # Concepts
 
-The words the rest of these pages use, each with what it means in the code at v0.75.3. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.76. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -82,7 +82,7 @@ prints them as house · street · ring · region; in Bahasa, rumah · jalan · s
 they are casa · calle · alrededores · región. The keys stay as they are on the wire. A child node is a fifth
 place that is not a column. A distance is custody, not scale: nothing maps a distance to an H3 resolution.
 
-**Registry.** A pinned snapshot of `awesome-fabcity-data`, 238 entries at `1010aa0`, served at `/sources` and
+**Registry.** A pinned snapshot of `awesome-fabcity-data`, 268 entries at `88f5c73`, served at `/sources` and
 listed by `planetai sources`. Most entries are things this place could measure; some are places to go and
 designs to build. See the [CLI](cli.md).
 
@@ -146,9 +146,11 @@ says which of the three steps picked it.
 
 ## Packs and cells
 
-**Pack.** A folder in `packs/` with a `pack.yaml`. A *data pack* is YAML only: rules, cells, channel roles. A
-*code pack* also carries an `adapter.py` and runs only when `PACKS_ALLOW_CODE=1`. The `make` pack, which names
-the nearest fab lab, needs `MAKE_ENABLED=1` as well, because the directory it reads is not openly licensed.
+**Pack.** A folder in `packs/` with a `pack.yaml`. A *core* pack ships in this repository; every other pack is
+*wild*, added with `planetai packs add` and pinned to a commit, and marked by a `.wild` file. A *data pack* is
+YAML only: rules, cells, channel roles. A *code pack* also carries an `adapter.py` and runs only when
+`PACKS_ALLOW_CODE=1`. The `make` pack, which names the nearest fab lab, needs `MAKE_ENABLED=1` as well, because
+the directory it reads is not openly licensed.
 See [Packs](packs.md).
 
 **Cell.** One of the twenty cells of the Fab City Index, four pillars (Environmental, Economic, Social,

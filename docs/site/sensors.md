@@ -77,7 +77,7 @@ node down.
 ## What ships
 
 The poll loop asks `sources.enabled()` which adapters to run: the core ones below, then every code pack's
-adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v0.75.3:
+adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v0.76:
 
 | source | enabled by | `kind` | `local` | what it reads |
 |---|---|---|---|---|
@@ -92,7 +92,7 @@ adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v
 | **Fab labs** (`make` pack) | `MAKE_ENABLED=1` as well as `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50) from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a telephone. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before turning it on. |
 | **Other code packs** | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS). See [Packs that ship](packs-reference.md). |
 
-> **Gap in v0.75.3.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
+> **Gap in v0.76.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
 > (`AIRGRADIENT_HOSTS`, read on the LAN, EPA 2021 correction applied with raw kept as `pm25_raw`) and
 > **PurpleAir** (`PURPLEAIR_HOSTS`, `/json`, two Plantower channels averaged and corrected) have functions in
 > `app/sources.py` and rows in `config/channels.yml`, and `sources.enabled()` never calls them. The AirGradient
@@ -103,12 +103,12 @@ adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v
 
 ## What else this place could read
 
-The node carries a pinned copy of the network's registry, `awesome-fabcity-data` (238 entries at `1010aa0`
-in v0.75.3). `planetai sources` lists the entries for this node's pilot plus the global ones, with the adapter
-that reads each where one exists; `--all`, `--pillar`, `--scale` and `--cell 'Environmental|City'` narrow or
-widen it. It answers from `data/sources` when the node is down. The same list is `GET /sources`. A row with no
-adapter is a source the network knows about and no code reads yet. [The source registry](sources.md) explains
-the entries and how one gets added.
+The node carries a pinned copy of the network's registry, `awesome-fabcity-data` (268 entries at `88f5c73`,
+synced 2026-09-28, in v0.76). `planetai sources` lists the entries for this node's pilot plus the global ones,
+with the adapter that reads each where one exists; `--all`, `--pillar`, `--scale` and `--cell
+'Environmental|City'` narrow or widen it. It answers from `data/sources` when the node is down. The same list is
+`GET /sources`. A row with no adapter is a source the network knows about and no code reads yet. [The source
+registry](sources.md) explains the entries and how one gets added.
 
 ## Channel roles
 
@@ -161,7 +161,7 @@ reading of 3 next to the street's 15.
 Optical PM sensors over-read in humid air; Bali runs 45–70% RH. `epa_2021_correct(pm_raw, rh)` implements
 the US EPA 2021 Plantower correction: raw 28 at Bali humidity becomes about 15. Near-zero raw in dry air
 lifts to 1–2, a property of the regression with no health meaning. It is for Plantower lasers (PurpleAir,
-AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. In v0.75.3 the only
+AirGradient, a DIY PMS5003), and not for Smart Citizen, Xiaomi, IQAir, AQICN or Airly. In v0.76 the only
 callers are the AirGradient and PurpleAir functions in the gap above, so no polled source applies it.
 
 ## Siting

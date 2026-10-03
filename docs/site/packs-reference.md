@@ -107,7 +107,7 @@ change the thresholds and the wording, publish it as `planetai-pack-air-<yourpla
 Xiaomi / Mi Home air purifiers read directly on the LAN over the miio/MIoT protocol: PM2.5, temperature,
 humidity and filter life, indoors. Written for a household in Kuta Selatan with two units, a living-room and a
 bedroom purifier. After setup nothing talks to the Xiaomi cloud: the only cloud step is extracting each unit's
-token, once. In v0.75.3 this is the only indoor PM reader on the LAN that the node polls; the
+token, once. In v0.76 this is the only indoor PM reader on the LAN that the node polls; the
 AirGradient and PurpleAir adapters exist in `app/sources.py` and are not called (see [Sensors](sensors.md)).
 
 | | |
@@ -810,7 +810,7 @@ After a move it takes `planetai restart`, `planetai run place refresh` and a das
 
 Where somebody can go to make or fix something: the active fab labs nearest this node, from the Fab Lab
 Network directory, with what each one can do. This pack is the first thread from a reading to a place that can
-make or fix something. In v0.75.3 it names the place and stops there: no node has handed a job to a workshop,
+make or fix something. In v0.76 it names the place and stops there: no node has handed a job to a workshop,
 and nothing in the code sends one.
 
 | | |
