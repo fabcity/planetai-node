@@ -77,8 +77,6 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 [data-kind="readout"] .cmp.none { color: var(--mute) }
 [data-kind="readout"] .src { font-size: 12px; color: var(--mute); line-height: 1.4;
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
-[data-kind="readout"].unplaced { border: 1px dashed var(--hair); padding: 10px 12px }
-[data-kind="readout"].unplaced .lab::after { content: " · unplaced"; color: var(--signal-worse) }
 
 /* ---------------------------------------------------------------- 2 · stack
  * The same quantity at four distances, on one scale. The columns are the distances in order and an

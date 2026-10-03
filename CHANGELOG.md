@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **2026-10-02 · The page no longer describes a pack that does not exist.** Every node's Measure notes explained
+  "a slot this page has no place for" with "the water pack's gauge" as the example. There is no water pack, and the
+  contributions vocabulary behind the note, a pack filling a slot inside an issue's card, was built for the
+  September prototypes' sample data and never produced by any node. It is removed. A pack's number on an issue is
+  a readout, a pack's own band is a declared section, and no pack fills an issue's distance column
+  (`docs/decisions/2026-10-01-packs.md`, point 4). Nothing a node draws today changes except that one note.
+
 ## v0.76 — 2026-10-02 — Wild packs: added from anywhere, drawn on the page, refused when too new
 
 *Packs in this repository are core; every other pack is wild, listed at fabcity/planetai-wild-packs and added to a
