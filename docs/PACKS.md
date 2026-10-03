@@ -341,7 +341,6 @@ reaches no issue and is not named as deliberately outside them fails `tests/test
 | pack | kind | issue | what |
 |---|---|---|---|
 | air-quality | data | air | PM2.5 rules (inside/outside, spikes), cells |
-| xiaomi-air | code | air | Xiaomi / Mi Home purifiers read on the LAN over miio/MIoT: PM2.5, temperature, humidity, filter life, indoor |
 | heat | data | heat | apparent temperature, heat stress, nights over 28 °C, a Social cell |
 | insight | data | air (`agreement`, `rhythm`) | the air three ways, contributed to every report; daily agreement between indoor, street and model |
 | nearby | data | air | the ring of other people's stations: is this address worse than everywhere, or is everywhere worse — no cell, by design |
