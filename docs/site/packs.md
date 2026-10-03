@@ -6,12 +6,17 @@ written in a pack. A data pack is SQL and words. A code pack also fetches: it ad
 read. The loader's own description of the point is one line: "most useful contributions are a rule and a
 threshold that someone learned the hard way in their city."
 
+Packs come in two tiers. The eighteen in the release are **core**. Any other pack is **wild**: it lives in its
+author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
+and is added to a node with `planetai packs add`. A wild pack that a second place can use may be promoted to core.
+The rules for both are the [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md).
+
 This page is the contract as `app/packs.py` reads it, and one small data pack built step by step. What ships
 is on [Packs that ship](packs-reference.md).
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:
+  pack.yaml     id, name, description, version, requires, domain, sources:, pip:, env:, secrets:, readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row; or a contribution to the report
   cells.yml     Index cells: SQL that returns one `value`
   channels.yml  what the pack's own metrics ARE: ambient, enclosure, device_health, derived, index
@@ -122,26 +127,29 @@ Telegram if it is connected, the heat issue's state is `act`, and the lead's las
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack
-against `init.sql`. At v0.75.3 it prints `48 rules and cells check out against init.sql`; with your
+against `init.sql`. At v0.76 it prints `48 rules and cells check out against init.sql`; with your
 folder added the count is 50, one rule and one cell more. A `{placeholder}` the SQL does not return is
 refused here and named; on a running node the same mistake sends the raw template, braces and all.
 
 ## Fields in pack.yaml
 
-Code reads `id` and `description` (the loader, `planetai packs`), `domain` (the issue engine), `env` (Set
-up and `planetai packs install`), `pip` (`planetai packs install`) and `sources` (`tools/check_registry.py`).
-`requires` and `needs` are for people and are read by no code in v0.75.3. `kind` is overwritten from the
-presence of `adapter.py`.
+Code reads `id` and `description` (the loader, `planetai packs`), `requires` (the loader and the CLI),
+`domain`, `readouts` and `sections` (the issue engine), `env` and `secrets` (Set up and `planetai packs
+install`), `pip` (`planetai packs install`) and `sources` (`tools/check_registry.py`). `needs` is for people.
+`kind` is overwritten from the presence of `adapter.py`.
 
 | field | used for |
 |---|---|
 | `id` | the pack's name; defaults to the folder |
 | `description` | shown by `planetai packs` and `GET /packs` |
-| `requires: {node: ">=0.40.0"}` | the node version the pack was written against |
+| `requires: {node: ">=0.76"}` | the node versions the pack loads on. A node outside the range does not load it, says so once in its log, and lists it under "not loaded" in `planetai packs`. Declare `>=0.76` when the pack uses `readouts` or `sections`: an older node ignores both without a word |
 | `domain` | which dashboard issue the pack feeds (`air`, `heat`, `land`, `coast`, …). A cross-domain pack's rules are claimed one by one in `app/issues/*.yml`; a pack that reaches no issue and is not on the list of domains outside them (`weather`, `place`, `governance`, `repair`) fails `tests/test_issues.py` |
 | `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources it reads. `make lint` runs `tools/check_registry.py`, which fails and names any id that is not an entry in the registry the node carries. See [The source registry](sources.md) |
 | `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of every pack folder's list |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; a comment line travels with the key under it. No space after `=` |
+| `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token |
+| `readouts: {air: [ … ]}` | numbers the pack adds to an issue, in the shape an issue file uses; shown in Figures, and in the sentence of a context issue. It adds, never replaces. See [PACKS.md](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#readouts-on-an-issue) |
+| `sections: [ … ]` | a band the pack declares on the dashboard as data, drawn with the page's own readout cards. See [A dashboard section](#a-dashboard-section) |
 | `needs: [api.bmkg.go.id]` | hosts the pack reaches |
 
 An issue file under `app/issues/` may carry its own `where:` block, which replaces the shared phrase for a
@@ -272,7 +280,24 @@ writable path, and what they write there is yours to send anywhere. Every `*.py`
 
 ## A dashboard section
 
-A pack can put a section on the dashboard by registering one object with the page contract:
+Any pack, wild or core, can declare a section in its `pack.yaml`, as data. The node reads each readout's latest row
+and serves the section in `GET /issues` under `sections`; the page draws it as a band in its stage on Now, with the
+pack's name beside the title, using its own readout cards and no code from the pack:
+
+```yaml
+sections:
+  - id: sg-air                          # unique on the page: lowercase letters, digits and hyphens
+    stage: observe                      # observe · decide · act · measure
+    title: { en: Singapore air, from NEA, id: Udara Singapura, dari NEA, es: Aire de Singapur, de NEA }
+    order: 40                           # optional, default 50
+    wall: true                          # optional: each reading is also a column on the wall
+    readouts:
+      - { metric: psi, sensor_id: nea-psi, unit: PSI, dp: 0, label: { en: NEA PSI, id: PSI NEA, es: PSI de NEA } }
+```
+
+A declared section draws readout cards only. A stack, a series or a row needs script, and script on this page is for
+core packs only: it reads the same browser storage the admin token is kept in, so a pack's own script would hold
+admin rights on every node that installed it. A core section registers one object with the page contract:
 
 ```js
 window.PAI.register({
@@ -292,17 +317,25 @@ window.PAI.register({
 ```
 
 A section may not invent a fifth card kind (readout · stack · series · row), colour a state by hue, print a
-numeral without `data-num`, or put its explanation in its body. In v0.75.3 a section lives inline in
-`app/static/dashboard.js`, because the node serves its static files from a fixed allowlist by name, and
-serving a pack's own file needs a name on that list the node does not have. Proposing a section today is
-sending the code with its `render()` and its `notes()`. The page itself is described on
+numeral without `data-num`, or put its explanation in its body. A scripted section lives inline in
+`app/static/dashboard.js`, because the node serves its static files from a fixed allowlist by name. Proposing
+one is sending the code with its `render()` and its `notes()`, and it is a reason to promote the pack to core. The page itself is described on
 [Dashboard](dashboard.md).
 
-## Sending one upstream
+## Sharing one
 
-Fork, add the folder, run `make lint`, open a PR. Say in the README where the thresholds come from and which
-place you wrote for: thresholds for Kuta Selatan are not thresholds for Barcelona. A source the pack reads
-has to be an entry in the registry first, so `sources:` can name it. Ten ideas, with who might write
+Do not fork the node to write a pack for your city. Make a repository that *is* the pack folder, develop it in
+`packs/<id>` on your own node, and run `python3 tools/check_rules.py` from the node's folder. To let other nodes
+find it, add one entry to `packs.json` in [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) by pull request; its README lists the
+fields and its CI checks the pack against the node's `main` every week. Any node then installs it with
+`planetai packs add <owner>/<repo>`. Say in the README where the thresholds come from and which place you wrote
+for: thresholds for Kuta Selatan are not thresholds for Barcelona. A source the pack reads has to be an entry in
+the registry first, so `sources:` can name it.
+
+A pull request to this repository is for promotion: a pack useful beyond the place it was written for (or the
+reference for a pilot city), under an open licence, with
+offline tests registered in `tests/all`, and a maintainer who agrees to keep it. The [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md) lists
+what a reviewer asks for. Ten ideas, with who might write
 them, are on [Pack ideas](pack-ideas.md); the issue a new domain declares is explained on [Issues](issues.md).
 
 ## Where this leads

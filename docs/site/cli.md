@@ -125,10 +125,6 @@ The model is a separate download on purpose: a node runs without one, and the we
 gigabytes on the machine a household may have revived for this. [docs/MODELS.md](../../docs/MODELS.md) lists the
 tags.
 
-> **Gap in v0.75.3.** The `act` line that `planetai agent` prints has a quoting fault, so it reads
-> "records that a PERSON acted, in their own words.  is required." with a hole where `note` belongs, and the
-> shell adds `note: command not found`. The tool it describes requires a `note`.
-
 ## Packs and the source registry
 
 | command | what it does |
@@ -148,18 +144,18 @@ relevant to, and the adapter string that reads it: `core:ckan` for an adapter in
 this node reads yet. The footer says so in the node's words:
 
 ```
-  N of 238 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
+  N of 268 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
 ```
 
-The snapshot at v0.75.3 is `awesome-fabcity-data` at `1010aa0`, 238 entries, synced 2026-09-22. `N` is how many
+The snapshot at v0.76 is `awesome-fabcity-data` at `88f5c73`, 268 entries, synced 2026-09-28. `N` is how many
 of them are filed for your city or for everywhere. The same list is `GET /sources` on [the API](api.md).
 
 Since v0.73 two more lines follow the footer: the three
 counts, summed over every cell or, with `--cell`, for that one cell, and what they mean. The counts are for
-the whole registry whatever the other filters, and are grouped by each entry's `feeds_cells`. At `1010aa0`:
+the whole registry whatever the other filters, and are grouped by each entry's `feeds_cells`. At `88f5c73`:
 
 ```
-  across 19 cells: capable 12 / reviewed 12 / candidate 20
+  across 19 cells: capable 12 / reviewed 17 / candidate 50
   capable = live with an adapter. reviewed = live, backed by an adapter or a usable review. candidate = verified, unread.
 ```
 

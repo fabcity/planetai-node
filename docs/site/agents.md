@@ -8,7 +8,7 @@ installed, diagnosed and asked about in plain language. The loop still closes on
 they did.
 
 The repository is written for that. `AGENTS.md` at its root is the front door: its first section is a table
-that routes an agent to one of six skills, and the rest of it is what an agent must not break. `llms.txt`
+that routes an agent to one of seven skills, and the rest of it is what an agent must not break. `llms.txt`
 indexes every document for an agent arriving from outside. `make lint` fails if a skill names a command or a
 path that does not exist.
 
@@ -60,7 +60,7 @@ Paste this to your agent and nothing else:
 The same node answers Claude Code, Codex and any client that speaks MCP over HTTP; [MCP](mcp.md) has the
 other clients and every tool.
 
-## The six skills
+## The seven skills
 
 | the person says | skill | what it makes the agent do |
 |---|---|---|
@@ -68,10 +68,12 @@ other clients and every tool.
 | "it stopped working", "no alerts since Tuesday", here is a log | `skills/troubleshoot-node` | Ask for exactly `planetai doctor --json`, `status --json` and twenty lines of logs; `sensors --json` if it is a sensor. Never `.env`; if one arrives, tell them to revoke the bot token. It may read, restart, update, back up; it may not change a threshold, record an action, move the database or edit `.env` without consent. "A node that is quiet because you raised its threshold is lying." |
 | "connect this to Claude / Codex", "reach it from outside" | `skills/connect-agent` | Get the URL, token and snippet from `planetai agent`. Tailscale, never a port forward, ngrok or a public reverse proxy. Name yourself in every write's `agent` argument. Call `health_check` first, then `status`. |
 | "put our city on the Fab City Index" | `skills/publish-to-index` | Establish the tier first: one node per pilot writes, a home node never does. `planetai cells --json`; the state must be honest. The writer lives with the Index and needs a per-pilot token issued by hand. See [Federation](federation.md). |
+| "I want a pack for my city", "share our pack" | `skills/write-a-pack` | Decide the tier first: a pack for one place is wild, in its own repository, never a fork of this one. Start from a core pack of the same kind; `id` equals the folder; keys under `secrets:`, never a value. Test with `tools/check_rules.py` and `planetai packs` on the person's node, then list it at fabcity/planetai-wild-packs from their account. See [Packs](packs.md). |
 | you are about to change this repository | `skills/preflight` | `tools/session.sh preflight` first. Your own worktree, your own branch; never the one holding `main`. |
 | you are about to end a session that changed this repository | `skills/land` | `tools/session.sh land`. Nothing exists only on this machine, and the gates ran, not were assumed. |
 
-The first four are for an agent operating a node; the last two are for an agent changing the code. The first
+The first four are for an agent operating a node, the fifth for one writing a pack with its author, and the last
+two for an agent changing the code. The first
 four end the same way: when a document and the skill disagree, the document wins and the skill has a bug.
 
 ## What each tool is allowed to be

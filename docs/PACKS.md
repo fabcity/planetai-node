@@ -5,7 +5,8 @@ about air, water or heat; the packs do. Eighteen ship in `packs/`.
 
 ```
 packs/<id>/
-  pack.yaml     id, name, description, kind (data | code), version, requires:, pip:, env:, secrets:, readouts:, sections:
+  pack.yaml     id, name, description, kind (data | code), version, requires:, domain:, sources:, needs:, pip:, env:,
+                secrets:, readouts:, sections:
   rules.yml     alerts: SQL that returns rows, one message per row
   cells.yml     Index cells: SQL that returns one `value`
   adapter.py    a new source; code packs only
@@ -223,7 +224,8 @@ editing that file. If a node ever answers a version the page does not know, the 
 and draws what it recognises — it does not blank. A version bumps only on a breaking change, and the
 bump is a `docs/decisions/` entry.
 
-A pack can put a section on the dashboard. It registers one object with the page contract and the
+A core pack can put a scripted section on the dashboard (any pack can declare one as data: see
+[A declared section](#a-declared-section)). It registers one object with the page contract and the
 page renders it in the stage it belongs to — observe, decide, act, measure — in the order the loop
 runs, and folds its explanations at the foot:
 
@@ -385,7 +387,10 @@ Ten more ideas, with who might write them: [`PACK_IDEAS.md`](PACK_IDEAS.md).
 
 ## Contributing one
 
-Start it in its own repository, cloned into `packs/<id>` on your node (see the top of this page). Send it here when it
-is general: a threshold a second city can use, a source other nodes read. Then the pull request adds the folder and
-nothing else, and `make lint && make test` run against it. The README must say where the thresholds came from and
+Start it in its own repository and develop it in `packs/<id>` on your node (see the top of this page). List it at
+[fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) by pull request so other nodes can find
+it. Send it here only to promote it ([decision](decisions/2026-10-01-packs.md), point 3): useful beyond the place it
+was written for or the reference for a pilot city, openly licensed, with offline tests registered in `tests/all`, and
+a maintainer here who agrees to keep it. Then the pull request adds the folder and nothing else, and
+`make lint && make test` run against it. The README must say where the thresholds came from and
 what the pack does not know. Thresholds for Kuta Selatan are not thresholds for Barcelona; say which place you wrote for.

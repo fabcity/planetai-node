@@ -10,7 +10,7 @@ Bali; its Python is Apple's 3.9 with no third-party libraries, and that is the P
 ```bash
 make lint      # shell syntax, SQL idempotency, compose mounts, CLI snippets as Python 3.9 with stdlib only,
                # rules and cells against init.sql, docs against the code, the GUI, pyflakes, the app imports
-make test      # the 47 offline suites in tests/all, one line each and a count at the end
+make test      # the 55 offline suites in tests/all, one line each and a count at the end
 ```
 
 The pre-commit hook runs lint and refuses `.env`, credentials, `.DS_Store`, and anything under `.git`. Install it once:

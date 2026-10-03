@@ -1,10 +1,11 @@
 # Packs that ship
 
-Eighteen folders under `packs/` in v0.75.3: ten data packs and eight code packs. Between them they hold
+Eighteen core packs ship in `packs/` in v0.76: ten data packs and eight code packs. Wild packs, written for one
+place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
 the nearest workshop are all in here, as SQL and YAML, and in eight cases as an adapter too. How a pack is
-built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.75.3.
+built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.76.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
@@ -98,7 +99,8 @@ None of its own. The SQL reads the `planetai.lat` and `planetai.lon` GUCs and wh
 
 The README says "Fork it": the numbers that matter in Kerobokan are not the numbers that matter in Poblenou, and the
 sentence that gets someone to close a window is different in every language and every building. Copy the folder,
-change the thresholds and the wording, publish it as `planetai-pack-air-<yourplace>`.
+change the thresholds and the wording, publish it as `planetai-pack-air-<yourplace>`, and list it at
+[fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) so other nodes can add it.
 
 ## xiaomi-air
 
