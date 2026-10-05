@@ -932,9 +932,85 @@ const interp = (str, vals) => String(str || '')
    keeps those (node #1: `indoor_pm25_high`), and every section that names a rule's pack reads it here. */
 const rulePack = id => { const s = String(id); return s.includes('/') ? s.split('/')[0] : ''; };
 
+/* ALERT EVENTS (docs/SPEC_dashboard_events.md §4.2). One per issue per house, the way the bot tells them:
+ * the node chose the action and wrote the message, and this draws them. Which of five states Decide is in is
+ * the first thing every caller needs, and the five are different facts (spec §5). */
+function evState() {
+  const e = (S.issues || {}).events;
+  if (e == null) return 'old';
+  if (e.error) return 'error';
+  return e.engine === 'shadow' || e.engine === 'events' ? e.engine : 'rules';
+}
+const evOpen = () => (((S.issues || {}).events || {}).open || []);
+function evClock(iso) {
+  const t = new Date(iso);
+  if (isNaN(t)) return '';
+  const tz = S.health && S.health.tz;
+  if (tz) {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit',
+        hour12: false }).format(t);
+    } catch { /* a zone this browser does not know: say UTC */ }
+  }
+  return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')} UTC`;
+}
+function evButtons(e) {
+  const B = ((S.issues || {}).events || {}).buttons || {};
+  const id = esc(String(e.id));
+  return `<div class="evbtns">`
+    + `<button type="button" class="evb pri" data-ev="${id}" data-stage="acted">${esc(B.done || 'Done')}</button>`
+    + `<button type="button" class="evb" data-ev="${id}" data-stage="acknowledged">${esc(B.not_now || 'Not now')}</button>`
+    + `<button type="button" class="evb" data-ev="${id}" data-stage="dismissed">${esc(B.doesnt_fit || 'Doesn’t fit')}</button>`
+    + `</div>`
+    + `<form class="evform" hidden data-ev="${id}"><input type="hidden" name="stage">`
+    + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name" placeholder="your name"></label>`
+    + `<label class="instead"><span>What did you do instead?</span><input name="note" maxlength="500"`
+    + ` placeholder="optional"></label>`
+    + `<div class="btns"><button type="submit" class="pri">Record it</button>`
+    + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
+}
+function evCard(e) {
+  const d = ISS[e.issue] || { name: {} }, h = d.hero || {}, dp = d.dp == null ? 1 : d.dp, unit = d.unit || '';
+  const st = evState(), c = e.context || {}, a = e.answer;
+  const n = v => (v == null ? null : fmt(v, dp));
+  const out = c.outside == null ? null : `outside ${n(c.outside)}`
+    + (c.outside_metric === 'temp' && d.metric !== 'temp' ? ' (air temperature)' : '')
+    + (c.outside_from ? `, from ${c.outside_from}` : '');
+  const cmp = [c.usual == null ? 'no usual for this hour yet' : `usual at this hour ${n(c.usual)}`,
+    out || 'no outside reading', e.line == null ? 'no line' : `the line ${n(e.line)}`].join(' · ');
+  const worse = e.line != null && e.peak != null && e.peak > e.line;
+  const m = e.message;
+  const said = !m ? '' : `<p class="evmsg"><span class="m">${st === 'shadow' ? 'would have sent'
+    : m.sent ? 'sent' : 'held'} ${esc(evClock(m.ts))}</span><span class="said">${esc(m.text || '')}</span></p>`;
+  const done = a && a.stage === 'acted';
+  const answered = !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
+    + `${done ? sign('rho-closed', 'closed') : ''}${esc(a.stage === 'acted' ? 'Done'
+      : a.stage === 'dismissed' ? 'Doesn’t fit' : 'Not now')} · ${esc(a.actor || 'somebody')}`
+    + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
+      + ` unless it reaches danger` : ''}</p>`;
+  const rows = (e.alerts || []).length;
+  return `<section class="ev${a && a.stage === 'acknowledged' ? ' held' : ''}" id="ev-${esc(String(e.id))}"`
+    + ` data-component="event" data-role="ask" data-ref="num-${esc(e.issue)}">`
+    + `<div class="evhead">${h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="`
+      + `${esc(d.name[LOC] || e.issue)}"><use href="static/signs.svg#${esc(h.sign)}"/></svg>` : ''}`
+    + `<b>${esc(d.name[LOC] || e.issue)}</b> · ${esc(e.kind)} · since ${esc(evClock(e.opened_at))}`
+    + `${(e.rooms || []).length ? ` · ${esc(e.rooms.join(', '))}` : ''}`
+    + `${st === 'shadow' ? `<span class="m">shadow — nothing was sent</span>` : ''}</div>`
+    + `<p class="evcmp"><span class="evnum${worse ? ' worse' : ''}" data-num="ev.${esc(String(e.id))}.peak"`
+    + ` data-cmp="${esc(cmp)}">${esc(n(e.peak))}</span> ${esc(unit)} peak <small>${esc(cmp)}</small></p>`
+    + (e.action && e.action.text ? `<p class="evact said">${esc(e.action.text)}</p>`
+      : `<p class="evact none">The node chose no action for this event, and this page will not invent one.</p>`)
+    + answered + (done ? '' : evButtons(e)) + said
+    + `<p class="evlinks">evidence: <a href="#matrix">${esc(d.name[LOC] || e.issue)} at every distance</a>`
+    + ` · <a href="#day">the day</a> · <a href="#sensors">the stations</a>`
+    + (rows ? ` · <a href="#evrows-${esc(String(e.id))}">from ${rows} rule row${rows === 1 ? '' : 's'}</a>` : '')
+    + `</p></section>`;
+}
+
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
-  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
+  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
+  evState, evOpen, evClock, evButtons, evCard };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */

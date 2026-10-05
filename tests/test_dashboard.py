@@ -697,6 +697,73 @@ if shutil.which("node"):
         f"pill('stale') must print the word with no sign, since signs.svg has none: {_pill['stale']}"
     assert "sign-prov-live" in _pill["live"], f"pill('live') lost its sign: {_pill['live']}"
 
+    # THE EVENT CARD (SPEC_dashboard_events §4.2). The helpers are lifted whole; S, ISS and LOC are the
+    # kit's own `let` bindings, so the program declares them the way initKit() would.
+    _ev = "\n".join((
+        re.search(r"const esc = s => .*?\);\n", _js_raw, re.S).group(0),
+        re.search(r"const fmt = .*?\n", _js_raw).group(0),
+        re.search(r"const sign = \(id, cls = ''\) =>\n.*?;\n", _js_raw).group(0),
+        re.search(r"const TOKEN_FINE = .*?</p>`;", _js_raw, re.S).group(0),
+        re.search(r"function evState\(\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"const evOpen = .*?\n", _js_raw).group(0),
+        re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evButtons\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evCard\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+    ))
+    _evr = _node(_ev + r"""
+let LOC = 'en';
+const ISS = { heat: { name: { en: 'Heat' }, unit: '°C', dp: 1, metric: 'temp', hero: { sign: 'sign-heat' } } };
+const BTN = { done: 'Done', not_now: 'Not now', doesnt_fit: 'Doesn’t fit' };
+const ev0 = { id: 7, issue: 'heat', kind: 'sustained', level: 'warn', opened_at: '2026-10-05T09:30:00Z',
+  peak: 36.2, line: 35, rooms: ['loft'], context: { usual: 33.4, outside: 29.1, outside_metric: 'temp',
+  outside_from: 'outside' }, action: { id: 'a', text: 'Close the shutters <now>' },
+  message: { text: 'It is hot <b>', ts: '2026-10-05T09:31:00Z', sent: true }, alerts: [1, 2], answer: null };
+const run = (events, over) => { S = { issues: { events }, health: { tz: 'UTC' } }; return evCard({ ...ev0, ...over }); };
+let S;
+const E = (engine, extra) => ({ engine, buttons: BTN, open: [], ...extra });
+const n = (s, re) => (s.match(re) || []).length;
+const out = {
+  old: (S = { issues: {} }, evState()), nul: (S = { issues: { events: null } }, evState()),
+  err: (S = { issues: { events: { error: 'x' } } }, evState()), shadow: (S = { issues: { events: E('shadow') } }, evState()),
+  rules: (S = { issues: { events: E('rules') } }, evState()), evs: (S = { issues: { events: E('events') } }, evState()),
+  open: (S = { issues: { events: E('events', { open: [1] }) } }, evOpen()), none: (S = { issues: {} }, evOpen()),
+  clock: (S = { issues: {}, health: { tz: 'Asia/Makassar' } }, evClock('2026-10-05T09:30:00Z')),
+  utc: (S = { issues: {} }, evClock('2026-10-05T09:30:00Z')), bad: (S = { issues: {} }, evClock('nope')),
+  open_card: run(E('events'), {}), shadow_card: run(E('shadow'), {}),
+  held_msg: run(E('events'), { message: { text: 'x', ts: '2026-10-05T09:31:00Z', sent: false } }),
+  acted: run(E('events'), { answer: { stage: 'acted', actor: 'tomas', ts: '2026-10-05T10:00:00Z' } }),
+  held: run(E('events'), { answer: { stage: 'acknowledged', actor: 'tomas', ts: '2026-10-05T10:00:00Z',
+    held_until: '2026-10-05T12:00:00Z' } }),
+  under: run(E('events'), { peak: 34 }),
+  noact: run(E('events'), { action: null, context: {}, line: null }),
+};
+console.log(JSON.stringify(out));""")
+    assert [_evr[k] for k in ("old", "nul", "err", "shadow", "rules", "evs")] == \
+        ["old", "old", "error", "shadow", "rules", "events"], f"evState: {_evr}"
+    assert _evr["open"] == [1] and _evr["none"] == [], "evOpen reads S.issues.events.open, or []"
+    assert _evr["clock"] == "17:30" and _evr["utc"].endswith("UTC") and _evr["bad"] == "", \
+        f"evClock: {_evr['clock']!r} {_evr['utc']!r} {_evr['bad']!r}"
+    _c = _evr["open_card"]
+    assert 'data-num="ev.7.peak"' in _c, "the peak numeral is a data-num, so the number gate reads it"
+    _cmp = re.search(r'data-cmp="([^"]*)"', _c).group(1)
+    assert "usual at this hour 33.4" in _cmp and "outside 29.1" in _cmp and "from outside" in _cmp \
+        and "the line 35.0" in _cmp, f"data-cmp must name usual, outside and the line: {_cmp}"
+    assert "Close the shutters &lt;now&gt;" in _c and "<now>" not in _c, "the action text is the node's, escaped"
+    assert "It is hot &lt;b&gt;" in _c and "<b>It" not in _c, "the message is escaped"
+    assert len(re.findall(r'<button type="button" class="evb', _c)) == 3, "three buttons"
+    for _t in ("Done", "Not now", "Doesn’t fit"):
+        assert f">{_t}</button>" in _c, f"button {_t!r} missing"
+    assert "sent 09:31" in _c and "would have sent" not in _c, "an events node says sent"
+    assert "would have sent 09:31" in _evr["shadow_card"], "a shadow node says would have sent"
+    assert "held 09:31" in _evr["held_msg"], "an unsent message says held"
+    assert 'class="evnum worse"' in _c and 'class="evnum"' in _evr["under"], "worse only when peak > line"
+    assert 'class="evb' not in _evr["acted"] and "evdone" in _evr["acted"] and "tomas" in _evr["acted"], \
+        "an acted event has no buttons and says who"
+    assert "evheld" in _evr["held"] and "held until 12:00" in _evr["held"] and 'class="evb' in _evr["held"], \
+        "a held event keeps its buttons and says until when"
+    assert "chose no action" in _evr["noact"] and "no usual for this hour yet" in _evr["noact"] \
+        and "no outside reading" in _evr["noact"] and "no line" in _evr["noact"], "absence is said four ways"
+
     # "I did this" and "Record the decision" print what the node said when it refused, word for
     # word. It printed "The node refused it (409)" over a node that had written, in full, what to
     # do first (DECISION_REQUIRED) — the one sentence the person at the screen needed.

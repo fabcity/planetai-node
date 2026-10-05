@@ -250,6 +250,46 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .decide form.decided button.pri { background: var(--ink); color: var(--ground) }
 .decide form.decided .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
 
+/* ==== the event card (SPEC_dashboard_events §4.2) — the decide card's box, the readout's numeral, the ask's
+   button. One per issue per house; answered, it goes quiet rather than disappearing. */
+.ev { border: 1px solid var(--ink); padding: clamp(13px, 1.4vw, 18px); display: grid; gap: 10px;
+  background: var(--ground); margin-bottom: clamp(12px, 1.4vw, 20px) }
+.ev.held { color: var(--mute); border-color: var(--hair) }
+.ev .evhead { font: 600 14.5px/1.4 var(--fc-font-body); display: flex; flex-wrap: wrap; gap: 4px 6px;
+  align-items: center }
+.ev .evhead .sgn { width: 20px; height: 20px; color: var(--ink) }
+.ev .m { font: 500 11.5px var(--mono); color: var(--mute) }
+.ev .evhead .m { margin-left: 8px }
+.ev .evcmp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px }
+.evnum { font: 700 clamp(1.3rem, 1.9vw, 1.7rem)/1 var(--mono); letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums }
+.evnum.worse { color: var(--signal-worse) }
+.ev .evcmp small { font: 500 11px var(--mono); color: var(--mute); flex-basis: 100% }
+.ev .evact { font: 600 14.5px/1.4 var(--fc-font-body); max-width: 56ch }
+.ev .evact.none { font-weight: 400; color: var(--mute) }
+.ev .evdone, .ev .evheld { font: 500 12.5px var(--mono); color: var(--mute) }
+.ev .evdone svg.sg { color: var(--loop-closed) }
+.ev .evbtns { display: flex; gap: 8px; flex-wrap: wrap }
+.ev .evb { font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.ev .evb.pri { background: var(--ink); color: var(--ground) }
+.ev .evmsg { display: grid; gap: 2px; border-left: 3px solid var(--cells); padding-left: 12px }
+.ev .evmsg .said { font-size: 12.5px; line-height: 1.45; white-space: pre-line; max-width: 56ch }
+.ev .evlinks { font: 500 11.5px var(--mono); color: var(--mute) }
+.ev .evlinks a { color: var(--ink) }
+.ev .evform { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair); padding-top: 12px }
+.ev .evform[hidden] { display: none }
+.ev .evform label { display: grid; gap: 3px; min-width: 0 }
+.ev .evform label span { font: 500 10.5px var(--mono); letter-spacing: .1em; color: var(--mute) }
+.ev .evform input:not([type="hidden"]) { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+  border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
+.ev .evform input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.ev .evform .btns { display: flex; gap: 8px; flex-wrap: wrap }
+.ev .evform button { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+  border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
+.ev .evform button.pri { background: var(--ink); color: var(--ground) }
+.ev .evform .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
+
 .ask.none { border-style: dashed; border-color: var(--hair) }
 .ask.none .what { font-weight: 400; color: var(--mute) }
 
