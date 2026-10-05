@@ -280,6 +280,7 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ev .evform { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair); padding-top: 12px }
 .ev .evform[hidden] { display: none }
 .ev .evform label { display: grid; gap: 3px; min-width: 0 }
+.ev .evform label[hidden] { display: none }
 .ev .evform label span { font: 500 10.5px var(--mono); letter-spacing: .1em; color: var(--mute) }
 .ev .evform input:not([type="hidden"]) { font: 400 14px var(--fc-font-body); padding: 9px 10px;
   border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }

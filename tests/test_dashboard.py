@@ -804,6 +804,50 @@ const form = { querySelector: () => ({ disabled: false }), getAttribute: () => '
     assert _t["500"] == ["The node refused it (500).", True], f"no body, no invented sentence: {_t['500']}"
     assert _t["422"][0] == "field required (422)", f"a schema refusal's messages, joined: {_t['422']}"
 
+    # Pressing Done, Not now or Doesn't fit on an alert event posts the EVENT id (a number), the stage,
+    # the name and the note; a post the node takes stores the name, and a refusal prints the node's own
+    # sentence. The click and submit handlers are browser-only; Task 11's live proof presses them.
+    _ans_m = re.search(r"async function answerEvent\(id, stage, actor, note\) \{.*?\n\}", _js_raw, re.S)
+    assert _ans_m, "the page no longer defines answerEvent(id, stage, actor, note) at column 0"
+    _ans = "\n".join((re.search(r"async function nodeSaid\(r\) \{.*?\n\}", _js_raw, re.S).group(0), _ans_m.group(0)))
+    _ans_cases = {
+        "200": [200, None], "404": [404, {"detail": "no such event"}],
+        "401": [401, {"detail": "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>"}],
+        "400": [400, {"detail": "stage must be acknowledged, acted or dismissed"}],
+    }
+    _a = _node(_ans + "\nconst C = " + json.dumps(_ans_cases) + r""";
+const auth_ = () => ({}); let said = null, refreshed = 0, stored = null, posted = null;
+const say = (m, bad) => { said = [m, !!bad]; };
+const refresh = async () => { refreshed++; };
+const localStorage = { getItem: () => null, setItem: (k, v) => { stored = [k, v]; } };
+(async () => {
+  const out = {};
+  for (const [k, [status, body]] of Object.entries(C)) {
+    globalThis.fetch = async (url, opts) => { posted = [url, JSON.parse(opts.body)];
+      return { status, ok: status < 300, json: async () => { if (body === null) throw new Error('no body'); return body; } }; };
+    said = null; stored = null; refreshed = 0;
+    const ok = await answerEvent('7', 'acknowledged', 'ana', undefined);
+    out[k] = { ok, said, stored, refreshed, posted };
+  }
+  for (const [stage, key] of [['acted', 'acted'], ['dismissed', 'dismissed']]) {
+    globalThis.fetch = async () => ({ status: 200, ok: true, json: async () => ({}) });
+    said = null; await answerEvent(7, stage, 'ana', 'did it by hand'); out[key] = said;
+  }
+  console.log(JSON.stringify(out));
+})();""")
+    assert _a["200"]["posted"] == ["/actions", {"event_id": 7, "stage": "acknowledged", "actor": "ana", "note": ""}], \
+        f"the body is the event id as a number, not a string: {_a['200']['posted']}"
+    assert _a["200"]["ok"] is True and _a["200"]["stored"] == ["planetai_actor", "ana"] \
+        and _a["200"]["refreshed"] == 1, f"a 200 stores the name and refreshes: {_a['200']}"
+    assert _a["200"]["said"] == ["Not now. The node holds this for three hours, unless it reaches danger.", False]
+    assert _a["acted"] == ["Recorded.", False] and _a["dismissed"] == ["Noted: it doesn’t fit.", False]
+    assert _a["404"]["said"] == ["This node has no such event any more. Reload and look again.", True] \
+        and _a["404"]["stored"] is None and _a["404"]["ok"] is False, f"a 404: {_a['404']}"
+    assert _a["401"]["said"][0].startswith("closing a loop from off this machine") \
+        and "planetai ui" in _a["401"]["said"][0] and _a["401"]["refreshed"] == 0, f"a 401: {_a['401']}"
+    assert _a["400"]["said"] == ["stage must be acknowledged, acted or dismissed", True] \
+        and _a["400"]["stored"] is None, f"a 400 prints the node's sentence: {_a['400']}"
+
 # Set up writes only what somebody changed, and never over a key that moved while it was open.
 #
 # Node #1, 26 September 2026: AGENT_PREFER was set to `private` over PUT /settings at 18:07. Two saves of

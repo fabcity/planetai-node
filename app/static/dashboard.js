@@ -7801,15 +7801,52 @@ async function didThis(form) {
   } finally { btn.disabled = false; }
 }
 
-document.addEventListener('submit', ev => {
-  const form = ev.target.closest && ev.target.closest('form.did, form.decided');
+/* Done, Not now and Doesn't fit on an alert EVENT. The id is the event's, not an alert's; the node
+   answers with the event's own refusals, so the sentences are the ones didThis prints. Returns true
+   only when the node took it, so the form can close on a yes and stay open, with what was typed, on a no. */
+async function answerEvent(id, stage, actor, note) {
+  try {
+    const r = await fetch('/actions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...auth_() },
+      body: JSON.stringify({ event_id: Number(id), stage, actor: String(actor || ''), note: String(note || '') }),
+    });
+    const said = r.ok ? '' : await nodeSaid(r);
+    if (r.status === 401 || r.status === 403) {
+      say(`${said || 'This node will not take that from here.'} · \`planetai ui\` prints the `
+        + `act token; Set up → unlock holds it.`, true);
+    } else if (r.status === 404) {
+      say('This node has no such event any more. Reload and look again.', true);
+    } else if (!r.ok) {
+      say(said || `The node refused it (${r.status}).`, true);
+    } else {
+      try { if (actor) localStorage.setItem('planetai_actor', String(actor)); } catch { /* no storage here */ }
+      say(stage === 'acted' ? 'Recorded.' : stage === 'acknowledged'
+        ? 'Not now. The node holds this for three hours, unless it reaches danger.' : 'Noted: it doesn’t fit.');
+      await refresh();
+      return true;
+    }
+  } catch (e) {
+    say(`The node did not answer: ${String((e && e.message) || e)}`, true);
+  }
+  return false;
+}
+
+document.addEventListener('submit', async ev => {
+  const form = ev.target.closest && ev.target.closest('form.did, form.decided, form.evform');
   if (!form) return;
   ev.preventDefault();
   if (FIXTURE || STATE !== 'populated') {
     say('This is a capture, not a live node — its alerts belong to the node it came from.', true);
     return;
   }
-  didThis(form);
+  if (!form.classList.contains('evform')) { didThis(form); return; }
+  const val = n => String((form.elements[n] || {}).value || '').trim();
+  const sub = form.querySelector('button[type="submit"]');
+  if (sub) sub.disabled = true;
+  try {
+    if (await answerEvent(form.dataset.ev, val('stage'), val('actor'), val('note'))) form.hidden = true;
+  } finally { if (sub) sub.disabled = false; }
 });
 
 document.addEventListener('click', ev => {
@@ -7824,6 +7861,34 @@ document.addEventListener('click', ev => {
     if (lead && lead.getBoundingClientRect().top < 0) lead.scrollIntoView();
     return;
   }
+  /* An alert event's three buttons. Done and Not now post at once when this browser has a name;
+     with none, and always for Doesn't fit, the card's form opens so the name (and the note) can be said. */
+  const evb = ev.target.closest && ev.target.closest('.evb');
+  if (evb) {
+    const card = evb.closest('.ev, .evrow'), form = card && card.querySelector('form.evform');
+    if (!form) return;
+    const stage = evb.getAttribute('data-stage');
+    let who = '';
+    try { who = localStorage.getItem('planetai_actor') || ''; } catch { /* no storage here */ }
+    if (stage === 'dismissed' || !who) {
+      form.hidden = false;
+      form.elements.stage.value = stage;
+      if (!form.elements.actor.value) form.elements.actor.value = who;
+      const inst = form.querySelector('.instead');
+      if (inst) inst.hidden = stage !== 'dismissed';
+      (form.elements.actor.value ? form.elements.note : form.elements.actor).focus();
+      return;
+    }
+    if (FIXTURE || STATE !== 'populated') {
+      say('This is a capture, not a live node — its alerts belong to the node it came from.', true);
+      return;
+    }
+    evb.disabled = true;
+    answerEvent(evb.getAttribute('data-ev'), stage, who, '').finally(() => { evb.disabled = false; });
+    return;
+  }
+  const evc = ev.target.closest && ev.target.closest('form.evform .cancel');
+  if (evc) { evc.closest('form.evform').hidden = true; return; }
   const go = ev.target.closest && ev.target.closest('.ask .go');
   if (go) {
     const form = go.parentElement.querySelector('form.did');
