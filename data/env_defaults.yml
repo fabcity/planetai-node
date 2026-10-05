@@ -121,7 +121,7 @@ ALERT_LOCALE:
   help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report. en | id | es   (every rules.yml carries all three)"
 ALERT_ENGINE:
   default: "rules"
-  help: "rules (default) | shadow. docs/SPEC_alerts.md: shadow records what the event engine would send, sends nothing. events, which sends through the event engine, arrives with the release that adds Telegram buttons."
+  help: "rules (default) | shadow | events. docs/SPEC_alerts.md: shadow records what the event engine would send and sends nothing; events sends the engine's heat and air messages instead of the old heat and air rules."
 ALERT_MAX_PER_DAY:
   default: "4"
   help: "With the event engine: pushes a day outside danger."

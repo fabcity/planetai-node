@@ -117,9 +117,11 @@ def context(cur, e: E.Event, now: dt.datetime) -> dict:
     return ctx
 
 
-def run(cur, cands: list[E.Candidate], mode: str, now: dt.datetime) -> list[E.Message]:
+def run(cur, cands: list[E.Candidate], mode: str, now: dt.datetime) -> list[tuple[E.Message, str | None]]:
     """One engine step. Every decided message is recorded; in shadow, `sent` records what WOULD have gone out.
-    One transaction (a block of its own on the app's autocommit connection): no event row without its message."""
+    One transaction (a block of its own on the app's autocommit connection): no event row without its message.
+    Returns each decided message with its rendered text, so the caller can send after the transaction commits."""
+    out = []
     with cur.connection.transaction():
         msgs = E.step(now, cands, PgStore(cur), policy())
         decl = issues.load() if msgs else {}
@@ -139,4 +141,5 @@ def run(cur, cands: list[E.Candidate], mode: str, now: dt.datetime) -> list[E.Me
                 cur.execute("UPDATE alert_events SET action_id = %s WHERE id = %s", (aid, m.event.id))
             cur.execute("INSERT INTO event_messages (ts, event_id, reason, kind, sent, held, mode, text, action_id) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                         (now, m.event.id, m.reason, m.event.kind, m.send, m.held, mode, text, aid))
-    return msgs
+            out.append((m, text))
+    return out
