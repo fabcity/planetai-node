@@ -969,7 +969,8 @@ function evButtons(e) {
     + `<div class="btns"><button type="submit" class="pri">Record it</button>`
     + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
 }
-function evCard(e) {
+/* `tail` is drawn inside the card, last: Decide puts the folded rule rows there (spec §4.2). */
+function evCard(e, tail = '') {
   const d = ISS[e.issue] || { name: {} }, h = d.hero || {}, dp = d.dp == null ? 1 : d.dp, unit = d.unit || '';
   const st = evState(), c = e.context || {}, a = e.answer;
   const n = v => (v == null ? null : fmt(v, dp));
@@ -989,8 +990,10 @@ function evCard(e) {
     + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
       + ` unless it reaches danger` : ''}</p>`;
   const rows = (e.alerts || []).length;
-  /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run. */
-  const drawn = id => window.PAI.sections.some(s => s.id === id && (s.needs || []).every(window.PAI.has));
+  /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run, and
+     Arrange may have hidden any of them. */
+  const drawn = id => window.PAI.sections.some(s => s.id === id && (s.needs || []).every(window.PAI.has))
+    && !(window.PAI.isHidden && window.PAI.isHidden(id));
   const links = [drawn('matrix') && `<a href="#matrix">${esc(d.name[LOC] || e.issue)} at every distance</a>`,
     drawn('day') && `<a href="#day">the day</a>`, drawn('sensors') && `<a href="#sensors">the stations</a>`,
     rows && `<a href="#evrows-${esc(String(e.id))}">from ${rows} rule row${rows === 1 ? '' : 's'}</a>`]
@@ -1008,7 +1011,7 @@ function evCard(e) {
       : `<p class="evact none">The node chose no action for this event, and this page will not invent one.</p>`)
     + answered + (done ? '' : evButtons(e)) + said
     + (links.length ? `<p class="evlinks">evidence: ${links.join(' · ')}</p>` : '')
-    + `</section>`;
+    + tail + `</section>`;
 }
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
@@ -5076,7 +5079,7 @@ function card(ctx, key, d, a, did) {
     + `<p class="fine">This closes no alert and moves no number. When it is done, press `
     + `<b>I did this</b> under Act.</p>`
     + window.K.TOKEN_FINE
-    + `</form>${did ? window.K.didButton(a.id) : ''}</section>`;
+    + `</form>${did ? `<div class="ask">${window.K.didButton(a.id)}</div>` : ''}</section>`;
 }
 
 window.PAI.register({
@@ -5100,7 +5103,7 @@ window.PAI.register({
             + `${last ? `, the last at ${esc(evClock(last.ts))} (${esc((ISS[last.issue] || { name: {} }).name[ctx.LOC]
               || last.issue)})` : ''}.` : ''}</p>`;
       }
-      return open.map(e => evCard(e) + rowsOf(ctx, e)).join('') + left.join('');
+      return open.map(e => evCard(e, rowsOf(ctx, e))).join('') + left.join('');
     }
     /* rules, a node older than v0.77, or an events block that could not be read: each says which, then
        draws the alert cards, because nothing that asks a person something may disappear. */
@@ -6332,6 +6335,8 @@ function readLayout(settings) {
  * nothing — so here the view's own list is filtered before anything is drawn and a hidden section is
  * never emitted at all. */
 const want = view => view.filter(id => !(LAYOUT.hidden || []).includes(id));
+/* LAYOUT is this closure's; the kit's evCard asks whether a section was hidden in Arrange through this. */
+window.PAI.isHidden = id => (LAYOUT.hidden || []).includes(id);
 
 /* An arrangement is a position within a stage, which is what the registry already sorts by.
  *

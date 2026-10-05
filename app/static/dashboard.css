@@ -277,9 +277,11 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ev .evmsg .said { font-size: 12.5px; line-height: 1.45; white-space: pre-line; max-width: 56ch }
 .ev .evlinks { font: 500 11.5px var(--mono); color: var(--mute) }
 .ev .evlinks a { color: var(--ink) }
-details.evrows { margin: 0 0 clamp(12px, 1.4vw, 20px); font: 500 11.5px var(--mono); color: var(--mute) }
-details.evrows summary { cursor: pointer; color: var(--ink) }
-details.evrows p { margin: 4px 0 0 }
+.ev details.evrows { font: 500 11.5px var(--mono); color: var(--mute) }
+.ev details.evrows summary { cursor: pointer; color: var(--ink) }
+.ev details.evrows p { margin: 4px 0 0 }
+/* The I did this button on a Decide alert card sits in the card's own box, not in a second one. */
+.decide > .ask { border: 0; padding: 0 }
 .ev .evform { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair); padding-top: 12px }
 .ev .evform[hidden] { display: none }
 .ev .evform label { display: grid; gap: 3px; min-width: 0 }

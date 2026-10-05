@@ -708,12 +708,13 @@ if shutil.which("node"):
         re.search(r"const evOpen = .*?\n", _js_raw).group(0),
         re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evButtons\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
-        re.search(r"function evCard\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evCard\(e, tail = ''\) \{.*?\n\}", _js_raw, re.S).group(0),
     ))
     _evr = _node(_ev + r"""
 let LOC = 'en';
-const window = { PAI: { sections: [], has: p => p !== 'H3.missing' } };
-const secs = (...ids) => { window.PAI.sections = ids.map(id => ({ id, needs: id === 'day' ? ['H3.missing'] : [] })); };
+let HID = [], DAY_UNMET = true;
+const window = { PAI: { sections: [], has: p => p !== 'H3.missing', isHidden: id => HID.includes(id) } };
+const secs = (...ids) => { window.PAI.sections = ids.map(id => ({ id, needs: id === 'day' && DAY_UNMET ? ['H3.missing'] : [] })); };
 const ISS = { heat: { name: { en: 'Heat' }, unit: '°C', dp: 1, metric: 'temp', hero: { sign: 'sign-heat' } } };
 const BTN = { done: 'Done', not_now: 'Not now', doesnt_fit: 'Doesn’t fit' };
 const ev0 = { id: 7, issue: 'heat', kind: 'sustained', level: 'warn', opened_at: '2026-10-05T09:30:00Z',
@@ -741,6 +742,9 @@ const out = {
   l_all: (secs('matrix', 'sensors'), run(E('events'), {})),
   l_unmet: (secs('matrix', 'day', 'sensors'), run(E('events'), {})),
   l_none: (secs(), run(E('events'), { alerts: [] })),
+  l_hidden: (DAY_UNMET = false, secs('matrix', 'day', 'sensors'), HID = ['day'], run(E('events'), {})),
+  l_shown: (HID = [], run(E('events'), {})),
+  tail: (S = { issues: { events: E('events') } }, evCard(ev0, '<details id="evrows-7">T</details>')),
 };
 console.log(JSON.stringify(out));""")
     assert [_evr[k] for k in ("old", "nul", "err", "shadow", "rules", "evs")] == \
@@ -774,6 +778,11 @@ console.log(JSON.stringify(out));""")
     assert 'href="#sensors"' in _evr["l_unmet"] and 'href="#day"' not in _evr["l_unmet"]
     assert 'href="#matrix"' not in _evr["noact"] and 'href="#sensors"' not in _evr["noact"], \
         "no section registered, no link to one"
+    assert 'href="#day"' not in _evr["l_hidden"] and 'href="#matrix"' in _evr["l_hidden"], \
+        f"a section hidden in Arrange gets no link: {_evr['l_hidden']}"
+    assert 'href="#day"' in _evr["l_shown"], "the same section, not hidden and with its needs met, is linked"
+    assert _evr["tail"].endswith('<details id="evrows-7">T</details></section>') and "<details" not in _c, \
+        "evCard's second argument is drawn inside the card, last"
     assert "evlinks" not in _evr["l_none"], "no link at all draws no evidence line"
     assert "chose no action" in _evr["noact"] and "no usual for this hour yet" in _evr["noact"] \
         and "no outside reading" in _evr["noact"] and "no line" in _evr["noact"], "absence is said four ways"
@@ -784,7 +793,7 @@ console.log(JSON.stringify(out));""")
     _dec = _js_raw[_js_raw.index("id: 'decide', pack"):]
     _dec = _dec[:_dec.index("notes() {")]
     _card = _js_raw[_js_raw.index("function card(ctx, key, d, a, did)"):_js_raw.index("window.PAI.register({\n  id: 'decide'")]
-    assert "evCard(e)" in _dec and "uncovered_asks" in _dec and "rowsOf(ctx, e)" in _dec, \
+    assert "evCard(e, rowsOf(ctx, e))" in _dec and "uncovered_asks" in _dec, \
         "Decide's render must draw evCard and the alerts no event covers"
     assert "card(" in _dec.split("if (st === 'events' || st === 'shadow') {")[1].split("\n    }\n")[0], \
         "the alerts no event covers are drawn with card()"
@@ -792,6 +801,14 @@ console.log(JSON.stringify(out));""")
         "'Decide about this' belongs to card(), the fallback, and not to the event branch"
     assert 'id="decide-none"' in _dec and 'id="decide-engine"' in _dec and "data-ref=\"stage-decide\"" in _dec
     assert "window.K.didButton(a.id)" in _card, "an alert answered on Decide has the I did this button"
+    # The click handler matches `.ask .go` and `.ask form.did .cancel`, finds the form as the button's sibling, and
+    # the styles are scoped under `.ask`; so the button must sit in an element with class ask, beside its form.
+    assert "closest('.ask .go')" in _js_raw and "closest('.ask form.did .cancel')" in _js_raw \
+        and "go.parentElement.querySelector('form.did')" in _js_raw, "the I did this handlers moved: update this check"
+    assert re.search(r'<div class="ask">\$\{window\.K\.didButton\(a\.id\)\}</div>', _card), \
+        "card() must wrap didButton in an element with class ask, or the button opens nothing and is unstyled"
+    assert re.search(r'const didButton = id =>\s*`<button type="button" class="go" .*?<form class="did"', _js_raw, re.S), \
+        "didButton is a .go button with a form.did, the pair the handler reads"
     assert 'id="evrows-' in _js_raw and "older than the 200 alerts this page reads" in _js_raw, \
         "evCard links to #evrows-<id>, so rowsOf must draw it"
 
