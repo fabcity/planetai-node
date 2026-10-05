@@ -674,8 +674,8 @@ function ask(key, d, ref) {
     + didButton(a.id) + `</div>`;
 }
 
-/* The one button the page offers on an open alert, and the form it opens. Shared by the ask strip in
- * Act and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
+/* The one button the page offers on an open alert, and the form it opens. Shared by Decide's alert cards
+ * and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
 const didButton = id =>
   `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
   + `<form class="did" hidden data-alert="${esc(String(id))}">`
@@ -688,7 +688,7 @@ const didButton = id =>
 
 /* SIMPLE MODE'S ASK ROW: the third of the three questions, is there something to do, answered in the
  * lead. The sign of the issue it belongs to, the alert's first line, its id, and the button. Act-level
- * only, because `open_asks` is act-level by construction. Advanced keeps the strip in Act. */
+ * only, because `open_asks` is act-level by construction. Advanced has no strip: Decide draws the cards. */
 function askRow(key, d, a) {
   const h = d.hero || {};
   return `<div class="ask askrow" data-lv="simple" data-component="askRow" data-role="ask"`
@@ -983,8 +983,7 @@ function evButtons(e) {
 function evAnswered(e) {
   const a = e.answer, done = a && a.stage === 'acted';
   return !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
-    + `${done ? sign('rho-closed', 'closed') : ''}${esc(a.stage === 'acted' ? 'Done'
-      : a.stage === 'dismissed' ? 'Doesn’t fit' : 'Not now')} · ${esc(a.actor || 'somebody')}`
+    + `${done ? sign('rho-closed', 'closed') : ''}${esc(evWord(a.stage))} · ${esc(a.actor || 'somebody')}`
     + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
       + ` unless it reaches danger` : ''}</p>`;
 }
@@ -1013,7 +1012,7 @@ function evCard(e, tail = '') {
     rows && `<a href="#evrows-${esc(String(e.id))}">from ${rows} rule row${rows === 1 ? '' : 's'}</a>`]
     .filter(Boolean);
   return `<section class="ev${a && a.stage === 'acknowledged' ? ' held' : ''}" id="ev-${esc(String(e.id))}"`
-    + ` data-component="event" data-role="ask" data-ref="num-${esc(e.issue)}">`
+    + ` data-kind="readout" data-component="event" data-role="ask" data-ref="decide">`
     + `<div class="evhead">${h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="`
       + `${esc(d.name[LOC] || e.issue)}"><use href="static/signs.svg#${esc(h.sign)}"/></svg>` : ''}`
     + `<b>${esc(d.name[LOC] || e.issue)}</b> · ${esc(e.kind)} · since ${esc(evClock(e.opened_at))}`
@@ -2275,7 +2274,7 @@ function lead(ctx) {
  * a count of requests and the name of the machine that receives them. */
 function render(ctx) {
   if (!sited()) {
-    return `<p class="note" data-component="groundOut" id="ground-out-plan" data-ref="ground-figure">`
+    return `<p class="note" data-component="groundOut" id="ground-out-plan" data-ref="requests-node">`
       + `Nothing is being fetched for a map, because there is no place to fetch one for. A sited `
       + `node draws its own plan from this machine's disk and sends nothing; live tiles, if a keeper `
       + `turns them on, send one request per tile to somebody else's machine.</p>`;
@@ -2287,7 +2286,7 @@ function render(ctx) {
   const live = (k, verb) => {
     const f = frame(res, SIZE, k), B = BASES[k];
     return row({
-      id: `ground-out-${k}`, component: 'groundOut', ref: 'ground-figure', cols,
+      id: `ground-out-${k}`, component: 'groundOut', ref: 'requests-node', cols,
       left: who(B.host, `${B.name} · zoom ${f.z}`),
       line: `${verb} one request per tile to ${B.host}, from the device this page is open on. Each `
         + `names a square of ground ${edge(f.tile_m)} wide, so the server learns which `
@@ -2297,7 +2296,7 @@ function render(ctx) {
     });
   };
   const plan = row({
-    id: 'ground-out-plan', component: 'groundOut', ref: 'ground-figure', cols,
+    id: 'ground-out-plan', component: 'groundOut', ref: 'requests-node', cols,
     left: who('this node', 'plan, offline'),
     line: 'Every shape is on this machine’s disk, fetched once by the place pack. Opening the page '
       + 'asks nothing of anybody.',
@@ -2714,7 +2713,7 @@ window.PAI.register({
       cols: 'minmax(0,210px) minmax(0,1fr) auto' });
     const lab = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
 
-    let html = `<div class="reads units" id="sources-rows" data-ref="matrix-grid">`
+    let html = `<div class="reads units" id="sources-rows" data-ref="sources">`
       + R({ id: 'src-own', left: lab('This house\u2019s own', 'one sign, one station'),
         signs: many('sensor', own),
         qty: [{ num: 'sources.own', value: String(own),
@@ -5162,7 +5161,9 @@ window.PAI.register({
     const asks = k => (ISS[k] && ISS[k].open_asks) || [];
     if (st === 'events' || st === 'shadow') {
       const unc = new Set(E.uncovered_asks || []);
-      const left = ctx.ORDER.flatMap(k => asks(k).filter(a => unc.has(a.id)).map(a => card(ctx, k, ISS[k], a, true)));
+      /* One card per issue, the way the fallback draws them: card() ids itself decide-<key>. */
+      const left = ctx.ORDER.map(k => [k, asks(k).find(a => unc.has(a.id))]).filter(([, a]) => a)
+        .map(([k, a]) => card(ctx, k, ISS[k], a, true));
       const open = evOpen();
       if (!open.length && !left.length) {
         const last = E.last_cleared;
@@ -6449,8 +6450,6 @@ function readLayout(settings) {
  * nothing — so here the view's own list is filtered before anything is drawn and a hidden section is
  * never emitted at all. */
 const want = view => view.filter(id => !(LAYOUT.hidden || []).includes(id));
-/* LAYOUT is this closure's; the kit's evCard asks whether a section was hidden in Arrange through this. */
-window.PAI.isHidden = id => (LAYOUT.hidden || []).includes(id);
 
 /* An arrangement is a position within a stage, which is what the registry already sorts by.
  *
@@ -7352,6 +7351,9 @@ function main() {
   const { H, km2, edge } = window.KH;
   const { N, where, link } = window.KN;
   const PAI = window.PAI;
+  /* LAYOUT is this closure's; the kit's evCard asks whether a section was hidden in Arrange through this.
+     Set here, not at the top of the shell: window.PAI does not exist until the kit's PAI_LOAD has run. */
+  PAI.isHidden = id => (LAYOUT.hidden || []).includes(id);
 
   document.title = `PLANETAI · ${S.health.node || 'node'}`;
 
@@ -7594,9 +7596,13 @@ function main() {
     /* WHAT THE LAST LINE COUNTS follows the node. On events or shadow it is events, the way the bot tells
        them (docs/SPEC_dashboard_events.md §4.1); on a rules node, an older one or an unreadable block it is
        alerts, because that is what the node has. `open_asks` holds the alert rows themselves. */
-    const st = evState(), openAll = ORDER.reduce((n, k) => n + ((ISS[k].open_asks || []).length), 0);
-    const evs = evOpen(), E = (S.issues || {}).events || {};
+    const st = evState(), evs = evOpen(), E = (S.issues || {}).events || {};
     const evMode = st === 'events' || st === 'shadow';
+    /* On events or shadow an alert an open event covers is drawn as that event, so only the uncovered ones
+       are left to count or pick, the same set Decide draws as cards: the two must say the same thing. */
+    const unc = new Set(E.uncovered_asks || []);
+    const asksOf = k => (ISS[k].open_asks || []).filter(a => !evMode || unc.has(a.id));
+    const openAll = ORDER.reduce((n, k) => n + asksOf(k).length, 0);
     const nEv = evs.length, asEv = evMode && nEv > 0, nAsk = asEv ? nEv : openAll, e0 = evs[0] || {};
     const askLine = nAsk
       ? `<a class="askref" href="#stage-decide" data-role="ask" data-component="askRef"`
@@ -7625,7 +7631,7 @@ function main() {
         ? `<span class="pin">you are looking at this \u00b7 the node\u2019s pick is `
           + `${esc(ISS[nodePick].name[LOC])}</span><button type="button" class="back" data-hero="">back</button>`
         : '') + `</div>`;
-    const askAt = (d.open_asks || []).length ? hk : ORDER.find(k => (ISS[k].open_asks || []).length);
+    const askAt = asksOf(hk).length ? hk : ORDER.find(k => asksOf(k).length);
     /* SIMPLE'S OPEN ROW on events or shadow is the open event's action and its three buttons (spec §4.4),
        with the shown issue's sign. `data-ref` is the lead's own numeral (hk), which monument() ids
        `num-<hk>`; the event's issue can differ, and the sign is the event's. */
@@ -7651,7 +7657,7 @@ function main() {
          worked out from tonight's numbers; the rule's ends are the issue's own, so a reading of 12
          looks the same size tomorrow as tonight. The four distances in full are in the matrix. */
       + heroRule(hk, d)
-      + (asEv ? evRow(evPick(evs, hk), hk, nEv) : askAt ? askRow(askAt, ISS[askAt], ISS[askAt].open_asks[0]) : '')
+      + (asEv ? evRow(evPick(evs, hk), hk, nEv) : askAt ? askRow(askAt, ISS[askAt], asksOf(askAt)[0]) : '')
       /* WHY THIS ONE IS AT THE TOP is in the why line above, not in a paragraph of its own. The
          words are the node's now (`headline_rule` on /issues) rather than three strings in this file:
          v0.59 changed the ranking on 18 September and the page's copy of the explanation had no way
@@ -8031,7 +8037,9 @@ document.addEventListener('submit', async ev => {
   const sub = form.querySelector('button[type="submit"]');
   if (sub) sub.disabled = true;
   try {
-    if (await answerEvent(form.dataset.ev, val('stage'), val('actor'), val('note'))) form.hidden = true;
+    /* The note is Doesn't fit's alone: one typed there and cancelled must not ride on a later Done. */
+    const note = val('stage') === 'dismissed' ? val('note') : '';
+    if (await answerEvent(form.dataset.ev, val('stage'), val('actor'), note)) form.hidden = true;
   } finally { if (sub) sub.disabled = false; }
 });
 
@@ -8062,7 +8070,8 @@ document.addEventListener('click', ev => {
       if (!form.elements.actor.value) form.elements.actor.value = who;
       const inst = form.querySelector('.instead');
       if (inst) inst.hidden = stage !== 'dismissed';
-      (form.elements.actor.value ? form.elements.note : form.elements.actor).focus();
+      if (stage !== 'dismissed') form.elements.note.value = '';
+      (stage === 'dismissed' && form.elements.actor.value ? form.elements.note : form.elements.actor).focus();
       return;
     }
     if (FIXTURE || STATE !== 'populated') {

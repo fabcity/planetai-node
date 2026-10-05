@@ -710,6 +710,7 @@ if shutil.which("node"):
         re.search(r"const evOpen = .*?\n", _js_raw).group(0),
         re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evButtons\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evCard\(e, tail = ''\) \{.*?\n\}", _js_raw, re.S).group(0),
     ))
@@ -757,6 +758,10 @@ console.log(JSON.stringify(out));""")
         f"evClock: {_evr['clock']!r} {_evr['utc']!r} {_evr['bad']!r}"
     _c = _evr["open_card"]
     assert 'data-num="ev.7.peak"' in _c, "the peak numeral is a data-num, so the number gate reads it"
+    # The card is a readout (spec §4.2), and it points at Decide's band: a num-<issue> id exists only for the
+    # lead's issue, so an event about any other issue pointed at nothing.
+    _head = _c[:_c.index(">")]
+    assert 'data-kind="readout"' in _head and 'data-ref="decide"' in _head and "num-" not in _head, _head
     _cmp = re.search(r'data-cmp="([^"]*)"', _c).group(1)
     assert "usual at this hour 33.4" in _cmp and "outside 29.1" in _cmp and "from outside" in _cmp \
         and "the line 35.0" in _cmp, f"data-cmp must name usual, outside and the line: {_cmp}"
@@ -790,9 +795,10 @@ console.log(JSON.stringify(out));""")
     assert "chose no action" in _evr["noact"] and "no usual for this hour yet" in _evr["noact"] \
         and "no outside reading" in _evr["noact"] and "no line" in _evr["noact"], "absence is said four ways"
 
-    # DECIDE DRAWS EVENTS (SPEC_dashboard_events §4.2, §5). The section is a closure, so this is a source check;
-    # the live proof is Task 11's. Its render calls evCard and reads uncovered_asks, and "Decide about this" is
-    # drawn only by card(), which render reaches only in the rules/old/error branch.
+    # DECIDE DRAWS EVENTS (SPEC_dashboard_events §4.2, §5). These are source checks; the booted run further down
+    # renders the section itself. Its render calls evCard and reads uncovered_asks. "Decide about this" is drawn
+    # only by card(), which render reaches in the rules/old/error branch AND, on events and shadow nodes, for each
+    # issue whose open alerts no event covers.
     _dec = _js_raw[_js_raw.index("id: 'decide', pack"):]
     _dec = _dec[:_dec.index("notes() {")]
     _card = _js_raw[_js_raw.index("function card(ctx, key, d, a, did)"):_js_raw.index("window.PAI.register({\n  id: 'decide'")]
@@ -1111,15 +1117,22 @@ assert 'id="num-${esc(key)}"' in _js_raw[_js_raw.index("function monument("):_js
 if shutil.which("node"):
     _an = _node("\n".join((
         "const esc = s => String(s), sign = (id, l) => `<svg class=\"sg\"/>`;",
-        "const S = { issues: {}, health: { tz: 'Asia/Makassar' } };",
+        "let S = { issues: {}, health: { tz: 'Asia/Makassar' } };",
         re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
         """const A = (stage, extra) => ({ answer: { stage, actor: 'tomas', ts: '2026-10-05T10:00:00Z', ...extra } });
+const own = () => { S.issues = { events: { buttons: { done: 'Fet', not_now: 'Ara no', doesnt_fit: 'No encaixa' } } };
+  return [A('acted'), A('acknowledged'), A('dismissed')].map(evAnswered); };
 console.log(JSON.stringify({ none: evAnswered({ answer: null }), acted: evAnswered(A('acted')),
-  held: evAnswered(A('acknowledged', { held_until: '2026-10-05T12:00:00Z' })), no: evAnswered(A('dismissed')) }));""")))
+  held: evAnswered(A('acknowledged', { held_until: '2026-10-05T12:00:00Z' })), no: evAnswered(A('dismissed')),
+  own: own() }));""")))
     assert _an["none"] == "" and "evdone" in _an["acted"] and "Done · tomas" in _an["acted"], _an
     assert "evheld" in _an["held"] and "Not now · tomas" in _an["held"] and "held until 20:00" in _an["held"], _an
     assert "Doesn’t fit · tomas" in _an["no"], _an
+    # An answer reads as the button that wrote it, in the node's own words (events.buttons), as the buttons do.
+    assert ["Fet · tomas" in _an["own"][0], "Ara no · tomas" in _an["own"][1], "No encaixa · tomas" in _an["own"][2]] \
+        == [True] * 3, f"evAnswered must print the node's button labels: {_an['own']}"
 assert "evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))" in _lead, \
     "an acted event's row has no buttons; a held one keeps them beside its answer"
 assert "shadow \\u2014 nothing was sent" in _lead, "a shadow node's row says so"
@@ -1130,6 +1143,114 @@ if shutil.which("node"):
 console.log(JSON.stringify({ own: evPick([a, b], 'heat').id, first: evPick([a, b], 'noise').id,
   none: evPick([], 'air') === undefined }));""")))
     assert _pk == {"own": 2, "first": 1, "none": True}, f"evPick: the shown issue's event, else the first: {_pk}"
+
+# THE PAGE LOADS. On 5 Oct the shell set `window.PAI.isHidden` at its top level, which runs before any PAI_LOAD
+# function has made window.PAI, so every load threw and the page sat on "Asking the node…" for good. Every check
+# above lifts pieces and passed. This loads the whole file the way a browser does (one script, a bare DOM), so a
+# top-level statement that throws fails here whatever it is. The handlers it registers are then driven, and the
+# Decide closure rendered, against that same load.
+if shutil.which("node"):
+    # The program is one function: node runs STDIN as a global script, where a `const` of its own would collide
+    # with the kit's top-level `let`s the moment dashboard.js declares them.
+    _boot = _node(r"""(() => {
+const fs = require('fs'), vm = require('vm');
+const L = {}, store = {}, posted = [];
+globalThis.window = globalThis;
+globalThis.localStorage = globalThis.sessionStorage = { getItem: k => (k in store ? store[k] : null),
+  setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+globalThis.location = { search: '', hash: '', pathname: '/', href: 'http://node/' };
+globalThis.document = { addEventListener: (t, f) => (L[t] = L[t] || []).push(f),
+  getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] };
+globalThis.addEventListener = () => {};
+/* POSTs are recorded and never answered, so nothing after the post runs. */
+globalThis.fetch = (u, o) => { if (o && o.body) posted.push(JSON.parse(o.body)); return new Promise(() => {}); };
+const out = { boot: 'loaded' };
+try { vm.runInThisContext(fs.readFileSync('app/static/dashboard.js', 'utf8'), { filename: 'dashboard.js' }); }
+catch (e) { out.boot = String((e && e.message) || e); console.log(JSON.stringify(out)); process.exit(0); }
+
+/* An event card's three buttons and its form, as the page draws them. */
+const el = (props = {}) => ({ value: '', focused: false, focus() { focusedOn = this.name; }, ...props });
+let focusedOn = null;
+const f = { stage: el({ name: 'stage' }), actor: el({ name: 'actor' }), note: el({ name: 'note' }) };
+const inst = { hidden: true };
+const form = { hidden: true, elements: f, dataset: { ev: '11' }, classList: { contains: c => c === 'evform' },
+  querySelector: q => (q === '.instead' ? inst : null) };
+const card = { querySelector: q => (q === 'form.evform' ? form : null) };
+const btn = stage => ({ id: '', getAttribute: a => (a === 'data-stage' ? stage : a === 'data-ev' ? '11' : null),
+  closest: q => (q === '.evb' ? btn(stage) : q === '.ev, .evrow' ? card : null) });
+const fire = (type, target) => { for (const h of L[type] || []) { try { h({ target, preventDefault() {} }); } catch {} } };
+const press = stage => { const b = btn(stage); b.closest = q => (q === '.evb' ? b : q === '.ev, .evrow' ? card : null); fire('click', b); };
+const submit = () => fire('submit', { closest: q => (q.includes('form.evform') ? form : null) });
+
+press('dismissed');                         /* Doesn't fit, no name kept: the form opens on the name */
+out.dismissFocus = focusedOn; out.dismissInst = inst.hidden;
+f.actor.value = 'tomas'; f.note.value = 'opened the door';
+form.hidden = true;                         /* Cancel */
+press('acted');                             /* then Done */
+out.doneFocus = focusedOn; out.doneInst = inst.hidden; out.doneNote = f.note.value;
+f.note.value = 'left over'; submit();       /* a stale note in the field must not be sent with Done */
+f.stage.value = 'dismissed'; f.note.value = 'opened the door'; submit();
+out.posted = posted;
+
+/* Decide, rendered. One card per issue for the alerts no event covers, and none for a covered one. */
+vm.runInThisContext("LOC = 'en';");
+window.KH = { H: {} };
+const reg = [];
+window.PAI = { register: s => reg.push(s), sections: [], has: () => true };
+/* Some PAI_LOAD closures push others when they run (Act's holds Decide's), so this runs whichever holds Decide's
+   registration until it has registered: the list grows as it is walked, the way init() walks it. */
+const LOAD = vm.runInThisContext('PAI_LOAD');
+for (let i = 0; i < LOAD.length && !reg.some(s => s.id === 'decide'); i++)
+  if (LOAD[i].toString().includes("register({\n  id: 'decide', pack")) LOAD[i]();
+const decide = reg.find(s => s.id === 'decide');
+const ask = (id, text) => ({ id, text, says: { en: text }, age_minutes: 5, current: true });
+const ISS = { heat: { name: { en: 'Heat' }, open_asks: [ask(361, 'hot'), ask(356, 'hotter')] },
+  air: { name: { en: 'Air' }, open_asks: [ask(400, 'dusty')] } };
+const render = events => { vm.runInThisContext(`S = ${JSON.stringify({ issues: { events }, health: {} })};`);
+  return decide.render({ ISS, ORDER: ['heat', 'air'], S: { issues: { events }, health: {} }, LOC: 'en' }); };
+out.unc = render({ engine: 'events', open: [], uncovered_asks: [361, 356] });
+out.none = render({ engine: 'events', open: [], uncovered_asks: [] });
+console.log(JSON.stringify(out));
+process.exit(0);
+})();""")
+    assert _boot["boot"] == "loaded", f"dashboard.js throws while it loads, so the page never boots: {_boot['boot']}"
+    assert _boot["dismissFocus"] == "actor" and _boot["dismissInst"] is False, _boot
+    assert _boot["doneFocus"] == "actor" and _boot["doneInst"] is True and _boot["doneNote"] == "", \
+        f"Done opens the form on the name, with Doesn't fit's note hidden and emptied: {_boot}"
+    assert [(p["stage"], p["note"]) for p in _boot["posted"]] == [("acted", ""), ("dismissed", "opened the door")], \
+        f"only Doesn't fit sends a note: {_boot['posted']}"
+    assert _boot["unc"].count('id="decide-heat"') == 1 and 'id="decide-air"' not in _boot["unc"], \
+        f"one Decide card per issue with an uncovered alert, none for a covered one: {_boot['unc']}"
+    assert 'id="decide-none"' in _boot["none"] and "decide-heat" not in _boot["none"], _boot["none"]
+
+# THE LEAD AND DECIDE AGREE. On events or shadow the lead counts and picks only the alerts no event covers, which
+# is what Decide draws: counting all of open_asks said "2 alerts open · in Decide" over a Decide reading
+# "Nothing open". lead() is a closure, so its lines are lifted and run.
+if shutil.which("node"):
+    _ld = _js_raw[_js_raw.index("  function lead() {"):]
+    _lc = _ld[_ld.index("    const st = evState(), evs = evOpen()"):]
+    _lc = _lc[:_lc.index("e0 = evs[0] || {};") + len("e0 = evs[0] || {};")]
+    _la = re.search(r"    const askAt = .*?;\n", _ld).group(0)
+    _lr = _node("\n".join((
+        re.search(r"function evState\(\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"const evOpen = .*?\n", _js_raw).group(0),
+        "let S; const ORDER = ['heat', 'air'];",
+        "const ISS = { heat: { open_asks: [{ id: 361 }] }, air: { open_asks: [{ id: 356 }, { id: 357 }] } };",
+        "function lead(events, hk) { S = { issues: { events } }; const d = ISS[hk];",
+        _lc, _la,
+        "return { nAsk, asEv, askAt: askAt || null, picks: askAt ? asksOf(askAt)[0].id : null }; }",
+        """console.log(JSON.stringify({
+  covered: lead({ engine: 'events', open: [], uncovered_asks: [] }, 'heat'),
+  oneLeft: lead({ engine: 'shadow', open: [], uncovered_asks: [357] }, 'heat'),
+  rules: lead({ engine: 'rules' }, 'heat'),
+  old: lead(undefined, 'heat'),
+}));""")))
+    assert _lr["covered"] == {"nAsk": 0, "asEv": False, "askAt": None, "picks": None}, \
+        f"every alert covered and no event open: the lead says nothing open, as Decide does: {_lr['covered']}"
+    assert _lr["oneLeft"] == {"nAsk": 1, "asEv": False, "askAt": "air", "picks": 357}, \
+        f"the lead counts and picks only the uncovered alert: {_lr['oneLeft']}"
+    assert _lr["rules"]["nAsk"] == 3 and _lr["rules"]["askAt"] == "heat" and _lr["old"]["nAsk"] == 3, \
+        f"a rules or older node counts every open alert: {_lr}"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "

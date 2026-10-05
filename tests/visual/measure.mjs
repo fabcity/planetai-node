@@ -668,6 +668,9 @@ async function open(job, opts = {}, stranger = null) {
      be sent. A job may name one; PAI_MODE sets it for a whole run. */
   const uiMode = job.mode || process.env.PAI_MODE;
   if (uiMode) q.push(`mode=${uiMode}`);
+  /* gate.sh renders the fold open with `PAI_Q="$PAI_Q&worth=1"`; the URL is built from `q`, so PAI_Q's
+     worth has to be carried over here or that render is the closed page under another tag. */
+  if (/[?&]worth=1\b/.test(process.env.PAI_Q || '')) q.push('worth=1');
   if (job.register) q.push(`register=${job.register}`);
   /* `?ask=1` opens the ask pane without remembering it; a job may ask for it, PAI_ASK=1 for a run. */
   if (job.ask || process.env.PAI_ASK === '1') q.push('ask=1');
@@ -2129,7 +2132,8 @@ async function press() {
   const read = () => h.page.evaluate(() => ({
     url: location.search,
     railOn: (document.querySelector('#rail a.on') || {}).textContent || null,
-    grain: (document.getElementById('grain-line') || {}).textContent || null,
+    /* The grain line moved to Network; the rail's area figure is on Now and changes with the dial. */
+    grain: (document.querySelector('[data-num="rail.area"]') || {}).textContent || null,
     heads: [...document.querySelectorAll('[data-component="cellGroup"]')].map(e => e.textContent.trim()),
   }));
   const before = await read();
