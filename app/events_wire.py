@@ -94,6 +94,6 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
             if last is None or cleared > _t(last["ts"]):
                 last = {"issue": e["issue"], "ts": cleared.isoformat()}
     opened.sort(key=rank)
-    recent.sort(key=lambda r: _t(r["opened_at"]), reverse=True)
+    recent.sort(key=lambda r: _t(r["cleared_at"]), reverse=True)
     return {"engine": engine, "buttons": A.BUTTONS.get(locale) or A.BUTTONS["en"],
             "open": opened, "recent": recent, "cleared_today": cleared_today, "last_cleared": last}
