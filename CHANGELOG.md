@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **2026-10-05 · The report says "dangerously hot" only at real danger.** It opened with "🥵 It is dangerously hot
+  inside" whenever any heat alert was open, so node #1's 13:00 report said it on an ordinary 35 °C afternoon, as the
+  old alert did. Now "dangerously hot" is said only when `heat_danger` (feels like 40 °C or more) is open; the 35 °C
+  line reads "🌡️ It is hot inside: it feels like 35 °C or more."
+
 - **2026-10-05 · `ALERT_ENGINE=events` sends.** The event engine's heat and air messages go to Telegram, one per
   event, with quiet hours and a daily ceiling; the old heat and air rules still record their alerts (the dashboard,
   rho and Home Assistant read those) but stop sending. Every other alert and the reports are unchanged. No buttons yet:

@@ -41,7 +41,9 @@ sixty-eight.
 Deterministic, plain text, in `ALERT_LOCALE` (English, Bahasa Indonesia or Spanish), each part a sentence or
 two, an empty part left out:
 
-1. **Where the place stands.** Heat first if an open act-level alert comes from the `heat` pack; else the worst
+1. **Where the place stands.** Heat first if an open act-level alert comes from the `heat` pack: "dangerously hot"
+   only when it is `heat_danger` (feels like 40 °C or more), otherwise a plain "it is hot inside" (35 °C is an
+   ordinary afternoon in Kuta Selatan, not a danger); else the worst
    indoor PM2.5 against 35 (unhealthy) and 15 (the clean line); or that there is no sensor inside yet, so what
    follows is the district and not the rooms.
 2. **What changed.** Up to two of the node's own sensors whose window was unusual: "{place}: the air ran
