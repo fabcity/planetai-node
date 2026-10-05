@@ -54,4 +54,10 @@ bare = E.Event(issue="heat", kind="unusual", level="info", opened_at=t0, last_se
 no_tpl, aid3 = A.render({"name": heat["name"], "events": {}, "actions": []}, E.Message(bare, "open", True, None), night, "en")
 assert no_tpl.startswith(heat["name"]["en"]) and "K ROOM" in no_tpl and not no_tpl.startswith("\n") and aid3 is None, no_tpl
 print("  render: no template for the kind gives one line naming the issue and the rooms")
+
+for loc in ("en", "id", "es"):
+    b = A.BUTTONS[loc]
+    assert set(b) == {"done", "not_now", "doesnt_fit"} and all(isinstance(v, str) and v for v in b.values()), (loc, b)
+assert A.BUTTONS["en"] == {"done": "Done", "not_now": "Not now", "doesnt_fit": "Doesn't fit"}
+print("  buttons: Done / Not now / Doesn't fit in en, id and es, one table for the bot and the page")
 print("actions: one action per event, chosen from the context; messages in three languages")
