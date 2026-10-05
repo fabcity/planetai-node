@@ -799,8 +799,6 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
 .stage { padding-top: clamp(26px, 3.4vw, 44px) }
 .stagehead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
   border-bottom: 2px solid var(--ink); padding-bottom: 8px }
-.stagehead .n { font: 700 12px var(--mono); border: 1px solid var(--ink); width: 22px; height: 22px;
-  display: inline-grid; place-items: center; align-self: center }
 .stagehead h2 { font: 800 clamp(1.15rem, 1.8vw, 1.5rem) var(--fc-font-display); letter-spacing: -.02em }
 .stagehead .what { font-size: 13px; color: var(--mute) }
 .stagehead .loop { margin-left: auto; display: inline-flex; gap: 4px; align-self: center }

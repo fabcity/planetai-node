@@ -331,9 +331,10 @@ assert _names == {"now", "historical", "network", "wall", "arrange", "setup"}, \
 # The one literal anchor the page writes is the lead's, and the element it points at is built from
 # a template — `id="stage-${key}"` — so there is no literal to grep for. Assert the pair instead:
 # the link, and the template that makes its target. The rig checks the live page lands on it.
-assert 'href="#stage-act"' in _js, "the lead no longer links to the Act stage"
+# (v0.78: it counts events and points at Decide, where the cards are, not at Act.)
+assert 'href="#stage-decide"' in _js, "the lead no longer links to the Decide stage"
 assert 'id="stage-${key}"' in _js, \
-    "the stages no longer carry an id, so the lead's link to #stage-act lands nowhere"
+    "the stages no longer carry an id, so the lead's link to #stage-decide lands nowhere"
 # And an anchor must not throw the page away: same view, so scroll rather than re-render.
 assert "if (VIEW === before)" in _js and "scrollIntoView({ block: 'start' })" in _js, \
     ("a hashchange that does not change the view re-renders the whole page, which loses the scroll "
@@ -434,7 +435,8 @@ assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditiona
 # log R14); the wall keeps its own dial, which is a different control on a different surface.
 assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="railwrap"' in _js, \
     "the rail is no longer drawn for Now and Arrange, or is drawn for every view again"
-assert re.search(r"const ref = 'grain-line';", _js), \
+# (v0.78: the grain line moved to Network with its section, so the rail points at the ground figure.)
+assert re.search(r"const ref = 'ground-figure';", _js), \
     "the rail's link out is back to being chosen per view; only Now draws it now"
 # The zones are texture, not hue (design log R14). The cells blue has one meaning — a cell — and a
 # 12% wash of it for "may leave this machine" spent it on a second, vanished for a reader who cannot
