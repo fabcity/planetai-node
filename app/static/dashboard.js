@@ -4746,10 +4746,10 @@ window.PAI.register({
           left: `<span class="who"><b>${esc(d.name[ctx.LOC] || e.issue)}</b>`
             + `<span class="m">${esc(e.kind)} \u00b7 ${esc(age(mins))}</span></span>`,
           line: `${evClock(e.opened_at)}\u2013${e.cleared_at ? evClock(e.cleared_at) : 'open'}`
-            + `${(e.rooms || []).length ? ` \u00b7 ${e.rooms.join(', ')}` : ''}`,
-          qty: [{ num: `asks.ev${key}.action`, value: e.action && e.action.text ? e.action.text : 'no action chosen',
-            cmp: 'what the node asked for, in its own words' },
-          { num: `asks.ev${key}.answer`, value: evAnswerText(e),
+            + `${(e.rooms || []).length ? ` \u00b7 ${e.rooms.join(', ')}` : ''}`
+            /* The action is a sentence, so it rides the wrapping middle column: `qty` does not wrap. */
+            + ` \u00b7 \u201c${e.action && e.action.text ? e.action.text : 'no action chosen'}\u201d`,
+          qty: [{ num: `ev.${key}.answer`, value: evAnswerText(e),
             cmp: 'the answer a person gave, in the button\u2019s word; the clear time is the node\u2019s own' }] });
       }).join('');
     };
@@ -4757,8 +4757,9 @@ window.PAI.register({
     return `<div>`
       + `<div class="reads" id="asks-rows" data-ref="funnel">`
       + (events ? eventRows()
-        : `<p class="note" id="asks-engine" data-component="absent" data-ref="asks-rows">This node sends alerts, `
-          + `not events.</p>` + byRuleRows())
+        /* `error` says what the node said (spec §5), escaped; `rules` and `old` say the one sentence. */
+        : `<p class="note" id="asks-engine" data-component="absent" data-ref="asks-rows">`
+          + (st === 'error' ? esc(E.error) : 'This node sends alerts, not events.') + `</p>` + byRuleRows())
       + whereToGo()
       + capacity()
       + `</div>`

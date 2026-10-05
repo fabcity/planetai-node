@@ -1053,8 +1053,12 @@ _asks_render = _asks[:_asks.index("  wall(ctx) {")]
 _asks_render = _asks_render[_asks_render.index("render(ctx) {"):]
 assert re.search(r"[^\w.]ask\(", _asks_render) is None, "Act's render still draws the kit's alert strip"
 assert "title: 'What was asked, and what was answered'" in _asks, "Act's title is the spec's, and its id stays `asks`"
-assert "This node sends alerts, `" in _asks_render and "not events." in _asks_render, \
-    "a rules node keeps its per-rule rows under one line saying it sends alerts, not events"
+assert "'This node sends alerts, not events.'" in _asks_render and "st === 'error' ? esc(E.error)" in _asks_render, \
+    "a rules node keeps its per-rule rows under one line saying it sends alerts, not events; an error node says the node's own words"
+_evrow = _asks_render[_asks_render.index("id: `ask-ev-${key}`"):_asks_render.index("}).join('');\n    };")]
+assert "asks.ev${key}.action" not in _evrow and _evrow.count("num:") == 1 and "evAnswerText(e)" in _evrow, \
+    "an event row's qty holds only the answer: qty does not wrap, and the action is a sentence"
+assert "e.action.text" in _evrow.split("qty:")[0], "the action rides the row's wrapping `line`"
 assert "whereToGo()" in _asks_render and "capacity()" in _asks_render, "whereToGo and capacity stay in Act"
 assert "function ask(key, d, ref)" in _js_raw, "the kit's ask() stays: it is exported"
 assert "api('/actions?events=1')" in _js_raw and "api('/actions')" not in _js_raw, \
