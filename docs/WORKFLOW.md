@@ -31,19 +31,24 @@ Then `make lint && make test`, and merge with a squash.
 
 ## 2. Prove it on a node
 
-Node #1 (`bayu-ungasan`, `ssh mini`) is a git checkout that tracks `main`: it is the test node, and it gets a merge on
-its next update.
+Two nodes track `main` and get a merge on their next update. They are the test nodes:
+
+| node | where | how to reach it | update |
+|---|---|---|---|
+| #1 `bayu-ungasan` | Fab Lab Bali, Mac mini, port 8081 | `ssh mini` | `planetai update` |
+| #3 `dieznode` | Tomas's Omarchy laptop, port 8080 (tailnet `omarchy-gmail`) | `ssh omarchy-gmail` | `planetai update` |
 
 ```bash
 ssh mini 'export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"; cd ~/planetai/planetai-node && planetai update'
+ssh omarchy-gmail 'cd ~/planetai && planetai update'
 ```
 
-Update it the day you merge, not on a Friday. A change is **tested** when it has gone through one real cycle of the
-thing it changes (an alert, a report, an update, a setting saved) on the node, and the log shows no errors. Then swap
-the label to `tested: node 1` and leave one comment saying what you saw.
-
-Node #3 (`dieznode`) gets `tested: node 3` the same way, once it is known whether it tracks `main` (a second test
-node) or takes releases (the first node to run a release before anyone else).
+Node #3 was a release-tarball install until 5 October 2026; it became a git checkout of `main` that day. Update the
+test nodes the day you merge, not on a Friday. A change is **tested** when it has gone through one real cycle of the
+thing it changes (an alert, a report, an update, a setting saved) on a node, and the log shows no errors. Then swap
+the label to `tested: node 1` or `tested: node 3` (or both), and leave one comment saying what you saw. Node #1 has
+sensors in three rooms and Telegram; node #3 has two Xiaomi purifiers and models, no Telegram; a change to a
+household message is proven on #1.
 
 ## 3. Plan the release
 
