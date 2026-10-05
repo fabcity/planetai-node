@@ -371,7 +371,7 @@ Every answer a person gave an alert, newest first: which alert, which stage, who
 | `events` | int | | with 1, also returns the answers to alert events, with their `event_id`; works with or without `stage` |
 | `stage` | str | | only this stage; `settings` returns the node's own rows instead |
 
-Returns a list of `{ts, alert_id, stage, actor, note}`. The node's own `settings` rows are left out unless `stage=settings` asks for them: one row per `PUT /settings`, where `actor` is its `X-Agent` and `note` the keys it wrote, comma-separated. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
+Returns a list of `{ts, alert_id, stage, actor, note} (and `event_id` with `events=1`)`. The node's own `settings` rows are left out unless `stage=settings` asks for them: one row per `PUT /settings`, where `actor` is its `X-Agent` and `note` the keys it wrote, comma-separated. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
 With `events=1` it also returns the answers to alert events, with their `event_id` in place of `alert_id`, with or without `stage`.
 
 > **Careful.** The handler has no token check of its own, so any of the four node tokens reads it. That includes `BACKUP_TOKEN`, `ACT_TOKEN` and this node's `AGGREGATE_TOKEN`, which every child of this node holds.
