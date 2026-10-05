@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **2026-10-05 · `planetai test-alert` finds its own alert.** It decided whether the test fired by counting the rows
+  `GET /alerts` returned, which is at most 50 by default, so on any node with 50 or more alerts it said "no alert fired
+  in 90 seconds" while the alert had reached Telegram, and the one-minute test rule fired a second time while it waited.
+  It now looks for the run's own rule id and removes the rule the moment it is seen: one test message, and the right
+  answer.
+
 - **2026-10-05 · Alerts become events, in shadow** (docs/SPEC_alerts.md). Node #1 sent about 13 messages a day,
   "dangerously hot" on 14 of 14 ordinary days, and its household answered 2.5%. A new engine folds rule rows into one
   story per issue per house (open, escalate, clear), sends only danger in quiet hours, keeps a daily ceiling, and picks
