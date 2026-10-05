@@ -90,4 +90,42 @@ rules = W.build("rules", EVENTS, MESSAGES, ANSWERS, COVERED, CONTEXTS, DECL, "en
 assert rules["open"] == [] and rules["engine"] == "rules" and len(rules["recent"]) == 3
 assert W.engine_of("shadow") == "shadow" and W.engine_of("typo") == "rules" and W.engine_of(None) == "rules"
 print("  on rules nothing is open (the engine is not running); a typo behaves as rules")
+
+import contextlib  # noqa: E402
+
+class FakeCur:
+    """Answers live()'s reads in the order it makes them; `fail` names a statement that raises, as an unpopulated
+    usual_by_hour does after a restart."""
+    def __init__(self, fail=""):
+        self.sql, self.fail, self.last = [], fail, ""
+        self.connection = type("C", (), {"transaction": lambda s: contextlib.nullcontext()})()
+
+    def execute(self, sql, args=()):
+        self.sql.append(sql)
+        self.last = sql
+        if self.fail and self.fail in sql:
+            raise RuntimeError("materialized view usual_by_hour has not been populated")
+
+    def fetchone(self):
+        if "current_setting" in self.last:
+            return {"tz": "Asia/Makassar", "hour": 15}
+        if "usual_by_hour" in self.last:
+            return {"usual": 33.44}
+        return {"inside_temp": 35.8, "inside_pm25": None, "outside_temp": 29.1, "outside_pm25": None,
+                "outside_source": "outside"}
+
+    def fetchall(self):
+        if "FROM alert_events" in self.last:
+            return [ev(1, "heat", "sustained", NOW - 2 * H, action_id="heat/open_up")]
+        if "FROM alerts" in self.last:
+            return [{"id": 578}]
+        return []
+
+os.environ["ALERT_ENGINE"] = "shadow"
+got = W.live(FakeCur(), DECL, "en", NOW)
+assert got["engine"] == "shadow" and [e["id"] for e in got["open"]] == [1], got
+assert got["open"][0]["alerts"] == [578] and got["open"][0]["context"]["usual"] == 33.4, got["open"][0]
+cold = W.live(FakeCur(fail="usual_by_hour"), DECL, "en", NOW)
+assert cold["open"][0]["context"]["usual"] is None and cold["open"][0]["context"]["outside"] == 29.1, cold
+print("  live: one read per table, alerts matched per event, a usual_by_hour that fails is null and costs nothing else")
 print("events_wire: the open events, their actions as sent, answers and holds, the local day")

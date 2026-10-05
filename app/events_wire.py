@@ -7,8 +7,14 @@ block: every number and sentence the event card draws is here.
 from __future__ import annotations
 
 import datetime as dt
+import logging
+from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import actions as A
+import settings
+
+log = logging.getLogger("planetai")
 
 ENGINES = ("rules", "shadow", "events")
 ORDER = ("danger", "sustained", "unusual", "spike", "ahead")   # which open event leads (§3.1)
@@ -97,3 +103,61 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
     recent.sort(key=lambda r: _t(r["cleared_at"]), reverse=True)
     return {"engine": engine, "buttons": A.BUTTONS.get(locale) or A.BUTTONS["en"],
             "open": opened, "recent": recent, "cleared_today": cleared_today, "last_cleared": last}
+
+
+USUAL_SQL = """SELECT avg(u.median) AS usual FROM usual_by_hour u JOIN sensors s USING (sensor_id)
+               WHERE u.metric = %s AND u.hour = %s AND (s.name = ANY(%s) OR s.sensor_id = ANY(%s))"""
+
+
+def _context(cur, P, e: dict, metric: str | None, hour: int, now) -> dict:
+    """Inside and outside from the resolver that chose the action, and this room's usual for this local hour. Each is a
+    savepoint of its own: usual_by_hour is empty from a start until the app's first refresh, and a context that cannot
+    be read is null on the card, not a failed /issues."""
+    ctx: dict = {}
+    rooms = sorted(e.get("rooms") or [])
+    try:
+        with cur.connection.transaction():
+            ctx = dict(P.context(cur, SimpleNamespace(rooms=set(rooms), where=set(e.get("places") or []),
+                                                      kind=e["kind"]), now))
+    except Exception as ex:  # noqa: BLE001
+        log.warning("event %s: no context (%s)", e["id"], type(ex).__name__)
+    ctx["usual"] = None
+    try:
+        with cur.connection.transaction():
+            cur.execute(USUAL_SQL, (metric, hour, rooms, rooms))
+            u = (cur.fetchone() or {}).get("usual")
+            ctx["usual"] = None if u is None else round(float(u), 1)
+    except Exception as ex:  # noqa: BLE001
+        log.info("event %s: no usual for this hour (%s)", e["id"], type(ex).__name__)
+    return ctx
+
+
+def live(cur, decl: dict, locale: str, now: dt.datetime) -> dict:
+    """The block, read on the /issues route's cursor. The session runs in NODE_TZ (app/main.py), so the hour and the
+    zone come from Postgres, the same clock usual_by_hour was bucketed on."""
+    import events_pg as P            # noqa: PLC0415 — events_pg imports issues, whose route imports this module
+    engine = engine_of(settings.get("ALERT_ENGINE", "rules"))
+    cur.execute("SELECT current_setting('TimeZone') AS tz, extract(hour FROM now())::int AS hour")
+    r = cur.fetchone()
+    try:
+        tz = ZoneInfo(r["tz"])
+    except Exception:  # noqa: BLE001 — an offset Postgres names that zoneinfo does not: fall back to now's own zone
+        tz = None
+    cur.execute("SELECT id, issue, kind, level, opened_at, last_seen_at, cleared_at, peak, rooms, places, action_id "
+                "FROM alert_events WHERE cleared_at IS NULL OR cleared_at > %s", (now - RECENT,))
+    events = [dict(x) for x in cur.fetchall()]
+    ids = [e["id"] for e in events]
+    cur.execute("SELECT event_id, ts, text, sent, action_id FROM event_messages WHERE event_id = ANY(%s)", (ids,))
+    messages = [dict(x) for x in cur.fetchall()]
+    cur.execute("SELECT event_id, ts, stage, actor FROM actions WHERE event_id = ANY(%s)", (ids,))
+    answers = [dict(x) for x in cur.fetchall()]
+    covered, contexts = {}, {}
+    for e in events:
+        # Until Plan 2 writes alerts.event_id, an event covers its issue's packs' rows inside its own window.
+        packs = [p for p, i in P.PACK_ISSUE.items() if i == e["issue"]] or [e["issue"]]
+        cur.execute("SELECT id FROM alerts WHERE event_id = %s OR (split_part(rule_id, '/', 1) = ANY(%s) "
+                    "AND ts >= %s AND ts <= %s)", (e["id"], packs, e["opened_at"], e["cleared_at"] or now))
+        covered[e["id"]] = [x["id"] for x in cur.fetchall()]
+        if e["cleared_at"] is None and engine != "rules":
+            contexts[e["id"]] = _context(cur, P, e, (decl.get(e["issue"]) or {}).get("metric"), r["hour"], now)
+    return build(engine, events, messages, answers, covered, contexts, decl, locale, now, tz)
