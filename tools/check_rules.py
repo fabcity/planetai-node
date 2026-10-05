@@ -32,7 +32,10 @@ def schema() -> dict[str, set[str]]:
     A genuinely malformed CREATE TABLE still fails loudly: the table drops out of the schema and every rule
     that names it is reported."""
     out: dict[str, set[str]] = {}
-    for st in sqlglot.parse(SQL, read="postgres", error_level=ErrorLevel.IGNORE):
+    # sqlglot reads CREATE MATERIALIZED VIEW ... WITH NO DATA as an opaque Command, which left usual_by_hour out of
+    # the schema; as a plain view it is the same select list.
+    sql = SQL.replace("CREATE MATERIALIZED VIEW", "CREATE VIEW").replace("WITH NO DATA", "")
+    for st in sqlglot.parse(sql, read="postgres", error_level=ErrorLevel.IGNORE):
         if not isinstance(st, exp.Create):
             continue
         name = getattr(getattr(st.this, "this", None), "name", None)
@@ -41,7 +44,11 @@ def schema() -> dict[str, set[str]]:
         if st.kind == "TABLE":
             out[name] = {c.name for c in st.find_all(exp.ColumnDef)}
         elif st.kind == "VIEW":
-            out[name] = {e.alias_or_name for e in getattr(st.expression, "expressions", [])}
+            # a view ending in UNION ALL (recent_15m) names its columns by its first SELECT
+            body = st.expression
+            while isinstance(body, exp.Union):
+                body = body.this
+            out[name] = {e.alias_or_name for e in getattr(body, "expressions", [])}
     for m in re.finditer(r"ALTER TABLE (\w+) ADD COLUMN IF NOT EXISTS (\w+)", SQL):
         out.setdefault(m.group(1), set()).add(m.group(2))
     return out

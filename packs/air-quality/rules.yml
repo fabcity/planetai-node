@@ -139,3 +139,84 @@
     en: "📈🌫️ The outside air at {name} just got worse.\n\nA sudden rise like this is almost always burning nearby: leaves, rubbish, a field. It may pass in an hour or it may settle in for the evening.\n\n👉 If it keeps rising, shut the windows before it comes indoors."
     id: "📈🌫️ Udara luar di {name} baru saja memburuk.\n\nKenaikan mendadak seperti ini hampir selalu karena pembakaran di dekat sini: daun, sampah, ladang. Bisa lewat dalam sejam, bisa juga menetap sampai malam.\n\n👉 Kalau terus naik, tutup jendela sebelum masuk ke dalam."
     es: "📈🌫️ El aire fuera de {name} acaba de empeorar.\n\nUna subida tan rápida casi siempre es algo quemándose cerca: hojas, basura, un campo. Puede pasar en una hora o quedarse toda la tarde.\n\n👉 Si sigue subiendo, cierra las ventanas antes de que entre."
+
+# ---- kinded rules: the event engine's (docs/SPEC_alerts.md §3). The old engine skips any rule with `kind:`. ----
+# The id and es strings below are ASSISTANT-WRITTEN.
+# Starting values for the replay. Rows carry value, line, over and where (inside | outside).
+
+- id: air_spike
+  kind: spike
+  issue: air
+  level: warn
+  cooldown_minutes: 60
+  sql: |
+    WITH q AS (SELECT r.sensor_id, s.name, s.indoor, r.bucket, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+               WHERE r.metric = 'pm25' AND s.local AND r.bucket > now() - INTERVAL '75 minutes'),
+         l AS (SELECT sensor_id, max(bucket) AS b FROM q GROUP BY 1),
+         now_v AS (SELECT q.sensor_id, q.name, q.indoor, q.mean FROM q JOIN l ON l.sensor_id = q.sensor_id AND q.bucket = l.b),
+         before AS (SELECT q.sensor_id, avg(q.mean) AS mean FROM q JOIN l ON l.sensor_id = q.sensor_id AND q.bucket < l.b GROUP BY 1),
+         u AS (SELECT sensor_id, p90 FROM usual_by_hour WHERE metric = 'pm25' AND hour = CAST(extract(hour FROM now()) AS INTEGER))
+    SELECT n.sensor_id, n.name, round(CAST(n.mean AS NUMERIC), 1) AS value,
+           round(CAST(greatest(b.mean + 12, coalesce(u.p90, 0) + 10) AS NUMERIC), 1) AS line,
+           n.mean >= b.mean + 12 AND n.mean >= coalesce(u.p90, 0) + 10 AS over,
+           CASE WHEN n.indoor THEN 'inside' ELSE 'outside' END AS "where"
+    FROM now_v n JOIN before b ON b.sensor_id = n.sensor_id LEFT JOIN u ON u.sensor_id = n.sensor_id
+    WHERE n.mean >= b.mean + 7
+  message:
+    en: "PM2.5 jumped at {name}: {value} µg/m³."
+    id: "PM2.5 melonjak di {name}: {value} µg/m³."
+    es: "El PM2.5 subió de golpe en {name}: {value} µg/m³."
+
+- id: air_unusual
+  kind: unusual
+  issue: air
+  level: act
+  cooldown_minutes: 60
+  sql: |
+    WITH a AS (SELECT r.sensor_id, s.name, s.indoor, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+               WHERE r.metric = 'pm25' AND s.local AND r.bucket > now() - INTERVAL '1 hour'),
+         u AS (SELECT sensor_id, p90 FROM usual_by_hour WHERE metric = 'pm25' AND hour = CAST(extract(hour FROM now()) AS INTEGER))
+    SELECT a.sensor_id, a.name, round(CAST(avg(a.mean) AS NUMERIC), 1) AS value,
+           round(CAST(min(u.p90) + 15 AS NUMERIC), 1) AS line, min(a.mean) >= min(u.p90) + 15 AS over,
+           CASE WHEN bool_and(a.indoor) THEN 'inside' ELSE 'outside' END AS "where"
+    FROM a JOIN u ON u.sensor_id = a.sensor_id
+    GROUP BY a.sensor_id, a.name
+    HAVING count(*) >= 3 AND avg(a.mean) >= min(u.p90) + 10
+  message:
+    en: "PM2.5 at {name} is {value} µg/m³, above its usual for the hour ({line})."
+    id: "PM2.5 di {name} {value} µg/m³, di atas biasanya untuk jam ini ({line})."
+    es: "El PM2.5 en {name} es {value} µg/m³, por encima de lo habitual a esta hora ({line})."
+
+- id: air_sustained
+  kind: sustained
+  issue: air
+  level: act
+  cooldown_minutes: 60
+  sql: |
+    WITH a AS (SELECT r.sensor_id, s.name, s.indoor, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+               WHERE r.metric = 'pm25' AND s.local AND r.bucket > now() - INTERVAL '1 hour')
+    SELECT sensor_id, name, round(CAST(avg(mean) AS NUMERIC), 1) AS value, 35 AS line, min(mean) >= 35 AS over,
+           CASE WHEN bool_and(indoor) THEN 'inside' ELSE 'outside' END AS "where"
+    FROM a GROUP BY sensor_id, name
+    HAVING count(*) >= 3 AND avg(mean) >= 30
+  message:
+    en: "PM2.5 at {name} has been {value} µg/m³ for an hour."
+    id: "PM2.5 di {name} sudah {value} µg/m³ selama satu jam."
+    es: "El PM2.5 en {name} lleva una hora en {value} µg/m³."
+
+- id: air_extreme
+  kind: danger
+  issue: air
+  level: act
+  cooldown_minutes: 60
+  sql: |
+    SELECT r.sensor_id, s.name, round(CAST(r.mean AS NUMERIC), 1) AS value, 125.5 AS line, r.mean >= 125.5 AS over,
+           CASE WHEN s.indoor THEN 'inside' ELSE 'outside' END AS "where"
+    FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+    WHERE r.metric = 'pm25' AND s.local
+      AND r.bucket = (SELECT max(bucket) FROM recent_15m WHERE sensor_id = r.sensor_id AND metric = 'pm25')
+      AND r.mean >= 115
+  message:
+    en: "Very unhealthy air at {name}: {value} µg/m³ PM2.5."
+    id: "Udara sangat tidak sehat di {name}: PM2.5 {value} µg/m³."
+    es: "Aire muy insalubre en {name}: {value} µg/m³ de PM2.5."

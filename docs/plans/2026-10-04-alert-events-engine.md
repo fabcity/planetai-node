@@ -1,3 +1,5 @@
+Note (4 Oct 2026): the table this plan calls `events` was built as `alert_events`, because an `events` table already exists (v0.50); see the SDD ledger, ruling 11.
+
 # Alert events, part 1: the decision engine in shadow — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

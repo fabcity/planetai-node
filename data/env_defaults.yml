@@ -119,6 +119,15 @@ QUIET_TO:
 ALERT_LOCALE:
   default: "en"
   help: "auto | brief | standard | deep. Blank = auto. Nothing until a model is in the path of a report. en | id | es   (every rules.yml carries all three)"
+ALERT_ENGINE:
+  default: "rules"
+  help: "rules (default) | shadow. docs/SPEC_alerts.md: shadow records what the event engine would send, sends nothing. events, which sends through the event engine, arrives with the release that adds Telegram buttons."
+ALERT_MAX_PER_DAY:
+  default: "4"
+  help: "With the event engine: pushes a day outside danger."
+HOME_HAS:
+  default: ""
+  help: "What this home has, comma-separated: purifier, ac, fan, windows."
 PARENT_API_URL:
   default: ""
   help: "---- network (v0.2, leave empty on node #1) ---- http://<district-node>:8080  → hourly aggregates go up"

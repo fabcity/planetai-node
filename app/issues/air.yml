@@ -144,3 +144,57 @@ empty:
   en: The node reads the model for these coordinates. Add a sensor under Set up and the house fills in.
   id: Node membaca model untuk koordinat ini. Tambahkan sensor di Set up dan rumah akan terisi.
   es: El nodo lee el modelo para estas coordenadas. Añade un sensor en Set up y la casa se rellena.
+
+# Events (docs/SPEC_alerts.md §4–§5). The id and es strings are ASSISTANT-WRITTEN.
+events:
+  spike:
+    en: "📈 The air jumped in {rooms}: {peak} µg/m³ PM2.5. Outside is {outside_pm25}."
+    id: "📈 Udara melonjak di {rooms}: PM2.5 {peak} µg/m³. Di luar {outside_pm25}."
+    es: "📈 El aire empeoró de golpe en {rooms}: {peak} µg/m³ de PM2.5. Fuera hay {outside_pm25}."
+  unusual:
+    en: "😷 The air in {rooms} is worse than usual for this hour: {peak} µg/m³ PM2.5."
+    id: "😷 Udara di {rooms} lebih buruk dari biasanya untuk jam ini: PM2.5 {peak} µg/m³."
+    es: "😷 El aire en {rooms} está peor de lo habitual a esta hora: {peak} µg/m³ de PM2.5."
+  sustained:
+    en: "😷 The air in {rooms} has been unhealthy for an hour: {peak} µg/m³ PM2.5."
+    id: "😷 Udara di {rooms} sudah tidak sehat selama satu jam: PM2.5 {peak} µg/m³."
+    es: "😷 El aire en {rooms} lleva una hora siendo insalubre: {peak} µg/m³ de PM2.5."
+  danger:
+    en: "🚨😷 DANGER: the air in {rooms} is very unhealthy: {peak} µg/m³ PM2.5."
+    id: "🚨😷 BAHAYA: udara di {rooms} sangat tidak sehat: PM2.5 {peak} µg/m³."
+    es: "🚨😷 PELIGRO: el aire en {rooms} es muy insalubre: {peak} µg/m³ de PM2.5."
+  clear:
+    en: "✅ The air in {rooms} is back to normal."
+    id: "✅ Udara di {rooms} sudah kembali normal."
+    es: "✅ El aire en {rooms} ha vuelto a la normalidad."
+actions:
+  - id: air/ventilate_and_purify
+    when: {where: inside, outside_worse: false, outside_pm25_below: 35, home_has: purifier}
+    say:
+      en: "Open the side where it started and run the purifier for 30 min: outside is cleaner ({outside_pm25})."
+      id: "Buka sisi asal asapnya dan nyalakan pemurni udara 30 menit: di luar lebih bersih ({outside_pm25})."
+      es: "Abre el lado donde empezó y enciende el purificador 30 min: fuera está más limpio ({outside_pm25})."
+  - id: air/ventilate
+    when: {where: inside, outside_worse: false, outside_pm25_below: 35}
+    say:
+      en: "Open the side where it started and let it through: outside is cleaner ({outside_pm25})."
+      id: "Buka sisi asal asapnya dan biarkan mengalir: di luar lebih bersih ({outside_pm25})."
+      es: "Abre el lado donde empezó y deja que corra: fuera está más limpio ({outside_pm25})."
+  - id: air/keep_shut_purify
+    when: {outside_worse: true, home_has: purifier}
+    say:
+      en: "Keep windows and doors shut and run the purifier until outside clears."
+      id: "Tutup jendela dan pintu dan nyalakan pemurni udara sampai di luar bersih."
+      es: "Mantén ventanas y puertas cerradas y enciende el purificador hasta que fuera se limpie."
+  - id: air/keep_shut
+    when: {outside_worse: true}
+    say:
+      en: "Keep windows and doors shut until outside clears."
+      id: "Tutup jendela dan pintu sampai di luar bersih."
+      es: "Mantén ventanas y puertas cerradas hasta que fuera se limpie."
+  - id: air/find_source
+    when: {}
+    say:
+      en: "Look for what started it, cooking, burning or dust, and keep people away from it."
+      id: "Cari sumbernya, masak, pembakaran atau debu, dan jauhkan orang darinya."
+      es: "Busca qué lo provocó, cocina, quema o polvo, y mantén a la gente lejos."

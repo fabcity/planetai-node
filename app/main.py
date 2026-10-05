@@ -29,6 +29,7 @@ from psycopg.types.json import Jsonb
 
 import bootstrap
 import agent
+import events_pg
 import ground
 import index
 import issues.api
@@ -372,19 +373,39 @@ def run_report(cur) -> None:
     log.info("report %d sent: %d hours, %d words", rid, every + held, len(text.split()))
 
 
+def refresh_usual() -> None:
+    """usual_by_hour is materialized (init.sql): rebuild it hourly, in this connection's NODE_TZ, so a rule's
+    "usual for this hour" is the household's hour. A plain REFRESH takes an ACCESS EXCLUSIVE lock, so a rule reading
+    usual_by_hour waits for it (well under a second on a node). REFRESH CONCURRENTLY would need a unique index and
+    fails on a never-populated view."""
+    with db() as con, con.cursor() as cur:
+        cur.execute("REFRESH MATERIALIZED VIEW usual_by_hour")
+
+
 def run_rules() -> None:
     rules = packs.load_rules()
+    mode = settings.get("ALERT_ENGINE", "rules") or "rules"
+    if mode not in ("rules", "shadow"):
+        mode = "rules"                    # 'events' arrives with the release that sends; a typo behaves as rules
+    cands = []
     with db() as con, con.cursor() as cur:
         try:
             run_report(cur)
         except Exception as e:  # noqa: BLE001
             log.warning("report failed: %s", e)
         for rule in rules:
+            if rule.get("kind") and mode == "rules":
+                continue                  # kinded rules belong to the event engine (docs/SPEC_alerts.md)
             try:
                 rows = index.run_ro(cur, rule["sql"])      # as planetai_ro: a rule can read everything but settings, and write nothing
             except Exception as e:  # noqa: BLE001
                 log.warning("rule %s failed: %s", rule.get("id"), e)
                 continue
+            if rule.get("kind"):
+                # No alerts row, on purpose: an act-level row is an open ask on the dashboard and a row in rho's
+                # denominator, and shadow must change neither. Linking them (alerts.event_id) is Plan 2's.
+                cands += events_pg.candidates(rule, rows)
+                continue                  # never through the old cooldown-and-send path
             for row in rows:
                 sid = str(row.get("sensor_id", "node"))
                 cur.execute(
@@ -412,6 +433,11 @@ def run_rules() -> None:
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
                     notify(level, text)
                 ha_alert(level, text, alert_id)
+        if mode == "shadow":
+            try:
+                events_pg.run(cur, cands, mode, _local_now())
+            except Exception as e:  # noqa: BLE001
+                log.warning("event engine failed: %s", e)
 
 
 def notify(level: str, text: str) -> None:
@@ -690,6 +716,7 @@ def _with_distance(peers: list[dict]) -> list[dict]:
 
 loop(poll_sources, POLL, delay=2)
 loop(run_rules, 60, delay=30)
+loop(refresh_usual, 3600, delay=10)
 loop(push_aggregates, 3600, delay=120)
 loop(push_events, 3600, delay=150)
 loop(check_release, 3600, delay=300)

@@ -83,9 +83,6 @@ PROPOSED = {
     # same gate that fired for the licence record fires for this one. What replaces it is the promise
     # the spec itself makes: tests/test_rho.py lands with Phase 2's code and deletes this line.
     "docs/SPEC_rho.md": {"tests/test_rho.py"},
-    # docs/SPEC_alerts.md, approved in conversation on 4 Oct 2026 and not built. Each name leaves this entry in the
-    # pull request that makes it (steps 1 and 2 of its §11).
-    "docs/SPEC_alerts.md": {"tools/replay_alerts.py", "ALERT_ENGINE"},
 }
 # Names a page uses on purpose that are not the tree's: a page saying a command does NOT exist, the
 # reticulum bridge's own routes, the worked example a reader builds. Same shape as PROPOSED, and the

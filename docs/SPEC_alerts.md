@@ -75,8 +75,12 @@ The core provides the measures the kinds need, so a rule does not reinvent them:
 
 **Grouping.** Every row a rule returns still writes an `alerts` row, as today. It no longer sends. The core folds it
 into the open event for its `(issue, house)`: heat is one event whichever room fired it, and air is another. A new
-`events` table holds one row per event: `id, issue, kind, level, opened_at, last_sent_at, cleared_at, peak, rooms,
-action_id, state`. `alerts.event_id` and `actions.event_id` point at it.
+`alert_events` table (an `events` table already existed) holds one row per event: `id, issue, kind, level, opened_at,
+last_seen_at, last_sent_at, cleared_at, peak, rooms, places, ever_sent,
+action_id, told_kind, told_peak, told_level, told_held, last_emitted_at` (`places` is the event's inside/outside places). `event_messages` holds one row per decided
+message: `event_id, ts, reason, sent, held, mode, kind, text, action_id`. `alerts.event_id` and `actions.event_id` point
+at the event. In shadow mode, kinded rules write no alerts row (an act-level row is an open ask on the dashboard and
+enters ρ); recording them and linking alerts.event_id arrives with the release that sends events.
 
 **Lifecycle.**
 - **Open**: the first row sends one message.
@@ -239,7 +243,7 @@ cover it; add it if the replay or shadow mode shows otherwise.
 Each step is its own pull request, mergeable and harmless on its own:
 
 1. Measures (`usual_by_hour`, `recent_15m`, `ahead_12h`) and the replay tool.
-2. The `events` table, `alerts.event_id`, `actions.event_id`, the `dismissed` stage; grouping, escalation, clearing,
+2. The `alert_events` table, `alerts.event_id`, `actions.event_id`, the `dismissed` stage; grouping, escalation, clearing,
    quiet hours and the ceiling, in shadow only. **This changes `init.sql`, which `GOVERNANCE.md` says needs two
    maintainers.**
 3. Actions per issue, the context resolver, `HOME_HAS`.

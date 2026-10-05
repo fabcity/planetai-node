@@ -58,3 +58,69 @@
     en: "🌙🥵 Last night never cooled down at {name}.\n\nWhen a room stays this warm all night, the body does not recover in sleep; people wake tired and the heat wears them down day by day.\n\n👉 Open up at the coolest hour, just before dawn. If this is every night, the room needs shade or airflow, not a bigger fan."
     id: "🌙🥵 Semalam tidak sempat dingin di {name}.\n\nKalau ruangan sehangat ini semalaman, tubuh tidak pulih saat tidur; orang bangun lelah dan panas menggerus hari demi hari.\n\n👉 Buka di jam terdingin, sebelum subuh. Kalau tiap malam begini, ruangan perlu peneduh atau aliran udara, bukan kipas lebih besar."
     es: "🌙🥵 Anoche nunca refrescó en {name}.\n\nCuando una habitación sigue así de caliente toda la noche, el cuerpo no se recupera durmiendo; la gente se levanta cansada y el calor la va desgastando día a día.\n\n👉 Abre a la hora más fresca, justo antes del amanecer. Si pasa todas las noches, la habitación necesita sombra o corriente de aire, no un ventilador más grande."
+
+# ---- kinded rules: the event engine's (docs/SPEC_alerts.md §3). The old engine skips any rule with `kind:`. ----
+# The id and es strings below are ASSISTANT-WRITTEN.
+# Every row carries value, line and over. A row with over=false is inside the margin: it keeps an open event open
+# and never opens one. Thresholds are starting values for the replay of node #1's month.
+
+- id: heat_unusual
+  kind: unusual
+  issue: heat
+  level: act
+  cooldown_minutes: 60
+  sql: |
+    WITH a AS (SELECT r.sensor_id, s.name, r.bucket, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+               WHERE r.metric = 'apparent' AND s.local AND s.indoor AND r.bucket > now() - INTERVAL '1 hour'),
+         u AS (SELECT sensor_id, p90 FROM usual_by_hour
+               WHERE metric = 'apparent' AND hour = CAST(extract(hour FROM now()) AS INTEGER))
+    SELECT a.sensor_id, a.name, round(CAST(avg(a.mean) AS NUMERIC), 1) AS value,
+           round(CAST(min(u.p90) + 2 AS NUMERIC), 1) AS line,
+           min(a.mean) >= min(u.p90) + 2 AS over
+    FROM a JOIN u ON u.sensor_id = a.sensor_id
+    GROUP BY a.sensor_id, a.name
+    HAVING count(*) >= 3 AND avg(a.mean) >= min(u.p90) + 1
+  message:
+    en: "Heat in {name}: it feels like {value} °C, above this room's usual of the hour ({line})."
+    id: "Panas di {name}: terasa seperti {value} °C, di atas biasanya untuk jam ini ({line})."
+    es: "Calor en {name}: la sensación es de {value} °C, por encima de lo habitual a esta hora ({line})."
+
+- id: heat_sustained
+  kind: sustained
+  issue: heat
+  level: act
+  cooldown_minutes: 60
+  sql: |
+    WITH a AS (SELECT r.sensor_id, s.name, r.bucket, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+               WHERE r.metric = 'apparent' AND s.local AND s.indoor),
+         l AS (SELECT sensor_id, name, max(bucket) AS b FROM a GROUP BY 1, 2),
+         v AS (SELECT a.sensor_id, a.mean FROM a JOIN l ON l.sensor_id = a.sensor_id AND a.bucket = l.b),
+         k AS (SELECT sensor_id, max(bucket) AS b FROM a WHERE mean < 35 GROUP BY 1),
+         u AS (SELECT sensor_id, count(*) AS hours FROM usual_by_hour WHERE metric = 'apparent' AND p75 >= 35 GROUP BY 1)
+    SELECT l.sensor_id, l.name, round(CAST(v.mean AS NUMERIC), 1) AS value, 35 AS line,
+           round(CAST(extract(epoch FROM l.b - coalesce(k.b, l.b - INTERVAL '24 hours')) / 3600.0 AS NUMERIC), 1) AS hours,
+           coalesce(u.hours, 0) AS usual_hours,
+           extract(epoch FROM l.b - coalesce(k.b, l.b - INTERVAL '24 hours')) / 3600.0 >= greatest(3, coalesce(u.hours, 0) + 1) AS over
+    FROM l JOIN v ON v.sensor_id = l.sensor_id
+    LEFT JOIN k ON k.sensor_id = l.sensor_id LEFT JOIN u ON u.sensor_id = l.sensor_id
+    WHERE v.mean >= 34
+  message:
+    en: "Heat in {name}: {hours} h at a feels-like of 35 °C or more (usually {usual_hours} h); now {value} °C."
+    id: "Panas di {name}: {hours} jam terasa 35 °C atau lebih (biasanya {usual_hours} jam); sekarang {value} °C."
+    es: "Calor en {name}: {hours} h con sensación de 35 °C o más (lo habitual, {usual_hours} h); ahora {value} °C."
+
+- id: heat_extreme
+  kind: danger
+  issue: heat
+  level: act
+  cooldown_minutes: 60
+  sql: |
+    SELECT r.sensor_id, s.name, round(CAST(r.mean AS NUMERIC), 1) AS value, 40 AS line, r.mean >= 40 AS over
+    FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
+    WHERE r.metric = 'apparent' AND s.local AND s.indoor
+      AND r.bucket = (SELECT max(bucket) FROM recent_15m WHERE sensor_id = r.sensor_id AND metric = 'apparent')
+      AND r.mean >= 39
+  message:
+    en: "Danger in {name}: it feels like {value} °C."
+    id: "Bahaya di {name}: terasa seperti {value} °C."
+    es: "Peligro en {name}: la sensación es de {value} °C."

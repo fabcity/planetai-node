@@ -74,6 +74,17 @@ RUNTIME = {
     "QUIET_HOURS":        ("alerts", "Quiet hours", False, False, "1 = between the hours below, only act-level alerts are sent; the rest wait for the morning report."),
     "QUIET_FROM":         ("alerts", "Quiet from", False, False, "Local hour, default 22."),
     "QUIET_TO":           ("alerts", "Quiet until", False, False, "Local hour, default 6."),
+    "ALERT_ENGINE":       ("alerts", "Alert engine", False, False,
+                           "rules = every rule sends on its own, as before (default). shadow = the event engine "
+                           "(docs/SPEC_alerts.md) decides what it would send and records it, and sends nothing; "
+                           "the rules keep sending. events, which sends through the event engine, arrives with "
+                           "the release that adds Telegram buttons."),
+    "ALERT_MAX_PER_DAY":  ("alerts", "Most messages a day", False, False,
+                           "With the event engine: pushes a day outside danger, default 4. Beyond it an event "
+                           "is still recorded and waits for the next report. Danger is never held."),
+    "HOME_HAS":           ("alerts", "What this home has", False, False,
+                           "Comma-separated: purifier, ac, fan, windows (windows that open). The event engine "
+                           "only suggests what is here to use."),
     "MESH_ALERTS":        ("alerts", "Alerts over the LoRa mesh", False, False, "1 to send act-level alerts through the gateway radio."),
     "MESH_GATEWAY_NODE_NUM": ("alerts", "Gateway node number", False, False, "Decimal, for mesh downlink."),
     # Off by default, and a community's switch rather than the software's. A node in a house records
@@ -184,6 +195,7 @@ CHOICES = {
     "REPORT_EVERY":  ("3", "4", "6", "8", "12", "24"),      # each divides 24, so the rhythm does not walk round the clock
     "REPORT_ANCHOR": tuple(str(h) for h in range(24)),
     "REPORT_DEPTH":  ("auto", "brief", "standard", "deep"),
+    "ALERT_ENGINE":  ("rules", "shadow"),
     "UI_MODE":       ("simple", "advanced", "learn"),
     # private first because it is the default and because the order is what every surface offers: `describe()`
     # publishes this tuple and the dashboard's select and `planetai config` both walk it as given.

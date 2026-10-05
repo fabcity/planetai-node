@@ -250,6 +250,9 @@ data, the nearest fab lab) are set with the pack keys in [What the packs declare
 | `QUIET_HOURS` | `1` | `1`, `0` | `1` = between the hours below only act-level alerts are sent; the rest wait for the morning report. A report due in quiet hours is held and folded into the next. | runtime · public |
 | `QUIET_FROM` | `22` | local hour | When quiet hours start. | runtime · public |
 | `QUIET_TO` | `6` | local hour | When quiet hours end. | runtime · public |
+| `ALERT_ENGINE` | `rules` | `rules`, `shadow` | `rules` = every rule sends on its own. `shadow` = the event engine (`docs/SPEC_alerts.md`) records what it would send in `event_messages` and sends nothing; the rules keep sending. `events`, which sends through the event engine, arrives with the release that adds Telegram buttons. | runtime |
+| `ALERT_MAX_PER_DAY` | `4` | whole number | With the event engine: pushes a day outside danger. Beyond it an event is recorded and waits for the next report. Danger is never held. | runtime |
+| `HOME_HAS` | empty | `purifier`, `ac`, `fan`, `windows`, comma-separated | What this home has. The event engine only suggests what is here to use. | runtime |
 | `ALERT_LOCALE` | `en` | `en`, `id`, `es` | The language of the alert rules, the reports, the test alert and the bot's own replies; every `rules.yml` carries all three. The dashboard and the terminal stay in English. Anything else falls back to English. Echoed in `/health.locale`; read by the agent loop too. | runtime · public |
 | `HA_DISCOVERY` | `0` | `1`, `0` | `1` publishes local sensors and alerts as Home Assistant entities over MQTT discovery. Needs `MQTT_HOST`. `planetai homeassistant` sets it. | runtime · public · outward |
 | `MESH_ALERTS` | `0` | `1`, `0` | `1` sends the first line of act-level alerts back over the LoRa mesh through the gateway radio. Needs downlink enabled on the gateway's channel. | runtime · public · outward |
