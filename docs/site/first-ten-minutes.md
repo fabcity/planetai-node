@@ -141,7 +141,7 @@ real act-level alert from a pack rule about the air or the heat does, and the lo
    open event instead, with the action it chose and **Done**, **Not now** and **Doesn't fit**; see
    [Dashboard](dashboard.md#decide).) Press **Decide about this**,
    fill in "Who is deciding" and "What will be done" (or press **Take its word**), then **Record the
-   decision**. The page answers: "Decided. Nothing has moved — press "I did this" under Act when it is
+   decision**. The page answers: "Decided. Nothing has moved — press "I did this" on this card when it is
    done." A decision closes no alert and does not enter ρ. It is the record that somebody looked.
 2. **Record it when it is done.** The same card has a button, **I did this**. Fill in "Who" and "What you
    did", then **Record it**. The page answers: "Recorded. The

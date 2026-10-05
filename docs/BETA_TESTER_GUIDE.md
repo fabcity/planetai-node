@@ -99,8 +99,8 @@ planetai act 3 "read it"
 ```
 
 The terminal answers with ρ ("rho"): the share of alerts that led to someone doing something. This one number is what
-the node exists to measure. On the dashboard the same button sits beside the alert itself, in **3 Act** — the third of the four
-stages the page is read in.
+the node exists to measure. On the dashboard the same button, **I did this**, is on the alert's card in Decide, the first of the stages
+under the lead.
 
 Replying `/act 3` in Telegram only works if the node's bot is running (`planetai agent local`, which installs a small
 local model; optional, and heavy on an 8 GB machine).

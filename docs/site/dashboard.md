@@ -40,7 +40,7 @@ for itself is a bug.
    that tells events there is one card for each open event: the issue, the kind of event and when it began,
    the peak with what it is compared to, the one action the node chose, and **Done**, **Not now** and
    **Doesn't fit** under it. The evidence that explains it is the Observe section below. On a node still on
-   the old engine, Decide says "This node sends alerts, not events" and draws one card for each open alert.
+   the old engine, Decide says "This node sends alerts, not events" and draws one card for each issue with an open alert.
 5. **Answer it.** Press **Done** when it is done. The first press asks for your name, and this browser keeps it
    for the next. The page answers "Recorded." and the card shows a closed ring with your name and the time.
    If it answers with the node's own 401 or 403 sentence instead, go to Set up, paste the act token that
@@ -145,7 +145,8 @@ The first thing on Now is the ladder, and under it the lead: the headline issue'
 What that line counts follows the node. With an event open it reads `1 event open · heat · sustained since
 13:00 · in Decide`, and `· shadow` is added on a node that only records what it would have sent. With none open
 it reads `nothing open · 2 cleared today`. A node on the old engine, an older node, or one whose events could
-not be read counts alerts instead: `2 alerts open · in Decide`.
+not be read counts alerts instead: `2 alerts open · in Decide`. So does a node that tells events when none is
+open but an act-level alert that no event covers is: that alert is drawn in Decide, and the line counts it.
 
 The lead draws the issue's `hero` from `/issues` and nothing else there, so a new issue leads the page with no change to the page. The rule's two ends are the issue's own, so a reading looks the same size tomorrow as tonight; a reading past an end sits on it and prints its real number. Coast has a rule and no line. Land has no rule, and its last line says when the satellite looked and when it looks next. The four distances in full are in the matrix. The why line ends on the node's own
 `headline_rule`, so a reader can check why this issue is on top. The ground's drawing follows. What the lead says is open is
@@ -257,8 +258,8 @@ Decide says which of five states it is in, each in words and none as a zero or a
 | state | what Decide says |
 |---|---|
 | events or shadow, an event open | the cards |
-| events or shadow, nothing open | "Nothing open. 2 cleared today, the last at 14:40 (air)." |
-| the old engine (`rules`) | "This node sends alerts, not events.", then one alert card for each open alert, or "Nothing is asking for anything." |
+| events or shadow, no event open and no alert left uncovered | "Nothing open. 2 cleared today, the last at 14:40 (air)." |
+| the old engine (`rules`) | "This node sends alerts, not events.", then one card for each issue with an open alert, or "Nothing is asking for anything." |
 | a node older than v0.77, with no events | "This node is v0.76: it sends alerts, not events", then the alert cards |
 | the events could not be read | the node's own sentence, then the alert cards |
 
@@ -305,7 +306,7 @@ wrote is shown only to a reader with a token, because `GET /actions` is on no sh
 ### Measure
 
 What the node measures about itself. "Whether it worked" draws ρ as a row of rings, answered first, with the
-median minutes from alert to answer. Its caption says what it counts: alerts, today, because the node's ρ does not
+median minutes from alert to answer. Its caption says what it counts: alerts, because the node's ρ does not
 count events yet, and the page never relabels a number the node published. The funnel is beside it: `asked`, `acknowledged`, `acted`, `measured`,
 each a count against `asked`. `measured` is derived, not recorded: an act followed by 48 hours of silence
 from the same rule on the same sensor, and the funnel says so. A zero says why it is a zero. The care label

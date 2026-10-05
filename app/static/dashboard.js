@@ -5145,7 +5145,7 @@ function card(ctx, key, d, a, did) {
     + (sug ? `<button type="button" class="take">Take its word</button>` : '')
     + `<button type="submit" class="pri">Record the decision</button></div>`
     + `<p class="fine">This closes no alert and moves no number. When it is done, press `
-    + `<b>I did this</b> under Act.</p>`
+    + `<b>I did this</b> on this card.</p>`
     + window.K.TOKEN_FINE
     + `</form>${did ? `<div class="ask">${window.K.didButton(a.id)}</div>` : ''}</section>`;
 }
@@ -7976,7 +7976,7 @@ async function didThis(form) {
       say(said ? `${said} (${r.status})` : `The node refused it (${r.status}).`, true);
     } else {
       say(decision
-        ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
+        ? 'Decided. Nothing has moved — press "I did this" on this card when it is done.'
         : 'Recorded. The node watches what happens next.');
       if (!decision) form.hidden = true;
       else { form.reset(); }
