@@ -66,7 +66,7 @@ events: {
   re-rendered, so the page says what the phone said.
 - **`alerts`** links by `alerts.event_id` once Plan 2 writes it. Until then, the node matches the `alerts` rows of
   the issue's packs whose `ts` falls between `opened_at` and `cleared_at` (or now). **`uncovered_asks`** is every
-  open act-level alert in no open event's `alerts`. The node does both; the page never matches anything.
+  open act-level alert in no open event's `alerts`; on `shadow` and `events`, leaving out the alerts of the packs the engine replaced. The node does both; the page never matches anything.
 - **`answer`** is the latest `actions` row with this `event_id`. `held_until` is set for **Not now**: three hours
   after it, unless the event is `danger`. **`cleared_after_min`** is the minutes from a Done to the clear.
 - **The headline.** When an event is open, its issue leads, ranked by kind (`danger` > `sustained` > `unusual` >
