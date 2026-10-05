@@ -710,6 +710,7 @@ if shutil.which("node"):
         re.search(r"const evOpen = .*?\n", _js_raw).group(0),
         re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evButtons\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evCard\(e, tail = ''\) \{.*?\n\}", _js_raw, re.S).group(0),
     ))
     _evr = _node(_ev + r"""
@@ -1107,6 +1108,21 @@ assert "evButtons(" in _lead and 'evrow' in _lead and "evPick(evs, hk)" in _lead
 assert "asEv ? evRow(" in _lead and "askRow(askAt" in _lead, "rules/old/error and nothing-open keep askRow"
 assert 'id="num-${esc(key)}"' in _js_raw[_js_raw.index("function monument("):_js_raw.index("function heroPix(")], \
     "evrow's data-ref=num-<hk> must exist: monument() ids the numeral num-<key>"
+if shutil.which("node"):
+    _an = _node("\n".join((
+        "const esc = s => String(s), sign = (id, l) => `<svg class=\"sg\"/>`;",
+        "const S = { issues: {}, health: { tz: 'Asia/Makassar' } };",
+        re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        """const A = (stage, extra) => ({ answer: { stage, actor: 'tomas', ts: '2026-10-05T10:00:00Z', ...extra } });
+console.log(JSON.stringify({ none: evAnswered({ answer: null }), acted: evAnswered(A('acted')),
+  held: evAnswered(A('acknowledged', { held_until: '2026-10-05T12:00:00Z' })), no: evAnswered(A('dismissed')) }));""")))
+    assert _an["none"] == "" and "evdone" in _an["acted"] and "Done · tomas" in _an["acted"], _an
+    assert "evheld" in _an["held"] and "Not now · tomas" in _an["held"] and "held until 20:00" in _an["held"], _an
+    assert "Doesn’t fit · tomas" in _an["no"], _an
+assert "evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))" in _lead, \
+    "an acted event's row has no buttons; a held one keeps them beside its answer"
+assert "shadow \\u2014 nothing was sent" in _lead, "a shadow node's row says so"
 if shutil.which("node"):
     _pk = _node("\n".join((
         re.search(r"const evPick = .*?;\n", _js_raw).group(0),

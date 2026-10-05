@@ -978,6 +978,16 @@ function evButtons(e) {
     + `<div class="btns"><button type="submit" class="pri">Record it</button>`
     + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
 }
+/* The line an answered event wears: who pressed which button, when, and until when a Not now holds. Empty
+   before an answer. Decide's card and simple mode's row both draw it. */
+function evAnswered(e) {
+  const a = e.answer, done = a && a.stage === 'acted';
+  return !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
+    + `${done ? sign('rho-closed', 'closed') : ''}${esc(a.stage === 'acted' ? 'Done'
+      : a.stage === 'dismissed' ? 'Doesn’t fit' : 'Not now')} · ${esc(a.actor || 'somebody')}`
+    + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
+      + ` unless it reaches danger` : ''}</p>`;
+}
 /* `tail` is drawn inside the card, last: Decide puts the folded rule rows there (spec §4.2). */
 function evCard(e, tail = '') {
   const d = ISS[e.issue] || { name: {} }, h = d.hero || {}, dp = d.dp == null ? 1 : d.dp, unit = d.unit || '';
@@ -992,12 +1002,7 @@ function evCard(e, tail = '') {
   const m = e.message;
   const said = !m ? '' : `<p class="evmsg"><span class="m">${st === 'shadow' ? 'would have sent'
     : m.sent ? 'sent' : 'held'} ${esc(evClock(m.ts))}</span><span class="said">${esc(m.text || '')}</span></p>`;
-  const done = a && a.stage === 'acted';
-  const answered = !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
-    + `${done ? sign('rho-closed', 'closed') : ''}${esc(a.stage === 'acted' ? 'Done'
-      : a.stage === 'dismissed' ? 'Doesn’t fit' : 'Not now')} · ${esc(a.actor || 'somebody')}`
-    + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
-      + ` unless it reaches danger` : ''}</p>`;
+  const done = a && a.stage === 'acted', answered = evAnswered(e);
   const rows = (e.alerts || []).length;
   /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run, and
      Arrange may have hidden any of them. */
@@ -1026,7 +1031,7 @@ function evCard(e, tail = '') {
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
-  evState, evOpen, evPick, evClock, evButtons, evCard, evWord };
+  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -7339,7 +7344,7 @@ const LATE = new Set(['SOURCES']);
 
 function main() {
   const { S, ISS, ORDER, DIST, LAB, LOC, esc, fmt, pill, kicker, sentence, why, ask, asof,
-    refusedPage, VIEW, STATE, evState, evOpen, evPick, evClock, evButtons } = window.K;
+    refusedPage, VIEW, STATE, evState, evOpen, evPick, evClock, evButtons, evAnswered } = window.K;
   const { H, km2, edge } = window.KH;
   const { N, where, link } = window.KN;
   const PAI = window.PAI;
@@ -7627,8 +7632,9 @@ function main() {
         + (sg ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="${esc(ed.name[LOC] || e.issue)}">`
           + `<use href="static/signs.svg#${esc(sg)}"/></svg>` : '')
         + `<div class="what">${e.action && e.action.text ? esc(e.action.text)
-          : `${esc(e.kind)}${(e.rooms || []).length ? ` \u00b7 ${esc(e.rooms.join(', '))}` : ''}`}</div>`
-        + evButtons(e)
+          : `${esc(e.kind)}${(e.rooms || []).length ? ` \u00b7 ${esc(e.rooms.join(', '))}` : ''}`}`
+        + `${st === 'shadow' ? `<span class="m">shadow \u2014 nothing was sent</span>` : ''}</div>`
+        + evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))
         + (n > 1 ? `<p class="evmore" data-lv="simple">and ${n - 1} more open \u00b7 in advanced</p>` : '') + `</div>`;
     };
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
