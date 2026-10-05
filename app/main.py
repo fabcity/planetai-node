@@ -1288,7 +1288,14 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
     events=1 adds the answers to alert events, with their event_id (docs/SPEC_dashboard_events.md §3.4).
     """
     if stage:
-        return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s ORDER BY ts DESC LIMIT %s",
+        if events:
+            # With events=1 on a stage filter, include event rows with their event_id
+            return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions WHERE stage = %s AND "
+                     "(alert_id IS NOT NULL OR event_id IS NOT NULL) ORDER BY ts DESC LIMIT %s",
+                     stage, limit)
+        # Default: exclude event rows (alert_id NULL, event_id set) but keep settings rows (both NULL)
+        return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s AND "
+                 "(alert_id IS NOT NULL OR event_id IS NULL) ORDER BY ts DESC LIMIT %s",
                  stage, limit)
     if events:
         # the event answers too, with event_id; without it the v0.76 page never meets a row with no alert_id
