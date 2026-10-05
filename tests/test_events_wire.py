@@ -128,4 +128,39 @@ assert got["open"][0]["alerts"] == [578] and got["open"][0]["context"]["usual"] 
 cold = W.live(FakeCur(fail="usual_by_hour"), DECL, "en", NOW)
 assert cold["open"][0]["context"]["usual"] is None and cold["open"][0]["context"]["outside"] == 29.1, cold
 print("  live: one read per table, alerts matched per event, a usual_by_hour that fails is null and costs nothing else")
+import issues as I                # noqa: E402
+from issues import engine          # noqa: E402
+
+
+class Settings:
+    def get(self, key, default=""):
+        return default
+
+    def num(self, key, default):
+        return default
+
+
+SNAP = json.loads((ROOT / "app/issues/fixtures/node1-2026-09-21d.json").read_text())
+DECLS = I.load()
+plain = engine.replay(json.loads(json.dumps(SNAP)), Settings(), DECLS)
+assert plain["events"] is None, "a fixture from before v0.77 replays with no events block: the older-node state"
+heroes = [k for k in plain["order"] if plain["issues"][k].get("hero")]
+other = next(k for k in heroes if k != plain["headline"])          # an issue that does not lead on its own
+asks = [a["id"] for v in plain["issues"].values() for a in (v.get("open_asks") or []) if a.get("id") is not None]
+assert asks, "the 21d fixture has open asks; pick another fixture if it ever stops having them"
+snap = json.loads(json.dumps(SNAP))
+snap["issues"]["events"] = {"engine": "events", "buttons": {}, "recent": [], "cleared_today": 0, "last_cleared": None,
+                            "open": [{"id": 9, "issue": other, "kind": "sustained", "opened_at": "2026-09-21T10:00:00+08:00",
+                                      "alerts": asks[:1]}]}
+led = engine.replay(snap, Settings(), DECLS)
+assert led["headline"] == other and led["lead"] == {"issue": other, "by": "event"}, led["lead"]
+assert led["events"]["uncovered_asks"] == asks[1:], (led["events"]["uncovered_asks"], asks)
+assert led["headline_rule"]["en"].startswith("An open event leads")
+print("  replay: a captured block leads the headline with its event; uncovered_asks is every open ask no event covers")
+
+out = {"air": {"hero": {"sign": "a"}, "state": "act", "moved": 0.9}, "heat": {"hero": {"sign": "h"}, "state": "quiet", "moved": 0.0}}
+assert engine._lead(out, ["air", "heat"], {"open": [{"issue": "heat"}]}) == {"issue": "heat", "by": "event"}
+assert engine._lead(out, ["air", "heat"], {"open": []})["by"] == "state", "nothing open: today's rule"
+assert engine._lead(out, ["air", "heat"], {"open": [{"issue": "coast"}]})["issue"] == "air", "no hero: cannot lead"
+print("  _lead: an open event's issue leads; with none open, or none that can lead, today's rule stands")
 print("events_wire: the open events, their actions as sent, answers and holds, the local day")
