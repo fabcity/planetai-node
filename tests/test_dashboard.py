@@ -1098,6 +1098,23 @@ console.log(JSON.stringify({
     assert _act["answers"] == [2, 1, 4], f"evAnswers: answered events only, newest answer first: {_act['answers']}"
     assert _act["none"] == [[], []], "no events block is an empty record, not a throw"
 
+# SIMPLE MODE'S OPEN ROW (SPEC_dashboard_events §4.4). lead() is a closure, so the markup is a source check; the
+# pick is lifted and run. The row's data-ref must be the id monument() draws for the lead's issue.
+_lead = _js_raw[_js_raw.index("  function lead() {"):]
+_lead = _lead[:_lead.index("\n  }\n")]
+assert "evButtons(" in _lead and 'evrow' in _lead and "evPick(evs, hk)" in _lead, \
+    "lead() must draw the open event's row with its buttons"
+assert "asEv ? evRow(" in _lead and "askRow(askAt" in _lead, "rules/old/error and nothing-open keep askRow"
+assert 'id="num-${esc(key)}"' in _js_raw[_js_raw.index("function monument("):_js_raw.index("function heroPix(")], \
+    "evrow's data-ref=num-<hk> must exist: monument() ids the numeral num-<key>"
+if shutil.which("node"):
+    _pk = _node("\n".join((
+        re.search(r"const evPick = .*?;\n", _js_raw).group(0),
+        """const a = { id: 1, issue: 'air' }, b = { id: 2, issue: 'heat' };
+console.log(JSON.stringify({ own: evPick([a, b], 'heat').id, first: evPick([a, b], 'noise').id,
+  none: evPick([], 'air') === undefined }));""")))
+    assert _pk == {"own": 2, "first": 1, "none": True}, f"evPick: the shown issue's event, else the first: {_pk}"
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")

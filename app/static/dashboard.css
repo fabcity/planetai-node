@@ -269,10 +269,10 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ev .evact.none { font-weight: 400; color: var(--mute) }
 .ev .evdone, .ev .evheld { font: 500 12.5px var(--mono); color: var(--mute) }
 .ev .evdone svg.sg { color: var(--loop-closed) }
-.ev .evbtns { display: flex; gap: 8px; flex-wrap: wrap }
-.ev .evb { font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0;
+.ev .evbtns, .evrow .evbtns { display: flex; gap: 8px; flex-wrap: wrap }
+.ev .evb, .evrow .evb { font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0;
   border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
-.ev .evb.pri { background: var(--ink); color: var(--ground) }
+.ev .evb.pri, .evrow .evb.pri { background: var(--ink); color: var(--ground) }
 .ev .evmsg { display: grid; gap: 2px; border-left: 3px solid var(--cells); padding-left: 12px }
 .ev .evmsg .said { font-size: 12.5px; line-height: 1.45; white-space: pre-line; max-width: 56ch }
 .ev .evlinks { font: 500 11.5px var(--mono); color: var(--mute) }
@@ -282,19 +282,19 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ev details.evrows p { margin: 4px 0 0 }
 /* The I did this button on a Decide alert card sits in the card's own box, not in a second one. */
 .decide > .ask { border: 0; padding: 0 }
-.ev .evform { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair); padding-top: 12px }
-.ev .evform[hidden] { display: none }
-.ev .evform label { display: grid; gap: 3px; min-width: 0 }
-.ev .evform label[hidden] { display: none }
-.ev .evform label span { font: 500 10.5px var(--mono); letter-spacing: .1em; color: var(--mute) }
-.ev .evform input:not([type="hidden"]) { font: 400 14px var(--fc-font-body); padding: 9px 10px;
+.ev .evform, .evrow .evform { display: grid; gap: 10px 16px; border-top: 1px solid var(--hair); padding-top: 12px }
+.ev .evform[hidden], .evrow .evform[hidden] { display: none }
+.ev .evform label, .evrow .evform label { display: grid; gap: 3px; min-width: 0 }
+.ev .evform label[hidden], .evrow .evform label[hidden] { display: none }
+.ev .evform label span, .evrow .evform label span { font: 500 10.5px var(--mono); letter-spacing: .1em; color: var(--mute) }
+.ev .evform input:not([type="hidden"]), .evrow .evform input:not([type="hidden"]) { font: 400 14px var(--fc-font-body); padding: 9px 10px;
   border: 1px solid var(--hair); background: var(--ground); color: var(--ink); min-width: 0 }
-.ev .evform input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
-.ev .evform .btns { display: flex; gap: 8px; flex-wrap: wrap }
-.ev .evform button { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
+.ev .evform input:focus-visible, .evrow .evform input:focus-visible { outline: 2px solid var(--ink); outline-offset: -1px }
+.ev .evform .btns, .evrow .evform .btns { display: flex; gap: 8px; flex-wrap: wrap }
+.ev .evform button, .evrow .evform button { font: 600 14px var(--fc-font-body); padding: 9px 14px; border-radius: 0;
   border: 1px solid var(--ink); background: var(--ground); color: var(--ink) }
-.ev .evform button.pri { background: var(--ink); color: var(--ground) }
-.ev .evform .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
+.ev .evform button.pri, .evrow .evform button.pri { background: var(--ink); color: var(--ground) }
+.ev .evform .fine, .evrow .evform .fine { font-size: 12.5px; color: var(--mute); max-width: 68ch }
 
 .ask.none { border-style: dashed; border-color: var(--hair) }
 .ask.none .what { font-weight: 400; color: var(--mute) }
@@ -1443,6 +1443,9 @@ body[data-lv="simple"] .lead .big { font-size: clamp(18px, 1.8vw, 24px); max-wid
 .askrow .what { font: 600 15px/1.35 var(--fc-font-body); min-width: 0; overflow-wrap: anywhere }
 .askrow .what small { display: block; font: 400 11px var(--mono); color: var(--mute); margin-top: 3px }
 .askrow form.did { grid-column: 1 / -1 }
+/* The event row: its buttons and form take the row's width, under the sign and the action; "and N more" closes it. */
+.evrow .evbtns, .evrow .evform, .evrow .evmore { grid-column: 1 / -1 }
+.evrow .evmore { margin: 0; font: 500 11px var(--mono); color: var(--mute) }
 @media (max-width: 520px) { .askrow { grid-template-columns: 26px minmax(0, 1fr) } .askrow .go { grid-column: 1 / -1 } }
 .plainkey { font: 400 14px/1.4 var(--fc-font-body); display: block }
 .plainkey .d { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle;

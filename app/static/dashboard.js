@@ -942,6 +942,8 @@ function evState() {
   return e.engine === 'shadow' || e.engine === 'events' ? e.engine : 'rules';
 }
 const evOpen = () => (((S.issues || {}).events || {}).open || []);
+/* The event simple mode's row is about: the shown issue's, else the first open one. */
+const evPick = (evs, hk) => evs.find(e => e.issue === hk) || evs[0];
 /* The button word an answer's stage stands for, in the node's own labels (events.buttons). The same three
    the buttons wear, so an answer reads as the button that wrote it. */
 function evWord(stage) {
@@ -1024,7 +1026,7 @@ function evCard(e, tail = '') {
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
-  evState, evOpen, evClock, evButtons, evCard, evWord };
+  evState, evOpen, evPick, evClock, evButtons, evCard, evWord };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -7337,7 +7339,7 @@ const LATE = new Set(['SOURCES']);
 
 function main() {
   const { S, ISS, ORDER, DIST, LAB, LOC, esc, fmt, pill, kicker, sentence, why, ask, asof,
-    refusedPage, VIEW, STATE, evState, evOpen, evClock } = window.K;
+    refusedPage, VIEW, STATE, evState, evOpen, evPick, evClock, evButtons } = window.K;
   const { H, km2, edge } = window.KH;
   const { N, where, link } = window.KN;
   const PAI = window.PAI;
@@ -7615,6 +7617,20 @@ function main() {
           + `${esc(ISS[nodePick].name[LOC])}</span><button type="button" class="back" data-hero="">back</button>`
         : '') + `</div>`;
     const askAt = (d.open_asks || []).length ? hk : ORDER.find(k => (ISS[k].open_asks || []).length);
+    /* SIMPLE'S OPEN ROW on events or shadow is the open event's action and its three buttons (spec §4.4),
+       with the shown issue's sign. `data-ref` is the lead's own numeral (hk), which monument() ids
+       `num-<hk>`; the event's issue can differ, and the sign is the event's. */
+    const evRow = (e, key, n) => {
+      const ed = ISS[e.issue] || { name: {} }, sg = (ed.hero || {}).sign;
+      return `<div class="ask askrow evrow" data-lv="simple" data-component="eventRow" data-role="ask"`
+        + ` id="evrow-${esc(String(e.id))}" data-ref="num-${esc(key)}">`
+        + (sg ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="${esc(ed.name[LOC] || e.issue)}">`
+          + `<use href="static/signs.svg#${esc(sg)}"/></svg>` : '')
+        + `<div class="what">${e.action && e.action.text ? esc(e.action.text)
+          : `${esc(e.kind)}${(e.rooms || []).length ? ` \u00b7 ${esc(e.rooms.join(', '))}` : ''}`}</div>`
+        + evButtons(e)
+        + (n > 1 ? `<p class="evmore" data-lv="simple">and ${n - 1} more open \u00b7 in advanced</p>` : '') + `</div>`;
+    };
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
       + lv(`<div class="leadk">${kicker(hk, d)}${mark('lead', `sentence-${esc(hk)}`)}</div>`, 'adv')
       + eb + monument(hk, d, pix) + sentence(hk, d, 'big')
@@ -7625,7 +7641,7 @@ function main() {
          worked out from tonight's numbers; the rule's ends are the issue's own, so a reading of 12
          looks the same size tomorrow as tonight. The four distances in full are in the matrix. */
       + heroRule(hk, d)
-      + (askAt ? askRow(askAt, ISS[askAt], ISS[askAt].open_asks[0]) : '')
+      + (asEv ? evRow(evPick(evs, hk), hk, nEv) : askAt ? askRow(askAt, ISS[askAt], ISS[askAt].open_asks[0]) : '')
       /* WHY THIS ONE IS AT THE TOP is in the why line above, not in a paragraph of its own. The
          words are the node's now (`headline_rule` on /issues) rather than three strings in this file:
          v0.59 changed the ranking on 18 September and the page's copy of the explanation had no way
