@@ -40,32 +40,38 @@ It is the work §7 and §11 of the alerts spec defer to v0.78, plus the layout c
 ```
 events: {
   engine:  "rules" | "shadow" | "events",
-  buttons: {done, not_now, doesnt_fit},         // in the household's language; the bot's own strings
+  buttons: {done, not_now, doesnt_fit},          // in the household's language; the bot's own strings
   open: [ {
-    id, issue, kind, level, opened_at, last_seen_at, peak, line,
+    id, issue, kind, level, opened_at, last_seen_at, cleared_at: null, peak, line,
     rooms, places,
-    context: {usual, outside, outside_from},    // the numbers the action was chosen from
-    action:  {id, text},                        // in the household's language
-    message,                                    // the latest event_messages text, word for word
-    sent,                                       // whether that message went out (false in shadow)
-    alerts:  [ids],                             // the alerts rows this event covers
+    context: {usual, outside, outside_metric, outside_from},   // open events only
+    action:  {id, text} | null,                  // the action line as it was sent
+    message: {text, ts, sent} | null,            // the latest event_messages row, word for word; sent is false in shadow
+    alerts:  [ids],                              // the alerts rows this event covers
     answer:  {stage, actor, ts, held_until} | null
   } ],
-  cleared_today, last_cleared: {issue, ts} | null   // today is the node's local day
+  recent: [ ...the same fields, no context, cleared in the last 7 days, plus cleared_after_min on a Done... ],
+  cleared_today, last_cleared: {issue, ts} | null,   // today is the node's local day
+  uncovered_asks: [ids]                          // open act-level alerts no open event covers
 }
 ```
 
-- **`engine`** is `settings.get("ALERT_ENGINE")` as `run_rules` reads it, so the page can tell the states of §5
-  apart.
-- **`context`** is computed when `/issues` is served, by the same resolver that chose the action
-  (`events_pg.context`). The page derives no number.
+- **`engine`** is `ALERT_ENGINE` as `run_rules` reads it (anything else is `rules`), so the page can tell the states
+  of §5 apart. On `rules` the engine is not running, so `open` is empty even if a shadow spell left rows open.
+- **`context`** is read when `/issues` is served: inside and outside from `events_pg.context`, the resolver that
+  chose the action, and `usual` as the median of the event's rooms at this local hour in `usual_by_hour`. For heat,
+  `outside` is the air temperature (`outside_metric: temp`) beside an apparent-temperature peak, and the card says
+  which. A value the node cannot read is `null`. The page derives no number.
+- **`action.text`** is the line the engine sent, cut from the latest message that carried `action_id`. It is not
+  re-rendered, so the page says what the phone said.
 - **`alerts`** links by `alerts.event_id` once Plan 2 writes it. Until then, the node matches the `alerts` rows of
-  the issue's packs whose `ts` falls between `opened_at` and `cleared_at` (or now). The node does this; the page
-  never matches anything.
+  the issue's packs whose `ts` falls between `opened_at` and `cleared_at` (or now). **`uncovered_asks`** is every
+  open act-level alert in no open event's `alerts`. The node does both; the page never matches anything.
 - **`answer`** is the latest `actions` row with this `event_id`. `held_until` is set for **Not now**: three hours
-  after it, unless the event reaches `danger`.
+  after it, unless the event is `danger`. **`cleared_after_min`** is the minutes from a Done to the clear.
 - **The headline.** When an event is open, its issue leads, ranked by kind (`danger` > `sustained` > `unusual` >
-  `spike`), then by `opened_at`. `headline_rule` says so in words. With nothing open, today's rule stands.
+  `spike`), then by `opened_at`, and `lead.by` is `event`. `headline_rule` says so in words. With nothing open,
+  today's rule stands.
 - **`open_asks` stays on the wire** as it is, for a page or agent older than this.
 
 `tools/check_wire.py --update` and `tests/data/wire/issues-v0.json` change in the same commit. Adding a key is not a
@@ -91,11 +97,18 @@ rows and changes no published number.
   row.
 - A fixture refuses, as it does today for alerts.
 
-### 3.3 `planetai snapshot` captures the event tables
+### 3.3 Fixtures carry the block they captured
 
-A fixture replays through the node's engine, and `docs/site/dashboard.md` already records that a snapshot missing a
-table the engine reads comes back with an error. The snapshot gains `alert_events`, `event_messages` and the `actions` rows that carry an
-`event_id`.
+`planetai snapshot` already stores `GET /issues` verbatim, and from v0.77 that includes `events`. A replay passes the
+captured block to the engine, which ranks the headline and recomputes `uncovered_asks` from it, so the snapshot needs
+no new table and no new route. A fixture captured before v0.77 has no block, and replays with `events: null`: the
+"older node" state of §5.
+
+### 3.4 `GET /actions?events=1`
+
+`GET /actions` keeps answering alert rows only, with the same fields, so a v0.76 page reading it never meets a row
+with no `alert_id`. With `events=1` it also returns the rows that carry an `event_id`, with that column. The page of
+§4 reads it for the ledger.
 
 ## 4. The page (v0.78)
 
@@ -211,8 +224,8 @@ Each state is said in words. None is drawn as a zero or a blank.
 **The server piece:**
 - Tests against both shapes the engine meets: a capture (strings) and a live row (datetimes). v0.75's `/ask`
   returned 500 on node #1 while every fixture test passed.
-- Each button's stage, each refusal, and the fixture refusal are tested. The `alerts` match by window is tested at
-  its edges (an alert one second before `opened_at`, one after `cleared_at`).
+- Each button's stage, each refusal, and the fixture refusal are tested. The `alerts` match by window is SQL, and
+  CI has no Postgres, so it is proven on the nodes below.
 - On node #1 (`events`) and node #3 (`shadow`) after the update: `/issues.events.open` is read and compared with
   `alert_events WHERE cleared_at IS NULL`, read-only.
 
@@ -231,7 +244,7 @@ The server piece's code and tests can proceed, but its proof on a node waits for
 
 | PR | contents | milestone |
 |---|---|---|
-| A: events on the wire | §3: the `events` key, the event-led headline, `POST /actions` with `event_id`, the snapshot tables; `docs/site/api.md` | v0.77, `needs testing` |
+| A: events on the wire | §3: the `events` key, the event-led headline, `POST /actions` with `event_id`, `GET /actions?events=1`; `docs/site/api.md` | v0.77, `needs testing` |
 | B: the page | §4 and §5; `docs/site/dashboard.md` rewritten, `docs/GUI.md` | v0.78, `needs testing` |
 
 B is one PR because the layout and the cards share every line of Decide. The plan may split it if the diff argues
