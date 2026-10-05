@@ -7,6 +7,14 @@ that needs the outside temperature is never chosen on a node that has none.
 """
 from __future__ import annotations
 
+# The three answers to an event (docs/SPEC_alerts.md §7), in the household's language. One table, so the dashboard's
+# buttons and the bot's say the same words: the page holds no copy (docs/SPEC_dashboard_events.md §4.4).
+BUTTONS = {
+    "en": {"done": "Done", "not_now": "Not now", "doesnt_fit": "Doesn't fit"},
+    "id": {"done": "Selesai", "not_now": "Nanti dulu", "doesnt_fit": "Tidak cocok"},
+    "es": {"done": "Hecho", "not_now": "Ahora no", "doesnt_fit": "No encaja"},
+}
+
 
 def _in_window(h, a, b) -> bool:
     return (a <= h or h < b) if a > b else (a <= h < b)

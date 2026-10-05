@@ -25,4 +25,42 @@ pol = P.policy()
 assert pol.quiet == (22, 6) and pol.max_per_day == 4 and pol.alert_level == "warn", pol
 os.environ["QUIET_HOURS"] = "0"
 assert P.policy().quiet is None
+print("  candidates from kinded rules, a Policy from settings")
+
+class Cur:
+    def __init__(self, has):
+        self.has, self.sql = has, []
+
+    def execute(self, sql, args=()):
+        self.sql.append((sql, args))
+
+    def fetchone(self):
+        return {"?column?": 1} if self.has else None
+
+
+c = Cur(True)
+P.answer(c, 7, "dismissed", "tomas", "ran the AC instead")
+ins = c.sql[-1]
+assert ins[0].startswith("INSERT INTO actions (event_id, stage, actor, note)") and ins[1] == (7, "dismissed", "tomas", "ran the AC instead"), ins
+for bad_stage in ("decided", "measured", "settings", None):
+    try:
+        P.answer(Cur(True), 7, bad_stage, "t", "")
+        raise SystemExit(f"stage {bad_stage!r} must be refused for an event")
+    except ValueError:
+        pass
+for bad_id in (True, "7; DROP", None, 1.5):
+    try:
+        P.answer(Cur(True), bad_id, "acted", "t", "")
+        raise SystemExit(f"event_id {bad_id!r} must be refused")
+    except ValueError:
+        pass
+try:
+    P.answer(Cur(False), 7, "acted", "t", "")
+    raise SystemExit("an event this node does not have must be a LookupError")
+except LookupError:
+    pass
+P.answer(c, "8", "acted", "x" * 200, "y" * 900)
+assert c.sql[-1][1] == (8, "acted", "x" * 80, "y" * 500), "a numeric string id is fine; actor and note are capped"
+print("  answer: Done, Not now and Doesn't fit write one actions row; any other stage, a bad id or no event is refused")
+
 print("events_pg: candidates from kinded rules, a Policy from settings")

@@ -306,15 +306,15 @@ PLAIN_WORDS = {
 # dashboard.js, where nothing connected the two. A ranking a reader cannot check is the one thing
 # this page does not do, so the explanation travels with the ranking.
 HEADLINE_RULE = {
-    "en": "The issue with most to say leads. Where two have as much to say, the one that has "
-          "moved most in the last three hours. An even tie goes to the order this place chose, under "
-          "Set up \u2192 Basics.",
-    "id": "Isu yang paling banyak bicara memimpin. Bila dua sama banyaknya, yang paling berubah "
-          "dalam tiga jam terakhir. Bila tetap seri, urutannya mengikuti pilihan tempat ini, di "
-          "Set up \u2192 Basics.",
-    "es": "Lidera el asunto que m\u00e1s tiene que decir. Si dos dicen otro tanto, el que m\u00e1s se ha "
-          "movido en las \u00faltimas tres horas. Si hay empate exacto, manda el orden que eligi\u00f3 este "
-          "lugar, en Set up \u2192 Basics.",
+    "en": "An open event leads, the most serious first. With none open, the issue with most to say leads. Where two "
+          "have as much to say, the one that has moved most in the last three hours. An even tie goes to the order "
+          "this place chose, under Set up \u2192 Basics.",
+    "id": "Kejadian yang masih terbuka memimpin, yang paling serius lebih dulu. Bila tidak ada, isu yang paling "
+          "banyak bicara memimpin. Bila dua sama banyaknya, yang paling berubah dalam tiga jam terakhir. Bila tetap "
+          "seri, urutannya mengikuti pilihan tempat ini, di Set up \u2192 Basics.",
+    "es": "Lidera un evento abierto, el m\u00e1s grave primero. Si no hay ninguno, lidera el asunto que m\u00e1s "
+          "tiene que decir. Si dos dicen otro tanto, el que m\u00e1s se ha movido en las \u00faltimas tres horas. Si "
+          "hay empate exacto, manda el orden que eligi\u00f3 este lugar, en Set up \u2192 Basics.",
 }
 REASON_WORDS = {
     "en": {

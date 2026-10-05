@@ -1105,6 +1105,9 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     (node1-2026-09-06.json) has none — its peer was synthetic, added by a design-repo script for the
     Phase 1 drawings — so a replay of it publishes an empty radio candidate list, correctly: no other
     node has been heard from that capture.
+
+    `events` is the block the capture carried in its own /issues, verbatim: the events are rows the node read, not
+    arithmetic, and replaying them through compute is what ranks the headline and recomputes uncovered_asks.
     """
     now = snapshot.get("as_of")
     if isinstance(now, str):
@@ -1120,7 +1123,8 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     facilities = [r for r in sensors if isinstance(r, dict) and r.get("kind") == "facility"]
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
                    place=place, mesh=health.get("mesh"), peers=[peer] if peer else [],
-                   facilities=facilities)
+                   facilities=facilities,
+                   events=(snapshot.get("issues") or {}).get("events") if isinstance(snapshot.get("issues"), dict) else None)
 
 
 def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
@@ -1169,7 +1173,7 @@ def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers
 
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
-            peers=(), facilities=()) -> dict:
+            peers=(), facilities=(), events: dict | None = None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -1184,6 +1188,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     `peers` is the Reticulum bridge's peer list, in the same spirit: a live call passes none, because
     fetching it costs an HTTP request and `/issues` makes no network call of its own. It only ever
     arrives here already in hand — from a snapshot's `peer`, when a replay has one.
+
+    `events` is the alert events block (app/events_wire.py), built by the route on its own cursor, or the block a
+    fixture captured. None is a node, or a capture, from before events: the page says so (SPEC_dashboard_events §5).
     """
     global _said_unsited
     now = now or datetime.now(timezone.utc)
@@ -1265,7 +1272,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
 
-    lead = _lead(out, declared)
+    lead = _lead(out, declared, events)
+    if events is not None:
+        covered = {a for e in events.get("open") or [] for a in e.get("alerts") or []}
+        events = {**events, "uncovered_asks": [a["id"] for v in out.values() for a in (v.get("open_asks") or [])
+                                               if a.get("id") is not None and a["id"] not in covered]}
     headline_issue = lead["issue"] if lead else None
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
     geom = _safe_geometry(lat, lon, settings, stations, peers)
@@ -1276,7 +1287,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     return {"schema": "issues-v0",
             "order": declared, "undeclared": undeclared, "dropped": dropped,
             "headline": headline_issue, "as_of": now.isoformat(),
-            # the same pick, and which step of HEADLINE_RULE made it: state, moved or order
+            # the same pick, and which step of HEADLINE_RULE made it: event, state, moved or order
             "lead": lead,
             # why that one is at the top, in three languages — see HEADLINE_RULE
             "headline_rule": HEADLINE_RULE,
@@ -1294,7 +1305,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "geometry": geom,
             # sections the enabled packs declare as data, with the node's own numbers in them; the page draws them
             # with its readout cards (docs/decisions/2026-10-01-packs.md, point 5)
-            "sections": _sections(pack_sections(manifests), data["obs"], now)}
+            "sections": _sections(pack_sections(manifests), data["obs"], now),
+            # the alert events, one per issue per house, as the bot tells them (docs/SPEC_dashboard_events.md §3.1)
+            "events": events}
 
 
 def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:
@@ -1315,7 +1328,7 @@ def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:
 STATE_RANK = {"act": 4, "notable": 3, "quiet": 2, "context": 1, "none": 0}
 
 
-def _lead(out: dict, declared: list[str]) -> dict | None:
+def _lead(out: dict, declared: list[str], events: dict | None = None) -> dict | None:
     """The issue with the highest state; among equals, the one that has moved most; then declared order.
 
     STATE STILL WINS OUTRIGHT, and that is the whole shape of this. Something that needs doing cannot
@@ -1325,6 +1338,10 @@ def _lead(out: dict, declared: list[str]) -> dict | None:
 
     Asked for 18 September: lead with the data showing the most significant change. `moved` is that,
     per issue, relative to its own recent level so that micrograms and degrees can be compared at all.
+
+    AN OPEN EVENT LEADS FIRST (docs/SPEC_dashboard_events.md §3.1). The bot has interrupted somebody about it, or would
+    have in shadow, so the page opens on the same story. `events["open"]` is already ranked (danger, then sustained,
+    then unusual, then spike; then the one open longest), so the first whose issue can lead is the lead, `by: event`.
 
     Deterministic: `moved` is a rounded float off the same six buckets every time, and the declared
     order still breaks an exact tie, so the same capture always produces the same headline. And still
@@ -1339,6 +1356,9 @@ def _lead(out: dict, declared: list[str]) -> dict | None:
     cands = [k for k in declared if out[k].get("hero")]
     if not cands:
         return None
+    first = next((e["issue"] for e in ((events or {}).get("open") or []) if e.get("issue") in cands), None)
+    if first:
+        return {"issue": first, "by": "event"}
     rank = lambda k: (STATE_RANK.get(out[k]["state"], 0), out[k].get("moved", 0.0))  # noqa: E731
     best = max(cands, key=rank)             # max keeps the first of equals: declared order breaks a tie
     rest = [k for k in cands if k != best]

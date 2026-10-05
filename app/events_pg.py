@@ -143,3 +143,27 @@ def run(cur, cands: list[E.Candidate], mode: str, now: dt.datetime) -> list[tupl
                         (now, m.event.id, m.reason, m.event.kind, m.send, m.held, mode, text, aid))
             out.append((m, text))
     return out
+
+
+# The three buttons (docs/SPEC_alerts.md §7): Not now, Done, Doesn't fit. `decided` is not one: the buttons are the
+# decision, and DECISION_REQUIRED applies to alert-based acts only (docs/SPEC_dashboard_events.md §3.2).
+EVENT_STAGES = ("acknowledged", "acted", "dismissed")
+
+
+def answer(cur, event_id, stage, actor, note) -> None:
+    """A button pressed on an event, from the dashboard or (Plan 2) the bot: one actions row with event_id and no
+    alert_id. Every ρ, funnel and effect query joins actions to alerts on alert_id, so this row changes no published
+    number until Plan 2's decision record says how events count."""
+    if stage not in EVENT_STAGES:
+        raise ValueError("an event's stage must be acknowledged, acted or dismissed")
+    if isinstance(event_id, bool) or isinstance(event_id, float):
+        raise ValueError("event_id must be a whole number")
+    try:
+        eid = int(event_id)
+    except (TypeError, ValueError):
+        raise ValueError("event_id must be a whole number") from None
+    cur.execute("SELECT 1 FROM alert_events WHERE id = %s", (eid,))
+    if not cur.fetchone():
+        raise LookupError("no such event")
+    cur.execute("INSERT INTO actions (event_id, stage, actor, note) VALUES (%s,%s,%s,%s)",
+                (eid, stage, str(actor or "")[:80], str(note or "")[:500]))

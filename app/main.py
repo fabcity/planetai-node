@@ -1270,7 +1270,7 @@ def alerts(limit: int = Query(50, ge=0, le=1000), since_hours: int = Query(0, ge
 
 
 @app.get("/actions")
-def actions(limit: int = Query(500, ge=0, le=5000), stage: str = ""):
+def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int = Query(0, ge=0, le=1)):
     """Every answer a person gave an alert, newest first: which alert, which stage, who, and the note they left.
 
     `/alerts` says only *whether* somebody acted, as one timestamp. The stage is the thing the Act ledger and
@@ -1284,10 +1284,24 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = ""):
 
     `stage` narrows it to one stage, and `stage=settings` is the only way to read the node's own rows: who changed
     which settings, and when. The dashboard's Set up reads them to say who moved a key while its form was open.
+
+    events=1 adds the answers to alert events, with their event_id (docs/SPEC_dashboard_events.md §3.4).
     """
     if stage:
-        return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s ORDER BY ts DESC LIMIT %s",
+        if events:
+            # With events=1 on a stage filter, include event rows with their event_id. Settings rows (both NULL)
+            # must always be returned regardless of events flag.
+            return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions WHERE stage = %s "
+                     "ORDER BY ts DESC LIMIT %s",
+                     stage, limit)
+        # Default: exclude event rows (alert_id NULL, event_id set) but keep settings rows (both NULL)
+        return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s AND "
+                 "(alert_id IS NOT NULL OR event_id IS NULL) ORDER BY ts DESC LIMIT %s",
                  stage, limit)
+    if events:
+        # the event answers too, with event_id; without it the v0.76 page never meets a row with no alert_id
+        return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions "
+                 "WHERE alert_id IS NOT NULL OR event_id IS NOT NULL ORDER BY ts DESC LIMIT %s", limit)
     return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE alert_id IS NOT NULL "
              "ORDER BY ts DESC LIMIT %s", limit)
 
@@ -2160,6 +2174,7 @@ def rho():
 @app.post("/actions")
 def action(body: dict, request: Request, authorization: str = Header("")):
     """A human closes the loop: {"alert_id": 12, "stage": "acted", "actor": "ibu wayan", "note": "closed windows"}.
+    An event's button is {"event_id": 3, "stage": "dismissed", …}: acted, acknowledged or dismissed (Done, Not now, Doesn't fit).
     A mobile app, a Telegram reply handler, or curl — all the same call.
 
     F10: unchanged and open on this machine, so the MCP `act` tool and a shell in the container keep working with no
@@ -2175,6 +2190,18 @@ def action(body: dict, request: Request, authorization: str = Header("")):
             raise HTTPException(403, "no ACT_TOKEN or ADMIN_TOKEN set on this node; run `planetai ui` to create one")
         if not _bearer_ok(authorization, *tokens):
             raise HTTPException(401, "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>")
+    if body.get("event_id") is not None:
+        # An event's buttons (docs/SPEC_dashboard_events.md §3.2): the same tokens, the same refusals, one row.
+        if body.get("alert_id") is not None:
+            raise HTTPException(400, "send alert_id or event_id, not both")
+        with db() as con, con.cursor() as cur:
+            try:
+                events_pg.answer(cur, body["event_id"], body.get("stage"), body.get("actor"), body.get("note"))
+            except ValueError as e:
+                raise HTTPException(400, str(e)) from None
+            except LookupError as e:
+                raise HTTPException(404, str(e)) from None
+        return {"ok": True}
     stage = body.get("stage")
     # `decided` is a record and not an answer: it closes nothing, enters no rho, and is not a funnel stage. A household
     # that looked at an observation, decided what to do and did not manage it leaves the same trace today as one that

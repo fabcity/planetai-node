@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `GET /issues` carries the alert events (`events`): what is open, its one action as it was sent, its latest answer, and the alerts it covers; an open event now leads the page. `POST /actions` takes an `event_id` with Done (`acted`), Not now (`acknowledged`) or Doesn't fit (`dismissed`), and `GET /actions?events=1` lists those answers. The page that draws them is v0.78; the Telegram buttons are Plan 2.
 - **2026-10-05 · The report says "dangerously hot" only at real danger.** It opened with "🥵 It is dangerously hot
   inside" whenever any heat alert was open, so node #1's 13:00 report said it on an ordinary 35 °C afternoon, as the
   old alert did. Now "dangerously hot" is said only when `heat_danger` (feels like 40 °C or more) is open; the 35 °C
