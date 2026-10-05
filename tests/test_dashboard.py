@@ -712,6 +712,8 @@ if shutil.which("node"):
     ))
     _evr = _node(_ev + r"""
 let LOC = 'en';
+const window = { PAI: { sections: [], has: p => p !== 'H3.missing' } };
+const secs = (...ids) => { window.PAI.sections = ids.map(id => ({ id, needs: id === 'day' ? ['H3.missing'] : [] })); };
 const ISS = { heat: { name: { en: 'Heat' }, unit: '°C', dp: 1, metric: 'temp', hero: { sign: 'sign-heat' } } };
 const BTN = { done: 'Done', not_now: 'Not now', doesnt_fit: 'Doesn’t fit' };
 const ev0 = { id: 7, issue: 'heat', kind: 'sustained', level: 'warn', opened_at: '2026-10-05T09:30:00Z',
@@ -736,6 +738,9 @@ const out = {
     held_until: '2026-10-05T12:00:00Z' } }),
   under: run(E('events'), { peak: 34 }),
   noact: run(E('events'), { action: null, context: {}, line: null }),
+  l_all: (secs('matrix', 'sensors'), run(E('events'), {})),
+  l_unmet: (secs('matrix', 'day', 'sensors'), run(E('events'), {})),
+  l_none: (secs(), run(E('events'), { alerts: [] })),
 };
 console.log(JSON.stringify(out));""")
     assert [_evr[k] for k in ("old", "nul", "err", "shadow", "rules", "evs")] == \
@@ -761,8 +766,34 @@ console.log(JSON.stringify(out));""")
         "an acted event has no buttons and says who"
     assert "evheld" in _evr["held"] and "held until 12:00" in _evr["held"] and 'class="evb' in _evr["held"], \
         "a held event keeps its buttons and says until when"
+    # An evidence link goes only to a section the page is drawing: `sensors` is the air-quality pack's (absent in l_all), and
+    # `day` here is registered but its needs are not met. A link to neither would point at nothing.
+    assert 'href="#matrix"' in _evr["l_all"] and 'href="#sensors"' in _evr["l_all"] \
+        and 'href="#day"' not in _evr["l_all"] and 'href="#evrows-7"' in _evr["l_all"], \
+        f"links: matrix and sensors drawn, day absent: {_evr['l_all']}"
+    assert 'href="#sensors"' in _evr["l_unmet"] and 'href="#day"' not in _evr["l_unmet"]
+    assert 'href="#matrix"' not in _evr["noact"] and 'href="#sensors"' not in _evr["noact"], \
+        "no section registered, no link to one"
+    assert "evlinks" not in _evr["l_none"], "no link at all draws no evidence line"
     assert "chose no action" in _evr["noact"] and "no usual for this hour yet" in _evr["noact"] \
         and "no outside reading" in _evr["noact"] and "no line" in _evr["noact"], "absence is said four ways"
+
+    # DECIDE DRAWS EVENTS (SPEC_dashboard_events §4.2, §5). The section is a closure, so this is a source check;
+    # the live proof is Task 11's. Its render calls evCard and reads uncovered_asks, and "Decide about this" is
+    # drawn only by card(), which render reaches only in the rules/old/error branch.
+    _dec = _js_raw[_js_raw.index("id: 'decide', pack"):]
+    _dec = _dec[:_dec.index("notes() {")]
+    _card = _js_raw[_js_raw.index("function card(ctx, key, d, a, did)"):_js_raw.index("window.PAI.register({\n  id: 'decide'")]
+    assert "evCard(e)" in _dec and "uncovered_asks" in _dec and "rowsOf(ctx, e)" in _dec, \
+        "Decide's render must draw evCard and the alerts no event covers"
+    assert "card(" in _dec.split("if (st === 'events' || st === 'shadow') {")[1].split("\n    }\n")[0], \
+        "the alerts no event covers are drawn with card()"
+    assert _dec.count("Decide about this") == 0 and "Decide about this" in _card, \
+        "'Decide about this' belongs to card(), the fallback, and not to the event branch"
+    assert 'id="decide-none"' in _dec and 'id="decide-engine"' in _dec and "data-ref=\"stage-decide\"" in _dec
+    assert "window.K.didButton(a.id)" in _card, "an alert answered on Decide has the I did this button"
+    assert 'id="evrows-' in _js_raw and "older than the 200 alerts this page reads" in _js_raw, \
+        "evCard links to #evrows-<id>, so rowsOf must draw it"
 
     # "I did this" and "Record the decision" print what the node said when it refused, word for
     # word. It printed "The node refused it (409)" over a node that had written, in full, what to

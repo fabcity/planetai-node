@@ -989,6 +989,12 @@ function evCard(e) {
     + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
       + ` unless it reaches danger` : ''}</p>`;
   const rows = (e.alerts || []).length;
+  /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run. */
+  const drawn = id => window.PAI.sections.some(s => s.id === id && (s.needs || []).every(window.PAI.has));
+  const links = [drawn('matrix') && `<a href="#matrix">${esc(d.name[LOC] || e.issue)} at every distance</a>`,
+    drawn('day') && `<a href="#day">the day</a>`, drawn('sensors') && `<a href="#sensors">the stations</a>`,
+    rows && `<a href="#evrows-${esc(String(e.id))}">from ${rows} rule row${rows === 1 ? '' : 's'}</a>`]
+    .filter(Boolean);
   return `<section class="ev${a && a.stage === 'acknowledged' ? ' held' : ''}" id="ev-${esc(String(e.id))}"`
     + ` data-component="event" data-role="ask" data-ref="num-${esc(e.issue)}">`
     + `<div class="evhead">${h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="`
@@ -1001,10 +1007,8 @@ function evCard(e) {
     + (e.action && e.action.text ? `<p class="evact said">${esc(e.action.text)}</p>`
       : `<p class="evact none">The node chose no action for this event, and this page will not invent one.</p>`)
     + answered + (done ? '' : evButtons(e)) + said
-    + `<p class="evlinks">evidence: <a href="#matrix">${esc(d.name[LOC] || e.issue)} at every distance</a>`
-    + ` · <a href="#day">the day</a> · <a href="#sensors">the stations</a>`
-    + (rows ? ` · <a href="#evrows-${esc(String(e.id))}">from ${rows} rule row${rows === 1 ? '' : 's'}</a>` : '')
-    + `</p></section>`;
+    + (links.length ? `<p class="evlinks">evidence: ${links.join(' · ')}</p>` : '')
+    + `</section>`;
 }
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
@@ -5012,7 +5016,8 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, age } = window.K;
+const { esc, age, evState, evOpen, evCard, evClock } = window.K;
+const { H } = window.KH;
 
 /* The recommendation, which is the last paragraph and starts with the pointing hand. Absent on a
    rule whose author did not write one — and then this says so rather than inventing advice, which
@@ -5023,7 +5028,24 @@ function suggestion(text) {
   return hit ? hit.replace(/^\u{1F449}\s*/u, '') : null;
 }
 
-function card(ctx, key, d, a) {
+/* The rule rows an event covers, folded inside its card (spec §4.2: id, rule, time). An id the ledger
+   no longer holds says so rather than being dropped: /issues keeps the last 200 alerts. */
+function rowsOf(ctx, e) {
+  const ids = e.alerts || [];
+  if (!ids.length) return '';
+  const acts = (H.asks || {}).acts || [];
+  const now = Date.parse(((ctx.S || {}).base || {}).captured_utc) || Date.now();
+  const line = id => {
+    const x = acts.find(a => a.id === id);
+    return `<p class="m">#${esc(String(id))} \u00b7 `
+      + (x ? `${esc(String(x.rule_id || 'a rule'))} \u00b7 ${esc(age(Math.round((now - Date.parse(x.ts)) / 60000)))}`
+        : 'older than the 200 alerts this page reads') + `</p>`;
+  };
+  return `<details class="evrows" id="evrows-${esc(String(e.id))}"><summary>from ${ids.length} rule `
+    + `row${ids.length === 1 ? '' : 's'}</summary>${ids.map(line).join('')}</details>`;
+}
+
+function card(ctx, key, d, a, did) {
   const sug = suggestion(a.text);
   const seen = String(a.text || '').split('\n')[0];
   const id = `decide-${esc(key)}`;
@@ -5054,7 +5076,7 @@ function card(ctx, key, d, a) {
     + `<p class="fine">This closes no alert and moves no number. When it is done, press `
     + `<b>I did this</b> under Act.</p>`
     + window.K.TOKEN_FINE
-    + `</form></section>`;
+    + `</form>${did ? window.K.didButton(a.id) : ''}</section>`;
 }
 
 window.PAI.register({
@@ -5065,19 +5087,44 @@ window.PAI.register({
   needs: ['H3.asks'],
   anchor: 'decide',
   render(ctx) {
-    const ISS = ctx.ISS;
-    const open = ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length);
-    if (!open.length) {
-      return `<p class="note" id="decide-none" data-component="absent" data-ref="asks-rows">`
-        + `Nothing is asking for a decision. When a reading crosses a line this node watches, what `
-        + `it saw and what it suggests appear here, with somewhere to say what you decided.</p>`;
+    const ISS = ctx.ISS, st = evState(), E = ctx.S.issues.events || {};
+    const asks = k => (ISS[k] && ISS[k].open_asks) || [];
+    if (st === 'events' || st === 'shadow') {
+      const unc = new Set(E.uncovered_asks || []);
+      const left = ctx.ORDER.flatMap(k => asks(k).filter(a => unc.has(a.id)).map(a => card(ctx, k, ISS[k], a, true)));
+      const open = evOpen();
+      if (!open.length && !left.length) {
+        const last = E.last_cleared;
+        return `<p class="note evnone" id="decide-none" data-component="absent" data-ref="stage-decide">`
+          + `Nothing open.${E.cleared_today ? ` ${E.cleared_today} cleared today`
+            + `${last ? `, the last at ${esc(evClock(last.ts))} (${esc((ISS[last.issue] || { name: {} }).name[ctx.LOC]
+              || last.issue)})` : ''}.` : ''}</p>`;
+      }
+      return open.map(e => evCard(e) + rowsOf(ctx, e)).join('') + left.join('');
     }
-    /* One card per ISSUE, not per ask: four open asks about the same air are one decision, and a
-       household asked to decide four times about one room stops deciding. */
-    return open.map(k => card(ctx, k, ISS[k], ISS[k].open_asks[0])).join('');
+    /* rules, a node older than v0.77, or an events block that could not be read: each says which, then
+       draws the alert cards, because nothing that asks a person something may disappear. */
+    const why = st === 'old' ? `This node is ${esc((ctx.S.health || {}).version || 'older than v0.77')}: it sends `
+      + `alerts, not events.` : st === 'error' ? esc(E.error) : 'This node sends alerts, not events.';
+    const open = ctx.ORDER.filter(k => asks(k).length);
+    return `<p class="note" id="decide-engine" data-component="absent" data-ref="stage-decide">${why}</p>`
+      + (open.length ? open.map(k => card(ctx, k, ISS[k], asks(k)[0], true)).join('')
+        : `<p class="note" id="decide-none" data-component="absent" data-ref="stage-decide">Nothing is asking for `
+          + `anything.</p>`);
   },
   notes() {
     return [
+      { id: 'decide-events', label: 'What an event is',
+        text: 'An event is the bot\u2019s own unit: one issue in one house, from when its rule first fires '
+        + 'to when it clears, however many rule rows that took. The node chose the action and wrote the '
+        + 'message, and this page draws them. Where a rule row is not covered by any event, it is drawn '
+        + 'after the events as an alert, with I did this, so nothing that asks a person something '
+        + 'disappears.' },
+      { id: 'decide-buttons', label: 'What each button writes',
+        text: 'Done, Not now and Doesn\u2019t fit each write one row to the node\u2019s record, by event: '
+        + 'who pressed, when, and for Doesn\u2019t fit what was done instead. Done closes the loop; Not '
+        + 'now holds the card until the time it names, unless the reading reaches danger. \u03c1 does not '
+        + 'count events yet, so none of the three moves it.' },
       { id: 'decide-suggestion', label: 'The suggestion is the rule’s own',
         text: 'The suggested action is the rule\u2019s own last line, the one '
         + 'that begins with a pointing hand, written by whoever wrote the rule and shipped in every '
