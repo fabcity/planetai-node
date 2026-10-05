@@ -77,8 +77,9 @@ RUNTIME = {
     "ALERT_ENGINE":       ("alerts", "Alert engine", False, False,
                            "rules = every rule sends on its own, as before (default). shadow = the event engine "
                            "(docs/SPEC_alerts.md) decides what it would send and records it, and sends nothing; "
-                           "the rules keep sending. events, which sends through the event engine, arrives with "
-                           "the release that adds Telegram buttons."),
+                           "the rules keep sending. events = the event engine sends the heat and air messages, one "
+                           "per event (no buttons yet), and the old heat and air rules are recorded but not sent; "
+                           "every other alert and the reports are unchanged."),
     "ALERT_MAX_PER_DAY":  ("alerts", "Most messages a day", False, False,
                            "With the event engine: pushes a day outside danger, default 4. Beyond it an event "
                            "is still recorded and waits for the next report. Danger is never held."),
@@ -195,7 +196,7 @@ CHOICES = {
     "REPORT_EVERY":  ("3", "4", "6", "8", "12", "24"),      # each divides 24, so the rhythm does not walk round the clock
     "REPORT_ANCHOR": tuple(str(h) for h in range(24)),
     "REPORT_DEPTH":  ("auto", "brief", "standard", "deep"),
-    "ALERT_ENGINE":  ("rules", "shadow"),
+    "ALERT_ENGINE":  ("rules", "shadow", "events"),
     "UI_MODE":       ("simple", "advanced", "learn"),
     # private first because it is the default and because the order is what every surface offers: `describe()`
     # publishes this tuple and the dashboard's select and `planetai config` both walk it as given.

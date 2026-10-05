@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **2026-10-05 · `ALERT_ENGINE=events` sends.** The event engine's heat and air messages go to Telegram, one per
+  event, with quiet hours and a daily ceiling; the old heat and air rules still record their alerts (the dashboard,
+  rho and Home Assistant read those) but stop sending. Every other alert and the reports are unchanged. No buttons yet:
+  those, and learning which action worked, come next. Node #1 sent "dangerously hot" twice at 35.0 °C on an ordinary
+  afternoon the day this was written; in events mode an ordinary afternoon sends nothing.
+
 - **2026-10-05 · `planetai test-alert` finds its own alert.** It decided whether the test fired by counting the rows
   `GET /alerts` returned, which is at most 50 by default, so on any node with 50 or more alerts it said "no alert fired
   in 90 seconds" while the alert had reached Telegram, and the one-minute test rule fired a second time while it waited.

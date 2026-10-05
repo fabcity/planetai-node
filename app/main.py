@@ -385,8 +385,12 @@ def refresh_usual() -> None:
 def run_rules() -> None:
     rules = packs.load_rules()
     mode = settings.get("ALERT_ENGINE", "rules") or "rules"
-    if mode not in ("rules", "shadow"):
-        mode = "rules"                    # 'events' arrives with the release that sends; a typo behaves as rules
+    if mode not in ("rules", "shadow", "events"):
+        mode = "rules"                    # a typo behaves as rules: the household keeps its alerts
+    # In events mode the engine speaks for the packs it has kinded rules for (heat, air-quality): their old rules
+    # still record an alerts row (the dashboard, rho and Home Assistant read those) but no longer send. Every other
+    # rule, core sensor_silent included, sends as before.
+    replaced = {r["id"].split("/", 1)[0] for r in rules if r.get("kind")} if mode == "events" else set()
     cands = []
     with db() as con, con.cursor() as cur:
         try:
@@ -426,18 +430,25 @@ def run_rules() -> None:
                 # what interrupts a person: act always; warn if ALERT_LEVEL allows; info only in a briefing (it is
                 # recorded either way, and appears on the dashboard). Quiet hours hold everything but act.
                 floor = {"act": 2, "warn": 1, "info": 0}
-                send = floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level)
+                send = (rule["id"].split("/", 1)[0] not in replaced
+                        and floor.get(level, 0) >= floor.get(settings.get("ALERT_LEVEL", "act"), floor["act"]) and not _quiet(level))
                 if send:
                     # No id, and nothing asking to be told. The node watches what happens next (v0.39) instead of
                     # asking; a number a household is expected to quote back was a chore, and 15 of node #1's 37
                     # act alerts got an answer, nine of them in two dashboard batch-clicks a day later.
                     notify(level, text)
                 ha_alert(level, text, alert_id)
-        if mode == "shadow":
+        if mode in ("shadow", "events"):
             try:
-                events_pg.run(cur, cands, mode, _local_now())
+                decided = events_pg.run(cur, cands, mode, _local_now())
             except Exception as e:  # noqa: BLE001
                 log.warning("event engine failed: %s", e)
+                decided = []
+            if mode == "events":
+                # after the engine's transaction has committed: a message is never sent for a step that rolled back
+                for m, text in decided:
+                    if m.send and text:
+                        notify(m.event.level, text)
 
 
 def notify(level: str, text: str) -> None:
