@@ -719,13 +719,18 @@ Y
 Y
   echo "  A rule that always fires has been added. The node checks rules every minute."
   printf '  Waiting'
-  local before after id=""; before="$(api /alerts | json 'print(len(d))')"
+  # Look for THIS run's alert by its own rule id. Counting the rows /alerts returns told nothing on a node with 50 or
+  # more alerts (that is its default page), so node #1 reported "no alert fired" while the rule fired twice.
+  local id=""
   for i in $(seq 1 45); do
-    after="$(api /alerts | json 'print(len(d))' 2>/dev/null || echo "$before")"
-    if [[ "$after" -gt "$before" ]]; then id="$(api /alerts | json 'print(d[0].get("id","?"))' 2>/dev/null || echo "?")"; break; fi
+    id="$(api '/alerts?since_hours=1&limit=200' | json "
+for a in d:
+    if str(a.get('rule_id', '')).endswith('/${rid}'):
+        print(a.get('id', '?')); break" 2>/dev/null)"
+    [[ -n "$id" ]] && break
     printf '.'; sleep 2
   done; echo
-  rm -rf packs/_test
+  rm -rf packs/_test      # at once: the rule fires every minute, and the household should get one test, not two
   [[ -n "$id" ]] || fail "no alert fired in 90 seconds. Is the node up? planetai doctor"
   say "it fired. Alert #$id is in the log$( grep -qE '^TELEGRAM_BOT_TOKEN=.+' .env && echo ' and on your phone')."
   echo

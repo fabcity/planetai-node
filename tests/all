@@ -91,6 +91,7 @@ test_running_state|bash tests/test_running_state.sh
 test_preflight|bash tests/test_preflight.sh
 test_geocode|bash tests/test_geocode.sh
 test_lan_ip|bash tests/test_lan_ip.sh
+test_test_alert|bash tests/test_test_alert.sh
 test_packs_add|bash tests/test_packs_add.sh
 test_update_guard|bash tests/test_update_guard.sh
 test_peers_persist|python3 tests/test_peers_persist.py
@@ -150,11 +151,11 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Sixty-two is the number of suites in the list above (test_events, test_events_pg, test_actions, test_run_rules_modes, test_kinded_rules and test_replay added for the event engine, 4 Oct 2026). If the list and this number disagree, one of them
+# Sixty-three is the number of suites in the list above (test_test_alert added 5 Oct 2026). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 62 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 62 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 63 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 63 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1
