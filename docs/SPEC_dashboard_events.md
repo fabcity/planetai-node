@@ -217,6 +217,7 @@ Each state is said in words. None is drawn as a zero or a blank.
 | events or shadow, nothing open | "Nothing open. 2 cleared today, the last at 14:40 (air)." |
 | `rules` | the alert cards with **I did this**, under "this node sends alerts, not events" |
 | a node older than v0.77 (no `events` key) | "This node is v0.76: it sends alerts, not events", followed by the alert cards |
+| the events block could not be read | the node's sentence (`events.error`), followed by the alert cards |
 | `/issues` did not answer | as today: the figures stay, and the pill says `stale` |
 
 ## 6. Proof
