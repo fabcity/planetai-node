@@ -34,6 +34,10 @@ u = q(f"SELECT hour, median, p75, p90, n FROM usual_by_hour WHERE sensor_id = '{
 assert len(u) == 24, f"one row per local hour, got {len(u)}"
 assert all(med <= p75 <= p90 for _, med, p75, p90, _ in u), "median <= p75 <= p90"
 assert all(n >= 10 for *_, n in u), "fourteen days give each hour at least ten samples"
+# Today never counts toward its own usual: exactly the fourteen complete local days before today, for every hour. A
+# window ending at now() put today's partial hour in (hour 21 at 21:14 had 15 samples), so a long hot run today
+# raised the very bar it was measured against.
+assert all(n == 14 for *_, n in u), f"fourteen complete days before today, every hour: {[(h, n) for h, *_, n in u if n != 14]}"
 day = {h: med for h, med, *_ in u}
 assert day[16] > day[4], f"the room's afternoon is warmer than its night: 16h {day[16]:.1f} vs 04h {day[4]:.1f}"
 print(f"usual_by_hour: 24 local hours for {K}; 04h {day[4]:.1f}, 16h {day[16]:.1f} °C apparent (median)")

@@ -63,6 +63,8 @@
 # The id and es strings below are ASSISTANT-WRITTEN.
 # Every row carries value, line and over. A row with over=false is inside the margin: it keeps an open event open
 # and never opens one. Thresholds are starting values for the replay of node #1's month.
+# Room air only: a sensor whose `temp` channel is declared something other than ambient (a Meshtastic radio reports its
+# own box, config/channels.yml) is never read as a room. A source with no declared role is kept.
 
 - id: heat_unusual
   kind: unusual
@@ -71,7 +73,9 @@
   cooldown_minutes: 60
   sql: |
     WITH a AS (SELECT r.sensor_id, s.name, r.bucket, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
-               WHERE r.metric = 'apparent' AND s.local AND s.indoor AND r.bucket > now() - INTERVAL '1 hour'),
+               LEFT JOIN channel_roles cr ON cr.source = s.source AND cr.metric = 'temp'
+               WHERE r.metric = 'apparent' AND s.local AND s.indoor AND r.bucket > now() - INTERVAL '1 hour'
+                 AND (cr.role IS NULL OR cr.role = 'ambient')),
          u AS (SELECT sensor_id, p90 FROM usual_by_hour
                WHERE metric = 'apparent' AND hour = CAST(extract(hour FROM now()) AS INTEGER))
     SELECT a.sensor_id, a.name, round(CAST(avg(a.mean) AS NUMERIC), 1) AS value,
@@ -92,7 +96,8 @@
   cooldown_minutes: 60
   sql: |
     WITH a AS (SELECT r.sensor_id, s.name, r.bucket, r.mean FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
-               WHERE r.metric = 'apparent' AND s.local AND s.indoor),
+               LEFT JOIN channel_roles cr ON cr.source = s.source AND cr.metric = 'temp'
+               WHERE r.metric = 'apparent' AND s.local AND s.indoor AND (cr.role IS NULL OR cr.role = 'ambient')),
          l AS (SELECT sensor_id, name, max(bucket) AS b FROM a GROUP BY 1, 2),
          v AS (SELECT a.sensor_id, a.mean FROM a JOIN l ON l.sensor_id = a.sensor_id AND a.bucket = l.b),
          k AS (SELECT sensor_id, max(bucket) AS b FROM a WHERE mean < 35 GROUP BY 1),
@@ -117,7 +122,8 @@
   sql: |
     SELECT r.sensor_id, s.name, round(CAST(r.mean AS NUMERIC), 1) AS value, 40 AS line, r.mean >= 40 AS over
     FROM recent_15m r JOIN sensors s ON s.sensor_id = r.sensor_id
-    WHERE r.metric = 'apparent' AND s.local AND s.indoor
+    LEFT JOIN channel_roles cr ON cr.source = s.source AND cr.metric = 'temp'
+    WHERE r.metric = 'apparent' AND s.local AND s.indoor AND (cr.role IS NULL OR cr.role = 'ambient')
       AND r.bucket = (SELECT max(bucket) FROM recent_15m WHERE sensor_id = r.sensor_id AND metric = 'apparent')
       AND r.mean >= 39
   message:

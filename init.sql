@@ -253,7 +253,9 @@ SELECT t.bucket, t.sensor_id, 'apparent',
 FROM b t JOIN b h ON h.sensor_id = t.sensor_id AND h.bucket = t.bucket AND h.metric = 'humidity'
 WHERE t.metric = 'temp';
 
--- usual_by_hour: this room's own normal for each local hour, from fourteen days of hourly means. Materialized,
+-- usual_by_hour: this room's own normal for each local hour, from the fourteen complete local days before today
+-- (date_trunc in the session's NODE_TZ). Today is left out on purpose: a long hot run must not raise the bar it is
+-- measured against. Materialized,
 -- because a percentile over two weeks is too much to recompute every minute; the app refreshes it hourly and at
 -- start (app/main.py refresh_usual). Created empty: init.sql runs under psql in UTC, and a refresh from the app runs
 -- in NODE_TZ, so only the app's refresh buckets hours the way the household lives them. A rule that reads it
@@ -263,7 +265,8 @@ CREATE MATERIALIZED VIEW usual_by_hour AS
 WITH h AS (
   SELECT date_trunc('hour', r.ts) AS bucket, r.sensor_id, r.metric, avg(r.value) AS mean
   FROM readings r JOIN sensors s ON s.sensor_id = r.sensor_id
-  WHERE r.ts > now() - INTERVAL '14 days' AND r.ts <= now() AND s.kind = 'sensor' AND r.metric IN ('temp', 'humidity', 'pm25')
+  WHERE r.ts >= date_trunc('day', now()) - INTERVAL '14 days' AND r.ts < date_trunc('day', now())
+    AND s.kind = 'sensor' AND r.metric IN ('temp', 'humidity', 'pm25')
   GROUP BY 1, 2, 3),
 a AS (
   SELECT bucket, sensor_id, metric, mean FROM h

@@ -20,6 +20,10 @@ from dataclasses import dataclass, field
 KIND_RANK = {"ahead": 0, "unusual": 1, "spike": 1, "sustained": 2, "danger": 3}
 ESCALATE_GAP = dt.timedelta(hours=3)            # never two messages for one event closer than this, unless danger
 CLEAR_AFTER = dt.timedelta(minutes=30)          # no candidate for this long and the event clears
+# Once danger has been said, it is said again only when clearly worse and never sooner than this. Air must double
+# (cooking smoke climbing 131 -> 1033 µg/m³ re-sent every five minutes on node #1); other issues keep ESCALATE_STEP.
+DANGER_REPEAT_GAP = dt.timedelta(minutes=30)
+DANGER_REPEAT_RATIO = {"air": 2.0}
 ESCALATE_STEP = {"heat": 2.0, "air": 25.0}      # a value this far past the peak is "clearly worse"; issues without an entry never escalate on value, only on kind
 LEVELS = {"info": 0, "warn": 1, "act": 2}
 
@@ -168,14 +172,22 @@ def step(now: dt.datetime, cands: list[Candidate], store, policy: Policy) -> lis
         # check escalation against what was told, not current state
         climbed = KIND_RANK.get(top.kind, 0) > KIND_RANK.get(e.told_kind or e.kind, 0)
         level_rise = LEVELS.get(e.level, 0) > LEVELS.get(e.told_level or e.level, 0)
-        worse = top.value >= (e.told_peak if e.told_peak is not None else e.peak) + ESCALATE_STEP.get(issue, float("inf"))
+        told_danger = e.told_kind == "danger"
+        base = e.told_peak if e.told_peak is not None else e.peak
+        if told_danger and issue in DANGER_REPEAT_RATIO:
+            worse = top.value >= base * DANGER_REPEAT_RATIO[issue]
+        else:
+            worse = top.value >= base + ESCALATE_STEP.get(issue, float("inf"))
         # track truth: kind and peak are highest seen
         if KIND_RANK.get(top.kind, 0) > KIND_RANK.get(e.kind, 0):
             e.kind = top.kind
         e.peak = max(e.peak, top.value)
         # escalate if climbed, level rise, or worse, respecting gap from last emitted (not last sent)
         # a message held for 'level' didn't tell anybody, so it doesn't start the gap
-        due = e.kind == "danger" or e.last_emitted_at is None or e.told_held == "level" or now - e.last_emitted_at >= ESCALATE_GAP
+        # climbing INTO danger is due at once; danger already said waits DANGER_REPEAT_GAP like any other repeat
+        gap = DANGER_REPEAT_GAP if told_danger else ESCALATE_GAP
+        due = ((e.kind == "danger" and not told_danger) or e.last_emitted_at is None or e.told_held == "level"
+               or now - e.last_emitted_at >= gap)
         if (climbed or level_rise or worse) and due:
             out.append(_emit(now, e, "escalate", store, policy))
         else:

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **2026-10-05 · Alerts become events, in shadow** (docs/SPEC_alerts.md). Node #1 sent about 13 messages a day,
+  "dangerously hot" on 14 of 14 ordinary days, and its household answered 2.5%. A new engine folds rule rows into one
+  story per issue per house (open, escalate, clear), sends only danger in quiet hours, keeps a daily ceiling, and picks
+  one action from inside against outside, the hour and what the home has. It runs only with `ALERT_ENGINE=shadow`,
+  which records what it would send and sends nothing; the default, `rules`, is unchanged. On node #1's month it would
+  have sent 4 a day instead of 9 (2 without all-clears), none at night, and no "dangerously hot" below 32 °C
+  (docs/plans/2026-10-04-alert-events-replay.md). Three fixes from that replay: a Meshtastic radio's own box
+  temperature is never read as a room; a room's usual for the hour is the fourteen complete days before today, so a
+  long hot run does not raise its own bar; and air danger re-sends only when its value doubles, never within 30 min.
+
 - **2026-10-03 · The docs site cannot fall behind a release again.** v0.76's site still described v0.75.3 on its
   packs pages: four pack.yaml fields, the wild tier and `requires` enforcement were in the code and in PACKS.md,
   and every gate was green. `make lint` now checks both directions: every CLI command, MCP tool, route, setting
