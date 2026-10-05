@@ -61,10 +61,10 @@ cell your node knows, with the one it is standing on lit. Under it, the issue wi
 sentence. With no sensor yet that sentence says so in as many words: **"No air sensor here yet, and
 no model for this point"**, or the model's own figure where there is one — CAMS, an 11 km square.
 
-Below that the page runs through the four stages the node works in, numbered: **1 Observe** (every
-issue at every distance, and for each empty cell the reason it is empty), **2 Decide** (how coarse
-the answer is and what may leave the machine), **3 Act** (what has been asked of whom), **4
-Measure** (whether it worked). The node polls every 5 minutes and the line under the lead says when
+Below that the page runs through the four stages the node works in, Decide first: **Decide** (what to do
+about it: one card for each open alert event, with the action your node chose and three buttons),
+**Observe** (every issue at every distance, and for each empty cell the reason it is empty), **Act** (what
+has been asked of whom, and what was answered) and **Measure** (whether it worked). The node polls every 5 minutes and the line under the lead says when
 it last heard anything.
 
 Within the first hour the node fetches 92 days of modelled air history and the climate normals for your coordinates,

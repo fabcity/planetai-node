@@ -53,9 +53,10 @@ a year. `GET /reach` says how far back each kind of source can be asked. Every n
 
 ### Decide
 
-On the page, Decide holds "what may be said about it, and at what resolution": whose word covers how much ground,
-what each H3 resolution is worth, and what the node doubts about its own sensors. Since v0.72 it opens with a
-card, "What to do about it", for each issue with an open act-level alert. The card shows what was seen and
+On the page, Decide is "what to do about it", the first section under the lead on Now. Its other sections, whose
+word covers how much ground and what each H3 resolution is worth, are on Network, and what the node doubts about
+its own sensors is on Historical. Since v0.72 Decide draws a card for each issue with an open act-level alert; a
+node that tells events draws one card for each open event instead, with its action and three buttons. The card shows what was seen and
 "what this node suggests", which is the rule's own last line, the one that begins with 👉, written by
 whoever wrote the rule. A person may record a decision there. It is written to `actions` with
 `stage: decided`, and it moves nothing: it closes no alert, it is not in ρ and it is not a stage in the funnel.

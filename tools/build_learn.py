@@ -64,8 +64,9 @@ MARKS = [
      "bug, which is why the sentence, the numeral and the state word all arrive from GET /issues."),
     ("containment", "Exact in the index, approximate on the ground", "dashboard.md", "The lead",
      "At resolution 8 one cell is", "how many of those are its own.",
-     "That is the documentation's example resolution line. The one under Decide is tonight's, read "
-     "from this node, and when the neighbouring rungs give the same answer the page says so."),
+     "That is the documentation's example resolution line. The one on Network, under What each rung "
+     "is worth, is tonight's, read from this node, and when the neighbouring rungs give the same "
+     "answer the page says so."),
     ("distances", "Four distances, not four resolutions", "concepts.md", "Sources and sensors",
      "**The four distances.**", "sekitar · wilayah.",
      "The page prints them as house, street, ring and region, on one scale, so the eye can answer "
@@ -84,9 +85,10 @@ MARKS = [
      "before you pay it: live tiles need MAP_TILES=on, and a press may only ever reduce it."),
     ("stages", "The order the loop runs", "dashboard.md", "The sections",
      "Every section is registered with the page contract",
-     "observe, decide, act, measure.",
-     "Observe, decide, act, measure: the four stages this page is read in. A section whose data "
-     "is not on this node prints one honest line in its place, never a blank and never a guess."),
+     "Now draws Decide first.",
+     "Observe, decide, act, measure: the four stages of the loop. Now draws Decide first, because "
+     "what asks for a person is read first. A section whose data is not on this node prints one "
+     "honest line in its place, never a blank and never a guess."),
     ("cards", "Four card kinds and no fifth", "dashboard.md", "The sections",
      "Four card kinds and no fifth:", "a factor of a thousand.",
      "The house is the solid line, the ring dotted, the street and the region dashed, the line "
@@ -142,27 +144,24 @@ MARKS = [
      "The card is drawn from GET /forecast: the wind and the rain for the hours ahead, and a "
      "forecast point more than 10 km from the node is said to be another place. Nothing on this "
      "card can raise an alert."),
-    ("recommend", "What this node suggests", "packs.md", "Rules",
-     "End a message with a paragraph that starts with", "the page will not invent one.",
-     "Record the decision posts `stage: decided` to POST /actions with your name and what will be "
-     "done; Take its word fills in the rule's own line. The act comes after it, under Act."),
-    ("looked", "A decision moves nothing", "first-ten-minutes.md", "When a real alert arrives",
-     "A decision closes no alert", "the record that somebody looked.",
-     "With DECISION_REQUIRED=1 (Set up → Alerts) the node refuses an act that has no decision "
-     "recorded before it, with 409, however the act arrives."),
-    ("agent", "An agent drafts, a person dispatches", "agents.md", None,
-     "An agent is a guest on the machine", "a person dispatches.",
-     "The `issues` tool an agent holds over POST /mcp returns the same object this card is drawn "
-     "from, so it may draft what to do. The decision recorded here carries the name of whoever is "
-     "deciding."),
+    ("events", "What an alert event is", "dashboard.md", "The sections",
+     "An event is the bot's own unit", "the message it sent.",
+     "Decide is the first section under the lead. The numeral is red only when the peak is past the "
+     "issue's line, and the action and the message are the node's words, in the household's "
+     "language: this page holds no copy of either."),
+    ("buttons", "Done, Not now and Doesn't fit", "dashboard.md", "The sections",
+     "**Done**, **Not now** and **Doesn't fit** each write", "keeps the answer as the note.",
+     "The first press asks for a name, and this browser keeps it for the next. The labels come "
+     "from the node, and an answer needs the act token from another device. ρ does not count "
+     "events yet, so none of the three moves it."),
     ("claims", "One number, over how much ground", "dashboard.md", "The sections",
      "\"Whose word, over how much ground\" covers", "that one number has to cover.",
      "The line above the fold names the widest and the narrowest footprint; the fold holds all six. "
      "Each card counts its cells at the rung you are on, so the count moves with the ladder."),
     ("workshop", "The nearest place to make it", "introduction.md", "What it is for",
      "The `make` pack names the nearest fab lab", "is the direction.",
-     "Under the alerts in Act, the row with the nearest fab lab is that sentence where the pack is "
-     "on: the lab, how far, and the dated archive it came from. With MAKE_ENABLED off, the row is "
+     "In Act, under the record of what was asked, the row with the nearest fab lab is that sentence "
+     "where the pack is on: the lab, how far, and the dated archive it came from. With MAKE_ENABLED off, the row is "
      "the node's own help text for that setting instead."),
     ("note", "The note is the record", "cli.md", "Reading the node",
      "`planetai act` is the terminal's way", "record of what was\ndone.",
@@ -327,15 +326,12 @@ QUESTIONS = {
     'forecast': {"en": ['What is the forecast for the next hours?', 'Why is a forecast context and not a prediction?'],
         "id": ['Apa prakiraan untuk beberapa jam ke depan?', 'Mengapa prakiraan adalah konteks, bukan ramalan?'],
         "es": ['¿Cuál es el pronóstico para las próximas horas?', '¿Por qué un pronóstico es contexto y no una predicción?']},
-    'recommend': {"en": ['What does this node suggest I do?', 'Where does that suggestion come from?'],
-        "id": ['Apa yang disarankan node ini untuk saya lakukan?', 'Dari mana saran itu berasal?'],
-        "es": ['¿Qué me sugiere hacer este nodo?', '¿De dónde sale esa sugerencia?']},
-    'looked': {"en": ['What is the difference between deciding and doing?', 'What should I record when I act?'],
-        "id": ['Apa beda memutuskan dan melakukan?', 'Apa yang harus saya catat saat bertindak?'],
-        "es": ['¿Qué diferencia hay entre decidir y hacer?', '¿Qué debo anotar cuando actúo?']},
-    'agent': {"en": ['What may an agent do on this node?', 'How do I connect my own agent?'],
-        "id": ['Apa yang boleh dilakukan agen di node ini?', 'Bagaimana cara menghubungkan agen saya sendiri?'],
-        "es": ['¿Qué puede hacer un agente en este nodo?', '¿Cómo conecto mi propio agente?']},
+    'events': {"en": ['What is an alert event, and how is it different from an alert?', 'Why is there one card for several rule rows?'],
+        "id": ['Apa itu kejadian peringatan, dan apa bedanya dengan peringatan?', 'Mengapa hanya ada satu kartu untuk beberapa baris aturan?'],
+        "es": ['¿Qué es un evento de alerta, y en qué se diferencia de una alerta?', '¿Por qué hay una sola tarjeta para varias filas de reglas?']},
+    'buttons': {"en": ['What does each of the three buttons record?', 'What happens to the card when I put it off?'],
+        "id": ['Apa yang dicatat oleh masing-masing dari tiga tombol itu?', 'Apa yang terjadi pada kartu jika saya menundanya?'],
+        "es": ['¿Qué registra cada uno de los tres botones?', '¿Qué pasa con la tarjeta si la dejo para más tarde?']},
     'claims': {"en": ['How much ground does this number cover?', 'Why does the number change with the rung?'],
         "id": ['Seberapa luas wilayah yang dicakup angka ini?', 'Mengapa angkanya berubah dengan anak tangga?'],
         "es": ['¿Cuánto terreno cubre esta cifra?', '¿Por qué la cifra cambia con el peldaño?']},

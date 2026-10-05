@@ -5153,7 +5153,7 @@ function card(ctx, key, d, a, did) {
 window.PAI.register({
   id: 'decide', pack: 'core', stage: 'decide', order: 5, level: 'simple',
   reads: ['/issues'],
-  learn: ['recommend', 'looked', 'agent'],
+  learn: ['events', 'buttons'],
   title: 'What to do about it',
   needs: ['H3.asks'],
   anchor: 'decide',
@@ -5197,14 +5197,18 @@ window.PAI.register({
         + 'now holds the card until the time it names, unless the reading reaches danger. \u03c1 does not '
         + 'count events yet, so none of the three moves it.' },
       { id: 'decide-suggestion', label: 'The suggestion is the rule’s own',
-        text: 'The suggested action is the rule\u2019s own last line, the one '
+        text: 'This is the alert card, which Decide draws on a node that sends alerts, not events, '
+        + 'and on an older node or one whose events cannot be read. Its suggested action is the '
+        + 'rule\u2019s own last line, the one '
         + 'that begins with a pointing hand, written by whoever wrote the rule and shipped in every '
         + 'language this node speaks. It is not generated here and it is not a model\u2019s: a node '
         + 'with no agent running shows exactly the same words. Where a rule carries no '
         + 'recommendation the card says so, because a page that invents advice about somebody\u2019s '
-        + 'air is a page that cannot be trusted about anything.' },
+        + 'air is a page that cannot be trusted about anything. An event card has no such line: '
+        + 'the node chose its action.' },
       { id: 'decide-moves-nothing', label: 'A decision moves nothing',
-        text: 'A decision moves nothing. It does not close the alert, it '
+        text: 'On an alert card, which is the fallback for a node that sends alerts, not events, '
+        + 'a decision moves nothing. It does not close the alert, it '
         + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the alert stays open and the '
         + 'node keeps watching. What it changes is the record: a household that looked, decided and '
         + 'never managed it used to leave the same trace as one that never looked, which was none.' },

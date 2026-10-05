@@ -126,22 +126,25 @@ part; pressing one puts the passage of these pages that explains it, and a link 
 (Sources), where the bot's model lives (Model), and where every runtime setting can be changed without
 touching `.env`. See [Dashboard](dashboard.md) and [Sharing](sharing.md).
 
-**Now there is:** observe, on a screen. The same `GET /issues` document the bot and the report read, drawn
-in the order the loop runs.
+**Now there is:** the loop, on a screen. The same `GET /issues` document the bot and the report read, drawn
+with what asks for a person first and the evidence after it.
 
 ## When a real alert arrives
 
 The test alert belongs to no issue, so it counts in ρ but never appears as an open alert on the page. The first
 real act-level alert from a pack rule about the air or the heat does, and the loop closes on the Now view. Until then Decide says:
-"Nothing is asking for a decision."
+"This node sends alerts, not events." and, under it, "Nothing is asking for anything."
 
-1. **Read it under Decide.** The card is headed "What to do about it". It shows *what was seen*, the alert's
-   first line, and *what this node suggests*, the rule's own 👉 recommendation. Press **Decide about this**,
+1. **Read it under Decide.** Decide is the first section under the lead. On a node that still sends alerts, as a
+   new node does, it shows a card for each open alert: *what was seen*, the alert's first line, and *what this
+   node suggests*, the rule's own 👉 recommendation. (A node set to `ALERT_ENGINE=events` shows one card for each
+   open event instead, with the action it chose and **Done**, **Not now** and **Doesn't fit**; see
+   [Dashboard](dashboard.md#decide).) Press **Decide about this**,
    fill in "Who is deciding" and "What will be done" (or press **Take its word**), then **Record the
    decision**. The page answers: "Decided. Nothing has moved — press "I did this" under Act when it is
    done." A decision closes no alert and does not enter ρ. It is the record that somebody looked.
-2. **Record it under Act when it is done.** "The alerts this node has sent" lists the open alert with a button,
-   **I did this**. Fill in "Who" and "What you did", then **Record it**. The page answers: "Recorded. The
+2. **Record it when it is done.** The same card has a button, **I did this**. Fill in "Who" and "What you
+   did", then **Record it**. The page answers: "Recorded. The
    node watches what happens next." This needs the act token or the admin token in this browser. Without
    one the node answers "this node is set to SHARE_LEVEL=<level>, so /actions answers only this machine or a
    request carrying a token." and the page adds where the token comes from. The same act can come from `planetai act`, from `/act <id>
