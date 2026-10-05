@@ -315,7 +315,9 @@ Access: open
 
 Every issue this node declares, computed: state, stack by distance, the line it is compared against, attribution, a sentence in each locale, open alerts, series. The order is `NODE_ISSUES`; an issue not declared still appears with `watched: false`, so a stranger can see what the node could report. The node computes and the page draws: nothing in the response needs arithmetic to render and nothing in it came from a model. `/issues/` answers the same.
 
-Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_rule, distances, labels, issues, stations, metrics, asks, digest, mesh, geometry, sections}`, with `schema` set to `issues-v0`.
+Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_rule, distances, labels, issues, stations, metrics, asks, digest, mesh, geometry, sections, events}`, with `schema` set to `issues-v0`.
+
+`events` is the alert events (see [Alerts](alerts.md)), one per issue per house, as the bot tells them: which engine the node runs (`rules`, `shadow` or `events`), the three button labels in the households language, the `open` events (kind, rooms, peak, the issues line, the numbers the action was chosen from, the action and the latest message word for word, the alerts each covers, and the latest answer), the events cleared in the last 7 days under `recent`, `cleared_today`, and `uncovered_asks`: the open alerts no event covers. An open events issue leads the page, and `lead.by` is then `event`. A node older than v0.77 sends no `events` key, and a node that could not read them sends `events.error`.
 
 - `headline` is the key of the issue with the highest state. Within a state, the tie goes to the issue that has `moved` most, and an exact tie to the declared order. Only an issue that declares a hero can lead. `headline_rule` states that rule in `en`, `id` and `es`, so a page can print why that issue leads.
 - `lead` is `{issue, by}`: the same issue as `headline`, and which step of the rule picked it over the runner-up, one of `state`, `moved` or `order`. It is `null` when no watched issue declares a hero.
@@ -366,9 +368,11 @@ Every answer a person gave an alert, newest first: which alert, which stage, who
 | Name | Type | Default | Meaning |
 |---|---|---|---|
 | `limit` | int | 500 | 0..5000 |
+| `events` | int | | with 1, also returns the answers to alert events, with their `event_id`; works with or without `stage` |
 | `stage` | str | | only this stage; `settings` returns the node's own rows instead |
 
 Returns a list of `{ts, alert_id, stage, actor, note}`. The node's own `settings` rows are left out unless `stage=settings` asks for them: one row per `PUT /settings`, where `actor` is its `X-Agent` and `note` the keys it wrote, comma-separated. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
+With `events=1` it also returns the answers to alert events, with their `event_id` in place of `alert_id`, with or without `stage`.
 
 > **Careful.** The handler has no token check of its own, so any of the four node tokens reads it. That includes `BACKUP_TOKEN`, `ACT_TOKEN` and this node's `AGGREGATE_TOKEN`, which every child of this node holds.
 
@@ -389,6 +393,7 @@ Body:
 | `acted` | Somebody did the thing. Counts for ρ, sets `acted_at`, closes the alert |
 | `decided` | Somebody said what they would do. Moves nothing: not in ρ, not in `acted_at`, not a funnel stage, closes no alert |
 
+An alert event is answered the same way, with `event_id` in place of `alert_id`: `{"event_id": 3, "stage": "dismissed", "actor": "tomas", "note": "ran the AC instead"}`. The stage is the button: Done is `acted`, Not now is `acknowledged`, Doesnt fit is `dismissed`. Any other stage is 400, an event this node does not have is 404, and the tokens are the alerts. An events answer is not in ρ yet.
 Any other stage is 400 `stage must be acknowledged, acted or decided`. `measured` is refused: the node derives it (see [`/rho`](#get-rho)) and never takes it from a post. `settings` rows are written by the node itself. With `DECISION_REQUIRED=1`, an `acted` post for an alert that has no `decided` row yet is 409 `this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same alert first. Decide on the dashboard, then record what you did.` The default is `0`.
 
 `actor` is cut to 80 characters, `note` to 500. 404 `no such alert` if the id is unknown. There is no one-action-per-alert cap: two people who both acted are both recording something true. Returns `{"ok": true}`.
