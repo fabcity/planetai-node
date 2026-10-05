@@ -1289,9 +1289,10 @@ def actions(limit: int = Query(500, ge=0, le=5000), stage: str = "", events: int
     """
     if stage:
         if events:
-            # With events=1 on a stage filter, include event rows with their event_id
-            return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions WHERE stage = %s AND "
-                     "(alert_id IS NOT NULL OR event_id IS NOT NULL) ORDER BY ts DESC LIMIT %s",
+            # With events=1 on a stage filter, include event rows with their event_id. Settings rows (both NULL)
+            # must always be returned regardless of events flag.
+            return q("SELECT ts, alert_id, event_id, stage, actor, note FROM actions WHERE stage = %s "
+                     "ORDER BY ts DESC LIMIT %s",
                      stage, limit)
         # Default: exclude event rows (alert_id NULL, event_id set) but keep settings rows (both NULL)
         return q("SELECT ts, alert_id, stage, actor, note FROM actions WHERE stage = %s AND "
