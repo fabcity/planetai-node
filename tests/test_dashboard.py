@@ -1046,6 +1046,52 @@ assert "cellCount: new Set(cells.map(c => c.cell)).size" in _js, "facts() no lon
 assert "interp(w.cellsN, { n: d.cellCount })" in _js and "{ n: d.cells.length }" not in _js, \
     "Network's N of 20 is counting /cells rows again"
 
+# ACT IS THE RECORD OF WHAT WAS ASKED AND ANSWERED (SPEC_dashboard_events §4.3). The sections are closures, so the
+# wiring is a source check and the pure helpers are lifted.
+_asks = _js_raw[_js_raw.index("id: 'asks', pack"):]
+_asks_render = _asks[:_asks.index("  wall(ctx) {")]
+_asks_render = _asks_render[_asks_render.index("render(ctx) {"):]
+assert re.search(r"[^\w.]ask\(", _asks_render) is None, "Act's render still draws the kit's alert strip"
+assert "title: 'What was asked, and what was answered'" in _asks, "Act's title is the spec's, and its id stays `asks`"
+assert "This node sends alerts, `" in _asks_render and "not events." in _asks_render, \
+    "a rules node keeps its per-rule rows under one line saying it sends alerts, not events"
+assert "whereToGo()" in _asks_render and "capacity()" in _asks_render, "whereToGo and capacity stay in Act"
+assert "function ask(key, d, ref)" in _js_raw, "the kit's ask() stays: it is exported"
+assert "api('/actions?events=1')" in _js_raw and "api('/actions')" not in _js_raw, \
+    "boot() must read /actions?events=1, so the event answers' notes arrive"
+assert "`ev${x.event_id}:${x.stage}`" in _js_raw, "ACT_NOTES gains a key for an event's answer"
+_led = _js_raw[_js_raw.index("id: 'ledger', pack"):]
+_led = _led[:_led.index("  notes() {")]
+assert "evAnswers(" in _led, "the ledger lists the answers to events"
+assert "events || {}).buttons" in _js_raw[_js_raw.index("function evWord"):][:300], \
+    "the ledger's button words are the node's, from events.buttons"
+if shutil.which("node"):
+    _act = _node("\n".join((
+        "const S = { issues: { events: { buttons: { done: 'Done', not_now: 'Not now', doesnt_fit: 'Doesn’t fit' } } } };",
+        re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evLog\(E\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswerText\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswers\(E\) \{.*?\n\}", _js_raw, re.S).group(0),
+        r"""
+const A = (stage, actor, ts) => ({ stage, actor, ts, held_until: null });
+const e1 = { id: 1, opened_at: '2026-10-03T10:00:00Z', answer: A('acted', 'tomas', '2026-10-03T11:00:00Z'), cleared_after_min: 40.4 };
+const e2 = { id: 2, opened_at: '2026-10-04T10:00:00Z', answer: A('acknowledged', 'ana', '2026-10-04T10:30:00Z') };
+const e3 = { id: 3, opened_at: '2026-10-05T10:00:00Z', answer: null };
+const e4 = { id: 4, opened_at: '2026-10-01T10:00:00Z', answer: A('dismissed', '', '2026-10-01T12:00:00Z') };
+const E = { open: [e3, e2], recent: [e2, e1, e4] };
+console.log(JSON.stringify({
+  log: evLog(E).map(e => e.id),
+  text: [e1, e2, e3, e4, { ...e1, cleared_after_min: undefined }].map(evAnswerText),
+  answers: evAnswers(E).map(x => x.event.id),
+  none: [evLog({}), evAnswers({})],
+}));""")))
+    assert _act["log"] == [3, 2, 1, 4], f"evLog: newest opened first, an id in both lists once: {_act['log']}"
+    assert _act["text"] == ["Done · tomas · cleared 40 min after", "Not now", "no answer",
+                            "Doesn’t fit", "Done · tomas"], \
+        f"evAnswerText: the button's word; 'cleared N min after' only on a Done the node followed with a clear: {_act['text']}"
+    assert _act["answers"] == [2, 1, 4], f"evAnswers: answered events only, newest answer first: {_act['answers']}"
+    assert _act["none"] == [[], []], "no events block is an empty record, not a throw"
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")

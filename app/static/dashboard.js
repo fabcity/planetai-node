@@ -942,6 +942,13 @@ function evState() {
   return e.engine === 'shadow' || e.engine === 'events' ? e.engine : 'rules';
 }
 const evOpen = () => (((S.issues || {}).events || {}).open || []);
+/* The button word an answer's stage stands for, in the node's own labels (events.buttons). The same three
+   the buttons wear, so an answer reads as the button that wrote it. */
+function evWord(stage) {
+  const B = ((S.issues || {}).events || {}).buttons || {};
+  return stage === 'acted' ? B.done || 'Done' : stage === 'dismissed' ? B.doesnt_fit || 'Doesn’t fit'
+    : B.not_now || 'Not now';
+}
 function evClock(iso) {
   const t = new Date(iso);
   if (isNaN(t)) return '';
@@ -1017,7 +1024,7 @@ function evCard(e, tail = '') {
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
-  evState, evOpen, evClock, evButtons, evCard };
+  evState, evOpen, evClock, evButtons, evCard, evWord };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -4523,13 +4530,13 @@ window.PAI.register({
  * not. This section is the ledger of that — the open ask, the asks sent in the window, and the
  * funnel they went down — so that "act" is a thing on the page and not a verb in a slogan.
  *
- * The green button is the one control on the page that is not the dial, and it is drawn where the
- * kit draws it: in the ask strip, never anywhere else.
+ * The strip that used to sit above this is gone: the buttons are on Decide now, and this section is
+ * only the record of what was asked and what was answered (docs/SPEC_dashboard_events.md §4.3).
  */
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, pill, row, ask, sign, rulePack } = window.K;
+const { esc, fmt, age, pill, row, sign, rulePack, evState, evClock, evWord } = window.K;
 
 /* The alerts in the fixture that asked for something, most recent first. `level: act` is the rule
  * saying a person should do something; `info` and `warn` said something and asked nothing. They
@@ -4567,6 +4574,23 @@ function ringsFor(list, open) {
     out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
   }
   return { html: out, closed, total, unit: UNIT };
+}
+
+/* THE EVENTS ACT RECORDS: the node's open and recent ones, newest opened first. `recent` is sorted by clear
+ * and `open` by seriousness, so neither order is the one a record reads in. An id in both is drawn once. */
+function evLog(E) {
+  const seen = new Set();
+  return [...(E.open || []), ...(E.recent || [])].filter(e => !seen.has(e.id) && seen.add(e.id))
+    .sort((a, b) => String(b.opened_at).localeCompare(String(a.opened_at)));
+}
+/* What was answered, in the button's word. `cleared_after_min` is the node's number, and only a Done that
+ * was followed by a clear carries it, so it is said only then. */
+function evAnswerText(e) {
+  const a = e.answer;
+  if (!a) return 'no answer';
+  return a.stage !== 'acted' ? evWord(a.stage)
+    : `${evWord(a.stage)} \u00b7 ${a.actor || 'somebody'}`
+      + (e.cleared_after_min == null ? '' : ` \u00b7 cleared ${Math.round(e.cleared_after_min)} min after`);
 }
 
 /* WHERE TO GO, under the ask it answers.
@@ -4649,14 +4673,14 @@ window.PAI.register({
   id: 'asks', pack: 'core', stage: 'act', order: 10, learn: ['levels', 'current'],
   reads: ['/issues', '/rho', '/sensors', '/settings', '/stats'],
   /* `workshop` is drawn by whereToGo() on the row it explains, not in the kicker. */
-  title: 'The alerts this node has sent',
+  title: 'What was asked, and what was answered',
   /* PORTED: the prototype also needed SNAP.funnel, which was one of its three synthetic
      contributions — no endpoint on this node computes a stage split or the 2x2. The ledger is the
      node's own (GET /issues publishes `asks`), so the section stands on that and draws the funnel
      only where there is one. */
   needs: ['H3.asks'],
   render(ctx) {
-    const S = ctx.S, ISS = ctx.ISS;
+    const S = ctx.S, ISS = ctx.ISS, st = evState(), E = S.issues.events || {};
     const acts = ACTS();
     const open = OPEN_IDS();
     const byRule = {};
@@ -4664,16 +4688,11 @@ window.PAI.register({
     const rules = Object.entries(byRule).sort((a, b) => b[1].length - a[1].length);
     const captured = Date.parse(S.base.captured_utc);
     /* ONE COLUMN, FULL WIDTH. This was a `two-up` with a single child, so the grid reserved half the
-       band for a second column that no branch of this render ever fills — the ask cards and every
-       rule row were squeezed into the left half and the right half of Act was white from the strip
-       to the foot. `two-up` is for the sections that genuinely draw two things (Measure's rows
-       beside its series, the radio's map beside its rows); Act draws one list. */
-    return `<div>`
-      + ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length).map(k => ask(k, ISS[k], 'asks-rows')).join('')
-      + (ctx.ORDER.some(k => ISS[k] && (ISS[k].open_asks || []).length) ? ''
-        : ask(S.issues.headline, ISS[S.issues.headline], 'asks-rows'))
-      + `<div class="reads" id="asks-rows" data-ref="funnel">`
-      + rules.map(([rule, list]) => {
+       band for a second column that no branch of this render ever fills — every rule row was squeezed
+       into the left half and the right half of Act was white. `two-up` is for the sections that
+       genuinely draw two things; Act draws one list. THE STRIP IS GONE from every node: Decide holds the
+       buttons now (spec §4.3), and this is the record of what was asked and answered. */
+    const byRuleRows = () => rules.map(([rule, list]) => {
         /* A rule id is `pack/rule` today, but a node's ledger keeps alerts from before packs named their
            rules (node #1: `indoor_pm25_high`, `inside_worse_ventilate`), and splitting those left the rule
            undefined, which threw and took the whole section down on 28 Sep 2026. */
@@ -4700,7 +4719,46 @@ window.PAI.register({
               + `outcome was measured, never merely by being seen`
               + `${r.unit > 1 ? ` \u00b7 one ring per ${r.unit}` : ''}` }],
         });
-      }).join('')
+      }).join('');
+    /* ONE ROW AN EVENT, newest first, and the rings above them: closed when the event has an answer. The
+       seven days are all the wire carries, so there is no fold. */
+    const eventRows = () => {
+      const log = evLog(E);
+      if (!log.length) {
+        return `<p class="note" id="asks-none" data-component="absent" data-ref="asks-rows">No event in the `
+          + `last 7 days: nothing was asked, and nothing needed asking.</p>`;
+      }
+      const unanswered = new Set(log.filter(e => !e.answer).map(e => e.id));
+      const r = ringsFor(log, unanswered);
+      const head = row({ id: 'asks-events', component: 'askEvents', ref: 'asks-rows', cols: 'minmax(0,1fr)',
+        left: `<span class="who"><span><span data-num="asks.events.n" data-cmp="alert events this node opened `
+          + `in the last 7 days, open or cleared">${log.length}</span> event${log.length === 1 ? '' : 's'} in 7 `
+          + `days \u00b7 <span data-num="asks.events.answered" data-cmp="of ${log.length}: events somebody `
+          + `answered with Done, Not now or Doesn\u2019t fit">${r.closed}</span> answered</span></span>`,
+        signs: r.html });
+      return head + log.map(e => {
+        const d = ISS[e.issue] || { name: {} };
+        const key = esc(String(e.id));
+        const mins = Math.round((captured - Date.parse(e.opened_at)) / 60000);
+        return row({ id: `ask-ev-${key}`, component: 'askEvent', ref: 'asks-rows',
+          cls: e.answer && e.answer.stage === 'acted' ? '' : 'quiet',
+          cols: 'minmax(0,170px) minmax(0,1fr) auto',
+          left: `<span class="who"><b>${esc(d.name[ctx.LOC] || e.issue)}</b>`
+            + `<span class="m">${esc(e.kind)} \u00b7 ${esc(age(mins))}</span></span>`,
+          line: `${evClock(e.opened_at)}\u2013${e.cleared_at ? evClock(e.cleared_at) : 'open'}`
+            + `${(e.rooms || []).length ? ` \u00b7 ${e.rooms.join(', ')}` : ''}`,
+          qty: [{ num: `asks.ev${key}.action`, value: e.action && e.action.text ? e.action.text : 'no action chosen',
+            cmp: 'what the node asked for, in its own words' },
+          { num: `asks.ev${key}.answer`, value: evAnswerText(e),
+            cmp: 'the answer a person gave, in the button\u2019s word; the clear time is the node\u2019s own' }] });
+      }).join('');
+    };
+    const events = st === 'events' || st === 'shadow';
+    return `<div>`
+      + `<div class="reads" id="asks-rows" data-ref="funnel">`
+      + (events ? eventRows()
+        : `<p class="note" id="asks-engine" data-component="absent" data-ref="asks-rows">This node sends alerts, `
+          + `not events.</p>` + byRuleRows())
       + whereToGo()
       + capacity()
       + `</div>`
@@ -4727,14 +4785,16 @@ window.PAI.register({
         text: 'An alert is a rule crossing a line and the node saying so to a '
         + 'person, on Telegram. It is the only thing on this page that is addressed to somebody; '
         + 'everything else is addressed to nobody in particular. "Nothing has been asked" and '
-        + '"nothing to do" are two different sentences, and the alert strip says which one is true.' },
-      { id: 'asks-rows', label: 'One ring, one alert',
-        text: 'One ring an alert, closed first. An alert closes when somebody acted '
-        + 'or the outcome was measured \u2014 being seen is not closing it, which is the node\u2019s rule '
-        + 'and not this page\u2019s: the page reads which alerts are still open from the node\u2019s own '
-        + 'answer rather than keeping a copy of the rule that decides it. A rule that has asked '
-        + 'more times than a person can count gets a coarser unit and says which, and the figure '
-        + 'beside the strip is always exact.' },
+        + '"nothing to do" are two different sentences, and Act says which one is true: a row for every event '
+        + 'that was asked, or the sentence that there was none.' },
+      { id: 'asks-rows', label: 'One ring, one event',
+        text: 'On a node that tells events, one ring an event, closed when somebody answered it with Done, '
+        + 'Not now or Doesn\u2019t fit, and a row under them for each of the last seven days\u2019 events: '
+        + 'what the node asked for, in its own words, and the answer. \u201cCleared 40 min after\u201d is '
+        + 'the node\u2019s own number, and appears only on a Done that a clear followed. On a node that '
+        + 'sends alerts, one ring an alert, closed when somebody acted or the outcome was measured \u2014 '
+        + 'which is the node\u2019s rule and not this page\u2019s \u2014 and a rule that has asked more '
+        + 'times than a person can count gets a coarser unit and says which.' },
       { id: 'where-to-go', label: 'The nearest place to get it made',
         text: 'The nearest place you could get something made, under the alert it '
         + 'answers rather than as a tile of its own \u2014 the pack that stores it says the line belongs '
@@ -4748,10 +4808,6 @@ window.PAI.register({
         + 'pack ships off and why the switch carries that sentence where a keeper will read it '
         + 'before turning it on. With the pack off this row does not exist and the node\u2019s own '
         + 'words say why \u2014 never this page\u2019s summary of them.' },
-      { id: 'asks-button', label: 'The green button',
-        text: 'The green button is the one control on the page that is not the '
-        + 'ladder. It is a response, so it is green — the layer’s rule is that orange means what only '
-        + 'the satellite knows and nothing else — and it is drawn in the alert strip and nowhere else.' },
     ];
   },
 });
@@ -5176,7 +5232,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, row, age } = window.K;
+const { esc, row, age, evWord } = window.K;
 const { H } = window.KH;
 
 /* ALL OF IT FOLDED, and the head says how many. Eight rows and a five-line head were 1,029 px at 390
@@ -5229,6 +5285,36 @@ function line(x, ctx, all) {
   });
 }
 
+/* THE ANSWERS TO EVENTS: each open or recent event's latest answer, one row, newest first. The node keeps
+   one answer an event that matters (the latest), so this reads `answer` and never replays the ledger. An id
+   in both lists is read once. */
+function evAnswers(E) {
+  const seen = new Set();
+  return [...(E.open || []), ...(E.recent || [])]
+    .filter(e => e.answer && !seen.has(e.id) && seen.add(e.id))
+    .map(e => ({ ts: e.answer.ts, event: e, answer: e.answer }))
+    .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+}
+
+function evLine(x, ctx) {
+  const e = x.event, a = x.answer, d = ctx.ISS[e.issue] || { name: {} };
+  const notes = window.ACT_NOTES;
+  const note = notes ? notes[`ev${e.id}:${a.stage}`] : null;
+  const mins = Math.round((Date.parse(ctx.S.base.captured_utc) - Date.parse(a.ts)) / 60000);
+  return row({
+    id: `act-ev${esc(String(e.id))}-${esc(String(a.stage))}`,
+    component: 'ledgerRow', ref: 'asks-rows',
+    cls: a.stage === 'acted' ? '' : 'quiet',
+    cols: 'minmax(0,170px) minmax(0,1fr) auto',
+    left: `<span class="who"><b>${esc(String(a.actor || '').trim() || 'somebody')}</b>`
+      + `<span class="m">${esc(evWord(a.stage))} \u00b7 ${esc(age(mins))}</span></span>`,
+    /* The sentence if this reader may have it; otherwise the issue it was about, so the row still says what
+       was answered. */
+    line: note || `${d.name[ctx.LOC] || e.issue} \u00b7 ${e.kind}`,
+    qty: [],
+  });
+}
+
 window.PAI.register({
   id: 'ledger', pack: 'core', stage: 'act', order: 20, learn: ['note', 'bot', 'actions'],
   reads: ['/issues', '/actions'],
@@ -5238,7 +5324,12 @@ window.PAI.register({
   render(ctx) {
     const rows = (((H.asks || {}).actions) || []).slice()
       .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
-    if (!rows.length) {
+    /* Alert acts and event answers, in the order they happened. An event answer is a different row from an
+       alert act and counts toward neither `decided first` nor the practice figure, which are alert acts'. */
+    const items = rows.map(x => ({ ts: x.ts, html: line(x, ctx, rows) }))
+      .concat(evAnswers(ctx.S.issues.events || {}).map(x => ({ ts: x.ts, html: evLine(x, ctx) })))
+      .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    if (!items.length) {
       return `<p class="note" id="ledger-none" data-component="absent" data-ref="asks-rows">`
         + `Nobody has answered an alert on this node yet. When somebody does \u2014 from this page, `
         + `from Telegram, or from a terminal \u2014 what they did and who they are is recorded here.`
@@ -5262,19 +5353,19 @@ window.PAI.register({
         + `is the rule">${led}</span> of ${acts.length} had a decision recorded first.`
       : '';
     const head = `<p class="why" id="ledger-head" data-component="ledgerHead" data-ref="ledger">`
-      + `${rows.length} answer${rows.length === 1 ? '' : 's'} on this node.${practice} `
+      + `${items.length} answer${items.length === 1 ? '' : 's'} on this node.${practice} `
       + (words
         ? `${said} carr${said === 1 ? 'ies' : 'y'} the sentence somebody wrote.`
         : `The sentences need a token \u2014 a note is the household\u2019s own words about its own `
           + `house. Set up \u2192 unlock.`)
       + `</p>`;
-    const first = rows.slice(0, SHOWN).map(x => line(x, ctx, rows)).join('');
-    const rest = rows.slice(SHOWN);
+    const first = items.slice(0, SHOWN).map(x => x.html).join('');
+    const rest = items.slice(SHOWN);
     return head + `<div class="reads" id="ledger-rows" data-ref="asks-rows">${first}`
       + (rest.length
         ? `<details class="fold"><summary>${SHOWN ? `The other ${rest.length}`
           : `All ${rest.length}, newest first`}</summary>`
-          + rest.map(x => line(x, ctx, rows)).join('') + `</details>`
+          + rest.map(x => x.html).join('') + `</details>`
         : '')
       + `</div>`;
   },
@@ -6266,7 +6357,7 @@ async function boot() {
        words about what they did in their own house. So the ledger draws from /issues for everyone
        and asks this route only for the sentences, which arrive for a reader holding a token and do
        not for anyone else. A 403 here is the node working. */
-    api('/actions').catch(() => null),
+    api('/actions?events=1').catch(() => null),
     api('/shape').catch(() => null),
     api('/effect').catch(() => null),
   ]);
@@ -6290,8 +6381,15 @@ async function boot() {
   window.SHAPE = dayshape;
   window.EFFECT = effect;
   window.ACT_NOTES = Array.isArray(notes)
-    ? notes.reduce((m, x) => { if (x && x.alert_id != null && String(x.note || '').trim()) {
-      m[`${x.alert_id}:${x.stage}`] = x.note; } return m; }, {})
+    ? notes.reduce((m, x) => {
+      /* ?events=1 adds the answers to events, which carry an event_id (an alert's answer carries an alert_id).
+         A node older than v0.77 ignores the query and sends alert rows only. */
+      if (x && String(x.note || '').trim()) {
+        if (x.alert_id != null) m[`${x.alert_id}:${x.stage}`] = x.note;
+        if (x.event_id != null) m[`ev${x.event_id}:${x.stage}`] = x.note;
+      }
+      return m;
+    }, {})
     : null;
   /* /stats, and ONLY on a node that has an appliance to say anything about.
    *
