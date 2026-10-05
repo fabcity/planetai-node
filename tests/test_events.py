@@ -168,3 +168,22 @@ m = E.step(at(0), [
 ], multi_level_store, POL)
 assert [x.reason for x in m] == ["open"] and m[0].event.level == "act", "level climbs to highest of all over-candidates"
 print("  one step: spike/warn + spike/act → level is act (not just top)")
+
+# Air danger re-sends only when its value doubles since the last message, and never within DANGER_REPEAT_GAP. A
+# cooking peak climbing 131 -> 1033 re-sent every five minutes on node #1's replay: 9 extra pushes in a month.
+d = E.MemoryStore()
+air_d = lambda v: E.Candidate("air-quality/air_extreme", "air", "danger", "act", "s", "K", v, 125.5, True)
+assert [x.reason for x in E.step(at(0), [air_d(131)], d, POL)] == ["open"]
+assert E.step(at(5), [air_d(250)], d, POL) == [], "not doubled: no re-send"
+assert E.step(at(10), [air_d(300)], d, POL) == [], "doubled, but inside the 30-min floor"
+m = E.step(at(31), [air_d(300)], d, POL)
+assert [x.reason for x in m] == ["escalate"] and m[0].send, m
+assert E.step(at(40), [air_d(1033)], d, POL) == [], "doubled again, inside the floor"
+assert [x.reason for x in E.step(at(62), [air_d(1033)], d, POL)] == ["escalate"]
+print("  air danger re-sends only when its value doubles, never within 30 min")
+# heat danger keeps its +2 °C step, behind the same floor; climbing INTO danger stays immediate (tested above)
+hd = E.MemoryStore()
+E.step(at(0), [c("K", kind="danger", value=40.5)], hd, POL)
+assert E.step(at(5), [c("K", kind="danger", value=43.0)], hd, POL) == [], "heat danger +2.5 inside the floor"
+assert [x.reason for x in E.step(at(31), [c("K", kind="danger", value=43.0)], hd, POL)] == ["escalate"]
+print("  heat danger keeps its +2 °C step behind the same 30-min floor")

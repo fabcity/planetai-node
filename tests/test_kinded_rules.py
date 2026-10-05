@@ -108,4 +108,21 @@ fires(built(rise(33.0), every=10), heat["heat_unusual"], "in1")
 row = fires(built(rise(40.0), every=10), heat["heat_extreme"], "in1")
 assert row["value"] >= 40, row
 print("  heat: unusual and extreme each fire where they should")
+
+# a Meshtastic radio indoors reports its own box (config/channels.yml: meshtastic temp is `enclosure`), not the room:
+# no heat rule may read it as a room, however hot the box gets. in1's source declares no role and is kept.
+BOX = ("box1", "meshtastic", "Box", -8.8, 115.1, True, True, "sensor")
+def boxed(v):
+    return lambda l, ts, m: [(ts, s, "temp", v if m < 60 else 28.0) for s in ("in1", "box1")] + \
+                            [(ts, s, "humidity", 50.0) for s in ("in1", "box1")]
+rows = []
+for m in range(0, 14 * 1440, 10):
+    ts = AT - dt.timedelta(minutes=m)
+    rows += boxed(40.0)(ts.astimezone(WITA), ts, m)
+bx = T.Node(rows, who=WHO + [BOX])
+bx.refresh_usual(AT)
+for r in ("heat_unusual", "heat_sustained", "heat_extreme"):
+    assert not [row for row in bx.run(heat[r], AT) if row["sensor_id"] == "box1"], (r, "read the box as a room")
+fires(bx, heat["heat_extreme"], "in1")
+print("  heat: a radio's enclosure temperature is never read as a room")
 print("kinded rules: the engine's columns, no heat event on an ordinary day, and each rule can fire")

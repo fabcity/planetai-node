@@ -203,3 +203,31 @@ one cross-issue contradiction, 2 of 38 PM2.5 rise-hours, and 2 of 9 long heat ru
 Shadow mode sends nothing. It would record how these rules behave on live data while recommendations 1–7 are made
 and replayed. Moving node #1 to `events` should wait until the re-run meets every target. Both decisions are
 Tomas's.
+
+## Addendum, 5 Oct 2026: three rule fixes, re-replayed
+
+The three changes the recommendations above put first:
+- **Box temperature:** the kinded heat rules read room air only, so a sensor whose `temp` channel is declared
+  non-ambient (Room D's radio box) is never a room.
+- **Usual excludes today:** `usual_by_hour` is the fourteen complete local days before today.
+- **Danger repeats:** a danger already sent repeats only when its value doubles (air), or rises by `ESCALATE_STEP`
+  (heat), and never within 30 minutes. Climbing into danger still sends at once.
+
+The same 30 days, the same settings:
+
+| measure | before | after |
+|---|---|---|
+| heat events that include Room D | 4 of 15 | 0 of 16 |
+| long heat runs reported (longer than the room's usual) | 7 of 9 | 9 of 9 |
+| air danger messages | 16 | 14 |
+| pushes, total (openings and escalations / all-clears) | 116 (67 / 49) | 116 (66 / 50) |
+| pushes per day, median / max | 4 / 9 | 4 / 9 |
+| non-danger pushes 22:00–06:00 | 0 | 0 |
+| bursts of 3 or more within 60 min | 2 | 1 |
+
+Of the 16 danger messages before, 7 were events climbing *into* danger, which is meant to send at once. Only 2 were
+true repeats, so the cooking-peak re-sending was smaller than the text above suggests. The total is unchanged because
+the two long heat runs that were hidden are now reported, while Room D's events and the danger repeats are gone.
+
+Still open from the targets: 4 a day once all-clears are counted, the one cross-issue pair (air "open up", heat "keep
+shut" 35 minutes later) and 2 of 38 PM2.5 rises.
