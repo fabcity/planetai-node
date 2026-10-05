@@ -29,6 +29,8 @@ export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI
 # container, no network; see that function's own comment for what changed on 2026-09 and why.
 node tests/visual/measure.mjs render now_populated_1440 now_populated_390 >/dev/null
 PAI_Q="?fixture=node1-2026-09-21d&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
+# The ruler is now inside the railfold and visible only with ?worth=1, so measure it with that query.
+PAI_Q="?fixture=node1-2026-09-21d&worth=1" node tests/visual/measure.mjs render now_populated_1440_worth1 >/dev/null
 node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_populated_1920_dark >/dev/null
 
 # A press must redraw. Every check below this line measures one render, and since v0.55 a control
@@ -205,7 +207,7 @@ if (w.doc.h > 1080) fails.push(`wall is ${w.doc.h} px on a 1,080 px screen`);
 // backwards. Read off the rendered text lines inside the ruler's own box, so it checks the drawing
 // rather than the source.
 {
-  const d = j('now_populated_1440');
+  const d = j('now_populated_1440_worth1');
   const r = d.els.find(e => (e.cls || '').split(/\s+/).includes('ruler'));
   if (!r) fails.push('no ruler under the rail');
   else {

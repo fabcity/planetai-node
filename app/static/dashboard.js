@@ -7445,16 +7445,7 @@ function main() {
     return `<div class="rail" id="rail" data-component="rail" data-kind="row" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
-      + ruler()
       + `<div class="railkey" data-component="railKey" data-ref="rail">`
-      + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
-      + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
-      + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
-      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
-      /* `occupied`, `in_my_cell` and `mine_in_my_cell` are the rail's figures too, and they are
-         drawn ONCE — in the grain line this rail re-derives and points at, where they are a
-         sentence rather than three numbers in a key. Printing them here as well made the key three
-         lines deep at 390 and pushed the as-of off the first screen, which is T1's fifth leg. */
       /* THE FOLD'S TRIGGER IS THIS CHIP, and it is this chip because a fold of its own cost 33.5 px
          and T1 lost the ask and the as-of off the first screen at both 390 and 1440 — measured, on
          a gate that was green the render before. The key's last chip already names the fold's
@@ -7525,6 +7516,13 @@ function main() {
        dial closed it, which is precisely the move it is for. `link()` copies the whole query, so
        every stop carries the key with no work and nothing has to listen for anything. */
     return `<div class="railfold" id="railfold" data-component="railFold" data-ref="rail">`
+      + ruler()
+      + `<div class="railkey" data-component="railKey" data-ref="rail">`
+      + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
+      + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
+      + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
+      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
+      + `</div>`
       + `<div class="rh"><h2>What one cell at resolution ${RES} is worth</h2>`
       + `<a href="${ctx.qlink({ worth: null })}">Close</a></div>`
       + `<div class="rf">${fig}<div class="rfx"><p>Each rung down is about seven times finer by `
