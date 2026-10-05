@@ -29,8 +29,9 @@ export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI
 # container, no network; see that function's own comment for what changed on 2026-09 and why.
 node tests/visual/measure.mjs render now_populated_1440 now_populated_390 >/dev/null
 PAI_Q="?fixture=node1-2026-09-21d&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
-# The ruler is now inside the railfold and visible only with ?worth=1, so measure it with that query.
-PAI_Q="?fixture=node1-2026-09-21d&worth=1" node tests/visual/measure.mjs render now_populated_1440_worth1 >/dev/null
+# The ruler is now inside the railfold and visible only with ?worth=1. PAI_TAG appends _worth1 to the
+# output filename, so the measurement is stored as now_populated_1440_worth1.json, which the ruler check reads.
+PAI_TAG=worth1 PAI_Q="$PAI_Q&worth=1" node tests/visual/measure.mjs render now_populated_1440 >/dev/null
 node tests/visual/measure.mjs shots now_populated_1440 now_populated_390 wall_populated_1920_dark >/dev/null
 
 # A press must redraw. Every check below this line measures one render, and since v0.55 a control
