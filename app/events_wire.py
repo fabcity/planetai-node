@@ -88,8 +88,10 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
                "answer": _answer(a, e["kind"])}
         if cleared is None:
             ctx, key = contexts.get(eid) or {}, OUTSIDE.get(issue.get("metric"))
-            row["context"] = {"usual": ctx.get("usual"), "outside": ctx.get(f"outside_{key}") if key else None,
-                              "outside_metric": key, "outside_from": ctx.get("outside_source")}
+            outside = ctx.get(f"outside_{key}") if key else None
+            # outside_source only describes the temperature; an outside PM2.5 always came from an outdoor sensor
+            came = None if outside is None else "outside" if key == "pm25" else ctx.get("outside_source")
+            row["context"] = {"usual": ctx.get("usual"), "outside": outside, "outside_metric": key, "outside_from": came}
             opened.append(row)
             continue
         if a and a["stage"] == "acted" and cleared > _t(a["ts"]):

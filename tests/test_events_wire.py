@@ -34,7 +34,8 @@ EVENTS = [ev(1, "heat", "sustained", NOW - 2 * H, action_id="heat/open_up"),
           ev(4, "air", "spike", NOW - 20 * H, cleared=NOW - 19 * H),          # 20:00 Bali yesterday: not today
           ev(5, "heat", "sustained", NOW - 8 * H, cleared=NOW - 5 * H),       # 10:00 Bali today
           ev(6, "air", "spike", NOW - 9 * 24 * H, cleared=NOW - 8 * 24 * H),  # older than 7 days: dropped
-          ev(7, "air", "spike", NOW - 10 * H, cleared=NOW - 4 * H)]           # opened before 5, cleared after: reveals sort by clear
+          ev(7, "air", "spike", NOW - 10 * H, cleared=NOW - 4 * H),           # opened before 5, cleared after: reveals sort by clear
+          ev(8, "heat", "sustained", NOW - 12 * H, cleared=NOW - 8 * H)]      # 23:00 UTC on the 4th, 07:00 Bali on the 5th
 MESSAGES = [{"event_id": 1, "ts": NOW - 2 * H, "text": "Hot inside.\n\n👉 Open up now: outside is 29.1 °C.",
              "sent": True, "action_id": "heat/open_up"},
             {"event_id": 1, "ts": NOW - H, "text": "Still hot inside.\n\n👉 Open up now: outside is 28.0 °C.",
@@ -43,10 +44,10 @@ MESSAGES = [{"event_id": 1, "ts": NOW - 2 * H, "text": "Hot inside.\n\n👉 Open
 ANSWERS = [{"event_id": 1, "ts": NOW - 90 * dt.timedelta(minutes=1), "stage": "acknowledged", "actor": "tomas"},
            {"event_id": 2, "ts": NOW - 30 * dt.timedelta(minutes=1), "stage": "acknowledged", "actor": "ana"},
            {"event_id": 5, "ts": NOW - 6 * H, "stage": "acted", "actor": "tomas"}]
-COVERED = {1: [578, 571], 2: [], 3: [], 4: [], 5: [500], 7: [520]}
+COVERED = {1: [578, 571], 2: [], 3: [], 4: [], 5: [500], 7: [520], 8: []}
 CONTEXTS = {1: {"inside_temp": 35.8, "outside_temp": 29.1, "outside_pm25": 12.0, "outside_source": "outside",
                 "usual": 33.4},
-            2: {"inside_pm25": 140.0, "outside_pm25": 12.0, "outside_source": "outside", "usual": 9.0},
+            2: {"inside_pm25": 140.0, "outside_pm25": 12.0, "outside_source": "the forecast model", "usual": 9.0},
             3: {"usual": None}}
 
 
@@ -61,7 +62,7 @@ json.dumps(live)                                            # every value is JSO
 print("  a live row (datetimes) and a captured row (ISO strings) give one block, and it is all JSON")
 
 assert [e["id"] for e in live["open"]] == [2, 1, 3], "danger first, then sustained, then unusual"
-assert [e["id"] for e in live["recent"]] == [7, 5, 4], "cleared in 7 days, newest clear first; older dropped"
+assert [e["id"] for e in live["recent"]] == [7, 5, 8, 4], "cleared in 7 days, newest clear first; older dropped"
 print("  open: danger > sustained > unusual; recent: 7 days, newest clear first")
 
 one = live["open"][1]
@@ -70,6 +71,8 @@ assert one["message"]["text"].startswith("Still hot") and one["message"]["sent"]
 assert one["line"] == 35.0 and one["rooms"] == ["K ROOM", "L ROOM"] and one["alerts"] == [571, 578]
 assert one["context"] == {"usual": 33.4, "outside": 29.1, "outside_metric": "temp", "outside_from": "outside"}
 assert live["open"][0]["context"]["outside"] == 12.0 and live["open"][0]["context"]["outside_metric"] == "pm25"
+assert live["open"][0]["context"]["outside_from"] == "outside", "outside PM2.5 always came from a sensor, whatever outside_source says"
+assert live["open"][2]["context"]["outside"] is None and live["open"][2]["context"]["outside_from"] is None
 assert live["open"][2]["action"] is None and live["open"][2]["message"] is None
 print("  the action is the line as sent; the message is the latest; heat's outside is the air temperature")
 
@@ -81,13 +84,15 @@ assert live["recent"][1]["cleared_after_min"] == 60, live["recent"][1]
 assert "context" not in live["recent"][1]
 print("  Not now holds for 3 h except at danger; a Done followed by a clear says how long it took")
 
-assert live["cleared_today"] == 2 and live["last_cleared"] == {"issue": "air", "ts": (NOW - 4 * H).isoformat()}
+assert live["cleared_today"] == 3 and live["last_cleared"] == {"issue": "air", "ts": (NOW - 4 * H).isoformat()}
+utc = W.build("events", EVENTS, MESSAGES, ANSWERS, COVERED, CONTEXTS, DECL, "en", NOW, UTC)
+assert utc["cleared_today"] == 2, "event 8 cleared on the 4th in UTC: the local day is what counts"
 print("  cleared today counts the node's local day, not UTC's")
 
 assert live["buttons"] == {"done": "Done", "not_now": "Not now", "doesnt_fit": "Doesn't fit"}
 assert W.build("events", [], [], [], {}, {}, DECL, "xx", NOW)["buttons"]["done"] == "Done", "unknown locale: en"
 rules = W.build("rules", EVENTS, MESSAGES, ANSWERS, COVERED, CONTEXTS, DECL, "en", NOW, BALI)
-assert rules["open"] == [] and rules["engine"] == "rules" and len(rules["recent"]) == 3
+assert rules["open"] == [] and rules["engine"] == "rules" and len(rules["recent"]) == 4
 assert W.engine_of("shadow") == "shadow" and W.engine_of("typo") == "rules" and W.engine_of(None) == "rules"
 print("  on rules nothing is open (the engine is not running); a typo behaves as rules")
 
