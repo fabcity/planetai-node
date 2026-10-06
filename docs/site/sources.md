@@ -1,5 +1,5 @@
 # The source registry
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 A node measures what its adapters read. The registry is the network's shared list of what could be measured
 at each pillar and scale, and of the places a person could go to act on it, carried inside every node as a
@@ -158,7 +158,7 @@ A line under the rows links to `GET /sources?status=live`, `GET /sources?status=
 [Adding a source](#adding-a-source). The fold under it lists all sixteen with each licence as the registry
 wrote it. The page fetches `/sources` the first time somebody opens Network, and never before.
 
-> **Gap in v0.77.** The registry counts `core:airgradient` among the sources that are read, and the
+> **Gap in v0.78.** The registry counts `core:airgradient` among the sources that are read, and the
 > AirGradient function exists in `app/sources.py`, but the poll loop never calls it. The registry records
 > that the code exists, not that a node runs it.
 
@@ -202,7 +202,7 @@ neither does this page: that is a judgement about somebody else's terms.
 - **`planetai doctor`.** One row: `source registry: 269 entries · awesome-fabcity-data @ 851b8db · synced
   2026-10-06`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and
-  names the id. At v0.77, 13 pack source ids resolve.
+  names the id. At v0.78, 13 pack source ids resolve.
 
 ## The endpoints
 
@@ -251,7 +251,7 @@ repository.
 > **Note.** "Registry" names two things in this repository. This page is the source registry, `data/sources/`.
 > `registry.json` at the repository root is the node directory, described on [Federation](federation.md).
 
-> **Gap in v0.77.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
+> **Gap in v0.78.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
 > holds 209 entries, and a docstring in `app/registry.py` says sixteen of 225 entries count nowhere. The pin
 > carries 269, and sixteen is right.
 

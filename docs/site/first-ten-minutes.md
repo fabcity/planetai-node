@@ -1,5 +1,5 @@
 # First ten minutes
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer
@@ -137,7 +137,7 @@ real act-level alert from a pack rule about the air or the heat does, and the lo
 
 1. **Read it under Decide.** Decide is the first section under the lead. On a node that still sends alerts, as a
    new node does, it shows a card for each open alert: *what was seen*, the alert's first line, and *what this
-   node suggests*, the rule's own 👉 recommendation. (A node set to `ALERT_ENGINE=events` shows one card for each
+   node suggests*, the rule's own 👉 recommendation. (A node set to `ALERT_ENGINE=events`, or to `shadow`, shows one card for each
    open event instead, with the action it chose and **Done**, **Not now** and **Doesn't fit**; see
    [Dashboard](dashboard.md#decide).) Press **Decide about this**,
    fill in "Who is deciding" and "What will be done" (or press **Take its word**), then **Record the

@@ -1,9 +1,9 @@
 # HTTP API
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
-This page was read from the code at v0.77. Where an older document disagrees, the code wins.
+This page was read from the code at v0.78. Where an older document disagrees, the code wins.
 
 ## Access rules
 
@@ -108,7 +108,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.77.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.78.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 ## Sensors and readings
 
@@ -232,7 +232,7 @@ What surrounds the node's own numbers: other people's stations, the weather fore
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.77 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.78 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -322,10 +322,10 @@ Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_ru
 - `headline` is the key of the issue an open event belongs to; with no open event, the issue with the highest state. Within a state, the tie goes to the issue that has `moved` most, and an exact tie to the declared order. Only an issue that declares a hero can lead. `headline_rule` states that rule in `en`, `id` and `es`, so a page can print why that issue leads.
 - `lead` is `{issue, by}`: the same issue as `headline`, and which step of the rule picked it over the runner-up, one of `event`, `state`, `moved` or `order`. It is `null` when no watched issue declares a hero.
 - `digest` is keyed by stage, `observe`, `decide`, `act` and `measure`, and each stage holds one sentence per locale. `digest.prompts` is the ask pane's questions per locale, written from the bundle: the three it opens with, then up to nine more it rotates through (the other issues, the two newest other open alerts, and each other issue's line), in the same order in every locale. `digest.simple` is one paragraph per locale, three sentences: the house's own stations and the nearest others, the oldest open alert, and how many times the node asked in the last 30 days and how many were answered. The dashboard's simple mode draws `digest.simple`.
-- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance`, `sentence` (keyed by locale), `hero`, `usual` and `usual_absent`. An enabled pack can add rows to `readouts` through `readouts:` in its `pack.yaml`; it adds and never replaces. The full key set is defined in `app/issues/engine.py`.
+- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance`, `sentence` (keyed by locale), `hero`, `usual` and `usual_absent`. On `shadow` and `events` an issue's `state` follows its alert event: `act` while an event is open and unanswered (a danger event stays `act` after an answer), `notable` once somebody answers it and for 24 hours after it clears, with `reason.code` `event_open`, `event_answered` or `event_cleared`; and `open_asks`, which the oldest open alert in `digest` is read from, leaves out the alerts of the packs the engine replaced. An enabled pack can add rows to `readouts` through `readouts:` in its `pack.yaml`; it adds and never replaces. The full key set is defined in `app/issues/engine.py`.
 - `usual` is the issue's usual day at its hero distance: for each local hour 0–23, the mean over that distance's
   sensors of `usual_by_hour`'s median and 90th percentile for the issue's own metric, over the 14 complete days before
-  today. It is `null` when the node cannot say, and `usual_absent` says why: `unread` (a capture from before v0.78, or
+  today. It is `null` when the node cannot say, and `usual_absent` says why: `unread` (a capture from before v0.79, or
   a node that has not refreshed the view since it started), `no_source`, `no_history`, or `not_watched`.
 - Each open event in `events.open` carries `series`: its own rooms, hour by hour on the issue's `buckets`, combined
   as the issue combines its house (air the mean of PM2.5, heat the median of each room's apparent temperature).
@@ -513,7 +513,7 @@ Since v0.73 the row ends with five registry fields, and the same row at pin `851
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.77 the pin is `851b8db`, synced 6 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.78 the pin is `851b8db`, synced 6 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -666,7 +666,7 @@ Access: admin
 
 The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
 
-In v0.77 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+In v0.78 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
 
 ## The ask pane
 

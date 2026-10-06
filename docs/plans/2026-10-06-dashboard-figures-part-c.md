@@ -499,7 +499,7 @@ git commit -m "docs: Grafana, the keeper's view beside the dashboard
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 4: The pull request.** Push and open it against `main`, milestone `v0.78`, label `needs testing`. The
+- [ ] **Step 4: The pull request.** Push and open it against `main`, milestone `v0.79`, label `needs testing`. The
   body says what a keeper gets, that nothing leaves the machine and nothing changes for a household that does not run
   it, and ends with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. Do not merge: Tomas merges.
 

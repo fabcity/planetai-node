@@ -8,6 +8,8 @@
   left out). `GET /issues/days?days=7` (up to 90) gives the
   same hourly series over many days with the hours over the line counted per day, and `planetai snapshot` captures it.
 
+## v0.78 — 2026-10-06 — The dashboard tells the bot's story
+
 - The dashboard opens on what is happening now: each open alert event once, with the action the bot sent and Done,
   Not now and Doesn't fit, then the readings that explain it. Act is the record of what was asked and answered, and
   four sections about resolution and custody moved to Network. A node still on the old engine keeps its alert cards,

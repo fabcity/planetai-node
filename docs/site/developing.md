@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -118,7 +118,7 @@ that has never failed has not been tested.
 
 ## Looking at the page
 
-`python3 tools/shots.py` renders every fixture in Now and on the wall at four widths into
+`python3 tools/shots.py` renders every fixture in Now, on the wall and in Network at four widths into
 `docs/design/shots/`, with every request fulfilled from disk, and fails on a page error, a component that
 drew its guard box, a page that scrolls sideways or a request the fixture path should not have made. It
 needs Chromium from the sibling `planetai-design` checkout (`PLANETAI_DESIGN_REPO`) and is not a gate. The
@@ -139,7 +139,7 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.77 it is `851b8db`,
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.78 it is `851b8db`,
 269 entries, synced 2026-10-06 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 

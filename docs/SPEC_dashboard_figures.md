@@ -7,7 +7,7 @@ hours have to be read off curves, and a station that falls silent for a day disa
 drawings with one figure per issue, adds a strip of hours that reaches back as far as the node holds, keeps silent
 stations on the page, and answers the September question about Grafana by giving it to the keeper, beside the page.
 
-It is page work for **v0.78**, beside `docs/SPEC_dashboard_events.md` §4, and it follows `docs/NEXT_RELEASE.md`
+It is page work for **v0.79**, beside `docs/SPEC_dashboard_events.md` §4, and it follows `docs/NEXT_RELEASE.md`
 item 1b's open question ("Grafana, and which surface it is for").
 
 ## 1. What the page does today (node #1, 6 October 2026, `main` at v0.77, advanced, 1440 px)
@@ -36,7 +36,7 @@ item 1b's open question ("Grafana, and which surface it is for").
 | How it is drawn | **Observable Plot with its D3, vendored** as two static files. Nothing loads from outside the node |
 | Which forms | **the day figure**, with the usual band and the event's rooms inside it, and **the strips**, one row a day and one cell an hour. The clock is a wall drawing and waits for the wall |
 | Borrowed from Bali Air Dispatch | **hours over the line, counted**, and **the archive of silence**: a station that stopped is kept and named |
-| Order | **the server piece first** (§3), **then the page** (§4), in **v0.78**. Grafana (§5) is independent and may go first |
+| Order | **the server piece first** (§3), **then the page** (§4), in **v0.79**. Grafana (§5) is independent and may go first |
 
 The prototypes are in `fabcity/planetai-design`, branch `day-figure-prototype-2026-10-06`, under
 `prototypes/day-figure/`: `index.html` (the day figure and the stations, on node #1's 6 October wire) and
@@ -63,7 +63,7 @@ usual: {
   `usual_by_hour` does not hold (it holds `temp`, `humidity`, `pm25` and `apparent`), or a node whose view is still
   empty after a start. The page then draws no band and says why in the legend.
 - **Replay.** Replay carries each issue's `usual` from the capture's own `/issues`, as it carries the events block;
-  a capture from before v0.78 has none, so `usual` is `null` with `usual_absent: "unread"` rather than the
+  a capture from before v0.79 has none, so `usual` is `null` with `usual_absent: "unread"` rather than the
   `LookupError` the five required tables raise. `usual_absent` is one of `unread`, `no_source`, `no_history` or
   `not_watched`.
 
@@ -267,7 +267,7 @@ as the events PR's are.
 
 ## 7. How it lands
 
-Milestone **v0.78**, three pull requests, each with its `CHANGELOG.md` line and `needs testing`:
+Milestone **v0.79**, three pull requests, each with its `CHANGELOG.md` line and `needs testing`:
 
 1. **The wire** (§3). Server only.
 2. **The page** (§4). After 1, and after `fabcity/planetai-node#176` if it merges first, which touches `dashboard.js`

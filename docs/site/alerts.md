@@ -1,5 +1,5 @@
 # Alerts
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 An alert is the node asking a person to do something. This is the Act stage, which the architecture describes
 as the one that "turns an observation into a human decision", and it is "the only place ρ can be measured".
@@ -143,7 +143,10 @@ no usable action is the story alone. An all-clear carries no action.
 
 An event is answered with three buttons: **Done** (`acted`), **Not now** (`acknowledged`) and **Doesn't fit** (`dismissed`), in `ALERT_LOCALE`. Telegram does not draw them yet;
 `POST /actions` with an `event_id` records one (below). An open event leads `GET /issues`, which carries the events
-as `events`. The page that draws them is not in this release.
+as `events`, and the dashboard draws each open one once in Decide with the three buttons. On a node on `shadow` or `events`, an issue's state follows
+its event: `act` while the event is open and unanswered (and for `danger`, answered or not), `notable` once somebody
+answers it, for the `warn`-level air spike, and for 24 hours after it clears. The old heat and air alerts there
+no longer count as open asks.
 
 ## The two rules the core knows
 

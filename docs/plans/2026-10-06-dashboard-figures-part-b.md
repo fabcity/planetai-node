@@ -731,7 +731,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ```js
     /* The strips and Measure's count (docs/SPEC_dashboard_figures.md §4.3, §4.5). A capture carries the 7 days it was
-       taken with; a node older than v0.78 answers 404, and the strips say so. */
+       taken with; a node older than v0.79 answers 404, and the strips say so. */
     FIXTURE ? Promise.resolve((snapshot && snapshot.issues_days) || null) : api('/issues/days?days=7').catch(() => null),
 ```
 
@@ -954,7 +954,7 @@ function spark(s, v, m, sc, line, id) {
 ```js
 /* The archive of silence (docs/SPEC_dashboard_figures.md §4.4, after Bali Air Dispatch). A station heard in the last
  * 30 days and not in the last day keeps a line here, with when it was last heard; the node has already left out a
- * relay of a kit that still reports. A node older than v0.78 sends no stations_silent, and this says nothing. */
+ * relay of a kit that still reports. A node older than v0.79 sends no stations_silent, and this says nothing. */
 function silentFold(ctx) {
   const st = (ctx.S.issues || {}).stations_silent;
   const gone = ctx.H.silent || [];
@@ -1183,7 +1183,7 @@ so the four card kinds stay four.
 ```bash
 ssh mini 'export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"; cd ~/planetai/planetai-node && planetai snapshot --out /tmp/figures.json'
 scp mini:/tmp/figures.json "app/issues/fixtures/node1-$(date +%Y-%m-%d)-figures.json"
-python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d.get('issues_days') and d['issues'].get('stations_silent'), 'not a v0.78 capture'; print(sorted(d['issues_days']['issues']))" app/issues/fixtures/node1-*-figures.json
+python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert d.get('issues_days') and d['issues'].get('stations_silent'), 'not a v0.79 capture'; print(sorted(d['issues_days']['issues']))" app/issues/fixtures/node1-*-figures.json
 ```
 
   Expected: the declared issues printed. The snapshot already removes the households' notes; read the file's
@@ -1229,12 +1229,12 @@ node /tmp/live-swap.mjs
 
 ```bash
 git add docs CHANGELOG.md tools/build_learn.py app/static/learn.json app/issues/fixtures tests/visual/gate.sh
-git commit -m "docs, learn marks and the visual gate for the day figure and the strips, on a v0.78 capture of node #1
+git commit -m "docs, learn marks and the visual gate for the day figure and the strips, on a v0.79 capture of node #1
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 11: The pull request.** Push and open it against `main`, milestone `v0.78`, label `needs testing`. The
+- [ ] **Step 11: The pull request.** Push and open it against `main`, milestone `v0.79`, label `needs testing`. The
   body says what a household sees, names the spec and the plan, lists the gate's old and new baselines with the
   reason, attaches the two node #1 screenshots from Step 9, and ends with
   `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. If `fabcity/planetai-node#176` (the Singapore

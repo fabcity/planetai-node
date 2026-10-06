@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all
@@ -123,7 +123,7 @@ over: <the same number>}` so the node can later time how long an action took to 
 open alert on the heat issue, and the sentence after 👉 is what the dashboard's Decide card shows as "what
 this node suggests". The cooldown still counts from the `info` alert of step 3, so the first `act` alert
 comes once those 1440 minutes have passed with the room still over the line. Then a 🔴 message reaches
-Telegram if it is connected, the heat issue's state is `act`, and the lead's last line counts the alert
+Telegram if it is connected, the heat issue's state is `act` (on a node on `shadow` or `events` with a heat event open, the event decides it), and the lead's last line counts the alert
 (`1 alert open · in Decide` when it is the only one).
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 

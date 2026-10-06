@@ -1230,7 +1230,7 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     `events` is the block the capture carried in its own /issues, verbatim: the events are rows the node read, not
     arithmetic, and replaying them through compute is what ranks the headline and recomputes uncovered_asks.
 
-    `usual` is each issue's usual day as the capture carried it, verbatim; a capture from before v0.78 has none, and
+    `usual` is each issue's usual day as the capture carried it, verbatim; a capture from before v0.79 has none, and
     the engine's own read of `usual_by_hour` then fails on the Replay and says `unread`.
     """
     now = snapshot.get("as_of")
