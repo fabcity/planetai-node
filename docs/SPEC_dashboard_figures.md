@@ -104,7 +104,7 @@ Listing them as "no longer heard" would tell the household two working kits are 
       line: {value, unit, source} | null
     }
   },
-  events: [ {id, issue, kind, level, opened_at, cleared_at} ]   // alert_events opened in the window
+  events: [ {id, issue, kind, level, opened_at, cleared_at} ]   // alert_events opened in the window or still open
 }
 ```
 
