@@ -1046,8 +1046,6 @@ svg.net .halo { transform-origin: 675px 180px; animation: nethalo var(--motion-r
 .silentfold .row.silent { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 6px 0;
   border-bottom: 1px solid var(--hair); color: var(--mute) }
 .silentfold .said { font: 500 12px var(--mono) }
-.row.station .pic svg.spark { display: block; width: 240px; max-width: 100%; height: auto }
-.row.station .pic svg.spark text { font: 500 8px var(--mono); fill: var(--mute); letter-spacing: .04em }
 .row.station .qty { justify-self: end; align-items: baseline }
 .row.station .qty .num { font-size: 20px }
 .row.station .qty small { font: 500 11px var(--mono); color: var(--mute); margin-left: 4px }

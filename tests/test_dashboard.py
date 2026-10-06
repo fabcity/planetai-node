@@ -1354,6 +1354,25 @@ console.log(JSON.stringify({
     assert "No hourly record of" in _cards["coast"], _cards["coast"]
     assert _cards["trimHead"] == "Air · house · 2 days, from Mon, 05 Oct, the first this node recorded", _cards["trimHead"]
 
+# THE FOLD OF STOPPED STATIONS survives a row it cannot date. dayAt/hhmmAt call toISOString(), which throws a
+# RangeError on an invalid date; one station with no last_heard took down the whole stations section.
+if shutil.which("node"):
+    _sf = _node("\n".join((
+        re.search(r"const esc = s => .*?\[c\]\)\);", _js, re.S).group(0),
+        re.search(r"const offsetOf = iso => \{.*?\n\};", _js, re.S).group(0),
+        re.search(r"const hhmmAt = \(ms, off\) => [^\n]*;", _js).group(0),
+        re.search(r"const dayAt = \(ms, off\) => [^\n]*;", _js).group(0),
+        re.search(r"function silentFold\(ctx\) \{.*?\n\}", _js, re.S).group(0),
+        """const row = (id, lh) => ({ sensor_id: id, name: 'Station ' + id, km: 3.2, indoor: false, source: 'src', last_heard: lh });
+const ctx = { S: { issues: { stations_silent: { read: true, within_days: 30 } } },
+  H: { silent: [row('a', '2026-10-01T07:30:00+08:00'), row('b', null)] },
+  ISS: { air: { buckets: ['2026-10-06T07:00:00+08:00'] } }, ORDER: ['air'] };
+let html = '', err = null;
+try { html = silentFold(ctx); } catch (e) { err = String(e); }
+console.log(JSON.stringify({ html, err }));""")))
+    assert _sf["err"] is None, f"silentFold threw on a row with no last_heard: {_sf['err']}"
+    assert "not known" in _sf["html"] and "2026-10-01" in _sf["html"], _sf["html"]
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")

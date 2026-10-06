@@ -3182,12 +3182,13 @@ function silentFold(ctx) {
   return `<details class="silentfold" id="sensors-silent" data-component="silentStations" data-ref="sensors-list">`
     + `<summary><b data-num="sensors.silent" data-cmp="stations heard in the last ${esc(String(st.within_days))} days `
     + `and not in the last day">${gone.length}</b> no longer heard</summary>`
-    + gone.map(s => `<p class="row silent" data-kind="row" data-component="silentStation" id="st-gone-${esc(s.sensor_id)}"`
+    + gone.map(s => { const lh = Date.parse(s.last_heard);
+      return `<p class="row silent" data-kind="row" data-component="silentStation" id="st-gone-${esc(s.sensor_id)}"`
       + ` data-ref="sensors-silent"><span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">`
       + `${s.km == null ? 'distance unknown' : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'} · `
       + `${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.source)}</a>` : esc(s.source)}`
-      + `</span></span><span class="said">last heard ${esc(dayAt(Date.parse(s.last_heard), off))} `
-      + `${esc(hhmmAt(Date.parse(s.last_heard), off))}</span></p>`).join('')
+      + `</span></span><span class="said">${Number.isFinite(lh)
+        ? `last heard ${esc(dayAt(lh, off))} ${esc(hhmmAt(lh, off))}` : 'last heard: not known'}</span></p>`; }).join('')
     + `</details>`;
 }
 
