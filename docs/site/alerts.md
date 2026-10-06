@@ -80,8 +80,8 @@ anyone over a few hours.
 often it is not.
 ```
 
-The 👉 paragraph is the rule author's recommendation. Since v0.72 the dashboard also draws it on its own under
-Decide, in *What to do about it*, as "what this node suggests". A rule without one gets a line saying so, and the
+The 👉 paragraph is the rule author's recommendation. Since v0.72 the dashboard also draws it on its own on the alert
+card in Decide, as "what this node suggests"; that card is what a node on `ALERT_ENGINE=rules` shows. A rule without one gets a line saying so, and the
 page does not invent advice.
 
 An act alert says what to do and asks for nothing back: since v0.39 no id is appended, because a number a
@@ -221,8 +221,10 @@ where an alert's id comes from. `GET /actions` lists every answer with its stage
 only a token or the machine itself, because a note is a household's own words about its own house. `GET /issues`
 carries the alert events as `events` (what is open, the action it sent, its latest answer, and the alerts it covers),
 and `GET /actions?events=1` lists the answers given to events with their `event_id`; without `events=1` a row with
-no `alert_id` is left out. `planetai status` shows the last three alerts and ρ. On the dashboard, *The alerts this node has sent* draws the alerts with
-their state and *What was decided, and by whom* is the ledger of answers. The report's fourth part says what
+no `alert_id` is left out. `planetai status` shows the last three alerts and ρ. On the dashboard, Decide draws each
+open event once, with its action and Done, Not now and Doesn't fit, and each open alert on a node still on the old
+engine; *What was asked, and what was answered* is the record of what was sent and answered, and *What was decided,
+and by whom* is the ledger of answers. The report's fourth part says what
 happened after the window's act alerts.
 
 ## Where this leads

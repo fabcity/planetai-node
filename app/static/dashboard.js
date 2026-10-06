@@ -674,8 +674,8 @@ function ask(key, d, ref) {
     + didButton(a.id) + `</div>`;
 }
 
-/* The one button the page offers on an open alert, and the form it opens. Shared by the ask strip in
- * Act and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
+/* The one button the page offers on an open alert, and the form it opens. Shared by Decide's alert cards
+ * and the ask row simple mode draws in the lead, so both write to the ledger the same way. */
 const didButton = id =>
   `<button type="button" class="go" data-did="${esc(String(id))}">I did this</button>`
   + `<form class="did" hidden data-alert="${esc(String(id))}">`
@@ -688,7 +688,7 @@ const didButton = id =>
 
 /* SIMPLE MODE'S ASK ROW: the third of the three questions, is there something to do, answered in the
  * lead. The sign of the issue it belongs to, the alert's first line, its id, and the button. Act-level
- * only, because `open_asks` is act-level by construction. Advanced keeps the strip in Act. */
+ * only, because `open_asks` is act-level by construction. Advanced has no strip: Decide draws the cards. */
 function askRow(key, d, a) {
   const h = d.hero || {};
   return `<div class="ask askrow" data-lv="simple" data-component="askRow" data-role="ask"`
@@ -872,7 +872,10 @@ const VIEW_NAMES = new Set(['now', 'historical', 'network', 'wall', 'arrange', '
 function readView() {
   const q = new URLSearchParams(location.search);
   const h = (location.hash || '').replace(/^#/, '');
-  VIEW = (VIEW_NAMES.has(h) ? h : '') || q.get('view') || 'now';
+  /* A hash that names no view is an anchor on THIS page, so with no ?view= it keeps the view the
+     reader is on (the header's nav wrote #network; `#grain` must not send them to Now). Only a first
+     load, where VIEW is still its initial 'now', or an empty hash, falls through to 'now'. */
+  VIEW = VIEW_NAMES.has(h) ? h : (q.get('view') || (h && VIEW ? VIEW : 'now'));
   STATE = q.get('state') || 'populated';
   if (window.K) Object.assign(window.K, { VIEW, STATE });
 }
@@ -932,9 +935,105 @@ const interp = (str, vals) => String(str || '')
    keeps those (node #1: `indoor_pm25_high`), and every section that names a rule's pack reads it here. */
 const rulePack = id => { const s = String(id); return s.includes('/') ? s.split('/')[0] : ''; };
 
+/* ALERT EVENTS (docs/SPEC_dashboard_events.md §4.2). One per issue per house, the way the bot tells them:
+ * the node chose the action and wrote the message, and this draws them. Which of five states Decide is in is
+ * the first thing every caller needs, and the five are different facts (spec §5). */
+function evState() {
+  const e = (S.issues || {}).events;
+  if (e == null) return 'old';
+  if (e.error) return 'error';
+  return e.engine === 'shadow' || e.engine === 'events' ? e.engine : 'rules';
+}
+const evOpen = () => (((S.issues || {}).events || {}).open || []);
+/* The event simple mode's row is about: the shown issue's, else the first open one. */
+const evPick = (evs, hk) => evs.find(e => e.issue === hk) || evs[0];
+/* The button word an answer's stage stands for, in the node's own labels (events.buttons). The same three
+   the buttons wear, so an answer reads as the button that wrote it. */
+function evWord(stage) {
+  const B = ((S.issues || {}).events || {}).buttons || {};
+  return stage === 'acted' ? B.done || 'Done' : stage === 'dismissed' ? B.doesnt_fit || 'Doesn’t fit'
+    : B.not_now || 'Not now';
+}
+function evClock(iso) {
+  const t = new Date(iso);
+  if (isNaN(t)) return '';
+  const tz = S.health && S.health.tz;
+  if (tz) {
+    try {
+      return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit',
+        hour12: false }).format(t);
+    } catch { /* a zone this browser does not know: say UTC */ }
+  }
+  return `${String(t.getUTCHours()).padStart(2, '0')}:${String(t.getUTCMinutes()).padStart(2, '0')} UTC`;
+}
+function evButtons(e) {
+  const B = ((S.issues || {}).events || {}).buttons || {};
+  const id = esc(String(e.id));
+  return `<div class="evbtns">`
+    + `<button type="button" class="evb pri" data-ev="${id}" data-stage="acted">${esc(B.done || 'Done')}</button>`
+    + `<button type="button" class="evb" data-ev="${id}" data-stage="acknowledged">${esc(B.not_now || 'Not now')}</button>`
+    + `<button type="button" class="evb" data-ev="${id}" data-stage="dismissed">${esc(B.doesnt_fit || 'Doesn’t fit')}</button>`
+    + `</div>`
+    + `<form class="evform" hidden data-ev="${id}"><input type="hidden" name="stage">`
+    + `<label><span>Who</span><input name="actor" maxlength="80" autocomplete="name" placeholder="your name"></label>`
+    + `<label class="instead"><span>What did you do instead?</span><input name="note" maxlength="500"`
+    + ` placeholder="optional"></label>`
+    + `<div class="btns"><button type="submit" class="pri">Record it</button>`
+    + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
+}
+/* The line an answered event wears: who pressed which button, when, and until when a Not now holds. Empty
+   before an answer. Decide's card and simple mode's row both draw it. */
+function evAnswered(e) {
+  const a = e.answer, done = a && a.stage === 'acted';
+  return !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
+    + `${done ? sign('rho-closed', 'closed') : ''}${esc(evWord(a.stage))} · ${esc(a.actor || 'somebody')}`
+    + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
+      + ` unless it reaches danger` : ''}</p>`;
+}
+/* `tail` is drawn inside the card, last: Decide puts the folded rule rows there (spec §4.2). */
+function evCard(e, tail = '') {
+  const d = ISS[e.issue] || { name: {} }, h = d.hero || {}, dp = d.dp == null ? 1 : d.dp, unit = d.unit || '';
+  const st = evState(), c = e.context || {}, a = e.answer;
+  const n = v => (v == null ? null : fmt(v, dp));
+  const out = c.outside == null ? null : `outside ${n(c.outside)}`
+    + (c.outside_metric === 'temp' && d.metric !== 'temp' ? ' (air temperature)' : '')
+    + (c.outside_from ? `, from ${c.outside_from}` : '');
+  const cmp = [c.usual == null ? 'no usual for this hour yet' : `usual at this hour ${n(c.usual)}`,
+    out || 'no outside reading', e.line == null ? 'no line' : `the line ${n(e.line)}`].join(' · ');
+  const worse = e.line != null && e.peak != null && e.peak > e.line;
+  const m = e.message;
+  const said = !m ? '' : `<p class="evmsg"><span class="m">${st === 'shadow' ? 'would have sent'
+    : m.sent ? 'sent' : 'held'} ${esc(evClock(m.ts))}</span><span class="said">${esc(m.text || '')}</span></p>`;
+  const done = a && a.stage === 'acted', answered = evAnswered(e);
+  const rows = (e.alerts || []).length;
+  /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run, and
+     Arrange may have hidden any of them. */
+  const drawn = id => window.PAI.sections.some(s => s.id === id && (s.needs || []).every(window.PAI.has))
+    && !(window.PAI.isHidden && window.PAI.isHidden(id));
+  const links = [drawn('matrix') && `<a href="#matrix">${esc(d.name[LOC] || e.issue)} at every distance</a>`,
+    drawn('day') && `<a href="#day">the day</a>`, drawn('sensors') && `<a href="#sensors">the stations</a>`,
+    rows && `<a href="#evrows-${esc(String(e.id))}">from ${rows} rule row${rows === 1 ? '' : 's'}</a>`]
+    .filter(Boolean);
+  return `<section class="ev${a && a.stage === 'acknowledged' ? ' held' : ''}" id="ev-${esc(String(e.id))}"`
+    + ` data-kind="readout" data-component="event" data-role="ask" data-ref="decide">`
+    + `<div class="evhead">${h.sign ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="`
+      + `${esc(d.name[LOC] || e.issue)}"><use href="static/signs.svg#${esc(h.sign)}"/></svg>` : ''}`
+    + `<b>${esc(d.name[LOC] || e.issue)}</b> · ${esc(e.kind)} · since ${esc(evClock(e.opened_at))}`
+    + `${(e.rooms || []).length ? ` · ${esc(e.rooms.join(', '))}` : ''}`
+    + `${st === 'shadow' ? `<span class="m">shadow — nothing was sent</span>` : ''}</div>`
+    + `<p class="evcmp"><span class="evnum${worse ? ' worse' : ''}" data-num="ev.${esc(String(e.id))}.peak"`
+    + ` data-cmp="${esc(cmp)}">${esc(n(e.peak))}</span> ${esc(unit)} peak <small>${esc(cmp)}</small></p>`
+    + (e.action && e.action.text ? `<p class="evact said">${esc(e.action.text)}</p>`
+      : `<p class="evact none">The node chose no action for this event, and this page will not invent one.</p>`)
+    + answered + (done ? '' : evButtons(e)) + said
+    + (links.length ? `<p class="evlinks">evidence: ${links.join(' · ')}</p>` : '')
+    + tail + `</section>`;
+}
+
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
-  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE };
+  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
+  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -1539,7 +1638,7 @@ PAI_LOAD.push(function () {
 
 const STAGES = [
   ['observe', 'Observe', 'what is read, seen and heard about this place'],
-  ['decide', 'Decide', 'what may be said about it, and at what resolution'],
+  ['decide', 'Decide', 'what to do about it'],
   ['act', 'Act', 'what has been asked, of whom'],
   ['measure', 'Measure', 'whether it worked, and how long it took'],
 ];
@@ -1754,17 +1853,21 @@ function render(ctx, lead, opts = {}) {
      the foot then lists the sections on the view a reader is actually on. */
   const keep = opts.only ? new Set(opts.only) : null;
   const simple = (window.PAI_MODE ? window.PAI_MODE() : 'advanced') === 'simple';
+  /* The order the stages are DRAWN in. The loop runs observe, decide, act, measure and the mark in each
+     head still says so; Now and Arrange put Decide first, because what asks for a person is read first. */
+  const drawn = opts.stages || STAGES.map(s => s[0]);
+  const at = st => drawn.indexOf(st) < 0 ? drawn.length : drawn.indexOf(st);
   const ordered = sections.concat(declared(ctx)).filter(s => (!keep || keep.has(s.id))
     && (!simple || s.level === 'simple')).slice().sort((a, b) =>
-    STAGE_INDEX[a.stage] - STAGE_INDEX[b.stage] || a.order - b.order || a.id.localeCompare(b.id));
+    at(a.stage) - at(b.stage) || a.order - b.order || a.id.localeCompare(b.id));
   /* Simple on Now is the three questions and nothing else: no sections, no stage names, no notes. */
   if (simple && onNow) return (lead || '') + simpleTail(ctx);
   let html = (lead || '') + (simple && onNow ? digest(ctx) : '');
-  for (const [key, name, what] of STAGES) {
+  for (const [key, name, what] of drawn.map(k => STAGES[STAGE_INDEX[k]]).filter(Boolean)) {
     const mine = ordered.filter(s => s.stage === key);
     if (!mine.length) continue;
     html += `<div class="stage" id="stage-${key}" data-stage="${key}">`
-      + `<div class="stagehead"><span class="n">${STAGE_INDEX[key] + 1}</span>`
+      + `<div class="stagehead">`
       + `<h2>${esc(name)}</h2><span class="what">${esc(what)}</span>`
       + `<span class="loop" aria-hidden="true">${STAGES.map(([k]) =>
         `<i class="${k === key ? 'on' : ''}"></i>`).join('')}</span>`
@@ -2174,7 +2277,7 @@ function lead(ctx) {
  * a count of requests and the name of the machine that receives them. */
 function render(ctx) {
   if (!sited()) {
-    return `<p class="note" data-component="groundOut" id="ground-out-plan" data-ref="ground-figure">`
+    return `<p class="note" data-component="groundOut" id="ground-out-plan" data-ref="requests-node">`
       + `Nothing is being fetched for a map, because there is no place to fetch one for. A sited `
       + `node draws its own plan from this machine's disk and sends nothing; live tiles, if a keeper `
       + `turns them on, send one request per tile to somebody else's machine.</p>`;
@@ -2186,7 +2289,7 @@ function render(ctx) {
   const live = (k, verb) => {
     const f = frame(res, SIZE, k), B = BASES[k];
     return row({
-      id: `ground-out-${k}`, component: 'groundOut', ref: 'ground-figure', cols,
+      id: `ground-out-${k}`, component: 'groundOut', ref: 'requests-node', cols,
       left: who(B.host, `${B.name} · zoom ${f.z}`),
       line: `${verb} one request per tile to ${B.host}, from the device this page is open on. Each `
         + `names a square of ground ${edge(f.tile_m)} wide, so the server learns which `
@@ -2196,7 +2299,7 @@ function render(ctx) {
     });
   };
   const plan = row({
-    id: 'ground-out-plan', component: 'groundOut', ref: 'ground-figure', cols,
+    id: 'ground-out-plan', component: 'groundOut', ref: 'requests-node', cols,
     left: who('this node', 'plan, offline'),
     line: 'Every shape is on this machine’s disk, fetched once by the place pack. Opening the page '
       + 'asks nothing of anybody.',
@@ -2314,8 +2417,8 @@ window.PAI.register({
     const cols = 'minmax(0,210px) minmax(0,1fr) auto';
     const who = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
     return render(ctx)
-      + `<div class="reads" id="requests-node" data-ref="ground-figure">`
-      + row({ id: 'requests-poll', component: 'requestsPoll', ref: 'ground-figure', cols,
+      + `<div class="reads" id="requests-node" data-ref="requests">`
+      + row({ id: 'requests-poll', component: 'requestsPoll', ref: 'requests-node', cols,
         left: who('this node', 'polling, with nobody watching'),
         line: `The node fetches on its own cycle whether or not this page is open, which is how `
           + `there is a day to draw when you arrive. That reaching is the node's, not yours, and it `
@@ -2324,7 +2427,7 @@ window.PAI.register({
           value: `${h.polls == null ? '—' : h.polls} poll${h.polls === 1 ? '' : 's'}`,
           cmp: `${h.ingested == null ? 'an unknown number of' : h.ingested} readings taken in` }] })
       + (upstream.length ? row({ id: 'requests-upstream', component: 'requestsUp',
-        ref: 'ground-figure', cols,
+        ref: 'requests-node', cols,
         left: who('whose machines', 'named by the rows they wrote'),
         line: upstream.join(' · '),
         qty: [{ num: 'requests.upstream', value: String(upstream.length),
@@ -2609,11 +2712,11 @@ window.PAI.register({
     const pick = m => land.find(r => r.metric === m);
     const built = pick('built_frac'), trees = pick('tree_frac');
     const plan = window.PLAN;
-    const R = o => row({ ...o, ref: 'registry-rows', component: 'unitRow',
+    const R = o => row({ ...o, ref: 'sources-rows', component: 'unitRow',
       cols: 'minmax(0,210px) minmax(0,1fr) auto' });
     const lab = (b, m) => `<span class="who"><b>${esc(b)}</b><span class="m">${esc(m)}</span></span>`;
 
-    let html = `<div class="reads units" id="registry-rows" data-ref="matrix-grid">`
+    let html = `<div class="reads units" id="sources-rows" data-ref="sources">`
       + R({ id: 'src-own', left: lab('This house\u2019s own', 'one sign, one station'),
         signs: many('sensor', own),
         qty: [{ num: 'sources.own', value: String(own),
@@ -2645,14 +2748,14 @@ window.PAI.register({
         signs: many('house', Math.round(plan.counts.buildings / 250)),
         qty: [{ num: 'sources.houses', value: String(plan.counts.buildings),
           cmp: `buildings on the plan within this kilometre, drawn one sign per 250` }] })
-      : `<p class="note" id="src-houses" data-ref="registry-rows">The buildings on this kilometre `
+      : `<p class="note" id="src-houses" data-ref="sources-rows">The buildings on this kilometre `
         + `are on the plan, and the plan needs a token at every share level. Without one this row `
         + `is absent rather than guessed.</p>`;
     return html + `</div>`;
   },
   notes() {
     return [
-      { id: 'registry-rows', label: 'More is more signs',
+      { id: 'sources-more-signs', label: 'More is more signs',
         text: 'More is more signs, never a bigger sign. A row you can count is '
         + 'a measurement; a bar you have to read off an axis is a picture of one. Three units are '
         + 'mixed here and each row says which it is: a station is one sign because you could point '
@@ -4042,7 +4145,7 @@ function claimCard(ctx, c) {
   const mine = H.claims[H.claims.length - 1];
   const bars = Object.entries(c.drawn.by_res).sort((a, b) => a[0] - b[0]);
   const total = bars.reduce((a, [, v]) => a + v, 0);
-  return `<section class="claim" id="claim-${esc(c.key)}" data-component="claim" data-ref="rail">`
+  return `<section class="claim" id="claim-${esc(c.key)}" data-component="claim" data-ref="claims">`
     + `<div><h3>${esc(c.name)}</h3>`
     + `<p class="what">${esc(c.what)}</p>`
     + `<div class="facts">`
@@ -4167,7 +4270,7 @@ function table(ctx) {
      cannot be focused cannot be scrolled from a keyboard — the finding that put tabindex on the
      page before this one, re-made here. */
   return `<div class="tblwrap" tabindex="0" role="region" aria-label="all eleven rungs">`
-    + `<table class="tbl" id="grain-table" data-component="grainTable" data-ref="rail">`
+    + `<table class="tbl" id="grain-table" data-component="grainTable" data-ref="grain-line">`
     + `<thead><tr><th>resolution</th><th>one cell</th><th>edge</th>`
     + `<th>cells the ${H.sensors.length} stations fall in</th><th>in this node's own cell</th>`
     + `<th></th></tr></thead><tbody>`
@@ -4217,13 +4320,13 @@ function flatRun(H) {
  * lead carrying a monument numeral and four meters, it was six blocks deep and pushing the as-of
  * line off the first screen on a phone. T1's fifth leg, for a paragraph that was in the wrong stage.
  *
- * It keeps its id. The rail points at `grain-line` as the sentence a press re-derives, and Decide is
- * on the same page as the rail, so the arm still lands. */
+ * It keeps its id. It moved to Network with its section in v0.78, and the rail, which stays on Now, points
+ * at the ground figure instead (the arm that named `grain-line` would land nowhere on Now). */
 function grainLine(ctx) {
   const G = ctx.grain, t = H.grain_table || [], finest = t.length ? t[t.length - 1] : null;
   const n = (H.sensors || []).length;
   if (!window.KH.sited()) {
-    return `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="rail">`
+    return `<p class="why grainline" id="grain-line" data-component="grainLine" data-ref="grain">`
       + `At resolution ${ctx.RES} one cell is ${esc(km2(G.area_m2))}. Which cell this node stands in `
       + `is not known: it has no NODE_LAT/NODE_LON, so none of its ${n} stations has a cell yet and `
       + `the counts that would go here would be counts about open water.</p>`;
@@ -4234,7 +4337,7 @@ function grainLine(ctx) {
    * one thing the rail exists to let them do. The sentence is not lost: it is the comparison, which
    * is where a readout keeps the words that qualify its figure. */
   return readout({
-    id: 'grain-line', component: 'grainLine', ref: 'rail',
+    id: 'grain-line', component: 'grainLine', ref: 'grain',
     title: `occupied cells at resolution ${ctx.RES}`,
     num: 'grain.occupied',
     /* "of N stations" and not "of every station this node reads": H.sensors is what /issues
@@ -4379,7 +4482,7 @@ window.PAI.register({
     const flat = flatRun(H);
     const rows = (H.grain_table || []).length;
     const finding = flat.length
-      ? `<p class="honest" id="flat-run" data-component="finding" data-ref="rail">Resolutions `
+      ? `<p class="honest" id="flat-run" data-component="finding" data-ref="grain-line">Resolutions `
         + `${flat[0].res} to ${flat[flat.length - 1].res} are one row repeated ${flat.length} times. `
         + `Each is seven times finer than the one above it — `
         + `<span data-num="grain.flat.ratio" data-cmp="the area ratio across ${flat.length - 1} steps `
@@ -4389,7 +4492,7 @@ window.PAI.register({
       /* No flat run is not a failure and not a blank: it is a different node, and the table below is
          still worth reading. The two cases are named apart because they mean opposite things —
          nothing to file, against a grain that is still earning its precision at the finest stop. */
-      : `<p class="honest" id="flat-run" data-component="finding" data-ref="rail">`
+      : `<p class="honest" id="flat-run" data-component="finding" data-ref="grain-line">`
         + (H.sensors && H.sensors.length
           ? `On this node on this day the count of occupied cells is still changing at the finest `
             + `resolution in the table, so there is no flat run to report: every rung of the ladder is `
@@ -4440,13 +4543,13 @@ window.PAI.register({
  * not. This section is the ledger of that — the open ask, the asks sent in the window, and the
  * funnel they went down — so that "act" is a thing on the page and not a verb in a slogan.
  *
- * The green button is the one control on the page that is not the dial, and it is drawn where the
- * kit draws it: in the ask strip, never anywhere else.
+ * The strip that used to sit above this is gone: the buttons are on Decide now, and this section is
+ * only the record of what was asked and what was answered (docs/SPEC_dashboard_events.md §4.3).
  */
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, pill, row, ask, sign, rulePack } = window.K;
+const { esc, fmt, age, pill, row, sign, rulePack, evState, evClock, evWord } = window.K;
 
 /* The alerts in the fixture that asked for something, most recent first. `level: act` is the rule
  * saying a person should do something; `info` and `warn` said something and asked nothing. They
@@ -4484,6 +4587,23 @@ function ringsFor(list, open) {
     out += sign(i < full ? 'rho-closed' : 'rho-open', i < full ? 'closed' : '');
   }
   return { html: out, closed, total, unit: UNIT };
+}
+
+/* THE EVENTS ACT RECORDS: the node's open and recent ones, newest opened first. `recent` is sorted by clear
+ * and `open` by seriousness, so neither order is the one a record reads in. An id in both is drawn once. */
+function evLog(E) {
+  const seen = new Set();
+  return [...(E.open || []), ...(E.recent || [])].filter(e => !seen.has(e.id) && seen.add(e.id))
+    .sort((a, b) => String(b.opened_at).localeCompare(String(a.opened_at)));
+}
+/* What was answered, in the button's word. `cleared_after_min` is the node's number, and only a Done that
+ * was followed by a clear carries it, so it is said only then. */
+function evAnswerText(e) {
+  const a = e.answer;
+  if (!a) return 'no answer';
+  return a.stage !== 'acted' ? evWord(a.stage)
+    : `${evWord(a.stage)} \u00b7 ${a.actor || 'somebody'}`
+      + (e.cleared_after_min == null ? '' : ` \u00b7 cleared ${Math.round(e.cleared_after_min)} min after`);
 }
 
 /* WHERE TO GO, under the ask it answers.
@@ -4566,14 +4686,14 @@ window.PAI.register({
   id: 'asks', pack: 'core', stage: 'act', order: 10, learn: ['levels', 'current'],
   reads: ['/issues', '/rho', '/sensors', '/settings', '/stats'],
   /* `workshop` is drawn by whereToGo() on the row it explains, not in the kicker. */
-  title: 'The alerts this node has sent',
+  title: 'What was asked, and what was answered',
   /* PORTED: the prototype also needed SNAP.funnel, which was one of its three synthetic
      contributions — no endpoint on this node computes a stage split or the 2x2. The ledger is the
      node's own (GET /issues publishes `asks`), so the section stands on that and draws the funnel
      only where there is one. */
   needs: ['H3.asks'],
   render(ctx) {
-    const S = ctx.S, ISS = ctx.ISS;
+    const S = ctx.S, ISS = ctx.ISS, st = evState(), E = S.issues.events || {};
     const acts = ACTS();
     const open = OPEN_IDS();
     const byRule = {};
@@ -4581,16 +4701,11 @@ window.PAI.register({
     const rules = Object.entries(byRule).sort((a, b) => b[1].length - a[1].length);
     const captured = Date.parse(S.base.captured_utc);
     /* ONE COLUMN, FULL WIDTH. This was a `two-up` with a single child, so the grid reserved half the
-       band for a second column that no branch of this render ever fills — the ask cards and every
-       rule row were squeezed into the left half and the right half of Act was white from the strip
-       to the foot. `two-up` is for the sections that genuinely draw two things (Measure's rows
-       beside its series, the radio's map beside its rows); Act draws one list. */
-    return `<div>`
-      + ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length).map(k => ask(k, ISS[k], 'asks-rows')).join('')
-      + (ctx.ORDER.some(k => ISS[k] && (ISS[k].open_asks || []).length) ? ''
-        : ask(S.issues.headline, ISS[S.issues.headline], 'asks-rows'))
-      + `<div class="reads" id="asks-rows" data-ref="funnel">`
-      + rules.map(([rule, list]) => {
+       band for a second column that no branch of this render ever fills — every rule row was squeezed
+       into the left half and the right half of Act was white. `two-up` is for the sections that
+       genuinely draw two things; Act draws one list. THE STRIP IS GONE from every node: Decide holds the
+       buttons now (spec §4.3), and this is the record of what was asked and answered. */
+    const byRuleRows = () => rules.map(([rule, list]) => {
         /* A rule id is `pack/rule` today, but a node's ledger keeps alerts from before packs named their
            rules (node #1: `indoor_pm25_high`, `inside_worse_ventilate`), and splitting those left the rule
            undefined, which threw and took the whole section down on 28 Sep 2026. */
@@ -4617,7 +4732,47 @@ window.PAI.register({
               + `outcome was measured, never merely by being seen`
               + `${r.unit > 1 ? ` \u00b7 one ring per ${r.unit}` : ''}` }],
         });
-      }).join('')
+      }).join('');
+    /* ONE ROW AN EVENT, newest first, and the rings above them: closed when the event has an answer. The
+       seven days are all the wire carries, so there is no fold. */
+    const eventRows = () => {
+      const log = evLog(E);
+      if (!log.length) {
+        return `<p class="note" id="asks-none" data-component="absent" data-ref="asks-rows">No event in the `
+          + `last 7 days: nothing was asked, and nothing needed asking.</p>`;
+      }
+      const unanswered = new Set(log.filter(e => !e.answer).map(e => e.id));
+      const r = ringsFor(log, unanswered);
+      const head = row({ id: 'asks-events', component: 'askEvents', ref: 'asks-rows', cols: 'minmax(0,1fr)',
+        left: `<span class="who"><span><span data-num="asks.events.n" data-cmp="alert events this node opened `
+          + `in the last 7 days, open or cleared">${log.length}</span> event${log.length === 1 ? '' : 's'} in 7 `
+          + `days \u00b7 <span data-num="asks.events.answered" data-cmp="of ${log.length}: events somebody `
+          + `answered with Done, Not now or Doesn\u2019t fit">${r.closed}</span> answered</span></span>`,
+        signs: r.html });
+      return head + log.map(e => {
+        const d = ISS[e.issue] || { name: {} };
+        const key = esc(String(e.id));
+        const mins = Math.round((captured - Date.parse(e.opened_at)) / 60000);
+        return row({ id: `ask-ev-${key}`, component: 'askEvent', ref: 'asks-rows',
+          cls: e.answer && e.answer.stage === 'acted' ? '' : 'quiet',
+          cols: 'minmax(0,170px) minmax(0,1fr) auto',
+          left: `<span class="who"><b>${esc(d.name[ctx.LOC] || e.issue)}</b>`
+            + `<span class="m">${esc(e.kind)} \u00b7 ${esc(age(mins))}</span></span>`,
+          line: `${evClock(e.opened_at)}\u2013${e.cleared_at ? evClock(e.cleared_at) : 'open'}`
+            + `${(e.rooms || []).length ? ` \u00b7 ${e.rooms.join(', ')}` : ''}`
+            /* The action is a sentence, so it rides the wrapping middle column: `qty` does not wrap. */
+            + ` \u00b7 \u201c${e.action && e.action.text ? e.action.text : 'no action chosen'}\u201d`,
+          qty: [{ num: `ev.${key}.answer`, value: evAnswerText(e),
+            cmp: 'the answer a person gave, in the button\u2019s word; the clear time is the node\u2019s own' }] });
+      }).join('');
+    };
+    const events = st === 'events' || st === 'shadow';
+    return `<div>`
+      + `<div class="reads" id="asks-rows" data-ref="funnel">`
+      + (events ? eventRows()
+        /* `error` says what the node said (spec §5), escaped; `rules` and `old` say the one sentence. */
+        : `<p class="note" id="asks-engine" data-component="absent" data-ref="asks-rows">`
+          + (st === 'error' ? esc(E.error) : 'This node sends alerts, not events.') + `</p>` + byRuleRows())
       + whereToGo()
       + capacity()
       + `</div>`
@@ -4644,14 +4799,16 @@ window.PAI.register({
         text: 'An alert is a rule crossing a line and the node saying so to a '
         + 'person, on Telegram. It is the only thing on this page that is addressed to somebody; '
         + 'everything else is addressed to nobody in particular. "Nothing has been asked" and '
-        + '"nothing to do" are two different sentences, and the alert strip says which one is true.' },
-      { id: 'asks-rows', label: 'One ring, one alert',
-        text: 'One ring an alert, closed first. An alert closes when somebody acted '
-        + 'or the outcome was measured \u2014 being seen is not closing it, which is the node\u2019s rule '
-        + 'and not this page\u2019s: the page reads which alerts are still open from the node\u2019s own '
-        + 'answer rather than keeping a copy of the rule that decides it. A rule that has asked '
-        + 'more times than a person can count gets a coarser unit and says which, and the figure '
-        + 'beside the strip is always exact.' },
+        + '"nothing to do" are two different sentences, and Act says which one is true: a row for every event '
+        + 'that was asked, or the sentence that there was none.' },
+      { id: 'asks-rows', label: 'One ring, one event',
+        text: 'On a node that tells events, one ring an event, closed when somebody answered it with Done, '
+        + 'Not now or Doesn\u2019t fit, and a row under them for each of the last seven days\u2019 events: '
+        + 'what the node asked for, in its own words, and the answer. \u201cCleared 40 min after\u201d is '
+        + 'the node\u2019s own number, and appears only on a Done that a clear followed. On a node that '
+        + 'sends alerts, one ring an alert, closed when somebody acted or the outcome was measured \u2014 '
+        + 'which is the node\u2019s rule and not this page\u2019s \u2014 and a rule that has asked more '
+        + 'times than a person can count gets a coarser unit and says which.' },
       { id: 'where-to-go', label: 'The nearest place to get it made',
         text: 'The nearest place you could get something made, under the alert it '
         + 'answers rather than as a tile of its own \u2014 the pack that stores it says the line belongs '
@@ -4665,10 +4822,6 @@ window.PAI.register({
         + 'pack ships off and why the switch carries that sentence where a keeper will read it '
         + 'before turning it on. With the pack off this row does not exist and the node\u2019s own '
         + 'words say why \u2014 never this page\u2019s summary of them.' },
-      { id: 'asks-button', label: 'The green button',
-        text: 'The green button is the one control on the page that is not the '
-        + 'ladder. It is a response, so it is green — the layer’s rule is that orange means what only '
-        + 'the satellite knows and nothing else — and it is drawn in the alert strip and nowhere else.' },
     ];
   },
 });
@@ -4936,7 +5089,8 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, age } = window.K;
+const { esc, age, evState, evOpen, evCard, evClock } = window.K;
+const { H } = window.KH;
 
 /* The recommendation, which is the last paragraph and starts with the pointing hand. Absent on a
    rule whose author did not write one — and then this says so rather than inventing advice, which
@@ -4947,7 +5101,24 @@ function suggestion(text) {
   return hit ? hit.replace(/^\u{1F449}\s*/u, '') : null;
 }
 
-function card(ctx, key, d, a) {
+/* The rule rows an event covers, folded inside its card (spec §4.2: id, rule, time). An id the ledger
+   no longer holds says so rather than being dropped: /issues keeps the last 200 alerts. */
+function rowsOf(ctx, e) {
+  const ids = e.alerts || [];
+  if (!ids.length) return '';
+  const acts = (H.asks || {}).acts || [];
+  const now = Date.parse(((ctx.S || {}).base || {}).captured_utc) || Date.now();
+  const line = id => {
+    const x = acts.find(a => a.id === id);
+    return `<p class="m">#${esc(String(id))} \u00b7 `
+      + (x ? `${esc(String(x.rule_id || 'a rule'))} \u00b7 ${esc(age(Math.round((now - Date.parse(x.ts)) / 60000)))}`
+        : 'older than the 200 alerts this page reads') + `</p>`;
+  };
+  return `<details class="evrows" id="evrows-${esc(String(e.id))}"><summary>from ${ids.length} rule `
+    + `row${ids.length === 1 ? '' : 's'}</summary>${ids.map(line).join('')}</details>`;
+}
+
+function card(ctx, key, d, a, did) {
   const sug = suggestion(a.text);
   const seen = String(a.text || '').split('\n')[0];
   const id = `decide-${esc(key)}`;
@@ -4976,41 +5147,72 @@ function card(ctx, key, d, a) {
     + (sug ? `<button type="button" class="take">Take its word</button>` : '')
     + `<button type="submit" class="pri">Record the decision</button></div>`
     + `<p class="fine">This closes no alert and moves no number. When it is done, press `
-    + `<b>I did this</b> under Act.</p>`
+    + `<b>I did this</b> on this card.</p>`
     + window.K.TOKEN_FINE
-    + `</form></section>`;
+    + `</form>${did ? `<div class="ask">${window.K.didButton(a.id)}</div>` : ''}</section>`;
 }
 
 window.PAI.register({
   id: 'decide', pack: 'core', stage: 'decide', order: 5, level: 'simple',
   reads: ['/issues'],
-  learn: ['recommend', 'looked', 'agent'],
+  learn: ['events', 'buttons'],
   title: 'What to do about it',
   needs: ['H3.asks'],
   anchor: 'decide',
   render(ctx) {
-    const ISS = ctx.ISS;
-    const open = ctx.ORDER.filter(k => ISS[k] && (ISS[k].open_asks || []).length);
-    if (!open.length) {
-      return `<p class="note" id="decide-none" data-component="absent" data-ref="asks-rows">`
-        + `Nothing is asking for a decision. When a reading crosses a line this node watches, what `
-        + `it saw and what it suggests appear here, with somewhere to say what you decided.</p>`;
+    const ISS = ctx.ISS, st = evState(), E = ctx.S.issues.events || {};
+    const asks = k => (ISS[k] && ISS[k].open_asks) || [];
+    if (st === 'events' || st === 'shadow') {
+      const unc = new Set(E.uncovered_asks || []);
+      /* One card per issue, the way the fallback draws them: card() ids itself decide-<key>. */
+      const left = ctx.ORDER.map(k => [k, asks(k).find(a => unc.has(a.id))]).filter(([, a]) => a)
+        .map(([k, a]) => card(ctx, k, ISS[k], a, true));
+      const open = evOpen();
+      if (!open.length && !left.length) {
+        const last = E.last_cleared;
+        return `<p class="note evnone" id="decide-none" data-component="absent" data-ref="stage-decide">`
+          + `Nothing open.${E.cleared_today ? ` ${E.cleared_today} cleared today`
+            + `${last ? `, the last at ${esc(evClock(last.ts))} (${esc((ISS[last.issue] || { name: {} }).name[ctx.LOC]
+              || last.issue)})` : ''}.` : ''}</p>`;
+      }
+      return open.map(e => evCard(e, rowsOf(ctx, e))).join('') + left.join('');
     }
-    /* One card per ISSUE, not per ask: four open asks about the same air are one decision, and a
-       household asked to decide four times about one room stops deciding. */
-    return open.map(k => card(ctx, k, ISS[k], ISS[k].open_asks[0])).join('');
+    /* rules, a node older than v0.77, or an events block that could not be read: each says which, then
+       draws the alert cards, because nothing that asks a person something may disappear. */
+    const why = st === 'old' ? `This node is ${esc((ctx.S.health || {}).version || 'older than v0.77')}: it sends `
+      + `alerts, not events.` : st === 'error' ? esc(E.error) : 'This node sends alerts, not events.';
+    const open = ctx.ORDER.filter(k => asks(k).length);
+    return `<p class="note" id="decide-engine" data-component="absent" data-ref="stage-decide">${why}</p>`
+      + (open.length ? open.map(k => card(ctx, k, ISS[k], asks(k)[0], true)).join('')
+        : `<p class="note" id="decide-none" data-component="absent" data-ref="stage-decide">Nothing is asking for `
+          + `anything.</p>`);
   },
   notes() {
     return [
+      { id: 'decide-events', label: 'What an event is',
+        text: 'An event is the bot\u2019s own unit: one issue in one house, from when its rule first fires '
+        + 'to when it clears, however many rule rows that took. The node chose the action and wrote the '
+        + 'message, and this page draws them. Where a rule row is not covered by any event, it is drawn '
+        + 'after the events as an alert, with I did this, so nothing that asks a person something '
+        + 'disappears.' },
+      { id: 'decide-buttons', label: 'What each button writes',
+        text: 'Done, Not now and Doesn\u2019t fit each write one row to the node\u2019s record, by event: '
+        + 'who pressed, when, and for Doesn\u2019t fit what was done instead. Done closes the loop; Not '
+        + 'now holds the card until the time it names, unless the reading reaches danger. \u03c1 does not '
+        + 'count events yet, so none of the three moves it.' },
       { id: 'decide-suggestion', label: 'The suggestion is the rule’s own',
-        text: 'The suggested action is the rule\u2019s own last line, the one '
+        text: 'This is the alert card, which Decide draws on a node that sends alerts, not events, '
+        + 'and on an older node or one whose events cannot be read. Its suggested action is the '
+        + 'rule\u2019s own last line, the one '
         + 'that begins with a pointing hand, written by whoever wrote the rule and shipped in every '
         + 'language this node speaks. It is not generated here and it is not a model\u2019s: a node '
         + 'with no agent running shows exactly the same words. Where a rule carries no '
         + 'recommendation the card says so, because a page that invents advice about somebody\u2019s '
-        + 'air is a page that cannot be trusted about anything.' },
+        + 'air is a page that cannot be trusted about anything. An event card has no such line: '
+        + 'the node chose its action.' },
       { id: 'decide-moves-nothing', label: 'A decision moves nothing',
-        text: 'A decision moves nothing. It does not close the alert, it '
+        text: 'On an alert card, which is the fallback for a node that sends alerts, not events, '
+        + 'a decision moves nothing. It does not close the alert, it '
         + 'does not enter \u03c1, and it is not a stage in the funnel \u2014 the alert stays open and the '
         + 'node keeps watching. What it changes is the record: a household that looked, decided and '
         + 'never managed it used to leave the same trace as one that never looked, which was none.' },
@@ -5050,7 +5252,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, row, age } = window.K;
+const { esc, row, age, evWord } = window.K;
 const { H } = window.KH;
 
 /* ALL OF IT FOLDED, and the head says how many. Eight rows and a five-line head were 1,029 px at 390
@@ -5103,6 +5305,36 @@ function line(x, ctx, all) {
   });
 }
 
+/* THE ANSWERS TO EVENTS: each open or recent event's latest answer, one row, newest first. The node keeps
+   one answer an event that matters (the latest), so this reads `answer` and never replays the ledger. An id
+   in both lists is read once. */
+function evAnswers(E) {
+  const seen = new Set();
+  return [...(E.open || []), ...(E.recent || [])]
+    .filter(e => e.answer && !seen.has(e.id) && seen.add(e.id))
+    .map(e => ({ ts: e.answer.ts, event: e, answer: e.answer }))
+    .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+}
+
+function evLine(x, ctx) {
+  const e = x.event, a = x.answer, d = ctx.ISS[e.issue] || { name: {} };
+  const notes = window.ACT_NOTES;
+  const note = notes ? notes[`ev${e.id}:${a.stage}`] : null;
+  const mins = Math.round((Date.parse(ctx.S.base.captured_utc) - Date.parse(a.ts)) / 60000);
+  return row({
+    id: `act-ev${esc(String(e.id))}-${esc(String(a.stage))}`,
+    component: 'ledgerRow', ref: 'asks-rows',
+    cls: a.stage === 'acted' ? '' : 'quiet',
+    cols: 'minmax(0,170px) minmax(0,1fr) auto',
+    left: `<span class="who"><b>${esc(String(a.actor || '').trim() || 'somebody')}</b>`
+      + `<span class="m">${esc(evWord(a.stage))} \u00b7 ${esc(age(mins))}</span></span>`,
+    /* The sentence if this reader may have it; otherwise the issue it was about, so the row still says what
+       was answered. */
+    line: note || `${d.name[ctx.LOC] || e.issue} \u00b7 ${e.kind}`,
+    qty: [],
+  });
+}
+
 window.PAI.register({
   id: 'ledger', pack: 'core', stage: 'act', order: 20, learn: ['note', 'bot', 'actions'],
   reads: ['/issues', '/actions'],
@@ -5112,7 +5344,12 @@ window.PAI.register({
   render(ctx) {
     const rows = (((H.asks || {}).actions) || []).slice()
       .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
-    if (!rows.length) {
+    /* Alert acts and event answers, in the order they happened. An event answer is a different row from an
+       alert act and counts toward neither `decided first` nor the practice figure, which are alert acts'. */
+    const items = rows.map(x => ({ ts: x.ts, html: line(x, ctx, rows) }))
+      .concat(evAnswers(ctx.S.issues.events || {}).map(x => ({ ts: x.ts, html: evLine(x, ctx) })))
+      .sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    if (!items.length) {
       return `<p class="note" id="ledger-none" data-component="absent" data-ref="asks-rows">`
         + `Nobody has answered an alert on this node yet. When somebody does \u2014 from this page, `
         + `from Telegram, or from a terminal \u2014 what they did and who they are is recorded here.`
@@ -5136,19 +5373,19 @@ window.PAI.register({
         + `is the rule">${led}</span> of ${acts.length} had a decision recorded first.`
       : '';
     const head = `<p class="why" id="ledger-head" data-component="ledgerHead" data-ref="ledger">`
-      + `${rows.length} answer${rows.length === 1 ? '' : 's'} on this node.${practice} `
+      + `${items.length} answer${items.length === 1 ? '' : 's'} on this node.${practice} `
       + (words
         ? `${said} carr${said === 1 ? 'ies' : 'y'} the sentence somebody wrote.`
         : `The sentences need a token \u2014 a note is the household\u2019s own words about its own `
           + `house. Set up \u2192 unlock.`)
       + `</p>`;
-    const first = rows.slice(0, SHOWN).map(x => line(x, ctx, rows)).join('');
-    const rest = rows.slice(SHOWN);
+    const first = items.slice(0, SHOWN).map(x => x.html).join('');
+    const rest = items.slice(SHOWN);
     return head + `<div class="reads" id="ledger-rows" data-ref="asks-rows">${first}`
       + (rest.length
         ? `<details class="fold"><summary>${SHOWN ? `The other ${rest.length}`
           : `All ${rest.length}, newest first`}</summary>`
-          + rest.map(x => line(x, ctx, rows)).join('') + `</details>`
+          + rest.map(x => x.html).join('') + `</details>`
         : '')
       + `</div>`;
   },
@@ -5465,7 +5702,7 @@ function drawForecast(ctx) {
 }
 
 window.PAI.register({
-  id: 'forecast', pack: 'forecast', stage: 'observe', order: 50, learn: ['forecast'],
+  id: 'forecast', pack: 'forecast', stage: 'observe', order: 14, learn: ['forecast'],
   reads: ['/forecast', '/issues'],
   title: 'The day it is about to have',
   needs: ['FORECAST'],
@@ -6140,7 +6377,7 @@ async function boot() {
        words about what they did in their own house. So the ledger draws from /issues for everyone
        and asks this route only for the sentences, which arrive for a reader holding a token and do
        not for anyone else. A 403 here is the node working. */
-    api('/actions').catch(() => null),
+    api('/actions?events=1').catch(() => null),
     api('/shape').catch(() => null),
     api('/effect').catch(() => null),
   ]);
@@ -6164,8 +6401,15 @@ async function boot() {
   window.SHAPE = dayshape;
   window.EFFECT = effect;
   window.ACT_NOTES = Array.isArray(notes)
-    ? notes.reduce((m, x) => { if (x && x.alert_id != null && String(x.note || '').trim()) {
-      m[`${x.alert_id}:${x.stage}`] = x.note; } return m; }, {})
+    ? notes.reduce((m, x) => {
+      /* ?events=1 adds the answers to events, which carry an event_id (an alert's answer carries an alert_id).
+         A node older than v0.77 ignores the query and sends alert rows only. */
+      if (x && String(x.note || '').trim()) {
+        if (x.alert_id != null) m[`${x.alert_id}:${x.stage}`] = x.note;
+        if (x.event_id != null) m[`ev${x.event_id}:${x.stage}`] = x.note;
+      }
+      return m;
+    }, {})
     : null;
   /* /stats, and ONLY on a node that has an appliance to say anything about.
    *
@@ -7106,10 +7350,13 @@ const LATE = new Set(['SOURCES']);
 
 function main() {
   const { S, ISS, ORDER, DIST, LAB, LOC, esc, fmt, pill, kicker, sentence, why, ask, asof,
-    refusedPage, VIEW, STATE } = window.K;
+    refusedPage, VIEW, STATE, evState, evOpen, evPick, evClock, evButtons, evAnswered } = window.K;
   const { H, km2, edge } = window.KH;
   const { N, where, link } = window.KN;
   const PAI = window.PAI;
+  /* LAYOUT is this closure's; the kit's evCard asks whether a section was hidden in Arrange through this.
+     Set here, not at the top of the shell: window.PAI does not exist until the kit's PAI_LOAD has run. */
+  PAI.isHidden = id => (LAYOUT.hidden || []).includes(id);
 
   document.title = `PLANETAI · ${S.health.node || 'node'}`;
 
@@ -7210,20 +7457,11 @@ function main() {
        that pointed at `satellite` died when the satellite moved to Historical in v0.56 and had been
        naming an id that was not on the page for two releases. A component pointing at an id that is
        not there is what T5 counts. */
-    const ref = 'grain-line';
+    const ref = 'ground-figure';
     return `<div class="rail" id="rail" data-component="rail" data-kind="row" data-ref="${esc(ref)}"`
       + ` role="group" aria-label="resolution, ${N.res_min} to ${N.res_max}; `
       + `standing at ${RES}">${stops}</div>`
-      + ruler()
       + `<div class="railkey" data-component="railKey" data-ref="rail">`
-      + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
-      + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
-      + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
-      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
-      /* `occupied`, `in_my_cell` and `mine_in_my_cell` are the rail's figures too, and they are
-         drawn ONCE — in the grain line this rail re-derives and points at, where they are a
-         sentence rather than three numbers in a key. Printing them here as well made the key three
-         lines deep at 390 and pushed the as-of off the first screen, which is T1's fifth leg. */
       /* THE FOLD'S TRIGGER IS THIS CHIP, and it is this chip because a fold of its own cost 33.5 px
          and T1 lost the ask and the as-of off the first screen at both 390 and 1440 — measured, on
          a gate that was green the render before. The key's last chip already names the fold's
@@ -7294,6 +7532,13 @@ function main() {
        dial closed it, which is precisely the move it is for. `link()` copies the whole query, so
        every stop carries the key with no work and nothing has to listen for anything. */
     return `<div class="railfold" id="railfold" data-component="railFold" data-ref="rail">`
+      + ruler()
+      + `<div class="railkey" data-component="railKey" data-ref="rail">`
+      + `<span><i class="leaves"></i>may leave this machine — resolution ${ctx.FLOOR} and coarser, `
+      + `which is the <code>RETICULUM_PRESENCE_RES</code> setting</span>`
+      + `<span><i class="fine"></i>finer than this node says where it is — past ${ctx.PUB.res}, `
+      + `because ${esc(String(ctx.PUB.why || '').replace(/\s*—.*$/, ''))}</span>`
+      + `</div>`
       + `<div class="rh"><h2>What one cell at resolution ${RES} is worth</h2>`
       + `<a href="${ctx.qlink({ worth: null })}">Close</a></div>`
       + `<div class="rf">${fig}<div class="rfx"><p>Each rung down is about seven times finer by `
@@ -7351,11 +7596,29 @@ function main() {
        was the lead's fifth block and the only one a reader could act on, which made the lead a
        control panel as well as a sentence. The stamp line below says how many are open and where
        they are, which is what the lead owes a reader: the fact, and the way to it. */
-    const openAll = ORDER.reduce((n, k) => n + ((ISS[k].open_asks || []).length), 0);
-    /* `open_asks` holds the alert rows themselves, not their ids: printing the row gave
-       `#[object Object]` in the stamp line. */
-    const firstAsk = (((d.open_asks || [])[0]
-      ?? ORDER.map(k => (ISS[k].open_asks || [])[0]).find(x => x != null)) || {}).id;
+    /* WHAT THE LAST LINE COUNTS follows the node. On events or shadow it is events, the way the bot tells
+       them (docs/SPEC_dashboard_events.md §4.1); on a rules node, an older one or an unreadable block it is
+       alerts, because that is what the node has. `open_asks` holds the alert rows themselves. */
+    const st = evState(), evs = evOpen(), E = (S.issues || {}).events || {};
+    const evMode = st === 'events' || st === 'shadow';
+    /* On events or shadow an alert an open event covers is drawn as that event, so only the uncovered ones
+       are left to count or pick, the same set Decide draws as cards: the two must say the same thing. */
+    const unc = new Set(E.uncovered_asks || []);
+    const asksOf = k => (ISS[k].open_asks || []).filter(a => !evMode || unc.has(a.id));
+    const openAll = ORDER.reduce((n, k) => n + asksOf(k).length, 0);
+    const nEv = evs.length, asEv = evMode && nEv > 0, nAsk = asEv ? nEv : openAll, e0 = evs[0] || {};
+    const askLine = nAsk
+      ? `<a class="askref" href="#stage-decide" data-role="ask" data-component="askRef"`
+        + ` data-ref="stage-decide">`
+        + (asEv
+          ? `<b data-num="events.open" data-cmp="alert events open">${nEv}</b> event${nEv === 1 ? '' : 's'} open`
+            + ` \u00b7 ${esc(String(e0.issue))} \u00b7 ${esc(String(e0.kind))} since ${esc(evClock(e0.opened_at))}`
+            + `${st === 'shadow' ? ' \u00b7 shadow' : ''}`
+          : `<b data-num="asks.open" data-cmp="alerts open across ${ORDER.length} issues">${openAll}</b>`
+            + ` alert${openAll === 1 ? '' : 's'} open`)
+        + ` \u00b7 in Decide</a>`
+      : `<span class="askref none" data-role="ask" data-component="askRef" data-ref="stage-decide">`
+        + `nothing open${evMode && E.cleared_today ? ` \u00b7 ${E.cleared_today} cleared today` : ''}</span>`;
     /* THE ISSUE'S PICTOGRAM. One per issue, drawn once, at hero size, and never repeated to show
        quantity — that is the whole difference between this family and the counting signs, and it is
        why it is 15x11 rather than on the 24-unit grid. A <use> of a symbol already in signs.svg, so
@@ -7371,7 +7634,22 @@ function main() {
         ? `<span class="pin">you are looking at this \u00b7 the node\u2019s pick is `
           + `${esc(ISS[nodePick].name[LOC])}</span><button type="button" class="back" data-hero="">back</button>`
         : '') + `</div>`;
-    const askAt = (d.open_asks || []).length ? hk : ORDER.find(k => (ISS[k].open_asks || []).length);
+    const askAt = asksOf(hk).length ? hk : ORDER.find(k => asksOf(k).length);
+    /* SIMPLE'S OPEN ROW on events or shadow is the open event's action and its three buttons (spec §4.4),
+       with the shown issue's sign. `data-ref` is the lead's own numeral (hk), which monument() ids
+       `num-<hk>`; the event's issue can differ, and the sign is the event's. */
+    const evRow = (e, key, n) => {
+      const ed = ISS[e.issue] || { name: {} }, sg = (ed.hero || {}).sign;
+      return `<div class="ask askrow evrow" data-lv="simple" data-component="eventRow" data-role="ask"`
+        + ` id="evrow-${esc(String(e.id))}" data-ref="num-${esc(key)}">`
+        + (sg ? `<svg class="sgn" viewBox="0 0 24 24" role="img" aria-label="${esc(ed.name[LOC] || e.issue)}">`
+          + `<use href="static/signs.svg#${esc(sg)}"/></svg>` : '')
+        + `<div class="what">${e.action && e.action.text ? esc(e.action.text)
+          : `${esc(e.kind)}${(e.rooms || []).length ? ` \u00b7 ${esc(e.rooms.join(', '))}` : ''}`}`
+        + `${st === 'shadow' ? `<span class="m">shadow \u2014 nothing was sent</span>` : ''}</div>`
+        + evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))
+        + (n > 1 ? `<p class="evmore" data-lv="simple">and ${n - 1} more open \u00b7 in advanced</p>` : '') + `</div>`;
+    };
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`
       + lv(`<div class="leadk">${kicker(hk, d)}${mark('lead', `sentence-${esc(hk)}`)}</div>`, 'adv')
       + eb + monument(hk, d, pix) + sentence(hk, d, 'big')
@@ -7382,25 +7660,14 @@ function main() {
          worked out from tonight's numbers; the rule's ends are the issue's own, so a reading of 12
          looks the same size tomorrow as tonight. The four distances in full are in the matrix. */
       + heroRule(hk, d)
-      + (askAt ? askRow(askAt, ISS[askAt], ISS[askAt].open_asks[0]) : '')
+      + (asEv ? evRow(evPick(evs, hk), hk, nEv) : askAt ? askRow(askAt, ISS[askAt], asksOf(askAt)[0]) : '')
       /* WHY THIS ONE IS AT THE TOP is in the why line above, not in a paragraph of its own. The
          words are the node's now (`headline_rule` on /issues) rather than three strings in this file:
          v0.59 changed the ranking on 18 September and the page's copy of the explanation had no way
          of knowing. A ranking a reader cannot check is the one thing this page does not do. */
       + `<div class="whenline">${stamp ? `<span class="stamp" data-lv="adv" data-component="heroStamp"`
         + ` data-ref="num-${esc(hk)}">${esc(stamp)}</span>` : ''}${asof()}`
-      + lv(openAll
-        /* `data-role="ask"` is what T1's fourth leg looks for. The strip itself is in Act now, and
-           this line is the lead's statement about it — the count, the id and where to go. A reader
-           who has to infer "nothing to do" from an absence has not been told anything, so the
-           other branch says it in words rather than drawing nothing. */
-        ? `<a class="askref" href="#stage-act" data-role="ask" data-component="askRef"`
-          + ` data-ref="stage-act">`
-          + `<b data-num="asks.open" data-cmp="alerts open across ${ORDER.length} issues">${openAll}</b>`
-          + ` alert${openAll === 1 ? '' : 's'} open`
-          + `${firstAsk != null ? ` · #${esc(String(firstAsk))}` : ''} · in 3 Act</a>`
-        : `<span class="askref none" data-role="ask" data-component="askRef" data-ref="stage-act">`
-          + `nothing open · 3 Act is empty</span>`, 'adv')
+      + lv(askLine, 'adv')
             + lv(`${window.K.stamp()}`, 'adv')
       + lv(S.fixture ? pill('cached', 'a committed snapshot, replayed through this node’s own engine')
         : window.STALE ? pill('stale', 'the last reading this node gave; it has stopped answering')
@@ -7409,11 +7676,13 @@ function main() {
       + fig + (figMarks ? `<div class="figmarks">${figMarks}</div>` : '') + `</section>`;
   }
 
-  /* Decision of 15 September: Now carries the ground, the stations, the claims, the grain, the asks
-     and the measure; the satellite, the two radios and the hardware are the Network view. One
-     registry serves both, and the notes band follows each view's own sections. */
-  const NOW = ['ground', 'matrix', 'day', 'sources', 'sensors', 'requests', 'forecast', 'decide',
-    'claims', 'grain', 'asks', 'ledger', 'measure', 'effect', 'figures'];
+  /* Decision of 15 September: Now carries the ground, the stations, the asks and the measure; the
+     satellite, the two radios and the hardware are the Network view. One registry serves both, and the
+     notes band follows each view's own sections. The claims, the grain, the sources and the requests moved
+     to Network in v0.78 (docs/SPEC_dashboard_events.md §4.1): they are about what this node may say and
+     send, which is the node in relation to the network. */
+  const NOW = ['ground', 'matrix', 'day', 'sensors', 'forecast', 'decide',
+    'asks', 'ledger', 'measure', 'effect', 'figures'];
   /* Network is this node in relation to the network, and nothing else: who it hears over radio, who
      hears it, and what hardware does the hearing. Satellite was put here on 15 September and moved
      out on 16 September at Tomas's word — a Sentinel annual median is not a neighbour, it is a
@@ -7421,7 +7690,8 @@ function main() {
      them rather than at the top of the page about the network.
      Trust moves with it for the same reason: a sensor's coverage over seven days and the hours since
      it last spoke are a history of that sensor, not a fact about now. */
-  const NETWORK = ['netmap', 'registry', 'reticulum', 'meshtastic', 'hardware'];
+  const NETWORK = ['netmap', 'registry', 'reticulum', 'meshtastic', 'hardware', 'sources', 'requests', 'claims',
+    'grain'];
   const HISTORICAL = ['shape', 'satellite', 'reach', 'trust'];
   /* NOW IS THE DEFAULT HOME, AND WITHOUT THIS LINE THE CONTRACT IS A LIE.
    *
@@ -7471,7 +7741,8 @@ function main() {
   } else if (VIEW === 'now' || VIEW === 'arrange') {
     ARRANGING = VIEW === 'arrange';
     el.innerHTML = head() + `<div class="wrap">`
-      + `${PAI.render(ctx, lead(), { only: want([...NOW, ...homeless]) })}</div>`
+      + `${PAI.render(ctx, lead(), { only: want([...NOW, ...homeless]),
+        stages: ['decide', 'observe', 'act', 'measure'] })}</div>`
       + foot(S) + (ARRANGING ? arrbar() : '');
     if (ARRANGING) { arrangeControls(); fillRestore(); }
   } else if (VIEW === 'network') {
@@ -7714,7 +7985,7 @@ async function didThis(form) {
       say(said ? `${said} (${r.status})` : `The node refused it (${r.status}).`, true);
     } else {
       say(decision
-        ? 'Decided. Nothing has moved — press "I did this" under Act when it is done.'
+        ? 'Decided. Nothing has moved — press "I did this" on this card when it is done.'
         : 'Recorded. The node watches what happens next.');
       if (!decision) form.hidden = true;
       else { form.reset(); }
@@ -7725,15 +7996,54 @@ async function didThis(form) {
   } finally { btn.disabled = false; }
 }
 
-document.addEventListener('submit', ev => {
-  const form = ev.target.closest && ev.target.closest('form.did, form.decided');
+/* Done, Not now and Doesn't fit on an alert EVENT. The id is the event's, not an alert's; the node
+   answers with the event's own refusals, so the sentences are the ones didThis prints. Returns true
+   only when the node took it, so the form can close on a yes and stay open, with what was typed, on a no. */
+async function answerEvent(id, stage, actor, note) {
+  try {
+    const r = await fetch('/actions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...auth_() },
+      body: JSON.stringify({ event_id: Number(id), stage, actor: String(actor || ''), note: String(note || '') }),
+    });
+    const said = r.ok ? '' : await nodeSaid(r);
+    if (r.status === 401 || r.status === 403) {
+      say(`${said || 'This node will not take that from here.'} · \`planetai ui\` prints the `
+        + `act token; Set up → unlock holds it.`, true);
+    } else if (r.status === 404) {
+      say('This node has no such event any more. Reload and look again.', true);
+    } else if (!r.ok) {
+      say(said || `The node refused it (${r.status}).`, true);
+    } else {
+      try { if (actor) localStorage.setItem('planetai_actor', String(actor)); } catch { /* no storage here */ }
+      say(stage === 'acted' ? 'Recorded.' : stage === 'acknowledged'
+        ? 'Not now. The node holds this for three hours, unless it reaches danger.' : 'Noted: it doesn’t fit.');
+      await refresh();
+      return true;
+    }
+  } catch (e) {
+    say(`The node did not answer: ${String((e && e.message) || e)}`, true);
+  }
+  return false;
+}
+
+document.addEventListener('submit', async ev => {
+  const form = ev.target.closest && ev.target.closest('form.did, form.decided, form.evform');
   if (!form) return;
   ev.preventDefault();
   if (FIXTURE || STATE !== 'populated') {
     say('This is a capture, not a live node — its alerts belong to the node it came from.', true);
     return;
   }
-  didThis(form);
+  if (!form.classList.contains('evform')) { didThis(form); return; }
+  const val = n => String((form.elements[n] || {}).value || '').trim();
+  const sub = form.querySelector('button[type="submit"]');
+  if (sub) sub.disabled = true;
+  try {
+    /* The note is Doesn't fit's alone: one typed there and cancelled must not ride on a later Done. */
+    const note = val('stage') === 'dismissed' ? val('note') : '';
+    if (await answerEvent(form.dataset.ev, val('stage'), val('actor'), note)) form.hidden = true;
+  } finally { if (sub) sub.disabled = false; }
 });
 
 document.addEventListener('click', ev => {
@@ -7748,6 +8058,35 @@ document.addEventListener('click', ev => {
     if (lead && lead.getBoundingClientRect().top < 0) lead.scrollIntoView();
     return;
   }
+  /* An alert event's three buttons. Done and Not now post at once when this browser has a name;
+     with none, and always for Doesn't fit, the card's form opens so the name (and the note) can be said. */
+  const evb = ev.target.closest && ev.target.closest('.evb');
+  if (evb) {
+    const card = evb.closest('.ev, .evrow'), form = card && card.querySelector('form.evform');
+    if (!form) return;
+    const stage = evb.getAttribute('data-stage');
+    let who = '';
+    try { who = localStorage.getItem('planetai_actor') || ''; } catch { /* no storage here */ }
+    if (stage === 'dismissed' || !who) {
+      form.hidden = false;
+      form.elements.stage.value = stage;
+      if (!form.elements.actor.value) form.elements.actor.value = who;
+      const inst = form.querySelector('.instead');
+      if (inst) inst.hidden = stage !== 'dismissed';
+      if (stage !== 'dismissed') form.elements.note.value = '';
+      (stage === 'dismissed' && form.elements.actor.value ? form.elements.note : form.elements.actor).focus();
+      return;
+    }
+    if (FIXTURE || STATE !== 'populated') {
+      say('This is a capture, not a live node — its alerts belong to the node it came from.', true);
+      return;
+    }
+    evb.disabled = true;
+    answerEvent(evb.getAttribute('data-ev'), stage, who, '').finally(() => { evb.disabled = false; });
+    return;
+  }
+  const evc = ev.target.closest && ev.target.closest('form.evform .cancel');
+  if (evc) { evc.closest('form.evform').hidden = true; return; }
   const go = ev.target.closest && ev.target.closest('.ask .go');
   if (go) {
     const form = go.parentElement.querySelector('form.did');

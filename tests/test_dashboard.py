@@ -320,7 +320,7 @@ assert "packCard(p, rows.filter(r => r.pack === p.id).map(field)" in _js and "pa
 # Reported by Tomas from node #1 at v0.71, which is the release this fixes.
 assert "const VIEW_NAMES = new Set(" in _js, \
     "readView no longer has a list of what a view IS, so any hash is one again"
-assert re.search(r"VIEW = \(VIEW_NAMES\.has\(h\) \? h : ''\) \|\| q\.get\('view'\) \|\| 'now'", _js), \
+assert re.search(r"VIEW = VIEW_NAMES\.has\(h\) \? h : \(q\.get\('view'\) \|\| \(h && VIEW \? VIEW : 'now'\)\)", _js), \
     ("an unknown hash is being taken as a view again — `#stage-act` empties the page, and so does "
      "every link in the notes band")
 # Every hash the page itself writes must either name a view or name an element it draws.
@@ -331,13 +331,40 @@ assert _names == {"now", "historical", "network", "wall", "arrange", "setup"}, \
 # The one literal anchor the page writes is the lead's, and the element it points at is built from
 # a template — `id="stage-${key}"` — so there is no literal to grep for. Assert the pair instead:
 # the link, and the template that makes its target. The rig checks the live page lands on it.
-assert 'href="#stage-act"' in _js, "the lead no longer links to the Act stage"
+# (v0.78: it counts events and points at Decide, where the cards are, not at Act.)
+assert 'href="#stage-decide"' in _js, "the lead no longer links to the Decide stage"
 assert 'id="stage-${key}"' in _js, \
-    "the stages no longer carry an id, so the lead's link to #stage-act lands nowhere"
+    "the stages no longer carry an id, so the lead's link to #stage-decide lands nowhere"
 # And an anchor must not throw the page away: same view, so scroll rather than re-render.
 assert "if (VIEW === before)" in _js and "scrollIntoView({ block: 'start' })" in _js, \
     ("a hashchange that does not change the view re-renders the whole page, which loses the scroll "
      "position, the open folds and the learn panel for a link to somewhere already on screen")
+
+# AN IN-PAGE LINK KEEPS THE VIEW IT WAS CLICKED ON. The header's nav writes `#network`; a click on
+# `#grain` then replaced it, `grain` is no view and there is no ?view=, so readView() answered `now`
+# and the hashchange handler routed the reader back to Now. Every in-page link on Network and
+# Historical did it. This lifts readView and VIEW_NAMES and runs the sequence a reader makes.
+if shutil.which("node"):
+    _src = (ROOT / "app/static/dashboard.js").read_text()
+    _rv = _node("\n".join((
+        "globalThis.window = globalThis; let VIEW = 'now', STATE;",
+        re.search(r"const VIEW_NAMES = new Set\(.*?\);\n", _src).group(0),
+        re.search(r"function readView\(\) \{.*?\n\}\n", _src, re.S).group(0),
+        """const at = (search, hash) => { globalThis.location = { search, hash }; readView(); return VIEW; };
+const out = {};
+out.first_anchor = at('', '#grain');                     /* first load on an anchor, VIEW still 'now' */
+out.network = at('', '#network');
+out.keeps_network = at('', '#grain');                    /* the in-page link: no view, no query */
+out.keeps_again = at('', '#claims');
+out.hist_query = at('?view=historical', '#trust');
+out.keeps_hist = at('', '#grain');
+out.now = at('', '#now');
+out.now_no_hash = (at('', '#network'), at('', ''));      /* the Now button clears the hash */
+console.log(JSON.stringify(out));""")))
+    assert _rv == {"first_anchor": "now", "network": "network", "keeps_network": "network",
+                   "keeps_again": "network", "hist_query": "historical", "keeps_hist": "historical",
+                   "now": "now", "now_no_hash": "now"}, \
+        f"readView: an in-page anchor must keep the view the reader is on: {_rv}"
 
 # THE PAGE KEEPS UP WITH THE NODE, AND SAYS SO WHEN IT CANNOT.
 #
@@ -434,7 +461,8 @@ assert "opts && opts.keepGround" in _rd, "redraw() keeps the ground unconditiona
 # log R14); the wall keeps its own dial, which is a different control on a different surface.
 assert "VIEW === 'now' || VIEW === 'arrange'" in _js and 'class="railwrap"' in _js, \
     "the rail is no longer drawn for Now and Arrange, or is drawn for every view again"
-assert re.search(r"const ref = 'grain-line';", _js), \
+# (v0.78: the grain line moved to Network with its section, so the rail points at the ground figure.)
+assert re.search(r"const ref = 'ground-figure';", _js), \
     "the rail's link out is back to being chosen per view; only Now draws it now"
 # The zones are texture, not hue (design log R14). The cells blue has one meaning — a cell — and a
 # 12% wash of it for "may leave this machine" spent it on a second, vanished for a reader who cannot
@@ -697,6 +725,128 @@ if shutil.which("node"):
         f"pill('stale') must print the word with no sign, since signs.svg has none: {_pill['stale']}"
     assert "sign-prov-live" in _pill["live"], f"pill('live') lost its sign: {_pill['live']}"
 
+    # THE EVENT CARD (SPEC_dashboard_events §4.2). The helpers are lifted whole; S, ISS and LOC are the
+    # kit's own `let` bindings, so the program declares them the way initKit() would.
+    _ev = "\n".join((
+        re.search(r"const esc = s => .*?\);\n", _js_raw, re.S).group(0),
+        re.search(r"const fmt = .*?\n", _js_raw).group(0),
+        re.search(r"const sign = \(id, cls = ''\) =>\n.*?;\n", _js_raw).group(0),
+        re.search(r"const TOKEN_FINE = .*?</p>`;", _js_raw, re.S).group(0),
+        re.search(r"function evState\(\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"const evOpen = .*?\n", _js_raw).group(0),
+        re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evButtons\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evCard\(e, tail = ''\) \{.*?\n\}", _js_raw, re.S).group(0),
+    ))
+    _evr = _node(_ev + r"""
+let LOC = 'en';
+let HID = [], DAY_UNMET = true;
+const window = { PAI: { sections: [], has: p => p !== 'H3.missing', isHidden: id => HID.includes(id) } };
+const secs = (...ids) => { window.PAI.sections = ids.map(id => ({ id, needs: id === 'day' && DAY_UNMET ? ['H3.missing'] : [] })); };
+const ISS = { heat: { name: { en: 'Heat' }, unit: '°C', dp: 1, metric: 'temp', hero: { sign: 'sign-heat' } } };
+const BTN = { done: 'Done', not_now: 'Not now', doesnt_fit: 'Doesn’t fit' };
+const ev0 = { id: 7, issue: 'heat', kind: 'sustained', level: 'warn', opened_at: '2026-10-05T09:30:00Z',
+  peak: 36.2, line: 35, rooms: ['loft'], context: { usual: 33.4, outside: 29.1, outside_metric: 'temp',
+  outside_from: 'outside' }, action: { id: 'a', text: 'Close the shutters <now>' },
+  message: { text: 'It is hot <b>', ts: '2026-10-05T09:31:00Z', sent: true }, alerts: [1, 2], answer: null };
+const run = (events, over) => { S = { issues: { events }, health: { tz: 'UTC' } }; return evCard({ ...ev0, ...over }); };
+let S;
+const E = (engine, extra) => ({ engine, buttons: BTN, open: [], ...extra });
+const n = (s, re) => (s.match(re) || []).length;
+const out = {
+  old: (S = { issues: {} }, evState()), nul: (S = { issues: { events: null } }, evState()),
+  err: (S = { issues: { events: { error: 'x' } } }, evState()), shadow: (S = { issues: { events: E('shadow') } }, evState()),
+  rules: (S = { issues: { events: E('rules') } }, evState()), evs: (S = { issues: { events: E('events') } }, evState()),
+  open: (S = { issues: { events: E('events', { open: [1] }) } }, evOpen()), none: (S = { issues: {} }, evOpen()),
+  clock: (S = { issues: {}, health: { tz: 'Asia/Makassar' } }, evClock('2026-10-05T09:30:00Z')),
+  utc: (S = { issues: {} }, evClock('2026-10-05T09:30:00Z')), bad: (S = { issues: {} }, evClock('nope')),
+  open_card: run(E('events'), {}), shadow_card: run(E('shadow'), {}),
+  held_msg: run(E('events'), { message: { text: 'x', ts: '2026-10-05T09:31:00Z', sent: false } }),
+  acted: run(E('events'), { answer: { stage: 'acted', actor: 'tomas', ts: '2026-10-05T10:00:00Z' } }),
+  held: run(E('events'), { answer: { stage: 'acknowledged', actor: 'tomas', ts: '2026-10-05T10:00:00Z',
+    held_until: '2026-10-05T12:00:00Z' } }),
+  under: run(E('events'), { peak: 34 }),
+  noact: run(E('events'), { action: null, context: {}, line: null }),
+  l_all: (secs('matrix', 'sensors'), run(E('events'), {})),
+  l_unmet: (secs('matrix', 'day', 'sensors'), run(E('events'), {})),
+  l_none: (secs(), run(E('events'), { alerts: [] })),
+  l_hidden: (DAY_UNMET = false, secs('matrix', 'day', 'sensors'), HID = ['day'], run(E('events'), {})),
+  l_shown: (HID = [], run(E('events'), {})),
+  tail: (S = { issues: { events: E('events') } }, evCard(ev0, '<details id="evrows-7">T</details>')),
+};
+console.log(JSON.stringify(out));""")
+    assert [_evr[k] for k in ("old", "nul", "err", "shadow", "rules", "evs")] == \
+        ["old", "old", "error", "shadow", "rules", "events"], f"evState: {_evr}"
+    assert _evr["open"] == [1] and _evr["none"] == [], "evOpen reads S.issues.events.open, or []"
+    assert _evr["clock"] == "17:30" and _evr["utc"].endswith("UTC") and _evr["bad"] == "", \
+        f"evClock: {_evr['clock']!r} {_evr['utc']!r} {_evr['bad']!r}"
+    _c = _evr["open_card"]
+    assert 'data-num="ev.7.peak"' in _c, "the peak numeral is a data-num, so the number gate reads it"
+    # The card is a readout (spec §4.2), and it points at Decide's band: a num-<issue> id exists only for the
+    # lead's issue, so an event about any other issue pointed at nothing.
+    _head = _c[:_c.index(">")]
+    assert 'data-kind="readout"' in _head and 'data-ref="decide"' in _head and "num-" not in _head, _head
+    _cmp = re.search(r'data-cmp="([^"]*)"', _c).group(1)
+    assert "usual at this hour 33.4" in _cmp and "outside 29.1" in _cmp and "from outside" in _cmp \
+        and "the line 35.0" in _cmp, f"data-cmp must name usual, outside and the line: {_cmp}"
+    assert "Close the shutters &lt;now&gt;" in _c and "<now>" not in _c, "the action text is the node's, escaped"
+    assert "It is hot &lt;b&gt;" in _c and "<b>It" not in _c, "the message is escaped"
+    assert len(re.findall(r'<button type="button" class="evb', _c)) == 3, "three buttons"
+    for _t in ("Done", "Not now", "Doesn’t fit"):
+        assert f">{_t}</button>" in _c, f"button {_t!r} missing"
+    assert "sent 09:31" in _c and "would have sent" not in _c, "an events node says sent"
+    assert "would have sent 09:31" in _evr["shadow_card"], "a shadow node says would have sent"
+    assert "held 09:31" in _evr["held_msg"], "an unsent message says held"
+    assert 'class="evnum worse"' in _c and 'class="evnum"' in _evr["under"], "worse only when peak > line"
+    assert 'class="evb' not in _evr["acted"] and "evdone" in _evr["acted"] and "tomas" in _evr["acted"], \
+        "an acted event has no buttons and says who"
+    assert "evheld" in _evr["held"] and "held until 12:00" in _evr["held"] and 'class="evb' in _evr["held"], \
+        "a held event keeps its buttons and says until when"
+    # An evidence link goes only to a section the page is drawing: `sensors` is the air-quality pack's (absent in l_all), and
+    # `day` here is registered but its needs are not met. A link to neither would point at nothing.
+    assert 'href="#matrix"' in _evr["l_all"] and 'href="#sensors"' in _evr["l_all"] \
+        and 'href="#day"' not in _evr["l_all"] and 'href="#evrows-7"' in _evr["l_all"], \
+        f"links: matrix and sensors drawn, day absent: {_evr['l_all']}"
+    assert 'href="#sensors"' in _evr["l_unmet"] and 'href="#day"' not in _evr["l_unmet"]
+    assert 'href="#matrix"' not in _evr["noact"] and 'href="#sensors"' not in _evr["noact"], \
+        "no section registered, no link to one"
+    assert 'href="#day"' not in _evr["l_hidden"] and 'href="#matrix"' in _evr["l_hidden"], \
+        f"a section hidden in Arrange gets no link: {_evr['l_hidden']}"
+    assert 'href="#day"' in _evr["l_shown"], "the same section, not hidden and with its needs met, is linked"
+    assert _evr["tail"].endswith('<details id="evrows-7">T</details></section>') and "<details" not in _c, \
+        "evCard's second argument is drawn inside the card, last"
+    assert "evlinks" not in _evr["l_none"], "no link at all draws no evidence line"
+    assert "chose no action" in _evr["noact"] and "no usual for this hour yet" in _evr["noact"] \
+        and "no outside reading" in _evr["noact"] and "no line" in _evr["noact"], "absence is said four ways"
+
+    # DECIDE DRAWS EVENTS (SPEC_dashboard_events §4.2, §5). These are source checks; the booted run further down
+    # renders the section itself. Its render calls evCard and reads uncovered_asks. "Decide about this" is drawn
+    # only by card(), which render reaches in the rules/old/error branch AND, on events and shadow nodes, for each
+    # issue whose open alerts no event covers.
+    _dec = _js_raw[_js_raw.index("id: 'decide', pack"):]
+    _dec = _dec[:_dec.index("notes() {")]
+    _card = _js_raw[_js_raw.index("function card(ctx, key, d, a, did)"):_js_raw.index("window.PAI.register({\n  id: 'decide'")]
+    assert "evCard(e, rowsOf(ctx, e))" in _dec and "uncovered_asks" in _dec, \
+        "Decide's render must draw evCard and the alerts no event covers"
+    assert "card(" in _dec.split("if (st === 'events' || st === 'shadow') {")[1].split("\n    }\n")[0], \
+        "the alerts no event covers are drawn with card()"
+    assert _dec.count("Decide about this") == 0 and "Decide about this" in _card, \
+        "'Decide about this' belongs to card(), the fallback, and not to the event branch"
+    assert 'id="decide-none"' in _dec and 'id="decide-engine"' in _dec and "data-ref=\"stage-decide\"" in _dec
+    assert "window.K.didButton(a.id)" in _card, "an alert answered on Decide has the I did this button"
+    # The click handler matches `.ask .go` and `.ask form.did .cancel`, finds the form as the button's sibling, and
+    # the styles are scoped under `.ask`; so the button must sit in an element with class ask, beside its form.
+    assert "closest('.ask .go')" in _js_raw and "closest('.ask form.did .cancel')" in _js_raw \
+        and "go.parentElement.querySelector('form.did')" in _js_raw, "the I did this handlers moved: update this check"
+    assert re.search(r'<div class="ask">\$\{window\.K\.didButton\(a\.id\)\}</div>', _card), \
+        "card() must wrap didButton in an element with class ask, or the button opens nothing and is unstyled"
+    assert re.search(r'const didButton = id =>\s*`<button type="button" class="go" .*?<form class="did"', _js_raw, re.S), \
+        "didButton is a .go button with a form.did, the pair the handler reads"
+    assert 'id="evrows-' in _js_raw and "older than the 200 alerts this page reads" in _js_raw, \
+        "evCard links to #evrows-<id>, so rowsOf must draw it"
+
     # "I did this" and "Record the decision" print what the node said when it refused, word for
     # word. It printed "The node refused it (409)" over a node that had written, in full, what to
     # do first (DECISION_REQUIRED) — the one sentence the person at the screen needed.
@@ -736,6 +886,50 @@ const form = { querySelector: () => ({ disabled: false }), getAttribute: () => '
     assert _t["403"][0].startswith("this node is not sharing"), f"the middleware's 403 is `error`: {_t['403']}"
     assert _t["500"] == ["The node refused it (500).", True], f"no body, no invented sentence: {_t['500']}"
     assert _t["422"][0] == "field required (422)", f"a schema refusal's messages, joined: {_t['422']}"
+
+    # Pressing Done, Not now or Doesn't fit on an alert event posts the EVENT id (a number), the stage,
+    # the name and the note; a post the node takes stores the name, and a refusal prints the node's own
+    # sentence. The click and submit handlers are browser-only; Task 11's live proof presses them.
+    _ans_m = re.search(r"async function answerEvent\(id, stage, actor, note\) \{.*?\n\}", _js_raw, re.S)
+    assert _ans_m, "the page no longer defines answerEvent(id, stage, actor, note) at column 0"
+    _ans = "\n".join((re.search(r"async function nodeSaid\(r\) \{.*?\n\}", _js_raw, re.S).group(0), _ans_m.group(0)))
+    _ans_cases = {
+        "200": [200, None], "404": [404, {"detail": "no such event"}],
+        "401": [401, {"detail": "closing a loop from off this machine needs Authorization: Bearer <ACT_TOKEN>"}],
+        "400": [400, {"detail": "stage must be acknowledged, acted or dismissed"}],
+    }
+    _a = _node(_ans + "\nconst C = " + json.dumps(_ans_cases) + r""";
+const auth_ = () => ({}); let said = null, refreshed = 0, stored = null, posted = null;
+const say = (m, bad) => { said = [m, !!bad]; };
+const refresh = async () => { refreshed++; };
+const localStorage = { getItem: () => null, setItem: (k, v) => { stored = [k, v]; } };
+(async () => {
+  const out = {};
+  for (const [k, [status, body]] of Object.entries(C)) {
+    globalThis.fetch = async (url, opts) => { posted = [url, JSON.parse(opts.body)];
+      return { status, ok: status < 300, json: async () => { if (body === null) throw new Error('no body'); return body; } }; };
+    said = null; stored = null; refreshed = 0;
+    const ok = await answerEvent('7', 'acknowledged', 'ana', undefined);
+    out[k] = { ok, said, stored, refreshed, posted };
+  }
+  for (const [stage, key] of [['acted', 'acted'], ['dismissed', 'dismissed']]) {
+    globalThis.fetch = async () => ({ status: 200, ok: true, json: async () => ({}) });
+    said = null; await answerEvent(7, stage, 'ana', 'did it by hand'); out[key] = said;
+  }
+  console.log(JSON.stringify(out));
+})();""")
+    assert _a["200"]["posted"] == ["/actions", {"event_id": 7, "stage": "acknowledged", "actor": "ana", "note": ""}], \
+        f"the body is the event id as a number, not a string: {_a['200']['posted']}"
+    assert _a["200"]["ok"] is True and _a["200"]["stored"] == ["planetai_actor", "ana"] \
+        and _a["200"]["refreshed"] == 1, f"a 200 stores the name and refreshes: {_a['200']}"
+    assert _a["200"]["said"] == ["Not now. The node holds this for three hours, unless it reaches danger.", False]
+    assert _a["acted"] == ["Recorded.", False] and _a["dismissed"] == ["Noted: it doesn’t fit.", False]
+    assert _a["404"]["said"] == ["This node has no such event any more. Reload and look again.", True] \
+        and _a["404"]["stored"] is None and _a["404"]["ok"] is False, f"a 404: {_a['404']}"
+    assert _a["401"]["said"][0].startswith("closing a loop from off this machine") \
+        and "planetai ui" in _a["401"]["said"][0] and _a["401"]["refreshed"] == 0, f"a 401: {_a['401']}"
+    assert _a["400"]["said"] == ["stage must be acknowledged, acted or dismissed", True] \
+        and _a["400"]["stored"] is None, f"a 400 prints the node's sentence: {_a['400']}"
 
 # Set up writes only what somebody changed, and never over a key that moved while it was open.
 #
@@ -886,6 +1080,203 @@ if shutil.which("node"):
 assert "cellCount: new Set(cells.map(c => c.cell)).size" in _js, "facts() no longer counts distinct cells"
 assert "interp(w.cellsN, { n: d.cellCount })" in _js and "{ n: d.cells.length }" not in _js, \
     "Network's N of 20 is counting /cells rows again"
+
+# ACT IS THE RECORD OF WHAT WAS ASKED AND ANSWERED (SPEC_dashboard_events §4.3). The sections are closures, so the
+# wiring is a source check and the pure helpers are lifted.
+_asks = _js_raw[_js_raw.index("id: 'asks', pack"):]
+_asks_render = _asks[:_asks.index("  wall(ctx) {")]
+_asks_render = _asks_render[_asks_render.index("render(ctx) {"):]
+assert re.search(r"[^\w.]ask\(", _asks_render) is None, "Act's render still draws the kit's alert strip"
+assert "title: 'What was asked, and what was answered'" in _asks, "Act's title is the spec's, and its id stays `asks`"
+assert "'This node sends alerts, not events.'" in _asks_render and "st === 'error' ? esc(E.error)" in _asks_render, \
+    "a rules node keeps its per-rule rows under one line saying it sends alerts, not events; an error node says the node's own words"
+_evrow = _asks_render[_asks_render.index("id: `ask-ev-${key}`"):_asks_render.index("}).join('');\n    };")]
+assert "asks.ev${key}.action" not in _evrow and _evrow.count("num:") == 1 and "evAnswerText(e)" in _evrow, \
+    "an event row's qty holds only the answer: qty does not wrap, and the action is a sentence"
+assert "e.action.text" in _evrow.split("qty:")[0], "the action rides the row's wrapping `line`"
+assert "whereToGo()" in _asks_render and "capacity()" in _asks_render, "whereToGo and capacity stay in Act"
+assert "function ask(key, d, ref)" in _js_raw, "the kit's ask() stays: it is exported"
+assert "api('/actions?events=1')" in _js_raw and "api('/actions')" not in _js_raw, \
+    "boot() must read /actions?events=1, so the event answers' notes arrive"
+assert "`ev${x.event_id}:${x.stage}`" in _js_raw, "ACT_NOTES gains a key for an event's answer"
+_led = _js_raw[_js_raw.index("id: 'ledger', pack"):]
+_led = _led[:_led.index("  notes() {")]
+assert "evAnswers(" in _led, "the ledger lists the answers to events"
+assert "events || {}).buttons" in _js_raw[_js_raw.index("function evWord"):][:300], \
+    "the ledger's button words are the node's, from events.buttons"
+if shutil.which("node"):
+    _act = _node("\n".join((
+        "const S = { issues: { events: { buttons: { done: 'Done', not_now: 'Not now', doesnt_fit: 'Doesn’t fit' } } } };",
+        re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evLog\(E\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswerText\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswers\(E\) \{.*?\n\}", _js_raw, re.S).group(0),
+        r"""
+const A = (stage, actor, ts) => ({ stage, actor, ts, held_until: null });
+const e1 = { id: 1, opened_at: '2026-10-03T10:00:00Z', answer: A('acted', 'tomas', '2026-10-03T11:00:00Z'), cleared_after_min: 40.4 };
+const e2 = { id: 2, opened_at: '2026-10-04T10:00:00Z', answer: A('acknowledged', 'ana', '2026-10-04T10:30:00Z') };
+const e3 = { id: 3, opened_at: '2026-10-05T10:00:00Z', answer: null };
+const e4 = { id: 4, opened_at: '2026-10-01T10:00:00Z', answer: A('dismissed', '', '2026-10-01T12:00:00Z') };
+const E = { open: [e3, e2], recent: [e2, e1, e4] };
+console.log(JSON.stringify({
+  log: evLog(E).map(e => e.id),
+  text: [e1, e2, e3, e4, { ...e1, cleared_after_min: undefined }].map(evAnswerText),
+  answers: evAnswers(E).map(x => x.event.id),
+  none: [evLog({}), evAnswers({})],
+}));""")))
+    assert _act["log"] == [3, 2, 1, 4], f"evLog: newest opened first, an id in both lists once: {_act['log']}"
+    assert _act["text"] == ["Done · tomas · cleared 40 min after", "Not now", "no answer",
+                            "Doesn’t fit", "Done · tomas"], \
+        f"evAnswerText: the button's word; 'cleared N min after' only on a Done the node followed with a clear: {_act['text']}"
+    assert _act["answers"] == [2, 1, 4], f"evAnswers: answered events only, newest answer first: {_act['answers']}"
+    assert _act["none"] == [[], []], "no events block is an empty record, not a throw"
+
+# SIMPLE MODE'S OPEN ROW (SPEC_dashboard_events §4.4). lead() is a closure, so the markup is a source check; the
+# pick is lifted and run. The row's data-ref must be the id monument() draws for the lead's issue.
+_lead = _js_raw[_js_raw.index("  function lead() {"):]
+_lead = _lead[:_lead.index("\n  }\n")]
+assert "evButtons(" in _lead and 'evrow' in _lead and "evPick(evs, hk)" in _lead, \
+    "lead() must draw the open event's row with its buttons"
+assert "asEv ? evRow(" in _lead and "askRow(askAt" in _lead, "rules/old/error and nothing-open keep askRow"
+assert 'id="num-${esc(key)}"' in _js_raw[_js_raw.index("function monument("):_js_raw.index("function heroPix(")], \
+    "evrow's data-ref=num-<hk> must exist: monument() ids the numeral num-<key>"
+if shutil.which("node"):
+    _an = _node("\n".join((
+        "const esc = s => String(s), sign = (id, l) => `<svg class=\"sg\"/>`;",
+        "let S = { issues: {}, health: { tz: 'Asia/Makassar' } };",
+        re.search(r"function evClock\(iso\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        """const A = (stage, extra) => ({ answer: { stage, actor: 'tomas', ts: '2026-10-05T10:00:00Z', ...extra } });
+const own = () => { S.issues = { events: { buttons: { done: 'Fet', not_now: 'Ara no', doesnt_fit: 'No encaixa' } } };
+  return [A('acted'), A('acknowledged'), A('dismissed')].map(evAnswered); };
+console.log(JSON.stringify({ none: evAnswered({ answer: null }), acted: evAnswered(A('acted')),
+  held: evAnswered(A('acknowledged', { held_until: '2026-10-05T12:00:00Z' })), no: evAnswered(A('dismissed')),
+  own: own() }));""")))
+    assert _an["none"] == "" and "evdone" in _an["acted"] and "Done · tomas" in _an["acted"], _an
+    assert "evheld" in _an["held"] and "Not now · tomas" in _an["held"] and "held until 20:00" in _an["held"], _an
+    assert "Doesn’t fit · tomas" in _an["no"], _an
+    # An answer reads as the button that wrote it, in the node's own words (events.buttons), as the buttons do.
+    assert ["Fet · tomas" in _an["own"][0], "Ara no · tomas" in _an["own"][1], "No encaixa · tomas" in _an["own"][2]] \
+        == [True] * 3, f"evAnswered must print the node's button labels: {_an['own']}"
+assert "evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))" in _lead, \
+    "an acted event's row has no buttons; a held one keeps them beside its answer"
+assert "shadow \\u2014 nothing was sent" in _lead, "a shadow node's row says so"
+if shutil.which("node"):
+    _pk = _node("\n".join((
+        re.search(r"const evPick = .*?;\n", _js_raw).group(0),
+        """const a = { id: 1, issue: 'air' }, b = { id: 2, issue: 'heat' };
+console.log(JSON.stringify({ own: evPick([a, b], 'heat').id, first: evPick([a, b], 'noise').id,
+  none: evPick([], 'air') === undefined }));""")))
+    assert _pk == {"own": 2, "first": 1, "none": True}, f"evPick: the shown issue's event, else the first: {_pk}"
+
+# THE PAGE LOADS. On 5 Oct the shell set `window.PAI.isHidden` at its top level, which runs before any PAI_LOAD
+# function has made window.PAI, so every load threw and the page sat on "Asking the node…" for good. Every check
+# above lifts pieces and passed. This loads the whole file the way a browser does (one script, a bare DOM), so a
+# top-level statement that throws fails here whatever it is. The handlers it registers are then driven, and the
+# Decide closure rendered, against that same load.
+if shutil.which("node"):
+    # The program is one function: node runs STDIN as a global script, where a `const` of its own would collide
+    # with the kit's top-level `let`s the moment dashboard.js declares them.
+    _boot = _node(r"""(() => {
+const fs = require('fs'), vm = require('vm');
+const L = {}, store = {}, posted = [];
+globalThis.window = globalThis;
+globalThis.localStorage = globalThis.sessionStorage = { getItem: k => (k in store ? store[k] : null),
+  setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+globalThis.location = { search: '', hash: '', pathname: '/', href: 'http://node/' };
+globalThis.document = { addEventListener: (t, f) => (L[t] = L[t] || []).push(f),
+  getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] };
+globalThis.addEventListener = () => {};
+/* POSTs are recorded and never answered, so nothing after the post runs. */
+globalThis.fetch = (u, o) => { if (o && o.body) posted.push(JSON.parse(o.body)); return new Promise(() => {}); };
+const out = { boot: 'loaded' };
+try { vm.runInThisContext(fs.readFileSync('app/static/dashboard.js', 'utf8'), { filename: 'dashboard.js' }); }
+catch (e) { out.boot = String((e && e.message) || e); console.log(JSON.stringify(out)); process.exit(0); }
+
+/* An event card's three buttons and its form, as the page draws them. */
+const el = (props = {}) => ({ value: '', focused: false, focus() { focusedOn = this.name; }, ...props });
+let focusedOn = null;
+const f = { stage: el({ name: 'stage' }), actor: el({ name: 'actor' }), note: el({ name: 'note' }) };
+const inst = { hidden: true };
+const form = { hidden: true, elements: f, dataset: { ev: '11' }, classList: { contains: c => c === 'evform' },
+  querySelector: q => (q === '.instead' ? inst : null) };
+const card = { querySelector: q => (q === 'form.evform' ? form : null) };
+const btn = stage => ({ id: '', getAttribute: a => (a === 'data-stage' ? stage : a === 'data-ev' ? '11' : null),
+  closest: q => (q === '.evb' ? btn(stage) : q === '.ev, .evrow' ? card : null) });
+const fire = (type, target) => { for (const h of L[type] || []) { try { h({ target, preventDefault() {} }); } catch {} } };
+const press = stage => { const b = btn(stage); b.closest = q => (q === '.evb' ? b : q === '.ev, .evrow' ? card : null); fire('click', b); };
+const submit = () => fire('submit', { closest: q => (q.includes('form.evform') ? form : null) });
+
+press('dismissed');                         /* Doesn't fit, no name kept: the form opens on the name */
+out.dismissFocus = focusedOn; out.dismissInst = inst.hidden;
+f.actor.value = 'tomas'; f.note.value = 'opened the door';
+form.hidden = true;                         /* Cancel */
+press('acted');                             /* then Done */
+out.doneFocus = focusedOn; out.doneInst = inst.hidden; out.doneNote = f.note.value;
+f.note.value = 'left over'; submit();       /* a stale note in the field must not be sent with Done */
+f.stage.value = 'dismissed'; f.note.value = 'opened the door'; submit();
+out.posted = posted;
+
+/* Decide, rendered. One card per issue for the alerts no event covers, and none for a covered one. */
+vm.runInThisContext("LOC = 'en';");
+window.KH = { H: {} };
+const reg = [];
+window.PAI = { register: s => reg.push(s), sections: [], has: () => true };
+/* Some PAI_LOAD closures push others when they run (Act's holds Decide's), so this runs whichever holds Decide's
+   registration until it has registered: the list grows as it is walked, the way init() walks it. */
+const LOAD = vm.runInThisContext('PAI_LOAD');
+for (let i = 0; i < LOAD.length && !reg.some(s => s.id === 'decide'); i++)
+  if (LOAD[i].toString().includes("register({\n  id: 'decide', pack")) LOAD[i]();
+const decide = reg.find(s => s.id === 'decide');
+const ask = (id, text) => ({ id, text, says: { en: text }, age_minutes: 5, current: true });
+const ISS = { heat: { name: { en: 'Heat' }, open_asks: [ask(361, 'hot'), ask(356, 'hotter')] },
+  air: { name: { en: 'Air' }, open_asks: [ask(400, 'dusty')] } };
+const render = events => { vm.runInThisContext(`S = ${JSON.stringify({ issues: { events }, health: {} })};`);
+  return decide.render({ ISS, ORDER: ['heat', 'air'], S: { issues: { events }, health: {} }, LOC: 'en' }); };
+out.unc = render({ engine: 'events', open: [], uncovered_asks: [361, 356] });
+out.none = render({ engine: 'events', open: [], uncovered_asks: [] });
+console.log(JSON.stringify(out));
+process.exit(0);
+})();""")
+    assert _boot["boot"] == "loaded", f"dashboard.js throws while it loads, so the page never boots: {_boot['boot']}"
+    assert _boot["dismissFocus"] == "actor" and _boot["dismissInst"] is False, _boot
+    assert _boot["doneFocus"] == "actor" and _boot["doneInst"] is True and _boot["doneNote"] == "", \
+        f"Done opens the form on the name, with Doesn't fit's note hidden and emptied: {_boot}"
+    assert [(p["stage"], p["note"]) for p in _boot["posted"]] == [("acted", ""), ("dismissed", "opened the door")], \
+        f"only Doesn't fit sends a note: {_boot['posted']}"
+    assert _boot["unc"].count('id="decide-heat"') == 1 and 'id="decide-air"' not in _boot["unc"], \
+        f"one Decide card per issue with an uncovered alert, none for a covered one: {_boot['unc']}"
+    assert 'id="decide-none"' in _boot["none"] and "decide-heat" not in _boot["none"], _boot["none"]
+
+# THE LEAD AND DECIDE AGREE. On events or shadow the lead counts and picks only the alerts no event covers, which
+# is what Decide draws: counting all of open_asks said "2 alerts open · in Decide" over a Decide reading
+# "Nothing open". lead() is a closure, so its lines are lifted and run.
+if shutil.which("node"):
+    _ld = _js_raw[_js_raw.index("  function lead() {"):]
+    _lc = _ld[_ld.index("    const st = evState(), evs = evOpen()"):]
+    _lc = _lc[:_lc.index("e0 = evs[0] || {};") + len("e0 = evs[0] || {};")]
+    _la = re.search(r"    const askAt = .*?;\n", _ld).group(0)
+    _lr = _node("\n".join((
+        re.search(r"function evState\(\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"const evOpen = .*?\n", _js_raw).group(0),
+        "let S; const ORDER = ['heat', 'air'];",
+        "const ISS = { heat: { open_asks: [{ id: 361 }] }, air: { open_asks: [{ id: 356 }, { id: 357 }] } };",
+        "function lead(events, hk) { S = { issues: { events } }; const d = ISS[hk];",
+        _lc, _la,
+        "return { nAsk, asEv, askAt: askAt || null, picks: askAt ? asksOf(askAt)[0].id : null }; }",
+        """console.log(JSON.stringify({
+  covered: lead({ engine: 'events', open: [], uncovered_asks: [] }, 'heat'),
+  oneLeft: lead({ engine: 'shadow', open: [], uncovered_asks: [357] }, 'heat'),
+  rules: lead({ engine: 'rules' }, 'heat'),
+  old: lead(undefined, 'heat'),
+}));""")))
+    assert _lr["covered"] == {"nAsk": 0, "asEv": False, "askAt": None, "picks": None}, \
+        f"every alert covered and no event open: the lead says nothing open, as Decide does: {_lr['covered']}"
+    assert _lr["oneLeft"] == {"nAsk": 1, "asEv": False, "askAt": "air", "picks": 357}, \
+        f"the lead counts and picks only the uncovered alert: {_lr['oneLeft']}"
+    assert _lr["rules"]["nAsk"] == 3 and _lr["rules"]["askAt"] == "heat" and _lr["old"]["nAsk"] == 3, \
+        f"a rules or older node counts every open alert: {_lr}"
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "

@@ -668,6 +668,9 @@ async function open(job, opts = {}, stranger = null) {
      be sent. A job may name one; PAI_MODE sets it for a whole run. */
   const uiMode = job.mode || process.env.PAI_MODE;
   if (uiMode) q.push(`mode=${uiMode}`);
+  /* gate.sh renders the fold open with `PAI_Q="$PAI_Q&worth=1"`; the URL is built from `q`, so PAI_Q's
+     worth has to be carried over here or that render is the closed page under another tag. */
+  if (/[?&]worth=1\b/.test(process.env.PAI_Q || '')) q.push('worth=1');
   if (job.register) q.push(`register=${job.register}`);
   /* `?ask=1` opens the ask pane without remembering it; a job may ask for it, PAI_ASK=1 for a run. */
   if (job.ask || process.env.PAI_ASK === '1') q.push('ask=1');
@@ -2129,7 +2132,8 @@ async function press() {
   const read = () => h.page.evaluate(() => ({
     url: location.search,
     railOn: (document.querySelector('#rail a.on') || {}).textContent || null,
-    grain: (document.getElementById('grain-line') || {}).textContent || null,
+    /* The grain line moved to Network; the rail's area figure is on Now and changes with the dial. */
+    grain: (document.querySelector('[data-num="rail.area"]') || {}).textContent || null,
     heads: [...document.querySelectorAll('[data-component="cellGroup"]')].map(e => e.textContent.trim()),
   }));
   const before = await read();
@@ -2167,7 +2171,10 @@ async function press() {
  * it stay on a real page, is the thing linked to actually there, and did it go to it.
  */
 async function anchors() {
-  const job = tagged({ name: 'now_populated_1440', view: 'now', w: 1440, state: 'populated' });
+  /* PAI_VIEW=network runs the same walk on another view. An anchor there used to send the reader to
+     Now, because readView() answered 'now' for any hash that was not a view name. */
+  const view = process.env.PAI_VIEW || 'now';
+  const job = tagged({ name: `${view}_populated_1440`, view, w: 1440, state: 'populated' });
   const h = await open(job);
   const links = await h.page.evaluate(() => [...new Set([...document.querySelectorAll('#page a[href^="#"]')]
     .map(a => a.getAttribute('href').slice(1)).filter(Boolean))]);
@@ -2179,10 +2186,13 @@ async function anchors() {
       await new Promise(x => setTimeout(x, 500));
       const page = document.getElementById('page');
       const el = document.getElementById(anchor);
+      const on = document.querySelector('nav.views button.on');
       return { chars: page.innerText.trim().length, bands: page.querySelectorAll('section.band').length,
-        there: !!el, top: el ? Math.round(el.getBoundingClientRect().top) : null };
+        there: !!el, top: el ? Math.round(el.getBoundingClientRect().top) : null,
+        view: on ? on.dataset.view : null };
     }, id);
-    if (!r.there) fails.push(`#${id}: nothing on the page carries that id`);
+    if (r.view !== view) fails.push(`#${id}: the link left the ${view} view for ${r.view}`);
+    else if (!r.there) fails.push(`#${id}: nothing on the page carries that id`);
     else if (r.bands < 2 || r.chars < 2000) {
       fails.push(`#${id}: the page emptied — ${r.bands} band(s), ${r.chars} characters`);
     } else if (r.top > 200 || r.top < -200) {

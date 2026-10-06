@@ -42,13 +42,13 @@ The programme behind it is at [planetai.fab.city](https://planetai.fab.city/).
 ## The loop a node runs
 
 Sensors, public stations, open-data portals and Earth models feed the node; that is *sense*. Everything after
-it is one loop in four stages, and the dashboard is laid out in the order the loop runs. The page describes
+it is one loop in four stages, and the dashboard has a part for each; Now draws Decide first. The page describes
 each stage in its own words:
 
 | stage | what it holds |
 |---|---|
 | observe | what is read, seen and heard about this place |
-| decide | what may be said about it, and at what resolution |
+| decide | what to do about it |
 | act | what has been asked, of whom |
 | measure | whether it worked, and how long it took |
 
@@ -58,8 +58,8 @@ only be measured where the alert is sent and the answer comes back, which is her
 definition.
 
 Since v0.72 the loop closes on the dashboard itself. An open act-level alert about one of the place's issues
-shows under Decide as "What to do about it", with the rule's own recommendation beside what was seen. A person records a decision there, then
-presses **I did this** under Act when it is done, and Measure shows ρ and, per rule, which acts were followed
+shows under Decide, with the rule's own recommendation beside what was seen. A person records a decision there, then
+presses **I did this** on the same card when it is done, and Measure shows ρ and, per rule, which acts were followed
 by the condition clearing. After a week of its own readings the node also draws "The day this place usually
 has" on the Historical view. [How it works](how-it-works.md) follows a reading through every step.
 

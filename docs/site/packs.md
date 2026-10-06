@@ -124,7 +124,7 @@ open alert on the heat issue, and the sentence after 👉 is what the dashboard'
 this node suggests". The cooldown still counts from the `info` alert of step 3, so the first `act` alert
 comes once those 1440 minutes have passed with the room still over the line. Then a 🔴 message reaches
 Telegram if it is connected, the heat issue's state is `act`, and the lead's last line counts the alert
-(`1 alert open · #<id> · in 3 Act` when it is the only one).
+(`1 alert open · in Decide` when it is the only one).
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack

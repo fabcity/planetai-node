@@ -141,8 +141,8 @@ six parts, under a hundred words, written by the node itself from SQL. See [The 
 
 ## The page and its stages
 
-**Stages.** The dashboard is read in the order the loop runs: observe, decide, act, measure. Every section
-the page draws is registered under one of them.
+**Stages.** The loop runs observe, decide, act, measure, and the dashboard has a stage for each; Now draws
+Decide first. Every section the page draws is registered under one of them.
 
 **Digest.** Four sentences, one per stage, written by the node in English, Bahasa Indonesia and Spanish from
 figures already in `GET /issues`. Beside them, `digest.simple` is the paragraph simple mode draws, and

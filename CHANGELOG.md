@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The dashboard opens on what is happening now: each open alert event once, with the action the bot sent and Done,
+  Not now and Doesn't fit, then the readings that explain it. Act is the record of what was asked and answered, and
+  four sections about resolution and custody moved to Network. A node still on the old engine keeps its alert cards,
+  with "I did this" on them.
+
 ## v0.77 — 2026-10-06 — Alert events: one message per story, with one action
 
 - **2026-10-06 · The source registry is re-pinned to `awesome-fabcity-data` at `851b8db`** (from `88f5c73`), 269 entries: the Global Power Plant Database is filed as an Environmental|Region candidate (registry #79). `docs/NEXT_RELEASE.md` rule 4.
