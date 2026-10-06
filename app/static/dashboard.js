@@ -1154,7 +1154,7 @@ function strips(key, D, o = {}) {
       label: `${name}, one row a day and one cell an hour over ${days.length} days` })
     + `<p class="f-read" id="${esc(id)}-read" aria-live="polite"><span data-num="${esc(key)}.days.over" data-cmp="`
     + `${esc(`of ${totals.read} hours read in ${days.length} days, ${totals.of - totals.read} not recorded`)}">`
-    + `${totals.over} hours over the line</span><span class="f-gone">${totals.of - totals.read} not recorded · `
+    + `${totals.over} hour${totals.over === 1 ? '' : 's'} over the line</span><span class="f-gone">${totals.of - totals.read} not recorded · `
     + `point at a cell</span></p>`
     + `<p class="f-legend"><span class="f-lo"><i></i>low</span><span class="f-hi"><i></i>high, on this issue’s own scale</span>`
     + `<span class="f-red"><i></i>an hour over the line</span><span class="f-gap"><i></i>nothing recorded</span>`
@@ -5624,8 +5624,8 @@ function overRows(ctx) {
       left: `<span class="who"><b>${esc(u.name[LOC])}</b><span class="m">${esc(ctx.LAB[it.distance])} · over `
         + `${esc(fmt(it.line.value, u.dp))} ${esc(u.unit)}</span></span>`,
       line: `Hours over the line today, and in these ${D.days} days.`,
-      qty: [{ num: `${k}.over.today`, value: t.read ? `${t.over} h` : null, cmp: `of ${t.read} hours read today, ${t.of - t.read} not recorded` },
-        { num: `${k}.over.days`, value: w.read ? `${w.over} h` : null, cmp: `of ${w.read} hours read in ${D.days} days, ${w.of - w.read} not recorded` }],
+      qty: [{ num: `${k}.over.today`, value: t.read ? `${t.over} h` : null, cmp: `of ${t.read} hour${t.read === 1 ? '' : 's'} read today, ${t.of - t.read} not recorded` },
+        { num: `${k}.over.days`, value: w.read ? `${w.over} h` : null, cmp: `of ${w.read} hour${w.read === 1 ? '' : 's'} read in ${D.days} days, ${w.of - w.read} not recorded` }],
     });
   }).join('') + `</div>`;
 }
