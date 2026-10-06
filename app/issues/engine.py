@@ -1510,8 +1510,10 @@ def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict
         tz = ZoneInfo(tzname)
     except (ZoneInfoNotFoundError, ValueError):
         tz = timezone.utc
-    top = now.astimezone(tz).replace(minute=0, second=0, microsecond=0)
-    buckets = [top - timedelta(hours=k) for k in range(n * 24 - 1, -1, -1)]
+    top = now.astimezone(tz).replace(minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    # Stepped in UTC and shown in the node's zone: across a daylight-saving change, wall-clock arithmetic would skip
+    # the repeated hour or invent one that does not exist. A fall-back day then holds 25 hours, a spring-forward 23.
+    buckets = [(top - timedelta(hours=k)).astimezone(tz) for k in range(n * 24 - 1, -1, -1)]
     hourly: dict = {b: [] for b in buckets}
     for r in _rows(cur, "SELECT h.bucket, h.sensor_id, h.metric, h.mean, s.indoor, s.local, s.kind "
                         "FROM readings_1h h JOIN sensors s USING (sensor_id) WHERE h.bucket >= %s", buckets[0]):

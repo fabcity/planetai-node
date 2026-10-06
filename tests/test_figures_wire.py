@@ -176,12 +176,12 @@ print("  silent stations: published, but neither the digest nor the grain table 
 # --- §3.4 GET /issues/days ----------------------------------------------------------------------
 class Cur:
     """Answers days()'s three reads from the capture: the session zone, readings_1h from a bucket on, alert_events."""
-    def __init__(self, snap, events=()):
-        self.snap, self.events, self.rows = snap, list(events), []
+    def __init__(self, snap, events=(), tz="Asia/Makassar"):
+        self.snap, self.events, self.tz, self.rows = snap, list(events), tz, []
 
     def execute(self, sql, args=()):
         if "current_setting('TimeZone')" in sql:
-            self.rows = [{"tz": "Asia/Makassar"}]
+            self.rows = [{"tz": self.tz}]
         elif "FROM readings_1h" in sql:
             self.rows = [dict(r, bucket=dt.datetime.fromisoformat(r["bucket"])) for r in self.snap["readings_1h"]
                          if dt.datetime.fromisoformat(r["bucket"]) >= args[0]]
@@ -224,5 +224,19 @@ assert one["events"] == [{"id": 2, "issue": "air", "kind": "danger", "level": "a
 assert engine.days(Cur(SNAP), Settings(), DECL, 0, now=NOW)["days"] == 1
 assert engine.days(Cur(SNAP), Settings(), DECL, 500, now=NOW)["days"] == engine.DAYS_MAX == 90
 print("  /issues/days: one day is /issues' own 24 values; the node counts hours over per local day; 1 to 90 days")
+
+# Across a daylight-saving change the buckets are stepped in UTC and shown in the node's zone: Madrid's 25 October holds
+# 25 hours, none skipped; and a +5:30 zone's buckets still fall on its own local whole hours.
+mad = engine.days(Cur({"readings_1h": []}, tz="Europe/Madrid"), Settings(), DECL, 2,
+                  now=dt.datetime(2026, 10, 26, 3, 10, tzinfo=dt.timezone.utc))
+ts = [dt.datetime.fromisoformat(b).timestamp() for b in mad["buckets"]]
+assert len(ts) == 48 and all(b - a == 3600 for a, b in zip(ts, ts[1:])), "48 distinct instants, an hour apart"
+assert sum(b.startswith("2026-10-25") for b in mad["buckets"]) == 25, "the fall-back day holds 25 hours"
+kol = {"readings_1h": [{"bucket": "2026-10-06T09:00:00+05:30", "sensor_id": "k1", "metric": "pm25", "mean": 17.0,
+                        "indoor": True, "local": True, "kind": "sensor"}]}
+ind = engine.days(Cur(kol, tz="Asia/Kolkata"), Settings(), DECL, 1, now=dt.datetime(2026, 10, 6, 4, 10, tzinfo=dt.timezone.utc))
+assert ind["buckets"][-1] == "2026-10-06T09:00:00+05:30", ind["buckets"][-1]
+assert ind["issues"]["air"]["series"]["room"][-1] == 17.0, "a +5:30 node's row lands on its local whole hour"
+print("  /issues/days: a daylight-saving day holds 25 hours, none dropped; a +5:30 node's buckets are its whole hours")
 
 print("figures_wire: the usual day")
