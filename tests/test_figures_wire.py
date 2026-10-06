@@ -160,4 +160,17 @@ assert again["stations_silent"]["read"] is True
 assert [s["name"] for s in again["stations"] if s.get("last_heard")] == ["Suluban (AirGradient)"]
 print("  silent stations: a capture says whether it read them, and replays the ones it carried")
 
+# A station that stopped is published for the fold, never counted as one this node reads now (§3.3).
+quiet = {"sensor_id": "bad-sc-0", "name": "Stopped, 60 m away", "lat": -8.8195, "lon": 115.1650, "local": False,
+         "indoor": False, "kind": "sensor", "read": {}, "series": {}, "last_heard": "2026-09-20T10:00:00+00:00"}
+base = engine.replay(fresh(), Settings(), DECL)
+snap = fresh()
+snap["issues"]["stations_silent"] = {"read": True, "within_days": 30}
+snap["issues"]["stations"].append(quiet)
+more = engine.replay(snap, Settings(), DECL)
+assert len(more["stations"]) == len(base["stations"]) + 1, "the silent station is published"
+assert more["digest"] == base["digest"], "the digest counts only stations heard in the last day"
+assert more["geometry"] == base["geometry"], "the grain table sees only stations heard in the last day"
+print("  silent stations: published, but neither the digest nor the grain table counts them")
+
 print("figures_wire: the usual day")

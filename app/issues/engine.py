@@ -1439,7 +1439,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
     headline_issue = lead["issue"] if lead else None
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited, silent_rows)
-    geom = _safe_geometry(lat, lon, settings, stations, peers)
+    # A station that stopped is published for the page's fold, never counted as one this node reads now: the digest,
+    # simple mode's neighbours and the grain table see only the stations heard in the last day (SPEC_dashboard_figures §3.3).
+    heard = [s for s in stations if not s.get("last_heard")]
+    geom = _safe_geometry(lat, lon, settings, heard, peers)
     asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
     # sees a schema it does not know draws what it recognises; it never refuses, and the dashboard's
@@ -1461,7 +1464,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "metrics": METRICS,
             "asks": asks,
             # simple mode's whole answer, written here because the page may not compose a sentence
-            "digest": _digest(out, stations, geom, asks, headline_issue, now, clock,
+            "digest": _digest(out, heard, geom, asks, headline_issue, now, clock,
                               _oldest(data["alerts"])),
             "mesh": _mesh(mesh, data["stats"]),
             "geometry": geom,
