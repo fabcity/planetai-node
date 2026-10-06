@@ -1,5 +1,5 @@
 # The report
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 The report is the node telling the household what the ground is doing, in their language, on a schedule. The
 repo's own sentence for a node ends there: "It tells the people there in plain sentences, on Telegram, and passes
@@ -139,7 +139,8 @@ A second summary lives in `GET /issues`, not in the report: `digest`, four sente
 decide, act, measure), in English, Bahasa Indonesia and Spanish. Since v0.74 it also carries `simple`, the
 paragraph simple mode draws on Now (the house's own stations and the nearest others, the oldest open alert,
 how the last 30 days of asking went), and `prompts`, the ask pane's questions, the first three of which it opens with. Every figure in the four is one the page already draws further down, and the node writes them, not
-the browser. The measure sentence has the form "Of the {acts} alerts here that asked for something, {answered}
+the browser. The open alerts they count are the issues' open asks, so on a node whose alert engine is `shadow` or `events` they leave out the heat and air alerts, which an
+event stands for. The measure sentence has the form "Of the {acts} alerts here that asked for something, {answered}
 have been answered, and the usual wait was {median} minutes."
 
 That sentence does not say ρ. ρ has its own window and its own query in `app/index.py`, which the

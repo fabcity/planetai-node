@@ -1,5 +1,5 @@
 # Ask the node
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names
 for this node, the same one the Telegram bot uses, asked through the same tools. It reads the page and
@@ -57,7 +57,9 @@ their own words, because ρ is built out of those sentences.
 
 The node builds the model's context itself, from the `/issues` bundle the page already has: the lead and its
 sentence, the digest, every watched issue's state and values, the open alerts, and the documentation for the part
-in focus. The browser sends only the end of the thread: the question and the three exchanges before it.
+in focus. On a node whose alert engine is `shadow` or `events`, the open alerts leave out those of the
+heat and air packs the events replaced, which nobody can answer there; the pane's first question about the oldest open
+alert is then about one of the others, or asks whether anything needs attention. The browser sends only the end of the thread: the question and the three exchanges before it.
 
 That context, and every tool result the model reads, has no coordinate, no sensor or station name, no sensor id
 and no `meta`. They are removed or replaced before the model sees them; `tests/test_ask.py` checks the context

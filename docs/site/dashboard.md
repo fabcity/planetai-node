@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -49,7 +49,7 @@ for itself is a bug.
    "Recorded. The node watches what happens next."
 6. **Find the record.** Act's "What was asked, and what was answered" has a ring for your event, closed, and a
    row with the action the node sent and your answer. "What was decided, and by whom", just below, has your
-   name at the top with the button you pressed. Pressing Done on an event does not change ρ yet; an act on an
+   name at the top of its fold with the button you pressed. Pressing Done on an event does not change ρ yet; an act on an
    alert is in `actions`, closes the alert, and counts towards ρ in Measure, with `decided first` if you
    decided before it.
 7. **Press "Not now" on another.** The card stays on the page, muted: `held until 16:20 unless it reaches
@@ -73,7 +73,8 @@ as `?res=`, so a link into any view keeps its resolution. The header also carrie
 **ask the node** right of it (see [below](#ask-the-node)), the Paper / Dark register switch (kept in this browser; `?register=` reads first and remembers nothing) and **↻**, "Ask
 the node again".
 
-Other query keys: `?view=` works as the hash does, `?fixture=<name>` replays a committed snapshot (see
+Other query keys: `?view=` works as the hash does (a hash that names no view is a link to a section on the page you are on, so
+it keeps the view), `?fixture=<name>` replays a committed snapshot (see
 below), `?state=empty` or `?state=refused` draws those states for a capture, `?worth=1` opens the ladder's
 fold, and on the wall `?var=` and `?vars=all`.
 
@@ -257,15 +258,15 @@ Decide says which of five states it is in, each in words and none as a zero or a
 
 | state | what Decide says |
 |---|---|
-| events or shadow, an event open | the cards |
+| events or shadow, an event open, or an alert no event covers | the cards |
 | events or shadow, no event open and no alert left uncovered | "Nothing open. 2 cleared today, the last at 14:40 (air)." |
 | the old engine (`rules`) | "This node sends alerts, not events.", then one card for each issue with an open alert, or "Nothing is asking for anything." |
 | a node older than v0.77, with no events | "This node is v0.76: it sends alerts, not events", then the alert cards |
 | the events could not be read | the node's own sentence, then the alert cards |
 
-On a node whose alert engine is `shadow` or `events`, an issue's state follows the alert events: `act` while an event is
-open and unanswered (a `danger` event stays `act` whatever the answer), `notable` once somebody has answered it, for
-the warn-level air spike, and for a day after an event clears. The old heat and air rules' alerts are not asks there,
+On a node whose alert engine is `shadow` or `events`, an issue's state follows the alert events: `act` while an act-level
+event is open and unanswered (a `danger` event stays `act` whatever the answer), `notable` once somebody has answered
+it, while a warn-level event nobody has answered is open, and for a day after an event clears. The old heat and air rules' alerts are not asks there,
 so they are not in `open_asks`. See `docs/SPEC_event_led_state.md`.
 
 If `/issues` itself did not answer, the figures stay and the pill says `stale`; that is the pill's state, not
@@ -394,7 +395,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.77.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.78.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`.

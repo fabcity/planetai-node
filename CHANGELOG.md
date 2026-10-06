@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.78 — 2026-10-06 — The dashboard tells the bot's story
 
 - The dashboard opens on what is happening now: each open alert event once, with the action the bot sent and Done,
   Not now and Doesn't fit, then the readings that explain it. Act is the record of what was asked and answered, and

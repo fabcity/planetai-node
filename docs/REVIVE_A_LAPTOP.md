@@ -1,5 +1,5 @@
 # Turn an old laptop into a node
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 > **Partly rehearsed, and the part that was rehearsed is not the part this page recommends.**
 > On 10 September 2026 a 2015 MacBook Pro became a live node this way — on **Linux Mint 22.3**, which is
