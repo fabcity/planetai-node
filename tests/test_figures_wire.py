@@ -60,4 +60,36 @@ snap["issues"]["issues"]["heat"]["usual"], snap["issues"]["issues"]["heat"]["usu
 assert engine.replay(snap, Settings(), DECL)["issues"]["heat"]["usual"] == carried, "a capture's usual replays verbatim"
 print("  usual: a capture without it replays as unread; a capture with it replays it verbatim")
 
+class Tx:
+    """A connection.transaction() that records it was entered and left, as psycopg's savepoint does."""
+    def __init__(self):
+        self.entered = self.exited = False
+
+    def __enter__(self):
+        self.entered = True
+
+    def __exit__(self, *exc):
+        self.exited = True
+        return False
+
+
+class LiveCur:
+    def __init__(self, fail):
+        self.fail, self.tx = fail, Tx()
+        self.connection = type("Conn", (), {"transaction": lambda _s: self.tx})()
+
+    def execute(self, sql, args=()):
+        if self.fail:
+            raise RuntimeError("materialized view has not been populated")
+
+    def fetchall(self):
+        return [{"sensor_id": "a", "metric": "apparent", "hour": 7, "median": 30.0, "p90": 31.0}]
+
+
+bad = LiveCur(True)
+assert engine._optional(bad, engine.USUAL_SQL) is None and bad.tx.entered and bad.tx.exited, "a failing read is None, inside a savepoint"
+good = LiveCur(False)
+assert engine._optional(good, engine.USUAL_SQL) == good.fetchall() and good.tx.entered and good.tx.exited, "a good read is its rows, inside a savepoint"
+print("  usual: the read runs in a savepoint of its own; an unpopulated view is None, not a failed /issues")
+
 print("figures_wire: the usual day")
