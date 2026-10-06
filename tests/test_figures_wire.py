@@ -116,4 +116,48 @@ assert engine._room_series(DECL["heat"], hourly, [B], {}, []) is None, "no rooms
 assert engine._room_series(DECL["coast"], hourly, [B], {}, ["K ROOM"]) is None, "an issue with no room distance"
 print("  event series: the event's rooms combined as the issue combines its house, on /issues' buckets")
 
+# --- §3.3 the stations that stopped (node #1, 6 October 2026) -----------------------------------
+def heard(i, name, lat, lon, local=False):
+    return {"sensor_id": i, "name": name, "lat": lat, "lon": lon, "local": local, "indoor": False, "kind": "sensor",
+            "metric": "pm25", "mean_15m": 5.0, "silent_minutes": 5}
+
+
+def stopped(i, name, lat, lon, when, indoor=False):
+    return {"sensor_id": i, "name": name, "lat": lat, "lon": lon, "local": False, "indoor": indoor, "kind": "sensor",
+            "last_heard": when}
+
+
+HEARD = [heard("sc-19874", "BAYU NEW ENCLOSURE ", -8.82008, 115.16669, True),
+         heard("sc-19236", "Ungasan Kit - TEST", -8.81983, 115.16657, True),
+         heard("sc-19898", "Suluban Entrance - AIR", -8.81645, 115.09271),
+         heard("bad-ag-197980", "Padang2 Uluwatu (AirGradient)", -8.81121, 115.10252),
+         heard("bad-sc-19768", "Bayu Sensor by Fab Lab - Kios Serangan (Smart Citizen)", -8.72582, 115.23585)]
+STOPPED = [stopped("bad-sc-19874", "BAYU NEW ENCLOSURE (Smart Citizen)", -8.82008, 115.16669, "2026-10-04T15:00:37+00:00"),
+           stopped("bad-sc-19236", "Ungasan Kit - TEST (Smart Citizen)", -8.81983, 115.16657, "2026-10-04T15:00:37+00:00"),
+           stopped("bad-sc-19898", "Suluban Entrance - AIR (Smart Citizen)", -8.81645, 115.09271, "2026-10-01T20:30:26+00:00"),
+           stopped("bad-oq-6432409", "Padang2 Uluwatu (OpenAQ)", -8.81121, 115.10252, "2026-09-07T23:00:42+00:00"),
+           stopped("bad-sc-19995", "Bayu Sensor Demo Test Lora (Smart Citizen)", -8.72591, 115.23600, "2026-10-03T22:45:24+00:00"),
+           stopped("bad-iqs-jimbaran-s", "Jimbaran (IQAir)", -8.79122, 115.16740, "2026-09-07T22:07:41+00:00", True),
+           stopped("bad-pa-36601", "Jimbaran by Lumi Clinic (PurpleAir)", -8.79122, 115.16740, "2026-09-07T23:00:42+00:00", True),
+           stopped("bad-ag-208245", "Suluban (AirGradient)", -8.81882, 115.08806, "2026-10-03T09:45:22+00:00")]
+out = engine._stations(HEARD, [], -8.8190516, 115.1644423, True, STOPPED)
+gone = sorted(s["name"] for s in out if s.get("last_heard"))
+# Four of the eight are relays (bad-sc-*, OpenAQ) of kits heard today at the same point: they are not listed.
+assert gone == ["Bayu Sensor Demo Test Lora (Smart Citizen)", "Jimbaran (IQAir)",
+                "Jimbaran by Lumi Clinic (PurpleAir)", "Suluban (AirGradient)"], gone
+one = next(s for s in out if s["sensor_id"] == "bad-ag-208245")
+assert one["read"] == {} and one["series"] == {} and one["last_heard"] == "2026-10-03T09:45:22+00:00" and one["km"] > 0
+assert not any(s.get("last_heard") for s in engine._stations(HEARD, [], -8.8, 115.16, True, None)), "none given, none listed"
+print("  silent stations: four of node #1's eight are kept; four are relays of kits heard today, at the same point")
+
+rep = engine.replay(fresh(), Settings(), DECL)
+assert rep["stations_silent"] == {"read": False, "within_days": 30}, rep["stations_silent"]
+snap = fresh()
+snap["issues"]["stations_silent"] = {"read": True, "within_days": 30}
+snap["issues"]["stations"].append({**{k: v for k, v in STOPPED[-1].items()}, "read": {}, "series": {}})
+again = engine.replay(snap, Settings(), DECL)
+assert again["stations_silent"]["read"] is True
+assert [s["name"] for s in again["stations"] if s.get("last_heard")] == ["Suluban (AirGradient)"]
+print("  silent stations: a capture says whether it read them, and replays the ones it carried")
+
 print("figures_wire: the usual day")

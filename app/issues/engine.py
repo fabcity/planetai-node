@@ -93,30 +93,48 @@ def _source_of(sensor_id: str) -> dict:
     return {"source": "unknown", "url": None, "attribution": None}
 
 
-def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sited: bool = True) -> list[dict]:
+def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sited: bool = True,
+              silent: list[dict] | None = None) -> list[dict]:
     """Every station with a coordinate, its own 15-minute means for the metrics the page may show, and the hourly
     series the node has for it. Nothing here is averaged across stations: the street stays a fenced median in the
     stack, and this is the thing the median hides, published beside it by decision of 15 September 2026.
 
     `sited` is False when this node has no NODE_LAT/NODE_LON. Then `km` is None on every station rather than a
     distance from (0, 0) — a real point in the Gulf of Guinea that every surface drawing this list would otherwise
-    print as fact. An unknown distance is published as unknown; the surfaces say so in their own words."""
+    print as fact. An unknown distance is published as unknown; the surfaces say so in their own words.
+
+    `silent` is the stations heard within SILENT_DAYS and not in the last day; they keep a row with `last_heard`,
+    unless a station heard today stands at the same point."""
     import h3  # noqa: PLC0415 — only this path needs it, and geometry.py already requires it
+    def row(r: dict) -> dict:
+        return {"sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
+                "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
+                **_source_of(r["sensor_id"]),
+                "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited
+                else None,
+                "read": {}, "series": {}}
     by: dict[str, dict] = {}
     for r in stats:
         if r.get("lat") is None or r.get("lon") is None:
             continue
-        s = by.setdefault(r["sensor_id"], {
-            "sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
-            "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
-            **_source_of(r["sensor_id"]),
-            "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited else None,
-            "read": {}, "series": {}})
+        s = by.setdefault(r["sensor_id"], row(r))
         m = METRICS.get(r.get("metric"))
         if m and r.get("mean_15m") is not None:
             s["read"][r["metric"]] = {"value": round(float(r["mean_15m"]), 2), "unit": m["unit"], "dp": m["dp"],
                                        "silent_minutes": None if r.get("silent_minutes") is None
                                        else round(r["silent_minutes"])}
+    # The archive of silence (docs/SPEC_dashboard_figures.md §3.3): a station heard in the last 30 days and not in the
+    # last day keeps its row, with when it was last heard. Unless a station heard today stands at the same point: Bali
+    # Air Dispatch relays Smart Citizen kits as bad-sc-<kit> and AirGradient ones through OpenAQ, so a relay that
+    # stopped is a second road to a kit that still reports, and listing it would call a working kit dead.
+    heard = {(round(float(s["lat"]), 5), round(float(s["lon"]), 5)) for s in by.values()}
+    for r in silent or []:
+        if r.get("lat") is None or r.get("lon") is None or r["sensor_id"] in by:
+            continue
+        if (round(float(r["lat"]), 5), round(float(r["lon"]), 5)) in heard:
+            continue
+        lh = r.get("last_heard")
+        by[r["sensor_id"]] = {**row(r), "last_heard": lh.isoformat() if hasattr(lh, "isoformat") else lh}
     for h in hourly or []:
         s = by.get(h.get("sensor_id"))
         if s is None:
@@ -1064,6 +1082,14 @@ def _rows(cur, sql, *args) -> list[dict]:
 USUAL_DAYS = 14
 USUAL_SQL = "SELECT sensor_id, metric, hour, median, p90 FROM usual_by_hour"
 
+# The archive of silence (docs/SPEC_dashboard_figures.md §3.3): stations heard within SILENT_DAYS and not in the last
+# day. `stats` holds the last 24 hours only, so without this a station silent for a day leaves /issues with no word.
+SILENT_DAYS = 30
+SILENT_SQL = ("SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(r.ts) AS last_heard "
+              "FROM readings r JOIN sensors s USING (sensor_id) "
+              "WHERE s.kind = 'sensor' AND r.ts > now() - make_interval(days => %s) "
+              "GROUP BY 1, 2, 3, 4, 5, 6, 7 HAVING max(r.ts) <= now() - interval '24 hours'")
+
 
 def _optional(cur, sql: str, *args) -> list[dict] | None:
     """A read a fresh node may not answer and a capture does not carry: None, never a failed /issues.
@@ -1218,9 +1244,11 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     captured = body.get("issues") if isinstance(body.get("issues"), dict) else {}
     usual = {k: (v.get("usual"), v.get("usual_absent")) for k, v in captured.items()
              if isinstance(v, dict) and "usual" in v} or None
+    silent = ([s for s in body.get("stations") or [] if isinstance(s, dict) and s.get("last_heard")]
+              if (body.get("stations_silent") or {}).get("read") else None)
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
                    place=place, mesh=health.get("mesh"), peers=[peer] if peer else [],
-                   facilities=facilities, events=body.get("events"), usual=usual)
+                   facilities=facilities, events=body.get("events"), usual=usual, silent=silent)
 
 
 def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
@@ -1269,7 +1297,8 @@ def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers
 
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
-            peers=(), facilities=(), events: dict | None = None, usual: dict | None = None) -> dict:
+            peers=(), facilities=(), events: dict | None = None, usual: dict | None = None,
+            silent: list[dict] | None = None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -1287,6 +1316,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     `events` is the alert events block (app/events_wire.py), built by the route on its own cursor, or the block a
     fixture captured. None is a node, or a capture, from before events: the page says so (SPEC_dashboard_events §5).
+
+    `silent` is the capture's own silent stations, from a replay; None reads them.
 
     `usual` maps an issue to the (usual, usual_absent) pair a capture carried; a replay passes it, because a snapshot
     holds the /issues answer and not usual_by_hour. None reads the view, on a savepoint of its own.
@@ -1338,6 +1369,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     # The usual band (docs/SPEC_dashboard_figures.md §3.1): a replay hands it over as the capture carried it.
     usual_rows = None if usual is not None else _optional(cur, USUAL_SQL)
+    silent_rows = silent if silent is not None else _optional(cur, SILENT_SQL, SILENT_DAYS)
     out = {}
     for key in declared + undeclared:
         d = dict(decl[key])
@@ -1406,7 +1438,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             if a.get("id") is not None and a["id"] not in covered
             and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
     headline_issue = lead["issue"] if lead else None
-    stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
+    stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited, silent_rows)
     geom = _safe_geometry(lat, lon, settings, stations, peers)
     asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
@@ -1424,6 +1456,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "issues": out,
             # what the modular dashboard reads beside the issues — 15 September 2026's decisions
             "stations": stations,
+            # whether the stations that stopped were read, and how far back (docs/SPEC_dashboard_figures.md §3.3)
+            "stations_silent": {"read": silent_rows is not None, "within_days": SILENT_DAYS},
             "metrics": METRICS,
             "asks": asks,
             # simple mode's whole answer, written here because the page may not compose a sentence
