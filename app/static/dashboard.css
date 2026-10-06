@@ -1580,3 +1580,45 @@ body.askopen #askpane { display: grid; grid-template-rows: auto minmax(0, 1fr) a
 #askpane .ah .m.out { color: var(--ink); font-weight: 700 }
 #askpane .ledger .out { color: var(--ink); font-weight: 700 }
 #askpane .ledger .out i { background: none; border: 1.5px solid var(--ink) }
+
+/* ================================================================= figures (kit 6 · docs/SPEC_dashboard_figures.md §4)
+ * Every class here starts with f-: .ev, .band, .line, .read, .legend, .over and .gone already mean something on
+ * this page. Ink for readings, red for the line and the hours over it, green only for an answer that closed a loop,
+ * blue only for focus and the pointed cell. */
+.f-day, .f-strips { margin: 12px 0 20px }
+.f-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 2px;
+  font: 500 12px var(--mono); color: var(--mute) }
+.f-head .f-line { color: var(--signal-worse) }
+.f-fig { position: relative; outline: none }
+.f-fig:focus-visible { outline: 2px solid var(--cells); outline-offset: 2px }
+.f-fig svg { display: block; max-width: 100%; height: auto }
+.f-in { position: relative }
+.f-hair { position: absolute; top: 0; bottom: 26px; width: 0; border-left: 1px solid var(--ink); opacity: .6;
+  pointer-events: none }
+.f-read { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; min-height: 20px; margin: 4px 0;
+  font: 500 12.5px var(--mono); font-variant-numeric: tabular-nums }
+.f-read .f-over { color: var(--signal-worse) }
+.f-read .f-gone, .f-legend .f-gone { color: var(--dim) }
+.f-read .f-usual { color: var(--mute) }
+.f-read .f-done { color: var(--rings) }
+.f-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 2px 0 0; font: 500 10.5px var(--mono);
+  letter-spacing: .04em; color: var(--mute) }
+.f-legend i, .f-read i { display: inline-block; width: 12px; height: 0; border-top: 2px solid var(--ink);
+  vertical-align: middle; margin-right: 5px }
+.f-yard i { border-top-style: dashed }
+.f-ring i { border-top-style: dotted }
+.f-region i { border-top-style: dashed; opacity: .55 }
+.f-rooms i { border-top-width: 3px }
+.f-gone i { border-top-color: var(--dim) }
+.f-band i { height: 8px; border: 0; background: var(--ink); opacity: .12 }
+.f-over i { border-top-color: var(--signal-worse) }
+.f-evl i { border-top-width: 5px; opacity: .25 }
+.f-done i { width: 9px; height: 9px; border: 2px solid var(--rings); border-radius: 50% }
+.f-lo i, .f-hi i, .f-red i, .f-gap i, .f-evc i { width: 9px; height: 9px; border: 0 }
+.f-lo i { background: var(--ink); opacity: .15 }
+.f-hi i { background: var(--ink) }
+.f-red i { background: var(--signal-worse) }
+.f-gap i { border: 1px solid var(--hair) }
+.f-evc i { border: 1.5px solid var(--ink) }
+.f-alt { font-size: 13px; color: var(--mute); line-height: 1.5; margin: 6px 0 0 }
+@media (max-width: 600px) { .f-read { font-size: 11.5px; gap: 2px 12px } }

@@ -1030,10 +1030,314 @@ function evCard(e, tail = '') {
     + tail + `</section>`;
 }
 
+/* --------------------------------------------------------------------------- 6 · figures */
+/* Drawn with Observable Plot (static/plot.umd.min.js, with its d3 in static/d3.min.js), vendored so the page draws
+ * on a LAN with no route out (docs/SPEC_dashboard_figures.md §4). The page is HTML strings and Plot makes DOM nodes,
+ * so a figure is a placeholder in the string and a draw function kept here; route() calls mountFigs() after it has
+ * replaced the page, and a figure redraws when its column changes width by more than 20 px.
+ *
+ * NOTHING HERE MAY TOUCH A BROWSER GLOBAL AT LOAD. tests/test_dashboard.py loads this whole file in node, where
+ * there is no ResizeObserver, no CSS and no Plot; they are reached only inside functions a browser calls. */
+const FIGS = new Map();
+let FIG_RO = null;
+
+function fig(id, draw, o = {}) {
+  FIGS.set(id, draw);
+  return `<div class="f-fig" id="${esc(id)}" data-kind="series" data-component="${esc(o.component || 'figure')}"`
+    + ` data-ref="${esc(o.ref || '')}"${o.keys ? ' tabindex="0"' : ''} role="group"`
+    + ` aria-label="${esc(o.label || '')}"></div>`;
+}
+
+function paintFig(el) {
+  try {
+    el.replaceChildren();
+    el.__fig.draw(el, Math.max(280, el.__fig.w || 720));
+  } catch (e) {
+    el.innerHTML = `<p class="note" data-component="failed" id="${esc(el.id)}-failed" data-ref="${esc(el.id)}">`
+      + `This drawing did not render: ${esc(String((e && e.message) || e))}. Its numbers are in the sentence `
+      + `and the matrix beside it.</p>`;
+  }
+}
+
+function mountFigs(root) {
+  if (FIG_RO) FIG_RO.disconnect();
+  FIG_RO = typeof ResizeObserver === 'function' ? new ResizeObserver(es => {
+    for (const e of es) {
+      const f = e.target.__fig, w = Math.round(e.contentRect.width);
+      if (f && Math.abs(w - f.w) > 20) { f.w = w; paintFig(e.target); }
+    }
+  }) : null;
+  for (const [id, draw] of FIGS) {
+    const el = root.querySelector(`#${CSS.escape(id)}`);
+    if (!el) continue;
+    el.__fig = { draw, w: Math.round(el.clientWidth) };
+    paintFig(el);
+    if (FIG_RO) FIG_RO.observe(el);
+  }
+  FIGS.clear();
+}
+
+/* The box a drawing is read against: the data's own range, padded, and never below zero for readings that are all
+ * non-negative. The trace printed "floor -20 µg/m³, not zero" on node #1 on 6 October: headroom under a floor that
+ * does not exist. */
+const boxOf = (vals, line, pad = 0.12) => {
+  const all = vals.filter(v => v != null && Number.isFinite(v)).concat(line == null ? [] : [line]);
+  if (!all.length) return null;
+  const lo = Math.min(...all), hi = Math.max(...all), p = (hi - lo) * pad || Math.abs(hi * 0.1) || 1;
+  return { lo: lo >= 0 ? Math.max(0, lo - p) : lo - p, hi: hi + p };
+};
+/* A bucket's own offset in minutes ("+08:00" is 480), so a label says the node's hour, never the reader's. */
+const offsetOf = iso => {
+  const m = /([+-])(\d\d):(\d\d)$/.exec(String(iso || ''));
+  return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +m[3]) : 0;
+};
+const hhmmAt = (ms, off) => new Date(ms + off * 60000).toISOString().slice(11, 16);
+const hourAt = (ms, off) => new Date(ms + off * 60000).getUTCHours();
+const dayAt = (ms, off) => new Date(ms + off * 60000).toISOString().slice(0, 10);
+function nearestIndex(ts, t) {
+  let b = 0;
+  for (let i = 1; i < ts.length; i++) if (Math.abs(ts[i] - t) < Math.abs(ts[b] - t)) b = i;
+  return b;
+}
+/* A token's value in the register on now, for the one place a colour has to be a colour and not a variable: the
+ * strips' shade ramp, which d3 interpolates. */
+const tokenOf = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+const PLOT_STYLE = { background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--mono)', fontSize: '11px',
+  overflow: 'visible' };
+const DASH = { room: null, yard: '4 3', ring: '1 5', region: '6 4' };
+const ANSWER = { acted: 'Done', acknowledged: 'Not now', dismissed: 'Doesn’t fit' };
+const USUAL_WHY = { unread: 'the usual could not be read', no_source: 'no source at this distance',
+  no_history: 'not enough days at this hour yet', not_watched: 'not watched here' };
+
+/* THE DAY FIGURE (docs/SPEC_dashboard_figures.md §4.2). One `series` card per issue: every distance, the usual band,
+ * the line and the hours over it, the event that opened and its answer, the event's own rooms, and a readout that
+ * says in words what the crosshair is on. It replaces the traces and Measure's second copy of them. */
+function dayFigure(key, d, o = {}) {
+  const id = o.id || `day-fig-${key}`, ref = o.ref || 'days';
+  const ser = d.series || {};
+  const sets = DIST.filter(x => Array.isArray(ser[x]) && ser[x].some(v => v != null));
+  if (!sets.length) {
+    return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">The day it just had: nothing recorded yet at `
+      + `any distance.</p>`;
+  }
+  const B = d.buckets || [], T = B.map(b => Date.parse(b)), off = offsetOf(B[B.length - 1]);
+  const now = Math.max(Date.parse(((S || {}).issues || {}).as_of) || 0, T[T.length - 1]);
+  const hero = sets.includes(d.headline) ? d.headline : sets[0];
+  const line = d.line ? d.line.value : null;
+  const U = d.usual && d.usual.hours ? d.usual.hours : null;
+  const band = U ? T.map(t => ({ t: new Date(t), ...(U[hourAt(t, off)] || {}) })) : [];
+  const E = ((S || {}).issues || {}).events || {};
+  const evs = (E.open || []).concat(E.recent || []).filter(e => e.issue === key)
+    .map(e => ({ e, o: Date.parse(e.opened_at), c: e.cleared_at ? Date.parse(e.cleared_at) : now,
+      a: e.answer ? Date.parse(e.answer.ts) : null }))
+    .filter(x => x.c >= T[0]);
+  const roomsOf = evs.map(x => x.e.series).find(s => s && Array.isArray(s.values) && s.values.length === T.length);
+  const box = boxOf(sets.flatMap(k => ser[k]).concat(band.flatMap(b => [b.median, b.p90]))
+    .concat(roomsOf ? roomsOf.values : []), line);
+  const overAt = i => line != null && sets.some(k => ser[k][i] != null && ser[k][i] > line);
+  const over = T.filter((t, i) => overAt(i));
+  const above = T.filter((t, i) => !overAt(i) && band[i] && band[i].p90 != null && ser[hero][i] != null
+    && ser[hero][i] > band[i].p90);
+  const unit = d.unit || '', dp = d.dp;
+  const first = ser[hero].find(v => v != null), last = [...ser[hero]].reverse().find(v => v != null);
+  const idle = `<b>24 h</b><span>${esc(LAB[hero])} opened the day at ${esc(fmt(first, dp))} and closed it at `
+    + `${esc(fmt(last, dp))} ${esc(unit)}</span>`
+    + (over.length ? `<span class="f-over">${over.length} of ${T.length} hours over the line</span>` : '')
+    + (U ? `<span class="f-usual">${above.length} above the usual, under the line</span>` : '')
+    + `<span class="f-gone">point at an hour, or focus the drawing and use ← →</span>`;
+  const readAt = i => {
+    const ev = evs.find(x => T[i] >= x.o && T[i] <= x.c);
+    return `<b>${esc(hhmmAt(T[i], off))}</b>`
+      + sets.map(k => `<span class="f-d f-${k}${ser[k][i] == null ? ' f-gone' : ''}"><i></i>${esc(LAB[k])} `
+        + `${ser[k][i] == null ? 'nothing recorded' : esc(fmt(ser[k][i], dp))}</span>`).join('')
+      + (roomsOf && roomsOf.values[i] != null ? `<span class="f-d f-rooms"><i></i>${esc(roomsOf.rooms.join(', '))} `
+        + `${esc(fmt(roomsOf.values[i], dp))}</span>` : '')
+      + (band[i] && band[i].median != null ? `<span class="f-usual">usual ${esc(fmt(band[i].median, dp))} to `
+        + `${esc(fmt(band[i].p90, dp))}</span>` : '')
+      + (overAt(i) ? `<span class="f-over">over the line ${esc(fmt(line, dp))}</span>` : '')
+      + (ev ? `<span class="f-ev">${esc(ev.e.kind)} open · ${ev.e.answer
+        ? `<b class="${ev.e.answer.stage === 'acted' ? 'f-done' : ''}">${esc(ANSWER[ev.e.answer.stage] || ev.e.answer.stage)}</b>`
+          + ` · ${esc(ev.e.answer.actor || '')} ${esc(hhmmAt(ev.a, off))}` : 'no answer'}</span>` : '');
+  };
+  const draw = (el, W) => {
+    const narrow = W < 600, H = narrow ? 170 : 230, pad = (box.hi - box.lo) * 0.06, evY = box.hi - pad;
+    const at = T.map(t => new Date(t));
+    const rows = k => ser[k].map((v, i) => ({ t: at[i], v }));
+    const lone = k => rows(k).filter((r, i, a) => r.v != null && (i === 0 || a[i - 1].v == null)
+      && (i === a.length - 1 || a[i + 1].v == null));
+    const late = x => (x.o - T[0]) / ((now - T[0]) || 1) > 0.8;
+    const label = x => (narrow ? x.e.kind : `${x.e.kind} · ${hhmmAt(+x.o, off)}`);
+    const ev = evs.map(x => ({ ...x, o: new Date(x.o), c: new Date(x.c), a: x.a == null ? null : new Date(x.a) }));
+    const svg = Plot.plot({
+      width: W, height: H, marginLeft: 8, marginRight: 8, marginTop: 18, marginBottom: 26, style: PLOT_STYLE,
+      x: { type: 'time', domain: [new Date(T[0]), new Date(now)], label: null, tickSize: 0,
+        ticks: at.filter(t => hourAt(+t, off) % (narrow ? 6 : 3) === 0), tickFormat: t => hhmmAt(+t, off) },
+      y: { domain: [box.lo, box.hi], axis: null },
+      marks: [
+        Plot.gridY({ ticks: 4, stroke: 'var(--hair)', strokeOpacity: 1 }),
+        U ? Plot.areaY(band.filter(b => b.median != null && b.p90 != null),
+          { x: 't', y1: 'median', y2: 'p90', fill: 'var(--ink)', fillOpacity: 0.1 }) : null,
+        line == null ? null : Plot.ruleY([line], { stroke: 'var(--signal-worse)', strokeDasharray: '3 6', strokeOpacity: 0.85 }),
+        Plot.ruleX(over.map(t => new Date(t)), { y1: box.lo, y2: box.lo + pad, stroke: 'var(--signal-worse)', strokeWidth: 2 }),
+        Plot.ruleX(above.map(t => new Date(t)), { y1: box.lo, y2: box.lo + pad, stroke: 'var(--ink)', strokeOpacity: 0.6, strokeWidth: 2 }),
+        ...sets.map(k => Plot.lineY(rows(k), { x: 't', y: 'v', stroke: 'var(--ink)', strokeWidth: 1.6,
+          strokeOpacity: k === hero ? 1 : 0.55, strokeDasharray: DASH[k] || undefined })),
+        ...sets.map(k => Plot.dot(lone(k), { x: 't', y: 'v', r: 1.8, fill: 'var(--ink)', fillOpacity: k === hero ? 1 : 0.55 })),
+        roomsOf ? Plot.lineY(roomsOf.values.map((v, i) => ({ t: at[i], v })), { x: 't', y: 'v', stroke: 'var(--ink)', strokeWidth: 2.6 }) : null,
+        Plot.ruleY(ev, { y: evY, x1: 'o', x2: 'c', stroke: 'var(--ink)', strokeWidth: 5, strokeOpacity: 0.22 }),
+        Plot.text(ev.filter(x => !late(x)), { x: 'o', y: evY, text: label, textAnchor: 'start', dx: 4, dy: -9, fill: 'var(--mute)', fontSize: 10.5 }),
+        Plot.text(ev.filter(late), { x: 'c', y: evY, text: label, textAnchor: 'end', dx: -4, dy: -9, fill: 'var(--mute)', fontSize: 10.5 }),
+        Plot.ruleY(ev.filter(x => x.a && x.a > x.c), { y: evY, x1: 'c', x2: 'a', stroke: 'var(--ink)', strokeOpacity: 0.35, strokeDasharray: '1 3' }),
+        Plot.dot(ev.filter(x => x.a && x.e.answer.stage === 'acted'), { x: 'a', y: evY, r: 4.5, stroke: 'var(--rings)', strokeWidth: 2, fill: 'var(--ground)' }),
+        Plot.dot(ev.filter(x => x.a && x.e.answer.stage !== 'acted'), { x: 'a', y: evY, r: 4.5, stroke: 'var(--ink)', strokeWidth: 2, fill: 'var(--ground)' }),
+        Plot.ruleX([new Date(now)], { stroke: 'var(--ink)', strokeOpacity: 0.35 }),
+      ].filter(Boolean),
+    });
+    const inner = document.createElement('div'); inner.className = 'f-in';
+    const hair = document.createElement('i'); hair.className = 'f-hair'; hair.hidden = true;
+    inner.append(svg, hair); el.append(inner);
+    const read = document.getElementById(`${id}-read`);
+    const xs = svg.scale('x');
+    let cur = null;
+    const show = i => {
+      cur = i;
+      if (read) read.innerHTML = i == null ? idle : readAt(i);
+      if (i == null) { hair.hidden = true; return; }
+      const r = svg.getBoundingClientRect();
+      hair.hidden = false;
+      hair.style.left = `${(xs.apply(at[i]) * r.width) / W}px`;
+    };
+    svg.addEventListener('pointermove', e => {
+      const r = svg.getBoundingClientRect();
+      show(nearestIndex(T, +xs.invert(((e.clientX - r.left) * W) / r.width)));
+    });
+    svg.addEventListener('pointerleave', () => show(null));
+    el.onkeydown = e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      show(cur == null ? T.length - 1 : Math.max(0, Math.min(T.length - 1, cur + (e.key === 'ArrowLeft' ? -1 : 1))));
+    };
+    el.onblur = () => show(null);
+  };
+  const gone = DIST.filter(x => !sets.includes(x));
+  const legend = sets.map(k => `<span class="f-d f-${k}"><i></i>${esc(LAB[k])}</span>`).join('')
+    + (roomsOf ? `<span class="f-d f-rooms"><i></i>the event’s own ${roomsOf.rooms.length === 1 ? 'room' : 'rooms'}</span>` : '')
+    + gone.map(k => `<span class="f-gone"><i></i>${esc(LAB[k])} — ${esc(reasonFor(d, k))}</span>`).join('')
+    + (U ? `<span class="f-band"><i></i>usual at this hour, last ${d.usual.window_days} days</span>`
+      : `<span class="f-gone">no usual band — ${esc(USUAL_WHY[d.usual_absent] || 'this node does not send one yet')}</span>`)
+    + (over.length ? `<span class="f-over"><i></i>hours over the line</span>` : '')
+    + (evs.length ? `<span class="f-evl"><i></i>event, opened to cleared</span><span class="f-done"><i></i>answered Done</span>` : '');
+  const altCmp = line != null ? `against the line, ${fmt(line, dp)} ${unit} · ${d.line.source}`
+    : `no comparison yet · ${noLine(d)}`;
+  return `<div class="f-day" data-kind="series" data-component="dayFigure" id="${esc(id)}-card" data-ref="${esc(ref)}">`
+    + `<p class="f-head"><span>${esc(fmt(box.hi, dp))} ${esc(unit)} top · floor ${esc(fmt(box.lo, dp))}`
+    + `${box.lo === 0 ? '' : ', not zero'}</span>${line != null ? `<span class="f-line">the line ${esc(fmt(line, dp))}</span>` : ''}</p>`
+    + fig(id, draw, { ref: `${id}-card`, component: 'dayDrawing', keys: true,
+      label: `${d.name[LOC]}, the last 24 hours at every distance; focus and use the arrow keys to read an hour` })
+    + `<p class="f-read" id="${esc(id)}-read" aria-live="polite">${idle}</p>`
+    + `<p class="f-legend">${legend}</p>`
+    + `<p class="f-alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">${esc(LAB[hero])} opened the day at `
+    + `${esc(fmt(first, dp))} and closed it at ${esc(fmt(last, dp))} ${esc(unit)}</span> — ${esc(altCmp)}.`
+    + (evs.length ? ` ${evs.length === 1 ? 'One event' : `${evs.length} events`} in these hours: `
+      + evs.map(x => `${x.e.kind} ${hhmmAt(x.o, off)} to ${x.e.cleared_at ? hhmmAt(x.c, off) : 'now'}, `
+        + `${x.e.answer ? `${(ANSWER[x.e.answer.stage] || x.e.answer.stage).toLowerCase()} by ${x.e.answer.actor}` : 'no answer'}`)
+        .map(esc).join('; ') + '.' : '')
+    + `</p></div>`;
+}
+
+/* THE STRIPS (docs/SPEC_dashboard_figures.md §4.3). One row a day, one cell an hour, newest at the bottom, from
+ * GET /issues/days. Ink on the issue's own square-root scale; red over the line; an outlined empty cell where
+ * nothing was recorded, never a pale cell that looks low. The right column is the node's own count. */
+function strips(key, D, o = {}) {
+  const id = o.id || `strips-${key}`, ref = o.ref || 'days';
+  const it = D && D.issues ? D.issues[key] : null;
+  const name = ((ISS[key] || {}).name || {})[LOC] || key;
+  if (!D) {
+    return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">This node does not send its days yet `
+      + `(GET /issues/days); the strips of ${esc(name)} wait for it.</p>`;
+  }
+  if (!it || !it.distance) {
+    return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">No hourly record of ${esc(name)} in these `
+      + `${D.days} days.</p>`;
+  }
+  const dist = it.distance, vals = it.series[dist], line = it.line ? it.line.value : null;
+  const T = D.buckets.map(b => Date.parse(b)), off = offsetOf(D.buckets[D.buckets.length - 1]);
+  /* The strips start at the first local day that holds a reading: a 90-day window on a node with 35 days of record
+     drew 55 empty rows before it began (node #1, 6 October). An hour with nothing recorded after that still shows. */
+  const every = T.map((t, i) => ({ day: dayAt(t, off), hour: hourAt(t, off), t, v: vals[i] }));
+  const firstDay = every.find(c => c.v != null).day;
+  const cells = every.filter(c => c.day >= firstDay);
+  const days = [...new Set(cells.map(c => c.day))];
+  const trimmed = days.length < new Set(every.map(c => c.day)).size;
+  const got = cells.filter(c => c.v != null);
+  const lo0 = Math.min(...got.map(c => c.v)), hi0 = Math.max(...got.map(c => c.v));
+  const floor = lo0 >= 0 && lo0 < hi0 * 0.2 ? 0 : lo0;
+  const ev = (D.events || []).filter(e => e.issue === key).map(e => ({ ...e, o: Date.parse(e.opened_at),
+    c: e.cleared_at ? Date.parse(e.cleared_at) : T[T.length - 1] }));
+  const inEvent = c => ev.some(e => c.t >= e.o - 3600e3 + 1 && c.t <= e.c);
+  const perDay = Object.fromEntries((it.per_day || []).map(p => [p.date, p]));
+  const dp = (ISS[key] || {}).dp, unit = (ISS[key] || {}).unit || '';
+  const wd = s => new Date(`${s}T00:00:00Z`).toUTCString().slice(0, 11);
+  const draw = (el, W) => {
+    const narrow = W < 600, rowH = narrow ? 11 : 13;
+    const svg = Plot.plot({
+      width: W, height: 26 + days.length * rowH, marginLeft: narrow ? 70 : 92, marginRight: narrow ? 64 : 220,
+      marginTop: 20, marginBottom: 6, style: PLOT_STYLE,
+      x: { type: 'band', domain: Array.from({ length: 24 }, (_, h) => h), axis: 'top', label: null, tickSize: 0,
+        padding: 0.12, tickFormat: h => (h % (narrow ? 6 : 3) === 0 ? String(h).padStart(2, '0') : '') },
+      y: { type: 'band', domain: days, label: null, tickSize: 0, padding: 0.18,
+        tickFormat: (s, i) => (i === 0 || new Date(`${s}T00:00:00Z`).getUTCDay() === 1 ? wd(s) : '') },
+      color: { type: 'sqrt', domain: [floor, hi0], range: [tokenOf('--ground'), tokenOf('--ink')] },
+      marks: [
+        Plot.cell(cells.filter(c => c.v == null), { x: 'hour', y: 'day', fill: 'none', stroke: 'var(--hair)' }),
+        Plot.cell(got.filter(c => line == null || c.v <= line), { x: 'hour', y: 'day', fill: 'v' }),
+        Plot.cell(got.filter(c => line != null && c.v > line), { x: 'hour', y: 'day', fill: 'var(--signal-worse)' }),
+        Plot.cell(cells.filter(inEvent), { x: 'hour', y: 'day', fill: 'none', stroke: 'var(--ink)', strokeWidth: 1.4 }),
+        Plot.text(days.filter(s => perDay[s]), { x: () => 23, y: s => s, dx: narrow ? 22 : 30, textAnchor: 'start',
+          fontSize: 10.5, text: s => (perDay[s].over ? `${perDay[s].over} h over` : '·'),
+          fill: s => (perDay[s].over ? 'var(--signal-worse)' : 'var(--dim)') }),
+        narrow ? null : Plot.text(ev, { x: () => 23, y: e => dayAt(e.o, off), dx: 96, textAnchor: 'start', fontSize: 10.5,
+          fill: 'var(--ink)', text: e => `${e.kind} ${hhmmAt(e.o, off)}–${e.cleared_at ? hhmmAt(e.c, off) : 'open'}` }),
+        Plot.cell(cells, Plot.pointer({ x: 'hour', y: 'day', fill: 'none', stroke: 'var(--cells)', strokeWidth: 2 })),
+      ].filter(Boolean),
+    });
+    el.append(svg);
+    const read = document.getElementById(`${id}-read`);
+    const idle = read ? read.innerHTML : '';
+    svg.addEventListener('input', () => {
+      const c = svg.value;
+      if (!read) return;
+      if (!c) { read.innerHTML = idle; return; }
+      const e = ev.find(x => c.t >= x.o - 3600e3 + 1 && c.t <= x.c);
+      read.innerHTML = `<b>${esc(wd(c.day))} ${esc(String(c.hour).padStart(2, '0'))}:00</b>`
+        + `<span>${esc(LAB[dist])} ${c.v == null ? 'nothing recorded' : `${esc(fmt(c.v, dp))} ${esc(unit)}`}</span>`
+        + (line != null && c.v != null && c.v > line ? `<span class="f-over">over the line</span>` : '')
+        + (e ? `<span class="f-ev">${esc(e.kind)} open</span>` : '');
+    });
+  };
+  const totals = (it.per_day || []).filter(p => p.date >= firstDay).reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read,
+    of: a.of + p.of }), { over: 0, read: 0, of: 0 });
+  return `<div class="f-strips" data-kind="series" data-component="strips" id="${esc(id)}-card" data-ref="${esc(ref)}">`
+    + `<p class="f-head"><span>${esc(name)} · ${esc(LAB[dist])} · ${days.length} days${trimmed ? `, from ${esc(wd(firstDay))}, the first this node recorded` : ''}</span>`
+    + `<span>shades ${esc(fmt(floor, dp))} to ${esc(fmt(hi0, dp))} ${esc(unit)}${line != null
+      ? ` · <span class="f-line">the line ${esc(fmt(line, dp))}</span>` : ''}</span></p>`
+    + fig(id, draw, { ref: `${id}-card`, component: 'stripsDrawing',
+      label: `${name}, one row a day and one cell an hour over ${days.length} days` })
+    + `<p class="f-read" id="${esc(id)}-read" aria-live="polite"><span data-num="${esc(key)}.days.over" data-cmp="`
+    + `${esc(`of ${totals.read} hours read in ${days.length} days, ${totals.of - totals.read} not recorded`)}">`
+    + `${totals.over} hours over the line</span><span class="f-gone">${totals.of - totals.read} not recorded · `
+    + `point at a cell</span></p>`
+    + `<p class="f-legend"><span class="f-lo"><i></i>low</span><span class="f-hi"><i></i>high, on this issue’s own scale</span>`
+    + `<span class="f-red"><i></i>an hour over the line</span><span class="f-gap"><i></i>nothing recorded</span>`
+    + `<span class="f-evc"><i></i>an alert event</span></p></div>`;
+}
+
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
-  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord };
+  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord, fig, mountFigs, boxOf, offsetOf, hhmmAt, hourAt, dayAt, nearestIndex, PLOT_STYLE,
+  dayFigure, strips };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -7894,6 +8198,8 @@ function route() {
      any timer from the last render is pointing at elements that are gone. */
   const page = document.getElementById('page');
   if (page) wireSat(page);
+  /* Figures are placeholders in the markup main() just wrote; the kit draws them now (kit 6 · figures). */
+  if (page) window.K.mountFigs(page);
   learnSync();
   /* The pane lives outside #page and keeps its thread; it only needs telling the body was reset. */
   if (window.PAI_ASK) window.PAI_ASK.draw();

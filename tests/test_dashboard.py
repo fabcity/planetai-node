@@ -1278,6 +1278,35 @@ if shutil.which("node"):
     assert _lr["rules"]["nAsk"] == 3 and _lr["rules"]["askAt"] == "heat" and _lr["old"]["nAsk"] == 3, \
         f"a rules or older node counts every open alert: {_lr}"
 
+# THE FIGURES KIT (docs/SPEC_dashboard_figures.md §4). The drawing needs Plot and a DOM; the arithmetic of where a
+# drawing starts, which hour a bucket is, and which hour a pointer is nearest does not, so it is run here.
+if shutil.which("node"):
+    _kit = [re.search(p, _js, re.S) for p in (
+        r"const boxOf = \(vals, line, pad = 0\.12\) => \{.*?\n\};",
+        r"const offsetOf = iso => \{.*?\n\};",
+        r"const hhmmAt = \(ms, off\) => [^\n]*;",
+        r"const hourAt = \(ms, off\) => [^\n]*;",
+        r"const dayAt = \(ms, off\) => [^\n]*;",
+        r"function nearestIndex\(ts, t\) \{.*?\n\}")]
+    assert all(_kit), "dashboard.js lost a figures-kit helper: " + str([bool(k) for k in _kit])
+    _k = _node("\n".join(k.group(0) for k in _kit) + r"""
+const t = Date.parse('2026-10-06T07:00:00+08:00');
+console.log(JSON.stringify({
+  air: boxOf([4, 5, 193, null, 6], 15), heat: boxOf([28.4, 35.6, null], 35), cold: boxOf([-2, 3], null),
+  flat: boxOf([5, 5, 5], null), none: boxOf([null], null),
+  off8: offsetOf('2026-10-06T07:00:00+08:00'), offZ: offsetOf('2026-10-06T07:00:00Z'), offN: offsetOf('2026-10-06T07:00:00-05:30'),
+  hhmm: hhmmAt(t, 480), hour: hourAt(t, 480), day: dayAt(t - 8 * 3600e3, 480), dayUtc: dayAt(t - 8 * 3600e3, 0),
+  near: nearestIndex([0, 10, 20, 30], 14), last: nearestIndex([0, 10, 20, 30], 99) }));""")
+    assert _k["air"]["lo"] == 0 and _k["air"]["hi"] > 193, f"a concentration never draws a floor below zero: {_k['air']}"
+    assert 27 < _k["heat"]["lo"] < 28.4 and _k["heat"]["hi"] > 35.6, f"heat keeps its own floor, not zero: {_k['heat']}"
+    assert _k["cold"]["lo"] < -2, f"a quantity that goes negative may: {_k['cold']}"
+    assert _k["flat"]["hi"] > _k["flat"]["lo"], f"a flat day still has a box: {_k['flat']}"
+    assert _k["none"] is None
+    assert (_k["off8"], _k["offZ"], _k["offN"]) == (480, 0, -330), _k
+    assert (_k["hhmm"], _k["hour"]) == ("07:00", 7), "the node's hour, never the reader's"
+    assert (_k["day"], _k["dayUtc"]) == ("2026-10-05", "2026-10-05"), _k
+    assert (_k["near"], _k["last"]) == (1, 3), _k
+
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "
       "ten sections, and a refused page says so on the wall and in the nav")
