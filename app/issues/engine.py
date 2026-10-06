@@ -1275,8 +1275,15 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     lead = _lead(out, declared, events)
     if events is not None:
         covered = {a for e in events.get("open") or [] for a in e.get("alerts") or []}
-        events = {**events, "uncovered_asks": [a["id"] for v in out.values() for a in (v.get("open_asks") or [])
-                                               if a.get("id") is not None and a["id"] not in covered]}
+        # The packs the engine replaced: any pack that ships a kinded rule. On shadow and events their old
+        # rules' alerts are what the events stand for, so they are never asks of their own on the page.
+        # app/main.py run_rules draws the same line when it stops those rules sending (#184).
+        owned = ({r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")}
+                 if events.get("engine") in ("shadow", "events") else set())
+        events = {**events, "uncovered_asks": [
+            a["id"] for v in out.values() for a in (v.get("open_asks") or [])
+            if a.get("id") is not None and a["id"] not in covered
+            and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
     headline_issue = lead["issue"] if lead else None
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
     geom = _safe_geometry(lat, lon, settings, stations, peers)

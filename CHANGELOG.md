@@ -30,6 +30,12 @@
   temperature is never read as a room; a room's usual for the hour is the fourteen complete days before today, so a
   long hot run does not raise its own bar; and air danger re-sends only when its value doubles, never within 30 min.
 
+- **2026-10-05 · `uncovered_asks` leaves out the alerts of the packs the engine replaced.** The event engine runs only
+  with `ALERT_ENGINE=shadow` or `events`, and only for heat and air-quality; their old rules' alerts are what the events
+  stand for. On the dashboard, `GET /issues` includes the event engine's answers in `events.uncovered_asks`, but those
+  answers now leave out the heat and air-quality alerts the events replaced, so a reader of the open asks sees one
+  number instead of the old alerts plus the new events.
+
 - **2026-10-03 · The docs site cannot fall behind a release again.** v0.76's site still described v0.75.3 on its
   packs pages: four pack.yaml fields, the wild tier and `requires` enforcement were in the code and in PACKS.md,
   and every gate was green. `make lint` now checks both directions: every CLI command, MCP tool, route, setting

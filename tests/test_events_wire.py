@@ -153,19 +153,40 @@ heroes = [k for k in plain["order"] if plain["issues"][k].get("hero")]
 other = next(k for k in heroes if k != plain["headline"])          # an issue that does not lead on its own
 asks = [a["id"] for v in plain["issues"].values() for a in (v.get("open_asks") or []) if a.get("id") is not None]
 assert asks, "the 21d fixture has open asks; pick another fixture if it ever stops having them"
+rule_of = {a["id"]: a["rule_id"] for v in plain["issues"].values() for a in (v.get("open_asks") or [])}
+# Inject an event covering a non-owned ask to test that covered exclusion works on the events engine
+non_owned = [a for a in asks if rule_of.get(a, "").split("/", 1)[0] not in ("heat", "air-quality")]
 snap = json.loads(json.dumps(SNAP))
 snap["issues"]["events"] = {"engine": "events", "buttons": {}, "recent": [], "cleared_today": 0, "last_cleared": None,
                             "open": [{"id": 9, "issue": other, "kind": "sustained", "opened_at": "2026-09-21T10:00:00+08:00",
-                                      "alerts": asks[:1]}]}
+                                      "alerts": non_owned[:1]}]}
 led = engine.replay(snap, Settings(), DECLS)
 assert led["headline"] == other and led["lead"] == {"issue": other, "by": "event"}, led["lead"]
-assert led["events"]["uncovered_asks"] == asks[1:], (led["events"]["uncovered_asks"], asks)
+# Events engine: uncovered_asks excludes covered asks AND the packs the engine replaced
+expected_events = [a for a in asks if rule_of.get(a, "").split("/", 1)[0] not in ("heat", "air-quality") and a not in non_owned[:1]]
+assert led["events"]["uncovered_asks"] == expected_events, (led["events"]["uncovered_asks"], expected_events)
 assert led["headline_rule"]["en"].startswith("An open event leads")
-print("  replay: a captured block leads the headline with its event; uncovered_asks is every open ask no event covers")
+# Rules engine: uncovered_asks excludes only covered asks, not owned packs (original behavior)
+snap["issues"]["events"]["engine"] = "rules"
+led_rules = engine.replay(snap, Settings(), DECLS)
+expected_rules = [a for a in asks if a not in non_owned[:1]]
+assert sorted(led_rules["events"]["uncovered_asks"]) == sorted(expected_rules), (sorted(led_rules["events"]["uncovered_asks"]), sorted(expected_rules))
+print("  replay: a captured block leads the headline with its event; on events, uncovered_asks excludes covered and replaced-pack alerts; on rules, only covered")
 
 out = {"air": {"hero": {"sign": "a"}, "state": "act", "moved": 0.9}, "heat": {"hero": {"sign": "h"}, "state": "quiet", "moved": 0.0}}
 assert engine._lead(out, ["air", "heat"], {"open": [{"issue": "heat"}]}) == {"issue": "heat", "by": "event"}
 assert engine._lead(out, ["air", "heat"], {"open": []})["by"] == "state", "nothing open: today's rule"
 assert engine._lead(out, ["air", "heat"], {"open": [{"issue": "coast"}]})["issue"] == "air", "no hero: cannot lead"
 print("  _lead: an open event's issue leads; with none open, or none that can lead, today's rule stands")
+
+snap2 = json.loads(json.dumps(SNAP))
+snap2["issues"]["events"] = {"engine": "events", "buttons": {}, "open": [], "recent": [], "cleared_today": 0,
+                             "last_cleared": None}
+ev = engine.replay(snap2, Settings(), DECLS)
+owned = ("heat/", "air-quality/")
+assert not [i for i in ev["events"]["uncovered_asks"] if rule_of[i].startswith(owned)], ev["events"]["uncovered_asks"]
+snap2["issues"]["events"]["engine"] = "rules"
+assert sorted(engine.replay(snap2, Settings(), DECLS)["events"]["uncovered_asks"]) == sorted(rule_of), "rules: all"
+print("  uncovered_asks: on shadow and events, the replaced packs' old alerts are not asks; on rules they are")
+
 print("events_wire: the open events, their actions as sent, answers and holds, the local day")
