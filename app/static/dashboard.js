@@ -306,113 +306,6 @@ const reasonFor = (d, dist) => ({
   ring: 'no public station reporting', region: 'no model for this point',
 }[dist] || 'no source');
 
-/* --------------------------------------------------------------------------- 3 · series */
-/* Geometry only: the high and the low set the box, the node supplies every value and the line.
- * A hole in the series is a hole in the line — a run of one reading is a dot, never nothing. */
-const runs = (vals, at) => {
-  const out = []; let cur = [];
-  (vals || []).forEach((v, i) => {
-    if (v == null) { if (cur.length) { out.push(cur); cur = []; } return; }
-    cur.push(at(v, i));
-  });
-  if (cur.length) out.push(cur);
-  return out;
-};
-
-function series(key, d, o = {}) {
-  const id = o.id || `series-${key}`;
-  const ser = d.series || {};
-  const sets = DIST.filter(x => Array.isArray(ser[x]) && ser[x].some(v => v != null));
-  if (!sets.length) {
-    return `<div class="series" data-kind="series" data-component="series" id="${esc(id)}"`
-      + ` data-ref="${esc(o.ref || `band-${key}`)}"><p class="note">The day it just had: nothing recorded yet at `
-      + `any distance.</p></div>`;
-  }
-  const W = 720, H = o.h || 180, pad = { l: 8, r: 8, t: 10, b: 10 };
-  const all = sets.flatMap(x => ser[x]).filter(v => v != null);
-  const line = d.line ? d.line.value : null;
-  /* The floor is the data's own, not zero, and the drawing SAYS so. Forcing zero in put every heat
-   * trace on this node — 29 to 34 °C — into the top sixth of its box, with five sixths of the card
-   * blank: the variation a reader is here to see was flattened to nothing by an origin that means
-   * nothing. Zero degrees is not a floor in Bali and zero µg/m³ is not a reading anybody takes.
-   *
-   * A non-zero base exaggerates variation, which is the honest objection to it, and the answer is
-   * to declare it rather than to hide it: both ends of the scale are printed on the axis and in the
-   * text alternative, and the line's own position is inside the range whatever the data did. */
-  const floorAt = Math.min(...all, line == null ? Infinity : line);
-  const ceilAt = Math.max(...all, line == null ? -Infinity : line);
-  const padBy = (ceilAt - floorAt) * 0.12 || Math.abs(ceilAt * 0.1) || 1;
-  const hi = ceilAt + padBy, lo = floorAt - padBy;
-  const n = Math.max(...sets.map(x => ser[x].length));
-  const X = i => pad.l + (i / Math.max(1, n - 1)) * (W - pad.l - pad.r);
-  const Y = v => H - pad.b - ((v - lo) / (hi - lo || 1)) * (H - pad.t - pad.b);
-  const dash = { room: '', yard: '4 3', ring: '1 5', region: '6 4' };
-  const broken = sets.some(k => runs(ser[k], () => 0).length > 1);
-  /* Hours over the line, under the axis. An hour counts when ANY distance drawn above was over it
-   * — the question a household asks is whether this place was over, not whether one particular kit
-   * was — and the mark sits in the same coordinate space as the traces rather than in a div below,
-   * because a strip with its own padding drifts out of line with the hour it is pointing at.
-   * They are counted, never shaded: eight marks is eight hours and a darker band is a mood. */
-  const OVER_BAND = 11;
-  const overIdx = line == null ? []
-    : Array.from({ length: n }, (_, i) =>
-      sets.some(k => ser[k][i] != null && ser[k][i] > line) ? i : -1).filter(i => i >= 0);
-  let s = `<svg viewBox="0 0 ${W} ${H + OVER_BAND}" preserveAspectRatio="none" role="img" aria-label="`
-    + `${esc(d.name[LOC])}, ${sets.length} traces over 24 hours, ${esc(fmt(lo, d.dp))} to `
-    + `${esc(fmt(hi, d.dp))} ${esc(d.unit)}${line != null ? `, the line ${esc(fmt(line, d.dp))}` : ''}`
-    + `${broken ? ', broken where nothing was recorded' : ''}${overIdx.length
-      ? `, over the line in ${overIdx.length} of ${n} hours` : ''}">`;
-  if (line != null) s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
-    + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
-  sets.forEach(k => {
-    const op = k === 'room' ? 1 : .55;
-    runs(ser[k], (v, i) => [X(i), Y(v)]).forEach(r => {
-      s += r.length > 1
-        ? `<polyline points="${r.map(p => p.join(',')).join(' ')}" fill="none" stroke="var(--ink)"`
-          + ` stroke-width="1.6" vector-effect="non-scaling-stroke"`
-          + `${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''} stroke-opacity="${op}"/>`
-        : `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="1.8" fill="var(--ink)" fill-opacity="${op}"/>`;
-    });
-  });
-  /* One mark per hour that was over, at that hour's own x. Non-scaling stroke so they stay the
-     same weight whatever width the svg is stretched to. */
-  overIdx.forEach(i => {
-    s += `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${H + 3}" y2="${H + OVER_BAND - 2}"`
-      + ` stroke="var(--signal-worse)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
-  });
-  s += `</svg>`;
-  /* A distance with nothing to draw is NAMED, not silently dropped. Three traces where there
-     should be four reads as a complete picture unless the fourth says it is missing and why — and
-     on this node `model` is the missing one on every issue, which is a real gap in the record and
-     not a quiet simplification of the drawing. */
-  const gone = DIST.filter(x => !sets.includes(x));
-  const legend = sets.map(k =>
-    `<span><i class="${k === 'room' ? '' : k === 'ring' ? 'dot' : 'dash'}"></i>${esc(LAB[k])}</span>`)
-    .join('')
-    + gone.map(k => `<span class="gone"><i></i>${esc(LAB[k])} — ${esc(reasonFor(d, k))}</span>`).join('')
-    + (overIdx.length ? `<span class="over"><i></i>${overIdx.length} of ${n} hours over the line`
-      + `</span>` : '');
-  // The text alternative sits beside the drawing at every width, not behind it.
-  const first = ser[sets[0]].find(v => v != null), last = [...ser[sets[0]]].reverse().find(v => v != null);
-  const altCmp = line != null
-    ? `against the line, ${fmt(line, d.dp)} ${d.unit} · ${d.line.source}`
-    : `no comparison yet · ${noLine(d)}`;
-  return `<div class="series" data-kind="series" data-component="series" id="${esc(id)}"`
-    + ` data-ref="${esc(o.ref || `band-${key}`)}">`
-    + `<div class="ax top"><span>${esc(fmt(hi, d.dp))} ${esc(d.unit)}</span>`
-    + `${line != null ? `<span>the line ${esc(fmt(line, d.dp))}</span>` : ''}</div>`
-    + s
-    + `<div class="ax bot"><span>24 h ago</span>`
-    + `${fmt(lo, d.dp) === fmt(0, d.dp) ? '<span class="floor">floor 0</span>'
-      : `<span class="floor">floor ${esc(fmt(lo, d.dp))} ${esc(d.unit)}, not zero</span>`}`
-    + `<span>now</span></div>`
-    + `<p class="alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">`
-    + `${esc(LAB[sets[0]])} opened the day at ${esc(fmt(first, d.dp))} and closed it at `
-    + `${esc(fmt(last, d.dp))} ${esc(d.unit)}</span> — ${esc(altCmp)}.`
-    + `${broken ? ' The line breaks where nothing was recorded.' : ''}</p>`
-    + `<div class="legend">${legend}</div></div>`;
-}
-
 /* The barcode: every issue's day in one strip, one bar an hour.
  *
  * WHY IT IS NOT THE TRACES AGAIN. The traces detail the two issues that have a day; this carries
@@ -1334,7 +1227,7 @@ function strips(key, D, o = {}) {
 }
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
-  readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
+  readout, stack, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
   evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord, fig, mountFigs, boxOf, offsetOf, hhmmAt, hourAt, dayAt, nearestIndex, PLOT_STYLE,
   dayFigure, strips };
@@ -2923,7 +2816,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, series, barcode } = window.K;
+const { esc, dayFigure } = window.K;
 
 /* An issue has a day when any distance carries a trace. The node decides what a trace is; this
    only asks whether one arrived. */
@@ -2941,11 +2834,10 @@ window.PAI.register({
         + `record yet, so there is no day to draw. The matrix above says what each one has.</p>`;
     }
     const silent = ORDER.filter(k => ISS[k] && !hasDay(ISS[k]));
-    return barcode({ id: 'barcode', ref: 'days' })
-      + `<div class="days" id="days" data-ref="matrix-grid">`
+    return `<div class="days" id="days" data-ref="matrix-grid">`
       + drawn.map(k => `<div class="dayone" id="day-${esc(k)}" data-ref="days">`
         + `<p class="k">${esc(ISS[k].name[LOC])}</p>`
-        + series(k, ISS[k], { id: `day-series-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
+        + dayFigure(k, ISS[k], { id: `day-fig-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
       + `</div>`
       + (silent.length ? `<p class="note" id="day-silent" data-ref="days">No hourly record for `
         + `${esc(silent.map(k => ISS[k].name[LOC]).join(' or '))} at any distance in this capture, `
@@ -2954,10 +2846,10 @@ window.PAI.register({
   notes(ctx) {
     return [
       { id: 'days', label: 'Height, and how long',
-        text: 'The trace says how high and the marks under the axis say how long. A '
-        + 'brief spike and a long plateau can reach the same height, and only one of them is worth '
-        + 'getting out of a chair for, so the hours over the line are counted under the drawing '
-        + 'rather than left to be read off a curve.' },
+        text: 'The trace says how high and the red ticks under it say how long. A brief spike and a long '
+        + 'plateau can reach the same height, and only one of them is worth getting out of a chair for, '
+        + 'so the hours over the line are counted in the line under the drawing. Point at an hour, or '
+        + 'focus the drawing and use the arrow keys, to read every distance at that hour.' },
       { id: 'day-silent', label: 'A day with nothing to draw',
         text: 'A card appears here when there is a day to draw. An issue with no '
         + 'hourly record at any distance would be an empty box claiming to be a drawing, so it is '
@@ -5723,7 +5615,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, row, rhoRow, series, peerRow, funnel, sign } = window.K;
+const { esc, fmt, row, rhoRow, peerRow, funnel, sign } = window.K;
 
 /* The care label: the refusals that hold across every stage, from ARCHITECTURE.md §7, drawn where the
  * loop closes because a refusal is the last thing a reader should meet, not the first.
@@ -5758,8 +5650,7 @@ window.PAI.register({
   title: 'Whether it worked',
   needs: ['SNAP.rho'],
   render(ctx) {
-    const { S, ISS, ORDER } = ctx;
-    const hk = S.issues.headline;
+    const { S } = ctx;
     const r = S.rho;
     return `<div class="two-up">`
       + `<div>${rhoRow()}`
@@ -5787,7 +5678,7 @@ window.PAI.register({
           cmp: `${r.acted} answered of ${r.alerts_act} asked in ${r.window_days} days` }],
       })
       + `</div>${funnel()}${careLabel()}</div>`
-      + `<div>${series(hk, ISS[hk])}</div></div>`;
+      + `<div id="measure-over-slot" data-ref="rho"></div></div>`;
   },
   notes(ctx) {
     const r = ctx.S.rho;
