@@ -1144,16 +1144,17 @@ function strips(key, D, o = {}) {
         + (e ? `<span class="f-ev">${esc(e.kind)} open</span>` : '');
     });
   };
+  const nd = `${days.length} day${days.length === 1 ? '' : 's'}`;
   const totals = (it.per_day || []).filter(p => p.date >= firstDay).reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read,
     of: a.of + p.of }), { over: 0, read: 0, of: 0 });
   return `<div class="f-strips" data-kind="series" data-component="strips" id="${esc(id)}-card" data-ref="${esc(ref)}">`
-    + `<p class="f-head"><span>${esc(name)} · ${esc(LAB[dist])} · ${days.length} days${trimmed ? `, from ${esc(wd(firstDay))}, the first this node recorded` : ''}</span>`
+    + `<p class="f-head"><span>${esc(name)} · ${esc(LAB[dist])} · ${nd}${trimmed ? `, from ${esc(wd(firstDay))}, the first this node recorded` : ''}</span>`
     + `<span>shades ${esc(fmt(floor, dp))} to ${esc(fmt(hi0, dp))} ${esc(unit)}${line != null
       ? ` · <span class="f-line">the line ${esc(fmt(line, dp))}</span>` : ''}</span></p>`
     + fig(id, draw, { ref: `${id}-card`, component: 'stripsDrawing',
-      label: `${name}, one row a day and one cell an hour over ${days.length} days` })
+      label: `${name}, one row a day and one cell an hour over ${nd}` })
     + `<p class="f-read" id="${esc(id)}-read" aria-live="polite"><span data-num="${esc(key)}.days.over" data-cmp="`
-    + `${esc(`of ${totals.read} hours read in ${days.length} days, ${totals.of - totals.read} not recorded`)}">`
+    + `${esc(`of ${totals.read} hour${totals.read === 1 ? '' : 's'} read in ${nd}, ${totals.of - totals.read} not recorded`)}">`
     + `${totals.over} hour${totals.over === 1 ? '' : 's'} over the line</span><span class="f-gone">${totals.of - totals.read} not recorded · `
     + `point at a cell</span></p>`
     + `<p class="f-legend"><span class="f-lo"><i></i>low</span><span class="f-hi"><i></i>high, on this issue’s own scale</span>`
@@ -3592,10 +3593,9 @@ window.PAI.register({
  *     tree fractions. /earth carries nine years of embeddings, eight change pairs with their
  *     hectares over threshold, the Sentinel and Landsat years, and two credit lines — and no
  *     fraction of anything, per year or otherwise. The prompt says to read it first and omit if so.
- *   · The barcode grown into a year of daily means. There is no daily route: /series and /sparks
- *     are hourly, a snapshot carries twenty-four hours of readings_1h, and the sensors here only
- *     reach twenty days anyway. A year of bars from twenty days of readings would be a drawing of
- *     nothing.
+ *   · A year of daily means. GET /issues/days carries the days, up to 90, and Historical's strips
+ *     draw every day the node holds; the sensors here reach weeks, not a year. A year of bars from
+ *     a few weeks of readings would be a drawing of nothing.
  *
  * Neither is stamped `example`. An absence that says which absence it is can be answered later; a
  * drawing of invented data cannot be un-seen.
@@ -3662,12 +3662,13 @@ window.PAI.register({
         + 'node kept them; the kit in the house reaches twenty days because that is how long it has '
         + 'been running. A question about a year has a different answer for each, and that is the '
         + 'thing this panel exists to say before anybody asks one.' },
-      { id: 'reach-cap', label: 'Two things not on the wire',
+      { id: 'reach-cap', label: 'Two things not drawn here',
         text: 'Prompt 4 asked for Isotype year rows lighting with the loop, and '
-        + 'for the barcode grown into a year of daily means. Neither is on this node\u2019s wire: '
-        + '/earth has no per-year fractions and there is no daily route at all. The instruction was '
-        + 'to read the endpoint first and omit if it does not carry them, which is what this is \u2014 '
-        + 'not a stamp saying `example` over a drawing of numbers nobody computed.' },
+        + 'for a year of daily means. /earth has no per-year fractions, so the first is not on this '
+        + 'node\u2019s wire. The days are, up to 90, and Historical\u2019s strips draw every one the node '
+        + 'holds; the kit here does not reach a year. The instruction was to read the endpoint first '
+        + 'and omit what it does not carry, which is what this is \u2014 not a stamp saying `example` '
+        + 'over a drawing of numbers nobody computed.' },
     ];
   },
 });

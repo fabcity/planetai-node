@@ -185,8 +185,8 @@ function t1legs(d) {
 //
 // Previous, from ebefea8 on node1-2026-09-21d: 390: 17357 px / 37.7%, 1440: 10764 px / 57.4%.
 // 6 Oct 2026, v0.79: re-recorded for the day figure and the strips, on node1-2026-10-06-figures (a fresh
-// capture of node #1 that carries issues_days). Each issue's day is one drawing with a strip of seven days under
-// it, so each issue gains seven rows; the barcode and Measure's second trace are gone, and the net is +509 px at
+// capture of node #1 that carries issues_days). Each issue's day is one drawing with a strip of the last 168
+// hours under it, eight local dates, so each issue gains eight rows; the barcode and Measure's second trace are gone, and the net is +509 px at
 // 390 and +14 px at 1440 (the fixture also changed). Emptiness falls: 390's from 44.7 to 42.5 and 1440's from
 // 55.1 to 52.7; both are lower, never higher, so no margin was spent.
 // Previous, on node1-2026-10-06-events: 390: 13294 px / 44.7%, 1440: 8728 px / 55.1%.
