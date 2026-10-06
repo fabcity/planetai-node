@@ -154,6 +154,15 @@ def main():
         if age > RHO_MAX_AGE_DAYS:
             errs.append(f"node #1's ρ on the page was read {age} days ago ({m.group(1)}); read /rho again "
                         f"and update RHO, or the page publishes a stale headline")
+    # And what is deployed: the page is a Vite bundle built from data.js (`make root`, `make staging` in the site
+    # repo), and release.sh deploys whatever is built. v0.77 and v0.78 updated data.js, passed above, and went
+    # live saying v0.76 (6 Oct 2026). At release time, read the release out of each built bundle too.
+    if want:
+        for where, d in (("the landing", site / "assets/p"), ("/staging/", site / "staging/assets")):
+            tags = {t for f in sorted(d.glob("*.js")) for t in re.findall(r'\{tag:"(v[^"]+)",asOf:"', f.read_text(encoding="utf-8"))}
+            if tags != {want}:
+                errs.append(f"{where}'s built bundle ({d.relative_to(site)}) says {', '.join(sorted(tags)) or 'no release'}; "
+                            f"this release is {want}. Run `make root` and `make staging` in the site repo and commit")
     m = grab(r"export const RHO = \{.*?label:\s*'([^']+)'", "RHO.label")
     if m and "answered" not in m.group(1):
         errs.append(f"the page labels ρ '{m.group(1)}'; ρ is the share of act-level alerts answered (app/index.py)")
