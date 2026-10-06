@@ -216,10 +216,7 @@ Four card kinds and no fifth: readout, stack, series, row. A gap in a series is 
 
 What the node read. Nothing here asks anything of a person. On Now it is the evidence for Decide, in the
 order a decision reads it: "Every issue, at every distance", "The day this place just had", "The day it is about
-to have" and "What the stations read". "The day this place usually has" averages this
-node's own stations hour by hour, inside and outside apart, in the node's own time; it waits for 7 local days
-before it draws a day (`GET /shape` needs 14 for a week, 60 for a month, 365 for a year) and until then says
-how many days it has. "How far back this node can be asked" gives, per kind of source, the oldest and newest
+to have" and "What the stations read". "The day this place usually has" draws the strips of every day this node holds (up to 90, `GET /issues/days?days=90`), and above them, once it has 7 local days, the hour inside and the hour outside are worst (`GET /shape`, which needs 14 days for a week, 60 for a month, 365 for a year); until then it says how many days it has. "How far back this node can be asked" gives, per kind of source, the oldest and newest
 hourly reading (`GET /reach`). "What this place could read, and where it could go" reads the pinned source
 registry (`GET /sources`, fetched the first time somebody opens Network). Its pin links to the registry on
 GitHub at that commit. It says how many sources are registered and how many have code on this node; the
@@ -228,6 +225,9 @@ three counts the node computes per cell (`capable`, `reviewed`, `candidate`, see
 things and the designs to build that the registry lists, with each licence as the registry wrote it. A line
 under the rows links to `GET /sources?status=live`, `GET /sources?status=candidate` and `GET /cells`, and to
 [Adding a source](sources.md#adding-a-source).
+
+"What the stations read": each row draws its day and answers a pointer; a station that stopped reporting in the last
+30 days is listed in a fold, with when it was last heard.
 
 ### Decide
 
@@ -311,7 +311,7 @@ wrote is shown only to a reader with a token, because `GET /actions` is on no sh
 
 ### Measure
 
-What the node measures about itself. "Whether it worked" draws ρ as a row of rings, answered first, with the
+What the node measures about itself. Measure counts the hours over the line, today and this week, from the node's own count. "Whether it worked" draws ρ as a row of rings, answered first, with the
 median minutes from alert to answer. Its caption says what it counts: alerts, because the node's ρ does not
 count events yet, and the page never relabels a number the node published. The funnel is beside it: `asked`, `acknowledged`, `acted`, `measured`,
 each a count against `asked`. `measured` is derived, not recorded: an act followed by 48 hours of silence
@@ -323,6 +323,22 @@ recovery time in hours. It is evidence that the condition ended, never that the 
 [ρ](rho.md). "Every figure on this page, and where it came from" is the node's own provenance for each
 figure, from `GET /issues`, and under it one line links the same day as open data, CC BY 4.0:
 `GET /export?day=<the day of the reading>`, and the days before it at `GET /exports`.
+
+## The day figure
+
+Each issue with a day has one drawing of its last 24 hours. Every distance is a trace in ink, dashed by distance, and
+an hour nothing was recorded is a gap in it, never a line drawn across. The grey band is the usual for each hour,
+from the node's own last 14 days. The red dashed line is the issue's line and the red ticks under the drawing are the
+hours over it. An alert event is a bar from when it opened to when it cleared, and its answer is a ring: green for
+Done. When an event is open, its own rooms are a heavier trace beside the house. Point at an hour, or focus the
+drawing and use the arrow keys, and the line under it says that hour in words.
+
+## The strips
+
+One row a day and one cell an hour, the newest day at the bottom: the last seven days on Now under each day figure (the oldest row starts at this hour a week ago), and every
+day the node holds on Historical. A darker cell is a higher reading on that issue's own scale, a red cell is an hour
+over the line, and an outlined empty cell is an hour nothing was recorded. The column on the right is the node's own
+count of hours over the line that day. An alert event outlines the hours it was open.
 
 ## Issues, states and distances
 

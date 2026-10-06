@@ -2759,7 +2759,7 @@ const hasDay = d => (window.K.DIST || []).some(x => Array.isArray((d.series || {
   && (d.series[x] || []).some(v => v != null));
 
 window.PAI.register({
-  id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw'],
+  id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw', 'figure'],
   reads: ['/issues', '/issues/days'],
   render(ctx) {
     const { ISS, ORDER } = ctx;
@@ -5157,7 +5157,7 @@ function peak(hours, key) {
 const hh = h => `${String(h).padStart(2, '0')}:00`;
 
 window.PAI.register({
-  id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape'],
+  id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape', 'strips'],
   reads: ['/issues/days', '/shape'],
   title: 'The day this place usually has',
   needs: [],

@@ -119,6 +119,14 @@ A drawing is a drawing *inside* a card, not a fifth kind. A gap in a series is a
 ramp across a line nobody measured. Every numeral carries its comparison; a numeral with nothing to compare
 it to says so in words.
 
+## Drawn with Plot
+
+The figures are drawn with Observable Plot 0.6.17 and the d3 7.9.0 it is built on, served by the node as two static
+files (ISC; `app/static/licences/`), so the page draws on a network with no route out. `data/vendor.sha256` pins both
+and `make lint` checks them. Plot draws marks; the layer's rules still decide them: ink for readings, red for the line
+and the hours over it, green only for an answer that closed a loop, blue only for focus. A figure is a `series` card,
+so the four card kinds stay four.
+
 ## Signs
 
 Two families, two rules, and each is audited by its own. `app/static/signs.svg` carries 25 counting signs and

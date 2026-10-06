@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The dashboard draws each issue's day once, as one drawing you can point at: every distance, the usual for each hour,
+  the hours over the line, the alert event and its answer, and the event's own rooms, with the hour read out in words
+  (the arrow keys work too). Under it, a strip of the last seven days, one cell an hour; Historical draws every day
+  the node holds. Each station row draws its day, and a station that stopped reporting is kept in a fold with when it
+  was last heard. Measure counts the hours over the line. The drawings use Observable Plot, served by the node itself.
 - `GET /issues` carries what the page's new drawings need: each issue's usual day (`usual`), an open event's own rooms
   hour by hour (`events.open[].series`), and, apart from `stations`, the stations that stopped reporting in the last
   30 days (`stations_silent.stations`), kept with when they were last heard (relays of kits that still report are

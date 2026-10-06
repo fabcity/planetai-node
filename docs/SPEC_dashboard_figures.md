@@ -138,8 +138,9 @@ The node's figures are unchanged. The page's floor rule changes (§4.2), and the
 - `data/vendor.sha256` holds their hashes and `make lint` runs `shasum -a 256 -c` on it, so neither can drift
   without a commit that says so. The frozen layer and `tools/check_theme.py` are untouched: these files are not the
   design kit's.
-- Plot names its own SVG class (`plot-` and a hash) and labels its marks with `aria-label`, not classes. `make lint`
-  checks that no class Plot emits matches a theme binding class (`.ring`, `.cell`, `.sat`, `.label`).
+- Plot names its own SVG class (`plot-` and a hash) and labels its marks with `aria-label`, not classes. Every class
+  the page writes for a figure starts with `f-`, and Plot's own are `plot-` and a hash, so neither can meet a theme
+  binding class (`.ring`, `.cell`, `.sat`, `.label`).
 
 ### 4.2 The day figure
 
@@ -188,7 +189,8 @@ One row a day and one cell an hour, newest at the bottom, from `GET /issues/days
   heat) to the darkest hour, so one 2,000 µg/m³ hour does not wash every other hour white. Red is an hour over the
   line. An outlined empty cell is an hour with nothing recorded, never a pale cell that looks low.
 - **Right column.** The node's `per_day.over` ("3 h over"), then any event that opened that day, by kind and span.
-- **Distance.** The hero distance by default; a switch lists the other distances that have data in the window.
+- **Distance.** The hero distance, the one the lead's numeral reads. A switch to the street or the ring waits until a
+  reader asks for it: `/issues/days` already carries every distance, so it is a page change only.
 - **Hover.** The hour, the value, and the event open then, in the same readout line as the figure.
 - **On Now:** the last seven days, under the day figure. **On Historical:** every day `/issues/days?days=90` returns, in
   place of the averaged curve in "The day this place usually has". That section's sentence about how many days the
@@ -198,8 +200,9 @@ One row a day and one cell an hour, newest at the bottom, from `GET /issues/days
 
 ### 4.4 The stations
 
-- **Facets.** One Plot per variable, one row per station, one shared scale, the hourly mean as a line and the hour's
-  spread as a band, the issue's line only where the variable is the issue's own. The tabs and the fold to eight stay.
+- **A drawing per row.** Each station row draws its day with Plot, on the one scale every row shares (the band is the
+  hour's spread, the line the hourly mean, the issue's line where it applies), and answers a pointer. The tabs and the
+  fold to eight stay.
 - **The event's rooms first.** With an event open, its rooms' rows lead and are named as the event's.
 - **The archive of silence.** A station silent over an hour keeps its row, its last reading as a tick, and
   "silent 3 h". A station from §3.3 goes to a fold at the bottom, "no longer heard: N stations", each with when it was
@@ -209,7 +212,7 @@ One row a day and one cell an hour, newest at the bottom, from `GET /issues/days
 
 ### 4.5 Measure
 
-The second trace goes. In its place, one `row`: hours over the line in the last 24 hours and the last seven days, per
+The second trace goes. In its place, one `row`: hours over the line today (the node's local day) and in the days `/issues/days` covers, per
 issue, from `/issues/days` `per_day`, with the hours nothing was recorded named beside them. The ρ row and the funnel stay.
 
 ### 4.6 Plot's chrome

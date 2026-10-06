@@ -22,13 +22,13 @@ DESIGN="$(cd "${PAI_DESIGN_REPO:-../planetai-design}" 2>/dev/null && pwd)" || DE
 [ -n "$DESIGN" ] && [ -d "$DESIGN/node_modules/playwright" ] || { echo "  playwright is not in ${PAI_DESIGN_REPO:-../planetai-design} (resolved: ${DESIGN:-<not found>}); npm install there"; exit 2; }
 
 OUT="${PAI_OUT:-/tmp/pai-gate}"; mkdir -p "$OUT"
-export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI_Q="?fixture=node1-2026-10-06-events"
+export PAI_STATIC="$PWD/app/static" PAI_OUT="$OUT" PAI_DESIGN_REPO="$DESIGN" PAI_Q="?fixture=node1-2026-10-06-figures"
 
 # now_populated_390/1440: everything T1-T5 below is read off these two. wall_populated_1920_dark:
 # T7 and the 1,080 px check. All three go through serveNodeAPI() in measure.mjs — no node, no
 # container, no network; see that function's own comment for what changed on 2026-09 and why.
 node tests/visual/measure.mjs render now_populated_1440 now_populated_390 >/dev/null
-PAI_Q="?fixture=node1-2026-10-06-events&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
+PAI_Q="?fixture=node1-2026-10-06-figures&view=wall" node tests/visual/measure.mjs render wall_populated_1920_dark >/dev/null
 # The ruler is now inside the railfold and visible only with ?worth=1. PAI_TAG appends _worth1 to the
 # output filename, so the measurement is stored as now_populated_1440_worth1.json, which the ruler check reads.
 PAI_TAG=worth1 PAI_Q="$PAI_Q&worth=1" node tests/visual/measure.mjs render now_populated_1440 >/dev/null
@@ -184,8 +184,14 @@ function t1legs(d) {
 // another fixture. 1440's falls from 57.4 to 55.1.
 //
 // Previous, from ebefea8 on node1-2026-09-21d: 390: 17357 px / 37.7%, 1440: 10764 px / 57.4%.
-const HEIGHT_SHIPPED = { now_populated_390: 13294, now_populated_1440: 8728 };
-const EMPTY_SHIPPED = { now_populated_390: 44.7, now_populated_1440: 55.1 };
+// 6 Oct 2026, v0.79: re-recorded for the day figure and the strips, on node1-2026-10-06-figures (a fresh
+// capture of node #1 that carries issues_days). Each issue's day is one drawing with a strip of seven days under
+// it, so each issue gains seven rows; the barcode and Measure's second trace are gone, and the net is +509 px at
+// 390 and +14 px at 1440 (the fixture also changed). Emptiness falls: 390's from 44.7 to 42.5 and 1440's from
+// 55.1 to 52.7; both are lower, never higher, so no margin was spent.
+// Previous, on node1-2026-10-06-events: 390: 13294 px / 44.7%, 1440: 8728 px / 55.1%.
+const HEIGHT_SHIPPED = { now_populated_390: 13803, now_populated_1440: 8742 };
+const EMPTY_SHIPPED = { now_populated_390: 42.5, now_populated_1440: 52.7 };
 const HEIGHT_MARGIN = 1.08, EMPTY_MARGIN = 6;
 
 for (const n of ['now_populated_1440', 'now_populated_390']) {
