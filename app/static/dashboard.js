@@ -5561,12 +5561,12 @@ window.PAI.register({
 /* measure · core · measure
  *
  * Whether it worked, and how long it took. The loop's last stage and the one that makes it a loop:
- * ρ, the share of asks that were answered; the median minutes from ask to answer; and the day the
- * node's own probes just had, which is the reading coming back — or not — after somebody acted.
+ * ρ, the share of asks that were answered; the median minutes from ask to answer; and the hours the
+ * house spent over the line, which is the reading coming back — or not — after somebody acted.
  *
  * Nothing here is a gauge. ρ is a row of rings, answered first, and the numeral beside it says the
- * same thing in words; the hours over the line are counted from the node's own per-day counts,
- * today and in the days the strips draw. The day itself is drawn under Observe. The four card kinds are enough.
+ * same thing in words. The hours over the line are counted from the node's own per-day counts,
+ * today and in the days the strips draw; the day itself is drawn once, under Observe.
  */
 PAI_LOAD.push(function () {
 'use strict';
@@ -5609,23 +5609,26 @@ function overRows(ctx) {
     return `<p class="note" id="measure-over" data-ref="rho">This node does not send its days yet, so the hours over `
       + `the line are not counted here.</p>`;
   }
-  const keys = ctx.ORDER.filter(k => D.issues[k] && D.issues[k].distance && D.issues[k].line);
+  const I = D.issues || {};
+  const keys = ctx.ORDER.filter(k => I[k] && I[k].distance && I[k].line);
+  if (!keys.length) {
+    return `<p class="note" id="measure-over" data-ref="rho">No issue here has a line to count hours against.</p>`;
+  }
   const sum = ps => ps.reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read, of: a.of + p.of }),
     { over: 0, read: 0, of: 0 });
   return `<div class="reads" id="measure-over" data-ref="rho">` + keys.map(k => {
-    const it = D.issues[k], u = ctx.ISS[k];
+    const it = I[k], u = ctx.ISS[k];
     const t = sum(it.per_day.slice(-1)), w = sum(it.per_day);
     return row({ id: `measure-over-${k}`, component: 'overCount', ref: 'measure-over',
       cols: 'minmax(0,210px) minmax(0,1fr) auto',
       left: `<span class="who"><b>${esc(u.name[LOC])}</b><span class="m">${esc(ctx.LAB[it.distance])} · over `
         + `${esc(fmt(it.line.value, u.dp))} ${esc(u.unit)}</span></span>`,
       line: `Hours over the line today, and in these ${D.days} days.`,
-      qty: [{ num: `${k}.over.today`, value: `${t.over} h`, cmp: `of ${t.read} hours read today, ${t.of - t.read} not recorded` },
-        { num: `${k}.over.days`, value: `${w.over} h`, cmp: `of ${w.read} hours read in ${D.days} days, ${w.of - w.read} not recorded` }],
+      qty: [{ num: `${k}.over.today`, value: t.read ? `${t.over} h` : null, cmp: `of ${t.read} hours read today, ${t.of - t.read} not recorded` },
+        { num: `${k}.over.days`, value: w.read ? `${w.over} h` : null, cmp: `of ${w.read} hours read in ${D.days} days, ${w.of - w.read} not recorded` }],
     });
   }).join('') + `</div>`;
 }
-
 
 window.PAI.register({
   id: 'measure', pack: 'core', stage: 'measure', order: 10, learn: ['rho', 'refusals'],
@@ -5676,9 +5679,9 @@ window.PAI.register({
         + 'those words rather than a zero that would read as a node that looked and found nothing.' },
       { id: 'measure-over', label: 'How long, counted',
         text: 'A reading over the line for one hour and for nine are different days, and a curve does not say which. '
-        + 'These rows count the hours the house was over the line, from the node\'s own count per local day: today, '
-        + 'and the days the strips above draw. An hour nothing was recorded is named beside the count, never counted as '
-        + 'clean.' },
+        + 'These rows count the hours the house was over the line, from the node’s own count per local day: today, '
+        + 'and the days the strips under Observe draw. An hour nothing was recorded is named beside the count, never '
+        + 'counted as clean, and a day with nothing recorded shows a dash, not a zero.' },
       { id: 'funnel', label: 'One thing counted four times',
         text: 'The funnel counts one thing four times: how many alerts the node sent, '
         + 'how many were acknowledged, how many led to something being done, and how many stopped '
@@ -5696,11 +5699,6 @@ window.PAI.register({
         + 'first, and what it will not do once they have seen it. The row about the human row went '
         + 'without a sign until one was drawn for it: borrowing the answered-alert ring would have '
         + 'made that ring mean two things twelve pixels apart.' },
-      { id: 'measure-day', label: 'The headline issue’s own trace',
-        text: 'The day is the headline issue’s own trace: the node supplies every '
-        + 'value and the line, the page supplies only the box. A hole in the series is a hole in the '
-        + 'line — a run of one reading is a dot, never nothing — and the text alternative beside the '
-        + 'drawing says where the day opened and closed.' },
       { id: 'measure-loop', label: 'Where the loop closes',
         text: 'This is the stage that closes the loop. Observe put a number on '
         + 'the page; decide said how far that number may be trusted; act asked somebody to do '
