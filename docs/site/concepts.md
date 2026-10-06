@@ -1,7 +1,7 @@
 # Concepts
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
-The words the rest of these pages use, each with what it means in the code at v0.77. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.78. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -93,7 +93,7 @@ designs to build. See the [CLI](cli.md).
 `level` and a `cooldown_minutes`. No rules engine, no expression language: if Postgres cannot express the
 condition, the condition is wrong. Core rules live in `config/rules.yml` and know no metric; a pack's
 rules live in `packs/<id>/rules.yml`, namespaced `<pack>/<id>`. A rule's message ends with a line beginning
-👉, its recommendation, and the dashboard's Decide card shows that line as "what this node suggests".
+👉, its recommendation, and the dashboard's alert card in Decide shows that line as "what this node suggests".
 
 **Level.** `act`: something needs doing. `warn`: something changed. `info`: everything else.
 `ALERT_LEVEL` is the floor for interrupting a person; below it an alert is still recorded, still on the
@@ -119,9 +119,10 @@ escalates and clears, and has at most one action chosen from what is inside, out
 in `alert_events`, its messages are in `event_messages`, and `GET /issues` carries it under `events`. It runs with
 `ALERT_ENGINE=shadow` (records what it would send, sends nothing) or `events` (sends); the default, `rules`, runs
 no engine. Its answers are Done (`acted`), Not now (`acknowledged`) and Doesn't fit (`dismissed`), posted with an
-`event_id`; they are not in ρ. See [Alerts](alerts.md).
+`event_id`; they are not in ρ. On `shadow` and `events` the event stands for the alerts of the heat and air rules
+it replaced: those are no longer open alerts, and an issue's state follows its event. See [Alerts](alerts.md).
 
-**Decision.** A `decided` row, recorded from the dashboard's "What to do about it" card. It closes no alert, is
+**Decision.** A `decided` row, recorded from an alert's card in Decide. It closes no alert, is
 not in ρ and is not a stage in the funnel. With `DECISION_REQUIRED=1` (off by default) an `acted` with no
 `decided` row before it is refused with HTTP 409.
 

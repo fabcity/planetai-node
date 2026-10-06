@@ -1,11 +1,11 @@
 # Database schema
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 Everything the node knows sits in one Postgres database, `planetai`, on the machine itself. A pack's rules and cells are SQL written against the tables and views on this page, and a person debugging a node at 9 pm reads the same ones with `psql`. The raw readings live in `readings` and stay here: "No raw readings leave the instance that recorded them" (ARCHITECTURE.md). What goes up to a parent is `readings_1h`, the hourly means, and the timestamps in `alerts` and `actions`.
 
 `init.sql` is the whole schema, written to be run twice: `CREATE TABLE IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`, and `DROP VIEW` then `CREATE VIEW`. Postgres runs it on its own only when the data volume is first created, so `update.sh` applies the same file to the existing database on every update, and `planetai restore` applies it after a restore. Schema changes are additive by rule (SPEC §5): no dropped columns, no renames, no destructive migrations. That is what makes rollback a `git checkout <tag>` and a restart rather than a restore. The one exception so far is `events.cleared_at`, a column nothing ever wrote, dropped in 0.51. `schema_version` records where a node is, and `/health` reports it.
 
-This page was read from `init.sql` at v0.77: 12 tables, 4 views, 1 materialized view and 1 role.
+This page was read from `init.sql` at v0.78: 12 tables, 4 views, 1 materialized view and 1 role.
 
 ## Tables
 
@@ -27,7 +27,7 @@ One row per thing that produces readings, and per place the node was told about.
 | `meta` | jsonb | free-form. An untrusted reader of `/sensors` gets only `licence`, `attribution`, `model`, `dataset`, `network`, `note`, `corrected`, and for a `facility` row ten more keys that describe the lab |
 | `custody` | bool, generated | `kind = 'child' OR (local AND kind <> 'peer')`. The only thing a cell may count |
 
-In v0.77 no adapter writes `survey` or `peer`; both are named in `init.sql` and `peer` is in the `custody` expression.
+In v0.78 no adapter writes `survey` or `peer`; both are named in `init.sql` and `peer` is in the `custody` expression.
 
 **A facility has no readings.** `kind = 'facility'` is a place with a name and a point, and the `make` pack is what writes it. When `MAKE_ENABLED=1`, the pack reads the Fab Lab Network directory and stores each active lab within `MAKE_RADIUS_KM` (default 50) as one `sensors` row: `sensor_id` `lab-<slug>`, `source` `fablabs-io`, `local` false, `scale` `community`, `cadence` `P30D`. Its `meta` holds `slug`, `capabilities`, `kind_name`, `city`, `country_code`, `distance_km`, `url`, `registry_slug`, `snapshot`, `fetched` and `attribution`. No `readings` row is ever written for it, so it is in neither `stats` nor `observations`; `/issues` reads the rows straight from `sensors`. Because `local` is false, `custody` is false, and a fab lab can never make an Index cell say `live`. The pack fetches again only when the newest `meta.fetched` is older than `MAKE_REFRESH_DAYS` (default 30).
 
@@ -52,7 +52,7 @@ Unique on `(sensor_id, metric, ts)`, so polling twice is harmless; indexed `(sen
 | `sensor_id` | text | the row's sensor, or `node` |
 | `level` | text | `info` · `warn` · `act` |
 | `text` | text | the filled message |
-| `event_id` | bigint → `alert_events.id` | the event the alert fed. Null on every row in v0.77: nothing writes it yet |
+| `event_id` | bigint → `alert_events.id` | the event the alert fed. Null on every row in v0.78: nothing writes it yet |
 
 Indexed `(rule_id, sensor_id, ts desc)` for the cooldown check. There is no notion of an alert clearing, only of cooldowns; an [alert event](#alert-events) is the row that opens and clears.
 
@@ -77,7 +77,7 @@ The six stages do different things, and two of them are never posted by a person
 | `acted` | `POST /actions` | ρ, `acted_at`, and closes the alert |
 | `decided` | `POST /actions` | Nothing. It is a record that somebody said what they would do: not in ρ, not a funnel stage, closes no alert |
 | `dismissed` | `POST /actions` with an `event_id`, never with an `alert_id` | Nothing. It is *Doesn't fit*, said of an alert event's advice. Every ρ, funnel and effect query joins `actions` to `alerts` on `alert_id`, so an event's three answers (`acknowledged`, `acted`, `dismissed`) are in none of them |
-| `measured` | Nothing, in v0.77 | `POST /actions` refuses it. The node derives `measured` instead, from an `acted` alert whose rule stayed silent on the same sensor for 2880 minutes; see [rho](rho.md). A `measured` row already in the table still counts |
+| `measured` | Nothing, in v0.78 | `POST /actions` refuses it. The node derives `measured` instead, from an `acted` alert whose rule stayed silent on the same sensor for 2880 minutes; see [rho](rho.md). A `measured` row already in the table still counts |
 | `settings` | `PUT /settings`, `planetai config set`, the `settings_set` tool | Nothing in ρ; it records who changed which keys |
 
 With `DECISION_REQUIRED=1`, `POST /actions` refuses an `acted` row for an alert that has no `decided` row yet. The table itself does not enforce that.
@@ -89,12 +89,12 @@ With `DECISION_REQUIRED=1`, `POST /actions` refuses an `acted` row for an alert 
 | `id`, `ts` | | |
 | `due_local` | timestamptz | the local due hour; the row is the scheduler's lock. Null for `POST /report/now` |
 | `window_hours` | int | |
-| `depth` | text | `sheet` on every row in v0.77; `brief` · `standard` · `deep` reserved |
-| `rung` | text | `node` on every row in v0.77; `local` · `remote` · `online` reserved |
-| `text` | text | what was sent. Both writers put the sheet here in v0.77, so it equals `sheet` |
+| `depth` | text | `sheet` on every row in v0.78; `brief` · `standard` · `deep` reserved |
+| `rung` | text | `node` on every row in v0.78; `local` · `remote` · `online` reserved |
+| `text` | text | what was sent. Both writers put the sheet here in v0.78, so it equals `sheet` |
 | `sheet` | text | the node's own six parts, always |
 | `sent`, `held_quiet` | bool | a report due in quiet hours is written with `sent` false and `held_quiet` true, and folded into the next |
-| `fallback_reason` | text | why `text` is the sheet and not a model's. Nothing writes it in v0.77 |
+| `fallback_reason` | text | why `text` is the sheet and not a model's. Nothing writes it in v0.78 |
 | `cells` | jsonb | the Index cells at the time of the report |
 
 ### `events`
@@ -151,7 +151,7 @@ What each `(source, metric)` **is**, written at every start from `config/channel
 
 ### `schema_version`
 
-`version`, `applied_at`; one row per schema step: 0.4, 0.14, 0.20, 0.21, 0.22, 0.23, 0.50, 0.51, 0.52, 0.53. There is no step after 0.53 in v0.77, so `/health` reports `0.53` on an up-to-date node. Adding `decided` and then `dismissed` to the `actions` check did not add a step: the constraint is dropped and re-created inside the 0.20 block on every run.
+`version`, `applied_at`; one row per schema step: 0.4, 0.14, 0.20, 0.21, 0.22, 0.23, 0.50, 0.51, 0.52, 0.53. There is no step after 0.53 in v0.78, so `/health` reports `0.53` on an up-to-date node. Adding `decided` and then `dismissed` to the `actions` check did not add a step: the constraint is dropped and re-created inside the 0.20 block on every run.
 
 ### `release_notices`
 

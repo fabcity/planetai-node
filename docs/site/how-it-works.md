@@ -1,5 +1,5 @@
 # How it works
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
 one Python process that answers the HTTP API on port 8080 and runs six loops in the background, a seventh when
@@ -16,9 +16,9 @@ overhead, decides where it stands, and tells the people there what to do. Raw re
       │  (ts, sensor_id, metric, value)
       ▼
    OBSERVE  ──▶  DECIDE  ──▶  ACT  ──▶  MEASURE  ──▶  OBSERVE …
-   what is read    what may be    what has been   whether it worked,
-   about this      said, and at   asked, of whom  and how long it took
-   place           what resolution
+   what is read    what to do     what has been   whether it worked,
+   about this      about it       asked, of whom  and how long it took
+   place
 ```
 
 `ARCHITECTURE.md` describes three layers, Sense, Observe and Act, measured against the Fab City Index. The
@@ -56,7 +56,7 @@ a year. `GET /reach` says how far back each kind of source can be asked. Every n
 On the page, Decide is "what to do about it", the first section under the lead on Now. Its other sections, whose
 word covers how much ground and what each H3 resolution is worth, are on Network, and what the node doubts about
 its own sensors is on Historical. Since v0.72 Decide draws a card for each issue with an open act-level alert; a
-node that tells events draws one card for each open event instead, with its action and three buttons. The card shows what was seen and
+node that tells events draws one card for each open event instead, with its action and three buttons. An alert's card shows what was seen and
 "what this node suggests", which is the rule's own last line, the one that begins with 👉, written by
 whoever wrote the rule. A person may record a decision there. It is written to `actions` with
 `stage: decided`, and it moves nothing: it closes no alert, it is not in ρ and it is not a stage in the funnel.
@@ -192,7 +192,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.77. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.78. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

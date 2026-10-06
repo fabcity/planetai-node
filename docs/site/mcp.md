@@ -1,5 +1,5 @@
 # MCP server and tools
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it
 how the place is doing in the household's own words, and record, in a person's own words, that somebody
@@ -79,7 +79,7 @@ Start with `health_check`, then `status`.
 | `issues` | `issue?` | the whole `/issues` object (the issues, `headline` and `headline_rule`, `labels`, `stations`, `metrics`, the `asks` ledger, `lead`, the `digest` with its four sentences, `simple` and `prompts`, `geometry`, the packs' `sections`, the alert `events`), or one issue with `as_of` and `labels`: state, the four distances with provenance, the sentence, the open asks |
 | `sensors` | none | one row per sensor from `/stats`: local, indoor, kind, the 15-minute mean per metric, minutes silent; local first |
 | `context` | none | sea, weather, satellite air, place and land from `/observations`, labelled; or a note that the first poll fills this |
-| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.77 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
+| `readings` | `sensor_id`, `metric`, `hours=24` (≤168) | meant to return hourly means oldest first. In v0.78 it returns its error for every sensor, because it looks the sensor up at the top level of `/sparks`, whose means sit under `series` |
 | `history` | `sensor_id`, `metric` | every `{ts, value}` oldest first, for slow series such as `place-point / sat_buildings_yearly` |
 | `series` | `metric="pm25"`, `hours=24` (≤168) | aligned hourly arrays: indoor, outdoor, model |
 | `alerts` | `limit=10` (≤100), `since_hours=0` | the most recent alerts: `id`, `ts`, `rule_id`, `sensor_id`, `level`, `text` and `acted_at`. With `since_hours`, `{since_hours, count, alerts}`: `count` is every alert in the window, `alerts` the newest `limit` with their text cut to 160 characters |
@@ -103,7 +103,7 @@ recorded on the dashboard against the same alert; no tool records a decision, an
 
 The read routes `GET /shape`, `GET /effect` and `GET /reach` have no tool of their own.
 
-> **Gap in v0.77.** The `issues` tool's own description still says ties for `headline` go to the keeper's
+> **Gap in v0.78.** The `issues` tool's own description still says ties for `headline` go to the keeper's
 > order. The node leads with the issue of an open alert event, then the highest state, breaks a tie within a state
 > by which issue moved most in the last three hours, and only then goes by the declared order. `headline_rule` and
 > `lead.by` in the tool's answer say which.

@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 The whole building, drawn once, so every brick knows where it goes. What exists today is marked. What doesn't is
 drawn anyway, because the contracts between layers are the thing that can't be retrofitted.

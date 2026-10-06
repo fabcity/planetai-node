@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.77 -->
+<!-- checked: v0.78 -->
 
 A screen on a wall that nobody is standing at. With the wall, the node is read by people walking past: a
 household sees one number, one sentence and whether the loop closed, and a lab sees which cells around it
@@ -41,7 +41,7 @@ It is laid out to fill one viewport (`min-height: 100vh`), so nothing a passer-b
 
 The bar answers the questions asked before any reading is read. From the left: a **back** button, drawn first
 so it is first in keyboard order; up to four variable chips; the node's name, its city, `#wall`, a share
-level (always `off` in v0.77, because `/health` carries no share level) and how often the ladder moves
+level (always `off` in v0.78, because `/health` carries no share level) and how often the ladder moves
 ("the ladder moves every 8 s", or "the ladder stands still" under reduced motion); and at the right what the numbers are: the variable, its unit, and `15-min means`.
 
 The chips offer only metrics at least one station on this node carries. The one being shown is always first,
@@ -68,7 +68,8 @@ clock bar. Under `prefers-reduced-motion: reduce` nothing moves.
 ## The right column
 
 The headline issue: kicker, sentence, why and the alert. Under the alert, "Answer on Telegram, not here." The
-wall shows an alert and never the button that answers it. Then the ladder, with its key under it
+wall shows an alert and never the button that answers it. It draws no alert event either: on a node whose alert engine is `shadow` or `events` the old heat and air alerts are not
+open asks, so under the headline the strip can read "Nothing has been asked." while Decide has an event open. Then the ladder, with its key under it
 ("the ladder · current rung filled ink · may-leave rungs filled `--cells` at .16 · finer than published,
 dashed"), the counts ("Cells with a station" of 19 drawn; "In this node's cell" of n stations; "Of them,
 its own") and the ρ row. Under the field, the fragments each section contributes through its `wall()`, in
@@ -82,7 +83,7 @@ the exact counts.
 ## The foot
 
 The as-of time, the version stamp, the word `stale` in bold ink, and the motion caption. The bold word is a
-fixed label in v0.77. The as-of time beside it does judge: when the page's last poll got no answer it reads
+fixed label in v0.78. The as-of time beside it does judge: when the page's last poll got no answer it reads
 "Read at … · the node has not answered for N min".
 
 If the wall throws while it draws, the screen says "The wall did not render:" and the reason, rather than
