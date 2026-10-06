@@ -250,11 +250,10 @@ as the events PR's are.
 - **The rules the page keeps.** The floor, the gap runs, the hours-over count used by the readout and the strips'
   shade floor are small functions on `window.K`. `tests/test_dashboard.py` lifts and runs them in node, including:
   no floor below zero for non-negative readings; a run of nulls makes two segments, not one.
-- **The server.** `tests/test_issues.py` covers `usual` null and present and §3.3's silent stations, including the
-  two kits that report under another id; `tests/test_events_wire.py` covers `events.open[].series` against a
-  hand-made fixture. A new `tests/test_days.py` checks
-  that `/days?days=1` reproduces `/issues`' 24 values exactly, that `per_day` counts what the series shows, and the
-  1 and 90 bounds. Each new file has its line in `tests/all` and the count moved.
+- **The server.** `tests/test_figures_wire.py` covers `usual` (null, present and carried by a replay),
+  `events.open[].series` against node #1's 6 October capture, §3.3's silent stations on node #1's eight rows of that
+  day, and `/issues/days`: one day reproduces `/issues`' own 24 values, `per_day` counts what the series shows, and
+  the window is held to 1–90 days.
 - **The wire.** `tools/check_wire.py --update` for `issues-v0`, and `days-v0` added.
 - **The visual gate.** A new fixture of node #1 with `days` and `usual_by_hour`; `measure.mjs` serves `/days`; the
   heights re-baselined at 390 and 1440 px and the wall, in the page PR, with the numbers in its description.

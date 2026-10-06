@@ -1040,6 +1040,52 @@ def _rows(cur, sql, *args) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+# usual_by_hour (init.sql): each sensor's median and p90 for each local hour, over the 14 complete days before today.
+USUAL_DAYS = 14
+USUAL_SQL = "SELECT sensor_id, metric, hour, median, p90 FROM usual_by_hour"
+
+
+def _optional(cur, sql: str, *args) -> list[dict] | None:
+    """A read a fresh node may not answer and a capture does not carry: None, never a failed /issues.
+
+    usual_by_hour is created WITH NO DATA and raises until the app's first hourly refresh, and on a live cursor an
+    error inside the /issues transaction would abort every read after it, so the read gets a savepoint of its own. A
+    Replay has no connection and refuses a query it cannot answer with LookupError, which ends in the same None."""
+    conn = getattr(cur, "connection", None)
+    try:
+        if conn is None:
+            return _rows(cur, sql, *args)
+        with conn.transaction():
+            return _rows(cur, sql, *args)
+    except Exception as e:  # noqa: BLE001
+        log.info("issues: an optional read did not answer (%s)", type(e).__name__)
+        return None
+
+
+def _usual(d: dict, dist: str, cell: dict | None, rows: list[dict] | None) -> tuple[dict | None, str | None]:
+    """The issue's usual day at its hero distance (docs/SPEC_dashboard_figures.md §3.1): for each local hour, the mean
+    over that distance's sensors of usual_by_hour's median and p90, for the issue's own metric. The same reading
+    events_wire.USUAL_SQL makes for an event's card, so the band and the card agree. (block, None) or (None, why)."""
+    if rows is None:
+        return None, "unread"
+    ids = set((cell or {}).get("sensors") or [])
+    if not ids:
+        return None, "no_source"
+    by: dict[int, list[dict]] = {}
+    for r in rows:
+        if r.get("sensor_id") in ids and r.get("metric") == d.get("metric") and r.get("median") is not None:
+            by.setdefault(int(r["hour"]), []).append(r)
+    if not by:
+        return None, "no_history"
+
+    def mean(xs):
+        xs = [float(x) for x in xs if x is not None]
+        return round(statistics.fmean(xs), 2) if xs else None
+    return {"window_days": USUAL_DAYS, "distance": dist,
+            "hours": [{"hour": h, "median": mean(r["median"] for r in by.get(h, [])),
+                       "p90": mean(r.get("p90") for r in by.get(h, []))} for h in range(24)]}, None
+
+
 def _read(cur) -> dict:
     """Five reads, once, for every issue. Nothing here is per-issue: an eighth issue costs no query."""
     return {
@@ -1132,6 +1178,9 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
 
     `events` is the block the capture carried in its own /issues, verbatim: the events are rows the node read, not
     arithmetic, and replaying them through compute is what ranks the headline and recomputes uncovered_asks.
+
+    `usual` is each issue's usual day as the capture carried it, verbatim; a capture from before v0.78 has none, and
+    the engine's own read of `usual_by_hour` then fails on the Replay and says `unread`.
     """
     now = snapshot.get("as_of")
     if isinstance(now, str):
@@ -1145,10 +1194,13 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     # own /sensors body, which is where the pack's rows land.
     sensors = snapshot.get("sensors") or []
     facilities = [r for r in sensors if isinstance(r, dict) and r.get("kind") == "facility"]
+    body = snapshot.get("issues") if isinstance(snapshot.get("issues"), dict) else {}
+    captured = body.get("issues") if isinstance(body.get("issues"), dict) else {}
+    usual = {k: (v.get("usual"), v.get("usual_absent")) for k, v in captured.items()
+             if isinstance(v, dict) and "usual" in v} or None
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
                    place=place, mesh=health.get("mesh"), peers=[peer] if peer else [],
-                   facilities=facilities,
-                   events=(snapshot.get("issues") or {}).get("events") if isinstance(snapshot.get("issues"), dict) else None)
+                   facilities=facilities, events=body.get("events"), usual=usual)
 
 
 def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
@@ -1197,7 +1249,7 @@ def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers
 
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
-            peers=(), facilities=(), events: dict | None = None) -> dict:
+            peers=(), facilities=(), events: dict | None = None, usual: dict | None = None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -1215,6 +1267,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     `events` is the alert events block (app/events_wire.py), built by the route on its own cursor, or the block a
     fixture captured. None is a node, or a capture, from before events: the page says so (SPEC_dashboard_events §5).
+
+    `usual` maps an issue to the (usual, usual_absent) pair a capture carried; a replay passes it, because a snapshot
+    holds the /issues answer and not usual_by_hour. None reads the view, on a savepoint of its own.
     """
     global _said_unsited
     now = now or datetime.now(timezone.utc)
@@ -1261,6 +1316,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         if r["bucket"] in hourly:
             hourly[r["bucket"]].append(r)
 
+    # The usual band (docs/SPEC_dashboard_figures.md §3.1): a replay hands it over as the capture carried it.
+    usual_rows = None if usual is not None else _optional(cur, USUAL_SQL)
     out = {}
     for key in declared + undeclared:
         d = dict(decl[key])
@@ -1280,7 +1337,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                         "sentence": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
                                           + _reason_text({"code": "not_watched"}, loc)[1:] + "."
                                      for loc in LOCALES},
-                        "hero": None}
+                        "hero": None, "usual": None, "usual_absent": "not_watched"}
             continue
 
         compare = d.get("compare") or {"mode": "ratio", "margin": 1.5}
@@ -1315,6 +1372,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                          for loc in LOCALES},
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
+        out[key]["usual"], out[key]["usual_absent"] = (usual[key] if usual is not None and key in usual
+                                                       else _usual(d, headline, stack.get(headline), usual_rows))
 
     lead = _lead(out, declared, events)
     if events is not None:
