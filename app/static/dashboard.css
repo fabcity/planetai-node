@@ -121,7 +121,7 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 }
 
 /* ---------------------------------------------------------------- 3 · series
- * The figures (.f-*, further down) and the barcode are this kind. What they share is that a drawing
+ * The figures (.f-*, further down) are this kind. What they share is that a drawing
  * fills its card. The old trace's axis, alternative and legend rules went with the trace. */
 [data-kind="series"] svg { width: 100%; height: auto; display: block }
 
@@ -184,14 +184,6 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ask form.did button[disabled] { opacity: .5 }
 .ask form.did .fine { grid-column: 1 / -1; font-size: 12.5px; color: var(--mute); max-width: 68ch; margin: 0 }
 /* ==== h/mods/shape.js — the day this place usually has ==== */
-/* Two lines told apart by dash and weight, never hue, like every other pair on this page. */
-.shapeplot { display: block; width: 100%; height: auto; max-height: 190px; margin: 10px 0 4px;
-  border: 1px solid var(--hair); background: var(--ground) }
-.shapeplot .grid line { stroke: var(--hair); stroke-width: 1 }
-.shapeplot text { font: 500 9px var(--mono); fill: var(--mute) }
-.shapeplot path { fill: none; vector-effect: non-scaling-stroke }
-.shapeplot path.in { stroke: var(--ink); stroke-width: 2.2 }
-.shapeplot path.out { stroke: var(--ink); stroke-width: 1.4; stroke-dasharray: 5 4; opacity: .75 }
 
 /* ==== h/mods/decide.js — an observation, what the node suggests, and a box ==== */
 /* Three bands down one card: what was seen, what the node suggests, and the decision. The suggestion
@@ -322,25 +314,6 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .units .row .signs svg.sg.faint { opacity: .45 }
 .units .row .signs svg.sg.off { opacity: .22 }
 
-/* The barcode: one row an issue, one bar an hour. The strip stretches and the bars with it, which
-   is right — an hour is an hour whatever the screen is — and the label and the count hold their
-   own width so four rows line up down the page. */
-.barcode { display: grid; gap: 6px; margin: 0 0 16px }
-.barcode .bc { display: grid; grid-template-columns: minmax(0, 12ch) minmax(0, 1fr) auto;
-  gap: 12px; align-items: end; border-top: 1px solid var(--hair); padding-top: 6px }
-.barcode .bc .k { font: 500 11px var(--mono); color: var(--mute); align-self: center }
-.barcode .bc svg { width: 100%; height: 34px; display: block; fill: var(--ink) }
-/* Over that issue's own line: the same red the hours-over marks under a trace use, for the same
-   fact, so a reader who has learnt one has learnt both. */
-.barcode .bc svg rect.over { fill: var(--signal-worse) }
-/* An hour with no reading is a hairline on the floor, not a gap in the row: a missing hour and an
-   hour that read zero are different, and a blank would draw them the same. */
-.barcode .bc svg rect.gap { fill: var(--dim) }
-.barcode .bc .m { font: 700 12px var(--mono); color: var(--ink); align-self: center }
-.barcode .bc .empty { font-size: 12.5px; color: var(--mute); align-self: center;
-  grid-column: 2 / -1 }
-.barcode .cap { font-size: 12px; color: var(--mute); margin: 4px 0 0; line-height: 1.45 }
-
 /* The worked instance under the sentence template: the node's own sentence, and under it the parts
    named. Indented from the row above so it reads as that row's example and not as a fourth row. */
 .tmplex { display: grid; gap: 4px; margin: 0; padding: 10px 0 12px 12px;
@@ -364,11 +337,6 @@ table.figs td.mono { font-family: var(--mono); font-variant-numeric: tabular-num
 table.figs td.num { font-weight: 700; white-space: nowrap }
 table.figs td small { font-weight: 500; color: var(--mute) }
 .figwrap .cap { font-size: 12px; color: var(--mute); margin: 8px 0 0 }
-@media (max-width: 560px) {
-  /* The label goes above at phone width: twelve characters and 24 bars cannot share 390 px. */
-  .barcode .bc { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px }
-  .barcode .bc .k { grid-column: 1 / -1; align-self: start }
-}
 
 .peer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px 0;
   border-top: 1px solid var(--hair); align-items: start }

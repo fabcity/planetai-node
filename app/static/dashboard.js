@@ -306,71 +306,6 @@ const reasonFor = (d, dist) => ({
   ring: 'no public station reporting', region: 'no model for this point',
 }[dist] || 'no source');
 
-/* The barcode: every issue's day in one strip, one bar an hour.
- *
- * WHY IT IS NOT THE TRACES AGAIN. The traces detail the two issues that have a day; this carries
- * ALL of them, including the ones with nothing, so the shape of a whole day is one object a reader
- * can take in at a glance and the empty ones are visibly empty rather than absent. The matrix is
- * issues by distance, now. This is issues by hour, today. Same rows, the other axis.
- *
- * THE GRAIN IS 24 BARS AND THE CAPTION SAYS SO. The drawing this is built from shows 96 at fifteen
- * minutes. No route on this node can answer that: /series and /sparks are hourly, and `stats` has
- * fifteen-minute means for *now* only, never for a day. So it is hourly and says it is hourly,
- * rather than drawing 96 bars out of 24 readings and calling the difference smoothing.
- *
- * One bar an hour, height for the reading against that issue's own scale, red when it was over
- * that issue's own line — the same red the hours-over marks use, and for the same fact. */
-function barcode(o = {}) {
-  const id = o.id || 'barcode';
-  const rows = (ORDER || []).filter(k => ISS[k]);
-  if (!rows.length) return '';
-  const HRS = 24, BW = 26, BH = 34, GAP = 4;
-  const W = HRS * (BW + GAP);
-  const strip = k => {
-    const d = ISS[k];
-    /* The closest distance that has a day. A barcode of the model when the room is measured would
-       be drawing somewhere else and calling it here. */
-    const pick = (DIST || []).find(x => Array.isArray((d.series || {})[x])
-      && d.series[x].some(v => v != null));
-    const vals = pick ? d.series[pick] : [];
-    const got = vals.filter(v => v != null);
-    if (!got.length) {
-      return `<div class="bc" id="${esc(id)}-${esc(k)}" data-ref="${esc(id)}">`
-        + `<span class="k">${esc(d.name[LOC])}</span>`
-        + `<span class="empty">no hourly record at any distance</span></div>`;
-    }
-    const line = d.line ? d.line.value : null;
-    const lo = Math.min(...got), hi = Math.max(...got, line == null ? -Infinity : line);
-    const span = (hi - lo) || 1;
-    const bars = Array.from({ length: HRS }, (_, i) => {
-      const v = vals[i];
-      if (v == null) return `<rect x="${i * (BW + GAP)}" y="${BH - 1}" width="${BW}" height="1"`
-        + ` class="gap"/>`;
-      const h = Math.max(2, Math.round(((v - lo) / span) * BH));
-      const over = line != null && v > line;
-      return `<rect x="${i * (BW + GAP)}" y="${BH - h}" width="${BW}" height="${h}"`
-        + `${over ? ' class="over"' : ''}/>`;
-    }).join('');
-    const overN = line == null ? 0 : vals.filter(v => v != null && v > line).length;
-    return `<div class="bc" id="${esc(id)}-${esc(k)}" data-ref="${esc(id)}">`
-      + `<span class="k">${esc(d.name[LOC])}</span>`
-      + `<svg viewBox="0 0 ${W} ${BH}" preserveAspectRatio="none" role="img" aria-label="`
-      + `${esc(d.name[LOC])} at the ${esc(LAB[pick])}, ${got.length} of ${HRS} hours recorded`
-      + `${line == null ? '' : `, ${overN} over the line`}">${bars}</svg>`
-      + `<span class="m" data-num="barcode.${esc(k)}" data-cmp="${esc(line == null
-        ? `${d.name[LOC]} has no line: ${noLine(d)}`
-        : `hours over ${fmt(line, d.dp)} ${d.unit || ''}, at the ${LAB[pick]}`)}">`
-      + `${line == null ? '\u2014' : `${overN}/${got.length}`}</span></div>`;
-  };
-  return `<div class="barcode" data-kind="series" data-component="barcode" id="${esc(id)}"`
-    + ` data-ref="${esc(o.ref || 'days')}">${rows.map(strip).join('')}`
-    + `<p class="cap">One bar an hour, 24 hours, at the closest distance each issue has. `
-    + `<b>Every row is on its own scale</b>, because a micrograph and a degree are not the same `
-    + `quantity \u2014 read a row across the day, never one row against another. `
-    + `<b>Hourly, not quarter-hourly</b>: this node keeps fifteen-minute means for now only, never `
-    + `for a day, so an hour is the finest grain it keeps for a whole day.</p></div>`;
-}
-
 /* --------------------------------------------------------------------------- 4 · row */
 function row(o) {
   const id = o.id || uid('row');
@@ -1228,7 +1163,7 @@ function strips(key, D, o = {}) {
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
-  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
+  peerRow, refusedPage, noLine, reasonFor, REFUSED, TOKEN_FINE,
   evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord, fig, mountFigs, boxOf, offsetOf, hhmmAt, hourAt, dayAt, nearestIndex, PLOT_STYLE,
   dayFigure, strips };
 
@@ -2816,7 +2751,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, dayFigure } = window.K;
+const { esc, dayFigure, strips } = window.K;
 
 /* An issue has a day when any distance carries a trace. The node decides what a trace is; this
    only asks whether one arrived. */
@@ -2825,7 +2760,7 @@ const hasDay = d => (window.K.DIST || []).some(x => Array.isArray((d.series || {
 
 window.PAI.register({
   id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw'],
-  reads: ['/issues'],
+  reads: ['/issues', '/issues/days'],
   render(ctx) {
     const { ISS, ORDER } = ctx;
     const drawn = ORDER.filter(k => ISS[k] && hasDay(ISS[k]));
@@ -2837,7 +2772,8 @@ window.PAI.register({
     return `<div class="days" id="days" data-ref="matrix-grid">`
       + drawn.map(k => `<div class="dayone" id="day-${esc(k)}" data-ref="days">`
         + `<p class="k">${esc(ISS[k].name[LOC])}</p>`
-        + dayFigure(k, ISS[k], { id: `day-fig-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
+        + dayFigure(k, ISS[k], { id: `day-fig-${esc(k)}`, ref: `day-${esc(k)}` })
+        + strips(k, window.DAYS, { id: `strips-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
       + `</div>`
       + (silent.length ? `<p class="note" id="day-silent" data-ref="days">No hourly record for `
         + `${esc(silent.map(k => ISS[k].name[LOC]).join(' or '))} at any distance in this capture, `
@@ -5160,30 +5096,12 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt } = window.K;
+const { esc, fmt, strips } = window.K;
 
-const W = 640, HT = 150, PAD = { l: 34, r: 8, t: 10, b: 20 };
-
-function plot(hours) {
-  const vals = hours.flatMap(h => [h.indoor, h.outdoor]).filter(v => v != null);
-  if (!vals.length) return '';
-  const top = Math.max(...vals) * 1.15;
-  const x = h => PAD.l + (h / 23) * (W - PAD.l - PAD.r);
-  const y = v => HT - PAD.b - (v / top) * (HT - PAD.t - PAD.b);
-  const path = key => hours.filter(h => h[key] != null)
-    .map((h, i) => `${i ? 'L' : 'M'}${x(h.hour).toFixed(1)},${y(h[key]).toFixed(1)}`).join('');
-  /* Two lines, told apart by dash and weight and not by hue — the page's rule everywhere else. */
-  const ticks = [0, 6, 12, 18, 23].map(h =>
-    `<text x="${x(h).toFixed(1)}" y="${HT - 6}" text-anchor="middle">${h}</text>`).join('');
-  const grid = [0, top / 2, top].map(v =>
-    `<line x1="${PAD.l}" y1="${y(v).toFixed(1)}" x2="${W - PAD.r}" y2="${y(v).toFixed(1)}"/>`
-    + `<text x="${PAD.l - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, 0)}</text>`)
-    .join('');
-  return `<svg class="shapeplot" viewBox="0 0 ${W} ${HT}" role="img" preserveAspectRatio="none"`
-    + ` aria-label="the usual day, hour by hour, inside against outside">`
-    + `<g class="grid">${grid}</g><g class="hrs">${ticks}</g>`
-    + `<path class="out" d="${path('outdoor')}"/><path class="in" d="${path('indoor')}"/></svg>`;
-}
+/* Historical asks for its 90 days when it is first drawn (askDays90 in the shell), so for one render there is
+   nothing yet. A live node that has not answered is pending; a capture (its days are set at boot), or a node that
+   answered or refused (DAYS90_DONE), is not. */
+const DAYS90_PENDING = () => !window.SNAP.fixture && !window.DAYS90_DONE;
 
 /* The two hours worth naming: where each line is highest. A shape nobody reads off the drawing is a
    drawing; the sentence is the finding. */
@@ -5196,43 +5114,37 @@ const hh = h => `${String(h).padStart(2, '0')}:00`;
 
 window.PAI.register({
   id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape'],
-  reads: ['/shape'],
+  reads: ['/issues/days', '/shape'],
   title: 'The day this place usually has',
-  needs: ['SHAPE.hours'],
+  needs: [],
   anchor: 'shape',
   render(ctx) {
-    const S = window.SHAPE, hours = S.hours || [];
-    /* Not an error and not a blank: a node that has just been switched on has nothing to average and
-       the honest sentence says when it will. */
-    if (!S.windows || !S.windows.day) {
-      return `<p class="note" id="shape-young" data-component="absent" data-ref="reach">`
-        + `This node has ${S.days === 1 ? 'one day' : `${S.days} days`} of its own readings. `
-        + `A usual day is an average over the days it has seen, so this waits for seven \u2014 `
-        + `about ${Math.max(1, 7 - (S.days || 0))} more. Nothing is missing; it has not watched `
-        + `long enough yet.</p>`;
-    }
+    const S = window.SHAPE || {}, hours = S.hours || [];
+    const D = window.DAYS90;
+    /* The finding is an average and waits for a week; the strips are not an average and draw what there is. */
     const pin = peak(hours, 'indoor'), pout = peak(hours, 'outdoor');
-    const both = pin && pout;
-    /* The finding, printed above the drawing, as everywhere else on this page: the sentence is what
-       a household acts on and the drawing is the evidence for it. */
-    const finding = both
-      ? `<p class="honest" id="shape-finding" data-component="finding" data-ref="shape">`
-        + `Over ${S.days} days, the air in this house is worst around `
-        + `<span data-num="shape.indoor.peak" data-cmp="against ${esc(fmt(pout.indoor, 1))} outside `
-        + `at the same hour">${esc(hh(pin.hour))}</span> and the air outside is worst around `
-        + `<span data-num="shape.outdoor.peak" data-cmp="against ${esc(fmt(pin.outdoor, 1))} inside `
-        + `at the same hour">${esc(hh(pout.hour))}</span>`
-        + `${pin.hour !== pout.hour ? ' \u2014 they do not peak together, so there are hours when '
-          + 'opening a window helps and hours when it does not' : ''}.</p>`
-      : '';
-    return finding + plot(hours)
-      + `<p class="cap" id="shape-key" data-component="shapeKey" data-ref="shape">`
-      + `<b>\u2014\u2014</b> inside \u00b7 <b>- -</b> outside \u00b7 hour of the day, in this `
-      + `node\u2019s own time \u00b7 ${esc(S.metric)} \u00b7 averaged over ${S.days} days</p>`
-      + `<p class="cap">${Object.entries(S.windows).filter(([, v]) => !v).length
-        ? `Not yet: ${Object.entries(S.windows).filter(([, v]) => !v).map(([k]) => k).join(', ')}. `
-          + `This node decides that from the length of its own record, not from this page.`
-        : `This record supports every window this node knows how to draw.`}</p>`;
+    const finding = !S.windows || !S.windows.day
+      ? `<p class="note" id="shape-young" data-component="absent" data-ref="reach">`
+        + `This node has ${S.days === 1 ? 'one day' : `${S.days || 0} days`} of its own readings. `
+        + `The usual hour of the worst air waits for seven \u2014 about ${Math.max(1, 7 - (S.days || 0))} more. `
+        + `The days it has are drawn below as they were.</p>`
+      : pin && pout
+        ? `<p class="honest" id="shape-finding" data-component="finding" data-ref="shape">`
+          + `Over ${S.days} days, the air in this house is worst around `
+          + `<span data-num="shape.indoor.peak" data-cmp="against ${esc(fmt(pout.indoor, 1))} outside `
+          + `at the same hour">${esc(hh(pin.hour))}</span> and the air outside is worst around `
+          + `<span data-num="shape.outdoor.peak" data-cmp="against ${esc(fmt(pin.outdoor, 1))} inside `
+          + `at the same hour">${esc(hh(pout.hour))}</span>`
+          + `${pin.hour !== pout.hour ? ' \u2014 they do not peak together, so there are hours when '
+            + 'opening a window helps and hours when it does not' : ''}.</p>`
+        : '';
+    if (DAYS90_PENDING()) {
+      return finding + `<p class="note" id="shape-days" data-ref="shape">Asking the node for the days it holds\u2026</p>`;
+    }
+    return finding + `<div id="shape-strips" data-ref="shape">`
+      + ctx.ORDER.filter(k => ctx.ISS[k] && ctx.ISS[k].watched !== false)
+        .map(k => strips(k, D, { id: `hstrips-${esc(k)}`, ref: 'shape-strips' })).join('')
+      + `</div>`;
   },
   notes() {
     const S = window.SHAPE || {};
@@ -5245,8 +5157,8 @@ window.PAI.register({
         + 'timezone from NODE_TZ on every connection, and its comment records that this was found '
         + 'once before, in the day boundaries.' },
       { id: 'shape-two-lines', label: 'Why inside and outside are apart',
-        text: 'Inside and outside are drawn apart because they are not the '
-        + 'same day. On the node this was built against they are anti-phased: inside peaks when '
+        text: 'The strips draw the house; the sentence above them compares inside and outside, '
+        + 'which are apart because they are not the same day. On the node this was built against they are anti-phased: inside peaks when '
         + 'somebody is cooking and outside peaks in the evening, so at midday inside is about twice '
         + 'outside and at six in the evening it is the other way round. A single average over both '
         + 'would describe neither, and the difference is the only thing here anybody can act on.' },
@@ -6552,7 +6464,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells, reach, notes, dayshape, effect] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach, notes, dayshape, effect, days] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -6575,6 +6487,9 @@ async function boot() {
     api('/actions?events=1').catch(() => null),
     api('/shape').catch(() => null),
     api('/effect').catch(() => null),
+    /* The strips and Measure's count (docs/SPEC_dashboard_figures.md §4.3, §4.5). A capture carries the 7 days it was
+       taken with; a node older than v0.79 answers 404, and the strips say so. */
+    FIXTURE ? Promise.resolve((snapshot && snapshot.issues_days) || null) : api('/issues/days?days=7').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -6595,6 +6510,10 @@ async function boot() {
      reader and it is the words that are gated. */
   window.SHAPE = dayshape;
   window.EFFECT = effect;
+  window.DAYS = days;
+  window.DAYS_AT = Date.now();
+  /* A capture holds one window; Historical draws what it holds. A live node is asked for 90 days on first use. */
+  window.DAYS90 = FIXTURE ? days : null;
   window.ACT_NOTES = Array.isArray(notes)
     ? notes.reduce((m, x) => {
       /* ?events=1 adds the answers to events, which carry an event_id (an alert's answer carries an alert_id).
@@ -8079,9 +7998,23 @@ function askSources() {
   api('/sources').then(d => { window.SOURCES = d; route(); }).catch(() => { window.SOURCES = null; });
 }
 
+/* Historical's strips reach as far back as the node holds, up to 90 days. Asked the first time Historical is drawn,
+ * not at boot: a household that never opens Historical never pays for it. */
+let DAYS90_ASKED = false;
+function askDays90() {
+  if (DAYS90_ASKED || FIXTURE || VIEW !== 'historical') return;
+  DAYS90_ASKED = true;
+  /* DAYS90_DONE is set either way, so a refusal draws the strips' own "does not send its days yet" line instead of
+     "asking" for good. */
+  api('/issues/days?days=90')
+    .then(d => { window.DAYS90 = d; window.DAYS90_DONE = true; route(); })
+    .catch(() => { window.DAYS90 = null; window.DAYS90_DONE = true; route(); });
+}
+
 function route() {
   readView();
   askSources();
+  askDays90();
   askLearn();
   document.body.className = '';
   main();
@@ -8490,6 +8423,11 @@ async function refresh() {
   /* ρ is the node measuring itself and is the slowest of the three. It failing is not a reason to
      throw away a good reading of the air, so the last one stands and the page says nothing new. */
   rho = await api('/rho').catch(() => (window.SNAP || {}).rho || null);
+  /* The strips move by an hour at a time, so the days are read again at most every 15 minutes, not on every poll. */
+  if (Date.now() - (window.DAYS_AT || 0) > 15 * 60e3) {
+    window.DAYS = await api('/issues/days?days=7').catch(() => window.DAYS || null);
+    window.DAYS_AT = Date.now();
+  }
   window.STALE = null;
   ASKING.landed(issues);
   bind(issues, health, rho);
