@@ -1040,6 +1040,12 @@ svg.net .halo { transform-origin: 675px 180px; animation: nethalo var(--motion-r
 .row.station .silent { font: 700 10.5px var(--mono); letter-spacing: .1em; text-transform: uppercase;
   color: var(--ink) }
 .row.station .pic { min-width: 0 }
+.row.station .pic .f-fig { width: 100%; max-width: 240px }
+.silentfold { margin: 10px 0 0; border-top: 1px solid var(--hair); padding-top: 8px }
+.silentfold summary { cursor: pointer; font: 500 12px var(--mono); color: var(--mute) }
+.silentfold .row.silent { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 6px 0;
+  border-bottom: 1px solid var(--hair); color: var(--mute) }
+.silentfold .said { font: 500 12px var(--mono) }
 .row.station .pic svg.spark { display: block; width: 240px; max-width: 100%; height: auto }
 .row.station .pic svg.spark text { font: 500 8px var(--mono); fill: var(--mute); letter-spacing: .04em }
 .row.station .qty { justify-self: end; align-items: baseline }

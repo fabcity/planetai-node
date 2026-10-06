@@ -2936,7 +2936,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, cmpText, noLine } = window.K;
+const { esc, fmt, age, cmpText, noLine, fig, offsetOf, hhmmAt, dayAt, PLOT_STYLE } = window.K;
 const DEFAULT_VAR = 'pm25';
 
 /* The variable the reader chose, or PM2.5. A key the fixture does not know is not an error to
@@ -3047,37 +3047,47 @@ function scaleFor(H, v, line) {
   return { lo, hi, Y: y => 4 + (1 - (y - lo) / (hi - lo)) * (48 - 4 - 14) };
 }
 
-/* The drawing inside a row. 240 by 48: a light min–max band, an ink polyline of the hourly means,
- * the line dashed in the signal colour where it applies, and the axis words. A station with no
- * series gets one tick at the value at now, and no line pretending to be its day. */
-function graphic(s, v, m, sc, line) {
-  const W = 240, Hh = 48, l = 2, r = 2;
-  const r15 = s.read[v];
-  const ser = s.series[v];
-  let body = '', label;
-  if (line) body += `<line x1="${l}" x2="${W - r}" y1="${sc.Y(line.value).toFixed(1)}"`
-    + ` y2="${sc.Y(line.value).toFixed(1)}" stroke="var(--signal-worse)" stroke-dasharray="3 5"/>`;
-  if (ser && ser.length) {
-    const n = ser.length;
-    const X = i => (l + (i / Math.max(1, n - 1)) * (W - l - r)).toFixed(1);
-    const band = ser.map((b, i) => `${X(i)},${sc.Y(b.max).toFixed(1)}`)
-      .concat(ser.map((b, i) => `${X(i)},${sc.Y(b.min).toFixed(1)}`).reverse()).join(' ');
-    body += `<polygon points="${band}" fill="var(--ink)" fill-opacity=".1"/>`
-      + `<polyline points="${ser.map((b, i) => `${X(i)},${sc.Y(b.mean).toFixed(1)}`).join(' ')}"`
-      + ` fill="none" stroke="var(--ink)" stroke-width="1.5"/>`
-      + `<text x="${l}" y="${Hh - 2}">24 h ago</text>`;
-    const lo = Math.min(...ser.map(b => b.min)), hi = Math.max(...ser.map(b => b.max));
-    label = `${m.label}, ${n} hourly means: opened the day at ${fmt(ser[0].mean, m.dp)} and closed `
-      + `it at ${fmt(ser[n - 1].mean, m.dp)} ${m.unit}; low ${fmt(lo, m.dp)}, high ${fmt(hi, m.dp)}`
-      + (line ? `; the line ${fmt(line.value, m.dp)}` : '');
-  } else {
-    const y = sc.Y(r15.value).toFixed(1);
-    body += `<line x1="${W - r - 1}" x2="${W - r - 1}" y1="${(+y - 4).toFixed(1)}" y2="${(+y + 4).toFixed(1)}"`
-      + ` stroke="var(--ink)" stroke-width="2"/>`;
-    label = `${m.label} ${fmt(r15.value, m.dp)} ${m.unit}, one 15-minute mean at now`;
+/* A station's own day, inside its row (docs/SPEC_dashboard_figures.md §4.4): the hourly mean as a line and the hour's
+ * spread as a band, on the one scale every row of the section shares (scaleFor), the issue's line where it applies,
+ * and one tick at now for a station with no hourly series. An hour the station did not report is a gap: the series
+ * lists only the hours it has, so the grid below puts a null in every hour between them. Pointing at it says that
+ * hour in the row's own words. */
+function spark(s, v, m, sc, line, id) {
+  const ser = ((s.series || {})[v] || []).filter(b => b && b.t);
+  const r15 = (s.read || {})[v];
+  const T = ser.map(b => Date.parse(b.t)), off = offsetOf(ser.length ? ser[ser.length - 1].t : '');
+  const grid = [];
+  for (let t = T[0], i = 0; ser.length && t <= T[T.length - 1]; t += 3600e3) {
+    const b = T[i] === t ? ser[i++] : null;
+    grid.push({ t: new Date(t), mean: b ? b.mean : null, min: b ? b.min : null, max: b ? b.max : null });
   }
-  body += `<text x="${W - r}" y="${Hh - 2}" text-anchor="end">now</text>`;
-  return `<svg class="spark" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${esc(label)}">${body}</svg>`;
+  const draw = (el, W) => {
+    const w = Math.min(W, 320), tick = (sc.hi - sc.lo) * 0.08;
+    const svg = Plot.plot({
+      width: w, height: 48, marginLeft: 2, marginRight: 2, marginTop: 4, marginBottom: 4, style: PLOT_STYLE,
+      x: grid.length ? { type: 'time', domain: [grid[0].t, grid[grid.length - 1].t], axis: null } : { domain: [0, 1], axis: null },
+      y: { domain: [sc.lo, sc.hi], axis: null },
+      marks: [
+        line ? Plot.ruleY([line.value], { stroke: 'var(--signal-worse)', strokeDasharray: '3 5' }) : null,
+        grid.length ? Plot.areaY(grid, { x: 't', y1: 'min', y2: 'max', fill: 'var(--ink)', fillOpacity: 0.1 }) : null,
+        grid.length ? Plot.lineY(grid, { x: 't', y: 'mean', stroke: 'var(--ink)', strokeWidth: 1.5 }) : null,
+        !grid.length && r15 ? Plot.ruleX([1], { y1: r15.value - tick, y2: r15.value + tick, stroke: 'var(--ink)', strokeWidth: 2 }) : null,
+        grid.length ? Plot.ruleX(grid, Plot.pointerX({ x: 't', stroke: 'var(--ink)', strokeOpacity: 0.5 })) : null,
+      ].filter(Boolean),
+    });
+    el.append(svg);
+    const read = document.getElementById(`${id}-read`);
+    const idle = read ? read.innerHTML : '';
+    svg.addEventListener('input', () => {
+      const b = svg.value;
+      if (!read) return;
+      read.innerHTML = !b ? idle : b.mean == null ? `${esc(hhmmAt(+b.t, off))} nothing recorded`
+        : `${esc(hhmmAt(+b.t, off))} ${esc(fmt(b.mean, m.dp))} (${esc(fmt(b.min, m.dp))} to `
+          + `${esc(fmt(b.max, m.dp))}) ${esc(m.unit)}`;
+    });
+  };
+  return fig(id, draw, { ref: `st-${s.sensor_id}`, component: 'stationDrawing',
+    label: `${s.name || s.sensor_id}, ${m.label}: ${ser.length ? `${ser.length} hourly means` : 'one 15-minute mean at now'}` });
 }
 
 function station(ctx, s, v, m, sc, L, ref) {
@@ -3089,12 +3099,14 @@ function station(ctx, s, v, m, sc, L, ref) {
   const silent = r && r.silent_minutes > 60
     ? ` · <span class="silent">silent</span> ${esc(age(r.silent_minutes))}` : '';
   const ser = s.series[v];
+  const hi = ser && ser.length ? Math.max(...ser.map(b => b.max).filter(x => x != null)) : null;
   const alt = ser && ser.length
-    ? `<span class="alt">opened the day at ${esc(fmt(ser[0].mean, m.dp))}, closed at `
-      + `${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)}</span>` : '';
+    ? `<span class="alt" id="spark-${esc(s.sensor_id)}-${esc(v)}-read">opened the day at ${esc(fmt(ser[0].mean, m.dp))}, `
+      + `closed at ${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)} · high ${esc(fmt(hi, m.dp))}</span>` : '';
   /* km is null when the node has no coordinates: the engine publishes unknown rather than a distance
      from (0, 0). Say unknown — a neighbour's distance from the Gulf of Guinea is not a fact. */
-  const meta = `${s.local ? 'this house' : s.km == null ? 'distance unknown'
+  const inEvent = (ctx.EVROOMS || new Set()).has(s.name);
+  const meta = `${inEvent ? 'in the open event · ' : ''}${s.local ? 'this house' : s.km == null ? 'distance unknown'
     : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'}`
     + ` · ${src}${silent}`;
   const key = `${m.issue || v}.${s.sensor_id}.${v}`;
@@ -3104,7 +3116,7 @@ function station(ctx, s, v, m, sc, L, ref) {
   return `<div class="row station${s.local ? ' mine' : ''}${r ? '' : ' quiet'}" data-kind="row"`
     + ` data-component="station" id="st-${esc(s.sensor_id)}" data-ref="${esc(ref)}">`
     + `<span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">${meta}</span>${alt}</span>`
-    + `<span class="pic">${r && sc ? graphic(s, v, m, sc, L.line) : ''}</span>`
+    + `<span class="pic">${r && sc ? spark(s, v, m, sc, L.line, `spark-${s.sensor_id}-${v}`) : ''}</span>`
     + `<span class="qty">${r
       ? `<span class="num${crossed ? ' crossed' : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">`
         + `${esc(fmt(r.value, m.dp))}</span><small>${esc(m.unit)}</small>`
@@ -3124,6 +3136,8 @@ function groups(ctx, ids) {
     if (!by.has(c)) by.set(c, []);
     by.get(c).push(s);
   }
+  /* The rooms of an open event lead their cell (docs/SPEC_dashboard_figures.md §4.4): they are why a reader is here. */
+  const rooms = ctx.EVROOMS = new Set((((ctx.S.issues || {}).events || {}).open || []).flatMap(e => e.rooms || []));
   const own = ctx.N.chain[ctx.RES];
   /* Unsited, every km is null: the groups keep the order the node sent and the header says the
      distance is not known rather than ordering the neighbourhood by a number that is not one. */
@@ -3134,7 +3148,7 @@ function groups(ctx, ids) {
      is on the page. */
   return [...by.entries()].map(([cell, ss]) => ({
     cell, n: ss.length, own: cell === own,
-    ss: ss.slice().sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
+    ss: ss.slice().sort((a, b) => (rooms.has(b.name) - rooms.has(a.name)) || (a.km ?? Infinity) - (b.km ?? Infinity))
       .filter(s => !ids || ids.has(s.sensor_id)),
     km: kms(ss).length ? Math.min(...kms(ss)) : null,
     kmMax: kms(ss).length ? Math.max(...kms(ss)) : null,
@@ -3148,6 +3162,34 @@ const KM = g => g.own ? 'this node’s own cell'
 const CELLHEAD = (ctx, g) => g.cell ? ctx.KH.address(g.cell, ctx.RES)
   : `<span class="addr mono">outside the ${ctx.N.steps} steps this node published at resolution `
     + `${ctx.RES}</span>`;
+
+/* The archive of silence (docs/SPEC_dashboard_figures.md §4.4, after Bali Air Dispatch). A station heard in the last
+ * 30 days and not in the last day keeps a line here, with when it was last heard; the node has already left out a
+ * relay of a kit that still reports. A node older than v0.79 sends no stations_silent, and this says nothing. */
+function silentFold(ctx) {
+  const st = (ctx.S.issues || {}).stations_silent;
+  const gone = ctx.H.silent || [];
+  if (!st) return '';
+  if (!st.read) {
+    return `<p class="cap" id="sensors-silent" data-ref="sensors-list">This node could not say which stations `
+      + `stopped reporting in the last ${esc(String(st.within_days))} days.</p>`;
+  }
+  if (!gone.length) {
+    return `<p class="cap" id="sensors-silent" data-ref="sensors-list">No station this node heard in the last `
+      + `${esc(String(st.within_days))} days has gone quiet.</p>`;
+  }
+  const off = offsetOf((((ctx.ISS[ctx.ORDER[0]] || {}).buckets) || []).slice(-1)[0]);
+  return `<details class="silentfold" id="sensors-silent" data-component="silentStations" data-ref="sensors-list">`
+    + `<summary><b data-num="sensors.silent" data-cmp="stations heard in the last ${esc(String(st.within_days))} days `
+    + `and not in the last day">${gone.length}</b> no longer heard</summary>`
+    + gone.map(s => `<p class="row silent" data-kind="row" data-component="silentStation" id="st-gone-${esc(s.sensor_id)}"`
+      + ` data-ref="sensors-silent"><span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">`
+      + `${s.km == null ? 'distance unknown' : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'} · `
+      + `${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.source)}</a>` : esc(s.source)}`
+      + `</span></span><span class="said">last heard ${esc(dayAt(Date.parse(s.last_heard), off))} `
+      + `${esc(hhmmAt(Date.parse(s.last_heard), off))}</span></p>`).join('')
+    + `</details>`;
+}
 
 window.PAI.register({
   id: 'sensors', pack: 'air-quality', stage: 'observe', title: 'What the stations read', order: 20,
@@ -3185,7 +3227,7 @@ window.PAI.register({
         + `${g.n === 1 ? 'station' : 'stations'} · ${KM(g)}</span></div>`
         + g.ss.map(s => station(ctx, s, v, m, sc, L, id)).join('');
     }
-    html += moreLine(ctx, cap) + `</div>`;
+    html += moreLine(ctx, cap) + silentFold(ctx) + `</div>`;
     const carry = H.sensors.filter(s => s.read[v]).length;
     const traced = H.sensors.filter(s => (s.series[v] || []).length).length;
     const attrib = [...new Set(H.sensors.map(s => s.attribution).filter(Boolean))];
@@ -6438,7 +6480,10 @@ function bind(issues, health, rho) {
   window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
     rho, peer: issues.peer || null, fixture: FIXTURE || null };
   const geo = issues.geometry || {};
-  window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
+  /* A station in stations_silent.stations stopped reporting (docs/SPEC_dashboard_figures.md §3.3). It is not a
+     station this node reads now, so it is neither on the map nor in the groups; What the stations read lists it in a fold. */
+  window.H3 = { ...geo, sensors: issues.stations || [], silent: (issues.stations_silent || {}).stations || [],
+    metrics: issues.metrics || {},
     asks: issues.asks || null,
     radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
       mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
