@@ -1982,6 +1982,10 @@ COMPANIONS = {
     # line and reports it rather than failing on it.
     "dashboard.js": (STATIC / "dashboard.js", "application/javascript"),
     "dashboard.css": (STATIC / "dashboard.css", "text/css"),
+    # The drawing library (docs/SPEC_dashboard_figures.md §4.1): Observable Plot and the d3 it is built on, vendored
+    # for the same reason as the fonts. ISC; the licences are in app/static/licences/. data/vendor.sha256 pins both.
+    "d3.min.js": (STATIC / "d3.min.js", "application/javascript"),
+    "plot.umd.min.js": (STATIC / "plot.umd.min.js", "application/javascript"),
     "planetai-theme.css": (STATIC / "planetai-theme.css", "text/css"),
     "tokens.css": (STATIC / "tokens.css", "text/css"),
     "signs.svg": (STATIC / "signs.svg", "image/svg+xml"),

@@ -86,8 +86,7 @@ PROPOSED = {
     # docs/SPEC_dashboard_figures.md (v0.78) names what its three pull requests add: the wire PR adds the test file,
     # the page PR the two vendored files and their hash list, the Grafana PR its folder and its command. Each PR
     # deletes the names it makes exist; the assertion below fails a PR that forgets.
-    "docs/SPEC_dashboard_figures.md": {"app/static/d3.min.js", "app/static/plot.umd.min.js",
-                                       "data/vendor.sha256", "config/grafana/", "grafana"},
+    "docs/SPEC_dashboard_figures.md": {"config/grafana/", "grafana"},
 }
 # Names a page uses on purpose that are not the tree's: a page saying a command does NOT exist, the
 # reticulum bridge's own routes, the worked example a reader builds. Same shape as PROPOSED, and the
