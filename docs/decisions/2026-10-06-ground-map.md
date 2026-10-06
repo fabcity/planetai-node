@@ -126,7 +126,9 @@ paper and dark. All 32 renders drew, and none sent a request off the node.
   ring to `/issues` geometry, or keep it solid.
 - [ ] **Claims are new on the ground.** The svg ground never drew `geometry.claims`, and the prompt asks for them.
   At 40/255 ink they read as faint extra hexagons beyond the plate. Tomas should look at them before this ships.
-- [ ] **`make lint && make test`** pass on this branch (64 suites). `tests/visual/gate.sh` has not been run.
+- [x] **`make lint && make test`** pass on this branch (64 suites), and so does `tests/visual/gate.sh`, run locally
+  (no horizontal overflow in 198 combinations). The gate draws the default `svg` ground only. **Owed:** a gate
+  pass with `UI_GROUND=map`.
 
 ## Not done
 
