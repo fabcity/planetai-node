@@ -92,4 +92,28 @@ good = LiveCur(False)
 assert engine._optional(good, engine.USUAL_SQL) == good.fetchall() and good.tx.entered and good.tx.exited, "a good read is its rows, inside a savepoint"
 print("  usual: the read runs in a savepoint of its own; an unpopulated view is None, not a failed /issues")
 
+# --- §3.2 an open event's own rooms --------------------------------------------------------------
+rep = engine.replay(fresh(), Settings(), DECL)
+ev = rep["events"]["open"][0]
+assert ev["issue"] == "air" and ev["series"]["rooms"] == sorted(ev["rooms"]), ev.get("series")
+vals = ev["series"]["values"]
+assert len(vals) == len(rep["issues"]["air"]["buckets"]), "on /issues' own buckets"
+# The 08:00 bucket by hand: air combines its house as a mean of pm25, so the rooms' 08:00 pm25 means, averaged.
+names = {r["sensor_id"]: r.get("name") for r in SNAP["stats"]}
+at = rep["issues"]["air"]["buckets"].index("2026-10-06T08:00:00+08:00")
+hand = [r["mean"] for r in SNAP["readings_1h"] if r["bucket"] == "2026-10-06T08:00:00+08:00" and r["metric"] == "pm25"
+        and (names.get(r["sensor_id"]) in ev["rooms"] or r["sensor_id"] in ev["rooms"])]
+assert hand and abs(vals[at] - sum(hand) / len(hand)) < 1e-4, (vals[at], hand)
+# Heat combines each room's apparent temperature, then the median: two rooms, one hour.
+B = dt.datetime(2026, 10, 6, 13, tzinfo=dt.timezone(dt.timedelta(hours=8)))
+hourly = {B: [{"sensor_id": "k", "metric": "temp", "mean": 34.0}, {"sensor_id": "k", "metric": "humidity", "mean": 60.0},
+              {"sensor_id": "l", "metric": "temp", "mean": 30.0}, {"sensor_id": "l", "metric": "humidity", "mean": 50.0},
+              {"sensor_id": "x", "metric": "temp", "mean": 40.0}, {"sensor_id": "x", "metric": "humidity", "mean": 90.0}]}
+got = engine._room_series(DECL["heat"], hourly, [B], {"k": "K ROOM", "l": "L ROOM"}, ["K ROOM", "L ROOM"])
+want = (engine.apparent(34.0, 60.0) + engine.apparent(30.0, 50.0)) / 2           # median of two is their mean
+assert got == {"rooms": ["K ROOM", "L ROOM"], "values": [round(want, 6)]}, (got, want)
+assert engine._room_series(DECL["heat"], hourly, [B], {}, []) is None, "no rooms, no series"
+assert engine._room_series(DECL["coast"], hourly, [B], {}, ["K ROOM"]) is None, "an issue with no room distance"
+print("  event series: the event's rooms combined as the issue combines its house, on /issues' buckets")
+
 print("figures_wire: the usual day")

@@ -1013,6 +1013,20 @@ def _plain(d, numeral, value, stack, rule, loc) -> str:
 
 
 # --------------------------------------------------------------------------------------------- series
+def _values(spec: dict, hourly: dict, buckets: list, keep) -> list:
+    """One distance's value at each bucket: the rows `keep` admits, the function per sensor, then the aggregate."""
+    vals = []
+    for b in buckets:
+        per: dict[str, dict] = {}
+        for r in hourly.get(b, []):
+            if not keep(r) or r["metric"] not in spec["metrics"]:
+                continue
+            per.setdefault(r["sensor_id"], {})[r["metric"]] = r.get("mean")
+        v, _, _ = _combine(per, spec["metrics"], spec.get("function"), spec["aggregate"])
+        vals.append(None if v is None else round(v, 6))
+    return vals
+
+
 def _series(d, hourly, buckets, names) -> dict:
     """Twenty-four hourly values at each distance, on the same buckets, so the traces line up."""
     out = {}
@@ -1021,17 +1035,23 @@ def _series(d, hourly, buckets, names) -> dict:
         if not spec or spec.get("from") != "stats":
             out[dist] = None
             continue
-        vals = []
-        for b in buckets:
-            per: dict[str, dict] = {}
-            for r in hourly.get(b, []):
-                if not _ambient(r, spec["place"]) or r["metric"] not in spec["metrics"]:
-                    continue
-                per.setdefault(r["sensor_id"], {})[r["metric"]] = r.get("mean")
-            v, _, _ = _combine(per, spec["metrics"], spec.get("function"), spec["aggregate"])
-            vals.append(None if v is None else round(v, 6))
+        vals = _values(spec, hourly, buckets, lambda r, place=spec["place"]: _ambient(r, place))
         out[dist] = vals if any(v is not None for v in vals) else None
     return out
+
+
+def _room_series(d: dict, hourly: dict, buckets: list, names: dict, rooms) -> dict | None:
+    """An open event's own rooms, hour by hour, combined the way the issue combines its house: air the mean, heat the
+    median of each room's apparent temperature (docs/SPEC_dashboard_figures.md §3.2). The page draws it beside the
+    house, so a one-room event inside a cooler house is visible as the room it is. Rooms are names or ids, as the
+    engine writes them on alert_events."""
+    spec = (d.get("distances") or {}).get("room")
+    want = set(rooms or [])
+    if not spec or spec.get("from") != "stats" or not want:
+        return None
+    vals = _values(spec, hourly, buckets,
+                   lambda r: r.get("sensor_id") in want or names.get(r.get("sensor_id")) in want)
+    return {"rooms": sorted(want), "values": vals} if any(v is not None for v in vals) else None
 
 
 # ----------------------------------------------------------------------------------------------- read
@@ -1378,7 +1398,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     lead = _lead(out, declared, events)
     if events is not None:
         covered = {a for e in events.get("open") or [] for a in e.get("alerts") or []}
-        events = {**events, "uncovered_asks": [
+        events = {**events, "open": [{**e, "series": _room_series(decl.get(e.get("issue")) or {}, hourly, buckets,
+                                                                     names, e.get("rooms"))}
+                                     for e in events.get("open") or []],
+                  "uncovered_asks": [
             a["id"] for v in out.values() for a in (v.get("open_asks") or [])
             if a.get("id") is not None and a["id"] not in covered
             and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
