@@ -3055,8 +3055,10 @@ function scaleFor(H, v, line) {
     for (const b of s.series[v] || []) vals.push(b.min, b.max);
   }
   if (line) vals.push(line.value);
-  if (!vals.length) return null;
-  let lo = Math.min(...vals), hi = Math.max(...vals);
+  /* A bucket with no reading has a null min and max, and Math.min counts a null as 0. */
+  const fin = vals.filter(Number.isFinite);
+  if (!fin.length) return null;
+  let lo = Math.min(...fin), hi = Math.max(...fin);
   const pad = (hi - lo) * 0.08 || 1;
   /* A concentration does not go below zero, so the scale must not either: a box that opened at
    * -1.0 µg/m³ was drawing headroom under a floor. Temperature may. */

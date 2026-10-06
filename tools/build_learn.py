@@ -194,8 +194,8 @@ MARKS = [
     ("figure", "The day, drawn once", "dashboard.md", "The day figure",
      "Each issue with a day has one drawing", "last 14 days.",
      "The figure reads the node's own 24 hourly values for every distance, the usual for each hour from "
-     "usual_by_hour, and the alert events from /issues. The page draws them; the only thing it counts is the hours "
-     "over the line it draws."),
+     "usual_by_hour, and the alert events from /issues. The page draws them; all it counts is the hours over the "
+     "line and above the usual that it draws."),
     ("strips", "One row a day, one cell an hour", "dashboard.md", "The strips",
      "One row a day and one cell an hour", "on Historical.",
      "The strips read GET /issues/days: the same hourly values the lead uses, over up to 90 days, with the node's "
