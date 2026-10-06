@@ -37,7 +37,7 @@ import statistics
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from datetime import datetime, timedelta, timezone
 
-import actions
+import actions as A
 import packs
 
 from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
@@ -688,7 +688,7 @@ def _state(d, stack, open_asks, recent, line, ev=None) -> tuple[str, dict]:
     e = (ev or {}).get("open")
     if e:
         a = e.get("answer")
-        if e.get("level") == "act" and (not a or e.get("kind") == "danger"):
+        if (e.get("level") == "act" and not a) or e.get("kind") == "danger":
             return "act", {"code": "event_open", "at": e.get("opened_at"), "kind": e.get("kind"),
                            "event_id": e.get("id")}
         if a:
@@ -743,7 +743,7 @@ def _reason_text(reason: dict, loc: str) -> str:
     if reason.get("peak_at") and code + "_peak" in words:
         code += "_peak"
     stage_key = {"acted": "done", "acknowledged": "not_now", "dismissed": "doesnt_fit"}.get(reason.get("stage"), "")
-    word = (actions.BUTTONS.get(loc) or actions.BUTTONS["en"]).get(stage_key, "")
+    word = (A.BUTTONS.get(loc) or A.BUTTONS["en"]).get(stage_key, "")
     return words.get(code, "").format(when=_hhmm(reason.get("at")), level=reason.get("level", ""),
                                       id=reason.get("alert_id", ""), peak=reason.get("peak", ""),
                                       peak_at=reason.get("peak_at", ""), kind=reason.get("kind", ""),
@@ -1237,7 +1237,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     # and events their old rules' alerts are what the events stand for, so they are not asks of their own: not in
     # open_asks, not in uncovered_asks, and not what an issue's state is read from (docs/SPEC_event_led_state.md).
     owned = ({r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")}
-             if events is not None and events.get("engine") in ("shadow", "events") else set())
+             if events is not None and events.get("engine") in ("shadow", "events") and not events.get("error")
+             else set())
     # An issue's open event, and its latest clear within NOTABLE_HOURS, say its state on shadow and events (SPEC_event_led_state
     # §3.2). `owned` is empty on rules, and on a node whose packs ship no kinded rules, even on events: there the engine has
     # nothing to replace and no events open, so today's state is right.
@@ -1246,9 +1247,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         for e in events.get("open") or []:
             ev_open.setdefault(e.get("issue"), e)
         for e in events.get("recent") or []:
-            t = _ts(e.get("cleared_at"))
-            if t is not None and now - t <= timedelta(hours=NOTABLE_HOURS):
-                if e.get("issue") not in ev_cleared or t > _ts(ev_cleared[e["issue"]]["cleared_at"]):
+            age = _age_minutes(e.get("cleared_at"), now)      # tz-safe: a naive value counts as UTC
+            if age is not None and age <= NOTABLE_HOURS * 60:
+                prev = ev_cleared.get(e.get("issue"))
+                if prev is None or age < _age_minutes(prev["cleared_at"], now):
                     ev_cleared[e.get("issue")] = e
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
     clock = _clock(data)

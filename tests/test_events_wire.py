@@ -212,6 +212,9 @@ for eng in ("events", "shadow"):
 ruled = _replay(_block("rules"))
 assert {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in ruled["issues"].items()} == all_asks, \
     "on rules, open_asks is exactly today's"
+err = _replay({**_block("events"), "error": "x"})
+assert {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in err["issues"].items()} == all_asks, \
+    "an unreadable events block falls back to the alert cards: every ask stays"
 print("  open_asks: on shadow and events the replaced packs' alerts are not asks; on rules and with no block, unchanged")
 
 AS_OF = dt.datetime.fromisoformat(SNAP["as_of"])
@@ -247,6 +250,9 @@ led = _replay(_block("events", [ev(answer=ack)]))
 assert led["lead"] == {"issue": "heat", "by": "event"}, "an answered open event still leads"
 for loc in ("en", "id", "es"):
     assert "{" not in _replay(_block("events", [ev(answer=ack)]))["issues"]["heat"]["reason_text"][loc], loc
+naive = dict(ev(), cleared_at=(AS_OF.replace(tzinfo=None) - dt.timedelta(hours=3)).isoformat())
+st, code, _ = heat(_block("events", recent=[naive]))
+assert (st, code) == ("notable", "event_cleared"), "a naive cleared_at (no offset) counts as UTC and does not raise"
 print("  state: an open act event is act until answered (danger stays act); answered or a spike is notable; "
       "a clear within a day is notable; rules unchanged")
 
