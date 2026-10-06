@@ -322,7 +322,18 @@ Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_ru
 - `headline` is the key of the issue an open event belongs to; with no open event, the issue with the highest state. Within a state, the tie goes to the issue that has `moved` most, and an exact tie to the declared order. Only an issue that declares a hero can lead. `headline_rule` states that rule in `en`, `id` and `es`, so a page can print why that issue leads.
 - `lead` is `{issue, by}`: the same issue as `headline`, and which step of the rule picked it over the runner-up, one of `event`, `state`, `moved` or `order`. It is `null` when no watched issue declares a hero.
 - `digest` is keyed by stage, `observe`, `decide`, `act` and `measure`, and each stage holds one sentence per locale. `digest.prompts` is the ask pane's questions per locale, written from the bundle: the three it opens with, then up to nine more it rotates through (the other issues, the two newest other open alerts, and each other issue's line), in the same order in every locale. `digest.simple` is one paragraph per locale, three sentences: the house's own stations and the nearest others, the oldest open alert, and how many times the node asked in the last 30 days and how many were answered. The dashboard's simple mode draws `digest.simple`.
-- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance`, `sentence` (keyed by locale) and `hero`. An enabled pack can add rows to `readouts` through `readouts:` in its `pack.yaml`; it adds and never replaces. The full key set is defined in `app/issues/engine.py`.
+- Each entry of `issues` carries `state`, `watched`, `reason`, `reason_text`, `name`, `kind`, `metric`, `unit`, `dp`, `headline`, `stack`, `line`, `attribution`, `trend`, `moved`, `open_asks`, `series`, `buckets`, `readouts`, `provenance`, `sentence` (keyed by locale), `hero`, `usual` and `usual_absent`. An enabled pack can add rows to `readouts` through `readouts:` in its `pack.yaml`; it adds and never replaces. The full key set is defined in `app/issues/engine.py`.
+- `usual` is the issue's usual day at its hero distance: for each local hour 0–23, the mean over that distance's
+  sensors of `usual_by_hour`'s median and 90th percentile for the issue's own metric, over the 14 complete days before
+  today. It is `null` when the node cannot say, and `usual_absent` says why: `unread` (a capture from before v0.78, or
+  a node that has not refreshed the view since it started), `no_source`, `no_history`, or `not_watched`.
+- Each open event in `events.open` carries `series`: its own rooms, hour by hour on the issue's `buckets`, combined
+  as the issue combines its house (air the mean of PM2.5, heat the median of each room's apparent temperature).
+- `stations` keeps a station heard in the last 30 days and not in the last day, with `read: {}`, `series: {}` and
+  `last_heard`, unless a station heard today stands at the same point (a relay of a kit that still reports).
+  `stations_silent` says whether they were read (`read`) and how far back (`within_days`). The stopped stations are
+  published, never counted: `digest` (the simple sentence, "observing N stations", the neighbours within a kilometre)
+  and `geometry` (the grain table) read only stations heard in the last day.
 - `hero` is what the page draws when that issue leads, and the page draws nothing else there: `sign` and `pictogram` (symbol ids in `signs.svg`; no pictogram means the sign at hero size), `numeral` (the distance or readout the number is), `value`, `unit`, `dp`, `sentence`, `plain` (one more sentence: the other distances and the line, or where a context issue's number comes from), `rule` and `stamp` (keyed by locale). `rule` is `null` or `{min, max, ends, dots, line}`: `ends` is two words per locale, `dots` is `[{distance, value}]` for the distances that have a value tonight, and `line` is `{value, name}` or `null`. `clock` says what `stamp` is: `time`, when the numeral was read, or `date`, when a yearly record looked and when it looks next. `hero` is `null` for an issue that declares none, and for one not watched here.
 - `sections` is one entry per section an enabled pack declares under `sections:` in its `pack.yaml`: `{id, pack, stage, title, order, wall, note, expected, readouts}`. Each readout carries its `sensor_id` and `age_minutes`; a reading the node has no row for is left out, and `expected` says how many were declared. No shipped pack declares one, so it is `[]` on every node unless a wild pack adds one.
 
@@ -343,6 +354,18 @@ One committed snapshot with its issues recomputed at the hour it was captured, t
 | `name` | path | required | Matches `^[a-z0-9][a-z0-9._-]{0,63}$`; a name, never a path |
 
 Returns the snapshot JSON with `issues` replaced by the recomputation, or `{"error": ...}` in `issues` if the snapshot lacks a table the engine reads. 404 lists the names available.
+
+### GET /issues/days
+Access: open
+
+`?days=` from 1 to 90, default 7. Each declared issue's hourly series over that many local days, by the same engine
+as `/issues`, so one day of it is the 24 hours `/issues` draws. Buckets are every local hour of the window, oldest
+first; an hour with nothing recorded is `null`. The hours are stepped in UTC and shown in the node's zone, so a day
+with a daylight-saving change holds 25 or 23 hours, and `of` says so. For each issue: `distance` (the hero distance,
+the nearest with data), `series` (room, yard, ring and region, each an array or `null`), `provenance` (the word for
+each distance drawn), `per_day` (`date`, `over` the hours over the line at the hero distance, `read` the hours with a
+value, `of` the hours of that day inside the window), and `line`. `events` lists the alert events opened in the window
+or still open. Wire format `days-v0`. It is under the `/issues` prefix, so it is readable exactly where `/issues` is.
 
 ## Alerts and answers
 

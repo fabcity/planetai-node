@@ -62,10 +62,10 @@ usual: {
 - **When it is null.** An issue whose hero distance is not read from `stats` (land, coast), or whose metric
   `usual_by_hour` does not hold (it holds `temp`, `humidity`, `pm25` and `apparent`), or a node whose view is still
   empty after a start. The page then draws no band and says why in the legend.
-- **Replay.** A snapshot from v0.78 carries the `usual_by_hour` rows of local sensors (about 800 rows). `Replay`
-  answers that query from them. An older snapshot has no such rows, and `usual` is `null` with
-  `usual_absent: "capture"` on the issue, rather than the `LookupError` the five required tables raise: a missing
-  band is a smaller loss than a fixture that will not replay.
+- **Replay.** Replay carries each issue's `usual` from the capture's own `/issues`, as it carries the events block;
+  a capture from before v0.78 has none, so `usual` is `null` with `usual_absent: "unread"` rather than the
+  `LookupError` the five required tables raise. `usual_absent` is one of `unread`, `no_source`, `no_history` or
+  `not_watched`.
 
 ### 3.2 `GET /issues`: an open event gains `series`
 
@@ -82,15 +82,13 @@ would be computing a number.
 
 `stations` gains every `kind = 'sensor'` station that reported in the last 30 days and not in the last 24 hours, with
 `read: {}`, `series: {}` and `last_heard` (the time of its last reading). One query on `readings`, in `_read`, beside
-the five tables; a snapshot without it replays with no silent stations and says so in `dropped`.
+the five tables; the top-level `stations_silent: {read, within_days}` says whether they were read, and a replay carries the capture's own.
 
 **Not every silent row is a silent kit.** Of node #1's eight, "Ungasan Kit - TEST (Smart Citizen)" and "BAYU NEW
 ENCLOSURE (Smart Citizen)" were last heard on 4 October, while kits of the same names report today under other ids.
-Listing them as "no longer heard" would tell the household two working kits are dead. This PR decides how a silent row
-is matched to a reporting one before it lists anything, and a test holds node #1's eight rows of 6 October to that
-decision.
+Listing them as "no longer heard" would tell the household two working kits are dead. A silent row is not listed when a station heard in the last day stands at the same point, to five decimal places. On node #1 that drops the three `bad-sc-*` relays and the OpenAQ relay of Padang2 Uluwatu, and keeps four. The stopped stations are published, never counted: `digest` (simple mode's sentence, "observing N stations", the neighbours within a kilometre) and `geometry` (the grain table) read only stations heard in the last day.
 
-### 3.4 `GET /days?days=7` (1 to 90)
+### 3.4 `GET /issues/days?days=7` (1 to 90)
 
 ```
 {
@@ -112,14 +110,15 @@ decision.
 
 - **One engine, a longer window.** The route calls the engine's own `_series()` with `readings_1h` rows for the window
   instead of the last 24 hours, so a cell is exactly what the lead's numeral would have said at that hour. There is
-  no second definition of the house.
+  no second definition of the house. The hours are stepped in UTC and shown in the node's zone, so a day with a daylight-saving change
+  holds 25 or 23 hours, and `of` says so.
 - **The node counts.** `per_day` is the node's count, so the page prints a number it did not compute.
 - **Cost.** Node #1 reads 82,459 hourly rows for 90 days in 164 ms (6 October). No cache.
 - **Wire format.** `days-v0`, pinned by `tools/check_wire.py` with a committed example, as `issues-v0` is.
-- **Snapshot.** `planetai snapshot` fetches `/days?days=7` and stores the answer as `days`, and
+- **Snapshot.** `planetai snapshot` fetches `/issues/days?days=7` and stores the answer as `issues_days`, and
   `tests/visual/measure.mjs` serves it verbatim, as it serves `/shape`. A fixture without it draws the strips' empty
   state.
-- **Who may read it.** The same rule as `/issues` at the node's `SHARE_LEVEL`.
+- **Who may read it.** It is under the `/issues` prefix, so it is readable exactly where `/issues` is.
 
 ### 3.5 The floor
 
@@ -180,7 +179,7 @@ Heat  sensed                               42.8 °C top · floor 28.0, not zero 
 
 ### 4.3 The strips
 
-One row a day and one cell an hour, newest at the bottom, from `GET /days`.
+One row a day and one cell an hour, newest at the bottom, from `GET /issues/days`.
 
 - **Shade.** Ink on the issue's own square-root scale, from the data's floor (0 for air, the lowest reading for
   heat) to the darkest hour, so one 2,000 µg/m³ hour does not wash every other hour white. Red is an hour over the
@@ -188,7 +187,7 @@ One row a day and one cell an hour, newest at the bottom, from `GET /days`.
 - **Right column.** The node's `per_day.over` ("3 h over"), then any event that opened that day, by kind and span.
 - **Distance.** The hero distance by default; a switch lists the other distances that have data in the window.
 - **Hover.** The hour, the value, and the event open then, in the same readout line as the figure.
-- **On Now:** the last seven days, under the day figure. **On Historical:** every day `/days?days=90` returns, in
+- **On Now:** the last seven days, under the day figure. **On Historical:** every day `/issues/days?days=90` returns, in
   place of the averaged curve in "The day this place usually has". That section's sentence about how many days the
   node holds stays, and a node installed this morning draws one row.
 - What node #1 shows, 2 September to 6 October: indoor air over 15 µg/m³ in 48 of 819 hours, most often at 07:00 and
@@ -208,7 +207,7 @@ One row a day and one cell an hour, newest at the bottom, from `GET /days`.
 ### 4.5 Measure
 
 The second trace goes. In its place, one `row`: hours over the line in the last 24 hours and the last seven days, per
-issue, from `/days` `per_day`, with the hours nothing was recorded named beside them. The ρ row and the funnel stay.
+issue, from `/issues/days` `per_day`, with the hours nothing was recorded named beside them. The ρ row and the funnel stay.
 
 ### 4.6 Plot's chrome
 
@@ -255,7 +254,7 @@ as the events PR's are.
   day, and `/issues/days`: one day reproduces `/issues`' own 24 values, `per_day` counts what the series shows, and
   the window is held to 1–90 days.
 - **The wire.** `tools/check_wire.py --update` for `issues-v0`, and `days-v0` added.
-- **The visual gate.** A new fixture of node #1 with `days` and `usual_by_hour`; `measure.mjs` serves `/days`; the
+- **The visual gate.** A new fixture of node #1 with `issues_days` and `usual_by_hour`; `measure.mjs` serves `/issues/days`; the
   heights re-baselined at 390 and 1440 px and the wall, in the page PR, with the numbers in its description.
 - **Two checks that would have caught this session's faults.** No `floor -` printed for a non-negative quantity, and
   no unit inside an uppercased rule (`µ` uppercases to `M`; `tools/check_ui.py` already holds this for the stylesheet).
