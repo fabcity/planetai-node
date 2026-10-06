@@ -401,8 +401,9 @@ sharing level) and draws the issue sentences, labels and distances in English, B
 ## Looking at it without a node
 
 `?fixture=<name>` replays a committed snapshot through the node's own engine, `GET /issues/fixtures/<name>`,
-and the pill says `cached`. Six ship: four captures of node #1, `node1-2026-09-06`, `node1-2026-09-21`,
-`node1-2026-09-21b` and `node1-2026-09-21d`, and two derived from the last for the visual tests,
+and the pill says `cached`. Seven ship: five captures of node #1, `node1-2026-09-06`, `node1-2026-09-21`,
+`node1-2026-09-21b`, `node1-2026-09-21d` and `node1-2026-10-06-events`, the last taken with an air event open
+and the one the visual gate measures, and two derived from `node1-2026-09-21d` for the visual tests,
 `coast-led-2026-09-21` and `land-led-2026-09-21`, where coast and land lead; `GET /issues/fixtures` lists them. `planetai snapshot` writes a new one from a running
 node. A snapshot missing a table the engine reads comes back with an error in place of the issues rather
 than a half-drawn page, and the 6 September capture predates `planetai snapshot`, so some of its cards are
