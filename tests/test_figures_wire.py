@@ -151,13 +151,15 @@ assert not any(s.get("last_heard") for s in engine._stations(HEARD, [], -8.8, 11
 print("  silent stations: four of node #1's eight are kept; four are relays of kits heard today, at the same point")
 
 rep = engine.replay(fresh(), Settings(), DECL)
-assert rep["stations_silent"] == {"read": False, "within_days": 30}, rep["stations_silent"]
+assert rep["stations_silent"] == {"read": False, "within_days": 30, "stations": []}, rep["stations_silent"]
+assert not any(s.get("last_heard") for s in rep["stations"]), "`stations` holds only the stations heard in the last day"
 snap = fresh()
-snap["issues"]["stations_silent"] = {"read": True, "within_days": 30}
-snap["issues"]["stations"].append({**{k: v for k, v in STOPPED[-1].items()}, "read": {}, "series": {}})
+snap["issues"]["stations_silent"] = {"read": True, "within_days": 30,
+                                     "stations": [{**STOPPED[-1], "read": {}, "series": {}}]}
 again = engine.replay(snap, Settings(), DECL)
 assert again["stations_silent"]["read"] is True
-assert [s["name"] for s in again["stations"] if s.get("last_heard")] == ["Suluban (AirGradient)"]
+assert [s["name"] for s in again["stations_silent"]["stations"]] == ["Suluban (AirGradient)"]
+assert not any(s.get("last_heard") for s in again["stations"]), "a stopped station never lands in `stations`"
 print("  silent stations: a capture says whether it read them, and replays the ones it carried")
 
 # A station that stopped is published for the fold, never counted as one this node reads now (§3.3).
@@ -165,13 +167,23 @@ quiet = {"sensor_id": "bad-sc-0", "name": "Stopped, 60 m away", "lat": -8.8195, 
          "indoor": False, "kind": "sensor", "read": {}, "series": {}, "last_heard": "2026-09-20T10:00:00+00:00"}
 base = engine.replay(fresh(), Settings(), DECL)
 snap = fresh()
-snap["issues"]["stations_silent"] = {"read": True, "within_days": 30}
-snap["issues"]["stations"].append(quiet)
+snap["issues"]["stations_silent"] = {"read": True, "within_days": 30, "stations": [quiet]}
 more = engine.replay(snap, Settings(), DECL)
-assert len(more["stations"]) == len(base["stations"]) + 1, "the silent station is published"
+assert more["stations"] == base["stations"], "`stations` is the stations heard in the last day, unchanged"
+assert [s["name"] for s in more["stations_silent"]["stations"]] == ["Stopped, 60 m away"], "the silent one is published"
 assert more["digest"] == base["digest"], "the digest counts only stations heard in the last day"
 assert more["geometry"] == base["geometry"], "the grain table sees only stations heard in the last day"
 print("  silent stations: published, but neither the digest nor the grain table counts them")
+
+# A cell's `sensors` are positions in the published `stations`: each one names a station inside that cell.
+import h3  # noqa: E402
+cells = more["geometry"]["nav"]["cells"]
+assert cells and any(c["sensors"] for c in cells.values()), "the capture puts stations in cells"
+wrong = [cid for cid, c in cells.items() for i in c["sensors"]
+         if not 0 <= i < len(more["stations"])
+         or h3.latlng_to_cell(more["stations"][i]["lat"], more["stations"][i]["lon"], c["res"]) != cid]
+assert not wrong, f"{len(wrong)} of {len(cells)} cells name a station outside them"
+print("  silent stations: every cell's sensors are positions in the published stations, inside that cell")
 
 # --- §3.4 GET /issues/days ----------------------------------------------------------------------
 class Cur:

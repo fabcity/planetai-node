@@ -1249,8 +1249,9 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     captured = body.get("issues") if isinstance(body.get("issues"), dict) else {}
     usual = {k: (v.get("usual"), v.get("usual_absent")) for k, v in captured.items()
              if isinstance(v, dict) and "usual" in v} or None
-    silent = ([s for s in body.get("stations") or [] if isinstance(s, dict) and s.get("last_heard")]
-              if (body.get("stations_silent") or {}).get("read") else None)
+    quiet = body.get("stations_silent") or {}
+    silent = ([s for s in quiet.get("stations") or [] if isinstance(s, dict) and s.get("last_heard")]
+              if quiet.get("read") else None)
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
                    place=place, mesh=health.get("mesh"), peers=[peer] if peer else [],
                    facilities=facilities, events=body.get("events"), usual=usual, silent=silent)
@@ -1444,9 +1445,12 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
     headline_issue = lead["issue"] if lead else None
     stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited, silent_rows)
-    # A station that stopped is published for the page's fold, never counted as one this node reads now: the digest,
-    # simple mode's neighbours and the grain table see only the stations heard in the last day (SPEC_dashboard_figures §3.3).
+    # A station that stopped is published for the page's fold under `stations_silent.stations`, never in `stations`:
+    # geometry's cell `sensors` are positions in the list it is given, and every existing reader of `stations` (the
+    # digest, simple mode's neighbours, the grain table, the page) means the stations heard in the last day
+    # (SPEC_dashboard_figures §3.3).
     heard = [s for s in stations if not s.get("last_heard")]
+    stopped = [s for s in stations if s.get("last_heard")]
     geom = _safe_geometry(lat, lon, settings, heard, peers)
     asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
@@ -1463,9 +1467,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "distances": list(DISTANCES), "labels": LABEL_WORDS,
             "issues": out,
             # what the modular dashboard reads beside the issues — 15 September 2026's decisions
-            "stations": stations,
-            # whether the stations that stopped were read, and how far back (docs/SPEC_dashboard_figures.md §3.3)
-            "stations_silent": {"read": silent_rows is not None, "within_days": SILENT_DAYS},
+            "stations": heard,
+            # whether the stations that stopped were read, how far back, and which (docs/SPEC_dashboard_figures.md §3.3)
+            "stations_silent": {"read": silent_rows is not None, "within_days": SILENT_DAYS, "stations": stopped},
             "metrics": METRICS,
             "asks": asks,
             # simple mode's whole answer, written here because the page may not compose a sentence
@@ -1538,7 +1542,8 @@ def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict
                        "provenance": {x: _word(x) for x in DISTANCES if series.get(x)},
                        "per_day": per_day, "line": line}
     events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "
-                        "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s", buckets[0], buckets[0])
+                        "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s ORDER BY opened_at",
+                   buckets[0], buckets[0])
     iso = lambda v: v.isoformat() if hasattr(v, "isoformat") else v  # noqa: E731
     return {"schema": "days-v0", "as_of": now.isoformat(), "tz": tzname, "days": n,
             "buckets": [b.isoformat() for b in buckets],
