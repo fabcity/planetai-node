@@ -90,6 +90,7 @@ instead of wrong.
 | `AGENT_PREFER` | `private`, `fallback`, `strongest` |
 | `SHARE_LEVEL` | `off`, `open` |
 | `UI_ASK` | `on`, `off` |
+| `UI_GROUND` | `svg`, `map` |
 | `MAP_TILES` | `off`, `on` |
 | `UPDATE_CHECK` | `on`, `off` |
 
@@ -203,6 +204,7 @@ data, what it loads.
 |---|---|---|---|---|
 | `UI_MODE` | `advanced` | `simple`, `advanced`, `learn` | What the page opens as. `simple` = what a person in the house asks: is it fine, is anything changing, is there something to do. `advanced` = every section. `learn` = the advanced page with a question mark at each part; a pressed mark quotes the node's own documentation for it in the ask pane. Anyone reading can switch from the header; their browser remembers it and nothing changes for anybody else. | runtime · public |
 | `UI_ASK` | `on` | `on`, `off` | `on` = a toggle on the dashboard opens the ask pane, which asks the model Set up → Model names about what the page shows, reads, changes nothing and keeps nothing. `off` = no toggle and no pane. See [Ask the node](ask.md). | runtime · public |
+| `UI_GROUND` | `svg` | `svg`, `map` | How the ground is drawn. `svg` = the drawing the page has always made. `map` = MapLibre and deck.gl draw it in the browser, so it pans and zooms; it needs WebGL2 and falls back to `svg`, saying why, without it. The two libraries (860 kB gzipped, 3.2 MB as the node serves them) are fetched from the node only when the ground is drawn this way. Neither value changes what leaves the house: `MAP_TILES` decides that. | runtime · public |
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards. Managed by the dashboard's Arrange mode; blank restores the default. Readable by every screen in the house at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | Live satellite and street tiles under the cells. Each tile request tells a tile server which square of the planet this house is looking at. `off` = tiles from the node's local copy of OpenStreetMap; `on` = live tiles. A keeper turns this on in Set up. | runtime · public |
 | `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). `off` = the node never asks. | runtime · public · outward |

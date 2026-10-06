@@ -1990,6 +1990,12 @@ COMPANIONS = {
     # time, because a node does not carry the documentation site. Fetched only when a reader
     # turns learn mode on, and the quotes are inline so the mode works on a LAN with no route out.
     "learn.json": (STATIC / "learn.json", "application/json"),
+    # The map ground, UI_GROUND=map: MapLibre for the base, deck.gl for the cells and stations over it.
+    # Pinned UMD builds, vendored so the page needs no CDN; fetched only when the ground is drawn that way.
+    # Versions and licences are in NOTICE.
+    "maplibre-gl.js": (STATIC / "vendor" / "maplibre-gl.js", "application/javascript"),
+    "maplibre-gl.css": (STATIC / "vendor" / "maplibre-gl.css", "text/css"),
+    "deck.gl.min.js": (STATIC / "vendor" / "deck.gl.min.js", "application/javascript"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 
