@@ -1,5 +1,5 @@
 # The report
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 The report is the node telling the household what the ground is doing, in their language, on a schedule. The
 repo's own sentence for a node ends there: "It tells the people there in plain sentences, on Telegram, and passes
@@ -42,7 +42,7 @@ Deterministic, plain text, in `ALERT_LOCALE` (English, Bahasa Indonesia or Spani
 two, an empty part left out:
 
 1. **Where the place stands.** Heat first if an open act-level alert comes from the `heat` pack: "dangerously hot"
-   only when it is `heat_danger` (feels like 40 °C or more), otherwise a plain "it is hot inside" (35 °C is an
+   only when it is `heat_danger` (feels like 40 °C or more), otherwise "It is hot inside: it feels like 35 °C or more." (35 °C is an
    ordinary afternoon in Kuta Selatan, not a danger); else the worst
    indoor PM2.5 against 35 (unhealthy) and 15 (the clean line); or that there is no sensor inside yet, so what
    follows is the district and not the rooms.

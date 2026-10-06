@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all
@@ -7,8 +7,8 @@ written in a pack. A data pack is SQL and words. A code pack also fetches: it ad
 read. The loader's own description of the point is one line: "most useful contributions are a rule and a
 threshold that someone learned the hard way in their city."
 
-Packs come in two tiers. The seventeen in the release are **core** (eighteen in v0.76, before `xiaomi-air` became
-wild). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
+Packs come in two tiers. The seventeen in the release are **core** (v0.76 had eighteen; `xiaomi-air` has since
+become wild). Any other pack is **wild**: it lives in its author's own repository, or is hosted at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), is listed there by pull request,
 and is added to a node with `planetai packs add`. A wild pack that a second place can use may be promoted to core.
 The rules for both are the [packs decision](https://github.com/fabcity/planetai-node/blob/main/docs/decisions/2026-10-01-packs.md).
 
@@ -128,8 +128,8 @@ Telegram if it is connected, the heat issue's state is `act`, and the lead's las
 The pack now asks a person to do something, and what they record against it counts in [ρ](rho.md).
 
 On a checkout of the repository, `python3 tools/check_rules.py` (it needs `sqlglot`) parses the pack
-against `init.sql`. It prints `47 rules and cells check out against init.sql` (48 at v0.76, which still carried
-`xiaomi-air`'s rule); with your folder added the count is two more, one rule and one cell. A `{placeholder}` the SQL
+against `init.sql`. It prints `54 rules and cells check out against init.sql` (48 at v0.76, which still carried
+`xiaomi-air`'s rule and none of the event engine's seven); with your folder added the count is two more, one rule and one cell. A `{placeholder}` the SQL
 does not return is refused here and named; on a running node the same mistake sends the raw template, braces and all.
 
 ## Fields in pack.yaml
@@ -151,8 +151,8 @@ install`), `agent_scripts` (the `run_pack_script` tool), `pip` (`planetai packs 
 | `sources: [environmental/community/bali-air-dispatch]` | the registry ids of the data sources it reads. `make lint` runs `tools/check_registry.py`, which fails and names any id that is not an entry in the registry the node carries. See [The source registry](sources.md) |
 | `pip: [earthengine-api]` | libraries `planetai packs install` builds into the image, once, as the union of every pack folder's list |
 | `env: ["# comment", "KEY=default"]` | settings `planetai packs install` appends to `.env` under a dated marker when the key is absent; a comment line travels with the key under it. No space after `=` |
-| `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token. (Not in v0.76: arrives with the next release; until then no pack key is masked.) |
-| `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open. `planetai run` runs every script either way. (Not in v0.76: arrives with the next release; until then every pack script reaches the agent.) |
+| `secrets: [CAMERA_WYZE_BRIDGE_TOKEN]` | which of its `env` keys are secrets. Set up and the agent's `settings_get` mask them once saved, like the node's own tokens; a key not listed here is shown to anyone holding the admin token. |
+| `agent_scripts: [verify]` | which of a wild pack's scripts a connected agent may run through `run_pack_script`. Leave it out and none do; a core pack's are all open. `planetai run` runs every script either way. A pack counts as wild when `planetai packs add` put it there (the `.wild` file beside its `pack.yaml`); one copied in by hand counts as core. An agent can no longer run `adapter.py` as a script. |
 | `readouts: {air: [ … ]}` | numbers the pack adds to an issue, in the shape an issue file uses; shown in Figures, and in the sentence of a context issue. It adds, never replaces. See [PACKS.md](https://github.com/fabcity/planetai-node/blob/main/docs/PACKS.md#readouts-on-an-issue) |
 | `sections: [ … ]` | a band the pack declares on the dashboard as data, drawn with the page's own readout cards. See [A dashboard section](#a-dashboard-section) |
 | `needs: [api.bmkg.go.id]` | hosts the pack reaches |
@@ -194,6 +194,7 @@ including `corr()`. The first rule in `packs/air-quality/rules.yml`, with its me
 | `watch: {metric, over}` | no | the indicator and the line the rule is about, so `GET /effect` can time how long after an action the reading came back under it. The lint fails if the metric or the number is missing from the SQL. Leave it out where the rule fires on a relation between two readings |
 | `message` | unless `contributes` | a string or `{en, id, es}`; filled with the row by `str.format`; `None` renders as `—` |
 | `contributes: report` | instead of `message` | never sent; the first row lands in the report bundle under the rule's id |
+| `kind`, `issue` | no | makes the rule the event engine's: `kind` is `ahead`, `unusual`, `spike`, `sustained` or `danger`, and `issue` (default: `heat` for the `heat` pack, `air` for `air-quality`, else the pack's id) is the story its rows fold into. Every row must carry `value`, `line` and, optionally, `over` (false for a row inside the margin, which keeps an open event open and never opens one). Under `ALERT_ENGINE=rules` the rule is skipped; under `shadow` and `events` it writes no `alerts` row. See [Alerts](alerts.md#the-event-engine) |
 
 The node picks `message[ALERT_LOCALE]` and falls back to `en`. Every shipped rule carries all three
 languages. Every `{placeholder}` in every language must be a column the top-level `SELECT` returns.
@@ -212,7 +213,7 @@ message and a contribution, and one with neither, which could fire and reach nob
 What a rule may read: the `stats` view (`sensor_id, metric, indoor, local, kind, scale, lat, lon, name,
 last, last_ts, silent_minutes, mean_15m, mean_1h, mean_24h`: the last 24 hours, sensors only),
 `readings_1h` (hourly `mean, min, max, n` over all history), `observations` (the latest value per slow
-source), `readings`, `sensors`, `channel_roles`, and the node's own position and time zone as Postgres
+source), `readings`, `sensors`, `channel_roles`, `recent_15m` (quarter-hour means of the last 24 hours, with `apparent`), `usual_by_hour` (this room's own median, p75 and p90 for each local hour, from the fourteen complete days before today), and the node's own position and time zone as Postgres
 settings: `current_setting('planetai.lat')`, `current_setting('planetai.lon')`, `current_setting('TimeZone')`.
 Days are local days (`NODE_TZ` is the session time zone), so `date_trunc('day', ts)` means the household's
 day, not UTC's.

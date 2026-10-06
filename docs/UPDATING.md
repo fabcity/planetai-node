@@ -1,5 +1,5 @@
 # Updating
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 ```bash
 planetai update
@@ -35,7 +35,7 @@ how.
 The checksum and the signature are not the same check. The checksum is served from the same place as the tarball, so it
 only tells you the download arrived whole; whoever can write one can write the other. The signature is made with a key
 that is not on the web server. `planetai version` prints the fingerprint your node checks against, and `planetai doctor`
-has a row saying whether the last update was verified.
+has a row saying whether the last update was verified (on a node installed from the tarball; a git checkout has no such row).
 
 Two other things it can say, both with the fix attached:
 
@@ -62,7 +62,7 @@ shows where it is trying to write.
 ## Rollback
 
 ```bash
-git checkout v0.75.8      # or whichever tag you want back
+git checkout v0.76        # or whichever tag you want back
 docker compose build app  # the code is inside the image; a restart alone keeps running the new one
 planetai restart
 planetai restore backups/<node>-<date>.sql.gz    # only if the schema went forward and you need the old shape

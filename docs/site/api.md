@@ -1,9 +1,9 @@
 # HTTP API
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
-This page was read from the code at v0.76. Where an older document disagrees, the code wins.
+This page was read from the code at v0.77. Where an older document disagrees, the code wins.
 
 ## Access rules
 
@@ -108,7 +108,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.76.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.77.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 ## Sensors and readings
 
@@ -232,7 +232,7 @@ What surrounds the node's own numbers: other people's stations, the weather fore
 ### GET /nearby
 Access: open
 
-The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.76 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
+The ring: other people's stations around this node, and where this node sits inside it. Reads only what is stored, so the dashboard never waits on someone else's server. In v0.77 the ring is Bali Air Dispatch stations only (`source = 'baliairdispatch'`), within `BAD_RADIUS_KM`, that reported in the last 24 hours.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -317,7 +317,7 @@ Every issue this node declares, computed: state, stack by distance, the line it 
 
 Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_rule, distances, labels, issues, stations, metrics, asks, digest, mesh, geometry, sections, events}`, with `schema` set to `issues-v0`.
 
-`events` is the alert events (see [Alerts](alerts.md)), one per issue per house, as the bot tells them: which engine the node runs (`rules`, `shadow` or `events`), the three button labels in the household's language, the `open` events (kind, rooms, peak, the issue's line, the numbers the action was chosen from, the action and the latest message word for word, the alerts each covers, and the latest answer), the events cleared in the last 7 days under `recent`, `cleared_today`, and `uncovered_asks`: the open alerts no event covers; on `shadow` and `events`, leaving out the alerts of the packs the engine replaced. An open event's issue leads the page, and `lead.by` is then `event`. A node older than v0.77 sends no `events` key, and a node that could not read them sends `events.error`.
+`events` is the alert events (see [Alerts](alerts.md)), one per issue per house, as the bot tells them: which engine the node runs (`rules`, `shadow` or `events`), the three button labels in the household's language, the `open` events (kind, rooms, peak, the issue's line, the numbers the action was chosen from, the action and the latest message word for word, the alerts each covers, and the latest answer), the events cleared in the last 7 days under `recent`, `cleared_today` and `last_cleared` (the issue and time of the latest one cleared today), and `uncovered_asks`: the open alerts no event covers; on `shadow` and `events`, leaving out the alerts of the packs the engine replaced. An open event's issue leads the page, and `lead.by` is then `event`. A node older than v0.77 sends no `events` key, and a node that could not read them sends `events.error`.
 
 - `headline` is the key of the issue an open event belongs to; with no open event, the issue with the highest state. Within a state, the tie goes to the issue that has `moved` most, and an exact tie to the declared order. Only an issue that declares a hero can lead. `headline_rule` states that rule in `en`, `id` and `es`, so a page can print why that issue leads.
 - `lead` is `{issue, by}`: the same issue as `headline`, and which step of the rule picked it over the runner-up, one of `event`, `state`, `moved` or `order`. It is `null` when no watched issue declares a hero.
@@ -368,10 +368,10 @@ Every answer a person gave an alert, newest first: which alert, which stage, who
 | Name | Type | Default | Meaning |
 |---|---|---|---|
 | `limit` | int | 500 | 0..5000 |
-| `events` | int | | with 1, also returns the answers to alert events, with their `event_id`; works with or without `stage` |
+| `events` | int | 0 | `0` or `1`. With 1, also returns the answers to alert events, with their `event_id`; works with or without `stage` |
 | `stage` | str | | only this stage; `settings` returns the node's own rows instead |
 
-Returns a list of `{ts, alert_id, stage, actor, note}` (and `event_id` with `events=1`, which also returns the answers to alert events, with or without `stage`). The node's own `settings` rows are left out unless `stage=settings` asks for them: one row per `PUT /settings`, where `actor` is its `X-Agent` and `note` the keys it wrote, comma-separated. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
+Returns a list of `{ts, alert_id, stage, actor, note}`, and with `events=1` each row also carries `event_id`, which is null for an alert's answer and set, with a null `alert_id`, for an event's. The node's own `settings` rows are left out unless `stage=settings` asks for them: one row per `PUT /settings`, where `actor` is its `X-Agent` and `note` the keys it wrote, comma-separated. The route is on neither allowlist on purpose, because `actor` and `note` are the household's own words about what they did in their own house.
 
 > **Careful.** The handler has no token check of its own, so any of the four node tokens reads it. That includes `BACKUP_TOKEN`, `ACT_TOKEN` and this node's `AGGREGATE_TOKEN`, which every child of this node holds.
 
@@ -392,10 +392,11 @@ Body:
 | `acted` | Somebody did the thing. Counts for ρ, sets `acted_at`, closes the alert |
 | `decided` | Somebody said what they would do. Moves nothing: not in ρ, not in `acted_at`, not a funnel stage, closes no alert |
 
-An alert event is answered the same way, by sending `event_id` instead of `alert_id` (the stored row's `alert_id` is null): `{"event_id": 3, "stage": "dismissed", "actor": "tomas", "note": "ran the AC instead"}`. The stage is the button: Done is `acted`, Not now is `acknowledged`, Doesn't fit is `dismissed`. Any other stage is 400, an event this node does not have is 404, and the tokens are the same as for an alert. An event's answer is not in ρ yet.
 Any other stage is 400 `stage must be acknowledged, acted or decided`. `measured` is refused: the node derives it (see [`/rho`](#get-rho)) and never takes it from a post. `settings` rows are written by the node itself. With `DECISION_REQUIRED=1`, an `acted` post for an alert that has no `decided` row yet is 409 `this node is set to DECISION_REQUIRED, so an act needs a decision recorded against the same alert first. Decide on the dashboard, then record what you did.` The default is `0`.
 
-`actor` is cut to 80 characters, `note` to 500. 404 `no such alert` if the id is unknown. There is no one-action-per-alert cap: two people who both acted are both recording something true. Returns `{"ok": true}`.
+An alert event is answered the same way, by sending `event_id` instead of `alert_id` (the stored row's `alert_id` is null): `{"event_id": 3, "stage": "dismissed", "actor": "tomas", "note": "ran the AC instead"}`. The stage is the button: Done is `acted`, Not now is `acknowledged`, Doesn't fit is `dismissed`. Any other stage is 400 `an event's stage must be acknowledged, acted or dismissed`, sending both ids is 400 `send alert_id or event_id, not both`, an event this node does not have is 404 `no such event`, and the tokens are the same as for an alert. An event's answer is not in ρ yet, and `DECISION_REQUIRED` does not apply to it.
+
+`actor` is cut to 80 characters, `note` to 500. 404 `no such alert` if the alert id is unknown. There is no one-action-per-alert cap: two people who both acted are both recording something true. Returns `{"ok": true}`.
 
 ### POST /test-alert
 Access: admin
@@ -478,7 +479,7 @@ Each row:
 
 `value` is rounded to 3 decimals or null; `state` is `live`, `partial` or `mock` and is never upgraded here or downstream; `source` is `planetai-node · pack:<id>` or `planetai-node actions ledger`. In v0.72.1 `registered` is how many registry entries are filed under that cell, and `adapter` is true when any of them names code that reads it. Both come from the registry this node carries and change nothing about `state` or `value`. A cell with registered sources and no adapter has no row here at all; `/sources?cell=` answers for it.
 
-Since v0.73 the row ends with five registry fields, and the same row at pin `88f5c73` ends:
+Since v0.73 the row ends with five registry fields, and the same row at pin `851b8db` ends:
 
 ```
  "registered": 2, "adapter": true, "reviewed": 2, "candidate": 0, "capable": 2}
@@ -489,7 +490,7 @@ Since v0.73 the row ends with five registry fields, and the same row at pin `88f
 ### GET /sources
 Access: open
 
-The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.76 the pin is `88f5c73`, synced 28 September, with 268 entries. It says nothing about this house, which is why it is on the `open` list by name.
+The network's registry of what can be measured, as this node carries it: a pinned copy of `awesome-fabcity-data` under `data/sources/`, identical on every node in a release. In v0.77 the pin is `851b8db`, synced 6 October, with 269 entries. It says nothing about this house, which is why it is on the `open` list by name.
 
 | Name | Type | Default | Meaning |
 |---|---|---|---|
@@ -500,7 +501,7 @@ The network's registry of what can be measured, as this node carries it: a pinne
 | `wired` | bool | any | `true`: only entries whose `adapter` names code that reads them; `false`: only those without |
 | `status` | string | any | Since v0.73. `live`, `candidate`, `stale`, `deprecated`, `paywalled` or `planned`: only entries with that status |
 
-Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. Since v0.73 the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `88f5c73` the counts cover 19 cells and sum to 12 capable, 17 reviewed and 50 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
+Every filter is AND. `?cell=Social|City` lists what is filed for a cell this node may have no row for. Returns `{registry: {sha, short, synced, entries}, count, sources}`, with each entry as the registry writes it. Since v0.73 the answer also carries `counts`, `{cell: {capable, reviewed, candidate}}` for every cell the registry counts, whatever the filters: `capable` is live with an adapter, `reviewed` is live and backed by an adapter or a review whose verdict is `usable` or `usable-with-caveats`, `candidate` is status `candidate`. An entry counts against the cells in its `feeds_cells`, and against its own `cell` only when that key is absent. A `deprecated`, `stale`, `paywalled` or `planned` entry counts in none of them. At `851b8db` the counts cover 19 cells and sum to 12 capable, 17 reviewed and 51 candidate. 503 when the registry is missing: `no source registry on this node: <dir> is empty or unmounted. Vendor one with tools/sync_registry.sh <sha> and rebuild.`
 
 ### GET /sources/{pillar}/{scale}/{slug}
 Access: open
@@ -611,13 +612,13 @@ One dump as `application/gzip`. The name is taken as a basename only and must en
 ### GET /settings
 Access: public
 
-Every runtime setting with its group, label, help and current value, plus the bootstrap keys read-only. Secrets are always masked as `•••• set`: the node's own, and every key a pack lists under `secrets:` in its `pack.yaml`. (Not in v0.76: arrives with the next release; until then no pack key is masked.) Without the admin token, every value outside the public set is masked too: chat ids, sensor hosts, account names and remote URLs are the household's. A wrong token reads as no token, with no error, so the dashboard's layout read keeps working on every screen.
+Every runtime setting with its group, label, help and current value, plus the bootstrap keys read-only. Secrets are always masked as `•••• set`: the node's own, and every key a pack lists under `secrets:` in its `pack.yaml`. Without the admin token, every value outside the public set is masked too: chat ids, sensor hosts, account names and remote URLs are the household's. A wrong token reads as no token, with no error, so the dashboard's layout read keeps working on every screen.
 
 At `SHARE_LEVEL=off`, a caller that is neither loopback nor carrying a token sees the values of `UI_LAYOUT` and `SHARE_LEVEL` only. Every other row is still present, masked, so the Set up view still renders and says what a token would show. A reader without the admin token sees the values of the public set when `SHARE_LEVEL=open`, from loopback, or with one of the other three node tokens (`REPORT_EVERY`, `ALERT_LEVEL`, `QUIET_HOURS`, `SHARE_LEVEL`, `NODE_ISSUES`, `MAP_TILES`, `UI_MODE`, `PACKS_ENABLED` and the rest of `settings.PUBLIC`).
 
 Returns `{unlocked, runtime: [...], bootstrap: [{key, label, value, group}]}`. Each node row in `runtime` is `{key, group, label, secret, restart, help, value, set, source, choices, default, outward}`. `source` is `gui`, `env` or `default`; `choices` lists the accepted values where the key has a fixed set; `default` is the shipped default, or null when the image has no defaults file; `outward` marks a key that changes what leaves the machine.
 
-After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: the shipped packs declare 21, and 18 of them are rows here. Each has `group: "packs"`, `restart: false` (the value reaches the pack at its next run), `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack; `secret` is true only when the pack lists the key under `secrets:`. The other three, `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`, are node keys too, already in group `packs`: each stays one row and gains the `pack` key.
+After the node's own rows come the keys the installed packs declare in their `pack.yaml`, whether the pack is switched on or not: the shipped packs declare 20, and 17 of them are rows here. Each has `group: "packs"`, `restart: false` (the value reaches the pack at its next run), `choices: null`, the key as its `label`, the `default` the pack states, and a `pack` key naming the pack; `secret` is true only when the pack lists the key under `secrets:`. The other three, `COAST_MAX_KM`, `EE_PROJECT` and `EE_KEY_FILE`, are node keys too, already in group `packs`: each stays one row and gains the `pack` key.
 
 ### PUT /settings
 Access: admin
@@ -642,7 +643,7 @@ Access: admin
 
 The MCP server, over streamable HTTP at exactly `/mcp` (GET, POST and DELETE as the transport defines; no trailing-slash redirect). The whole surface needs `Authorization: Bearer <ADMIN_TOKEN>`, checked by its own middleware against the environment, because the tools can write as well as read; a missing or wrong token is 401 `{"error": "the agent surface needs Authorization: Bearer <ADMIN_TOKEN>"}`. It bypasses the `SHARE_LEVEL` check, which leaves the decision to that middleware. The tools call the API back on `http://127.0.0.1:8080`, so they arrive at every other route as loopback.
 
-In v0.76 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
+In v0.77 the tools are `status`, `health_check`, `sensors`, `context`, `readings`, `report_latest`, `report_now`, `report_bundle`, `history`, `alerts`, `act`, `settings_get`, `settings_set`, `packs`, `cells`, `issues`, `series`, `export_day`, `run_pack_script` and `maintenance`. Each is classed `read`, `act` or `admin` in `app/tool_classes.py`; `act` is the only `act` tool, and it refuses a `note` that is empty or a placeholder such as `done` or `ok`, because ρ counts what a person said they did. The [MCP page](mcp.md) describes each.
 
 ## The ask pane
 
@@ -687,7 +688,7 @@ The API is the read side. These are the requests the node makes of other machine
 |---|---|---|
 | `POST {PARENT_API_URL}/aggregates` | Hourly, if `PARENT_API_URL` is set | `{schema, node, rows, scale}`: hourly means from the last 2 hours, with `Authorization: Bearer <PARENT_TOKEN>` if set |
 | `POST {PARENT_API_URL}/events` | Hourly, if `PARENT_API_URL` is set and an alert was raised in the last 36 hours | `{schema, node, rows, scale}`: one row per alert from the last 36 hours as timestamps (`alert_id`, `rule`, `level`, `kind`, `raised_at`, `responded_at`, `acted_at`, `measured_at`), same header |
-| Telegram `sendMessage` | Each alert at or above `ALERT_LEVEL` (quiet hours hold all but `act`), each report not held by quiet hours, and once per newer release outside quiet hours, per chat id | The message text, to `api.telegram.org` with `TELEGRAM_BOT_TOKEN` |
+| Telegram `sendMessage` | Each alert at or above `ALERT_LEVEL` (quiet hours hold all but `act`), except that with `ALERT_ENGINE=events` the heat and air-quality alerts are not sent and each event's message is instead; each report not held by quiet hours, and once per newer release outside quiet hours, per chat id | The message text, to `api.telegram.org` with `TELEGRAM_BOT_TOKEN` |
 | `GET https://planetai.fab.city/node0/get/VERSION` | Once a day, unless `UPDATE_CHECK=off` | Nothing about the house; the request shows the node's internet address to Fab City's host. The answer fills `/health`'s `release` |
 | `POST {RETICULUM_URL}/send` | Each act-level alert, if `RETICULUM_URL` is set | `{"text": ...}` to the bridge container |
 | MQTT publish | Each act-level alert (`MESH_ALERTS=1`), and Home Assistant discovery (`HA_DISCOVERY=1`) | The first line of the alert to the mesh downlink; discovery and state topics to the broker at `MQTT_HOST` |

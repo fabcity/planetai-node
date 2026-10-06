@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -29,8 +29,8 @@ docker compose logs app | tail -50`. Never `.env`.
 
 **Write a rule, a cell, a pack.** [Packs](packs.md). For one place it is a wild pack in its own repository, listed at
 [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs), not a pull request here; the 17 in
-`packs/` are core, and a pack joins them by promotion. (v0.76 ships 18: `xiaomi-air` left core after it and arrives as
-a wild pack with the next release.) Copy `packs/heat`; say in the README where the thresholds came from and which
+`packs/` are core, and a pack joins them by promotion. (v0.76 shipped 18: `xiaomi-air` left core in v0.77 and is now a
+wild pack.) Copy `packs/heat`; say in the README where the thresholds came from and which
 place you wrote for. A rule should end in something a person does.
 
 ## What will not be merged
@@ -105,7 +105,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 55 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 64 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
@@ -126,7 +126,9 @@ dashboard's frozen visual language and the checks against it are in `docs/design
 
 ## What goes in one release
 
-[docs/NEXT_RELEASE.md](../../docs/NEXT_RELEASE.md) collects what is owed and holds four rules for the
+How a change gets into a release (a CHANGELOG line, the release milestone, a test on a node that tracks `main`) is
+[docs/WORKFLOW.md](../../docs/WORKFLOW.md); CI fails a pull request that changes what a node runs without a line under
+`## Unreleased`. [docs/NEXT_RELEASE.md](../../docs/NEXT_RELEASE.md) collects what is owed and holds four rules for the
 queue:
 
 1. Only one branch at a time may change the suite count in `tests/all`. Git merges two bumps of that
@@ -137,8 +139,8 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.76 it is `88f5c73`,
-268 entries, synced 2026-09-28 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.77 it is `851b8db`,
+269 entries, synced 2026-10-06 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 
 ```bash
@@ -174,7 +176,8 @@ a node inside the tarball, and the tarball changes only when somebody builds, si
    present, and it matches tools/allowed_signers` when it is right. Then `tools/ship.sh --check-docs`,
    which refuses a machine where no `python3` has the `markdown` package (`the docs site can be built
    here` when one does). It refuses a site repo (`PLANETAI_SITE_REPO`, default `../planetai`) with
-   uncommitted work outside `node0/get` and `docs/`. Then it runs
+   uncommitted work outside `node0/get` and `docs/`, and refuses to tag while the programme page in it describes another
+   release. Then it runs
    `make lint` and `make test`, tags `v0.72.2`, and pushes `main --tags`.
 
 3. **Watch `ship.sh` publish it.** `release.sh` calls `tools/ship.sh` itself. It refuses a commit CI has
@@ -256,6 +259,8 @@ the page in the same commit.
 ```
 app/          main.py (api, loops, notify) · sources.py (adapters) · index.py (cells, ρ) · packs.py · settings.py
               registry.py (the source registry) · report.py · agent.py (MCP) · tool_classes.py · agent_loop.py (the bot)
+              events.py · events_pg.py · events_wire.py · actions.py (the alert-event engine, its store, its /issues block and
+              the action it chooses)
               requires.py (which node a pack needs)
               ask.py (the dashboard's ask pane) · bootstrap.py · ground.py · reticulum_bridge.py · issues/ · static/ (the dashboard)
 bin/planetai  the operator CLI
