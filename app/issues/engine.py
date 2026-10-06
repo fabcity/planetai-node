@@ -37,6 +37,7 @@ import statistics
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from datetime import datetime, timedelta, timezone
 
+import actions as A
 import packs
 
 from . import (CMP_WORDS, DIGEST_WORDS, DISTANCES, HEADLINE_RULE, HERO_WORDS, JOIN_WORDS, LABEL_WORDS,
@@ -637,7 +638,7 @@ def _mine(d: dict, rule_id: str, domain_of: dict) -> bool:
     return domain_of.get(pack) in (d["packs"]["domains"] or []) or rule_id in (d["packs"]["rules"] or [])
 
 
-def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], list[dict]]:
+def _asks(d, alerts, actions, stack, line, domain_of, now, owned=frozenset()) -> tuple[list[dict], list[dict]]:
     """(the open asks, every alert of this issue's in the last 24 h), newest first.
 
     An open act-level ask is `current` only while its condition still holds: the room is over the
@@ -645,10 +646,13 @@ def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], 
     open across twelve hours and one of them (#53, cooking, 14:30) was still open at 22:08 with the
     room at 5 µg/m³. It is still an open ask — ρ counts it — but it is not what is happening now, and
     a page that headlines it is lying about the present.
+
+    `owned` is the packs the alert engine replaced (docs/SPEC_event_led_state.md §3.1): on a shadow or
+    events node their alerts are what the events stand for, so they are not this issue's asks.
     """
     room = (stack.get("room") or {}).get("value")
     over = line is not None and room is not None and room > float(line["value"])
-    mine = [a for a in alerts if _mine(d, a.get("rule_id", ""), domain_of)]
+    mine = [a for a in alerts if _mine(d, a.get("rule_id", ""), domain_of) and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]
     recent = [a for a in mine if (_age_minutes(a.get("ts"), now) or 1e9) < NOTABLE_HOURS * 60]
     open_asks = []
     for a in mine:
@@ -673,12 +677,25 @@ def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], 
 
 
 # ------------------------------------------------------------------------------------------ the state
-def _state(d, stack, open_asks, recent, line) -> tuple[str, dict]:
+def _state(d, stack, open_asks, recent, line, ev=None) -> tuple[str, dict]:
     """One of act · notable · quiet · context · none, and the reason, as a code plus its parts."""
     if not any(stack.values()):
         return "none", {"code": "no_source"}
     if d["kind"] == "context":
         return "context", {"code": "context_only"}
+
+    # docs/SPEC_event_led_state.md §3.2: on a shadow or events node the open event says whether something is asked.
+    e = (ev or {}).get("open")
+    if e:
+        a = e.get("answer")
+        if (e.get("level") == "act" and not a) or e.get("kind") == "danger":
+            return "act", {"code": "event_open", "at": e.get("opened_at"), "kind": e.get("kind"),
+                           "event_id": e.get("id")}
+        if a:
+            return "notable", {"code": "event_answered", "at": a.get("ts"), "kind": e.get("kind"),
+                               "who": a.get("actor") or "", "stage": a.get("stage"), "event_id": e.get("id")}
+        return "notable", {"code": "event_open", "at": e.get("opened_at"), "kind": e.get("kind"),
+                           "event_id": e.get("id")}
 
     current = [a for a in open_asks if a["current"]]
     if current:
@@ -691,6 +708,10 @@ def _state(d, stack, open_asks, recent, line) -> tuple[str, dict]:
     if open_asks:                          # act-level by construction, and none of them current
         a = open_asks[0]
         return "notable", {"code": "open_ask_stale", "at": a["ts"], "alert_id": a["id"]}
+    c = (ev or {}).get("cleared")
+    if c:
+        return "notable", {"code": "event_cleared", "at": c.get("cleared_at"), "kind": c.get("kind"),
+                           "event_id": c.get("id")}
     if loud:
         a = loud[0]
         return "notable", {"code": "alert_today", "at": a.get("ts"), "level": a.get("level"),
@@ -721,9 +742,12 @@ def _reason_text(reason: dict, loc: str) -> str:
     code = reason["code"]
     if reason.get("peak_at") and code + "_peak" in words:
         code += "_peak"
+    stage_key = {"acted": "done", "acknowledged": "not_now", "dismissed": "doesnt_fit"}.get(reason.get("stage"), "")
+    word = (A.BUTTONS.get(loc) or A.BUTTONS["en"]).get(stage_key, "")
     return words.get(code, "").format(when=_hhmm(reason.get("at")), level=reason.get("level", ""),
                                       id=reason.get("alert_id", ""), peak=reason.get("peak", ""),
-                                      peak_at=reason.get("peak_at", ""))
+                                      peak_at=reason.get("peak_at", ""), kind=reason.get("kind", ""),
+                                      who=reason.get("who") or words.get("someone", ""), word=word)
 
 
 def _clock(data: dict):
@@ -1209,6 +1233,25 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     undeclared = [k for k in sorted(decl) if k not in declared]
     manifests = packs.manifests()
     domain_of = {m["id"]: m.get("domain") for m in manifests}
+    # The packs the alert engine replaced: any pack that ships a kinded rule (app/main.py run_rules, #184). On shadow
+    # and events their old rules' alerts are what the events stand for, so they are not asks of their own: not in
+    # open_asks, not in uncovered_asks, and not what an issue's state is read from (docs/SPEC_event_led_state.md).
+    owned = ({r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")}
+             if events is not None and events.get("engine") in ("shadow", "events") and not events.get("error")
+             else set())
+    # An issue's open event, and its latest clear within NOTABLE_HOURS, say its state on shadow and events (SPEC_event_led_state
+    # §3.2). `owned` is empty on rules, and on a node whose packs ship no kinded rules, even on events: there the engine has
+    # nothing to replace and no events open, so today's state is right.
+    ev_open, ev_cleared = {}, {}
+    if owned:
+        for e in events.get("open") or []:
+            ev_open.setdefault(e.get("issue"), e)
+        for e in events.get("recent") or []:
+            age = _age_minutes(e.get("cleared_at"), now)      # tz-safe: a naive value counts as UTC
+            if age is not None and age <= NOTABLE_HOURS * 60:
+                prev = ev_cleared.get(e.get("issue"))
+                if prev is None or age < _age_minutes(prev["cleared_at"], now):
+                    ev_cleared[e.get("issue")] = e
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
     clock = _clock(data)
 
@@ -1244,8 +1287,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         line = d.get("line")
         stack = _stack(d, data["stats"], data["obs"], earth, names, now)
         d["_readouts"] = _readouts(d, data["obs"])
-        open_asks, recent = _asks(d, data["alerts"], data["actions"], stack, line, domain_of, now)
-        state, reason = _state(d, stack, open_asks, recent, line)
+        open_asks, recent = _asks(d, data["alerts"], data["actions"], stack, line, domain_of, now, owned)
+        state, reason = _state(d, stack, open_asks, recent, line,
+                               {"open": ev_open.get(key), "cleared": ev_cleared.get(key)})
         series = _series(d, hourly, buckets, names)
         # the headline number is the nearest distance that has one: the room if there is one, else
         # the yard, else the ring, else the model. Same order as every other answer in this repo.
@@ -1275,11 +1319,6 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     lead = _lead(out, declared, events)
     if events is not None:
         covered = {a for e in events.get("open") or [] for a in e.get("alerts") or []}
-        # The packs the engine replaced: any pack that ships a kinded rule. On shadow and events their old
-        # rules' alerts are what the events stand for, so they are never asks of their own on the page.
-        # app/main.py run_rules draws the same line when it stops those rules sending (#184).
-        owned = ({r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")}
-                 if events.get("engine") in ("shadow", "events") else set())
         events = {**events, "uncovered_asks": [
             a["id"] for v in out.values() for a in (v.get("open_asks") or [])
             if a.get("id") is not None and a["id"] not in covered

@@ -263,6 +263,11 @@ Decide says which of five states it is in, each in words and none as a zero or a
 | a node older than v0.77, with no events | "This node is v0.76: it sends alerts, not events", then the alert cards |
 | the events could not be read | the node's own sentence, then the alert cards |
 
+On a node whose alert engine is `shadow` or `events`, an issue's state follows the alert events: `act` while an event is
+open and unanswered (a `danger` event stays `act` whatever the answer), `notable` once somebody has answered it, for
+the warn-level air spike, and for a day after an event clears. The old heat and air rules' alerts are not asks there,
+so they are not in `open_asks`. See `docs/SPEC_event_led_state.md`.
+
 If `/issues` itself did not answer, the figures stay and the pill says `stale`; that is the pill's state, not
 Decide's.
 

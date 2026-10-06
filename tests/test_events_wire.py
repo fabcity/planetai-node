@@ -189,4 +189,71 @@ snap2["issues"]["events"]["engine"] = "rules"
 assert sorted(engine.replay(snap2, Settings(), DECLS)["events"]["uncovered_asks"]) == sorted(rule_of), "rules: all"
 print("  uncovered_asks: on shadow and events, the replaced packs' old alerts are not asks; on rules they are")
 
+def _block(engine_name, open_=(), recent=()):
+    return {"engine": engine_name, "buttons": {"done": "Done", "not_now": "Not now", "doesnt_fit": "Doesn't fit"},
+            "open": list(open_), "recent": list(recent), "cleared_today": 0, "last_cleared": None}
+
+
+def _replay(block):
+    s = json.loads(json.dumps(SNAP))
+    s["issues"]["events"] = block
+    return engine.replay(s, Settings(), DECLS)
+
+
+OWNED = ("heat/", "air-quality/")
+base = engine.replay(json.loads(json.dumps(SNAP)), Settings(), DECLS)
+all_asks = {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in base["issues"].items()}
+assert any(r.startswith(OWNED) for rs in all_asks.values() for r in rs), "21d has old heat/air asks to filter"
+for eng in ("events", "shadow"):
+    got = _replay(_block(eng))
+    kept = [a["rule_id"] for v in got["issues"].values() for a in (v.get("open_asks") or [])]
+    assert not [r for r in kept if r.startswith(OWNED)], (eng, kept)
+    assert sorted(kept) == sorted(r for rs in all_asks.values() for r in rs if not r.startswith(OWNED)), eng
+ruled = _replay(_block("rules"))
+assert {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in ruled["issues"].items()} == all_asks, \
+    "on rules, open_asks is exactly today's"
+err = _replay({**_block("events"), "error": "x"})
+assert {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in err["issues"].items()} == all_asks, \
+    "an unreadable events block falls back to the alert cards: every ask stays"
+print("  open_asks: on shadow and events the replaced packs' alerts are not asks; on rules and with no block, unchanged")
+
+AS_OF = dt.datetime.fromisoformat(SNAP["as_of"])
+iso = lambda d: (AS_OF - d).isoformat()            # noqa: E731
+
+
+def ev(kind="sustained", level="act", answer=None, opened=dt.timedelta(hours=1)):
+    return {"id": 9, "issue": "heat", "kind": kind, "level": level, "opened_at": iso(opened), "cleared_at": None,
+            "alerts": [], "answer": answer}
+
+
+def heat(block):
+    v = _replay(block)["issues"]["heat"]
+    return v["state"], v["reason"]["code"], v["reason_text"]["en"]
+
+
+st, code, _ = heat(_block("events", [ev()]))
+assert (st, code) == ("act", "event_open"), (st, code)
+ack = {"stage": "acknowledged", "actor": "Tomas Diez", "ts": iso(dt.timedelta(minutes=10)), "held_until": None}
+st, code, said = heat(_block("events", [ev(answer=ack)]))
+assert (st, code) == ("notable", "event_answered") and "Tomas Diez" in said and "Not now" in said, (st, code, said)
+st, code, _ = heat(_block("events", [ev(kind="danger", answer=ack)]))
+assert (st, code) == ("act", "event_open"), "an answered danger event stays act"
+st, code, _ = heat(_block("events", [ev(kind="spike", level="warn")]))
+assert (st, code) == ("notable", "event_open"), "the warn-level spike is notable"
+gone = dict(ev(), cleared_at=iso(dt.timedelta(hours=3)))
+st, code, said = heat(_block("events", recent=[gone]))
+assert (st, code) == ("notable", "event_cleared") and said, (st, code)
+old = dict(ev(), cleared_at=iso(dt.timedelta(hours=30)))
+assert heat(_block("events", recent=[old]))[1] != "event_cleared", "a clear older than 24 h is not notable"
+assert _replay(_block("rules", [ev()]))["issues"]["heat"]["reason"]["code"] != "event_open", "rules: today's state"
+led = _replay(_block("events", [ev(answer=ack)]))
+assert led["lead"] == {"issue": "heat", "by": "event"}, "an answered open event still leads"
+for loc in ("en", "id", "es"):
+    assert "{" not in _replay(_block("events", [ev(answer=ack)]))["issues"]["heat"]["reason_text"][loc], loc
+naive = dict(ev(), cleared_at=(AS_OF.replace(tzinfo=None) - dt.timedelta(hours=3)).isoformat())
+st, code, _ = heat(_block("events", recent=[naive]))
+assert (st, code) == ("notable", "event_cleared"), "a naive cleared_at (no offset) counts as UTC and does not raise"
+print("  state: an open act event is act until answered (danger stays act); answered or a spike is notable; "
+      "a clear within a day is notable; rules unchanged")
+
 print("events_wire: the open events, their actions as sent, answers and holds, the local day")

@@ -329,6 +329,10 @@ REASON_WORDS = {
         "ask_how":          "Reply /act {id} on Telegram and say what you did.",
         "not_watched":      "not watched here",
         "no_source":        "no source",
+        "event_open":       "an event open since {when} ({kind})",
+        "event_answered":   "answered at {when} by {who} ({word}); the node is watching",
+        "event_cleared":    "an event cleared at {when}",
+        "someone":          "someone",
     },
     "id": {
         "open_ask_current": "diminta pada {when}, dan masih berlaku",
@@ -342,6 +346,10 @@ REASON_WORDS = {
         "ask_how":          "Balas /act {id} di Telegram dan sebutkan apa yang Anda lakukan.",
         "not_watched":      "tidak dipantau di sini",
         "no_source":        "tidak ada sumber",
+        "event_open":       "kejadian terbuka sejak {when} ({kind})",
+        "event_answered":   "dijawab pada {when} oleh {who} ({word}); node sedang mengamati",
+        "event_cleared":    "kejadian selesai pada {when}",
+        "someone":          "seseorang",
     },
     "es": {
         "open_ask_current": "pedido a las {when}, y sigue vigente",
@@ -355,6 +363,10 @@ REASON_WORDS = {
         "ask_how":          "Responde /act {id} en Telegram y di qué hiciste.",
         "not_watched":      "no se vigila aquí",
         "no_source":        "sin fuente",
+        "event_open":       "un evento abierto desde las {when} ({kind})",
+        "event_answered":   "respondido a las {when} por {who} ({word}); el nodo lo vigila",
+        "event_cleared":    "un evento terminó a las {when}",
+        "someone":          "alguien",
     },
 }
 

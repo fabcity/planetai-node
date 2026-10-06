@@ -7,6 +7,10 @@
   four sections about resolution and custody moved to Network. A node still on the old engine keeps its alert cards,
   with "I did this" on them.
 
+- On a node whose alert engine is `shadow` or `events`, an issue's state follows its alert event: `act` while it is
+  open and unanswered, `notable` once somebody answers, and for a day after it clears. The old heat and air alerts
+  no longer count as open asks there, so the page's lead, the ask pane and the bot agree with what Decide shows.
+
 ## v0.77 — 2026-10-06 — Alert events: one message per story, with one action
 
 - **2026-10-06 · The source registry is re-pinned to `awesome-fabcity-data` at `851b8db`** (from `88f5c73`), 269 entries: the Global Power Plant Database is filed as an Environmental|Region candidate (registry #79). `docs/NEXT_RELEASE.md` rule 4.
