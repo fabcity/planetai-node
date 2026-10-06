@@ -173,4 +173,56 @@ assert more["digest"] == base["digest"], "the digest counts only stations heard 
 assert more["geometry"] == base["geometry"], "the grain table sees only stations heard in the last day"
 print("  silent stations: published, but neither the digest nor the grain table counts them")
 
+# --- §3.4 GET /issues/days ----------------------------------------------------------------------
+class Cur:
+    """Answers days()'s three reads from the capture: the session zone, readings_1h from a bucket on, alert_events."""
+    def __init__(self, snap, events=()):
+        self.snap, self.events, self.rows = snap, list(events), []
+
+    def execute(self, sql, args=()):
+        if "current_setting('TimeZone')" in sql:
+            self.rows = [{"tz": "Asia/Makassar"}]
+        elif "FROM readings_1h" in sql:
+            self.rows = [dict(r, bucket=dt.datetime.fromisoformat(r["bucket"])) for r in self.snap["readings_1h"]
+                         if dt.datetime.fromisoformat(r["bucket"]) >= args[0]]
+        elif "FROM alert_events" in sql:
+            self.rows = list(self.events)
+        else:
+            raise LookupError(sql[:60])
+
+    def fetchall(self):
+        return self.rows
+
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+
+NOW = dt.datetime.fromisoformat(SNAP["as_of"])                     # 09:00 in Bali; the capture's last hour is 08:00
+EV = [{"id": 2, "issue": "air", "kind": "danger", "level": "act",
+       "opened_at": dt.datetime(2026, 10, 5, 23, 18, tzinfo=dt.timezone.utc), "cleared_at": None}]
+one = engine.days(Cur(SNAP, EV), Settings(), DECL, 1, now=NOW)
+rep = engine.replay(fresh(), Settings(), DECL)
+assert one["schema"] == "days-v0" and one["days"] == 1 and one["tz"] == "Asia/Makassar"
+assert len(one["buckets"]) == 24 and one["buckets"][-1] == "2026-10-06T09:00:00+08:00", one["buckets"][-1]
+for k, v in one["issues"].items():
+    r = rep["issues"][k]
+    if v["distance"] is None:
+        assert not any(r["series"].values()), f"{k}: /issues has a series that /issues/days lost"
+        continue
+    want = dict(zip(r["buckets"], r["series"][v["distance"]]))
+    got = dict(zip(one["buckets"], v["series"][v["distance"]]))
+    assert all(got[b] == want[b] for b in want), f"{k}: one day of /issues/days is not /issues' own 24 values"
+    assert got["2026-10-06T09:00:00+08:00"] is None, "an hour with no rows is a null, never a skipped column"
+    assert sum(p["of"] for p in v["per_day"]) == 24
+    vals = [x for x in v["series"][v["distance"]] if x is not None]
+    assert sum(p["read"] for p in v["per_day"]) == len(vals)
+    assert sum(p["over"] for p in v["per_day"]) == sum(1 for x in vals if x > v["line"]["value"]), k
+    assert v["provenance"][v["distance"]] == ("live" if v["distance"] in ("room", "yard") else "partial")
+assert [p["date"] for p in one["issues"]["air"]["per_day"]] == ["2026-10-05", "2026-10-06"], "local days, not UTC"
+assert one["events"] == [{"id": 2, "issue": "air", "kind": "danger", "level": "act",
+                          "opened_at": "2026-10-05T23:18:00+00:00", "cleared_at": None}]
+assert engine.days(Cur(SNAP), Settings(), DECL, 0, now=NOW)["days"] == 1
+assert engine.days(Cur(SNAP), Settings(), DECL, 500, now=NOW)["days"] == engine.DAYS_MAX == 90
+print("  /issues/days: one day is /issues' own 24 values; the node counts hours over per local day; 1 to 90 days")
+
 print("figures_wire: the usual day")

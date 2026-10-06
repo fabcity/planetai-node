@@ -507,6 +507,12 @@ def _cell(value, n, source, provenance, age_min, sensors, outliers=()) -> dict:
             "sensors": sensors, "outliers": len(outliers)}
 
 
+def _word(place: str) -> str:
+    """A distance's provenance word: ours is measured here; somebody else's is theirs, which is a different word
+    whatever its quality."""
+    return "live" if place in ("room", "yard") else "partial"
+
+
 def _from_stats(spec: dict, stats: list[dict], names: dict) -> dict | None:
     """One distance's value from the rolling means. See `_ambient` for the indoor rule."""
     place, field = spec["place"], spec["field"]
@@ -523,8 +529,7 @@ def _from_stats(spec: dict, stats: list[dict], names: dict) -> dict | None:
         return None
     used = sorted(s for s in per if all(per[s].get(m) is not None for m in spec["metrics"]))
     age = min((r["silent_minutes"] for r in rows if r.get("silent_minutes") is not None), default=None)
-    # ours is measured here; somebody else's is theirs, which is a different word whatever its quality
-    word = "live" if place in ("room", "yard") else "partial"
+    word = _word(place)
     if len(used) == 1:
         source = names.get(used[0]) or used[0]
     else:
@@ -1473,6 +1478,70 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "sections": _sections(pack_sections(manifests), data["obs"], now),
             # the alert events, one per issue per house, as the bot tells them (docs/SPEC_dashboard_events.md §3.1)
             "events": events}
+
+
+DAYS_MAX = 90
+
+
+def _local_days(buckets: list, tz) -> list[tuple]:
+    """(local date, [indexes into buckets]) in order. A window starts and ends inside a day, so `of` says how many of
+    that day's hours the window holds."""
+    out: list[tuple] = []
+    for i, b in enumerate(buckets):
+        day = b.astimezone(tz).date()
+        if out and out[-1][0] == day:
+            out[-1][1].append(i)
+        else:
+            out.append((day, [i]))
+    return out
+
+
+def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict:
+    """GET /issues/days: each declared issue's hourly series over n local days, computed by the same `_series` that
+    gives /issues its 24 hours, so a cell of the page's strip is what the lead's numeral said at that hour
+    (docs/SPEC_dashboard_figures.md §3.4). The node counts the hours over the line, so the page prints a count it did
+    not make. Buckets are generated, not observed: an hour with no row at all is a null, never a skipped column.
+    Node #1 reads 90 days of readings_1h in 164 ms (6 October 2026), so there is no cache."""
+    now = now or datetime.now(timezone.utc)
+    n = max(1, min(int(n), DAYS_MAX))
+    cur.execute("SELECT current_setting('TimeZone') AS tz")
+    tzname = (cur.fetchone() or {}).get("tz") or "UTC"
+    try:
+        tz = ZoneInfo(tzname)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = timezone.utc
+    top = now.astimezone(tz).replace(minute=0, second=0, microsecond=0)
+    buckets = [top - timedelta(hours=k) for k in range(n * 24 - 1, -1, -1)]
+    hourly: dict = {b: [] for b in buckets}
+    for r in _rows(cur, "SELECT h.bucket, h.sensor_id, h.metric, h.mean, s.indoor, s.local, s.kind "
+                        "FROM readings_1h h JOIN sensors s USING (sensor_id) WHERE h.bucket >= %s", buckets[0]):
+        b = r["bucket"] if isinstance(r["bucket"], datetime) else datetime.fromisoformat(r["bucket"])
+        if b in hourly:
+            hourly[b].append(r)
+    declared, _ = order(settings.get("NODE_ISSUES", ""), decl)
+    groups = _local_days(buckets, tz)
+    issues: dict = {}
+    for key in declared:
+        d = decl[key]
+        series = _series(d, hourly, buckets, {})
+        dist = next((x for x in DISTANCES if series.get(x)), None)
+        line = d.get("line")
+        lv = float(line["value"]) if line and line.get("value") is not None else None
+        per_day = []
+        for day, idx in (groups if dist else []):
+            got = [series[dist][i] for i in idx if series[dist][i] is not None]
+            per_day.append({"date": day.isoformat(), "over": None if lv is None else sum(1 for v in got if v > lv),
+                            "read": len(got), "of": len(idx)})
+        issues[key] = {"distance": dist, "series": series,
+                       "provenance": {x: _word(x) for x in DISTANCES if series.get(x)},
+                       "per_day": per_day, "line": line}
+    events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "
+                        "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s", buckets[0], buckets[0])
+    iso = lambda v: v.isoformat() if hasattr(v, "isoformat") else v  # noqa: E731
+    return {"schema": "days-v0", "as_of": now.isoformat(), "tz": tzname, "days": n,
+            "buckets": [b.isoformat() for b in buckets],
+            "issues": issues,
+            "events": [{**e, "opened_at": iso(e["opened_at"]), "cleared_at": iso(e["cleared_at"])} for e in events]}
 
 
 def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:
