@@ -914,14 +914,24 @@ const boxOf = (vals, line, pad = 0.12) => {
   const lo = Math.min(...all), hi = Math.max(...all), p = (hi - lo) * pad || Math.abs(hi * 0.1) || 1;
   return { lo: lo >= 0 ? Math.max(0, lo - p) : lo - p, hi: hi + p };
 };
-/* A bucket's own offset in minutes ("+08:00" is 480), so a label says the node's hour, never the reader's. */
+/* A time string's own offset in minutes ("+08:00" is 480), so a label says the node's hour, never the reader's. */
 const offsetOf = iso => {
   const m = /([+-])(\d\d):(\d\d)$/.exec(String(iso || ''));
   return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +m[3]) : 0;
 };
-const hhmmAt = (ms, off) => new Date(ms + off * 60000).toISOString().slice(11, 16);
-const hourAt = (ms, off) => new Date(ms + off * 60000).getUTCHours();
-const dayAt = (ms, off) => new Date(ms + off * 60000).toISOString().slice(0, 10);
+/* A wire time's local day, hour and hh:mm, read in that string's own offset (docs/SPEC_dashboard_figures.md §3.4,
+ * §4.2): a bucket, an event, an answer and a last_heard each say their own hour, so a node that changes clock labels
+ * both sides of the change right. Reading every bucket in the last one's offset drew a Madrid day before 25 October
+ * an hour early. `ms` reads another instant in the string's offset (a station's empty hour, named by the bucket
+ * before it; the node's now, in its latest bucket's offset). A time that does not parse is '—', never a throw. */
+const localOf = (iso, ms = Date.parse(iso)) => {
+  if (!Number.isFinite(ms)) return { day: '—', hour: null, hhmm: '—' };
+  const s = new Date(ms + offsetOf(iso) * 60000).toISOString();
+  return { day: s.slice(0, 10), hour: +s.slice(11, 13), hhmm: s.slice(11, 16) };
+};
+/* The register button restyles in place, and the strips' shade ramp is two literal colours read at draw time, so the
+ * drawings on the page are painted again in the register now on. */
+const repaintFigs = () => document.querySelectorAll('.f-fig').forEach(el => el.__fig && paintFig(el));
 function nearestIndex(ts, t) {
   let b = 0;
   for (let i = 1; i < ts.length; i++) if (Math.abs(ts[i] - t) < Math.abs(ts[b] - t)) b = i;
@@ -949,12 +959,12 @@ function dayFigure(key, d, o = {}) {
     return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">The day it just had: nothing recorded yet at `
       + `any distance.</p>`;
   }
-  const B = d.buckets || [], T = B.map(b => Date.parse(b)), off = offsetOf(B[B.length - 1]);
+  const B = d.buckets || [], T = B.map(b => Date.parse(b)), L = B.map(b => localOf(b));
   const now = Math.max(Date.parse(((S || {}).issues || {}).as_of) || 0, T[T.length - 1]);
   const hero = sets.includes(d.headline) ? d.headline : sets[0];
   const line = d.line ? d.line.value : null;
   const U = d.usual && d.usual.hours ? d.usual.hours : null;
-  const band = U ? T.map(t => ({ t: new Date(t), ...(U[hourAt(t, off)] || {}) })) : [];
+  const band = U ? T.map((t, i) => ({ t: new Date(t), ...(U[L[i].hour] || {}) })) : [];
   const E = ((S || {}).issues || {}).events || {};
   const evs = (E.open || []).concat(E.recent || []).filter(e => e.issue === key)
     .map(e => ({ e, o: Date.parse(e.opened_at), c: e.cleared_at ? Date.parse(e.cleared_at) : now,
@@ -976,7 +986,7 @@ function dayFigure(key, d, o = {}) {
     + `<span class="f-gone">point at an hour, or focus the drawing and use ← →</span>`;
   const readAt = i => {
     const ev = evs.find(x => T[i] >= x.o && T[i] <= x.c);
-    return `<b>${esc(hhmmAt(T[i], off))}</b>`
+    return `<b>${esc(L[i].hhmm)}</b>`
       + sets.map(k => `<span class="f-d f-${k}${ser[k][i] == null ? ' f-gone' : ''}"><i></i>${esc(LAB[k])} `
         + `${ser[k][i] == null ? 'nothing recorded' : esc(fmt(ser[k][i], dp))}</span>`).join('')
       + (roomsOf && roomsOf.values[i] != null ? `<span class="f-d f-rooms"><i></i>${esc(roomsOf.rooms.join(', '))} `
@@ -986,7 +996,7 @@ function dayFigure(key, d, o = {}) {
       + (overAt(i) ? `<span class="f-over">over the line ${esc(fmt(line, dp))}</span>` : '')
       + (ev ? `<span class="f-ev">${esc(ev.e.kind)} open · ${ev.e.answer
         ? `<b class="${ev.e.answer.stage === 'acted' ? 'f-done' : ''}">${esc(ANSWER[ev.e.answer.stage] || ev.e.answer.stage)}</b>`
-          + ` · ${esc(ev.e.answer.actor || '')} ${esc(hhmmAt(ev.a, off))}` : 'no answer'}</span>` : '');
+          + ` · ${esc(ev.e.answer.actor || '')} ${esc(localOf(ev.e.answer.ts).hhmm)}` : 'no answer'}</span>` : '');
   };
   const draw = (el, W) => {
     const narrow = W < 600, H = narrow ? 170 : 230, pad = (box.hi - box.lo) * 0.06, evY = box.hi - pad;
@@ -995,12 +1005,12 @@ function dayFigure(key, d, o = {}) {
     const lone = k => rows(k).filter((r, i, a) => r.v != null && (i === 0 || a[i - 1].v == null)
       && (i === a.length - 1 || a[i + 1].v == null));
     const late = x => (x.o - T[0]) / ((now - T[0]) || 1) > 0.8;
-    const label = x => (narrow ? x.e.kind : `${x.e.kind} · ${hhmmAt(+x.o, off)}`);
+    const label = x => (narrow ? x.e.kind : `${x.e.kind} · ${localOf(x.e.opened_at).hhmm}`);
     const ev = evs.map(x => ({ ...x, o: new Date(x.o), c: new Date(x.c), a: x.a == null ? null : new Date(x.a) }));
     const svg = Plot.plot({
       width: W, height: H, marginLeft: 8, marginRight: 8, marginTop: 18, marginBottom: 26, style: PLOT_STYLE,
       x: { type: 'time', domain: [new Date(T[0]), new Date(now)], label: null, tickSize: 0,
-        ticks: at.filter(t => hourAt(+t, off) % (narrow ? 6 : 3) === 0), tickFormat: t => hhmmAt(+t, off) },
+        ticks: at.filter((t, i) => L[i].hour % (narrow ? 6 : 3) === 0), tickFormat: t => (L[T.indexOf(+t)] || {}).hhmm },
       y: { domain: [box.lo, box.hi], axis: null },
       marks: [
         Plot.gridY({ ticks: 4, stroke: 'var(--hair)', strokeOpacity: 1 }),
@@ -1055,7 +1065,8 @@ function dayFigure(key, d, o = {}) {
     + (U ? `<span class="f-band"><i></i>usual at this hour, last ${d.usual.window_days} days</span>`
       : `<span class="f-gone">no usual band — ${esc(USUAL_WHY[d.usual_absent] || 'this node does not send one yet')}</span>`)
     + (over.length ? `<span class="f-over"><i></i>hours over the line</span>` : '')
-    + (evs.length ? `<span class="f-evl"><i></i>event, opened to cleared</span><span class="f-done"><i></i>answered Done</span>` : '');
+    + (evs.length ? `<span class="f-evl"><i></i>event, opened to cleared</span>` : '')
+    + (evs.some(x => x.e.answer && x.e.answer.stage === 'acted') ? `<span class="f-done"><i></i>answered Done</span>` : '');
   const altCmp = line != null ? `against the line, ${fmt(line, dp)} ${unit} · ${d.line.source}`
     : `no comparison yet · ${noLine(d)}`;
   return `<div class="f-day" data-kind="series" data-component="dayFigure" id="${esc(id)}-card" data-ref="${esc(ref)}">`
@@ -1068,7 +1079,7 @@ function dayFigure(key, d, o = {}) {
     + `<p class="f-alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">${esc(LAB[hero])} opened the day at `
     + `${esc(fmt(first, dp))} and closed it at ${esc(fmt(last, dp))} ${esc(unit)}</span> — ${esc(altCmp)}.`
     + (evs.length ? ` ${evs.length === 1 ? 'One event' : `${evs.length} events`} in these hours: `
-      + evs.map(x => `${x.e.kind} ${hhmmAt(x.o, off)} to ${x.e.cleared_at ? hhmmAt(x.c, off) : 'now'}, `
+      + evs.map(x => `${x.e.kind} ${localOf(x.e.opened_at).hhmm} to ${x.e.cleared_at ? localOf(x.e.cleared_at).hhmm : 'now'}, `
         + `${x.e.answer ? `${(ANSWER[x.e.answer.stage] || x.e.answer.stage).toLowerCase()} by ${x.e.answer.actor}` : 'no answer'}`)
         .map(esc).join('; ') + '.' : '')
     + `</p></div>`;
@@ -1090,10 +1101,13 @@ function strips(key, D, o = {}) {
       + `${D.days} days.</p>`;
   }
   const dist = it.distance, vals = it.series[dist], line = it.line ? it.line.value : null;
-  const T = D.buckets.map(b => Date.parse(b)), off = offsetOf(D.buckets[D.buckets.length - 1]);
+  const T = D.buckets.map(b => Date.parse(b));
   /* The strips start at the first local day that holds a reading: a 90-day window on a node with 35 days of record
      drew 55 empty rows before it began (node #1, 6 October). An hour with nothing recorded after that still shows. */
-  const every = T.map((t, i) => ({ day: dayAt(t, off), hour: hourAt(t, off), t, v: vals[i] }));
+  /* Each bucket in its own day and hour. ponytail: a fall-back day repeats 02:00, so its two buckets share one cell and
+     the second paints over the first; per_day's `of: 25` beside the row still says the day had 25 hours. A row of 25
+     cells is the upgrade if a household asks which 02:00 it was. */
+  const every = D.buckets.map((b, i) => { const l = localOf(b); return { day: l.day, hour: l.hour, t: T[i], v: vals[i] }; });
   const firstDay = every.find(c => c.v != null).day;
   const cells = every.filter(c => c.day >= firstDay);
   const days = [...new Set(cells.map(c => c.day))];
@@ -1123,16 +1137,15 @@ function strips(key, D, o = {}) {
         Plot.cell(got.filter(c => line != null && c.v > line), { x: 'hour', y: 'day', fill: 'var(--signal-worse)' }),
         Plot.cell(cells.filter(inEvent), { x: 'hour', y: 'day', fill: 'none', stroke: 'var(--ink)', strokeWidth: 1.4 }),
         Plot.text(days.filter(s => perDay[s]), { x: () => 23, y: s => s, dx: narrow ? 22 : 30, textAnchor: 'start',
-          fontSize: 10.5, text: s => (perDay[s].over ? `${perDay[s].over} h over` : '·'),
-          fill: s => (perDay[s].over ? 'var(--signal-worse)' : 'var(--dim)') }),
-        narrow ? null : Plot.text(ev, { x: () => 23, y: e => dayAt(e.o, off), dx: 96, textAnchor: 'start', fontSize: 10.5,
-          fill: 'var(--ink)', text: e => `${e.kind} ${hhmmAt(e.o, off)}–${e.cleared_at ? hhmmAt(e.c, off) : 'open'}` }),
+          fontSize: 10.5, text: s => (!perDay[s].read ? '—' : perDay[s].over == null ? '' : perDay[s].over ? `${perDay[s].over} h over` : '·'),
+          fill: s => (perDay[s].read && perDay[s].over ? 'var(--signal-worse)' : 'var(--dim)') }),
+        narrow ? null : Plot.text(ev, { x: () => 23, y: e => localOf(e.opened_at).day, dx: 96, textAnchor: 'start', fontSize: 10.5,
+          fill: 'var(--ink)', text: e => `${e.kind} ${localOf(e.opened_at).hhmm}–${e.cleared_at ? localOf(e.cleared_at).hhmm : 'open'}` }),
         Plot.cell(cells, Plot.pointer({ x: 'hour', y: 'day', fill: 'none', stroke: 'var(--cells)', strokeWidth: 2 })),
       ].filter(Boolean),
     });
     el.append(svg);
     const read = document.getElementById(`${id}-read`);
-    const idle = read ? read.innerHTML : '';
     svg.addEventListener('input', () => {
       const c = svg.value;
       if (!read) return;
@@ -1147,25 +1160,29 @@ function strips(key, D, o = {}) {
   const nd = `${days.length} day${days.length === 1 ? '' : 's'}`;
   const totals = (it.per_day || []).filter(p => p.date >= firstDay).reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read,
     of: a.of + p.of }), { over: 0, read: 0, of: 0 });
+  /* With no line the node counts no hours over it (per_day.over is null), so the readout says what was read and nothing
+     about over: a 0 there would be a count nobody made. */
+  const gone = `<span class="f-gone">${totals.of - totals.read} not recorded · point at a cell</span>`;
+  const idle = line == null ? `<span>${totals.read} hour${totals.read === 1 ? '' : 's'} read in ${nd}</span>${gone}`
+    : `<span data-num="${esc(key)}.days.over" data-cmp="`
+      + `${esc(`of ${totals.read} hour${totals.read === 1 ? '' : 's'} read in ${nd}, ${totals.of - totals.read} not recorded`)}">`
+      + `${totals.over} hour${totals.over === 1 ? '' : 's'} over the line</span>${gone}`;
   return `<div class="f-strips" data-kind="series" data-component="strips" id="${esc(id)}-card" data-ref="${esc(ref)}">`
     + `<p class="f-head"><span>${esc(name)} · ${esc(LAB[dist])} · ${nd}${trimmed ? `, from ${esc(wd(firstDay))}, the first this node recorded` : ''}</span>`
     + `<span>shades ${esc(fmt(floor, dp))} to ${esc(fmt(hi0, dp))} ${esc(unit)}${line != null
       ? ` · <span class="f-line">the line ${esc(fmt(line, dp))}</span>` : ''}</span></p>`
     + fig(id, draw, { ref: `${id}-card`, component: 'stripsDrawing',
       label: `${name}, one row a day and one cell an hour over ${nd}` })
-    + `<p class="f-read" id="${esc(id)}-read" aria-live="polite"><span data-num="${esc(key)}.days.over" data-cmp="`
-    + `${esc(`of ${totals.read} hour${totals.read === 1 ? '' : 's'} read in ${nd}, ${totals.of - totals.read} not recorded`)}">`
-    + `${totals.over} hour${totals.over === 1 ? '' : 's'} over the line</span><span class="f-gone">${totals.of - totals.read} not recorded · `
-    + `point at a cell</span></p>`
+    + `<p class="f-read" id="${esc(id)}-read" aria-live="polite">${idle}</p>`
     + `<p class="f-legend"><span class="f-lo"><i></i>low</span><span class="f-hi"><i></i>high, on this issue’s own scale</span>`
-    + `<span class="f-red"><i></i>an hour over the line</span><span class="f-gap"><i></i>nothing recorded</span>`
+    + (line != null ? `<span class="f-red"><i></i>an hour over the line</span>` : '') + `<span class="f-gap"><i></i>nothing recorded</span>`
     + `<span class="f-evc"><i></i>an alert event</span></p></div>`;
 }
 
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
   readout, stack, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
   peerRow, refusedPage, noLine, reasonFor, REFUSED, TOKEN_FINE,
-  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord, fig, mountFigs, boxOf, offsetOf, hhmmAt, hourAt, dayAt, nearestIndex, PLOT_STYLE,
+  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord, fig, mountFigs, repaintFigs, boxOf, localOf, nearestIndex, PLOT_STYLE,
   dayFigure, strips };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
@@ -2937,7 +2954,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, cmpText, noLine, fig, offsetOf, hhmmAt, dayAt, PLOT_STYLE } = window.K;
+const { esc, fmt, age, cmpText, noLine, fig, localOf, PLOT_STYLE } = window.K;
 const DEFAULT_VAR = 'pm25';
 
 /* The variable the reader chose, or PM2.5. A key the fixture does not know is not an error to
@@ -3045,7 +3062,7 @@ function scaleFor(H, v, line) {
    * -1.0 µg/m³ was drawing headroom under a floor. Temperature may. */
   lo = lo >= 0 ? Math.max(0, lo - pad) : lo - pad;
   hi += pad;
-  return { lo, hi, Y: y => 4 + (1 - (y - lo) / (hi - lo)) * (48 - 4 - 14) };
+  return { lo, hi };
 }
 
 /* A station's own day, inside its row (docs/SPEC_dashboard_figures.md §4.4): the hourly mean as a line and the hour's
@@ -3053,14 +3070,17 @@ function scaleFor(H, v, line) {
  * and one tick at now for a station with no hourly series. An hour the station did not report is a gap: the series
  * lists only the hours it has, so the grid below puts a null in every hour between them. Pointing at it says that
  * hour in the row's own words. */
-function spark(s, v, m, sc, line, id) {
+function spark(s, v, m, sc, line, id, idle) {
   const ser = ((s.series || {})[v] || []).filter(b => b && b.t);
   const r15 = (s.read || {})[v];
-  const T = ser.map(b => Date.parse(b.t)), off = offsetOf(ser.length ? ser[ser.length - 1].t : '');
+  const T = ser.map(b => Date.parse(b.t));
   const grid = [];
+  /* `iso` is the hour's own bucket, or for an hour the station did not report, the bucket before it: its offset names
+     the empty hour. */
   for (let t = T[0], i = 0; ser.length && t <= T[T.length - 1]; t += 3600e3) {
     const b = T[i] === t ? ser[i++] : null;
-    grid.push({ t: new Date(t), mean: b ? b.mean : null, min: b ? b.min : null, max: b ? b.max : null });
+    grid.push({ t: new Date(t), iso: ser[Math.max(0, i - 1)].t, mean: b ? b.mean : null, min: b ? b.min : null,
+      max: b ? b.max : null });
   }
   const draw = (el, W) => {
     const w = Math.min(W, 320), tick = (sc.hi - sc.lo) * 0.08;
@@ -3078,12 +3098,12 @@ function spark(s, v, m, sc, line, id) {
     });
     el.append(svg);
     const read = document.getElementById(`${id}-read`);
-    const idle = read ? read.innerHTML : '';
     svg.addEventListener('input', () => {
       const b = svg.value;
       if (!read) return;
-      read.innerHTML = !b ? idle : b.mean == null ? `${esc(hhmmAt(+b.t, off))} nothing recorded`
-        : `${esc(hhmmAt(+b.t, off))} ${esc(fmt(b.mean, m.dp))} (${esc(fmt(b.min, m.dp))} to `
+      const at = b && localOf(b.iso, +b.t).hhmm;
+      read.innerHTML = !b ? idle : b.mean == null ? `${esc(at)} nothing recorded`
+        : `${esc(at)} ${esc(fmt(b.mean, m.dp))} (${esc(fmt(b.min, m.dp))} to `
           + `${esc(fmt(b.max, m.dp))}) ${esc(m.unit)}`;
     });
   };
@@ -3101,9 +3121,9 @@ function station(ctx, s, v, m, sc, L, ref) {
     ? ` · <span class="silent">silent</span> ${esc(age(r.silent_minutes))}` : '';
   const ser = s.series[v];
   const hi = ser && ser.length ? Math.max(...ser.map(b => b.max).filter(x => x != null)) : null;
-  const alt = ser && ser.length
-    ? `<span class="alt" id="spark-${esc(s.sensor_id)}-${esc(v)}-read">opened the day at ${esc(fmt(ser[0].mean, m.dp))}, `
-      + `closed at ${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)} · high ${esc(fmt(hi, m.dp))}</span>` : '';
+  const said = ser && ser.length ? `opened the day at ${esc(fmt(ser[0].mean, m.dp))}, `
+    + `closed at ${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)} · high ${esc(fmt(hi, m.dp))}` : '';
+  const alt = said ? `<span class="alt" id="spark-${esc(s.sensor_id)}-${esc(v)}-read">${said}</span>` : '';
   /* km is null when the node has no coordinates: the engine publishes unknown rather than a distance
      from (0, 0). Say unknown — a neighbour's distance from the Gulf of Guinea is not a fact. */
   const inEvent = (ctx.EVROOMS || new Set()).has(s.name);
@@ -3117,7 +3137,7 @@ function station(ctx, s, v, m, sc, L, ref) {
   return `<div class="row station${s.local ? ' mine' : ''}${r ? '' : ' quiet'}" data-kind="row"`
     + ` data-component="station" id="st-${esc(s.sensor_id)}" data-ref="${esc(ref)}">`
     + `<span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">${meta}</span>${alt}</span>`
-    + `<span class="pic">${r && sc ? spark(s, v, m, sc, L.line, `spark-${s.sensor_id}-${v}`) : ''}</span>`
+    + `<span class="pic">${r && sc ? spark(s, v, m, sc, L.line, `spark-${s.sensor_id}-${v}`, said) : ''}</span>`
     + `<span class="qty">${r
       ? `<span class="num${crossed ? ' crossed' : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">`
         + `${esc(fmt(r.value, m.dp))}</span><small>${esc(m.unit)}</small>`
@@ -3179,17 +3199,16 @@ function silentFold(ctx) {
     return `<p class="cap" id="sensors-silent" data-ref="sensors-list">No station this node heard in the last `
       + `${esc(String(st.within_days))} days has gone quiet.</p>`;
   }
-  const off = offsetOf((((ctx.ISS[ctx.ORDER[0]] || {}).buckets) || []).slice(-1)[0]);
   return `<details class="silentfold" id="sensors-silent" data-component="silentStations" data-ref="sensors-list">`
     + `<summary><b data-num="sensors.silent" data-cmp="stations heard in the last ${esc(String(st.within_days))} days `
     + `and not in the last day">${gone.length}</b> no longer heard</summary>`
-    + gone.map(s => { const lh = Date.parse(s.last_heard);
+    + gone.map(s => { const lh = localOf(s.last_heard);
       return `<p class="row silent" data-kind="row" data-component="silentStation" id="st-gone-${esc(s.sensor_id)}"`
       + ` data-ref="sensors-silent"><span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">`
       + `${s.km == null ? 'distance unknown' : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'} · `
       + `${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.source)}</a>` : esc(s.source)}`
-      + `</span></span><span class="said">${Number.isFinite(lh)
-        ? `last heard ${esc(dayAt(lh, off))} ${esc(hhmmAt(lh, off))}` : 'last heard: not known'}</span></p>`; }).join('')
+      + `</span></span><span class="said">${lh.hour != null
+        ? `last heard ${esc(lh.day)} ${esc(lh.hhmm)}` : 'last heard: not known'}</span></p>`; }).join('')
     + `</details>`;
 }
 
@@ -5572,7 +5591,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, row, rhoRow, peerRow, funnel, sign } = window.K;
+const { esc, fmt, row, rhoRow, peerRow, funnel, sign, localOf } = window.K;
 
 /* The care label: the refusals that hold across every stage, from ARCHITECTURE.md §7, drawn where the
  * loop closes because a refusal is the last thing a reader should meet, not the first.
@@ -5617,9 +5636,12 @@ function overRows(ctx) {
   }
   const sum = ps => ps.reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read, of: a.of + p.of }),
     { over: 0, read: 0, of: 0 });
+  /* The node's today: /issues' as_of (an instant, UTC on a live node) read in the offset of the latest bucket. A DAYS
+     answered before local midnight, or kept after a failed fetch, ends on yesterday, and that is not today's count. */
+  const today = localOf((D.buckets || []).slice(-1)[0], Date.parse(((ctx.S || {}).issues || {}).as_of)).day;
   return `<div class="reads" id="measure-over" data-ref="rho">` + keys.map(k => {
-    const it = I[k], u = ctx.ISS[k];
-    const t = sum(it.per_day.slice(-1)), w = sum(it.per_day);
+    const it = I[k], u = ctx.ISS[k], last = it.per_day.slice(-1);
+    const t = last.length && last[0].date === today ? sum(last) : { over: 0, read: 0, of: 0 }, w = sum(it.per_day);
     return row({ id: `measure-over-${k}`, component: 'overCount', ref: 'measure-over',
       cols: 'minmax(0,210px) minmax(0,1fr) auto',
       left: `<span class="who"><b>${esc(u.name[LOC])}</b><span class="m">${esc(ctx.LAB[it.distance])} · over `
@@ -8085,8 +8107,8 @@ function askDays90() {
   /* DAYS90_DONE is set either way, so a refusal draws the strips' own "does not send its days yet" line instead of
      "asking" for good. */
   api('/issues/days?days=90')
-    .then(d => { window.DAYS90 = d; window.DAYS90_DONE = true; route(); })
-    .catch(() => { window.DAYS90 = null; window.DAYS90_DONE = true; route(); });
+    .then(d => { window.DAYS90 = d; window.DAYS90_DONE = true; redraw(); })
+    .catch(() => { window.DAYS90 = null; window.DAYS90_DONE = true; redraw(); });
 }
 
 function route() {
@@ -8400,6 +8422,7 @@ document.addEventListener('click', ev => {
     /* Not a re-render: the register is one attribute and every rule under it is already written, so
        toggling in place restyles the whole page without scrolling it back to the top. */
     applyRegister(VIEW);
+    window.K.repaintFigs();
     rb.parentNode.querySelectorAll('button').forEach(x => {
       const on = x === rb;
       x.classList.toggle('on', on);

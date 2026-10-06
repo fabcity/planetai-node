@@ -386,7 +386,7 @@
   },
   "figure": {
    "anchor": "the-day-figure",
-   "more": "The figure reads the node's own 24 hourly values for every distance, the usual for each hour from usual_by_hour, and the alert events from /issues. The page draws them and computes none of them.",
+   "more": "The figure reads the node's own 24 hourly values for every distance, the usual for each hour from usual_by_hour, and the alert events from /issues. The page draws them; the only thing it counts is the hours over the line it draws.",
    "page": "dashboard.md",
    "page_title": "The dashboard",
    "questions": {
