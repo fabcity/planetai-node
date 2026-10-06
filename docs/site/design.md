@@ -1,5 +1,5 @@
 # Design
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 What a PLANETAI surface is made of, and why each part is the way it is. This page is the programme layer
 written out: the colours and what each one means, the type, the four card kinds, the signs, every motion with

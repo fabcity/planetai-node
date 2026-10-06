@@ -1,5 +1,5 @@
 # Bring your own agent
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the
 person in front of it operate the node; it drafts, and a person dispatches. The architecture puts it in one
@@ -91,6 +91,10 @@ Every one of the twenty MCP tools has a class in `app/tool_classes.py`, and `pla
 A person driving an agent over the tailnet gets all twenty, because somebody is reading what it proposes. The
 model running unattended on the node gets `read` and `act` only.
 
+`run_pack_script` runs every script of a core pack, but a wild pack's script only when that pack's `pack.yaml` lists it
+under `agent_scripts:`. A wild pack can keep something off the readings on purpose, a camera's motion log for one, and
+the refusal tells the agent to ask the person to run it from the node's terminal with `planetai run`.
+
 ## Two ways in
 
 **MCP**, from this machine or anywhere on the tailnet: `http://<node>:8080/mcp`, header `Authorization:
@@ -120,6 +124,8 @@ without asking. See [The bot](bot.md).
 
 `actions` also holds `decided` rows, written from the dashboard's Decide card. A decision records what
 somebody said they would do and moves nothing: it closes no alert and is not in ρ. No MCP tool writes one.
+The answers to an alert event (Done, Not now, Doesn't fit; `event_id`, no `alert_id`) are rows there too, and no MCP
+tool writes one of those either.
 
 ## Invariants an agent must not break
 

@@ -1,7 +1,7 @@
 # Concepts
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
-The words the rest of these pages use, each with what it means in the code at v0.76. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.77. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -83,7 +83,7 @@ prints them as house · street · ring · region; in Bahasa, rumah · jalan · s
 they are casa · calle · alrededores · región. The keys stay as they are on the wire. A child node is a fifth
 place that is not a column. A distance is custody, not scale: nothing maps a distance to an H3 resolution.
 
-**Registry.** A pinned snapshot of `awesome-fabcity-data`, 268 entries at `88f5c73`, served at `/sources` and
+**Registry.** A pinned snapshot of `awesome-fabcity-data`, 269 entries at `851b8db`, served at `/sources` and
 listed by `planetai sources`. Most entries are things this place could measure; some are places to go and
 designs to build. See the [CLI](cli.md).
 
@@ -109,9 +109,17 @@ sensor until its cooldown has passed.
 **Action.** A row in `actions`: `alert_id`, `stage`, `actor`, `note`. Five stages. `acknowledged`: someone
 saw it. `acted`: someone did the thing. `decided`: someone said what will be done, which moves nothing.
 `measured`: the outcome was checked; the schema allows it and nothing writes it, and the funnel derives it
-instead. `settings`: an audit row for a setting change, with no alert. `POST /actions` takes the first three.
+instead. `settings`: an audit row for a setting change, with no alert. `POST /actions` takes the first three for an
+alert, and for an alert event `acknowledged`, `acted` or `dismissed` (see Alert event).
 `SPEC.md` calls this table "the Index's instrument, not an app feature": ρ is computed from it and nowhere
 else.
+
+**Alert event.** One story per issue per house, folded from the rows of rules that declare a `kind`: it opens,
+escalates and clears, and has at most one action chosen from what is inside, outside and in the home. It is a row
+in `alert_events`, its messages are in `event_messages`, and `GET /issues` carries it under `events`. It runs with
+`ALERT_ENGINE=shadow` (records what it would send, sends nothing) or `events` (sends); the default, `rules`, runs
+no engine. Its answers are Done (`acted`), Not now (`acknowledged`) and Doesn't fit (`dismissed`), posted with an
+`event_id`; they are not in ρ. See [Alerts](alerts.md).
 
 **Decision.** A `decided` row, recorded from the dashboard's "What to do about it" card. It closes no alert, is
 not in ρ and is not a stage in the funnel. With `DECISION_REQUIRED=1` (off by default) an `acted` with no
@@ -142,8 +150,9 @@ figures already in `GET /issues`. Beside them, `digest.simple` is the paragraph 
 
 **Headline.** The issue the lead is about. The highest state wins; where two issues are in the same state,
 the one that moved most in the last three hours; an exact tie goes to the order in `NODE_ISSUES`. Only an issue that declares a `hero`,
-how it is drawn when it leads, can lead. The page prints that rule under the lead, and `lead: {issue, by}`
-says which of the three steps picked it.
+how it is drawn when it leads, can lead. An open alert event leads before any of that: the issue of the most serious
+open event. The page prints that rule under the lead, and `lead: {issue, by}` says which of the four steps picked it:
+`event`, `state`, `moved` or `order`.
 
 ## Packs and cells
 

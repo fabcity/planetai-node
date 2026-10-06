@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -260,9 +260,10 @@ figure, from `GET /issues`, and under it one line links the same day as open dat
 With it come the four distances, each with its value and its provenance word. The wire keys are `room`,
 `yard`, `ring` and `region`; the page prints them as house, street, ring and region. Then the sentence
 in three languages, the open alerts (`open_asks`), the series for the day, the `digest`, the geometry the
-ladder is drawn from, and the `asks` ledger.
+ladder is drawn from, the `asks` ledger, and `events`: the alert events (what is open, its one action, its latest
+answer, the alerts it covers). The page does not draw `events` yet; it only follows the lead they set.
 
-The `headline` is the issue with the highest state. Among issues in the same state, the one that moved most
+The `headline` is the issue of the most serious open event, when the node has one (`lead.by` is `event`). With none open it is the issue with the highest state. Among issues in the same state, the one that moved most
 in the last three hours leads, and an exact tie goes to the declared order. The node sends that rule as
 `headline_rule` and the lead prints it. The same object comes back from the `issues` MCP tool, so an agent
 and the household describe the same evening in the same words. The declarations are one file per issue in
@@ -292,9 +293,9 @@ somebody setting up a node needs them:
 |---|---|
 | **Basics** | what this place watches, in order; what kind of node it is; its language; how the page opens. Its name, city, position and time zone are shown read-only: edit `.env`, then `planetai restart` |
 | **Sources** | sensors and data: Smart Citizen, AirGradient and PurpleAir hosts, the mesh radios, Bali Air Dispatch, Open-Meteo, open-data portals. A source that comes as a pack is set in its card under Packs |
-| **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, mesh alerts, whether an act needs a decision first |
+| **Alerts** | alerts and reports: Telegram chat ids, when reports go out, what interrupts, quiet hours, which engine sends the heat and air messages (`ALERT_ENGINE`), how many it may send a day (`ALERT_MAX_PER_DAY`), what this home has (`HOME_HAS`), mesh alerts, whether an act needs a decision first |
 | **Model** | ask and model: which model answers, on the ask pane and on Telegram alike; the remote and online models |
-| **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings; a key the pack lists under `secrets:` is masked once saved (not in v0.76; arrives with the next release) |
+| **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings; a key the pack lists under `secrets:` is masked once saved |
 | **Keys** | every secret: the Telegram bot token, the two model keys, and the backup, parent, aggregate and act tokens |
 | **Sharing** | sharing and network: who may read this node, live map tiles, the Reticulum announce and alerts, Home Assistant, the parent node |
 | **System** | tuning numbers, the layout Arrange writes, and what is read once at start (port, extra containers, backups, poll interval), read-only |
@@ -323,7 +324,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.76.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.77.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`.
