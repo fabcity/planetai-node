@@ -637,7 +637,7 @@ def _mine(d: dict, rule_id: str, domain_of: dict) -> bool:
     return domain_of.get(pack) in (d["packs"]["domains"] or []) or rule_id in (d["packs"]["rules"] or [])
 
 
-def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], list[dict]]:
+def _asks(d, alerts, actions, stack, line, domain_of, now, owned=frozenset()) -> tuple[list[dict], list[dict]]:
     """(the open asks, every alert of this issue's in the last 24 h), newest first.
 
     An open act-level ask is `current` only while its condition still holds: the room is over the
@@ -645,10 +645,13 @@ def _asks(d, alerts, actions, stack, line, domain_of, now) -> tuple[list[dict], 
     open across twelve hours and one of them (#53, cooking, 14:30) was still open at 22:08 with the
     room at 5 µg/m³. It is still an open ask — ρ counts it — but it is not what is happening now, and
     a page that headlines it is lying about the present.
+
+    `owned` is the packs the alert engine replaced (docs/SPEC_event_led_state.md §3.1): on a shadow or
+    events node their alerts are what the events stand for, so they are not this issue's asks.
     """
     room = (stack.get("room") or {}).get("value")
     over = line is not None and room is not None and room > float(line["value"])
-    mine = [a for a in alerts if _mine(d, a.get("rule_id", ""), domain_of)]
+    mine = [a for a in alerts if _mine(d, a.get("rule_id", ""), domain_of) and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]
     recent = [a for a in mine if (_age_minutes(a.get("ts"), now) or 1e9) < NOTABLE_HOURS * 60]
     open_asks = []
     for a in mine:
@@ -1209,6 +1212,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     undeclared = [k for k in sorted(decl) if k not in declared]
     manifests = packs.manifests()
     domain_of = {m["id"]: m.get("domain") for m in manifests}
+    # The packs the alert engine replaced: any pack that ships a kinded rule (app/main.py run_rules, #184). On shadow
+    # and events their old rules' alerts are what the events stand for, so they are not asks of their own: not in
+    # open_asks, not in uncovered_asks, and not what an issue's state is read from (docs/SPEC_event_led_state.md).
+    owned = ({r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")}
+             if events is not None and events.get("engine") in ("shadow", "events") else set())
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
     clock = _clock(data)
 
@@ -1244,7 +1252,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         line = d.get("line")
         stack = _stack(d, data["stats"], data["obs"], earth, names, now)
         d["_readouts"] = _readouts(d, data["obs"])
-        open_asks, recent = _asks(d, data["alerts"], data["actions"], stack, line, domain_of, now)
+        open_asks, recent = _asks(d, data["alerts"], data["actions"], stack, line, domain_of, now, owned)
         state, reason = _state(d, stack, open_asks, recent, line)
         series = _series(d, hourly, buckets, names)
         # the headline number is the nearest distance that has one: the room if there is one, else
@@ -1275,11 +1283,6 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     lead = _lead(out, declared, events)
     if events is not None:
         covered = {a for e in events.get("open") or [] for a in e.get("alerts") or []}
-        # The packs the engine replaced: any pack that ships a kinded rule. On shadow and events their old
-        # rules' alerts are what the events stand for, so they are never asks of their own on the page.
-        # app/main.py run_rules draws the same line when it stops those rules sending (#184).
-        owned = ({r["id"].split("/", 1)[0] for r in packs.load_rules() if r.get("kind")}
-                 if events.get("engine") in ("shadow", "events") else set())
         events = {**events, "uncovered_asks": [
             a["id"] for v in out.values() for a in (v.get("open_asks") or [])
             if a.get("id") is not None and a["id"] not in covered

@@ -189,4 +189,29 @@ snap2["issues"]["events"]["engine"] = "rules"
 assert sorted(engine.replay(snap2, Settings(), DECLS)["events"]["uncovered_asks"]) == sorted(rule_of), "rules: all"
 print("  uncovered_asks: on shadow and events, the replaced packs' old alerts are not asks; on rules they are")
 
+def _block(engine_name, open_=(), recent=()):
+    return {"engine": engine_name, "buttons": {"done": "Done", "not_now": "Not now", "doesnt_fit": "Doesn't fit"},
+            "open": list(open_), "recent": list(recent), "cleared_today": 0, "last_cleared": None}
+
+
+def _replay(block):
+    s = json.loads(json.dumps(SNAP))
+    s["issues"]["events"] = block
+    return engine.replay(s, Settings(), DECLS)
+
+
+OWNED = ("heat/", "air-quality/")
+base = engine.replay(json.loads(json.dumps(SNAP)), Settings(), DECLS)
+all_asks = {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in base["issues"].items()}
+assert any(r.startswith(OWNED) for rs in all_asks.values() for r in rs), "21d has old heat/air asks to filter"
+for eng in ("events", "shadow"):
+    got = _replay(_block(eng))
+    kept = [a["rule_id"] for v in got["issues"].values() for a in (v.get("open_asks") or [])]
+    assert not [r for r in kept if r.startswith(OWNED)], (eng, kept)
+    assert sorted(kept) == sorted(r for rs in all_asks.values() for r in rs if not r.startswith(OWNED)), eng
+ruled = _replay(_block("rules"))
+assert {k: [a["rule_id"] for a in (v.get("open_asks") or [])] for k, v in ruled["issues"].items()} == all_asks, \
+    "on rules, open_asks is exactly today's"
+print("  open_asks: on shadow and events the replaced packs' alerts are not asks; on rules and with no block, unchanged")
+
 print("events_wire: the open events, their actions as sent, answers and holds, the local day")
