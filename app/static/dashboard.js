@@ -872,7 +872,10 @@ const VIEW_NAMES = new Set(['now', 'historical', 'network', 'wall', 'arrange', '
 function readView() {
   const q = new URLSearchParams(location.search);
   const h = (location.hash || '').replace(/^#/, '');
-  VIEW = (VIEW_NAMES.has(h) ? h : '') || q.get('view') || 'now';
+  /* A hash that names no view is an anchor on THIS page, so with no ?view= it keeps the view the
+     reader is on (the header's nav wrote #network; `#grain` must not send them to Now). Only a first
+     load, where VIEW is still its initial 'now', or an empty hash, falls through to 'now'. */
+  VIEW = VIEW_NAMES.has(h) ? h : (q.get('view') || (h && VIEW ? VIEW : 'now'));
   STATE = q.get('state') || 'populated';
   if (window.K) Object.assign(window.K, { VIEW, STATE });
 }

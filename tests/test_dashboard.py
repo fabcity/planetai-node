@@ -320,7 +320,7 @@ assert "packCard(p, rows.filter(r => r.pack === p.id).map(field)" in _js and "pa
 # Reported by Tomas from node #1 at v0.71, which is the release this fixes.
 assert "const VIEW_NAMES = new Set(" in _js, \
     "readView no longer has a list of what a view IS, so any hash is one again"
-assert re.search(r"VIEW = \(VIEW_NAMES\.has\(h\) \? h : ''\) \|\| q\.get\('view'\) \|\| 'now'", _js), \
+assert re.search(r"VIEW = VIEW_NAMES\.has\(h\) \? h : \(q\.get\('view'\) \|\| \(h && VIEW \? VIEW : 'now'\)\)", _js), \
     ("an unknown hash is being taken as a view again — `#stage-act` empties the page, and so does "
      "every link in the notes band")
 # Every hash the page itself writes must either name a view or name an element it draws.
@@ -339,6 +339,32 @@ assert 'id="stage-${key}"' in _js, \
 assert "if (VIEW === before)" in _js and "scrollIntoView({ block: 'start' })" in _js, \
     ("a hashchange that does not change the view re-renders the whole page, which loses the scroll "
      "position, the open folds and the learn panel for a link to somewhere already on screen")
+
+# AN IN-PAGE LINK KEEPS THE VIEW IT WAS CLICKED ON. The header's nav writes `#network`; a click on
+# `#grain` then replaced it, `grain` is no view and there is no ?view=, so readView() answered `now`
+# and the hashchange handler routed the reader back to Now. Every in-page link on Network and
+# Historical did it. This lifts readView and VIEW_NAMES and runs the sequence a reader makes.
+if shutil.which("node"):
+    _src = (ROOT / "app/static/dashboard.js").read_text()
+    _rv = _node("\n".join((
+        "globalThis.window = globalThis; let VIEW = 'now', STATE;",
+        re.search(r"const VIEW_NAMES = new Set\(.*?\);\n", _src).group(0),
+        re.search(r"function readView\(\) \{.*?\n\}\n", _src, re.S).group(0),
+        """const at = (search, hash) => { globalThis.location = { search, hash }; readView(); return VIEW; };
+const out = {};
+out.first_anchor = at('', '#grain');                     /* first load on an anchor, VIEW still 'now' */
+out.network = at('', '#network');
+out.keeps_network = at('', '#grain');                    /* the in-page link: no view, no query */
+out.keeps_again = at('', '#claims');
+out.hist_query = at('?view=historical', '#trust');
+out.keeps_hist = at('', '#grain');
+out.now = at('', '#now');
+out.now_no_hash = (at('', '#network'), at('', ''));      /* the Now button clears the hash */
+console.log(JSON.stringify(out));""")))
+    assert _rv == {"first_anchor": "now", "network": "network", "keeps_network": "network",
+                   "keeps_again": "network", "hist_query": "historical", "keeps_hist": "historical",
+                   "now": "now", "now_no_hash": "now"}, \
+        f"readView: an in-page anchor must keep the view the reader is on: {_rv}"
 
 # THE PAGE KEEPS UP WITH THE NODE, AND SAYS SO WHEN IT CANNOT.
 #

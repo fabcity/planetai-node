@@ -59,6 +59,10 @@ node tests/visual/measure.mjs extend
 # view are the same string; `#stage-act` routed to a view of that name and drew a blank page in
 # v0.71. Static checks cannot see it — the id is built from a template and the failure is the router.
 node tests/visual/measure.mjs anchors
+# The same walk on Network and Historical: an anchor there sent the reader back to Now, because the
+# hash that replaced `#network` named no view and readView() fell through to 'now'.
+PAI_VIEW=network node tests/visual/measure.mjs anchors
+PAI_VIEW=historical node tests/visual/measure.mjs anchors
 
 node - <<'JS'
 const fs = require('fs'), out = process.env.PAI_OUT;
