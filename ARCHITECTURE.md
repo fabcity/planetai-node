@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 The whole building, drawn once, so every brick knows where it goes. What exists today is marked. What doesn't is
 drawn anyway, because the contracts between layers are the thing that can't be retrofitted.
@@ -110,6 +110,9 @@ pulls them. Provenance `state` travels end to end and is never upgraded on the w
 measured: detect (alert `ts`) → decide (`acknowledged`) → deploy (`acted`) → measure (`measured`, derived by the
 node and never posted). `decided` is a record and enters no ρ. Five FCC-era stages collapse to these four at an
 address; `fabricate` appears between decide and act when the action is a part.
+Since v0.77 an alert *event* (one story per issue per house, `ALERT_ENGINE=events`) is answered the same way with
+`{event_id, stage: acted|acknowledged|dismissed}`: Done, Not now, Doesn't fit. It is a row in `actions` with an
+`event_id` and no `alert_id`, and it enters no ρ.
 
 **Read API** (the Observe contract): `GET /sensors /readings /stats /aggregates /alerts /cells /rho /health`, plus
 `GET /report/latest` (the last report the node wrote) and `GET /report/bundle?hours=` (every number it was written

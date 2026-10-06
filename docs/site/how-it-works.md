@@ -1,8 +1,8 @@
 # How it works
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
-one Python process that answers the HTTP API on port 8080 and runs five loops in the background, a sixth when
+one Python process that answers the HTTP API on port 8080 and runs six loops in the background, a seventh when
 the Reticulum bridge is on. An `agent` container for the Telegram bot and a Reticulum bridge are optional.
 Everything a node does is one of those loops or one of the API's answers, and this page follows a reading
 through the whole of it. The node's own description of itself, the one it hands every agent that connects,
@@ -76,6 +76,14 @@ dashboard's **I did this** (which needs `ACT_TOKEN` or `ADMIN_TOKEN` in the brow
 <id> <what you did>` in Telegram, the MCP `act` tool, or an `act <id>` message over Reticulum. An agent
 drafts and never dispatches: nothing is recorded as done without that row.
 
+A rule that declares a `kind` (the heat and air-quality rules do) takes a different path when `ALERT_ENGINE` is
+`shadow` or `events`. Its rows are folded into one alert event per issue per house, which opens, escalates and
+clears, with at most one action chosen from what is inside, outside and in the home. In `shadow` the engine records
+what it would send and sends nothing. In `events` it sends that one message, only danger in quiet hours and at most
+`ALERT_MAX_PER_DAY` pushes outside danger, and the old heat and air rules still record their alerts but stop
+sending. The default, `rules`, runs no engine. A person answers an event with Done, Not now or Doesn't fit,
+posted to `/actions` with an `event_id`; that answer is not in ρ yet.
+
 ### Measure
 
 [ρ](rho.md) is the share of act-level alerts in the last 30 days that had an `acknowledged` or `acted` row
@@ -98,6 +106,7 @@ the thing receiving the answer.
 |---|---|---|
 | poll | `POLL_SECONDS` (300) | asks every enabled adapter for sensors and readings and upserts them; a source that fails leaves its error in `/health.last_error`; a loop that fails outright appears under its name in `/health.errors` |
 | rules and report | 60 s | writes the [report](report.md) if its hour is due, then runs every rule as the read-only role `planetai_ro` |
+| usual for the hour | hourly | rebuilds `usual_by_hour`, each room's usual for each local hour over the fourteen complete days before today, which the event rules read |
 | push aggregates | hourly | if `PARENT_API_URL` is set, posts the last two hours of hourly means to the parent's `/aggregates` |
 | push events | hourly | if `PARENT_API_URL` is set, posts this node's alert timestamps of the last 36 hours to the parent's `/events` |
 | release check | hourly | unless `UPDATE_CHECK=off`, asks planetai.fab.city once a day which version is current, says so in `/health` and the page's header, and once per version on Telegram. It installs nothing |
@@ -128,7 +137,7 @@ portal; and anywhere, sampling a global model at its coordinates. Same contracts
 Aggregation of Index cells stops at Region. Bioregion and Planet enter as boundary conditions, context
 published downward and never rolled up, which is the Index's own methodology and the architecture keeps it.
 
-The node also carries a pinned snapshot of the `awesome-fabcity-data` registry, 268 entries at `88f5c73`,
+The node also carries a pinned snapshot of the `awesome-fabcity-data` registry, 269 entries at `851b8db`,
 served at `/sources` and listed by `planetai sources`. Most of it is what this place could measure. Some of
 it is where people could go to make or fix something, and the `make` pack turns the nearest fab lab into a
 sentence when `PACKS_ALLOW_CODE=1` and `MAKE_ENABLED=1` are both set.
@@ -167,6 +176,7 @@ The shape of the building behind `/place/geojson` needs a token at every sharing
 | what a place watches, and in which order | `NODE_ISSUES`, declared in `app/issues/*.yml`; see [Issues](issues.md) |
 | how the node speaks | `ALERT_LOCALE`, `ALERT_LEVEL`, `QUIET_*`, `REPORT_*`; see [Configuration](configuration.md) |
 | whether an act needs a decision first | `DECISION_REQUIRED` (default `0`) |
+| whether heat and air alerts are sent as events | `ALERT_ENGINE` (`rules`, `shadow` or `events`; default `rules`) |
 | how much of the page opens, and in what order | `UI_MODE` (`simple`, `advanced`, `learn`) and `UI_LAYOUT` |
 | whether the page may fetch live tiles | `MAP_TILES` (default `off`) |
 | whether the node asks which version is current | `UPDATE_CHECK` (default `on`) |
@@ -182,7 +192,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.76. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.77. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

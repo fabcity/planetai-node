@@ -1,5 +1,5 @@
 # First ten minutes
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer
@@ -69,7 +69,7 @@ planetai test-alert
 ```
 
 It writes a temporary pack with one act-level rule that always fires, waits up to ninety seconds for the
-rules loop to pick it up, and removes the pack. The message on your phone says: "Test alert from your node.
+rules loop to pick it up, and removes the pack the moment it finds its own alert, so the phone gets one test message and not two. The message on your phone says: "Test alert from your node.
 If you can read this, the whole path works: rule to message to you. Record it with `planetai act <id>`." It
 is the only end-to-end proof there is; a quiet node is not a working node until this has happened once.
 (The API has a second test alert, `POST /test-alert`, whose text asks you to close the loop with `/act N` or

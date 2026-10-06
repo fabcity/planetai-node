@@ -1,5 +1,5 @@
 # PLANETAI Node. Spec v0.1
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 2 September 2026. Two containers. This document is the brick; `ARCHITECTURE.md` is the building. Everything here is
 either a contract that must survive rewrites, or a retired piece with the condition that brings it back.
@@ -28,7 +28,7 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 
 **Cells.** `fci-cells-v0`: `{city, cell:"Pillar|Scale", value, unit, source, observed_at, state}`. Exactly the `FCI Observations` row (base `appmNQaDGEFE9VcYh`). `state` is never upgraded by aggregation.
 
-**Actions.** `{alert_id, stage: acknowledged|decided|acted, actor, note}`. ρ is computed from these against `alerts`; `decided` enters no ρ, and `measured` is derived by the node, never posted. This is the only place ρ can be measured, so this table is the Index's instrument, not an app feature.
+**Actions.** `{alert_id, stage: acknowledged|decided|acted, actor, note}`. ρ is computed from these against `alerts`; `decided` enters no ρ, and `measured` is derived by the node, never posted. An alert event's answer is `{event_id, stage: acknowledged|acted|dismissed, actor, note}` instead (v0.77, `docs/SPEC_alerts.md`): one row with no `alert_id`, which no ρ query reads. This is the only place ρ can be measured, so this table is the Index's instrument, not an app feature.
 
 **Scale vocabulary.** `community | city | region | bioregion | planet`: the Full Stack Metrics Framework's scales. A node has one. It's metadata, not code.
 
@@ -37,7 +37,7 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 | | |
 |---|---|
 | `db` | `imresamu/postgis:16-3.4-alpine` (Postgres 16 and PostGIS 3.4, for amd64 and arm64). Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
-| `app` | Python 3.12. Five timer threads (poll, rules, the aggregates and events pushes, and the release check), a sixth for Reticulum when it is on, + FastAPI on :8080. `app/main.py` is ~2,250 lines. |
+| `app` | Python 3.12. Six timer threads (poll, rules, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, and the release check), a seventh for Reticulum when it is on, + FastAPI on :8080. `app/main.py` is ~2,300 lines. |
 
 `GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 

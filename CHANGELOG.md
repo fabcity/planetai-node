@@ -6,6 +6,10 @@
   Not now and Doesn't fit, then the readings that explain it. Act is the record of what was asked and answered, and
   four sections about resolution and custody moved to Network. A node still on the old engine keeps its alert cards,
   with "I did this" on them.
+
+## v0.77 — 2026-10-06 — Alert events: one message per story, with one action
+
+- **2026-10-06 · The source registry is re-pinned to `awesome-fabcity-data` at `851b8db`** (from `88f5c73`), 269 entries: the Global Power Plant Database is filed as an Environmental|Region candidate (registry #79). `docs/NEXT_RELEASE.md` rule 4.
 - `GET /issues` carries the alert events (`events`): what is open, its one action as it was sent, its latest answer, and the alerts it covers; an open event now leads the page. `POST /actions` takes an `event_id` with Done (`acted`), Not now (`acknowledged`) or Doesn't fit (`dismissed`), and `GET /actions?events=1` lists those answers. The page that draws them is v0.78; the Telegram buttons are Plan 2.
 - **2026-10-05 · The report says "dangerously hot" only at real danger.** It opened with "🥵 It is dangerously hot
   inside" whenever any heat alert was open, so node #1's 13:00 report said it on an ordinary 35 °C afternoon, as the

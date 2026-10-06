@@ -1,17 +1,17 @@
 # What a node knows before it has a sensor
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
 On first start, with an empty database, the node pulls for its coordinates:
 
 | source | what | span | cost |
 |---|---|---|---|
 | Copernicus CAMS (via Open-Meteo) | hourly PM2.5, PM10, O₃, NO₂, dust, UV, 11 km grid | PM2.5 and PM10 for the last 92 days, then all of them live | free, no key |
-| NASA POWER | monthly temperature, humidity, rain normals | 40 years | free, no key |
+| NASA POWER | monthly temperature, humidity, rain normals | 1981 to now | free, no key |
 | Open-Meteo | weather now: temp, humidity, wind, rain | live | free, no key |
 | OpenStreetMap Nominatim | the place name | once | free |
 
 So `planetai status` has something to say within minutes, anywhere on Earth: today's modelled air against three months
-of history, today's weather against forty years of normals. `BOOTSTRAP=0` skips it.
+of history, today's weather against normals since 1981. `BOOTSTRAP=0` skips it.
 
 ## The number this makes possible
 
@@ -22,7 +22,7 @@ sensor arrives.
 ## Opt-in, because they need a key
 
 OpenAQ (global public sensors), Google Flood Hub, Sentinel-5P via Earth Engine, NASA FIRMS. None is written yet in
-v0.76; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
+v0.77; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
 unless you turn it on.
 
 ## Presets

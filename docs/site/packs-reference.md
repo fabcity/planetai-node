@@ -1,12 +1,12 @@
 # Packs that ship
-<!-- checked: v0.76 -->
+<!-- checked: v0.77 -->
 
-Eighteen core packs ship in `packs/` in v0.76: ten data packs and eight code packs. Wild packs, written for one
+Seventeen core packs ship in `packs/` in v0.77: ten data packs and seven code packs. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
-the nearest workshop are all in here, as SQL and YAML, and in eight cases as an adapter too. How a pack is
-built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.76.
+the nearest workshop are all in here, as SQL and YAML, and in seven cases as an adapter too. How a pack is
+built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.77.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
@@ -14,8 +14,8 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 
 | pack | kind | domain | rules | report | cells | scripts | settings |
 |---|---|---|---|---|---|---|---|
-| `air-quality` | data | air | 4 act, 2 warn | — | 3 | — | — |
-| `heat` | data | heat | 2 act, 1 info | — | 1 | — | — |
+| `air-quality` | data | air | 4 act, 2 warn; and the event engine's 3 act, 1 warn | — | 3 | — | — |
+| `heat` | data | heat | 2 act, 1 info; and the event engine's 3 act | — | 1 | — | — |
 | `nearby` | data | air | 1 act, 1 info | `alone` | — | `stations` `status` `verify` `backfill` | `BAD_*` |
 | `season` | data | air | 1 info | `record` | — | `window` | — |
 | `insight` | data | cross-domain | 2 info | `digest` | — | — | — |
@@ -32,7 +32,7 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `thingdata` | code | repair | 1 warn | — | 2 | — | `THINGDATA_*` |
 | `example-cooking-hours` | data | (none) | 1 info | — | — | — | — |
 
-That is 29 rules with a message, 4 report contributors and 13 cells. Every rule with a message carries `en`,
+That is 35 rules with a message (28, and the 7 the event engine reads), 4 report contributors and 13 cells. Every rule with a message carries `en`,
 `id` and `es`, and so do the two core rules in `config/rules.yml`; Spanish reached every alert template in
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
@@ -79,6 +79,19 @@ Two rules declare `watch:`: `indoor_pm25_high` watches `pm25` over 35.5 and `out
 `pm25` over 55.5, so `GET /effect` can say how long after somebody acted the hourly mean came back under the
 line. The other four carry none: the two comparison rules fire on a relation between inside and outside, and
 the two spike rules on a ratio to the sensor's own day.
+
+The pack also carries four rules with a `kind:`, which only the event engine reads ([Alerts](alerts.md#the-event-engine)).
+Under `ALERT_ENGINE=rules` they are skipped. Under `shadow` and `events` they write no `alerts` row; each returns
+`value`, `line`, `over` and `where` (`inside` or `outside`), and the engine folds them into one `air` event. Their
+messages are the one line the engine tells the story with. Cooldown 60 for each; the numbers are starting values
+from the replay of node #1's month.
+
+| rule | kind | level | `over` when |
+|---|---|---|---|
+| `air_spike` | spike | warn | a local sensor's latest 15-minute mean is at least 12 above the mean of the preceding hour and at least 10 above this room's 90th percentile for the local hour (a row from a rise of 7 keeps an open event open) |
+| `air_unusual` | unusual | act | every 15-minute mean of the last hour is at least 15 above this room's usual 90th percentile for the hour (a row from an hourly mean 10 above keeps an open event open) |
+| `air_sustained` | sustained | act | the 15-minute means over the last hour are all at least 35 µg/m³ (rows from a mean of 30 keep it open) |
+| `air_extreme` | danger | act | the latest 15-minute mean is at least 125.5 µg/m³ (rows from 115 keep it open) |
 
 ### Cells
 
@@ -136,6 +149,19 @@ at 32 °C, which in Kuta Selatan is the year-round baseline. Against node #1's t
 2026, a line at 32 fired 20 times in 48 hours, ten of them at night; 35 °C is the hot room's p90 and fired eight
 times in five days, never at night. The README records why the fix was the threshold and not a longer cooldown, a
 duration gate or a trend.
+
+The pack also carries three rules with a `kind:`, read only by the event engine ([Alerts](alerts.md#the-event-engine)):
+skipped under `ALERT_ENGINE=rules`, and under `shadow` and `events` they write no `alerts` row and fold into one
+`heat` event. They read `recent_15m`'s `apparent` and `usual_by_hour`, indoor sensors only, and leave out a sensor
+whose `temp` channel is declared as something other than ambient (a Meshtastic radio's own box). Cooldown 60 each.
+
+| rule | kind | level | `over` when |
+|---|---|---|---|
+| `heat_unusual` | unusual | act | every 15-minute mean apparent temperature of the last hour is at least 2 °C above this room's usual 90th percentile for the hour (a row from an hourly mean 1 °C above keeps an open event open) |
+| `heat_sustained` | sustained | act | the room has been at 35 °C or more for at least 3 hours, and for more than its usual number of such hours (a row from a latest mean of 34 keeps an open event open) |
+| `heat_extreme` | danger | act | the latest 15-minute mean is at least 40 °C (rows from 39 keep it open) |
+
+This is how the engine says "dangerously hot" only at 40 °C and not at an ordinary 35 °C afternoon.
 
 ### Cells
 
@@ -760,7 +786,7 @@ After a move it takes `planetai restart`, `planetai run place refresh` and a das
 
 Where somebody can go to make or fix something: the active fab labs nearest this node, from the Fab Lab
 Network directory, with what each one can do. This pack is the first thread from a reading to a place that can
-make or fix something. In v0.76 it names the place and stops there: no node has handed a job to a workshop,
+make or fix something. In v0.77 it names the place and stops there: no node has handed a job to a workshop,
 and nothing in the code sends one.
 
 | | |
