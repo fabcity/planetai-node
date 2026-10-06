@@ -3192,6 +3192,7 @@ function silentFold(ctx) {
     + `</details>`;
 }
 
+
 window.PAI.register({
   id: 'sensors', pack: 'air-quality', stage: 'observe', title: 'What the stations read', order: 20,
   reads: ['/issues', '/settings'],
@@ -5564,8 +5565,8 @@ window.PAI.register({
  * node's own probes just had, which is the reading coming back — or not — after somebody acted.
  *
  * Nothing here is a gauge. ρ is a row of rings, answered first, and the numeral beside it says the
- * same thing in words; the day is a trace with its axis, its origin, its line and its text
- * alternative. The four card kinds are enough.
+ * same thing in words; the hours over the line are counted from the node's own per-day counts,
+ * today and in the days the strips draw. The day itself is drawn under Observe. The four card kinds are enough.
  */
 PAI_LOAD.push(function () {
 'use strict';
@@ -5599,9 +5600,36 @@ function careLabel() {
     + `</div>`;
 }
 
+/* Hours over the line, counted (docs/SPEC_dashboard_figures.md §4.5, after Bali Air Dispatch): how long, not how
+ * high, which is what a household acts on. Today and the days GET /issues/days covers, from the node's own per-day
+ * counts; an hour with nothing recorded is named beside them and never counted as clean. */
+function overRows(ctx) {
+  const D = window.DAYS;
+  if (!D) {
+    return `<p class="note" id="measure-over" data-ref="rho">This node does not send its days yet, so the hours over `
+      + `the line are not counted here.</p>`;
+  }
+  const keys = ctx.ORDER.filter(k => D.issues[k] && D.issues[k].distance && D.issues[k].line);
+  const sum = ps => ps.reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read, of: a.of + p.of }),
+    { over: 0, read: 0, of: 0 });
+  return `<div class="reads" id="measure-over" data-ref="rho">` + keys.map(k => {
+    const it = D.issues[k], u = ctx.ISS[k];
+    const t = sum(it.per_day.slice(-1)), w = sum(it.per_day);
+    return row({ id: `measure-over-${k}`, component: 'overCount', ref: 'measure-over',
+      cols: 'minmax(0,210px) minmax(0,1fr) auto',
+      left: `<span class="who"><b>${esc(u.name[LOC])}</b><span class="m">${esc(ctx.LAB[it.distance])} · over `
+        + `${esc(fmt(it.line.value, u.dp))} ${esc(u.unit)}</span></span>`,
+      line: `Hours over the line today, and in these ${D.days} days.`,
+      qty: [{ num: `${k}.over.today`, value: `${t.over} h`, cmp: `of ${t.read} hours read today, ${t.of - t.read} not recorded` },
+        { num: `${k}.over.days`, value: `${w.over} h`, cmp: `of ${w.read} hours read in ${D.days} days, ${w.of - w.read} not recorded` }],
+    });
+  }).join('') + `</div>`;
+}
+
+
 window.PAI.register({
   id: 'measure', pack: 'core', stage: 'measure', order: 10, learn: ['rho', 'refusals'],
-  reads: ['/rho', '/issues'],
+  reads: ['/rho', '/issues', '/issues/days'],
   title: 'Whether it worked',
   needs: ['SNAP.rho'],
   render(ctx) {
@@ -5633,7 +5661,7 @@ window.PAI.register({
           cmp: `${r.acted} answered of ${r.alerts_act} asked in ${r.window_days} days` }],
       })
       + `</div>${funnel()}${careLabel()}</div>`
-      + `<div id="measure-over-slot" data-ref="rho"></div></div>`;
+      + `<div>${overRows(ctx)}</div></div>`;
   },
   notes(ctx) {
     const r = ctx.S.rho;
@@ -5646,6 +5674,11 @@ window.PAI.register({
         + 'second ρ is specified and does not exist: ρ observed would ask whether the reading came '
         + 'back under the line, and no rule has yet said what its own line is, so the page prints '
         + 'those words rather than a zero that would read as a node that looked and found nothing.' },
+      { id: 'measure-over', label: 'How long, counted',
+        text: 'A reading over the line for one hour and for nine are different days, and a curve does not say which. '
+        + 'These rows count the hours the house was over the line, from the node\'s own count per local day: today, '
+        + 'and the days the strips above draw. An hour nothing was recorded is named beside the count, never counted as '
+        + 'clean.' },
       { id: 'funnel', label: 'One thing counted four times',
         text: 'The funnel counts one thing four times: how many alerts the node sent, '
         + 'how many were acknowledged, how many led to something being done, and how many stopped '
