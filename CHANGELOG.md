@@ -3,8 +3,9 @@
 ## Unreleased
 
 - `GET /issues` carries what the page's new drawings need: each issue's usual day (`usual`), an open event's own rooms
-  hour by hour (`events.open[].series`), and the stations that stopped reporting in the last 30 days, kept with when
-  they were last heard (relays of kits that still report are left out). `GET /issues/days?days=7` (up to 90) gives the
+  hour by hour (`events.open[].series`), and, apart from `stations`, the stations that stopped reporting in the last
+  30 days (`stations_silent.stations`), kept with when they were last heard (relays of kits that still report are
+  left out). `GET /issues/days?days=7` (up to 90) gives the
   same hourly series over many days with the hours over the line counted per day, and `planetai snapshot` captures it.
 
 - The dashboard opens on what is happening now: each open alert event once, with the action the bot sent and Done,

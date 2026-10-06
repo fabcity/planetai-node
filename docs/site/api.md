@@ -329,11 +329,11 @@ Returns `{schema, order, undeclared, dropped, headline, as_of, lead, headline_ru
   a node that has not refreshed the view since it started), `no_source`, `no_history`, or `not_watched`.
 - Each open event in `events.open` carries `series`: its own rooms, hour by hour on the issue's `buckets`, combined
   as the issue combines its house (air the mean of PM2.5, heat the median of each room's apparent temperature).
-- `stations` keeps a station heard in the last 30 days and not in the last day, with `read: {}`, `series: {}` and
-  `last_heard`, unless a station heard today stands at the same point (a relay of a kit that still reports).
-  `stations_silent` says whether they were read (`read`) and how far back (`within_days`). The stopped stations are
-  published, never counted: `digest` (the simple sentence, "observing N stations", the neighbours within a kilometre)
-  and `geometry` (the grain table) read only stations heard in the last day.
+- `stations` holds the stations heard in the last day. `stations_silent` is `{read, within_days, stations}`: whether
+  the stopped ones were read, how far back, and its `stations`, those heard in the last 30 days and not in the last
+  day, with `read: {}`, `series: {}` and `last_heard`, leaving out a relay of a kit still heard at the same point.
+  `digest` (the simple sentence, "observing N stations", the neighbours within a kilometre) and `geometry` (the grain
+  table) count only `stations`.
 - `hero` is what the page draws when that issue leads, and the page draws nothing else there: `sign` and `pictogram` (symbol ids in `signs.svg`; no pictogram means the sign at hero size), `numeral` (the distance or readout the number is), `value`, `unit`, `dp`, `sentence`, `plain` (one more sentence: the other distances and the line, or where a context issue's number comes from), `rule` and `stamp` (keyed by locale). `rule` is `null` or `{min, max, ends, dots, line}`: `ends` is two words per locale, `dots` is `[{distance, value}]` for the distances that have a value tonight, and `line` is `{value, name}` or `null`. `clock` says what `stamp` is: `time`, when the numeral was read, or `date`, when a yearly record looked and when it looks next. `hero` is `null` for an issue that declares none, and for one not watched here.
 - `sections` is one entry per section an enabled pack declares under `sections:` in its `pack.yaml`: `{id, pack, stage, title, order, wall, note, expected, readouts}`. Each readout carries its `sensor_id` and `age_minutes`; a reading the node has no row for is left out, and `expected` says how many were declared. No shipped pack declares one, so it is `[]` on every node unless a wild pack adds one.
 

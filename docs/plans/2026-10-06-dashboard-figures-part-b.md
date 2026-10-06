@@ -860,16 +860,16 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes: `window.K.fig`, `offsetOf`, `hhmmAt`, `dayAt`, `PLOT_STYLE` (Task 2); `stations_silent`, `last_heard`,
   `events.open[].rooms` (part A).
-- Produces: `window.H3.silent` (stations with `last_heard`); `window.H3.sensors` no longer contains them.
+- Produces: `window.H3.silent` (stations with `last_heard`); `window.H3.sensors` never contained them.
 
-- [ ] **Step 1: Keep the stopped apart.** In `bind()`, `window.H3 = { ...geo, sensors: issues.stations || [], ...`
-  becomes:
+- [ ] **Step 1: Keep the stopped apart.** `stations` already holds only stations heard in the last day; the stopped
+  ones arrive in `stations_silent.stations`. In `bind()`, `window.H3 = { ...geo, sensors: issues.stations || [], ...`
+  keeps `sensors` unchanged and gains one key:
 
 ```js
-  /* A station with `last_heard` stopped reporting (docs/SPEC_dashboard_figures.md §3.3). It is not a station this
-     node reads now, so it is neither on the map nor in the groups; What the stations read lists it in a fold. */
-  const stations = issues.stations || [];
-  window.H3 = { ...geo, sensors: stations.filter(s => !s.last_heard), silent: stations.filter(s => s.last_heard),
+  /* A station in stations_silent.stations stopped reporting (docs/SPEC_dashboard_figures.md §3.3). It is not a
+     station this node reads now, so it is neither on the map nor in the groups; What the stations read lists it in a fold. */
+  window.H3 = { ...geo, sensors: issues.stations || [], silent: (issues.stations_silent || {}).stations || [],
 ```
 
   (the rest of that object literal is unchanged).

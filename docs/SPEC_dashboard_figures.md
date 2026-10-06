@@ -1,6 +1,6 @@
 # The page draws the day: figures, strips, and a keeper's Grafana
 
-*Approved in brainstorming with Tomas, 6 October 2026, section by section. Nothing here is built yet.*
+*Approved in brainstorming with Tomas, 6 October 2026, section by section. §3 (the server piece) is built on branch figures-wire-2026-10-06; §4 and §5 are not built yet.*
 
 The page draws one day four times and never more than one day. Its graphs do not answer a pointer, the house's bad
 hours have to be read off curves, and a station that falls silent for a day disappears. This spec replaces the four
@@ -78,15 +78,18 @@ room's apparent temperature), hour by hour. The page draws it inside the day fig
 computes it because heat's apparent temperature is a function of two stored metrics, and a page that combined them
 would be computing a number.
 
-### 3.3 `GET /issues`: stations keep the ones that stopped
+### 3.3 `GET /issues`: the stations that stopped, beside the ones heard
 
-`stations` gains every `kind = 'sensor'` station that reported in the last 30 days and not in the last 24 hours, with
-`read: {}`, `series: {}` and `last_heard` (the time of its last reading). One query on `readings`, in `_read`, beside
-the five tables; the top-level `stations_silent: {read, within_days}` says whether they were read, and a replay carries the capture's own.
+`stations` stays the stations heard in the last day. The top-level `stations_silent: {read, within_days, stations}`
+says whether the stopped ones were read and how far back, and its `stations` lists every `kind = 'sensor'` station
+that reported in the last 30 days and not in the last 24 hours, with `read: {}`, `series: {}` and `last_heard` (the
+time of its last reading). One query on `readings`, in `_read`, beside the five tables; a replay carries the
+capture's own. They are kept apart because `geometry`'s cells name their sensors by position in `stations`, and every
+reader of `stations` means a station heard now.
 
 **Not every silent row is a silent kit.** Of node #1's eight, "Ungasan Kit - TEST (Smart Citizen)" and "BAYU NEW
 ENCLOSURE (Smart Citizen)" were last heard on 4 October, while kits of the same names report today under other ids.
-Listing them as "no longer heard" would tell the household two working kits are dead. A silent row is not listed when a station heard in the last day stands at the same point, to five decimal places. On node #1 that drops the three `bad-sc-*` relays and the OpenAQ relay of Padang2 Uluwatu, and keeps four. The stopped stations are published, never counted: `digest` (simple mode's sentence, "observing N stations", the neighbours within a kilometre) and `geometry` (the grain table) read only stations heard in the last day.
+Listing them as "no longer heard" would tell the household two working kits are dead. A silent row is not listed when a station heard in the last day stands at the same point, to five decimal places. On node #1 that drops the three `bad-sc-*` relays and the OpenAQ relay of Padang2 Uluwatu, and keeps four. The stopped stations are published, never counted: `digest` (simple mode's sentence, "observing N stations", the neighbours within a kilometre) and `geometry` (the grain table) read only `stations`.
 
 ### 3.4 `GET /issues/days?days=7` (1 to 90)
 
