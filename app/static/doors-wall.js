@@ -65,9 +65,9 @@ function frags() {
    and the line under them says so. Again every 15 minutes while the wall is on screen. */
 const NARR = { text: '', at: 0, busy: false, model: null, where: null, read: [], err: null, timer: 0 };
 const NARR_EVERY = 15 * 60e3;
-const narrAsk = m => `You are speaking aloud on this household's wall screen. In at most 70 words, in plain sentences and no lists, `
-  + `say what the node's figures in your context mean right now, then what they could mean over the next hours. Start with ${m}. `
-  + `Use only figures in your context, each with where it was read and against its line. Do not ask questions, do not give a greeting.`;
+/* Plain words for people who know nothing about units or maps (Tomas, 7 Oct): tried on node #1's qwen3:4b until it
+   read like a neighbour, said what the readings suggest without promising, and closed on the next few hours. */
+const narrAsk = () => "You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour, say what is happening around their home right now: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most one number. Say what the readings suggest for an ordinary day, such as windows, cooking or sleep, but never promise that anything is safe. End with one sentence about the next few hours, from the forecast or the usual pattern for this hour if your context has it; if it does not, say the node will keep watching. Use only the figures in your context. Three or four short sentences, no lists, no greeting, no questions.";
 function narrDraw() {
   const el = $('#wnarr'); if (!el) return;
   /* the model is named once it has answered (the done event says which rung did); while it asks, the wall says only
@@ -92,7 +92,7 @@ async function narrate() {
   NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.text = ''; narrDraw();
   try {
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
-      body: JSON.stringify({ messages: [{ role: 'user', content: narrAsk(labelOf(WVAR)) }], view: 'wall', mode: 'advanced', focus: null }) });
+      body: JSON.stringify({ messages: [{ role: 'user', content: narrAsk() }], view: 'wall', mode: 'advanced', focus: null }) });
     if (!r.ok || !r.body) throw new Error(`the node answered ${r.status}`);
     const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
     for (;;) {
