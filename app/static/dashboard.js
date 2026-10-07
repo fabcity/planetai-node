@@ -2186,7 +2186,13 @@ const PLAN_FROM = 9;
 /* ONE predicate, read in both places, so the strip can never offer what baseOf would refuse. */
 const tilesAllowed = (res, settings) =>
   (settings || {}).MAP_TILES === 'on' && res < PLAN_FROM;
-const autoBase = (res, settings) => tilesAllowed(res, settings) ? 'sat' : 'plan';
+/* The node's own maps lead when it holds them: its own satellite picture where 10 m reads (coarser than resolution 9),
+   its own street map from 9 inward, where 10 m blurs. Both send nothing. Then the old rule. */
+const autoBase = (res, settings) => {
+  if (res < PLAN_FROM && ownAllowed('imagery')) return 'imagery';
+  if (ownAllowed('street')) return 'street';
+  return tilesAllowed(res, settings) ? 'sat' : 'plan';
+};
 /* A PRESS MAY ONLY EVER REDUCE WHAT LEAVES THE HOUSE. The prototype's comment said the opposite —
  * "a pressed base always wins over the rule" — and it was written for a drawing, before MAP_TILES
  * existed. On a node it is not a preference: a link in a page cannot be allowed to override the
