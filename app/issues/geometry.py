@@ -326,9 +326,31 @@ def grid(west: float, south: float, east: float, north: float, res: int, lat: fl
             "node": _row(h3.latlng_to_cell(lat, lon, res)), "cells_ll": [_row(c) for c in cells]}
 
 
-def cell(cid: str, lat: float, lon: float) -> dict:
+CHILDREN_CAP = 400       # child rings one answer may carry; the count is always given
+
+
+def bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Initial great-circle bearing from the first point to the second, degrees clockwise from north."""
+    p1, p2, dl = math.radians(lat1), math.radians(lat2), math.radians(lon2 - lon1)
+    y = math.sin(dl) * math.cos(p2)
+    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
+    return round((math.degrees(math.atan2(y, x)) + 360) % 360, 2)
+
+
+def polar(cid: str, lat: float, lon: float) -> list:
+    """A cell's boundary as [id, metres, bearing, metres, bearing, …] from (lat, lon): what a drawing that places
+    things by distance and direction from the node needs, so it works out neither."""
+    out = [cid]
+    for plat, plng in h3.cell_to_boundary(cid):
+        out += [round(h3.great_circle_distance((lat, lon), (plat, plng), unit="m"), 1), bearing(lat, lon, plat, plng)]
+    return out
+
+
+def cell(cid: str, lat: float, lon: float, children: int | None = None, as_polar: bool = False) -> dict:
     """What the inspector says about one cell: its own area and edge, its parent, and how far it is from the
-    node's cell at the same resolution, in cells (None when h3 cannot walk the grid that far)."""
+    node's cell at the same resolution, in cells (None when h3 cannot walk the grid that far). With `children`, the
+    count of its children at that resolution and, up to CHILDREN_CAP, their rings; with `as_polar`, every ring also
+    as distance and bearing from the node."""
     if not h3.is_valid_cell(cid):
         raise ValueError(f"{cid!r} is not an H3 cell")
     res = h3.get_resolution(cid)
@@ -337,9 +359,22 @@ def cell(cid: str, lat: float, lon: float) -> dict:
         steps = h3.grid_distance(cid, mine)
     except Exception:  # noqa: BLE001 — h3 refuses across a pentagon or past its walk limit; say so, do not guess
         steps = None
-    return {"id": cid, "res": res, "area_m2": round(h3.cell_area(cid, unit="m^2")), "edge_m": edge_m(cid),
-            "parent": h3.cell_to_parent(cid, res - 1) if res else None, "may_leave": res <= FLOOR_RES,
-            "is_node": cid == mine, "cells_from_node": steps, "ring": _row(cid)}
+    out = {"id": cid, "res": res, "area_m2": round(h3.cell_area(cid, unit="m^2")), "edge_m": edge_m(cid),
+           "parent": h3.cell_to_parent(cid, res - 1) if res else None, "may_leave": res <= FLOOR_RES,
+           "is_node": cid == mine, "cells_from_node": steps, "ring": _row(cid)}
+    if as_polar:
+        out["ring_polar"] = polar(cid, lat, lon)
+    if children is not None:
+        if not res < children <= 15:
+            raise ValueError(f"children must be finer than this cell's resolution {res}, and at most 15")
+        out["children_res"] = children
+        out["children_n"] = h3.cell_to_children_size(cid, children)
+        if out["children_n"] <= CHILDREN_CAP:
+            kids = sorted(h3.cell_to_children(cid, children))
+            out["children_ll"] = [_row(k) for k in kids]
+            if as_polar:
+                out["children_polar"] = [polar(k, lat, lon) for k in kids]
+    return out
 
 
 def measure(points: list[tuple[float, float]]) -> dict:
@@ -347,6 +382,21 @@ def measure(points: list[tuple[float, float]]) -> dict:
     legs = [round(h3.great_circle_distance((a[1], a[0]), (b[1], b[0]), unit="m"), 1)
             for a, b in zip(points, points[1:])]
     return {"legs_m": legs, "total_m": round(sum(legs), 1), "points": len(points)}
+
+
+def each(points: list[tuple[float, float]]) -> list[dict]:
+    """From the first (lon, lat) point to every other: metres and initial bearing, for a drawing that places
+    each by distance and direction."""
+    lon0, lat0 = points[0]
+    return [{"m": round(h3.great_circle_distance((lat0, lon0), (la, lo), unit="m"), 1), "deg": bearing(lat0, lon0, la, lo)}
+            for lo, la in points[1:]]
+
+
+def planet(res: int) -> list:
+    """Every cell on the planet at a coarse resolution, as cells_ll rows: 122 at res 0, 842 at 1, 5,882 at 2."""
+    if not 0 <= res <= 2:
+        raise ValueError("the planet grid is drawn at resolution 0, 1 or 2")
+    return [_row(c) for r0 in sorted(h3.get_res0_cells()) for c in sorted(h3.cell_to_children(r0, res))]
 
 
 def rings(lat: float, lon: float, kms: list[float]) -> list[dict]:

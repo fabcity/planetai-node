@@ -1624,9 +1624,11 @@ def geo_grid(bbox: str, res: int = Query(..., ge=0, le=15)):
 
 @app.get("/geo/cell")
 def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
-             lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15)):
+             lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15),
+             children: int | None = Query(None, ge=1, le=15), polar: bool = False):
     """One cell's facts, named by `id` or by `lat`, `lon` and `res`: area, edge, parent, and how many cells from the
-    node's own at the same resolution."""
+    node's own at the same resolution. `children=<res>` adds how many children it has there and, up to 400, their
+    rings; `polar=true` adds every ring as distance and bearing from the node."""
     here = _here()
     if id is None:
         if lat is None or lon is None or res is None:
@@ -1634,22 +1636,31 @@ def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=9
         import h3
         id = h3.latlng_to_cell(lat, lon, res)
     try:
-        return _geo.cell(id, *here)
+        return _geo.cell(id, *here, children=children, as_polar=polar)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
 
 
 @app.get("/geo/measure")
-def geo_measure(path: str, from_node: bool = False):
+def geo_measure(path: str, from_node: bool = False, each: bool = False):
     """Metres along `path`, lon,lat pairs separated by `;`, great-circle, each leg and the total. `from_node=true`
-    starts the path at the node, which is how the inspector says how far a station is."""
+    starts the path at the node, which is how the inspector says how far a station is. `each=true` adds, for every
+    point after the first, its distance and bearing from the first, in one answer."""
     pts = [tuple(_floats(p, 2, "each point")) for p in path.split(";") if p.strip()]
     if from_node:
         lat, lon = _here()
         pts = [(lon, lat)] + pts
     if not 2 <= len(pts) <= 200 or any(not (-180 <= x <= 180 and -90 <= y <= 90) for x, y in pts):
         raise HTTPException(422, "path: 2 to 200 lon,lat points in degrees")
-    return _geo.measure(pts)
+    return {**_geo.measure(pts), **({"each": _geo.each(pts)} if each else {})}
+
+
+@app.get("/geo/planet")
+def geo_planet(res: int = Query(2, ge=0, le=2)):
+    """Every H3 cell on the planet at resolution 0, 1 or 2, as cells_ll rows: the world grid a map of nodes is drawn
+    on, so the page computes none of it."""
+    _here()
+    return {"res": res, "cells_ll": _geo.planet(res)}
 
 
 @app.get("/geo/rings")

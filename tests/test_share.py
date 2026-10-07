@@ -371,7 +371,19 @@ assert local.get("/geo/measure?path=115.14,-8.65").status_code == 422, "one poin
 _r = local.get("/geo/rings?km=2,5").json()["rings"]
 assert [x["km"] for x in _r] == [2, 5] and _r[0]["ring"][0] == _r[0]["ring"][-1], "rings come back closed"
 assert local.get("/geo/rings?km=0").status_code == 422 and local.get("/geo/rings?km=1,2,3,4,5,6,7,8,9").status_code == 422
-print("geo: grid, cell, measure and rings answer this machine and a token, refuse the LAN, and refuse bad boxes")
+# The flow and the Node door: a cell's children, rings as distance and bearing, many distances in one answer, the planet.
+_p6 = local.get("/geo/cell?lat=-8.6478291&lon=115.1385412&res=6&children=8&polar=true").json()
+assert _p6["children_n"] == 49 and len(_p6["children_ll"]) == 49 and len(_p6["children_polar"]) == 49, _p6.keys()
+assert len(_p6["ring_polar"]) == 1 + 12 and all(0 <= b < 360 for b in _p6["ring_polar"][2::2]), "polar rows are id then metres, bearing"
+_r3 = local.get("/geo/cell?lat=-8.65&lon=115.14&res=3&children=8").json()
+assert _r3["children_n"] == 7 ** 5 and "children_ll" not in _r3, "past 400 the count is given and the rings are not"
+assert local.get("/geo/cell?lat=-8.65&lon=115.14&res=8&children=6").status_code == 422, "children are finer, not coarser"
+_e = local.get("/geo/measure?from_node=true&each=true&path=115.1385412,-8.6378291;115.1485412,-8.6478291").json()["each"]
+assert 1100 < _e[0]["m"] < 1120 and _e[0]["deg"] < 1, f"due north first: {_e[0]}"
+assert 1090 < _e[1]["m"] < 1110 and abs(_e[1]["deg"] - 90) < 1, f"due east second: {_e[1]}"
+assert len(local.get("/geo/planet?res=2").json()["cells_ll"]) == 5882 and local.get("/geo/planet?res=3").status_code == 422
+assert lan.get("/geo/planet").status_code == 403
+print("geo: grid, cell, measure and rings answer this machine and a token, refuse the LAN, and refuse bad boxes; children, polar, each and the planet too")
 
 # The ground kept on disk (GET /ground/*): served from out/ground/ by name, private like /place/geojson.
 import gzip as _gz, importlib.util as _iu, json as _json, sqlite3 as _sq, tempfile as _tf

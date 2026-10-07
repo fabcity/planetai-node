@@ -327,8 +327,10 @@ One cell's facts, named by `id`, or by `lat`, `lon` and `res`.
 |---|---|---|---|
 | `id` | string | none | An H3 cell id |
 | `lat`, `lon`, `res` | float, float, int | none | The cell containing that point at that resolution, when there is no `id` |
+| `children` | int | none | A finer resolution: adds `children_res`, `children_n`, and up to 400 child rings as `children_ll` |
+| `polar` | bool | false | Adds each ring as distance and bearing from the node: `ring_polar`, and `children_polar` with `children` |
 
-Returns `{id, res, area_m2, edge_m, parent, may_leave, is_node, cells_from_node, ring}`. `cells_from_node` counts grid steps from the node's own cell at the same resolution, or is null when h3 cannot walk that far.
+Returns `{id, res, area_m2, edge_m, parent, may_leave, is_node, cells_from_node, ring}`. `cells_from_node` counts grid steps from the node's own cell at the same resolution, or is null when h3 cannot walk that far. A polar row is `[id, metres, bearing, …]`, bearing in degrees clockwise from north.
 
 ### GET /geo/measure
 Access: token
@@ -339,8 +341,20 @@ Distances along a path, great-circle, in metres.
 |---|---|---|---|
 | `path` | string | required | `lon,lat` points separated by `;`, 2 to 200 of them |
 | `from_node` | bool | false | Start the path at the node |
+| `each` | bool | false | Also give every later point's distance and bearing from the first |
 
-Returns `{legs_m, total_m, points}`.
+Returns `{legs_m, total_m, points}`, and `each: [{m, deg}]` with `each`.
+
+### GET /geo/planet
+Access: token
+
+Every H3 cell on the planet at resolution 0, 1 or 2 (122, 842 or 5,882), as `cells_ll` rows: the world grid a map of nodes is drawn on.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `res` | int | 2 | 0, 1 or 2 |
+
+Returns `{res, cells_ll}`.
 
 ### GET /geo/rings
 Access: token
@@ -370,7 +384,7 @@ The label fonts the vector map draws names with (Noto Sans, OFL), one face and o
 
 `planetai run place basemap` fetches the vector tiles, the fonts and any drone mosaic; `planetai run earth-engine basemap` builds the satellite layer. Each says what it reveals before it runs. After that a map drawn from these routes asks nobody anything.
 
-The four `/geo/` routes and the three `/ground/` routes are on no allowlist, like `/place/geojson`: the node's cell at a fine resolution, a ring centred on it, and a distance from it each give away the point `/health` rounds, and so does a tile pyramid centred on it.
+The five `/geo/` routes and the three `/ground/` routes are on no allowlist, like `/place/geojson`: the node's cell at a fine resolution, a ring centred on it, and a distance from it each give away the point `/health` rounds, and so does a tile pyramid centred on it.
 
 ## Issues
 
