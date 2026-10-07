@@ -427,4 +427,12 @@ def _v(n):
 assert _b.parse_dir(_v(2) + _v(5) + _v(1) + _v(1) + _v(2) + _v(10) + _v(20) + _v(1) + _v(0)) == [(5, 0, 10, 1), (6, 10, 20, 2)]
 print("ground: tiles, fonts and meta answer this machine, refuse the LAN, read the archive by Hilbert id")
 
+# GET /storage (the Set up page's Storage): what the machine holds is the keeper's, at every level.
+for _lv in ("off", "open"):
+    level(_lv)
+    assert lan.get("/storage").status_code == 403, f"/storage answered a stranger at SHARE_LEVEL={_lv}"
+    assert lan.get("/machine").status_code == 403, f"/machine answered a stranger at SHARE_LEVEL={_lv}"
+level("off")
+print("storage and machine: the keeper's, refused to the LAN at every level")
+
 print("all share-level checks passed")

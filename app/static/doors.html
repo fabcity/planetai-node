@@ -352,18 +352,81 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   .sms{grid-template-columns:minmax(0,1fr)}.tbl .hide{display:none}.ans button{padding:6px 10px}
   .lrow .bar{grid-column:1 / -1;grid-row:2}.lrow.two .s{grid-column:1 / -1}
 }
+/* ---- Set up (doors-setup.js): mono's grid — 1px ink rules, square, outlined; Linear's section list and rows ---- */
+#setupv2 .sh{border-bottom:1px solid var(--ink);padding-bottom:18px}
+#setupv2 .sh h1{margin-top:8px}
+.sgrid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:0;align-items:start}
+.snav{position:sticky;top:12px;display:flex;flex-direction:column;border-right:1px solid var(--ink);padding:18px 0}
+.snav a{display:flex;justify-content:space-between;gap:8px;padding:9px 16px 9px 0;color:var(--ink);text-decoration:none;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;border-top:1px solid var(--hair)}
+.snav a:last-child{border-bottom:1px solid var(--hair)}
+.snav a i{font-style:normal;color:var(--mute);letter-spacing:.04em;text-transform:none}
+.snav a.on{background:var(--ink);color:var(--ground);padding-left:10px}.snav a.on i{color:var(--ground);opacity:.75}
+.snav a:not(.on):hover{padding-left:6px}
+.spane{padding:18px 0 120px 32px;min-width:0}
+.spane h2{margin:0 0 6px}.spane .blurb{max-width:68ch;color:var(--mute);margin:0 0 16px}
+.spane .gate{border:1px solid var(--ink);padding:10px 14px;margin:0 0 16px;max-width:68ch}
+.spane .gate a{color:var(--ink)}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,340px);gap:10px 28px;padding:16px 0;border-top:1px solid var(--hair);align-items:start}
+.srow.wide{grid-template-columns:minmax(0,1fr)}
+.srow .sl label{font:600 var(--t-read)/1.3 var(--body);display:block}
+.srow .sm{font:500 var(--t-cap) var(--mono);color:var(--mute);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.srow .sm code{font:inherit;color:var(--ink)}
+.srow .help{margin:6px 0 0;color:var(--mute);font-size:var(--t-small);max-width:62ch}
+.srow .out,.sbar .out{border:1px solid var(--ink);padding:0 5px;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.04em}
+.srow .sc input,.srow .sc select{width:100%;background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;padding:8px 10px;font:500 var(--t-small) var(--mono)}
+.srow .sc input:focus-visible,.srow .sc select:focus-visible,.sw:focus-visible,.sbtn:focus-visible,.share .opt:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+.srow .sc input[disabled],.srow .sc select[disabled],.sw[disabled],.share input[disabled]+b{opacity:.55;cursor:not-allowed}
+.srow.ro .sc input{border-style:dashed;color:var(--mute)}
+.srow .sc.txt{font-size:var(--t-small)}.srow .sc.txt a{color:var(--ink)}
+.srow .err{margin:6px 0 0;border-left:3px solid var(--signal-worse);padding:4px 8px;font-size:var(--t-small)}
+.sw{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:30px;border:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
+.sw.on{background:var(--ink);color:var(--ground)}
+.share{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--ink);margin-top:12px}
+.share .opt{display:block;padding:14px 16px;cursor:pointer;position:relative}
+.share .opt+.opt{border-left:1px solid var(--ink)}
+.share .opt input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.share .opt b{display:block;font:600 var(--t-cap) var(--mono);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+.share .opt span{font-size:var(--t-small);color:var(--mute)}
+.share .opt.on{background:var(--ink);color:var(--ground)}.share .opt.on span{color:var(--ground);opacity:.85}
+.packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0;border-top:1px solid var(--ink);border-left:1px solid var(--ink);margin-bottom:18px}
+.pcard{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:14px 16px}
+.pcard .ph{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}
+.pcard .ph b{font:600 var(--t-read) var(--body)}.pcard .sm{font:500 var(--t-cap) var(--mono);color:var(--mute)}
+.pcard .help{margin:6px 0 0;color:var(--mute);font-size:var(--t-small)}
+.pcard .srow{grid-template-columns:minmax(0,1fr)}.pcard .srow .sl label{font-size:var(--t-small)}
+.hist{margin-top:26px;border-top:1px solid var(--ink);padding-top:10px;font-size:var(--t-small)}.hist p{margin:4px 0;color:var(--mute)}
+.unlock2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;border:1px solid var(--ink);padding:16px;margin-top:18px;max-width:760px}
+.unlock2 label{display:flex;flex-direction:column;gap:6px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.unlock2 input{background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;padding:8px 10px;font:500 var(--t-small) var(--mono);text-transform:none;letter-spacing:0}
+.unlock2 > div{grid-column:1 / -1}
+.state{font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--ink);padding:4px 8px}
+.sbtn{background:none;border:1px solid var(--ink);color:var(--ink);padding:0 20px;height:34px;font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
+.sbtn.primary{border-width:2px}
+.sbar{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,3vw,40px);background:var(--ground);border-top:2px solid var(--ink);font:500 var(--t-small) var(--mono)}
+.sbar .sp{flex:1}
+.dbar.thin{height:6px;margin:6px 0 0;max-width:340px}.srow .sc.txt small{display:block;color:var(--mute);margin-top:3px}.spane h3.sub2{margin:34px 0 6px;font:700 var(--t-read) var(--display)}
+.dhead{display:flex;align-items:baseline;gap:14px;margin:6px 0 14px}.dhead b{font:600 44px/1 var(--mono);letter-spacing:-.02em}.dhead span{color:var(--mute);font-size:var(--t-small);max-width:40ch}
+.dbar{display:flex;height:22px;border:1px solid var(--ink);margin-bottom:8px}.dbar i{display:block;height:100%}
+.dbar .mine,.dkey .mine{background:var(--ink)}.dbar .other,.dkey .other{background:var(--hair)}
+.dkey{display:flex;flex-wrap:wrap;gap:6px 20px;font:500 var(--t-cap) var(--mono);color:var(--mute);margin-bottom:12px}.dkey i{display:inline-block;width:12px;height:12px;border:1px solid var(--ink);vertical-align:-2px;margin-right:6px}
+#stoast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:30;background:var(--ink);color:var(--ground);padding:10px 16px;font:500 var(--t-small) var(--mono);max-width:min(640px,92vw)}
+#stoast.bad{background:var(--ground);color:var(--ink);border:2px solid var(--signal-worse)}
+@media (max-width:760px){.sgrid{grid-template-columns:minmax(0,1fr)}.snav{position:static;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--ink);padding:0}
+  .snav a{border-top:0;border-right:1px solid var(--hair);padding:10px 12px;white-space:nowrap}.spane{padding-left:0}
+  .srow{grid-template-columns:minmax(0,1fr)}.share,.unlock2{grid-template-columns:minmax(0,1fr)}.share .opt+.opt{border-left:0;border-top:1px solid var(--ink)}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
 <header class="bar">
   <span class="who" id="who"></span>
-  <nav class="doors" aria-label="Doors"><a href="#now" data-v="now">Now</a><a href="#place" data-v="place">Place</a><a href="#data" data-v="data">Data</a><a href="#wall" data-v="wall">Wall</a><a href="#node" data-v="node">Node</a></nav>
+  <nav class="doors" aria-label="Doors"><a href="#now" data-v="now">Now</a><a href="#place" data-v="place">Place</a><a href="#node" data-v="node">Node</a><a href="#data" data-v="data">Data</a><a href="#wall" data-v="wall">Wall</a></nav>
   <span class="sp"></span>
   <span class="proto" id="asof"></span>
   <div class="reg" role="group" aria-label="Register"><button data-r="light" class="on">PAPER</button><button data-r="dark">DARK</button></div>
   <a class="iconbtn" href="https://planetai.fab.city/docs/" target="_blank" rel="noopener" aria-label="Documentation (opens planetai.fab.city)" title="Documentation"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5zM12 2.5v3.5h3.5M7.5 10h5M7.5 12.5h5M7.5 15h3"/></svg></a>
   <button class="iconbtn" id="askbtn" aria-expanded="false" aria-controls="askpane" aria-label="Ask the node" title="Ask the node"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 3.5h15v10h-8.5l-4.5 3.5v-3.5h-2z"/><path d="M8.3 7a1.8 1.8 0 1 1 2.5 1.7c-.5.3-.8.7-.8 1.3v.4"/><path class="dot" d="M10 11.6v.1"/></svg></button>
+  <a class="iconbtn" href="#setup" id="gear" aria-label="Set up" title="Set up"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.6 2h2.8l.4 2.2 1.5.7 1.9-1.3 2 2-1.3 1.9.7 1.5 2.2.4v2.8l-2.2.4-.7 1.5 1.3 1.9-2 2-1.9-1.3-1.5.7-.4 2.2H8.6l-.4-2.2-1.5-.7-1.9 1.3-2-2 1.3-1.9-.7-1.5L1.2 11.4V8.6l2.2-.4.7-1.5-1.3-1.9 2-2 1.9 1.3 1.5-.7z"/><circle cx="10" cy="10" r="2.6"/></svg></a>
 </header>
 
 <!-- NOW -->
@@ -415,6 +478,9 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 <!-- WALL -->
 <section class="view" data-view="wall" hidden><div id="wallv" data-learn="dial" data-reads="/health /issues /stats /rho" data-stage="observe" data-pack="core"></div></section>
 
+<!-- SET UP: a page of its own, opened by the gear (doors-setup.js) -->
+<section class="page view" data-view="setup" hidden><div id="setupv2" data-learn="settings" data-reads="/settings /packs /actions /health" data-pack="core"></div></section>
+
 <!-- NODE -->
 <section class="page view" data-view="node" hidden>
   <div id="nodehead" data-learn="purpose" data-reads="/health" data-pack="core"></div>
@@ -424,12 +490,8 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <div id="world" data-learn="presence" data-reads="/health" data-pack="reticulum"></div><div id="nodes"></div>
   <div class="cols2">
     <section data-learn="health" data-reads="/health" data-pack="core"><h2>Running</h2><div id="running"></div>
-      <form class="unlock" id="unlock"><label>Unlock this screen <input type="password" id="tok" autocomplete="off" placeholder="the act or admin token"></label>
-        <button class="now" type="submit">UNLOCK</button> <button class="now" type="button" id="lock">LOCK</button>
-        <span class="fine">`planetai ui` prints the tokens. Kept in this browser only, sent only to this node.</span></form></section>
-    <section data-learn="settings" data-reads="/settings /packs /health" data-pack="core"><h2>Set up</h2>
-      <div id="setupv"></div>
-    </section>
+      <p class="fine"><a href="#setup">Set up</a> holds this node’s settings, its packs, who may read it and this screen’s token.</p></section>
+
   </div>
   <section data-learn="refusals" data-pack="core"><h2>What this node will not do, at any stage</h2>
     <div class="lrow"><span class="t" style="grid-column:1 / -1;font-weight:400">No raw readings leave the instance that recorded them.</span></div>
@@ -468,5 +530,6 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 <script src="/static/doors-wallmap.js"></script>
 <script src="/static/doors-wall.js"></script>
 <script src="/static/doors-node.js"></script>
+<script src="/static/doors-setup.js"></script>
 </body>
 </html>

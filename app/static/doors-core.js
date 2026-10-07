@@ -55,7 +55,7 @@ function lastRaw(id, metric) {
   const s = ((D.raw.series[id] || {})[metric]) || []; for (let i = s.length - 1; i >= 0; i--) if (s[i]) return s[i][0]; return null;
 }
 
-const DOORS = ['now', 'place', 'data', 'wall', 'node'];
+const DOORS = ['now', 'place', 'node', 'data', 'wall', 'setup'];   /* setup is a page, opened by the gear, not a door in the menu */
 /* #data/<sensor-id> opens a door at one thing: the part after the slash is the door's to read */
 const view = () => { const d = location.hash.slice(1).split('/')[0]; return DOORS.includes(d) ? d : 'now'; };
 const VIEWS = {};
@@ -82,7 +82,7 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
   knownNodes(D); foot();
   $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
-  $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)}${DOORS_TOKEN() ? '' : ' · locked'}`;
+  $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)} · ${D.health.version || ''}${DOORS_TOKEN() ? '' : ' · locked'}`;
   try { D.ngeo = await nodeGeo(D); } catch (e) { D.ngeo = null; D.ngeoErr = e.message; }
   route();
   window.addEventListener('hashchange', route);
@@ -114,10 +114,7 @@ function learnList() {
 $('#askbtn').onclick = () => { const open = $('#askpane').hidden; $('#askpane').hidden = !open; $('#askbtn').setAttribute('aria-expanded', String(open)); if (open) { learnList(); $('#q').focus(); } };
 $('#askclose').onclick = () => { $('#askpane').hidden = true; $('#askbtn').setAttribute('aria-expanded', 'false'); $('#learn').checked = false; learnList(); };
 $('#learn').onchange = learnList;
-/* the token lives where the dashboard keeps it, so a screen unlocked on one page is unlocked on the other */
-$('#unlock').onsubmit = ev => { ev.preventDefault(); const t = $('#tok').value.trim(); if (!t) return;
-  try { localStorage.setItem('planetai_admin', t); } catch (e) { /* no storage here */ } location.reload(); };
-$('#lock').onclick = () => { try { localStorage.removeItem('planetai_admin'); localStorage.removeItem('planetai_act'); } catch (e) { /* no storage here */ } location.reload(); };
+/* the token is set and cleared on Set up → This screen (doors-setup.js), kept where the dashboard keeps it */
 /* POST /ask, the node's own: it streams `event: token` blocks; only the words are drawn here, the dashboard's ask pane
    keeps the ledger of what it read. One question at a time, no thread. */
 $('#qsend').onclick = async () => {
@@ -153,7 +150,7 @@ function foot() {
     + `<p>${rel.newer ? `${esc(rel.latest)} is out: <code>planetai update</code> on the node.` : 'A node of PLANETAI, the Fab City programme’s network of homes that read their place, decide and act.'}</p></div>`
     + `<div><b>Read</b><a href="${esc(docs)}" target="_blank" rel="noopener">Documentation</a><a href="${esc(docs)}dashboard/" target="_blank" rel="noopener">These pages, explained</a>`
     + `<a href="${esc(h.llms || '/llms.txt')}">For agents: llms.txt</a><button class="linkish" type="button" id="footask">Ask the node</button></div>`
-    + `<div><b>This house</b><a href="/">The classic dashboard</a><a href="/#setup">Set up</a><a href="#node">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
+    + `<div><b>This house</b><a href="/">The classic dashboard</a><a href="#setup">Set up</a><a href="#setup/screen">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
     + `<div><b>Fab City</b><a href="https://planetai.fab.city/" target="_blank" rel="noopener">PLANETAI</a><a href="https://fab.city/" target="_blank" rel="noopener">Fab City Foundation</a>`
     + `<a href="https://github.com/fabcity/planetai-node" target="_blank" rel="noopener">Source, Apache-2.0</a></div>`;
   $('#footask').onclick = () => $('#askbtn').click();
