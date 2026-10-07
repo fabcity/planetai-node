@@ -163,7 +163,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .altc{grid-column:1 / 3;border-right:1px solid var(--ink);min-width:0}#altfacts{padding:14px}
 #altbar{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px;border-bottom:1px solid var(--hair)}#altbar:empty{display:none}
 #altbar button{background:none;border:1px solid var(--ink);width:28px;height:26px;cursor:pointer}#altbar .cmp{font-size:var(--t-small);margin-left:14px;display:flex;gap:6px;align-items:center}
-#mapalt{aspect-ratio:16/10;width:100%;overflow:hidden}#mapalt .photo{width:100%;height:100%;object-fit:cover;display:block}
+#mapalt{aspect-ratio:16/10;width:100%;overflow:hidden}#mapalt .photo{width:100%;height:100%;object-fit:contain;display:block;background:var(--ink)}
 /* views of the place: three, as a segmented strip under the lede */
 .pviews{display:flex;border:1px solid var(--ink);width:max-content;max-width:100%;margin-top:14px;overflow-x:auto}
 .pviews button{background:none;border:0;border-right:1px solid var(--ink);padding:6px 14px;text-align:left;cursor:pointer}.pviews button:last-child{border-right:0}
@@ -237,7 +237,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 #mapbar .cmp{font-size:var(--t-small);margin-left:14px;display:flex;gap:6px;align-items:center}
 #map{aspect-ratio:1;width:100%;overflow:hidden}
 #map .photo{width:100%;height:100%;object-fit:cover;display:block}
-.pair{display:grid;grid-template-columns:1fr 1fr;height:100%}.pair figure{margin:0;position:relative}.pair img{width:100%;height:100%;object-fit:cover;display:block}
+.pair{display:grid;grid-template-columns:1fr 1fr;height:100%}.pair figure{margin:0;position:relative}.pair img{width:100%;height:100%;object-fit:contain;display:block;background:var(--ink)}
 .pair figcaption{position:absolute;left:8px;top:8px;background:var(--ground);border:1px solid var(--ink);font:600 var(--t-cap) var(--mono);padding:1px 6px}
 .chg{padding:16px}.chg .lrow{grid-template-columns:120px minmax(0,1fr) auto}.chg .span{border-top:1px solid var(--ink)}
 #facts{padding:14px}
@@ -374,13 +374,13 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .srow .help{margin:6px 0 0;color:var(--mute);font-size:var(--t-small);max-width:62ch}
 .srow .out,.sbar .out{border:1px solid var(--ink);padding:0 5px;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.04em}
 .srow .sc input,.srow .sc select{width:100%;background:var(--ground);color:var(--ink);border:1px solid var(--ink);border-radius:0;padding:8px 10px;font:500 var(--t-small) var(--mono)}
-.srow .sc input:focus-visible,.srow .sc select:focus-visible,.sw:focus-visible,.sbtn:focus-visible,.share .opt:focus-within{outline:2px solid var(--ink);outline-offset:2px}
-.srow .sc input[disabled],.srow .sc select[disabled],.sw[disabled],.share input[disabled]+b{opacity:.55;cursor:not-allowed}
+.srow .sc input:focus-visible,.srow .sc select:focus-visible,#setupv2 .sw:focus-visible,.sbtn:focus-visible,.share .opt:focus-within{outline:2px solid var(--ink);outline-offset:2px}
+.srow .sc input[disabled],.srow .sc select[disabled],#setupv2 .sw[disabled],.share input[disabled]+b{opacity:.55;cursor:not-allowed}
 .srow.ro .sc input{border-style:dashed;color:var(--mute)}
 .srow .sc.txt{font-size:var(--t-small)}.srow .sc.txt a{color:var(--ink)}
 .srow .err{margin:6px 0 0;border-left:3px solid var(--signal-worse);padding:4px 8px;font-size:var(--t-small)}
-.sw{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:30px;border:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
-.sw.on{background:var(--ink);color:var(--ground)}
+#setupv2 .sw{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:30px;border:1px solid var(--ink);background:none;color:var(--ink);font:600 var(--t-cap) var(--mono);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border-radius:0}
+#setupv2 .sw.on{background:var(--ink);color:var(--ground)}
 .share{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--ink);margin-top:12px}
 .share .opt{display:block;padding:14px 16px;cursor:pointer;position:relative}
 .share .opt+.opt{border-left:1px solid var(--ink)}
