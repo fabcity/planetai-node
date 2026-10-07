@@ -130,6 +130,21 @@ paper and dark. All 32 renders drew, and none sent a request off the node.
   (no horizontal overflow in 198 combinations). The gate draws the default `svg` ground only. **Owed:** a gate
   pass with `UI_GROUND=map`.
 
+## Routes added, 7 October
+
+The redesign's Place door (planetai-design R36) first drew its grid with h3-js and measured in the page. Tomas asked
+for that compute on the node, so four routes now answer it, from `app/issues/geometry.py`:
+
+- `GET /geo/grid?bbox=&res=`: the cells covering a box, one ring wider, plus the node's own cell, as `cells_ll`
+  rows. A box past 2,500 cells is refused with 422, not cut short.
+- `GET /geo/cell?id=` (or `lat`, `lon`, `res`): area, own edge, parent, `may_leave`, and grid steps from the node.
+- `GET /geo/measure?path=&from_node=`: great-circle metres, leg by leg.
+- `GET /geo/rings?km=`: circles round the node.
+
+All four are on no allowlist, like `/place/geojson`, because each locates the node more finely than `/health`
+does. `tests/test_share.py` holds the gate, the shapes and the refusals. The prototype asks them through
+`prototypes/instrument/serve.py`, and with them it makes no h3 call on Place, measured by wrapping `window.h3`.
+
 ## Not done
 
 - **Phase 1b, the offline vector base** (`planetai ground fetch`, a Protomaps extract in `data/`, a `vector` tab

@@ -295,3 +295,60 @@ def radio(lat: float, lon: float, settings, peers: list[dict]) -> dict:
     return {"res": res, "mine": mine, "candidates": cands, "peer_km": km,
             "edge_m": edge_m(mine),
             "area_m2": round(h3.cell_area(mine, unit="m^2")), "cells": around}
+
+
+# ---------------------------------------------------------------- the map workbench (GET /geo/*)
+# The redesign's Place door pans, zooms, inspects and measures. Every shape and every distance it draws is
+# answered here, so the page stays a drawing: the same `cells_ll` rows plates() publishes, and metres from
+# h3's own great-circle distance. All pure; app/main.py adds the node's point and the gate.
+
+GRID_CAP = 2500          # cells one answer may carry: a 1440 px map at its finest useful rung is about 600
+
+
+def _row(cid: str) -> list:
+    return [cid] + [round(v, 6) for pt in h3.cell_to_boundary(cid) for v in pt]
+
+
+def grid(west: float, south: float, east: float, north: float, res: int, lat: float, lon: float) -> dict:
+    """The cells that cover a box at `res`, plus one ring round them so the grid runs off the frame's edge,
+    and the node's own cell at that resolution. Refuses a box that would cost more than GRID_CAP cells,
+    estimated before any is computed, rather than truncating a covering silently."""
+    if not (-90 <= south < north <= 90 and -180 <= west < east <= 180):
+        raise ValueError("bbox must be west,south,east,north in degrees, with west < east and south < north")
+    mid = math.radians((south + north) / 2)
+    area = (east - west) * 111320 * math.cos(mid) * (north - south) * 111320
+    if area / h3.average_hexagon_area(res, unit="m^2") > GRID_CAP:
+        raise ValueError(f"that box holds more than {GRID_CAP} cells at resolution {res}: zoom in or ask coarser")
+    poly = h3.LatLngPoly([(south, west), (south, east), (north, east), (north, west)])
+    inner = h3.polygon_to_cells(poly, res) or [h3.latlng_to_cell((south + north) / 2, (west + east) / 2, res)]
+    cells = sorted({n for c in inner for n in h3.grid_disk(c, 1)})[:GRID_CAP]
+    return {"res": res, "may_leave": res <= FLOOR_RES, "edge_m": round(h3.average_hexagon_edge_length(res, unit="m")),
+            "node": _row(h3.latlng_to_cell(lat, lon, res)), "cells_ll": [_row(c) for c in cells]}
+
+
+def cell(cid: str, lat: float, lon: float) -> dict:
+    """What the inspector says about one cell: its own area and edge, its parent, and how far it is from the
+    node's cell at the same resolution, in cells (None when h3 cannot walk the grid that far)."""
+    if not h3.is_valid_cell(cid):
+        raise ValueError(f"{cid!r} is not an H3 cell")
+    res = h3.get_resolution(cid)
+    mine = h3.latlng_to_cell(lat, lon, res)
+    try:
+        steps = h3.grid_distance(cid, mine)
+    except Exception:  # noqa: BLE001 — h3 refuses across a pentagon or past its walk limit; say so, do not guess
+        steps = None
+    return {"id": cid, "res": res, "area_m2": round(h3.cell_area(cid, unit="m^2")), "edge_m": edge_m(cid),
+            "parent": h3.cell_to_parent(cid, res - 1) if res else None, "may_leave": res <= FLOOR_RES,
+            "is_node": cid == mine, "cells_from_node": steps, "ring": _row(cid)}
+
+
+def measure(points: list[tuple[float, float]]) -> dict:
+    """A path as the reader clicked it, (lon, lat) pairs: each leg and the total, in metres, great-circle."""
+    legs = [round(h3.great_circle_distance((a[1], a[0]), (b[1], b[0]), unit="m"), 1)
+            for a, b in zip(points, points[1:])]
+    return {"legs_m": legs, "total_m": round(sum(legs), 1), "points": len(points)}
+
+
+def rings(lat: float, lon: float, kms: list[float]) -> list[dict]:
+    """Circles round the node, as [lat, lng] rings, so the page draws a distance it did not work out."""
+    return [{"km": k, "ring": [[round(a, 6), round(b, 6)] for a, b in _circle(lat, lon, k * 1000)]} for k in kms]

@@ -346,4 +346,31 @@ for _n in ("vendor/maplibre-gl.js", "maplibre-gl.LICENSE.txt", "deck.gl.LICENSE"
     assert lan.get(f"/static/{_n}").status_code == 404, f"/static/{_n} answered: the route takes a name, not a path"
 print("static: the three vendored map files are served, and nothing else under vendor/")
 
+# The map workbench (GET /geo/*): the node computes every ring and distance the Place door draws, and none of it is
+# on an allowlist, because the node's cell at a fine resolution and "metres from the node" give away its point.
+for _lv in ("off", "open"):
+    level(_lv)
+    for _u in ("/geo/grid?bbox=115.13,-8.66,115.15,-8.64&res=8", "/geo/cell?lat=-8.65&lon=115.14&res=9",
+               "/geo/measure?path=115.14,-8.65&from_node=true", "/geo/rings"):
+        assert lan.get(_u).status_code == 403, f"{_u} answered a stranger at SHARE_LEVEL={_lv}: it locates the node"
+level("off")
+_g = local.get("/geo/grid?bbox=115.13,-8.66,115.15,-8.64&res=8").json()
+_own = _g["node"][0]
+assert _g["res"] == 8 and _g["may_leave"] is False and any(r[0] == _own for r in _g["cells_ll"]), _g
+assert len(_g["cells_ll"][0]) == 1 + 12, "a cells_ll row is the id then six lat,lng pairs, as plates() publishes"
+assert lan.get("/geo/grid?bbox=115.13,-8.66,115.15,-8.64&res=8", headers=ADMIN).status_code == 200, "a token reads it"
+assert local.get("/geo/grid?bbox=100,-20,130,0&res=10").status_code == 422, "a covering past the cap is refused, not cut"
+assert local.get("/geo/grid?bbox=115.15,-8.66,115.13,-8.64&res=8").status_code == 422, "west must be west of east"
+_c = local.get(f"/geo/cell?id={_own}").json()
+assert _c["is_node"] and _c["cells_from_node"] == 0 and _c["res"] == 8 and 600000 < _c["area_m2"] < 800000, _c
+assert local.get("/geo/cell?id=not-a-cell").status_code == 422
+_m = local.get("/geo/measure?path=115.14,-8.65;115.15,-8.65").json()
+assert 1095 < _m["total_m"] < 1105 and _m["legs_m"] == [_m["total_m"]], _m      # 0.01 deg of longitude at 8.65 S
+assert local.get("/geo/measure?path=115.1385412,-8.6478291&from_node=true").json()["total_m"] == 0
+assert local.get("/geo/measure?path=115.14,-8.65").status_code == 422, "one point is not a path"
+_r = local.get("/geo/rings?km=2,5").json()["rings"]
+assert [x["km"] for x in _r] == [2, 5] and _r[0]["ring"][0] == _r[0]["ring"][-1], "rings come back closed"
+assert local.get("/geo/rings?km=0").status_code == 422 and local.get("/geo/rings?km=1,2,3,4,5,6,7,8,9").status_code == 422
+print("geo: grid, cell, measure and rings answer this machine and a token, refuse the LAN, and refuse bad boxes")
+
 print("all share-level checks passed")

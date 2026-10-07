@@ -33,6 +33,7 @@ import events_pg
 import ground
 import index
 import issues.api
+from issues import geometry as _geo
 import packs
 import registry
 import report
@@ -1584,6 +1585,80 @@ def _earth_latest() -> dict | None:
         return None
     yoy = [c for c in out if c.get("year_b", 0) - c.get("year_a", 0) == 1]
     return (yoy or out)[-1]
+
+
+# ---------------------------------------------------------------- the map workbench
+# The redesign's Place door pans, zooms, inspects and measures. Every ring it draws and every distance it prints is
+# answered here (app/issues/geometry.py), so the page computes no H3 and no distance: tools/check_ui.py holds it to
+# that. **On no SHARE_LEVEL allowlist, like /place/geojson**: the node's cell at a fine resolution, rings centred on
+# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token.
+
+
+def _here() -> tuple[float, float]:
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if not (lat or lon):
+        raise HTTPException(409, "this node has no NODE_LAT and NODE_LON yet, so there is no place to draw")
+    return lat, lon
+
+
+def _floats(text: str, n: int | None, what: str) -> list[float]:
+    try:
+        out = [float(x) for x in text.split(",")]
+    except ValueError:
+        raise HTTPException(422, f"{what}: numbers separated by commas") from None
+    if n is not None and len(out) != n:
+        raise HTTPException(422, f"{what}: {n} numbers")
+    return out
+
+
+@app.get("/geo/grid")
+def geo_grid(bbox: str, res: int = Query(..., ge=0, le=15)):
+    """The cells covering `bbox` (west,south,east,north) at `res`, one ring wider, and the node's own cell at that
+    resolution, as `cells_ll` rows ([id, lat, lng, …]). 422 rather than a truncated covering when the box is too big."""
+    lat, lon = _here()
+    try:
+        return _geo.grid(*_floats(bbox, 4, "bbox"), res, lat, lon)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/geo/cell")
+def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
+             lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15)):
+    """One cell's facts, named by `id` or by `lat`, `lon` and `res`: area, edge, parent, and how many cells from the
+    node's own at the same resolution."""
+    here = _here()
+    if id is None:
+        if lat is None or lon is None or res is None:
+            raise HTTPException(422, "name a cell: id, or lat, lon and res")
+        import h3
+        id = h3.latlng_to_cell(lat, lon, res)
+    try:
+        return _geo.cell(id, *here)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/geo/measure")
+def geo_measure(path: str, from_node: bool = False):
+    """Metres along `path`, lon,lat pairs separated by `;`, great-circle, each leg and the total. `from_node=true`
+    starts the path at the node, which is how the inspector says how far a station is."""
+    pts = [tuple(_floats(p, 2, "each point")) for p in path.split(";") if p.strip()]
+    if from_node:
+        lat, lon = _here()
+        pts = [(lon, lat)] + pts
+    if not 2 <= len(pts) <= 200 or any(not (-180 <= x <= 180 and -90 <= y <= 90) for x, y in pts):
+        raise HTTPException(422, "path: 2 to 200 lon,lat points in degrees")
+    return _geo.measure(pts)
+
+
+@app.get("/geo/rings")
+def geo_rings(km: str = "2,5,15"):
+    """Circles round the node at each distance in `km`, as [lat, lng] rings. At most eight, none past 500 km."""
+    kms = _floats(km, None, "km")
+    if not 1 <= len(kms) <= 8 or any(not 0 < k <= 500 for k in kms):
+        raise HTTPException(422, "km: one to eight distances, each above 0 and at most 500")
+    return {"rings": _geo.rings(*_here(), kms)}
 
 
 @app.get("/earth")
