@@ -16,8 +16,8 @@
   node's area; `planetai run earth-engine basemap` builds the node's own cloud-free Sentinel-2 picture of the last
   twelve months. Each says what it reveals before it runs, once. The map ground offers them as bases that send
   nothing: "street map, on this node", "satellite, on this node" and "drone, on this node".
-- `GET /geo/grid`, `/geo/cell`, `/geo/measure` and `/geo/rings` answer the shapes and distances a map draws, so the
-  page computes no H3 and no distance; `GET /ground/meta`, `/ground/{vector,drone,imagery}/{z}/{x}/{y}` and
+- `GET /geo/grid`, `/geo/cell` (with `children` and `polar`), `/geo/measure` (with `each`), `/geo/rings` and
+  `/geo/planet` answer the shapes and distances a map draws, so the page computes no H3 and no distance; `GET /ground/meta`, `/ground/{vector,drone,imagery}/{z}/{x}/{y}` and
   `/ground/glyphs/…` serve the kept map. All need a token or this machine, like `/place/geojson`.
   `tools/check_ui.py` now fails a page that imports h3-js or calls an H3 function.
 
