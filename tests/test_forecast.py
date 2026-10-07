@@ -102,7 +102,7 @@ wg = fixture("openmeteo_wind_grid_ungasan_2026-10-07.json")
 lats, lons = A.wind_grid(LAT, LON)
 assert len(lats) == len(lons) == 8 and lats == sorted(lats) and lons == sorted(lons), "south to north, west to east"
 assert abs(lats[-1] - lats[0] - 60 / 110.574) < 1e-3, "the square is 2 x FORECAST_WIND_KM tall"
-assert len(wg) == 64 and all(abs(p["latitude"] - lats[k // 8]) < .06 and abs(p["longitude"] - lons[k % 8]) < .06 for k, p in enumerate(wg)), \
+assert len(wg) == 65 and all(abs(p["latitude"] - lats[k // 8]) < .06 and abs(p["longitude"] - lons[k % 8]) < .06 for k, p in enumerate(wg[:64])), \
     "Open-Meteo answers in the order asked, within one model cell (cell_selection=nearest, never a land cell 12 km off)"
 assert wg[0]["hourly_units"]["wind_speed_10m"] == "km/h", "the field is km/h, as the point forecast stores it"
 _real_now = A.datetime
@@ -116,6 +116,8 @@ assert wf["n"] == 8 and len(wf["times"]) == len(wf["speed_kmh"]) == len(wf["from
 assert len(wf["speed_kmh"][0]) == 8 and len(wf["speed_kmh"][0][0]) == 8, "time, then row (south to north), then column"
 k = wg[3 * 8 + 5]["hourly"]["time"].index(wf["times"][0][:-1])
 assert wf["speed_kmh"][0][3][5] == wg[3 * 8 + 5]["hourly"]["wind_speed_10m"][k], "row 3, column 5 is point 29"
+assert len(wf["at_node"]["speed_kmh"]) == len(wf["times"]) and wf["at_node"]["speed_kmh"][0] == wg[64]["hourly"]["wind_speed_10m"][k], \
+    "the readout is the node's own point, asked as the 65th, not a value picked off the grid"
 try:
     A.wind_field(HC(wg[:10]), LAT, LON); raise AssertionError("a short answer must be refused")
 except ValueError:

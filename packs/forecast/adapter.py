@@ -131,7 +131,7 @@ def wind_field(hc, lat: float, lon: float, km: float = WIND_KM, n: int = WIND_N)
     the next day, in one request. Speeds km/h, directions the way the wind comes FROM, as the point forecast stores
     them. Not readings: a model's field, kept as a file (out/ground/wind.json) for the map and nothing else."""
     lats, lons = wind_grid(lat, lon, km, n)
-    pts = [(la, lo) for la in lats for lo in lons]
+    pts = [(la, lo) for la in lats for lo in lons] + [(round(lat, 5), round(lon, 5))]   # the node's own point last
     r = hc.get(OPEN_METEO, params={"latitude": ",".join(str(p[0]) for p in pts), "longitude": ",".join(str(p[1]) for p in pts),
                                    "hourly": "wind_speed_10m,wind_direction_10m", "forecast_days": 2, "timezone": "UTC",
                                    "cell_selection": "nearest"})   # the default, "land", moves a sea point to the nearest land cell, 12 km off
@@ -145,10 +145,14 @@ def wind_field(hc, lat: float, lon: float, km: float = WIND_KM, n: int = WIND_N)
     keep = [i for i, t in enumerate(times) if fetched - timedelta(hours=1) <= _utc(t) <= fetched + timedelta(hours=HOURS)]
     grid = lambda key: [[[(p.get("hourly") or {}).get(key, [None] * len(times))[i] for p in d[j * n:(j + 1) * n]]  # noqa: E731
                          for j in range(n)] for i in keep]
+    me = (d[-1].get("hourly") or {})
     return {"source": "Open-Meteo, 10 m wind", "licence": "CC-BY 4.0, free tier non-commercial only",
             "attribution": "Open-Meteo, open-meteo.com", "fetched": fetched.isoformat(), "n": n, "km": km,
             "lats": lats, "lons": lons, "times": [times[i] for i in keep],
-            "speed_kmh": grid("wind_speed_10m"), "from_deg": grid("wind_direction_10m")}
+            "speed_kmh": grid("wind_speed_10m"), "from_deg": grid("wind_direction_10m"),
+            # the readout's one number is the node's own point, asked as such, not a value the page picks off the grid
+            "at_node": {"speed_kmh": [me.get("wind_speed_10m", [None] * len(times))[i] for i in keep],
+                        "from_deg": [me.get("wind_direction_10m", [None] * len(times))[i] for i in keep]}}
 
 
 def write_wind_field(hc, lat: float, lon: float):
