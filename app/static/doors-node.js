@@ -98,7 +98,7 @@ async function around() {
 function running() {
   const h = D.health, mesh = h.mesh, ret = h.reticulum;
   $('#running').innerHTML = [['Version', `planetai-node ${h.version} · schema ${h.schema}`, ''], ['Running for', 'since the last restart', `${fmt(h.uptime_s / 3600, 1)} h`],
-    ['Readings taken in', `${h.polls} polls since the restart, the last at ${h.last_poll.slice(11, 16)} UTC`, h.ingested.toLocaleString('en')],
+    ['Readings taken in', h.last_poll ? `${h.polls} polls since the restart, the last at ${h.last_poll.slice(11, 16)} UTC` : 'no poll yet since the restart', h.ingested.toLocaleString('en')],
     ['Its clock', 'every local hour on these pages is this zone’s', h.tz],
     ['Mesh in the house', mesh ? `${mesh.root_topic} · gateway ${mesh.gateway}` : 'no mesh broker set', mesh ? `${mesh.packets} packets` : 'off'],
     ['Radio', ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set', ret && ret.ok ? 'on' : 'off'],
