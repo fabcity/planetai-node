@@ -102,6 +102,7 @@ test_season|PYTHONPATH=/tmp/stub:app python3 tests/test_season.py
 test_measures|PYTHONPATH=tests python3 tests/test_measures.py
 test_forecast|PYTHONPATH=/tmp/stub:app python3 tests/test_forecast.py
 test_meshtastic|PYTHONPATH=/tmp/stub:app python3 tests/test_meshtastic.py
+test_sc_direct|PYTHONPATH=/tmp/stub:app python3 tests/test_sc_direct.py
 test_logic|PYTHONPATH=/tmp/stub:app python3 tests/test_logic.py
 test_packs|PYTHONPATH=/tmp/stub:app python3 tests/test_packs.py
 test_thingdata|PYTHONPATH=/tmp/stub:app python3 tests/test_thingdata.py
@@ -154,11 +155,11 @@ printf '  %d suites: %d passed, %d failed, %d check(s) skipped\n' "$total" "$pas
 [ -n "$skip_lines" ] && printf '%s' "$skip_lines"
 [ -n "$failed_names" ] && printf '  failed:%s\n' "$failed_names"
 
-# Sixty-six is the number of suites in the list above (test_doors added 7 Oct 2026). If the list and this number disagree, one of them
+# Sixty-seven is the number of suites in the list above (test_doors and test_sc_direct, both 7 Oct 2026). If the list and this number disagree, one of them
 # is a typo, and a runner that quietly runs twenty-five of twenty-six is the bug it was written to end.
 # (The word and the number had drifted apart by two bumps when packs/make added the forty-fourth.)
-if [ "$total" -ne 66 ]; then
-  printf '  \033[31mx\033[0m ran %d suites, expected 66 — the list in this file lost or gained a line\n' "$total"
+if [ "$total" -ne 67 ]; then
+  printf '  \033[31mx\033[0m ran %d suites, expected 67 — the list in this file lost or gained a line\n' "$total"
   exit 1
 fi
 [ "$fail" -gt 0 ] && exit 1

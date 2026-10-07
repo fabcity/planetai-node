@@ -159,6 +159,11 @@ RUNTIME = {
                                "not a thing to do by typing a number."),
     "RETICULUM_ALERT_DESTINATIONS": ("sharing", "Reticulum alert addresses", False, False, "LXMF hashes, comma-separated."),
     "HA_DISCOVERY":       ("sharing", "Home Assistant", False, False, "1 publishes sensors and alerts as HA entities over MQTT (needs the broker)."),
+    "SC_FORWARD":         ("sharing", "Forward to Smart Citizen", True, False,
+                           "Device tokens, comma-separated, of the kits and DIY nodes that publish to this node's broker "
+                           "(`planetai broker`) and whose messages this node passes on to smartcitizen.me unchanged, so the "
+                           "device keeps its page there and the campaign dashboards keep reading it. Blank = nothing is "
+                           "forwarded. A token is a credential: it is masked here and never appears in a sensor id."),
     "PARENT_API_URL":     ("sharing", "Parent node", False, False, "http://<district>:8080 — hourly means go here. Empty = none."),
     # system — tuning numbers, and the layout Arrange mode writes. Not "advanced": that is a page mode, and the header has its switch.
     "LOCAL_RADIUS_M":     ("system", "Local radius, m", False, False, "how far from the node a sensor can be and still count as this node's own, in metres"),
@@ -228,6 +233,7 @@ OUTWARD = {
     "RETICULUM_ALERT_DESTINATIONS",  # where act-level alerts are sent
     "MESH_ALERTS",          # alerts over the LoRa mesh, which is not this household's network
     "HA_DISCOVERY",         # sensors and alerts published to the MQTT broker
+    "SC_FORWARD",           # a device's own readings passed on to smartcitizen.me
     "AGENT_ONLINE_URL", "AGENT_ONLINE_MODEL", "AGENT_ONLINE_KEY",  # the one path off the network
     "AGENT_PREFER",         # which decides whether the online path is used at all
     "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_IDS",  # where the node speaks

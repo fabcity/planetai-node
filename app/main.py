@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import collections
 import json
 from zoneinfo import ZoneInfo
 import logging
@@ -65,6 +66,8 @@ def MESH_ALERTS():
     return settings.get("MESH_ALERTS", "0") == "1"
 def MESH_GATEWAY_NUM():
     return int(settings.get("MESH_GATEWAY_NODE_NUM", "0") or 0)
+def SC_FORWARD():
+    return {t.strip() for t in settings.get("SC_FORWARD", "").split(",") if t.strip()}
 def AGG_TOKEN():
     return settings.get("AGGREGATE_TOKEN", "").strip()
 def SHARE_LEVEL():
@@ -78,6 +81,15 @@ def HA_DISCOVERY():
 _ha_announced: set = set()
 RETICULUM_URL = os.getenv("RETICULUM_URL", "").strip()       # the reticulum bridge, e.g. http://reticulum:4243
 mesh_state = {"root_topic": None, "gateway": None, "packets": 0, "last": None}
+# Kits and DIY nodes publishing Smart Citizen's own wire format to this node's broker (sources.smartcitizen_mqtt).
+# `queued` is what still has to reach smartcitizen.me for the devices in SC_FORWARD.
+sc_state = {"devices": 0, "messages": 0, "last": None, "forwarded": 0, "forward_failed": 0, "queued": 0}
+sc_meta: dict[str, dict] = {}          # token -> the device's last retained meta message, kept in memory only
+sc_seen: set[str] = set()              # tokens heard since start; only their count is ever reported
+# ponytail: in memory, bounded at two days of one device a minute; a restart during an internet outage drops it.
+# A table if a forwarded minute ever matters that much. appendleft on failure evicts the newest, not the oldest.
+sc_queue: "collections.deque[tuple[str, bytes, str]]" = collections.deque(maxlen=2880)
+SC_PLATFORM_HOST, SC_PLATFORM_PORT = "mqtt.smartcitizen.me", 8883
 # What the Reticulum bridge says about itself, refreshed on its own thread. /health is called every
 # twenty seconds by every screen in the house, so it must never make an outbound request of its own:
 # a bridge that is down would turn the node's own health check into a timeout.
@@ -164,8 +176,8 @@ def mqtt_thread() -> None:
     import paho.mqtt.client as mqtt
 
     def on_connect(c, u, flags, rc, props=None):
-        c.subscribe([("msh/#", 0), ("planetai/sensors/#", 0)])
-        log.info("mqtt: connected to %s, subscribed msh/# and planetai/sensors/#", MQTT_HOST)
+        c.subscribe([("msh/#", 0), ("planetai/sensors/#", 0), ("device/sck/#", 1)])
+        log.info("mqtt: connected to %s, subscribed msh/#, planetai/sensors/# and device/sck/#", MQTT_HOST)
 
     def on_message(c, u, msg):
         try:
@@ -185,6 +197,18 @@ def mqtt_thread() -> None:
                          "indoor": bool(body.get("indoor", False)), "local": True, "kind": "sensor", "scale": "community",
                          "cadence": None, "meta": {"topic": msg.topic}}],
                        [(ts, f"pod-{sid}", metric, float(body["value"]))])
+            elif msg.topic.startswith("device/sck/"):
+                # a Smart Citizen Kit or a DIY node pointed at this broker: the platform's own topics and bytes
+                token = msg.topic.split("/")[2]
+                sensors, readings, info = sources.smartcitizen_mqtt(msg.topic, msg.payload, sc_meta.get(token))
+                if info.get("kind") == "meta" and "meta" in info:
+                    sc_meta[token] = info["meta"]
+                if sensors or readings:
+                    _store(sensors, readings)
+                    sc_seen.add(token)
+                    sc_state.update({"messages": sc_state["messages"] + 1, "last": datetime.now(timezone.utc).isoformat(), "devices": len(sc_seen)})
+                if info.get("kind") != "meta" and token in SC_FORWARD():
+                    sc_queue.append((msg.topic, bytes(msg.payload), token)); sc_state["queued"] = len(sc_queue)
         except Exception as e:  # noqa: BLE001
             log.debug("mqtt message on %s ignored: %s", msg.topic, e)
 
@@ -199,6 +223,28 @@ def mqtt_thread() -> None:
         except Exception as e:  # noqa: BLE001
             log.warning("mqtt: %s — retrying in 15s", e)
             time.sleep(15)
+
+
+def sc_forward_thread() -> None:
+    """Pass each queued message to smartcitizen.me exactly as the device sent it: same topic, same bytes, the
+    device's token as the MQTT identity (what both firmwares do), QoS 1 as the platform asks, and the platform's
+    certificate actually checked, which the DIY firmware cannot afford to do. One connection per message: at a
+    message a minute per device that is nothing, and it keeps the per-token identity simple."""
+    import ssl
+    import paho.mqtt.publish as publish
+    while True:
+        if not sc_queue:
+            time.sleep(1); continue
+        topic, payload, token = sc_queue.popleft(); sc_state["queued"] = len(sc_queue)
+        try:
+            publish.single(topic, payload, qos=1, hostname=SC_PLATFORM_HOST, port=SC_PLATFORM_PORT, client_id=token,
+                           auth={"username": token, "password": ""}, tls={"cert_reqs": ssl.CERT_REQUIRED}, keepalive=30)
+            sc_state["forwarded"] += 1
+        except Exception as e:  # noqa: BLE001
+            sc_queue.appendleft((topic, payload, token)); sc_state["queued"] = len(sc_queue)
+            sc_state["forward_failed"] += 1
+            log.warning("sc-direct: forward to %s failed (%s: %s) — %d queued, retrying in 30s", SC_PLATFORM_HOST, type(e).__name__, e, len(sc_queue))
+            time.sleep(30)
 
 
 def mesh_send(text: str) -> None:
@@ -677,6 +723,7 @@ except Exception as e:  # noqa: BLE001  — a node whose schema predates 0.22 ha
 
 if MQTT_HOST:
     threading.Thread(target=mqtt_thread, daemon=True, name="mqtt").start()
+    threading.Thread(target=sc_forward_thread, daemon=True, name="sc-forward").start()
 
 def poll_sources() -> None:
     poll_once(hc)
@@ -905,7 +952,7 @@ def health(request: Request):
             # Where to read about this node and how to reach its tools, so a reader holding only this answer
             # can go further: the documentation, the MCP endpoint (token-gated) and this node's own /llms.txt.
             "docs": DOCS_URL, "mcp": "/mcp", "llms": "/llms.txt",
-            **({"mesh": mesh_state} if MQTT_HOST else {}),
+            **({"mesh": mesh_state, "direct": sc_state} if MQTT_HOST else {}),
             **({"reticulum": reticulum_state} if RETICULUM_URL else {})}
 
 

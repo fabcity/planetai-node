@@ -34,6 +34,12 @@
   (`GET /ground/wind`, private; `planetai run forecast windfield` refreshes it now). It asks with
   `cell_selection=nearest`: the default moved sea points up to 12 km onto land. A model's field for drawing, never
   a reading.
+- A Making Sense Bali DIY node can publish to this node's own broker instead of to smartcitizen.me: `planetai broker`
+  prints what to type into the node's setup portal. The node keeps every reading with the device's own timestamp, the
+  retained `meta` message gives the device its name and says whether it is indoors, and the tokens listed in
+  `SC_FORWARD` are passed on to the platform unchanged, through a queue that waits out an internet outage. `/health`
+  gains `direct` (devices, messages, forwarded, queued). The parser also reads a Smart Citizen Kit's own `readings/raw`
+  format, but this node's broker still refuses a kit, because the kit's firmware cannot send a password.
 
 ## v0.79 — 2026-10-07 — The dashboard draws the day
 
