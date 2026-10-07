@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will
@@ -58,6 +58,11 @@ same entries on every node in a release, and it says nothing about this house.
 > **Note.** `/shape` at `open` is the house's usual day: one mean per local hour, indoor against outdoor,
 > over the whole record. It is what the page draws, and it is also a pattern of when the kitchen is in
 > use. Weigh that before opening a node on a network you share.
+
+> **Note.** Since v0.79 the same weighing covers the drawings. `/issues` at `open` carries each issue's usual day
+> and an open event's rooms hour by hour, and `/issues/days` (under the `/issues` prefix) gives up to 90 days of
+> the hourly series, indoor rooms included, with the hours over the line counted per day. That is the
+> household's rhythm over three months, to anyone on the network.
 
 ## What needs a token at every level
 
@@ -128,7 +133,7 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.78.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
+> **Gap in v0.79.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
 > full-precision coordinates to Open-Meteo; only the two core adapters round them.
 
 ## Signed updates
@@ -151,7 +156,7 @@ this download is not signed by the PLANETAI release key. Nothing was installed a
 `planetai version` prints what this node trusts, and `planetai doctor` says whether the last update checked:
 
 ```
-planetai-node v0.78  ·  a Fab City project  ·  <name> @ <city>
+planetai-node v0.79  ·  a Fab City project  ·  <name> @ <city>
   updates signed by  fabcity  SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4
 ```
 

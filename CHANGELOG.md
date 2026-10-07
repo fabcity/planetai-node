@@ -20,6 +20,13 @@
   `/geo/planet` answer the shapes and distances a map draws, so the page computes no H3 and no distance; `GET /ground/meta`, `/ground/{vector,drone,imagery}/{z}/{x}/{y}` and
   `/ground/glyphs/…` serve the kept map. All need a token or this machine, like `/place/geojson`.
   `tools/check_ui.py` now fails a page that imports h3-js or calls an H3 function.
+- **The wind, as a field.** With `FORECAST_OPENMETEO=1` the forecast pack also keeps Open-Meteo's hourly 10 m wind
+  for the next day at 8 × 8 points over ±30 km round the node, and the node's own point, in one request
+  (`GET /ground/wind`, private; `planetai run forecast windfield` refreshes it now). It asks with
+  `cell_selection=nearest`: the default moved sea points up to 12 km onto land. A model's field for drawing, never
+  a reading.
+
+## v0.79 — 2026-10-07 — The dashboard draws the day
 
 - The dashboard draws each issue's day once, as one drawing you can point at: every distance, the usual for each hour,
   the hours over the line, the alert event and its answer, and the event's own rooms, with the hour read out in words

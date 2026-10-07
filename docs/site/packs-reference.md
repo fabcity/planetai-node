@@ -1,12 +1,12 @@
 # Packs that ship
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
-Seventeen core packs ship in `packs/` in v0.78: ten data packs and seven code packs. Wild packs, written for one
+Seventeen core packs ship in `packs/` in v0.79: ten data packs and seven code packs. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
 the nearest workshop are all in here, as SQL and YAML, and in seven cases as an adapter too. How a pack is
-built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.78.
+built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.79.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
@@ -786,7 +786,7 @@ After a move it takes `planetai restart`, `planetai run place refresh` and a das
 
 Where somebody can go to make or fix something: the active fab labs nearest this node, from the Fab Lab
 Network directory, with what each one can do. This pack is the first thread from a reading to a place that can
-make or fix something. In v0.78 it names the place and stops there: no node has handed a job to a workshop,
+make or fix something. In v0.79 it names the place and stops there: no node has handed a job to a workshop,
 and nothing in the code sends one.
 
 | | |
