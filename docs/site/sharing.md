@@ -61,7 +61,7 @@ same entries on every node in a release, and it says nothing about this house.
 
 ## What needs a token at every level
 
-`/place/geojson` (the shape of your building and what is around it), the four `/geo/` routes (each locates the node), `/settings/raw`, `/backups` and
+`/place/geojson` (the shape of your building and what is around it), the four `/geo/` routes and `/ground/*` (each locates the node), `/settings/raw`, `/backups` and
 `/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing` and `GET /actions` are on neither
 list. So is every write, and the whole of `/mcp` checks the admin token itself. Two writes pass the
 sharing check because their path is on a list for reading, and their handler refuses them instead:

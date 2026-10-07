@@ -373,4 +373,42 @@ assert [x["km"] for x in _r] == [2, 5] and _r[0]["ring"][0] == _r[0]["ring"][-1]
 assert local.get("/geo/rings?km=0").status_code == 422 and local.get("/geo/rings?km=1,2,3,4,5,6,7,8,9").status_code == 422
 print("geo: grid, cell, measure and rings answer this machine and a token, refuse the LAN, and refuse bad boxes")
 
+# The ground kept on disk (GET /ground/*): served from out/ground/ by name, private like /place/geojson.
+import gzip as _gz, importlib.util as _iu, json as _json, sqlite3 as _sq, tempfile as _tf
+from pathlib import Path as _P
+_out = _P(_tf.mkdtemp()); main.OUT = _out; (_out / "ground" / "glyphs" / "Noto Sans Regular").mkdir(parents=True)
+_db = _sq.connect(_out / "ground" / "vector.mbtiles")
+_db.executescript("CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);")
+_db.execute("INSERT INTO tiles VALUES (15, 26866, ?, ?)", ((1 << 15) - 1 - 17189, _gz.compress(b"mvt")))
+_db.commit(); _db.close()
+(_out / "ground" / "glyphs" / "Noto Sans Regular" / "0-255.pbf").write_bytes(b"glyphs")
+(_out / "ground" / "meta.json").write_text(_json.dumps({"vector": {"tiles": 1}}))
+for _lv in ("off", "open"):
+    level(_lv)
+    for _u in ("/ground/meta", "/ground/vector/15/26866/17189.pbf", "/ground/glyphs/Noto Sans Regular/0-255.pbf"):
+        assert lan.get(_u).status_code == 403, f"{_u} answered a stranger at SHARE_LEVEL={_lv}: a tile pyramid locates the node"
+level("off")
+_t = local.get("/ground/vector/15/26866/17189.pbf")
+assert _t.status_code == 200 and _t.content == b"mvt" and _t.headers["content-type"] == "application/x-protobuf", (_t.status_code, _t.headers)
+assert local.get("/ground/vector/15/26866/17190.pbf").status_code == 204, "a tile the node does not hold is empty ground, not an error"
+assert local.get("/ground/imagery/12/1/1.png").status_code == 204, "a layer never fetched is empty ground too"
+assert local.get("/ground/elsewhere/1/1/1").status_code == 404 and local.get("/ground/vector/2/9/1.pbf").status_code == 204
+assert local.get("/ground/glyphs/Noto Sans Regular/0-255.pbf").content == b"glyphs"
+assert local.get("/ground/glyphs/..%2F..%2Fmeta/0-255.pbf").status_code == 404, "a font name is a name, not a path"
+_m = local.get("/ground/meta").json()
+assert _m["on_disk"]["vector"] and not _m["on_disk"]["imagery"] and _m["layers"]["vector"]["tiles"] == 1, _m
+# The place pack reads Protomaps' archive by tile id: pmtiles' Hilbert order, and its directory encoding.
+_s = _iu.spec_from_file_location("basemap", "packs/place/basemap.py"); _b = _iu.module_from_spec(_s); _s.loader.exec_module(_b)
+assert [_b.zxy_to_id(1, *xy) for xy in [(0, 0), (0, 1), (1, 1), (1, 0)]] == [1, 2, 3, 4], "zoom 1 walks the Hilbert curve"
+assert [_b.zxy_to_id(2, x, y) for x, y in [(0, 0), (1, 0), (1, 1), (0, 1), (0, 2)]] == [5, 6, 7, 8, 9]
+def _v(n):
+    out = b""
+    while True:
+        out += bytes([(n & 0x7F) | (0x80 if n > 0x7F else 0)]); n >>= 7
+        if not n:
+            return out
+# two entries: tile 5 run 1 at offset 0 length 10; tile 6 run 2, offset 0 meaning "right after the previous"
+assert _b.parse_dir(_v(2) + _v(5) + _v(1) + _v(1) + _v(2) + _v(10) + _v(20) + _v(1) + _v(0)) == [(5, 0, 10, 1), (6, 10, 20, 2)]
+print("ground: tiles, fonts and meta answer this machine, refuse the LAN, read the archive by Hilbert id")
+
 print("all share-level checks passed")
