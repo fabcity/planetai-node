@@ -1694,9 +1694,22 @@ def ground_meta():
         meta = {}
     have = {k: (g / f"{k}.mbtiles").is_file() for k in GROUND_LAYERS}
     have["glyphs"] = (g / "glyphs").is_dir()
+    have["wind"] = (g / "wind.json").is_file()
     return {"layers": meta, "on_disk": have,
             "fetch": {"vector": "planetai run place basemap --only vector", "drone": "planetai run place basemap --only drone",
-                      "imagery": "planetai run earth-engine basemap"}}
+                      "imagery": "planetai run earth-engine basemap", "wind": "planetai run forecast windfield"}}
+
+
+@app.get("/ground/wind")
+def ground_wind():
+    """The wind over the node's square for a map to draw moving: the forecast pack's Open-Meteo field, n×n points,
+    hourly for the next day (out/ground/wind.json, refreshed on each forecast poll). 204 when the node has none,
+    which is every node with FORECAST_OPENMETEO=0."""
+    from fastapi.responses import Response
+    p = _ground() / "wind.json"
+    if not p.is_file():
+        return Response(status_code=204)
+    return Response(p.read_bytes(), media_type="application/json", headers={"cache-control": "no-cache"})
 
 
 @app.get("/ground/glyphs/{font}/{span}")

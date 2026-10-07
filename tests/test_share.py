@@ -407,7 +407,11 @@ assert local.get("/ground/imagery/12/1/1.png").status_code == 204, "a layer neve
 assert local.get("/ground/elsewhere/1/1/1").status_code == 404 and local.get("/ground/vector/2/9/1.pbf").status_code == 204
 assert local.get("/ground/glyphs/Noto Sans Regular/0-255.pbf").content == b"glyphs"
 assert local.get("/ground/glyphs/..%2F..%2Fmeta/0-255.pbf").status_code == 404, "a font name is a name, not a path"
+assert local.get("/ground/wind").status_code == 204, "no field until the forecast pack has written one"
+(_out / "ground" / "wind.json").write_text(_json.dumps({"n": 8, "times": ["2026-10-07T06:00Z"]}))
+assert local.get("/ground/wind").json()["n"] == 8 and lan.get("/ground/wind").status_code == 403
 _m = local.get("/ground/meta").json()
+assert _m["on_disk"]["wind"] and _m["fetch"]["wind"] == "planetai run forecast windfield"
 assert _m["on_disk"]["vector"] and not _m["on_disk"]["imagery"] and _m["layers"]["vector"]["tiles"] == 1, _m
 # The place pack reads Protomaps' archive by tile id: pmtiles' Hilbert order, and its directory encoding.
 _s = _iu.spec_from_file_location("basemap", "packs/place/basemap.py"); _b = _iu.module_from_spec(_s); _s.loader.exec_module(_b)
