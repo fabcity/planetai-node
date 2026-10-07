@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.79 — 2026-10-07 — The dashboard draws the day
 
 - The dashboard draws each issue's day once, as one drawing you can point at: every distance, the usual for each hour,
   the hours over the line, the alert event and its answer, and the event's own rooms, with the hour read out in words

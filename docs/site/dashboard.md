@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -9,7 +9,8 @@ closes." Two of those stages need a person. The answer to what the node asked, D
 is written on this page, and so is the note that says what was done.
 
 The node serves `index.html` and a fixed list of companion files by name from `GET /static/{name}`: three
-stylesheets (`tokens.css`, `planetai-theme.css`, `dashboard.css`), `dashboard.js`, two SVGs, `kilometre-cells.json`,
+stylesheets (`tokens.css`, `planetai-theme.css`, `dashboard.css`), `dashboard.js`, the drawing library
+(`plot.umd.min.js` and `d3.min.js`), two SVGs, `kilometre-cells.json`,
 `learn.json` and the self-hosted fonts. The node computes and the page draws. A number the page works out
 for itself is a bug.
 
@@ -411,7 +412,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.78.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.79.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`.
@@ -424,9 +425,9 @@ sharing level) and draws the issue sentences, labels and distances in English, B
 ## Looking at it without a node
 
 `?fixture=<name>` replays a committed snapshot through the node's own engine, `GET /issues/fixtures/<name>`,
-and the pill says `cached`. Seven ship: five captures of node #1, `node1-2026-09-06`, `node1-2026-09-21`,
-`node1-2026-09-21b`, `node1-2026-09-21d` and `node1-2026-10-06-events`, the last taken with an air event open
-and the one the visual gate measures, and two derived from `node1-2026-09-21d` for the visual tests,
+and the pill says `cached`. Eight ship: six captures of node #1, `node1-2026-09-06`, `node1-2026-09-21`,
+`node1-2026-09-21b`, `node1-2026-09-21d`, `node1-2026-10-06-events`, taken with an air event open, and
+`node1-2026-10-06-figures`, which carries the days the strips draw and is the one the visual gate measures, and two derived from `node1-2026-09-21d` for the visual tests,
 `coast-led-2026-09-21` and `land-led-2026-09-21`, where coast and land lead; `GET /issues/fixtures` lists them. `planetai snapshot` writes a new one from a running
 node. A snapshot missing a table the engine reads comes back with an error in place of the issues rather
 than a half-drawn page, and the 6 September capture predates `planetai snapshot`, so some of its cards are

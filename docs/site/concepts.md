@@ -1,7 +1,7 @@
 # Concepts
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
-The words the rest of these pages use, each with what it means in the code at v0.78. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.79. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -106,10 +106,11 @@ is an *open alert*.
 **Cooldown.** Per rule and sensor, enforced in SQL against `alerts`: a rule does not fire again for the same
 sensor until its cooldown has passed.
 
-**Action.** A row in `actions`: `alert_id`, `stage`, `actor`, `note`. Five stages. `acknowledged`: someone
+**Action.** A row in `actions`: `alert_id`, `stage`, `actor`, `note`. Six stages. `acknowledged`: someone
 saw it. `acted`: someone did the thing. `decided`: someone said what will be done, which moves nothing.
 `measured`: the outcome was checked; the schema allows it and nothing writes it, and the funnel derives it
-instead. `settings`: an audit row for a setting change, with no alert. `POST /actions` takes the first three for an
+instead. `settings`: an audit row for a setting change, with no alert.
+`dismissed`: an alert event's advice did not fit the house. `POST /actions` takes the first three for an
 alert, and for an alert event `acknowledged`, `acted` or `dismissed` (see Alert event).
 `SPEC.md` calls this table "the Index's instrument, not an app feature": ρ is computed from it and nowhere
 else.

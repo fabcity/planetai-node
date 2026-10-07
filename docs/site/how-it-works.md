@@ -1,5 +1,5 @@
 # How it works
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
 one Python process that answers the HTTP API on port 8080 and runs six loops in the background, a seventh when
@@ -115,7 +115,7 @@ the thing receiving the answer.
 One more thread runs when `MQTT_HOST` is set. It subscribes to the broker for Meshtastic radios and DIY
 sensors and, with `HA_DISCOVERY=1`, publishes Home Assistant discovery entities.
 
-Every document the node sends or serves as a contract carries a `schema` key: `issues-v0`, `export-v0`,
+Every document the node sends or serves as a contract carries a `schema` key: `issues-v0`, `days-v0`, `export-v0`,
 `report-v0`, and the two pushes, `aggregates-v0` and `events-v0`. See [Federation](federation.md).
 
 ## One shape at every scale
@@ -192,7 +192,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.78. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.79. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.

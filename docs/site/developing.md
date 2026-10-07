@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -94,8 +94,9 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 | `build_docs.py --check` | the same fifteen releases, seen as a site: a NAV entry whose source is gone, a page in `docs/site/` that NAV never lists, a link to no page, an `#anchor` to a heading the page does not have. Renders every page and writes nothing. Needs `markdown`; without it the gate says it skipped, and CI installs it so it never skips there |
 | `check_site.py` | the programme page eight releases behind the node while every gate in both repos was green. Holds its release, pack and page counts, languages and ρ to this repository, holds the purpose and the lead sentence to `introduction.md`, and fails on a retired word in `docs/site/`. Skipped with a warning where the site repo is not checked out |
 | `build_learn.py --check` | a docs edit that moved one of the spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
-| `check_wire.py` | a top-level key added to or dropped from one of the five wire documents in a commit about something else. The key lists are frozen in `tests/data/wire/` |
+| `check_wire.py` | a top-level key added to or dropped from one of the six wire documents in a commit about something else. The key lists are frozen in `tests/data/wire/` |
 | `check_theme.py` | the copy of the design repo's theme drifting on this side, where nothing would say what moved. Holds the three frozen files to the sha256s in `data/frozen_layer.txt`, including in CI, where `planetai-design` is not checked out |
+| `shasum -a 256 -c data/vendor.sha256` | a vendored drawing library (`app/static/plot.umd.min.js`, `app/static/d3.min.js`) replaced without anybody deciding to; replacing one means rewriting its line |
 | `check_requirements.sh` | `uvicorn` pinned against `mcp`; the image failed to build on the node |
 | `check_rules.py` (needs sqlglot) | a 69-day cooldown that made `test-alert` report a dead node; message placeholders the SQL never returned; a cell without a `value` |
 | `py_compile`, pyflakes, the import check | `PARENT.startswith()` on a function, at import, so uvicorn never listened |
@@ -105,7 +106,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 64 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 65 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
@@ -139,7 +140,7 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.78 it is `851b8db`,
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.79 it is `851b8db`,
 269 entries, synced 2026-10-06 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 
