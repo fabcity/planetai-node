@@ -93,30 +93,48 @@ def _source_of(sensor_id: str) -> dict:
     return {"source": "unknown", "url": None, "attribution": None}
 
 
-def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sited: bool = True) -> list[dict]:
+def _stations(stats: list[dict], hourly: list[dict], lat: float, lon: float, sited: bool = True,
+              silent: list[dict] | None = None) -> list[dict]:
     """Every station with a coordinate, its own 15-minute means for the metrics the page may show, and the hourly
     series the node has for it. Nothing here is averaged across stations: the street stays a fenced median in the
     stack, and this is the thing the median hides, published beside it by decision of 15 September 2026.
 
     `sited` is False when this node has no NODE_LAT/NODE_LON. Then `km` is None on every station rather than a
     distance from (0, 0) — a real point in the Gulf of Guinea that every surface drawing this list would otherwise
-    print as fact. An unknown distance is published as unknown; the surfaces say so in their own words."""
+    print as fact. An unknown distance is published as unknown; the surfaces say so in their own words.
+
+    `silent` is the stations heard within SILENT_DAYS and not in the last day; they keep a row with `last_heard`,
+    unless a station heard today stands at the same point."""
     import h3  # noqa: PLC0415 — only this path needs it, and geometry.py already requires it
+    def row(r: dict) -> dict:
+        return {"sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
+                "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
+                **_source_of(r["sensor_id"]),
+                "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited
+                else None,
+                "read": {}, "series": {}}
     by: dict[str, dict] = {}
     for r in stats:
         if r.get("lat") is None or r.get("lon") is None:
             continue
-        s = by.setdefault(r["sensor_id"], {
-            "sensor_id": r["sensor_id"], "name": r.get("name"), "lat": r["lat"], "lon": r["lon"],
-            "local": bool(r.get("local")), "indoor": bool(r.get("indoor")), "kind": r.get("kind") or "sensor",
-            **_source_of(r["sensor_id"]),
-            "km": round(h3.great_circle_distance((lat, lon), (r["lat"], r["lon"]), unit="km"), 1) if sited else None,
-            "read": {}, "series": {}})
+        s = by.setdefault(r["sensor_id"], row(r))
         m = METRICS.get(r.get("metric"))
         if m and r.get("mean_15m") is not None:
             s["read"][r["metric"]] = {"value": round(float(r["mean_15m"]), 2), "unit": m["unit"], "dp": m["dp"],
                                        "silent_minutes": None if r.get("silent_minutes") is None
                                        else round(r["silent_minutes"])}
+    # The archive of silence (docs/SPEC_dashboard_figures.md §3.3): a station heard in the last 30 days and not in the
+    # last day keeps its row, with when it was last heard. Unless a station heard today stands at the same point: Bali
+    # Air Dispatch relays Smart Citizen kits as bad-sc-<kit> and AirGradient ones through OpenAQ, so a relay that
+    # stopped is a second road to a kit that still reports, and listing it would call a working kit dead.
+    heard = {(round(float(s["lat"]), 5), round(float(s["lon"]), 5)) for s in by.values()}
+    for r in silent or []:
+        if r.get("lat") is None or r.get("lon") is None or r["sensor_id"] in by:
+            continue
+        if (round(float(r["lat"]), 5), round(float(r["lon"]), 5)) in heard:
+            continue
+        lh = r.get("last_heard")
+        by[r["sensor_id"]] = {**row(r), "last_heard": lh.isoformat() if hasattr(lh, "isoformat") else lh}
     for h in hourly or []:
         s = by.get(h.get("sensor_id"))
         if s is None:
@@ -489,6 +507,12 @@ def _cell(value, n, source, provenance, age_min, sensors, outliers=()) -> dict:
             "sensors": sensors, "outliers": len(outliers)}
 
 
+def _word(place: str) -> str:
+    """A distance's provenance word: ours is measured here; somebody else's is theirs, which is a different word
+    whatever its quality."""
+    return "live" if place in ("room", "yard") else "partial"
+
+
 def _from_stats(spec: dict, stats: list[dict], names: dict) -> dict | None:
     """One distance's value from the rolling means. See `_ambient` for the indoor rule."""
     place, field = spec["place"], spec["field"]
@@ -505,8 +529,7 @@ def _from_stats(spec: dict, stats: list[dict], names: dict) -> dict | None:
         return None
     used = sorted(s for s in per if all(per[s].get(m) is not None for m in spec["metrics"]))
     age = min((r["silent_minutes"] for r in rows if r.get("silent_minutes") is not None), default=None)
-    # ours is measured here; somebody else's is theirs, which is a different word whatever its quality
-    word = "live" if place in ("room", "yard") else "partial"
+    word = _word(place)
     if len(used) == 1:
         source = names.get(used[0]) or used[0]
     else:
@@ -1013,6 +1036,20 @@ def _plain(d, numeral, value, stack, rule, loc) -> str:
 
 
 # --------------------------------------------------------------------------------------------- series
+def _values(spec: dict, hourly: dict, buckets: list, keep) -> list:
+    """One distance's value at each bucket: the rows `keep` admits, the function per sensor, then the aggregate."""
+    vals = []
+    for b in buckets:
+        per: dict[str, dict] = {}
+        for r in hourly.get(b, []):
+            if not keep(r) or r["metric"] not in spec["metrics"]:
+                continue
+            per.setdefault(r["sensor_id"], {})[r["metric"]] = r.get("mean")
+        v, _, _ = _combine(per, spec["metrics"], spec.get("function"), spec["aggregate"])
+        vals.append(None if v is None else round(v, 6))
+    return vals
+
+
 def _series(d, hourly, buckets, names) -> dict:
     """Twenty-four hourly values at each distance, on the same buckets, so the traces line up."""
     out = {}
@@ -1021,23 +1058,83 @@ def _series(d, hourly, buckets, names) -> dict:
         if not spec or spec.get("from") != "stats":
             out[dist] = None
             continue
-        vals = []
-        for b in buckets:
-            per: dict[str, dict] = {}
-            for r in hourly.get(b, []):
-                if not _ambient(r, spec["place"]) or r["metric"] not in spec["metrics"]:
-                    continue
-                per.setdefault(r["sensor_id"], {})[r["metric"]] = r.get("mean")
-            v, _, _ = _combine(per, spec["metrics"], spec.get("function"), spec["aggregate"])
-            vals.append(None if v is None else round(v, 6))
+        vals = _values(spec, hourly, buckets, lambda r, place=spec["place"]: _ambient(r, place))
         out[dist] = vals if any(v is not None for v in vals) else None
     return out
+
+
+def _room_series(d: dict, hourly: dict, buckets: list, names: dict, rooms) -> dict | None:
+    """An open event's own rooms, hour by hour, combined the way the issue combines its house: air the mean, heat the
+    median of each room's apparent temperature (docs/SPEC_dashboard_figures.md §3.2). The page draws it beside the
+    house, so a one-room event inside a cooler house is visible as the room it is. Rooms are names or ids, as the
+    engine writes them on alert_events."""
+    spec = (d.get("distances") or {}).get("room")
+    want = set(rooms or [])
+    if not spec or spec.get("from") != "stats" or not want:
+        return None
+    vals = _values(spec, hourly, buckets,
+                   lambda r: r.get("sensor_id") in want or names.get(r.get("sensor_id")) in want)
+    return {"rooms": sorted(want), "values": vals} if any(v is not None for v in vals) else None
 
 
 # ----------------------------------------------------------------------------------------------- read
 def _rows(cur, sql, *args) -> list[dict]:
     cur.execute(sql, args)
     return [dict(r) for r in cur.fetchall()]
+
+
+# usual_by_hour (init.sql): each sensor's median and p90 for each local hour, over the 14 complete days before today.
+USUAL_DAYS = 14
+USUAL_SQL = "SELECT sensor_id, metric, hour, median, p90 FROM usual_by_hour"
+
+# The archive of silence (docs/SPEC_dashboard_figures.md §3.3): stations heard within SILENT_DAYS and not in the last
+# day. `stats` holds the last 24 hours only, so without this a station silent for a day leaves /issues with no word.
+SILENT_DAYS = 30
+SILENT_SQL = ("SELECT s.sensor_id, s.name, s.lat, s.lon, s.local, s.indoor, s.kind, max(r.ts) AS last_heard "
+              "FROM readings r JOIN sensors s USING (sensor_id) "
+              "WHERE s.kind = 'sensor' AND r.ts > now() - make_interval(days => %s) "
+              "GROUP BY 1, 2, 3, 4, 5, 6, 7 HAVING max(r.ts) <= now() - interval '24 hours'")
+
+
+def _optional(cur, sql: str, *args) -> list[dict] | None:
+    """A read a fresh node may not answer and a capture does not carry: None, never a failed /issues.
+
+    usual_by_hour is created WITH NO DATA and raises until the app's first hourly refresh, and on a live cursor an
+    error inside the /issues transaction would abort every read after it, so the read gets a savepoint of its own. A
+    Replay has no connection and refuses a query it cannot answer with LookupError, which ends in the same None."""
+    conn = getattr(cur, "connection", None)
+    try:
+        if conn is None:
+            return _rows(cur, sql, *args)
+        with conn.transaction():
+            return _rows(cur, sql, *args)
+    except Exception as e:  # noqa: BLE001
+        log.info("issues: an optional read did not answer (%s)", type(e).__name__)
+        return None
+
+
+def _usual(d: dict, dist: str, cell: dict | None, rows: list[dict] | None) -> tuple[dict | None, str | None]:
+    """The issue's usual day at its hero distance (docs/SPEC_dashboard_figures.md §3.1): for each local hour, the mean
+    over that distance's sensors of usual_by_hour's median and p90, for the issue's own metric. The same reading
+    events_wire.USUAL_SQL makes for an event's card, so the band and the card agree. (block, None) or (None, why)."""
+    if rows is None:
+        return None, "unread"
+    ids = set((cell or {}).get("sensors") or [])
+    if not ids:
+        return None, "no_source"
+    by: dict[int, list[dict]] = {}
+    for r in rows:
+        if r.get("sensor_id") in ids and r.get("metric") == d.get("metric") and r.get("median") is not None:
+            by.setdefault(int(r["hour"]), []).append(r)
+    if not by:
+        return None, "no_history"
+
+    def mean(xs):
+        xs = [float(x) for x in xs if x is not None]
+        return round(statistics.fmean(xs), 2) if xs else None
+    return {"window_days": USUAL_DAYS, "distance": dist,
+            "hours": [{"hour": h, "median": mean(r["median"] for r in by.get(h, [])),
+                       "p90": mean(r.get("p90") for r in by.get(h, []))} for h in range(24)]}, None
 
 
 def _read(cur) -> dict:
@@ -1132,6 +1229,9 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
 
     `events` is the block the capture carried in its own /issues, verbatim: the events are rows the node read, not
     arithmetic, and replaying them through compute is what ranks the headline and recomputes uncovered_asks.
+
+    `usual` is each issue's usual day as the capture carried it, verbatim; a capture from before v0.79 has none, and
+    the engine's own read of `usual_by_hour` then fails on the Replay and says `unread`.
     """
     now = snapshot.get("as_of")
     if isinstance(now, str):
@@ -1145,10 +1245,16 @@ def replay(snapshot: dict, settings, decl: dict) -> dict:
     # own /sensors body, which is where the pack's rows land.
     sensors = snapshot.get("sensors") or []
     facilities = [r for r in sensors if isinstance(r, dict) and r.get("kind") == "facility"]
+    body = snapshot.get("issues") if isinstance(snapshot.get("issues"), dict) else {}
+    captured = body.get("issues") if isinstance(body.get("issues"), dict) else {}
+    usual = {k: (v.get("usual"), v.get("usual_absent")) for k, v in captured.items()
+             if isinstance(v, dict) and "usual" in v} or None
+    quiet = body.get("stations_silent") or {}
+    silent = ([s for s in quiet.get("stations") or [] if isinstance(s, dict) and s.get("last_heard")]
+              if quiet.get("read") else None)
     return compute(Replay(snapshot), settings, decl, earth=snapshot.get("earth"), now=now,
                    place=place, mesh=health.get("mesh"), peers=[peer] if peer else [],
-                   facilities=facilities,
-                   events=(snapshot.get("issues") or {}).get("events") if isinstance(snapshot.get("issues"), dict) else None)
+                   facilities=facilities, events=body.get("events"), usual=usual, silent=silent)
 
 
 def _geometry(lat: float, lon: float, settings, stations: list[dict], peers) -> dict:
@@ -1197,7 +1303,8 @@ def _safe_geometry(lat: float, lon: float, settings, stations: list[dict], peers
 
 def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime | None = None,
             place: tuple[float, float] | None = None, mesh: dict | None = None,
-            peers=(), facilities=(), events: dict | None = None) -> dict:
+            peers=(), facilities=(), events: dict | None = None, usual: dict | None = None,
+            silent: list[dict] | None = None) -> dict:
     """Every declared issue, computed. See the module docstring for what is arithmetic and what is not.
 
     `earth` is `/earth`'s body, passed in rather than re-read here so that the earth pack's record has
@@ -1215,6 +1322,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
 
     `events` is the alert events block (app/events_wire.py), built by the route on its own cursor, or the block a
     fixture captured. None is a node, or a capture, from before events: the page says so (SPEC_dashboard_events §5).
+
+    `silent` is the capture's own silent stations, from a replay; None reads them.
+
+    `usual` maps an issue to the (usual, usual_absent) pair a capture carried; a replay passes it, because a snapshot
+    holds the /issues answer and not usual_by_hour. None reads the view, on a savepoint of its own.
     """
     global _said_unsited
     now = now or datetime.now(timezone.utc)
@@ -1261,6 +1373,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         if r["bucket"] in hourly:
             hourly[r["bucket"]].append(r)
 
+    # The usual band (docs/SPEC_dashboard_figures.md §3.1): a replay hands it over as the capture carried it.
+    usual_rows = None if usual is not None else _optional(cur, USUAL_SQL)
+    silent_rows = silent if silent is not None else _optional(cur, SILENT_SQL, SILENT_DAYS)
     out = {}
     for key in declared + undeclared:
         d = dict(decl[key])
@@ -1280,7 +1395,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                         "sentence": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
                                           + _reason_text({"code": "not_watched"}, loc)[1:] + "."
                                      for loc in LOCALES},
-                        "hero": None}
+                        "hero": None, "usual": None, "usual_absent": "not_watched"}
             continue
 
         compare = d.get("compare") or {"mode": "ratio", "margin": 1.5}
@@ -1315,17 +1430,28 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                          for loc in LOCALES},
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
+        out[key]["usual"], out[key]["usual_absent"] = (usual[key] if usual is not None and key in usual
+                                                       else _usual(d, headline, stack.get(headline), usual_rows))
 
     lead = _lead(out, declared, events)
     if events is not None:
         covered = {a for e in events.get("open") or [] for a in e.get("alerts") or []}
-        events = {**events, "uncovered_asks": [
+        events = {**events, "open": [{**e, "series": _room_series(decl.get(e.get("issue")) or {}, hourly, buckets,
+                                                                     names, e.get("rooms"))}
+                                     for e in events.get("open") or []],
+                  "uncovered_asks": [
             a["id"] for v in out.values() for a in (v.get("open_asks") or [])
             if a.get("id") is not None and a["id"] not in covered
             and str(a.get("rule_id") or "").split("/", 1)[0] not in owned]}
     headline_issue = lead["issue"] if lead else None
-    stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited)
-    geom = _safe_geometry(lat, lon, settings, stations, peers)
+    stations = _stations(data["stats"], data.get("hourly"), lat, lon, sited, silent_rows)
+    # A station that stopped is published for the page's fold under `stations_silent.stations`, never in `stations`:
+    # geometry's cell `sensors` are positions in the list it is given, and every existing reader of `stations` (the
+    # digest, simple mode's neighbours, the grain table, the page) means the stations heard in the last day
+    # (SPEC_dashboard_figures §3.3).
+    heard = [s for s in stations if not s.get("last_heard")]
+    stopped = [s for s in stations if s.get("last_heard")]
+    geom = _safe_geometry(lat, lon, settings, heard, peers)
     asks = _asks_ledger(data["alerts"], data["actions"], list(facilities or []))
     # ARCHITECTURE.md §3: the one document a client draws says which document it is. A reader that
     # sees a schema it does not know draws what it recognises; it never refuses, and the dashboard's
@@ -1341,11 +1467,13 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "distances": list(DISTANCES), "labels": LABEL_WORDS,
             "issues": out,
             # what the modular dashboard reads beside the issues — 15 September 2026's decisions
-            "stations": stations,
+            "stations": heard,
+            # whether the stations that stopped were read, how far back, and which (docs/SPEC_dashboard_figures.md §3.3)
+            "stations_silent": {"read": silent_rows is not None, "within_days": SILENT_DAYS, "stations": stopped},
             "metrics": METRICS,
             "asks": asks,
             # simple mode's whole answer, written here because the page may not compose a sentence
-            "digest": _digest(out, stations, geom, asks, headline_issue, now, clock,
+            "digest": _digest(out, heard, geom, asks, headline_issue, now, clock,
                               _oldest(data["alerts"])),
             "mesh": _mesh(mesh, data["stats"]),
             "geometry": geom,
@@ -1354,6 +1482,73 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "sections": _sections(pack_sections(manifests), data["obs"], now),
             # the alert events, one per issue per house, as the bot tells them (docs/SPEC_dashboard_events.md §3.1)
             "events": events}
+
+
+DAYS_MAX = 90
+
+
+def _local_days(buckets: list, tz) -> list[tuple]:
+    """(local date, [indexes into buckets]) in order. A window starts and ends inside a day, so `of` says how many of
+    that day's hours the window holds."""
+    out: list[tuple] = []
+    for i, b in enumerate(buckets):
+        day = b.astimezone(tz).date()
+        if out and out[-1][0] == day:
+            out[-1][1].append(i)
+        else:
+            out.append((day, [i]))
+    return out
+
+
+def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict:
+    """GET /issues/days: each declared issue's hourly series over n local days, computed by the same `_series` that
+    gives /issues its 24 hours, so a cell of the page's strip is what the lead's numeral said at that hour
+    (docs/SPEC_dashboard_figures.md §3.4). The node counts the hours over the line, so the page prints a count it did
+    not make. Buckets are generated, not observed: an hour with no row at all is a null, never a skipped column.
+    Node #1 reads 90 days of readings_1h in 164 ms (6 October 2026), so there is no cache."""
+    now = now or datetime.now(timezone.utc)
+    n = max(1, min(int(n), DAYS_MAX))
+    cur.execute("SELECT current_setting('TimeZone') AS tz")
+    tzname = (cur.fetchone() or {}).get("tz") or "UTC"
+    try:
+        tz = ZoneInfo(tzname)
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = timezone.utc
+    top = now.astimezone(tz).replace(minute=0, second=0, microsecond=0).astimezone(timezone.utc)
+    # Stepped in UTC and shown in the node's zone: across a daylight-saving change, wall-clock arithmetic would skip
+    # the repeated hour or invent one that does not exist. A fall-back day then holds 25 hours, a spring-forward 23.
+    buckets = [(top - timedelta(hours=k)).astimezone(tz) for k in range(n * 24 - 1, -1, -1)]
+    hourly: dict = {b: [] for b in buckets}
+    for r in _rows(cur, "SELECT h.bucket, h.sensor_id, h.metric, h.mean, s.indoor, s.local, s.kind "
+                        "FROM readings_1h h JOIN sensors s USING (sensor_id) WHERE h.bucket >= %s", buckets[0]):
+        b = r["bucket"] if isinstance(r["bucket"], datetime) else datetime.fromisoformat(r["bucket"])
+        if b in hourly:
+            hourly[b].append(r)
+    declared, _ = order(settings.get("NODE_ISSUES", ""), decl)
+    groups = _local_days(buckets, tz)
+    issues: dict = {}
+    for key in declared:
+        d = decl[key]
+        series = _series(d, hourly, buckets, {})
+        dist = next((x for x in DISTANCES if series.get(x)), None)
+        line = d.get("line")
+        lv = float(line["value"]) if line and line.get("value") is not None else None
+        per_day = []
+        for day, idx in (groups if dist else []):
+            got = [series[dist][i] for i in idx if series[dist][i] is not None]
+            per_day.append({"date": day.isoformat(), "over": None if lv is None else sum(1 for v in got if v > lv),
+                            "read": len(got), "of": len(idx)})
+        issues[key] = {"distance": dist, "series": series,
+                       "provenance": {x: _word(x) for x in DISTANCES if series.get(x)},
+                       "per_day": per_day, "line": line}
+    events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "
+                        "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s ORDER BY opened_at",
+                   buckets[0], buckets[0])
+    iso = lambda v: v.isoformat() if hasattr(v, "isoformat") else v  # noqa: E731
+    return {"schema": "days-v0", "as_of": now.isoformat(), "tz": tzname, "days": n,
+            "buckets": [b.isoformat() for b in buckets],
+            "issues": issues,
+            "events": [{**e, "opened_at": iso(e["opened_at"]), "cleared_at": iso(e["cleared_at"])} for e in events]}
 
 
 def _sections(decl: list[dict], obs: list[dict], now: datetime) -> list[dict]:

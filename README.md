@@ -80,7 +80,7 @@ docs/     getting a node running   START_HERE · PLATFORMS · REVIVE_A_LAPTOP ·
           extending it             PACKS · PACK_IDEAS · SOURCES · DEVELOPING
           testing a beta           BETA_TESTER_GUIDE · FAB26_EXPERIMENT
           releasing it             WORKFLOW · NEXT_RELEASE · SIGNING
-          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide · SPEC_alerts · SPEC_dashboard_events · SPEC_event_led_state
+          specs, each with status  SPEC_custody · SPEC_identity · SPEC_rho · SPEC_discovery · SPEC_decide · SPEC_alerts · SPEC_dashboard_events · SPEC_event_led_state · SPEC_dashboard_figures
           proposed, then decided   proposals/ · decisions/
           the documentation site   site/ (planetai.fab.city/docs)
           the page's design rounds design/ (not shipped to nodes)

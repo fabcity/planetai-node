@@ -1,5 +1,5 @@
 # Design
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
 What a PLANETAI surface is made of, and why each part is the way it is. This page is the programme layer
 written out: the colours and what each one means, the type, the four card kinds, the signs, every motion with
@@ -118,6 +118,14 @@ read, which is a decision and not a detail.
 A drawing is a drawing *inside* a card, not a fifth kind. A gap in a series is a gap in the line, never a
 ramp across a line nobody measured. Every numeral carries its comparison; a numeral with nothing to compare
 it to says so in words.
+
+## Drawn with Plot
+
+The figures are drawn with Observable Plot 0.6.17 and the d3 7.9.0 it is built on, served by the node as two static
+files (ISC; `app/static/licences/`), so the page draws on a network with no route out. `data/vendor.sha256` pins both
+and `make lint` checks them. Plot draws marks; the layer's rules still decide them: ink for readings, red for the line
+and the hours over it, green only for an answer that closed a loop, blue only for focus. A figure is a `series` card,
+so the four card kinds stay four.
 
 ## Signs
 

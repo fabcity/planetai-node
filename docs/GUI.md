@@ -62,9 +62,9 @@ readings find their place without anybody being told where you live.
 
 - **Every issue at every distance**, as a table. Where a cell is empty it says why: *no kit outside
   on the street*, *no public station reporting*.
-- **The day this place just had** — twenty-four hours of the house, the ring and the region, with the
-  hours it was over the line marked under the axis, because eight hours over is the thing you act on
-  and a curve does not tell you that.
+- **The day this place just had** — one drawing per issue of the last 24 hours at every distance, with the usual for
+  each hour, the hours over the line, and the alert event and its answer, and under it a strip of the last seven days,
+  one cell an hour. Point at an hour to read it in words.
 - **What this page is made of** (on Network) — your own stations, the borrowed ones faint, what only the satellite
   knows in orange, counted in signs rather than drawn as a chart.
 - **What this page asked of the world while you looked at it** (on Network). The offline plan asks nothing.

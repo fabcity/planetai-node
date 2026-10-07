@@ -77,37 +77,9 @@ _js = re.sub(r"(?m)^\s*//.*$", " ", _js)
 for _word in ("mad", "fence"):
     assert not re.search(rf"\b{_word}\s*=", _js), f"dashboard.js computes a {_word} again — it belongs in the engine"
 
-# A hole in a series must be a hole in the line.
-#
-# Both charts used to drop the nulls and join what was left, so a sensor that was off from 08:00 to 15:00 was drawn
-# as one straight segment bridging the hole. Rendered against the committed fixture with seven hours nulled, the room
-# trace ramped for six hours, CROSSED the WHO line the page judges against, and came back down: a threshold crossing
-# that never happened, on the chart a household reads to decide whether to open a window. 17 real points were drawn
-# as a 17-point line over 24 hours and nothing said which six were invented.
-#
-# Where a line breaks is drawing, not arithmetic, so `runs` lives in the page — and this lifts it out and runs it,
-# the way this suite ran the fence before the fence moved to the engine.
-if shutil.which("node"):
-    _runs = re.search(r"const runs = \(vals, at\) => \{.*?\n\};", _js, re.S)
-    assert _runs, "dashboard.js no longer defines runs() — the charts are joining across nulls again"
-    _cases = {
-        "a hole in the middle":   [1, 2, None, None, 5, 6],
-        "the fixture's own case": [*range(8), *([None] * 7), *range(15, 24)],
-        "no hole at all":         [1, 2, 3, 4],
-        "one reading alone":      [None, 5, None],
-        "nothing at all":         [None, None],
-    }
-    _prog = (_runs.group(0) + "\nconst at = (v, i) => [i, v];\n"
-             + "console.log(JSON.stringify(Object.fromEntries(Object.entries("
-             + json.dumps(_cases) + ").map(([k, v]) => [k, runs(v, at).map(r => r.length)]))))")
-    _out = _node(_prog)
-    assert _out["a hole in the middle"] == [2, 2], f"one hole must give two lines, not one: {_out}"
-    assert _out["the fixture's own case"] == [8, 9], \
-        f"the seven nulled hours must split the day into 8 points and 9, not bridge into 17: {_out}"
-    assert _out["no hole at all"] == [4], f"an unbroken day is still one line: {_out}"
-    assert _out["one reading alone"] == [1], \
-        f"a lone reading between two holes must survive as a run of one — dropping it loses a datum silently: {_out}"
-    assert _out["nothing at all"] == [], f"a series with no readings draws nothing: {_out}"
+# A hole in a series must be a hole in the line. Plot breaks a line at a null by itself (its lineY treats null as
+# undefined), so the page keeps the nulls: what this holds is that a nulled hour reaches the day figure's readout as
+# "nothing recorded", never as a value. See A NODE THAT CHANGES CLOCK below.
 
 # --- the modular page: three files, one contract, ten sections -------------------------------------------------
 #
@@ -1277,6 +1249,227 @@ if shutil.which("node"):
         f"the lead counts and picks only the uncovered alert: {_lr['oneLeft']}"
     assert _lr["rules"]["nAsk"] == 3 and _lr["rules"]["askAt"] == "heat" and _lr["old"]["nAsk"] == 3, \
         f"a rules or older node counts every open alert: {_lr}"
+
+# THE FIGURES KIT (docs/SPEC_dashboard_figures.md §4). The drawing needs Plot and a DOM; the arithmetic of where a
+# drawing starts, which hour a bucket is, and which hour a pointer is nearest does not, so it is run here.
+if shutil.which("node"):
+    _kit = [re.search(p, _js, re.S) for p in (
+        r"const boxOf = \(vals, line, pad = 0\.12\) => \{.*?\n\};",
+        r"const offsetOf = iso => \{.*?\n\};",
+        r"const localOf = \(iso, ms = Date\.parse\(iso\)\) => \{.*?\n\};",
+        r"function nearestIndex\(ts, t\) \{.*?\n\}")]
+    assert all(_kit), "dashboard.js lost a figures-kit helper: " + str([bool(k) for k in _kit])
+    _k = _node("\n".join(k.group(0) for k in _kit) + r"""
+const t = Date.parse('2026-10-06T07:00:00+08:00');
+console.log(JSON.stringify({
+  air: boxOf([4, 5, 193, null, 6], 15), heat: boxOf([28.4, 35.6, null], 35), cold: boxOf([-2, 3], null),
+  flat: boxOf([5, 5, 5], null), none: boxOf([null], null),
+  off8: offsetOf('2026-10-06T07:00:00+08:00'), offZ: offsetOf('2026-10-06T07:00:00Z'), offN: offsetOf('2026-10-06T07:00:00-05:30'),
+  hhmm: localOf('2026-10-06T07:00:00+08:00').hhmm, hour: localOf('2026-10-06T07:00:00+08:00').hour,
+  day: localOf('2026-10-05T23:00:00+08:00').day, dayUtc: localOf('2026-10-05T23:00:00+08:00', t - 8 * 3600e3 + 3600e3).day,
+  frac: localOf('2026-10-06T07:05:00.203633+08:00').hhmm, utc: localOf('2026-10-05T23:00:00+00:00').hhmm,
+  bad: [localOf(null), localOf('not a time'), localOf(undefined)],
+  near: nearestIndex([0, 10, 20, 30], 14), last: nearestIndex([0, 10, 20, 30], 99) }));""")
+    assert _k["air"]["lo"] == 0 and _k["air"]["hi"] > 193, f"a concentration never draws a floor below zero: {_k['air']}"
+    assert 27 < _k["heat"]["lo"] < 28.4 and _k["heat"]["hi"] > 35.6, f"heat keeps its own floor, not zero: {_k['heat']}"
+    assert _k["cold"]["lo"] < -2, f"a quantity that goes negative may: {_k['cold']}"
+    assert _k["flat"]["hi"] > _k["flat"]["lo"], f"a flat day still has a box: {_k['flat']}"
+    assert _k["none"] is None
+    assert (_k["off8"], _k["offZ"], _k["offN"]) == (480, 0, -330), _k
+    assert (_k["hhmm"], _k["hour"]) == ("07:00", 7), "the node's hour, never the reader's"
+    assert (_k["day"], _k["dayUtc"]) == ("2026-10-05", "2026-10-06"), _k
+    assert (_k["frac"], _k["utc"]) == ("07:05", "23:00"), f"a time is read in its own offset, microseconds and all: {_k}"
+    assert all(b == {"day": "—", "hour": None, "hhmm": "—"} for b in _k["bad"]), \
+        f"a time that does not parse is a dash, never a throw: {_k['bad']}"
+    assert (_k["near"], _k["last"]) == (1, 3), _k
+
+# THE DAY FIGURE AND THE STRIPS, as cards (docs/SPEC_dashboard_figures.md §4.2, §4.3). Built for node #1's 6 October
+# capture, with /issues/days computed by the engine from the same capture, in the page loaded the way the browser
+# loads it. The draw functions need Plot and a DOM and are not run; everything a reader can read without them is.
+if shutil.which("node"):
+    import datetime as _dt
+    from issues import engine as _engine, load as _load
+
+    class _Set:
+        def get(self, k, d=""):
+            return d
+
+        def num(self, k, d):
+            return d
+
+    class _Cur:
+        def __init__(self, snap):
+            self.snap, self.rows = snap, []
+
+        def execute(self, sql, args=()):
+            if "current_setting('TimeZone')" in sql:
+                self.rows = [{"tz": "Asia/Makassar"}]
+            elif "FROM readings_1h" in sql:
+                self.rows = [dict(r, bucket=_dt.datetime.fromisoformat(r["bucket"])) for r in self.snap["readings_1h"]
+                             if _dt.datetime.fromisoformat(r["bucket"]) >= args[0]]
+            elif "FROM alert_events" in sql:
+                self.rows = []
+            else:
+                raise LookupError(sql[:60])
+
+        def fetchall(self):
+            return self.rows
+
+        def fetchone(self):
+            return self.rows[0] if self.rows else None
+
+    _snap = json.loads((ROOT / "app/issues/fixtures/node1-2026-10-06-events.json").read_text())
+    _rep = _engine.replay(json.loads(json.dumps(_snap)), _Set(), _load())
+    _days = _engine.days(_Cur(_snap), _Set(), _load(), 1, now=_dt.datetime.fromisoformat(_snap["as_of"]))
+    _days3 = _engine.days(_Cur(_snap), _Set(), _load(), 3, now=_dt.datetime.fromisoformat(_snap["as_of"]))
+    _over = sum(p["over"] for p in _days["issues"]["air"]["per_day"])
+    _cards = _node(r"""(() => {
+const fs = require('fs'), vm = require('vm');
+globalThis.window = globalThis;
+globalThis.localStorage = globalThis.sessionStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+globalThis.location = { search: '', hash: '', pathname: '/', href: 'http://node/' };
+globalThis.document = { addEventListener: () => {}, getElementById: () => null, querySelector: () => null,
+  querySelectorAll: () => [] };
+globalThis.addEventListener = () => {};
+globalThis.fetch = () => new Promise(() => {});
+vm.runInThisContext(fs.readFileSync('app/static/dashboard.js', 'utf8'), { filename: 'dashboard.js' });
+const I = """ + json.dumps(_rep, default=str) + r""", D = """ + json.dumps(_days, default=str) + r""", D3 = """ + json.dumps(_days3, default=str) + r""";
+globalThis.__I = I;
+vm.runInThisContext("S = { issues: __I }; ISS = S.issues.issues; DIST = S.issues.distances; LAB = S.issues.labels.en; LOC = 'en';");
+const K = window.K;
+const air = K.dayFigure('air', I.issues.air), heat = K.dayFigure('heat', I.issues.heat);
+const st = K.strips('air', D), st3 = K.strips('air', D3), none = K.strips('air', null), coast = K.strips('coast', D);
+console.log(JSON.stringify({
+  airFloor: /floor 0<\/span>/.test(air), airNeg: /floor -/.test(air), heatNotZero: /, not zero<\/span>/.test(heat),
+  airDay: air.includes('data-num="air.day"'), events: (air.match(/(One event|\d+ events) in these hours/) || [''])[0],
+  region: air.includes('region — no model'), usual: (air.match(/no usual band — [^<]*/) || [''])[0],
+  keys: air.includes('tabindex="0"'), over: (st.match(/>(\d+) hours over the line</) || [])[1],
+  stripsNum: st.includes('data-num="air.days.over"'), none, coast,
+  trimHead: (st3.match(/<p class="f-head"><span>([^<]*)<\/span>/) || [])[1] }));
+})()""")
+    assert _cards["airFloor"] and not _cards["airNeg"], "air draws from 0 and never below"
+    assert _cards["heatNotZero"], "heat says its floor is not zero"
+    assert _cards["airDay"] and _cards["keys"], "the day figure keeps air.day's comparison and can be read by keyboard"
+    assert _cards["events"] == "2 events in these hours", _cards["events"]
+    assert _cards["region"], "a distance with no source is named with its reason"
+    assert _cards["usual"] == "no usual band — the usual could not be read", _cards["usual"]
+    assert _cards["stripsNum"] and int(_cards["over"]) == _over, (_cards["over"], _over)
+    assert "does not send its days yet" in _cards["none"], _cards["none"]
+    assert "No hourly record of" in _cards["coast"], _cards["coast"]
+    assert _cards["trimHead"] == "Air · house · 2 days, from Mon, 05 Oct, the first this node recorded", _cards["trimHead"]
+
+# THE FOLD OF STOPPED STATIONS survives a row it cannot date. toISOString() throws a RangeError on an invalid date;
+# one station with no last_heard took down the whole stations section. localOf now answers '—' for it, and the fold
+# prints last_heard in its own offset, not the first issue's last bucket's (final review I1, M9).
+if shutil.which("node"):
+    _sf = _node("\n".join((
+        re.search(r"const esc = s => .*?\[c\]\)\);", _js, re.S).group(0),
+        re.search(r"const offsetOf = iso => \{.*?\n\};", _js, re.S).group(0),
+        re.search(r"const localOf = \(iso, ms = Date\.parse\(iso\)\) => \{.*?\n\};", _js, re.S).group(0),
+        re.search(r"function silentFold\(ctx\) \{.*?\n\}", _js, re.S).group(0),
+        """const row = (id, lh) => ({ sensor_id: id, name: 'Station ' + id, km: 3.2, indoor: false, source: 'src', last_heard: lh });
+const ctx = { S: { issues: { stations_silent: { read: true, within_days: 30 } } },
+  H: { silent: [row('a', '2026-10-01T07:30:00+08:00'), row('b', null)] },
+  ISS: { air: { buckets: ['2026-10-06T07:00:00+01:00'] } }, ORDER: ['air'] };
+let html = '', err = null;
+try { html = silentFold(ctx); } catch (e) { err = String(e); }
+console.log(JSON.stringify({ html, err }));""")))
+    assert _sf["err"] is None, f"silentFold threw on a row with no last_heard: {_sf['err']}"
+    assert "not known" in _sf["html"] and "last heard 2026-10-01 07:30" in _sf["html"], _sf["html"]
+
+# A NODE THAT CHANGES CLOCK (final review I1, docs/SPEC_dashboard_figures.md §3.4, §4.2). /issues/days steps its
+# buckets in UTC and gives each one its own offset, and a label says the bucket's own hour. Europe/Madrid falls back
+# at 03:00+02:00 on 25 October 2026; a page that read every bucket in the last one's +01:00 drew 00:00+02:00 as 23:00
+# the day before, and 02:00+02:00 as 01:00. Plot is stubbed so the draw functions run: the cells they hand Plot and
+# the readout they write are what is checked. The same page also holds Measure's count of hours over the line to its
+# dashes, and a nulled hour of the day figure to "nothing recorded" (final review M1, M2, M6, M10).
+if shutil.which("node"):
+    _madrid = ["2026-10-24T23:00:00+02:00", "2026-10-25T00:00:00+02:00", "2026-10-25T01:00:00+02:00",
+               "2026-10-25T02:00:00+02:00", "2026-10-25T02:00:00+01:00", "2026-10-25T03:00:00+01:00"]
+    _over_src = re.search(r"function overRows\(ctx\) \{.*?\n\}", _js_raw, re.S).group(0)
+    _dst = _node(r"""(() => {
+const fs = require('fs'), vm = require('vm');
+globalThis.window = globalThis;
+globalThis.localStorage = globalThis.sessionStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+globalThis.location = { search: '', hash: '', pathname: '/', href: 'http://node/' };
+const reads = {}, stub = () => ({ append() {}, style: {}, hidden: false });
+globalThis.document = { addEventListener: () => {}, getElementById: id => (id.endsWith('-read') ? (reads[id] = reads[id] || { innerHTML: '' }) : null),
+  querySelector: () => null, querySelectorAll: () => [], createElement: stub, documentElement: {} };
+globalThis.getComputedStyle = () => ({ getPropertyValue: () => '#000' });
+globalThis.addEventListener = () => {};
+globalThis.fetch = () => new Promise(() => {});
+/* Plot, as far as the draw functions reach into it: every mark keeps its data, the drawing keeps its listeners. */
+let svg;
+globalThis.Plot = new Proxy({}, { get: (_, k) => (k === 'plot'
+  ? o => (svg = { o, on: {}, value: null, addEventListener(t, f) { this.on[t] = f; },
+    scale: () => ({ apply: () => 0, invert: () => 0 }), getBoundingClientRect: () => ({ left: 0, width: 1 }) })
+  : (data, opts) => ({ mark: k, data, opts })) });
+vm.runInThisContext(fs.readFileSync('app/static/dashboard.js', 'utf8'), { filename: 'dashboard.js' });
+vm.runInThisContext(`S = { issues: { as_of: '2026-10-25T03:30:00+01:00', events: {} } };
+ISS = { air: { name: { en: 'Air' }, dp: 0, unit: 'µg/m³' } }; DIST = ['room', 'yard', 'ring', 'region'];
+LAB = { room: 'house', yard: 'street', ring: 'neighbours', region: 'region' }; LOC = 'en';`);
+const K = window.K, FIGS = vm.runInThisContext('FIGS'), B = """ + json.dumps(_madrid) + r""";
+const out = {};
+
+/* The strips: each bucket in its own day and hour. */
+const air = (line, perDay) => ({ days: 2, buckets: B, events: [], issues: { air: { distance: 'room', line,
+  series: { room: [5, 6, 20, 7, 8, 9] }, per_day: perDay } } });
+const D = air({ value: 15 }, [{ date: '2026-10-24', over: 0, read: 0, of: 1 }, { date: '2026-10-25', over: 1, read: 5, of: 5 }]);
+out.card = K.strips('air', D);
+FIGS.get('strips-air')(stub(), 720);
+const marks = svg.o.marks, cells = marks.filter(m => m.mark === 'cell').at(-1).data;
+const at = iso => { const c = cells.find(x => x.t === Date.parse(iso)); return c ? [c.day, c.hour] : null; };
+out.c0 = at('2026-10-25T00:00:00+02:00'); out.c2 = at('2026-10-25T02:00:00+02:00'); out.c2b = at('2026-10-25T02:00:00+01:00');
+out.c23 = at('2026-10-24T23:00:00+02:00');
+svg.value = cells.find(x => x.t === Date.parse('2026-10-25T00:00:00+02:00')); svg.on.input();
+out.read = reads['strips-air-read'].innerHTML;
+const col = marks.find(m => m.mark === 'text' && m.opts && m.opts.dx >= 22 && m.opts.dx <= 30).opts;
+out.col = ['2026-10-24', '2026-10-25'].map(col.text);
+out.noLine = K.strips('air', air(null, [{ date: '2026-10-25', over: null, read: 5, of: 5 }]));
+
+/* The day figure: the hour a key lands on, in its own offset, and a nulled hour said as nothing recorded. */
+const day = { name: { en: 'Air' }, unit: 'µg/m³', dp: 0, headline: 'room', line: { value: 15, source: 'WHO' },
+  buckets: B, series: { room: [5, 6, null, 7, 8, 9] }, usual: null, usual_absent: 'unread' };
+K.dayFigure('air', day);
+const el = stub(); FIGS.get('day-fig-air')(el, 720);
+const key = k => el.onkeydown({ key: k, preventDefault() {} });
+key('ArrowLeft'); key('ArrowLeft'); key('ArrowLeft'); key('ArrowLeft');
+out.dayGap = reads['day-fig-air-read'].innerHTML;
+key('ArrowLeft');
+out.dayMidnight = reads['day-fig-air-read'].innerHTML;
+
+/* Measure's hours over the line: a dash for a day nothing was read, and for a "today" that is not the node's today. */
+window.overRows = vm.runInThisContext('(' + """ + json.dumps(_over_src) + r""" + ')');
+const ctx = asOf => ({ ORDER: ['air'], ISS, LAB: { room: 'house' }, S: { issues: { as_of: asOf } } });
+const days = (line, last) => ({ days: 2, buckets: B, issues: { air: { distance: 'room', line,
+  per_day: [{ date: '2026-10-24', over: 0, read: 1, of: 1 }, last] } } });
+window.DAYS = days({ value: 15 }, { date: '2026-10-25', over: 0, read: 0, of: 5 });
+out.read0 = overRows(ctx('2026-10-25T03:30:00+01:00'));
+window.DAYS = days({ value: 15 }, { date: '2026-10-25', over: 1, read: 5, of: 5 });
+out.today = overRows(ctx('2026-10-25T03:30:00+01:00'));
+out.stale = overRows(ctx('2026-10-25T23:30:00+00:00'));
+window.DAYS = days(null, { date: '2026-10-25', over: null, read: 5, of: 5 });
+out.noneLine = overRows(ctx('2026-10-25T03:30:00+01:00'));
+console.log(JSON.stringify(out));
+})()""")
+    assert _dst["c0"] == ["2026-10-25", 0], f"00:00+02:00 is midnight on the 25th, not 23:00 the day before: {_dst['c0']}"
+    assert _dst["c2"] == ["2026-10-25", 2] and _dst["c2b"] == ["2026-10-25", 2], \
+        f"both 02:00s are 02:00, in their own offsets: {_dst['c2']} {_dst['c2b']}"
+    assert _dst["c23"] == ["2026-10-24", 23], _dst["c23"]
+    assert "<b>Sun, 25 Oct 00:00</b>" in _dst["read"], f"the strips' readout names the bucket's own hour: {_dst['read']}"
+    assert _dst["col"] == ["—", "1 h over"], f"a day nothing was read is a dash, never a clean dot: {_dst['col']}"
+    assert 'data-num="air.days.over"' in _dst["card"]
+    assert 'data-num="air.days.over"' not in _dst["noLine"] and "over the line" not in _dst["noLine"] \
+        and "5 hours read" in _dst["noLine"], f"an issue with no line counts no hours over it: {_dst['noLine']}"
+    assert "<b>00:00</b>" in _dst["dayMidnight"], f"the day figure's hour is the bucket's own: {_dst['dayMidnight']}"
+    assert "<b>01:00</b>" in _dst["dayGap"] and "house nothing recorded" in _dst["dayGap"] \
+        and 'class="f-d f-room f-gone"' in _dst["dayGap"], f"a nulled hour is nothing recorded: {_dst['dayGap']}"
+    assert 'data-num="air.over.today"' not in _dst["read0"] and _dst["read0"].count('<span class="none">—</span>') == 1, \
+        f"a day nothing was read prints a dash, not 0 h: {_dst['read0']}"
+    assert 'data-num="air.over.today"' in _dst["today"] and ">1 h<" in _dst["today"], _dst["today"]
+    assert 'data-num="air.over.today"' not in _dst["stale"] and 'data-num="air.over.days"' in _dst["stale"], \
+        f"after the node's midnight, the last counted day is not today: {_dst['stale']}"
+    assert "No issue here has a line" in _dst["noneLine"], _dst["noneLine"]
 
 print("test_dashboard: the engine's fence holds at three stations, the page has none of its own, "
       "a hole in a series is a hole in the line, the page is three files carrying one contract and "

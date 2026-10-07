@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Path as PathParam
+from fastapi import APIRouter, HTTPException, Path as PathParam, Query
 
 from . import load
 from . import engine
@@ -67,6 +67,16 @@ def issues_now():
         return engine.compute(cur, main.settings, load(), earth=_earth(),
                                mesh=main.mesh_state if main.MQTT_HOST else None,
                                facilities=facilities, now=now, events=events)
+
+
+@router.get("/days")
+def issues_days(days: int = Query(7, ge=1, le=engine.DAYS_MAX)):
+    """Each issue's hourly series over the last `days` local days, the hero distance's hours over the line counted per
+    day, and the alert events in the window (docs/SPEC_dashboard_figures.md §3.4). The same engine as `/issues`, so a
+    day here is the 24 hours `/issues` draws. Under the `/issues` prefix, so it shares exactly as `/issues` does."""
+    import main                    # noqa: PLC0415
+    with main.db() as con, con.cursor() as cur:
+        return engine.days(cur, main.settings, load(), days)
 
 
 def _earth():

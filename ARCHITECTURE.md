@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.78 -->
+<!-- checked: v0.79 -->
 
 The whole building, drawn once, so every brick knows where it goes. What exists today is marked. What doesn't is
 drawn anyway, because the contracts between layers are the thing that can't be retrofitted.
@@ -79,7 +79,7 @@ don't summarise upward.
 
 Every layer speaks three protocols. Compute, apps, and partner systems attach by speaking one of them.
 
-**Every wire document says which document it is.** From v0.63 the five below carry a top-level `schema`
+**Every wire document says which document it is.** From v0.63 the ones below carry a top-level `schema`
 key, and `tools/check_wire.py` in `make lint` holds their top-level shape against a fixture in
 `tests/data/wire/`, so a key cannot be gained or lost without somebody editing that file on purpose.
 
@@ -90,6 +90,7 @@ key, and `tools/check_wire.py` in `make lint` holds their top-level shape agains
 | `report-v0` | `GET /report/latest` | `app/main.py::report_latest` |
 | `aggregates-v0` | the child's hourly push body | `app/main.py::push_aggregates` |
 | `events-v0` | the child's ρ push body | `app/main.py::push_events` |
+| `days-v0` | `GET /issues/days?days=` — the same hourly series over up to 90 days (v0.79) | `app/issues/engine.py::days` |
 
 A receiver that sees a `schema` it does not know **logs once and processes what it recognises. It never
 refuses** — a parent one release behind has to keep accepting a child one release ahead. A document with

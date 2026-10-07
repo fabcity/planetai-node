@@ -108,7 +108,7 @@ MARKS = [
      "at it. The offline plan asks nothing; Telegram is reached by the node, never by this page."),
     ("raw", "Raw readings stay", "how-it-works.md", "What leaves the machine, and what never does",
      "Raw readings stay.", "under CC BY 4.0",
-     "The barcode under Observe is hourly means of the house's PM2.5: the finest time step this "
+     "The strips under Observe are hourly means, one cell an hour: the finest time step this "
      "page shows, and still not a raw reading."),
     ("levels", "Three levels, one floor", "alerts.md", "Levels",
      "`ALERT_LEVEL` (default `act`) is the floor", "is written from.",
@@ -189,8 +189,17 @@ MARKS = [
     # --- Historical ------------------------------------------------------------------------------
     ("shape", "The day this place usually has", "api.md", "Sensors and readings",
      "The day this place usually has: one mean", "(`local`) count.",
-     "The page waits for seven local days before it draws a day, and until then says how many it "
+     "The page waits for seven local days before it names the worst hour, and until then says how many it "
      "has. GET /shape?metric=pm25 returns the same hours, with how many hourly means went into each."),
+    ("figure", "The day, drawn once", "dashboard.md", "The day figure",
+     "Each issue with a day has one drawing", "last 14 days.",
+     "The figure reads the node's own 24 hourly values for every distance, the usual for each hour from "
+     "usual_by_hour, and the alert events from /issues. The page draws them; all it counts is the hours over the "
+     "line and above the usual that it draws."),
+    ("strips", "One row a day, one cell an hour", "dashboard.md", "The strips",
+     "One row a day and one cell an hour", "on Historical.",
+     "The strips read GET /issues/days: the same hourly values the lead uses, over up to 90 days, with the node's "
+     "own count of hours over the line for each day."),
     ("earth", "It says something changed, never what", "packs-reference.md", "earth",
      "The node's own copy of Google's AlphaEarth", "never what.",
      "The years come from files this node already holds, read through GET /earth, and the node "
@@ -356,6 +365,12 @@ QUESTIONS = {
     'shape': {"en": ['What does a usual day look like here?', 'Is today different from the usual day?'],
         "id": ['Seperti apa hari biasa di sini?', 'Apakah hari ini berbeda dari biasanya?'],
         "es": ['¿Cómo es un día normal aquí?', '¿Es hoy distinto de un día normal?']},
+    'figure': {"en": ['What does the grey band mean?', 'Which hours were over the line today?'],
+        "id": ['Apa arti pita abu-abu itu?', 'Jam berapa saja yang melewati garis hari ini?'],
+        "es": ['¿Qué significa la banda gris?', '¿Qué horas pasaron la línea hoy?']},
+    'strips': {"en": ['At what hour is the air usually worst here?', 'Which days were over the line?'],
+        "id": ['Jam berapa udara biasanya paling buruk di sini?', 'Hari apa saja yang melewati garis?'],
+        "es": ['¿A qué hora suele estar peor el aire aquí?', '¿Qué días pasaron la línea?']},
     'earth': {"en": ['What changed on the ground around here?', 'Why can the satellite not say what changed?'],
         "id": ['Apa yang berubah di tanah sekitar sini?', 'Mengapa satelit tidak bisa mengatakan apa yang berubah?'],
         "es": ['¿Qué cambió en el terreno de alrededor?', '¿Por qué el satélite no puede decir qué cambió?']},

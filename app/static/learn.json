@@ -384,6 +384,30 @@
    "title": "What an alert event is",
    "url": "https://planetai.fab.city/docs/dashboard/#the-sections"
   },
+  "figure": {
+   "anchor": "the-day-figure",
+   "more": "The figure reads the node's own 24 hourly values for every distance, the usual for each hour from usual_by_hour, and the alert events from /issues. The page draws them; all it counts is the hours over the line and above the usual that it draws.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "What does the grey band mean?",
+     "Which hours were over the line today?"
+    ],
+    "es": [
+     "¿Qué significa la banda gris?",
+     "¿Qué horas pasaron la línea hoy?"
+    ],
+    "id": [
+     "Apa arti pita abu-abu itu?",
+     "Jam berapa saja yang melewati garis hari ini?"
+    ]
+   },
+   "quote": "Each issue with a day has one drawing of its last 24 hours. Every distance is a trace in ink, dashed by distance, and\nan hour nothing was recorded is a gap in it, never a line drawn across. The grey band is the usual for each hour,\nfrom the node's own last 14 days.",
+   "section": "The day figure",
+   "title": "The day, drawn once",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-day-figure"
+  },
   "figures": {
    "anchor": "",
    "more": "Every row here arrived in GET /issues as provenance: the figure, its value, where it came from, the node's word for it and its age. A script or a spreadsheet reads the same route, with a token, or with none at SHARE_LEVEL=open.",
@@ -698,7 +722,7 @@
   },
   "raw": {
    "anchor": "what-leaves-the-machine-and-what-never-does",
-   "more": "The barcode under Observe is hourly means of the house's PM2.5: the finest time step this page shows, and still not a raw reading.",
+   "more": "The strips under Observe are hourly means, one cell an hour: the finest time step this page shows, and still not a raw reading.",
    "page": "how-it-works.md",
    "page_title": "How it works",
    "questions": {
@@ -842,7 +866,7 @@
   },
   "shape": {
    "anchor": "sensors-and-readings",
-   "more": "The page waits for seven local days before it draws a day, and until then says how many it has. GET /shape?metric=pm25 returns the same hours, with how many hourly means went into each.",
+   "more": "The page waits for seven local days before it names the worst hour, and until then says how many it has. GET /shape?metric=pm25 returns the same hours, with how many hourly means went into each.",
    "page": "api.md",
    "page_title": "HTTP API",
    "questions": {
@@ -960,6 +984,30 @@
    "title": "States, in weight not hue",
    "url": "https://planetai.fab.city/docs/dashboard/#issues-states-and-distances"
   },
+  "strips": {
+   "anchor": "the-strips",
+   "more": "The strips read GET /issues/days: the same hourly values the lead uses, over up to 90 days, with the node's own count of hours over the line for each day.",
+   "page": "dashboard.md",
+   "page_title": "The dashboard",
+   "questions": {
+    "en": [
+     "At what hour is the air usually worst here?",
+     "Which days were over the line?"
+    ],
+    "es": [
+     "¿A qué hora suele estar peor el aire aquí?",
+     "¿Qué días pasaron la línea?"
+    ],
+    "id": [
+     "Jam berapa udara biasanya paling buruk di sini?",
+     "Hari apa saja yang melewati garis?"
+    ]
+   },
+   "quote": "One row a day and one cell an hour, the newest day at the bottom: the last seven days on Now under each day figure (the oldest row starts at this hour a week ago), and every\nday the node holds on Historical.",
+   "section": "The strips",
+   "title": "One row a day, one cell an hour",
+   "url": "https://planetai.fab.city/docs/dashboard/#the-strips"
+  },
   "tiles": {
    "anchor": "the-ground",
    "more": "The request count sits in the tab bar so the price of switching to satellite is visible before you pay it: live tiles need MAP_TILES=on, and a press may only ever reduce it.",
@@ -1064,6 +1112,8 @@
   "effect",
   "figures",
   "shape",
+  "figure",
+  "strips",
   "earth",
   "reach",
   "trust",

@@ -369,6 +369,19 @@ async function serveNodeAPI(route, u) {
       : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data.snapshot) }));
     return true;
   }
+  /* GET /issues/days, from the capture (docs/SPEC_dashboard_figures.md §3.4). A capture taken before v0.78 has no
+     issues_days, and the answer is the 404 a node without the route gives: the strips then draw their own empty
+     state, which is the truth about that capture. */
+  if (u.pathname === '/issues/days') {
+    const data = computeNodeData(FIXTURE);
+    if (data.error) { await failNodeAPI(route, u.pathname, data); return true; }
+    const body = data.snapshot.issues_days;
+    await (body == null
+      ? route.fulfill({ status: 404, contentType: 'application/json',
+          body: JSON.stringify({ detail: 'this snapshot carries no issues_days' }) })
+      : route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) }));
+    return true;
+  }
   if (u.pathname === '/issues' || u.pathname === '/issues/') {
     const data = computeNodeData(FIXTURE);
     await (data.error ? failNodeAPI(route, '/issues', data)

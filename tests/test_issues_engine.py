@@ -434,10 +434,10 @@ class Counting(engine.Replay):
 
 c = Counting(FIX)
 engine.compute(c, Settings(NODE_ISSUES="air,heat,land,coast"), DECL, earth=EARTH, now=NOW)
-check(c.n == 5, f"the engine ran {c.n} queries for four issues; it must read each table once")
+check(c.n == 7, f"the engine ran {c.n} queries for four issues; it must read each table once, and the usual and the silent once")
 c = Counting(FIX)
 engine.compute(c, Settings(NODE_ISSUES="air"), DECL, earth=EARTH, now=NOW)
-check(c.n == 5, f"the engine ran {c.n} queries for one issue; the reads are not per-issue")
+check(c.n == 7, f"the engine ran {c.n} queries for one issue; the reads are not per-issue")
 
 # --- the keys the modular dashboard reads ---------------------------------------------------------
 body = engine.replay(FIX, Settings(), DECL)

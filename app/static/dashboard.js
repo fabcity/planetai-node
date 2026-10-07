@@ -306,178 +306,6 @@ const reasonFor = (d, dist) => ({
   ring: 'no public station reporting', region: 'no model for this point',
 }[dist] || 'no source');
 
-/* --------------------------------------------------------------------------- 3 · series */
-/* Geometry only: the high and the low set the box, the node supplies every value and the line.
- * A hole in the series is a hole in the line — a run of one reading is a dot, never nothing. */
-const runs = (vals, at) => {
-  const out = []; let cur = [];
-  (vals || []).forEach((v, i) => {
-    if (v == null) { if (cur.length) { out.push(cur); cur = []; } return; }
-    cur.push(at(v, i));
-  });
-  if (cur.length) out.push(cur);
-  return out;
-};
-
-function series(key, d, o = {}) {
-  const id = o.id || `series-${key}`;
-  const ser = d.series || {};
-  const sets = DIST.filter(x => Array.isArray(ser[x]) && ser[x].some(v => v != null));
-  if (!sets.length) {
-    return `<div class="series" data-kind="series" data-component="series" id="${esc(id)}"`
-      + ` data-ref="${esc(o.ref || `band-${key}`)}"><p class="note">The day it just had: nothing recorded yet at `
-      + `any distance.</p></div>`;
-  }
-  const W = 720, H = o.h || 180, pad = { l: 8, r: 8, t: 10, b: 10 };
-  const all = sets.flatMap(x => ser[x]).filter(v => v != null);
-  const line = d.line ? d.line.value : null;
-  /* The floor is the data's own, not zero, and the drawing SAYS so. Forcing zero in put every heat
-   * trace on this node — 29 to 34 °C — into the top sixth of its box, with five sixths of the card
-   * blank: the variation a reader is here to see was flattened to nothing by an origin that means
-   * nothing. Zero degrees is not a floor in Bali and zero µg/m³ is not a reading anybody takes.
-   *
-   * A non-zero base exaggerates variation, which is the honest objection to it, and the answer is
-   * to declare it rather than to hide it: both ends of the scale are printed on the axis and in the
-   * text alternative, and the line's own position is inside the range whatever the data did. */
-  const floorAt = Math.min(...all, line == null ? Infinity : line);
-  const ceilAt = Math.max(...all, line == null ? -Infinity : line);
-  const padBy = (ceilAt - floorAt) * 0.12 || Math.abs(ceilAt * 0.1) || 1;
-  const hi = ceilAt + padBy, lo = floorAt - padBy;
-  const n = Math.max(...sets.map(x => ser[x].length));
-  const X = i => pad.l + (i / Math.max(1, n - 1)) * (W - pad.l - pad.r);
-  const Y = v => H - pad.b - ((v - lo) / (hi - lo || 1)) * (H - pad.t - pad.b);
-  const dash = { room: '', yard: '4 3', ring: '1 5', region: '6 4' };
-  const broken = sets.some(k => runs(ser[k], () => 0).length > 1);
-  /* Hours over the line, under the axis. An hour counts when ANY distance drawn above was over it
-   * — the question a household asks is whether this place was over, not whether one particular kit
-   * was — and the mark sits in the same coordinate space as the traces rather than in a div below,
-   * because a strip with its own padding drifts out of line with the hour it is pointing at.
-   * They are counted, never shaded: eight marks is eight hours and a darker band is a mood. */
-  const OVER_BAND = 11;
-  const overIdx = line == null ? []
-    : Array.from({ length: n }, (_, i) =>
-      sets.some(k => ser[k][i] != null && ser[k][i] > line) ? i : -1).filter(i => i >= 0);
-  let s = `<svg viewBox="0 0 ${W} ${H + OVER_BAND}" preserveAspectRatio="none" role="img" aria-label="`
-    + `${esc(d.name[LOC])}, ${sets.length} traces over 24 hours, ${esc(fmt(lo, d.dp))} to `
-    + `${esc(fmt(hi, d.dp))} ${esc(d.unit)}${line != null ? `, the line ${esc(fmt(line, d.dp))}` : ''}`
-    + `${broken ? ', broken where nothing was recorded' : ''}${overIdx.length
-      ? `, over the line in ${overIdx.length} of ${n} hours` : ''}">`;
-  if (line != null) s += `<line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(line)}" y2="${Y(line)}"`
-    + ` stroke="var(--signal-worse)" stroke-dasharray="3 6" stroke-opacity=".8"/>`;
-  sets.forEach(k => {
-    const op = k === 'room' ? 1 : .55;
-    runs(ser[k], (v, i) => [X(i), Y(v)]).forEach(r => {
-      s += r.length > 1
-        ? `<polyline points="${r.map(p => p.join(',')).join(' ')}" fill="none" stroke="var(--ink)"`
-          + ` stroke-width="1.6" vector-effect="non-scaling-stroke"`
-          + `${dash[k] ? ` stroke-dasharray="${dash[k]}"` : ''} stroke-opacity="${op}"/>`
-        : `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="1.8" fill="var(--ink)" fill-opacity="${op}"/>`;
-    });
-  });
-  /* One mark per hour that was over, at that hour's own x. Non-scaling stroke so they stay the
-     same weight whatever width the svg is stretched to. */
-  overIdx.forEach(i => {
-    s += `<line x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="${H + 3}" y2="${H + OVER_BAND - 2}"`
-      + ` stroke="var(--signal-worse)" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
-  });
-  s += `</svg>`;
-  /* A distance with nothing to draw is NAMED, not silently dropped. Three traces where there
-     should be four reads as a complete picture unless the fourth says it is missing and why — and
-     on this node `model` is the missing one on every issue, which is a real gap in the record and
-     not a quiet simplification of the drawing. */
-  const gone = DIST.filter(x => !sets.includes(x));
-  const legend = sets.map(k =>
-    `<span><i class="${k === 'room' ? '' : k === 'ring' ? 'dot' : 'dash'}"></i>${esc(LAB[k])}</span>`)
-    .join('')
-    + gone.map(k => `<span class="gone"><i></i>${esc(LAB[k])} — ${esc(reasonFor(d, k))}</span>`).join('')
-    + (overIdx.length ? `<span class="over"><i></i>${overIdx.length} of ${n} hours over the line`
-      + `</span>` : '');
-  // The text alternative sits beside the drawing at every width, not behind it.
-  const first = ser[sets[0]].find(v => v != null), last = [...ser[sets[0]]].reverse().find(v => v != null);
-  const altCmp = line != null
-    ? `against the line, ${fmt(line, d.dp)} ${d.unit} · ${d.line.source}`
-    : `no comparison yet · ${noLine(d)}`;
-  return `<div class="series" data-kind="series" data-component="series" id="${esc(id)}"`
-    + ` data-ref="${esc(o.ref || `band-${key}`)}">`
-    + `<div class="ax top"><span>${esc(fmt(hi, d.dp))} ${esc(d.unit)}</span>`
-    + `${line != null ? `<span>the line ${esc(fmt(line, d.dp))}</span>` : ''}</div>`
-    + s
-    + `<div class="ax bot"><span>24 h ago</span>`
-    + `${fmt(lo, d.dp) === fmt(0, d.dp) ? '<span class="floor">floor 0</span>'
-      : `<span class="floor">floor ${esc(fmt(lo, d.dp))} ${esc(d.unit)}, not zero</span>`}`
-    + `<span>now</span></div>`
-    + `<p class="alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">`
-    + `${esc(LAB[sets[0]])} opened the day at ${esc(fmt(first, d.dp))} and closed it at `
-    + `${esc(fmt(last, d.dp))} ${esc(d.unit)}</span> — ${esc(altCmp)}.`
-    + `${broken ? ' The line breaks where nothing was recorded.' : ''}</p>`
-    + `<div class="legend">${legend}</div></div>`;
-}
-
-/* The barcode: every issue's day in one strip, one bar an hour.
- *
- * WHY IT IS NOT THE TRACES AGAIN. The traces detail the two issues that have a day; this carries
- * ALL of them, including the ones with nothing, so the shape of a whole day is one object a reader
- * can take in at a glance and the empty ones are visibly empty rather than absent. The matrix is
- * issues by distance, now. This is issues by hour, today. Same rows, the other axis.
- *
- * THE GRAIN IS 24 BARS AND THE CAPTION SAYS SO. The drawing this is built from shows 96 at fifteen
- * minutes. No route on this node can answer that: /series and /sparks are hourly, and `stats` has
- * fifteen-minute means for *now* only, never for a day. So it is hourly and says it is hourly,
- * rather than drawing 96 bars out of 24 readings and calling the difference smoothing.
- *
- * One bar an hour, height for the reading against that issue's own scale, red when it was over
- * that issue's own line — the same red the hours-over marks use, and for the same fact. */
-function barcode(o = {}) {
-  const id = o.id || 'barcode';
-  const rows = (ORDER || []).filter(k => ISS[k]);
-  if (!rows.length) return '';
-  const HRS = 24, BW = 26, BH = 34, GAP = 4;
-  const W = HRS * (BW + GAP);
-  const strip = k => {
-    const d = ISS[k];
-    /* The closest distance that has a day. A barcode of the model when the room is measured would
-       be drawing somewhere else and calling it here. */
-    const pick = (DIST || []).find(x => Array.isArray((d.series || {})[x])
-      && d.series[x].some(v => v != null));
-    const vals = pick ? d.series[pick] : [];
-    const got = vals.filter(v => v != null);
-    if (!got.length) {
-      return `<div class="bc" id="${esc(id)}-${esc(k)}" data-ref="${esc(id)}">`
-        + `<span class="k">${esc(d.name[LOC])}</span>`
-        + `<span class="empty">no hourly record at any distance</span></div>`;
-    }
-    const line = d.line ? d.line.value : null;
-    const lo = Math.min(...got), hi = Math.max(...got, line == null ? -Infinity : line);
-    const span = (hi - lo) || 1;
-    const bars = Array.from({ length: HRS }, (_, i) => {
-      const v = vals[i];
-      if (v == null) return `<rect x="${i * (BW + GAP)}" y="${BH - 1}" width="${BW}" height="1"`
-        + ` class="gap"/>`;
-      const h = Math.max(2, Math.round(((v - lo) / span) * BH));
-      const over = line != null && v > line;
-      return `<rect x="${i * (BW + GAP)}" y="${BH - h}" width="${BW}" height="${h}"`
-        + `${over ? ' class="over"' : ''}/>`;
-    }).join('');
-    const overN = line == null ? 0 : vals.filter(v => v != null && v > line).length;
-    return `<div class="bc" id="${esc(id)}-${esc(k)}" data-ref="${esc(id)}">`
-      + `<span class="k">${esc(d.name[LOC])}</span>`
-      + `<svg viewBox="0 0 ${W} ${BH}" preserveAspectRatio="none" role="img" aria-label="`
-      + `${esc(d.name[LOC])} at the ${esc(LAB[pick])}, ${got.length} of ${HRS} hours recorded`
-      + `${line == null ? '' : `, ${overN} over the line`}">${bars}</svg>`
-      + `<span class="m" data-num="barcode.${esc(k)}" data-cmp="${esc(line == null
-        ? `${d.name[LOC]} has no line: ${noLine(d)}`
-        : `hours over ${fmt(line, d.dp)} ${d.unit || ''}, at the ${LAB[pick]}`)}">`
-      + `${line == null ? '\u2014' : `${overN}/${got.length}`}</span></div>`;
-  };
-  return `<div class="barcode" data-kind="series" data-component="barcode" id="${esc(id)}"`
-    + ` data-ref="${esc(o.ref || 'days')}">${rows.map(strip).join('')}`
-    + `<p class="cap">One bar an hour, 24 hours, at the closest distance each issue has. `
-    + `<b>Every row is on its own scale</b>, because a micrograph and a degree are not the same `
-    + `quantity \u2014 read a row across the day, never one row against another. `
-    + `<b>Hourly, not quarter-hourly</b>: this node keeps fifteen-minute means for now only, never `
-    + `for a day, so an hour is the finest grain it keeps for a whole day.</p></div>`;
-}
-
 /* --------------------------------------------------------------------------- 4 · row */
 function row(o) {
   const id = o.id || uid('row');
@@ -1030,10 +858,332 @@ function evCard(e, tail = '') {
     + tail + `</section>`;
 }
 
+/* --------------------------------------------------------------------------- 6 · figures */
+/* Drawn with Observable Plot (static/plot.umd.min.js, with its d3 in static/d3.min.js), vendored so the page draws
+ * on a LAN with no route out (docs/SPEC_dashboard_figures.md §4). The page is HTML strings and Plot makes DOM nodes,
+ * so a figure is a placeholder in the string and a draw function kept here; route() calls mountFigs() after it has
+ * replaced the page, and a figure redraws when its column changes width by more than 20 px.
+ *
+ * NOTHING HERE MAY TOUCH A BROWSER GLOBAL AT LOAD. tests/test_dashboard.py loads this whole file in node, where
+ * there is no ResizeObserver, no CSS and no Plot; they are reached only inside functions a browser calls. */
+const FIGS = new Map();
+let FIG_RO = null;
+
+function fig(id, draw, o = {}) {
+  FIGS.set(id, draw);
+  return `<div class="f-fig" id="${esc(id)}" data-kind="series" data-component="${esc(o.component || 'figure')}"`
+    + ` data-ref="${esc(o.ref || '')}"${o.keys ? ' tabindex="0"' : ''} role="group"`
+    + ` aria-label="${esc(o.label || '')}"></div>`;
+}
+
+function paintFig(el) {
+  try {
+    el.replaceChildren();
+    el.__fig.draw(el, Math.max(280, el.__fig.w || 720));
+  } catch (e) {
+    el.innerHTML = `<p class="note" data-component="failed" id="${esc(el.id)}-failed" data-ref="${esc(el.id)}">`
+      + `This drawing did not render: ${esc(String((e && e.message) || e))}. Its numbers are in the sentence `
+      + `and the matrix beside it.</p>`;
+  }
+}
+
+function mountFigs(root) {
+  if (FIG_RO) FIG_RO.disconnect();
+  FIG_RO = typeof ResizeObserver === 'function' ? new ResizeObserver(es => {
+    for (const e of es) {
+      const f = e.target.__fig, w = Math.round(e.contentRect.width);
+      if (f && Math.abs(w - f.w) > 20) { f.w = w; paintFig(e.target); }
+    }
+  }) : null;
+  for (const [id, draw] of FIGS) {
+    const el = root.querySelector(`#${CSS.escape(id)}`);
+    if (!el) continue;
+    el.__fig = { draw, w: Math.round(el.clientWidth) };
+    paintFig(el);
+    if (FIG_RO) FIG_RO.observe(el);
+  }
+  FIGS.clear();
+}
+
+/* The box a drawing is read against: the data's own range, padded, and never below zero for readings that are all
+ * non-negative. The trace printed "floor -20 µg/m³, not zero" on node #1 on 6 October: headroom under a floor that
+ * does not exist. */
+const boxOf = (vals, line, pad = 0.12) => {
+  const all = vals.filter(v => v != null && Number.isFinite(v)).concat(line == null ? [] : [line]);
+  if (!all.length) return null;
+  const lo = Math.min(...all), hi = Math.max(...all), p = (hi - lo) * pad || Math.abs(hi * 0.1) || 1;
+  return { lo: lo >= 0 ? Math.max(0, lo - p) : lo - p, hi: hi + p };
+};
+/* A time string's own offset in minutes ("+08:00" is 480), so a label says the node's hour, never the reader's. */
+const offsetOf = iso => {
+  const m = /([+-])(\d\d):(\d\d)$/.exec(String(iso || ''));
+  return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +m[3]) : 0;
+};
+/* A wire time's local day, hour and hh:mm, read in that string's own offset (docs/SPEC_dashboard_figures.md §3.4,
+ * §4.2): a bucket, an event, an answer and a last_heard each say their own hour, so a node that changes clock labels
+ * both sides of the change right. Reading every bucket in the last one's offset drew a Madrid day before 25 October
+ * an hour early. `ms` reads another instant in the string's offset (a station's empty hour, named by the bucket
+ * before it; the node's now, in its latest bucket's offset). A time that does not parse is '—', never a throw. */
+const localOf = (iso, ms = Date.parse(iso)) => {
+  if (!Number.isFinite(ms)) return { day: '—', hour: null, hhmm: '—' };
+  const s = new Date(ms + offsetOf(iso) * 60000).toISOString();
+  return { day: s.slice(0, 10), hour: +s.slice(11, 13), hhmm: s.slice(11, 16) };
+};
+/* The register button restyles in place, and the strips' shade ramp is two literal colours read at draw time, so the
+ * drawings on the page are painted again in the register now on. */
+const repaintFigs = () => document.querySelectorAll('.f-fig').forEach(el => el.__fig && paintFig(el));
+function nearestIndex(ts, t) {
+  let b = 0;
+  for (let i = 1; i < ts.length; i++) if (Math.abs(ts[i] - t) < Math.abs(ts[b] - t)) b = i;
+  return b;
+}
+/* A token's value in the register on now, for the one place a colour has to be a colour and not a variable: the
+ * strips' shade ramp, which d3 interpolates. */
+const tokenOf = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+const PLOT_STYLE = { background: 'transparent', color: 'var(--ink)', fontFamily: 'var(--mono)', fontSize: '11px',
+  overflow: 'visible' };
+const DASH = { room: null, yard: '4 3', ring: '1 5', region: '6 4' };
+const ANSWER = { acted: 'Done', acknowledged: 'Not now', dismissed: 'Doesn’t fit' };
+const USUAL_WHY = { unread: 'the usual could not be read', no_source: 'no source at this distance',
+  no_history: 'not enough days at this hour yet', not_watched: 'not watched here' };
+
+/* THE DAY FIGURE (docs/SPEC_dashboard_figures.md §4.2). One `series` card per issue: every distance, the usual band,
+ * the line and the hours over it, the event that opened and its answer, the event's own rooms, and a readout that
+ * says in words what the crosshair is on. It replaces the traces and Measure's second copy of them. */
+function dayFigure(key, d, o = {}) {
+  const id = o.id || `day-fig-${key}`, ref = o.ref || 'days';
+  const ser = d.series || {};
+  const sets = DIST.filter(x => Array.isArray(ser[x]) && ser[x].some(v => v != null));
+  if (!sets.length) {
+    return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">The day it just had: nothing recorded yet at `
+      + `any distance.</p>`;
+  }
+  const B = d.buckets || [], T = B.map(b => Date.parse(b)), L = B.map(b => localOf(b));
+  const now = Math.max(Date.parse(((S || {}).issues || {}).as_of) || 0, T[T.length - 1]);
+  const hero = sets.includes(d.headline) ? d.headline : sets[0];
+  const line = d.line ? d.line.value : null;
+  const U = d.usual && d.usual.hours ? d.usual.hours : null;
+  const band = U ? T.map((t, i) => ({ t: new Date(t), ...(U[L[i].hour] || {}) })) : [];
+  const E = ((S || {}).issues || {}).events || {};
+  const evs = (E.open || []).concat(E.recent || []).filter(e => e.issue === key)
+    .map(e => ({ e, o: Date.parse(e.opened_at), c: e.cleared_at ? Date.parse(e.cleared_at) : now,
+      a: e.answer ? Date.parse(e.answer.ts) : null }))
+    .filter(x => x.c >= T[0]);
+  const roomsOf = evs.map(x => x.e.series).find(s => s && Array.isArray(s.values) && s.values.length === T.length);
+  const box = boxOf(sets.flatMap(k => ser[k]).concat(band.flatMap(b => [b.median, b.p90]))
+    .concat(roomsOf ? roomsOf.values : []), line);
+  const overAt = i => line != null && sets.some(k => ser[k][i] != null && ser[k][i] > line);
+  const over = T.filter((t, i) => overAt(i));
+  const above = T.filter((t, i) => !overAt(i) && band[i] && band[i].p90 != null && ser[hero][i] != null
+    && ser[hero][i] > band[i].p90);
+  const unit = d.unit || '', dp = d.dp;
+  const first = ser[hero].find(v => v != null), last = [...ser[hero]].reverse().find(v => v != null);
+  const idle = `<b>24 h</b><span>${esc(LAB[hero])} opened the day at ${esc(fmt(first, dp))} and closed it at `
+    + `${esc(fmt(last, dp))} ${esc(unit)}</span>`
+    + (over.length ? `<span class="f-over">${over.length} of ${T.length} hours over the line</span>` : '')
+    + (U ? `<span class="f-usual">${above.length} above the usual, under the line</span>` : '')
+    + `<span class="f-gone">point at an hour, or focus the drawing and use ← →</span>`;
+  const readAt = i => {
+    const ev = evs.find(x => T[i] >= x.o && T[i] <= x.c);
+    return `<b>${esc(L[i].hhmm)}</b>`
+      + sets.map(k => `<span class="f-d f-${k}${ser[k][i] == null ? ' f-gone' : ''}"><i></i>${esc(LAB[k])} `
+        + `${ser[k][i] == null ? 'nothing recorded' : esc(fmt(ser[k][i], dp))}</span>`).join('')
+      + (roomsOf && roomsOf.values[i] != null ? `<span class="f-d f-rooms"><i></i>${esc(roomsOf.rooms.join(', '))} `
+        + `${esc(fmt(roomsOf.values[i], dp))}</span>` : '')
+      + (band[i] && band[i].median != null ? `<span class="f-usual">usual ${esc(fmt(band[i].median, dp))} to `
+        + `${esc(fmt(band[i].p90, dp))}</span>` : '')
+      + (overAt(i) ? `<span class="f-over">over the line ${esc(fmt(line, dp))}</span>` : '')
+      + (ev ? `<span class="f-ev">${esc(ev.e.kind)} open · ${ev.e.answer
+        ? `<b class="${ev.e.answer.stage === 'acted' ? 'f-done' : ''}">${esc(ANSWER[ev.e.answer.stage] || ev.e.answer.stage)}</b>`
+          + ` · ${esc(ev.e.answer.actor || '')} ${esc(localOf(ev.e.answer.ts).hhmm)}` : 'no answer'}</span>` : '');
+  };
+  const draw = (el, W) => {
+    const narrow = W < 600, H = narrow ? 170 : 230, pad = (box.hi - box.lo) * 0.06, evY = box.hi - pad;
+    const at = T.map(t => new Date(t));
+    const rows = k => ser[k].map((v, i) => ({ t: at[i], v }));
+    const lone = k => rows(k).filter((r, i, a) => r.v != null && (i === 0 || a[i - 1].v == null)
+      && (i === a.length - 1 || a[i + 1].v == null));
+    const late = x => (x.o - T[0]) / ((now - T[0]) || 1) > 0.8;
+    const label = x => (narrow ? x.e.kind : `${x.e.kind} · ${localOf(x.e.opened_at).hhmm}`);
+    const ev = evs.map(x => ({ ...x, o: new Date(x.o), c: new Date(x.c), a: x.a == null ? null : new Date(x.a) }));
+    const svg = Plot.plot({
+      width: W, height: H, marginLeft: 8, marginRight: 8, marginTop: 18, marginBottom: 26, style: PLOT_STYLE,
+      x: { type: 'time', domain: [new Date(T[0]), new Date(now)], label: null, tickSize: 0,
+        ticks: at.filter((t, i) => L[i].hour % (narrow ? 6 : 3) === 0), tickFormat: t => (L[T.indexOf(+t)] || {}).hhmm },
+      y: { domain: [box.lo, box.hi], axis: null },
+      marks: [
+        Plot.gridY({ ticks: 4, stroke: 'var(--hair)', strokeOpacity: 1 }),
+        U ? Plot.areaY(band.filter(b => b.median != null && b.p90 != null),
+          { x: 't', y1: 'median', y2: 'p90', fill: 'var(--ink)', fillOpacity: 0.1 }) : null,
+        line == null ? null : Plot.ruleY([line], { stroke: 'var(--signal-worse)', strokeDasharray: '3 6', strokeOpacity: 0.85 }),
+        Plot.ruleX(over.map(t => new Date(t)), { y1: box.lo, y2: box.lo + pad, stroke: 'var(--signal-worse)', strokeWidth: 2 }),
+        Plot.ruleX(above.map(t => new Date(t)), { y1: box.lo, y2: box.lo + pad, stroke: 'var(--ink)', strokeOpacity: 0.6, strokeWidth: 2 }),
+        ...sets.map(k => Plot.lineY(rows(k), { x: 't', y: 'v', stroke: 'var(--ink)', strokeWidth: 1.6,
+          strokeOpacity: k === hero ? 1 : 0.55, strokeDasharray: DASH[k] || undefined })),
+        ...sets.map(k => Plot.dot(lone(k), { x: 't', y: 'v', r: 1.8, fill: 'var(--ink)', fillOpacity: k === hero ? 1 : 0.55 })),
+        roomsOf ? Plot.lineY(roomsOf.values.map((v, i) => ({ t: at[i], v })), { x: 't', y: 'v', stroke: 'var(--ink)', strokeWidth: 2.6 }) : null,
+        Plot.ruleY(ev, { y: evY, x1: 'o', x2: 'c', stroke: 'var(--ink)', strokeWidth: 5, strokeOpacity: 0.22 }),
+        Plot.text(ev.filter(x => !late(x)), { x: 'o', y: evY, text: label, textAnchor: 'start', dx: 4, dy: -9, fill: 'var(--mute)', fontSize: 10.5 }),
+        Plot.text(ev.filter(late), { x: 'c', y: evY, text: label, textAnchor: 'end', dx: -4, dy: -9, fill: 'var(--mute)', fontSize: 10.5 }),
+        Plot.ruleY(ev.filter(x => x.a && x.a > x.c), { y: evY, x1: 'c', x2: 'a', stroke: 'var(--ink)', strokeOpacity: 0.35, strokeDasharray: '1 3' }),
+        Plot.dot(ev.filter(x => x.a && x.e.answer.stage === 'acted'), { x: 'a', y: evY, r: 4.5, stroke: 'var(--rings)', strokeWidth: 2, fill: 'var(--ground)' }),
+        Plot.dot(ev.filter(x => x.a && x.e.answer.stage !== 'acted'), { x: 'a', y: evY, r: 4.5, stroke: 'var(--ink)', strokeWidth: 2, fill: 'var(--ground)' }),
+        Plot.ruleX([new Date(now)], { stroke: 'var(--ink)', strokeOpacity: 0.35 }),
+      ].filter(Boolean),
+    });
+    const inner = document.createElement('div'); inner.className = 'f-in';
+    const hair = document.createElement('i'); hair.className = 'f-hair'; hair.hidden = true;
+    inner.append(svg, hair); el.append(inner);
+    const read = document.getElementById(`${id}-read`);
+    const xs = svg.scale('x');
+    let cur = null;
+    const show = i => {
+      cur = i;
+      if (read) read.innerHTML = i == null ? idle : readAt(i);
+      if (i == null) { hair.hidden = true; return; }
+      const r = svg.getBoundingClientRect();
+      hair.hidden = false;
+      hair.style.left = `${(xs.apply(at[i]) * r.width) / W}px`;
+    };
+    svg.addEventListener('pointermove', e => {
+      const r = svg.getBoundingClientRect();
+      show(nearestIndex(T, +xs.invert(((e.clientX - r.left) * W) / r.width)));
+    });
+    svg.addEventListener('pointerleave', () => show(null));
+    el.onkeydown = e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      show(cur == null ? T.length - 1 : Math.max(0, Math.min(T.length - 1, cur + (e.key === 'ArrowLeft' ? -1 : 1))));
+    };
+    el.onblur = () => show(null);
+  };
+  const gone = DIST.filter(x => !sets.includes(x));
+  const legend = sets.map(k => `<span class="f-d f-${k}"><i></i>${esc(LAB[k])}</span>`).join('')
+    + (roomsOf ? `<span class="f-d f-rooms"><i></i>the event’s own ${roomsOf.rooms.length === 1 ? 'room' : 'rooms'}</span>` : '')
+    + gone.map(k => `<span class="f-gone"><i></i>${esc(LAB[k])} — ${esc(reasonFor(d, k))}</span>`).join('')
+    + (U ? `<span class="f-band"><i></i>usual at this hour, last ${d.usual.window_days} days</span>`
+      : `<span class="f-gone">no usual band — ${esc(USUAL_WHY[d.usual_absent] || 'this node does not send one yet')}</span>`)
+    + (over.length ? `<span class="f-over"><i></i>hours over the line</span>` : '')
+    + (evs.length ? `<span class="f-evl"><i></i>event, opened to cleared</span>` : '')
+    + (evs.some(x => x.e.answer && x.e.answer.stage === 'acted') ? `<span class="f-done"><i></i>answered Done</span>` : '');
+  const altCmp = line != null ? `against the line, ${fmt(line, dp)} ${unit} · ${d.line.source}`
+    : `no comparison yet · ${noLine(d)}`;
+  return `<div class="f-day" data-kind="series" data-component="dayFigure" id="${esc(id)}-card" data-ref="${esc(ref)}">`
+    + `<p class="f-head"><span>${esc(fmt(box.hi, dp))} ${esc(unit)} top · floor ${esc(fmt(box.lo, dp))}`
+    + `${box.lo === 0 ? '' : ', not zero'}</span>${line != null ? `<span class="f-line">the line ${esc(fmt(line, dp))}</span>` : ''}</p>`
+    + fig(id, draw, { ref: `${id}-card`, component: 'dayDrawing', keys: true,
+      label: `${d.name[LOC]}, the last 24 hours at every distance; focus and use the arrow keys to read an hour` })
+    + `<p class="f-read" id="${esc(id)}-read" aria-live="polite">${idle}</p>`
+    + `<p class="f-legend">${legend}</p>`
+    + `<p class="f-alt"><span data-num="${esc(key)}.day" data-cmp="${esc(altCmp)}">${esc(LAB[hero])} opened the day at `
+    + `${esc(fmt(first, dp))} and closed it at ${esc(fmt(last, dp))} ${esc(unit)}</span> — ${esc(altCmp)}.`
+    + (evs.length ? ` ${evs.length === 1 ? 'One event' : `${evs.length} events`} in these hours: `
+      + evs.map(x => `${x.e.kind} ${localOf(x.e.opened_at).hhmm} to ${x.e.cleared_at ? localOf(x.e.cleared_at).hhmm : 'now'}, `
+        + `${x.e.answer ? `${(ANSWER[x.e.answer.stage] || x.e.answer.stage).toLowerCase()} by ${x.e.answer.actor}` : 'no answer'}`)
+        .map(esc).join('; ') + '.' : '')
+    + `</p></div>`;
+}
+
+/* THE STRIPS (docs/SPEC_dashboard_figures.md §4.3). One row a day, one cell an hour, newest at the bottom, from
+ * GET /issues/days. Ink on the issue's own square-root scale; red over the line; an outlined empty cell where
+ * nothing was recorded, never a pale cell that looks low. The right column is the node's own count. */
+function strips(key, D, o = {}) {
+  const id = o.id || `strips-${key}`, ref = o.ref || 'days';
+  const it = D && D.issues ? D.issues[key] : null;
+  const name = ((ISS[key] || {}).name || {})[LOC] || key;
+  if (!D) {
+    return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">This node does not send its days yet `
+      + `(GET /issues/days); the strips of ${esc(name)} wait for it.</p>`;
+  }
+  if (!it || !it.distance) {
+    return `<p class="note" id="${esc(id)}" data-ref="${esc(ref)}">No hourly record of ${esc(name)} in these `
+      + `${D.days} days.</p>`;
+  }
+  const dist = it.distance, vals = it.series[dist], line = it.line ? it.line.value : null;
+  const T = D.buckets.map(b => Date.parse(b));
+  /* The strips start at the first local day that holds a reading: a 90-day window on a node with 35 days of record
+     drew 55 empty rows before it began (node #1, 6 October). An hour with nothing recorded after that still shows. */
+  /* Each bucket in its own day and hour. ponytail: a fall-back day repeats 02:00, so its two buckets share one cell and
+     the second paints over the first; per_day's `of: 25` beside the row still says the day had 25 hours. A row of 25
+     cells is the upgrade if a household asks which 02:00 it was. */
+  const every = D.buckets.map((b, i) => { const l = localOf(b); return { day: l.day, hour: l.hour, t: T[i], v: vals[i] }; });
+  const firstDay = every.find(c => c.v != null).day;
+  const cells = every.filter(c => c.day >= firstDay);
+  const days = [...new Set(cells.map(c => c.day))];
+  const trimmed = days.length < new Set(every.map(c => c.day)).size;
+  const got = cells.filter(c => c.v != null);
+  const lo0 = Math.min(...got.map(c => c.v)), hi0 = Math.max(...got.map(c => c.v));
+  const floor = lo0 >= 0 && lo0 < hi0 * 0.2 ? 0 : lo0;
+  const ev = (D.events || []).filter(e => e.issue === key).map(e => ({ ...e, o: Date.parse(e.opened_at),
+    c: e.cleared_at ? Date.parse(e.cleared_at) : T[T.length - 1] }));
+  const inEvent = c => ev.some(e => c.t >= e.o - 3600e3 + 1 && c.t <= e.c);
+  const perDay = Object.fromEntries((it.per_day || []).map(p => [p.date, p]));
+  const dp = (ISS[key] || {}).dp, unit = (ISS[key] || {}).unit || '';
+  const wd = s => new Date(`${s}T00:00:00Z`).toUTCString().slice(0, 11);
+  const draw = (el, W) => {
+    const narrow = W < 600, rowH = narrow ? 11 : 13;
+    const svg = Plot.plot({
+      width: W, height: 26 + days.length * rowH, marginLeft: narrow ? 70 : 92, marginRight: narrow ? 64 : 220,
+      marginTop: 20, marginBottom: 6, style: PLOT_STYLE,
+      x: { type: 'band', domain: Array.from({ length: 24 }, (_, h) => h), axis: 'top', label: null, tickSize: 0,
+        padding: 0.12, tickFormat: h => (h % (narrow ? 6 : 3) === 0 ? String(h).padStart(2, '0') : '') },
+      y: { type: 'band', domain: days, label: null, tickSize: 0, padding: 0.18,
+        tickFormat: (s, i) => (i === 0 || new Date(`${s}T00:00:00Z`).getUTCDay() === 1 ? wd(s) : '') },
+      color: { type: 'sqrt', domain: [floor, hi0], range: [tokenOf('--ground'), tokenOf('--ink')] },
+      marks: [
+        Plot.cell(cells.filter(c => c.v == null), { x: 'hour', y: 'day', fill: 'none', stroke: 'var(--hair)' }),
+        Plot.cell(got.filter(c => line == null || c.v <= line), { x: 'hour', y: 'day', fill: 'v' }),
+        Plot.cell(got.filter(c => line != null && c.v > line), { x: 'hour', y: 'day', fill: 'var(--signal-worse)' }),
+        Plot.cell(cells.filter(inEvent), { x: 'hour', y: 'day', fill: 'none', stroke: 'var(--ink)', strokeWidth: 1.4 }),
+        Plot.text(days.filter(s => perDay[s]), { x: () => 23, y: s => s, dx: narrow ? 22 : 30, textAnchor: 'start',
+          fontSize: 10.5, text: s => (!perDay[s].read ? '—' : perDay[s].over == null ? '' : perDay[s].over ? `${perDay[s].over} h over` : '·'),
+          fill: s => (perDay[s].read && perDay[s].over ? 'var(--signal-worse)' : 'var(--dim)') }),
+        narrow ? null : Plot.text(ev, { x: () => 23, y: e => localOf(e.opened_at).day, dx: 96, textAnchor: 'start', fontSize: 10.5,
+          fill: 'var(--ink)', text: e => `${e.kind} ${localOf(e.opened_at).hhmm}–${e.cleared_at ? localOf(e.cleared_at).hhmm : 'open'}` }),
+        Plot.cell(cells, Plot.pointer({ x: 'hour', y: 'day', fill: 'none', stroke: 'var(--cells)', strokeWidth: 2 })),
+      ].filter(Boolean),
+    });
+    el.append(svg);
+    const read = document.getElementById(`${id}-read`);
+    svg.addEventListener('input', () => {
+      const c = svg.value;
+      if (!read) return;
+      if (!c) { read.innerHTML = idle; return; }
+      const e = ev.find(x => c.t >= x.o - 3600e3 + 1 && c.t <= x.c);
+      read.innerHTML = `<b>${esc(wd(c.day))} ${esc(String(c.hour).padStart(2, '0'))}:00</b>`
+        + `<span>${esc(LAB[dist])} ${c.v == null ? 'nothing recorded' : `${esc(fmt(c.v, dp))} ${esc(unit)}`}</span>`
+        + (line != null && c.v != null && c.v > line ? `<span class="f-over">over the line</span>` : '')
+        + (e ? `<span class="f-ev">${esc(e.kind)} open</span>` : '');
+    });
+  };
+  const nd = `${days.length} day${days.length === 1 ? '' : 's'}`;
+  const totals = (it.per_day || []).filter(p => p.date >= firstDay).reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read,
+    of: a.of + p.of }), { over: 0, read: 0, of: 0 });
+  /* With no line the node counts no hours over it (per_day.over is null), so the readout says what was read and nothing
+     about over: a 0 there would be a count nobody made. */
+  const gone = `<span class="f-gone">${totals.of - totals.read} not recorded · point at a cell</span>`;
+  const idle = line == null ? `<span>${totals.read} hour${totals.read === 1 ? '' : 's'} read in ${nd}</span>${gone}`
+    : `<span data-num="${esc(key)}.days.over" data-cmp="`
+      + `${esc(`of ${totals.read} hour${totals.read === 1 ? '' : 's'} read in ${nd}, ${totals.of - totals.read} not recorded`)}">`
+      + `${totals.over} hour${totals.over === 1 ? '' : 's'} over the line</span>${gone}`;
+  return `<div class="f-strips" data-kind="series" data-component="strips" id="${esc(id)}-card" data-ref="${esc(ref)}">`
+    + `<p class="f-head"><span>${esc(name)} · ${esc(LAB[dist])} · ${nd}${trimmed ? `, from ${esc(wd(firstDay))}, the first this node recorded` : ''}</span>`
+    + `<span>shades ${esc(fmt(floor, dp))} to ${esc(fmt(hi0, dp))} ${esc(unit)}${line != null
+      ? ` · <span class="f-line">the line ${esc(fmt(line, dp))}</span>` : ''}</span></p>`
+    + fig(id, draw, { ref: `${id}-card`, component: 'stripsDrawing',
+      label: `${name}, one row a day and one cell an hour over ${nd}` })
+    + `<p class="f-read" id="${esc(id)}-read" aria-live="polite">${idle}</p>`
+    + `<p class="f-legend"><span class="f-lo"><i></i>low</span><span class="f-hi"><i></i>high, on this issue’s own scale</span>`
+    + (line != null ? `<span class="f-red"><i></i>an hour over the line</span>` : '') + `<span class="f-gap"><i></i>nothing recorded</span>`
+    + `<span class="f-evc"><i></i>an alert event</span></p></div>`;
+}
+
 window.K = { esc, fmt, sign, pill, age, uid, cmpText, interp, rulePack, meterBar, METER_CELLS, msToken,
-  readout, stack, series, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
-  peerRow, refusedPage, noLine, reasonFor, barcode, REFUSED, TOKEN_FINE,
-  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord };
+  readout, stack, row, kicker, sentence, why, ask, didButton, stamp, asof, rhoRow, funnel,
+  peerRow, refusedPage, noLine, reasonFor, REFUSED, TOKEN_FINE,
+  evState, evOpen, evPick, evClock, evButtons, evAnswered, evCard, evWord, fig, mountFigs, repaintFigs, boxOf, localOf, nearestIndex, PLOT_STYLE,
+  dayFigure, strips };
 
 /* The one place the page's data is bound. boot() has answered by now; nothing above this line ran
  * against a global that was not there. */
@@ -2619,7 +2769,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, series, barcode } = window.K;
+const { esc, dayFigure, strips } = window.K;
 
 /* An issue has a day when any distance carries a trace. The node decides what a trace is; this
    only asks whether one arrived. */
@@ -2627,8 +2777,8 @@ const hasDay = d => (window.K.DIST || []).some(x => Array.isArray((d.series || {
   && (d.series[x] || []).some(v => v != null));
 
 window.PAI.register({
-  id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw'],
-  reads: ['/issues'],
+  id: 'day', pack: 'core', stage: 'observe', title: 'The day this place just had', order: 12, learn: ['cards', 'raw', 'figure'],
+  reads: ['/issues', '/issues/days'],
   render(ctx) {
     const { ISS, ORDER } = ctx;
     const drawn = ORDER.filter(k => ISS[k] && hasDay(ISS[k]));
@@ -2637,11 +2787,11 @@ window.PAI.register({
         + `record yet, so there is no day to draw. The matrix above says what each one has.</p>`;
     }
     const silent = ORDER.filter(k => ISS[k] && !hasDay(ISS[k]));
-    return barcode({ id: 'barcode', ref: 'days' })
-      + `<div class="days" id="days" data-ref="matrix-grid">`
+    return `<div class="days" id="days" data-ref="matrix-grid">`
       + drawn.map(k => `<div class="dayone" id="day-${esc(k)}" data-ref="days">`
         + `<p class="k">${esc(ISS[k].name[LOC])}</p>`
-        + series(k, ISS[k], { id: `day-series-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
+        + dayFigure(k, ISS[k], { id: `day-fig-${esc(k)}`, ref: `day-${esc(k)}` })
+        + strips(k, window.DAYS, { id: `strips-${esc(k)}`, ref: `day-${esc(k)}` }) + `</div>`).join('')
       + `</div>`
       + (silent.length ? `<p class="note" id="day-silent" data-ref="days">No hourly record for `
         + `${esc(silent.map(k => ISS[k].name[LOC]).join(' or '))} at any distance in this capture, `
@@ -2650,10 +2800,10 @@ window.PAI.register({
   notes(ctx) {
     return [
       { id: 'days', label: 'Height, and how long',
-        text: 'The trace says how high and the marks under the axis say how long. A '
-        + 'brief spike and a long plateau can reach the same height, and only one of them is worth '
-        + 'getting out of a chair for, so the hours over the line are counted under the drawing '
-        + 'rather than left to be read off a curve.' },
+        text: 'The trace says how high and the red ticks under it say how long. A brief spike and a long '
+        + 'plateau can reach the same height, and only one of them is worth getting out of a chair for, '
+        + 'so the hours over the line are counted in the line under the drawing. Point at an hour, or '
+        + 'focus the drawing and use the arrow keys, to read every distance at that hour.' },
       { id: 'day-silent', label: 'A day with nothing to draw',
         text: 'A card appears here when there is a day to draw. An issue with no '
         + 'hourly record at any distance would be an empty box claiming to be a drawing, so it is '
@@ -2804,7 +2954,7 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, age, cmpText, noLine } = window.K;
+const { esc, fmt, age, cmpText, noLine, fig, localOf, PLOT_STYLE } = window.K;
 const DEFAULT_VAR = 'pm25';
 
 /* The variable the reader chose, or PM2.5. A key the fixture does not know is not an error to
@@ -2905,47 +3055,62 @@ function scaleFor(H, v, line) {
     for (const b of s.series[v] || []) vals.push(b.min, b.max);
   }
   if (line) vals.push(line.value);
-  if (!vals.length) return null;
-  let lo = Math.min(...vals), hi = Math.max(...vals);
+  /* A bucket with no reading has a null min and max, and Math.min counts a null as 0. */
+  const fin = vals.filter(Number.isFinite);
+  if (!fin.length) return null;
+  let lo = Math.min(...fin), hi = Math.max(...fin);
   const pad = (hi - lo) * 0.08 || 1;
   /* A concentration does not go below zero, so the scale must not either: a box that opened at
    * -1.0 µg/m³ was drawing headroom under a floor. Temperature may. */
   lo = lo >= 0 ? Math.max(0, lo - pad) : lo - pad;
   hi += pad;
-  return { lo, hi, Y: y => 4 + (1 - (y - lo) / (hi - lo)) * (48 - 4 - 14) };
+  return { lo, hi };
 }
 
-/* The drawing inside a row. 240 by 48: a light min–max band, an ink polyline of the hourly means,
- * the line dashed in the signal colour where it applies, and the axis words. A station with no
- * series gets one tick at the value at now, and no line pretending to be its day. */
-function graphic(s, v, m, sc, line) {
-  const W = 240, Hh = 48, l = 2, r = 2;
-  const r15 = s.read[v];
-  const ser = s.series[v];
-  let body = '', label;
-  if (line) body += `<line x1="${l}" x2="${W - r}" y1="${sc.Y(line.value).toFixed(1)}"`
-    + ` y2="${sc.Y(line.value).toFixed(1)}" stroke="var(--signal-worse)" stroke-dasharray="3 5"/>`;
-  if (ser && ser.length) {
-    const n = ser.length;
-    const X = i => (l + (i / Math.max(1, n - 1)) * (W - l - r)).toFixed(1);
-    const band = ser.map((b, i) => `${X(i)},${sc.Y(b.max).toFixed(1)}`)
-      .concat(ser.map((b, i) => `${X(i)},${sc.Y(b.min).toFixed(1)}`).reverse()).join(' ');
-    body += `<polygon points="${band}" fill="var(--ink)" fill-opacity=".1"/>`
-      + `<polyline points="${ser.map((b, i) => `${X(i)},${sc.Y(b.mean).toFixed(1)}`).join(' ')}"`
-      + ` fill="none" stroke="var(--ink)" stroke-width="1.5"/>`
-      + `<text x="${l}" y="${Hh - 2}">24 h ago</text>`;
-    const lo = Math.min(...ser.map(b => b.min)), hi = Math.max(...ser.map(b => b.max));
-    label = `${m.label}, ${n} hourly means: opened the day at ${fmt(ser[0].mean, m.dp)} and closed `
-      + `it at ${fmt(ser[n - 1].mean, m.dp)} ${m.unit}; low ${fmt(lo, m.dp)}, high ${fmt(hi, m.dp)}`
-      + (line ? `; the line ${fmt(line.value, m.dp)}` : '');
-  } else {
-    const y = sc.Y(r15.value).toFixed(1);
-    body += `<line x1="${W - r - 1}" x2="${W - r - 1}" y1="${(+y - 4).toFixed(1)}" y2="${(+y + 4).toFixed(1)}"`
-      + ` stroke="var(--ink)" stroke-width="2"/>`;
-    label = `${m.label} ${fmt(r15.value, m.dp)} ${m.unit}, one 15-minute mean at now`;
+/* A station's own day, inside its row (docs/SPEC_dashboard_figures.md §4.4): the hourly mean as a line and the hour's
+ * spread as a band, on the one scale every row of the section shares (scaleFor), the issue's line where it applies,
+ * and one tick at now for a station with no hourly series. An hour the station did not report is a gap: the series
+ * lists only the hours it has, so the grid below puts a null in every hour between them. Pointing at it says that
+ * hour in the row's own words. */
+function spark(s, v, m, sc, line, id, idle) {
+  const ser = ((s.series || {})[v] || []).filter(b => b && b.t);
+  const r15 = (s.read || {})[v];
+  const T = ser.map(b => Date.parse(b.t));
+  const grid = [];
+  /* `iso` is the hour's own bucket, or for an hour the station did not report, the bucket before it: its offset names
+     the empty hour. */
+  for (let t = T[0], i = 0; ser.length && t <= T[T.length - 1]; t += 3600e3) {
+    const b = T[i] === t ? ser[i++] : null;
+    grid.push({ t: new Date(t), iso: ser[Math.max(0, i - 1)].t, mean: b ? b.mean : null, min: b ? b.min : null,
+      max: b ? b.max : null });
   }
-  body += `<text x="${W - r}" y="${Hh - 2}" text-anchor="end">now</text>`;
-  return `<svg class="spark" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${esc(label)}">${body}</svg>`;
+  const draw = (el, W) => {
+    const w = Math.min(W, 320), tick = (sc.hi - sc.lo) * 0.08;
+    const svg = Plot.plot({
+      width: w, height: 48, marginLeft: 2, marginRight: 2, marginTop: 4, marginBottom: 4, style: PLOT_STYLE,
+      x: grid.length ? { type: 'time', domain: [grid[0].t, grid[grid.length - 1].t], axis: null } : { domain: [0, 1], axis: null },
+      y: { domain: [sc.lo, sc.hi], axis: null },
+      marks: [
+        line ? Plot.ruleY([line.value], { stroke: 'var(--signal-worse)', strokeDasharray: '3 5' }) : null,
+        grid.length ? Plot.areaY(grid, { x: 't', y1: 'min', y2: 'max', fill: 'var(--ink)', fillOpacity: 0.1 }) : null,
+        grid.length ? Plot.lineY(grid, { x: 't', y: 'mean', stroke: 'var(--ink)', strokeWidth: 1.5 }) : null,
+        !grid.length && r15 ? Plot.ruleX([1], { y1: r15.value - tick, y2: r15.value + tick, stroke: 'var(--ink)', strokeWidth: 2 }) : null,
+        grid.length ? Plot.ruleX(grid, Plot.pointerX({ x: 't', stroke: 'var(--ink)', strokeOpacity: 0.5 })) : null,
+      ].filter(Boolean),
+    });
+    el.append(svg);
+    const read = document.getElementById(`${id}-read`);
+    svg.addEventListener('input', () => {
+      const b = svg.value;
+      if (!read) return;
+      const at = b && localOf(b.iso, +b.t).hhmm;
+      read.innerHTML = !b ? idle : b.mean == null ? `${esc(at)} nothing recorded`
+        : `${esc(at)} ${esc(fmt(b.mean, m.dp))} (${esc(fmt(b.min, m.dp))} to `
+          + `${esc(fmt(b.max, m.dp))}) ${esc(m.unit)}`;
+    });
+  };
+  return fig(id, draw, { ref: `st-${s.sensor_id}`, component: 'stationDrawing',
+    label: `${s.name || s.sensor_id}, ${m.label}: ${ser.length ? `${ser.length} hourly means` : 'one 15-minute mean at now'}` });
 }
 
 function station(ctx, s, v, m, sc, L, ref) {
@@ -2957,12 +3122,14 @@ function station(ctx, s, v, m, sc, L, ref) {
   const silent = r && r.silent_minutes > 60
     ? ` · <span class="silent">silent</span> ${esc(age(r.silent_minutes))}` : '';
   const ser = s.series[v];
-  const alt = ser && ser.length
-    ? `<span class="alt">opened the day at ${esc(fmt(ser[0].mean, m.dp))}, closed at `
-      + `${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)}</span>` : '';
+  const hi = ser && ser.length ? Math.max(...ser.map(b => b.max).filter(x => x != null)) : null;
+  const said = ser && ser.length ? `opened the day at ${esc(fmt(ser[0].mean, m.dp))}, `
+    + `closed at ${esc(fmt(ser[ser.length - 1].mean, m.dp))} ${esc(m.unit)} · high ${esc(fmt(hi, m.dp))}` : '';
+  const alt = said ? `<span class="alt" id="spark-${esc(s.sensor_id)}-${esc(v)}-read">${said}</span>` : '';
   /* km is null when the node has no coordinates: the engine publishes unknown rather than a distance
      from (0, 0). Say unknown — a neighbour's distance from the Gulf of Guinea is not a fact. */
-  const meta = `${s.local ? 'this house' : s.km == null ? 'distance unknown'
+  const inEvent = (ctx.EVROOMS || new Set()).has(s.name);
+  const meta = `${inEvent ? 'in the open event · ' : ''}${s.local ? 'this house' : s.km == null ? 'distance unknown'
     : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'}`
     + ` · ${src}${silent}`;
   const key = `${m.issue || v}.${s.sensor_id}.${v}`;
@@ -2972,7 +3139,7 @@ function station(ctx, s, v, m, sc, L, ref) {
   return `<div class="row station${s.local ? ' mine' : ''}${r ? '' : ' quiet'}" data-kind="row"`
     + ` data-component="station" id="st-${esc(s.sensor_id)}" data-ref="${esc(ref)}">`
     + `<span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">${meta}</span>${alt}</span>`
-    + `<span class="pic">${r && sc ? graphic(s, v, m, sc, L.line) : ''}</span>`
+    + `<span class="pic">${r && sc ? spark(s, v, m, sc, L.line, `spark-${s.sensor_id}-${v}`, said) : ''}</span>`
     + `<span class="qty">${r
       ? `<span class="num${crossed ? ' crossed' : ''}" data-num="${esc(key)}" data-cmp="${esc(cmp)}">`
         + `${esc(fmt(r.value, m.dp))}</span><small>${esc(m.unit)}</small>`
@@ -2992,6 +3159,8 @@ function groups(ctx, ids) {
     if (!by.has(c)) by.set(c, []);
     by.get(c).push(s);
   }
+  /* The rooms of an open event lead their cell (docs/SPEC_dashboard_figures.md §4.4): they are why a reader is here. */
+  const rooms = ctx.EVROOMS = new Set((((ctx.S.issues || {}).events || {}).open || []).flatMap(e => e.rooms || []));
   const own = ctx.N.chain[ctx.RES];
   /* Unsited, every km is null: the groups keep the order the node sent and the header says the
      distance is not known rather than ordering the neighbourhood by a number that is not one. */
@@ -3002,7 +3171,7 @@ function groups(ctx, ids) {
      is on the page. */
   return [...by.entries()].map(([cell, ss]) => ({
     cell, n: ss.length, own: cell === own,
-    ss: ss.slice().sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity))
+    ss: ss.slice().sort((a, b) => (rooms.has(b.name) - rooms.has(a.name)) || (a.km ?? Infinity) - (b.km ?? Infinity))
       .filter(s => !ids || ids.has(s.sensor_id)),
     km: kms(ss).length ? Math.min(...kms(ss)) : null,
     kmMax: kms(ss).length ? Math.max(...kms(ss)) : null,
@@ -3016,6 +3185,35 @@ const KM = g => g.own ? 'this node’s own cell'
 const CELLHEAD = (ctx, g) => g.cell ? ctx.KH.address(g.cell, ctx.RES)
   : `<span class="addr mono">outside the ${ctx.N.steps} steps this node published at resolution `
     + `${ctx.RES}</span>`;
+
+/* The archive of silence (docs/SPEC_dashboard_figures.md §4.4, after Bali Air Dispatch). A station heard in the last
+ * 30 days and not in the last day keeps a line here, with when it was last heard; the node has already left out a
+ * relay of a kit that still reports. A node older than v0.79 sends no stations_silent, and this says nothing. */
+function silentFold(ctx) {
+  const st = (ctx.S.issues || {}).stations_silent;
+  const gone = ctx.H.silent || [];
+  if (!st) return '';
+  if (!st.read) {
+    return `<p class="cap" id="sensors-silent" data-ref="sensors-list">This node could not say which stations `
+      + `stopped reporting in the last ${esc(String(st.within_days))} days.</p>`;
+  }
+  if (!gone.length) {
+    return `<p class="cap" id="sensors-silent" data-ref="sensors-list">No station this node heard in the last `
+      + `${esc(String(st.within_days))} days has gone quiet.</p>`;
+  }
+  return `<details class="silentfold" id="sensors-silent" data-component="silentStations" data-ref="sensors-list">`
+    + `<summary><b data-num="sensors.silent" data-cmp="stations heard in the last ${esc(String(st.within_days))} days `
+    + `and not in the last day">${gone.length}</b> no longer heard</summary>`
+    + gone.map(s => { const lh = localOf(s.last_heard);
+      return `<p class="row silent" data-kind="row" data-component="silentStation" id="st-gone-${esc(s.sensor_id)}"`
+      + ` data-ref="sensors-silent"><span class="who"><b>${esc(s.name || s.sensor_id)}</b><span class="m">`
+      + `${s.km == null ? 'distance unknown' : `${esc(String(s.km))} km`} · ${s.indoor ? 'indoor' : 'outdoor'} · `
+      + `${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.source)}</a>` : esc(s.source)}`
+      + `</span></span><span class="said">${lh.hour != null
+        ? `last heard ${esc(lh.day)} ${esc(lh.hhmm)}` : 'last heard: not known'}</span></p>`; }).join('')
+    + `</details>`;
+}
+
 
 window.PAI.register({
   id: 'sensors', pack: 'air-quality', stage: 'observe', title: 'What the stations read', order: 20,
@@ -3053,7 +3251,7 @@ window.PAI.register({
         + `${g.n === 1 ? 'station' : 'stations'} · ${KM(g)}</span></div>`
         + g.ss.map(s => station(ctx, s, v, m, sc, L, id)).join('');
     }
-    html += moreLine(ctx, cap) + `</div>`;
+    html += moreLine(ctx, cap) + silentFold(ctx) + `</div>`;
     const carry = H.sensors.filter(s => s.read[v]).length;
     const traced = H.sensors.filter(s => (s.series[v] || []).length).length;
     const attrib = [...new Set(H.sensors.map(s => s.attribution).filter(Boolean))];
@@ -3416,10 +3614,9 @@ window.PAI.register({
  *     tree fractions. /earth carries nine years of embeddings, eight change pairs with their
  *     hectares over threshold, the Sentinel and Landsat years, and two credit lines — and no
  *     fraction of anything, per year or otherwise. The prompt says to read it first and omit if so.
- *   · The barcode grown into a year of daily means. There is no daily route: /series and /sparks
- *     are hourly, a snapshot carries twenty-four hours of readings_1h, and the sensors here only
- *     reach twenty days anyway. A year of bars from twenty days of readings would be a drawing of
- *     nothing.
+ *   · A year of daily means. GET /issues/days carries the days, up to 90, and Historical's strips
+ *     draw every day the node holds; the sensors here reach weeks, not a year. A year of bars from
+ *     a few weeks of readings would be a drawing of nothing.
  *
  * Neither is stamped `example`. An absence that says which absence it is can be answered later; a
  * drawing of invented data cannot be un-seen.
@@ -3486,12 +3683,13 @@ window.PAI.register({
         + 'node kept them; the kit in the house reaches twenty days because that is how long it has '
         + 'been running. A question about a year has a different answer for each, and that is the '
         + 'thing this panel exists to say before anybody asks one.' },
-      { id: 'reach-cap', label: 'Two things not on the wire',
+      { id: 'reach-cap', label: 'Two things not drawn here',
         text: 'Prompt 4 asked for Isotype year rows lighting with the loop, and '
-        + 'for the barcode grown into a year of daily means. Neither is on this node\u2019s wire: '
-        + '/earth has no per-year fractions and there is no daily route at all. The instruction was '
-        + 'to read the endpoint first and omit if it does not carry them, which is what this is \u2014 '
-        + 'not a stamp saying `example` over a drawing of numbers nobody computed.' },
+        + 'for a year of daily means. /earth has no per-year fractions, so the first is not on this '
+        + 'node\u2019s wire. The days are, up to 90, and Historical\u2019s strips draw every one the node '
+        + 'holds; the kit here does not reach a year. The instruction was to read the endpoint first '
+        + 'and omit what it does not carry, which is what this is \u2014 not a stamp saying `example` '
+        + 'over a drawing of numbers nobody computed.' },
     ];
   },
 });
@@ -4964,30 +5162,12 @@ window.PAI.register({
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt } = window.K;
+const { esc, fmt, strips } = window.K;
 
-const W = 640, HT = 150, PAD = { l: 34, r: 8, t: 10, b: 20 };
-
-function plot(hours) {
-  const vals = hours.flatMap(h => [h.indoor, h.outdoor]).filter(v => v != null);
-  if (!vals.length) return '';
-  const top = Math.max(...vals) * 1.15;
-  const x = h => PAD.l + (h / 23) * (W - PAD.l - PAD.r);
-  const y = v => HT - PAD.b - (v / top) * (HT - PAD.t - PAD.b);
-  const path = key => hours.filter(h => h[key] != null)
-    .map((h, i) => `${i ? 'L' : 'M'}${x(h.hour).toFixed(1)},${y(h[key]).toFixed(1)}`).join('');
-  /* Two lines, told apart by dash and weight and not by hue — the page's rule everywhere else. */
-  const ticks = [0, 6, 12, 18, 23].map(h =>
-    `<text x="${x(h).toFixed(1)}" y="${HT - 6}" text-anchor="middle">${h}</text>`).join('');
-  const grid = [0, top / 2, top].map(v =>
-    `<line x1="${PAD.l}" y1="${y(v).toFixed(1)}" x2="${W - PAD.r}" y2="${y(v).toFixed(1)}"/>`
-    + `<text x="${PAD.l - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, 0)}</text>`)
-    .join('');
-  return `<svg class="shapeplot" viewBox="0 0 ${W} ${HT}" role="img" preserveAspectRatio="none"`
-    + ` aria-label="the usual day, hour by hour, inside against outside">`
-    + `<g class="grid">${grid}</g><g class="hrs">${ticks}</g>`
-    + `<path class="out" d="${path('outdoor')}"/><path class="in" d="${path('indoor')}"/></svg>`;
-}
+/* Historical asks for its 90 days when it is first drawn (askDays90 in the shell), so for one render there is
+   nothing yet. A live node that has not answered is pending; a capture (its days are set at boot), or a node that
+   answered or refused (DAYS90_DONE), is not. */
+const DAYS90_PENDING = () => !window.SNAP.fixture && !window.DAYS90_DONE;
 
 /* The two hours worth naming: where each line is highest. A shape nobody reads off the drawing is a
    drawing; the sentence is the finding. */
@@ -4999,44 +5179,38 @@ function peak(hours, key) {
 const hh = h => `${String(h).padStart(2, '0')}:00`;
 
 window.PAI.register({
-  id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape'],
-  reads: ['/shape'],
+  id: 'shape', pack: 'core', stage: 'observe', order: 15, learn: ['shape', 'strips'],
+  reads: ['/issues/days', '/shape'],
   title: 'The day this place usually has',
-  needs: ['SHAPE.hours'],
+  needs: [],
   anchor: 'shape',
   render(ctx) {
-    const S = window.SHAPE, hours = S.hours || [];
-    /* Not an error and not a blank: a node that has just been switched on has nothing to average and
-       the honest sentence says when it will. */
-    if (!S.windows || !S.windows.day) {
-      return `<p class="note" id="shape-young" data-component="absent" data-ref="reach">`
-        + `This node has ${S.days === 1 ? 'one day' : `${S.days} days`} of its own readings. `
-        + `A usual day is an average over the days it has seen, so this waits for seven \u2014 `
-        + `about ${Math.max(1, 7 - (S.days || 0))} more. Nothing is missing; it has not watched `
-        + `long enough yet.</p>`;
-    }
+    const S = window.SHAPE || {}, hours = S.hours || [];
+    const D = window.DAYS90;
+    /* The finding is an average and waits for a week; the strips are not an average and draw what there is. */
     const pin = peak(hours, 'indoor'), pout = peak(hours, 'outdoor');
-    const both = pin && pout;
-    /* The finding, printed above the drawing, as everywhere else on this page: the sentence is what
-       a household acts on and the drawing is the evidence for it. */
-    const finding = both
-      ? `<p class="honest" id="shape-finding" data-component="finding" data-ref="shape">`
-        + `Over ${S.days} days, the air in this house is worst around `
-        + `<span data-num="shape.indoor.peak" data-cmp="against ${esc(fmt(pout.indoor, 1))} outside `
-        + `at the same hour">${esc(hh(pin.hour))}</span> and the air outside is worst around `
-        + `<span data-num="shape.outdoor.peak" data-cmp="against ${esc(fmt(pin.outdoor, 1))} inside `
-        + `at the same hour">${esc(hh(pout.hour))}</span>`
-        + `${pin.hour !== pout.hour ? ' \u2014 they do not peak together, so there are hours when '
-          + 'opening a window helps and hours when it does not' : ''}.</p>`
-      : '';
-    return finding + plot(hours)
-      + `<p class="cap" id="shape-key" data-component="shapeKey" data-ref="shape">`
-      + `<b>\u2014\u2014</b> inside \u00b7 <b>- -</b> outside \u00b7 hour of the day, in this `
-      + `node\u2019s own time \u00b7 ${esc(S.metric)} \u00b7 averaged over ${S.days} days</p>`
-      + `<p class="cap">${Object.entries(S.windows).filter(([, v]) => !v).length
-        ? `Not yet: ${Object.entries(S.windows).filter(([, v]) => !v).map(([k]) => k).join(', ')}. `
-          + `This node decides that from the length of its own record, not from this page.`
-        : `This record supports every window this node knows how to draw.`}</p>`;
+    const finding = !S.windows || !S.windows.day
+      ? `<p class="note" id="shape-young" data-component="absent" data-ref="reach">`
+        + `This node has ${S.days === 1 ? 'one day' : `${S.days || 0} days`} of its own readings. `
+        + `The usual hour of the worst air waits for seven \u2014 about ${Math.max(1, 7 - (S.days || 0))} more. `
+        + `The days it has are drawn below as they were.</p>`
+      : pin && pout
+        ? `<p class="honest" id="shape-finding" data-component="finding" data-ref="shape">`
+          + `Over ${S.days} days, the air in this house is worst around `
+          + `<span data-num="shape.indoor.peak" data-cmp="against ${esc(fmt(pout.indoor, 1))} outside `
+          + `at the same hour">${esc(hh(pin.hour))}</span> and the air outside is worst around `
+          + `<span data-num="shape.outdoor.peak" data-cmp="against ${esc(fmt(pin.outdoor, 1))} inside `
+          + `at the same hour">${esc(hh(pout.hour))}</span>`
+          + `${pin.hour !== pout.hour ? ' \u2014 they do not peak together, so there are hours when '
+            + 'opening a window helps and hours when it does not' : ''}.</p>`
+        : '';
+    if (DAYS90_PENDING()) {
+      return finding + `<p class="note" id="shape-days" data-ref="shape">Asking the node for the days it holds\u2026</p>`;
+    }
+    return finding + `<div id="shape-strips" data-ref="shape">`
+      + ctx.ORDER.filter(k => ctx.ISS[k] && ctx.ISS[k].watched !== false)
+        .map(k => strips(k, D, { id: `hstrips-${esc(k)}`, ref: 'shape-strips' })).join('')
+      + `</div>`;
   },
   notes() {
     const S = window.SHAPE || {};
@@ -5049,8 +5223,8 @@ window.PAI.register({
         + 'timezone from NODE_TZ on every connection, and its comment records that this was found '
         + 'once before, in the day boundaries.' },
       { id: 'shape-two-lines', label: 'Why inside and outside are apart',
-        text: 'Inside and outside are drawn apart because they are not the '
-        + 'same day. On the node this was built against they are anti-phased: inside peaks when '
+        text: 'The strips draw the house; the sentence above them compares inside and outside, '
+        + 'which are apart because they are not the same day. On the node this was built against they are anti-phased: inside peaks when '
         + 'somebody is cooking and outside peaks in the evening, so at midday inside is about twice '
         + 'outside and at six in the evening it is the other way round. A single average over both '
         + 'would describe neither, and the difference is the only thing here anybody can act on.' },
@@ -5409,17 +5583,17 @@ window.PAI.register({
 /* measure · core · measure
  *
  * Whether it worked, and how long it took. The loop's last stage and the one that makes it a loop:
- * ρ, the share of asks that were answered; the median minutes from ask to answer; and the day the
- * node's own probes just had, which is the reading coming back — or not — after somebody acted.
+ * ρ, the share of asks that were answered; the median minutes from ask to answer; and the hours the
+ * house spent over the line, which is the reading coming back — or not — after somebody acted.
  *
  * Nothing here is a gauge. ρ is a row of rings, answered first, and the numeral beside it says the
- * same thing in words; the day is a trace with its axis, its origin, its line and its text
- * alternative. The four card kinds are enough.
+ * same thing in words. The hours over the line are counted from the node's own per-day counts,
+ * today and in the days the strips draw; the day itself is drawn once, under Observe.
  */
 PAI_LOAD.push(function () {
 'use strict';
 
-const { esc, fmt, row, rhoRow, series, peerRow, funnel, sign } = window.K;
+const { esc, fmt, row, rhoRow, peerRow, funnel, sign, localOf } = window.K;
 
 /* The care label: the refusals that hold across every stage, from ARCHITECTURE.md §7, drawn where the
  * loop closes because a refusal is the last thing a reader should meet, not the first.
@@ -5448,14 +5622,46 @@ function careLabel() {
     + `</div>`;
 }
 
+/* Hours over the line, counted (docs/SPEC_dashboard_figures.md §4.5, after Bali Air Dispatch): how long, not how
+ * high, which is what a household acts on. Today and the days GET /issues/days covers, from the node's own per-day
+ * counts; an hour with nothing recorded is named beside them and never counted as clean. */
+function overRows(ctx) {
+  const D = window.DAYS;
+  if (!D) {
+    return `<p class="note" id="measure-over" data-ref="rho">This node does not send its days yet, so the hours over `
+      + `the line are not counted here.</p>`;
+  }
+  const I = D.issues || {};
+  const keys = ctx.ORDER.filter(k => I[k] && I[k].distance && I[k].line);
+  if (!keys.length) {
+    return `<p class="note" id="measure-over" data-ref="rho">No issue here has a line to count hours against.</p>`;
+  }
+  const sum = ps => ps.reduce((a, p) => ({ over: a.over + (p.over || 0), read: a.read + p.read, of: a.of + p.of }),
+    { over: 0, read: 0, of: 0 });
+  /* The node's today: /issues' as_of (an instant, UTC on a live node) read in the offset of the latest bucket. A DAYS
+     answered before local midnight, or kept after a failed fetch, ends on yesterday, and that is not today's count. */
+  const today = localOf((D.buckets || []).slice(-1)[0], Date.parse(((ctx.S || {}).issues || {}).as_of)).day;
+  return `<div class="reads" id="measure-over" data-ref="rho">` + keys.map(k => {
+    const it = I[k], u = ctx.ISS[k], last = it.per_day.slice(-1);
+    const t = last.length && last[0].date === today ? sum(last) : { over: 0, read: 0, of: 0 }, w = sum(it.per_day);
+    return row({ id: `measure-over-${k}`, component: 'overCount', ref: 'measure-over',
+      cols: 'minmax(0,210px) minmax(0,1fr) auto',
+      left: `<span class="who"><b>${esc(u.name[LOC])}</b><span class="m">${esc(ctx.LAB[it.distance])} · over `
+        + `${esc(fmt(it.line.value, u.dp))} ${esc(u.unit)}</span></span>`,
+      line: `Hours over the line today, and in these ${D.days} days.`,
+      qty: [{ num: `${k}.over.today`, value: t.read ? `${t.over} h` : null, cmp: `of ${t.read} hour${t.read === 1 ? '' : 's'} read today, ${t.of - t.read} not recorded` },
+        { num: `${k}.over.days`, value: w.read ? `${w.over} h` : null, cmp: `of ${w.read} hour${w.read === 1 ? '' : 's'} read in ${D.days} days, ${w.of - w.read} not recorded` }],
+    });
+  }).join('') + `</div>`;
+}
+
 window.PAI.register({
   id: 'measure', pack: 'core', stage: 'measure', order: 10, learn: ['rho', 'refusals'],
-  reads: ['/rho', '/issues'],
+  reads: ['/rho', '/issues', '/issues/days'],
   title: 'Whether it worked',
   needs: ['SNAP.rho'],
   render(ctx) {
-    const { S, ISS, ORDER } = ctx;
-    const hk = S.issues.headline;
+    const { S } = ctx;
     const r = S.rho;
     return `<div class="two-up">`
       + `<div>${rhoRow()}`
@@ -5483,7 +5689,7 @@ window.PAI.register({
           cmp: `${r.acted} answered of ${r.alerts_act} asked in ${r.window_days} days` }],
       })
       + `</div>${funnel()}${careLabel()}</div>`
-      + `<div>${series(hk, ISS[hk])}</div></div>`;
+      + `<div>${overRows(ctx)}</div></div>`;
   },
   notes(ctx) {
     const r = ctx.S.rho;
@@ -5496,6 +5702,11 @@ window.PAI.register({
         + 'second ρ is specified and does not exist: ρ observed would ask whether the reading came '
         + 'back under the line, and no rule has yet said what its own line is, so the page prints '
         + 'those words rather than a zero that would read as a node that looked and found nothing.' },
+      { id: 'measure-over', label: 'How long, counted',
+        text: 'A reading over the line for one hour and for nine are different days, and a curve does not say which. '
+        + 'These rows count the hours the house was over the line, from the node’s own count per local day: today, '
+        + 'and the days the strips under Observe draw. An hour nothing was recorded is named beside the count, never '
+        + 'counted as clean, and a day with nothing recorded shows a dash, not a zero.' },
       { id: 'funnel', label: 'One thing counted four times',
         text: 'The funnel counts one thing four times: how many alerts the node sent, '
         + 'how many were acknowledged, how many led to something being done, and how many stopped '
@@ -5513,11 +5724,6 @@ window.PAI.register({
         + 'first, and what it will not do once they have seen it. The row about the human row went '
         + 'without a sign until one was drawn for it: borrowing the answered-alert ring would have '
         + 'made that ring mean two things twelve pixels apart.' },
-      { id: 'measure-day', label: 'The headline issue’s own trace',
-        text: 'The day is the headline issue’s own trace: the node supplies every '
-        + 'value and the line, the page supplies only the box. A hole in the series is a hole in the '
-        + 'line — a run of one reading is a dot, never nothing — and the text alternative beside the '
-        + 'drawing says where the day opened and closed.' },
       { id: 'measure-loop', label: 'Where the loop closes',
         text: 'This is the stage that closes the loop. Observe put a number on '
         + 'the page; decide said how far that number may be trusted; act asked somebody to do '
@@ -6331,7 +6537,10 @@ function bind(issues, health, rho) {
   window.SNAP = { issues, health, base: { captured_utc: issues.as_of },
     rho, peer: issues.peer || null, fixture: FIXTURE || null };
   const geo = issues.geometry || {};
-  window.H3 = { ...geo, sensors: issues.stations || [], metrics: issues.metrics || {},
+  /* A station in stations_silent.stations stopped reporting (docs/SPEC_dashboard_figures.md §3.3). It is not a
+     station this node reads now, so it is neither on the map nor in the groups; What the stations read lists it in a fold. */
+  window.H3 = { ...geo, sensors: issues.stations || [], silent: (issues.stations_silent || {}).stations || [],
+    metrics: issues.metrics || {},
     asks: issues.asks || null,
     radio: { ...(geo.radio || {}), mesh: issues.mesh || null,
       mesh_sensor: issues.mesh && issues.mesh.device, mesh_reads: issues.mesh ? issues.mesh.reads : [] },
@@ -6357,7 +6566,7 @@ async function boot() {
   /* What the node doubts about its own sensors, and the day this place is about to have. Two routes
      the node already serves and the page it replaces already read. A refusal or a pack that has
      never run leaves the global null, and the section whose `needs` names it prints one line. */
-  const [trust, forecast, sensors, cells, reach, notes, dayshape, effect] = await Promise.all([
+  const [trust, forecast, sensors, cells, reach, notes, dayshape, effect, days] = await Promise.all([
     api('/trust').catch(() => null), api('/forecast').catch(() => null),
     /* The network figure's own two reads, restored with it. /issues publishes only stations that
        carry a coordinate, so `models` counted 0 on a node running five of them — the figure needs
@@ -6380,6 +6589,9 @@ async function boot() {
     api('/actions?events=1').catch(() => null),
     api('/shape').catch(() => null),
     api('/effect').catch(() => null),
+    /* The strips and Measure's count (docs/SPEC_dashboard_figures.md §4.3, §4.5). A capture carries the 7 days it was
+       taken with; a node older than v0.79 answers 404, and the strips say so. */
+    FIXTURE ? Promise.resolve((snapshot && snapshot.issues_days) || null) : api('/issues/days?days=7').catch(() => null),
   ]);
 
   bind(issues, health, rho);
@@ -6400,6 +6612,10 @@ async function boot() {
      reader and it is the words that are gated. */
   window.SHAPE = dayshape;
   window.EFFECT = effect;
+  window.DAYS = days;
+  window.DAYS_AT = Date.now();
+  /* A capture holds one window; Historical draws what it holds. A live node is asked for 90 days on first use. */
+  window.DAYS90 = FIXTURE ? days : null;
   window.ACT_NOTES = Array.isArray(notes)
     ? notes.reduce((m, x) => {
       /* ?events=1 adds the answers to events, which carry an event_id (an alert's answer carries an alert_id).
@@ -7884,9 +8100,23 @@ function askSources() {
   api('/sources').then(d => { window.SOURCES = d; route(); }).catch(() => { window.SOURCES = null; });
 }
 
+/* Historical's strips reach as far back as the node holds, up to 90 days. Asked the first time Historical is drawn,
+ * not at boot: a household that never opens Historical never pays for it. */
+let DAYS90_ASKED = false;
+function askDays90() {
+  if (DAYS90_ASKED || FIXTURE || VIEW !== 'historical') return;
+  DAYS90_ASKED = true;
+  /* DAYS90_DONE is set either way, so a refusal draws the strips' own "does not send its days yet" line instead of
+     "asking" for good. */
+  api('/issues/days?days=90')
+    .then(d => { window.DAYS90 = d; window.DAYS90_DONE = true; redraw(); })
+    .catch(() => { window.DAYS90 = null; window.DAYS90_DONE = true; redraw(); });
+}
+
 function route() {
   readView();
   askSources();
+  askDays90();
   askLearn();
   document.body.className = '';
   main();
@@ -7894,6 +8124,8 @@ function route() {
      any timer from the last render is pointing at elements that are gone. */
   const page = document.getElementById('page');
   if (page) wireSat(page);
+  /* Figures are placeholders in the markup main() just wrote; the kit draws them now (kit 6 · figures). */
+  if (page) window.K.mountFigs(page);
   learnSync();
   /* The pane lives outside #page and keeps its thread; it only needs telling the body was reset. */
   if (window.PAI_ASK) window.PAI_ASK.draw();
@@ -8192,6 +8424,7 @@ document.addEventListener('click', ev => {
     /* Not a re-render: the register is one attribute and every rule under it is already written, so
        toggling in place restyles the whole page without scrolling it back to the top. */
     applyRegister(VIEW);
+    window.K.repaintFigs();
     rb.parentNode.querySelectorAll('button').forEach(x => {
       const on = x === rb;
       x.classList.toggle('on', on);
@@ -8293,6 +8526,11 @@ async function refresh() {
   /* ρ is the node measuring itself and is the slowest of the three. It failing is not a reason to
      throw away a good reading of the air, so the last one stands and the page says nothing new. */
   rho = await api('/rho').catch(() => (window.SNAP || {}).rho || null);
+  /* The strips move by an hour at a time, so the days are read again at most every 15 minutes, not on every poll. */
+  if (Date.now() - (window.DAYS_AT || 0) > 15 * 60e3) {
+    window.DAYS = await api('/issues/days?days=7').catch(() => window.DAYS || null);
+    window.DAYS_AT = Date.now();
+  }
   window.STALE = null;
   ASKING.landed(issues);
   bind(issues, health, rho);

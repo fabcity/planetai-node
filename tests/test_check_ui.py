@@ -184,7 +184,7 @@ broken("a viewport-height class on an element and its own ancestor",
 # Both are silent: the page renders either way and the only way to find out is to be the tester who
 # presses a question mark and gets nothing. So they are counted at build time instead.
 broken("a mark the layer does not have",
-       sub("learn: ['cards', 'raw']", "learn: ['cards', 'raw', 'weather']"),
+       sub("learn: ['cards', 'raw', 'figure']", "learn: ['cards', 'raw', 'figure', 'weather']"),
        r"draws a learn mark 'weather' that app/static/learn\.json does not have", where="dashboard.js")
 broken("an entry nothing on the page draws",
        sub("learn: ['rho', 'refusals']", "learn: ['rho']"),
