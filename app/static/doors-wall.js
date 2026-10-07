@@ -27,6 +27,7 @@ VIEWS.wall = function () {
         <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}</span></p>
         <p class="wwhy said">${esc(it.plain || '')}</p>
         <div class="wask">${ask}<b>Answer on Telegram, not here.</b></div></div>
+        <div class="wnarr" id="wnarr" data-learn="ask" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></div>
         <div class="wcount"><div class="wflow" id="wside"></div>
         <div class="wrho" id="wrho" data-kind="row"></div></div>
       </section>
@@ -34,7 +35,8 @@ VIEWS.wall = function () {
     <div class="wfrag" id="wfrag"></div>
     <div class="wfoot k">Read at ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of))} · planetai-node ${esc(D.health.version)} · <b>stale</b> · ${moving ? 'a disc is a station’s hourly mean; the window replays every 30 s · press an hour to go to it' : 'reduced motion: nothing moves; press an hour to go to it'}</div>`;
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });
-  rhoRow(); frags();
+  rhoRow(); frags(); narrDraw();
+  if (!NARR.busy && Date.now() - NARR.at > NARR_EVERY) narrate();
   // the drawing's square sets the left column: the main band's height less the strip, never more than 46% of the width
   const g = $('.wgrid'), S = Math.floor(Math.min(g.clientHeight - 76, g.clientWidth * .46));
   g.style.setProperty('--ws', S + 'px');
@@ -53,4 +55,61 @@ function frags() {
     .sort((a, b) => (b.local - a.local) || (mFrom(a) - mFrom(b)));   // nearest first, by the node's own metres
   $('#wfrag').innerHTML = st.slice(0, 5).map(s => `<div><span class="said">${esc(plain(s.name))}</span>${num(s.sensor_id + '.' + WVAR, fmt(s.v, 1), WVAR === 'pm25' ? `the line ${D.issues.air.line}` : 'no line', `<b>${fmt(s.v, 1)}</b>`)}<small class="said">${esc(unitOf(WVAR))} · ${s.local ? (s.indoor ? 'this house, inside' : 'this house') : 'public'}</small></div>`).join('')
     + (st.length > 5 ? `<a href="#now" class="more">+${st.length - 5} more in Now</a>` : '');
+}
+
+/* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A live reading of the figures by the node's own model, typed onto the
+   wall as it is written: what they mean now, what they could mean over the next hours. It asks POST /ask, the ask
+   pane's route, so the model is the one the keeper chose under Set up → Model (AGENT_PREFER): this machine, another
+   on the house's network, or an online provider. When it is online the wall says the figures leave the house. The
+   context is /ask's own, scrubbed of every place, name and id; nothing is stored. A model's words, never a reading,
+   and the line under them says so. Again every 15 minutes while the wall is on screen. */
+const NARR = { text: '', at: 0, busy: false, model: null, where: null, read: [], err: null, timer: 0 };
+const NARR_EVERY = 15 * 60e3;
+const narrAsk = m => `You are speaking aloud on this household's wall screen. In at most 70 words, in plain sentences and no lists, `
+  + `say what the node's figures in your context mean right now, then what they could mean over the next hours. Start with ${m}. `
+  + `Use only figures in your context, each with where it was read and against its line. Do not ask questions, do not give a greeting.`;
+function narrDraw() {
+  const el = $('#wnarr'); if (!el) return;
+  /* the model is named once it has answered (the done event says which rung did); while it asks, the wall says only
+     that it asks, and warns when the keeper's choice lets the question go online */
+  const where = NARR.where === 'online' ? `online · the figures left the house` : NARR.where || '';
+  const who = NARR.busy ? ` · asking its model${NARR.leaves ? ' · it may go online, and the figures with it' : ''}` : NARR.model ? ` · ${esc(NARR.model)}${where ? ` · ${esc(where)}` : ''}` : '';
+  el.innerHTML = `<div class="k">the node, thinking aloud${who}</div>`
+    + (NARR.err ? `<p class="nt said">${esc(NARR.err)}</p>`
+      : `<div class="nw"><p class="nt said"><span id="ntext">${esc(NARR.text)}</span>${NARR.busy ? '<i class="caret" aria-hidden="true"></i>' : ''}</p></div>`)   /* the newest line stays in view; the oldest leave the top */
+    + `<div class="nf">${NARR.read.length ? `it read ${esc([...new Set(NARR.read)].join(', '))} · ` : ''}a model’s words from the node’s figures, never a reading · kept nowhere`
+    + `${NARR.at && !NARR.busy ? ` · written ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(NARR.at))}, again in 15 min` : NARR.busy ? ' · writing now' : ''}</div>`;
+}
+async function narrate() {
+  if (NARR.busy || view() !== 'wall') return;
+  clearTimeout(NARR.timer); NARR.busy = true; NARR.err = null; NARR.read = [];
+  const st = await fetch('/ask/status', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : r.status === 404 ? { none: true } : null).catch(() => null);
+  if (!st || st.none) {
+    NARR.busy = false; NARR.at = Date.now();
+    NARR.err = st && st.none ? 'No model is set up on this node, so it has nothing to say aloud. Set up → Model, or planetai agent local on the node.' : 'The node did not say which model answers this screen.';
+    narrDraw(); NARR.timer = setTimeout(narrate, NARR_EVERY); return;
+  }
+  NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.text = ''; narrDraw();
+  try {
+    const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
+      body: JSON.stringify({ messages: [{ role: 'user', content: narrAsk(labelOf(WVAR)) }], view: 'wall', mode: 'advanced', focus: null }) });
+    if (!r.ok || !r.body) throw new Error(`the node answered ${r.status}`);
+    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await rd.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); let cut;
+      while ((cut = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
+        const ev = (block.match(/^event: (.+)$/m) || [])[1], data = JSON.parse((block.match(/^data: (.+)$/m) || [])[1] || '{}');
+        if (ev === 'token') { NARR.text += data.text; const t = document.getElementById('ntext'); if (t) t.textContent = NARR.text; else narrDraw(); }
+        else if (ev === 'retry') { NARR.text = ''; narrDraw(); }
+        else if (ev === 'tools') { NARR.read.push(data.name || data.tool || 'a record'); }
+        else if (ev === 'done') { NARR.model = data.model || null; NARR.where = data.where || null; }
+        else if (ev === 'error') throw new Error(data.message);
+      }
+    }
+    NARR.text = NARR.text.trim() || 'The model answered with nothing.';
+  } catch (e) { NARR.err = `The node’s model did not answer: ${e.message}`; }
+  NARR.busy = false; NARR.at = Date.now(); narrDraw();
+  NARR.timer = setTimeout(narrate, NARR_EVERY);
 }

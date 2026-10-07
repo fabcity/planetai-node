@@ -110,6 +110,17 @@ A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser 
 
 > **Gap in v0.79.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
+
+### GET /machine
+Access: token
+
+The machine under the node, as its containers see it: `arch`, `system`, `cores`, `load` (1, 5 and 15 minutes), `cpu_busy_pct` (sampled over a quarter second), `memory` (`total_bytes`, `available_bytes`, swap), `container_memory` (the app container's cgroup limit and use, null without one), `temperatures` (each thermal zone the system gives, empty without one), `uptime_s`, `python` and `database` (Postgres version, start time, connections). Read from `/proc` and `/sys`: on Linux that is the machine, on macOS the container engine's virtual machine, which `seen_as` says. Nothing is estimated.
+
+### GET /storage
+Access: token
+
+How much room this node takes and how long what is left lasts: `database_bytes`, `readings`, `readings_last_7_days`, `bytes_per_reading` (the readings table with its indexes, per row), `growth_bytes_per_day` (the last seven days' readings times that), `out_bytes`, `exports_bytes`, `backups` (`bytes`, `dumps`, `keep_days` from `BACKUP_KEEP`, `bytes_when_full`), `disk` (the disk under `out/` as the container sees it: `total_bytes`, `used_bytes`, `free_bytes`) and `days_left`, the free space less what the backups will still take, divided by the daily growth; null with no growth to go on. Nothing is pruned, so the readings are what grows. The database's own disk is the container engine's: the same disk on Linux unless `DATA_DIR` moves it, the engine's virtual disk on macOS. `planetai doctor` checks the host's free space.
+
 ## Sensors and readings
 
 These are the routes a screen, a script or a spreadsheet builds against to read what the node has measured: the sensors, their raw readings, hourly means, and how long the record is.
@@ -366,16 +377,6 @@ Circles round the node, as `[lat, lng]` rings.
 | `km` | string | `2,5,15` | One to eight distances, each above 0 and at most 500 |
 
 Returns `{rings: [{km, ring}]}`.
-
-### GET /machine
-Access: token
-
-The machine under the node, as its containers see it: `arch`, `system`, `cores`, `load` (1, 5 and 15 minutes), `cpu_busy_pct` (sampled over a quarter second), `memory` (`total_bytes`, `available_bytes`, swap), `container_memory` (the app container's cgroup limit and use, null without one), `temperatures` (each thermal zone the system gives, empty without one), `uptime_s`, `python` and `database` (Postgres version, start time, connections). Read from `/proc` and `/sys`: on Linux that is the machine, on macOS the container engine's virtual machine, which `seen_as` says. Nothing is estimated.
-
-### GET /storage
-Access: token
-
-How much room this node takes and how long what is left lasts: `database_bytes`, `readings`, `readings_last_7_days`, `bytes_per_reading` (the readings table with its indexes, per row), `growth_bytes_per_day` (the last seven days' readings times that), `out_bytes`, `exports_bytes`, `backups` (`bytes`, `dumps`, `keep_days` from `BACKUP_KEEP`, `bytes_when_full`), `disk` (the disk under `out/` as the container sees it: `total_bytes`, `used_bytes`, `free_bytes`) and `days_left`, the free space less what the backups will still take, divided by the daily growth; null with no growth to go on. Nothing is pruned, so the readings are what grows. The database's own disk is the container engine's: the same disk on Linux unless `DATA_DIR` moves it, the engine's virtual disk on macOS. `planetai doctor` checks the host's free space.
 
 ### GET /ground/meta
 Access: token

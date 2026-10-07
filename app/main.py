@@ -2268,6 +2268,10 @@ COMPANIONS = {
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
        for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
     "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
+    # The documentation the node carries (`make learn` cuts it out of docs/site): the Data door draws the API from it.
+    # ./data is mounted at /app/data in the container and sits beside app/ in a checkout, as ask.py reads it.
+    "docs_site.json": (next((p for p in (STATIC.parent / "data" / "docs_site.json", STATIC.parent.parent / "data" / "docs_site.json")
+                             if p.exists()), STATIC.parent / "data" / "docs_site.json"), "application/json"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 

@@ -6,8 +6,8 @@ const GEO = {};
 async function geo(name, url) { return GEO[name] || (GEO[name] = await fetch(url).then(r => r.json())); }
 /* Three views of the place: the map (placemap.js, every layer that has a position), and the two that do not —
    the Sentinel frames are photographs not registered to the node's point, and the change is a count, not a shape. */
-let PVIEW = 'map', YEAR = 2025, COMPARE = false;
-const PVIEWS = [['map', 'Map', 'every layer with a position'], ['orbit', 'From orbit', 'Sentinel-2, 2016 to 2025'], ['change', 'What changed', 'AlphaEarth, year on year']];
+let PVIEW = 'map', YEAR = 2025, COMPARE = true, PAST = null;   /* From orbit opens as then | now (Tomas, 7 Oct) */
+const PVIEWS = [['map', 'Map', 'every layer with a position'], ['orbit', 'From orbit', 'then and now, Sentinel-2'], ['change', 'What changed', 'AlphaEarth, year on year']];
 VIEWS.place = function () {
   const h = D.health, area = D.geometry.ladder.find(l => l.res === h.cell.res).own_area_m2 / 1e6;   // the node's own figure for this cell, not the resolution's average
   $('#placehead').innerHTML = `<div class="k">Place · ${said(D.registry.place)}</div>
@@ -32,12 +32,23 @@ async function layer() {
     el.innerHTML = `<p class="fine">This node holds no satellite frames yet: <code>planetai run earth frames</code> fetches them.</p>`; $('#altfacts').innerHTML = ''; return;
   }
   if (LAYER === 'orbit') {
-    const ys = D.earth.sentinel, first = ys[0]; if (!ys.includes(YEAR)) YEAR = ys[ys.length - 1];
-    $('#altbar').innerHTML = `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${COMPARE ? `${first} | ${YEAR}` : YEAR}</b><button id="yn" aria-label="Later">›</button>`
-      + `<label class="cmp"><input type="checkbox" id="cmp" ${COMPARE ? 'checked' : ''}> side by side with ${first}</label>`;
-    el.innerHTML = COMPARE ? `<div class="pair"><figure><img src="${SAT(first)}" alt="Sentinel-2, ${first}"><figcaption>${first}</figcaption></figure><figure><img src="${SAT(YEAR)}" alt="Sentinel-2, ${YEAR}"><figcaption>${YEAR}</figcaption></figure></div>`
+    /* Then | now: the latest pass on the right, fixed; the past on the left, stepped through the passes the node
+       keeps. Single shows one year at a time. The hectares that changed between the two are the node's own count
+       (AlphaEarth, GET /earth), drawn only for a pair it computed. */
+    const ys = D.earth.sentinel, NOW = ys[ys.length - 1]; if (!ys.includes(YEAR)) YEAR = NOW;
+    if (!ys.includes(PAST) || PAST === NOW) PAST = ys[0];
+    const past = ys.filter(y => y !== NOW);
+    const ch = (D.earth.changes || []).find(c => c.year_a === PAST && c.year_b === NOW)
+      || (D.earth.changes || []).find(c => c.year_a <= PAST + 1 && c.year_b === NOW);
+    $('#altbar').innerHTML = COMPARE
+      ? `<span class="k">then</span><button id="yp" aria-label="Earlier">‹</button><b class="mono">${PAST}</b><button id="yn" aria-label="Later">›</button><span class="k">· now</span><b class="mono">${NOW}</b>`
+        + `<label class="cmp"><input type="checkbox" id="cmp" checked> then and now</label>`
+      : `<button id="yp" aria-label="Earlier">‹</button><b class="mono">${YEAR}</b><button id="yn" aria-label="Later">›</button><label class="cmp"><input type="checkbox" id="cmp"> then and now</label>`;
+    el.innerHTML = COMPARE
+      ? `<div class="pair"><figure><img src="${SAT(PAST)}" alt="Sentinel-2, ${PAST}"><figcaption>then · ${PAST}</figcaption></figure><figure><img src="${SAT(NOW)}" alt="Sentinel-2, ${NOW}"><figcaption>now · ${NOW}</figcaption></figure></div>`
+        + (ch ? `<div class="pairnote">${ch.year_a} → ${ch.year_b}: ${num('earth.change.pair', ch.hectares_over_threshold.toFixed(1), `pixels past the change threshold ${ch.threshold}, of ${ch.pixels.toLocaleString('en')}`)} ha changed, ${(ch.share_over_threshold * 100).toFixed(1)} % of the ground, by the node’s AlphaEarth record ${prov('model')}</div>` : '')
       : `<img class="photo" src="${SAT(YEAR)}" alt="Sentinel-2 annual median, ${YEAR}, about 3 km across">`;
-    const step = d => { YEAR = ys[Math.max(0, Math.min(ys.length - 1, ys.indexOf(YEAR) + d))]; layer(); };
+    const step = d => { if (COMPARE) PAST = past[Math.max(0, Math.min(past.length - 1, past.indexOf(PAST) + d))]; else YEAR = ys[Math.max(0, Math.min(ys.length - 1, ys.indexOf(YEAR) + d))]; layer(); };
     $('#yp').onclick = () => step(-1); $('#yn').onclick = () => step(1); $('#cmp').onchange = e => { COMPARE = e.target.checked; layer(); };
     $('#altfacts').innerHTML = facts([['Passes kept', ys.join(' · '), 'Sentinel-2 annual medians'], ['Landsat passes', D.earth.landsat.join(' · ')], ['Across', 'about 3 km'], ['Brightness', 'matched across years']],
       `${D.earth.credit.map(esc).join(' ')} Only the structure differs between years. The photograph is not registered to the node’s point, so nothing is drawn over it.`);
