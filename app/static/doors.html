@@ -338,9 +338,9 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 @keyframes breathe{50%{opacity:.25;transform:scale(.7)}}
 .wnarr .nw{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:1.4vh 1.4vw 1.2vh;mask-image:linear-gradient(to bottom,transparent 0,#000 2.4em)}
 .wnarr .nt{font:italic 300 clamp(18px,1.48vw,31px)/1.34 Figtree,var(--body);letter-spacing:-.005em;margin:0;max-width:40ch;text-wrap:pretty}
-.wnarr .nt .w{animation:surface .7s ease-out both}.wnarr .nt.old{opacity:.32}
+.wnarr .ncount{white-space:nowrap;color:var(--ink);letter-spacing:.08em;text-transform:uppercase}.wnarr .ncount b{font:600 clamp(13px,.95vw,18px) var(--mono);letter-spacing:0;margin-left:4px}.wnarr .nt.old{opacity:.32}
 @keyframes surface{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
-.wnarr .nf{padding:.8vh 1.1vw;border-top:1px solid var(--hair);font:500 clamp(10px,.66vw,12px) var(--mono);color:var(--mute);letter-spacing:.02em}
+.wnarr .nf{display:flex;justify-content:space-between;gap:16px;padding:.8vh 1.1vw;border-top:1px solid var(--hair);font:500 clamp(10px,.66vw,12px) var(--mono);color:var(--mute);letter-spacing:.02em}
 .wnarr .caret{display:inline-block;width:.42em;height:.95em;margin-left:3px;vertical-align:-.1em;background:var(--ink);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 @media (prefers-reduced-motion: reduce){.wnarr .caret,.wnarr.busy .dot,.wnarr .nt .w{animation:none}}

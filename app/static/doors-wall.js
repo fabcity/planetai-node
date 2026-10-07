@@ -36,7 +36,7 @@ VIEWS.wall = function () {
     <div class="wfoot k">Read at ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of))} · planetai-node ${esc(D.health.version)} · <b>stale</b> · ${moving ? 'a disc is a station’s hourly mean; the window replays every 30 s · press an hour to go to it' : 'reduced motion: nothing moves; press an hour to go to it'}</div>`;
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });
   rhoRow(); frags(); narrDraw();
-  if (!NARR.busy && Date.now() - NARR.at > NARR_EVERY) narrate();
+  if (!NARR.busy && !NARR.typing && (!NARR.next || Date.now() >= NARR.next)) narrate(); else { narrTick(); if (NARR.shown.length < NARR.text.length) narrType(); }
   // the drawing's square sets the left column: the main band's height less the strip, never more than 46% of the width
   const g = $('.wgrid'), S = Math.floor(Math.min(g.clientHeight - 76, g.clientWidth * .46));
   g.style.setProperty('--ws', S + 'px');
@@ -57,45 +57,73 @@ function frags() {
     + (st.length > 5 ? `<a href="#now" class="more">+${st.length - 5} more in Now</a>` : '');
 }
 
-/* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A live reading of the figures by the node's own model, typed onto the
-   wall as it is written: what they mean now, what they could mean over the next hours. It asks POST /ask, the ask
-   pane's route, so the model is the one the keeper chose under Set up → Model (AGENT_PREFER): this machine, another
-   on the house's network, or an online provider. When it is online the wall says the figures leave the house. The
-   context is /ask's own, scrubbed of every place, name and id; nothing is stored. A model's words, never a reading,
-   and the line under them says so. Again every 3 minutes while the wall is on screen, each time from another angle. */
-const NARR = { text: '', prev: '', at: 0, busy: false, model: null, where: null, read: [], err: null, timer: 0 };
-const NARR_EVERY = 3 * 60e3;
-/* Plain words for people who know nothing about units or maps (Tomas, 7 Oct): tried on node #1's qwen3:4b until it
-   read like a neighbour, said what the readings suggest without promising, and closed on the next few hours. */
-/* Every 3 minutes (Tomas, 7 Oct), each time from another angle, so the wall does not say the same thing twice in a row. */
+/* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A reading of the figures by the node's own model, in plain words for
+   people who know nothing about units or maps: what is happening inside, how it compares with the street and the
+   neighbourhood, what it suggests for an ordinary day, and what the next hours may bring. It asks POST /ask, so the
+   model is the one the keeper chose under Set up → Model (AGENT_PREFER): this machine, another on the house's network,
+   or an online provider; the wall names the one that answered, and warns while it asks when the choice can go online.
+   The context is /ask's own, scrubbed of every place, name and id; nothing is stored.
+   Tomas, 7 Oct: twice as long, written at a slower pace, a new one every 10 minutes, and a countdown to the next.
+   The model writes into a queue; the wall types it at a reading pace whatever the model's speed. */
+const NARR = { text: '', shown: '', prev: '', at: 0, next: 0, busy: false, typing: false, model: null, where: null, leaves: false, read: [], err: null, timer: 0 };
+const NARR_EVERY = 10 * 60e3, NARR_CPS = 11;          /* about two words a second: read as it is written */
 const NARR_ANGLES = ['what is happening right now', 'what has changed over the last few hours', 'how warm it feels inside the home',
   'how inside the home compares with the street and the neighbourhood', 'how today compares with the last few days'];
-let NARR_TURN = 0;
-const narrAsk = () => "You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour, say what is happening around their home right now: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most one number. Say what the readings suggest for an ordinary day, such as windows, cooking or sleep, but never promise that anything is safe. End with one sentence about the next few hours, from the forecast or the usual pattern for this hour if your context has it; if it does not, say the node will keep watching. Use only the figures in your context. Three or four short sentences, no lists, no greeting, no questions." + ` This time, start from ${NARR_ANGLES[NARR_TURN++ % NARR_ANGLES.length]}; if your context cannot say, speak about the air now.`;
+let NARR_TURN = 0, NARR_TICK = 0, NARR_TYPE = 0;
+const narrAsk = () => "You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour telling a short story, say what is happening around their home: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most two numbers. Go in this order: what is happening inside the home; how that compares with the street and the neighbourhood; what it suggests for an ordinary day, such as windows, cooking, sleep or children outside, never telling people that anything is safe, fine or without risk, only what the readings show; and last, what the next few hours may bring, from the forecast or the usual pattern for this hour if your context has it, or that the node will keep watching if it does not. Use only the figures in your context. Six to eight sentences, one paragraph, no lists, no greeting, no questions." + ` This time, start from ${NARR_ANGLES[NARR_TURN++ % NARR_ANGLES.length]}; if your context cannot say, speak about the air now.`;
+const mmss = ms => { const t = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 function narrDraw() {
   const el = $('#wnarr'); if (!el) return;
-  /* the model is named once it has answered (the done event says which rung did); while it asks, the wall says only
-     that it asks, and warns when the keeper's choice lets the question go online */
+  /* the model is named once it has answered (the done event says which rung did) */
   const where = NARR.where === 'online' ? `online · the figures left the house` : NARR.where || '';
-  const who = NARR.busy ? ` · asking its model${NARR.leaves ? ' · it may go online, and the figures with it' : ''}` : NARR.model ? ` · ${esc(NARR.model)}${where ? ` · ${esc(where)}` : ''}` : '';
-  el.classList.toggle('busy', NARR.busy);
-  el.innerHTML = `<div class="nh"><span class="nl"><i class="dot" aria-hidden="true"></i>the node, thinking aloud</span><span class="nm">${who.replace(/^ · /, '')}</span></div>`
-    + (NARR.err ? `<p class="nt said">${esc(NARR.err)}</p>`
-      : NARR.busy && !NARR.text && NARR.prev ? `<div class="nw"><p class="nt said old">${esc(NARR.prev)}</p><p class="nt said"><span id="ntext"></span><i class="caret" aria-hidden="true"></i></p></div>`   /* the last words stay, faded, until the new ones start */
-      : `<div class="nw"><p class="nt said"><span id="ntext">${esc(NARR.text)}</span>${NARR.busy ? '<i class="caret" aria-hidden="true"></i>' : ''}</p></div>`)   /* the newest line stays in view; the oldest leave the top */
-    + `<div class="nf">${NARR.read.length ? `it read ${esc([...new Set(NARR.read)].join(', '))} · ` : ''}a model’s words from the node’s figures, never a reading · kept nowhere`
-    + `${NARR.at && !NARR.busy ? ` · written ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(NARR.at))}, again in 3 min` : NARR.busy ? ' · writing now' : ''}</div>`;
+  const who = NARR.busy && !NARR.model ? `asking its model${NARR.leaves ? ' · it may go online, and the figures with it' : ''}` : NARR.model ? `${esc(NARR.model)}${where ? ` · ${esc(where)}` : ''}` : '';
+  const writing = NARR.busy || NARR.typing;
+  el.classList.toggle('busy', writing);
+  const body = NARR.err ? `<p class="nt said">${esc(NARR.err)}</p>`
+    : writing && !NARR.shown && NARR.prev ? `<p class="nt said old">${esc(NARR.prev)}</p><p class="nt said"><span id="ntext"></span><i class="caret" aria-hidden="true"></i></p>`
+    : `<p class="nt said"><span id="ntext">${esc(NARR.shown)}</span>${writing ? '<i class="caret" aria-hidden="true"></i>' : ''}</p>`;
+  el.innerHTML = `<div class="nh"><span class="nl"><i class="dot" aria-hidden="true"></i>the node, thinking aloud</span><span class="nm">${who}</span></div>`
+    + `<div class="nw">${body}</div>`
+    + `<div class="nf"><span>${NARR.read.length ? `it read ${esc([...new Set(NARR.read)].join(', '))} · ` : ''}a model’s words from the node’s figures, never a reading · kept nowhere</span>`
+    + `<span class="ncount" id="ncount" aria-live="off">${narrCount()}</span></div>`;
+}
+/* the countdown to the next text, every second while the wall is up */
+function narrCount() {
+  if (NARR.busy && !NARR.shown) return 'writing now';
+  if (NARR.typing) return 'writing now';
+  return NARR.next ? `next in <b>${mmss(NARR.next - Date.now())}</b>` : '';
+}
+function narrTick() {
+  clearInterval(NARR_TICK);
+  NARR_TICK = setInterval(() => { const c = document.getElementById('ncount'); if (!c || view() !== 'wall') { clearInterval(NARR_TICK); return; } c.innerHTML = narrCount(); }, 1000);
+}
+/* the typist: one character at a time from what the model has written so far; all at once under reduced motion */
+function narrType() {
+  if (NARR_TYPE) return;
+  NARR.typing = true;
+  const step = () => {
+    if (view() !== 'wall') { NARR_TYPE = 0; return; }
+    const t = document.getElementById('ntext');
+    if (NARR.shown.length < NARR.text.length) {
+      if (!t || document.querySelector('#wnarr .nt.old')) { NARR.shown = NARR.text.slice(0, NARR.shown.length + 1); narrDraw(); }
+      else { const n = CLOCK.reduced() ? NARR.text.length : NARR.shown.length + 1; t.textContent = NARR.shown = NARR.text.slice(0, n); }
+      NARR_TYPE = setTimeout(step, CLOCK.reduced() ? 250 : 1000 / NARR_CPS);
+    } else if (NARR.busy) { NARR_TYPE = setTimeout(step, 200); }     /* the typist has caught up with the model: wait for more */
+    else { NARR_TYPE = 0; NARR.typing = false; NARR.next = Date.now() + NARR_EVERY; narrDraw(); narrTick();
+      clearTimeout(NARR.timer); NARR.timer = setTimeout(narrate, NARR_EVERY); }
+  };
+  step();
 }
 async function narrate() {
-  if (NARR.busy || view() !== 'wall') return;
+  if (NARR.busy || NARR.typing || view() !== 'wall') return;
   clearTimeout(NARR.timer); NARR.busy = true; NARR.err = null; NARR.read = [];
   const st = await fetch('/ask/status', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : r.status === 404 ? { none: true } : null).catch(() => null);
   if (!st || st.none) {
-    NARR.busy = false; NARR.at = Date.now();
+    NARR.busy = false; NARR.at = Date.now(); NARR.next = Date.now() + NARR_EVERY;
     NARR.err = st && st.none ? 'No model is set up on this node, so it has nothing to say aloud. Set up → Model, or planetai agent local on the node.' : 'The node did not say which model answers this screen.';
-    narrDraw(); NARR.timer = setTimeout(narrate, NARR_EVERY); return;
+    narrDraw(); narrTick(); NARR.timer = setTimeout(narrate, NARR_EVERY); return;
   }
-  NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.prev = NARR.text || NARR.prev; NARR.text = ''; narrDraw();
+  NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.prev = NARR.shown || NARR.prev; NARR.text = ''; NARR.shown = ''; narrDraw(); narrTick();
   try {
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ messages: [{ role: 'user', content: narrAsk() }], view: 'wall', mode: 'advanced', focus: null }) });
@@ -107,18 +135,16 @@ async function narrate() {
       while ((cut = buf.indexOf('\n\n')) >= 0) {
         const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
         const ev = (block.match(/^event: (.+)$/m) || [])[1], data = JSON.parse((block.match(/^data: (.+)$/m) || [])[1] || '{}');
-        /* each piece of text arrives as its own span, so it can fade in where it lands: the words appear as they are written */
-        if (ev === 'token') { NARR.text += data.text; const t = document.getElementById('ntext');
-          if (NARR.text === data.text && document.querySelector('#wnarr .nt.old')) { narrDraw(); continue; }   /* the first new words take the old ones' place */
-          if (t) { const w = document.createElement('span'); w.className = 'w'; w.textContent = data.text; t.appendChild(w); } else narrDraw(); }
-        else if (ev === 'retry') { NARR.text = ''; narrDraw(); }
+        if (ev === 'token') { NARR.text += data.text; narrType(); }
+        else if (ev === 'retry') { NARR.text = ''; NARR.shown = ''; narrDraw(); }
         else if (ev === 'tools') { NARR.read.push(data.name || data.tool || 'a record'); }
         else if (ev === 'done') { NARR.model = data.model || null; NARR.where = data.where || null; }
         else if (ev === 'error') throw new Error(data.message);
       }
     }
     NARR.text = NARR.text.trim() || 'The model answered with nothing.';
-  } catch (e) { NARR.err = `The node’s model did not answer: ${e.message}`; }
-  NARR.busy = false; NARR.at = Date.now(); narrDraw();
-  NARR.timer = setTimeout(narrate, NARR_EVERY);
+  } catch (e) { NARR.err = `The node’s model did not answer: ${e.message}`; NARR.typing = false; }
+  NARR.busy = false; NARR.at = Date.now();
+  if (NARR.err) { NARR.next = Date.now() + NARR_EVERY; narrDraw(); narrTick(); NARR.timer = setTimeout(narrate, NARR_EVERY); }
+  else { narrDraw(); narrType(); }     /* the typist finishes the text, then sets the next one ten minutes on */
 }
