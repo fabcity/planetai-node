@@ -2159,7 +2159,19 @@ const BASES = {
   osm: { name: 'street map', host: 'tile.openstreetmap.org', maxZ: 19,
     url: (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
     credit: '© OpenStreetMap contributors' },
+  /* THE NODE'S OWN MAPS, fetched once by `planetai run place basemap` and `planetai run earth-engine basemap`
+     and served by this node at /ground/* (token or this machine, like the plan). They send nothing, so they are
+     offered at every resolution — but only on the map ground (UI_GROUND=map), which can send the token with each
+     tile; an <img> on the svg ground cannot. `own` names the /ground/meta key that says the node holds it. */
+  street: { name: 'street map, on this node', host: null, own: 'vector', credit: '© OpenStreetMap contributors · Protomaps' },
+  imagery: { name: 'satellite, on this node', host: null, own: 'imagery', minZ: 8, maxZ: 15, credit: 'Sentinel-2, Copernicus' },
+  drone: { name: 'drone, on this node', host: null, own: 'drone', minZ: 14, maxZ: 18, credit: 'OpenAerialMap, CC BY 4.0' },
 };
+const isOwn = k => !!(BASES[k] || {}).own;
+/* Offered only where it can be drawn and the node says it holds it. */
+const ownAllowed = k => isOwn(k) && (window.SETTINGS || {}).UI_GROUND === 'map'
+  && !(window.PAI_MODE && window.PAI_MODE() === 'simple')
+  && !!(((window.GROUND_META || {}).on_disk || {})[BASES[k].own]);
 /* Which base when nobody has pressed one. Tomas's rule: from resolution 9 inward, the plan. The
  * node's own map is about 3 km across; the res-9 plate is 1.6 km, so from 9 the plan fills the
  * frame edge to edge — the generated drawing is the better picture there and it sends nothing. At 8
@@ -2182,7 +2194,8 @@ const autoBase = (res, settings) => tilesAllowed(res, settings) ? 'sat' : 'plan'
  * machine. So `plan` is always pressable and the two live bases are honoured only where they are
  * also offered. */
 const baseOf = (q, res) =>
-  (q in BASES && (q === 'plan' || tilesAllowed(res, window.SETTINGS))) ? q : autoBase(res, window.SETTINGS);
+  (q in BASES && (q === 'plan' || ownAllowed(q) || (!isOwn(q) && tilesAllowed(res, window.SETTINGS))))
+    ? q : autoBase(res, window.SETTINGS);
 
 /* ------------------------------------------------------------------ Web Mercator, in pixels */
 /* World pixel coordinates at zoom z: the whole planet is 256·2^z px across. */
@@ -2260,7 +2273,8 @@ function figure(ctx, opts = {}) {
   if (window.KEEP_GROUND) return '';
   const res = opts.res || ctx.RES;
   const base = baseOf(opts.base || ctx.Q.get('base'), res);
-  if (base === 'plan') return ctx.KMAP.map(res);
+  /* the node's own bases need the map ground; the svg ground draws the plan in their place */
+  if (base === 'plan' || isOwn(base)) return ctx.KMAP.map(res);
   const f = frame(res, opts.size || SIZE, base);
   const B = BASES[base];
   const pc = v => `${(100 * v / f.size).toFixed(3)}%`;
@@ -2356,17 +2370,17 @@ function lead(ctx) {
      kilometre named to a tile server, so it is a price and it belongs on the thing being bought.
      The plan's is zero, and says so rather than being left blank. */
   const cost = (k) => {
-    if (k === 'plan') return 'sends nothing';
+    if (k === 'plan' || isOwn(k)) return 'sends nothing';
     try {
       const n = frame(res, SIZE, k).tiles.length;
       return `${n} request${n === 1 ? '' : 's'}`;
     } catch (e) { return ''; }
   };
   const strip = `<div class="ctlstrip" role="group" aria-label="the ground under the cells">`
-    + Object.entries(BASES).map(([k, b]) => {
+    + Object.entries(BASES).filter(([k]) => !isOwn(k) || ownAllowed(k)).map(([k, b]) => {
       const price = cost(k);
       const inner = `${esc(b.name)}${price ? `<small>${esc(price)}</small>` : ''}`;
-      return (k === 'plan' || allowed)
+      return (k === 'plan' || (isOwn(k) ? ownAllowed(k) : allowed))
         ? `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">${inner}</a>`
         : `<span class="off" aria-disabled="true" title="${esc(why)}">${inner}</span>`;
     }).join('')
@@ -2386,7 +2400,13 @@ function lead(ctx) {
       }</p>`;
 
   let key, cap;
-  if (base === 'plan') {
+  if (isOwn(base)) {
+    const m = ((window.GROUND_META || {}).layers || {})[BASES[base].own] || {};
+    key = `<span><i class="own"></i>the cell this node stands in</span>`
+      + `<span><i></i>${esc(BASES[base].name)}</span>`;
+    cap = `resolution ${res} · kept on this node, sends nothing · ${esc(m.attribution || BASES[base].credit)}`
+      + (base === 'drone' ? ` · ${esc(((m.mosaics || []).map(x => `${x.provider}, ${x.date}`)).join('; '))} · drone tiles from zoom 14: zoom in` : '');
+  } else if (base === 'plan') {
     key = `<span><i class="own"></i>the cell this node stands in</span>`
       + `<span><i></i>buildings, roads, green — OpenStreetMap</span>`
       + `<span><i class="sat-only"></i>only the satellite knows</span>`;
@@ -2459,7 +2479,7 @@ function render(ctx) {
     qty: [{ num: 'ground.requests.plan', value: '0 requests',
       cmp: `against the ${frame(res, SIZE, 'sat').tiles.length} the satellite base sends` }],
   });
-  return base === 'plan' ? plan + live('sat', 'Switched on, the satellite base sends')
+  return (base === 'plan' || isOwn(base)) ? plan + live('sat', 'Switched on, the satellite base sends')
     : live(base, 'This view sends') + plan;
 }
 
@@ -2473,7 +2493,7 @@ function notes(ctx) {
       + 'draws the grid itself rather than a map of open water labelled as this household’s ground.' }];
   }
   const base = baseOf(ctx.Q.get('base'), ctx.RES);
-  const f = frame(ctx.RES, SIZE, base === 'plan' ? 'sat' : base);
+  const f = frame(ctx.RES, SIZE, (base === 'plan' || isOwn(base)) ? 'sat' : base);
   return [
     { id: 'ground-rule', label: 'Where the plan takes over',
         text: `From resolution ${PLAN_FROM} inward the ground is this node’s own `
@@ -2594,6 +2614,45 @@ function fallback(el, why) {
     + 'ground instead.</p>');
 }
 
+/* The node's own street map, satellite and drone, in the page's tokens: land is the ground, water and buildings are
+   the ink at low strength, green is the rings green faint. Rasters sit over the street map and under its names. */
+const mix = (a, b, t) => hex(a.map((v, i) => Math.round(v + (b[i] - v) * t)));
+function ownStyle(base, T, style) {
+  const G = (window.GROUND_META || {}).on_disk || {}, at = p => `${location.origin}/ground/${p}`;
+  const any = l => ['in', ['get', 'kind'], ['literal', l]];
+  const W = (h, m, n) => ['interpolate', ['exponential', 1.6], ['zoom'], 12, ['match', ['get', 'kind'], 'highway', h[0], 'major_road', m[0], n[0]],
+    18, ['match', ['get', 'kind'], 'highway', h[1], 'major_road', m[1], n[1]]];
+  const water = mix(T.ground, T.cells, 0.14), bldg = mix(T.ground, T.ink, 0.2), casing = mix(T.ground, T.ink, 0.16);
+  const road = mix(T.ground, [255, 255, 255], 0.7), label = mix(T.ground, T.ink, 0.62);
+  style.layers[0].paint['background-color'] = water;
+  if (G.vector) {
+    style.sources.v = { type: 'vector', tiles: [at('vector/{z}/{x}/{y}.pbf')], maxzoom: 15 };
+    style.layers.push(
+      { id: 'v-earth', type: 'fill', source: 'v', 'source-layer': 'earth', paint: { 'fill-color': hex(T.ground) } },
+      { id: 'v-green', type: 'fill', source: 'v', 'source-layer': 'landuse', filter: any(['park', 'wood', 'forest', 'garden', 'grass', 'grassland', 'scrub', 'nature_reserve', 'golf_course', 'cemetery', 'meadow', 'pitch']),
+        paint: { 'fill-color': mix(T.ground, T.rings, 0.14) } },
+      { id: 'v-water', type: 'fill', source: 'v', 'source-layer': 'water', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': water } },
+      { id: 'v-casing', type: 'line', source: 'v', 'source-layer': 'roads', filter: any(['minor_road', 'major_road', 'highway']), minzoom: 12,
+        layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': casing, 'line-width': W([2.4, 22], [1.8, 18], [0.9, 13]) } },
+      { id: 'v-road', type: 'line', source: 'v', 'source-layer': 'roads', filter: any(['minor_road', 'major_road', 'highway']),
+        layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': road, 'line-width': W([1.6, 19], [1.1, 15], [0.5, 10.5]) } },
+      { id: 'v-bldg', type: 'fill', source: 'v', 'source-layer': 'buildings', minzoom: 13, paint: { 'fill-color': bldg } });
+  }
+  if (base !== 'street' && G[base]) {
+    style.sources.photo = { type: 'raster', tiles: [at(`${base}/{z}/{x}/{y}.png`)], tileSize: TILE, minzoom: BASES[base].minZ, maxzoom: BASES[base].maxZ };
+    style.layers.push({ id: 'photo', type: 'raster', source: 'photo', paint: { 'raster-fade-duration': 0 } });
+  }
+  if (G.vector && G.glyphs) {
+    style.glyphs = at('glyphs/{fontstack}/{range}.pbf');
+    const txt = { 'text-color': base === 'street' ? label : '#ffffff', 'text-halo-color': base === 'street' ? hex(T.ground) : 'rgba(0,0,0,.6)', 'text-halo-width': 1.3 };
+    style.layers.push(
+      { id: 'v-road-label', type: 'symbol', source: 'v', 'source-layer': 'roads', minzoom: 14.5, filter: ['has', 'name'],
+        layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 10.5 }, paint: txt },
+      { id: 'v-place-label', type: 'symbol', source: 'v', 'source-layer': 'places', filter: ['has', 'name'],
+        layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Medium'], 'text-size': 12, 'text-max-width': 7 }, paint: txt });
+  }
+}
+
 function draw(el) {
   const res = Number(el.dataset.res), base = el.dataset.base;
   const plate = H.nav.plates[res];
@@ -2602,7 +2661,9 @@ function draw(el) {
   const style = { version: 8, sources: {},
     layers: [{ id: 'paper', type: 'background', paint: { 'background-color': hex(T.ground) } }] };
   const B = BASES[base];
-  if (B.url) {
+  if (isOwn(base)) {
+    ownStyle(base, T, style);
+  } else if (B.url) {
     style.sources.tiles = { type: 'raster', tiles: [B.url('{z}', '{x}', '{y}')], tileSize: TILE,
       maxzoom: B.maxZ, attribution: B.credit };
     style.layers.push({ id: 'tiles', type: 'raster', source: 'tiles' });
@@ -2631,7 +2692,7 @@ function draw(el) {
      asked for and the count in the strip is the count sent. */
   const w = el.clientWidth || SIZE;
   const f = frame(res, SIZE, B.url ? base : 'sat');
-  const live = !!B.url;
+  const live = !!B.url && !isOwn(base);
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let asked = 0;
   /* The plan keeps kit-map's frame: the plate's bounding box with six per cent round it. */
@@ -2648,7 +2709,12 @@ function draw(el) {
     container: el, style, ...view,
     interactive: !live, dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0,
     fadeDuration: reduce ? 0 : 150, attributionControl: false,   // the caption under the figure carries the credit, as it does for the svg ground
-    transformRequest: url => { if (/^https?:/.test(url) && !url.startsWith(location.origin)) asked++; return { url }; },
+    /* The node's own tiles carry the token the page holds, as every other read does; anything else is counted. */
+    transformRequest: url => {
+      if (url.startsWith(location.origin + '/ground/')) return { url, headers: window.PAI_AUTH ? window.PAI_AUTH() : {} };
+      if (/^https?:/.test(url) && !url.startsWith(location.origin)) asked++;
+      return { url };
+    },
   });
   if (!live) map.touchZoomRotate.disableRotation();
   /* A tile that fails is a gap in the base, as an <img> that fails is in the svg ground; anything
@@ -6829,6 +6895,8 @@ async function boot() {
   window.STATS = (sensors || []).some(x => x && x.source === 'xiaomi-air')
     ? await api('/stats').catch(() => null) : null;
   window.PLAN = await plan(health).catch(() => null);
+  /* What this node holds of its own map (planetai run place basemap): read only for the map ground, which can draw it. */
+  window.GROUND_META = ((window.SETTINGS || {}).UI_GROUND === 'map') ? await api('/ground/meta').catch(() => null) : null;
 }
 
 /* ------------------------------------------------------------------ Arrange */

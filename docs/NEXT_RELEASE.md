@@ -209,3 +209,32 @@ carries the date and the node it ran on.
 That is why these can go out two or three to a release while item 1 cannot.
 
 ---
+
+---
+
+## 3. Drone imagery: choose the provider
+
+**Asked, 7 October 2026.** Tomas, after seeing the Benoa mosaic on the map: drone imagery is a core part of the
+node, and a node should be able to choose its drone imagery from other providers, not only the one
+`planetai run place basemap` picked.
+
+**What there is.** `packs/place/basemap.py` (`drone()`) queries OpenAerialMap's catalogue for open (CC BY) mosaics
+crossing `GROUND_DRONE_RADIUS_KM`, newest first, and keeps their tiles in `out/ground/drone.mbtiles`;
+`/ground/meta` lists the mosaics with provider, date and resolution. Node #1 found one (Saragis Multikencana, Benoa,
+7 cm, December 2024); it stops 1.5 km east of the house.
+
+**What is owed.**
+- A list of the mosaics a node could take, with provider, date, resolution and licence, and a choice of which
+  (Set up → Place, or `planetai run place basemap --drone <id,…>`). Today the newest wins where two overlap.
+- Providers beyond OpenAerialMap's catalogue: a household's or a lab's own flight (a GeoTIFF dropped into the node,
+  tiled locally), a city's open orthophoto service (WMTS/TMS with an open licence), other open catalogues. Each one
+  answers the licence question before it is listed: the node keeps tiles, so the licence must allow keeping them.
+- Credit per mosaic on the map, as now, and in `/ground/meta`.
+
+**Touches** `packs/place/basemap.py`, `app/main.py` (`/ground/*`), the map ground in `app/static/dashboard.js`, and
+Set up. A pack change and a page change: two releases under rule 2.
+
+**Also owed from the same work.** The Sentinel-2 composite (`planetai run earth-engine basemap`) has not run on a
+node yet; its first run is on node #1. The design prototype's Place door (planetai-design R36–R38) is where the
+layers panel, scales and inspector were drawn; the node's map ground has the bases, not yet the panel.
+

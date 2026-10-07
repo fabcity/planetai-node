@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- **This release carries two page changes and two pack scripts, against `docs/NEXT_RELEASE.md` rules 2 and 3, as
+  v0.77 did.** The figures (below) and the map ground both change `app/static`, and `place` and `earth-engine` gain a
+  `basemap` script. The scripts only run when somebody types the command; the map ground is off unless
+  `UI_GROUND=map`.
+- **The ground can be a map** (`UI_GROUND=map`, default `svg`): MapLibre draws the base and deck.gl the cells and
+  stations, so it pans and zooms. Without WebGL2 it draws the svg ground and says why. The two libraries are served
+  by the node (860 kB gzipped) and fetched only when the ground is drawn this way. Simple mode and the wall keep
+  the svg ground. `docs/decisions/2026-10-06-ground-map.md` holds the measurements.
+- **A detailed map kept on the node.** `planetai run place basemap` keeps OpenStreetMap vector tiles (cut out of
+  Protomaps' daily build, with the label fonts) and any OpenAerialMap drone mosaic (CC BY 4.0) that crosses the
+  node's area; `planetai run earth-engine basemap` builds the node's own cloud-free Sentinel-2 picture of the last
+  twelve months. Each says what it reveals before it runs, once. The map ground offers them as bases that send
+  nothing: "street map, on this node", "satellite, on this node" and "drone, on this node".
+- `GET /geo/grid`, `/geo/cell`, `/geo/measure` and `/geo/rings` answer the shapes and distances a map draws, so the
+  page computes no H3 and no distance; `GET /ground/meta`, `/ground/{vector,drone,imagery}/{z}/{x}/{y}` and
+  `/ground/glyphs/…` serve the kept map. All need a token or this machine, like `/place/geojson`.
+  `tools/check_ui.py` now fails a page that imports h3-js or calls an H3 function.
+
 - The dashboard draws each issue's day once, as one drawing you can point at: every distance, the usual for each hour,
   the hours over the line, the alert event and its answer, and the event's own rooms, with the hour read out in words
   (the arrow keys work too). Under it, a strip of the last seven days, one cell an hour; Historical draws every day

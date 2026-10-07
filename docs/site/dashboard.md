@@ -171,6 +171,13 @@ a count of requests for the others. A press may only ever reduce what leaves the
 token at every sharing level, because it is the shape of your building. An H3 id is printed in full, once
 per object, never truncated.
 
+With `UI_GROUND=map` the same ground is drawn by MapLibre and deck.gl and pans and zooms (the plan freely; a live
+base stays put, because every drag would be tiles nobody priced). On that ground the strip also offers what the node
+keeps of its own map, once `planetai run place basemap` or `planetai run earth-engine basemap` has run: `street map,
+on this node` (OpenStreetMap vector tiles with names), `satellite, on this node` (its Sentinel-2 composite) and `drone,
+on this node` (OpenAerialMap mosaics, from zoom 14). Each says `sends nothing`, because it is read from
+`/ground/*` on this node with the page's token. Without WebGL2 the page draws the svg ground and says why.
+
 Three things the grid forces the page to say: a cell is not the thing (three indoor sensors share one
 coordinate); containment is exact in the index and approximate on the ground; and the four distances are
 not four resolutions.
