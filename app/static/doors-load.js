@@ -68,7 +68,7 @@ function buildD(A, locale) {
     as_of: I.as_of, tz: H.tz, buckets: Y.buckets || [], order: I.order || [], lead: (I.lead || {}).issue ?? (I.order || [])[0],
     labels: (I.labels || {})[L] || {}, metrics: I.metrics || {}, issues, events, buttons: evs.buttons || {},
     node: { name: H.node, place: H.city }, registry: { name: H.node, place: H.city || H.node },
-    share: setting('SHARE_LEVEL'), settings: A.settings || null, rho: A.rho || {}, health: H,
+    share: setting('SHARE_LEVEL'), settings: A.settings || null, askOff: setting('UI_ASK') === 'off',   /* the keeper's switch for every ask, the dashboard's and the doors' */ rho: A.rho || {}, health: H,
     earth: A.earth ? { years: E.years || [], changes: E.changes || [], radius_m: E.radius_m, change: E.latest || null,
       sentinel: img.sentinel || [], landsat: img.landsat || [], credit: img.credit || [] } : null,
     reach: A.reach || [], sensors: A.sensors || [], observations: A.observations || [], index_cells: A.cells || [],

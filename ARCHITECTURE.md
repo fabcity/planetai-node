@@ -1,5 +1,5 @@
 # PLANETAI. Architecture
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 The whole building, drawn once, so every brick knows where it goes. What exists today is marked. What doesn't is
 drawn anyway, because the contracts between layers are the thing that can't be retrofitted.
@@ -229,7 +229,7 @@ No raw readings leave the instance that recorded them. No cell is upgraded from 
 aggregation. No agent dispatches without a human row in `actions`. No layer requires a cloud provider to function.
 No scale is skipped: a city aggregator is built from nodes, not declared from above.
 
-The node's page is `index.html` and a fixed list of companion files served by name from `app/static/`, and stays
+The node's page is `index.html` (or `doors.html`, the five doors on trial at `/?layout=doors`) and a fixed list of companion files served by name from `app/static/`, and stays
 so — no framework, no build step, nothing loaded from anywhere else, because a node serves it to a household network
 that may have no route out.
 `planetai.fab.city` may use a framework; the two never share code, and both read the programme layer, which is

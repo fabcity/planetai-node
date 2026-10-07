@@ -1,5 +1,5 @@
 # Introduction
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 PLANETAI is hyperlocal compute and intelligence for distributed production, and a node is its
 unit: one computer per place, on hardware the place already owns. It reads what measures that place, from a
@@ -33,7 +33,7 @@ product in, trash out, and the one it builds DIDO, data in, data out: materials 
 moves between cities. On a node, raw readings stay on the machine and only summaries travel, to a parent node
 if you name one, to the [Fab City Index](https://index.fab.city), and to the models that need ground truth.
 
-In v0.79 a node reads air and heat from the sensors in and around the house, and land and coast from public
+In v0.80 a node reads air and heat from the sensors in and around the house, and land and coast from public
 and satellite sources. Water and soil have no pack yet. The `make` pack names the nearest fab lab in a
 sentence, and no node has yet handed a job to a workshop. What runs today is the loop from a reading to a
 person acting and to a measured result; the loop from a reading to something made nearby is the direction.
@@ -108,7 +108,7 @@ alive and the alerts correct."
 
 ## What these pages are
 
-This is the reference for the node at v0.79, read from the code of that version. The pages under *Get
+This is the reference for the node at v0.80, read from the code of that version. The pages under *Get
 started* and *Operate* are for the person running one. *Alerts, reports and ρ*, *Packs*, *Dashboard* and
 *Agents* explain what the node does and how to change it. *Reference* is the [HTTP API](api.md), the
 [database](schema.md) and the [federation contracts](federation.md). *Project* holds the architecture and the

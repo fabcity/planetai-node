@@ -116,6 +116,7 @@ function narrType() {
 }
 async function narrate() {
   if (NARR.busy || NARR.typing || view() !== 'wall') return;
+  if (D.askOff) { NARR.err = 'Asking the node is turned off here (UI_ASK, under Set up → Model), so the wall has nothing to say aloud.'; NARR.next = 0; narrDraw(); return; }
   clearTimeout(NARR.timer); NARR.busy = true; NARR.err = null; NARR.read = [];
   const st = await fetch('/ask/status', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : r.status === 404 ? { none: true } : null).catch(() => null);
   if (!st || st.none) {

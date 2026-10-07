@@ -1,13 +1,17 @@
 # Changelog
 
-## Unreleased
+## v0.80 — 2026-10-07 — The ground becomes a map, and the node opens five doors
 
-- **The five doors, on trial at `/?layout=doors`** (ships after v0.80, on its own): Now, Place, Data, Wall and Node,
+- **v0.80 carries two page changes and two pack scripts, against `docs/NEXT_RELEASE.md` rules 2 and 3.** Tomas asked
+  to pack the map and the five doors into one release. Both page changes are opt-in: the map ground draws only with
+  `UI_GROUND=map`, and the doors only at `/?layout=doors`; `/` is the v0.79 dashboard on a node that changes nothing.
+  So "was it the page or the data", and "which page", still have one answer each. Node #1 has run both since 7 October.
+- **The five doors, on trial at `/?layout=doors`**: Now, Place, Data, Wall and Node,
   the redesign from planetai-design, drawn from the node's own routes with the screen's token. Without the token a
   door draws what `SHARE_LEVEL` gives and says what it is not drawing; the map, the cells, the distances and the
   hourly table stay token-only. Done, Not now and Doesn't fit and the ask pane write to the node as the dashboard
   does. The Wall's drawing is a living map: the node's dark street map, the wind now, and every station's hourly mean replayed as discs; Now draws the stations around the house on a map with the node's rings and cells. The Wall thinks aloud: every ten minutes, with a countdown, the node's model, the one chosen under Set up → Model, says in plain words what the figures mean and what the next hours may bring, and names itself. Set up is a page of its own behind a gear, and its Machine section reads two new token-only routes: `GET /machine` (processor, load, memory, temperature, uptime, system, database) and `GET /storage` (what the node keeps, the free disk, and the days it lasts at the last week's rate). The dashboard at `/` is unchanged. `docs/decisions/2026-10-07-doors.md`.
-- **v0.80 carries a page change and two pack scripts, against `docs/NEXT_RELEASE.md` rule 2, as v0.77 did.** The
+- **The map ground's half of rule 2, as v0.77 did.** The
   map ground changes `app/static`, and `place` and `earth-engine` gain a `basemap` script that the map's own bases
   read. The scripts only run when somebody types the command, and the map ground is off unless `UI_GROUND=map`, so
   "was it the page or the data" still has one answer on a node that has not opted in. The figures shipped alone in

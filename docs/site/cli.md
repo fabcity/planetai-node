@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 The command line is how the person who keeps a node looks after it: install it, ask whether it is alive,
 record what somebody did about an alert, move its data somewhere safe. The repo names that person as the
@@ -14,7 +14,7 @@ and talks to the node over its own [API](api.md) on `localhost:$APP_PORT` with t
 predates the word says "there is no `planetai <word>` in this node", names the node's version and
 suggests `planetai update`. Commands arrive in releases.
 
-> **Gap in v0.79.** The list `planetai` prints leaves out four commands that exist: `preflight`,
+> **Gap in v0.80.** The list `planetai` prints leaves out four commands that exist: `preflight`,
 > `sources`, `config unset` and `agent local pull`. The tables below are complete.
 
 Nothing here needs `sudo` except `mesh` (installing and joining Tailscale), `agent local` on a machine with
@@ -148,7 +148,7 @@ this node reads yet. The footer says so in the node's words:
   N of 269 entries. The last column is the code that reads it. A cell with sources and a blank column is one nobody has written an adapter for yet.
 ```
 
-The snapshot at v0.79 is `awesome-fabcity-data` at `851b8db`, 269 entries, synced 2026-10-06. `N` is how many
+The snapshot at v0.80 is `awesome-fabcity-data` at `851b8db`, 269 entries, synced 2026-10-06. `N` is how many
 of them are filed for your city or for everywhere. The same list is `GET /sources` on [the API](api.md).
 
 Since v0.73 two more lines follow the footer: the three

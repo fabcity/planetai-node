@@ -81,13 +81,32 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
   knownNodes(D); foot();
+  if (D.askOff) $('#askbtn').hidden = true;                 /* UI_ASK off: no ask here either */
   $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
   $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)} · ${D.health.version || ''}${DOORS_TOKEN() ? '' : ' · locked'}`;
   try { D.ngeo = await nodeGeo(D); } catch (e) { D.ngeo = null; D.ngeoErr = e.message; }
   route();
   window.addEventListener('hashchange', route);
   let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => VIEWS[view()](), 120); });
-});
+}).catch(refused);
+
+/* At SHARE_LEVEL=off a screen without the token is refused /issues, and the doors have nothing to draw. That is a real
+   state a phone on the house's WiFi will be in, not an error: draw the node's name (/health answers at every level),
+   the node's own sentence, and the one way in, the token. Without this the page stayed blank and could not be unlocked. */
+async function refused(e) {
+  const [h, r] = await Promise.all([fetch('/health').then(x => x.json()).catch(() => ({})),
+    fetch('/issues', { headers: DOORS_AUTH() }).then(async x => x.ok ? null : (await x.json().catch(() => ({}))).error || (await x.text().catch(() => ''))).catch(() => null)]);
+  $('#who').innerHTML = `${esc(h.node || 'this node')}<small>${esc(h.city || '')}</small>`;
+  $('#asof').textContent = `${h.version || ''} · locked`;
+  document.querySelectorAll('.view').forEach(el => { el.hidden = el.dataset.view !== 'setup'; });
+  $('#setupv2').innerHTML = `<header class="sh"><div class="k">${esc(h.node || 'this node')} · not sharing with this screen</div><h1>This node is not sharing its readings with this screen.</h1>`
+    + `<p class="lede">${esc(r || e.message)}</p><p class="lede">Unlock this screen with a token, or ask whoever set this node up to turn sharing on (Set up → Sharing). <code>planetai ui</code> on the node prints the tokens.</p></header>`
+    + `<form class="unlock2" id="sunlock"><label>Admin token<input type="password" id="stok" autocomplete="off" placeholder="changes settings, reads everything"></label>`
+    + `<label>Token for closing a loop<input type="password" id="sact" autocomplete="off" placeholder="answers alerts, changes nothing"></label>`
+    + `<div><button type="submit" class="sbtn primary">Unlock this screen</button></div></form>`;
+  $('#sunlock').onsubmit = ev => { ev.preventDefault(); const t1 = $('#stok').value.trim(), t2 = $('#sact').value.trim();
+    try { if (t1) localStorage.setItem('planetai_admin', t1); if (t2) localStorage.setItem('planetai_act', t2); } catch (x) { /* no storage here */ } location.reload(); };
+}
 
 document.querySelectorAll('.reg button').forEach(b => b.onclick = () => {
   userTheme = b.dataset.r; document.querySelectorAll('.reg button').forEach(o => o.classList.toggle('on', o === b)); route(); });
@@ -149,9 +168,9 @@ function foot() {
   $('#foot').innerHTML = `<div><b>This node</b><p>${esc(D.node.name)}${D.node.place ? ` · ${esc(D.node.place)}` : ''} · planetai-node ${esc(h.version || '')}</p>`
     + `<p>${rel.newer ? `${esc(rel.latest)} is out: <code>planetai update</code> on the node.` : 'A node of PLANETAI, the Fab City programme’s network of homes that read their place, decide and act.'}</p></div>`
     + `<div><b>Read</b><a href="${esc(docs)}" target="_blank" rel="noopener">Documentation</a><a href="${esc(docs)}dashboard/" target="_blank" rel="noopener">These pages, explained</a>`
-    + `<a href="${esc(h.llms || '/llms.txt')}">For agents: llms.txt</a><button class="linkish" type="button" id="footask">Ask the node</button></div>`
+    + `<a href="${esc(h.llms || '/llms.txt')}">For agents: llms.txt</a>${D.askOff ? '' : '<button class="linkish" type="button" id="footask">Ask the node</button>'}</div>`
     + `<div><b>This house</b><a href="/">The classic dashboard</a><a href="#setup">Set up</a><a href="#setup/screen">Unlock this screen</a><a href="/export?day=${esc(dayOf(D.as_of))}">Today’s open data, CC BY 4.0</a></div>`
     + `<div><b>Fab City</b><a href="https://planetai.fab.city/" target="_blank" rel="noopener">PLANETAI</a><a href="https://fab.city/" target="_blank" rel="noopener">Fab City Foundation</a>`
     + `<a href="https://github.com/fabcity/planetai-node" target="_blank" rel="noopener">Source, Apache-2.0</a></div>`;
-  $('#footask').onclick = () => $('#askbtn').click();
+  if (!D.askOff) $('#footask').onclick = () => $('#askbtn').click();
 }

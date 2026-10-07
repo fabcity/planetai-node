@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -11,7 +11,8 @@ is written on this page, and so is the note that says what was done.
 The node serves `index.html` and a fixed list of companion files by name from `GET /static/{name}`: three
 stylesheets (`tokens.css`, `planetai-theme.css`, `dashboard.css`), `dashboard.js`, the drawing library
 (`plot.umd.min.js` and `d3.min.js`), two SVGs, `kilometre-cells.json`,
-`learn.json` and the self-hosted fonts. The node computes and the page draws. A number the page works out
+`learn.json` and the self-hosted fonts; for the map ground, `maplibre-gl.js`, `maplibre-gl.css` and `deck.gl.min.js`;
+and for the five doors (`/?layout=doors` serves `doors.html` in place of `index.html`), thirteen `doors-*.js`, `world-land-110m.json` and `docs_site.json`. The node computes and the page draws. A number the page works out
 for itself is a bug.
 
 ## A first read
@@ -393,7 +394,7 @@ somebody setting up a node needs them:
 | **Packs** | which packs load, and one card per pack with its switch, what it is, and its own settings; a key the pack lists under `secrets:` is masked once saved |
 | **Keys** | every secret: the Telegram bot token, the two model keys, and the backup, parent, aggregate and act tokens |
 | **Sharing** | sharing and network: who may read this node, live map tiles, the Reticulum announce and alerts, Home Assistant, the parent node |
-| **System** | tuning numbers, the layout Arrange writes, and what is read once at start (port, extra containers, backups, poll interval), read-only |
+| **System** | tuning numbers, how the ground is drawn (`UI_GROUND`), the layout Arrange writes, and what is read once at start (port, extra containers, backups, poll interval), read-only |
  A value set here is live
 within 20 seconds and wins over `.env`; the page says so beside it; a blank returns the key to `.env`. Every
 change is an `actions` row with `stage='settings'` and the actor `dashboard` (`planetai-cli` from the command
@@ -419,14 +420,15 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.79.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.80.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
-> Set up, and turn it off again; or read the page at `open`.
+> Set up, and turn it off again; or read the page at `open`. The doors are the way round it: at `off` without a token
+> they draw the node's name, its refusal and the token field, so `/?layout=doors` is where a refused screen unlocks.
 
 ## The five doors, on trial
 
-`/?layout=doors` draws the same node as five doors, the redesign worked out in planetai-design (R34 to R41): **Now**
+`/?layout=doors` draws the same node as five doors, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed), **Data** (every
 reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
@@ -438,7 +440,7 @@ The doors read the routes the dashboard reads, renamed and pivoted in the page a
 the token draws what `SHARE_LEVEL` gives it and says, where a part is missing, why. At `open` that is the issues, the
 events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger without its notes.
 The map, the cells, every distance and the hourly table are token-only at every level, because together they say
-where the node is and what the household did hour by hour. **Node → Unlock this screen** stores the act or admin
+where the node is and what the household did hour by hour. **Set up → This screen** (the foot's "Unlock this screen") stores the act or admin
 token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The Wall's right column is **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace, with a countdown to the next. It names the model that answered, warns when the keeper's choice lets the question go online, and calls itself a model's words, never a reading; nothing is kept. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
 

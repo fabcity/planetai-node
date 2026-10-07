@@ -1,5 +1,5 @@
 # Platforms
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 **Linux first, macOS second, Windows third.** Not a preference — a consequence. A node's home is a box
 that stays on, and a laptop under macOS is designed to go to sleep. More to the point: on macOS the floor

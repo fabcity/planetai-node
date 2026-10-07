@@ -1,7 +1,7 @@
 # Concepts
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
-The words the rest of these pages use, each with what it means in the code at v0.79. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.80. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -179,7 +179,7 @@ report bundle under the rule's id.
 
 ## Reaching the node
 
-**`SHARE_LEVEL`.** What a request with no token may read: `off` (the dashboard shell, `/health`, `/presence`,
+**`SHARE_LEVEL`.** What a request with no token may read: `off` (the dashboard shell, `/health`, `/presence`, `/llms.txt`,
 the daily export, and `/settings` reduced to the layout and the sharing level, nothing else) or `open` (the
 whole read API, which is what a wall screen without a token needs). Two more rungs, `cell` and `means`, are
 named and refused. See [Sharing](sharing.md).

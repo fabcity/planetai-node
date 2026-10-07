@@ -1,5 +1,5 @@
 # Sharing and security
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 This page is the node's boundary: what a reader on the network may see without a token, which token
 opens what, what leaves the machine and how coarse it is when it does, and whose code the node will
@@ -66,7 +66,7 @@ same entries on every node in a release, and it says nothing about this house.
 
 ## What needs a token at every level
 
-`/place/geojson` (the shape of your building and what is around it), the `/geo/` routes and `/ground/*` (each locates the node), `/settings/raw`, `/backups` and
+`/place/geojson` (the shape of your building and what is around it), the `/geo/` routes and `/ground/*` (each locates the node), `/machine` and `/storage` (the machine and what it holds), `/settings/raw`, `/backups` and
 `/backups/<name>`, `/report/bundle`, `GET /aggregates`, `/briefing` and `GET /actions` are on neither
 list. So is every write, and the whole of `/mcp` checks the admin token itself. Two writes pass the
 sharing check because their path is on a list for reading, and their handler refuses them instead:
@@ -118,6 +118,7 @@ Set up never travels to a NAS or a remote. The node never logs the Telegram URL,
 | the node's coordinates | Open-Meteo, for weather and the CAMS air model, with `OPENMETEO_ENABLED=1` | rounded to three decimals by the two core adapters |
 | a request for the fab lab directory | gitlab.fabcloud.org (`MAKE_SOURCE=archive`) or api.fablabs.io (`live`), only with `MAKE_ENABLED=1` and `PACKS_ALLOW_CODE=1` | no coordinates: the whole directory comes down and the distances are worked out on the node |
 | a request for the current version | planetai.fab.city, once a day, with `UPDATE_CHECK=on` (the default) | nothing about the house: a plain request for one file. Fab City's host sees this house's internet address and that a PLANETAI node lives there. `off` = the node never asks |
+| the square the node's own map covers | build.protomaps.com and OpenAerialMap (`planetai run place basemap`) or Earth Engine, under the node's own project (`planetai run earth-engine basemap`), once, only when somebody runs the command | the tiles fetched, the finest of them `GROUND_RADIUS_KM` (12) round the node; afterwards the map is served from the node at `/ground/*` and sends nothing |
 | the square being looked at | a tile server, per tile, only with `MAP_TILES=on` | the tile's own square; `off` (the default) draws from the node's local copy of OpenStreetMap |
 | the question you asked the bot | an online model, only if you gave it a key and changed `AGENT_PREFER` from its default, `private` | the question and the tool results the model asked for |
 | a question asked in the dashboard's pane | the model Set up names: this machine, one on your network, or an online provider only with `AGENT_PREFER` set to `fallback` or `strongest` | the question and the page's own sentences and numbers; the context carries no position, name or id; the node keeps no transcript |
@@ -133,7 +134,7 @@ surface instead, which rounds, refuses and audits. See [Ask the node](ask.md).
 respectively open-only, open-only and token-only; read [the API](api.md) before putting `SHARE_LEVEL=open`
 on a network you do not trust.
 
-> **Gap in v0.79.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
+> **Gap in v0.80.** The first-start bootstrap and the `coast` and `forecast` packs send the node's
 > full-precision coordinates to Open-Meteo; only the two core adapters round them.
 
 ## Signed updates
@@ -156,7 +157,7 @@ this download is not signed by the PLANETAI release key. Nothing was installed a
 `planetai version` prints what this node trusts, and `planetai doctor` says whether the last update checked:
 
 ```
-planetai-node v0.79  ·  a Fab City project  ·  <name> @ <city>
+planetai-node v0.80  ·  a Fab City project  ·  <name> @ <city>
   updates signed by  fabcity  SHA256:1+MvZWJUBWisjY08E1KR77znXLs2lVWgVkh+Z++8IL4
 ```
 

@@ -1,5 +1,5 @@
 # What a node knows before it has a sensor
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 On first start, with an empty database, the node pulls for its coordinates:
 
@@ -22,7 +22,7 @@ sensor arrives.
 ## Opt-in, because they need a key
 
 OpenAQ (global public sensors), Google Flood Hub, Sentinel-5P via Earth Engine, NASA FIRMS. None is written yet in
-v0.79; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
+v0.80; each would be a code pack or an adapter behind a flag, off by default. Nothing that needs an account runs
 unless you turn it on.
 
 ## Presets
@@ -34,7 +34,10 @@ falls inside one of the four Index pilots (Bali, Barcelona, Boston, Santiago); `
 ## Not embedded
 
 No copies of datasets, no model weights, no map tiles. The node fetches what it needs when it needs it and keeps only
-what it computed. A node is a download of a few megabytes.
+what it computed. A node is a download of a few megabytes. Two small exceptions since v0.80: a 200 kB outline of the
+world's land (Natural Earth, public domain) that the doors' Node view draws, and map tiles you ask for:
+`planetai run place basemap` and `planetai run earth-engine basemap` keep them in `out/ground/` (on node #1, 6 MB of
+street map, 49 MB of drone and about 12 MB of satellite), and nothing runs them unless somebody types the command.
 
 ## Attribution
 
