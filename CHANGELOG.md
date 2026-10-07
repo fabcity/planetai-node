@@ -2,10 +2,11 @@
 
 ## Unreleased
 
-- **This release carries two page changes and two pack scripts, against `docs/NEXT_RELEASE.md` rules 2 and 3, as
-  v0.77 did.** The figures (below) and the map ground both change `app/static`, and `place` and `earth-engine` gain a
-  `basemap` script. The scripts only run when somebody types the command; the map ground is off unless
-  `UI_GROUND=map`.
+- **v0.80 carries a page change and two pack scripts, against `docs/NEXT_RELEASE.md` rule 2, as v0.77 did.** The
+  map ground changes `app/static`, and `place` and `earth-engine` gain a `basemap` script that the map's own bases
+  read. The scripts only run when somebody types the command, and the map ground is off unless `UI_GROUND=map`, so
+  "was it the page or the data" still has one answer on a node that has not opted in. The figures shipped alone in
+  v0.79.
 - **The ground can be a map** (`UI_GROUND=map`, default `svg`): MapLibre draws the base and deck.gl the cells and
   stations, so it pans and zooms. Without WebGL2 it draws the svg ground and says why. The two libraries are served
   by the node (860 kB gzipped) and fetched only when the ground is drawn this way. Simple mode and the wall keep
