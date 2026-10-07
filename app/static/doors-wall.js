@@ -63,7 +63,7 @@ function frags() {
    on the house's network, or an online provider. When it is online the wall says the figures leave the house. The
    context is /ask's own, scrubbed of every place, name and id; nothing is stored. A model's words, never a reading,
    and the line under them says so. Again every 3 minutes while the wall is on screen, each time from another angle. */
-const NARR = { text: '', at: 0, busy: false, model: null, where: null, read: [], err: null, timer: 0 };
+const NARR = { text: '', prev: '', at: 0, busy: false, model: null, where: null, read: [], err: null, timer: 0 };
 const NARR_EVERY = 3 * 60e3;
 /* Plain words for people who know nothing about units or maps (Tomas, 7 Oct): tried on node #1's qwen3:4b until it
    read like a neighbour, said what the readings suggest without promising, and closed on the next few hours. */
@@ -78,8 +78,10 @@ function narrDraw() {
      that it asks, and warns when the keeper's choice lets the question go online */
   const where = NARR.where === 'online' ? `online · the figures left the house` : NARR.where || '';
   const who = NARR.busy ? ` · asking its model${NARR.leaves ? ' · it may go online, and the figures with it' : ''}` : NARR.model ? ` · ${esc(NARR.model)}${where ? ` · ${esc(where)}` : ''}` : '';
-  el.innerHTML = `<div class="k">the node, thinking aloud${who}</div>`
+  el.classList.toggle('busy', NARR.busy);
+  el.innerHTML = `<div class="nh"><span class="nl"><i class="dot" aria-hidden="true"></i>the node, thinking aloud</span><span class="nm">${who.replace(/^ · /, '')}</span></div>`
     + (NARR.err ? `<p class="nt said">${esc(NARR.err)}</p>`
+      : NARR.busy && !NARR.text && NARR.prev ? `<div class="nw"><p class="nt said old">${esc(NARR.prev)}</p><p class="nt said"><span id="ntext"></span><i class="caret" aria-hidden="true"></i></p></div>`   /* the last words stay, faded, until the new ones start */
       : `<div class="nw"><p class="nt said"><span id="ntext">${esc(NARR.text)}</span>${NARR.busy ? '<i class="caret" aria-hidden="true"></i>' : ''}</p></div>`)   /* the newest line stays in view; the oldest leave the top */
     + `<div class="nf">${NARR.read.length ? `it read ${esc([...new Set(NARR.read)].join(', '))} · ` : ''}a model’s words from the node’s figures, never a reading · kept nowhere`
     + `${NARR.at && !NARR.busy ? ` · written ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(NARR.at))}, again in 3 min` : NARR.busy ? ' · writing now' : ''}</div>`;
@@ -93,7 +95,7 @@ async function narrate() {
     NARR.err = st && st.none ? 'No model is set up on this node, so it has nothing to say aloud. Set up → Model, or planetai agent local on the node.' : 'The node did not say which model answers this screen.';
     narrDraw(); NARR.timer = setTimeout(narrate, NARR_EVERY); return;
   }
-  NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.text = ''; narrDraw();
+  NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.prev = NARR.text || NARR.prev; NARR.text = ''; narrDraw();
   try {
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
       body: JSON.stringify({ messages: [{ role: 'user', content: narrAsk() }], view: 'wall', mode: 'advanced', focus: null }) });
@@ -105,7 +107,10 @@ async function narrate() {
       while ((cut = buf.indexOf('\n\n')) >= 0) {
         const block = buf.slice(0, cut); buf = buf.slice(cut + 2);
         const ev = (block.match(/^event: (.+)$/m) || [])[1], data = JSON.parse((block.match(/^data: (.+)$/m) || [])[1] || '{}');
-        if (ev === 'token') { NARR.text += data.text; const t = document.getElementById('ntext'); if (t) t.textContent = NARR.text; else narrDraw(); }
+        /* each piece of text arrives as its own span, so it can fade in where it lands: the words appear as they are written */
+        if (ev === 'token') { NARR.text += data.text; const t = document.getElementById('ntext');
+          if (NARR.text === data.text && document.querySelector('#wnarr .nt.old')) { narrDraw(); continue; }   /* the first new words take the old ones' place */
+          if (t) { const w = document.createElement('span'); w.className = 'w'; w.textContent = data.text; t.appendChild(w); } else narrDraw(); }
         else if (ev === 'retry') { NARR.text = ''; narrDraw(); }
         else if (ev === 'tools') { NARR.read.push(data.name || data.tool || 'a record'); }
         else if (ev === 'done') { NARR.model = data.model || null; NARR.where = data.where || null; }
