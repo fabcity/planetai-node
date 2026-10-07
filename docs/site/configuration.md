@@ -1,11 +1,11 @@
 # Configuration
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
-may leave the house for an online model. This page lists every setting a node has at v0.79, where its
-value comes from, and what each group lets the node do. It was read against the code of v0.79: 61
-runtime keys, 16 bootstrap keys, 20 keys declared by packs, and the keys read only from the environment.
+may leave the house for an online model. This page lists every setting a node has at v0.80, where its
+value comes from, and what each group lets the node do. It was read against the code of v0.80: 63
+runtime keys, 16 bootstrap keys, 26 keys declared by packs, and the keys read only from the environment.
 
 ## How a setting is read
 
@@ -65,7 +65,7 @@ container restarts:
 | `NODE_KIND` | `/presence`, its only reader |
 | `ACT_TOKEN`, `RETICULUM_ALERT_DESTINATIONS` | the Reticulum bridge, which reads its own environment. The app itself reads the `ACT_TOKEN` override |
 
-The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v079).
+The full list of what is declared and not read is under [Known gaps](#known-gaps-in-v080).
 
 ### Keys read only from the environment
 
@@ -76,7 +76,7 @@ setting this node has. Edit them in `.env` and restart. The tables below mark th
 
 ### Validated values
 
-Most settings are free text on purpose: a node has to keep running through a typo. Ten keys refuse a
+Most settings are free text on purpose: a node has to keep running through a typo. Eleven keys refuse a
 value they cannot honour, because a report interval the scheduler cannot keep would make the node silent
 instead of wrong.
 
@@ -90,6 +90,7 @@ instead of wrong.
 | `AGENT_PREFER` | `private`, `fallback`, `strongest` |
 | `SHARE_LEVEL` | `off`, `open` |
 | `UI_ASK` | `on`, `off` |
+| `UI_GROUND` | `svg`, `map` |
 | `MAP_TILES` | `off`, `on` |
 | `UPDATE_CHECK` | `on`, `off` |
 
@@ -203,6 +204,7 @@ data, what it loads.
 |---|---|---|---|---|
 | `UI_MODE` | `advanced` | `simple`, `advanced`, `learn` | What the page opens as. `simple` = what a person in the house asks: is it fine, is anything changing, is there something to do. `advanced` = every section. `learn` = the advanced page with a question mark at each part; a pressed mark quotes the node's own documentation for it in the ask pane. Anyone reading can switch from the header; their browser remembers it and nothing changes for anybody else. | runtime · public |
 | `UI_ASK` | `on` | `on`, `off` | `on` = a toggle on the dashboard opens the ask pane, which asks the model Set up → Model names about what the page shows, reads, changes nothing and keeps nothing. `off` = no toggle and no pane. See [Ask the node](ask.md). | runtime · public |
+| `UI_GROUND` | `svg` | `svg`, `map` | How the ground is drawn. `svg` = the drawing the page has always made. `map` = MapLibre and deck.gl draw it in the browser, so it pans and zooms; it needs WebGL2 and falls back to `svg`, saying why, without it. The two libraries (860 kB gzipped, 3.2 MB as the node serves them) are fetched from the node only when the ground is drawn this way. Neither value changes what leaves the house: `MAP_TILES` decides that. | runtime · public |
 | `UI_LAYOUT` | blank | JSON | Order and visibility of the dashboard's cards. Managed by the dashboard's Arrange mode; blank restores the default. Readable by every screen in the house at every level. | runtime · public |
 | `MAP_TILES` | `off` | `off`, `on` | Live satellite and street tiles under the cells. Each tile request tells a tile server which square of the planet this house is looking at. `off` = tiles from the node's local copy of OpenStreetMap; `on` = live tiles. A keeper turns this on in Set up. | runtime · public |
 | `UPDATE_CHECK` | `on` | `on`, `off` | Once a day, ask planetai.fab.city which version is current. When a newer one is out, the page's header, `planetai doctor` and Telegram (once per version, after quiet hours) say so. Nothing is installed: `planetai update` stays yours to run. The request carries nothing about the house, but it shows this house's internet address to Fab City's host; see [what leaves](sharing.md). `off` = the node never asks. | runtime · public · outward |
@@ -215,9 +217,9 @@ data, what it loads.
 | `SC_DEVICES` | blank | comma-separated kit ids | Smart Citizen kits read directly from the cloud API, the number in `smartcitizen.me/kits/<id>`. Always treated as yours, at this address. Any id enables the adapter. | runtime |
 | `SC_USER` | blank | username | Discover every kit on a Smart Citizen account instead of listing ids. Indoor or outdoor comes from each kit's own setting. Also used by `/nearby?audit=1`. | runtime |
 | `SC_EXCLUDE` | blank | comma-separated kit ids | Account kits that belong to another site. | runtime |
-| `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.79 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v079). | runtime |
-| `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.79. | runtime |
-| `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.79. | runtime · public |
+| `AIRGRADIENT_HOSTS` | blank | comma-separated hostnames or IPs | AirGradient ONE or Open Air units on your WiFi. In v0.80 the key only keeps these units out of the Bali Air Dispatch ring; see [Known gaps](#known-gaps-in-v080). | runtime |
+| `PURPLEAIR_HOSTS` | blank | comma-separated IPs | PurpleAir units on your WiFi. Use the IP; the `.local` name is unreliable. Nothing reads this key in v0.80. | runtime |
+| `SENSOR_INDOOR` | `0` | `1`, `0` | Whether the LAN sensors above are indoors. Smart Citizen carries this itself. Nothing reads this key in v0.80. | runtime · public |
 | `BAD_ENABLED` | `0`; `.env.example` and the bali preset ship `1` | `1`, `0` | Bali only: the island's public stations from Bali Air Dispatch as outdoor reference. Needs `NODE_LAT`. `planetai setup` sets `0` outside Bali. | runtime · public |
 | `BAD_RADIUS_KM` | `15`; bali preset `8` | km | How far out the ring of other people's stations reaches. Also `/nearby.radius_km`. | runtime · public |
 | `BAD_MIN_SEPARATION_M` | `150` | metres | A station closer than this to the node is assumed to be the node's own hardware, not a neighbour. | runtime · public |
@@ -235,7 +237,7 @@ data, what it loads.
 | `MQTT_USER`, `MQTT_PASS` | blank | strings | Broker credentials. `planetai meshtastic` generates them and writes the broker's password file. | env only · secret |
 | `SOURCES_DIR` | `/app/data/sources` | path inside the container | Where the app reads the vendored source registry that `GET /sources` serves. Mounted read-only from `./data`. | env only |
 
-> **Gap in v0.79.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
+> **Gap in v0.80.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
 > only keeps those units out of the Bali Air Dispatch ring. The AirGradient and PurpleAir adapters exist
 > and are tested; the node does not register them for polling.
 
@@ -276,9 +278,9 @@ written once.
 |---|---|---|---|---|
 | `REPORT_EVERY` | blank = `6` | `3`, `4`, `6`, `8`, `12`, `24` | Hours between reports. `6` is four a day. Each accepted value divides 24, so the rhythm does not walk round the clock. Also the default window of `/report/bundle`. | runtime · public |
 | `REPORT_ANCHOR` | blank = `6` | `0` to `23` | The local hour the rhythm starts from. With a 6-hour interval, `6` gives 06, 12, 18 and 00. | runtime · public |
-| `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.79. | runtime · public |
+| `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.80. | runtime · public |
 
-> **Gap in v0.79.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.80.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 > Changing it changes nothing.
 
 ## How it closes a loop
@@ -372,17 +374,23 @@ environment, where the node puts the database value. A code pack reads none of t
 | `FORECAST_BMKG` | forecast | `1` | Read BMKG, Indonesia's meteorological agency. |
 | `FORECAST_BMKG_ADM4` | forecast | blank | The village code BMKG needs for this point. `planetai run forecast verify` proves it resolves to somewhere near the node. |
 | `FORECAST_OPENMETEO` | forecast | `0` | Read Open-Meteo. It works anywhere, but its free tier is non-commercial only, so it is the operator's decision. Off until you turn it on. |
-| `FORECAST_POLL_HOURS` | forecast | `6` | Declared as how often to ask. Nothing reads it in v0.79. |
+| `FORECAST_POLL_HOURS` | forecast | `6` | Declared as how often to ask. Nothing reads it in v0.80. |
+| `FORECAST_WIND_N` | forecast | `8` | The wind field for the map: points a side, so 64 points. Only with `FORECAST_OPENMETEO=1`. |
+| `FORECAST_WIND_KM` | forecast | `30` | The wind field's half-width in km round the node. |
 | `EARTH_RADIUS_M` | earth | `5000` | Half-width of the square around the node. 5000 is a 10 km square, about 64 MB on disk and 103 MB pulled per year. Also `/earth.radius_m`. |
 | `EARTH_YEARS` | earth | blank = every year | Which years to fetch, comma-separated. The dataset has 2017 to 2025. |
 | `PLACE_RADIUS_M` | place | `1000` | The radius around the node to describe from OpenStreetMap. Also `/place/geojson.radius_m`. |
 | `PLACE_REFRESH_DAYS` | place | `30` | How often to fetch from Overpass again. A moved node refetches at once. |
+| `GROUND_RADIUS_KM` | place | `12` | `planetai run place basemap`: half-width in km of the street-level square of vector tiles kept on disk. `planetai run earth-engine basemap` reads it too, for its detailed ring. |
+| `GROUND_DRONE_RADIUS_KM` | place | `4` | `planetai run place basemap`: how far round the node to look for OpenAerialMap drone mosaics, in km. |
+| `GROUND_DRONE_MAXZ` | place | `18` | The finest zoom of drone tiles kept. |
 | `EE_PROJECT` | earth-engine | blank = read from the key file | Earth Engine project id, not the service account number. Also a runtime key. |
 | `EE_SERVICE_ACCOUNT` | earth-engine | blank = the key file names it | The Earth Engine service account. |
 | `EE_KEY_FILE` | earth-engine | `/app/config/ee-key.json` | The service-account JSON key; copy it to `config/ee-key.json` on the node. Also a runtime key. |
+| `GROUND_SAT_WIDE_KM` | earth-engine | `60` | `planetai run earth-engine basemap`: half-width in km of the wide Sentinel-2 context square; the detailed one is `GROUND_RADIUS_KM`. |
 | `COAST_MAX_KM` | coast | `30` | Refuse to report if the nearest ocean grid cell is further away than this, in km. Also a runtime key (public): the override moves both the dashboard's drawn footprint and the adapter's refusal. |
 
-> **Gap in v0.79.** `FORECAST_POLL_HOURS` is declared and read by nothing.
+> **Gap in v0.80.** `FORECAST_POLL_HOURS` is declared and read by nothing.
 
 `OVERPASS_URL` (default `https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) is
 read by the place pack but declared in no `pack.yaml`, so it is `env only`.
@@ -409,7 +417,7 @@ preset guesses `NODE_ISSUES`: change it, because what matters here is decided by
 `planetai setup` picks the preset itself when the geocoded place falls inside the bali, barcelona, boston
 or santiago bounding box.
 
-## Known gaps in v0.79
+## Known gaps in v0.80
 
 - `AIRGRADIENT_HOSTS` and `PURPLEAIR_HOSTS` are declared and the adapters exist and are tested, but the
   node does not register them for polling. `AIRGRADIENT_HOSTS` is used only to keep those units out of

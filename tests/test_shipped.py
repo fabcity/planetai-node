@@ -207,7 +207,7 @@ assert '/earth/frame.png?source=sentinel' in gui, "gui: the imagery frames"
 assert re.search(r'class="[^"]*\bprov\b', gui), "gui: the satellite card needs its provenance pill"
 assert "planetai run earth fetch" in gui, "gui: the empty state must name the command that fills it"
 # v0.33.6 — the dashboard must not be cacheable: a node that updates has to reach the screens looking at it
-_ui = re.search(r"^def ui\(\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
+_ui = re.search(r"^def ui\([^)]*\):(.*?)(?=^def |\Z)", main, re.M | re.S).group(1)
 assert "no-cache" in _ui, "the dashboard route must send a cache-control header, or an update never reaches an open browser"
 print("the dashboard is not cacheable")
 # v0.33.7 — one unusual OpenStreetMap object must not blank the plan. A poi mapped as an open way made

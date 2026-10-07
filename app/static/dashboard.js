@@ -1586,6 +1586,7 @@ const MAX_SPAN_M = 20000;
 
 const ROAD_W = { motorway: 2.2, trunk: 2.2, primary: 1.8, secondary: 1.6, tertiary: 1.3,
   residential: 1.0, unclassified: 1.0, living_street: .9, service: .6, footway: .5, path: .5 };
+window.KMAP_ROAD_W = ROAD_W;   // the map ground draws its roads at these same weights
 
 const d2 = v => Math.round(v * 100) / 100;
 
@@ -2158,7 +2159,19 @@ const BASES = {
   osm: { name: 'street map', host: 'tile.openstreetmap.org', maxZ: 19,
     url: (z, x, y) => `https://tile.openstreetmap.org/${z}/${x}/${y}.png`,
     credit: '© OpenStreetMap contributors' },
+  /* THE NODE'S OWN MAPS, fetched once by `planetai run place basemap` and `planetai run earth-engine basemap`
+     and served by this node at /ground/* (token or this machine, like the plan). They send nothing, so they are
+     offered at every resolution — but only on the map ground (UI_GROUND=map), which can send the token with each
+     tile; an <img> on the svg ground cannot. `own` names the /ground/meta key that says the node holds it. */
+  street: { name: 'street map, on this node', host: null, own: 'vector', credit: '© OpenStreetMap contributors · Protomaps' },
+  imagery: { name: 'satellite, on this node', host: null, own: 'imagery', minZ: 8, maxZ: 15, credit: 'Sentinel-2, Copernicus' },
+  drone: { name: 'drone, on this node', host: null, own: 'drone', minZ: 14, maxZ: 18, credit: 'OpenAerialMap, CC BY 4.0' },
 };
+const isOwn = k => !!(BASES[k] || {}).own;
+/* Offered only where it can be drawn and the node says it holds it. */
+const ownAllowed = k => isOwn(k) && (window.SETTINGS || {}).UI_GROUND === 'map'
+  && !(window.PAI_MODE && window.PAI_MODE() === 'simple')
+  && !!(((window.GROUND_META || {}).on_disk || {})[BASES[k].own]);
 /* Which base when nobody has pressed one. Tomas's rule: from resolution 9 inward, the plan. The
  * node's own map is about 3 km across; the res-9 plate is 1.6 km, so from 9 the plan fills the
  * frame edge to edge — the generated drawing is the better picture there and it sends nothing. At 8
@@ -2173,7 +2186,13 @@ const PLAN_FROM = 9;
 /* ONE predicate, read in both places, so the strip can never offer what baseOf would refuse. */
 const tilesAllowed = (res, settings) =>
   (settings || {}).MAP_TILES === 'on' && res < PLAN_FROM;
-const autoBase = (res, settings) => tilesAllowed(res, settings) ? 'sat' : 'plan';
+/* The node's own maps lead when it holds them: its own satellite picture where 10 m reads (coarser than resolution 9),
+   its own street map from 9 inward, where 10 m blurs. Both send nothing. Then the old rule. */
+const autoBase = (res, settings) => {
+  if (res < PLAN_FROM && ownAllowed('imagery')) return 'imagery';
+  if (ownAllowed('street')) return 'street';
+  return tilesAllowed(res, settings) ? 'sat' : 'plan';
+};
 /* A PRESS MAY ONLY EVER REDUCE WHAT LEAVES THE HOUSE. The prototype's comment said the opposite —
  * "a pressed base always wins over the rule" — and it was written for a drawing, before MAP_TILES
  * existed. On a node it is not a preference: a link in a page cannot be allowed to override the
@@ -2181,7 +2200,8 @@ const autoBase = (res, settings) => tilesAllowed(res, settings) ? 'sat' : 'plan'
  * machine. So `plan` is always pressable and the two live bases are honoured only where they are
  * also offered. */
 const baseOf = (q, res) =>
-  (q in BASES && (q === 'plan' || tilesAllowed(res, window.SETTINGS))) ? q : autoBase(res, window.SETTINGS);
+  (q in BASES && (q === 'plan' || ownAllowed(q) || (!isOwn(q) && tilesAllowed(res, window.SETTINGS))))
+    ? q : autoBase(res, window.SETTINGS);
 
 /* ------------------------------------------------------------------ Web Mercator, in pixels */
 /* World pixel coordinates at zoom z: the whole planet is 256·2^z px across. */
@@ -2259,7 +2279,8 @@ function figure(ctx, opts = {}) {
   if (window.KEEP_GROUND) return '';
   const res = opts.res || ctx.RES;
   const base = baseOf(opts.base || ctx.Q.get('base'), res);
-  if (base === 'plan') return ctx.KMAP.map(res);
+  /* the node's own bases need the map ground; the svg ground draws the plan in their place */
+  if (base === 'plan' || isOwn(base)) return ctx.KMAP.map(res);
   const f = frame(res, opts.size || SIZE, base);
   const B = BASES[base];
   const pc = v => `${(100 * v / f.size).toFixed(3)}%`;
@@ -2355,17 +2376,17 @@ function lead(ctx) {
      kilometre named to a tile server, so it is a price and it belongs on the thing being bought.
      The plan's is zero, and says so rather than being left blank. */
   const cost = (k) => {
-    if (k === 'plan') return 'sends nothing';
+    if (k === 'plan' || isOwn(k)) return 'sends nothing';
     try {
       const n = frame(res, SIZE, k).tiles.length;
       return `${n} request${n === 1 ? '' : 's'}`;
     } catch (e) { return ''; }
   };
   const strip = `<div class="ctlstrip" role="group" aria-label="the ground under the cells">`
-    + Object.entries(BASES).map(([k, b]) => {
+    + Object.entries(BASES).filter(([k]) => !isOwn(k) || ownAllowed(k)).map(([k, b]) => {
       const price = cost(k);
       const inner = `${esc(b.name)}${price ? `<small>${esc(price)}</small>` : ''}`;
-      return (k === 'plan' || allowed)
+      return (k === 'plan' || (isOwn(k) ? ownAllowed(k) : allowed))
         ? `<a class="${k === base ? 'on' : ''}" href="${ctx.qlink({ base: k === autoBase(res, window.SETTINGS) ? null : k })}">${inner}</a>`
         : `<span class="off" aria-disabled="true" title="${esc(why)}">${inner}</span>`;
     }).join('')
@@ -2385,7 +2406,13 @@ function lead(ctx) {
       }</p>`;
 
   let key, cap;
-  if (base === 'plan') {
+  if (isOwn(base)) {
+    const m = ((window.GROUND_META || {}).layers || {})[BASES[base].own] || {};
+    key = `<span><i class="own"></i>the cell this node stands in</span>`
+      + `<span><i></i>${esc(BASES[base].name)}</span>`;
+    cap = `resolution ${res} · kept on this node, sends nothing · ${esc(m.attribution || BASES[base].credit)}`
+      + (base === 'drone' ? ` · ${esc(((m.mosaics || []).map(x => `${x.provider}, ${x.date}`)).join('; '))} · drone tiles from zoom 14: zoom in` : '');
+  } else if (base === 'plan') {
     key = `<span><i class="own"></i>the cell this node stands in</span>`
       + `<span><i></i>buildings, roads, green — OpenStreetMap</span>`
       + `<span><i class="sat-only"></i>only the satellite knows</span>`;
@@ -2416,8 +2443,10 @@ function lead(ctx) {
       : 'no other station within a kilometre'}</p>`;
   /* Simple draws no ladder, so the figure answers to the header there instead of pointing at nothing. */
   const up = (window.PAI_MODE && window.PAI_MODE() === 'simple' && ctx.VIEW === 'now') ? 'header' : 'rail';
+  LAST = ctx;
   return `<figure class="gridwrap mapwrap" id="ground-figure" data-component="ground" data-ref="${up}">`
-    + strip.replace('<p class="ctlrule">', '<p class="ctlrule" data-lv="adv">') + figure(ctx, { base, size: SIZE })
+    + strip.replace('<p class="ctlrule">', '<p class="ctlrule" data-lv="adv">')
+    + (mapOn() ? shell(res, base) : figure(ctx, { base, size: SIZE }))
     + `<div class="gridkey" data-lv="adv">${key}</div>` + plainKey
     + `<figcaption class="cap" data-lv="adv">${cap}</figcaption></figure>`;
 }
@@ -2456,7 +2485,7 @@ function render(ctx) {
     qty: [{ num: 'ground.requests.plan', value: '0 requests',
       cmp: `against the ${frame(res, SIZE, 'sat').tiles.length} the satellite base sends` }],
   });
-  return base === 'plan' ? plan + live('sat', 'Switched on, the satellite base sends')
+  return (base === 'plan' || isOwn(base)) ? plan + live('sat', 'Switched on, the satellite base sends')
     : live(base, 'This view sends') + plan;
 }
 
@@ -2470,7 +2499,7 @@ function notes(ctx) {
       + 'draws the grid itself rather than a map of open water labelled as this household’s ground.' }];
   }
   const base = baseOf(ctx.Q.get('base'), ctx.RES);
-  const f = frame(ctx.RES, SIZE, base === 'plan' ? 'sat' : base);
+  const f = frame(ctx.RES, SIZE, (base === 'plan' || isOwn(base)) ? 'sat' : base);
   return [
     { id: 'ground-rule', label: 'Where the plan takes over',
         text: `From resolution ${PLAN_FROM} inward the ground is this node’s own `
@@ -2526,9 +2555,238 @@ function notes(ctx) {
   ];
 }
 
+/* ------------------------------------------------------------------ the map ground, UI_GROUND=map */
+/* The same ground, drawn by MapLibre (the base) and deck.gl (the cells and stations over it), so it
+ * pans and zooms. Behind a setting, default svg, and the svg drawing is what anything that fails
+ * here gets instead: never a blank.
+ *
+ * THE NODE STILL COMPUTES. Every ring drawn is a `cells_ll` the node sent in /issues' geometry; the
+ * page turns [id, lat, lng, lat, lng, …] into [[lng, lat], …] and nothing more. No h3-js, no
+ * H3HexagonLayer: deck.gl's hexagon layer would compute boundaries in this browser.
+ *
+ * THE COST IS STILL THE STRIP'S. `baseOf` already refused a live base MAP_TILES does not allow, so
+ * the only tile URL that can reach MapLibre is one the strip priced. A live base cannot be dragged
+ * or zoomed: every drag would be tiles nobody priced. The plan pans and zooms freely, because it is
+ * one GeoJSON the page already holds and moving it asks nobody anything.
+ *
+ * The libraries are fetched from this node, once, the first time the ground is drawn this way, and
+ * never on the wall or in simple mode. */
+let LAST = null;
+const mapOn = () => (window.SETTINGS || {}).UI_GROUND === 'map'
+  && !(window.PAI_MODE && window.PAI_MODE() === 'simple');
+
+function shell(res, base) {
+  if (window.KEEP_GROUND) return '';
+  return `<div class="groundmap groundgl" id="groundgl" data-base="${base}" data-res="${res}"`
+    + ` role="img" aria-label="${esc(`resolution ${res} over the ${BASES[base].name}: the cell this `
+      + 'node stands in, the cells around it, and every station in view')}"></div>`;
+}
+
+const webgl2 = () => {
+  try { return !!document.createElement('canvas').getContext('webgl2'); } catch (e) { return false; }
+};
+let LIBS = null;
+function libs() {
+  if (LIBS) return LIBS;
+  const add = (tag, attrs) => new Promise((ok, no) => {
+    const el = Object.assign(document.createElement(tag), attrs);
+    el.onload = ok;
+    el.onerror = () => no(new Error(`static/${(attrs.src || attrs.href).split('/').pop()} did not load`));
+    document.head.appendChild(el);
+  });
+  LIBS = Promise.all([
+    add('link', { rel: 'stylesheet', href: 'static/maplibre-gl.css' }),
+    add('script', { src: 'static/maplibre-gl.js' }).then(() => add('script', { src: 'static/deck.gl.min.js' })),
+  ]);
+  LIBS.catch(() => { LIBS = null; });
+  return LIBS;
+}
+
+/* A token as [r, g, b], read from the element so it follows the register the page is in. */
+const rgb = (el, name) => {
+  const v = getComputedStyle(el).getPropertyValue(name).trim().replace('#', '');
+  const h = v.length === 3 ? v.split('').map(c => c + c).join('') : v;
+  return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) || 0);
+};
+const hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
+const lnglat = c => { const r = []; for (let i = 1; i < c.length; i += 2) r.push([c[i + 1], c[i]]); return r; };
+
+function fallback(el, why) {
+  const f = document.querySelector('#ground-figure');
+  if (!LAST || !el.isConnected) return;
+  el.outerHTML = figure(LAST, { base: el.dataset.base, size: SIZE });
+  if (f) f.insertAdjacentHTML('beforeend', `<p class="note" data-component="absent" id="groundgl-off"`
+    + ` data-ref="ground-figure">The map ground did not draw here (${esc(why)}), so this is the drawn `
+    + 'ground instead.</p>');
+}
+
+/* The node's own street map, satellite and drone, in the page's tokens: land is the ground, water and buildings are
+   the ink at low strength, green is the rings green faint. Rasters sit over the street map and under its names. */
+const mix = (a, b, t) => hex(a.map((v, i) => Math.round(v + (b[i] - v) * t)));
+function ownStyle(base, T, style) {
+  const G = (window.GROUND_META || {}).on_disk || {}, at = p => `${location.origin}/ground/${p}`;
+  const any = l => ['in', ['get', 'kind'], ['literal', l]];
+  const W = (h, m, n) => ['interpolate', ['exponential', 1.6], ['zoom'], 12, ['match', ['get', 'kind'], 'highway', h[0], 'major_road', m[0], n[0]],
+    18, ['match', ['get', 'kind'], 'highway', h[1], 'major_road', m[1], n[1]]];
+  const water = mix(T.ground, T.cells, 0.14), bldg = mix(T.ground, T.ink, 0.2), casing = mix(T.ground, T.ink, 0.16);
+  const road = mix(T.ground, [255, 255, 255], 0.7), label = mix(T.ground, T.ink, 0.62);
+  style.layers[0].paint['background-color'] = water;
+  if (G.vector) {
+    style.sources.v = { type: 'vector', tiles: [at('vector/{z}/{x}/{y}.pbf')], maxzoom: 15 };
+    style.layers.push(
+      { id: 'v-earth', type: 'fill', source: 'v', 'source-layer': 'earth', paint: { 'fill-color': hex(T.ground) } },
+      { id: 'v-green', type: 'fill', source: 'v', 'source-layer': 'landuse', filter: any(['park', 'wood', 'forest', 'garden', 'grass', 'grassland', 'scrub', 'nature_reserve', 'golf_course', 'cemetery', 'meadow', 'pitch']),
+        paint: { 'fill-color': mix(T.ground, T.rings, 0.14) } },
+      { id: 'v-water', type: 'fill', source: 'v', 'source-layer': 'water', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': water } },
+      { id: 'v-casing', type: 'line', source: 'v', 'source-layer': 'roads', filter: any(['minor_road', 'major_road', 'highway']), minzoom: 12,
+        layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': casing, 'line-width': W([2.4, 22], [1.8, 18], [0.9, 13]) } },
+      { id: 'v-road', type: 'line', source: 'v', 'source-layer': 'roads', filter: any(['minor_road', 'major_road', 'highway']),
+        layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': road, 'line-width': W([1.6, 19], [1.1, 15], [0.5, 10.5]) } },
+      { id: 'v-bldg', type: 'fill', source: 'v', 'source-layer': 'buildings', minzoom: 13, paint: { 'fill-color': bldg } });
+  }
+  if (base !== 'street' && G[base]) {
+    style.sources.photo = { type: 'raster', tiles: [at(`${base}/{z}/{x}/{y}.png`)], tileSize: TILE, minzoom: BASES[base].minZ, maxzoom: BASES[base].maxZ };
+    style.layers.push({ id: 'photo', type: 'raster', source: 'photo', paint: { 'raster-fade-duration': 0 } });
+  }
+  if (G.vector && G.glyphs) {
+    style.glyphs = at('glyphs/{fontstack}/{range}.pbf');
+    const txt = { 'text-color': base === 'street' ? label : '#ffffff', 'text-halo-color': base === 'street' ? hex(T.ground) : 'rgba(0,0,0,.6)', 'text-halo-width': 1.3 };
+    style.layers.push(
+      { id: 'v-road-label', type: 'symbol', source: 'v', 'source-layer': 'roads', minzoom: 14.5, filter: ['has', 'name'],
+        layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 10.5 }, paint: txt },
+      { id: 'v-place-label', type: 'symbol', source: 'v', 'source-layer': 'places', filter: ['has', 'name'],
+        layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Medium'], 'text-size': 12, 'text-max-width': 7 }, paint: txt });
+  }
+}
+
+function draw(el) {
+  const res = Number(el.dataset.res), base = el.dataset.base;
+  const plate = H.nav.plates[res];
+  const T = { ground: rgb(el, '--ground'), ink: rgb(el, '--ink'), cells: rgb(el, '--cells'),
+    rings: rgb(el, '--rings'), sat: rgb(el, '--satellite-only') };
+  const style = { version: 8, sources: {},
+    layers: [{ id: 'paper', type: 'background', paint: { 'background-color': hex(T.ground) } }] };
+  const B = BASES[base];
+  if (isOwn(base)) {
+    ownStyle(base, T, style);
+  } else if (B.url) {
+    style.sources.tiles = { type: 'raster', tiles: [B.url('{z}', '{x}', '{y}')], tileSize: TILE,
+      maxzoom: B.maxZ, attribution: B.credit };
+    style.layers.push({ id: 'tiles', type: 'raster', source: 'tiles' });
+  } else if (window.PLAN_GJ) {
+    /* kit-map.js's drawing, as MapLibre layers: the same kinds, the same tokens, the same weights. */
+    style.sources.plan = { type: 'geojson', data: window.PLAN_GJ, attribution: B.credit };
+    const kind = k => ['==', ['get', 'kind'], k];
+    style.layers.push(
+      { id: 'green', type: 'fill', source: 'plan', filter: kind('green'),
+        paint: { 'fill-color': hex(T.rings), 'fill-opacity': 0.26 } },
+      { id: 'roads', type: 'line', source: 'plan', filter: kind('road'),
+        paint: { 'line-color': hex(T.ink), 'line-opacity': 0.65,
+          'line-width': ['match', ['coalesce', ['get', 'highway'], ''],
+            ...Object.entries(window.KMAP_ROAD_W || {}).flat(), 0.8] } },
+      { id: 'buildings', type: 'fill', source: 'plan', filter: kind('building'),
+        paint: { 'fill-color': hex(T.ink), 'fill-opacity': 0.82 } },
+      { id: 'sat', type: 'fill', source: 'plan', filter: kind('sat'),
+        paint: { 'fill-color': hex(T.sat), 'fill-opacity': 0.35 } },
+      { id: 'sat-edge', type: 'line', source: 'plan', filter: kind('sat'),
+        paint: { 'line-color': hex(T.sat), 'line-width': 0.7 } },
+      { id: 'poi', type: 'circle', source: 'plan', filter: kind('poi'),
+        paint: { 'circle-color': hex(T.cells), 'circle-radius': 4.5 } });
+  }
+  /* The frame is still the cells. Live tiles are frame()'s own: the zoom it picks for the 600 px
+     square, scaled to this box exactly as the svg ground scales its percentages, so the same tiles are
+     asked for and the count in the strip is the count sent. */
+  const w = el.clientWidth || SIZE;
+  const f = frame(res, SIZE, B.url ? base : 'sat');
+  const live = !!B.url && !isOwn(base);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let asked = 0;
+  /* The plan keeps kit-map's frame: the plate's bounding box with six per cent round it. */
+  let lng0 = 180, lat0 = 90, lng1 = -180, lat1 = -90;
+  for (const c of plate.cells_ll) {
+    for (let i = 1; i < c.length; i += 2) {
+      lat0 = Math.min(lat0, c[i]); lat1 = Math.max(lat1, c[i]);
+      lng0 = Math.min(lng0, c[i + 1]); lng1 = Math.max(lng1, c[i + 1]);
+    }
+  }
+  const view = live ? { center: [H.node.lon, H.node.lat], zoom: f.z - 1 + Math.log2(w / SIZE) }
+    : { bounds: [[lng0, lat0], [lng1, lat1]], fitBoundsOptions: { padding: Math.round(w * 0.06 / 1.12) } };
+  const map = new maplibregl.Map({
+    container: el, style, ...view,
+    interactive: !live, dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0,
+    fadeDuration: reduce ? 0 : 150, attributionControl: false,   // the caption under the figure carries the credit, as it does for the svg ground
+    /* The node's own tiles carry the token the page holds, as every other read does; anything else is counted. */
+    transformRequest: url => {
+      if (url.startsWith(location.origin + '/ground/')) return { url, headers: window.PAI_AUTH ? window.PAI_AUTH() : {} };
+      if (/^https?:/.test(url) && !url.startsWith(location.origin)) asked++;
+      return { url };
+    },
+  });
+  if (!live) map.touchZoomRotate.disableRotation();
+  /* A tile that fails is a gap in the base, as an <img> that fails is in the svg ground; anything
+     else before the first frame is a map that is not going to draw, and the svg ground replaces it. */
+  map.on('error', e => {
+    if (e.sourceId || el.dataset.drawn) return;
+    map.remove();
+    fallback(el, (e.error && e.error.message) || 'the map failed');
+  });
+
+  const cells = plate.cells_ll.map(c => ({ id: c[0], own: c[0] === plate.centre, ring: lnglat(c) }));
+  const claims = (H.claims || []).flatMap(c => (c.cells_ll || []).map(x => ({ id: x[0], claim: c.name, ring: lnglat(x) })));
+  const stations = (H.sensors || []).filter(s => s.lat != null && s.lon != null);
+  const D = window.deck;
+  const px = { lineWidthUnits: 'pixels', radiusUnits: 'pixels' };
+  /* Hairlines as each svg ground draws them: kit-map's thin ink over the plan, the haloed ones
+     that survive a dark roof over a photograph. */
+  const hair = live ? { a: 153, w: 1 } : { a: 64, w: 1 };   // under 1 px a WebGL line aliases into dashes
+  const layers = [
+    /* kit-map's kilometre: a circle of 1,000 m round the node, a radius in metres like the svg's r. */
+    ...(live ? [] : [new D.ScatterplotLayer({ id: 'km', data: [H.node], getPosition: n => [n.lon, n.lat],
+      radiusUnits: 'meters', getRadius: 1000, filled: false, stroked: true, lineWidthUnits: 'pixels',
+      getLineColor: [...T.ink, 89], getLineWidth: 1 })]),
+    new D.PolygonLayer({ id: 'claims', data: claims, getPolygon: d => d.ring, filled: false, ...px,
+      getLineColor: [...T.ink, 40], getLineWidth: 0.5, pickable: true }),
+    ...(live ? [new D.PolygonLayer({ id: 'cells-halo', data: cells.filter(c => !c.own), getPolygon: d => d.ring,
+      filled: false, ...px, getLineColor: [...T.ground, 140], getLineWidth: 2.5 })] : []),
+    new D.PolygonLayer({ id: 'cells', data: cells.filter(c => !c.own), getPolygon: d => d.ring,
+      filled: false, ...px, getLineColor: [...T.ink, hair.a], getLineWidth: hair.w, pickable: true }),
+    new D.PolygonLayer({ id: 'own', data: cells.filter(c => c.own), getPolygon: d => d.ring, ...px,
+      filled: true, getFillColor: [...T.cells, 26], getLineColor: T.cells, getLineWidth: 2.5, pickable: true }),
+    /* Own stations filled, everyone else's hollow, exactly as the svg ground draws them. */
+    new D.ScatterplotLayer({ id: 'stations', data: stations, getPosition: s => [s.lon, s.lat], ...px,
+      stroked: true, filled: true, getRadius: s => s.local ? 5.5 : 3.5,
+      getFillColor: s => s.local ? T.cells : T.ground, getLineColor: T.ink,
+      getLineWidth: s => s.local ? 2 : 1.4, pickable: true }),
+  ];
+  if (!live || H.node.position !== 'cell') {
+    layers.push(new D.ScatterplotLayer({ id: 'node', data: [H.node], getPosition: n => [n.lon, n.lat], ...px,
+      getRadius: 7, getFillColor: T.cells }));
+  }
+  /* An H3 id is printed in full, once per object, never truncated: the hover says which object. */
+  const getTooltip = ({ object: o, layer }) => !o ? null
+    : layer.id === 'stations' ? (o.name || o.sensor_id)
+      : layer.id === 'claims' ? `${o.claim} · ${o.id}` : o.id;
+  map.addControl(new D.MapboxOverlay({ interleaved: true, layers, getTooltip }));
+  map.once('idle', () => {
+    el.dataset.drawn = '1';
+    const n = document.querySelector('[data-num="ground.tiles"]');
+    if (live && n) n.textContent = String(asked);
+  });
+}
+
+/* Called by route() after every render. A data poll swaps the living figure back in (redraw), so a
+   map that is already drawn is never drawn twice and never asks a tile server again on a poll. */
+async function mount() {
+  const el = document.querySelector('#groundgl:not([data-mounted])');
+  if (!el || window.KEEP_GROUND) return;
+  el.dataset.mounted = '1';
+  if (!webgl2()) return fallback(el, 'this browser has no WebGL2');
+  try { await libs(); draw(el); } catch (e) { fallback(el, String((e && e.message) || e)); }
+}
+
 /* PORTED: this module's CSS is in dashboard.css, under a banner naming this file. */
 
-window.GROUND = { figure, frame, BASES, SIZE };
+window.GROUND = { figure, frame, BASES, SIZE, mount };
 
 window.PAI.register({
   id: 'ground', pack: 'place', stage: 'observe', title: 'The ground', order: 0, learn: ['tiles', 'cell'],
@@ -6421,6 +6679,8 @@ async function api(path) {
  * from 855 of 2,713 buildings, which is why nothing here resamples or simplifies. */
 async function plan(health) {
   const gj = await api('/place/geojson');
+  /* The map ground (UI_GROUND=map) hands this to MapLibre as it came, in degrees: no second request. */
+  window.PLAN_GJ = gj;
   const LAT = health.lat, LON = health.lon;
   const K = Math.cos(LAT * Math.PI / 180) * 111320;
   const r1 = v => Math.round(v * 10) / 10;
@@ -6641,6 +6901,8 @@ async function boot() {
   window.STATS = (sensors || []).some(x => x && x.source === 'xiaomi-air')
     ? await api('/stats').catch(() => null) : null;
   window.PLAN = await plan(health).catch(() => null);
+  /* What this node holds of its own map (planetai run place basemap): read only for the map ground, which can draw it. */
+  window.GROUND_META = ((window.SETTINGS || {}).UI_GROUND === 'map') ? await api('/ground/meta').catch(() => null) : null;
 }
 
 /* ------------------------------------------------------------------ Arrange */
@@ -8126,6 +8388,8 @@ function route() {
   if (page) wireSat(page);
   /* Figures are placeholders in the markup main() just wrote; the kit draws them now (kit 6 · figures). */
   if (page) window.K.mountFigs(page);
+  /* The map ground (UI_GROUND=map) mounts the same way, once per fresh figure; a poll swaps the living one back. */
+  if (window.GROUND && window.GROUND.mount) window.GROUND.mount();
   learnSync();
   /* The pane lives outside #page and keeps its thread; it only needs telling the body was reset. */
   if (window.PAI_ASK) window.PAI_ASK.draw();

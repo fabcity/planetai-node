@@ -1,5 +1,5 @@
 # First ten minutes
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 The install ends with a node that is reading your place and has nobody to tell. These ten minutes add the
 rest of the loop: a channel to your phone, one alert that goes all the way through, a person's answer

@@ -584,8 +584,7 @@ if shutil.which("node"):
              + "    : { getItem: k => (k === MODE_KEY && mine !== null ? mine : null) };\n"
              + "  try { out[name] = mode(); } catch (e) { out[name] = 'THREW: ' + e.message; }\n"
              + "}\nconsole.log(JSON.stringify(out))")
-    _m = json.loads(subprocess.run(["node", "-e", _prog], capture_output=True, text=True,
-                                   check=True).stdout)
+    _m = _node(_prog)                   # on stdin: the settings blob outgrew Linux's 128 KiB argv cap at v0.80
 
     assert _m["node_simple"] == "simple", \
         f"UI_MODE must reach the page through describe()'s runtime rows, not a flat map: {_m}"
@@ -602,8 +601,7 @@ if shutil.which("node"):
               + "globalThis.localStorage = { getItem: k => (k === MODE_KEY ? 'simple' : null) };\n"
               + "const out = {}; for (const v of ['now','historical','network','setup','arrange','wall',undefined])\n"
               + "  out[String(v)] = mode(v);\nconsole.log(JSON.stringify(out))")
-    _v = json.loads(subprocess.run(["node", "-e", _vprog], capture_output=True, text=True,
-                                   check=True).stdout)
+    _v = _node(_vprog)
     for _view in ("now", "historical", "network"):
         assert _v[_view] == "simple", \
             f"{_view} reports something, so it must honour a reader's Simple: {_v}"

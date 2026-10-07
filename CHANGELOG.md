@@ -1,7 +1,39 @@
 # Changelog
 
-## Unreleased
+## v0.80 — 2026-10-07 — The ground becomes a map, and the node opens five doors
 
+- **v0.80 carries two page changes and two pack scripts, against `docs/NEXT_RELEASE.md` rules 2 and 3.** Tomas asked
+  to pack the map and the five doors into one release. Both page changes are opt-in: the map ground draws only with
+  `UI_GROUND=map`, and the doors only at `/?layout=doors`; `/` is the v0.79 dashboard on a node that changes nothing.
+  So "was it the page or the data", and "which page", still have one answer each. Node #1 has run both since 7 October.
+- **The five doors, on trial at `/?layout=doors`**: Now, Place, Data, Wall and Node,
+  the redesign from planetai-design, drawn from the node's own routes with the screen's token. Without the token a
+  door draws what `SHARE_LEVEL` gives and says what it is not drawing; the map, the cells, the distances and the
+  hourly table stay token-only. Done, Not now and Doesn't fit and the ask pane write to the node as the dashboard
+  does. The Wall's drawing is a living map: the node's dark street map, the wind now, and every station's hourly mean replayed as discs; Now draws the stations around the house on a map with the node's rings and cells. The Wall thinks aloud: every ten minutes, with a countdown, the node's model, the one chosen under Set up → Model, says in plain words what the figures mean and what the next hours may bring, and names itself. Set up is a page of its own behind a gear, and its Machine section reads two new token-only routes: `GET /machine` (processor, load, memory, temperature, uptime, system, database) and `GET /storage` (what the node keeps, the free disk, and the days it lasts at the last week's rate). The dashboard at `/` is unchanged. `docs/decisions/2026-10-07-doors.md`.
+- **The map ground's half of rule 2, as v0.77 did.** The
+  map ground changes `app/static`, and `place` and `earth-engine` gain a `basemap` script that the map's own bases
+  read. The scripts only run when somebody types the command, and the map ground is off unless `UI_GROUND=map`, so
+  "was it the page or the data" still has one answer on a node that has not opted in. The figures shipped alone in
+  v0.79.
+- **The ground can be a map** (`UI_GROUND=map`, default `svg`): MapLibre draws the base and deck.gl the cells and
+  stations, so it pans and zooms. Without WebGL2 it draws the svg ground and says why. The two libraries are served
+  by the node (860 kB gzipped) and fetched only when the ground is drawn this way. Simple mode and the wall keep
+  the svg ground. `docs/decisions/2026-10-06-ground-map.md` holds the measurements.
+- **A detailed map kept on the node.** `planetai run place basemap` keeps OpenStreetMap vector tiles (cut out of
+  Protomaps' daily build, with the label fonts) and any OpenAerialMap drone mosaic (CC BY 4.0) that crosses the
+  node's area; `planetai run earth-engine basemap` builds the node's own cloud-free Sentinel-2 picture of the last
+  twelve months. Each says what it reveals before it runs, once. The map ground offers them as bases that send
+  nothing: "street map, on this node", "satellite, on this node" and "drone, on this node".
+- `GET /geo/grid`, `/geo/cell` (with `children` and `polar`), `/geo/measure` (with `each`), `/geo/rings` and
+  `/geo/planet` answer the shapes and distances a map draws, so the page computes no H3 and no distance; `GET /ground/meta`, `/ground/{vector,drone,imagery}/{z}/{x}/{y}` and
+  `/ground/glyphs/…` serve the kept map. All need a token or this machine, like `/place/geojson`.
+  `tools/check_ui.py` now fails a page that imports h3-js or calls an H3 function.
+- **The wind, as a field.** With `FORECAST_OPENMETEO=1` the forecast pack also keeps Open-Meteo's hourly 10 m wind
+  for the next day at 8 × 8 points over ±30 km round the node, and the node's own point, in one request
+  (`GET /ground/wind`, private; `planetai run forecast windfield` refreshes it now). It asks with
+  `cell_selection=nearest`: the default moved sea points up to 12 km onto land. A model's field for drawing, never
+  a reading.
 - A Making Sense Bali DIY node can publish to this node's own broker instead of to smartcitizen.me: `planetai broker`
   prints what to type into the node's setup portal. The node keeps every reading with the device's own timestamp, the
   retained `meta` message gives the device its name and says whether it is indoors, and the tokens listed in

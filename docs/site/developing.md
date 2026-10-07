@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a
@@ -90,7 +90,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 | `check_cli_python.py` | f-strings that crashed on Python 3.9; PyYAML the node does not have; a `for` after a semicolon |
 | `check_docs.py` | "two containers, five rules" when there were nine adapters and eight packs; links to files that had moved. It reads the root pages, `docs/*.md`, `docs/site/*.md`, pack READMEs and skills. `docs/site/` joined the list after v0.72.1: until then the site could describe v0.57 while the node was at v0.72 and every gate stayed green |
 | `check_registry.py` | a pack naming `environmental/city/alphaearth` after the registry filed it as `alphaearth-satellite-embedding`, and a `social/community/openstreetmap` twin that was never filed. Also a hand-edited `data/sources/index.json`, and a pin that stopped half-way through a sync |
-| `check_ui.py` | an element id the script referenced that was not in the markup; a network `url()` in a stylesheet; Fab Blue in the dark register |
+| `check_ui.py` | an element id the script referenced that was not in the markup; a network `url()` in a stylesheet; Fab Blue in the dark register; a page that imports h3-js or calls an H3 function, computing a cell the node did not send |
 | `build_docs.py --check` | the same fifteen releases, seen as a site: a NAV entry whose source is gone, a page in `docs/site/` that NAV never lists, a link to no page, an `#anchor` to a heading the page does not have. Renders every page and writes nothing. Needs `markdown`; without it the gate says it skipped, and CI installs it so it never skips there |
 | `check_site.py` | the programme page eight releases behind the node while every gate in both repos was green. Holds its release, pack and page counts, languages and ρ to this repository, holds the purpose and the lead sentence to `introduction.md`, and fails on a retired word in `docs/site/`. Skipped with a warning where the site repo is not checked out |
 | `build_learn.py --check` | a docs edit that moved one of the spans the dashboard's learn mode quotes, so `app/static/learn.json` would quote prose that is gone |
@@ -106,7 +106,7 @@ household runs without reading. `GOVERNANCE.md` says who merges what.
 `tools/sweep.py` is not a lint gate. It runs once a day in CI and files what it finds into one pinned
 issue: six releases tagged with no CHANGELOG heading, the site at v0.59 while main was at v0.60.
 
-`make test` runs `tests/all`: 65 offline suites, one line each with a count at the end, and a non-zero exit
+`make test` runs `tests/all`: 67 offline suites, one line each with a count at the end, and a non-zero exit
 when a suite fails, when a check skipped that nobody declared, or when the list and the count disagree.
 Adapters against saved payloads, Meshtastic parsing, cell provenance and custody, code packs, settings,
 the issues engine and its geometry, the report templates and schedule, the packs, the registry, the wire
@@ -140,7 +140,7 @@ queue:
    hop cannot be bisected by the person who has to report it.
 4. Sync the registry, then tag, in that order, every release.
 
-The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.79 it is `851b8db`,
+The registry is `data/sources/`, a pinned snapshot of `awesome-fabcity-data`. At v0.80 it is `851b8db`,
 269 entries, synced 2026-10-06 (`data/sources/REGISTRY_VERSION`). The script takes a commit sha and
 refuses a branch or a tag:
 

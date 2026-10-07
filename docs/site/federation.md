@@ -1,5 +1,5 @@
 # Federation and the Index
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 This is the part that joins the network. With a parent set, a house becomes one cell in a district's picture
 without its readings leaving the house: every hour it sends up hourly means and the timestamps of its alerts,
@@ -46,7 +46,7 @@ The parent keeps each `mean` as one reading on the child's own hour, under the s
 with `source='child'`, `kind='child'`, `cadence='PT1H'`, `local=FALSE`. Because custody is generated as
 `kind='child' OR (local AND kind<>'peer')`, those rows are in the parent's custody and count toward a `live`
 cell. The metric keeps its own name, so a parent's pack SQL matches it. `min`, `max` and `n` travel and are not
-stored in v0.79. A child's sensors have no coordinates at the parent, and a re-push of the same hour is a
+stored in v0.80. A child's sensors have no coordinates at the parent, and a re-push of the same hour is a
 no-op.
 
 ### POST /events
@@ -153,7 +153,7 @@ operator organisation, with its trigger written in [`SPEC.md`](spec.md) §6.
 An observatory the node does not run (Bali Air Dispatch today, a city's own portal tomorrow) is a source. Its
 readings enter through an adapter, flagged `local=FALSE`, credited. A `kind='peer'` row, another node's numbers
 shown for context, reaches no cell, no custody count, no aggregate and no alert, whatever its coordinates say.
-Listening to other nodes as peers (`PEERS`) is proposed and not built in v0.79.
+Listening to other nodes as peers (`PEERS`) is proposed and not built in v0.80.
 
 A `kind='facility'` row is the second kind of row that is not a measurement. The `make` pack writes one per fab
 lab within reach: a place with a name and a point, no readings, never in custody, never in a cell or an alert.
@@ -162,7 +162,7 @@ It is how the node can say where somebody could go and make or fix something (se
 
 ## Not built: identity and discovery
 
-Two specifications describe what the network would add next. Neither is built in v0.79.
+Two specifications describe what the network would add next. Neither is built in v0.80.
 
 **Identity** ([`docs/SPEC_identity.md`](../SPEC_identity.md), "Nothing here is built"). Today every child of a
 parent shares one `AGGREGATE_TOKEN`, and the child's name is `body["node"]`, a string the child declares about

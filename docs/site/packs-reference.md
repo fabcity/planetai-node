@@ -1,12 +1,12 @@
 # Packs that ship
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
-Seventeen core packs ship in `packs/` in v0.79: ten data packs and seven code packs. Wild packs, written for one
+Seventeen core packs ship in `packs/` in v0.80: ten data packs and seven code packs. Wild packs, written for one
 place and kept by their authors, are listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) and added with `planetai packs add`. Between them they hold
 everything the node knows about a place. No rule in `app/` says what PM2.5 means for a household, what a hot night is, where
 the sea starts or where the nearest fab lab is; the air, the heat, the coast, the land, the repair commons and
 the nearest workshop are all in here, as SQL and YAML, and in seven cases as an adapter too. How a pack is
-built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.79.
+built, loaded and linted is on [Packs](packs.md); this page is what each shipped pack does in v0.80.
 
 A pack is `data` if its folder has no `adapter.py`, and `code` if it has one. The `kind:` line in `pack.yaml`
 is documentation; the presence of the file is what the loader reads. Code packs load only with
@@ -21,12 +21,12 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `insight` | data | cross-domain | 2 info | `digest` | — | — | — |
 | `trust` | data | cross-domain | 3 info | — | — | — | — |
 | `cold-start` | data | cross-domain | 3 info | — | — | — | — |
-| `forecast` | code | weather | none | `ahead` | — | `fetch` `status` `verify` | `FORECAST_*` |
+| `forecast` | code | weather | none | `ahead` | — | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | — | 1 | — | `COAST_MAX_KM` |
 | `posidonia` | data | coast | 2 info | — | 1 | — | — |
 | `earth` | code | land | none | — | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
-| `earth-engine` | code | land | none | — | 1 | `timelapse` `verify` | `EE_*` |
-| `place` | code | place | 1 info | — | 1 | `refresh` `gaps` `verify` | `PLACE_*` |
+| `earth-engine` | code | land | none | — | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
+| `place` | code | place | 1 info | — | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
 | `make` | code | make | none | the nearest-lab line | — | — | `MAKE_*` |
 | `open-data-health` | data | governance | 1 warn | — | 2 | — | `CKAN_PORTALS` (core adapter) |
 | `thingdata` | code | repair | 1 warn | — | 2 | — | `THINGDATA_*` |
@@ -475,6 +475,7 @@ No cells. A forecast is not measured here and is nobody's Index cell.
 - `planetai run forecast verify`: the `adm4` code resolves to somewhere near the node (province, regency, district, village and distance printed; past 10 km the card says so), units are as documented, BMKG's `analysis_date` is under 18 hours old. Exit 1 on failure.
 - `planetai run forecast fetch`: fetch now instead of waiting for the poll; writes to `sensors` and `readings`.
 - `planetai run forecast status`: the next day: wind, rain, temperature, and when it was issued.
+- `planetai run forecast windfield`: refresh the wind field now (below). Refuses unless `FORECAST_OPENMETEO=1`.
 
 ### Settings
 
@@ -484,6 +485,8 @@ No cells. A forecast is not measured here and is nobody's Index cell.
 | `FORECAST_BMKG_ADM4` | empty | the Permendagri village code for this point. Node #1 is `51.03.05.2002`, Kuta Selatan / Ungasan, 194 m from the node. Without a code the pack logs one line and idles |
 | `FORECAST_OPENMETEO` | `0` | poll Open-Meteo, hourly, anywhere. Off because its free tier is non-commercial only; that is the operator's decision |
 | `FORECAST_POLL_HOURS` | `6` | BMKG allows 60 requests a minute per IP and enforces it; it publishes twice a day, so anything faster asks a cache the same question |
+| `FORECAST_WIND_N` | `8` | points a side of the wind field: 8 × 8 |
+| `FORECAST_WIND_KM` | `30` | half-width of the wind field's square, in km |
 
 Also reads `NODE_LAT` and `NODE_LON`.
 
@@ -493,7 +496,11 @@ Every channel in `channels.yml` is `role: derived`, `comparable: false`, for sou
 and `forecast-gap`. A forecast must never pool with a sensor's ambient reading; the `fc_` prefix is the second
 guard. Every value is stored at its valid time with `fc_lead_hours` beside it. Open-Meteo publishes no model run
 time, so the node records when it fetched and labels it `fetched`, not `issued`. When both sources are on, a third
-derived channel records how far apart they are on temperature and wind for the same hour. Attribution: BMKG must
+derived channel records how far apart they are on temperature and wind for the same hour. With Open-Meteo on, each
+poll also keeps its hourly 10 m wind for the next day over the node's square, and the node's own point, in one
+request, as `out/ground/wind.json`, served at `GET /ground/wind` for the map to draw. It asks with
+`cell_selection=nearest`, because the default moves a sea point to the nearest land cell, up to 12 km off. It is a
+model's field, not a reading: it reaches no cell, no alert and no report. Attribution: BMKG must
 be named inside the application and is, on the card and in the export; Open-Meteo is CC BY 4.0.
 
 ## coast
@@ -695,6 +702,7 @@ v0.33.1 (see below).
 
 - `planetai run earth-engine verify`: library, settings, key file, credentials, a real query, the datasets. Names the step that failed.
 - `planetai run earth-engine timelapse [--years a,b,c | --n 4 --gap 5] [--km 2] [--px 1024] [--source landsat|sentinel] [--lat --lon] [--dry-run]`: annual-median frames of clear pixels; Landsat by default (the only archive reaching 2010 with one instrument family), Sentinel-2 for 2016 onward at 10 m. PNGs and a side-by-side page land in `out/`.
+- `planetai run earth-engine basemap [--months 12] [--dry-run]`: the median of every clear Sentinel-2 pass over the last twelve months, built in the node's own Earth Engine project and kept as tiles at zoom 8–15 in `out/ground/imagery.mbtiles`, served at `GET /ground/imagery`. Earth Engine learns the two squares, once, and the script says so before it runs.
 
 ### Settings
 
@@ -703,6 +711,7 @@ v0.33.1 (see below).
 | `EE_PROJECT` | empty | the project id, e.g. `planetai-node-472103`, not the service account's 21-digit number; Earth Engine reports that mistake as "project not found". Blank reads it from the key file |
 | `EE_SERVICE_ACCOUNT` | empty | blank is fine; the key file names it |
 | `EE_KEY_FILE` | `/app/config/ee-key.json` | the JSON key, copied to `config/ee-key.json` on the node. `config/` is mounted read-only |
+| `GROUND_SAT_WIDE_KM` | `60` | `basemap`: half-width of the wide context square, in km. The close square is `place`'s `GROUND_RADIUS_KM` |
 
 ### Know this
 
@@ -759,6 +768,7 @@ says `partial`.
 - `planetai run place refresh`: force a fetch from Overpass. Edits to the map reach the node within minutes this way.
 - `planetai run place gaps`: the mapping briefing: untyped buildings, empty categories, named places without hours, unnamed streets, written to `out/place-gaps.md` for a mapping afternoon at the lab.
 - `planetai run place verify`: PostGIS, OpenStreetMap, Earth Engine, Open Buildings, each step named; names the mismatch while a moved node lasts.
+- `planetai run place basemap [--only vector|drone] [--dry-run]`: keeps a map of the place on the node's disk, in `out/ground/`, served at `GET /ground/*`: OpenStreetMap vector tiles cut out of Protomaps' daily build, in three rings to zoom 15, with the label fonts; and any OpenAerialMap drone mosaic (CC BY 4.0) that crosses the drone ring. Protomaps and OpenAerialMap learn the square, once, and the script says so before it runs.
 
 `planetai run place satellite` also appears in the script list, because `satellite.py` is a non-adapter `.py` in
 the folder. It is a module the adapter imports, not a command.
@@ -769,6 +779,9 @@ the folder. It is a module the adapter imports, not a command.
 |---|---|---|
 | `PLACE_RADIUS_M` | `1000` | radius around the node to describe, in metres |
 | `PLACE_REFRESH_DAYS` | `30` | how often to re-fetch from OpenStreetMap |
+| `GROUND_RADIUS_KM` | `12` | `basemap`: half-width of the street-level square, in km |
+| `GROUND_DRONE_RADIUS_KM` | `4` | `basemap`: the ring a drone mosaic must cross, in km |
+| `GROUND_DRONE_MAXZ` | `18` | `basemap`: the finest zoom kept for a drone mosaic |
 
 Also reads `OVERPASS_URL` (default `https://overpass-api.de/api/interpreter`) and, for Open Buildings,
 `EE_KEY_FILE`, `EE_PROJECT` and `EE_SERVICE_ACCOUNT`.
@@ -786,7 +799,7 @@ After a move it takes `planetai restart`, `planetai run place refresh` and a das
 
 Where somebody can go to make or fix something: the active fab labs nearest this node, from the Fab Lab
 Network directory, with what each one can do. This pack is the first thread from a reading to a place that can
-make or fix something. In v0.79 it names the place and stops there: no node has handed a job to a workshop,
+make or fix something. In v0.80 it names the place and stops there: no node has handed a job to a workshop,
 and nothing in the code sends one.
 
 | | |

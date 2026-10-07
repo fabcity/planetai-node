@@ -34,6 +34,7 @@ import events_pg
 import ground
 import index
 import issues.api
+from issues import geometry as _geo
 import packs
 import registry
 import report
@@ -1633,6 +1634,266 @@ def _earth_latest() -> dict | None:
     return (yoy or out)[-1]
 
 
+# ---------------------------------------------------------------- the map workbench
+# The redesign's Place door pans, zooms, inspects and measures. Every ring it draws and every distance it prints is
+# answered here (app/issues/geometry.py), so the page computes no H3 and no distance: tools/check_ui.py holds it to
+# that. **On no SHARE_LEVEL allowlist, like /place/geojson**: the node's cell at a fine resolution, rings centred on
+# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token.
+
+
+def _here() -> tuple[float, float]:
+    lat, lon = float(os.getenv("NODE_LAT", 0) or 0), float(os.getenv("NODE_LON", 0) or 0)
+    if not (lat or lon):
+        raise HTTPException(409, "this node has no NODE_LAT and NODE_LON yet, so there is no place to draw")
+    return lat, lon
+
+
+def _floats(text: str, n: int | None, what: str) -> list[float]:
+    try:
+        out = [float(x) for x in text.split(",")]
+    except ValueError:
+        raise HTTPException(422, f"{what}: numbers separated by commas") from None
+    if n is not None and len(out) != n:
+        raise HTTPException(422, f"{what}: {n} numbers")
+    return out
+
+
+@app.get("/geo/grid")
+def geo_grid(bbox: str, res: int = Query(..., ge=0, le=15)):
+    """The cells covering `bbox` (west,south,east,north) at `res`, one ring wider, and the node's own cell at that
+    resolution, as `cells_ll` rows ([id, lat, lng, …]). 422 rather than a truncated covering when the box is too big."""
+    lat, lon = _here()
+    try:
+        return _geo.grid(*_floats(bbox, 4, "bbox"), res, lat, lon)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/geo/cell")
+def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
+             lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15),
+             children: int | None = Query(None, ge=1, le=15), polar: bool = False):
+    """One cell's facts, named by `id` or by `lat`, `lon` and `res`: area, edge, parent, and how many cells from the
+    node's own at the same resolution. `children=<res>` adds how many children it has there and, up to 400, their
+    rings; `polar=true` adds every ring as distance and bearing from the node."""
+    here = _here()
+    if id is None:
+        if lat is None or lon is None or res is None:
+            raise HTTPException(422, "name a cell: id, or lat, lon and res")
+        import h3
+        id = h3.latlng_to_cell(lat, lon, res)
+    try:
+        return _geo.cell(id, *here, children=children, as_polar=polar)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+
+
+@app.get("/geo/measure")
+def geo_measure(path: str, from_node: bool = False, each: bool = False):
+    """Metres along `path`, lon,lat pairs separated by `;`, great-circle, each leg and the total. `from_node=true`
+    starts the path at the node, which is how the inspector says how far a station is. `each=true` adds, for every
+    point after the first, its distance and bearing from the first, in one answer."""
+    pts = [tuple(_floats(p, 2, "each point")) for p in path.split(";") if p.strip()]
+    if from_node:
+        lat, lon = _here()
+        pts = [(lon, lat)] + pts
+    if not 2 <= len(pts) <= 200 or any(not (-180 <= x <= 180 and -90 <= y <= 90) for x, y in pts):
+        raise HTTPException(422, "path: 2 to 200 lon,lat points in degrees")
+    return {**_geo.measure(pts), **({"each": _geo.each(pts)} if each else {})}
+
+
+@app.get("/geo/planet")
+def geo_planet(res: int = Query(2, ge=0, le=2)):
+    """Every H3 cell on the planet at resolution 0, 1 or 2, as cells_ll rows: the world grid a map of nodes is drawn
+    on, so the page computes none of it."""
+    _here()
+    return {"res": res, "cells_ll": _geo.planet(res)}
+
+
+@app.get("/geo/rings")
+def geo_rings(km: str = "2,5,15"):
+    """Circles round the node at each distance in `km`, as [lat, lng] rings. At most eight, none past 500 km."""
+    kms = _floats(km, None, "km")
+    if not 1 <= len(kms) <= 8 or any(not 0 < k <= 500 for k in kms):
+        raise HTTPException(422, "km: one to eight distances, each above 0 and at most 500")
+    return {"rings": _geo.rings(*_here(), kms)}
+
+
+# ---------------------------------------------------------------- the ground, kept on this node's disk
+# `planetai run place basemap` (vector, fonts, drone mosaics) and `planetai run earth-engine basemap` (Sentinel-2)
+# fetch a detailed map of this place once into out/ground/; these routes serve it, so a map drawn from them asks
+# nobody anything. Private like /place/geojson: a tile pyramid centred on the node says where it is.
+GROUND_LAYERS = {"vector": "application/x-protobuf", "imagery": "image/png", "drone": "image/png"}
+
+
+def _ground() -> Path:
+    return OUT / "ground"
+
+
+@app.get("/machine")
+def machine():
+    """The machine this node runs on, as the node's container sees it: processor, load, memory, temperature, how long
+    it has been up, its system, and the database engine. Read from /proc and /sys, so on Linux (a Pi, a mini PC) it is
+    the machine; on macOS it is the container engine's virtual machine, and says so in `seen_as`. A value the system
+    does not give (no thermal sensor, no cgroup limit) is null, never a guess. Private like /storage."""
+    import platform, time as _t
+    def read(p):
+        try:
+            return Path(p).read_text()
+        except OSError:
+            return None
+    mem = {}
+    for line in (read("/proc/meminfo") or "").splitlines():
+        k, _, v = line.partition(":")
+        if k in ("MemTotal", "MemAvailable", "SwapTotal", "SwapFree") and v.split():
+            mem[k] = int(v.split()[0]) * 1024
+    def cpu_times():
+        f = (read("/proc/stat") or "").splitlines()
+        nums = [int(x) for x in f[0].split()[1:]] if f and f[0].startswith("cpu ") else []
+        return (sum(nums), nums[3] + (nums[4] if len(nums) > 4 else 0)) if nums else None
+    a = cpu_times(); _t.sleep(0.25); b = cpu_times()
+    busy = round(100 * (1 - (b[1] - a[1]) / (b[0] - a[0])), 1) if a and b and b[0] > a[0] else None
+    temps = []
+    for z in sorted(Path("/sys/class/thermal").glob("thermal_zone*")):
+        t = read(z / "temp")
+        if t and t.strip().lstrip("-").isdigit():
+            temps.append({"zone": (read(z / "type") or z.name).strip(), "celsius": round(int(t) / 1000, 1)})
+    up = read("/proc/uptime")
+    cg_max, cg_cur = read("/sys/fs/cgroup/memory.max"), read("/sys/fs/cgroup/memory.current")
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT split_part(version(), ' on ', 1) AS v, pg_postmaster_start_time() AS since,"
+                    " (SELECT count(*) FROM pg_stat_activity) AS conns")
+        pg = cur.fetchone()
+    return {
+        "seen_as": "the Linux system the node's containers run on: the machine itself on Linux, the container engine's virtual machine on macOS",
+        "arch": platform.machine(), "system": f"{platform.system()} {platform.release()}", "cores": os.cpu_count(),
+        "load": [float(x) for x in (read("/proc/loadavg") or "").split()[:3]] or None, "cpu_busy_pct": busy,
+        "memory": {"total_bytes": mem.get("MemTotal"), "available_bytes": mem.get("MemAvailable"),
+                   "swap_total_bytes": mem.get("SwapTotal"), "swap_free_bytes": mem.get("SwapFree")},
+        "container_memory": {"limit_bytes": int(cg_max) if cg_max and cg_max.strip().isdigit() else None,
+                             "used_bytes": int(cg_cur) if cg_cur and cg_cur.strip().isdigit() else None},
+        "temperatures": temps, "uptime_s": round(float(up.split()[0])) if up else None,
+        "python": platform.python_version(),
+        "database": {"version": pg["v"], "since": pg["since"].isoformat() if pg["since"] else None, "connections": pg["conns"]},
+    }
+
+
+@app.get("/storage")
+def storage():
+    """How much room this node takes, how much is left, and how long that lasts at the rate it has been growing.
+
+    The node computes it so no page has to: the database's own size (Postgres), the files it keeps beside it (out/,
+    the backups, the open exports), and the free space on the disk those files live on, as this container sees it.
+    The rate is the readings written in the last seven days times what a reading row costs on disk, indexes and all,
+    which is where nearly all of the growth is; nothing is ever pruned. The backups are counted as they will be once
+    BACKUP_KEEP days of dumps sit there. `days_left` is null when the rate is zero or not yet known.
+
+    The database's own disk is the container engine's: on Linux it is this disk unless DATA_DIR moves it; on macOS
+    it is the engine's virtual disk, which this container cannot see. `planetai doctor` checks the host's.
+    Private like /version: what the machine holds is the keeper's, not the network's."""
+    import shutil
+    def du(p: Path) -> int:
+        try:
+            return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+        except OSError:
+            return 0
+    with db() as con, con.cursor() as cur:
+        cur.execute("SELECT pg_database_size(current_database()) AS db, pg_total_relation_size('readings') AS r,"
+                    " (SELECT reltuples FROM pg_class WHERE relname = 'readings') AS n,"
+                    " (SELECT count(*) FROM readings WHERE ts > now() - interval '7 days') AS week")
+        row = cur.fetchone()
+    per_row = (row["r"] / row["n"]) if row["n"] and row["n"] > 0 else None
+    per_day = round(per_row * row["week"] / 7) if per_row else None
+    backups = Path("/app/backups")
+    dumps = sorted(backups.glob("*.sql.gz"), key=lambda f: f.stat().st_mtime) if backups.exists() else []
+    keep = int(os.getenv("BACKUP_KEEP", "30") or 30)
+    b_now = sum(f.stat().st_size for f in dumps)
+    b_full = (dumps[-1].stat().st_size * keep) if dumps else 0
+    disk = shutil.disk_usage(OUT) if OUT.exists() else None
+    free = disk.free if disk else None
+    room = (free - max(0, b_full - b_now)) if free is not None else None
+    return {
+        "database_bytes": row["db"], "readings": int(row["n"] or 0), "readings_last_7_days": row["week"],
+        "bytes_per_reading": round(per_row) if per_row else None, "growth_bytes_per_day": per_day,
+        "out_bytes": du(OUT), "exports_bytes": du(Path("/app/exports")),
+        "backups": {"bytes": b_now, "dumps": len(dumps), "keep_days": keep, "bytes_when_full": b_full},
+        "disk": ({"path": str(OUT), "total_bytes": disk.total, "used_bytes": disk.used, "free_bytes": disk.free} if disk else None),
+        "days_left": (int(room / per_day) if room is not None and per_day else None),
+        "rate": "readings written in the last 7 days x bytes per reading row; backups counted at BACKUP_KEEP dumps",
+    }
+
+
+@app.get("/ground/meta")
+def ground_meta():
+    """What the node holds of its own map: each layer's source, licence, attribution, tile count, bytes and when it
+    was fetched, from out/ground/meta.json, and which layers are actually on disk. Never an error."""
+    g = _ground()
+    try:
+        meta = json.loads((g / "meta.json").read_text())
+    except (OSError, ValueError):
+        meta = {}
+    have = {k: (g / f"{k}.mbtiles").is_file() for k in GROUND_LAYERS}
+    have["glyphs"] = (g / "glyphs").is_dir()
+    have["wind"] = (g / "wind.json").is_file()
+    return {"layers": meta, "on_disk": have,
+            "fetch": {"vector": "planetai run place basemap --only vector", "drone": "planetai run place basemap --only drone",
+                      "imagery": "planetai run earth-engine basemap", "wind": "planetai run forecast windfield"}}
+
+
+@app.get("/ground/wind")
+def ground_wind():
+    """The wind over the node's square for a map to draw moving: the forecast pack's Open-Meteo field, n×n points,
+    hourly for the next day (out/ground/wind.json, refreshed on each forecast poll). 204 when the node has none,
+    which is every node with FORECAST_OPENMETEO=0."""
+    from fastapi.responses import Response
+    p = _ground() / "wind.json"
+    if not p.is_file():
+        return Response(status_code=204)
+    return Response(p.read_bytes(), media_type="application/json", headers={"cache-control": "no-cache"})
+
+
+@app.get("/ground/glyphs/{font}/{span}")
+def ground_glyphs(font: str, span: str):
+    """The label fonts the vector map draws names with, as MapLibre asks for them: one face, one range of 256."""
+    from fastapi.responses import Response
+    if not re.fullmatch(r"[A-Za-z ]{1,40}", font) or not re.fullmatch(r"\d{1,5}-\d{1,5}\.pbf", span):
+        raise HTTPException(404, "no such glyphs")
+    p = _ground() / "glyphs" / font / span
+    if not p.is_file():
+        return Response(status_code=204)
+    return Response(p.read_bytes(), media_type="application/x-protobuf", headers={"cache-control": "max-age=86400"})
+
+
+@app.get("/ground/{layer}/{z}/{x}/{y}")
+def ground_tile(layer: str, z: int, x: int, y: str):
+    """One tile of the node's own map, XYZ addressed (`y` may carry .pbf, .png or .jpg). 204 where the node holds
+    none, which a map reads as empty ground rather than an error."""
+    from fastapi.responses import Response
+    import sqlite3
+    if layer not in GROUND_LAYERS:
+        raise HTTPException(404, "no such ground layer")
+    try:
+        yy = int(y.split(".")[0])
+    except ValueError:
+        raise HTTPException(422, "y must be a number") from None
+    p = _ground() / f"{layer}.mbtiles"
+    if not p.is_file() or not (0 <= z <= 22 and 0 <= x < 2 ** z and 0 <= yy < 2 ** z):
+        return Response(status_code=204)
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    try:
+        row = con.execute("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
+                          (z, x, (1 << z) - 1 - yy)).fetchone()
+    finally:
+        con.close()
+    if not row:
+        return Response(status_code=204)
+    data, head = row[0], {"cache-control": "max-age=3600"}
+    if data[:2] == b"\x1f\x8b":
+        head["content-encoding"] = "gzip"               # vector tiles are kept gzipped, as Protomaps ships them
+    kind = GROUND_LAYERS[layer] if layer == "vector" else ("image/jpeg" if data[:2] == b"\xff\xd8" else "image/png")
+    return Response(data, media_type=kind, headers=head)
+
+
 @app.get("/earth")
 def earth():
     """What the earth pack has: the years of AlphaEarth embeddings cached for this node's square, and the
@@ -1948,15 +2209,17 @@ STATIC = Path(__file__).parent / "static"
 
 @app.get("/", include_in_schema=False)
 @app.get("/ui", include_in_schema=False)
-def ui():
-    """The dashboard: one HTML file, no build step, reads the same API everything else does.
+def ui(layout: str = ""):
+    """The dashboard: one HTML file, no build step, reads the same API everything else does. `?layout=doors` serves the
+    five doors instead (doors.html, docs/decisions/2026-10-07-doors.md) while they are tried beside it: the same
+    shell route, so the same share rule, and the doors read the same routes with the same token.
 
     Sent with `cache-control: no-cache`. Without any cache header a browser is free to reuse this document for as
     long as it likes, and an ordinary reload does not always ask: after `planetai update` a screen kept running the
     previous dashboard, with the previous bugs, until someone thought to hard-reload. The node's whole update story
     depends on the page following the version."""
     from fastapi.responses import HTMLResponse
-    f = STATIC / "index.html"
+    f = STATIC / ("doors.html" if layout == "doors" else "index.html")
     body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
@@ -2041,6 +2304,21 @@ COMPANIONS = {
     # time, because a node does not carry the documentation site. Fetched only when a reader
     # turns learn mode on, and the quotes are inline so the mode works on a LAN with no route out.
     "learn.json": (STATIC / "learn.json", "application/json"),
+    # The map ground, UI_GROUND=map: MapLibre for the base, deck.gl for the cells and stations over it.
+    # Pinned UMD builds, vendored so the page needs no CDN; fetched only when the ground is drawn that way.
+    # Versions and licences are in NOTICE.
+    "maplibre-gl.js": (STATIC / "vendor" / "maplibre-gl.js", "application/javascript"),
+    "maplibre-gl.css": (STATIC / "vendor" / "maplibre-gl.css", "text/css"),
+    "deck.gl.min.js": (STATIC / "vendor" / "deck.gl.min.js", "application/javascript"),
+    # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
+    # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
+    **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
+       for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wallmap", "wall", "node", "setup")},
+    "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
+    # The documentation the node carries (`make learn` cuts it out of docs/site): the Data door draws the API from it.
+    # ./data is mounted at /app/data in the container and sits beside app/ in a checkout, as ask.py reads it.
+    "docs_site.json": (next((p for p in (STATIC.parent / "data" / "docs_site.json", STATIC.parent.parent / "data" / "docs_site.json")
+                             if p.exists()), STATIC.parent / "data" / "docs_site.json"), "application/json"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 

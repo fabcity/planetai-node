@@ -1,5 +1,5 @@
 # PLANETAI Node. Spec v0.1
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 2 September 2026. Two containers. This document is the brick; `ARCHITECTURE.md` is the building. Everything here is
 either a contract that must survive rewrites, or a retired piece with the condition that brings it back.
@@ -37,7 +37,7 @@ These are the things node #7 needs to share with node #1. They cost nothing to k
 | | |
 |---|---|
 | `db` | `imresamu/postgis:16-3.4-alpine` (Postgres 16 and PostGIS 3.4, for amd64 and arm64). Bound to localhost. Volume `db`. Nightly `pg_dump` via `backup.sh`. |
-| `app` | Python 3.12. Six timer threads (poll, rules, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, and the release check), a seventh for Reticulum when it is on, + FastAPI on :8080. `app/main.py` is ~2,300 lines. |
+| `app` | Python 3.12. Six timer threads (poll, rules, the hourly refresh of the usual-for-the-hour view, the aggregates and events pushes, and the release check), a seventh for Reticulum when it is on, + FastAPI on :8080. `app/main.py` is ~2,600 lines. |
 
 `GET /health /sensors /readings /stats /alerts /aggregates /cells /rho` · `POST /aggregates` (parent) · `POST /actions` (ρ) · `POST /readings` (downstream contributors, admin token).
 
@@ -54,7 +54,7 @@ An adapter is a function returning `(sensors, readings)`. Two are described here
 
 `app:8080` is published on every interface, because the things that read this node are on the network: the NAS that pulls hourly dumps from `/backups` — the only off-machine copy of readings that exist nowhere else — the phones and wall screens in the house, Home Assistant, and the agent's MCP surface on the tailnet. Postgres is not: `db` binds `127.0.0.1:5432`, and so do IPFS's API and gateway ports (its swarm port, 4001, is public).
 
-A token guards every write and every secret read. **`SHARE_LEVEL` decides what an unauthenticated reader on that LAN may see** — `off` by default, which answers such a reader the dashboard, `/health` with the node's position rounded to 110 m, the daily CC-BY export and the layout, and refuses the rest with a sentence naming the setting; `open` answers the whole read API, which is what a wall screen with no token needs. A request carrying a token reads what it always read, from anywhere, at either level. The building's own geometry (`/place/geojson`) needs a token at every level. `.env` is `chmod 600`, never committed.
+A token guards every write and every secret read. **`SHARE_LEVEL` decides what an unauthenticated reader on that LAN may see** — `off` by default, which answers such a reader the dashboard, `/health` with the node's position rounded to 110 m, `/presence`, `/llms.txt`, the daily CC-BY export and the layout, and refuses the rest with a sentence naming the setting; `open` answers the whole read API, which is what a wall screen with no token needs. A request carrying a token reads what it always read, from anywhere, at either level. The building's own geometry (`/place/geojson`), the map's routes (`/geo/*`, `/ground/*`) and the machine's (`/machine`, `/storage`) need a token at every level. `.env` is `chmod 600`, never committed.
 
 There is no TLS. The boundary this section used to argue did not exist was crossed in v0.7 — see the first struck-through row in §6 — so it is deferred on its own terms now, not on an absence: the traffic that leaves this machine goes over Tailscale, which encrypts it, and a node reachable from outside the tailnet is what turns TLS from a checkbox into a requirement.
 

@@ -1,5 +1,5 @@
 # How it works
-<!-- checked: v0.79 -->
+<!-- checked: v0.80 -->
 
 A node is two containers on one machine. `db` is Postgres with PostGIS, bound to the machine itself. `app` is
 one Python process that answers the HTTP API on port 8080 and runs six loops in the background, a seventh when
@@ -151,13 +151,15 @@ resolution-8 cell (not its point), under CC BY 4.0. The export is readable at ev
 
 Once a day the node asks planetai.fab.city which version is current. The request carries nothing about the
 house, but it shows the house's internet address to Fab City's host; `UPDATE_CHECK=off` in Set up → Sharing
-stops it. Three more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
+stops it. Four more things can leave, and each only when somebody here turns it on. With `RETICULUM_PRESENCE=1` the
 node announces a coarse H3 cell on the Reticulum network: resolution 3 by default, never finer than 6. With
 `MAP_TILES=on` the browser showing the dashboard fetches live map tiles at resolution 8 and coarser, and each
 tile request "tells a tile server which square of the planet this house is looking at". And a question to
 the bot or the dashboard's ask pane goes to an online model, with the node's answers to the model's tool calls, only when `AGENT_PREFER`
 is `fallback` or `strongest` and an online key is set. At the default, `private`, both use the model on
-this machine or one on your own network, and nothing goes further.
+this machine or one on your own network, and nothing goes further. And `planetai run place basemap` or `planetai run
+earth-engine basemap`, typed by somebody here, tells Protomaps, OpenAerialMap or Earth Engine once which square the
+node is in, to keep a detailed map of it on the node; after that the map is read from the node and sends nothing.
 
 Exact coordinates and a household's own sentences never leave in a push or the export. The events push carries rule,
 level and timestamps and no alert text, actor, note or sensor id. Your own sensor ids leave only in the
@@ -179,6 +181,7 @@ The shape of the building behind `/place/geojson` needs a token at every sharing
 | whether heat and air alerts are sent as events | `ALERT_ENGINE` (`rules`, `shadow` or `events`; default `rules`) |
 | how much of the page opens, and in what order | `UI_MODE` (`simple`, `advanced`, `learn`) and `UI_LAYOUT` |
 | whether the page may fetch live tiles | `MAP_TILES` (default `off`) |
+| whether the ground is a drawing or a map that pans and zooms | `UI_GROUND` (`svg` or `map`; default `svg`) |
 | whether the node asks which version is current | `UPDATE_CHECK` (default `on`) |
 | whether the bot and the ask pane may use an online model | `AGENT_PREFER` (default `private`) |
 | whether the node names the nearest fab lab | `MAKE_ENABLED` (default `0`) |
@@ -192,7 +195,7 @@ by aggregation. No agent dispatches without a human row in `actions`. No layer r
 function. No scale is skipped: a city aggregator is built from nodes, not declared from above. The longer
 form, with the staging from one node to a bioregion, is [Architecture](architecture.md).
 
-Some of that staging is not built in v0.79. The fabrication ticket the Act layer ends in when a decision is
+Some of that staging is not built in v0.80. The fabrication ticket the Act layer ends in when a decision is
 physical does not exist, and no job has been handed to a workshop. Nodes finding each other
 (`docs/SPEC_discovery.md`) is not built; a node as a key (`docs/SPEC_identity.md`) and the second ρ, which
 would ask whether the reading recovered (`docs/SPEC_rho.md`), are Phase 1 with nothing built.
