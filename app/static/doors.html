@@ -64,7 +64,12 @@ a{color:inherit}
 .iconbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square}.iconbtn svg .dot{stroke-width:2.2;stroke-linecap:round}
 .iconbtn:hover{background:var(--raise)}.iconbtn[aria-expanded="true"]{background:var(--ink);color:var(--ground)}
 .bar .iconbtn+.iconbtn{margin-left:-10px}
-body[data-view="wall"] .bar{display:none}
+body[data-view="wall"] .bar,body[data-view="wall"] .foot{display:none}
+.foot{max-width:1240px;margin:40px auto 0;padding:18px clamp(16px,3vw,40px) 28px;border-top:1px solid var(--ink);display:grid;grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,1fr));gap:18px 28px;font-size:var(--t-small)}
+.foot b{display:block;font:500 var(--t-cap) var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--mute);margin-bottom:6px}
+.foot a,.foot button.linkish{display:block;color:var(--ink);text-decoration:none;padding:2px 0;background:none;border:0;font:inherit;cursor:pointer;text-align:left}
+.foot a:hover,.foot button.linkish:hover{text-decoration:underline}.foot p{margin:0 0 4px;color:var(--mute)}
+@media (max-width:760px){.foot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
 /* ---- Ask the node, and Learn inside it ---- */
 .askpane{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--ground);border-left:1px solid var(--ink);padding:18px 20px;overflow:auto;z-index:20}
@@ -89,6 +94,7 @@ body.learn [data-learn]::before{animation:markfloat var(--motion-mark-float) eas
 .page h2{font:700 var(--t-read) var(--display);letter-spacing:-.02em;margin:34px 0 8px}
 .lede{font-size:var(--t-body);color:var(--mute);max-width:72ch;margin:0}
 .lrow{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr) auto;gap:16px;padding:10px 0;border-top:1px solid var(--hair);align-items:center}
+#setupv .lrow{grid-template-columns:96px minmax(0,1fr);align-items:baseline;row-gap:4px}#setupv .lrow .c{grid-column:2;font-size:var(--t-small)}
 .lrow:last-of-type{border-bottom:1px solid var(--hair)}
 .lrow .t{font-weight:600}.lrow .t small{display:block;font:500 var(--t-cap) var(--mono);color:var(--mute)}
 .lrow .s{font-size:var(--t-small);color:var(--mute)}
@@ -421,11 +427,8 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
       <form class="unlock" id="unlock"><label>Unlock this screen <input type="password" id="tok" autocomplete="off" placeholder="the act or admin token"></label>
         <button class="now" type="submit">UNLOCK</button> <button class="now" type="button" id="lock">LOCK</button>
         <span class="fine">`planetai ui` prints the tokens. Kept in this browser only, sent only to this node.</span></form></section>
-    <section data-learn="settings" data-reads="/settings /packs" data-pack="core"><h2>Set up</h2>
-      <details><summary><span class="t">Settings, unlocked with the admin token</span><span class="s">the existing section, unchanged</span><span class="c">▸</span></summary></details>
-      <details><summary><span class="t">Packs: what this node reads and draws</span><span class="s">core and wild</span><span class="c">▸</span></summary></details>
-      <details><summary><span class="t">Arrange the sections</span><span class="s">order and visibility</span><span class="c">▸</span></summary></details>
-      <details><summary><span class="t">Updates and signing</span><span class="s">signed by fabcity</span><span class="c">▸</span></summary></details>
+    <section data-learn="settings" data-reads="/settings /packs /health" data-pack="core"><h2>Set up</h2>
+      <div id="setupv"></div>
     </section>
   </div>
   <section data-learn="refusals" data-pack="core"><h2>What this node will not do, at any stage</h2>
@@ -436,6 +439,8 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
     <div class="lrow"><span class="t" style="grid-column:1 / -1;font-weight:400">No scale is skipped: a city aggregator is built from nodes, not declared from above.</span></div>
   </section>
 </section>
+
+<footer class="foot" id="foot" data-learn="purpose" data-reads="/health"></footer>
 
 <aside class="askpane" id="askpane" hidden aria-label="Ask the node">
   <div class="ah"><b>Ask the node</b><button id="askclose" aria-label="Close">×</button></div>

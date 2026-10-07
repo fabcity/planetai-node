@@ -439,7 +439,7 @@ the token draws what `SHARE_LEVEL` gives it and says, where a part is missing, w
 events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger without its notes.
 The map, the cells, every distance and the hourly table are token-only at every level, because together they say
 where the node is and what the household did hour by hour. **Node → Unlock this screen** stores the act or admin
-token in that browser. `?fixture=<name>` works here too, and shows a screen without the token only what the node
+token in that browser. Node → Set up says what is set on this node (settings, packs, sharing, updates) and links to the dashboard's Set up to change it, with the same token; every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
 
 ## Languages

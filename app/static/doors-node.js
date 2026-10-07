@@ -9,7 +9,7 @@ VIEWS.node = function () {
   $('#nodehead').innerHTML = `<div class="k">Node · this machine</div>
     <h1 data-learn="1">${esc(R.name)}, in ${esc(R.place)}.</h1>
     <p class="lede mono">planetai-node ${esc(h.version)} · up ${fmt(h.uptime_s / 3600, 1)} h · ${h.ingested.toLocaleString('en')} readings since the restart · cell ${esc(h.cell.id)} · ${esc(h.tz)}</p>`;
-  flow(); around(); running();
+  flow(); around(); running(); setup();
 };
 
 /* What comes in, what goes out (R35's hub, back on Node in R38; the Wall keeps the flow by scale, js/flow.js).
@@ -105,4 +105,23 @@ function running() {
     ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `at SHARE_LEVEL=${D.share || 'off'} without a token: the map, the cells and the counts stay on the node`,
       DOORS_TOKEN() ? 'unlocked' : 'locked']]
     .map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${esc(s2)}</span><span class="c">${esc(c)}</span></div>`).join('');
+}
+
+/* Set up, as it stands on this node. The changes themselves are made in the dashboard's Set up (/#setup), the one
+   surface the suites hold to the node's rules (tests/test_settings.py, test_config.py), with the same token this
+   screen keeps: so every row says what is set here and links there. Arrange is the dashboard's own and is not here. */
+async function setup() {
+  const S = D.settings || {}, rows = (S.runtime || []), unlocked = !!S.unlocked, h = D.health, rel = h.release || {};
+  const mine = rows.filter(r => r.source === 'gui'), groups = [...new Set(rows.map(r => r.group))];
+  const packs = await fetch('/packs', { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null);
+  const on = (rows.find(r => r.key === 'PACKS_ENABLED') || {}).value, enabled = on ? new Set(on.split(',').map(x => x.trim())) : null;
+  const go = '<a class="c" href="/#setup">change in Set up →</a>';
+  $('#setupv').innerHTML = [
+    ['Settings', unlocked ? `${rows.length} settings in ${groups.length} groups; ${mine.length} set on this page rather than in .env`
+      : `${rows.length} settings in ${groups.length} groups. This screen reads the public ones; the admin token unlocks the rest and changing any of them`, go],
+    ['Packs', packs ? `${packs.length} installed: ${packs.map(p => `${esc(p.name)}${enabled && !enabled.has(p.id) ? ' (off)' : ''}`).join(', ')}` : 'GET /packs did not answer this screen', go],
+    ['Sharing', `SHARE_LEVEL=${D.share || 'off'}: ${D.share === 'open' ? 'screens on this network read the issues, the stations and the models; the map, the cells and the household’s notes need the token' : 'a screen without the token gets the shell, the node’s name and the daily open export, and nothing else'}`, go],
+    ['Updates', rel.latest ? `this node runs ${esc(h.version)}; the latest release is ${esc(rel.latest)}${rel.newer ? ' — <code>planetai update</code> on the node takes it' : ', checked ' + esc((rel.checked || '').slice(0, 10))}` : `this node runs ${esc(h.version)}`,
+      `<a class="c" href="${esc((h.docs || 'https://planetai.fab.city/docs/') + 'install/#signed-installs-and-updates')}" target="_blank" rel="noopener">how releases are signed →</a>`],
+  ].map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${s2}</span>${c}</div>`).join('');
 }
