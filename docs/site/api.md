@@ -306,6 +306,72 @@ Returns `{type: "FeatureCollection", features, diag: {tables, rows, error, hint}
 
 This route is on no allowlist at any level: loopback or a token, and nothing else. It is the exact building footprints and roads around the address, drawn, and unlike a coordinate there is no rounded version of it that is safe to hand to the network. The dashboard's plan card is therefore empty on a screen with no token, and says so.
 
+### GET /geo/grid
+Access: token
+
+The H3 cells covering a box at one resolution, one ring wider so a drawn grid runs off the frame, and the node's own cell at that resolution. The map workbench draws these instead of computing H3 in the browser.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `bbox` | string | required | `west,south,east,north` in degrees |
+| `res` | int | required | Resolution, 0..15 |
+
+Returns `{res, may_leave, edge_m, node, cells_ll}`. `node` and each `cells_ll` row are `[id, lat, lng, …]`, the shape `/issues` geometry uses. `may_leave` is true at resolution 6 and coarser. A box that would hold more than 2,500 cells is refused with 422, not cut short.
+
+### GET /geo/cell
+Access: token
+
+One cell's facts, named by `id`, or by `lat`, `lon` and `res`.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `id` | string | none | An H3 cell id |
+| `lat`, `lon`, `res` | float, float, int | none | The cell containing that point at that resolution, when there is no `id` |
+
+Returns `{id, res, area_m2, edge_m, parent, may_leave, is_node, cells_from_node, ring}`. `cells_from_node` counts grid steps from the node's own cell at the same resolution, or is null when h3 cannot walk that far.
+
+### GET /geo/measure
+Access: token
+
+Distances along a path, great-circle, in metres.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `path` | string | required | `lon,lat` points separated by `;`, 2 to 200 of them |
+| `from_node` | bool | false | Start the path at the node |
+
+Returns `{legs_m, total_m, points}`.
+
+### GET /geo/rings
+Access: token
+
+Circles round the node, as `[lat, lng]` rings.
+
+| Name | Type | Default | Meaning |
+|---|---|---|---|
+| `km` | string | `2,5,15` | One to eight distances, each above 0 and at most 500 |
+
+Returns `{rings: [{km, ring}]}`.
+
+### GET /ground/meta
+Access: token
+
+What the node holds of its own map in `out/ground/`: for each layer (`vector`, `drone`, `imagery`) its source, licence, attribution, tile count, bytes and fetch time, which layers are on disk (`on_disk`, plus `glyphs`), and the command that fetches each one. Never an error.
+
+### GET /ground/{layer}/{z}/{x}/{y}
+Access: token
+
+One tile of the node's own map, XYZ addressed. `layer` is `vector` (OpenStreetMap vector tiles from Protomaps' build, served gzipped with `Content-Encoding: gzip`), `drone` (OpenAerialMap mosaics, PNG) or `imagery` (this node's Sentinel-2 composite, PNG). `y` may carry an extension. Answers 204 where the node holds no tile, which a map reads as empty ground.
+
+### GET /ground/glyphs/{font}/{span}
+Access: token
+
+The label fonts the vector map draws names with (Noto Sans, OFL), one face and one range of 256 per request, as MapLibre asks for them: `/ground/glyphs/Noto Sans Regular/0-255.pbf`. 204 for a range the node did not fetch.
+
+`planetai run place basemap` fetches the vector tiles, the fonts and any drone mosaic; `planetai run earth-engine basemap` builds the satellite layer. Each says what it reveals before it runs. After that a map drawn from these routes asks nobody anything.
+
+The four `/geo/` routes and the three `/ground/` routes are on no allowlist, like `/place/geojson`: the node's cell at a fine resolution, a ring centred on it, and a distance from it each give away the point `/health` rounds, and so does a tile pyramid centred on it.
+
 ## Issues
 
 The one document a client draws. A page, a Telegram handler or a wall screen that wants the node's whole answer builds against `/issues` and does no arithmetic of its own.

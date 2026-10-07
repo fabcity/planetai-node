@@ -206,6 +206,9 @@ UI_MODE:
 UI_ASK:
   default: "on"
   help: "dashboard: a toggle that opens a pane asking this node's own model, on this machine, about what the page shows. It reads and changes nothing; nothing typed there is kept. on | off"
+UI_GROUND:
+  default: "svg"
+  help: "dashboard: how the ground is drawn. svg is the drawing the page has always made; map draws it with MapLibre and deck.gl, which pan and zoom and need WebGL2. Changes nothing that leaves the house. svg | map"
 RETICULUM_PRESENCE:
   default: "0"
   help: "radio: announce this node's presence over Reticulum, and at what H3 resolution. 0 is off, and off is the default — a node says nothing to the mesh until somebody here decides it should. The resolution is the floor a cell may be published at: 3 is about 160 km across, so a listener learns a region and never an address."
