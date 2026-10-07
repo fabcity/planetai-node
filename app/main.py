@@ -2069,15 +2069,17 @@ STATIC = Path(__file__).parent / "static"
 
 @app.get("/", include_in_schema=False)
 @app.get("/ui", include_in_schema=False)
-def ui():
-    """The dashboard: one HTML file, no build step, reads the same API everything else does.
+def ui(layout: str = ""):
+    """The dashboard: one HTML file, no build step, reads the same API everything else does. `?layout=doors` serves the
+    five doors instead (doors.html, docs/decisions/2026-10-07-doors.md) while they are tried beside it: the same
+    shell route, so the same share rule, and the doors read the same routes with the same token.
 
     Sent with `cache-control: no-cache`. Without any cache header a browser is free to reuse this document for as
     long as it likes, and an ordinary reload does not always ask: after `planetai update` a screen kept running the
     previous dashboard, with the previous bugs, until someone thought to hard-reload. The node's whole update story
     depends on the page following the version."""
     from fastapi.responses import HTMLResponse
-    f = STATIC / "index.html"
+    f = STATIC / ("doors.html" if layout == "doors" else "index.html")
     body = f.read_text() if f.exists() else "<h1>planetai-node</h1><p>GUI not shipped in this build.</p>"
     return HTMLResponse(body, headers={"cache-control": "no-cache, must-revalidate"})
 
@@ -2168,6 +2170,11 @@ COMPANIONS = {
     "maplibre-gl.js": (STATIC / "vendor" / "maplibre-gl.js", "application/javascript"),
     "maplibre-gl.css": (STATIC / "vendor" / "maplibre-gl.css", "text/css"),
     "deck.gl.min.js": (STATIC / "vendor" / "deck.gl.min.js", "application/javascript"),
+    # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
+    # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
+    **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
+       for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wall", "node")},
+    "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}
 

@@ -334,9 +334,9 @@ assert not _slow, ("act-level rules slower than index.MEASURED_WINDOW_MIN="
                    "call their alerts measured while they are still waiting to fire again.")
 print(f"measured window {_index.MEASURED_WINDOW_MIN}m outlasts every act-level cooldown")
 
-# The map ground's three vendored files are served by name, and nothing else under vendor/ is: the allowlist is
-# the whole of what /static answers, and a directory of libraries must not become a directory the LAN can walk.
-_vendor = {"maplibre-gl.js", "maplibre-gl.css", "deck.gl.min.js"}
+# The map ground's three vendored files and the doors' world coast are served by name, and nothing else under vendor/
+# is: the allowlist is the whole of what /static answers, and a directory of libraries must not become one the LAN walks.
+_vendor = {"maplibre-gl.js", "maplibre-gl.css", "deck.gl.min.js", "world-land-110m.json"}
 for _n in sorted(_vendor):
     _r = lan.get(f"/static/{_n}")
     assert _r.status_code == 200 and len(_r.content) > 10000, f"/static/{_n} does not serve the vendored file"
@@ -344,7 +344,7 @@ _served = {k for k, (p, _t) in main.COMPANIONS.items() if p.parent.name == "vend
 assert _served == _vendor, f"/static serves vendored files nobody listed here: {sorted(_served - _vendor)}"
 for _n in ("vendor/maplibre-gl.js", "maplibre-gl.LICENSE.txt", "deck.gl.LICENSE", "..%2Fmain.py"):
     assert lan.get(f"/static/{_n}").status_code == 404, f"/static/{_n} answered: the route takes a name, not a path"
-print("static: the three vendored map files are served, and nothing else under vendor/")
+print("static: the four vendored files are served, and nothing else under vendor/")
 
 # The map workbench (GET /geo/*): the node computes every ring and distance the Place door draws, and none of it is
 # on an allowlist, because the node's cell at a fine resolution and "metres from the node" give away its point.

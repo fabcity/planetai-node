@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The five doors, on trial at `/?layout=doors`** (ships after v0.80, on its own): Now, Place, Data, Wall and Node,
+  the redesign from planetai-design, drawn from the node's own routes with the screen's token. Without the token a
+  door draws what `SHARE_LEVEL` gives and says what it is not drawing; the map, the cells, the distances and the
+  hourly table stay token-only. Done, Not now and Doesn't fit and the ask pane write to the node as the dashboard
+  does. The dashboard at `/` is unchanged. `docs/decisions/2026-10-07-doors.md`.
 - **v0.80 carries a page change and two pack scripts, against `docs/NEXT_RELEASE.md` rule 2, as v0.77 did.** The
   map ground changes `app/static`, and `place` and `earth-engine` gain a `basemap` script that the map's own bases
   read. The scripts only run when somebody types the command, and the map ground is off unless `UI_GROUND=map`, so

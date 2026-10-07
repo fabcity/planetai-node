@@ -424,6 +424,24 @@ answers and the page draws; the plan still needs a token at every level. See [Sh
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`.
 
+## The five doors, on trial
+
+`/?layout=doors` draws the same node as five doors, the redesign worked out in planetai-design (R34 to R41): **Now**
+(the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
+ground as a map with layers, scales and a measuring tool, the satellite years and what changed), **Data** (every
+reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
+dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The dashboard
+stays at `/` while the doors are tried; nothing changes for a screen that does not ask for them.
+
+The doors read the routes the dashboard reads, renamed and pivoted in the page and never recomputed
+(`doors-load.js`), and they read them with the same token, kept in the same place in the browser. A screen without
+the token draws what `SHARE_LEVEL` gives it and says, where a part is missing, why. At `open` that is the issues, the
+events, the stations' 15-minute means, the models, the Index, the satellite years and the ledger without its notes.
+The map, the cells, every distance and the hourly table are token-only at every level, because together they say
+where the node is and what the household did hour by hour. **Node → Unlock this screen** stores the act or admin
+token in that browser. `?fixture=<name>` works here too, and shows a screen without the token only what the node
+would show it.
+
 ## Languages
 
 The page reads the household's language from `/health.locale` (`ALERT_LOCALE`, which answers at every
