@@ -62,12 +62,16 @@ function frags() {
    pane's route, so the model is the one the keeper chose under Set up → Model (AGENT_PREFER): this machine, another
    on the house's network, or an online provider. When it is online the wall says the figures leave the house. The
    context is /ask's own, scrubbed of every place, name and id; nothing is stored. A model's words, never a reading,
-   and the line under them says so. Again every 15 minutes while the wall is on screen. */
+   and the line under them says so. Again every 3 minutes while the wall is on screen, each time from another angle. */
 const NARR = { text: '', at: 0, busy: false, model: null, where: null, read: [], err: null, timer: 0 };
-const NARR_EVERY = 15 * 60e3;
+const NARR_EVERY = 3 * 60e3;
 /* Plain words for people who know nothing about units or maps (Tomas, 7 Oct): tried on node #1's qwen3:4b until it
    read like a neighbour, said what the readings suggest without promising, and closed on the next few hours. */
-const narrAsk = () => "You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour, say what is happening around their home right now: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most one number. Say what the readings suggest for an ordinary day, such as windows, cooking or sleep, but never promise that anything is safe. End with one sentence about the next few hours, from the forecast or the usual pattern for this hour if your context has it; if it does not, say the node will keep watching. Use only the figures in your context. Three or four short sentences, no lists, no greeting, no questions.";
+/* Every 3 minutes (Tomas, 7 Oct), each time from another angle, so the wall does not say the same thing twice in a row. */
+const NARR_ANGLES = ['what is happening right now', 'what has changed over the last few hours', 'how warm it feels inside the home',
+  'how inside the home compares with the street and the neighbourhood', 'how today compares with the last few days'];
+let NARR_TURN = 0;
+const narrAsk = () => "You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour, say what is happening around their home right now: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most one number. Say what the readings suggest for an ordinary day, such as windows, cooking or sleep, but never promise that anything is safe. End with one sentence about the next few hours, from the forecast or the usual pattern for this hour if your context has it; if it does not, say the node will keep watching. Use only the figures in your context. Three or four short sentences, no lists, no greeting, no questions." + ` This time, start from ${NARR_ANGLES[NARR_TURN++ % NARR_ANGLES.length]}; if your context cannot say, speak about the air now.`;
 function narrDraw() {
   const el = $('#wnarr'); if (!el) return;
   /* the model is named once it has answered (the done event says which rung did); while it asks, the wall says only
@@ -78,7 +82,7 @@ function narrDraw() {
     + (NARR.err ? `<p class="nt said">${esc(NARR.err)}</p>`
       : `<div class="nw"><p class="nt said"><span id="ntext">${esc(NARR.text)}</span>${NARR.busy ? '<i class="caret" aria-hidden="true"></i>' : ''}</p></div>`)   /* the newest line stays in view; the oldest leave the top */
     + `<div class="nf">${NARR.read.length ? `it read ${esc([...new Set(NARR.read)].join(', '))} · ` : ''}a model’s words from the node’s figures, never a reading · kept nowhere`
-    + `${NARR.at && !NARR.busy ? ` · written ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(NARR.at))}, again in 15 min` : NARR.busy ? ' · writing now' : ''}</div>`;
+    + `${NARR.at && !NARR.busy ? ` · written ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(NARR.at))}, again in 3 min` : NARR.busy ? ' · writing now' : ''}</div>`;
 }
 async function narrate() {
   if (NARR.busy || view() !== 'wall') return;
