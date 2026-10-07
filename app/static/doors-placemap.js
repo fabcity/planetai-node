@@ -178,8 +178,10 @@ function applyBase() {
 /* What the node holds of its own map, and the credit each layer owes (ODbL, CC BY, Copernicus). */
 function groundRows() {
   const m = (PM.meta && PM.meta.layers) || {}, mb = b => b ? `${(b / 1e6).toFixed(1)} MB` : '', G = PM.ground || {};
-  const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; if (empty) PM.on[id] = false; };
-  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : 'the plan from /place/geojson; no street map on this node yet');
+  /* no /ground/meta at all is this screen being refused it, not a node without a map: say which */
+  const locked = !PM.meta;
+  const set = (id, sub, empty, why) => { const l = LAYERS.find(x => x.id === id); if (sub) l.sub = sub; l.empty = !!empty; l.why = why; l.locked = locked && !!empty; if (empty) PM.on[id] = false; };
+  set('street', G.vector ? `OpenStreetMap ${(m.vector || {}).build ? `build ${m.vector.build.slice(0, 8)}` : ''} · ${mb((m.vector || {}).bytes)} on this node` : locked ? 'token-only · unlock this screen under Node' : 'the plan from /place/geojson; no street map on this node yet');
   set('labels', null, !(G.vector && G.glyphs), 'planetai run place basemap --only vector');
   const im = m.imagery || {};
   set('imagery', G.imagery ? `Sentinel-2, ${im.passes} passes, ${(im.from || '').slice(0, 7)} to ${(im.to || '').slice(0, 7)} · ${mb(im.bytes)}` : null, !G.imagery, 'planetai run earth-engine basemap');
@@ -289,7 +291,7 @@ function panel() {
       const hidden = PM.on[l.id] && ((l.minz != null && z < l.minz) || (l.maxz != null && z > l.maxz));
       return `<div class="ly ${l.empty ? 'empty' : ''} ${PM.on[l.id] ? 'on' : ''}" data-l="${l.id}">`
         + `<label><input type="checkbox" ${PM.on[l.id] ? 'checked' : ''} ${l.empty ? 'disabled' : ''} aria-label="${esc(l.name)}">`
-        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}` : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
+        + `<i class="sw ${l.sw}" aria-hidden="true"></i><span class="nm">${esc(l.name)}<small>${l.empty ? (l.locked ? 'token-only · unlock this screen under Node' : `The ${l.pack} pack has nothing here yet${l.why ? ` · <code>${esc(l.why)}</code>` : ''}`) : esc(l.sub)}${hidden ? ` · ${l.minz != null && z < l.minz ? 'zoom in to see' : 'zoom out to see'}` : ''}</small></span>`
         + `<span class="pk">${esc(l.pack)}</span></label>`
         + (l.id === 'wind' && PM.on.wind && PM.wind ? `<label class="whr"><span>now</span><input type="range" min="0" max="${PM.wind.times.length - 1 - nowIdx()}" step="1" value="${PM.windStep}" aria-label="Hours ahead"><b>${PM.windStep ? `+${PM.windStep} h` : 'now'}</b></label>` : '')
         + (l.empty || l.still ? '' : `<input class="op" type="range" min="0" max="1" step="0.05" value="${PM.alpha[l.id]}" aria-label="${esc(l.name)} opacity" ${PM.on[l.id] ? '' : 'disabled'}>`)
@@ -515,7 +517,7 @@ async function placeMap() {
   groundRows();
   const nodePlan = await ask('place/geojson').then(g => (g.features || []).length ? g : null).catch(() => null);
   PM.land = { type: 'FeatureCollection', features: [] }; PM.plan = nodePlan;
-  if (!nodePlan && !PM.ground.vector) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map';
+  if (!nodePlan && !PM.ground.vector && PM.meta) LAYERS.find(l => l.id === 'street').sub = 'the node sent no plan and holds no street map';
   const el = $('#map'); el.innerHTML = '';
   const map = PM.map = new maplibregl.Map({ container: el, style: style(), center: D.point, zoom: 13.6, minZoom: 5, maxZoom: 18.5,
     dragRotate: false, pitchWithRotate: false, touchPitch: false, maxPitch: 0, attributionControl: false, fadeDuration: 0, canvasContextAttributes: { preserveDrawingBuffer: true },
