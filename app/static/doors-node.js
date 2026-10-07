@@ -95,15 +95,29 @@ async function around() {
     + `<p class="fine">The programme’s list on 6 Oct, not something this node heard: its radio has announced its cell every 30 minutes and no peer has answered. State is drawn in weight, never hue: live is a solid 2.5 stroke. #3’s point is not published, so it is a ring around #1 rather than an invented coordinate.</p>`;
 }
 
-function running() {
-  const h = D.health, mesh = h.mesh, ret = h.reticulum;
+/* Running, and a light reading of the machine under it (GET /machine, /storage: token-only; the full one is Set up →
+   Machine). Meters are ink on a hairline, one per resource, so the state reads at a glance. */
+async function running() {
+  const h = D.health, mesh = h.mesh && h.mesh.root_topic ? h.mesh : null, ret = h.reticulum;
+  const [M, S] = await Promise.all(['machine', 'storage'].map(r => fetch('/' + r, { headers: DOORS_AUTH() }).then(x => x.ok ? x.json() : null).catch(() => null)));
+  const meter = (v, T) => T ? `<i class="nm"><b style="width:${Math.min(100, v / T * 100).toFixed(1)}%"></b></i>` : '';
+  const gb = b => b == null ? '—' : b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : `${Math.round(b / 1e6)} MB`;
+  const mem = M && M.memory, used = mem && mem.total_bytes && mem.available_bytes != null ? mem.total_bytes - mem.available_bytes : null, k = S && S.disk;
+  const years = d => d == null ? '—' : d >= 730 ? `${Math.round(d / 365)} years` : d >= 60 ? `${Math.round(d / 30)} months` : `${d} days`;
+  const hw = M ? [
+    ['Processor', `${M.arch} · ${M.cores} cores · load ${M.load ? M.load[0].toFixed(2) : '—'}${meter(M.load ? M.load[0] : 0, M.cores)}`, M.cpu_busy_pct == null ? '—' : `${M.cpu_busy_pct}% busy`],
+    ['Memory', `${gb(used)} of ${gb(mem.total_bytes)}${meter(used || 0, mem.total_bytes)}`, `${gb(mem.available_bytes)} free`],
+    ...(M.temperatures || []).slice(0, 1).map(t => ['Temperature', t.zone, `${t.celsius} °C`]),
+    ...(k ? [['Disk', `${gb(S.database_bytes + S.out_bytes + S.backups.bytes + S.exports_bytes)} this node · ${gb(k.free_bytes)} free of ${gb(k.total_bytes)}${meter(k.used_bytes, k.total_bytes)}`, `${years(S.days_left)} left`]] : []),
+  ] : [['The machine', 'its processor, memory and disk are the keeper’s: unlock this screen in Set up', '<a href="#setup/screen">unlock →</a>']];
   $('#running').innerHTML = [['Version', `planetai-node ${h.version} · schema ${h.schema}`, ''], ['Running for', 'since the last restart', `${fmt(h.uptime_s / 3600, 1)} h`],
     ['Readings taken in', h.last_poll ? `${h.polls} polls since the restart, the last at ${h.last_poll.slice(11, 16)} UTC` : 'no poll yet since the restart', h.ingested.toLocaleString('en')],
-    ['Its clock', 'every local hour on these pages is this zone’s', h.tz],
+    ...hw,
     ['Mesh in the house', mesh ? `${mesh.root_topic} · gateway ${mesh.gateway}` : 'no mesh broker set', mesh ? `${mesh.packets} packets` : 'off'],
     ['Radio', ret && ret.announce_s ? `announces its cell every ${ret.announce_s / 60} min` : 'no radio bridge set', ret && ret.ok ? 'on' : 'off'],
     ['This screen', DOORS_TOKEN() ? 'holds a token: it draws the map, the cells and the counts' : `at SHARE_LEVEL=${D.share || 'off'} without a token: the map, the cells and the counts stay on the node`,
       DOORS_TOKEN() ? 'unlocked' : 'locked']]
-    .map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${esc(s2)}</span><span class="c">${esc(c)}</span></div>`).join('');
+    .map(([t, s2, c]) => `<div class="lrow"><span class="t">${t}</span><span class="s">${t === 'The machine' || /class="nm"/.test(s2) ? s2.replace(/^([^<]*)/, m => esc(m)) : esc(s2)}</span><span class="c">${/^<a /.test(c) ? c : esc(c)}</span></div>`).join('')
+    + `<p class="fine">${M ? 'The machine as the node’s containers see it. ' : ''}<a href="#setup/machine">Set up → Machine</a> has all of it, and how long the disk lasts.</p>`;
 }
 

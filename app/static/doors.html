@@ -404,6 +404,8 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .sbtn.primary{border-width:2px}
 .sbar{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;align-items:center;gap:12px;padding:12px clamp(16px,3vw,40px);background:var(--ground);border-top:2px solid var(--ink);font:500 var(--t-small) var(--mono)}
 .sbar .sp{flex:1}
+.srow:has(> .sc.txt){grid-template-columns:200px minmax(0,1fr)}
+.lrow .nm{display:block;height:4px;border:1px solid var(--ink);margin-top:5px;max-width:260px}.lrow .nm b{display:block;height:100%;background:var(--ink)}
 .dbar.thin{height:6px;margin:6px 0 0;max-width:340px}.srow .sc.txt small{display:block;color:var(--mute);margin-top:3px}.spane h3.sub2{margin:34px 0 6px;font:700 var(--t-read) var(--display)}
 .dhead{display:flex;align-items:baseline;gap:14px;margin:6px 0 14px}.dhead b{font:600 44px/1 var(--mono);letter-spacing:-.02em}.dhead span{color:var(--mute);font-size:var(--t-small);max-width:40ch}
 .dbar{display:flex;height:22px;border:1px solid var(--ink);margin-bottom:8px}.dbar i{display:block;height:100%}

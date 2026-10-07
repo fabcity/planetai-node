@@ -146,7 +146,7 @@ async function sUnlock(ev) {
 /* Storage: the node's own answer (GET /storage, token-only). One bar for the disk, ruled not shaded: what this node
    keeps (solid), what else uses the disk (hatched), what is free (open); then the rows, and how long the free part
    lasts at the last seven days' rate. */
-const sBytes = b => b == null ? '—' : b >= 1e12 ? `${(b / 1e12).toFixed(2)} TB` : b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(0)} MB` : `${Math.round(b / 1e3)} kB`;
+const sBytes = b => b == null ? '—' : b < 1e3 ? `${b} B` : b >= 1e12 ? `${(b / 1e12).toFixed(2)} TB` : b >= 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b >= 1e6 ? `${(b / 1e6).toFixed(0)} MB` : `${Math.round(b / 1e3)} kB`;
 const sDays = d => d >= 730 ? `${Math.round(d / 365)} years` : d >= 60 ? `${Math.round(d / 30)} months` : `${d} days`;
 /* Machine: the machine under the node (GET /machine), the node on it (GET /health), and its storage (GET /storage).
    All three are the node's answers; the page only lays them out. */
@@ -168,7 +168,9 @@ function sMachine() {
     ['System', `${esc(M.system)} · Python ${esc(M.python)}<small>${esc(M.seen_as)}</small>`],
     ['Database', `${esc(M.database.version)} · up since ${esc((M.database.since || '').slice(0, 16).replace('T', ' '))} · ${M.database.connections} connections`],
     ['The node', `${esc(h.version)} · ${(h.polls || 0).toLocaleString('en')} polls and ${(h.ingested || 0).toLocaleString('en')} readings since its restart · last poll ${esc((h.last_poll || 'none yet').slice(11, 16))} UTC`
-      + `${h.errors ? `<small>${h.errors} errors since the restart${h.last_error ? `; the last: ${esc(String(h.last_error).slice(0, 160))}` : ''}</small>` : '<small>no errors since the restart</small>'}`],
+      + (() => { /* /health.errors is each source failing now, by name, with its first line; a source that recovers leaves it */
+          const E = h.errors && typeof h.errors === 'object' ? Object.entries(h.errors) : [];
+          return E.length ? `<small>${E.length} source${E.length === 1 ? '' : 's'} failing now: ${E.map(([k, v]) => `${esc(k)} (${esc(String(v).slice(0, 90))})`).join('; ')}</small>` : '<small>no source failing now</small>'; })()],
   ].map(([t, v]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${v}</div></div>`).join('');
   return `<h2>Machine</h2><p class="blurb">The machine under this node, the node on it, and how long its disk lasts. Every figure is the node’s own answer (GET /machine, /health, /storage).</p>`
     + `<div class="rows">${machineRows}</div><h3 class="sub2">Storage</h3>` + sStorageBody(S);
@@ -180,7 +182,7 @@ function sStorageBody(S) {
     + `<i class="mine" style="width:${pc(mine)}"></i><i class="other" style="width:${pc(k.used_bytes - mine)}"></i></div>`
     + `<div class="dkey"><span><i class="mine"></i>this node ${sBytes(mine)}</span><span><i class="other"></i>everything else ${sBytes(k.used_bytes - mine)}</span><span><i></i>free ${sBytes(k.free_bytes)}</span><span>of ${sBytes(k.total_bytes)}</span></div>` : '';
   const left = S.days_left == null ? 'not known yet: no readings in the last seven days' : `about ${sDays(S.days_left)} at the last seven days’ rate`;
-  return `<p class="blurb">Nothing is ever pruned, so the readings are what grows.</p><div class="dhead"><b>${S.days_left == null ? '—' : sDays(S.days_left)}</b><span>before this disk is full, ${S.days_left == null ? 'once there is a rate to go on' : 'at the rate of the last seven days'}</span></div>${bar}<div class="rows">`
+  return `<p class="blurb">Nothing is ever pruned, so the readings are what grows.</p><div class="dhead"><b>${S.days_left == null ? '—' : sDays(S.days_left)}</b><span>before the disk under the node’s files is full, ${S.days_left == null ? 'once there is a rate to go on' : 'at the rate of the last seven days'}</span></div>${bar}<div class="rows">`
     + [['Database', `${sBytes(S.database_bytes)} · ${S.readings.toLocaleString('en')} readings, ${sBytes(S.bytes_per_reading)} each with its indexes`],
        ['Growth', `${sBytes(S.growth_bytes_per_day)} a day · ${S.readings_last_7_days.toLocaleString('en')} readings in the last seven days`],
        ['Backups', `${sBytes(S.backups.bytes)} in ${S.backups.dumps} dump${S.backups.dumps === 1 ? '' : 's'}; about ${sBytes(S.backups.bytes_when_full)} once ${S.backups.keep_days} days are kept (BACKUP_KEEP)`],
