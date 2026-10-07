@@ -21,6 +21,7 @@
 #   planetai act <id>       your note on what you did about alert <id>
 #   planetai mesh           join the tailnet: reach this node from anywhere, no open ports
 #   planetai meshtastic     LoRa sensors and alerts via a gateway radio (sets up the broker, prints gateway settings)
+#   planetai broker         a DIY node publishing straight to this node (sets up the broker, prints the portal values)
 #   planetai reticulum      give the node an LXMF address: encrypted messaging over TCP or LoRa (RNode)
 #   planetai homeassistant  publish sensors and alerts as Home Assistant entities (MQTT discovery)
 #   planetai packs          what is loaded; `packs install` adds code-pack settings to .env and their libraries to the image
@@ -862,12 +863,9 @@ lan_ip() {
   esac
 }
 profiles_add() { local cur; cur="$(envget COMPOSE_PROFILES)"; case ",$cur," in *",$1,"*) ;; *) envset COMPOSE_PROFILES "${cur:+$cur,}$1";; esac; }
-cmd_meshtastic() {
-  step "Meshtastic"
-  echo "  A LoRa mesh reaches sensors and phones where there is no WiFi. One radio with WiFi is the gateway: it"
-  echo "  uplinks the mesh to a broker on this node, and can send alerts back out. This sets the node side up and"
-  echo "  tells you exactly what to type into the gateway."
-  echo
+# The broker and its one user, created once and shared by everything that publishes to this node: the Meshtastic
+# gateway, Home Assistant, a DIY node. Idempotent: a second call keeps the password and only makes sure it runs.
+broker_ensure() {
   local user="planetai" pass; pass="$(envget MQTT_PASS)"
   if [[ -z "$pass" ]]; then
     pass="$(openssl rand -hex 12 2>/dev/null || head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
@@ -883,6 +881,16 @@ cmd_meshtastic() {
   [[ -s config/mosquitto/passwd ]] || fail "password file is empty after mosquitto_passwd; see $LOG"
   say "starting the broker and restarting the node with MQTT on"
   docker compose up -d >>"$LOG" 2>&1 && docker compose up -d --force-recreate app >>"$LOG" 2>&1 || fail "compose failed; see $LOG"
+}
+
+cmd_meshtastic() {
+  step "Meshtastic"
+  echo "  A LoRa mesh reaches sensors and phones where there is no WiFi. One radio with WiFi is the gateway: it"
+  echo "  uplinks the mesh to a broker on this node, and can send alerts back out. This sets the node side up and"
+  echo "  tells you exactly what to type into the gateway."
+  echo
+  broker_ensure
+  local user="planetai" pass; pass="$(envget MQTT_PASS)"
   local ip; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
   local region="EU_868"; case "$(envget NODE_CITY)" in bali) region="SG_923 (AS923, the band Indonesia allocates)";; boston) region="US";; santiago) region="LORA_24 or check local allocation";; esac
   step "Now the gateway radio (the ESP32 one), in the Meshtastic app"
@@ -918,6 +926,45 @@ T
   else
     warn "nothing yet. The usual reasons: JSON output off on the gateway; wrong address (this Mac is ${ip}); gateway not on"
     warn "this WiFi; a firewall blocking 1883. Watch with:  planetai logs mosquitto    and    planetai logs"
+  fi
+}
+
+
+# ---------------------------------------------------------------- broker: a DIY node publishing straight to this node
+cmd_broker() {
+  step "This node's broker"
+  echo "  A Making Sense Bali DIY node can publish to this node instead of to smartcitizen.me: the same topics and"
+  echo "  bytes, so no new firmware beyond v4. The node keeps every reading with the device's own time, and passes"
+  echo "  the message on to the platform for any token listed in SC_FORWARD. This sets the node side up and prints"
+  echo "  what to type into the node's setup portal."
+  echo
+  broker_ensure
+  local ip host; ip="$(lan_ip)"; [[ -n "$ip" ]] || ip="<this machine LAN IP>"
+  host="$(scutil --get LocalHostName 2>/dev/null || hostname -s 2>/dev/null)"; host="${host:+${host}.local}"
+  step "Now the DIY node, in its setup portal (firmware v4), under \"Where it publishes\""
+  cat <<T
+     Broker host:      ${host:-$ip}$( [[ -n "$host" ]] && echo "   (or $ip, if the phone cannot resolve .local names)")
+     Broker port:      1883
+     Broker user:      planetai
+     Broker password:  $(envget MQTT_PASS)
+     Device token:     the device's Smart Citizen token if it has a page there; else any six characters you choose
+     Indoors:          tick it when the node hangs in a room, so its readings never enter the outside air
+
+   Give this node a fixed address on the router (a DHCP reservation): the DIY node stores a host, not a search.
+   To keep the device's page on smartcitizen.me:   planetai config set SC_FORWARD <token>[,<token>]
+   and list that device's platform id in SC_EXCLUDE, or the cloud adapter reads it a second time.
+T
+  echo
+  printf '  Waiting for the first message from a DIY node (up to 3 minutes)'
+  local got=""; for i in $(seq 1 90); do
+    got="$(api /health | json 'print(d.get("direct",{}).get("messages",0))' 2>/dev/null || echo 0)"
+    [[ "${got:-0}" -gt 0 ]] && break; printf '.'; sleep 2
+  done; echo
+  if [[ "${got:-0}" -gt 0 ]]; then
+    say "messages arriving. Sensors seen so far:"; cmd_sensors | grep -i "sck-" || echo "   (a meta message only so far; readings follow every minute)"
+  else
+    warn "nothing yet. The node's status page (http://<its name>.local) says whether its last publish succeeded;"
+    echo "  \`planetai logs mosquitto\` shows who connected and from where."
   fi
 }
 
@@ -2114,7 +2161,7 @@ case "${1:-help}" in
   update) cmd_update;;  backup) cmd_backup;;  config) shift; cmd_config "$@";;  logs) shift; cmd_logs "$@";;
   start) cmd_start;;  stop) cmd_stop;;  restart) cmd_restart;;  sensors) shift; cmd_sensors "$@";;  cells) shift; cmd_cells "$@";;
   mesh) shift; cmd_mesh "$@";;
-  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;
+  meshtastic) cmd_meshtastic;;  reticulum) cmd_reticulum;;  broker) cmd_broker;;
   homeassistant|ha) cmd_homeassistant;;
   packs) shift; cmd_packs "$@";;
   sources) shift; cmd_sources "$@";;

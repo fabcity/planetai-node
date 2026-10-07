@@ -230,7 +230,8 @@ data, what it loads.
 | `CKAN_SCALE` | `city` | scale string | The scale stamped on CKAN observations. | env only |
 | `POLL_SECONDS` | `300` | seconds | How often the source loop polls. | bootstrap |
 | `MESH_INDOOR_NODES` | blank | comma-separated `!hex` ids | Meshtastic radios that are indoors, e.g. `!8f491db0,!64e0bfd1`. Mesh sensors default to outdoor. | runtime |
-| `MQTT_HOST` | blank | hostname | The broker. When set, the MQTT thread starts and subscribes to `msh/#` and `planetai/sensors/#`. `planetai meshtastic` sets it. | bootstrap |
+| `MQTT_HOST` | blank | hostname | The broker. When set, the MQTT thread starts and subscribes to `msh/#`, `planetai/sensors/#` and `device/sck/#`. `planetai meshtastic` and `planetai broker` set it. | bootstrap |
+| `SC_FORWARD` | blank | comma-separated device tokens | Kits and DIY nodes publishing to this node's broker whose messages are passed on to smartcitizen.me unchanged (QoS 1, TLS verified), through a queue that survives an internet outage. Blank forwards nothing. See [Sensors](sensors.md). | runtime · secret · outward |
 | `MQTT_USER`, `MQTT_PASS` | blank | strings | Broker credentials. `planetai meshtastic` generates them and writes the broker's password file. | env only · secret |
 | `SOURCES_DIR` | `/app/data/sources` | path inside the container | Where the app reads the vendored source registry that `GET /sources` serves. Mounted read-only from `./data`. | env only |
 

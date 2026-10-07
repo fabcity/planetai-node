@@ -152,6 +152,9 @@ MQTT_USER:
 MQTT_PASS:
   default: ""
   help: "Meshtastic via MQTT. The gateway radio publishes to the node's Mosquitto with these credentials."
+SC_FORWARD:
+  default: ""
+  help: "Smart Citizen Kits and DIY nodes can publish to this broker instead of the platform (`planetai broker`). The tokens listed here are forwarded on to smartcitizen.me unchanged; anything not listed stays in the house."
 MESH_INDOOR_NODES:
   default: ""
   help: "Mesh node ids that are indoors, e.g. !abcd1234,!beef5678  (mesh sensors default to outdoor)"
