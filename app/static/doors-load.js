@@ -49,12 +49,15 @@ function buildD(A, locale) {
   /* the hourly table, pivoted: series[sensor][metric][i] = [mean, min, max] */
   let raw = null;
   if (A.readings_1h) {
-    const buckets = [...new Set(A.readings_1h.map(r => r.bucket))].sort(), at = new Map(buckets.map((b, i) => [b, i])), series = {};
-    for (const r of A.readings_1h) {
+    /* forecast rows are timestamped up to 48 h ahead: the table read here stops at the hour /issues was computed */
+    const upTo = Date.parse(I.as_of), rows = A.readings_1h.filter(r => Date.parse(r.bucket) <= upTo);
+    const buckets = [...new Set(rows.map(r => r.bucket))].sort().slice(-24), at = new Map(buckets.map((b, i) => [b, i])), series = {};
+    for (const r of rows) {
+      if (!at.has(r.bucket)) continue;
       const m = ((series[r.sensor_id] ||= {})[r.metric] ||= buckets.map(() => null));
       m[at.get(r.bucket)] = [r.mean, r.min, r.max];
     }
-    raw = { buckets, series, n: A.readings_1h };
+    raw = { buckets, series, n: rows.filter(r => at.has(r.bucket)) };
   }
   const stats15 = {};
   for (const s of A.stats || []) (stats15[s.sensor_id] ||= {})[s.metric] = [s.mean_15m, s.silent_minutes];

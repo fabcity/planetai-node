@@ -145,6 +145,8 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .row .sub{grid-column:1 / -1;font:500 var(--t-cap) var(--mono);color:var(--mute)}
 .over{display:inline-block;width:8px;height:8px;background:var(--signal-worse);margin-right:6px}
 #rose svg{display:block;overflow:visible}
+.aroundmap{position:relative;border:1px solid var(--rule,currentColor);border-color:color-mix(in srgb,currentColor 18%,transparent)}
+.aroundmap .maplibregl-ctrl-scale{background:transparent;border-color:currentColor;color:inherit;font:10px/1.4 "JetBrains Mono",monospace}
 .lt{display:grid;grid-template-columns:16px 72px minmax(0,1fr);align-items:baseline;gap:8px;font-size:var(--t-small);padding:7px 0;border-top:1px solid var(--hair)}
 .lt .t{font:500 var(--t-cap)/1.9 var(--mono)}
 
@@ -209,6 +211,10 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 #layers .ly code{font:inherit;border:1px solid var(--hair);padding:0 3px}
 .srow.focus,section.focus{outline:2px solid var(--cells);outline-offset:4px}
 .windcv{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#wfield{position:relative}.wallmap{position:relative}.wallmap .windcv{z-index:1}
+.wallmap .maplibregl-ctrl-scale{background:transparent;border-color:var(--ink);color:var(--ink);font:11px/1.4 var(--mono)}
+.wclock{position:absolute;top:14px;left:16px;z-index:3;display:flex;flex-direction:column;gap:2px;pointer-events:none;font:500 11px var(--mono);color:var(--mute);text-shadow:0 0 6px var(--ground)}
+.wclock b{font:600 44px/1 var(--mono);color:var(--ink);letter-spacing:-.02em}
 #layers .whr{display:grid;grid-template-columns:auto minmax(0,1fr) 44px;gap:8px;align-items:center;margin:6px 0 2px 40px;font:500 10.5px var(--mono);color:var(--mute)}
 #layers .whr input{accent-color:var(--ink);width:100%}#layers .whr b{font-weight:600;color:var(--ink);text-align:right}
 #mapstatus .wind{color:var(--ink)}
@@ -371,7 +377,6 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <div class="rcol">
     <aside data-learn="states" data-reads="/issues /issues/days" data-stage="measure" data-pack="core"><div class="k">observe · at this hour</div><div class="rows" id="rows"></div></aside>
     <figure style="margin:0" data-learn="custody" data-reads="/sensors /stats" data-stage="observe" data-pack="air-quality" data-kind="stack"><div class="k">observe · around this house, now</div><div id="rose"></div><figcaption class="fine" id="rosecap"></figcaption></figure>
-    <aside id="lately" data-learn="actions" data-reads="/actions /alerts /rho" data-stage="act" data-pack="core" data-kind="row"></aside>
   </div>
 </main>
 
@@ -455,6 +460,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 <script src="/static/doors-place.js"></script>
 <script src="/static/doors-data.js"></script>
 <script src="/static/doors-flow.js"></script>
+<script src="/static/doors-wallmap.js"></script>
 <script src="/static/doors-wall.js"></script>
 <script src="/static/doors-node.js"></script>
 </body>

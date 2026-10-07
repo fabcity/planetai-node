@@ -566,4 +566,16 @@ async function placeMap() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && PM.measure.length) { PM.measure = []; PM.measured = null; PM.hover = null; redraw(); facts(); } });
 }
 window.placeMap = placeMap; window.__PM = PM;   // for the rig
+/* The same base for the doors' other maps (Now's "around this house"): the node's own street map and names when this
+   screen may have them; without them only the land's colour, never a tile from anywhere else. */
+window.groundBase = async theme => {
+  if (!PM.meta) { PM.meta = await ask('ground/meta').catch(() => null); PM.ground = (PM.meta && PM.meta.on_disk) || {}; }
+  PM.land = PM.land || { type: 'FeatureCollection', features: [] };
+  const keep = PM.theme; PM.theme = theme; const s = style(), p = P(); PM.theme = keep;
+  s.layers = s.layers.filter(l => !['imagery', 'drone', 'plan-sat'].includes(l.id));
+  if (!PM.ground.vector) s.layers[0].paint['background-color'] = p.land;
+  return { style: s, palette: p, street: !!PM.ground.vector };
+};
+window.groundRequest = url => (url.startsWith(location.origin + '/ground/') ? { url, headers: DOORS_AUTH() }
+  : url.startsWith(location.origin) || url.startsWith('blob:') ? { url } : { url: 'data:,' });
 })();

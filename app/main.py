@@ -2173,7 +2173,7 @@ COMPANIONS = {
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
-       for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wall", "node")},
+       for n in ("load", "nodegeo", "core", "fig", "now", "placemap", "place", "data", "flow", "wallmap", "wall", "node")},
     "world-land-110m.json": (STATIC / "vendor" / "world-land-110m.json", "application/json"),
 }
 NO_CACHE = {"cache-control": "no-cache, must-revalidate"}

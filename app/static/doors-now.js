@@ -1,12 +1,11 @@
 'use strict';
-/* NOW — the moment, its decision, who reads around the house, what was decided lately. Married to the node's rules:
+/* NOW — the moment, its decision, who reads around the house (the ledger is Data's, Tomas 7 Oct). Married to the node's rules:
    every part is one of the four card kinds (data-kind), names its learn mark, the routes it reads and its stage;
    every figure carries its comparison; the node's words are never shouted; provenance is a pill in ink.
    The first thing is the ladder, and under it the lead (learn: lead). */
 VIEWS.now = function () {
   rail($('#rail')); rows(); drawNow();
-  rose($('#rose'), { size: Math.min(340, $('#rose').parentNode.clientWidth) });
-  lately();
+  aroundMap($('#rose'));
 };
 function drawNow() {
   dayWeek({ el: $('#svg'), issue: S.issue, head: $('#fighead'), scale: $('#figline'), pick: j => { S.i = j; drawNow(); } });
@@ -107,6 +106,84 @@ function rowsValues() {
   });
 }
 
+/* Who reads around this house, now, on the node's own street map (MapLibre for the base, deck.gl for the stations,
+   as on Place). Each station at the point /sensors gives this screen, its 15-minute mean beside it (GET /stats, as the
+   wall reads it); the house's own sensors as one dot at the node's point with their range. Over the air line, a red
+   square. A station pressed opens it in Data. Without WebGL it falls back to the rose. */
+let NOWMAP = null;
+async function aroundMap(el) {
+  const theme = document.documentElement.dataset.theme || 'light', W = Math.min(360, el.parentNode.clientWidth), H = Math.round(W * 1.05);
+  if (!window.maplibregl || !window.deck || !window.groundBase) return rose(el, { size: W });
+  const M = 'pm25', line = (D.issues.air || {}).line, now15 = id => ((D.stats15[id] || {})[M] || [])[0] ?? null;
+  const all = D.sensors.filter(s => s.lat != null && s.lon != null && s.source !== 'openstreetmap');
+  const house = all.filter(s => s.local && s.kind === 'sensor'), hv = house.map(s => now15(s.sensor_id)).filter(v => v != null);
+  const out = all.filter(s => !s.local && (s.kind === 'sensor' || s.kind === 'facility'))
+    .map(s => ({ ...s, p: [s.lon, s.lat], v: s.kind === 'sensor' ? now15(s.sensor_id) : null }));
+  const sea = all.find(s => s.sensor_id === 'marine-point'), C = (k, a = 1) => rgba(k, a);
+  const quiet = out.filter(s => s.kind === 'sensor' && s.v == null).length, fac = out.filter(s => s.kind === 'facility').map(s => s.name.trim());
+  const base = await window.groundBase(theme);
+  if (!NOWMAP || NOWMAP.theme !== theme || !el.contains(NOWMAP.map.getContainer())) {
+    if (NOWMAP) NOWMAP.map.remove();
+    el.innerHTML = `<div class="aroundmap" style="width:${W}px;height:${H}px"></div>`;
+    let map; try { map = new maplibregl.Map({ container: el.firstChild, style: base.style, center: D.point, zoom: 11, attributionControl: false,
+      dragRotate: false, pitchWithRotate: false, touchPitch: false, scrollZoom: false, fadeDuration: 0, transformRequest: window.groundRequest }); } catch (e) { NOWMAP = null; return rose(el, { size: W }); }   /* no WebGL: the rose */
+    map.touchZoomRotate.disableRotation();
+    /* the stations are what this map is for: the base's names step back, and the street names go */
+    map.on('load', () => { if (map.getLayer('v-place-label')) map.setPaintProperty('v-place-label', 'text-opacity', .5);
+      for (const l of ['v-road-label', 'v-poi-label']) if (map.getLayer(l)) map.setLayoutProperty(l, 'visibility', 'none'); });
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 80, unit: 'metric' }), 'bottom-left');
+    const ov = new deck.MapboxOverlay({ interleaved: true, layers: [], pickingRadius: 6,
+      getCursor: ({ isDragging, isHovering }) => isDragging ? 'grabbing' : isHovering ? 'pointer' : 'grab',
+      onClick: i => { if (i.object && i.object.sensor_id) location.hash = 'data/' + encodeURIComponent(i.object.sensor_id); } });
+    map.addControl(ov);
+    const b = new maplibregl.LngLatBounds(D.point, D.point); out.forEach(s => b.extend(s.p)); if (sea) b.extend([sea.lon, sea.lat]);
+    map.fitBounds(b, { padding: 26, duration: 0, maxZoom: 14 });
+    NOWMAP = { map, ov, theme, geo: [] };
+    /* the rose's rings and the cells, now on the map: the node's own answers (GET /geo/rings, /geo/grid), token-only
+       because together they place it. The grid is resolution 7 (about 1.2 km to an edge) over what the map shows;
+       the node's own res-8 cell is the one drawn solid. */
+    map.once('idle', async () => {
+      const ask = q => fetch('/' + q, { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null);
+      const bx = map.getBounds(), box = [bx.getWest(), bx.getSouth(), bx.getEast(), bx.getNorth()].map(v => v.toFixed(5)).join(',');
+      const [rg, gr] = await Promise.all([ask('geo/rings?km=0.5,2,5,15'), ask(`geo/grid?res=7&bbox=${box}`)]);
+      const loopLL = row => { const r = []; for (let i = 1; i < row.length; i += 2) r.push([row[i + 1], row[i]]); r.push(r[0]); return r; };
+      const rings = rg ? rg.rings.map(g => ({ km: g.km, path: g.ring.map(([la, ln]) => [ln, la]) })) : [];
+      const dash = new deck.PathStyleExtension({ dash: true }), mono = 'JetBrains Mono, monospace', px = { widthUnits: 'pixels', widthMinPixels: 1 };
+      NOWMAP.geo = [
+        ...(gr ? [new deck.PathLayer({ id: 'grid', data: gr.cells_ll.map(loopLL), getPath: d => d, getColor: rgba('--cells', .18), getWidth: 1, ...px })] : []),
+        ...(D.ngeo ? [new deck.PolygonLayer({ id: 'cell8', data: [loopLL(D.ngeo.c8.ring)], getPolygon: d => d, getFillColor: rgba('--cells', .14), getLineColor: rgba('--cells'), lineWidthUnits: 'pixels', getLineWidth: 2 })] : []),
+        new deck.PathLayer({ id: 'rings', data: rings, getPath: d => d.path, getColor: rgba('--ink', .45), getWidth: 1, ...px, extensions: [dash], getDashArray: d => d.km < 1 ? [2, 3] : [4, 4] }),
+        new deck.TextLayer({ id: 'rings-l', data: rings, characterSet: 'auto', getPosition: d => d.path.reduce((a, q) => q[1] > a[1] ? q : a), getText: d => `${d.km} km`,
+          getSize: 10.5, fontFamily: mono, getColor: rgba('--mute'), getTextAnchor: 'middle', getAlignmentBaseline: 'bottom', getPixelOffset: [0, -3],
+          background: true, getBackgroundColor: rgba('--ground', .8), backgroundPadding: [3, 1] }),
+      ];
+      NOWMAP.cells = !!gr; NOWMAP.paint && NOWMAP.paint();
+    });
+  }
+  const mono = 'JetBrains Mono, monospace', ink = C('--ink'), ground = C('--ground');
+  NOWMAP.paint = () => NOWMAP.ov.setProps({ layers: [...NOWMAP.geo,
+    new deck.ScatterplotLayer({ id: 'pub', data: out.filter(s => s.kind === 'sensor'), getPosition: d => d.p, radiusUnits: 'pixels', getRadius: 4.5,
+      stroked: true, filled: true, getFillColor: ground, getLineColor: d => d.v == null ? C('--ink', .4) : ink, lineWidthUnits: 'pixels', getLineWidth: 1.5, pickable: true }),
+    new deck.TextLayer({ id: 'fac', data: out.filter(s => s.kind === 'facility'), characterSet: 'auto', getPosition: d => d.p, getText: () => '◇', getSize: 15, getColor: ink, pickable: true }),
+    new deck.ScatterplotLayer({ id: 'over', data: out.filter(s => line != null && s.v != null && s.v > line), getPosition: d => d.p, radiusUnits: 'pixels', getRadius: 2.5,
+      getFillColor: C('--signal-worse'), getPixelOffset: [9, -6] }),
+    new deck.TextLayer({ id: 'pub-v', data: out.filter(s => s.v != null), characterSet: 'auto', getPosition: d => d.p, getText: d => fmt(d.v, 0), getSize: 11.5,
+      fontFamily: mono, getColor: ink, getTextAnchor: 'start', getAlignmentBaseline: 'center', getPixelOffset: [8, 0],
+      background: true, getBackgroundColor: C('--ground', .78), backgroundPadding: [2, 0],
+      fontWeight: 600 }),
+    ...(sea ? [new deck.TextLayer({ id: 'sea', data: [sea], characterSet: 'auto', getPosition: d => [d.lon, d.lat], getText: () => '□ sea model', getSize: 11, fontFamily: mono, getColor: C('--mute'), getTextAnchor: 'start' })] : []),
+    new deck.ScatterplotLayer({ id: 'house', data: [{ p: D.point }], getPosition: d => d.p, radiusUnits: 'pixels', getRadius: 6.5, getFillColor: ink, stroked: true, getLineColor: ground, lineWidthUnits: 'pixels', getLineWidth: 2 }),
+    new deck.TextLayer({ id: 'house-l', data: [{ p: D.point }], characterSet: 'auto', getPosition: d => d.p, getPixelOffset: [0, 17], getTextAnchor: 'middle', getSize: 11, fontFamily: mono, getColor: ink,
+      background: true, getBackgroundColor: C('--ground', .92), backgroundPadding: [3, 1],
+      getText: () => `this house · ${house.length}${hv.length ? ` · ${fmt(d3.min(hv), 0)}–${fmt(d3.max(hv), 0)} ${unitOf(M)}` : ''}` }),
+  ] });
+  NOWMAP.paint();
+  $('#rosecap').innerHTML = `${said(labelOf(M))}, the 15-minute mean, at ${out.filter(s => s.v != null).length} public stations and ${house.length} in this house; `
+    + `${quiet} not heard in the last 15 minutes drawn faint. ${fac.length ? `The diamond${fac.length > 1 ? 's are' : ' is'} ${said(fac.join(', '))}. ` : ''}Press a station to open it in Data. `
+    + (base.street ? 'Rings at 0.5, 2, 5 and 15 km and the resolution-7 cells are the node’s; the solid cell is its own. The street map is this node’s own, OpenStreetMap contributors · Protomaps.'
+      : 'The node’s street map, its rings and its cells are token-only: unlock this screen under Node to draw them under the stations.');
+}
+
 /* Who reads around this house, now — a stack: one quantity at many distances, on one scale. True bearings; distance on
    a square-root scale to 16 km. The value is each station's 15-minute mean, as the wall reads it. */
 function rose(el, o) {
@@ -146,16 +223,6 @@ function rose(el, o) {
       : 'The stations are placed by the node’s own distances and bearings, which together say where it is, so this screen needs the token to draw them.');
 }
 
-/* What was decided lately (learn: actions): one row per alert, its stages in the order they came, a ring sign each —
-   closed when somebody acted. A row is counted in signs, never sized. */
-function lately() {
-  const A = [...D.actions].sort((a, b) => b.ts.localeCompare(a.ts)), r = D.rho;
-  const G = [...d3.group(A, a => a.alert_id).values()].slice(0, 5);
-  $('#lately').innerHTML = `<div class="k">act · decided lately</div>`
-    + G.map(g => { const s = [...g].reverse(), last = g[0], stages = [...new Set(s.map(a => a.stage))], closed = stages.includes('acted');
-      return `<div class="lt">${sign(closed ? 'sign-rho-closed' : 'sign-rho-open', closed ? 'closed' : '')}<span class="t">${wdhm(last.ts)}</span><span><b>${stages.map(esc).join(' → ')}</b> · ${said(last.actor)}<br><span class="x said">${esc(plain(last.text) || last.rule || '')}</span></span></div>`; }).join('')
-    + `<p class="x">${num('actions.count', A.length, `rows in the actions ledger, ${r.window_days} days`)} answers recorded · ${num('rho.acted', r.acted, `of ${r.alerts_act} act-level alerts`)} of ${r.alerts_act} alerts acted on in ${r.window_days} days · half within ${r.median_minutes} min. All of them on the <a href="#data">Data</a> door.</p>`;
-}
 
 document.addEventListener('keydown', ev => {
   if (document.activeElement !== $('#svg')) return;

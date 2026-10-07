@@ -57,7 +57,10 @@ const F = JSON.parse(fs.readFileSync('%s', 'utf8'));
 const open = { ...F, days: F.issues_days }; delete open.readings_1h; delete open.actions; delete open.alerts;
 const full = buildD({ ...F, days: F.issues_days }, 'en'), locked = buildD(open, 'en');
 const fl = flowFrom(full), fo = flowFrom(locked);
+/* node #1's live table carries forecast rows up to 48 h ahead (7 Oct): the doors' table must stop at the present */
+const ahead = buildD({ ...F, days: F.issues_days, readings_1h: F.readings_1h.concat([{ bucket: '2099-01-01T00:00:00+08:00', sensor_id: 'forecast-om', metric: 'fc_cloud', mean: 1, min: 1, max: 1, n: 1 }]) }, 'en');
 console.log(JSON.stringify({
+  aheadLast: ahead.raw.buckets[ahead.raw.buckets.length - 1], fullLast: full.raw.buckets[full.raw.buckets.length - 1], aheadN: ahead.raw.n.length, fullN: full.raw.n.length,
   order: full.order, lead: full.lead, n: full.buckets.length, issues: Object.keys(full.issues),
   air: full.issues.air, ev: full.events, raw: full.raw && { b: full.raw.buckets.length, ids: Object.keys(full.raw.series).length },
   lockedRaw: locked.raw, lockedNotes: locked.notes, fullNotes: full.notes, lockedActions: locked.actions.length,
@@ -92,4 +95,6 @@ print("doors: without the token the hourly table is absent and the ledger carrie
 assert r["flow"] == {"b": 24, "ids": 21, "alerts": 30, "answers": 7, "counted": True}, r["flow"]
 assert r["flowLocked"]["counted"] is False and r["flowLocked"]["ids"] == 0 and r["flowLocked"]["b"] == 24
 print("doors: the flow counts what the hourly table counted, and says it did not count without it")
+assert r["aheadLast"] == r["fullLast"] and r["aheadN"] == r["fullN"], "a forecast hour ahead of /issues entered the replayed table"
+print("doors: the hourly table stops at the hour /issues was computed; forecast rows ahead of it stay out")
 print("all doors checks passed")

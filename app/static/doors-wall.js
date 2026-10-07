@@ -13,7 +13,7 @@ VIEWS.wall = function () {
   const k = D.lead, it = D.issues[k], b = D.buckets[D.now];
   const carried = Object.keys(D.metrics).filter(m => Object.values(D.stats15).some(x => x[m] && x[m][0] != null));
   const chips = [WVAR, ...carried.filter(m => m !== WVAR)].slice(0, 4);
-  const moving = !CLOCK.reduced();
+  const moving = !CLOCK.reduced() && !!D.raw;   /* the hours replay only from the hourly table, which needs the token */
   const ask = (it.open_asks || []).length ? said(it.open_asks[0].text || '') : `Nothing has been asked.<small>${said(it.name)} is ${esc(it.state)}, and no rule here asks anybody to do anything about it.</small>`;
   $('#wallv').innerHTML = `
     <div class="wtop"><button class="wback" onclick="location.hash='#now'">← back</button>
@@ -21,7 +21,7 @@ VIEWS.wall = function () {
       <span class="k wid">${said(D.registry.name)} · ${said(D.node.place)} · #wall · share level ${esc(D.share || 'off')} · ${moving ? 'the last 6 hours, replayed every 30 s' : 'the last half hour, held still'}</span>
       <span class="k">${said(labelOf(WVAR))} · ${said(unitOf(WVAR))} · 15-min means</span></div>
     <div class="wgrid">
-      <section class="wl" data-kind="row"><div id="wfield" role="img" aria-label="The last hours of what came into this node and what left it, by scale"></div><div id="wtime" class="flowtime"></div></section>
+      <section class="wl" data-kind="row"><div id="wfield" role="img" aria-label="The stations around this house on its own map, their readings hour by hour, and the wind now"></div><div id="wtime" class="flowtime"></div></section>
       <section class="wr"><div class="whead">
         <div class="k">${said(it.name)} <span class="state">${esc(it.state)}</span> · ${said(it.reason_text || '')}</div>
         <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}</span></p>
@@ -32,13 +32,13 @@ VIEWS.wall = function () {
       </section>
     </div>
     <div class="wfrag" id="wfrag"></div>
-    <div class="wfoot k">Read at ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of))} · planetai-node ${esc(D.health.version)} · <b>stale</b> · ${moving ? 'one square is one event; the window replays every 30 s · press an hour to go to it' : 'reduced motion: nothing moves; press an hour to go to it'}</div>`;
+    <div class="wfoot k">Read at ${new Intl.DateTimeFormat('en-GB', { timeZone: D.tz, hour: '2-digit', minute: '2-digit' }).format(new Date(D.as_of))} · planetai-node ${esc(D.health.version)} · <b>stale</b> · ${moving ? 'a disc is a station’s hourly mean; the window replays every 30 s · press an hour to go to it' : 'reduced motion: nothing moves; press an hour to go to it'}</div>`;
   document.querySelectorAll('.wchips button').forEach(c => c.onclick = () => { WVAR = c.dataset.m; VIEWS.wall(); });
   rhoRow(); frags();
   // the drawing's square sets the left column: the main band's height less the strip, never more than 46% of the width
   const g = $('.wgrid'), S = Math.floor(Math.min(g.clientHeight - 76, g.clientWidth * .46));
   g.style.setProperty('--ws', S + 'px');
-  flowMount({ el: $('#wfield'), side: $('#wside'), time: $('#wtime'), big: true, size: S });
+  wallMap({ el: $('#wfield'), side: $('#wside'), time: $('#wtime'), size: S });
 };
 /* The ρ row: counted, never sized. One ring per alert up to 40, one per 10 up to 400, then one per 100; the caption
    names the unit and gives the exact counts. Closed rings are the answered ones, first. */
