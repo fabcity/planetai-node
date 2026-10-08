@@ -11,6 +11,9 @@ function dayWeek(o) {
   const x = d3.scaleLinear([0, 24], [m.l, m.l + iw]);
   const idx = h => D.at[date + '|' + h];
   const dists = ['room', 'yard', 'ring'].filter(dk => (it.series || {})[dk]);
+  /* a node that reads this issue at no distance sends distance: null and every band null (a model-only node,
+     a fresh install): the day draws with no line, instead of the throw sending the page to the locked screen */
+  const sd = (it.series || {})[it.hero_distance] || [];
   const dayVals = []; for (let h = 0; h < 24; h++) for (const dk of dists) { const j = idx(h); if (j != null && it.series[dk][j] != null) dayVals.push(it.series[dk][j]); }
   const usual = it.usual || [];
   // A scale a spike cannot flatten: the top is the larger of the line, the usual and the day's 95th percentile.
@@ -75,10 +78,10 @@ function dayWeek(o) {
   ends.sort((a, b) => a.y - b.y).forEach((e, n, A) => { if (n && e.y - A[n - 1].y < 12) e.y = A[n - 1].y + 12; });
   if (!narrow) ends.forEach(e => g.append('text').attr('class', e.dk === 'room' ? 'lab' : '').attr('x', e.x).attr('y', e.y).text(D.labels[e.dk]));
   // the hours over the line: red ticks along the floor (the mark carries the red, the words stay ink)
-  for (let h = 0; h < 24; h++) { const j = idx(h); const v = j == null ? null : it.series[it.hero_distance][j];
+  for (let h = 0; h < 24; h++) { const j = idx(h); const v = j == null ? null : sd[j];
     if (it.line != null && v != null && v > it.line) g.append('rect').attr('x', x(h) + 1).attr('y', m.t + H1 - 6).attr('width', x(h + 1) - x(h) - 2).attr('height', 6).attr('fill', 'var(--signal-worse)'); }
   // high and low of the house, labelled on the line (Apple Weather)
-  const hv = d3.range(24).map(h => { const j = idx(h); return j == null ? null : it.series[it.hero_distance][j]; });
+  const hv = d3.range(24).map(h => { const j = idx(h); return j == null ? null : sd[j]; });
   const hiH = d3.maxIndex(hv.map(v => v ?? -Infinity)), loH = d3.minIndex(hv.map(v => v ?? Infinity));
   for (const [h, w] of [[hiH, 'H'], [loH, 'L']]) if (hv[h] != null && hv[h] <= y.domain()[1]) {
     g.append('text').attr('class', 'lab').attr('x', x(h + .5)).attr('y', y(hv[h]) + (w === 'H' ? -8 : 16)).attr('text-anchor', 'middle').text(`${w} ${fmt(hv[h], it.dp)}`); }
@@ -92,7 +95,7 @@ function dayWeek(o) {
     g.append('text').attr('class', dt === date ? 'lab' : '').attr('x', m.l - 8).attr('y', yy + rowH - 3).attr('text-anchor', 'end').text(narrow ? dt.slice(8) : dLabel(dt).replace(',', ''));
     for (let h = 0; h < 24; h++) {
       const j = D.at[dt + '|' + h]; if (j == null) continue;
-      const v = it.series[it.hero_distance][j], over = it.line != null && v != null && v > it.line;
+      const v = sd[j], over = it.line != null && v != null && v > it.line;
       g.append('rect').attr('x', x(h) + 1).attr('y', yy + 1).attr('width', x(h + 1) - x(h) - 2).attr('height', rowH - 2)
         .attr('fill', v == null ? `url(#hatch-${uid})` : over ? 'var(--signal-worse)' : 'currentColor').attr('opacity', v == null || over ? 1 : shade(v))
         .style('cursor', 'pointer').on('click', () => o.pick && o.pick(j));

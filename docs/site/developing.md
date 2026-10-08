@@ -1,5 +1,5 @@
 # Developing and contributing
-<!-- checked: v0.80.2 -->
+<!-- checked: v0.80.3 -->
 
 This page is for the person who changes the node itself: a new adapter, a rule, a pack, a fix. A change
 here reaches every household the next time it runs `planetai update`, and, in the repo's words, "a

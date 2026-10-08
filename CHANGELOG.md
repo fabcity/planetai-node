@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.80.3 — 2026-10-08 — The doors open on a node that reads nothing yet
+
+- **the doors dashboard no longer crashes on a node with no local sensors.** Since v0.80.1 made the doors
+  the default page, `dayWeek` assumed every issue carries an hourly series for its hero distance. A node
+  that reads the issue at no distance — a model-only node, and every fresh install until its first sensor —
+  is answered `distance: null` with every band null by /issues/days, and `it.series[null]` threw before the
+  page could draw. The boot's catch-all then showed the locked screen, telling a household whose node was
+  sharing fine that "this node is not sharing its readings with this screen". The day now draws with no
+  line, the node's own sentence carries the view, and the throw is gone. Found on a tester's node in
+  Menorca; reproduced and verified against it live.
+
 ## v0.80.2 — 2026-10-08 — A reinstall over an old database is refused, and posidonia joins the wild packs
 
 - **a reinstall over an earlier node's database is refused again.** Since v0.42 the install's old-database
