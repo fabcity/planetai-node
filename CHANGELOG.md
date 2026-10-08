@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.80.1 — 2026-10-08 — The doors view is the default dashboard
 
 - **The five doors layout is now the default dashboard**: root `/` serves `doors.html`; `/?layout=classic` serves the legacy dashboard (`index.html`). The footer link in `doors-core.js` now points to `/?layout=classic`.
 

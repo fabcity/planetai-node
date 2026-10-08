@@ -1,5 +1,5 @@
 # Design
-<!-- checked: v0.80 -->
+<!-- checked: v0.80.1 -->
 
 What a PLANETAI surface is made of, and why each part is the way it is. This page is the programme layer
 written out: the colours and what each one means, the type, the four card kinds, the signs, every motion with
@@ -213,7 +213,7 @@ set by eye, or on one screen, or in one room, and have not been measured since. 
 - `planetai-design/decisions/design-log.md`: which round settled what, and why.
 - `app/static/planetai-theme.css`: generated from the first, held to its pin by `tools/check_theme.py`.
 
-The node's page is `index.html` (or `doors.html`, the five doors on trial at `/?layout=doors`) and the static files
+The node's page is `doors.html` (the five doors) or `index.html` (the classic dashboard at `/?layout=classic`) and the static files
 the node serves beside it, and stays so.
 `planetai.fab.city` may use a framework; the two never share code, and both read this layer.
 

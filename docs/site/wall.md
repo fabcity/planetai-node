@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.80 -->
+<!-- checked: v0.80.1 -->
 
 A screen on a wall that nobody is standing at. With the wall, the node is read by people walking past: a
 household sees one number, one sentence and whether the loop closed, and a lab sees which cells around it
@@ -93,5 +93,5 @@ going black.
 
 The wall only shows the alert. The answer is given on Telegram, over the radio or on the dashboard, and all of
 them write the same row in `actions`: see [Channels](channels.md) and [the dashboard](dashboard.md). What the
-ρ row counts is [ρ](rho.md). The Wall of the five doors, at `/?layout=doors#wall`, is another screen: a living map
-and the node thinking aloud, on [the dashboard](dashboard.md#the-five-doors-on-trial).
+ρ row counts is [ρ](rho.md). The Wall of the five doors, at `/#wall`, is another screen: a living map
+and the node thinking aloud, on [the dashboard](dashboard.md#the-five-doors).

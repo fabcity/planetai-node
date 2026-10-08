@@ -1,5 +1,5 @@
 # Ask the node
-<!-- checked: v0.80 -->
+<!-- checked: v0.80.1 -->
 
 The dashboard can be asked about what it shows. A pane opens beside the page and talks to the model Set up names
 for this node, the same one the Telegram bot uses, asked through the same tools. It reads the page and
@@ -26,7 +26,7 @@ An answer arrives word by word. Under it a ledger line says which model answered
 and the ledger says so.
 
 `UI_ASK` under Set up turns the pane off for everybody: no toggle, no pane. It is `on` by default. The wall never
-shows it. The five doors at `/?layout=doors` read it too: with `UI_ASK` off their ask box is gone and the Wall's
+shows it. The five doors read it too: with `UI_ASK` off their ask box is gone and the Wall's
 narration, which otherwise asks the same model every ten minutes, says asking is off and sends nothing.
 
 ## What it may do

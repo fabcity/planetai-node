@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.80 -->
+<!-- checked: v0.80.1 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -12,7 +12,7 @@ The node serves `index.html` and a fixed list of companion files by name from `G
 stylesheets (`tokens.css`, `planetai-theme.css`, `dashboard.css`), `dashboard.js`, the drawing library
 (`plot.umd.min.js` and `d3.min.js`), two SVGs, `kilometre-cells.json`,
 `learn.json` and the self-hosted fonts; for the map ground, `maplibre-gl.js`, `maplibre-gl.css` and `deck.gl.min.js`;
-and for the five doors (`/?layout=doors` serves `doors.html` in place of `index.html`), thirteen `doors-*.js`, `world-land-110m.json` and `docs_site.json`. The node computes and the page draws. A number the page works out
+and for the five doors (`doors.html`, served by default at `/`; `/?layout=classic` serves `index.html`), thirteen `doors-*.js`, `world-land-110m.json` and `docs_site.json`. The node computes and the page draws. A number the page works out
 for itself is a bug.
 
 ## A first read
@@ -420,20 +420,20 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.80.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.80.1.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`. The doors are the way round it: at `off` without a token
-> they draw the node's name, its refusal and the token field, so `/?layout=doors` is where a refused screen unlocks.
+> they draw the node's name, its refusal and the token field, so the default doors view is where a refused screen unlocks.
 
-## The five doors, on trial
+## The five doors
 
-`/?layout=doors` draws the same node as five doors, the redesign worked out in planetai-design (R33 to R45): **Now**
+The node renders as five doors by default, the redesign worked out in planetai-design (R33 to R45): **Now**
 (the moment, its decision with Done, Not now and Doesn't fit, and the stations around the house), **Place** (the
 ground as a map with layers, scales and a measuring tool, the satellite years and what changed), **Data** (every
 reading, drawn, the seven days of every issue, the models, the Index and the ledger), **Wall** (the keeper's one
-dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The dashboard
-stays at `/` while the doors are tried; nothing changes for a screen that does not ask for them.
+dark screen) and **Node** (what comes in and goes out, the nodes around it, and how it is running). The classic
+dashboard remains available at `/?layout=classic`.
 
 The doors read the routes the dashboard reads, renamed and pivoted in the page and never recomputed
 (`doors-load.js`), and they read them with the same token, kept in the same place in the browser. A screen without
