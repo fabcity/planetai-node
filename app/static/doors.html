@@ -440,12 +440,13 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .share .opt b{display:block;font:600 var(--t-cap) var(--mono);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
 .share .opt span{font-size:var(--t-small);color:var(--mute)}
 .share .opt.on{background:var(--ink);color:var(--ground)}.share .opt.on span{color:var(--ground);opacity:.85}
-.packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0;border-top:1px solid var(--ink);border-left:1px solid var(--ink);margin-bottom:18px}
-.pcard{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:14px 16px}
-.pcard .ph{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start}
-.pcard .ph b{font:600 var(--t-read) var(--body)}.pcard .sm{font:500 var(--t-cap) var(--mono);color:var(--mute)}
-.pcard .help{margin:6px 0 0;color:var(--mute);font-size:var(--t-small)}
-.pcard #setupv2 .srow{grid-template-columns:minmax(0,1fr)}.pcard #setupv2 .srow .sl label{font-size:var(--t-small)}
+.packs{display:flex;flex-direction:column;border-top:1px solid var(--ink);margin-bottom:18px;max-width:860px}
+.pcard{border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);border-left:1px solid var(--ink);padding:16px 20px}
+.pcard .ph{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+.pcard .ph b{font:600 var(--t-read) var(--body)}.pcard .sm{font:500 var(--t-cap) var(--mono);color:var(--mute);margin-top:2px}
+.pcard .help{margin:8px 0 0;color:var(--mute);font-size:var(--t-small);line-height:1.5;max-width:72ch;overflow-wrap:break-word;word-break:normal}
+#setupv2 .pcard .srow{grid-template-columns:minmax(0,1fr) minmax(220px,340px);gap:10px 28px;padding:14px 0 0;border-top:1px solid var(--hair);margin-top:12px}
+#setupv2 .pcard .srow .sl label{font-size:var(--t-small)}
 .hist{margin-top:26px;border-top:1px solid var(--ink);padding-top:10px;font-size:var(--t-small)}.hist p{margin:4px 0;color:var(--mute)}
 .unlock2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 20px;border:1px solid var(--ink);padding:16px;margin-top:18px;max-width:760px}
 .unlock2 label{display:flex;flex-direction:column;gap:6px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase}
@@ -470,9 +471,48 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   .snav a{border-top:0;border-right:1px solid var(--hair);padding:10px 12px;white-space:nowrap}.spane{padding-left:0}
   #setupv2 .srow{grid-template-columns:minmax(0,1fr)}.share,.unlock2{grid-template-columns:minmax(0,1fr)}.share .opt+.opt{border-left:0;border-top:1px solid var(--ink)}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+.asking{display:none}
+.asking.on{display:grid;position:fixed;inset:0;z-index:40;background:var(--ground);grid-template-columns:1fr 360px;gap:40px;padding:clamp(20px,4vw,60px);align-content:center;align-items:center;max-width:1440px;margin:0 auto}
+.asking .frame{position:relative;border:1px solid var(--ink);aspect-ratio:1.55;background:var(--ground);display:flex;align-items:center;justify-content:center}
+.asking .frame::before,.asking .frame::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--ink)}
+.asking .frame::before{left:-1px;top:-1px;border-right:0;border-bottom:0}
+.asking .frame::after{right:-1px;bottom:-1px;border-left:0;border-top:0}
+.asking canvas{width:100%;height:100%;display:block}
+.asking .aside{min-width:0}
+.asking .hd{display:flex;justify-content:space-between;gap:12px;margin:0 0 10px;font:500 var(--t-cap) var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.asking .hd b{color:var(--ink);font-weight:800}
+.asking .hd .blink{display:inline-block;width:8px;height:8px;background:var(--ink);vertical-align:middle;margin-right:8px;animation:askblink 1s steps(1) infinite}
+.asking .ep{font:500 var(--t-small)/1.7 var(--mono);color:var(--ink);margin:0 0 18px;min-height:80px}
+.asking .ep .r{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.asking .ep .r .ms{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.asking .ep .r.wait .ms{color:var(--mute);font-weight:400}
+.asking .big{font:800 clamp(2.2rem,6vw,3.5rem)/1 var(--num-face,var(--mono));color:var(--ink);margin:0;letter-spacing:-.03em}
+.asking .big small{font:600 14px var(--mono);letter-spacing:0;margin-left:8px}
+.asking .meters{display:grid;gap:4px;margin:12px 0 0}
+.asking .meters .r{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:center}
+.asking .meters .k{font:500 10.5px var(--mono);letter-spacing:.06em;color:var(--mute);text-transform:uppercase}
+.asking .meters .meter{height:10px;width:100%}
+.asking .rule{font:400 11.5px/1.6 var(--body);color:var(--mute);margin:14px 0 0;max-width:38ch}
+@media (max-width:900px){.asking.on{grid-template-columns:minmax(0,1fr)}.asking .frame{aspect-ratio:auto;height:min(38vh,72vw)}}
+.asking .brand{grid-column:1 / -1;margin:0;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.asking .brand b{color:var(--ink);font-weight:800}
+@keyframes askblink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){.asking .hd .blink{animation:none}}
 </style>
 </head>
 <body>
+<div class="asking" id="asking" aria-hidden="true">
+  <p class="brand"><b>PLANETAI</b> loading</p>
+  <div class="frame"><canvas id="askcv"></canvas></div>
+  <div class="aside">
+    <p class="hd"><span><i class="blink" aria-hidden="true"></i><b id="ask-what">Asking the node</b></span>
+      <span id="ask-count"></span></p>
+    <div class="ep" id="ask-ep"></div>
+    <p class="big" id="ask-big">----</p>
+    <p class="meters" id="ask-meters"></p>
+    <p class="rule" id="ask-rule"></p>
+  </div>
+</div>
 <header class="bar">
   <span class="who" id="who"></span>
   <nav class="doors" aria-label="Doors"><a href="#now" data-v="now">Now</a><a href="#place" data-v="place">Place</a><a href="#node" data-v="node">Node</a><a href="#data" data-v="data">Data</a><a href="#wall" data-v="wall">Wall</a></nav>

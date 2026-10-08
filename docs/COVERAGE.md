@@ -26,7 +26,7 @@ Re-read from `/cells` on 21 September 2026, node #1 at v0.69 with `LOCAL_RADIUS_
 |---|---|---|
 | Environmental \| Community | your sensors, PM2.5 24h mean; the share of days over the WHO line | live; partial |
 | Environmental \| City | nearest public sensors; land change (the `earth` pack) | partial |
-| Environmental \| Bioregion | sea temperature; days over the Posidonia line; tree cover (Earth Engine) | partial |
+| Environmental \| Bioregion | sea temperature; days over the Posidonia line (when wild `posidonia` is added); tree cover (Earth Engine) | partial |
 | Economic \| Community | mapped businesses per km² (OpenStreetMap, the `place` pack) | partial |
 | Social \| Community | heat-exposure hours from indoor temp and humidity | live |
 | Governance \| Community | ρ, alerts that led to action | partial → live at five actions |

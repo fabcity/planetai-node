@@ -36,8 +36,8 @@ That is 33 rules with a message (26, and the 7 the event engine reads), 4 report
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
 
-> **Note.** `example-cooking-hours` is the worked example, and `season`, `thingdata` and `make` arrived in v0.61 and v0.65. `xiaomi-air` (v0.61–v0.76) and `posidonia` (v0.61–v0.80) were core and are now a
-> wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs).
+> **Note.** `example-cooking-hours` is the worked example, and `season`, `thingdata` and `make` arrived in
+> v0.61 and v0.65. `xiaomi-air` and `posidonia` are wild packs, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs).
 
 ## air-quality
 
@@ -547,9 +547,11 @@ weather of a sea it cannot see.
 The wild `posidonia` pack reads this pack's `sea_surface_temp`; without `coast` enabled it has nothing to read.
 Attribution: Open-Meteo Marine API (CC BY 4.0), carrying Copernicus Marine / MeteoFrance MFWAM model data.
 
-## posidonia (wild pack)
+## posidonia (wild)
 
-Listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs). Thermal stress on *Posidonia oceanica*, the seagrass meadow the Balearic coast is built on, read from the sea-surface temperature the `coast` pack already fetches. Written for Menorca, Illes Balears, by Lucas Marangoni (Fab City Foundation). Add with:
+Now a wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs) (`planetai packs add posidonia`). Thermal stress on *Posidonia oceanica*, the seagrass the Balearic coast is built on, read from the sea-surface
+temperature the `coast` pack already fetches. No new source, no key, no metric of its own. Written for Menorca,
+Illes Balears, by Lucas Marangoni (Fab City Foundation). Add with:
 
 ```bash
 planetai packs add posidonia

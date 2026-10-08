@@ -79,8 +79,26 @@ function buildD(A, locale) {
 
 /* Every route at once. A 403 is this screen's SHARE_LEVEL speaking, not an error: the part stays null. */
 async function loadD() {
-  const get = p => fetch('/' + p, { headers: DOORS_AUTH() }).then(r => r.ok ? r.json() : null).catch(() => null);
-  const FIX = new URLSearchParams(location.search).get('fixture');
+  const get = async p => {
+    const t0 = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+    if (typeof ASKING !== 'undefined') ASKING.flight('/' + p);
+    try {
+      const r = await fetch('/' + p, { headers: DOORS_AUTH() });
+      const ms = ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0;
+      if (typeof ASKING !== 'undefined') ASKING.saw('/' + p, ms, r.ok);
+      if (!r.ok) return null;
+      const data = await r.json();
+      if (typeof ASKING !== 'undefined') {
+        if (p === 'health') ASKING.placed(data);
+        if (p === 'issues') ASKING.landed(data);
+      }
+      return data;
+    } catch (e) {
+      if (typeof ASKING !== 'undefined') ASKING.saw('/' + p, ((typeof performance !== 'undefined') ? performance.now() : Date.now()) - t0, false);
+      return null;
+    }
+  };
+  const FIX = (typeof location !== 'undefined') ? new URLSearchParams(location.search).get('fixture') : null;
   let A;
   if (FIX) {     /* a capture replayed: the bundle holds every route's answer under the route's own name */
     A = await get('issues/fixtures/' + encodeURIComponent(FIX)) || {};

@@ -73,6 +73,184 @@ function route() {
   learnList(); window.scrollTo(0, 0);
 }
 
+const ASKING = (function () {
+  const GL = '0123456789abcdef';
+  const N = 560;
+  const SPIN = 0.35;
+  const SETTLE_MS = 900;
+  let settleFor = SETTLE_MS;
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u);
+    pts.push({ x: r * Math.cos(th), y: u, z: r * Math.sin(th), g: GL[i % 16] });
+  }
+  const hex = [];
+  for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30 + 8); hex.push([Math.cos(a), Math.sin(a)]); }
+
+  let box, cv, on = false, t0 = 0, settle0 = 0, spec = null, held = false;
+  const reads = [];
+  let asking = '';
+
+  const el = id => document.getElementById(id);
+
+  function size() {
+    if (!cv) return;
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.max(1, Math.round(r.width * dpr));
+    cv.height = Math.max(1, Math.round(r.height * dpr));
+    cv._dpr = dpr;
+  }
+
+  function globe(ctx, W, H, dpr, ang, k, s, every, px) {
+    const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.36;
+    const ink = css('--ink') || '#171717', cells = css('--cells') || '#20388D';
+    ctx.beginPath();
+    hex.forEach((pp, i) => {
+      const x = cx + pp[0] * R * 1.18, y = cy + pp[1] * R * 1.18;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.strokeStyle = cells; ctx.lineWidth = (px < 9 ? 1.5 : 2) * dpr; ctx.globalAlpha = 0.9; ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    ctx.font = `${(px * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (let i = 0; i < N; i += every) {
+      const pp = pts[i];
+      const x = pp.x * ca + pp.z * sa, z = -pp.x * sa + pp.z * ca;
+      const depth = (z + 1) / 2;
+      ctx.globalAlpha = Math.min(1, (0.18 + 0.62 * depth) * (0.35 + 0.65 * k) + 0.25 * s);
+      ctx.fillStyle = ink;
+      ctx.fillText(pp.g, cx + x * R * (1 + 0.02 * k), cy + pp.y * R * (0.92 + 0.08 * k));
+    }
+    ctx.globalAlpha = 1;
+    return { cx, cy, R };
+  }
+
+  function draw(now) {
+    if (!cv) return;
+    const W = cv.width, H = cv.height, dpr = cv._dpr || 1;
+    if (!W || !H) return;
+    const ctx = cv.getContext('2d');
+    const mute = css('--mute') || '#6B6864', ink = css('--ink') || '#171717';
+    ctx.clearRect(0, 0, W, H);
+    const s = settle0 ? Math.min(1, (now - settle0) / settleFor) : 0;
+    const k = 1 - s;
+    const ang = (now - t0) / 1000 * SPIN * k;
+    const { cx, cy, R } = globe(ctx, W, H - 44 * dpr, dpr, ang, k, s, 1, 9);
+
+    const last = reads.length ? reads[reads.length - 1].path : '';
+    const tether = [[asking, -0.55, -0.42, 0], [last, 0.52, 0.38, 1]];
+    for (const [name, lx, ly, right] of tether) {
+      if (!name || (right && W / dpr < 560)) continue;
+      const px = cx + lx * R, py = cy + ly * R;
+      const ex = right ? W - 24 * dpr : 24 * dpr, ey = right ? H - 24 * dpr : 24 * dpr;
+      ctx.strokeStyle = ink; ctx.lineWidth = 1 * dpr; ctx.globalAlpha = 0.55;
+      ctx.beginPath(); ctx.moveTo(ex, ey);
+      ctx.lineTo(ex + (right ? -60 : 60) * dpr, ey); ctx.lineTo(px, py); ctx.stroke();
+      ctx.globalAlpha = 1; ctx.fillStyle = ink;
+      ctx.font = `bold ${(12 * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+      ctx.textAlign = right ? 'right' : 'left';
+      ctx.fillText(name, ex + (right ? -4 : 4) * dpr, ey + (right ? -10 : 10) * dpr);
+    }
+
+    ctx.fillStyle = mute; ctx.textAlign = 'left';
+    ctx.font = `${(8.5 * dpr).toFixed(0)}px ${css('--mono') || 'ui-monospace, monospace'}`;
+    const lines = [`GLYPHS 0-9 A-F · ${N} · ONE GLOBE, ONE CELL`].concat(spec || []);
+    lines.forEach((line, i) => ctx.fillText(line, 24 * dpr, H - (16 + 12 * (lines.length - 1 - i)) * dpr));
+  }
+
+  function rows() {
+    return reads.map(r =>
+      `<div class="r"><span class="p">${esc(r.path)}</span>`
+      + `<span class="ms">${r.ok ? `${Math.round(r.ms)} ms` : 'no answer'}</span></div>`).join('')
+      + (asking ? `<div class="r wait"><span class="p">${esc(asking)}</span>`
+        + `<span class="ms">asking…</span></div>` : '');
+  }
+
+  function paint() {
+    if (!on) return;
+    const e = el('ask-ep'); if (e) e.innerHTML = rows();
+    const c = el('ask-count');
+    if (c) c.textContent = `${reads.filter(r => r.ok).length} answered`;
+  }
+
+  return {
+    open(why, hold) {
+      box = el('asking');
+      if (!box || on) return;
+      cv = el('askcv');
+      if (!cv) {
+        cv = document.createElement('canvas');
+        cv.id = 'askcv';
+        (box.querySelector('.frame') || box).appendChild(cv);
+      }
+      on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      settleFor = SETTLE_MS; held = !!hold;
+      t0 = performance.now();
+      box.classList.add('on'); box.setAttribute('aria-hidden', 'false');
+      const w = el('ask-what'); if (w) w.textContent = why || 'Asking the node';
+      const b = el('ask-big'); if (b) { b.textContent = '----'; b.className = 'big'; }
+      const m = el('ask-meters'); if (m) m.innerHTML = '';
+      const r = el('ask-rule');
+      if (r) {
+        r.textContent = 'The glyphs are the sixteen characters an H3 index is written in. They turn '
+          + 'while the node has not answered and settle into this node’s own cell the moment '
+          + '/issues lands. Nothing here is a reading.';
+      }
+      size();
+      window.addEventListener('resize', size);
+      CLOCK.on('asking-globe', draw);
+      paint();
+    },
+    saw(path, ms, ok) {
+      if (!on) return;
+      reads.push({ path, ms, ok });
+      if (asking === path) asking = '';
+      paint();
+    },
+    flight(path) { if (on) { asking = path; paint(); } },
+    placed(health) {
+      if (!on || !health) return;
+      const c = health.cell || {};
+      const area = c.edge_m ? Math.round(2.59807621 * c.edge_m * c.edge_m).toLocaleString('en-GB') : null;
+      spec = [
+        `RES ${c.res == null ? '?' : c.res} · EDGE ${c.edge_m == null ? '?' : `${c.edge_m} M`}`
+          + `${area ? ` · ${area} M²` : ''}`,
+        `SHARE LEVEL ${String((health.share_level || 'off')).toUpperCase()} · RAW STAYS HOME`,
+      ];
+    },
+    landed(issues) {
+      if (!on || !issues) return;
+      settle0 = performance.now();
+      const floor = held ? 1200 : 0;
+      settleFor = Math.max(SETTLE_MS, floor - (settle0 - t0));
+      const hk = issues.headline, d = (issues.issues || {})[hk] || {};
+      const room = ((d.stack || {}).room || {}).value;
+      const b = el('ask-big');
+      if (b && room != null) {
+        b.innerHTML = `${esc(fmt(room, d.dp))}<small>${esc(d.unit || '')}</small>`;
+      }
+    },
+    close() {
+      if (!on) return;
+      const floor = held ? 1200 : 0;
+      const left = floor - (performance.now() - t0);
+      if (left > 0) { held = false; setTimeout(() => this.close(), left); return; }
+      on = false;
+      CLOCK.off('asking-globe');
+      window.removeEventListener('resize', size);
+      if (box) { box.classList.remove('on'); box.setAttribute('aria-hidden', 'true'); }
+      if (cv && cv.parentNode) cv.parentNode.removeChild(cv);
+      cv = null;
+    }
+  };
+}());
+window.PAI_ASKING = ASKING;
+
+ASKING.open('Asking the node', true);
 Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() => ({ marks: {} }))]).then(async ([d, l]) => {
   D = d; D.learn = l.marks;
   D.dates = [...new Set(D.buckets.map(dayOf))];
@@ -86,9 +264,10 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)} · ${D.health.version || ''}${DOORS_TOKEN() ? '' : ' · locked'}`;
   try { D.ngeo = await nodeGeo(D); } catch (e) { D.ngeo = null; D.ngeoErr = e.message; }
   route();
+  ASKING.close();
   window.addEventListener('hashchange', route);
   let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => VIEWS[view()](), 120); });
-}).catch(refused);
+}).catch(e => { ASKING.close(); refused(e); });
 
 /* At SHARE_LEVEL=off a screen without the token is refused /issues, and the doors have nothing to draw. That is a real
    state a phone on the house's WiFi will be in, not an error: draw the node's name (/health answers at every level),
