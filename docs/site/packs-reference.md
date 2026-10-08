@@ -23,7 +23,6 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `cold-start` | data | cross-domain | 3 info | — | — | — | — |
 | `forecast` | code | weather | none | `ahead` | — | `fetch` `status` `verify` `windfield` | `FORECAST_*` |
 | `coast` | code | coast | 2 info | — | 1 | — | `COAST_MAX_KM` |
-| `posidonia` | data | coast | 2 info | — | 1 | — | — |
 | `earth` | code | land | none | — | 1 | `fetch` `change` `frames` `status` `verify` `similar` | `EARTH_*` |
 | `earth-engine` | code | land | none | — | 1 | `timelapse` `verify` `basemap` | `EE_*`, `GROUND_SAT_WIDE_KM` |
 | `place` | code | place | 1 info | — | 1 | `refresh` `gaps` `verify` `basemap` | `PLACE_*`, `GROUND_*` |
@@ -32,13 +31,12 @@ is documentation; the presence of the file is what the loader reads. Code packs 
 | `thingdata` | code | repair | 1 warn | — | 2 | — | `THINGDATA_*` |
 | `example-cooking-hours` | data | (none) | 1 info | — | — | — | — |
 
-That is 35 rules with a message (28, and the 7 the event engine reads), 4 report contributors and 13 cells. Every rule with a message carries `en`,
+That is 33 rules with a message (26, and the 7 the event engine reads), 4 report contributors and 12 cells. Every rule with a message carries `en`,
 `id` and `es`, and so do the two core rules in `config/rules.yml`; Spanish reached every alert template in
 v0.63. The node picks `message[ALERT_LOCALE]` and falls back to `en`. Cooldowns below are in minutes, per
 `(rule, sensor_id)`.
 
-> **Note.** `posidonia` is Menorca's, `example-cooking-hours` is the worked example, and `season`,
-> `thingdata` and `make` arrived in v0.61 and v0.65. `xiaomi-air` was core from v0.61 to v0.76 and is now a
+> **Note.** `example-cooking-hours` is the worked example, and `season`, `thingdata` and `make` arrived in v0.61 and v0.65. `xiaomi-air` (v0.61–v0.76) and `posidonia` (v0.61–v0.80) were core and are now a
 > wild pack, listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs).
 
 ## air-quality
@@ -546,54 +544,20 @@ weather of a sea it cannot see.
 
 ### Know this
 
-The `posidonia` pack reads this pack's `sea_surface_temp`; without `coast` enabled it has nothing to read.
+The wild `posidonia` pack reads this pack's `sea_surface_temp`; without `coast` enabled it has nothing to read.
 Attribution: Open-Meteo Marine API (CC BY 4.0), carrying Copernicus Marine / MeteoFrance MFWAM model data.
 
-## posidonia
+## posidonia (wild pack)
 
-Thermal stress on *Posidonia oceanica*, the seagrass the Balearic coast is built on, read from the sea-surface
-temperature the `coast` pack already fetches. No new source, no key, no metric of its own. Written for Menorca,
-Illes Balears, by Lucas Marangoni (Fab City Foundation).
+Listed at [fabcity/planetai-wild-packs](https://github.com/fabcity/planetai-wild-packs). Thermal stress on *Posidonia oceanica*, the seagrass meadow the Balearic coast is built on, read from the sea-surface temperature the `coast` pack already fetches. Written for Menorca, Illes Balears, by Lucas Marangoni (Fab City Foundation). Add with:
 
-| | |
-|---|---|
-| Kind | data |
-| Domain | `coast` |
-| Requires node | `>=0.10.0` |
-| Metrics | `sea_surface_temp` |
-| Scales | bioregion |
-| Needs | the `coast` pack enabled, so `marine-point` / `sea_surface_temp` exists |
-| Scripts | none |
-| Settings | none |
+```bash
+planetai packs add posidonia
+```
 
 28.4 °C is Marbà & Duarte (2010), *Global Change Biology* 16:2366–2375: six years of seawater temperature and shoot
 demography at Cabrera Archipelago National Park, about 90 km from Menorca, above which the meadow loses more
-shoots than it recruits. 27 °C is the watch level from the thermal-tolerance literature. The README notes that,
-unusually for this repository, the mortality line was measured in the same water as the node that reads it.
-
-### Rules
-
-| rule | level | cooldown | fires when | languages |
-|---|---|---|---|---|
-| `thermal_stress` | info | 1440 | over 72 hours of `readings_1h` on `marine-point` / `sea_surface_temp`, with at least 24 buckets, the mean is 28.4 or more | en, es, id |
-| `warm_watch` | info | 10080 | over 7 days with at least 48 buckets, the mean is at least 27.0 and under 28.4 | en, es, id |
-
-Every first line names the plant, the reading and the threshold in one sentence, because the node's alert log
-shows only the first line of a message and "the sea has held 27.5 °C for a week" is a temperature with no subject.
-
-### Cells
-
-| cell | unit | state | min_buckets | what the SQL counts |
-|---|---|---|---|---|
-| `Environmental\|Bioregion` | days in the last 90 with mean sea temperature at or above 28.4 °C (Posidonia thermal-stress threshold) | partial | — | days with at least 12 hourly buckets whose mean is 28.4 or more |
-
-### Know this
-
-Messages are in `en`, `id` and `es`. The README says the Spanish strings are assistant-written and have not
-been read by a native speaker, and there is no Catalan, Menorca's own language. The pack does not know where the meadow is (it does not fetch the Govern de les Illes Balears
-protected-zone geometry), that the temperature is modelled and at the surface rather than at the rhizome, or
-anything else that kills seagrass. The cell is `partial` for the second of those reasons and must stay so. A node
-outside the western Mediterranean must not keep these numbers: the plant is endemic to this sea.
+shoots than it recruits. 27 °C is the watch level from the thermal-tolerance literature.
 
 ## earth
 

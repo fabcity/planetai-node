@@ -99,7 +99,7 @@ ALLOWED = {
 EXAMPLE_PACKS = {"_test", "my-pack", "monsoon", "monsoon-bali", "air-", "water", "example",
                  "acme-sensor", "air", "yourplace", "district", "id", "my-room",
                  # core packs that became wild (fabcity/planetai-wild-packs): docs still say how to add them
-                 "xiaomi-air"}
+                 "xiaomi-air", "posidonia"}
 for _doc, _names in PROPOSED.items():
     if not os.path.exists(_doc):
         errs.append(f"check_docs.py: PROPOSED names {_doc}, which is gone — delete the entry")
