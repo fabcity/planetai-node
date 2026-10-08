@@ -1,5 +1,5 @@
 # Where the data lives
-<!-- checked: v0.80.1 -->
+<!-- checked: v0.80.2 -->
 
 `planetai storage` shows all of this on one screen. `GET /storage`, for a token or this machine at every
 `SHARE_LEVEL`, gives the sizes as numbers: the database, `out/`, the backups (and what `BACKUP_KEEP` days of dumps

@@ -1,5 +1,5 @@
 # Install
-<!-- checked: v0.80.1 -->
+<!-- checked: v0.80.2 -->
 
 This page puts the node itself on a machine: two containers, a database on this disk, and the loops that read
 your place every five minutes. Once it is done the node has pulled the air model and the climate normals for
@@ -102,7 +102,7 @@ inside which a sensor counts as this node's own. Without a sensor the node still
 satellite air model for your district and forty years of climate for your coordinates; see
 [Before a sensor](before-a-sensor.md).
 
-> **Gap in v0.80.1.** The AirGradient and PurpleAir adapters exist in `app/sources.py` and are tested, but this
+> **Gap in v0.80.2.** The AirGradient and PurpleAir adapters exist in `app/sources.py` and are tested, but this
 > version does not register them for polling; the AirGradient hosts you enter are used to keep your own kit out of the
 > Bali Air Dispatch ring and for nothing else. A Smart Citizen kit is read. Details on the [sensors](sensors.md)
 > page.

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v0.80.2 — 2026-10-08 — A reinstall over an old database is refused, and posidonia joins the wild packs
 
 - **a reinstall over an earlier node's database is refused again.** Since v0.42 the install's old-database
   guard derived the Docker volume name from the folder's basename, but docker-compose.yml has always pinned

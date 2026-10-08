@@ -1,5 +1,5 @@
 # HTTP API
-<!-- checked: v0.80.1 -->
+<!-- checked: v0.80.2 -->
 
 Every node exposes the same API on port 8080. The dashboard, the `planetai` command, the MCP tools, a NAS pulling backups, Home Assistant and a parent node are all clients of it, and none of them has a private path in. A request either carries a token as `Authorization: Bearer <token>` or carries nothing, and a request carrying nothing is judged by the `SHARE_LEVEL` setting. The container publishes `${APP_PORT:-8080}:8080` on every host interface; Postgres is published on `127.0.0.1:5432` only. There is no TLS on the node itself: the tailnet encrypts the hop, and the [sharing page](sharing.md) says what to do on a network that is not a tailnet.
 
@@ -57,7 +57,7 @@ Access: public
 
 What every screen in the house polls. Answers at every `SHARE_LEVEL` and never makes an outbound request of its own.
 
-Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NODE_VERSION`, or `?`), `schema` (the latest applied schema version, or `pre-0.4 (run ./update.sh)`), `uptime_s`, `lat` and `lon` (the centre of the node's resolution-8 cell for an untrusted caller, 3 decimals for this machine or a token), `position` (`cell` or `point`, saying which), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (a map of loop name to its last error line), `bootstrap` (only if the first-start bootstrap ran in this process), `locale` (`ALERT_LOCALE`), `tz` (`NODE_TZ`), `cell` (`{id, res, edge_m, caption}` for the node's H3 cell at resolution 8, or null before setup), `docs` (the documentation's URL), `mcp` (`/mcp`), `llms` (`/llms.txt`), `mesh` (`{root_topic, gateway, packets, last}`, only when `MQTT_HOST` is set), `reticulum` (`{ok, address, destinations, announce_s, announcing, peers, last}`, only when `RETICULUM_URL` is set) and `release` (`{latest, current, newer, checked, asked}`, what the daily check against planetai.fab.city found earlier, not a request made now, plus `error` if its last attempt failed; only with `UPDATE_CHECK=on` and once the check has run). `newer` is true when `latest` is a later release than the one `current` is at; a git checkout ahead of a tag, such as `v0.75.7-14-gafc298a`, is at that tag's release.
+Returns one object with: `ok` (true once a poll has run), `node`, `version` (`NODE_VERSION`, or `?`), `schema` (the latest applied schema version; `unreachable (the app cannot log in to its database — planetai doctor says why)` when the database is there but refuses the app — a wrong password after a reinstall over an earlier volume, or the database down — and `pre-0.4 (run ./update.sh)` only when the node predates the `schema_version` table), `uptime_s`, `lat` and `lon` (the centre of the node's resolution-8 cell for an untrusted caller, 3 decimals for this machine or a token), `position` (`cell` or `point`, saying which), `city`, `polls`, `last_poll`, `last_error`, `ingested`, `errors` (a map of loop name to its last error line), `bootstrap` (only if the first-start bootstrap ran in this process), `locale` (`ALERT_LOCALE`), `tz` (`NODE_TZ`), `cell` (`{id, res, edge_m, caption}` for the node's H3 cell at resolution 8, or null before setup), `docs` (the documentation's URL), `mcp` (`/mcp`), `llms` (`/llms.txt`), `mesh` (`{root_topic, gateway, packets, last}`, only when `MQTT_HOST` is set), `reticulum` (`{ok, address, destinations, announce_s, announcing, peers, last}`, only when `RETICULUM_URL` is set) and `release` (`{latest, current, newer, checked, asked}`, what the daily check against planetai.fab.city found earlier, not a request made now, plus `error` if its last attempt failed; only with `UPDATE_CHECK=on` and once the check has run). `newer` is true when `latest` is a later release than the one `current` is at; a git checkout ahead of a tag, such as `v0.75.7-14-gafc298a`, is at that tag's release.
 
 ```json
 {"ok": true, "node": "bayu-ungasan", "version": "v0.73", "schema": "0.51", "uptime_s": 86121,
@@ -108,7 +108,7 @@ Access: token
 
 A 301 redirect to `/report/latest`, kept for a dashboard left open in a browser through the update that removed the briefing in v0.38. Takes and ignores `kind`. Hidden from the OpenAPI schema.
 
-> **Gap in v0.80.1.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
+> **Gap in v0.80.2.** `/briefing` is on neither allowlist. A stale dashboard with no token is refused with 403 by the middleware before it can be redirected, at both levels. The route works as intended only for loopback or a request with a token.
 
 
 ### GET /machine
