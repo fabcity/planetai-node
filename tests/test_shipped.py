@@ -116,10 +116,12 @@ assert "contributes: report" in open("packs/insight/rules.yml").read(), "the dig
 assert "def contributors" in open("app/packs.py").read() and "def alerts" in open("app/packs.py").read(), "packs.py: a contributor is not an alert"
 print("one report, its table, its endpoints, its settings and its command all ship")
 # v0.32.1 — a reinstall over an earlier node's volume left an app that could not log in while every check said fine
-# Was pinned to the literal "planetai_db", which is only the volume's name when the node happens to
-# live in a folder called planetai. The guard reads the compose project now, so assert that instead.
+# The guard once looked for "planetai_db" literally, then derived the name from the folder's basename —
+# both wrong in one direction each: docker-compose.yml pins `name: planetai`, so the volume is planetai_db
+# whatever the folder is called (a tarball install lives in planetai-node), and COMPOSE_PROJECT_NAME is the
+# only override. Assert the pin, not a derivation.
 _ish = open("install.sh").read()
-assert 'DBVOL="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}_db"' in _ish and 'docker volume inspect "$DBVOL"' in _ish \
+assert 'DBVOL="${COMPOSE_PROJECT_NAME:-planetai}_db"' in _ish and 'docker volume inspect "$DBVOL"' in _ish \
     and "NEWPW" in _ish, "install.sh: refuse a new password over an old volume, whatever the folder is called"
 assert "app logs in to the database" in cli, "doctor: the locked-out app must be a named failure"
 print("reinstall over a leftover volume is refused and diagnosed")

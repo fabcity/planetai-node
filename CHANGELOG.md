@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **a reinstall over an earlier node's database is refused again.** Since v0.42 the install's old-database
+  guard derived the Docker volume name from the folder's basename, but docker-compose.yml has always pinned
+  `name: planetai`, so the volume is `planetai_db` whatever the folder is called. A reinstall in a folder
+  named anything else (every tarball install: `planetai-node`) sailed past the guard with a fresh
+  POSTGRES_PASSWORD, and the app was locked out of its own database: /health answered "pre-0.4 (run
+  ./update.sh)", /rho answered 500, and only `planetai doctor` guessed why. The guard now checks the volume
+  compose actually names. /health says "unreachable" for a login failure and keeps "pre-0.4" for a schema
+  that predates schema_version, and the doctor's row names both with their different ways out. Install
+  warnings now land in `.planetai-install.log` as well as on the screen.
 - **posidonia is a wild pack.** The Posidonia seagrass meadow pack leaves core and is listed at
   `fabcity/planetai-wild-packs`. Only Mediterranean coastal nodes need it. **If you use it:** run
   `planetai packs add posidonia` after updating. A node that updates with git loses the folder on update;
