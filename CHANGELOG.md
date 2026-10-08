@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **The five doors layout is now the default dashboard**: root `/` serves `doors.html`; `/?layout=classic` serves the legacy dashboard (`index.html`). The footer link in `doors-core.js` now points to `/?layout=classic`.
+
 ## v0.80 — 2026-10-07 — The ground becomes a map, and the node opens five doors
 
 - **v0.80 carries two page changes and two pack scripts, against `docs/NEXT_RELEASE.md` rules 2 and 3.** Tomas asked
