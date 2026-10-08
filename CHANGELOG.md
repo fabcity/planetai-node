@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **posidonia is a wild pack.** The Posidonia seagrass meadow pack leaves core and is listed at
+  `fabcity/planetai-wild-packs`. Only Mediterranean coastal nodes need it. **If you use it:** run
+  `planetai packs add posidonia` after updating. A node that updates with git loses the folder on update;
+  a node updated from a tarball keeps the folder, which `packs add` will not replace until `packs/posidonia`
+  is deleted. Stored readings are untouched.
+
 ## v0.80.1 — 2026-10-08 — The doors view is the default dashboard
 
 - **The five doors layout is now the default dashboard**: root `/` serves `doors.html`; `/?layout=classic` serves the legacy dashboard (`index.html`). The footer link in `doors-core.js` now points to `/?layout=classic`.

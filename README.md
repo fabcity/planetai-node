@@ -120,7 +120,7 @@ app/       main.py · sources.py · index.py · issues/ · packs.py · settings.
            static/
 bin/       planetai, the command line
 packs/     air-quality · heat · insight · trust · cold-start · open-data-health · coast · earth-engine · earth · place ·
-           nearby · season · forecast · make · posidonia · thingdata · example-cooking-hours
+           nearby · season · forecast · make · thingdata · example-cooking-hours
 config/    rules.yml · channels.yml · mosquitto · reticulum
 tools/     the checks, hooks, bundle and release scripts, mesh-provision.sh, nas/, remote-model.sh
 tests/     offline suites

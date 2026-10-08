@@ -22,7 +22,7 @@ line on the report and on an ask, never a number.
 | **air** | `air-quality`, `nearby`, `season` | sensed | 15 µg/m³ — WHO 2021, 24-hour mean |
 | **heat** | `heat` | sensed | 35 °C apparent — measured at node #1, this place's line and not a global one |
 | **land** | `earth` (the change), `earth-engine` (built, trees) | context | none. A year-over-year change is not a threshold |
-| **coast** | `coast`, `posidonia` | context | none |
+| **coast** | `coast` (and `posidonia` as a wild pack) | context | none |
 | — | `forecast` (weather) | | feeds air and heat |
 | — | `place` | | the ground, its own band on the dashboard |
 | — | `open-data-health` (governance) | | the loop and the Index |
