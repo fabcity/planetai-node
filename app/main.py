@@ -922,6 +922,12 @@ def health(request: Request):
             # latest applied, not the lexically largest: '0.4' > '0.14' as text
             cur.execute("SELECT version AS v FROM schema_version ORDER BY applied_at DESC, string_to_array(version,'.')::int[] DESC LIMIT 1")
             schema = (cur.fetchone() or {}).get("v")
+    except psycopg.OperationalError:
+        # The database is there but this app cannot use it — wrong password after a reinstall over an
+        # earlier volume, db down, wrong host. That is a login problem, not a schema age: answering
+        # "pre-0.4 (run ./update.sh)" here sent keepers running a migration against a database the
+        # app could not log in to, while the real fix is in .env. `planetai doctor` reads this string.
+        schema = "unreachable (the app cannot log in to its database — planetai doctor says why)"
     except Exception:  # noqa: BLE001 — a pre-0.4 node has no schema_version table until it updates
         schema = "pre-0.4 (run ./update.sh)"
     # A12, superseded by R25 (v0.73): see _published_position. Before v0.73 this was 3 decimals for every caller.
