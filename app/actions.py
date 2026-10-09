@@ -85,11 +85,28 @@ def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:
     e = msg.event
     tpl = (issue.get("events") or {}).get(msg.reason if msg.reason == "clear" else e.kind) or {}
     rooms = ", ".join(sorted(e.rooms))
-    fields = {"rooms": rooms, "peak": round(e.peak, 1),
+    dp = int(issue.get("dp", 1))
+    line_v = (issue.get("line") or {}).get("value")
+
+    def fmt(k, v):
+        """A figure for a message: the issue's own dp, and the unit the string no longer carries
+        (docs/SPEC_language.md — the reading layer names its units, the words don't)."""
+        if v is None:
+            return "—"
+        if k == "peak":
+            return f"{float(v):.{dp}f}"
+        if k.endswith("pm25"):
+            return f"{float(v):.0f} µg/m³"
+        if k.endswith("temp"):
+            return f"{float(v):.1f} °C"
+        return v
+
+    fields = {"rooms": rooms, "peak": e.peak,
               "outside_temp": ctx.get("outside_temp"), "inside_temp": ctx.get("inside_temp"),
               "outside_pm25": ctx.get("outside_pm25"), "inside_pm25": ctx.get("inside_pm25"),
-              "outside_source": ctx.get("outside_source") or "outside"}
-    fields = {k: ("—" if v is None else v) for k, v in fields.items()}
+              "outside_source": ctx.get("outside_source") or "outside",
+              "line": f"{float(line_v):g}" if line_v is not None else "—"}
+    fields = {k: (v if k in ("rooms", "outside_source", "line") else fmt(k, v)) for k, v in fields.items()}
     # no template for this kind: say which issue and where, so a message never starts with an empty line
     text = _fill(tpl, fields, locale) or f"{_say(issue.get('name'), locale) or issue.get('key') or e.issue}: {rooms}"
     if msg.reason == "clear":

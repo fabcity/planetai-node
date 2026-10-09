@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **the headline goes words-only, and `plain` carries the figures** (SPEC_language, release A). The
+  lead sentence speaks in words — "The air is getting worse in the house, and the source is inside
+  the house" — and the plain sentence under it holds the numbers: the numeral distance first, then
+  the others, then the line. Context issues (coast, land) get word headlines; their figures move to
+  `context_plain`. Each issue gains an `about` text — what the metric is and whose line it is — on
+  `/issues` and in the ask pane. Alerts name whose line it is (the WHO's, or this house's own).
+  Event figures honour the issue's `dp` (42, not 42.0) and `outside_*` values carry their units.
+  The bot and the ask pane gain the layers rule and the no-lecture rule; the pane gains the
+  one-number rule it lacked. The page half (the crossed mark, WALL_SYSTEM) follows in release B.
+
 ## v0.80.3 — 2026-10-08 — The doors open on a node that reads nothing yet
 
 - **the doors dashboard no longer crashes on a node with no local sensors.** Since v0.80.1 made the doors

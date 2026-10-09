@@ -91,7 +91,7 @@ How much of the page is drawn. Three, in the header beside the register:
 | **learn** | advanced, with a question mark at each part of the page: every section, the ladder, the lead and the foot. Learn opens the ask pane, and pressing a mark puts a card in it that quotes this node's own documentation for that part, names the page and section the words came from by their titles, links out, and walks to the next. The chips under it become two questions about that part. Not on the wall, which has no header to switch it on |
 
 **Simple on Now** draws, in order: the header and the modes; the lead, with the issue and when it was read
-in place of the kicker, the numeral and its pictogram, the node's sentence, one plain sentence of the other
+in place of the kicker, the numeral and its pictogram, the node's sentence (words only), one plain sentence of the
 distances and the line, and the rule; the open event, if there is one, with the sign of its issue, **the action the node chose** and **Done**, **Not now** and **Doesn't fit**
 (with more than one open it adds `and 1 more open · in advanced`, and in shadow it says nothing was sent); on a node still on the old
 engine, the open alert instead, with its first line, its number and **I did this**; the ground, with a one-line key (this house, and how many other stations
