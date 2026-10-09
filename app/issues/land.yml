@@ -76,17 +76,17 @@ sentences:
   # 2025. 8.5 % since 2017." One year is a number; eight years is a direction.
   en:
     state:
-      context: "The ground {where} keeps changing, year on year."
+      context: "The ground this node watches keeps changing, year on year."
       context_plain: "{n} {unit} {where} changed {span}. {since} {cmp}"
       none: "No satellite record yet for this square."
   id:
     state:
-      context: "Tanah {where} terus berubah, tahun demi tahun."
+      context: "Tanah yang dipantau node ini terus berubah, tahun demi tahun."
       context_plain: "{n} {unit} {where} berubah {span}. {since} {cmp}"
       none: "Belum ada rekaman satelit untuk kotak ini."
   es:
     state:
-      context: "El suelo {where} sigue cambiando, año tras año."
+      context: "La tierra que este nodo vigila sigue cambiando, año tras año."
       context_plain: "{n} {unit} {where} cambió {span}. {since} {cmp}"
       none: "Aún no hay registro satelital para este cuadrado."
 

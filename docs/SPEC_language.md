@@ -42,6 +42,12 @@ sentences:
 
 **[new] Context issues.** Coast and land have no line and no comparison, and today their whole headline is a number ("1.3 % of the square this node watches changed between 2024 and 2025"). Their `state.context` template becomes a word headline about direction: "The ground this node watches keeps changing, year on year." The figures, `{span}` and `{since}` move to `plain`. A context issue's `{cmp}` (its readouts, which carry numbers) moves to `plain` too.
 
+**[new] The headline is assembled from clauses, not one template.** The attribution templates keep their prose shapes, but three slots are filled by the engine, never written into a template:
+
+- `{line}` — the live relation of the headline value to the issue's line, computed from the value itself (`over · near · under`, near within a tenth below). A template can therefore never assert "under the line" on a day the reading is past it, and each issue's yml names its own line: "the WHO line" for air, "this house's own line" for heat.
+- `{event}` — the clause for the day it crossed and came back ("It crossed the line earlier today"), filled only for reason codes that certainly happened today and only while the reading is back under the line. The state band and the sentence then agree instead of reading as a contradiction.
+- `{cmp}` — each issue may carry its own `cmp_words`: air says "cleaner than the street", heat says "cooler than the street". The shared table is the fallback, not the voice. One skeleton per issue was the flatness the review found; heat's templates are not air's with the noun swapped.
+
 `plain` becomes the reading layer and gains the numeral distance, which today it omits: "The room reads 42, the yard 31, the street 38. Two are over the line (15)." **[changed]** On the doors, where the numeral is drawn directly above, the page may drop that first clause; everywhere else it stays.
 
 The pair travels together. Every consumer renders `sentence` + `plain`, or states why not:

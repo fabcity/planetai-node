@@ -872,7 +872,11 @@ def _cmp(d, stack, headline_dist, loc, compare) -> str:
         parts = [r["_text"][loc] for r in (d.get("_readouts") or []) if r.get("_text")]
     else:
         head = (stack.get(headline_dist) or {}).get("value")
-        words = CMP_WORDS.get(loc, CMP_WORDS["en"])
+        # An issue may name its own comparison words in its yml (`cmp_words`): air says "cleaner
+        # than the street" where heat says "cooler than the street". The shared table is the
+        # fallback, not the voice.
+        words = ((d.get("sentences") or {}).get(loc, {}).get("cmp_words")
+                 or CMP_WORDS.get(loc, CMP_WORDS["en"]))
         nouns = NOUN_WORDS.get(loc, NOUN_WORDS["en"])
         # One clause per RELATION, not one per distance. Node #1 has a yard, so three distances all
         # answered "level" and the hero read "Level with the wall outside, level with the street,
@@ -894,7 +898,8 @@ def _cmp(d, stack, headline_dist, loc, compare) -> str:
     return s[0].upper() + s[1:] + "."
 
 
-def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attribution) -> str:
+def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attribution,
+              line=None, reason=None) -> str:
     block = (d.get("sentences") or {}).get(loc) or {}
     if state in ("none", "context"):
         tpl = (block.get("state") or {}).get(state)
@@ -912,12 +917,28 @@ def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attributio
         if extra.get("year_a") and extra.get("year_b") else ""
     since = sw["since"].format(pct=f"{extra['since_pct']:.1f}", year=extra["since_year"]) \
         if extra.get("since_year") and extra.get("since_pct") is not None else ""
+    # The {line} clause is computed from the live value against the line, never written into a
+    # template — so a template can never assert "under the line" on a day the reading is past it.
+    line_key = ""
+    if d["kind"] == "sensed" and line is not None and n is not None:
+        lv = float(line["value"])
+        line_key = "over" if n > lv else ("near" if n >= 0.9 * lv else "under")
+    line_clause = (block.get("line") or {}).get(line_key, "")
+    # The {event} clause for the day it crossed and came back: the state band says act or notable
+    # because of what happened earlier, while the sentence says now. Naming the crossing keeps the
+    # two from reading as a contradiction. Only codes that certainly happened today, and never
+    # while the reading is over the line right now — then the {line} clause already says it.
+    event_clause = ""
+    if line_key in ("under", "near") and (reason or {}).get("code") in (
+            "open_ask_current", "alert_today", "event_answered", "event_cleared"):
+        event_clause = (block.get("event") or {}).get("earlier", "")
     return " ".join(tpl.format(
         verb=(block.get("verbs") or {}).get(verb_key, ""),
         n="" if n is None else f"{n:.{d['dp']}f}",
         unit=d["unit"],
         where=_where(d, headline_dist, loc),
         cmp=_cmp(d, stack, headline_dist, loc, compare),
+        line=line_clause, event=event_clause,
         span=span, since=since,
     ).split()).replace(" ,", ",").replace(" .", ".")
 
@@ -1451,7 +1472,8 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "series": series, "buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
             "readouts": [{k: v for k, v in r.items() if not k.startswith("_")} for r in d["_readouts"]],
             "provenance": _provenance(d, stack, earth),
-            "sentence": {loc: _sentence(d, stack, state, headline, verb_key, loc, compare, attribution)
+            "sentence": {loc: _sentence(d, stack, state, headline, verb_key, loc, compare,
+                                        attribution, line, reason)
                          for loc in LOCALES},
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)

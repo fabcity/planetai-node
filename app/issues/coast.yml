@@ -53,9 +53,9 @@ readouts:
 
 # A wave is not over a square of the map.
 where:
-  en: { region: at the nearest ocean cell }
-  id: { region: di sel laut terdekat }
-  es: { region: en la celda de océano más cercana }
+  en: { region: off this coast }
+  id: { region: di lepas pantai ini }
+  es: { region: frente a esta costa }
 
 sentences:
   # A word headline (docs/SPEC_language.md): the figures live in context_plain, which the engine

@@ -40,12 +40,15 @@ CLASSES = ("clear", "inside", "everywhere", "outside_worse", "mixed", "unknown")
 # `none` have nothing to attribute, so they are said with their own.
 STATE_SENTENCES = ("context", "none")
 
-# Everything a template may ask for, and nothing else. The engine fills all five; a template using
-# a name that is not here would render a literal brace to somebody's kitchen wall.
+# Everything a template may ask for, and nothing else. The engine fills all of them; a template
+# using a name that is not here would render a literal brace to somebody's kitchen wall.
 # `span` and `since` are the land record's own history: "between 2024 and 2025", "8.5 % since 2017".
 # They fill from the earth cell's `extra` and are empty for every other issue, so a template that
 # names them on an issue that cannot fill them renders a clean sentence rather than a brace.
-PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp", "span", "since")
+# `line` is the live relation to the issue's line, computed from the value (over · near · under),
+# and `event` the clause for the day it crossed and came back — both empty when there is nothing
+# true to say, so the sentence never asserts what the reading denies.
+PLACEHOLDERS = ("verb", "n", "unit", "where", "cmp", "span", "since", "line", "event")
 
 WHERE_FROM = ("stats", "observations", "earth")
 AGGREGATES = ("mean", "median", "fenced_median")
