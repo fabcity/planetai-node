@@ -421,22 +421,11 @@ function heroRule(key, d) {
 
 function sentence(key, d, cls = 'big') {
   const s = d.sentence ? d.sentence[LOC] : '';
-  const cell = (d.stack || {})[d.headline];
-  const n = cell && cell.value != null ? fmt(cell.value, d.dp) : null;
-  const crossed = !!(d.line && cell && cell.value != null && cell.value > d.line.value
-    && (d.state === 'act' || d.state === 'notable'));
-  const cmp = d.line
-    ? cmpText({ mode: 'line', line: d.line, unit: d.unit, dp: d.dp })
-    : cmpText({ mode: 'none', reason: noLine(d) });
-  /* The figure inside the sentence is set in the mono and nothing else. It is not the monument and
-     does not carry the monument's attributes: the sketch says this number twice — once as a figure
-     large enough to stop being a number, once inside a sentence that reads as a sentence — and two
-     elements claiming `data-role="numeral"` for one reading is one of them lying. */
-  const marked = n
-    ? esc(s).replace(esc(n), `<b class="mono${crossed ? ' crossed' : ''}">${esc(n)}</b>`)
-    : esc(s);
+  /* Release A moved the numeral out of the headline: the sentence is words only, so it draws no
+     figure and marks none. The crossed mark moved with the number — it marks the `plain` figure
+     that is over the line, drawn where plain is rendered. */
   return `<p class="${cls}" data-component="sentence" data-role="sentence" id="sentence-${esc(key)}"`
-    + ` data-ref="stack-${esc(key)}">${marked}</p>`;
+    + ` data-ref="stack-${esc(key)}">${esc(s)}</p>`;
 }
 
 /* `rule` is the lead's only. It used to be a second paragraph of its own, and `.lead > .why` matched
@@ -4909,9 +4898,7 @@ function template(ctx) {
       cols: 'minmax(0,210px) minmax(0,1fr) auto',
       left: `<span class="who"><b>How a sentence is built</b>`
         + `<span class="m">the same for all ${(ORDER || []).length}</span></span>`,
-      line: `The state, then the reading at the closest distance that has one, then how the other `
-        + `distances stand against it. Never a distance the node cannot read, and never a `
-        + `comparison against a line the issue does not have.`,
+      line: `The headline speaks in words only (sentence), \`plain\` carries the figures, \`about\` says what the metric is.`,
       qty: [{ num: 'template.parts', value: `${2 + (others.length ? 1 : 0)} parts`,
         cmp: `state \u00b7 the ${LAB[d.headline]} reading`
           + `${others.length ? ` \u00b7 ${others.length} other distance`
@@ -8105,6 +8092,15 @@ function main() {
     const pix = heroPix(hk, d);
     const stamp = ((d.hero || {}).stamp || {})[LOC] || '';
     const plain = ((d.hero || {}).plain || {})[LOC] || '';
+    /* The plain figure gets the crossed mark when over the line (same rule as monument). Extract
+       numerals from plain and wrap them; if plain has no numeral, render unchanged. */
+    const cell = (d.stack || {})[d.headline];
+    const plainCrossed = !!(d.line && cell && cell.value != null && cell.value > d.line.value
+      && (d.state === 'act' || d.state === 'notable'));
+    const markedPlain = plain && cell && cell.value != null
+      ? esc(plain).replace(esc(fmt(cell.value, d.dp)),
+          `<b class="${plainCrossed ? 'crossed ' : ''}mono">${esc(fmt(cell.value, d.dp))}</b>`)
+      : esc(plain);
     /* Simple's eyebrow: the issue and when it was read, in words, with no state word in capitals. */
     const eb = `<div class="eb" data-lv="simple" data-component="heroEyebrow" data-ref="num-${esc(hk)}">`
       + `<b>${esc(d.name[LOC])}</b>${stamp ? ` \u00b7 ${esc(stamp)}` : ''}`
@@ -8133,7 +8129,7 @@ function main() {
       + eb + monument(hk, d, pix) + sentence(hk, d, 'big')
       + lv(why(hk, d, (S.issues.headline_rule || {})[LOC] || ''), 'adv')
       + (plain ? `<p class="plain" data-lv="simple" data-component="heroPlain" data-ref="sentence-${esc(hk)}">`
-        + `${esc(plain)}</p>` : '')
+        + `${markedPlain}</p>` : '')
       /* The rule the hero declares, where the four meters were. They drew every issue on a scale
          worked out from tonight's numbers; the rule's ends are the issue's own, so a reading of 12
          looks the same size tomorrow as tonight. The four distances in full are in the matrix. */
