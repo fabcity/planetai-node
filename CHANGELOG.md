@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **The page speaks the three layers, and the Wall's voice lives on the node.** The second half of
+  the language split (`docs/SPEC_language.md`): the crossed mark moved out of the sentence (words
+  only since the last release) and onto the figure inside `plain` when it is over the line; the
+  wall card drops `plain`'s first clause, which only repeated the numeral drawn above it; and the
+  Wall's thinking-aloud prompt moved from the page into the node as `WALL_SYSTEM` beside the other
+  two prompts — the page asks for it by name (`prompt: 'wall'` on `/ask`), the node rotates the
+  angle, and the scrubbed figures ride in the system prompt as they always did. The "How a
+  sentence is built" panel now describes the three layers: the headline in words, `plain` the
+  figures, `about` the meaning.
 - **`planetai update` says what blocks it, and what "nothing moved" means.** A failed pull on a git
   install now names the dirty files and the local-only commits (git's own error does not), and a
   pull that moves nothing asks the channel: if the site serves a release whose tag has not landed

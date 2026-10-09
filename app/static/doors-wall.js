@@ -25,7 +25,7 @@ VIEWS.wall = function () {
       <section class="wr"><div class="whead">
         <div class="k">${said(it.name)} <span class="state">${esc(it.state)}</span> · ${said(it.reason_text || '')}</div>
         <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}</span></p>
-        <p class="wwhy said">${esc(it.plain || '')}</p>
+        <p class="wwhy said">${esc(dropLead(it.plain || ''))}</p>
         <div class="wask">${ask}<b>Answer on Telegram, not here.</b></div></div>
         <div class="wnarr" id="wnarr" data-learn="ask" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></div>
         <div class="wcount"><div class="wflow" id="wside"></div>
@@ -58,19 +58,23 @@ function frags() {
 }
 
 /* THE NODE, THINKING ALOUD (R44, 7 Oct 2026). A reading of the figures by the node's own model, in plain words for
-   people who know nothing about units or maps: what is happening inside, how it compares with the street and the
+   people who know nothing about air science, units or maps: what is happening inside, how it compares with the street and the
    neighbourhood, what it suggests for an ordinary day, and what the next hours may bring. It asks POST /ask, so the
    model is the one the keeper chose under Set up → Model (AGENT_PREFER): this machine, another on the house's network,
    or an online provider; the wall names the one that answered, and warns while it asks when the choice can go online.
    The context is /ask's own, scrubbed of every place, name and id; nothing is stored.
    Tomas, 7 Oct: twice as long, written at a slower pace, a new one every 10 minutes, and a countdown to the next.
-   The model writes into a queue; the wall types it at a reading pace whatever the model's speed. */
+   The model writes into a queue; the wall types it at a reading pace whatever the model's speed.
+   The prompt lives on the node as WALL_SYSTEM; the page asks for it by name (prompt:'wall'). */
 const NARR = { text: '', shown: '', prev: '', at: 0, next: 0, busy: false, typing: false, model: null, where: null, leaves: false, read: [], err: null, timer: 0 };
 const NARR_EVERY = 10 * 60e3, NARR_CPS = 11;          /* about two words a second: read as it is written */
-const NARR_ANGLES = ['what is happening right now', 'what has changed over the last few hours', 'how warm it feels inside the home',
-  'how inside the home compares with the street and the neighbourhood', 'how today compares with the last few days'];
 let NARR_TURN = 0, NARR_TICK = 0, NARR_TYPE = 0;
-const narrAsk = () => "You are the voice of this home's sensor node, speaking on a screen in the living room to people who know nothing about air science, units or maps. Like a calm neighbour telling a short story, say what is happening around their home: the air, and the heat if your context has it. Plain everyday words only. Never write units or symbols such as µg/m³, °C, PM2.5, AQI, ppm, percent or km. Say 'inside your home', 'your street', 'the neighbourhood', 'the wider area' instead of room, yard, ring or region. Instead of numbers, compare: 'clean', 'a little hazy', 'well under the safe limit', 'warmer than usual for this hour'. At most two numbers. Go in this order: what is happening inside the home; how that compares with the street and the neighbourhood; what it suggests for an ordinary day, such as windows, cooking, sleep or children outside, never telling people that anything is safe, fine or without risk, only what the readings show; and last, what the next few hours may bring, from the forecast or the usual pattern for this hour if your context has it, or that the node will keep watching if it does not. Use only the figures in your context. Six to eight sentences, one paragraph, no lists, no greeting, no questions." + ` This time, start from ${NARR_ANGLES[NARR_TURN++ % NARR_ANGLES.length]}; if your context cannot say, speak about the air now.`;
+/* Drop plain's first clause on the wall (spec Decision 1): the numeral is drawn above, so the lead figure is omitted. */
+function dropLead(plain) {
+  if (!plain) return plain;
+  const cut = plain.indexOf('. ');
+  return cut >= 0 ? plain.slice(cut + 2) : plain;
+}
 const mmss = ms => { const t = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
 function narrDraw() {
   const el = $('#wnarr'); if (!el) return;
@@ -127,7 +131,7 @@ async function narrate() {
   NARR.model = null; NARR.where = null; NARR.leaves = !!st.leaves; NARR.prev = NARR.shown || NARR.prev; NARR.text = ''; NARR.shown = ''; narrDraw(); narrTick();
   try {
     const r = await fetch('/ask', { method: 'POST', headers: { 'content-type': 'application/json', ...DOORS_AUTH() },
-      body: JSON.stringify({ messages: [{ role: 'user', content: narrAsk() }], view: 'wall', mode: 'advanced', focus: null }) });
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'speak' }], view: 'wall', mode: 'advanced', focus: null, prompt: 'wall' }) });
     if (!r.ok || !r.body) throw new Error(`the node answered ${r.status}`);
     const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
     for (;;) {
