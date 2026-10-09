@@ -195,8 +195,17 @@ function sStorageBody(S) {
 
 function sUpdates() {
   const h = D.health, rel = h.release || {}, docs = h.docs || 'https://planetai.fab.city/docs/';
+  /* the release check asks once a day, so its answer ages within the day — "checked 2026-10-08"
+     said nothing at 23:00, and a stale "this node has it" read as "cannot update" (node #1). */
+  const checkedAgo = iso => {
+    const t = Date.parse(iso || '');
+    if (!t) return 'not checked yet';
+    const m = (Date.now() - t) / 60000;
+    return m < 1 ? 'checked just now' : m < 60 ? `checked ${Math.round(m)} min ago`
+      : m < 1440 ? `checked ${Math.round(m / 60)} h ago` : `checked ${Math.round(m / 1440)} days ago`;
+  };
   return `<h2>Updates</h2><p class="blurb">A release tarball is checked against fabcity’s signature before anything is unpacked. A node run from a git checkout takes no tarball and has no signature to check.</p><div class="rows">`
-    + [['Running', `planetai-node ${esc(h.version)} · schema ${esc(h.schema || '')}`], ['Latest release', rel.latest ? `${esc(rel.latest)}${rel.newer ? ' — newer than this node' : ' — this node has it'} · checked ${esc((rel.checked || '').slice(0, 10))}` : 'not checked yet'],
+    + [['Running', `planetai-node ${esc(h.version)} · schema ${esc(h.schema || '')}`], ['Latest release', rel.latest ? `${esc(rel.latest)}${rel.newer ? ' — newer than this node' : ' — this node has it'} · ${checkedAgo(rel.checked)}` : 'not checked yet'],
        ['To update', `<code>planetai update</code> on the node: a backup first, then fetch, check, migrate, rebuild and verify. The readings and the settings stay.`],
        ['Signatures', `<a href="${esc(docs)}install/#signed-installs-and-updates" target="_blank" rel="noopener">How releases are signed and checked ↗</a>`]]
       .map(([t, v]) => `<div class="srow"><div class="sl"><label>${t}</label></div><div class="sc txt">${v}</div></div>`).join('') + `</div>`;
