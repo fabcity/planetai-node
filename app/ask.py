@@ -119,10 +119,12 @@ def context(doc: dict, loc: str, view: str, mode: str, focus: str | None = None,
         "view": view, "mode": mode, "node_version": version,
         "lead": {"issue": lead, "picked_by": (doc.get("lead") or {}).get("by"),
                  "value": h.get("value"), "unit": h.get("unit"), "stamp": L(h.get("stamp")),
-                 "sentence": L(h.get("sentence")), "plain": L(h.get("plain"))},
+                 "sentence": L(h.get("sentence")), "plain": L(h.get("plain")),
+                 "about": L((iss.get(lead) or {}).get("about") or {})},
         "digest": {k: L(v) for k, v in (doc.get("digest") or {}).items()},
         "issues": [{"issue": k, "name": L(v.get("name")), "state": v.get("state"), "why": L(v.get("reason_text")),
                     "unit": v.get("unit"), "line": (v.get("line") or {}).get("value"),
+                    "about": L(v.get("about") or {}),
                     "at": {d: c.get("value") for d, c in (v.get("stack") or {}).items() if c}}
                    for k, v in iss.items() if v.get("watched") is not False],
         "open_alerts": [{"id": a.get("id"), "issue": k, "at": a.get("ts"), "says": str(a.get("text") or "").split("\n")[0]}

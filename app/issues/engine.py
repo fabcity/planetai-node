@@ -1003,24 +1003,48 @@ def _hero(d, stack, headline, sentence, now, clock) -> dict | None:
 
 
 def _plain(d, numeral, value, stack, rule, loc) -> str:
-    """One more sentence under the hero's: the other distances and the line, in the household's words.
+    """One more sentence under the hero's: the figures, in the household's words.
 
-    A context issue has no distances to set beside each other and nothing to cross, so it says where
-    its number comes from and that it never asks. A sensed one names the other distances on its rule
-    and says whether anything here is over the line. Every figure is one the rule already draws.
+    The reading layer (docs/SPEC_language.md): the headline above it carries no number, so this
+    sentence does. A sensed issue names the numeral distance first, then the others on its rule,
+    and says whether anything here is over the line. A context issue's figures are its
+    `context_plain` template — the string that was its whole sentence before the split — followed
+    by where the number comes from and that it never asks. Every figure is one the rule already
+    draws.
     """
     if value is None:
         return ""
     w = PLAIN_WORDS[loc]
     if d["kind"] == "context":
-        return w["yearly"] if d["hero"]["clock"] == "date" else w["model"]
+        prov = w["yearly"] if d["hero"]["clock"] == "date" else w["model"]
+        tpl = ((d.get("sentences") or {}).get(loc) or {}).get("state", {}).get("context_plain")
+        cell = stack.get("region") or {}
+        n = cell.get("value")
+        if not tpl or n is None:
+            return prov
+        extra = cell.get("extra") or {}
+        sw = SPAN_WORDS.get(loc, SPAN_WORDS["en"])
+        span = sw["between"].format(a=extra["year_a"], b=extra["year_b"]) \
+            if extra.get("year_a") and extra.get("year_b") else ""
+        since = sw["since"].format(pct=f"{extra['since_pct']:.1f}", year=extra["since_year"]) \
+            if extra.get("since_year") and extra.get("since_pct") is not None else ""
+        figures = " ".join(tpl.format(
+            verb="", n=f"{n:.{d['dp']}f}", unit=d["unit"], where=_where(d, "region", loc),
+            cmp=_cmp(d, stack, "region", loc, None), span=span, since=since,
+        ).split()).replace(" ,", ",").replace(" .", ".")
+        return f"{figures} {prov}"
     dp = d["hero"]["dp"]
     fmt = lambda v: f"{v:.{dp}f}"                                              # noqa: E731
     dists = [x["distance"] for x in rule["dots"]] if rule else [x for x in DISTANCES if stack.get(x)]
     others = [x for x in dists if x != numeral and (stack.get(x) or {}).get("value") is not None]
-    if others:
+    # The numeral first: off the doors there is no big figure above this sentence, and a reading
+    # layer that never says the headline number is not a reading layer. The page may drop the
+    # clause where the numeral is drawn directly above.
+    chain = ([numeral] if numeral in dists and (stack.get(numeral) or {}).get("value") is not None
+             else []) + others
+    if chain:
         parts = [w["first" if i == 0 else "more"].format(where=_where(d, x, loc), n=fmt(stack[x]["value"]))
-                 for i, x in enumerate(others)]
+                 for i, x in enumerate(chain)]
         said = "".join(parts)
         said = said[0].upper() + said[1:] + "."
     else:
@@ -1030,7 +1054,7 @@ def _plain(d, numeral, value, stack, rule, loc) -> str:
         over = [x for x in [numeral] + others if stack[x]["value"] > float(line["value"])]
         nouns = NOUN_WORDS.get(loc, NOUN_WORDS["en"])
         key = "under" if not over else "over_one" if len(over) == 1 else "over_many"
-        said += " " + w[key].format(line=fmt(float(line["value"])),
+        said += " " + w[key].format(line=f"{float(line['value']):g}",
                                     over=_join([nouns.get(x, x) for x in over], JOIN_WORDS[loc]))
     return said
 
@@ -1418,6 +1442,7 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "reason": reason,
             "reason_text": {loc: _reason_text(reason, loc) for loc in LOCALES},
             "name": d["name"], "kind": d["kind"], "metric": d["metric"], "unit": d["unit"], "dp": d["dp"],
+            "about": d.get("about"),
             "headline": headline, "stack": stack, "line": line, "attribution": attribution,
             "trend": verb_key,
             # How far it moved, beside which way it went. The page shows it; _headline ranks on it (_lead).
