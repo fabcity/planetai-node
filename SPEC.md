@@ -1,5 +1,5 @@
 # PLANETAI Node. Spec v0.1
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 2 September 2026. Two containers. This document is the brick; `ARCHITECTURE.md` is the building. Everything here is
 either a contract that must survive rewrites, or a retired piece with the condition that brings it back.

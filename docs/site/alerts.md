@@ -1,5 +1,5 @@
 # Alerts
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 An alert is the node asking a person to do something. This is the Act stage, which the architecture describes
 as the one that "turns an observation into a human decision", and it is "the only place ρ can be measured".

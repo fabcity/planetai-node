@@ -240,26 +240,10 @@ layers panel, scales and inspector were drawn; the node's map ground has the bas
 
 ---
 
-## 4. The language split, page half (release B)
+## 4. The language split, what is left
 
-**Asked, 9 October 2026.** The node's words moved to the three-layer split in PR #201 (`docs/SPEC_language.md`,
-release A): the headline speaks in words, `plain` carries the figures, `about` says what the metric is. The page
-half of the same spec is still owed — the page is the one surface where the numeral is already drawn big, so it is
-the one surface allowed to drop what the words elsewhere must carry.
-
-**What is owed.**
-
-- The doors may drop `plain`'s first clause where the numeral is drawn directly above it — off the doors the
-  numeral distance speaks first, on the doors that would repeat the big figure.
-- The crossed mark (the value over the line) moves out of the sentence and into the `plain` figure, drawn
-  in red as it already is on the rule.
-- `WALL_SYSTEM` leaves `app/static/doors-wall.js` and lives beside the other two prompts in
-  `app/agent_loop.py`, so the language rules the spec defines (layers, one number, no lecture voice) hold in
-  one place — the Wall's voice was written stricter than the spec before the spec existed, and it should not
-  drift alone in a static file.
-- The ES and ID strings keep the ASSISTANT-WRITTEN header until Tomas (es) and Bayu (id) have done the native
-  pass on `app/issues/*.yml`.
-
-**Touches** `app/static/dashboard.js`, `app/static/doors-wall.js`, `app/static/doors-fig.js` and
-`app/agent_loop.py`. A page change: not the same release as release A under rule 3.
-
+**Asked, 9 October 2026; the two halves shipped in v0.80.4 (words) and v0.80.5 (page).** What remains of
+`docs/SPEC_language.md`'s migration: the doors read the node's English only — locale work shows on the
+classic dashboard and the bot until the doors gain locales (migration item 8); the native passes — es by
+Tomas, id by Bayu, each approved locale shedding its ASSISTANT-WRITTEN header (item 9); and
+SPEC_language.md itself joining the stamped docs set (item 10).

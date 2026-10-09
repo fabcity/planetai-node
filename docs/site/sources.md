@@ -1,5 +1,5 @@
 # The source registry
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 A node measures what its adapters read. The registry is the network's shared list of what could be measured
 at each pillar and scale, and of the places a person could go to act on it, carried inside every node as a
@@ -19,7 +19,7 @@ Each node carries a copy at `data/sources/`, mounted read-only into the app cont
 
 | path | what it is |
 |---|---|
-| `data/sources/REGISTRY_VERSION` | the pin: `sha=851b8db91c046c13c1e232f6e8e61f7a4911270f`, `short=851b8db`, `synced=2026-10-06`, `entries=269`, and the upstream URL |
+| `data/sources/REGISTRY_VERSION` | the pin: `sha=851b8db91c046c13c1e232f6e8e61f7a4911270f`, `short=851b8db`, `synced=2026-10-09`, `entries=269`, and the upstream URL |
 | `data/sources/data/<pillar>/<scale>/<slug>.yaml` | the 269 entries as filed |
 | `data/sources/schema/dataset.schema.json` | the schema they are validated against |
 | `data/sources/index.json` | the YAML folded into one JSON list, with `slug` and `cell` derived from each file's path |
@@ -146,7 +146,7 @@ in the pin answers 404 and names the pin.
 
 **4. See it on the Network view.** Open the dashboard's Network view. The section headed **What this place
 could read, and where it could go** has three rows, with `GET /sources` beside its title. *Registered, and
-read* shows `pin 851b8db · synced 2026-10-06`, and the pin is a link to the registry on GitHub at that
+*Registered, and read* shows `pin 851b8db · synced 2026-10-09`, and the pin is a link to the registry on GitHub at that
 commit. It says "269 sources registered; 16 have code on this node that reads them", naming the twelve
 adapter strings (`core:airgradient` to `pack:place`), then "The rest have no adapter yet, which is a thing
 nobody has written rather than a thing this node refuses." Its figure is `16/269`. *What a cell could use*
@@ -158,7 +158,7 @@ A line under the rows links to `GET /sources?status=live`, `GET /sources?status=
 [Adding a source](#adding-a-source). The fold under it lists all sixteen with each licence as the registry
 wrote it. The page fetches `/sources` the first time somebody opens Network, and never before.
 
-> **Gap in v0.80.3.** The registry counts `core:airgradient` among the sources that are read, and the
+> **Gap in v0.80.5.** The registry counts `core:airgradient` among the sources that are read, and the
 > AirGradient function exists in `app/sources.py`, but the poll loop never calls it. The registry records
 > that the code exists, not that a node runs it.
 
@@ -200,7 +200,7 @@ neither does this page: that is a judgement about somebody else's terms.
   with registered sources and no adapter has no `/cells` row at all, because a node only emits rows it can
   compute; that half of the question is `planetai sources --cell`.
 - **`planetai doctor`.** One row: `source registry: 269 entries · awesome-fabcity-data @ 851b8db · synced
-  2026-10-06`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
+  2026-10-09`. It goes amber when the pin is over 180 days old and red when `data/sources/` is missing.
 - **Packs.** Every id in a pack's `sources:` must resolve to an entry at the pin, or `make lint` fails and
   names the id. At v0.80, 13 pack source ids resolve.
 
@@ -251,7 +251,7 @@ repository.
 > **Note.** "Registry" names two things in this repository. This page is the source registry, `data/sources/`.
 > `registry.json` at the repository root is the node directory, described on [Federation](federation.md).
 
-> **Gap in v0.80.3.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
+> **Gap in v0.80.5.** Comments in `app/registry.py`, `app/main.py` and `bin/planetai` still say the registry
 > holds 209 entries, and a docstring in `app/registry.py` says sixteen of 225 entries count nowhere. The pin
 > carries 269, and sixteen is right.
 

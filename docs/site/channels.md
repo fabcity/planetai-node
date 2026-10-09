@@ -1,5 +1,5 @@
 # Channels
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 A channel is how an alert leaves the node and reaches the people it is for. The repo's own description of a node
 ends with it: it "sends the people at that address one plain message when something should change". This page

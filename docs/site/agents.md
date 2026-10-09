@@ -1,5 +1,5 @@
 # Bring your own agent
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 An agent is a guest on the machine, never a part of it. It can read everything the node knows and help the
 person in front of it operate the node; it drafts, and a person dispatches. The architecture puts it in one

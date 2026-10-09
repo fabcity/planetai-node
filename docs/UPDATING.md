@@ -1,5 +1,5 @@
 # Updating
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 ```bash
 planetai update
@@ -51,13 +51,20 @@ doctor` will show that the node took one.
 
 ## If it fails
 
-**`git pull failed`**: local changes. The update clears `.DS_Store` itself before it pulls, so if you edited files in
-the node folder, `git stash`, then update again.
+**`git pull failed`**: local changes. The update clears `.DS_Store` itself before it pulls. When it fails, it names
+the offending files (up to ten) and any commits that exist only here but not on origin. If you edited files in the
+node folder, `git stash`, then update again. Operational files a node writes (its update log and its
+before-copies, `.planetai-*` and `.env.before-*`) are in `.gitignore` now — untrack them if they were
+committed, never commit them.
 
 **`backup failed — not updating`**: the update refused on purpose. `planetai backup` alone shows why; `planetai storage`
 shows where it is trying to write.
 
 **`app answering ✗`**: `docker compose logs app | tail -40`. Paste it.
+
+**no-op pull (nothing moved)**: the script asks the channel `/VERSION`. If the commit served there has not landed on
+this branch yet, it says "already at the newest commit on $branch ($here), but the channel serves $latest, which has
+not landed on this branch yet — it is still shipping; try again shortly". Otherwise it confirms you are up to date.
 
 ## Rollback
 

@@ -1,5 +1,5 @@
 # Introduction
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 PLANETAI is hyperlocal compute and intelligence for distributed production, and a node is its
 unit: one computer per place, on hardware the place already owns. It reads what measures that place, from a

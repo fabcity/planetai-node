@@ -1,5 +1,5 @@
 # MCP server and tools
-<!-- checked: v0.80.3 -->
+<!-- checked: v0.80.5 -->
 
 This is the surface an agent holds. With it, any client that speaks MCP can read what the node read, ask it
 how the place is doing in the household's own words, and record, in a person's own words, that somebody
@@ -103,7 +103,7 @@ recorded on the dashboard against the same alert; no tool records a decision, an
 
 The read routes `GET /shape`, `GET /effect` and `GET /reach` have no tool of their own.
 
-> **Gap in v0.80.3.** The `issues` tool's own description still says ties for `headline` go to the keeper's
+> **Gap in v0.80.5.** The `issues` tool's own description still says ties for `headline` go to the keeper's
 > order. The node leads with the issue of an open alert event, then the highest state, breaks a tie within a state
 > by which issue moved most in the last three hours, and only then goes by the declared order. `headline_rule` and
 > `lead.by` in the tool's answer say which.

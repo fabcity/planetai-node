@@ -4,7 +4,7 @@
    "anchor": "tables",
    "more": "The note column is shown here only to a reader with a token, because GET /actions is on no sharing allowlist.",
    "page": "schema.md",
-   "page_title": "Database schema",
+   "page_title": "Data schema",
    "questions": {
     "en": [
      "What is recorded when someone acts?",
