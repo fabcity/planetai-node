@@ -178,9 +178,33 @@ elif [[ $PULL -eq 1 ]] && [[ -d .git ]]; then
   find . -name .DS_Store -not -path './.git/*' -delete 2>/dev/null || true    # Finder litter blocks a pull if the repo ever had it
   # the fetch above may have failed quietly; then origin/$branch is what was fetched last, and the pull says so
   if git rev-parse -q --verify "origin/$branch" >/dev/null; then wild_collisions core_in_ref "origin/$branch" || exit 1; fi
+  before="$(git rev-parse HEAD)"
   if ! spin "fetching the current version" git pull --ff-only origin "$branch"; then
-    warn "git pull failed (local changes?). Commit or stash them, or re-run with --no-pull after unpacking manually."
+    # The keeper's question is WHICH changes block the pull — name them, git's own error does not.
+    # And name local commits too: with pull.rebase set, a clone carrying junk commits ("o", "www")
+    # rebases them onto every update instead of refusing, and the dirt never surfaces.
+    dirty="$(git status --short 2>/dev/null | head -10)"
+    ahead="$(git log --oneline "origin/$branch..HEAD" 2>/dev/null | head -5)"
+    [[ -n "$dirty" ]] && warn "git pull failed — these files have uncommitted changes:"$'\n'"$dirty"
+    [[ -n "$ahead" ]] && warn "and these commits exist only here, not on origin/$branch:"$'\n'"$ahead"
+    [[ -z "$dirty$ahead" ]] && warn "git pull failed; the lines above are git's reason."
+    warn "Commit, stash or remove them and run this again. If they are the node's own operational files (.planetai-*, .env.before-*): they are in .gitignore now — untrack them, never commit them."
     exit 1
+  fi
+  if [[ "$(git rev-parse HEAD)" == "$before" ]]; then
+    # Nothing moved. Either there is genuinely nothing new, or a release is on the channel but its
+    # commit has not landed on this branch yet — from "updated" silence the keeper cannot tell the
+    # two apart (node #1 ran three no-op updates in a day chasing a release that was still shipping).
+    # Ask the channel and say which one it is.
+    here="$(git describe --tags --always 2>/dev/null || echo '?')"
+    latest="$(curl -fsSL -m 10 "${GET}/VERSION" 2>/dev/null || true)"
+    if [[ -z "$latest" ]]; then
+      say "already at the newest commit on $branch ($here); the channel could not be asked, so a newer release could be out there"
+    elif git rev-parse -q --verify "$latest" >/dev/null 2>&1 && ! git merge-base --is-ancestor "$latest" HEAD 2>/dev/null; then
+      warn "already at the newest commit on $branch ($here), but the channel serves $latest, which has not landed on this branch yet — it is still shipping; try again shortly"
+    else
+      say "already at the newest commit on $branch ($here)"
+    fi
   fi
 fi
 

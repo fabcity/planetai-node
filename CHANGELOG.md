@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`planetai update` says what blocks it, and what "nothing moved" means.** A failed pull on a git
+  install now names the dirty files and the local-only commits (git's own error does not), and a
+  pull that moves nothing asks the channel: if the site serves a release whose tag has not landed
+  on the branch yet, it says the release is still shipping instead of staying silent (node #1 ran
+  three no-op updates in a day chasing v0.80.3). The Set up → Updates row now says *checked N h ago*
+  instead of a bare date, so a stale "this node has it" reads stale. `.gitignore` now covers the
+  operational files a git install writes (`.planetai-*`, `.env.before-*`,
+  `config/rules.yml.before-update`) — a `git add -A` used to sweep them in, and a tracked update log
+  made every later pull refuse.
+
 - **the headline goes words-only, and `plain` carries the figures** (SPEC_language, release A). The
   lead sentence speaks in words — "The air is getting worse in the house, and the source is inside
   the house" — and the plain sentence under it holds the numbers: the numeral distance first, then
