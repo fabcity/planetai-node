@@ -59,7 +59,10 @@ def _answer(a: dict | None, kind: str) -> dict | None:
     if not a:
         return None
     held = _t(a["ts"]) + HOLD if a["stage"] == "acknowledged" and kind != "danger" else None
-    return {"stage": a["stage"], "actor": a.get("actor"), "ts": _iso(a["ts"]), "held_until": _iso(held)}
+    # The note is the household's own words ("what did you do instead?"): recorded at the press or ridden in on a
+    # second row, and shown on the card — an answer without it is a vote, an answer with it is a story.
+    return {"stage": a["stage"], "actor": a.get("actor"), "ts": _iso(a["ts"]), "held_until": _iso(held),
+            "note": a.get("note") or None}
 
 
 def build(engine, events, messages, answers, covered, contexts, decl, locale, now, tz=None) -> dict:
@@ -151,7 +154,7 @@ def live(cur, decl: dict, locale: str, now: dt.datetime) -> dict:
     ids = [e["id"] for e in events]
     cur.execute("SELECT event_id, ts, text, sent, action_id FROM event_messages WHERE event_id = ANY(%s)", (ids,))
     messages = [dict(x) for x in cur.fetchall()]
-    cur.execute("SELECT event_id, ts, stage, actor FROM actions WHERE event_id = ANY(%s)", (ids,))
+    cur.execute("SELECT event_id, ts, stage, actor, note FROM actions WHERE event_id = ANY(%s)", (ids,))
     answers = [dict(x) for x in cur.fetchall()]
     covered, contexts = {}, {}
     for e in events:

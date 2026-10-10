@@ -239,6 +239,7 @@ svg.sg { width: 1em; height: 1em; flex: none; vertical-align: -.12em }
 .ev .evact { font: 600 14.5px/1.4 var(--fc-font-body); max-width: 56ch }
 .ev .evact.none { font-weight: 400; color: var(--mute) }
 .ev .evdone, .ev .evheld, .evrow .evdone, .evrow .evheld { font: 500 12.5px var(--mono); color: var(--mute) }
+.ev .evnote, .evrow .evnote { font-style: italic }
 .ev .evdone svg.sg, .evrow .evdone svg.sg { color: var(--loop-closed) }
 .ev .evbtns, .evrow .evbtns { display: flex; gap: 8px; flex-wrap: wrap }
 .ev .evb, .evrow .evb { font: 600 14px var(--fc-font-body); padding: 10px 16px; border-radius: 0;

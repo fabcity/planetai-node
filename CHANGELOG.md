@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The answer carries the household's own words, and the page insists on a name.** The wire's `answer` now
+  carries `note`, and the card draws it in quotes — `Doesn't fit · tomas · 13:20 — "opened the west side"` —
+  so the reply to the bot's one question is visible where the answer lives. And the card's form no longer
+  sends an anonymous answer: five nameless rows landed on node #1 the morning the card looked frozen — the
+  presses worked, but the record could not say whose they were. (curl may still post an empty `actor`; a LoRa
+  bridge may not know names, and the card says "somebody" for those. spec §4.2 amended.)
 - **Telegram buttons close the loop (SPEC_alerts §7, Plan 2's first half).** An event's message now carries
   Done / Not now / Doesn't fit when the bot in the agent container has announced itself (`TELEGRAM_BUTTONS=1`,
   set on startup; a node without the bot sends the same message bare). The press is the same `POST /actions`

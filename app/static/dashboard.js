@@ -799,13 +799,15 @@ function evButtons(e) {
     + `<button type="button" class="cancel">Cancel</button></div>${TOKEN_FINE}</form>`;
 }
 /* The line an answered event wears: who pressed which button, when, and until when a Not now holds. Empty
-   before an answer. Decide's card and simple mode's row both draw it. */
+   before an answer. Decide's card and simple mode's row both draw it. A Doesn't fit with a note carries the
+   household's own words — the answer to the bot's one question, "what did you do instead?" */
 function evAnswered(e) {
   const a = e.answer, done = a && a.stage === 'acted';
   return !a ? '' : `<p class="${done ? 'evdone' : 'evheld'}">`
     + `${done ? sign('rho-closed', 'closed') : ''}${esc(evWord(a.stage))} · ${esc(a.actor || 'somebody')}`
     + ` · ${esc(evClock(a.ts))}${a.held_until ? ` · held until ${esc(evClock(a.held_until))}`
-      + ` unless it reaches danger` : ''}</p>`;
+      + ` unless it reaches danger` : ''}`
+    + `${a.note ? `<span class="evnote"> — “${esc(a.note)}”</span>` : ''}</p>`;
 }
 /* `tail` is drawn inside the card, last: Decide puts the folded rule rows there (spec §4.2). */
 /* The live stamp. Everything else on the card is event-scoped — peak, message, context — so an event that
@@ -8541,6 +8543,16 @@ document.addEventListener('submit', async ev => {
   }
   if (!form.classList.contains('evform')) { didThis(form); return; }
   const val = n => String((form.elements[n] || {}).value || '').trim();
+  if (!val('actor')) {
+    /* ρ is built out of who answered. The buttons post at once only when this browser already knows a name;
+       the form is where a name is given, and it does not send an anonymous one. Five nameless rows landed on
+       node #1 the morning the card looked frozen — presses that worked but could not say whose they were.
+       (The node still takes an empty actor from curl — a LoRa bridge may not know names — and the card says
+       "somebody"; the page is where households press, so the page is where the name is insisted on.) */
+    say('A name first, so the record says who.', true);
+    form.elements.actor.focus();
+    return;
+  }
   const sub = form.querySelector('button[type="submit"]');
   if (sub) sub.disabled = true;
   try {

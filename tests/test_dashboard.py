@@ -739,6 +739,8 @@ const out = {
   acted: run(E('events'), { answer: { stage: 'acted', actor: 'tomas', ts: '2026-10-05T10:00:00Z' } }),
   held: run(E('events'), { answer: { stage: 'acknowledged', actor: 'tomas', ts: '2026-10-05T10:00:00Z',
     held_until: '2026-10-05T12:00:00Z' } }),
+  noted: run(E('events'), { answer: { stage: 'dismissed', actor: 'tomas', ts: '2026-10-05T10:00:00Z',
+    note: 'I opened the window <b>' } }),
   under: run(E('events'), { peak: 34 }),
   live: run(E('events'), { last_seen_at: new Date(Date.now() - 3 * 6e4).toISOString() }),
   noact: run(E('events'), { action: null, context: {}, line: null }),
@@ -782,6 +784,11 @@ console.log(JSON.stringify(out));""")
         "an acted event has no buttons and says who"
     assert "evheld" in _evr["held"] and "held until 12:00" in _evr["held"] and 'class="evb' in _evr["held"], \
         "a held event keeps its buttons and says until when"
+    assert '“I opened the window &lt;b&gt;”' in _evr["noted"] and "<b>" not in _evr["noted"].split("evnote")[1], \
+        "a Doesn't fit with a note carries the household's own words, escaped"
+    assert "evnote" not in _evr["acted"], "an answer without a note invents none"
+    assert "A name first, so the record says who." in _js_raw, \
+        "the card's form refuses an anonymous answer — the five nameless rows of 10 Oct are the why"
     # An evidence link goes only to a section the page is drawing: `sensors` is the air-quality pack's (absent in l_all), and
     # `day` here is registered but its needs are not met. A link to neither would point at nothing.
     assert 'href="#matrix"' in _evr["l_all"] and 'href="#sensors"' in _evr["l_all"] \
