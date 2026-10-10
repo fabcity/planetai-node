@@ -242,8 +242,49 @@ layers panel, scales and inspector were drawn; the node's map ground has the bas
 
 ## 4. The language split, what is left
 
-**Asked, 9 October 2026; the two halves shipped in v0.80.4 (words) and v0.80.5 (page).** What remains of
+**Asked, 9 October 2026; the two halves shipped in v0.80.4 (words) and v0.80.5 (page).** Since then, still
+unreleased (in the CHANGELOG's Unreleased section): **release C** (headlines assembled from clauses — `{line}`
+computed from the live value and named per issue, `{event}` for the day the line was crossed, `cmp` in each
+issue's own words) and **release D** (every threshold alert names whose line it is — the pack messages now
+carry "this house's own line is {line} °C" / "the US EPA line ({line} µg/m³)", filled from `watch.over`;
+`heat_stress_now` dropped "dangerously"; `tools/check_rules.py` gates the `{line}` clause; the sign-off pins
+in `tests/test_shipped.py` moved with Tomas's approval). What remains of
 `docs/SPEC_language.md`'s migration: the doors read the node's English only — locale work shows on the
 classic dashboard and the bot until the doors gain locales (migration item 8); the native passes — es by
 Tomas, id by Bayu, each approved locale shedding its ASSISTANT-WRITTEN header (item 9); and
 SPEC_language.md itself joining the stamped docs set (item 10).
+
+## 5. Alert events and the Decide card, what is left
+
+**State on 10 October 2026.** The week's arc: SPEC_alerts approved 5 Oct; the engine proven by replay in
+shadow; v0.77 (events on the wire, `POST /actions`); v0.78 (the Decide card); v0.80.4–5 (its texts in the
+three layers). Node #1 runs `ALERT_ENGINE=events`. Since then, unreleased (CHANGELOG's Unreleased section):
+
+- **The Decide card's live stamp** — "watching — last seen …" from the wire's `last_seen_at`, so an event
+  that sits open for hours never reads as frozen. No current *value* rides the stamp: the hero's figure is
+  not in the event's measure, and the card does not mix the two (spec §4.2 amended).
+- **The heat margin stays at 1 °C** — `docs/decisions/2026-10-10-heat-margin.md`. A sustained event open
+  through a hot Kuta Selatan night is the hysteresis describing the weather, not a stuck card. Do not
+  "fix" this by tightening the margin or adding a daily auto-clear; the question was asked from the field
+  and answered by Tomas.
+- **Telegram buttons** (SPEC_alerts §7, Plan 2's first half): the keyboard rides event messages when the
+  bot has announced itself (`TELEGRAM_BUTTONS=1`, set on startup); `callback_data` is
+  `ev:<event_id>:<stage>`; the bot's press is the same `POST /actions` the dashboard makes. The Doesn't-fit
+  note rides a second row within ten minutes — repeated answers are allowed on purpose, and the wire's
+  latest answer carries the note.
+
+**Still owed, in the order that pays:**
+
+1. **Learning from the answers** (SPEC_alerts §5): among actions whose `when:` holds, prefer the one that
+   cleared fastest in this house (`cleared_after_min` is already recorded on every Done-then-clear), and
+   mute an action for 30 days after two Doesn't-fits. The data exists; the ranking does not.
+2. **Anticipation** (§6, Plan 3): the engine ranks `ahead` events but no pack ships an `ahead` rule — the
+   morning plan, the unusual day ahead, the evening crossover. The measures (`usual_by_hour`, `ahead_12h`)
+   are already there.
+3. **ρ over events** (§7): ρ still counts alerts with the derived-measured trick; the switch needs its own
+   `docs/decisions/` record because it changes a published number. The events carry `responded_at` and
+   `acted_at`; the funnel's `measured` has no event-side notion yet.
+4. **`alerts.event_id` back-link**: the wire matches covered rows by time window — the spec's own "until
+   then" branch.
+5. **Reports built from events** (§11 step 7, Plan 4): `REPORT_AT`, `REPORT_SKIP_EMPTY`, a report that
+   opens with the morning plan.
