@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## v0.80.10 — 2026-10-10 — The boot screen is the loading screen
+
+- **No dead shell before the asking face, on either face of the node.** The doors and the classic dashboard
+  used to paint their chrome — the nav, the register buttons, the empty middle — for a breath or two before
+  any script arrived to open the asking overlay. Both overlays now ship already on: the first paint is the
+  asking face, whose brand, frame and blink are CSS and move before a line of JS runs, and the glyph globe
+  joins when the page's own `open()` wires the canvas over it (its `on` is a JS flag, so the pre-shown face
+  does not stop it). Every path out closes it as before, and a browser with scripting off gets the shell
+  instead of a spinner that would lie (`@media (scripting: none)` — not a `noscript` style tag, which the
+  page architecture forbids and check_ui would rightly trip on).
+
 ## v0.80.9 — 2026-10-10 — The split reaches the Now door's hour scrubber
 
 - **The Now door titles with the split, live hour and past.** v0.80.8 split the hero and the wall but missed

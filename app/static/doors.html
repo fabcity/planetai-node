@@ -502,10 +502,19 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .asking .brand b{color:var(--ink);font-weight:800}
 @keyframes askblink{0%,49%{opacity:1}50%,100%{opacity:0}}
 @media (prefers-reduced-motion: reduce){.asking .hd .blink{animation:none}}
+/* ships already on (the boot screen is the loading screen); a browser with scripting off gets the
+   shell instead of a spinner that would lie — scripting:none, not a noscript style tag: check_ui
+   lints inline style blocks and a second one would muddy it */
+@media (scripting: none){.asking{display:none !important}}
 </style>
 </head>
 <body>
-<div class="asking" id="asking" aria-hidden="true">
+<!-- the boot screen is the loading screen: the overlay ships already on, so the first paint is
+     the asking face — brand, frame and the blink are CSS and move before any script arrives; the glyph
+     globe joins when doors-core.js runs ASKING.open (its `on` is a JS flag, so open() still wires
+     the canvas over the pre-shown face). Every path out — D landed, or refused(e) — closes it as
+     before. A browser with scripting off gets the shell instead (@media (scripting: none) above). -->
+<div class="asking on" id="asking" aria-hidden="false">
   <p class="brand"><b>PLANETAI</b> loading</p>
   <div class="frame"><canvas id="askcv"></canvas></div>
   <div class="aside">
