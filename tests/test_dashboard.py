@@ -708,6 +708,8 @@ if shutil.which("node"):
         re.search(r"function evButtons\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evWord\(stage\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evAnswered\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
+        re.search(r"const age = m => .*?days ago`;", _js_raw, re.S).group(0),
+        re.search(r"function evLive\(e\) \{.*?\n\}", _js_raw, re.S).group(0),
         re.search(r"function evCard\(e, tail = ''\) \{.*?\n\}", _js_raw, re.S).group(0),
     ))
     _evr = _node(_ev + r"""
@@ -738,6 +740,7 @@ const out = {
   held: run(E('events'), { answer: { stage: 'acknowledged', actor: 'tomas', ts: '2026-10-05T10:00:00Z',
     held_until: '2026-10-05T12:00:00Z' } }),
   under: run(E('events'), { peak: 34 }),
+  live: run(E('events'), { last_seen_at: new Date(Date.now() - 3 * 6e4).toISOString() }),
   noact: run(E('events'), { action: null, context: {}, line: null }),
   l_all: (secs('matrix', 'sensors'), run(E('events'), {})),
   l_unmet: (secs('matrix', 'day', 'sensors'), run(E('events'), {})),
@@ -770,6 +773,11 @@ console.log(JSON.stringify(out));""")
     assert "would have sent 09:31" in _evr["shadow_card"], "a shadow node says would have sent"
     assert "held 09:31" in _evr["held_msg"], "an unsent message says held"
     assert 'class="evnum worse"' in _c and 'class="evnum"' in _evr["under"], "worse only when peak > line"
+    # The live stamp (docs/decisions/2026-10-10): an open event says the engine is still watching, from the
+    # wire's last_seen_at — and says nothing when the wire carries none.
+    assert "watching — last seen" in _evr["live"] and "min ago" in _evr["live"], \
+        f"an open event carries its live stamp: {_evr['live'][:200]}"
+    assert "watching" not in _c, "no last_seen_at, no stamp — the card never invents one"
     assert 'class="evb' not in _evr["acted"] and "evdone" in _evr["acted"] and "tomas" in _evr["acted"], \
         "an acted event has no buttons and says who"
     assert "evheld" in _evr["held"] and "held until 12:00" in _evr["held"] and 'class="evb' in _evr["held"], \

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The Decide card says it is watching.** An open event's card now carries "watching — last seen …" in its
+  header, from the wire's `last_seen_at`, ticking up on every poll: the visible proof the feed is alive while an
+  event sits open for hours. The margin that keeps such events open on hot nights stays as written — the stillness
+  was the card's, not the engine's (`docs/decisions/2026-10-10-heat-margin.md`, spec §4.2 amended).
 - **Every threshold alert names whose line it is (release D of the language split).** The audit of
   releases A–C found the gap: `docs/SPEC_language.md` rule 10 was delivered in the event templates
   but not in the pack messages a household receives. The heat and air-quality act rules now say it —

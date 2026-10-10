@@ -142,7 +142,7 @@ One per open event, in the node's order. It is a **readout**, one figure with it
 stay four.
 
 ```
-[pix-heat] Heat · sustained · since 13:00 · K room, L room              shadow — would have sent
+[pix-heat] Heat · sustained · since 13:00 · K room, L room · watching — last seen 2 min ago   shadow — would have sent
 35.8 °C  peak        usual at this hour 33.4 · outside 29.1 (own kit) · the line 35
 Open up now: outside is 29.1 °C, inside 35.8.
 [ Done ]  [ Not now ]  [ Doesn't fit ]
@@ -150,6 +150,12 @@ sent 13:02 to Telegram: "…"
 evidence: heat at every distance · the day · K and L rooms' stations · from 9 rule rows ▸
 ```
 
+- **The live stamp** ("watching — last seen …", from the wire's `last_seen_at`) rides the header. Everything else
+  on the card is event-scoped — peak, message, context — so an event that stays open for hours (the margin doing
+  its work on a hot night; `docs/decisions/2026-10-10-heat-margin.md`) would otherwise read as frozen while the
+  engine steps every minute. The age ticks up on every poll: the visible proof the feed is alive. No current
+  *value* rides here — the hero's figure is not in the event's measure (heat's hero is air temperature, the event
+  is apparent), and the card does not mix the two. No `last_seen_at`, no stamp: the card never invents one.
 - **The numeral** is the peak, with `context` beside it. It is `--signal-worse` only when past the issue's line,
   which is what that colour already means.
 - **The action** is in body type, under an ink rule, not a coloured one.

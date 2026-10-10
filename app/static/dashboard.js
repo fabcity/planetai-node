@@ -808,6 +808,17 @@ function evAnswered(e) {
       + ` unless it reaches danger` : ''}</p>`;
 }
 /* `tail` is drawn inside the card, last: Decide puts the folded rule rows there (spec §4.2). */
+/* The live stamp. Everything else on the card is event-scoped — peak, message, context — so an event that
+ * stays open for hours (the margin doing its work on a hot night, docs/decisions/2026-10-10) reads as frozen
+ * while the engine is stepping every minute. The wire already carries last_seen_at; the card says so, and the
+ * age ticks up on every poll, which is the visible proof the feed is alive. No current value here: the hero's
+ * value is not in the event's measure (heat's hero is air temperature, the event is apparent), and the card
+ * will not mix the two. */
+function evLive(e) {
+  const t = new Date(e.last_seen_at || '');
+  if (isNaN(t)) return '';
+  return ` · <span class="m">watching — last seen ${esc(age((Date.now() - t.getTime()) / 6e4))}</span>`;
+}
 function evCard(e, tail = '') {
   const d = ISS[e.issue] || { name: {} }, h = d.hero || {}, dp = d.dp == null ? 1 : d.dp, unit = d.unit || '';
   const st = evState(), c = e.context || {}, a = e.answer;
@@ -837,6 +848,7 @@ function evCard(e, tail = '') {
       + `${esc(d.name[LOC] || e.issue)}"><use href="static/signs.svg#${esc(h.sign)}"/></svg>` : ''}`
     + `<b>${esc(d.name[LOC] || e.issue)}</b> · ${esc(e.kind)} · since ${esc(evClock(e.opened_at))}`
     + `${(e.rooms || []).length ? ` · ${esc(e.rooms.join(', '))}` : ''}`
+    + evLive(e)
     + `${st === 'shadow' ? `<span class="m">shadow — nothing was sent</span>` : ''}</div>`
     + `<p class="evcmp"><span class="evnum${worse ? ' worse' : ''}" data-num="ev.${esc(String(e.id))}.peak"`
     + ` data-cmp="${esc(cmp)}">${esc(n(e.peak))}</span> ${esc(unit)} peak <small>${esc(cmp)}</small></p>`
