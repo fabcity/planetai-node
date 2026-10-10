@@ -6,12 +6,16 @@
 - id: heat_stress_now
   level: act
   cooldown_minutes: 240
+  # The metric is computed inline from temp and humidity, so the SQL never says its name; the watch
+  # comment below is where `check_rules` finds it. The line — 35 — is this place's own (see below).
+  watch: {metric: apparent, over: 35}
   sql: |
     WITH x AS (
       SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
       FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
       -- indoor only: the no-wind Steadman form is the indoor form, and the 32 °C line was measured on two indoor
       -- kits. Outdoors, with wind unaccounted for, the same arithmetic overstates the load.
+      -- metric: 'apparent' (computed inline from temp and humidity, so the name never appears as a column)
       WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
     SELECT sensor_id, name, round(t::numeric, 1) AS t, round(rh::numeric) AS rh,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
@@ -20,28 +24,30 @@
     -- Node #1, 2-7 Sep 2026: AT was over 32 for 86% of all readings and never once fell below 28.7. See the README.
     WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 35
   message:
-    en: "🥵 It is dangerously hot at {name}: it feels like {at} °C.\n\nHumidity is stopping sweat from cooling the body, so the air feels hotter than the thermometer says and the strain builds quietly.\n\n👉 Drink water, move air, stop hard work, and check on anyone old, young or unwell."
-    id: "🥵 Panas berbahaya di {name}: terasa seperti {at} °C.\n\nKelembapan menghambat keringat mendinginkan tubuh, jadi udara terasa lebih panas dari angka termometer dan beban menumpuk diam-diam.\n\n👉 Minum air, gerakkan udara, hentikan kerja berat, dan cek orang tua, anak kecil, atau yang sakit."
-    es: "🥵 Hace un calor peligroso en {name}: la sensación es de {at} °C.\n\nLa humedad impide que el sudor enfríe el cuerpo, así que el aire se siente más caliente de lo que marca el termómetro y el desgaste se acumula sin que se note.\n\n👉 Bebe agua, mueve el aire, para el trabajo duro y pregunta cómo están los mayores, los niños y quien esté enfermo."
+    en: "🥵 It is too hot at {name}: it feels like {at} °C — this house's own line is {line} °C, measured here.\n\nHumidity is stopping sweat from cooling the body, so the air feels hotter than the thermometer says and the strain builds quietly.\n\n👉 Drink water, move air, stop hard work, and check on anyone old, young or unwell."
+    id: "🥵 Panas berlebih di {name}: terasa seperti {at} °C — batas rumah ini sendiri {line} °C, diukur di sini.\n\nKelembapan menghambat keringat mendinginkan tubuh, jadi udara terasa lebih panas dari angka termometer dan beban menumpuk diam-diam.\n\n👉 Minum air, gerakkan udara, hentikan kerja berat, dan cek orang tua, anak kecil, atau yang sakit."
+    es: "🥵 Hace demasiado calor en {name}: la sensación es de {at} °C — el límite propio de esta casa es {line} °C, medido aquí.\n\nLa humedad impide que el sudor enfríe el cuerpo, así que el aire se siente más caliente de lo que marca el termómetro y el desgaste se acumula sin que se note.\n\n👉 Bebe agua, mueve el aire, para el trabajo duro y pregunta cómo están los mayores, los niños y quien esté enfermo."
 
 - id: heat_danger
   level: act
   cooldown_minutes: 120
+  watch: {metric: apparent, over: 40}
   sql: |
     WITH x AS (
       SELECT t.sensor_id, t.name, t.mean_15m AS t, h.mean_15m AS rh
       FROM stats t JOIN stats h ON h.sensor_id = t.sensor_id AND h.metric = 'humidity'
       -- indoor only: the no-wind Steadman form is the indoor form. Outdoors, with wind unaccounted for, the same
       -- arithmetic overstates the load.
+      -- metric: 'apparent' (computed inline from temp and humidity, so the name never appears as a column)
       WHERE t.local AND t.indoor AND t.metric = 'temp' AND t.mean_15m IS NOT NULL AND h.mean_15m IS NOT NULL)
     SELECT sensor_id, name,
            round((t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0)::numeric, 1) AS at
     FROM x
     WHERE (t + 0.33 * (rh/100.0 * 6.105 * exp(17.27*t/(237.7+t))) - 4.0) >= 40
   message:
-    en: "🚨🥵 DANGER at {name}: it feels like {at} °C.\n\nThis is heatstroke territory. The body cannot shed heat at this level, and it goes wrong fast.\n\n👉 Cool the room or leave it. Wet skin, a fan, shade, water. Do not leave anyone alone in it."
-    id: "🚨🥵 BAHAYA di {name}: terasa seperti {at} °C.\n\nIni wilayah heatstroke. Tubuh tidak bisa membuang panas di tingkat ini, dan cepat memburuk.\n\n👉 Dinginkan ruangan atau keluar. Basahi kulit, kipas, teduh, air. Jangan tinggalkan siapa pun sendirian di dalamnya."
-    es: "🚨🥵 PELIGRO en {name}: la sensación es de {at} °C.\n\nEsto es terreno de golpe de calor. A este nivel el cuerpo no consigue soltar calor, y se descompone rápido.\n\n👉 Enfría la habitación o sal de ella. Piel mojada, un ventilador, sombra, agua. No dejes a nadie solo ahí."
+    en: "🚨🥵 DANGER at {name}: it feels like {at} °C — the danger line here is {line} °C.\n\nThis is heatstroke territory. The body cannot shed heat at this level, and it goes wrong fast.\n\n👉 Cool the room or leave it. Wet skin, a fan, shade, water. Do not leave anyone alone in it."
+    id: "🚨🥵 BAHAYA di {name}: terasa seperti {at} °C — garis bahaya di sini {line} °C.\n\nIni wilayah heatstroke. Tubuh tidak bisa membuang panas di tingkat ini, dan cepat memburuk.\n\n👉 Dinginkan ruangan atau keluar. Basahi kulit, kipas, teduh, air. Jangan tinggalkan siapa pun sendirian di dalamnya."
+    es: "🚨🥵 PELIGRO en {name}: la sensación es de {at} °C — la línea de peligro aquí es {line} °C.\n\nEsto es terreno de golpe de calor. A este nivel el cuerpo no consigue soltar calor, y se descompone rápido.\n\n👉 Enfría la habitación o sal de ella. Piel mojada, un ventilador, sombra, agua. No dejes a nadie solo ahí."
 
 - id: night_no_relief
   level: info

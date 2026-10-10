@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- **Every threshold alert names whose line it is (release D of the language split).** The audit of
+  releases A–C found the gap: `docs/SPEC_language.md` rule 10 was delivered in the event templates
+  but not in the pack messages a household receives. The heat and air-quality act rules now say it —
+  "this house's own line is {line} °C, measured here" for heat, "past the US EPA line ({line} µg/m³)"
+  for air — filled from `watch.over` by `main.py`, so the number is never a second copy. `heat_stress_now`
+  drops "dangerously" (danger is a register, not a volume; `heat_danger` keeps it, and keeps being the
+  only place it appears). `tools/check_rules.py` fails any act/warn rule with a `watch.over` whose
+  message skips the `{line}` clause, and any `{line}` with no `watch.over` to fill it — the gate that
+  would have caught the gap. The sign-off pins in `tests/test_shipped.py` moved with Tomas's approval.
+- **Headlines assembled from clauses (release C).** The review found the titles repetitive and flat:
+  `{line}` (over · near · under, computed from the live value, named per issue), `{event}` ("It crossed
+  the line earlier today"), and per-issue `cmp_words` ("cleaner than the street" for air, "cooler than
+  the street" for heat). Heat's skeletons are its own; coast and land headlines dropped the jargon.
+
 ## v0.80.5 — 2026-10-09 — The page speaks the three layers, and the Wall's voice lives on the node
 
 - **The page speaks the three layers, and the Wall's voice lives on the node.** The second half of

@@ -467,8 +467,14 @@ def run_rules() -> None:
                     continue
                 msg = rule["message"]
                 tmpl = msg.get(LOCALE()) or msg.get("en") if isinstance(msg, dict) else str(msg)
+                # {line} is the one placeholder the row never carries: it is the rule's own line,
+                # named by watch.over and printed bare (35, not 35.0), so an alert can say whose
+                # line it is (docs/SPEC_language.md rule 10) without a second copy of the number.
+                watch_over = (rule.get("watch") or {}).get("over")
+                line_f = {"line": f"{float(watch_over):g}"} \
+                    if isinstance(watch_over, (int, float)) else {}
                 try:
-                    text = tmpl.format(**{k: ("—" if v is None else v) for k, v in row.items()})
+                    text = tmpl.format(**line_f, **{k: ("—" if v is None else v) for k, v in row.items()})
                 except (KeyError, ValueError, TypeError):
                     text = tmpl
                 level = rule.get("level", "info")
