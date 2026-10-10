@@ -1,5 +1,5 @@
 # The dashboard
-<!-- checked: v0.80.10 -->
+<!-- checked: v0.80.11 -->
 
 The dashboard is where a node is read. Once it is open, the loop the node runs becomes something a person
 can follow and take part in: what it observed about the place, what it suggests, what it has asked of the
@@ -420,7 +420,7 @@ blank would be the node lying about being broken. A browser on the node's own ma
 the network here, because inside Docker it arrives as the bridge gateway. At `open` the whole read API
 answers and the page draws; the plan still needs a token at every level. See [Sharing](sharing.md).
 
-> **Gap in v0.80.10.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
+> **Gap in v0.80.11.** At `SHARE_LEVEL=off` a browser that has never stored a token draws the refused page
 > on every view, Set up included, so there is nowhere on the page to enter one, and the refused page's advice
 > to open it on the node's own machine does not get past the refusal. Turn sharing on, store the token in
 > Set up, and turn it off again; or read the page at `open`. The doors are the way round it: at `off` without a token

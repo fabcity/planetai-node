@@ -1,5 +1,5 @@
 # Coverage: the node against the Fab City Index
-<!-- checked: v0.80.10 -->
+<!-- checked: v0.80.11 -->
 
 The Index is twenty cells: four pillars (Environmental, Economic, Social, Governance) by five scales (Community, City,
 Region, Bioregion, Planet). A node fills cells at any scale; the kind of source changes, not the code.

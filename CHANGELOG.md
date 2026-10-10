@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## v0.80.11 — 2026-10-10 — The seed in the middle, the labels in lanes, the wall follows the window
+
+- **The asking face's middle is never empty.** Before any script arrives, the measuring frame now carries
+  its own mark dead center — a small square outline, breathing (pure CSS, reduced-motion aware) — on both
+  faces of the node; `open()` removes it the moment the glyph globe wires in. The doors overlay also stops
+  capping its background at 1440 px: the paper now covers the whole window at any width, with the content
+  column unchanged (the cap moved from the element to its padding). The classic dashboard's asking
+  composition centers vertically instead of hugging the top.
+- **Event labels take lanes on the day figure.** Two events opening close together — node #1 had
+  "spike 02:32" and "spike 03:45" printing through each other this morning — are measured, kept inside the
+  frame's right edge, and stepped a row up when they would collide; the lanes are the top margin's own and
+  a label is never dropped. The answer rings and bars are unchanged.
+- **The wall's type follows the window, not just its width.** Every wall text that scaled by `vw` alone —
+  the sentence, the tagline, the node-writing narrative, the asks, the figures — now scales by
+  `min(vw, vh)`, tuned so 1920x1080 renders pixel-identical to before but a shorter or narrower window
+  shrinks the type instead of overflowing it.
+
 ## v0.80.10 — 2026-10-10 — The boot screen is the loading screen
 
 - **No dead shell before the asking face, on either face of the node.** The doors and the classic dashboard

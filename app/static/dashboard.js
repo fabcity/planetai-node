@@ -7412,6 +7412,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      const seed = box.querySelector('.seed'); if (seed) seed.remove();   /* the globe takes the middle from here */
       settleFor = SETTLE_MS;
       held = !!hold;
       /* Per episode, not per session: the cost of the frames drawn while the page was loading is

@@ -48,14 +48,29 @@ function dayWeek(o) {
     if (narrow) g.append('text').attr('class', 'lab').attr('x', m.l + 4).attr('y', y(it.line) - 5).text(`line ${fmt(it.line, it.dp)}`);
     else g.append('text').attr('class', 'lab').attr('x', m.l - 8).attr('y', y(it.line) + 4).attr('text-anchor', 'end').text(`line ${fmt(it.line, it.dp)}`);
   }
-  // events: a bar from open to clear across the top, its answer a ring
+  // events: a bar from open to clear across the top, its answer a ring. The labels take lanes: each is
+  // measured, kept inside the frame's right edge, and a label that would land on one already written
+  // steps a row up (two spikes an hour apart used to print through each other). Lanes that fit above
+  // the chart are m.t's own; beyond them the label overlaps as it did before — said, never dropped.
+  const labLane = [], laneMax = Math.max(1, Math.floor((m.t - 14) / 13));
+  const evs = [];
   for (const e of D.events.filter(e => e.issue === k)) {
     const a = dayOf(e.opened_at) === date ? hourOf(e.opened_at) + (+e.opened_at.slice(14, 16)) / 60 : (dayOf(e.opened_at) < date ? 0 : null);
     if (a == null) continue;
     const zEnd = e.cleared_at ? (dayOf(e.cleared_at) === date ? hourOf(e.cleared_at) + (+e.cleared_at.slice(14, 16)) / 60 : (dayOf(e.cleared_at) > date ? 24 : null)) : nowH;
     if (zEnd == null || zEnd < a) continue;
+    evs.push({ e, a, zEnd });
+  }
+  evs.sort((p, q) => p.a - q.a);
+  for (const { e, a, zEnd } of evs) {
     g.append('rect').attr('x', x(a)).attr('y', m.t - 14).attr('width', Math.max(2, x(zEnd) - x(a))).attr('height', 4).attr('fill', 'currentColor');
-    g.append('text').attr('class', 'lab').attr('x', x(a)).attr('y', m.t - 18).text(`${e.kind} ${hhmm(e.opened_at)}`);
+    const t = g.append('text').attr('class', 'lab').text(`${e.kind} ${hhmm(e.opened_at)}`);
+    const tw = (t.node().getComputedTextLength ? t.node().getComputedTextLength() : 0) || 0;
+    let tx = x(a), lane = 0;
+    if (tx + tw > m.l + iw) tx = Math.max(m.l, m.l + iw - tw);
+    while (lane < labLane.length && labLane[lane] > tx - 6 && lane < laneMax) lane++;
+    t.attr('x', tx).attr('y', m.t - 18 - lane * 13);
+    labLane[lane] = Math.max(labLane[lane] || 0, tx + tw);
     if (e.answer && dayOf(e.answer.ts) === date) {
       const ah = hourOf(e.answer.ts) + (+e.answer.ts.slice(14, 16)) / 60;
       g.append('circle').attr('cx', x(ah)).attr('cy', m.t - 12).attr('r', 5).attr('fill', 'var(--ground)')

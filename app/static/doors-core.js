@@ -188,6 +188,7 @@ const ASKING = (function () {
         (box.querySelector('.frame') || box).appendChild(cv);
       }
       on = true; reads.length = 0; asking = ''; settle0 = 0; spec = null;
+      const seed = box.querySelector('.seed'); if (seed) seed.remove();   /* the globe takes the middle from here */
       settleFor = SETTLE_MS; held = !!hold;
       t0 = performance.now();
       box.classList.add('on'); box.setAttribute('aria-hidden', 'false');

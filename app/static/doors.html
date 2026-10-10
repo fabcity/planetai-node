@@ -324,37 +324,37 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
 .wl{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;min-width:0;min-height:0}
 .wl #wfield{border:0}.wl .flowtime{width:100%}
 .wflow .fwords{display:grid;grid-template-columns:1fr 1fr;column-gap:2vw}.wflow .fwords > .k{grid-column:1 / -1;margin-bottom:2px}.wflow .fine{display:none}
-.wflow .fc{padding:5px 0}.wflow .fc span{font-size:clamp(12px,.82vw,16px)}.wflow .fc b{font-size:clamp(18px,1.5vw,30px)}.wflow .fc small{display:none}
+.wflow .fc{padding:5px 0}.wflow .fc span{font-size:clamp(12px,min(.82vw,1.46vh),16px)}.wflow .fc b{font-size:clamp(18px,min(1.5vw,2.67vh),30px)}.wflow .fc small{display:none}
 .wr{min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:1.6vh;border-left:1px solid var(--hair);padding:0 0 0 2.4vw;margin-left:2.4vw}
 .whead{display:flex;flex-direction:column;gap:1.3vh}.whead .wask{margin-top:1.2vh}.wcount{display:flex;flex-direction:column;gap:1.4vh}
-.wsent{font:700 clamp(28px,3vw,62px)/1.04 var(--display);letter-spacing:-.03em;margin:0;text-wrap:balance}
+.wsent{font:700 clamp(28px,min(3vw,5.33vh),62px)/1.04 var(--display);letter-spacing:-.03em;margin:0;text-wrap:balance}
 /* the title says what is happening; the tagline explains it — the line, the comparison, the day's event — smaller and muted */
-.wsent .wtag{display:block;font:500 clamp(14px,1.05vw,21px)/1.35 var(--body);letter-spacing:0;color:var(--mute);margin-top:1vh;max-width:44ch}
-.wwhy{font:500 clamp(14px,1.05vw,21px)/1.35 var(--body);color:var(--mute);margin:0;max-width:56ch}
+.wsent .wtag{display:block;font:500 clamp(14px,min(1.05vw,1.87vh),21px)/1.35 var(--body);letter-spacing:0;color:var(--mute);margin-top:1vh;max-width:44ch}
+.wwhy{font:500 clamp(14px,min(1.05vw,1.87vh),21px)/1.35 var(--body);color:var(--mute);margin:0;max-width:56ch}
 /* the node, thinking aloud: a voice, set apart from the node's figures. Figtree Italic, light and large, is speech against
    the upright facts around it; a framed caption, a hairline header, a dot that breathes while it writes, words that
    surface where they land. No new font: the node's own three, self-hosted. */
 .wnarr{flex:1 1 20vh;min-height:19vh;display:flex;flex-direction:column;border:1px solid var(--ink);margin-top:.4vh;overflow:hidden}
-.wnarr .nh{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:.9vh 1.1vw;border-bottom:1px solid var(--hair);font:500 clamp(10px,.68vw,13px) var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.wnarr .nh{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:.9vh 1.1vw;border-bottom:1px solid var(--hair);font:500 clamp(10px,min(.68vw,1.21vh),13px) var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
 .wnarr .nl{display:flex;align-items:center;gap:8px;color:var(--ink)}.wnarr .nm{text-align:right}
 .wnarr .dot{width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:.35}
 .wnarr.busy .dot{opacity:1;animation:breathe 1.6s ease-in-out infinite}
 @keyframes breathe{50%{opacity:.25;transform:scale(.7)}}
 .wnarr .nw{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;padding:1.4vh 1.4vw 1.2vh;mask-image:linear-gradient(to bottom,transparent 0,#000 2.4em)}
-.wnarr .nt{font:italic 300 clamp(18px,1.48vw,31px)/1.34 Figtree,var(--body);letter-spacing:-.005em;margin:0;max-width:40ch;text-wrap:pretty}
-.wnarr .ncount{white-space:nowrap;color:var(--ink);letter-spacing:.08em;text-transform:uppercase}.wnarr .ncount b{font:600 clamp(13px,.95vw,18px) var(--mono);letter-spacing:0;margin-left:4px}.wnarr .nt.old{opacity:.32}
+.wnarr .nt{font:italic 300 clamp(18px,min(1.48vw,2.63vh),31px)/1.34 Figtree,var(--body);letter-spacing:-.005em;margin:0;max-width:40ch;text-wrap:pretty}
+.wnarr .ncount{white-space:nowrap;color:var(--ink);letter-spacing:.08em;text-transform:uppercase}.wnarr .ncount b{font:600 clamp(13px,min(.95vw,1.69vh),18px) var(--mono);letter-spacing:0;margin-left:4px}.wnarr .nt.old{opacity:.32}
 @keyframes surface{from{opacity:0;filter:blur(3px)}to{opacity:1;filter:none}}
-.wnarr .nf{display:flex;justify-content:space-between;gap:16px;padding:.8vh 1.1vw;border-top:1px solid var(--hair);font:500 clamp(10px,.66vw,12px) var(--mono);color:var(--mute);letter-spacing:.02em}
+.wnarr .nf{display:flex;justify-content:space-between;gap:16px;padding:.8vh 1.1vw;border-top:1px solid var(--hair);font:500 clamp(10px,min(.66vw,1.17vh),12px) var(--mono);color:var(--mute);letter-spacing:.02em}
 .wnarr .caret{display:inline-block;width:.42em;height:.95em;margin-left:3px;vertical-align:-.1em;background:var(--ink);animation:blink 1s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 @media (prefers-reduced-motion: reduce){.wnarr .caret,.wnarr.busy .dot,.wnarr .nt .w{animation:none}}
-.wask{font:600 clamp(15px,1.15vw,23px)/1.3 var(--body);border-left:3px solid var(--ink);padding-left:1vw}
+.wask{font:600 clamp(15px,min(1.15vw,2.04vh),23px)/1.3 var(--body);border-left:3px solid var(--ink);padding-left:1vw}
 .wask > .said{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}   /* the whole alert is on Now */
-.wask small{display:block;font:500 clamp(12px,.8vw,16px) var(--body);color:var(--mute);margin-top:2px}.wask b{display:block;font:600 clamp(12px,.8vw,15px) var(--mono);margin-top:6px}
+.wask small{display:block;font:500 clamp(12px,min(.8vw,1.42vh),16px) var(--body);color:var(--mute);margin-top:2px}.wask b{display:block;font:600 clamp(12px,min(.8vw,1.42vh),15px) var(--mono);margin-top:6px}
 .wrho .rings{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}.wrho svg.sg{width:16px;height:16px}.wrho small{font:500 12px var(--mono);color:var(--mute)}
 .wfrag{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) auto;gap:1.4vw;border-top:1px solid var(--hair);padding-top:1.4vh;align-items:end}
-.wfrag span{display:block;font:600 clamp(11px,.8vw,16px) var(--body)}.wfrag b{font:600 clamp(18px,1.7vw,34px)/1.1 var(--num-face)}
-.wfrag small{display:block;font:500 clamp(10px,.6vw,13px) var(--mono);color:var(--mute)}.wfrag .more{font:600 var(--t-small) var(--mono);text-decoration:none}
+.wfrag span{display:block;font:600 clamp(11px,min(.8vw,1.42vh),16px) var(--body)}.wfrag b{font:600 clamp(18px,min(1.7vw,3.02vh),34px)/1.1 var(--num-face)}
+.wfrag small{display:block;font:500 clamp(10px,min(.6vw,1.07vh),13px) var(--mono);color:var(--mute)}.wfrag .more{font:600 var(--t-small) var(--mono);text-decoration:none}
 .wfoot{text-transform:none;letter-spacing:.04em}
 
 
@@ -476,7 +476,12 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   #setupv2 .srow{grid-template-columns:minmax(0,1fr)}.share,.unlock2{grid-template-columns:minmax(0,1fr)}.share .opt+.opt{border-left:0;border-top:1px solid var(--ink)}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 .asking{display:none}
-.asking.on{display:grid;position:fixed;inset:0;z-index:40;background:var(--ground);grid-template-columns:1fr 360px;gap:40px;padding:clamp(20px,4vw,60px);align-content:center;align-items:center;max-width:1440px;margin:0 auto}
+.asking.on{display:grid;position:fixed;inset:0;z-index:40;background:var(--ground);grid-template-columns:1fr 360px;gap:40px;padding:clamp(20px,4vw,60px) max(clamp(20px,4vw,60px),calc((100vw - 1440px)/2));align-content:center;align-items:center}
+/* the seed: the measuring frame's own mark, centered, breathing from the first paint — the face's
+   middle is never empty while the scripts come. open() removes it the moment the globe wires in. */
+.asking .seed{position:absolute;width:18px;height:18px;border:1.5px solid var(--ink);margin:auto;inset:0;animation:seedbreathe 1.8s ease-in-out infinite}
+@keyframes seedbreathe{50%{opacity:.3;transform:scale(.86)}}
+@media (prefers-reduced-motion: reduce){.asking .seed{animation:none}}
 .asking .frame{position:relative;border:1px solid var(--ink);aspect-ratio:1.55;background:var(--ground);display:flex;align-items:center;justify-content:center}
 .asking .frame::before,.asking .frame::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--ink)}
 .asking .frame::before{left:-1px;top:-1px;border-right:0;border-bottom:0}
@@ -516,7 +521,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
      before. A browser with scripting off gets the shell instead (@media (scripting: none) above). -->
 <div class="asking on" id="asking" aria-hidden="false">
   <p class="brand"><b>PLANETAI</b> loading</p>
-  <div class="frame"><canvas id="askcv"></canvas></div>
+  <div class="frame"><i class="seed" aria-hidden="true"></i><canvas id="askcv"></canvas></div>
   <div class="aside">
     <p class="hd"><span><i class="blink" aria-hidden="true"></i><b id="ask-what">Asking the node</b></span>
       <span id="ask-count"></span></p>
