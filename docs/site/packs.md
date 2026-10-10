@@ -1,5 +1,5 @@
 # Packs
-<!-- checked: v0.80.8 -->
+<!-- checked: v0.80.9 -->
 
 A pack is how a place teaches its node what to watch and what to say about it. The core names no metric:
 what `pm25` means, which line matters in this house, and the sentence a person should read at 9 pm are all

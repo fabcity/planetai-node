@@ -58,6 +58,7 @@ The pair travels together. Every consumer renders `sentence` + `plain`, or state
 | --- | --- | --- | --- |
 | doors hero | `title` under the numeral, `tagline` smaller beneath **[changed]** | numeral + rule, `plain` beneath, crossed figure marked | learn mark on the issue page |
 | doors wall **[new]** | `title` at sentence size, `tagline` smaller and muted | `plain` beneath | the ask, answer on Telegram |
+| Now door, hour scrubber **[new]** | live hour: `title` + `tagline`; a past hour: the line relation as title | the reading in the tagline ("At 04:00 it read 8 µg/m³.") | the four distances below |
 | Decide card **[new]** | issue, kind and rooms in words | the peak, with its comparisons (usual, outside, the line) | the evidence links |
 | ask pane | in context (already: `sentence`, `plain`) | same | `about` in context when focused **[changed: to be added in `app/ask.py`]** |
 | Telegram bot | answer's first line | one number when it drives the advice | when the person asks "what is…" |

@@ -1,5 +1,5 @@
 # Sensors and sources
-<!-- checked: v0.80.8 -->
+<!-- checked: v0.80.9 -->
 
 This page gives the node its senses. The repo's own sentence for what a node does is that it "connects
 everything that measures where you stand, from a particle sensor on the wall to a satellite overhead, into one
@@ -94,7 +94,7 @@ adapter. Code packs run only with `PACKS_ALLOW_CODE=1`, which ships as `0`. In v
 | **Fab labs** (`make` pack) | `MAKE_ENABLED=1` as well as `PACKS_ALLOW_CODE=1`; `MAKE_ENABLED` ships as `0` | `facility` | never | One row per active fab lab within `MAKE_RADIUS_KM` (50) from the Fab Lab Network directory, with no readings. `meta` holds the slug, capabilities, city, distance and the lab's URL, never an email or a telephone. The directory is not openly licensed; read [the report page](report.md#the-nearest-place-to-make-or-fix) before turning it on. |
 | **Other code packs** | the pack's own settings | as declared | as declared | `coast` (Open-Meteo Marine), `forecast` (BMKG, Open-Meteo), `earth` (AlphaEarth embeddings), `earth-engine` (Dynamic World, Sentinel-2, VIIRS), `place` (OpenStreetMap into PostGIS). See [Packs that ship](packs-reference.md). |
 
-> **Gap in v0.80.8.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
+> **Gap in v0.80.9.** Two LAN adapters are written and tested but not registered for polling. **AirGradient**
 > (`AIRGRADIENT_HOSTS`, read on the LAN, EPA 2021 correction applied with raw kept as `pm25_raw`) and
 > **PurpleAir** (`PURPLEAIR_HOSTS`, `/json`, two Plantower channels averaged and corrected) have functions in
 > `app/sources.py` and rows in `config/channels.yml`, and `sources.enabled()` never calls them. The AirGradient

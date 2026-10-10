@@ -1,5 +1,5 @@
 # Configuration
-<!-- checked: v0.80.8 -->
+<!-- checked: v0.80.9 -->
 
 A setting is a decision the household makes about its node: which sensors count as its own, what it
 watches first, when it may interrupt somebody, what a stranger on the WiFi may read, whether a question
@@ -237,7 +237,7 @@ data, what it loads.
 | `MQTT_USER`, `MQTT_PASS` | blank | strings | Broker credentials. `planetai meshtastic` generates them and writes the broker's password file. | env only · secret |
 | `SOURCES_DIR` | `/app/data/sources` | path inside the container | Where the app reads the vendored source registry that `GET /sources` serves. Mounted read-only from `./data`. | env only |
 
-> **Gap in v0.80.8.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
+> **Gap in v0.80.9.** `SENSOR_INDOOR` and `PURPLEAIR_HOSTS` are read by nothing, and `AIRGRADIENT_HOSTS`
 > only keeps those units out of the Bali Air Dispatch ring. The AirGradient and PurpleAir adapters exist
 > and are tested; the node does not register them for polling.
 
@@ -281,7 +281,7 @@ written once.
 | `REPORT_ANCHOR` | blank = `6` | `0` to `23` | The local hour the rhythm starts from. With a 6-hour interval, `6` gives 06, 12, 18 and 00. | runtime · public |
 | `REPORT_DEPTH` | blank = `auto` | `auto`, `brief`, `standard`, `deep` | How much the report says. `auto` lets the strongest model the node can reach decide. Nothing reads it in v0.80. | runtime · public |
 
-> **Gap in v0.80.8.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
+> **Gap in v0.80.9.** `REPORT_DEPTH` is declared, validated and offered in Set up, and nothing reads it.
 > Changing it changes nothing.
 
 ## How it closes a loop
@@ -391,7 +391,7 @@ environment, where the node puts the database value. A code pack reads none of t
 | `GROUND_SAT_WIDE_KM` | earth-engine | `60` | `planetai run earth-engine basemap`: half-width in km of the wide Sentinel-2 context square; the detailed one is `GROUND_RADIUS_KM`. |
 | `COAST_MAX_KM` | coast | `30` | Refuse to report if the nearest ocean grid cell is further away than this, in km. Also a runtime key (public): the override moves both the dashboard's drawn footprint and the adapter's refusal. |
 
-> **Gap in v0.80.8.** `FORECAST_POLL_HOURS` is declared and read by nothing.
+> **Gap in v0.80.9.** `FORECAST_POLL_HOURS` is declared and read by nothing.
 
 `OVERPASS_URL` (default `https://overpass-api.de/api/interpreter`, the place pack's Overpass endpoint) is
 read by the place pack but declared in no `pack.yaml`, so it is `env only`.

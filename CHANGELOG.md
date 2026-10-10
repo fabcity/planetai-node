@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v0.80.9 — 2026-10-10 — The split reaches the Now door's hour scrubber
+
+- **The Now door titles with the split, live hour and past.** v0.80.8 split the hero and the wall but missed
+  the doors Now door's own sentence line: the live hour still drew the whole sentence bold, and a past hour
+  still opened with the reading — "At 04:00 the air in the house read 8 µg/m³, under the line." The live hour
+  now draws `title` + `tagline` like every other surface, and a past hour splits the same way on the page's
+  own words: the title is what it meant ("The air in the house was under the line."), the tagline what it
+  measured ("At 04:00 it read 8 µg/m³.") — smaller, not bold, muted. First the meaning, then the instrument.
+
 ## v0.80.8 — 2026-10-10 — The title says what is happening; the readings arrive a beat later
 
 - **The sentence splits into `title` + `tagline` (SPEC_language, the progressive-disclosure pattern applied to

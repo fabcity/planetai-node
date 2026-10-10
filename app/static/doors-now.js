@@ -29,12 +29,22 @@ function readout() {
   const v = val(k, it.hero_distance, i), over = it.line != null && v != null && v > it.line;
   const cmp = it.line != null ? `against the line, ${fmt(it.line, dp)} ${U}` : 'this issue has no line';
   const n = x => num(`${k}.${it.hero_distance}`, x, cmp, `<b class="numf">${esc(x)}</b>`);
-  let s;
-  if (isNow) s = esc(it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, (m0) => n(m0));
+  let s, tag = '';
+  if (isNow) {
+    /* the split, same as the wall's: the title is the sentence's qualitative head — no number, no
+       indicator — and the tagline explains it, smaller and not bold. Older nodes send no title:
+       the sentence stands in, its first figure marked as before. */
+    s = esc(it.title || it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, (m0) => n(m0));
+    tag = it.tagline || '';
+  }
   else if (v == null) s = `<span class="gone">Nothing was recorded in the house at ${hhmm(b)}.</span>`;
-  else s = (k === 'heat' ? `At ${hhmm(b)} it felt like ${n(fmt(v, dp))} ${esc(U)} in the house` : `At ${hhmm(b)} the air in the house read ${n(fmt(v, dp))} ${esc(U)}`)
-    + `, ${over ? 'over' : 'under'} the line.`;
-  $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}</span>`;
+  else {
+    /* a past hour has no trend verb, so the qualitative head is the line relation — was it over or
+       under — and the reading moves to the tagline: first what it meant, then what it measured. */
+    s = (k === 'heat' ? 'In the house it was' : 'The air in the house was') + ` ${over ? 'over' : 'under'} the line.`;
+    tag = (k === 'heat' ? `At ${hhmm(b)} it felt like` : `At ${hhmm(b)} it read`) + ` ${fmt(v, dp)} ${U}.`;
+  }
+  $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}${tag ? `<span class="ntag">${esc(tag)}</span>` : ''}</span>`;
   $('#ladder').innerHTML = ['room', 'yard', 'ring', 'region'].map(dk => {
     const x = isNow ? (it.stack[dk] || {}).value : val(k, dk, i);
     const pw = (it.provenance || {})[dk] || ((it.stack[dk] || {}).provenance), hourly = (it.series || {})[dk];
