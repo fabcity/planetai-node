@@ -1,5 +1,5 @@
 # What a node knows before it has a sensor
-<!-- checked: v0.80.7 -->
+<!-- checked: v0.80.8 -->
 
 On first start, with an empty database, the node pulls for its coordinates:
 

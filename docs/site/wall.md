@@ -1,5 +1,5 @@
 # Wall mode
-<!-- checked: v0.80.7 -->
+<!-- checked: v0.80.8 -->
 
 A screen on a wall that nobody is standing at. With the wall, the node is read by people walking past: a
 household sees one number, one sentence and whether the loop closed, and a lab sees which cells around it
@@ -67,7 +67,7 @@ clock bar. Under `prefers-reduced-motion: reduce` nothing moves.
 
 ## The right column
 
-The headline issue: kicker, sentence, why and the alert. Under the alert, "Answer on Telegram, not here." The
+The headline issue: kicker, title, tagline, why and the alert. The title is the sentence's qualitative head — what is happening, in the household's words, with no number and no indicator in it ("The air is getting worse in the house") — and the tagline is the explanation set smaller and muted beneath it ("Under the WHO line. Level with the street, the ring and the region."): the readings arrive a beat later. The full sentence stays for prose. Under the alert, "Answer on Telegram, not here." The
 wall shows an alert and never the button that answers it. It draws no alert event either: on a node whose alert engine is `shadow` or `events` the old heat and air alerts are not
 open asks, so under the headline the strip can read "Nothing has been asked." while Decide has an event open. Then the ladder, with its key under it
 ("the ladder · current rung filled ink · may-leave rungs filled `--cells` at .16 · finer than published,

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## v0.80.8 — 2026-10-10 — The title says what is happening; the readings arrive a beat later
+
+- **The sentence splits into `title` + `tagline` (SPEC_language, the progressive-disclosure pattern applied to
+  the title itself).** The headline a page shows is no longer the whole sentence: the title is the qualitative
+  head — "The air is getting worse in the house" — with no number and no indicator in it, and the tagline is
+  the explanation set smaller and muted beneath — "Under the WHO line. Level with the street, the ring and the
+  region." A household reads the situation first and meets the instruments one line down; the numeral and
+  `plain` stay where they were. The split is engine work (`_sentence_parts`, at the `{line}` clause), so it
+  holds in en/id/es and for every issue, and templates without a `{line}` clause do not split. The full
+  `sentence` stays on the wire for prose — the bot, the asks, the wall's thinking-aloud. The doors wall takes
+  the same split, which is also its fix: release C's clause-headlines had grown the wall's sentence past its
+  screen (the visual gate caught 1,113 px on a 1,080 px wall at release C and every commit since), and the
+  title/tagline split brings the wall back to exactly its viewport — verified against the fixture render.
+  v0.80.7 was tagged but never shipped: CI held it on exactly this wall failure, and this is the fix it was
+  waiting for.
+
 ## v0.80.7 — 2026-10-10 — The loop closes from the phone, and the card says whose answer it carries
 
 - **The answer carries the household's own words, and the page insists on a name.** The wire's `answer` now

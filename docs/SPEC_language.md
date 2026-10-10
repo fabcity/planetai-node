@@ -50,11 +50,14 @@ sentences:
 
 `plain` becomes the reading layer and gains the numeral distance, which today it omits: "The room reads 42, the yard 31, the street 38. Two are over the line (15)." **[changed]** On the doors, where the numeral is drawn directly above, the page may drop that first clause; everywhere else it stays.
 
+**[new] The sentence splits into `title` + `tagline`.** The title is the qualitative head — the template up to the `{line}` clause, no number and no indicator in it: "The air is getting worse in the house." The tagline is the rest — the line, the comparison, the day's event — set smaller and muted beneath it: "Under the WHO line. Level with the street, the ring and the region." The title says what is happening; the readings arrive a beat later, in the tagline, the numeral and `plain`. This is the progressive disclosure pattern applied to the title itself: a household reads the situation first and meets the instruments one line down. Templates without a `{line}` clause (the none and context states) do not split. The full `sentence` stays on the wire for prose contexts — the bot, the asks, the wall's thinking-aloud. The split is engine work (`_sentence_parts`), so it holds in all three locales and for every issue, present and future.
+
 The pair travels together. Every consumer renders `sentence` + `plain`, or states why not:
 
 | Surface | Headline | Reading | Supporting |
 | --- | --- | --- | --- |
-| doors hero | `sentence` under the numeral | numeral + rule, `plain` beneath, crossed figure marked **[changed]** | learn mark on the issue page |
+| doors hero | `title` under the numeral, `tagline` smaller beneath **[changed]** | numeral + rule, `plain` beneath, crossed figure marked | learn mark on the issue page |
+| doors wall **[new]** | `title` at sentence size, `tagline` smaller and muted | `plain` beneath | the ask, answer on Telegram |
 | Decide card **[new]** | issue, kind and rooms in words | the peak, with its comparisons (usual, outside, the line) | the evidence links |
 | ask pane | in context (already: `sentence`, `plain`) | same | `about` in context when focused **[changed: to be added in `app/ask.py`]** |
 | Telegram bot | answer's first line | one number when it drives the advice | when the person asks "what is…" |

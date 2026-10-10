@@ -24,7 +24,7 @@ VIEWS.wall = function () {
       <section class="wl" data-kind="row"><div id="wfield" role="img" aria-label="The stations around this house on its own map, their readings hour by hour, and the wind now"></div><div id="wtime" class="flowtime"></div></section>
       <section class="wr"><div class="whead">
         <div class="k">${said(it.name)} <span class="state">${esc(it.state)}</span> · ${said(it.reason_text || '')}</div>
-        <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}</span></p>
+        <p class="wsent">${it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : ''}<span class="said">${esc(it.title || it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, m0 => num(`${k}.${it.hero_distance}`, m0, `against the line, ${it.line} ${it.unit}`, `<b class="numf">${m0}</b>`))}${it.tagline ? `<span class="wtag">${esc(it.tagline)}</span>` : ''}</span></p>
         <p class="wwhy said">${esc(dropLead(it.plain || ''))}</p>
         <div class="wask">${ask}<b>Answer on Telegram, not here.</b></div></div>
         <div class="wnarr" id="wnarr" data-learn="ask" data-reads="/ask/status /ask" data-stage="observe" data-pack="core"></div>

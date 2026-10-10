@@ -900,15 +900,33 @@ def _cmp(d, stack, headline_dist, loc, compare) -> str:
 
 def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attribution,
               line=None, reason=None) -> str:
+    """The full sentence. `_sentence_parts` returns the title/tagline split with it."""
+    return _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare,
+                           attribution, line, reason)[0]
+
+
+def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attribution,
+                    line=None, reason=None) -> tuple[str, str, str]:
+    """(sentence, title, tagline): the sentence whole, then split at the {line} clause.
+
+    The title is the qualitative head — what is happening, in the household's words, with no
+    number and no indicator in it ("The air is getting worse inside"). The tagline is the rest:
+    the line, the comparison, the day's event — the readings, introduced slowly and set smaller.
+    A page titles with the title and explains with the tagline; the full sentence stays for the
+    places that speak prose (the bot, the asks). Templates without a {line} clause (the none and
+    context states) do not split: the title is the whole and the tagline is empty.
+    """
     block = (d.get("sentences") or {}).get(loc) or {}
     if state in ("none", "context"):
         tpl = (block.get("state") or {}).get(state)
         if not tpl and state == "none":
-            return (d.get("empty") or {}).get(loc, "")
+            empty = (d.get("empty") or {}).get(loc, "")
+            return empty, empty, ""
     else:
         tpl = (block.get("state") or {}).get(state) or (block.get("attribution") or {}).get(attribution)
     if not tpl:
-        return (d.get("empty") or {}).get(loc, "")
+        empty = (d.get("empty") or {}).get(loc, "")
+        return empty, empty, ""
     cell = stack.get(headline_dist) or {}
     n = cell.get("value")
     extra = cell.get("extra") or {}
@@ -932,15 +950,31 @@ def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attributio
     if line_key in ("under", "near") and (reason or {}).get("code") in (
             "open_ask_current", "alert_today", "event_answered", "event_cleared"):
         event_clause = (block.get("event") or {}).get("earlier", "")
-    return " ".join(tpl.format(
-        verb=(block.get("verbs") or {}).get(verb_key, ""),
-        n="" if n is None else f"{n:.{d['dp']}f}",
-        unit=d["unit"],
-        where=_where(d, headline_dist, loc),
-        cmp=_cmp(d, stack, headline_dist, loc, compare),
-        line=line_clause, event=event_clause,
-        span=span, since=since,
-    ).split()).replace(" ,", ",").replace(" .", ".")
+    slots = dict(verb=(block.get("verbs") or {}).get(verb_key, ""),
+                 n="" if n is None else f"{n:.{d['dp']}f}",
+                 unit=d["unit"],
+                 where=_where(d, headline_dist, loc),
+                 cmp=_cmp(d, stack, headline_dist, loc, compare),
+                 line=line_clause, event=event_clause,
+                 span=span, since=since)
+
+    def _fmt(t):
+        return " ".join(t.format(**slots).split()).replace(" ,", ",").replace(" .", ".")
+
+    full = _fmt(tpl)
+    head, sep, tail = tpl.partition("{line}")
+    if not sep:
+        return full, full, ""
+    title = _fmt(head).strip().rstrip(",—–- ").strip()
+    tagline = _fmt("{line}" + tail).strip()
+    # with no reading there is no line clause, and the tagline would open on the template's own
+    # punctuation — ". cleaner than the street" is not a sentence start
+    if tagline.startswith(". "):
+        tagline = tagline[2:]
+    # the clause is written to sit mid-sentence; standing alone under the title it is a sentence
+    if tagline:
+        tagline = tagline[0].upper() + tagline[1:]
+    return full, title, tagline
 
 
 # ------------------------------------------------------------------------------------------- readouts
@@ -1440,6 +1474,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
                         "sentence": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
                                           + _reason_text({"code": "not_watched"}, loc)[1:] + "."
                                      for loc in LOCALES},
+                        "title": {loc: _reason_text({"code": "not_watched"}, loc)[0].upper()
+                                       + _reason_text({"code": "not_watched"}, loc)[1:] + "."
+                                  for loc in LOCALES},
+                        "tagline": {loc: "" for loc in LOCALES},
                         "hero": None, "usual": None, "usual_absent": "not_watched"}
             continue
 
@@ -1458,6 +1496,9 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
         verb_key = _trend(series.get("room") or series.get(headline), compare)
         if reason.get("code") in ("no_alert", "over_line"):
             reason = {**reason, **_peak(series.get("room") or series.get(headline), buckets, d["dp"], d["unit"], clock)}
+        _parts = {loc: _sentence_parts(d, stack, state, headline, verb_key, loc, compare,
+                                       attribution, line, reason)
+                  for loc in LOCALES}
         out[key] = {
             "state": state, "watched": True,
             "reason": reason,
@@ -1472,9 +1513,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             "series": series, "buckets": [b.isoformat() if hasattr(b, "isoformat") else b for b in buckets],
             "readouts": [{k: v for k, v in r.items() if not k.startswith("_")} for r in d["_readouts"]],
             "provenance": _provenance(d, stack, earth),
-            "sentence": {loc: _sentence(d, stack, state, headline, verb_key, loc, compare,
-                                        attribution, line, reason)
-                         for loc in LOCALES},
+            "sentence": {loc: _parts[loc][0] for loc in LOCALES},
+            # The page's title is the sentence's qualitative head — no numbers, no indicators;
+            # the tagline explains, smaller. The full sentence stays for prose (the bot, the asks).
+            "title": {loc: _parts[loc][1] for loc in LOCALES},
+            "tagline": {loc: _parts[loc][2] for loc in LOCALES},
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
         out[key]["usual"], out[key]["usual_absent"] = (usual[key] if usual is not None and key in usual

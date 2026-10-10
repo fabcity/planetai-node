@@ -619,6 +619,12 @@ nav span.on, nav button.on { background: var(--ink); color: var(--ground); font-
    the number, at sentence size — the monument above is the reading. */
 .lead .big { font: 400 clamp(16px, 1.5vw, 21px)/1.3 var(--fc-font-body); letter-spacing: 0;
   max-width: 30ch }
+/* The tagline is the title's explanation — the line, the comparison, the day's event — set smaller
+   and muted, so the title says what is happening and the readings arrive a beat later. */
+.lead .big .tag { display: block; font-size: clamp(13px, 1.15vw, 16px); line-height: 1.35;
+  color: var(--mute); margin-top: .3em; max-width: 38ch }
+.band .big .tag { display: block; font-size: .82em; line-height: 1.3; color: var(--mute);
+  margin-top: .25em }
 .lead .big b { font-family: var(--mono); font-weight: 700 }
 /* What the red tick on every meter means, said once. */
 .legend { font: 500 10.5px var(--mono); letter-spacing: .04em; color: var(--mute); margin: 0 }

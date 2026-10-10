@@ -420,12 +420,19 @@ function heroRule(key, d) {
 }
 
 function sentence(key, d, cls = 'big') {
-  const s = d.sentence ? d.sentence[LOC] : '';
-  /* Release A moved the numeral out of the headline: the sentence is words only, so it draws no
+  /* The title is the sentence's qualitative head — no number, no indicator, the household's words
+     for what is happening. The tagline explains it (the line, the comparison, the day's event) in a
+     smaller font: the readings are introduced slowly, not shouted in the title. The full sentence
+     stays for prose contexts. Older nodes send no title; the sentence stands in.
+     Release A moved the numeral out of the headline: the sentence is words only, so it draws no
      figure and marks none. The crossed mark moved with the number — it marks the `plain` figure
      that is over the line, drawn where plain is rendered. */
+  const t = d.title ? d.title[LOC] : '';
+  const s = t || (d.sentence ? d.sentence[LOC] : '');
+  const tag = cls === 'big' && d.tagline ? d.tagline[LOC] : '';
   return `<p class="${cls}" data-component="sentence" data-role="sentence" id="sentence-${esc(key)}"`
-    + ` data-ref="stack-${esc(key)}">${esc(s)}</p>`;
+    + ` data-ref="stack-${esc(key)}">${esc(s)}`
+    + (tag ? `<span class="tag said">${esc(tag)}</span>` : '') + `</p>`;
 }
 
 /* `rule` is the lead's only. It used to be a second paragraph of its own, and `.lead > .why` matched
