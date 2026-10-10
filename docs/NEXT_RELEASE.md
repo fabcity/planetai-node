@@ -273,7 +273,11 @@ three layers). Node #1 runs `ALERT_ENGINE=events`. Since then, unreleased (CHANG
   note rides a second row within ten minutes — repeated answers are allowed on purpose, and the wire's
   latest answer carries the note **on the card** (the wire's `answer` gained `note` on 10 Oct, after the
   live test proved the words reached the table but not the page). The same pass closed a loophole: the
-  card's form no longer posts an anonymous answer (curl still may; the card says "somebody").
+  card's form no longer posts an anonymous answer (curl still may; the card says "somebody"). The Cowork
+  audit of 10 Oct added two refinements, both landed: `node_url()` replaces the `MCP_URL.replace("/mcp", …)`
+  munge (three call sites), and the note window's pending question is recorded as knowingly process-memory —
+  a bot restart inside the ten minutes loses the question, never the dismissal; persistence comes with the
+  learning work, not before.
 
 **Still owed, in the order that pays:**
 

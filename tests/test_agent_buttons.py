@@ -28,8 +28,15 @@ def _lift(path, names, ns):
 _m = _lift("main.py", {"_event_keyboard"}, {"_act": actions})
 keyboard = _m["_event_keyboard"]
 
-_b = _lift("agent_loop.py", {"parse_callback", "note_pending", "NOTE_WINDOW"}, {"re": re})
+_b = _lift("agent_loop.py", {"parse_callback", "note_pending", "NOTE_WINDOW", "node_url"}, {"re": re})
 parse_callback, note_pending, NOTE_WINDOW = _b["parse_callback"], _b["note_pending"], _b["NOTE_WINDOW"]
+
+# The audit's caveat, pinned: the actions URL never depends on the letters "/mcp" being present in MCP_URL.
+for mcp, want in (("http://app:8080/mcp", "http://app:8080/actions"),
+                  ("http://app:8080", "http://app:8080/actions"),
+                  ("http://app:8080/", "http://app:8080/actions")):
+    fn = _lift("agent_loop.py", {"node_url"}, {"MCP_URL": mcp})["node_url"]
+    assert fn("/actions") == want, f"MCP_URL={mcp!r}: {fn('/actions')}"
 
 
 # The keyboard is the wire's three words, one row, in every locale the wire speaks.

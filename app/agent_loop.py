@@ -41,6 +41,13 @@ for noisy in ("httpx", "mcp"):
     logging.getLogger(noisy).setLevel(logging.WARNING)
 
 MCP_URL = os.getenv("MCP_URL", "http://app:8080/mcp")
+
+
+def node_url(path: str) -> str:
+    """A plain HTTP endpoint on the app, derived from the MCP endpoint. The Cowork audit (10 Oct) flagged the
+    old `MCP_URL.replace("/mcp", path)`: it munges a URL that merely contains those letters and breaks
+    silently on one that lacks them. Strip the suffix only if it is a suffix, then add the path."""
+    return MCP_URL.removesuffix("/mcp").rstrip("/") + path
 TOKEN = os.getenv("ADMIN_TOKEN", "")
 NAME = os.getenv("AGENT_NAME", "local-model")
 NODE = os.getenv("NODE_NAME", "node")
@@ -123,7 +130,7 @@ async def refresh_ladder(hc: httpx.AsyncClient) -> None:
     global RUNGS
     while True:
         try:
-            r = await hc.get(MCP_URL.replace("/mcp", "/settings/raw"))
+            r = await hc.get(node_url("/settings/raw"))
             cfg = r.json() if r.status_code == 200 else {}
             if r.status_code != 200:
                 log.warning("settings/raw -> %s (is ADMIN_TOKEN the same as the app's?)", r.status_code)
@@ -613,7 +620,7 @@ def _name_of(user: dict) -> str:
 
 
 async def _post_answer(hc, event_id: int, stage: str, actor: str, note: str = "") -> None:
-    r = await hc.post(MCP_URL.replace("/mcp", "/actions"), timeout=15,
+    r = await hc.post(node_url("/actions"), timeout=15,
                       json={"event_id": event_id, "stage": stage, "actor": actor, "note": note})
     r.raise_for_status()
 
@@ -698,7 +705,7 @@ async def main():
     hc = httpx.AsyncClient(headers={"Authorization": f"Bearer {TOKEN}", "X-Agent": NAME}, timeout=120)
     for i in range(30):                    # the app may still be starting; its settings are the source of truth, not .env
         try:
-            if (await hc.get(MCP_URL.replace("/mcp", "/health"), timeout=5)).status_code == 200:
+            if (await hc.get(node_url("/health"), timeout=5)).status_code == 200:
                 break
         except Exception:  # noqa: BLE001
             pass
