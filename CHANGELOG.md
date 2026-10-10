@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Telegram buttons close the loop (SPEC_alerts §7, Plan 2's first half).** An event's message now carries
+  Done / Not now / Doesn't fit when the bot in the agent container has announced itself (`TELEGRAM_BUTTONS=1`,
+  set on startup; a node without the bot sends the same message bare). The press is the same `POST /actions`
+  the dashboard makes — page and phone write one row — then the keyboard lifts and the chat carries the record
+  (`Done · tomas`). *Doesn't fit* asks the one optional question and keeps the reply as the note: the dismissal
+  is recorded at the press, a free-text line within ten minutes rides a second row, and the wire's latest answer
+  is the one carrying the note. Labels are the wire's own in en/id/es. The learning from these answers (§5) and
+  ρ over events (§7's decision record) are still owed.
 - **The Decide card says it is watching.** An open event's card now carries "watching — last seen …" in its
   header, from the wire's `last_seen_at`, ticking up on every poll: the visible proof the feed is alive while an
   event sits open for hours. The margin that keeps such events open on hot nights stays as written — the stillness

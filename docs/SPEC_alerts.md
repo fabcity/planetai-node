@@ -164,13 +164,17 @@ rules.
 ## 7. Closing the loop
 
 **Telegram buttons** on every event message, handled by the bot in the `agent` container, which already polls
-Telegram. The app keeps sending, and the bot handles the replies.
+Telegram. The app keeps sending, and the bot handles the replies. The app attaches the keyboard when the bot has
+announced itself (`TELEGRAM_BUTTONS=1`, set by the bot on startup): a node without the `agent` container sends
+the same message without buttons. `callback_data` is `ev:<event_id>:<stage>`, labels are the wire's own
+(`actions.BUTTONS`), and the bot answers with the same `POST /actions` the dashboard makes — page and phone
+write the same row. After a press the keyboard lifts and the chat carries the record: `Done · tomas`.
 - **Done** → `acted`. A clear afterwards writes `measured`, with the time from Done to clear.
 - **Not now** → `acknowledged`. The event sends nothing more for 3 h unless it reaches `danger`.
 - **Doesn't fit** → a new stage, `dismissed`, which counts against that action for this house. The bot asks one
-  optional question, "What did you do instead?", and keeps the answer as the note.
-
-A node without the `agent` container sends the same message without buttons.
+  optional question, "What did you do instead?", and keeps the answer as the note: the dismissal is recorded at
+  the press, and a free-text line within ten minutes rides a second row (repeated answers are allowed on
+  purpose — the wire keeps the latest, which is the one carrying the note).
 
 **The dashboard's Decide card** shows the same open events with the same three buttons (v0.78, §11).
 
@@ -228,6 +232,7 @@ Switching back is the same setting.
 | `ALERT_LEVEL` | kept | act = only events with an action; warn = also spikes that are not unhealthy yet; info = everything |
 | `HOME_HAS` | new | purifier, AC, fan, windows that open. Asked once in Set up and by the bot; feeds §5 |
 | `ALERT_ENGINE` | new | `rules` (today), `shadow`, `events`. Retired once `events` is the default everywhere |
+| `TELEGRAM_BUTTONS` | new, default 0; the bot sets it to 1 on startup | §7's keyboard rides event messages only while the bot that answers it is running. Nobody sets it by hand |
 | `REPORT_DEPTH` | unchanged | still waits for a model |
 
 A report built from events covers everything since the last one: events opened, cleared and still open; what was

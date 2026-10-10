@@ -559,7 +559,7 @@ agent = open("app/agent_loop.py").read()
 assert "async def node_session(" in agent, "agent_loop.py: the node_session helper"
 assert agent.count("streamable_http_client(") == 1, \
     "agent_loop.py: only node_session may open an MCP session — a second one is a session outliving a question"
-assert re.search(r"^    offset, history, pins = ", agent, re.M), \
+assert re.search(r"^    offset, history, pins, pending = ", agent, re.M), \
     "agent_loop.py: main's poll loop must sit at the top of main, outside any MCP session — indented deeper it is " \
     "nested in one again, and that session outlives the question (refresh_ladder has a `while True` of its own, so " \
     "the loop keyword alone proves nothing)"

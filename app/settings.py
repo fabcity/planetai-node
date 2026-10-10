@@ -67,6 +67,7 @@ RUNTIME = {
     "CKAN_PORTALS":       ("sources", "Open-data portals", False, False, "slug=url pairs, comma-separated. Feeds Governance|City."),
     # alerts — alerts and reports: when the node speaks, what interrupts, and how a loop is closed.
     "TELEGRAM_CHAT_IDS":  ("alerts", "Telegram chat ids", False, False, "Comma-separated. planetai telegram finds yours."),
+    "TELEGRAM_BUTTONS":   ("alerts", "Event buttons in Telegram", False, False, "1 = event messages carry Done / Not now / Doesn't fit. The bot sets this on startup so the buttons ride only while somebody answers them; leave it alone."),
     "REPORT_EVERY":       ("alerts", "Report every", False, False, "Hours between reports: 3, 4, 6, 8, 12 or 24. Default 6, which is four a day."),
     "REPORT_ANCHOR":      ("alerts", "First report of the day", False, False, "The local hour the rhythm starts from, 0-23. Default 6: with a 6-hour interval that is 06, 12, 18 and 00."),
     "REPORT_DEPTH":       ("alerts", "How much the report says", False, False, "auto, brief, standard or deep. auto lets the strongest model the node can reach decide. Until a model is in the path every report is the node's own, and this changes nothing."),

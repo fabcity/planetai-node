@@ -30,6 +30,7 @@ from psycopg.types.json import Jsonb
 
 import bootstrap
 import agent
+import actions as _act
 import events_pg
 import ground
 import index
@@ -501,10 +502,15 @@ def run_rules() -> None:
                 # after the engine's transaction has committed: a message is never sent for a step that rolled back
                 for m, text in decided:
                     if m.send and text:
-                        notify(m.event.level, text)
+                        # The buttons ride only when the bot has announced itself (TELEGRAM_BUTTONS=1,
+                        # set by agent_loop on startup): a node without the agent container sends the
+                        # same message bare (SPEC_alerts §7).
+                        kb = _event_keyboard(m.event.id, settings.get("ALERT_LOCALE", "en") or "en") \
+                            if m.event.id and settings.num("TELEGRAM_BUTTONS", 0) else None
+                        notify(m.event.level, text, keyboard=kb)
 
 
-def notify(level: str, text: str) -> None:
+def notify(level: str, text: str, keyboard: list | None = None) -> None:
     icon = {"info": "ℹ️", "warn": "⚠️", "act": "🔴"}.get(level, "")
     log.info("ALERT [%s] %s", level, text)
     if level == "act":
@@ -519,12 +525,26 @@ def notify(level: str, text: str) -> None:
         return
     for chat in chats:
         try:
+            body = {"chat_id": chat, "text": f"{icon} {text}".strip()}
+            if keyboard:
+                body["reply_markup"] = {"inline_keyboard": keyboard}
             httpx.post(f"https://api.telegram.org/bot{tok}/sendMessage",
-                       json={"chat_id": chat, "text": f"{icon} {text}".strip()}, timeout=15).raise_for_status()
+                       json=body, timeout=15).raise_for_status()
             log.info("telegram -> %s ok", chat)
         except Exception as e:  # noqa: BLE001
             # never interpolate the exception's URL: httpx puts the token in it
             log.warning("telegram -> %s failed: %s", chat, type(e).__name__)
+
+
+def _event_keyboard(event_id: int, locale: str) -> list:
+    """The three buttons under an event's message (SPEC_alerts §7). callback_data is the contract the bot in the
+    agent container parses: ev:<event_id>:<stage>. Labels are the wire's own (actions.BUTTONS), so the page, the
+    phone and the bot all say the same three words. Sent only when the bot has announced itself
+    (TELEGRAM_BUTTONS=1): a button nobody answers is a broken promise under the message."""
+    b = _act.BUTTONS.get(locale) or _act.BUTTONS["en"]
+    return [[{"text": b["done"], "callback_data": f"ev:{event_id}:acted"},
+             {"text": b["not_now"], "callback_data": f"ev:{event_id}:acknowledged"},
+             {"text": b["doesnt_fit"], "callback_data": f"ev:{event_id}:dismissed"}]]
 
 
 # ---------------------------------------------------------------- hourly push (child → parent)
