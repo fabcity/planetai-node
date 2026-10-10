@@ -1,5 +1,5 @@
 # ρ: the loop closed
-<!-- checked: v0.80.5 -->
+<!-- checked: v0.80.7 -->
 
 ρ (rho) is the share of the node's act-level alerts that a person answered within 24 hours. It is the one
 number on the page that comes from a person, the Fab City Index's `Governance` cell at the node's scale, and
@@ -73,7 +73,7 @@ An event's three answers (`acted`, `acknowledged`, `dismissed`) are written with
 ρ, the funnel and `GET /effect` all join `actions` to `alerts` on `alert_id`, so no event's answer is in any of them
 in this release. Under `ALERT_ENGINE=events` the old heat and air rules still record their act-level alerts, which
 ρ still counts, though the engine and not those rules is what messages the household about them. How events count
-is not decided yet. See [Alerts](alerts.md#the-event-engine).
+is not decided yet (v0.80.7). See [Alerts](alerts.md#the-event-engine).
 
 For ρ, `acknowledged` and `acted` both count as a response. For the dashboard's alerts, only `acted` and `measured`
 close one: "`acknowledged` means somebody saw it. Only these two mean somebody did something." There is no cap of

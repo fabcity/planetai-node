@@ -1,5 +1,5 @@
 # Command line
-<!-- checked: v0.80.5 -->
+<!-- checked: v0.80.7 -->
 
 The command line is how the person who keeps a node looks after it: install it, ask whether it is alive,
 record what somebody did about an alert, move its data somewhere safe. The repo names that person as the
@@ -14,8 +14,7 @@ and talks to the node over its own [API](api.md) on `localhost:$APP_PORT` with t
 predates the word says "there is no `planetai <word>` in this node", names the node's version and
 suggests `planetai update`. Commands arrive in releases.
 
-> **Gap in v0.80.5.** The list `planetai` prints leaves out four commands that exist: `preflight`,
-> `sources`, `config unset` and `agent local pull`. The tables below are complete.
+> **Gap in v0.80.7.** The list `planetai` prints leaves out four commands that exist: `preflight`, `sources`, `config unset` and `agent local pull`. The tables below are complete.
 
 Nothing here needs `sudo` except `mesh` (installing and joining Tailscale), `agent local` on a machine with
 `systemctl` where Ollama is not already answering, and, through the installer, `setup` when Docker has to

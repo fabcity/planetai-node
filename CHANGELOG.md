@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.80.7 — 2026-10-10 — The loop closes from the phone, and the card says whose answer it carries
+
 - **The answer carries the household's own words, and the page insists on a name.** The wire's `answer` now
   carries `note`, and the card draws it in quotes — `Doesn't fit · tomas · 13:20 — "opened the west side"` —
   so the reply to the bot's one question is visible where the answer lives. And the card's form no longer
@@ -15,11 +17,23 @@
   (`Done · tomas`). *Doesn't fit* asks the one optional question and keeps the reply as the note: the dismissal
   is recorded at the press, a free-text line within ten minutes rides a second row, and the wire's latest answer
   is the one carrying the note. Labels are the wire's own in en/id/es. The learning from these answers (§5) and
-  ρ over events (§7's decision record) are still owed.
+  ρ over events (§7's decision record) are still owed. Tested live on node #1 the same morning: a press and a
+  note landed as two rows, fourteen seconds apart, and the card showed both.
 - **The Decide card says it is watching.** An open event's card now carries "watching — last seen …" in its
   header, from the wire's `last_seen_at`, ticking up on every poll: the visible proof the feed is alive while an
   event sits open for hours. The margin that keeps such events open on hot nights stays as written — the stillness
   was the card's, not the engine's (`docs/decisions/2026-10-10-heat-margin.md`, spec §4.2 amended).
+- **`node_url()` replaces the `MCP_URL.replace("/mcp", …)` munge** at its three call sites (the Cowork audit's
+  caveat): the bot's plain-HTTP URLs no longer depend on the letters "/mcp" being present in the setting.
+- **The pre-commit hook adopts the brew `PATH` export and keeps its test gate.** The export was working-tree
+  drift from a GUI-fired session (hooks inherit no shell profile); the drift's other half — `make test`
+  commented out — was refused: a hook that skips the suite teaches `--no-verify`.
+
+## v0.80.6 — 2026-10-10 — The alerts name whose line it is
+
+Tagged at `aeb5a27`, the last commit whose tree holds no `app/static` change — Rule 2: page and packs ship in
+separate releases, so "was it the page or the data" has one answer. The page half is v0.80.7.
+
 - **Every threshold alert names whose line it is (release D of the language split).** The audit of
   releases A–C found the gap: `docs/SPEC_language.md` rule 10 was delivered in the event templates
   but not in the pack messages a household receives. The heat and air-quality act rules now say it —

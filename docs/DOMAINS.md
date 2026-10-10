@@ -1,5 +1,5 @@
 # Domains
-<!-- checked: v0.80.5 -->
+<!-- checked: v0.80.7 -->
 
 The core measures nothing in particular. It polls sources, stores readings, runs rules, fills Index cells. Which
 readings, which rules, which cells: that is a pack. `grep pm25 app/packs.py`, the loader, returns nothing.
