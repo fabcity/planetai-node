@@ -271,7 +271,9 @@ three layers). Node #1 runs `ALERT_ENGINE=events`. Since then, unreleased (CHANG
   bot has announced itself (`TELEGRAM_BUTTONS=1`, set on startup); `callback_data` is
   `ev:<event_id>:<stage>`; the bot's press is the same `POST /actions` the dashboard makes. The Doesn't-fit
   note rides a second row within ten minutes — repeated answers are allowed on purpose, and the wire's
-  latest answer carries the note.
+  latest answer carries the note **on the card** (the wire's `answer` gained `note` on 10 Oct, after the
+  live test proved the words reached the table but not the page). The same pass closed a loophole: the
+  card's form no longer posts an anonymous answer (curl still may; the card says "somebody").
 
 **Still owed, in the order that pays:**
 
