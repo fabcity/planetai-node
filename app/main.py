@@ -910,7 +910,7 @@ async def _mcp_auth(request, call_next):
 # exist and nothing about this house.
 # /ground/* is on `open` because every layer under it is a public dataset (OpenStreetMap, OpenAerialMap, Sentinel-2,
 # Open-Meteo) cut around the node, and its centre is no closer than the point /health already rounds. /geo/cell is
-# there too, but the route drops what it says relative to the node (is_node, cells_from_node, ring_polar) for a
+# there too, but the route drops what it says relative to the node (is_node, cells_from_node, *_polar) for a
 # caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
 # (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
 _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
@@ -1785,7 +1785,7 @@ def geo_cell(request: Request, id: str | None = None, lat: float | None = Query(
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
     if not getattr(request.state, "share_trusted", False):
-        for k in ("is_node", "cells_from_node", "ring_polar"):
+        for k in ("is_node", "cells_from_node", "ring_polar", "children_polar"):
             out.pop(k, None)
     return out
 
@@ -2420,6 +2420,8 @@ COMPANIONS = {
     "maplibre-gl.js": (STATIC / "vendor" / "maplibre-gl.js", "application/javascript"),
     "maplibre-gl.css": (STATIC / "vendor" / "maplibre-gl.css", "text/css"),
     "deck.gl.min.js": (STATIC / "vendor" / "deck.gl.min.js", "application/javascript"),
+    # Set up draws the phone's unlock as a QR code on the admin's screen, so the token never leaves the node's own pages.
+    "qrcode.js": (STATIC / "vendor" / "qrcode.js", "application/javascript"),
     # The five doors (/?layout=doors): the loader that builds their one object from the routes, then one file per door,
     # as planetai-design's prototype kept them. Natural Earth's coast for the Node door's world (NOTICE).
     **{f"doors-{n}.js": (STATIC / f"doors-{n}.js", "application/javascript")
@@ -2501,6 +2503,16 @@ def _admin(authorization: str) -> None:
         raise HTTPException(403, "ADMIN_TOKEN is not set in .env; run `planetai ui` to create one")
     if not _bearer_ok(authorization, tok):
         raise HTTPException(401, "bad or missing admin token")
+
+
+@app.get("/settings/phone")
+def settings_phone(authorization: str = Header("")):
+    """The token for closing a loop, for the admin's Set up screen to draw as a QR code a phone scans to unlock itself.
+    Admin token only: it hands out the weaker token to whoever already holds the stronger one, and nothing else."""
+    _admin(authorization)
+    if not ACT_TOKEN():
+        raise HTTPException(404, "no ACT_TOKEN on this node yet; run `planetai ui` to create one")
+    return {"act": ACT_TOKEN()}
 
 
 @app.get("/settings")

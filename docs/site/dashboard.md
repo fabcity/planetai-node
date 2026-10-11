@@ -468,7 +468,9 @@ the engine's order, so a pack's issue joins it with nothing changed here; a scal
 and an issue read only by a model (land, coast) starts at the region. At `SHARE_LEVEL=open` it needs no token,
 map included: `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2) cut around the node, and
 `/geo/cell` answers without what it says relative to the node (`is_node`, `cells_from_node`, `ring_polar`), which
-stays for this machine or a token. At `off` it walks only on an unlocked phone.
+stays for this machine or a token. At `off` it walks only on an unlocked phone. To unlock a phone without typing a token, open Set up ›
+This screen with the admin token and press *Show the code* under "A phone": the phone's camera opens the phone page
+holding the token for closing a loop, which answers the node and changes no setting.
 
 ## Languages
 

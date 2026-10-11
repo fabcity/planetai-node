@@ -72,11 +72,26 @@ assert "/geo/cell" in main._SHARE_OPEN[0] and "/ground/" in main._SHARE_OPEN[1] 
 from types import SimpleNamespace  # noqa: E402
 os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
 _rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
-_kw = dict(id=None, lat=-8.8, lon=115.17, res=15, children=None, polar=True)
+_kw = dict(id=None, lat=-8.8, lon=115.17, res=14, children=15, polar=True)
 _open, _mine = main.geo_cell(_rq(False), **_kw), main.geo_cell(_rq(True), **_kw)
-assert not {"is_node", "cells_from_node", "ring_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
-assert {"is_node", "cells_from_node", "ring_polar"} <= set(_mine)
+assert not {"is_node", "cells_from_node", "ring_polar", "children_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
+assert {"is_node", "cells_from_node", "ring_polar", "children_polar"} <= set(_mine)
 print("doors: a phone with no token gets the map and the cells, never where they stand from the house")
+
+# the phone's QR unlock: /settings/phone hands the act token to the admin token only, Set up draws it only unlocked,
+# and the phone page keeps #act= and takes it out of the address bar
+os.environ["ADMIN_TOKEN"] = "adm"
+from fastapi import HTTPException  # noqa: E402
+for _a in ("", "Bearer nope"):
+    try:
+        main.settings_phone(_a); raise AssertionError("/settings/phone answered without the admin token")
+    except HTTPException as e:
+        assert e.status_code in (401, 403), e.status_code
+assert "/settings/phone" not in main._SHARE_OPEN[0] and "qrcode.js" in main.COMPANIONS
+_setup = (STATIC / "doors-setup.js").read_text()
+assert "(unlocked ? `<div class=\"srow\"><div class=\"sl\"><label>A phone" in _setup and "/static/qrcode.js" in _setup
+assert "#act=" in mobjs and "history.replaceState" in mobjs
+print("doors: the phone unlocks from a QR code only the admin's Set up can draw")
 
 if not shutil.which("node"):
     print("doors: node is not installed, skipping the loader checks (skipped)")

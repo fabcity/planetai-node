@@ -24,6 +24,11 @@ const MOBILE_ROUTES = {
 
 let D = null, leadKey = null, refusedSentence = null, refusedHealth = null;
 
+/* the QR code Set up draws (§6.3) opens this page at #act=<token>: keep it, then take it out of the address bar */
+if (location.hash.startsWith('#act=')) {
+  try { localStorage.setItem('planetai_act', decodeURIComponent(location.hash.slice(5))); } catch (e) { /* no storage here */ }
+  history.replaceState(null, '', location.pathname + location.search);
+}
 const hasToken = () => { try { return !!localStorage.getItem('planetai_act'); } catch (e) { return false; } };
 const bootOff = () => { const a = $('#asking'); if (a) a.remove(); };
 
