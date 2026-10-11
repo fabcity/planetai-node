@@ -86,6 +86,7 @@ test_ship_signing|bash tests/test_ship_signing.sh
 test_daemon_state|bash tests/test_daemon_state.sh
 test_diagnose|bash tests/test_diagnose.sh
 test_remove|bash tests/test_remove.sh
+test_hello|bash tests/test_hello.sh
 test_sudo_prompt|bash tests/test_sudo_prompt.sh
 test_running_state|bash tests/test_running_state.sh
 test_preflight|bash tests/test_preflight.sh

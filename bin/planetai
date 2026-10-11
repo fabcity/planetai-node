@@ -38,6 +38,7 @@
 #   planetai cells           the Index cells this node fills, with provenance (--json)
 #   planetai snapshot        one JSON of everything the node answers, for a design round or a bug report (--out FILE)
 #   planetai geocode <place> what the setup wizard would find for a place name
+#   planetai hello          list this node on every node's map: shows what goes public, then opens the pull request (--remove)
 #   planetai version         the version this folder is at
 #   planetai remove         take this node off the machine; asks twice. --keep-data keeps the readings
 #   planetai stop | start | restart
@@ -2147,6 +2148,75 @@ for key, why in sorted(out["provenance"]["refused"].items()):
   echo "  To render it in the dashboard, copy it into app/issues/fixtures/ on a dev machine and open ?fixture=<name>."
 }
 
+# Saying hello is a pull request to registry.json, the programme's list of nodes (docs/SPEC_hello.md §5). Nothing
+# leaves until the household has read the entry and said yes, and nothing is listed until a person merges it.
+# The point is what /health gives a reader without the token: the centre of the res-8 cell, never the house (R25).
+cmd_hello() {
+  local remove=""; [[ "${1:-}" == --remove ]] && remove=1
+  local h; h="$(curl -sf "localhost:$(port)/health")" || fail "the node does not answer on :$(port). planetai start, then try again"
+  local entry; entry="$(printf '%s' "$h" | json '
+if d.get("position") != "cell" or not (d.get("cell") or {}).get("id"):
+    sys.exit("this node has no cell yet: run planetai setup first")
+print(json.dumps({"name": d["node"], "cell": d["cell"]["id"], "lat": d["lat"], "lon": d["lon"]}))')" || fail "this node has no published cell yet. planetai setup sets its place"
+  local name; name="$(printf '%s' "$entry" | json 'print(d["name"])')"
+  local place="" operator="" contact=""
+  if [[ -z "$remove" ]]; then
+    ask place "Place, as anyone may read it (town, region, country)" "$(envget NODE_CITY)"
+    ask operator "Who runs this node (a person or an organisation)" ""
+    ask contact "A public contact, or leave empty" ""
+    entry="$(printf '%s' "$entry" | P="$place" O="$operator" C="$contact" S="$(envget NODE_SCALE)" json '
+import os, datetime
+row = {"name": d["name"], "scale": os.environ["S"] or "community", "operator": os.environ["O"] or None,
+       "place": os.environ["P"], "cell": d["cell"], "lat": d["lat"], "lon": d["lon"], "sources": [], "parent": None,
+       "since": datetime.date.today().strftime("%Y-%m")}
+if os.environ["C"]:
+    row["contact"] = os.environ["C"]
+print(json.dumps(row))')"
+    echo
+    echo "  This is what the whole programme will see about this node, on GitHub and on every node's map:"
+    printf '%s' "$entry" | json '
+for k in ("name", "place", "cell", "lat", "lon", "operator", "contact", "since"):
+    if d.get(k) is not None:
+        print("    %-9s %s" % (k, d[k]))'
+    echo "  The point is the centre of the node's cell (about 0.7 km²), not the house."
+  else
+    echo "  This asks the programme to take $name off the list of nodes."
+  fi
+  echo
+  local edit="https://github.com/fabcity/planetai-node/edit/main/registry.json"
+  if ! command -v gh >/dev/null || ! gh auth status >/dev/null 2>&1; then
+    echo "  GitHub's gh is not logged in here, so open this and make the change by hand, then propose it:"
+    echo "    $edit"
+    [[ -z "$remove" ]] && { echo "  The entry, for the \"nodes\" list:"; printf '%s' "$entry" | json 'print(json.dumps(d, indent=2))' | sed 's/^/    /'; }
+    return 0
+  fi
+  confirm "Open the pull request?" || { say "nothing sent"; return 0; }
+  local tmp; tmp="$(mktemp -d)"
+  ( cd "$tmp" && gh repo fork fabcity/planetai-node --clone --default-branch-only -- --depth=1 -q >>"$LOG" 2>&1 ) \
+    || fail "could not fork fabcity/planetai-node with gh. By hand: $edit"
+  local repo="$tmp/planetai-node" branch="hello-$name-$(date +%Y%m%d)"
+  printf '%s' "$entry" | REMOVE="$remove" REG="$repo/registry.json" json '
+import os, re
+reg = json.load(open(os.environ["REG"]))
+old = next((n for n in reg["nodes"] if n.get("name") == d["name"]), {})
+for k in ("since", "sources", "parent"):   # a node saying hello again keeps its history
+    d[k] = old.get(k, d.get(k))
+nodes = [n for n in reg["nodes"] if n.get("name") != d["name"]]
+if not os.environ["REMOVE"]:
+    nodes.append(d)
+reg["nodes"] = nodes
+out = json.dumps(reg, indent=2, ensure_ascii=False)
+out = re.sub(r"\[\s+([^\[\]{}]*?)\s+\]", lambda m: "[" + re.sub(r",\s+", ", ", m.group(1)) + "]", out)
+open(os.environ["REG"], "w").write(out + "\n")'
+  local verb="list"; [[ -n "$remove" ]] && verb="unlist"
+  ( cd "$repo" && git checkout -qb "$branch" && git commit -qam "registry: $verb $name" && git push -qu origin "$branch" >>"$LOG" 2>&1 \
+    && gh pr create --repo fabcity/planetai-node --head "$(gh api user -q .login):$branch" --title "registry: $verb $name" \
+       --body "Sent by \`planetai hello\` from $name. The merge is the approval (SPEC.md §2, docs/SPEC_hello.md §5)." ) \
+    || fail "could not open the pull request. The change is in $repo; or by hand: $edit"
+  rm -rf "$tmp"
+  say "sent. When it is merged, every node lists $name within six hours."
+}
+
 cmd_version() {
   echo "planetai-node $(version)  ·  a Fab City project  ·  $(envget NODE_NAME) @ $(envget NODE_CITY)"
   # Who this node will take code from. SECURITY.md publishes the same fingerprint; if the two disagree,
@@ -2178,6 +2248,7 @@ case "${1:-help}" in
       *)     cmd_agent;;
     esac;;
   run) shift; cmd_run "$@";;
+  hello) shift; cmd_hello "$@";;
   version|-v|--version) cmd_version;;
   snapshot) shift; cmd_snapshot "$@";;
   geocode) shift; geocode "$*";;   # try a place name without installing anything

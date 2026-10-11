@@ -5,7 +5,7 @@ or to just send a hello world and being able to be visible in others people netw
 be listed. Is that possible under the current design?" Answered the same morning with three steps; Tomas: "yes, 1 to
 3 sounds good".*
 
-**Status: proposed, 11 October 2026; nothing here is built.** Step 1 is built first, then step 2, then step 3, each
+**Status: step 1 built (#208, 11 October 2026); step 3 on `hello-cli-2026-10-11`; step 2 and the site not built.** Step 1 is built first, then step 2, then step 3, each
 its own pull request, each run on node #1 before it merges.
 
 ## 1 · What exists, and what the page pretends
@@ -90,22 +90,23 @@ This is what the whole programme will see about this node, on GitHub and on ever
   name      bayu-ungasan
   place     Ungasan, Badung, Bali, ID
   cell      8895a4c843fffff   (about 0.7 km² — not the house)
-  point     -8.82, 115.16     (the centre of that cell, two decimals)
+  lat, lon  -8.816, 115.164   (the centre of that cell)
   operator  Meaningful Design Group
   since     2026-09
 
 Send it? [y/N]
 ```
 
-- The fields come from the node: `NODE`, `NODE_CITY`, `/health.cell`, the cell's centre at two decimals (the R25
-  rule: nothing finer than the res-8 cell leaves the node). Operator and contact are asked for, never guessed.
+- The fields come from the node: `NODE`, `/health.cell`, and the point `/health` gives a reader without the token, which
+  is the centre of the res-8 cell (the R25 rule). Place defaults to `NODE_CITY`; operator and contact are asked
+  for, never guessed, and contact is left out when empty. A node saying hello again keeps its `since`, `sources`
+  and `parent`.
 - With `gh` logged in, it forks, commits the entry and opens the pull request, and prints its link. Without `gh`, it
   prints the entry and the link to edit `registry.json` on GitHub.
 - The merge is the approval, as `SPEC.md` §2 has always said. Nothing announces anything until a person merges.
 - `planetai hello --remove` opens the pull request that takes the entry out.
 
-The registry's existing entry for `bayu-ungasan` carries three decimals (about 110 m, finer than its cell); step 3's
-pull request rewrites it to the cell's centre at two.
+`bayu-ungasan`'s entry already holds its cell's centre, so it needs no correction.
 
 ## 6 · What this keeps from SPEC_discovery §8
 
@@ -125,4 +126,4 @@ pull request rewrites it to the cell's centre at two.
 | 1 | `app/main.py` (`check_registry`, `GET /nodes`, `_SHARE_OFF`), `app/static/doors-nodegeo.js`, `app/static/doors-node.js`, `app/static/doors-core.js` (one read at load), `tests/test_nodes_registry.py`, `docs/site/api.md`, `CHANGELOG.md` |
 | 1b | site repo: `web/src/data.js` built from `registry.json` |
 | 2 | `app/main.py` (`/geo/cell?id=`), `app/static/doors-node.js` |
-| 3 | `bin/planetai` (`cmd_hello`), `docs/site/cli.md`, `registry.json` (node #1's point) |
+| 3 | `bin/planetai` (`cmd_hello`), `tests/test_hello.sh`, `docs/site/cli.md` |

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **`planetai hello` lists a node on every node's map.** It shows the household exactly what will be public (the
+  node's name, its cell and the cell's centre, the place, who runs it, an optional contact), and on a yes opens the
+  pull request to `registry.json` with `gh`, or prints the entry and the link without it. The merge is the
+  approval; every node reads the list within six hours. `--remove` takes a node off.
 - **The Node door draws the nodes the programme lists, not a list typed into the page.** The node reads
   `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
   each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node
