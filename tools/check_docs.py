@@ -78,7 +78,7 @@ ENV_OK = ENV_DECLARED | ENV_IN_CODE | ENV_IN_PACKS | ENV_RETIRED | ENV_IN_MCP | 
 PROPOSED = {
     # docs/SPEC_hello.md (11 Oct 2026): nodes listed from registry.json, heard by radio, and `planetai hello`. Built in
     # three pull requests; the commit that adds each name deletes it from this entry.
-    "docs/SPEC_hello.md": {"tests/test_nodes_registry.py", "REGISTRY_URL", "hello", "planetai hello"},
+    "docs/SPEC_hello.md": {"hello", "planetai hello"},
     # docs/SPEC_mobile.md (11 Oct 2026) is the phone page's spec, built by Hermes on mobile-2026-10-11 after PR #204.
     # The commit that adds each file deletes it from this entry.
     "docs/SPEC_mobile.md": {'app/static/mobile.html', 'app/static/mobile.js'},

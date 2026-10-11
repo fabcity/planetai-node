@@ -19,7 +19,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 | `act` | `token` at the middleware. Loopback then needs nothing more; from anywhere else the handler requires `ACT_TOKEN` or `ADMIN_TOKEN`. |
 | `children` | `token`, then the handler requires `AGGREGATE_TOKEN`. What a parent demands of a child. |
 
-The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, and any path under `/static/`.
+The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, and any path under `/static/`.
 
 The `open` allowlist is the `off` list plus 27 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 34 exact paths and 4 prefixes in all.
 
@@ -82,6 +82,13 @@ Access: public
 What this node is willing to announce about itself on Reticulum. Public at every level on purpose: the Reticulum bridge is another container with no token and reads this to know what to announce.
 
 Returns `{"enabled": false}` unless `RETICULUM_PRESENCE=1`. When enabled: `{enabled: true, node, cell, res, version, kind}`, where `cell` is the node's cell coarsened to resolution `res` (`RETICULUM_PRESENCE_RES`, default 3, clamped to 0..6; resolution 6 is the finest allowed) and `kind` is `NODE_KIND` or null.
+
+### GET /nodes
+Access: public
+
+The nodes the programme lists: `registry.json` on the repository's `main`, read by the node every 6 hours (`docs/SPEC_hello.md`). Public at every level: it is the same public file on every node and says nothing about this house. A node joins the list with a merged pull request.
+
+Returns `{read, from, nodes, error?}`. `read` is when the last good read was (null before the first), `from` the file's URL, `error` why the last read failed while the list it kept is still served. Each node has `name`, `place`, `scale`, `operator`, `since`, `cell` and `ll`, `[lon, lat]` to one decimal (about 10 km), or null. `contact` and `sources` stay in the file. `UPDATE_CHECK=off` reads nothing and serves an empty list.
 
 ### GET /
 Access: public
