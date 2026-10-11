@@ -10,8 +10,14 @@
   in the house"), then the reading and whose line, smaller ("At 04:00 it read 8 µg/m³, under the WHO line.").
   The page used to write that hour itself, in English only, with its own over-or-under arithmetic.
   `GET /issues/days` gains `hours` per sensed issue, in the locale asked for (`?locale=`).
-- **The title keeps the why.** "The air is getting worse in the house, and the source is inside": where the
-  trouble comes from is words, not an indicator, so it stays in the title and the line opens the tagline.
+- **The title says what it means for the house, and the line below says why.** "The house is keeping the heat
+  out", then smaller: "Inside it is under this house's own heat line, and the street is past it." Each issue's
+  sentence templates mark the split themselves (`title | tagline`), so the words live in the node, in every
+  language, and no page rewrites them. The list of every distance ("cooler than the street, the ring and the
+  region") is gone from the sentence; the figures are where they were, in the reading below.
+- **The Place door's scale buttons take the map to their scale.** On a landscape screen a press did nothing (the
+  map was asked to fit a cell inside a margin taller than itself), and elsewhere it landed one scale off. A button
+  now goes to the zoom the map itself reads as that scale.
 
 ## v0.80.11 — 2026-10-10 — The seed in the middle, the labels in lanes, the wall follows the window
 

@@ -81,16 +81,16 @@ sentences:
   en:
     verbs:
       rising:  "getting worse"
-      steady:  "holding"
+      steady:  "steady"
       falling: "clearing"
     # {line} is filled by the engine from the live value against the line — never asserted here.
     line:
-      over:  "past the WHO line"
-      near:  "near the WHO line"
-      under: "under the WHO line"
+      over:  "past the WHO line for fine dust"
+      near:  "close to the WHO line for fine dust"
+      under: "under the WHO line for fine dust"
     # {event} names the day it crossed and came back, so the state band and the sentence agree.
     event:
-      earlier: "It crossed the line earlier today."
+      earlier: "The house crossed the line earlier today."
     cmp_words:
       over:  "worse than {noun}"
       under: "cleaner than {noun}"
@@ -100,31 +100,31 @@ sentences:
     past:
       verbs:
         rising:  "was getting worse"
-        steady:  "was holding"
+        steady:  "was steady"
         falling: "was clearing"
       title:   "The air {verb} {where}"
       tagline: "At {hour} it read {n} {unit}, {line}."
       none:    "Nothing was recorded {where} at {hour}."
     attribution:
-      clear:         "The air is {verb} {where}, {line}. {cmp} {event}"
-      inside:        "The air is {verb} {where}, and the source is inside. {line}. {cmp} {event}"
-      everywhere:    "The air is {verb} {where}, and the whole area reads the same. {line}. {cmp} {event}"
-      outside_worse: "The air is {verb} {where}. The house is keeping the street out. {line}. {cmp} {event}"
-      mixed:         "The air is {verb} {where}, {line}. {cmp} {event}"
-      unknown:       "The air is {verb} {where}, {line}. {cmp} {event}"
+      clear:         "The air is clean, inside and out | In the house it is {verb}, {line}. {event}"
+      inside:        "Something in the house is making the air dirty | Inside it is {line}, and the street is cleaner. {event}"
+      everywhere:    "The whole area is breathing the same dusty air | Inside and out it is {line}. {event}"
+      outside_worse: "The house is keeping the street's dust out | Inside it is {line}, and the street is past it. {event}"
+      mixed:         "The air in the house is {verb} | Inside it is {line}. {event}"
+      unknown:       "The air {where} is {verb} | It is {line}. {event}"
     state:
       none: "No air sensor here yet, and no model for this point."
   id:
     verbs:
       rising:  "memburuk"
-      steady:  "bertahan"
+      steady:  "stabil"
       falling: "membaik"
     line:
-      over:  "di atas batas WHO"
-      near:  "mendekati batas WHO"
-      under: "di bawah batas WHO"
+      over:  "di atas batas WHO untuk debu halus"
+      near:  "mendekati batas WHO untuk debu halus"
+      under: "di bawah batas WHO untuk debu halus"
     event:
-      earlier: "Tadi sempat melewati batas."
+      earlier: "Rumah sempat melewati batas tadi."
     cmp_words:
       over:  "lebih buruk daripada {noun}"
       under: "lebih bersih daripada {noun}"
@@ -138,25 +138,25 @@ sentences:
       tagline: "Pukul {hour} terbaca {n} {unit}, {line}."
       none:    "Tidak ada yang tercatat {where} pukul {hour}."
     attribution:
-      clear:         "Udara {verb} {where}, {line}. {cmp} {event}"
-      inside:        "Udara {verb} {where}, dan sumbernya dari dalam. {line}. {cmp} {event}"
-      everywhere:    "Udara {verb} {where}, dan seluruh daerah ini sama. {line}. {cmp} {event}"
-      outside_worse: "Udara {verb} {where}. Rumah menahan udara jalan di luar. {line}. {cmp} {event}"
-      mixed:         "Udara {verb} {where}, {line}. {cmp} {event}"
-      unknown:       "Udara {verb} {where}, {line}. {cmp} {event}"
+      clear:         "Udara bersih, di dalam dan di luar | Di dalam rumah udaranya {verb}, {line}. {event}"
+      inside:        "Ada sesuatu di dalam rumah yang mengotori udara | Di dalam rumah udaranya {line}, dan jalan lebih bersih. {event}"
+      everywhere:    "Seluruh daerah menghirup udara berdebu yang sama | Di dalam dan di luar, udaranya {line}. {event}"
+      outside_worse: "Rumah menahan debu dari jalan | Di dalam rumah udaranya {line}, sementara jalan melewatinya. {event}"
+      mixed:         "Udara di dalam rumah {verb} | Di dalam rumah udaranya {line}. {event}"
+      unknown:       "Udara {where} {verb} | Udaranya {line}. {event}"
     state:
       none: "Belum ada sensor udara di sini, dan tidak ada model untuk titik ini."
   es:
     verbs:
-      rising:  "está empeorando"
-      steady:  "se mantiene"
-      falling: "está despejando"
+      rising:  "empeorando"
+      steady:  "estable"
+      falling: "mejorando"
     line:
-      over:  "por encima del límite de la OMS"
-      near:  "cerca del límite de la OMS"
-      under: "por debajo del límite de la OMS"
+      over:  "por encima del límite de la OMS para el polvo fino"
+      near:  "cerca del límite de la OMS para el polvo fino"
+      under: "por debajo del límite de la OMS para el polvo fino"
     event:
-      earlier: "Hoy cruzó el límite."
+      earlier: "La casa cruzó el límite hoy más temprano."
     cmp_words:
       over:  "peor que {noun}"
       under: "más limpio que {noun}"
@@ -170,12 +170,12 @@ sentences:
       tagline: "A las {hour} marcaba {n} {unit}, {line}."
       none:    "No se registró nada {where} a las {hour}."
     attribution:
-      clear:         "El aire {verb} {where}, {line}. {cmp} {event}"
-      inside:        "El aire {verb} {where}, y el foco está dentro. {line}. {cmp} {event}"
-      everywhere:    "El aire {verb} {where}, y toda la zona marca lo mismo. {line}. {cmp} {event}"
-      outside_worse: "El aire {verb} {where}. La casa mantiene la calle afuera. {line}. {cmp} {event}"
-      mixed:         "El aire {verb} {where}, {line}. {cmp} {event}"
-      unknown:       "El aire {verb} {where}, {line}. {cmp} {event}"
+      clear:         "El aire está limpio, dentro y fuera | En casa está {verb}, {line}. {event}"
+      inside:        "Algo en la casa está ensuciando el aire | Dentro está {line}, y la calle está más limpia. {event}"
+      everywhere:    "Toda la zona respira el mismo aire sucio | Dentro y fuera está {line}. {event}"
+      outside_worse: "La casa está dejando fuera el polvo de la calle | Dentro está {line}, y la calle lo supera. {event}"
+      mixed:         "El aire en casa está {verb} | Dentro está {line}. {event}"
+      unknown:       "El aire {where} está {verb} | Está {line}. {event}"
     state:
       none: "Aún no hay sensor de aire aquí, ni modelo para este punto."
 

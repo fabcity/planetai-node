@@ -593,18 +593,21 @@ check(_L21["value"] == 91 and _L21["stamp"]["en"] == "looked at in July 2025 \u0
 _S21 = {k: _O21[k]["sentence"]["en"] for k in ("air", "heat", "coast", "land")}
 check("under the WHO line" in _S21["air"] and "past the WHO line" not in _S21["air"],
       f"line clause: air reads {_S21['air']!r}")
-check("near this house's own line" in _S21["heat"] and "under the WHO line" not in _S21["heat"],
+check("close to this house's own heat line" in _S21["heat"] and "under the WHO line" not in _S21["heat"],
       f"line clause: heat reads {_S21['heat']!r}")
 # The {event} clause: heat's ask opened today and the room is back under the line, so the sentence
 # names the crossing — the act band and the calm words agree. Air's stale ask could be from any
 # day, so it gets no such clause.
-check("It crossed the line earlier today." in _S21["heat"],
+check("crossed the line earlier today." in _S21["heat"],
       f"event clause: heat reads {_S21['heat']!r}")
 check("earlier today" not in _S21["air"], f"event clause: air reads {_S21['air']!r}")
-# The comparison speaks each issue's own words, not one skeleton for all.
-check("cleaner than" in _S21["air"], f"cmp voice: air reads {_S21['air']!r}")
-check("otter than" in _S21["heat"] or "hot as" in _S21["heat"],
-      f"cmp voice: heat reads {_S21['heat']!r}")
+# The household's words, not the instruments': no "ring" or "region", no dash drama, and no word of the
+# title said again in the tagline's opening (the review of 11 Oct: "holding … holding off", said twice).
+for _k in ("air", "heat"):
+    for _loc in I.LOCALES:
+        _t, _g = _O21[_k]["title"][_loc], _O21[_k]["tagline"][_loc]
+        check(not re.search(r"\b(ring|region)\b", _t + " " + _g) and "\u2014" not in _t + _g,
+              f"voice: {_k}.{_loc} reads {_t!r} | {_g!r}")
 # Context issues carry no jargon in the headline layer.
 check("cell" not in _S21["coast"].lower(), f"coast headline reads {_S21['coast']!r}")
 check("square" not in _S21["land"].lower(), f"land headline reads {_S21['land']!r}")
@@ -614,7 +617,7 @@ _air = DECL["air"]
 _cmp_mode = _air.get("compare") or {"mode": "ratio", "margin": 1.5}
 _su = engine._sentence(_air, {"room": {"value": 42}}, "notable", "room", "steady", "en",
                        _cmp_mode, "inside", _air["line"], {"code": "alert_today"})
-check("Past the WHO line" in _su and "earlier today" not in _su,
+check("past the WHO line" in _su and "earlier today" not in _su,
       f"line/event over: {_su!r}")
 _sb = engine._sentence(_air, {"room": {"value": 4}}, "notable", "room", "steady", "en",
                        _cmp_mode, "clear", _air["line"], {"code": "alert_today"})
@@ -648,7 +651,7 @@ check(engine._sentence_parts(DECL["air"], {}, "none", "room", "steady", "en", {}
 # line relation is the engine's (0.95 of the line is near, never under) and an empty hour has no tagline.
 _air_near = engine._hour_parts(_air, [_air["line"]["value"] * 0.95], [NOW], 0, "room", "en", _cmp_mode,
                                _air["line"])
-check("near the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")
+check("close to the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")
 check(engine._hour_parts(_air, [None], [NOW], 0, "room", "en", _cmp_mode, _air["line"])[1] == "",
       "hours: an hour with no reading has no tagline")
 

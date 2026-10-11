@@ -315,8 +315,12 @@ function chrome() {
 async function fly(r) {
   let c; try { c = await cellAt(D.point[0], D.point[1], r); } catch (e) { offline(e.message); return; }
   const bb = loop(c.ring).reduce((m, [x, y]) => [Math.min(m[0], x), Math.min(m[1], y), Math.max(m[2], x), Math.max(m[3], y)], [180, 90, -180, -90]);
-  const pad = Math.round(PM.map.getContainer().clientWidth * 0.36);
-  PM.map.fitBounds([[bb[0], bb[1]], [bb[2], bb[3]]], { padding: pad, duration: CLOCK.reduced() ? 0 : 700 });
+  /* the zoom resFor() reads back as r: the rung's edge midway (geometrically) between 56 px, where r begins, and
+     where r + 1 would take over. fitBounds with padding refused to move on any landscape map and landed a rung off
+     elsewhere, so a button and a scroll now share one rule, whatever the map's shape. */
+  const px = 56 * Math.sqrt(EDGE(r) / EDGE(r + 1));
+  PM.map.easeTo({ center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2], zoom: Math.log2(px * mPerPx(0) / EDGE(r)),
+    duration: CLOCK.reduced() ? 0 : 700 });
 }
 function tools() {
   const el = document.createElement('div'); el.className = 'tools';

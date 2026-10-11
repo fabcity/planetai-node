@@ -908,14 +908,13 @@ def _sentence(d, stack, state, headline_dist, verb_key, loc, compare, attributio
 
 def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attribution,
                     line=None, reason=None) -> tuple[str, str, str]:
-    """(sentence, title, tagline): the sentence whole, then split at the {line} clause.
+    """(sentence, title, tagline). The template marks the split with "|".
 
-    The title is the qualitative head — what is happening, in the household's words, with no
-    number and no indicator in it ("The air is getting worse inside"). The tagline is the rest:
-    the line, the comparison, the day's event — the readings, introduced slowly and set smaller.
-    A page titles with the title and explains with the tagline; the full sentence stays for the
-    places that speak prose (the bot, the asks). Templates without a {line} clause (the none and
-    context states) do not split: the title is the whole and the tagline is empty.
+    The title says what is happening for the household, in its words, with no number and no indicator
+    ("The house is keeping the heat out"). The tagline is the evidence: the line, said once with what it
+    protects, the one comparison that explains the title, and the day's event. A page titles with the
+    title and explains with the tagline; the full sentence stays for prose (the bot, the asks). The none
+    and context states carry no "|" and do not split.
     """
     block = (d.get("sentences") or {}).get(loc) or {}
     if state in ("none", "context"):
@@ -961,20 +960,18 @@ def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attr
         # a clause that opens a sentence ("… inside the house. under the WHO line.") opens it upper-case
         return re.sub(r"([.!?] )(\w)", lambda m: m[1] + m[2].upper(), s)
 
-    full = _fmt(tpl)
-    head, sep, tail = tpl.partition("{line}")
+    # The template says where the title ends: "title | tagline". The title is what it means for the household,
+    # in words; the tagline is the evidence, the line said once. A template with no "|" does not split.
+    head, sep, tail = tpl.partition("|")
     if not sep:
+        full = _fmt(tpl)
         return full, full, ""
-    title = _fmt(head).strip().rstrip(",.—–- ").strip()
-    tagline = _fmt("{line}" + tail).strip()
-    # with no reading there is no line clause, and the tagline would open on the template's own
-    # punctuation — ". cleaner than the street" is not a sentence start
-    if tagline.startswith(". "):
-        tagline = tagline[2:]
-    # the clause is written to sit mid-sentence; standing alone under the title it is a sentence
+    title = _fmt(head).strip().rstrip(",.;:—–- ").strip()
+    # with no reading the line clause is empty, and the tagline must not open on the template's punctuation
+    tagline = _fmt(tail).strip().lstrip(",.;: ").strip()
     if tagline:
         tagline = tagline[0].upper() + tagline[1:]
-    return full, title, tagline
+    return (f"{title}. {tagline}" if tagline else f"{title}."), title, tagline
 
 
 
