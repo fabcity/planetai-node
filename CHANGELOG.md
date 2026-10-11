@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **A phone can walk out from the house.** An unlocked phone page offers "Walk out from the house": `/?layout=walk`,
+  a map pinned on top and a story under it, house → street → ring → region → planet, the camera flying out at each
+  step. The house's day against its line, the street against the house with the gap shaded, the stations around as
+  dots, every scale on one axis, the listed nodes on a globe. It names no issue: every issue `/issues` carries is
+  walked, at the scales it has. Its own page, so the phone page itself still loads no map library.
 - **The Node door draws the nodes the programme lists, not a list typed into the page.** The node reads
   `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
   each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node

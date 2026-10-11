@@ -56,6 +56,16 @@ assert "planetai_admin'" not in mobjs.replace("removeItem('planetai_admin')", ""
 assert not re.search(r"fetch\(\s*['\"]/settings", mobjs), "the phone page reads /settings through loadD (GET) and never calls it"
 print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library, touches no settings")
 
+# the walk out from the house (SPEC_mobile §11.2): its own page, so the phone page stays light; it names only served
+# files, and it names no issue: every issue /issues carries is walked, at the scales it has
+walk, walkjs = (STATIC / "walk.html").read_text(), (STATIC / "walk.js").read_text()
+assert c.get("/", params={"layout": "walk"}).text == walk
+wnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', walk)
+assert wnamed and all(n in main.COMPANIONS for n in wnamed), [n for n in wnamed if n not in main.COMPANIONS]
+assert "layout=walk" in mobjs and "hasToken()" in mobjs.split("layout=walk")[0][-300:], "the phone page offers the walk, unlocked only"
+assert not re.search(r"['\"](air|heat|land|coast)['\"]", walkjs), "the walk names no issue; it walks what /issues carries"
+print("doors: ?layout=walk is the walk out from the house; it names only served files and no issue")
+
 if not shutil.which("node"):
     print("doors: node is not installed, skipping the loader checks (skipped)")
     sys.exit(0)
@@ -87,6 +97,16 @@ console.log(JSON.stringify({
 }));
 """ % FIX
 r = json.loads(subprocess.run(["node"], input=prog, capture_output=True, text=True, check=True).stdout)
+
+# the walk walks every issue with a reading, in the engine's order, at the scales it has: land and coast are read only
+# at the region, so their walk starts there; an issue with no reading anywhere is left off the switch
+wprog = """const { walkOf } = require('./app/static/walk.js'); const F = JSON.parse(require('fs').readFileSync('%s', 'utf8'));
+const I = F.issues; I.issues.empty = { stack: { room: null, yard: null, ring: null, region: { value: null } } }; I.order = I.order.concat('empty', 'gone');
+console.log(JSON.stringify(walkOf(I).map(w => [w.k, w.at.map(Boolean)])));""" % FIX
+wk = json.loads(subprocess.run(["node"], input=wprog, capture_output=True, text=True, check=True).stdout)
+assert [k for k, _ in wk] == ["air", "heat", "land", "coast"], wk
+assert dict(wk)["land"] == [False, False, False, True] and dict(wk)["air"] == [True] * 4, wk
+print("doors: the walk takes every issue with a reading, in order, each at the scales it has")
 
 # the issues, as the doors read them (/issues for the words, /issues/days for the seven days)
 assert r["order"] == ["air", "heat", "land", "coast"] and r["lead"] == "heat" and r["n"] == 168, r["order"]
