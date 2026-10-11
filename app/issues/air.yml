@@ -95,6 +95,16 @@ sentences:
       over:  "worse than {noun}"
       under: "cleaner than {noun}"
       level: "level with {noun}"
+    # past: one hour the page scrubs back to. The title is what it was doing, in words; the tagline
+    # is the reading and whose line ({line} reuses the words above). The page writes none of it.
+    past:
+      verbs:
+        rising:  "was getting worse"
+        steady:  "was holding"
+        falling: "was clearing"
+      title:   "The air {verb} {where}"
+      tagline: "At {hour} it read {n} {unit}, {line}."
+      none:    "Nothing was recorded {where} at {hour}."
     attribution:
       clear:         "The air is {verb} {where}, {line}. {cmp} {event}"
       inside:        "The air is {verb} {where}, and the source is inside. {line}. {cmp} {event}"
@@ -119,6 +129,14 @@ sentences:
       over:  "lebih buruk daripada {noun}"
       under: "lebih bersih daripada {noun}"
       level: "setara dengan {noun}"
+    past:
+      verbs:
+        rising:  "memburuk"
+        steady:  "bertahan"
+        falling: "membaik"
+      title:   "Udara {verb} {where}"
+      tagline: "Pukul {hour} terbaca {n} {unit}, {line}."
+      none:    "Tidak ada yang tercatat {where} pukul {hour}."
     attribution:
       clear:         "Udara {verb} {where}, {line}. {cmp} {event}"
       inside:        "Udara {verb} {where}, dan sumbernya dari dalam. {line}. {cmp} {event}"
@@ -143,6 +161,14 @@ sentences:
       over:  "peor que {noun}"
       under: "más limpio que {noun}"
       level: "igual que {noun}"
+    past:
+      verbs:
+        rising:  "estaba empeorando"
+        steady:  "se mantenía"
+        falling: "estaba mejorando"
+      title:   "El aire {verb} {where}"
+      tagline: "A las {hour} marcaba {n} {unit}, {line}."
+      none:    "No se registró nada {where} a las {hour}."
     attribution:
       clear:         "El aire {verb} {where}, {line}. {cmp} {event}"
       inside:        "El aire {verb} {where}, y el foco está dentro. {line}. {cmp} {event}"

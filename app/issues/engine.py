@@ -938,10 +938,7 @@ def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attr
         if extra.get("since_year") and extra.get("since_pct") is not None else ""
     # The {line} clause is computed from the live value against the line, never written into a
     # template — so a template can never assert "under the line" on a day the reading is past it.
-    line_key = ""
-    if d["kind"] == "sensed" and line is not None and n is not None:
-        lv = float(line["value"])
-        line_key = "over" if n > lv else ("near" if n >= 0.9 * lv else "under")
+    line_key = _line_key(d, n, line)
     line_clause = (block.get("line") or {}).get(line_key, "")
     # The {event} clause for the day it crossed and came back: the state band says act or notable
     # because of what happened earlier, while the sentence says now. Naming the crossing keeps the
@@ -979,6 +976,37 @@ def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attr
         tagline = tagline[0].upper() + tagline[1:]
     return full, title, tagline
 
+
+
+def _line_key(d, n, line) -> str:
+    """over · near · under the issue's line — near is within a tenth below it. "" with no line or no value."""
+    if d["kind"] != "sensed" or line is None or n is None:
+        return ""
+    lv = float(line["value"])
+    return "over" if n > lv else ("near" if n >= 0.9 * lv else "under")
+
+
+def _hour_parts(d, series, buckets, i, dist, loc, compare, line, tz=None) -> list[str]:
+    """[title, tagline] for one hour of the day the page can scrub back to.
+
+    The same order as the live sentence: the title says what the air or the heat was doing, in words, with
+    the trend verb in the past tense over the hours up to this one; the tagline gives the reading and
+    whose line it stood against. Every word comes from the issue's `past` block, so the page writes none.
+    """
+    block = (d.get("sentences") or {}).get(loc) or {}
+    past = block.get("past") or {}
+    at = buckets[i]
+    if tz is not None and isinstance(at, datetime) and at.tzinfo is not None:
+        at = at.astimezone(tz)
+    where, hour = _where(d, dist, loc), _hhmm(at)
+    n = series[i] if i < len(series) else None
+    if n is None:
+        return [past.get("none", "").format(where=where, hour=hour), ""]
+    verb = (past.get("verbs") or {}).get(_trend(series[:i + 1], compare), "")
+    line_clause = (block.get("line") or {}).get(_line_key(d, n, line), "")
+    tag = past.get("tagline", "").format(hour=hour, n=f"{n:.{d['dp']}f}", unit=d["unit"], line=line_clause)
+    tag = re.sub(r"\s*,\s*\.", ".", " ".join(tag.split()))
+    return [" ".join(past.get("title", "").format(verb=verb, where=where).split()), tag]
 
 # ------------------------------------------------------------------------------------------- readouts
 def _readouts(d, obs, loc_all=LOCALES) -> list[dict]:
@@ -1521,6 +1549,11 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             # the tagline explains, smaller. The full sentence stays for prose (the bot, the asks).
             "title": {loc: _parts[loc][1] for loc in LOCALES},
             "tagline": {loc: _parts[loc][2] for loc in LOCALES},
+            # One [title, tagline] per bucket, for the hours the page scrubs back to: the past hour speaks
+            # the engine's words too, in every locale, and the page writes none of its own.
+            "hours": ({loc: [_hour_parts(d, series[headline], buckets, i, headline, loc, compare, line, clock)
+                             for i in range(len(buckets))] for loc in LOCALES}
+                      if d["kind"] == "sensed" and series.get(headline) else None),
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
         out[key]["usual"], out[key]["usual_absent"] = (usual[key] if usual is not None and key in usual

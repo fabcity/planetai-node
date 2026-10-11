@@ -643,6 +643,25 @@ for _k in ("air", "heat"):
                       f"split: {_k}.{_loc}.{_att} at {_v} gives {_t!r} | {_g!r}")
 check(engine._sentence_parts(DECL["air"], {}, "none", "room", "steady", "en", {}, None)[2] == "",
       "split: a template with no {line} has no tagline")
+# --- the past hour: the engine's words, never the page's ----------------------------------------
+# One [title, tagline] per bucket in every locale; the title is words only, the last bucket's verb is
+# the live one, and the line relation is the engine's own (so 0.95 of the line is near, never under).
+for _k in ("air", "heat"):
+    _o = _O21[_k]
+    for _loc in I.LOCALES:
+        _h = _o["hours"][_loc]
+        check(len(_h) == len(_o["buckets"]), f"hours: {_k}.{_loc} has {len(_h)} for {len(_o['buckets'])} buckets")
+        check(all(t and not re.search(r"\d", t) and "{" not in t + g for t, g in _h),
+              f"hours: {_k}.{_loc} reads {_h[-1]!r}")
+    _past = DECL[_k]["sentences"]["en"]["past"]["verbs"][_o["trend"]]
+    check(_past in _o["hours"]["en"][-1][0], f"hours: {_k}'s last hour {_o['hours']['en'][-1][0]!r} is not {_past!r}")
+    check(_o["hours"]["es"][-1] != _o["hours"]["en"][-1], f"hours: {_k} es is the English")
+check(_O21["coast"]["hours"] is None and _O21["land"]["hours"] is None, "hours: a context issue has none")
+_air_near = engine._hour_parts(_air, [_air["line"]["value"] * 0.95], [NOW], 0, "room", "en", _cmp_mode,
+                               _air["line"])
+check("near the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")
+check(engine._hour_parts(_air, [None], [NOW], 0, "room", "en", _cmp_mode, _air["line"])[1] == "",
+      "hours: an hour with no reading has no tagline")
 
 
 # ---------------------------------------------------------------- simple mode's paragraph

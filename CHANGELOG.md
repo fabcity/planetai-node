@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Going back an hour on the Now door speaks the node's words.** Scrub back and the sentence now comes from
+  the node like the live one does, in every language: what the air or the heat was doing ("The air was clearing
+  in the house"), then the reading and whose line, smaller ("At 04:00 it read 8 µg/m³, under the WHO line.").
+  The page used to write that hour itself, in English only, with its own over-or-under arithmetic. `GET /issues`
+  gains `hours` per sensed issue.
+- **The title keeps the why.** "The air is getting worse in the house, and the source is inside": where the
+  trouble comes from is words, not an indicator, so it stays in the title and the line opens the tagline.
+
 ## v0.80.11 — 2026-10-10 — The seed in the middle, the labels in lanes, the wall follows the window
 
 - **The asking face's middle is never empty.** Before any script arrives, the measuring frame now carries
@@ -56,6 +64,9 @@
   waiting for.
 
 ## v0.80.7 — 2026-10-10 — The loop closes from the phone, and the card says whose answer it carries
+
+_Tagged, never shipped: CI held it on the wall overflow, and the tag was deleted on 11 Oct. Everything below
+shipped in v0.80.8._
 
 - **The answer carries the household's own words, and the page insists on a name.** The wire's `answer` now
   carries `note`, and the card draws it in quotes — `Doesn't fit · tomas · 13:20 — "opened the west side"` —
