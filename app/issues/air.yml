@@ -97,9 +97,9 @@ sentences:
       level: "level with {noun}"
     attribution:
       clear:         "The air is {verb} {where}, {line}. {cmp} {event}"
-      inside:        "The air is {verb} {where}, {line} — and the source is inside the house. {cmp} {event}"
-      everywhere:    "The air is {verb} {where}, {line}, and the whole area reads the same. {cmp} {event}"
-      outside_worse: "The air is {verb} {where}, {line}. The house is keeping the street out. {cmp} {event}"
+      inside:        "The air is {verb} {where}, and the source is inside. {line}. {cmp} {event}"
+      everywhere:    "The air is {verb} {where}, and the whole area reads the same. {line}. {cmp} {event}"
+      outside_worse: "The air is {verb} {where}. The house is keeping the street out. {line}. {cmp} {event}"
       mixed:         "The air is {verb} {where}, {line}. {cmp} {event}"
       unknown:       "The air is {verb} {where}, {line}. {cmp} {event}"
     state:
@@ -121,9 +121,9 @@ sentences:
       level: "setara dengan {noun}"
     attribution:
       clear:         "Udara {verb} {where}, {line}. {cmp} {event}"
-      inside:        "Udara {verb} {where}, {line} — dan sumbernya di dalam rumah. {cmp} {event}"
-      everywhere:    "Udara {verb} {where}, {line}, dan seluruh daerah ini sama. {cmp} {event}"
-      outside_worse: "Udara {verb} {where}, {line}. Rumah menahan udara jalan di luar. {cmp} {event}"
+      inside:        "Udara {verb} {where}, dan sumbernya dari dalam. {line}. {cmp} {event}"
+      everywhere:    "Udara {verb} {where}, dan seluruh daerah ini sama. {line}. {cmp} {event}"
+      outside_worse: "Udara {verb} {where}. Rumah menahan udara jalan di luar. {line}. {cmp} {event}"
       mixed:         "Udara {verb} {where}, {line}. {cmp} {event}"
       unknown:       "Udara {verb} {where}, {line}. {cmp} {event}"
     state:
@@ -145,9 +145,9 @@ sentences:
       level: "igual que {noun}"
     attribution:
       clear:         "El aire {verb} {where}, {line}. {cmp} {event}"
-      inside:        "El aire {verb} {where}, {line}, y el foco está dentro de la casa. {cmp} {event}"
-      everywhere:    "El aire {verb} {where}, {line}, y toda la zona marca lo mismo. {cmp} {event}"
-      outside_worse: "El aire {verb} {where}, {line}. La casa mantiene la calle afuera. {cmp} {event}"
+      inside:        "El aire {verb} {where}, y el foco está dentro. {line}. {cmp} {event}"
+      everywhere:    "El aire {verb} {where}, y toda la zona marca lo mismo. {line}. {cmp} {event}"
+      outside_worse: "El aire {verb} {where}. La casa mantiene la calle afuera. {line}. {cmp} {event}"
       mixed:         "El aire {verb} {where}, {line}. {cmp} {event}"
       unknown:       "El aire {verb} {where}, {line}. {cmp} {event}"
     state:

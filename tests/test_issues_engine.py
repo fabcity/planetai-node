@@ -614,7 +614,7 @@ _air = DECL["air"]
 _cmp_mode = _air.get("compare") or {"mode": "ratio", "margin": 1.5}
 _su = engine._sentence(_air, {"room": {"value": 42}}, "notable", "room", "steady", "en",
                        _cmp_mode, "inside", _air["line"], {"code": "alert_today"})
-check("past the WHO line" in _su and "earlier today" not in _su,
+check("Past the WHO line" in _su and "earlier today" not in _su,
       f"line/event over: {_su!r}")
 _sb = engine._sentence(_air, {"room": {"value": 4}}, "notable", "room", "steady", "en",
                        _cmp_mode, "clear", _air["line"], {"code": "alert_today"})
@@ -625,6 +625,24 @@ for _loc in I.LOCALES:
     for _k in ("air", "heat"):
         _s = _O21[_k]["sentence"][_loc]
         check(_s and "{" not in _s, f"sentence: {_k}.{_loc} is {_s!r}")
+# --- the title / tagline split (v0.80.8) ------------------------------------------------------
+# The title is words only: no digit and no line in any issue, attribution, locale or line relation.
+# The tagline meets the instrument, and opens a sentence of its own.
+for _k in ("air", "heat"):
+    _d = DECL[_k]
+    for _loc in I.LOCALES:
+        _blk = _d["sentences"][_loc]
+        for _att in _blk["attribution"]:
+            for _n in (0.2, 0.95, 3.0):
+                _v = round(_d["line"]["value"] * _n, 1)
+                _f, _t, _g = engine._sentence_parts(_d, {"room": {"value": _v}}, "notable", "room", "rising",
+                                                    _loc, _d.get("compare") or {}, _att, _d["line"], None)
+                check(_t and _g and not re.search(r"\d", _t)
+                      and not any(w in _t for w in _blk["line"].values())
+                      and _g[0].isupper(),
+                      f"split: {_k}.{_loc}.{_att} at {_v} gives {_t!r} | {_g!r}")
+check(engine._sentence_parts(DECL["air"], {}, "none", "room", "steady", "en", {}, None)[2] == "",
+      "split: a template with no {line} has no tagline")
 
 
 # ---------------------------------------------------------------- simple mode's paragraph

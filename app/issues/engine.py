@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 import math
 import os
+import re
 import statistics
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from datetime import datetime, timedelta, timezone
@@ -959,13 +960,15 @@ def _sentence_parts(d, stack, state, headline_dist, verb_key, loc, compare, attr
                  span=span, since=since)
 
     def _fmt(t):
-        return " ".join(t.format(**slots).split()).replace(" ,", ",").replace(" .", ".")
+        s = " ".join(t.format(**slots).split()).replace(" ,", ",").replace(" .", ".")
+        # a clause that opens a sentence ("… inside the house. under the WHO line.") opens it upper-case
+        return re.sub(r"([.!?] )(\w)", lambda m: m[1] + m[2].upper(), s)
 
     full = _fmt(tpl)
     head, sep, tail = tpl.partition("{line}")
     if not sep:
         return full, full, ""
-    title = _fmt(head).strip().rstrip(",—–- ").strip()
+    title = _fmt(head).strip().rstrip(",.—–- ").strip()
     tagline = _fmt("{line}" + tail).strip()
     # with no reading there is no line clause, and the tagline would open on the template's own
     # punctuation — ". cleaner than the street" is not a sentence start
