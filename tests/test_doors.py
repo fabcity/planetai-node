@@ -62,7 +62,7 @@ walk, walkjs = (STATIC / "walk.html").read_text(), (STATIC / "walk.js").read_tex
 assert c.get("/", params={"layout": "walk"}).text == walk
 wnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', walk)
 assert wnamed and all(n in main.COMPANIONS for n in wnamed), [n for n in wnamed if n not in main.COMPANIONS]
-assert "layout=walk" in mobjs and "hasToken()" in mobjs.split("layout=walk")[0][-300:], "the phone page offers the walk, unlocked only"
+assert "layout=walk" in mobjs, "the phone page offers the walk"
 assert not re.search(r"['\"](air|heat|land|coast)['\"]", walkjs), "the walk names no issue; it walks what /issues carries"
 print("doors: ?layout=walk is the walk out from the house; it names only served files and no issue")
 

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- **A phone can walk out from the house.** An unlocked phone page offers "Walk out from the house": `/?layout=walk`,
+- **A phone can walk out from the house.** The phone page offers "Walk out from the house": `/?layout=walk`,
   a map pinned on top and a story under it, house → street → ring → region → planet, the camera flying out at each
   step. The house's day against its line, the street against the house with the gap shaded, the stations around as
   dots, every scale on one axis, the listed nodes on a globe. It names no issue: every issue `/issues` carries is

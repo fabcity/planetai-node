@@ -80,8 +80,8 @@ function drawNow() {
         : `<div class="v"><span class="gap">none</span></div>`)
       + `</div>`;
   }).join('') + `</div>`;
-  /* the walk out from the house (§11.2) loads a map, so it is its own page, and it shows the rooms: unlocked only */
-  if (hasToken()) s += `<p class="walk"><a href="/?layout=walk#${esc(leadKey || D.lead || '')}">Walk out from the house →</a></p>`;
+  /* the walk out from the house (§11.2) loads a map, so it is its own page; it reads what this page reads */
+  s += `<p class="walk"><a href="/?layout=walk#${esc(leadKey || D.lead || '')}">Walk out from the house →</a></p>`;
   s += decideHTML(it);
   /* the other issues, one row each */
   const others = D.order.filter(k => k !== leadKey && D.issues[k]);

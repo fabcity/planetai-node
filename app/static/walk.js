@@ -20,14 +20,16 @@ if (typeof module !== 'undefined') module.exports = { walkOf };
 if (typeof document !== 'undefined') (async () => {
   const $ = s => document.querySelector(s);
   const get = p => fetch('/' + p, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.json() : null)).catch(() => null);
-  if (!DOORS_TOKEN()) {
+  /* the walk reads what the phone page reads: whatever this node's SHARE_LEVEL answers, or everything with the token */
+  const [I, D, H, N, M] = await Promise.all([get('issues'), get('issues/days?days=1'), get('health'), get('nodes'), get('ground/meta')]);
+  if (!I || !H) {
     $('#top').remove();
-    $('#chs').innerHTML = '<p class="locked">The walk shows the house\'s own readings, so it opens on an unlocked phone. '
+    $('#chs').innerHTML = '<p class="locked">This node does not share its readings with a phone that is not unlocked. '
       + '<a href="/?layout=mobile#unlock">Unlock this phone</a> first.</p>';
     return;
   }
-  const [I, D, H, N, M] = await Promise.all([get('issues'), get('issues/days?days=1'), get('health'), get('nodes'), get('ground/meta')]);
-  if (!I || !H) { $('#chs').innerHTML = '<p class="locked">The node did not answer. <a href="/?layout=mobile">Back</a></p>'; return; }
+  /* /ground and /geo are not on any SHARE_LEVEL's list (they are drawn around the house): a locked phone walks without the map */
+  if (!M) $('#map').insertAdjacentHTML('afterend', '<p class="nomap">The map draws on an unlocked phone. <a href="/?layout=mobile#unlock">Unlock</a></p>');
   const lang = 'en', L = (I.labels && I.labels[lang]) || {}, W = walkOf(I);
   const word = i => (SCALES[i].k ? L[SCALES[i].k] || SCALES[i].k : PLANET[lang]);
   const edge = r => (I.geometry.ladder.find(x => x.res === r) || {}).edge_m;
@@ -91,7 +93,7 @@ if (typeof document !== 'undefined') (async () => {
     const pairs = room.map((v, i) => (v != null && yard[i] != null ? yard[i] - v : null)).filter(v => v != null);
     const nodes = (N && N.nodes) || [];
     const step = [
-      { h: 'Inside the house', g: chart([{ v: room, c: 'var(--ink)', label: word(0) }], line), m: 'The last 24 hours. Only this household sees this.' },
+      { h: 'Inside the house', g: chart([{ v: room, c: 'var(--ink)', label: word(0) }], line), m: 'The last 24 hours.' },
       { h: 'Out on the street', p: gap == null ? '' : `The ${word(1)} reads ${f(Math.abs(gap), dp)} ${u} ${gap > 0 ? 'higher' : 'lower'} than the ${word(0)} now, and read higher in ${pairs.filter(v => v > 0).length} of the last ${pairs.length} hours.`,
         g: chart([{ v: yard, c: 'var(--warm)', label: word(1) }, { v: room, c: 'var(--ink)', label: word(0) }], null, [room, yard]),
         m: pairs.length ? `Red where the ${word(1)} read higher, blue where the ${word(0)} did.` : '' },

@@ -458,14 +458,15 @@ without it the card says the question went to Telegram. A locked phone reads the
 field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
 (`node tests/visual/measure.mjs mobile`).
 
-An unlocked phone also gets **Walk out from the house** under the four distances: `/?layout=walk`, its own page
+The phone page also offers **Walk out from the house** under the four distances: `/?layout=walk`, its own page
 because it is the one phone view that loads MapLibre. The map stays pinned on top while the story scrolls under it,
 one step per scale (house, street, ring, region, planet), and the camera flies out at each, drawing that scale's
 cell heavy with the smaller ones faint inside it. Each step draws what that scale can say: the house's last 24 hours
 against its line, the street against the house with the gap shaded, the outdoor stations as dots against the house,
 every scale on one axis, and the listed nodes on a globe. The switch on top lists every issue the node carries, in
 the engine's order, so a pack's issue joins it with nothing changed here; a scale an issue has no reading at says so,
-and an issue read only by a model (land, coast) starts at the region.
+and an issue read only by a model (land, coast) starts at the region. It reads what the phone page reads: what
+SHARE_LEVEL answers, or everything once the phone is unlocked.
 
 ## Languages
 
