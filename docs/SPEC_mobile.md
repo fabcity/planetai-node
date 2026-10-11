@@ -327,7 +327,7 @@ under 1.5 s. Whether the Starlette in the app image already skips event streams 
 read from its source before the PR, not assumed. It is server-wide, so it is proven on node #1 by itself, with an MCP session and a tile load watched,
 and never folded into the page PR.
 
-**Later, only if asked.** The Telegram link (question 1); a 24-hour strip drawn from `/issues/days` without d3; the
+**Later, only if asked.** The Telegram link (question 1); the 24 hours as a dial, now §11.1; the
 then-and-now pair; the page's own words in `es` and `id`.
 
 ## 10. Questions for Tomas
@@ -337,3 +337,75 @@ then-and-now pair; the page's own words in `es` and `id`.
 2. **Tablets:** phones only (short side under 600 px) get the phone page, and tablets keep the doors. Right?
 3. **Unlocking a phone:** may the phone page offer the one field for the act token (it answers, it changes no
    setting), or should a locked phone only link to the full dashboard's Set up?
+
+## 11. Two views that are the phone's own (v1.2 and v1.3)
+
+*Asked, 11 October 2026, by Tomas: "explore a couple different visualisation tools from map libre or deck.gl or other
+tools we are already using. The mobile version can offer a different but complementary view that does not replicate
+exactly the desktop." Then: "sounds good, write the spec and handover to Hermes".*
+
+The desktop already draws the wind (the Wall) and the map with its scale buttons (Place). A phone that shrinks those
+copies them. What a phone has that a desk does not is a portrait screen, a scroll and a thumb. Both views below are
+built for those, and both were sketched on node #1's live data on 11 October: the prototypes are in
+`docs/plans/2026-10-11-mobile-views/` (`dial.html`, `scroll.html`). They are sketches to read, not code to paste.
+
+### 11.1 v1.2: the day as a dial
+
+The last 24 hours of the lead issue go round a clock face. Now is at the top and the hours run back anticlockwise.
+Each hour is a wedge whose length is the reading at the household's own distance, filled ink when it was over the
+line and the signal blue when it was under. The line is a dashed circle with its value written on it. Four hour
+labels sit outside the ring.
+
+- **The thumb reads it.** A drag round the dial selects an hour (pointer events, `touch-action: none` on the dial
+  only). Under the dial, the selected hour's pair from `/issues/days` `hours[locale]`: the past title, then the
+  tagline. At "now" it shows the issue's present `title` and `tagline` from `/issues`, not the last past hour.
+- **One switch per issue** with an hour series (air, heat), the lead first. Land and coast have none and get no
+  dial.
+- **Where:** in Now, under the ladder (#209), replacing nothing.
+- **Cost:** hand-drawn SVG, about 3 kB in `mobile.js`, no library, and only data the page already loads, so §7.1
+  holds as written. It draws on a locked phone, because `/issues/days` is what the locked page already reads.
+- **Words:** the explanatory line under it goes through the humanizer and tomas-profile skills. The prototype's is
+  "Now is at the top; the hours run back anticlockwise. Each wedge is one hour inside the house, its length the
+  reading; the dashed circle is the line. Drag round the dial to read an hour."
+- **Gate (`measure.mjs mobile`):** 24 wedges (or as many hours as the wire has) and one line circle. A wedge is over
+  the line exactly when its value is. A drag to a past hour puts that hour's title from the wire under the dial.
+  No horizontal overflow at 390 px.
+
+### 11.2 v1.3: walk out from the house
+
+A button at the end of Place, "Walk out from the house", opens a view where the map stays pinned on the top half and
+cards scroll under it. Each card is one scale. The map jumps to it and draws that scale's H3 cell around the node.
+The card names the scale, says how wide it is, gives the reading at the matching distance and adds one sentence on
+what that scale means:
+
+| card | H3 res | reading |
+|---|---|---|
+| The house | 10 | `stack.room` |
+| The street | 9 | `stack.yard` |
+| The ring around it | 6 | `stack.ring` |
+| The region | 3 | `stack.region`, and says it is a model |
+| The planet | 1 | the nodes `/nodes` lists (SPEC_hello) |
+
+- **Tools:** MapLibre (`/static/maplibre-gl.js`) and the node's own vector tiles (`/ground/vector`). There is no
+  outside tile server and **no deck.gl**: it is 2 MB, MapLibre already draws a cell as a line, and deck.gl stays
+  the Wall's.
+- **Loaded on the tap, never at boot.** §7.1's rule against map-library requests stands for the page as it loads,
+  and the tap is the household asking. MapLibre is 1 MB: fine on home WiFi, about 5 s on the gate's slow profile
+  until gzip (§9, v1.1) lands. So v1.3 ships after gzip, or the button says how big it is.
+- **Unlocked only.** The tiles, `/geo/cell` and the node's point say where the house is, so they are token-only. A
+  locked phone gets no button, only the line saying why.
+- **Zoom per scale** is the one the Place door uses since #204: a cell's width at about a third of the screen.
+- **Gate:** the button exists only with the token. No map request goes out before the tap. Each card puts its own
+  resolution's cell on the map, five in all.
+
+### 11.3 Not now, and why
+
+- **A compass that turns as the phone does, and "where am I against the house" from GPS.** Phones allow motion
+  sensors and location only on HTTPS pages, and a node serves plain HTTP on its network. Both become possible on a
+  node reached over HTTPS (for example `tailscale serve`), and are written down here so nobody re-discovers it.
+- **The wind on the phone.** It is the Wall's, and v1 says no Wall.
+
+### 11.4 Order
+
+After #209 merges: v1.2 (the dial) as its own pull request, run on node #1, then merged. v1.1 (gzip) next, since v1.3
+needs it. Then v1.3. Each one is claimed in the shared state page before it starts.

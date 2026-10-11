@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="/static/maplibre-gl.css">
+<style>
+:root{--ink:#1d1c1a;--mute:#7a766e;--hair:#d9d4ca;--ground:#f6f3ee;--blue:#2f5bd3}
+body{margin:0;background:var(--ground);color:var(--ink);font:15px/1.45 system-ui,-apple-system,sans-serif}
+#map{position:sticky;top:0;height:52vh;width:100%;border-bottom:1px solid var(--ink)}
+.card{min-height:70vh;padding:22px 16px 0}.card small{font:11px ui-monospace,monospace;color:var(--mute);letter-spacing:.06em;text-transform:uppercase}
+.card h2{font-size:21px;margin:6px 0 8px;font-weight:600}.card .v{font:28px ui-monospace,monospace}.card .v i{font-size:13px;font-style:normal;color:var(--mute)}
+.card p{color:var(--mute);margin:8px 0}
+.maplibregl-ctrl-attrib{font-size:9px}
+</style></head><body>
+<div id="map"></div><div id="cards"></div>
+<script src="/static/maplibre-gl.js"></script>
+<script>
+const $ = s => document.querySelector(s), j = p => fetch(p).then(r => r.ok ? r.json() : null);
+(async () => {
+  const [I, H, M, N] = await Promise.all([j('/issues'), j('/health'), j('/ground/meta'), j('/nodes')]);
+  const ll = [H.lon, H.lat], A = I.issues.air, st = A.stack, lab = I.labels.en, lad = I.geometry.ladder, edge = r => lad.find(x => x.res === r).edge_m;
+  const f = v => v == null ? '—' : Math.round(v);
+  const S = [
+    { res: 10, k: 'room', t: 'The house', p: `${st.room.n} sensors inside. This is the air the household breathes, and the only reading that is theirs alone.` },
+    { res: 9, k: 'yard', t: 'The street', p: `${st.yard.n} sensors in the yard and the street. The street is where the house's windows open onto.` },
+    { res: 6, k: 'ring', t: 'The ring around it', p: `${st.ring.n} public stations within a few kilometres. When these move together, it is not the house.` },
+    { res: 3, k: 'region', t: 'The region', p: `${st.region.source}. A model, not a sensor: what the air is doing over the whole island.` },
+    { res: 1, k: null, t: 'The planet', p: `${(N && N.nodes.length) || 0} node(s) listed in the programme. Each one reads its own house the same way.` }];
+  $('#cards').innerHTML = S.map((s, i) => `<section class="card" data-i="${i}"><small>${s.res >= 9 ? 'res ' + s.res : 'res ' + s.res} · ${Math.round(edge(s.res) * 2).toLocaleString('en')} m across</small>
+    <h2>${s.t}</h2>${s.k ? `<div class="v">${f(st[s.k].value)} <i>${A.unit} · fine dust, ${lab[s.k]}</i></div>` : ''}<p>${s.p}</p></section>`).join('');
+  const V = M && M.layers && M.layers.vector, DR = M && M.layers && M.layers.drone;
+  const map = new maplibregl.Map({ container: 'map', attributionControl: { compact: true }, center: ll, zoom: 17, interactive: false,
+    style: { version: 8, sources: {
+      v: { type: 'vector', tiles: [location.origin + '/ground/vector/{z}/{x}/{y}.pbf'], maxzoom: 15, attribution: '© OpenStreetMap' },
+      ...(DR ? { drone: { type: 'raster', tiles: [location.origin + '/ground/drone/{z}/{x}/{y}.png'], tileSize: 256, minzoom: 14, maxzoom: 18, attribution: 'OpenAerialMap CC BY' } } : {}),
+      cells: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } },
+    layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#dfe6ea' } },
+      { id: 'earth', type: 'fill', source: 'v', 'source-layer': 'earth', paint: { 'fill-color': '#f6f3ee' } },
+      { id: 'water', type: 'fill', source: 'v', 'source-layer': 'water', paint: { 'fill-color': '#dfe6ea' } },
+      { id: 'roads', type: 'line', source: 'v', 'source-layer': 'roads', paint: { 'line-color': '#cfc8bb', 'line-width': 1 } },
+      { id: 'bld', type: 'fill', source: 'v', 'source-layer': 'buildings', paint: { 'fill-color': '#e4ded3' } },
+      ...(DR ? [{ id: 'drone', type: 'raster', source: 'drone', paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 14.5, 0, 15.5, 1] } }] : []),
+      { id: 'cell', type: 'line', source: 'cells', paint: { 'line-color': '#2f5bd3', 'line-width': 2.5 } }] } });
+  const lng0 = 156543.03 * Math.cos(H.lat * Math.PI / 180);
+  const zoomFor = r => Math.log2(105 * lng0 / (edge(r) * 2));
+  const ring = async r => { const c = await j(`/geo/cell?lat=${H.lat}&lon=${H.lon}&res=${r}`); if (!c || !c.ring) return null;
+    const q = []; for (let i = 1; i < c.ring.length; i += 2) q.push([c.ring[i + 1], c.ring[i]]); q.push(q[0]);
+    return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [q] } }; };
+  const go = async i => { const s = S[i], cell = s.res >= 2 ? await ring(s.res) : null;
+    map.getSource('cells').setData({ type: 'FeatureCollection', features: cell ? [cell] : [] });
+    map.jumpTo({ center: ll, zoom: Math.min(18, zoomFor(s.res)) }); window.AT = i; };
+  map.on('load', () => { go(0);
+    const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && go(+e.target.dataset.i)), { rootMargin: '-55% 0px -40% 0px' });
+    document.querySelectorAll('.card').forEach(c => io.observe(c)); window.READY = true; });
+  window.GO = go;
+})();
+</script></body></html>
