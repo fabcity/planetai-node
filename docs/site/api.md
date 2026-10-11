@@ -454,11 +454,11 @@ Returns the snapshot JSON with `issues` replaced by the recomputation, or `{"err
 ### GET /issues/days
 Access: open
 
-`?days=` from 1 to 90, default 7. Each declared issue's hourly series over that many local days, by the same engine
+`?days=` from 1 to 90, default 7; `?locale=` `en`, `id` or `es`, default `en`, for the words in `hours`. Each declared issue's hourly series over that many local days, by the same engine
 as `/issues`, so one day of it is the 24 hours `/issues` draws. Buckets are every local hour of the window, oldest
 first; an hour with nothing recorded is `null`. The hours are stepped in UTC and shown in the node's zone, so a day
 with a daylight-saving change holds 25 or 23 hours, and `of` says so. For each issue: `distance` (the hero distance,
-the nearest with data), `series` (room, yard, ring and region, each an array or `null`), `provenance` (the word for
+the nearest with data), `series` (room, yard, ring and region, each an array or `null`), `hours` (a sensed issue's past hours in the locale asked for, `{locale: [[title, tagline], …]}`, one per bucket: what it was doing in words, then the reading and whose line; `null` for a context issue), `provenance` (the word for
 each distance drawn), `per_day` (`date`, `over` the hours over the line at the hero distance, `read` the hours with a
 value, `of` the hours of that day inside the window), and `line`. `events` lists the alert events opened or cleared in
 the window, or still open. Wire format `days-v0`. It is under the `/issues` prefix, so it is readable exactly where `/issues` is.

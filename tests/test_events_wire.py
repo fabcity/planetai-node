@@ -258,4 +258,18 @@ assert (st, code) == ("notable", "event_cleared"), "a naive cleared_at (no offse
 print("  state: an open act event is act until answered (danger stays act); answered or a spike is notable; "
       "a clear within a day is notable; rules unchanged")
 
+# The card asks only while nobody has answered, or once a Not now's hold has run out; it never asks for a cleared event.
+assert [e["asking"] for e in live["open"]] == [False, False, True], [e["asking"] for e in live["open"]]
+assert not any(e["asking"] for e in live["recent"]), "a cleared event asks nothing"
+later = W.build("events", EVENTS, MESSAGES, ANSWERS, COVERED, CONTEXTS, DECL, "en", NOW + 2 * H, BALI)
+assert [e["asking"] for e in later["open"] if e["id"] == 1] == [True], "the Not now held 3 h; after it, the card asks again"
+# The card's action is the present: chosen again from the context as it is now, never last night's message.
+NOWDECL = {**DECL, "heat": {**DECL["heat"], "dp": 1, "actions": [
+    {"id": "heat/keep_closed", "when": {}, "say": {"en": "Keep it closed: outside is {outside_temp}."}}]}}
+fresh = W.build("events", EVENTS, MESSAGES, ANSWERS, COVERED, CONTEXTS, NOWDECL, "en", NOW, BALI)
+assert fresh["open"][1]["action"] == {"id": "heat/keep_closed", "text": "Keep it closed: outside is 29.1 °C."}, \
+    fresh["open"][1]["action"]
+assert fresh["open"][1]["message"]["text"].startswith("Still hot"), "the sent message stays as it was sent"
+print("  the card asks until answered, again after a Not now's hold; its action follows the context as it is now")
+
 print("events_wire: the open events, their actions as sent, answers and holds, the local day")

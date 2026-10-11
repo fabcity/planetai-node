@@ -81,10 +81,8 @@ def _fill(block, fields, locale) -> str:
         return raw
 
 
-def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:
-    e = msg.event
-    tpl = (issue.get("events") or {}).get(msg.reason if msg.reason == "clear" else e.kind) or {}
-    rooms = ", ".join(sorted(e.rooms))
+def _fields(issue: dict, rooms: str, peak, ctx: dict) -> dict:
+    """The figures a message or an action may name, in the issue's own dp and with their units."""
     dp = int(issue.get("dp", 1))
     line_v = (issue.get("line") or {}).get("value")
 
@@ -101,12 +99,19 @@ def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:
             return f"{float(v):.1f} °C"
         return v
 
-    fields = {"rooms": rooms, "peak": e.peak,
+    fields = {"rooms": rooms, "peak": peak,
               "outside_temp": ctx.get("outside_temp"), "inside_temp": ctx.get("inside_temp"),
               "outside_pm25": ctx.get("outside_pm25"), "inside_pm25": ctx.get("inside_pm25"),
               "outside_source": ctx.get("outside_source") or "outside",
               "line": f"{float(line_v):g}" if line_v is not None else "—"}
-    fields = {k: (v if k in ("rooms", "outside_source", "line") else fmt(k, v)) for k, v in fields.items()}
+    return {k: (v if k in ("rooms", "outside_source", "line") else fmt(k, v)) for k, v in fields.items()}
+
+
+def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:
+    e = msg.event
+    tpl = (issue.get("events") or {}).get(msg.reason if msg.reason == "clear" else e.kind) or {}
+    rooms = ", ".join(sorted(e.rooms))
+    fields = _fields(issue, rooms, e.peak, ctx)
     # no template for this kind: say which issue and where, so a message never starts with an empty line
     text = _fill(tpl, fields, locale) or f"{_say(issue.get('name'), locale) or issue.get('key') or e.issue}: {rooms}"
     if msg.reason == "clear":
@@ -116,3 +121,12 @@ def render(issue: dict, msg, ctx: dict, locale: str) -> tuple[str, str | None]:
     if not line:
         return text, None
     return f"{text}\n\n👉 {line}", a["id"]
+
+
+def now_say(issue: dict, ctx: dict, locale: str, rooms, peak) -> dict | None:
+    """The action an open event's card shows: chosen again from the context as it is now, by the same rules that
+    chose the sent message's. The sent message stays what it was (it is history); the card is the present, so it
+    never tells a house to open up on the strength of last night's outside reading."""
+    a = choose(issue.get("actions") or [], ctx)
+    text = _fill(a.get("say"), _fields(issue, ", ".join(sorted(rooms or [])), peak, ctx), locale) if a else ""
+    return {"id": a["id"], "text": text} if text else None
