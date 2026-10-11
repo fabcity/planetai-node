@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The phone page reads the day as a dial.** The last 24 hours of an issue go round a clock face, now at the
+  top, the hours back anticlockwise, each wedge an hour whose length is the reading, ink over the line and the
+  theme's blue under it; the line is a dashed circle with its value. A thumb drag selects an hour and shows its
+  title and tagline from `/issues/days` hours, in the engine's words; at "now" it shows the present title from
+  `/issues`. One switch per issue with an hour series — land and coast have none and get no dial. It draws on a
+  locked phone, adds no route and no library (the §7.1 budget reads 31 kB of 40), and the gate drags an hour and
+  checks the words against the wire (`node1-2026-10-11-dial`, a fresh capture, is the fixture that carries hours).
 - **The phone page draws its numbers.** The four distances sit on one scale with the line as a rule; every
   issue row carries a pictogram and its seven-day strip when the wire has one; the ground is one segmented bar;
   and the Node section tells more of the node's own story: the stations (one dot per sensor, solid if it spoke

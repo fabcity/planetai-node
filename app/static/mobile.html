@@ -89,6 +89,24 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .dotfield{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 4px}
 .dotfield .dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--ink)}
 .dotfield .dot.on{background:var(--ink)}
+/* the day as a dial (§11.1) */
+.dialwrap{margin:0 0 18px}
+.dtabs{display:flex;gap:8px;margin:0 0 8px}
+.dtab{min-height:44px;padding:8px 16px;border:1px solid var(--ink);border-radius:22px;background:var(--ground);color:var(--ink);font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;cursor:pointer}
+.dtab.on{background:var(--ink);color:var(--ground)}
+svg.dial{display:block;width:min(100%,340px);height:auto;margin:0 auto;touch-action:none}
+.dseg.over{fill:var(--ink)}
+.dseg.under{fill:var(--cells)}
+.dseg.none{fill:var(--hair)}
+.dseg{stroke:var(--ground);stroke-width:1.2}
+.dline{fill:none;stroke:var(--ink);stroke-dasharray:3 3;stroke-width:1}
+.dtick{font:10px var(--mono);fill:var(--mute)}
+.dval{font-size:9px}
+.dmid{text-align:center;padding:0 28px;margin-top:2px}
+.dmid .h{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;color:var(--mute)}
+.dmid .t2{font:600 17px/1.35 var(--display);margin:4px 0 2px}
+.dmid .g{font-size:var(--t-small);color:var(--mute)}
+.dlegend{font-size:var(--t-small);color:var(--mute);margin:12px 0 0}
 .cell{border:1px solid var(--hair);padding:10px 12px}
 .cell .l{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
 .cell .v{font:700 20px/1.2 var(--num-face);margin-top:2px}

@@ -57,6 +57,62 @@ function sparkSVG(o) {
     + `<path d="${d}"/></svg>`;
 }
 
+/* ---- the day as a dial (SPEC_mobile §11.1): the last 24 hours round a clock face, now at the top, the hours
+   back anticlockwise, the line a dashed circle. A thumb drag reads an hour's pair from /issues/days hours —
+   the engine's words, never the page's. Hand-drawn SVG, the theme's own blue (var(--cells)) for under the line. */
+let dialK = null, dialSel = null;   /* the dial's own issue and hour; the lead is the default, now is null */
+function dialIssues() {
+  return D.order.filter(k => {
+    const o = D.issues[k] || {};
+    const ser = ((o.series || {})[o.hero_distance || 'room']) || [];
+    return (o.hours || []).length >= 8 && ser.filter(v => v != null).length >= 8;
+  }).sort((a, b) => (a === leadKey ? -1 : b === leadKey ? 1 : 0));
+}
+function dialHTML() {
+  const ks = dialIssues();
+  if (!ks.length) return '';
+  if (!dialK || !ks.includes(dialK)) { dialK = ks[0]; dialSel = null; }
+  const o = D.issues[dialK], n = 24;
+  const ser = (((o.series || {})[o.hero_distance || 'room']) || []).slice(-n);
+  const hrs = (o.hours || []).slice(-n), B = (D.buckets || []).slice(-n);
+  const line = o.line, max = Math.max((line != null ? line : 0) * 1.25, ...ser.filter(v => v != null), 1e-9);
+  const R0 = 56, R1 = 138, r = v => R0 + (R1 - R0) * Math.min(v, max) / max, a = i => -Math.PI / 2 - (n - 1 - i) * 2 * Math.PI / n;
+  const P = (rad, ang) => `${(rad * Math.cos(ang)).toFixed(1)},${(rad * Math.sin(ang)).toFixed(1)}`;
+  let g = '';
+  ser.forEach((v, i) => {
+    const a0 = a(i) - Math.PI / n + .02, a1 = a(i) + Math.PI / n - .02, rr = v == null ? R0 + 4 : r(v), over = v != null && line != null && v >= line;
+    g += `<path class="dseg ${v == null ? 'none' : over ? 'over' : 'under'}" data-i="${i}" data-over="${over ? 1 : 0}" d="M${P(R0, a0)}L${P(rr, a0)}A${rr},${rr} 0 0 1 ${P(rr, a1)}L${P(R0, a1)}A${R0},${R0} 0 0 0 ${P(R0, a0)}Z"`
+      + ` opacity="${i === (dialSel ?? n - 1) ? 1 : .55}"/>`;
+    if (i % 6 === 5 || i === n - 1) {
+      const t = B[i] ? hhmm(B[i]) : '', x = (R1 + 22) * Math.cos(a(i)), y = (R1 + 22) * Math.sin(a(i));
+      g += `<text class="dtick" x="${x.toFixed(1)}" y="${(y + 3).toFixed(1)}" text-anchor="middle">${i === n - 1 ? 'now' : t}</text>`;
+    }
+  });
+  if (line != null) g += `<circle class="dline" r="${r(line).toFixed(1)}"/>`
+    + `<text class="dtick dval" x="4" y="${(-r(line) - 4).toFixed(1)}">line ${esc(fmt(line, o.dp))} ${esc(o.unit || '')}</text>`;
+  const i = dialSel ?? n - 1, now = dialSel == null;
+  const pair = now ? [o.title, o.tagline] : (hrs[i] || []);
+  let s = `<div class="dialwrap">`;
+  if (ks.length > 1) s += `<div class="dtabs" role="group" aria-label="The issue the dial reads">`
+    + ks.map(k => `<button class="dtab${k === dialK ? ' on' : ''}" data-dial="${esc(k)}">${said(D.issues[k].name)}</button>`).join('') + `</div>`;
+  s += `<svg class="dial" viewBox="-179 -179 358 358" role="img" aria-label="The last 24 hours of ${esc(o.name || dialK)}, now at the top">${g}</svg>`
+    + `<div class="dmid"><div class="h">${now ? 'NOW' : (B[i] ? hhmm(B[i]) : '')}</div>`
+    + `<div class="t2">${pair[0] ? said(pair[0]) : ''}</div><div class="g">${pair[1] ? esc(pair[1]) : ''}</div></div>`
+    + `<p class="dlegend">Now sits at the top and the hours run back anticlockwise. Each wedge is an hour, its length the reading inside the house; the dashed circle is the line. Drag round the dial to read an hour.</p></div>`;
+  return s;
+}
+/* the drag: pointer position → hour index, anticlockwise from the top. The svg is redrawn on every pick,
+   so it is looked up fresh each time, and the pointer's client coordinates do the rest. */
+function dialPick(e) {
+  const svg = document.querySelector('svg.dial'); if (!svg) return;
+  const b = svg.getBoundingClientRect();
+  const x = e.clientX - b.left - b.width / 2, y = e.clientY - b.top - b.height / 2;
+  let ang = Math.atan2(y, x) + Math.PI / 2; if (ang < 0) ang += 2 * Math.PI;
+  const back = Math.round((2 * Math.PI - ang) / (2 * Math.PI / 24)) % 24;
+  dialSel = back === 0 ? null : 23 - back;
+  drawNow();
+}
+
 /* the phone's subset (SPEC_mobile §8): never the token-only three, never rho/cells */
 const MOBILE_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', settings: 'settings',
@@ -113,6 +169,7 @@ function drawNow() {
     + `<p class="cmp">${esc(cmp)}</p>`
     + (it.plain ? `<p class="plain">${said(it.plain)}</p>` : '') + `</div>`;
   s += ladderSVG(it);
+  s += dialHTML();
   /* the four distances, 2 × 2, an absent one prints none in the gap style */
   s += `<div class="grid">` + ['room', 'yard', 'ring', 'region'].map(dk => {
     const st = (it.stack || {})[dk];
@@ -308,6 +365,8 @@ document.addEventListener('click', ev => {
     if (!$('#sunlock')) ( $('#node-v') || $('main') ).insertAdjacentHTML('beforeend', unlockHTML());
     $('#sunlock').scrollIntoView(); $('#sact').focus(); return;
   }
+  const dt = t.closest && t.closest('.dtab[data-dial]');
+  if (dt) { ev.preventDefault(); dialK = dt.dataset.dial; dialSel = null; drawNow(); return; }
   const lock = t.closest && t.closest('a[data-lock]');
   if (lock) {
     ev.preventDefault();
@@ -321,6 +380,18 @@ document.addEventListener('submit', ev => {
   ev.preventDefault();
   const t = $('#sact').value.trim();
   if (t) { try { localStorage.setItem('planetai_act', t); } catch (e) { /* no storage here */ } location.reload(); }
+});
+
+/* the dial's drag (§11.1): pointer events, touch-action none on the dial only, so the page's scroll is untouched */
+document.addEventListener('pointerdown', ev => {
+  const svg = ev.target.closest && ev.target.closest('svg.dial');
+  if (!svg) return;
+  ev.preventDefault();
+  dialPick(ev);
+  const move = e2 => dialPick(e2), up = () => {
+    document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+  };
+  document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
 });
 
 /* freshness (§7): no timer — a visible-again page older than five minutes asks again */

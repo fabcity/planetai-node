@@ -3172,6 +3172,68 @@ async function mobile() {
   }
   console.error('  mobile · the visual pass');
 
+  /* 4d · the day as a dial (§11.1), against the node1-2026-10-11-dial capture, which carries hours:
+     * the wedges are the wire's hours, a wedge is over the line exactly when its value is, a drag to a
+     * past hour reads that hour's pair from the wire, and "now" reads the present title, not the last hour */
+  {
+    const DIALFX = 'node1-2026-10-11-dial';
+    for (const dark of [false, true]) {
+      const r = await openRig({ dark });
+      await r.page.goto(`${POP}/?layout=mobile&fixture=${DIALFX}`, { waitUntil: 'domcontentloaded' });
+      await r.page.waitForSelector('#now-v .t', { timeout: 15000 });
+      const served = await r.page.evaluate(async n => (await fetch(`/issues/fixtures/${n}`)).json(), DIALFX);
+      const sI = served.issues || {}, lead2 = (sI.lead || {}).issue || (sI.order || [])[0];
+      const sD = (served.issues_days || {}).issues || {};
+      const withHours = (sI.order || []).filter(k => {
+        const d = sD[k] || {}, lc = (served.health || {}).locale || 'en';
+        const hrs = ((d.hours || {})[lc] || (d.hours || {}).en) || [];
+        const ser = ((d.series || {})[d.distance || 'room']) || [];
+        return hrs.length >= 8 && ser.filter(x => x != null).length >= 8;
+      }).sort((a, b) => (a === lead2 ? -1 : b === lead2 ? 1 : 0));
+      if (!dark) {
+        ok(withHours.length > 0, 'the capture carries an issue with hours');
+        const K = withHours[0] || lead2, d = sD[K] || {};
+        const lc2 = (served.health || {}).locale || 'en';
+        const ser24 = (((d.series || {})[d.distance || 'room']) || []).slice(-24);
+        const hrs24 = (((d.hours || {})[lc2] || (d.hours || {}).en) || []).slice(-24);
+        const lineV = ((sI.issues[K] || {}).line || {}).value;
+        const v = await r.page.evaluate(() => ({
+          segs: [...document.querySelectorAll('svg.dial path.dseg')].map(p => ({ i: +p.dataset.i, over: p.dataset.over })),
+          circle: document.querySelectorAll('svg.dial circle.dline').length,
+          tabs: document.querySelectorAll('.dtab').length,
+          nowT: document.querySelector('.dmid .t2')?.textContent || '',
+          nowH: document.querySelector('.dmid .h')?.textContent || '',
+          legend: document.querySelector('.dlegend')?.textContent || '',
+        }));
+        ok(v.segs.length === ser24.length, `the dial has the wire's hours (${v.segs.length}/${ser24.length})`);
+        ok(v.circle === 1, 'the line is one dashed circle');
+        const overTruth = v.segs.every(s => ser24[s.i] != null && lineV != null && (s.over === '1') === (ser24[s.i] >= lineV)
+          || ser24[s.i] == null && s.over === '0');
+        ok(overTruth, 'a wedge is over the line exactly when its value is');
+        ok(v.tabs === (withHours.length > 1 ? withHours.length : 0), `one switch per issue with hours (${v.tabs}/${withHours.length})`);
+        /* at "now" the pair is the present title and tagline from /issues, not the last past hour */
+        const wantNow = ((sI.issues[K] || {}).title || {});
+        const wantNowT = typeof wantNow === 'string' ? wantNow : (wantNow[lc2] ?? wantNow.en ?? '');
+        ok(v.nowH === 'NOW' && v.nowT === wantNowT, `at now the dial shows the present title: "${v.nowT}" vs "${wantNowT}"`);
+        /* a drag to a past hour reads that hour's title from the wire */
+        const i = 5, n = 24, a = -Math.PI / 2 - (n - 1 - i) * 2 * Math.PI / n;
+        const box = await r.page.evaluate(() => { const b = document.querySelector('svg.dial').getBoundingClientRect();
+          return { x: b.left + b.width / 2, y: b.top + b.height / 2, s: b.width / 358 }; });
+        await r.page.mouse.move(box.x + 100 * box.s * Math.cos(a), box.y + 100 * box.s * Math.sin(a));
+        await r.page.mouse.down(); await r.page.mouse.up();
+        await r.page.waitForTimeout(300);
+        const gotT = await r.page.evaluate(() => document.querySelector('.dmid .t2')?.textContent || '');
+        const wantT = (hrs24[i] || [])[0] || '';
+        ok(gotT === wantT, `a drag to hour ${i} reads the wire's title: "${gotT}" vs "${wantT}"`);
+        ok(v.legend.length > 20, 'the explanatory line is there');
+      }
+      const got = await r.page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+      ok(got.scroll <= got.client + 1, `dial overflow at 390${dark ? ' dark' : ''}: ${got.scroll} > ${got.client}`);
+      await r.browser.close();
+    }
+  }
+  console.error('  mobile · the dial');
+
   /* 5 · the §7.1 budget under the written throttle: 1.6 Mbit/s, 750 kbit/s, 150 ms */
   {
     const r = await openRig({ throttle: true });
