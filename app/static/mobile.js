@@ -16,6 +16,39 @@ const num = (key, v, cmp, inner) => `<span data-num="${esc(key)}" data-cmp="${es
 const SAT = y => `/earth/frame.png?year=${y}&source=sentinel`;
 const ANSWER_STAGE = { done: 'acted', not_now: 'acknowledged', doesnt_fit: 'dismissed' };
 
+/* the four distances drawn as one scale, the line as a rule (Tomas, 11 Oct: "a bit more visual") — hand-drawn
+   SVG, no library; the numerals stay in the grid below it */
+function ladderSVG(it) {
+  const ds = ['room', 'yard', 'ring', 'region'].map(k => ({ k, st: (it.stack || {})[k] })).filter(d => d.st && d.st.value != null);
+  if (!ds.length) return '';
+  const vals = ds.map(d => d.st.value).concat(it.line != null ? [it.line] : []);
+  const max = Math.max(...vals) * 1.12 || 1, PAD = 7;
+  const x = v => (PAD + (v / max) * (100 - 2 * PAD)).toFixed(2);
+  const short = k => esc((D.labels[k] || k).replace(/^the /, ''));
+  let s = `<svg class="ladder" viewBox="0 0 100 30" role="img" aria-label="The four distances against the line">`
+    + `<line class="track" x1="${PAD}" y1="15" x2="${100 - PAD}" y2="15"/>`;
+  if (it.line != null) s += `<line class="rule" x1="${x(it.line)}" y1="5" y2="${x(it.line)}" y2="24"/>`
+    + `<text class="rl" x="${x(it.line)}" y="4" text-anchor="middle">line</text>`;
+  for (const d of ds) {
+    const hero = d.k === (it.hero_distance || 'region');
+    s += `<circle class="dot${hero ? ' hero' : ''}" cx="${x(d.st.value)}" cy="15" r="${hero ? 2.6 : 1.7}"/>`
+      + `<text x="${x(d.st.value)}" y="29" text-anchor="middle">${short(d.k)}</text>`;
+  }
+  return s + `</svg>`;
+}
+
+/* seven days of an issue as a sparkline, its line dashed — the doors' strips, pocket size */
+function sparkSVG(o) {
+  const ser = (((o.series || {})[o.hero_distance || 'region']) || []).filter(v => v != null);
+  if (ser.length < 8) return '';
+  const max = Math.max(...ser, o.line != null ? o.line : -Infinity), min = Math.min(...ser, 0), span = (max - min) || 1;
+  const y = v => (25 - ((v - min) / span) * 22).toFixed(1);
+  const pts = ser.map((v, i) => `${(i / (ser.length - 1) * 100).toFixed(1)},${y(v)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">`
+    + (o.line != null ? `<line class="rule" x1="0" y1="${y(o.line)}" x2="100" y2="${y(o.line)}"/>` : '')
+    + `<polyline points="${pts}"/></svg>`;
+}
+
 /* the phone's subset (SPEC_mobile §8): never the token-only three, never rho/cells */
 const MOBILE_ROUTES = {
   issues: 'issues', days: 'issues/days?days=7', health: 'health', settings: 'settings',
@@ -71,6 +104,7 @@ function drawNow() {
     + `<span class="u">${esc(it.unit || '')}</span> ${prov(hero.provenance)}`
     + `<p class="cmp">${esc(cmp)}</p>`
     + (it.plain ? `<p class="plain">${said(it.plain)}</p>` : '') + `</div>`;
+  s += ladderSVG(it);
   /* the four distances, 2 × 2, an absent one prints none in the gap style */
   s += `<div class="grid">` + ['room', 'yard', 'ring', 'region'].map(dk => {
     const st = (it.stack || {})[dk];
@@ -86,10 +120,10 @@ function drawNow() {
   if (others.length) {
     s += `<div class="rows">` + others.map(k => {
       const o = D.issues[k], ohd = o.hero_distance || 'region', ov = (o.stack || {})[ohd] || {};
-      return `<button class="rowb" data-lead="${esc(k)}"><span class="rh"><span class="n">${said(o.name)}</span>`
+      return `<button class="rowb" data-lead="${esc(k)}"><span class="rh"><span class="n">${o.pix ? `<span class="pix" aria-hidden="true">${sign(o.pix)}</span> ` : ''}${said(o.name)}</span>`
         + `<span class="st${o.state === 'act' ? ' act' : ''}">${esc(o.state || '')}</span>`
         + (ov.value != null ? `<span class="v">${esc(fmt(ov.value, o.dp))} ${esc(o.unit || '')}</span>` : '')
-        + `</span><span class="t2">${said(o.title || o.sentence || '')}</span></button>`;
+        + `</span><span class="t2">${said(o.title || o.sentence || '')}</span>${sparkSVG(o)}</button>`;
     }).join('') + `</div>`;
   }
   $('#now-v').innerHTML = s;
@@ -168,11 +202,18 @@ function drawPlace() {
   }
   if (D.observations) {
     const ee = Object.fromEntries((D.observations || []).filter(o => o.sensor_id === 'ee-point').map(o => [o.metric, o]));
-    if (Object.keys(ee).length) {
+    const fr = [['built_frac', 'built'], ['tree_frac', 'tree'], ['crop_frac', 'crop'], ['water_frac', 'water']]
+      .map(([m, n]) => ({ n, v: ee[m] && ee[m].value })).filter(x => x.v != null);
+    if (fr.length) {
+      const total = fr.reduce((a, b) => a + b.v, 0), rest = Math.max(0, 1 - total);
+      /* the ground as one segmented bar, the segments in ink weights (a remainder is what is none of them) */
       s += `<div class="fact"><div class="l">The ground within 1 km</div>`
-        + ['built_frac', 'tree_frac', 'crop_frac', 'water_frac'].filter(m => ee[m] && ee[m].value != null)
-          .map(m => `<div>${esc(m.replace(/_frac$/, ''))} ${fmt(ee[m].value * 100, 0)}% ${prov('model')}</div>`).join('')
-        + `</div>`;
+        + `<div class="groundbar" role="img" aria-label="The ground within 1 km">`
+        + fr.map((x, i) => `<span class="seg s${i}" style="width:${(x.v * 100).toFixed(1)}%"></span>`).join('')
+        + (rest > 0.02 ? `<span class="seg rest" style="width:${(rest * 100).toFixed(1)}%"></span>` : '')
+        + `</div><div class="groundlbl">`
+        + fr.map((x, i) => `<span><i class="sw s${i}" aria-hidden="true"></i>${x.n} ${fmt(x.v * 100, 0)}%</span>`).join('')
+        + ` ${prov('model')}</div></div>`;
     }
   } else s += nos;
   if (D.reach) {
@@ -189,14 +230,33 @@ function drawPlace() {
   $('#place-v').innerHTML = s;
 }
 
-/* ---- Node (§5.3): /health only, so it always draws ---- */
+/* ---- Node (§5.3): /health only, so it always draws; the stations and the mesh from the routes the page already reads ---- */
 function drawNode(h) {
-  const mesh = h.mesh && h.mesh.root_topic, radio = h.reticulum && h.reticulum.announce_s;
+  const mesh = h.mesh && h.mesh.root_topic ? h.mesh : null, radio = h.reticulum && h.reticulum.announce_s;
   let s = `<div class="facts">`
     + `<div class="fact"><div class="l">The node</div>${esc(h.node || 'this node')}${h.city ? `, in ${esc(h.city)}` : ''}</div>`
     + `<div class="fact"><div class="l">Running</div>planetai-node ${esc(h.version || '')} · schema ${esc(h.schema || '')}<br>`
-    + `up ${fmt((h.uptime_s || 0) / 3600, 1)} h · last poll ${hhmm(h.last_poll)} · ${(h.ingested || 0).toLocaleString('en')} readings since the restart</div>`
-    + `<div class="fact"><div class="l">The mesh and the radio</div>mesh ${mesh ? 'on' : 'off'} · radio ${radio ? 'on' : 'off'}</div>`;
+    + `up ${fmt((h.uptime_s || 0) / 3600, 1)} h · ${h.polls || 0} polls · last poll ${hhmm(h.last_poll)} · ${(h.ingested || 0).toLocaleString('en')} readings since the restart</div>`;
+  /* the stations: who is speaking — one dot per sensor, solid if it said something in the last hour */
+  const sens = D ? (D.sensors || []) : [];
+  if (sens.length) {
+    const spoke = new Set();
+    for (const [sid, mets] of Object.entries((D && D.stats15) || {}))
+      for (const mm of Object.values(mets)) if (mm && mm[1] != null && mm[1] < 60) { spoke.add(sid); break; }
+    const sources = new Set(sens.map(x => x.source)), custody = sens.filter(x => x.custody).length;
+    s += `<div class="fact"><div class="l">The stations</div>`
+      + `${sens.length} sensors · ${sources.size} sources · ${custody} in the house's custody`
+      + `<div class="dotfield" role="img" aria-label="${spoke.size} of ${sens.length} sensors spoke in the last hour">`
+      + sens.map(x => `<i class="dot${spoke.has(x.sensor_id) ? ' on' : ''}"></i>`).join('') + `</div>`
+      + `<div class="mut">${spoke.size} spoke in the last hour</div></div>`;
+  }
+  if (mesh) {
+    s += `<div class="fact"><div class="l">The mesh and the radio</div>`
+      + `mesh on · ${esc(mesh.root_topic)}${mesh.gateway ? ` · gateway ${esc(mesh.gateway)}` : ''}`
+      + `${mesh.packets != null ? ` · ${mesh.packets} packets${mesh.last ? `, last ${hhmm(mesh.last)}` : ''}` : ''}<br>`
+      + `radio ${radio ? 'on' : 'off'}</div>`;
+  } else s += `<div class="fact"><div class="l">The mesh and the radio</div>mesh off · radio ${radio ? 'on' : 'off'}</div>`;
+  if (h.last_error) s += `<div class="fact"><div class="l">Lately</div><span class="mut">${esc(String(h.last_error).slice(0, 120))}${String(h.last_error).length > 120 ? '…' : ''}</span></div>`;
   if (h.release && h.release.newer) s += `<div class="fact">A newer release is out.</div>`;
   const share = D ? D.share : null;
   s += `<div class="fact"><div class="l">This phone</div>`

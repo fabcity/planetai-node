@@ -450,10 +450,12 @@ A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.
 library). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
 600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
 re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
-**Now** (the engine's title and tagline, the reading at the household's own distance, the four distances, the
-Decide card, the other issues as rows), **Place** (the cell's facts, the ground within a kilometre, how far back
+**Now** (the engine's title and tagline, the reading at the household's own distance, the four distances drawn
+on one scale with the line as a rule, the Decide card, the other issues as rows with a pictogram and a
+seven-day strip), **Place** (the cell's facts, the ground within a kilometre as one segmented bar, how far back
 the node reads, one satellite frame, and a link to the full map) and **Node** (from `/health`, so it draws even
-when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
+when everything else is refused: how it is running, the stations — one dot per sensor, solid if it spoke in the
+last hour — the mesh and the radio, the last error, and this phone's own state). The card's three buttons answer an alert from the phone with the act token;
 without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
 field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
 (`node tests/visual/measure.mjs mobile`).

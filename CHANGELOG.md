@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **The phone page draws its numbers.** The four distances sit on one scale with the line as a rule; every
+  issue row carries a pictogram and its seven-day strip when the wire has one; the ground is one segmented bar;
+  and the Node section tells more of the node's own story: the stations (one dot per sensor, solid if it spoke
+  in the last hour, with the sources and custody counts), the mesh's topic, gateway and packets, the poll count,
+  and the last error in the open. All hand-drawn SVG from the routes the page already read — no new endpoint,
+  no library, the §7.1 budget holds (27 kB of 40).
 - **A phone gets its own page.** A coarse pointer with a short screen side under 600 px is moved to
   `/?layout=mobile`, decided once before anything else loads; a narrow desk window and a tablet stay on the
   doors, and "Phone view" / "Full dashboard" switch with the choice remembered. One scrollable page

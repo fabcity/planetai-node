@@ -59,6 +59,36 @@ section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-trans
 .hero .cmp{font-size:var(--t-small);color:var(--mute);margin:4px 0 0}
 .hero .plain{font-size:var(--t-body);margin:8px 0 0}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
+/* the ladder: the four distances on one scale, the line as a rule */
+.ladder{width:100%;height:auto;margin:0 0 14px;display:block}
+.ladder .track{stroke:var(--hair);stroke-width:.4}
+.ladder .rule{stroke:var(--mute);stroke-width:.5;stroke-dasharray:1.6 1.6}
+.ladder .dot{fill:var(--ink)}
+.ladder .dot.hero{stroke:var(--ink);stroke-width:.7;fill:var(--ground)}
+.ladder text{fill:var(--mute);font:3.1px var(--mono);letter-spacing:.02em}
+.ladder .rl{font-size:2.6px}
+/* the strips: seven days of an issue in its row */
+.spark{width:100%;height:26px;margin-top:6px;display:block}
+.spark polyline{fill:none;stroke:var(--ink);stroke-width:1.1;vector-effect:non-scaling-stroke}
+.spark .rule{stroke:var(--mute);stroke-width:1;stroke-dasharray:2 2;vector-effect:non-scaling-stroke}
+.rowb .pix svg{width:1em;height:1em;vertical-align:-.12em}
+/* the ground as one bar, the segments in ink weights */
+.groundbar{display:flex;height:14px;border:1px solid var(--ink);margin:2px 0 6px}
+.groundbar .seg{display:block;height:100%}
+.groundbar .s0,.sw.s0{background:var(--ink)}
+.groundbar .s1{background:var(--ink);opacity:.62}
+.groundbar .s2{background:var(--ink);opacity:.34}
+.groundbar .s3{background:repeating-linear-gradient(45deg,transparent 0 2px,var(--ink) 2px 3px)}
+.groundbar .rest{background:var(--raise)}
+.groundlbl{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:var(--t-small);color:var(--mute);align-items:center}
+.sw{display:inline-block;width:9px;height:9px;margin-right:4px;vertical-align:-1px;border:1px solid var(--ink)}
+.sw.s1{background:var(--ink);opacity:.62}
+.sw.s2{background:var(--ink);opacity:.34}
+.sw.s3{background:repeating-linear-gradient(45deg,transparent 0 1.5px,var(--ink) 1.5px 2.5px)}
+/* the stations: one dot per sensor, solid if it spoke in the last hour */
+.dotfield{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 4px}
+.dotfield .dot{width:7px;height:7px;border-radius:50%;border:1px solid var(--ink)}
+.dotfield .dot.on{background:var(--ink)}
 .cell{border:1px solid var(--hair);padding:10px 12px}
 .cell .l{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
 .cell .v{font:700 20px/1.2 var(--num-face);margin-top:2px}

@@ -3124,6 +3124,47 @@ async function mobile() {
   }
   console.error('  mobile · words (asking card)');
 
+  /* 4c · the visual pass (11 Oct): the ladder draws the distances, every strip its week, the ground its bar,
+     * and the stations their dots — all from the wire, none of it a library */
+  {
+    const r = await openRig();
+    await r.page.goto(`${POP}/?layout=mobile&${FIXQ}`, { waitUntil: 'domcontentloaded' });
+    await r.page.waitForSelector('#now-v .t', { timeout: 15000 });
+    const served = await readServed(r.page);
+    const nSens = ((served.sensors) || []).length;
+    /* the truth about a strip: the wire carries a week for an issue or it does not — a row without one
+       is the capture speaking, not a failure */
+    const sI = served.issues || {}, sD = (served.issues_days || {}).issues || {};
+    const leadK = (sI.lead || {}).issue || (sI.order || [])[0];
+    const expectSparks = (sI.order || []).filter(k => k !== leadK).filter(k => {
+      const d = sD[k] || {}, iss = sI[k] || {};
+      const ser = ((d.series || {})[iss.hero_distance || d.distance || 'region']) || [];
+      return ser.filter(x => x != null).length >= 8;
+    }).length;
+    const v = await r.page.evaluate(() => ({
+      dots: document.querySelectorAll('#now-v .ladder circle.dot').length,
+      heroDot: document.querySelectorAll('#now-v .ladder circle.hero').length,
+      rule: document.querySelectorAll('#now-v .ladder line.rule').length,
+      sparks: document.querySelectorAll('#now-v .rowb svg.spark polyline').length,
+      rows: document.querySelectorAll('#now-v .rowb').length,
+      segs: document.querySelectorAll('#place-v .groundbar .seg').length,
+      stationDots: document.querySelectorAll('#node-v .dotfield .dot').length,
+      stationOn: document.querySelectorAll('#node-v .dotfield .dot.on').length,
+      mesh: document.querySelector('#node-v')?.textContent || '',
+    }));
+    ok(v.dots >= 3 && v.heroDot === 1, `the ladder draws the distances (${v.dots} dots, ${v.heroDot} hero)`);
+    ok(v.rule === 1, 'the ladder marks the line');
+    ok(v.sparks === expectSparks, `a strip for every issue the wire has a week for (${v.sparks}/${expectSparks})`);
+    ok(v.segs >= 3, `the ground draws its bar (${v.segs} segments)`);
+    ok(v.stationDots === nSens, `one dot per sensor (${v.stationDots}/${nSens})`);
+    ok(v.stationOn > 0 && v.stationOn <= nSens, `somebody spoke in the last hour (${v.stationOn})`);
+    /* the mesh's own detail, when the node runs one */
+    const m = (served.health || {}).mesh || {};
+    ok(!m.root_topic || v.mesh.includes(m.root_topic), 'the mesh runs but the Node section does not name it');
+    await r.browser.close();
+  }
+  console.error('  mobile · the visual pass');
+
   /* 5 · the §7.1 budget under the written throttle: 1.6 Mbit/s, 750 kbit/s, 150 ms */
   {
     const r = await openRig({ throttle: true });
