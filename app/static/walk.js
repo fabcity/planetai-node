@@ -28,8 +28,8 @@ if (typeof document !== 'undefined') (async () => {
       + '<a href="/?layout=mobile#unlock">Unlock this phone</a> first.</p>';
     return;
   }
-  /* /ground and /geo are not on any SHARE_LEVEL's list (they are drawn around the house): a locked phone walks without the map */
-  if (!M) $('#map').insertAdjacentHTML('afterend', '<p class="nomap">The map draws on an unlocked phone. <a href="/?layout=mobile#unlock">Unlock</a></p>');
+  /* /ground and /geo/cell answer a phone with no token at SHARE_LEVEL=open; anywhere else the walk goes without the map */
+  if (!M) $('#map').insertAdjacentHTML('afterend', '<p class="nomap">This node does not share its map with a phone that is not unlocked.</p>');
   const lang = 'en', L = (I.labels && I.labels[lang]) || {}, W = walkOf(I);
   const word = i => (SCALES[i].k ? L[SCALES[i].k] || SCALES[i].k : PLANET[lang]);
   const edge = r => (I.geometry.ladder.find(x => x.res === r) || {}).edge_m;

@@ -7,6 +7,9 @@
   step. The house's day against its line, the street against the house with the gap shaded, the stations around as
   dots, every scale on one axis, the listed nodes on a globe. It names no issue: every issue `/issues` carries is
   walked, at the scales it has. Its own page, so the phone page itself still loads no map library.
+- **At `SHARE_LEVEL=open` a phone walks with the map and no token.** `/ground/*` and `/geo/cell` join the `open`
+  list; `/geo/cell` leaves out `is_node`, `cells_from_node` and `ring_polar` for a caller without a token, since
+  asked cell by cell at res 15 they would find the house.
 - **The Node door draws the nodes the programme lists, not a list typed into the page.** The node reads
   `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
   each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node

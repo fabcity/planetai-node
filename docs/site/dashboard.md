@@ -465,8 +465,10 @@ cell heavy with the smaller ones faint inside it. Each step draws what that scal
 against its line, the street against the house with the gap shaded, the outdoor stations as dots against the house,
 every scale on one axis, and the listed nodes on a globe. The switch on top lists every issue the node carries, in
 the engine's order, so a pack's issue joins it with nothing changed here; a scale an issue has no reading at says so,
-and an issue read only by a model (land, coast) starts at the region. It reads what the phone page reads: what
-SHARE_LEVEL answers, or everything once the phone is unlocked.
+and an issue read only by a model (land, coast) starts at the region. At `SHARE_LEVEL=open` it needs no token,
+map included: `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2) cut around the node, and
+`/geo/cell` answers without what it says relative to the node (`is_node`, `cells_from_node`, `ring_polar`), which
+stays for this machine or a token. At `off` it walks only on an unlocked phone.
 
 ## Languages
 

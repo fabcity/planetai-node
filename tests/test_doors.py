@@ -66,6 +66,18 @@ assert "layout=walk" in mobjs, "the phone page offers the walk"
 assert not re.search(r"['\"](air|heat|land|coast)['\"]", walkjs), "the walk names no issue; it walks what /issues carries"
 print("doors: ?layout=walk is the walk out from the house; it names only served files and no issue")
 
+# one phone mode (12 Oct 2026): at SHARE_LEVEL=open the walk's map answers without a token, but /geo/cell keeps what
+# it says relative to the node for a token, or a phone could find the house asking res 15 cell by cell
+assert "/geo/cell" in main._SHARE_OPEN[0] and "/ground/" in main._SHARE_OPEN[1] and "/geo/cell" not in main._SHARE_OFF[0]
+from types import SimpleNamespace  # noqa: E402
+os.environ.setdefault("NODE_LAT", "-8.819"); os.environ.setdefault("NODE_LON", "115.164")
+_rq = lambda t: SimpleNamespace(state=SimpleNamespace(share_trusted=t))  # noqa: E731
+_kw = dict(id=None, lat=-8.8, lon=115.17, res=15, children=None, polar=True)
+_open, _mine = main.geo_cell(_rq(False), **_kw), main.geo_cell(_rq(True), **_kw)
+assert not {"is_node", "cells_from_node", "ring_polar"} & set(_open) and _open["ring"] == _mine["ring"], _open.keys()
+assert {"is_node", "cells_from_node", "ring_polar"} <= set(_mine)
+print("doors: a phone with no token gets the map and the cells, never where they stand from the house")
+
 if not shutil.which("node"):
     print("doors: node is not installed, skipping the loader checks (skipped)")
     sys.exit(0)

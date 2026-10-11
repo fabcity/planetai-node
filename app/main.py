@@ -908,6 +908,11 @@ async def _mcp_auth(request, call_next):
 # the node is already broadcasting to every radio in reach.
 # /nodes is here because it is the programme's public registry.json, the same on every node: it says which nodes
 # exist and nothing about this house.
+# /ground/* is on `open` because every layer under it is a public dataset (OpenStreetMap, OpenAerialMap, Sentinel-2,
+# Open-Meteo) cut around the node, and its centre is no closer than the point /health already rounds. /geo/cell is
+# there too, but the route drops what it says relative to the node (is_node, cells_from_node, ring_polar) for a
+# caller without a token: asked at res 15 cell by cell, those would find the house. The phone's walk needs both
+# (Tomas, 12 Oct 2026: one phone mode, no token, for the person running the node).
 _SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
@@ -917,8 +922,8 @@ _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     # The ask pane. Its context and every tool result are scrubbed of positions, names and ids (app/ask.py), so
     # it tells a reader nothing /issues does not; it is here, and not on `off`, because it spends this machine's
     # CPU on whoever asks, and `open` is the household saying the WiFi may.
-    "/ask", "/ask/status", "/docs/search",
-}), ("/static/", "/exports/", "/issues", "/sources/"))
+    "/ask", "/ask/status", "/docs/search", "/geo/cell",
+}), ("/static/", "/exports/", "/issues", "/sources/", "/ground/"))
 _SHARE = {"off": _SHARE_OFF, "open": _SHARE_OPEN}
 
 
@@ -1730,7 +1735,8 @@ def _earth_latest() -> dict | None:
 # The redesign's Place door pans, zooms, inspects and measures. Every ring it draws and every distance it prints is
 # answered here (app/issues/geometry.py), so the page computes no H3 and no distance: tools/check_ui.py holds it to
 # that. **On no SHARE_LEVEL allowlist, like /place/geojson**: the node's cell at a fine resolution, rings centred on
-# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token.
+# it and "metres from the node" each give away the point /health rounds on purpose. This machine or a token. The one
+# exception is /geo/cell at SHARE_LEVEL=open, which answers without a token minus its node-relative fields.
 
 
 def _here() -> tuple[float, float]:
@@ -1762,7 +1768,7 @@ def geo_grid(bbox: str, res: int = Query(..., ge=0, le=15)):
 
 
 @app.get("/geo/cell")
-def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
+def geo_cell(request: Request, id: str | None = None, lat: float | None = Query(None, ge=-90, le=90),
              lon: float | None = Query(None, ge=-180, le=180), res: int | None = Query(None, ge=0, le=15),
              children: int | None = Query(None, ge=1, le=15), polar: bool = False):
     """One cell's facts, named by `id` or by `lat`, `lon` and `res`: area, edge, parent, and how many cells from the
@@ -1775,9 +1781,13 @@ def geo_cell(id: str | None = None, lat: float | None = Query(None, ge=-90, le=9
         import h3
         id = h3.latlng_to_cell(lat, lon, res)
     try:
-        return _geo.cell(id, *here, children=children, as_polar=polar)
+        out = _geo.cell(id, *here, children=children, as_polar=polar)
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
+    if not getattr(request.state, "share_trusted", False):
+        for k in ("is_node", "cells_from_node", "ring_polar"):
+            out.pop(k, None)
+    return out
 
 
 @app.get("/geo/measure")
@@ -1814,7 +1824,7 @@ def geo_rings(km: str = "2,5,15"):
 # ---------------------------------------------------------------- the ground, kept on this node's disk
 # `planetai run place basemap` (vector, fonts, drone mosaics) and `planetai run earth-engine basemap` (Sentinel-2)
 # fetch a detailed map of this place once into out/ground/; these routes serve it, so a map drawn from them asks
-# nobody anything. Private like /place/geojson: a tile pyramid centred on the node says where it is.
+# nobody anything. On the `open` list: public data, centred no closer than /health's rounded point (see _SHARE_OPEN).
 GROUND_LAYERS = {"vector": "application/x-protobuf", "imagery": "image/png", "drone": "image/png"}
 
 
