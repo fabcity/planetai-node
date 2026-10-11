@@ -125,7 +125,11 @@ if (typeof document !== 'undefined') (async () => {
     map.setLayoutProperty('st', 'visibility', i === 2 || i === 3 ? 'visible' : 'none');
     if (map.getLayer('stt')) map.setLayoutProperty('stt', 'visibility', i === 2 ? 'visible' : 'none');
     map.setLayoutProperty('nd', 'visibility', i === 4 ? 'visible' : 'none');
-    map.flyTo({ center: [H.lon, H.lat], zoom: i === 4 ? 0.9 : Math.min(18.5, Math.log2(170 * lat0 / (edge(res) * 2))), duration: 1400, essential: true });
+    /* frame the scale's own cell, clear of the bar on top and the rail at the foot; the planet is the globe */
+    const c = cells.find(x => x.properties.res === res);
+    if (i === 4 || !c) map.flyTo({ center: [H.lon, H.lat], zoom: i === 4 ? 0.9 : Math.min(18.5, Math.log2(170 * lat0 / (edge(res) * 2))), duration: 1400, essential: true });
+    else map.fitBounds(c.geometry.coordinates.reduce((b, p) => b.extend(p), new maplibregl.LngLatBounds(c.geometry.coordinates[0], c.geometry.coordinates[0])),
+      { padding: { top: 70, bottom: 24, left: 24, right: 24 }, duration: 1400, essential: true });
     const l = document.querySelector('.ch[data-i="3"] .ladder'); if (l) l.outerHTML = ladder(w);
   }
   const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && +e.target.dataset.i !== AT && go(+e.target.dataset.i)), { rootMargin: '-40% 0px -55% 0px' });
@@ -138,8 +142,8 @@ if (typeof document !== 'undefined') (async () => {
 
   /* the cell this node stands in, at each scale, from the node's own /geo/cell (R25: centres only, never the house) */
   const cells = (await Promise.all(SCALES.slice(0, 4).map(s => get(`geo/cell?lat=${H.lat}&lon=${H.lon}&res=${s.res}`)))).filter(c => c && c.ring)
-    .map((c, j) => { const q = []; for (let k = 1; k < c.ring.length; k += 2) q.push([c.ring[k + 1], c.ring[k]]); q.push(q[0]);
-      return { type: 'Feature', properties: { res: SCALES[j].res }, geometry: { type: 'LineString', coordinates: q } }; });
+    .map(c => { const q = []; for (let k = 1; k < c.ring.length; k += 2) q.push([c.ring[k + 1], c.ring[k]]); q.push(q[0]);
+      return { type: 'Feature', properties: { res: c.res }, geometry: { type: 'LineString', coordinates: q } }; });
   const V = M && M.layers && M.layers.vector, DR = M && M.layers && M.layers.drone, here = location.origin;
   const map = new maplibregl.Map({ container: 'map', attributionControl: { compact: true }, center: [H.lon, H.lat], zoom: 18, interactive: false,
     transformRequest: url => (url.startsWith(here + '/ground/') ? { url, headers: DOORS_AUTH() } : { url }),
