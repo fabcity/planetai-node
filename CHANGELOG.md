@@ -6,6 +6,13 @@
   `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
   each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node
   joins with a merged pull request, and a command that opens it comes next. `UPDATE_CHECK=off` reads nothing.
+- **A phone gets its own page.** A coarse pointer with a short screen side under 600 px is moved to
+  `/?layout=mobile`, decided once before anything else loads; a narrow desk window and a tablet stay on the
+  doors, and "Phone view" / "Full dashboard" switch with the choice remembered. One scrollable page
+  (`mobile.html`, `mobile.js`, the doors' loader, no map library): Now with the Decide card and its three
+  buttons, Place without the heavy map, and Node from `/health` so it always draws. A locked phone reads the
+  node's own sentence and the field for the act token. The spec is `docs/SPEC_mobile.md`; the visual gate
+  measures the page (`measure.mjs mobile`).
 - **A Decide card speaks about now, and stops asking once it is answered.** The action on an open event's card
   is chosen again from the readings as they are, so it no longer tells a house to open up on the strength of last
   night's outside reading; the message the bot sent keeps its words. Once somebody answers, the buttons go and the

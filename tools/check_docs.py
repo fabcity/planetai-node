@@ -79,9 +79,6 @@ PROPOSED = {
     # docs/SPEC_hello.md (11 Oct 2026): nodes listed from registry.json, heard by radio, and `planetai hello`. Built in
     # three pull requests; the commit that adds each name deletes it from this entry.
     "docs/SPEC_hello.md": {"hello", "planetai hello"},
-    # docs/SPEC_mobile.md (11 Oct 2026) is the phone page's spec, built by Hermes on mobile-2026-10-11 after PR #204.
-    # The commit that adds each file deletes it from this entry.
-    "docs/SPEC_mobile.md": {'app/static/mobile.html', 'app/static/mobile.js'},
     # docs/SPEC_identity.md is Phase 1 of prompt 3 of the 18 September review: approved or struck by Tomas
     # before a line of it is written. Phase 2 deletes this entry in the commit that adds each name.
     "docs/SPEC_identity.md": {"children", "tests/test_identity.py", "app/identity.py"},

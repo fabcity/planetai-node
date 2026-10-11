@@ -1,6 +1,31 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>
+/* A phone goes to the phone page, decided once, before anything else loads (SPEC_mobile §4):
+   a coarse pointer and a short screen side under 600 px. Never on resize — a narrow desk window
+   and a tablet stay here. An explicit ?layout=doors|mobile is remembered in this browser; a hash
+   the phone page has no section for (#setup, #data, #wall, …) keeps the doors. The redirect keeps
+   the rest of the query string (?fixture= must survive it) and the hash. */
+(function () {
+  var q = new URLSearchParams(location.search), layout = q.get('layout'), hash = location.hash || '';
+  var PHONE = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 600;
+  if (PHONE) document.documentElement.dataset.phone = '1';   /* reveals the "Phone view" link */
+  var mem = null;
+  try { mem = localStorage.getItem('planetai_layout'); } catch (e) { /* a private window remembers nothing; the rule decides every time */ }
+  if (layout === 'doors' || layout === 'mobile') {            /* classic is never remembered: it is reached on purpose */
+    try { localStorage.setItem('planetai_layout', layout); } catch (e) {}
+    mem = layout;
+  }
+  if (layout === 'mobile') return;                            /* ui() serves the phone page; nothing to do here */
+  var mobileHash = (hash === '' || hash === '#now' || hash === '#place' || hash === '#node');
+  if (!mobileHash) return;                                    /* docs and the bot link to sections the phone page has not */
+  if (!layout && (mem === 'mobile' || (PHONE && mem !== 'doors'))) {
+    q.set('layout', 'mobile');
+    location.replace('/?' + q.toString() + hash);
+  }
+})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PLANETAI node</title>
@@ -59,6 +84,9 @@ a{color:inherit}
 .reg{display:flex;border:1px solid var(--ink)}.reg button{background:none;border:0;padding:4px 10px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;cursor:pointer}
 .reg button.on{background:var(--ink);color:var(--ground)}
 .proto{font:500 var(--t-cap) var(--mono);letter-spacing:.08em;color:var(--mute);border:1px dashed var(--mute);padding:3px 8px}
+/* "Phone view" only exists for a hand that would use it (SPEC_mobile §4.2): the head script sets data-phone */
+#layout-switch{display:none;font:500 var(--t-cap) var(--mono);letter-spacing:.08em;color:var(--mute);text-decoration:none;padding:3px 8px}
+html[data-phone="1"] #layout-switch{display:inline}
 /* the two icons at the bar's end: square, 1 px ink, like every control on the page; the label is the accessible name and the tooltip */
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--ink);background:none;color:var(--ink);cursor:pointer;padding:0;text-decoration:none}
 .iconbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square}.iconbtn svg .dot{stroke-width:2.2;stroke-linecap:round}
@@ -535,6 +563,7 @@ svg text.lab,svg text.num{fill:var(--ink)}svg text.num{font-weight:600}svg text.
   <span class="who" id="who"></span>
   <nav class="doors" aria-label="Doors"><a href="#now" data-v="now">Now</a><a href="#place" data-v="place">Place</a><a href="#node" data-v="node">Node</a><a href="#data" data-v="data">Data</a><a href="#wall" data-v="wall">Wall</a></nav>
   <span class="sp"></span>
+  <a id="layout-switch" href="/?layout=mobile" title="Open the phone page">Phone view</a>
   <span class="proto" id="asof"></span>
   <div class="reg" role="group" aria-label="Register"><button data-r="light" class="on">PAPER</button><button data-r="dark">DARK</button></div>
   <a class="iconbtn" href="https://planetai.fab.city/docs/" target="_blank" rel="noopener" aria-label="Documentation (opens planetai.fab.city)" title="Documentation"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h7l3.5 3.5v11.5h-10.5zM12 2.5v3.5h3.5M7.5 10h5M7.5 12.5h5M7.5 15h3"/></svg></a>

@@ -444,6 +444,20 @@ where the node is and what the household did hour by hour. **Set up → This scr
 token in that browser. The gear in the bar opens **Set up**, a page of its own: every setting by group, saved only where it changed and never over a change made on the node meanwhile, the pack switches, who may read the node, this screen's token, updates, and **Machine**, the machine under the node (`GET /machine`) and how long its disk lasts (`GET /storage`). The bar says which version is running. The Wall's right column is **the node, thinking aloud**: every ten minutes, from another angle each time, the node's model (the one chosen under Set up → Model, through `POST /ask`) says in six to eight plain sentences what is happening inside, how it compares with the street and the neighbourhood, what it suggests for an ordinary day and what the next hours may bring, typed at a reading pace, with a countdown to the next. It names the model that answered, warns when the keeper's choice lets the question go online, and calls itself a model's words, never a reading; nothing is kept. Every door but the Wall ends in a foot with the documentation, Ask the node, the classic dashboard, today's open export and Fab City. `?fixture=<name>` works here too, and shows a screen without the token only what the node
 would show it.
 
+## The phone page
+
+A phone is a different hand, so it gets its own page (`mobile.html` and `mobile.js`, the doors' loader, no map
+library). The choice is made once, before anything else loads: a coarse pointer and a short screen side under
+600 px moves to `/?layout=mobile`; a narrow desk window and a tablet stay on the doors, and nothing is
+re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser remembers. One scrollable page:
+**Now** (the engine's title and tagline, the reading at the household's own distance, the four distances, the
+Decide card, the other issues as rows), **Place** (the cell's facts, the ground within a kilometre, how far back
+the node reads, one satellite frame, and a link to the full map) and **Node** (from `/health`, so it draws even
+when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
+without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
+field for the token. The spec is `docs/SPEC_mobile.md`, and the visual gate measures the page like any other
+(`node tests/visual/measure.mjs mobile`).
+
 ## Languages
 
 The page reads the household's language from `/health.locale` (`ALERT_LOCALE`, which answers at every
