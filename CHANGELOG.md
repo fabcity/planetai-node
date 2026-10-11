@@ -2,11 +2,14 @@
 
 ## Unreleased
 
+- **The live sentence says which way it is going again.** The engine read the trend from the latest 24 hourly
+  buckets, and the forecast's hours (up to two days ahead) are among them: no sensor reads there, so every trend
+  came out "holding" and every issue's movement as zero. It now reads the 24 hours that have happened.
 - **Going back an hour on the Now door speaks the node's words.** Scrub back and the sentence now comes from
   the node like the live one does, in every language: what the air or the heat was doing ("The air was clearing
   in the house"), then the reading and whose line, smaller ("At 04:00 it read 8 µg/m³, under the WHO line.").
-  The page used to write that hour itself, in English only, with its own over-or-under arithmetic. `GET /issues`
-  gains `hours` per sensed issue.
+  The page used to write that hour itself, in English only, with its own over-or-under arithmetic.
+  `GET /issues/days` gains `hours` per sensed issue, in the locale asked for (`?locale=`).
 - **The title keeps the why.** "The air is getting worse in the house, and the source is inside": where the
   trouble comes from is words, not an indicator, so it stays in the title and the line opens the tagline.
 

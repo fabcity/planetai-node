@@ -28,7 +28,7 @@ function buildD(A, locale) {
       name: tr(it.name), state: it.state, unit: it.unit, dp: it.dp, metric: it.metric,
       line: (it.line || {}).value ?? null, line_source: (it.line || {}).source ?? null,
       sentence: tr(hero.sentence || it.sentence), plain: tr(hero.plain), pix: hero.pictogram || null,
-      title: tr(it.title), tagline: tr(it.tagline), hours: tr(it.hours),
+      title: tr(it.title), tagline: tr(it.tagline), hours: tr(y.hours),
       reason_text: tr(it.reason_text), open_asks: it.open_asks || [],
       usual: (it.usual || {}).hours ? it.usual.hours.map(h => [h.median, h.p90]) : null,
       stack: Object.fromEntries(Object.entries(it.stack || {}).map(([d, s]) => [d, s && { value: s.value, provenance: s.provenance, source: s.source }])),

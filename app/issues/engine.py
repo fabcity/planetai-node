@@ -1552,11 +1552,6 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
             # the tagline explains, smaller. The full sentence stays for prose (the bot, the asks).
             "title": {loc: _parts[loc][1] for loc in LOCALES},
             "tagline": {loc: _parts[loc][2] for loc in LOCALES},
-            # One [title, tagline] per bucket, for the hours the page scrubs back to: the past hour speaks
-            # the engine's words too, in every locale, and the page writes none of its own.
-            "hours": ({loc: [_hour_parts(d, series[headline], buckets, i, headline, loc, compare, line, clock)
-                             for i in range(len(buckets))] for loc in LOCALES}
-                      if d["kind"] == "sensed" and series.get(headline) else None),
         }
         out[key]["hero"] = _hero(d, stack, headline, out[key]["sentence"], now, clock)
         out[key]["usual"], out[key]["usual_absent"] = (usual[key] if usual is not None and key in usual
@@ -1629,7 +1624,7 @@ def _local_days(buckets: list, tz) -> list[tuple]:
     return out
 
 
-def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict:
+def days(cur, settings, decl: dict, n: int, now: datetime | None = None, loc: str = "en") -> dict:
     """GET /issues/days: each declared issue's hourly series over n local days, computed by the same `_series` that
     gives /issues its 24 hours, so a cell of the page's strip is what the lead's numeral said at that hour
     (docs/SPEC_dashboard_figures.md §3.4). The node counts the hours over the line, so the page prints a count it did
@@ -1667,9 +1662,16 @@ def days(cur, settings, decl: dict, n: int, now: datetime | None = None) -> dict
             got = [series[dist][i] for i in idx if series[dist][i] is not None]
             per_day.append({"date": day.isoformat(), "over": None if lv is None else sum(1 for v in got if v > lv),
                             "read": len(got), "of": len(idx)})
+        compare = d.get("compare") or {"mode": "ratio", "margin": 1.5}
         issues[key] = {"distance": dist, "series": series,
                        "provenance": {x: _word(x) for x in DISTANCES if series.get(x)},
-                       "per_day": per_day, "line": line}
+                       "per_day": per_day, "line": line,
+                       # One [title, tagline] per bucket, for the hours the page scrubs back to: the past hour
+                       # speaks the engine's words too, and the page writes none. One locale, the one asked for —
+                       # seven days in all three would be a thousand strings nobody reads.
+                       "hours": ({loc: [_hour_parts(d, series[dist], buckets, i, dist, loc, compare, line, tz)
+                                        for i in range(len(buckets))]}
+                                 if d["kind"] == "sensed" and dist else None)}
     events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "
                         "WHERE opened_at >= %s OR cleared_at IS NULL OR cleared_at >= %s ORDER BY opened_at",
                    buckets[0], buckets[0])
