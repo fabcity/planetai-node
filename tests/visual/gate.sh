@@ -256,3 +256,7 @@ JS
 # the screen. This asks the page itself, in all 108 combinations of view, width, mode and register.
 # It is last because it is the slowest thing here by a distance — a browser per combination.
 node tests/visual/measure.mjs overflow
+
+# The phone page, per SPEC_mobile §8.1: the rule, the overflow, the engine's words, the targets,
+# the budget under the written throttle, the locked state — against the committed fixture.
+node tests/visual/measure.mjs mobile

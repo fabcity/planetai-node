@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+/* The register follows the hand that holds the phone (SPEC_mobile §7): set before first paint, no toggle in v1. */
+try { document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch (e) {}
+</script>
+<title>PLANETAI</title>
+<link rel="stylesheet" href="/static/planetai-theme.css">
+<style>
+/* The node's own layer, loaded, not imitated: planetai-theme.css carries --ground --ink --cells --rings --prov
+   --mono --num-face --sign-floor and the fonts. The aliases below are the doors' :root, copied by value. */
+:root{
+  --mute:#5F5A54;--dim:#7C766F;--hair:var(--fc-grid-line);--raise:rgba(23,23,23,.035);
+  --body:var(--fc-font-body);--display:var(--fc-font-display);
+  --t-cap:11px;--t-small:13px;--t-body:15px;--t-read:20px;--t-head:clamp(24px,6.4vw,34px);
+}
+:root[data-theme="dark"]{--mute:#A3A19F;--dim:#8A8886;--hair:rgba(249,245,242,.14);--raise:rgba(249,245,242,.05)}
+*{box-sizing:border-box}
+html{scroll-behavior:auto}
+body{margin:0;background:var(--ground);color:var(--ink);font:var(--t-body)/1.5 var(--body);-webkit-font-smoothing:antialiased}
+.said{text-transform:none!important;letter-spacing:normal}
+svg.sg{width:1em;height:1em;flex:none;vertical-align:-.12em;fill:currentColor}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--prov);color:var(--prov);padding:2px 7px 2px 6px;font:500 11px/1.3 var(--mono);letter-spacing:.04em;white-space:nowrap;vertical-align:middle;text-transform:none}
+.pill svg.sg{width:var(--sign-floor);height:var(--sign-floor)}
+.gap{display:inline-block;border:1px dashed var(--mute);color:var(--mute);padding:1px 7px;font:500 11px/1.3 var(--mono)}
+.k{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.mut{color:var(--mute)}
+a{color:var(--ink)}
+/* the boot face: the brand line and the blink, CSS only (no glyph globe on a phone, SPEC_mobile §7) */
+.asking{position:fixed;inset:0;z-index:40;background:var(--ground);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.asking .brand{font:500 var(--t-cap) var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:0}
+.asking .brand b{color:var(--ink);font-weight:800}
+.asking .hd{display:flex;align-items:center;gap:10px;margin:0;font:500 var(--t-small) var(--mono);color:var(--mute)}
+.asking .hd b{color:var(--ink)}
+.blink{width:8px;height:8px;border-radius:50%;background:var(--ink);animation:blink 1.2s ease-in-out infinite}
+@keyframes blink{50%{opacity:0}}
+@media (scripting:none){.asking{display:none!important}}
+@media (prefers-reduced-motion:reduce){.blink{animation:none}}
+/* the bar */
+.bar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:0 16px;min-height:52px;background:var(--ground);border-bottom:1px solid var(--hair)}
+.bar h1{font:700 var(--t-body) var(--body);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1 small{font-weight:400;color:var(--mute);margin-left:6px}
+.bar nav{display:flex;gap:2px;margin-left:auto}
+.bar nav a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;padding:0 10px;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
+.bar .asof{font:500 var(--t-cap) var(--mono);color:var(--mute);white-space:nowrap}
+/* the page */
+main{max-width:34rem;margin:0 auto;padding:16px 16px 40px}
+section{margin:0 0 34px}
+section>h2{font:500 var(--t-cap)/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 12px;border-bottom:1px solid var(--hair);padding-bottom:8px}
+.t{font:600 var(--t-read)/1.35 var(--display);margin:0 0 4px}
+.t .pix svg{width:1em;height:1em}
+.tag{font-size:var(--t-small);color:var(--mute);margin:0 0 16px}
+.hero{margin:0 0 16px}
+.hero .v{font:700 34px/1.1 var(--num-face);letter-spacing:-.01em}
+.hero .u{font:500 var(--t-small) var(--mono);color:var(--mute);margin-left:4px}
+.hero .cmp{font-size:var(--t-small);color:var(--mute);margin:4px 0 0}
+.hero .plain{font-size:var(--t-body);margin:8px 0 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 16px}
+.cell{border:1px solid var(--hair);padding:10px 12px}
+.cell .l{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.cell .v{font:700 20px/1.2 var(--num-face);margin-top:2px}
+.cell .u{font:500 var(--t-cap) var(--mono);color:var(--mute)}
+/* the Decide card */
+.decide{border:1px solid var(--ink);padding:14px 14px 12px;margin:0 0 16px}
+.decide .dq{font-size:var(--t-body);margin:8px 0 12px}
+.decide .ans{display:flex;flex-wrap:wrap;gap:8px}
+.decide button,.sbtn{min-height:44px;min-width:44px;padding:10px 16px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:600 var(--t-small) var(--body);cursor:pointer}
+.decide button.on,.sbtn.primary{background:var(--ink);color:var(--ground)}
+.dm{font-size:var(--t-small);color:var(--mute);margin:10px 0 0}
+.dm[role="status"]{color:var(--ink)}
+/* a link is a finger's target (§5.5): inline links grow a 44 px hit area without moving the sentence */
+.fact a,.dm a,.refused a,#place-v>p>a{display:inline-block;padding:13px 0;margin:-13px 0}
+/* the other issues */
+.rows{display:flex;flex-direction:column;gap:8px}
+.rowb{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--hair);background:var(--ground);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.rowb .rh{display:flex;align-items:baseline;gap:8px;width:100%}
+.rowb .n{font-weight:600}
+.rowb .st{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.rowb .st.act{color:var(--ink);font-weight:700}
+.rowb .v{margin-left:auto;font:700 var(--t-body) var(--num-face)}
+.rowb .t2{font-size:var(--t-small);color:var(--mute)}
+/* facts */
+.facts{display:flex;flex-direction:column;gap:10px}
+.fact{border:1px solid var(--hair);padding:10px 12px}
+.fact .l{font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-bottom:4px}
+.frame{width:100%;height:auto;border:1px solid var(--hair);display:block}
+/* unlock */
+.unlock{border:1px solid var(--ink);padding:14px;margin:0 0 16px}
+.unlock label{display:block;font:500 var(--t-cap) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.unlock input{width:100%;min-height:44px;padding:10px;border:1px solid var(--ink);background:var(--ground);color:var(--ink);font:var(--t-body) var(--mono);margin:0 0 10px}
+.refused{border:1px solid var(--ink);padding:16px 14px;margin:0 0 16px}
+.refused .lede{font-size:var(--t-read);line-height:1.4;margin:0 0 10px}
+/* the foot */
+.foot{border-top:1px solid var(--hair);padding:18px 16px 34px;max-width:34rem;margin:0 auto}
+.foot a{display:inline-flex;align-items:center;min-height:44px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="asking" id="asking">
+  <p class="brand"><b>PLANETAI</b> loading</p>
+  <p class="hd"><i class="blink" aria-hidden="true"></i><b>Asking the node</b></p>
+</div>
+<header class="bar">
+  <h1 id="who"></h1>
+  <nav aria-label="Sections"><a href="#now">Now</a><a href="#place">Place</a><a href="#node">Node</a></nav>
+  <span class="asof" id="asof"></span>
+</header>
+<main>
+  <section id="now" aria-label="Now"><h2>Now</h2><div id="now-v"></div></section>
+  <section id="place" aria-label="Place"><h2>Place</h2><div id="place-v"></div></section>
+  <section id="node" aria-label="Node"><h2>Node</h2><div id="node-v"></div></section>
+</main>
+<footer class="foot"><a id="fulldoors" href="/?layout=doors">Full dashboard</a></footer>
+<script src="/static/doors-load.js"></script>
+<script src="/static/mobile.js"></script>
+</body>
+</html>
