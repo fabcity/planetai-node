@@ -86,14 +86,14 @@ async function around() {
   s += far.map(x => `<path d="${path({ type: 'LineString', coordinates: [me.ll, x.ll] })}" class="arc"/>`).join('');
   for (const x of N) { const [px, py] = pr(x.ll); s += `<circle cx="${px}" cy="${py}" r="${x.me ? 6 : 5}" class="nd"/>`; }
   for (const [, xs] of places) { const [px, py] = pr(xs[0].ll), at = xs[0];
-    s += `<text x="${px + 10}" y="${py + 18}" class="lab">${esc(at.place.split(',').pop().trim())} · ${xs.map(x => esc(x.n)).join(' and ')}</text>`; }
+    s += `<text x="${px + 10}" y="${py + 18}" class="lab">${esc(at.place.split(',')[0].trim())} · ${xs.map(x => esc(x.n)).join(' and ')}</text>`; }
   s += `</svg>`;
   el.innerHTML = s;
   const L = D.listed, ret = D.health.reticulum || {}, word = x => !(L && L.read) ? 'list not read' : x.listed ? 'listed' : 'not listed';
   const fine = (L && L.read ? `Listed: the programme’s registry.json, read at ${hhmm(L.read)} UTC${L.error ? ', the last read failed (' + L.error + ')' : ''}. `
       : `The programme’s list has not been read yet${L && L.error ? ' (' + L.error + ')' : ''}. `)
     + 'A node joins it with planetai hello and a merged pull request; a node with no published point is not drawn. '
-    + (ret.announce_s ? `This node’s radio has heard ${(ret.peers || []).length} other node(s); they are not on this map yet.` : 'This node has no radio announcing it.');
+    + (ret.announce_s ? ((ret.peers || []).length ? `This node’s radio has heard ${ret.peers.length} other node${ret.peers.length > 1 ? 's' : ''}; they are not on this map yet.` : 'This node’s radio has heard no other node yet.') : 'This node has no radio announcing it.');
   $('#nodes').innerHTML = N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc(x.reads)}</span>`
     + `<span class="c"><span class="state">${word(x)}</span> ${x.me ? 'this node' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
     + `<div class="lrow"><span class="t">A community node above it</span><span class="s">where this node’s hourly means would go, so a city can be built from nodes</span><span class="c x">not set</span></div>`
