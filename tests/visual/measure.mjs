@@ -3215,8 +3215,11 @@ async function mobile() {
         const wantNow = ((sI.issues[K] || {}).title || {});
         const wantNowT = typeof wantNow === 'string' ? wantNow : (wantNow[lc2] ?? wantNow.en ?? '');
         ok(v.nowH === 'NOW' && v.nowT === wantNowT, `at now the dial shows the present title: "${v.nowT}" vs "${wantNowT}"`);
-        /* a drag to a past hour reads that hour's title from the wire */
+        /* a drag to a past hour reads that hour's title from the wire. The dial sits under the ladder and
+           the hero, so on a short phone viewport it starts below the fold — a real thumb would scroll first */
         const i = 5, n = 24, a = -Math.PI / 2 - (n - 1 - i) * 2 * Math.PI / n;
+        await r.page.evaluate(() => document.querySelector('svg.dial').scrollIntoView({ block: 'center' }));
+        await r.page.waitForTimeout(200);
         const box = await r.page.evaluate(() => { const b = document.querySelector('svg.dial').getBoundingClientRect();
           return { x: b.left + b.width / 2, y: b.top + b.height / 2, s: b.width / 358 }; });
         await r.page.mouse.move(box.x + 100 * box.s * Math.cos(a), box.y + 100 * box.s * Math.sin(a));
