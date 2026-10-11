@@ -26,7 +26,6 @@ function readout() {
   const w = (it.provenance || {})[it.hero_distance] || 'model';
   $('#kick').innerHTML = `${said(it.name)} · ${isNow ? 'now' : dLabel(dayOf(b))} · at ${hhmm(b)} ${prov(w)} <span class="x">${isNow ? '· the node’s own sentence' : `· ${D.now - i} h before the capture`}</span>`;
   $('#back').hidden = isNow;
-  const v = val(k, it.hero_distance, i), over = it.line != null && v != null && v > it.line;
   const cmp = it.line != null ? `against the line, ${fmt(it.line, dp)} ${U}` : 'this issue has no line';
   const n = x => num(`${k}.${it.hero_distance}`, x, cmp, `<b class="numf">${esc(x)}</b>`);
   let s, tag = '';
@@ -37,12 +36,12 @@ function readout() {
     s = esc(it.title || it.sentence).replace(/(\d+(?:\.\d+)?)(?=\s*(?:°C|µg|%|m\b))/, (m0) => n(m0));
     tag = it.tagline || '';
   }
-  else if (v == null) s = `<span class="gone">Nothing was recorded in the house at ${hhmm(b)}.</span>`;
   else {
-    /* a past hour has no trend verb, so the qualitative head is the line relation — was it over or
-       under — and the reading moves to the tagline: first what it meant, then what it measured. */
-    s = (k === 'heat' ? 'In the house it was' : 'The air in the house was') + ` ${over ? 'over' : 'under'} the line.`;
-    tag = (k === 'heat' ? `At ${hhmm(b)} it felt like` : `At ${hhmm(b)} it read`) + ` ${fmt(v, dp)} ${U}.`;
+    /* a past hour speaks the engine's words too (hours[i]): what it was doing, then the reading and whose
+       line. A capture older than the hours key has none, and says only that nothing is here to read. */
+    const h = (it.hours || [])[i];
+    s = h ? esc(h[0]) : `<span class="gone">Nothing was recorded at ${hhmm(b)}.</span>`;
+    tag = h ? h[1] : '';
   }
   $('#sentence').innerHTML = (it.pix ? `<svg class="pix" aria-hidden="true"><use href="${NODE}signs.svg#${it.pix}"/></svg>` : '') + `<span class="said">${s}${tag ? `<span class="ntag">${esc(tag)}</span>` : ''}</span>`;
   $('#ladder').innerHTML = ['room', 'yard', 'ring', 'region'].map(dk => {

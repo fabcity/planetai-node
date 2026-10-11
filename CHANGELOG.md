@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **The live sentence says which way it is going again.** The engine read the trend from the latest 24 hourly
+  buckets, and the forecast's hours (up to two days ahead) are among them: no sensor reads there, so every trend
+  came out "holding" and every issue's movement as zero. It now reads the 24 hours that have happened.
+- **Going back an hour on the Now door speaks the node's words.** Scrub back and the sentence now comes from
+  the node like the live one does, in every language: what the air or the heat was doing ("The air was clearing
+  in the house"), then the reading and whose line, smaller ("At 04:00 it read 8 µg/m³, under the WHO line.").
+  The page used to write that hour itself, in English only, with its own over-or-under arithmetic.
+  `GET /issues/days` gains `hours` per sensed issue, in the locale asked for (`?locale=`).
+- **The title says what it means for the house, and the line below says why.** "The house is keeping the heat
+  out", then smaller: "Inside it is under this house's own heat line, and the street is past it." Each issue's
+  sentence templates mark the split themselves (`title | tagline`), so the words live in the node, in every
+  language, and no page rewrites them. The list of every distance ("cooler than the street, the ring and the
+  region") is gone from the sentence; the figures are where they were, in the reading below.
+- **The Place door's scale buttons take the map to their scale.** On a landscape screen a press did nothing (the
+  map was asked to fit a cell inside a margin taller than itself), and elsewhere it landed one scale off. A button
+  now goes to the zoom the map itself reads as that scale.
+
 ## v0.80.11 — 2026-10-10 — The seed in the middle, the labels in lanes, the wall follows the window
 
 - **The asking face's middle is never empty.** Before any script arrives, the measuring frame now carries
@@ -56,6 +73,9 @@
   waiting for.
 
 ## v0.80.7 — 2026-10-10 — The loop closes from the phone, and the card says whose answer it carries
+
+_Tagged, never shipped: CI held it on the wall overflow, and the tag was deleted on 11 Oct. Everything below
+shipped in v0.80.8._
 
 - **The answer carries the household's own words, and the page insists on a name.** The wire's `answer` now
   carries `note`, and the card draws it in quotes — `Doesn't fit · tomas · 13:20 — "opened the west side"` —

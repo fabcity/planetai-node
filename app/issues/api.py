@@ -70,13 +70,13 @@ def issues_now():
 
 
 @router.get("/days")
-def issues_days(days: int = Query(7, ge=1, le=engine.DAYS_MAX)):
+def issues_days(days: int = Query(7, ge=1, le=engine.DAYS_MAX), locale: str = Query("en", pattern="^(en|id|es)$")):
     """Each issue's hourly series over the last `days` local days, the hero distance's hours over the line counted per
     day, and the alert events in the window (docs/SPEC_dashboard_figures.md §3.4). The same engine as `/issues`, so a
     day here is the 24 hours `/issues` draws. Under the `/issues` prefix, so it shares exactly as `/issues` does."""
     import main                    # noqa: PLC0415
     with main.db() as con, con.cursor() as cur:
-        return engine.days(cur, main.settings, load(), days)
+        return engine.days(cur, main.settings, load(), days, loc=locale)
 
 
 def _earth():
