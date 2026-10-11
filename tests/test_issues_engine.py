@@ -657,6 +657,16 @@ for _k in ("air", "heat"):
     check(_past in _o["hours"]["en"][-1][0], f"hours: {_k}'s last hour {_o['hours']['en'][-1][0]!r} is not {_past!r}")
     check(_o["hours"]["es"][-1] != _o["hours"]["en"][-1], f"hours: {_k} es is the English")
 check(_O21["coast"]["hours"] is None and _O21["land"]["hours"] is None, "hours: a context issue has none")
+# Forecast rows sit in readings_1h up to 48 h ahead. They are not hours that happened: with 30 of them added the
+# series, the trend and the hours must be exactly the capture's (they were empty and "steady" on node #1, 11 Oct).
+_FF = dict(_F21, readings_1h=_F21["readings_1h"] + [
+    {"bucket": (datetime.fromisoformat(_F21["as_of"]).replace(minute=0, second=0, microsecond=0)
+                + timedelta(hours=h)).isoformat(), "sensor_id": "forecast", "metric": "fc_pm25", "mean": 9.0,
+     "min": 9.0, "max": 9.0, "n": 1, "indoor": False, "local": False, "kind": "forecast"} for h in range(1, 31)])
+_OF = engine.replay(_FF, Settings(NODE_ISSUES="air,heat,land,coast"), DECL)["issues"]
+for _k in ("air", "heat"):
+    check(_OF[_k]["series"] == _O21[_k]["series"] and _OF[_k]["trend"] == _O21[_k]["trend"]
+          and _OF[_k]["hours"] == _O21[_k]["hours"], f"future buckets: {_k} reads {_OF[_k]['series']['room']}")
 _air_near = engine._hour_parts(_air, [_air["line"]["value"] * 0.95], [NOW], 0, "room", "en", _cmp_mode,
                                _air["line"])
 check("near the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")

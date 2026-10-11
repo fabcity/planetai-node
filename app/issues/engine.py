@@ -1477,7 +1477,10 @@ def compute(cur, settings, decl: dict, earth: dict | None = None, now: datetime 
     names = {r["sensor_id"]: r.get("name") for r in data["stats"]}
     clock = _clock(data)
 
-    buckets = sorted({r["bucket"] for r in data["hourly"]})[-24:]
+    # The last 24 hours that have happened. readings_1h also holds the forecast's hours, up to 48 h ahead, and the
+    # latest 24 buckets used to be mostly tomorrow's: no sensor reads there, so every series came back empty and
+    # every trend "steady" — on node #1 the live title said "holding" whatever the air did (11 Oct 2026).
+    buckets = sorted({r["bucket"] for r in data["hourly"] if (_age_minutes(r["bucket"], now) or 0) >= 0})[-24:]
     hourly: dict = {b: [] for b in buckets}
     for r in data["hourly"]:
         if r["bucket"] in hourly:
