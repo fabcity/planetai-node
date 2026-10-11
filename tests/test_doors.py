@@ -44,6 +44,18 @@ assert c.get("/", params={"layout": "doors"}).text == html
 assert c.get("/", params={"layout": "classic"}).text == (STATIC / "index.html").read_text()
 print("doors: / and ?layout=doors is the doors, ?layout=classic the classic dashboard")
 
+# the phone page (SPEC_mobile §8.1): the same shell route, every /static name it uses is served, no heavy
+# library, and it never writes a setting or stores the admin token
+mob = (STATIC / "mobile.html").read_text()
+mobjs = (STATIC / "mobile.js").read_text()
+assert c.get("/", params={"layout": "mobile"}).text == mob
+mnamed = re.findall(r'(?:src|href)="/static/([^"]+)"', mob) + re.findall(r"['\"]/static/([\w.#-]+)['\"]", mobjs)
+assert mnamed and all(n.split("#")[0] in main.COMPANIONS for n in mnamed), [n for n in mnamed if n.split("#")[0] not in main.COMPANIONS]
+assert not re.search(r"maplibre|deck\.gl|d3\.|plot\.umd", mob + mobjs, re.I), "the phone page loads no map or chart library"
+assert "planetai_admin'" not in mobjs.replace("removeItem('planetai_admin')", ""), "the phone page never stores the admin token"
+assert not re.search(r"fetch\(\s*['\"]/settings", mobjs), "the phone page reads /settings through loadD (GET) and never calls it"
+print("doors: ?layout=mobile is the phone page; it names only served files, loads no map library, touches no settings")
+
 if not shutil.which("node"):
     print("doors: node is not installed, skipping the loader checks (skipped)")
     sys.exit(0)
@@ -57,6 +69,10 @@ const F = JSON.parse(fs.readFileSync('%s', 'utf8'));
 const open = { ...F, days: F.issues_days }; delete open.readings_1h; delete open.actions; delete open.alerts;
 const full = buildD({ ...F, days: F.issues_days }, 'en'), locked = buildD(open, 'en');
 const fl = flowFrom(full), fo = flowFrom(locked);
+/* the phone page's subset (SPEC_mobile §8.1): the capture minus the token-only three builds a D whose Now and
+   Decide card draw — the engine's words (an old capture falls back to the sentence) and the event's asking+action */
+const phone = buildD(open, 'en'), pl = phone.issues[phone.lead] || {};
+const pev = phone.events.filter(e => !e.cleared_at).map(e => ({ asking: e.asking, action: e.action, message: 'message' in e, seen: 'last_seen_at' in e }));
 /* node #1's live table carries forecast rows up to 48 h ahead (7 Oct): the doors' table must stop at the present */
 const ahead = buildD({ ...F, days: F.issues_days, readings_1h: F.readings_1h.concat([{ bucket: '2099-01-01T00:00:00+08:00', sensor_id: 'forecast-om', metric: 'fc_cloud', mean: 1, min: 1, max: 1, n: 1 }]) }, 'en');
 console.log(JSON.stringify({
@@ -67,6 +83,7 @@ console.log(JSON.stringify({
   lockedNote: locked.actions.some(a => 'note' in a), stats: Object.keys(full.stats15).length, point: full.point,
   flow: { b: fl.buckets.length, ids: Object.keys(fl.counts).length, alerts: fl.alerts.length, answers: fl.answers.length, counted: fl.counted },
   flowLocked: { b: fo.buckets.length, ids: Object.keys(fo.counts).length, alerts: fo.alerts.length, answers: fo.answers.length, counted: fo.counted },
+  phone: { title: pl.title, tagline: pl.tagline, plain: pl.plain, sentence: pl.sentence, pev },
 }));
 """ % FIX
 r = json.loads(subprocess.run(["node"], input=prog, capture_output=True, text=True, check=True).stdout)
@@ -97,4 +114,13 @@ assert r["flowLocked"]["counted"] is False and r["flowLocked"]["ids"] == 0 and r
 print("doors: the flow counts what the hourly table counted, and says it did not count without it")
 assert r["aheadLast"] == r["fullLast"] and r["aheadN"] == r["fullN"], "a forecast hour ahead of /issues entered the replayed table"
 print("doors: the hourly table stops at the hour /issues was computed; forecast rows ahead of it stay out")
+
+# the phone page's D (SPEC_mobile §8.1): the engine's words and the open event's asking and action. This capture
+# predates title/tagline on the wire, so the check is the page's own fallback: a title, or the sentence it stands on.
+ph = r["phone"]
+assert ph["plain"] and (ph["title"] or ph["sentence"]), "the phone's Now has none of the engine's words to draw"
+assert ph["pev"] and all(e["asking"] is not None and e["action"] for e in ph["pev"]), \
+    "the phone's Decide card needs the event's asking and the live action's words"
+assert all(e["message"] and e["seen"] for e in ph["pev"]), "the phone's card reads message.sent and last_seen_at"
+print("doors: the phone page's subset builds a D with the words, the asking and the action it draws")
 print("all doors checks passed")
