@@ -71,8 +71,8 @@ async function flow() {
 
 async function around() {
   const land = await geo('world', '/static/world-land-110m.json'), el = $('#world'), W = el.clientWidth || 900, H = Math.round(W * .48);
-  // The programme's list on 6 Oct, not something this node heard: its radio has heard no peer yet.
-  const N = KNOWN_NODES, NG = D.ngeo;   // js/nodegeo.js
+  // the nodes the programme lists (GET /nodes, js/nodegeo.js), not the ones this node's radio heard
+  const N = KNOWN_NODES, NG = D.ngeo;
   // the whole-sphere H3 grid at resolution 2, as the landing draws it (planetai web, kit/h3/planet-states-web.svg): under
   // the coast, at half strength; each node lights its own res-2 cell. Edges as lines, so no ring winding can fill the globe.
   /* the planet's res-2 grid and each node's res-2 cell are the node's answers (GET /geo/planet, /geo/cell) */
@@ -81,18 +81,23 @@ async function around() {
   let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="The nodes the programme knows" class="geo"><path d="${path({ type: 'Sphere' })}" class="sphere"/>`
     + (g2.length ? `<path d="${path({ type: 'MultiLineString', coordinates: g2.map(llRing) })}" class="h3grid"/>` : '') + `<path d="${path(land)}" class="land"/>`;
   s += lit.map(c => `<path d="${path({ type: 'Polygon', coordinates: [llRing(c).reverse()] })}" class="h3lit"/>`).join('');
-  /* an arc from this node to each other node with a point; one label per place, the nodes there by number */
-  const me = N.find(x => x.me), far = N.filter(x => !x.me && !x.ring), places = d3.groups(N, x => x.ll.join(','));
+  /* an arc from this node to each other node with a point; one label per place, the nodes there by name */
+  const me = N.find(x => x.me), far = N.filter(x => !x.me), places = d3.groups(N, x => x.ll.join(','));
   s += far.map(x => `<path d="${path({ type: 'LineString', coordinates: [me.ll, x.ll] })}" class="arc"/>`).join('');
-  for (const x of N) { const [px, py] = pr(x.ll); s += `<circle cx="${px}" cy="${py}" r="${x.ring ? 11 : x.me ? 6 : 5}" class="nd ${x.ring ? 'ring' : ''}"/>`; }
-  for (const [, xs] of places) { const [px, py] = pr(xs[0].ll), at = xs.find(x => !x.ring) || xs[0];
-    s += `<text x="${px + 10}" y="${py + 18}" class="lab">${esc(at.place.split(',').pop().trim())} · ${xs.map(x => x.no ? '#' + x.no : esc(x.n)).join(' and ')}</text>`; }
+  for (const x of N) { const [px, py] = pr(x.ll); s += `<circle cx="${px}" cy="${py}" r="${x.me ? 6 : 5}" class="nd"/>`; }
+  for (const [, xs] of places) { const [px, py] = pr(xs[0].ll), at = xs[0];
+    s += `<text x="${px + 10}" y="${py + 18}" class="lab">${esc(at.place.split(',')[0].trim())} · ${xs.map(x => esc(x.n)).join(' and ')}</text>`; }
   s += `</svg>`;
   el.innerHTML = s;
-  $('#nodes').innerHTML = N.map(x => `<div class="lrow"><span class="t">#${x.no} ${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc(x.reads)}</span>`
-    + `<span class="c"><span class="state">${x.state}</span> ${x.me ? 'this node' : x.ring ? 'same network' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
+  const L = D.listed, ret = D.health.reticulum || {}, word = x => !(L && L.read) ? 'list not read' : x.listed ? 'listed' : 'not listed';
+  const fine = (L && L.read ? `Listed: the programme’s registry.json, read at ${hhmm(L.read)} UTC${L.error ? ', the last read failed (' + L.error + ')' : ''}. `
+      : `The programme’s list has not been read yet${L && L.error ? ' (' + L.error + ')' : ''}. `)
+    + 'A node joins it with planetai hello and a merged pull request; a node with no published point is not drawn. '
+    + (ret.announce_s ? ((ret.peers || []).length ? `This node’s radio has heard ${ret.peers.length} other node${ret.peers.length > 1 ? 's' : ''}; they are not on this map yet.` : 'This node’s radio has heard no other node yet.') : 'This node has no radio announcing it.');
+  $('#nodes').innerHTML = N.map(x => `<div class="lrow"><span class="t">${esc(x.n)}<small>${esc(x.place)}</small></span><span class="s">${esc(x.reads)}</span>`
+    + `<span class="c"><span class="state">${word(x)}</span> ${x.me ? 'this node' : (NG && NG.dist['node:' + x.n] ? fmt(NG.dist['node:' + x.n].m / 1000, 0) + ' km' : '—')}</span></div>`).join('')
     + `<div class="lrow"><span class="t">A community node above it</span><span class="s">where this node’s hourly means would go, so a city can be built from nodes</span><span class="c x">not set</span></div>`
-    + `<p class="fine">The programme’s list on 6 Oct, not something this node heard: its radio has announced its cell every 30 minutes and no peer has answered. State is drawn in weight, never hue: live is a solid 2.5 stroke. #3’s point is not published, so it is a ring around #1 rather than an invented coordinate.</p>`;
+    + `<p class="fine">${esc(fine)}</p>`;
 }
 
 /* Running, and a light reading of the machine under it (GET /machine, /storage: token-only; the full one is Set up →

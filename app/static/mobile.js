@@ -27,7 +27,7 @@ function ladderSVG(it) {
   const short = k => esc((D.labels[k] || k).replace(/^the /, ''));
   let s = `<svg class="ladder" viewBox="0 0 100 30" role="img" aria-label="The four distances against the line">`
     + `<line class="track" x1="${PAD}" y1="15" x2="${100 - PAD}" y2="15"/>`;
-  if (it.line != null) s += `<line class="rule" x1="${x(it.line)}" y1="5" y2="${x(it.line)}" y2="24"/>`
+  if (it.line != null) s += `<line class="rule" x1="${x(it.line)}" y1="5" x2="${x(it.line)}" y2="24"/>`
     + `<text class="rl" x="${x(it.line)}" y="4" text-anchor="middle">line</text>`;
   for (const d of ds) {
     const hero = d.k === (it.hero_distance || 'region');
@@ -37,16 +37,24 @@ function ladderSVG(it) {
   return s + `</svg>`;
 }
 
-/* seven days of an issue as a sparkline, its line dashed — the doors' strips, pocket size */
+/* seven days of an issue as a sparkline, its line dashed — the doors' strips, pocket size. Missing hours
+   keep their place in the week: the line breaks where the wire has no reading, never slides left. */
 function sparkSVG(o) {
-  const ser = (((o.series || {})[o.hero_distance || 'region']) || []).filter(v => v != null);
+  const raw = ((o.series || {})[o.hero_distance || 'region']) || [];
+  const ser = raw.filter(v => v != null);
   if (ser.length < 8) return '';
   const max = Math.max(...ser, o.line != null ? o.line : -Infinity), min = Math.min(...ser, 0), span = (max - min) || 1;
   const y = v => (25 - ((v - min) / span) * 22).toFixed(1);
-  const pts = ser.map((v, i) => `${(i / (ser.length - 1) * 100).toFixed(1)},${y(v)}`).join(' ');
+  const n = raw.length - 1;
+  let d = '', pen = false;
+  raw.forEach((v, i) => {
+    if (v == null) { pen = false; return; }
+    d += `${pen ? 'L' : 'M'}${(i / n * 100).toFixed(1)},${y(v)}`;
+    pen = true;
+  });
   return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">`
     + (o.line != null ? `<line class="rule" x1="0" y1="${y(o.line)}" x2="100" y2="${y(o.line)}"/>` : '')
-    + `<polyline points="${pts}"/></svg>`;
+    + `<path d="${d}"/></svg>`;
 }
 
 /* the phone's subset (SPEC_mobile §8): never the token-only three, never rho/cells */

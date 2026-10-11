@@ -264,7 +264,7 @@ Promise.all([loadD(), fetch(NODE + 'learn.json').then(r => r.json()).catch(() =>
   S.issue = D.lead; S.i = D.buckets.length - 1; D.now = S.i;
   D.sens = Object.fromEntries(D.sensors.map(s => [s.sensor_id, s]));
   /* the cells and distances the flow, the Wall and Node draw are the node's answers (js/nodegeo.js) */
-  knownNodes(D); foot();
+  await knownNodes(D); foot();
   if (D.askOff) $('#askbtn').hidden = true;                 /* UI_ASK off: no ask here either */
   $('#who').innerHTML = `${esc(D.node.name)}<small>${esc(D.node.place || '')}</small>`;
   $('#asof').textContent = `${new URLSearchParams(location.search).get('fixture') ? 'CAPTURE' : 'LIVE'} · as of ${hhmm(D.as_of)} · ${D.health.version || ''}${DOORS_TOKEN() ? '' : ' · locked'}`;

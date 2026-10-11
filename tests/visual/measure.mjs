@@ -3145,7 +3145,7 @@ async function mobile() {
       dots: document.querySelectorAll('#now-v .ladder circle.dot').length,
       heroDot: document.querySelectorAll('#now-v .ladder circle.hero').length,
       rule: document.querySelectorAll('#now-v .ladder line.rule').length,
-      sparks: document.querySelectorAll('#now-v .rowb svg.spark polyline').length,
+      sparks: document.querySelectorAll('#now-v .rowb svg.spark path').length,
       rows: document.querySelectorAll('#now-v .rowb').length,
       segs: document.querySelectorAll('#place-v .groundbar .seg').length,
       stationDots: document.querySelectorAll('#node-v .dotfield .dot').length,
@@ -3154,6 +3154,13 @@ async function mobile() {
     }));
     ok(v.dots >= 3 && v.heroDot === 1, `the ladder draws the distances (${v.dots} dots, ${v.heroDot} hero)`);
     ok(v.rule === 1, 'the ladder marks the line');
+    /* the rule is vertical: y2 was once set twice and x2 never, and the dashed line ran diagonal
+       while the count above stayed green */
+    const upright = await r.page.evaluate(() => {
+      const l = document.querySelector('#now-v .ladder line.rule');
+      return l && l.getAttribute('x1') === l.getAttribute('x2');
+    });
+    ok(!!upright, 'the ladder\'s rule is not vertical');
     ok(v.sparks === expectSparks, `a strip for every issue the wire has a week for (${v.sparks}/${expectSparks})`);
     ok(v.segs >= 3, `the ground draws its bar (${v.segs} segments)`);
     ok(v.stationDots === nSens, `one dot per sensor (${v.stationDots}/${nSens})`);

@@ -670,6 +670,54 @@ def check_release() -> None:
         notify("info", words.format(latest=known["latest"], here=known["current"] or "an older version"))
 
 
+
+# ---------------------------------------------------------------- the nodes the programme lists (docs/SPEC_hello.md)
+# registry.json on main, the file a node joins by pull request. Read from main and not from this release, so a node
+# merged today is listed everywhere within REGISTRY_EVERY. Only these fields reach a page: `contact` and `sources`
+# stay in the file, and a point is given to one decimal (about 10 km), as the Node door has always drawn another node.
+REGISTRY_URL = "https://raw.githubusercontent.com/fabcity/planetai-node/main/registry.json"
+REGISTRY_EVERY = 6 * 3600
+REGISTRY_FIELDS = ("name", "place", "scale", "operator", "since", "cell")
+
+
+def listed_nodes(raw) -> list[dict]:
+    """registry.json as a page may see it. A malformed entry is skipped, not a reason to lose the list."""
+    out = []
+    for n in raw.get("nodes", []) if isinstance(raw, dict) else []:
+        if not isinstance(n, dict) or not isinstance(n.get("name"), str):
+            continue
+        row = {k: n.get(k) for k in REGISTRY_FIELDS}
+        try:
+            row["ll"] = [round(float(n["lon"]), 1), round(float(n["lat"]), 1)]
+        except (KeyError, TypeError, ValueError):
+            row["ll"] = None
+        out.append(row)
+    return out
+
+
+def check_registry() -> None:
+    """Every REGISTRY_EVERY, read the programme's list. UPDATE_CHECK=off asks nothing, the same switch as the
+    release check: both are this node reaching out to the programme. A failed read keeps the last good list and
+    tries again in an hour."""
+    if settings.get("UPDATE_CHECK", "on") == "off":
+        state.pop("registry", None)
+        return
+    known = state.get("registry") or {}
+    if time.time() - known.get("asked", 0) < REGISTRY_EVERY:
+        return
+    # ponytail: in memory only; a node restarted offline has no list until its first good read. Keep a copy on disk
+    # when that bites someone.
+    try:
+        r = hc.get(REGISTRY_URL, timeout=15)
+        r.raise_for_status()
+        nodes = listed_nodes(r.json())
+    except Exception as e:  # noqa: BLE001 — no route out is a normal node
+        state["registry"] = {**known, "error": type(e).__name__, "asked": time.time() - REGISTRY_EVERY + 3600}
+        return
+    state["registry"] = {"nodes": nodes, "read": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                         "asked": time.time()}
+
+
 # ---------------------------------------------------------------- loops
 def loop(fn, every: int, delay: int = 0):
     """Run fn forever. Each loop records its own last error under its own name: poll_once clears `last_error`
@@ -805,6 +853,7 @@ loop(refresh_usual, 3600, delay=10)
 loop(push_aggregates, 3600, delay=120)
 loop(push_events, 3600, delay=150)
 loop(check_release, 3600, delay=300)
+loop(check_registry, 3600, delay=60)
 if RETICULUM_URL:
     loop(poll_reticulum, 300, delay=20)
 
@@ -857,7 +906,9 @@ async def _mcp_auth(request, call_next):
 # would silently never announce. It is safe at every level by construction — it answers `{"enabled":
 # false}` until a household turns announcing on, and after that it returns the same handful of facts
 # the node is already broadcasting to every radio in reach.
-_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence"}), ("/static/",))
+# /nodes is here because it is the programme's public registry.json, the same on every node: it says which nodes
+# exist and nothing about this house.
+_SHARE_OFF = (frozenset({"/", "/ui", "/health", "/llms.txt", "/settings", "/export", "/presence", "/nodes"}), ("/static/",))
 _SHARE_OPEN = (_SHARE_OFF[0] | frozenset({
     "/stats", "/sensors", "/observations", "/alerts", "/series", "/sparks", "/rho", "/cells", "/packs", "/trust",
     "/nearby", "/forecast", "/earth", "/earth/change.png", "/earth/year.png", "/earth/frame.png",
@@ -1000,6 +1051,15 @@ def _presence_res() -> int:
     except ValueError:
         return 3
     return max(0, min(r, PRESENCE_RES_FLOOR))
+
+
+@app.get("/nodes")
+def nodes():
+    """The nodes the programme lists (registry.json on main, read by check_registry). `read` is null until the
+    first good read; `error` says why the last one failed while the list it kept is still served."""
+    k = state.get("registry") or {}
+    return {"read": k.get("read"), "from": REGISTRY_URL, "nodes": k.get("nodes", []),
+            **({"error": k["error"]} if k.get("error") else {})}
 
 
 @app.get("/presence")
