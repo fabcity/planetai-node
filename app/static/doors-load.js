@@ -45,7 +45,7 @@ function buildD(A, locale) {
   const evs = I.events || {}, full = new Map([...(evs.open || []), ...(evs.recent || [])].map(e => [e.id, e]));
   const events = (Y.events || []).map(e => {
     const f = full.get(e.id) || {};
-    return { ...e, action: (f.action || {}).text ?? null, peak: f.peak ?? null, rooms: f.rooms || [], answer: f.answer ?? null };
+    return { ...e, action: (f.action || {}).text ?? null, peak: f.peak ?? null, rooms: f.rooms || [], answer: f.answer ?? null, asking: f.asking ?? !f.answer };
   });
   /* the hourly table, pivoted: series[sensor][metric][i] = [mean, min, max] */
   let raw = null;

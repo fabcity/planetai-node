@@ -46,7 +46,12 @@ function evAt(k, i) {
   const t = D.buckets[i];
   return D.events.filter(e => e.issue === k && e.opened_at.slice(0, 13) <= t.slice(0, 13) && (e.cleared_at == null || e.cleared_at.slice(0, 13) >= t.slice(0, 13)));
 }
-function answerWords(a) { return a ? { w: `${a.stage} · ${a.actor} · ${hhmm(a.ts)}`, closed: a.stage === 'acted' } : { w: 'no answer yet', closed: false }; }
+/* an answer in the household's words: which button, who, when, and until when a Not now holds the node's question */
+function answerWords(a) {
+  if (!a) return { w: 'no answer yet', closed: false };
+  const B = D.buttons || {}, said = { acted: B.done || 'Done', acknowledged: B.not_now || 'Not now', dismissed: B.doesnt_fit || 'Doesn’t fit' }[a.stage] || a.stage;
+  return { w: `answered: ${said}${a.actor ? ` by ${a.actor}` : ''} at ${hhmm(a.ts)}${a.held_until ? `, asked again at ${hhmm(a.held_until)}` : ''}${a.note ? ` · “${a.note}”` : ''}`, closed: a.stage === 'acted' };
+}
 /* The last hour's mean of one metric at one sensor, from the raw hourly table. */
 /* The last hour's mean of one metric at one sensor, from the raw hourly table (token-only); without it the 15-minute
    mean GET /stats gives every screen at `open`. */

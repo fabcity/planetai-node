@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A Decide card speaks about now, and stops asking once it is answered.** The action on an open event's card
+  is chosen again from the readings as they are, so it no longer tells a house to open up on the strength of last
+  night's outside reading; the message the bot sent keeps its words. Once somebody answers, the buttons go and the
+  card says who and when; after a Not now they come back when its three hours run out. `GET /issues` events gain
+  `asking`, and every page draws its buttons from it.
+- **A past hour says what it meant.** "The house was keeping the street's dust out", "Something in the house was
+  making the air dirty": each hour on the Now door's scrubber is read by the same six stories as the live title.
 - **The live sentence says which way it is going again.** The engine read the trend from the latest 24 hourly
   buckets, and the forecast's hours (up to two days ahead) are among them: no sensor reads there, so every trend
   came out "holding" and every issue's movement as zero. It now reads the 24 hours that have happened.

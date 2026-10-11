@@ -252,7 +252,7 @@ day and to the stations, and "from 9 rule rows", which opens the rows in `alerts
 age. An open act-level alert that no event covers is drawn after the cards, in the same way, with **I did this**,
 so nothing that asks a person something disappears.
 
-**Done**, **Not now** and **Doesn't fit** each write one answer to the event: who pressed, and when. Done closes the loop and shows a closed ring. Not now holds the card, muted, for three hours unless the reading reaches danger. Doesn't fit asks one optional question, what did you do instead, and keeps the answer as the note.
+**Done**, **Not now** and **Doesn't fit** each write one answer to the event: who pressed, and when. Done closes the loop and shows a closed ring. Not now holds the card, muted, for three hours unless the reading reaches danger. Doesn't fit asks one optional question, what did you do instead, and keeps the answer as the note. Once somebody has answered, the buttons go and the card says who answered and when; after a Not now they come back when the hold runs out, because the node asks again then (the wire's `asking`). The action on an open event's card is chosen again from the readings as they are now; the message the bot sent keeps its own words.
 
 The card stays until the event clears, and then it moves to Act. The first press asks for a name, and this browser
 keeps it for the next. The words on the buttons are the node's own (`events.buttons`). From a browser the answer

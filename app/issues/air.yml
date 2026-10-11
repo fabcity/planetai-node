@@ -105,6 +105,14 @@ sentences:
       title:   "The air {verb} {where}"
       tagline: "At {hour} it read {n} {unit}, {line}."
       none:    "Nothing was recorded {where} at {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "The air was clean, inside and out"
+        inside:        "Something in the house was making the air dirty"
+        everywhere:    "The whole area was breathing the same dusty air"
+        outside_worse: "The house was keeping the street's dust out"
+        mixed:         "The air {verb} {where}"
+        unknown:       "The air {where} {verb}"
     attribution:
       clear:         "The air is clean, inside and out | In the house it is {verb}, {line}. {event}"
       inside:        "Something in the house is making the air dirty | Inside it is {line}, and the street is cleaner. {event}"
@@ -137,6 +145,14 @@ sentences:
       title:   "Udara {verb} {where}"
       tagline: "Pukul {hour} terbaca {n} {unit}, {line}."
       none:    "Tidak ada yang tercatat {where} pukul {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "Udaranya bersih, di dalam dan di luar"
+        inside:        "Ada sesuatu di dalam rumah yang mengotori udara"
+        everywhere:    "Seluruh daerah menghirup udara berdebu yang sama"
+        outside_worse: "Rumah menahan debu dari jalan"
+        mixed:         "Udara {verb} {where}"
+        unknown:       "Udara {where} {verb}"
     attribution:
       clear:         "Udara bersih, di dalam dan di luar | Di dalam rumah udaranya {verb}, {line}. {event}"
       inside:        "Ada sesuatu di dalam rumah yang mengotori udara | Di dalam rumah udaranya {line}, dan jalan lebih bersih. {event}"
@@ -169,6 +185,14 @@ sentences:
       title:   "El aire {verb} {where}"
       tagline: "A las {hour} marcaba {n} {unit}, {line}."
       none:    "No se registró nada {where} a las {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "El aire estaba limpio, dentro y fuera"
+        inside:        "Algo en la casa estaba ensuciando el aire"
+        everywhere:    "Toda la zona respiraba el mismo aire sucio"
+        outside_worse: "La casa estaba dejando fuera el polvo de la calle"
+        mixed:         "El aire {verb} {where}"
+        unknown:       "El aire {where} {verb}"
     attribution:
       clear:         "El aire está limpio, dentro y fuera | En casa está {verb}, {line}. {event}"
       inside:        "Algo en la casa está ensuciando el aire | Dentro está {line}, y la calle está más limpia. {event}"

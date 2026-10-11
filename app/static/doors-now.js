@@ -68,7 +68,10 @@ function decision() {
   $('#decide').innerHTML = `<div class="k">decide · ${said(it.name)} · ${esc(e.kind)} since ${hhmm(e.opened_at)}${e.cleared_at ? ` · cleared ${hhmm(e.cleared_at)}` : ' · still open'}`
     + `${e.peak != null ? ` · peak ${num(`${k}.event.peak`, fmt(e.peak, it.dp), `the line ${fmt(it.line, it.dp)} ${it.unit}`)} ${said(it.unit)}` : ''}</div>`
     + `<p class="dq">${said(e.action || 'The node asked for nothing specific.')}</p>`
-    + `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}" ${live ? '' : 'disabled title="this event is not open at this hour"'}>${said(B[b])}</button>`).join('')}</div><p class="dm" id="answered" role="status"></p>`
+    /* the buttons only while the node is still asking (e.asking, from the node): once somebody answered they go, and
+       the line below says who and when. A past hour is read, never answered, so it shows none either. */
+    + (live && e.asking ? `<div class="ans" role="group" aria-label="Answer">${['done', 'not_now', 'doesnt_fit'].map(b => `<button class="${on === b ? 'on' : ''}" data-ev="${e.id}" data-stage="${ANSWER_STAGE[b]}">${said(B[b])}</button>`).join('')}</div>` : '')
+    + `<p class="dm" id="answered" role="status"></p>`
     + `<p class="dm">${sign(a.closed ? 'sign-rho-closed' : 'sign-rho-open', a.closed ? 'closed' : '')} ${esc(a.w)}${(e.rooms || []).length ? ` · ${e.rooms.length} room${e.rooms.length === 1 ? '' : 's'}: ${said(e.rooms.map(r => r.trim()).join(', '))}` : ''}</p>`;
 }
 

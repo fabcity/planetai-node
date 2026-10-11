@@ -841,7 +841,7 @@ function evCard(e, tail = '') {
   const m = e.message;
   const said = !m ? '' : `<p class="evmsg"><span class="m">${st === 'shadow' ? 'would have sent'
     : m.sent ? 'sent' : 'held'} ${esc(evClock(m.ts))}</span><span class="said">${esc(m.text || '')}</span></p>`;
-  const done = a && a.stage === 'acted', answered = evAnswered(e);
+  const answered = evAnswered(e);
   const rows = (e.alerts || []).length;
   /* A link goes only to a section this page is drawing: `sensors` belongs to a pack a node may not run, and
      Arrange may have hidden any of them. */
@@ -863,7 +863,7 @@ function evCard(e, tail = '') {
     + ` data-cmp="${esc(cmp)}">${esc(n(e.peak))}</span> ${esc(unit)} peak <small>${esc(cmp)}</small></p>`
     + (e.action && e.action.text ? `<p class="evact said">${esc(e.action.text)}</p>`
       : `<p class="evact none">The node chose no action for this event, and this page will not invent one.</p>`)
-    + answered + (done ? '' : evButtons(e)) + said
+    + answered + ((e.asking ?? !a) ? evButtons(e) : '') + said
     + (links.length ? `<p class="evlinks">evidence: ${links.join(' · ')}</p>` : '')
     + tail + `</section>`;
 }
@@ -8143,7 +8143,7 @@ function main() {
         + `<div class="what">${e.action && e.action.text ? esc(e.action.text)
           : `${esc(e.kind)}${(e.rooms || []).length ? ` \u00b7 ${esc(e.rooms.join(', '))}` : ''}`}`
         + `${st === 'shadow' ? `<span class="m">shadow \u2014 nothing was sent</span>` : ''}</div>`
-        + evAnswered(e) + (e.answer && e.answer.stage === 'acted' ? '' : evButtons(e))
+        + evAnswered(e) + ((e.asking ?? !e.answer) ? evButtons(e) : '')
         + (n > 1 ? `<p class="evmore" data-lv="simple">and ${n - 1} more open \u00b7 in advanced</p>` : '') + `</div>`;
     };
     return `<section class="lead" id="band-${esc(hk)}" data-band="lead">`

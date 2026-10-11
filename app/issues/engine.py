@@ -984,26 +984,30 @@ def _line_key(d, n, line) -> str:
 
 
 def _hour_parts(d, series, buckets, i, dist, loc, compare, line, tz=None) -> list[str]:
-    """[title, tagline] for one hour of the day the page can scrub back to.
+    """[title, tagline] for one hour of the day the page can scrub back to. `series` is every distance's hours.
 
-    The same order as the live sentence: the title says what the air or the heat was doing, in words, with
-    the trend verb in the past tense over the hours up to this one; the tagline gives the reading and
-    whose line it stood against. Every word comes from the issue's `past` block, so the page writes none.
+    The same order as the live sentence: the title says what that hour meant for the house, from the six stories
+    `_classify` tells (the house keeping the street's dust out, the dust coming from inside…), and the tagline the
+    reading and whose line. With no story to tell (a sensed issue with only one distance) the title is the trend
+    in the past tense. Every word comes from the issue's `past` block, so the page writes none.
     """
     block = (d.get("sentences") or {}).get(loc) or {}
     past = block.get("past") or {}
     at = buckets[i]
     if tz is not None and isinstance(at, datetime) and at.tzinfo is not None:
         at = at.astimezone(tz)
-    where, hour = _where(d, dist, loc), _hhmm(at)
-    n = series[i] if i < len(series) else None
+    where, hour, own = _where(d, dist, loc), _hhmm(at), series.get(dist) or []
+    n = own[i] if i < len(own) else None
     if n is None:
         return [past.get("none", "").format(where=where, hour=hour), ""]
-    verb = (past.get("verbs") or {}).get(_trend(series[:i + 1], compare), "")
+    verb = (past.get("verbs") or {}).get(_trend(own[:i + 1], compare), "")
+    then = {x: {"value": v[i]} for x, v in series.items() if v and i < len(v) and v[i] is not None}
+    title = (past.get("attribution") or {}).get(_classify(then, line, compare)) or past.get("title", "")
     line_clause = (block.get("line") or {}).get(_line_key(d, n, line), "")
     tag = past.get("tagline", "").format(hour=hour, n=f"{n:.{d['dp']}f}", unit=d["unit"], line=line_clause)
     tag = re.sub(r"\s*,\s*\.", ".", " ".join(tag.split()))
-    return [" ".join(past.get("title", "").format(verb=verb, where=where).split()), tag]
+    return [" ".join(title.format(verb=verb, where=where).split()), tag]
+
 
 # ------------------------------------------------------------------------------------------- readouts
 def _readouts(d, obs, loc_all=LOCALES) -> list[dict]:
@@ -1666,7 +1670,7 @@ def days(cur, settings, decl: dict, n: int, now: datetime | None = None, loc: st
                        # One [title, tagline] per bucket, for the hours the page scrubs back to: the past hour
                        # speaks the engine's words too, and the page writes none. One locale, the one asked for —
                        # seven days in all three would be a thousand strings nobody reads.
-                       "hours": ({loc: [_hour_parts(d, series[dist], buckets, i, dist, loc, compare, line, tz)
+                       "hours": ({loc: [_hour_parts(d, series, buckets, i, dist, loc, compare, line, tz)
                                         for i in range(len(buckets))]}
                                  if d["kind"] == "sensed" and dist else None)}
     events = _rows(cur, "SELECT id, issue, kind, level, opened_at, cleared_at FROM alert_events "

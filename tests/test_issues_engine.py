@@ -649,10 +649,10 @@ check(engine._sentence_parts(DECL["air"], {}, "none", "room", "steady", "en", {}
 # --- the past hour: the engine's words, never the page's ----------------------------------------
 # Rendered by /issues/days (tests/test_figures_wire.py checks it per bucket); here, one hour on its own: the
 # line relation is the engine's (0.95 of the line is near, never under) and an empty hour has no tagline.
-_air_near = engine._hour_parts(_air, [_air["line"]["value"] * 0.95], [NOW], 0, "room", "en", _cmp_mode,
+_air_near = engine._hour_parts(_air, {"room": [_air["line"]["value"] * 0.95]}, [NOW], 0, "room", "en", _cmp_mode,
                                _air["line"])
 check("close to the WHO line" in _air_near[1], f"hours: 0.95 of the line reads {_air_near!r}")
-check(engine._hour_parts(_air, [None], [NOW], 0, "room", "en", _cmp_mode, _air["line"])[1] == "",
+check(engine._hour_parts(_air, {"room": [None]}, [NOW], 0, "room", "en", _cmp_mode, _air["line"])[1] == "",
       "hours: an hour with no reading has no tagline")
 
 

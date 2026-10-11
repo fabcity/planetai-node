@@ -89,8 +89,17 @@ def build(engine, events, messages, answers, covered, contexts, decl, locale, no
                "message": {"text": m.get("text"), "ts": _iso(m["ts"]), "sent": bool(m.get("sent"))} if m else None,
                "alerts": sorted(covered.get(eid) or []),
                "answer": _answer(a, e["kind"])}
+        # Whether the card still asks: until somebody answers, and again once a Not now's hold has run out (the node
+        # asks again then). Every page draws its buttons from this, so an answered card never offers them twice.
+        held = (row["answer"] or {}).get("held_until")
+        row["asking"] = cleared is None and (a is None or (a["stage"] == "acknowledged" and held is not None
+                                                            and _t(held) <= now))
         if cleared is None:
             ctx, key = contexts.get(eid) or {}, OUTSIDE.get(issue.get("metric"))
+            # The card is the present: its action is chosen again from the context as it is now. The message that
+            # was sent keeps its words, as history.
+            if ctx:
+                row["action"] = A.now_say(issue, ctx, locale, e.get("rooms"), e.get("peak")) or row["action"]
             outside = ctx.get(f"outside_{key}") if key else None
             # outside_source only describes the temperature; an outside PM2.5 always came from an outdoor sensor
             came = None if outside is None else "outside" if key == "pm25" else ctx.get("outside_source")

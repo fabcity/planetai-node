@@ -96,6 +96,14 @@ sentences:
       title:   "The heat {verb} {where}"
       tagline: "At {hour} it felt like {n} {unit}, {line}."
       none:    "Nothing was recorded {where} at {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "The heat was bearable, inside and out"
+        inside:        "The house was the hottest place around"
+        everywhere:    "It was this hot everywhere, the house too"
+        outside_worse: "The house was keeping the heat out"
+        mixed:         "The heat {verb} {where}"
+        unknown:       "The heat {where} {verb}"
     attribution:
       clear:         "The heat is bearable, inside and out | In the house it is {verb}, {line}. {event}"
       inside:        "The house is the hottest place around | Inside it is {line}, and the street is cooler. {event}"
@@ -128,6 +136,14 @@ sentences:
       title:   "Panas {verb} {where}"
       tagline: "Pukul {hour} terasa {n} {unit}, {line}."
       none:    "Tidak ada yang tercatat {where} pukul {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "Panasnya masih wajar, di dalam dan di luar"
+        inside:        "Rumah ini tempat terpanas di sekitarnya"
+        everywhere:    "Panasnya sama di mana-mana, di rumah juga"
+        outside_worse: "Rumah menahan panas dari luar"
+        mixed:         "Panas {verb} {where}"
+        unknown:       "Panas {where} {verb}"
     attribution:
       clear:         "Panasnya masih wajar, di dalam dan di luar | Di dalam rumah panasnya {verb}, {line}. {event}"
       inside:        "Rumah ini tempat terpanas di sekitarnya | Di dalam rumah panasnya {line}, dan jalan lebih sejuk. {event}"
@@ -160,6 +176,14 @@ sentences:
       title:   "El calor {verb} {where}"
       tagline: "A las {hour} la sensación era de {n} {unit}, {line}."
       none:    "No se registró nada {where} a las {hour}."
+      # what that hour meant, by the same six stories as the live title
+      attribution:
+        clear:         "El calor se aguantaba, dentro y fuera"
+        inside:        "La casa era el sitio más caliente de la zona"
+        everywhere:    "Hacía este calor en todas partes, también en casa"
+        outside_worse: "La casa estaba frenando el calor"
+        mixed:         "El calor {verb} {where}"
+        unknown:       "El calor {where} {verb}"
     attribution:
       clear:         "El calor se aguanta, dentro y fuera | En casa está {verb}, {line}. {event}"
       inside:        "La casa es el sitio más caliente de la zona | Dentro está {line}, y la calle está más fresca. {event}"
