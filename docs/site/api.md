@@ -21,7 +21,7 @@ Two middlewares run before any handler. The first registered checks `/mcp` again
 
 The `off` allowlist (the default) is exactly: `/`, `/ui`, `/health`, `/llms.txt`, `/settings`, `/export`, `/presence`, `/nodes`, and any path under `/static/`.
 
-The `open` allowlist is the `off` list plus 27 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`. It also takes any path under `/static/`, `/exports/`, `/issues` or `/sources/`. That is 34 exact paths and 4 prefixes in all.
+The `open` allowlist is the `off` list plus 28 paths: `/stats`, `/sensors`, `/observations`, `/alerts`, `/series`, `/sparks`, `/rho`, `/cells`, `/packs`, `/trust`, `/nearby`, `/forecast`, `/earth`, `/earth/change.png`, `/earth/year.png`, `/earth/frame.png`, `/report/latest`, `/readings`, `/reach`, `/shape`, `/effect`, `/history`, `/exports`, `/sources`, `/ask`, `/ask/status`, `/docs/search`, `/geo/cell`. It also takes any path under `/static/`, `/exports/`, `/issues`, `/sources/` or `/ground/`. That is 35 exact paths and 5 prefixes in all. `/ground/*` is public data (OpenStreetMap, OpenAerialMap, Sentinel-2, Open-Meteo) cut around the node; `/geo/cell` answers an untrusted caller without its node-relative fields.
 
 A `SHARE_LEVEL` value that is neither `off` nor `open` is treated as `off`. The allowlist matches the path whatever the method, so it governs writes as well as reads. `POST /readings` shares its path with `GET /readings`, so at `SHARE_LEVEL=open` an anonymous post gets past the middleware and is refused by the handler with 401. `PUT /settings` shares its path with `GET /settings`, which is on the `off` list, so the same happens at every level. `/actions` is on neither list, so an anonymous `POST /actions` or `GET /actions` is refused by the middleware at both levels. A path the node has no route for is refused with 403 too, not 404, when the caller is untrusted.
 
@@ -337,7 +337,7 @@ The H3 cells covering a box at one resolution, one ring wider so a drawn grid ru
 Returns `{res, may_leave, edge_m, node, cells_ll}`. `node` and each `cells_ll` row are `[id, lat, lng, …]`, the shape `/issues` geometry uses. `may_leave` is true at resolution 6 and coarser. A box that would hold more than 2,500 cells is refused with 422, not cut short.
 
 ### GET /geo/cell
-Access: token
+Access: open
 
 One cell's facts, named by `id`, or by `lat`, `lon` and `res`.
 
@@ -347,6 +347,8 @@ One cell's facts, named by `id`, or by `lat`, `lon` and `res`.
 | `lat`, `lon`, `res` | float, float, int | none | The cell containing that point at that resolution, when there is no `id` |
 | `children` | int | none | A finer resolution: adds `children_res`, `children_n`, and up to 400 child rings as `children_ll` |
 | `polar` | bool | false | Adds each ring as distance and bearing from the node: `ring_polar`, and `children_polar` with `children` |
+
+Without a token (at `SHARE_LEVEL=open`) the answer leaves out `is_node`, `cells_from_node`, `ring_polar` and `children_polar`: asked cell by cell at a fine resolution, they would find the house.
 
 Returns `{id, res, area_m2, edge_m, parent, may_leave, is_node, cells_from_node, ring}`. `cells_from_node` counts grid steps from the node's own cell at the same resolution, or is null when h3 cannot walk that far. A polar row is `[id, metres, bearing, …]`, bearing in degrees clockwise from north.
 
@@ -386,22 +388,22 @@ Circles round the node, as `[lat, lng]` rings.
 Returns `{rings: [{km, ring}]}`.
 
 ### GET /ground/meta
-Access: token
+Access: open
 
 What the node holds of its own map in `out/ground/`: for each layer (`vector`, `drone`, `imagery`) its source, licence, attribution, tile count, bytes and fetch time, which layers are on disk (`on_disk`, plus `glyphs` and `wind`), and the command that fetches each one, the wind field's included. Never an error.
 
 ### GET /ground/{layer}/{z}/{x}/{y}
-Access: token
+Access: open
 
 One tile of the node's own map, XYZ addressed. `layer` is `vector` (OpenStreetMap vector tiles from Protomaps' build, served gzipped with `Content-Encoding: gzip`), `drone` (OpenAerialMap mosaics, PNG) or `imagery` (this node's Sentinel-2 composite, PNG). `y` may carry an extension. Answers 204 where the node holds no tile, which a map reads as empty ground.
 
 ### GET /ground/glyphs/{font}/{span}
-Access: token
+Access: open
 
 The label fonts the vector map draws names with (Noto Sans, OFL), one face and one range of 256 per request, as MapLibre asks for them: `/ground/glyphs/Noto Sans Regular/0-255.pbf`. 204 for a range the node did not fetch.
 
 ### GET /ground/wind
-Access: token
+Access: open
 
 The wind over the node's square for a map to draw moving: the forecast pack's Open-Meteo field, `n`×`n` points (8 by default) over `km` each side, hourly for the next day. Returns `{source, licence, attribution, fetched, n, km, lats, lons, times, speed_kmh, from_deg, at_node}`; `lats` run south to north and `lons` west to east, and `speed_kmh[t][row][column]` is km/h, `from_deg` the direction the wind comes from; `at_node` is the same for the node's own point, asked as such. Refreshed on each forecast poll and by `planetai run forecast windfield`; 204 on a node with `FORECAST_OPENMETEO=0`.
 
@@ -756,6 +758,11 @@ Body: `{"KEY": "value", ...}`. Header `X-Agent` names the caller (default `gui`)
 400 `<KEY> is not a runtime setting, and no installed pack declares it` for a key outside `settings.RUNTIME` and every `pack.yaml`; 400 with the validation message for a value outside the key's choices. Every call writes one row to the `actions` ledger with `stage='settings'`, `actor` = the `X-Agent` value and `note` = the keys changed. Returns `{changed: [keys], by, effective_within_s: 20}`.
 
 > **Note.** Every row `GET /settings` lists can be set here. A pack key is accepted whether or not its pack is switched on, so `MAKE_ENABLED` can turn the make pack on, and the node also puts the value into the environment the pack reads. A node that answers 400 `<KEY> is not a runtime setting` to a pack key is older than this; update it.
+
+### GET /settings/phone
+Access: admin
+
+`{"act": <ACT_TOKEN>}`, for Set up's "A phone" row to draw as a QR code: the phone page at `#act=<token>`, which the phone keeps and takes out of its address bar. Admin token only; 404 when the node has no `ACT_TOKEN` yet.
 
 ### GET /settings/raw
 Access: admin

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- **The phone is one page: Now, the walk, Node.** The walk out from the house is the phone page's middle instead
+  of a page of its own; `/?layout=walk` opens the same page. MapLibre and `walk.js` load once Now has drawn and the
+  walk nears the screen. Place and the 2 × 2 of four distances are gone: the walk's rail and chapters carry them.
+- **A phone can walk out from the house.** The phone page offers "Walk out from the house": `/?layout=walk`,
+  a map pinned on top and a story under it, house → street → ring → region → planet, the camera flying out at each
+  step. The house's day against its line, the street against the house with the gap shaded, the stations around as
+  dots, every scale on one axis, the listed nodes on a globe. It names no issue: every issue `/issues` carries is
+  walked, at the scales it has. Its own page, so the phone page itself still loads no map library.
+- **A phone unlocks from a QR code.** Set up › This screen, unlocked with the admin token, shows "A phone": a QR
+  code of the phone page holding the token for closing a loop, so the phone can answer the node with nothing typed.
+  `GET /settings/phone` (admin only) hands the code its token; the phone keeps `#act=` and takes it out of the
+  address bar. QR Code Generator 1.4.4 (MIT) is vendored for it.
+- **At `SHARE_LEVEL=open` a phone walks with the map and no token.** `/ground/*` and `/geo/cell` join the `open`
+  list; `/geo/cell` leaves out `is_node`, `cells_from_node` and `ring_polar` for a caller without a token, since
+  asked cell by cell at res 15 they would find the house.
 - **The Node door draws the nodes the programme lists, not a list typed into the page.** The node reads
   `registry.json` from the repository every 6 hours and serves it at `GET /nodes`, open at every share level, with
   each other node's point to one decimal and no contact. The globe and the list say "listed" or "not listed"; a node

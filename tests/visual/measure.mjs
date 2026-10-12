@@ -3133,7 +3133,9 @@ async function mobile() {
     const tBoot = (Date.now() - t0) / 1000;
     await r.page.waitForSelector('#now-v .t', { timeout: 20000 });
     const tTitle = (Date.now() - t0) / 1000;
-    const forbidden = r.reqs.filter(p => /maplibre|deck\.gl|d3|plot|\/ground\/|\/geo\/|\/aggregates/.test(p));
+    /* MapLibre, /ground and /geo/cell are the walk's, fetched once Now has drawn (mobile.js waits on boot());
+       tests/test_doors.py holds the shell to naming none of them */
+    const forbidden = r.reqs.filter(p => /deck\.gl|d3|plot|\/aggregates/.test(p));
     ok(tBoot <= 1.0, `the boot face painted at ${tBoot.toFixed(2)} s (budget 1.0)`);
     ok(tTitle <= 4.0, `the title drew at ${tTitle.toFixed(2)} s (budget 4.0 in v1)`);
     ok(forbidden.length === 0, `requests that must not happen: ${forbidden.join(', ')}`);
