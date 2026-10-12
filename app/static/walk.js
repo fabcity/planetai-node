@@ -151,7 +151,7 @@ if (typeof document !== 'undefined') (async () => {
     const grid = document.querySelector(`.capgrid[data-res="${b.dataset.res}"]`); if (!grid) return;
     if (!grid.hidden) { grid.hidden = true; return; }
     grid.hidden = false;
-    if (grid.dataset.loaded) return; grid.dataset.loaded = '1';
+    if (grid.dataset.loaded) return; grid.dataset.loaded = '1'; grid.innerHTML = '';
     for (const c of (caps[+b.dataset.res] || []).slice(0, 12)) {
       const blob = await fetch(`/captures/${c.id}/file`, { headers: DOORS_AUTH() }).then(r => (r.ok ? r.blob() : null)).catch(() => null);
       if (!blob) continue;
@@ -159,7 +159,7 @@ if (typeof document !== 'undefined') (async () => {
       img.src = URL.createObjectURL(blob); img.alt = c.note || c.kind || 'a capture'; img.loading = 'lazy';
       grid.appendChild(img);
     }
-    if (!grid.children.length) grid.innerHTML = '<p class="m">The pictures answer a screen with a token only.</p>';
+    if (!grid.children.length) { grid.innerHTML = '<p class="m">The pictures answer a screen with a token only.</p>'; delete grid.dataset.loaded; }
   });
 
   /* the cell this node stands in, at each scale, from the node's own /geo/cell (R25: centres only, never the house) */

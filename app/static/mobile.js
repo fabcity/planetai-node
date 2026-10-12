@@ -110,7 +110,7 @@ function captureHTML() {
     + `<input id="capnote" maxlength="500" placeholder="what the picture answers">`
     + (actor ? '' : `<label class="k" for="capactor">Your name</label><input id="capactor" autocomplete="name" required>`)
     + `<button type="submit" class="sbtn primary">Keep it on the node</button>`
-    + `<p class="dm">Where it was taken is this phone's location if you allow it, otherwise the node's own cell. The node cleans the file of EXIF and GPS, and the picture never leaves it.</p>`
+    + `<p class="dm">Where it was taken is this phone's location if you allow it, otherwise the node's own cell. The node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it.</p>`
     + `<p class="dm" id="capout" role="status"></p></form></div>`;
 }
 
@@ -119,11 +119,16 @@ async function captureSubmit(ev) {
   const out = $('#capout'), file = $('#capfile').files[0];
   if (!file) { out.textContent = 'Choose or take the picture first.'; return; }
   const actorEl = $('#capactor');
+  let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   if (actorEl) {
     const n = actorEl.value.trim();
     if (!n) { out.textContent = 'The node records who took it — your name first.'; actorEl.focus(); return; }
+    actor = n;
     try { localStorage.setItem('planetai_actor', n); } catch (e) { /* no storage here */ }
   }
+  const send = ev.target.querySelector('button[type="submit"]');
+  if (send.disabled) return;
+  send.disabled = true;   /* before the first await: two taps would otherwise send the picture twice */
   out.textContent = 'Asking this phone where it stands…';
   const point = await new Promise(res => {
     if (!('geolocation' in navigator)) return res(null);
@@ -135,7 +140,6 @@ async function captureSubmit(ev) {
   fd.append('photo', file, file.name || 'picture.jpg');
   fd.append('kind', $('#capkind').value);
   fd.append('note', $('#capnote').value);
-  let actor = ''; try { actor = localStorage.getItem('planetai_actor') || ''; } catch (e) { /* no storage here */ }
   fd.append('actor', actor);
   if (point) { fd.append('lat', point.lat); fd.append('lon', point.lon); }
   out.textContent = 'Sending it to the node…';
@@ -151,7 +155,7 @@ async function captureSubmit(ev) {
     out.textContent = (body.duplicate ? 'The node already had it' : 'The node kept it')
       + ` — ${c.kind || 'picture'}, ${c.cell ? 'cell ' + c.cell.slice(0, 9) + '…' : 'its cell'}${c.at_home ? ', at home' : ''}. The walk counts it below.`;
     $('#capfile').value = ''; $('#capname').textContent = ''; $('#capnote').value = '';
-  } catch (e) { out.textContent = `The node did not answer: ${e.message}`; }
+  } catch (e) { out.textContent = `The node did not answer: ${e.message}`; } finally { send.disabled = false; }
 }
 
 /* ---- the Decide card (§6) ---- */

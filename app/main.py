@@ -2746,7 +2746,7 @@ def _clean_picture(raw: bytes) -> tuple[bytes, str, str | None]:
     taken = None
     try:
         exif = im.getexif()
-        dtor = exif.get(306) or exif.get_ifd(0x8769).get(36867)  # DateTime, else DateTimeOriginal
+        dtor = exif.get_ifd(0x8769).get(36867) or exif.get(306)  # DateTimeOriginal (taken), else DateTime (saved)
         if dtor:
             taken = datetime.strptime(dtor.strip(), "%Y:%m:%d %H:%M:%S").replace(tzinfo=ZoneInfo(NODE_TZ)).isoformat()  # a camera writes local time
     except Exception:  # noqa: BLE001 — a picture with a broken date is still a picture; taken falls back to now
@@ -2838,8 +2838,9 @@ def captures_list(request: Request, authorization: str = Header(""), cell: str |
     _captures_auth(request, authorization)
     if kind is not None and kind not in CAPTURE_KINDS:
         raise HTTPException(422, f"kind must be one of {', '.join(CAPTURE_KINDS)}")
-    rows = q("SELECT * FROM captures" + (" WHERE kind = %s" if kind else "") + " ORDER BY id DESC LIMIT 2000",
-             *([kind] if kind else []))
+    # ponytail: a ?cell= reads every row and filters in Python (no H3 in Postgres here); fine to tens of thousands
+    rows = q("SELECT * FROM captures" + (" WHERE kind = %s" if kind else "") + " ORDER BY id DESC"
+             + ("" if cell else " LIMIT %s" % limit), *([kind] if kind else []))
     if cell:
         import h3  # noqa: PLC0415
         if not h3.is_valid_cell(cell):

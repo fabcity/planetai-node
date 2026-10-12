@@ -453,7 +453,7 @@ re-decided on resize. "Phone view" and "Full dashboard" switch, and the browser 
 **Now** (the engine's title and tagline, the reading at the household's own distance, the Decide card, the other
 issues as rows, and **Add a picture** — the capture tier of SPEC_eyes: one button on an unlocked phone, taking or
 choosing a picture with its kind and an optional note; the phone's location goes with it if the person allows,
-else the node's own cell, and the node cleans the file of EXIF and GPS and never lets it leave. A locked phone
+else the node's own cell, and the node cleans the file of EXIF and GPS and keeps it; only a screen holding a token can see it. A locked phone
 reads "Unlock this phone to add pictures", the same offer the Decide card makes), **Walk out from the house** (below) and **Node** (from `/health`, so it draws even
 when everything else is refused). The card's three buttons answer an alert from the phone with the act token;
 without it the card says the question went to Telegram. A locked phone reads the node's own sentence and the
