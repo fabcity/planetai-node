@@ -54,7 +54,8 @@ disk, a NAS share or any mounted storage; the node writes there and checks it is
 
 **Offered to open platforms.** What the node makes is offered back to the commons, each by its own yes in Set up:
 a drone or balloon mosaic to OpenAerialMap, a species finding with its picture to an open biodiversity platform
-(iNaturalist, and GBIF through it), and the same for the other findings where an open platform for them exists. The
+(iNaturalist, and GBIF through it), litter and dumping to OpenLitterMap (data under ODbL), and the same for the other
+findings where an open platform for them exists. The
 offer names the platform, its licence and what it publishes, before the first send. Tomas, 12 October 2026: the
 photos and the node's other services, such as identifying species, "should be offered to open source platforms".
 
@@ -117,11 +118,17 @@ A community node that stops holding its parent says so on its page and in its li
 3. **The model rows** in Set up, local and online, with the online yes.
 4. **Seven cells.** The node's own cells become the res-8 ring; the walk and Place draw what is mapped in each.
 5. **Community.** The `registry.json` fields and the check of §6, then the first promotion.
-6. **Offers.** OpenAerialMap for mosaics, iNaturalist for species, each its own yes.
+6. **Offers.** OpenAerialMap for mosaics, iNaturalist for species, OpenLitterMap for litter, each its own yes.
+
+**What others already saw.** At setup, and from then on, the node also reads what open platforms hold about its seven
+cells, as context beside its own captures: OpenLitterMap's verified litter points (a `candidate` in the source
+registry since 12 October 2026, awesome-fabcity-data #81), iNaturalist's observations, OpenAerialMap's mosaics. Their
+contributors' names stay on those platforms; the node keeps the point, the time and what was seen.
 
 ## 8 · Open
 
 - The microscope's cell is where the sample came from, which the person says; the node cannot check it.
-- Which open platform takes each other kind of finding (a spill, a pollution source, green cover), and the licence.
+- Spills, pollution sources and green cover have no open commons to offer them to. A platform shared between nodes
+  will come later, as its own spec (Tomas, 12 October 2026: "that will come later and probably won't be Ushahidi").
 - What the node does when the captures folder is full or its disk is gone (`/storage` already measures the disk).
 - The threshold in §6 and whether children, sensors or captures count toward holding a cell.
