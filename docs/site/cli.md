@@ -71,6 +71,7 @@ The settings themselves are on [Configuration](configuration.md).
 | `planetai meshtastic` | Starts the MQTT broker (compose profile `mqtt`), writes its password, prints the gateway radio's settings for your region, waits up to three minutes for the first packet. | no |
 | `planetai broker` | Starts the MQTT broker if it is not running (compose profile `mqtt`, same user and password as `planetai meshtastic`) and prints what to type into a Smart Citizen Kit's shell or a DIY node's setup portal so it publishes here; waits up to three minutes for the first message. | no |
 | `planetai reticulum` | Starts the LXMF bridge (profile `reticulum`), prints the node's address and the Sideband instructions. | no |
+| `planetai hello [--remove]` | Lists this node on every node's map. Reads the node's name, cell and the cell's centre from `/health` as a stranger would see them, asks for the place, who runs it and an optional public contact, and shows the entry. On a yes it forks `fabcity/planetai-node` with `gh` and opens the pull request to `registry.json`; without `gh` it prints the entry and the link to edit the file. Nothing is listed until a person merges it, and every node reads the list within six hours. `--remove` opens the pull request that takes the node off. | no |
 | `planetai homeassistant` (`ha`) | Ensures the broker, sets `HA_DISCOVERY=1`, prints the integration details. | no |
 
 ## Reading the node
