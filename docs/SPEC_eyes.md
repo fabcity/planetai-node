@@ -44,8 +44,19 @@ The visual database is this list, and the phone page's walk can show a cell's ca
 
 ## 3 · Pictures stay home; what a model finds is what travels
 
-A picture never leaves the node: not in `/export`, not in `/aggregates`, not to a parent, not on any `SHARE_LEVEL`.
-It is shown to this machine and to a screen holding a token, and to nobody else.
+A picture never leaves the node on its own: not in `/export`, not in `/aggregates`, not to a parent, not on any
+`SHARE_LEVEL`. It is shown to this machine and to a screen holding a token. The one way out is the household's offer
+to an open platform (below), made per platform.
+
+**Kept forever, where the household says.** Captures are kept until the household deletes them. They live in a
+folder of their own, apart from the database and its backups, and the household can point that folder at another
+disk, a NAS share or any mounted storage; the node writes there and checks it is there before it takes a capture.
+
+**Offered to open platforms.** What the node makes is offered back to the commons, each by its own yes in Set up:
+a drone or balloon mosaic to OpenAerialMap, a species finding with its picture to an open biodiversity platform
+(iNaturalist, and GBIF through it), and the same for the other findings where an open platform for them exists. The
+offer names the platform, its licence and what it publishes, before the first send. Tomas, 12 October 2026: the
+photos and the node's other services, such as identifying species, "should be offered to open source platforms".
 
 What a model **finds** in it is a reading like any other and follows the rules readings already follow: a species
 and its count, the outline of a spill, the share of a cell that is green, a pollution source and its kind. Each
@@ -70,7 +81,8 @@ node records what each model was asked, so a finding can be read back to its que
 
 A private node may map its own cell and the six that touch it, seven cells at res 8, about 5.2 km² together. Captures,
 sensors and findings in those seven count as the node's own; outside them they do not. This is the ring the walk
-already draws, and it replaces `LOCAL_RADIUS_M`'s circle with cells the page can draw.
+already draws, and it replaces `LOCAL_RADIUS_M`'s circle with cells the page can draw (Tomas: "Love the idea of the
+seven cells").
 
 One fact shapes what comes next. A res-8 cell's six neighbours are not its parent's other children: for node #1
 (`8895a4c843fffff`) three of the six sit inside its res-7 parent `8795a4c84ffffff` and three in other parents, because
@@ -98,17 +110,18 @@ A community node that stops holding its parent says so on its page and in its li
 
 ## 7 · Steps
 
-1. **The capture tier.** A table for captures, a folder on disk, the private tier #175 proposes (kept, used, never
-   exported), and `GET /captures` for this machine or a token. Upload from the phone page.
+1. **The capture tier.** A table for captures, a folder the household can place on any storage, the private tier #175
+   proposes (kept, used, never exported), and `GET /captures` for this machine or a token. Upload from the phone page.
 2. **Findings.** A finding is a reading with a capture id and a model; one local model wired end to end (green share
    of a cell from a drone or phone picture is the smallest useful one).
 3. **The model rows** in Set up, local and online, with the online yes.
 4. **Seven cells.** The node's own cells become the res-8 ring; the walk and Place draw what is mapped in each.
 5. **Community.** The `registry.json` fields and the check of §6, then the first promotion.
+6. **Offers.** OpenAerialMap for mosaics, iNaturalist for species, each its own yes.
 
 ## 8 · Open
 
 - The microscope's cell is where the sample came from, which the person says; the node cannot check it.
-- How long pictures are kept, and how much disk they may take before the oldest go (`/storage` already measures).
-- Whether a drone mosaic the household flies may be offered to OpenAerialMap, as a separate yes.
+- Which open platform takes each other kind of finding (a spill, a pollution source, green cover), and the licence.
+- What the node does when the captures folder is full or its disk is gone (`/storage` already measures the disk).
 - The threshold in §6 and whether children, sensors or captures count toward holding a cell.
