@@ -132,7 +132,8 @@ if (typeof document !== 'undefined') (async () => {
       { padding: { top: 70, bottom: 24, left: 24, right: 24 }, duration: 1400, essential: true });
     const l = document.querySelector('.ch[data-i="3"] .ladder'); if (l) l.outerHTML = ladder(w);
   }
-  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && +e.target.dataset.i !== AT && go(+e.target.dataset.i)), { rootMargin: '-40% 0px -55% 0px' });
+  /* the step is the chapter crossing the band just under the 58vh map, the one being read; .ch's scroll-margin lands a jump there */
+  const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && +e.target.dataset.i !== AT && go(+e.target.dataset.i)), { rootMargin: '-61% 0px -35% 0px' });
 
   if (!W.length) { $('#chs').innerHTML = '<p class="locked">No issue has a reading yet.</p>'; return; }
   $('#tg').innerHTML = W.map(w => `<button data-k="${w.k}" aria-pressed="${w.k === K}">${(w.a.name && w.a.name[lang]) || w.k}</button>`).join('');
