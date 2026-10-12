@@ -1,7 +1,7 @@
 # Concepts
-<!-- checked: v0.80.11 -->
+<!-- checked: v0.81.0 -->
 
-The words the rest of these pages use, each with what it means in the code at v0.80. When two of them
+The words the rest of these pages use, each with what it means in the code at v0.81. When two of them
 sound alike (`local` and `custody`, domain and issue, `kind` and `scale`, decided and acted) the difference
 is the point. Most of them are about one question: which numbers belong to this place, and may be counted
 for it.
@@ -180,8 +180,9 @@ report bundle under the rule's id.
 ## Reaching the node
 
 **`SHARE_LEVEL`.** What a request with no token may read: `off` (the dashboard shell, `/health`, `/presence`, `/llms.txt`,
-the daily export, and `/settings` reduced to the layout and the sharing level, nothing else) or `open` (the
-whole read API, which is what a wall screen without a token needs). Two more rungs, `cell` and `means`, are
+the daily export, the programme's node list at `/nodes`, and `/settings` reduced to the layout and the sharing level,
+nothing else) or `open` (the whole read API, which is what a wall screen without a token needs, plus the map's public
+layers under `/ground/*` and `/geo/cell` without its node-relative fields). Two more rungs, `cell` and `means`, are
 named and refused. See [Sharing](sharing.md).
 
 **Tokens.** `ADMIN_TOKEN` unlocks every write and the agent surface. `BACKUP_TOKEN` is read-only, for a NAS

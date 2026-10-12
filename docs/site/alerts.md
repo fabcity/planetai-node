@@ -1,5 +1,5 @@
 # Alerts
-<!-- checked: v0.80.11 -->
+<!-- checked: v0.81.0 -->
 
 An alert is the node asking a person to do something. This is the Act stage, which the architecture describes
 as the one that "turns an observation into a human decision", and it is "the only place ρ can be measured".
@@ -94,7 +94,7 @@ returned. A rule may not print a number its SQL did not compute.
 ## Languages
 
 `ALERT_LOCALE` is `en`, `id` or `es`. Since v0.63 every rule with a message carries all three, the two core rules
-and all 35 messaged rules in the packs that ship (seven of them the event engine's). The report, the test alert and the Telegram bot's own replies follow the same
+and all 33 messaged rules in the packs that ship (seven of them the event engine's). The report, the test alert and the Telegram bot's own replies follow the same
 setting; the bot's few fixed lines fall back to English for `id`. A language a template lacks falls back to
 English. The presets set `id` for Bali, `es` for Menorca, Barcelona and Santiago, and `en` for Boston and Delhi.
 
@@ -141,9 +141,11 @@ against outside, the hour, and what the home has (`HOME_HAS`: `purifier`, `ac`, 
 home cannot use is not offered, and a reading the node does not have never makes an action eligible. A message with
 no usable action is the story alone. An all-clear carries no action.
 
-An event is answered with three buttons: **Done** (`acted`), **Not now** (`acknowledged`) and **Doesn't fit** (`dismissed`), in `ALERT_LOCALE`. Telegram does not draw them yet;
-`POST /actions` with an `event_id` records one (below). An open event leads `GET /issues`, which carries the events
-as `events`, and the dashboard draws each open one once in Decide with the three buttons. On a node on `shadow` or `events`, an issue's state follows
+An event is answered with three buttons: **Done** (`acted`), **Not now** (`acknowledged`) and **Doesn't fit** (`dismissed`), in `ALERT_LOCALE`. Telegram draws them once the bot has announced itself
+(`TELEGRAM_BUTTONS=1`, see [The bot](bot.md)); `POST /actions` with an `event_id` records one (below). An open event leads `GET /issues`, which carries the events
+as `events`, and the dashboard draws each open one once in Decide. Its action is chosen again from the readings as they are
+now; the message that was sent keeps its words. The buttons show while the event's `asking` is true: until
+somebody answers, and after a Not now again once its three hours run out. On a node on `shadow` or `events`, an issue's state follows
 its event: `act` while the event is open and unanswered (and for `danger`, answered or not), `notable` once somebody
 answers it, for the `warn`-level air spike, and for 24 hours after it clears. The old heat and air alerts there
 no longer count as open asks.
@@ -222,7 +224,8 @@ followed by the condition stopping; neither is a `recovery` block.
 `GET /alerts?limit=50` lists the most recent with `id, ts, rule_id, sensor_id, level, text, acted_at`, and is
 where an alert's id comes from. `GET /actions` lists every answer with its stage, actor and note, and answers
 only a token or the machine itself, because a note is a household's own words about its own house. `GET /issues`
-carries the alert events as `events` (what is open, the action it sent, its latest answer, and the alerts it covers),
+carries the alert events as `events` (what is open, its action chosen from now, the message it sent, its latest answer,
+whether it is still `asking`, and the alerts it covers),
 and `GET /actions?events=1` lists the answers given to events with their `event_id`; without `events=1` a row with
 no `alert_id` is left out. `planetai status` shows the last three alerts and ρ. On the dashboard, Decide draws each
 open event once, with its action and Done, Not now and Doesn't fit, and each open alert on a node still on the old
